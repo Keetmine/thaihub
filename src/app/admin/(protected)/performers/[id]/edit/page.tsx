@@ -16,7 +16,7 @@ export default async function EditPerformerPage({
 }) {
   const { id } = await params;
 
-  const [performer, soloPerformers] = await Promise.all([
+  const [performer, soloPerformers, agencies] = await Promise.all([
     prisma.performer.findUnique({
       where: { id },
       include: {
@@ -29,6 +29,10 @@ export default async function EditPerformerPage({
       where: { type: "SOLO", id: { not: id } },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
+    }),
+    prisma.agency.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, logoUrl: true },
     }),
   ]);
 
@@ -52,13 +56,15 @@ export default async function EditPerformerPage({
           action={boundUpdate}
           submitLabel="Сохранить изменения"
           soloPerformers={soloPerformers}
+          agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
           defaultMemberIds={performer.bandMembers.map((m) => m.performerId)}
           defaultValues={{
             name: performer.name,
             type: performer.type,
+            realName: performer.realName ?? "",
             birthDate: performer.birthDate ? dateKey(performer.birthDate) : "",
             bio: performer.bio ?? "",
-            agency: performer.agency ?? "",
+            agencyId: performer.agencyId ?? "",
             photoUrl: performer.photoUrl ?? "",
             mydramalistUrl: performer.mydramalistUrl ?? "",
             links: performer.links.map((l) => ({ label: l.label, url: l.url })),

@@ -1062,3 +1062,44 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-color: rgba(34, 197, 94, 0.4);
   color: #4ade80;
 }
+
+/* ---------- File dropzone (image uploads) ---------- */
+.file-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 2.25rem 1.5rem;
+  border: 1.5px dashed var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--bs-secondary-color);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.file-dropzone:hover,
+.file-dropzone.is-dragging {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.05);
+  color: var(--bs-body-color);
+}
+
+.file-dropzone svg {
+  color: var(--bs-secondary-color);
+}
+
+.file-dropzone-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.file-dropzone-preview img {
+  max-width: 9rem;
+  max-height: 9rem;
+  border-radius: var(--bs-border-radius);
+  object-fit: cover;
+}

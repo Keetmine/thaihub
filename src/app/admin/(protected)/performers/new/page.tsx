@@ -6,11 +6,17 @@ import { createPerformer } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewPerformerPage() {
-  const soloPerformers = await prisma.performer.findMany({
-    where: { type: "SOLO" },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
-  });
+  const [soloPerformers, agencies] = await Promise.all([
+    prisma.performer.findMany({
+      where: { type: "SOLO" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.agency.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, logoUrl: true },
+    }),
+  ]);
 
   return (
     <div>
@@ -25,6 +31,7 @@ export default async function NewPerformerPage() {
         action={createPerformer}
         submitLabel="Создать исполнителя"
         soloPerformers={soloPerformers}
+        agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
       />
     </div>
   );

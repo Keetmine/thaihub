@@ -1,0 +1,164 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDownIcon } from "./icons";
+
+export type EntityOption = { id: string; name: string; photoUrl?: string | null };
+
+function Avatar({ option }: { option: EntityOption }) {
+  if (option.photoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={option.photoUrl} alt="" className="performer-select-avatar" />;
+  }
+  return (
+    <span className="performer-select-avatar performer-select-avatar-placeholder">
+      {option.name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+/**
+ * Custom searchable single-select for picking an existing entity (agency,
+ * drama, …) by name + optional photo, with an inline "+ Создать «query»"
+ * option when the typed name doesn't match anything existing.
+ */
+export default function EntitySelect({
+  name,
+  label,
+  options,
+  defaultValue,
+  placeholder = "Выберите…",
+  onCreateNew,
+  createLabel = "Создать",
+}: {
+  name: string;
+  label?: string;
+  options: EntityOption[];
+  defaultValue?: string;
+  placeholder?: string;
+  onCreateNew?: (query: string) => Promise<EntityOption | null>;
+  createLabel?: string;
+}) {
+  const [allOptions, setAllOptions] = useState(options);
+  const [value, setValue] = useState(defaultValue ?? "");
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const selected = allOptions.find((o) => o.id === value);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return allOptions;
+    return allOptions.filter((o) => o.name.toLowerCase().includes(q));
+  }, [allOptions, query]);
+
+  const trimmedQuery = query.trim();
+  const hasExactMatch = allOptions.some(
+    (o) => o.name.toLowerCase() === trimmedQuery.toLowerCase(),
+  );
+  const showCreateOption = !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch;
+
+  async function handleCreate() {
+    if (!onCreateNew || !trimmedQuery || isCreating) return;
+    setIsCreating(true);
+    try {
+      const created = await onCreateNew(trimmedQuery);
+      if (created) {
+        setAllOptions((prev) => [...prev, created]);
+        setValue(created.id);
+        setQuery("");
+        setIsOpen(false);
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  return (
+    <div>
+      {label && <label className="form-label d-block">{label}</label>}
+      <input type="hidden" name={name} value={value} />
+      <div className="performer-select" ref={ref}>
+        <button
+          type="button"
+          className="performer-select-trigger"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((v) => !v)}
+        >
+          <span className="d-flex align-items-center gap-2 min-w-0">
+            {selected && <Avatar option={selected} />}
+            <span className={`text-truncate ${selected ? "" : "text-secondary"}`}>
+              {selected?.name ?? placeholder}
+            </span>
+          </span>
+          <ChevronDownIcon />
+        </button>
+
+        {isOpen && (
+          <div className="performer-select-dropdown">
+            <input
+              type="text"
+              className="form-control form-control-sm mb-2"
+              placeholder="Поиск…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoFocus
+            />
+            {value && (
+              <button
+                type="button"
+                className="performer-select-option text-secondary"
+                onClick={() => {
+                  setValue("");
+                  setIsOpen(false);
+                }}
+              >
+                Не выбрано
+              </button>
+            )}
+            {filtered.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className="performer-select-option"
+                onClick={() => {
+                  setValue(o.id);
+                  setQuery("");
+                  setIsOpen(false);
+                }}
+              >
+                <Avatar option={o} />
+                <span className="flex-fill text-start text-truncate">{o.name}</span>
+              </button>
+            ))}
+            {filtered.length === 0 && !showCreateOption && (
+              <p className="small text-secondary px-2 py-1 mb-0">Ничего не найдено</p>
+            )}
+            {showCreateOption && (
+              <button
+                type="button"
+                className="performer-combobox-create performer-select-option"
+                disabled={isCreating}
+                onClick={handleCreate}
+              >
+                {isCreating ? "Создание…" : `+ ${createLabel} «${trimmedQuery}»`}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

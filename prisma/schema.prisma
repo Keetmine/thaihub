@@ -35,9 +35,11 @@ model Performer {
   type           PerformerType @default(SOLO)
 
   // Profile fields (populated manually or via mydramalist import).
+  realName       String?
   birthDate      DateTime?
   bio            String?
-  agency         String?
+  agencyId       String?
+  agency         Agency?   @relation(fields: [agencyId], references: [id])
   photoUrl       String?
   mydramalistUrl String?
 
@@ -61,6 +63,20 @@ model Performer {
 enum PerformerType {
   SOLO
   BAND
+}
+
+// A talent/management agency. Performers optionally belong to one; the
+// agency's own roster, description, and (later) logo make it a browsable
+// entity in its own right rather than just a free-text label.
+model Agency {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  logoUrl     String?
+  description String?
+  performers  Performer[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 // A member-actor of a band (e.g. an idol/actor who's also in a group).

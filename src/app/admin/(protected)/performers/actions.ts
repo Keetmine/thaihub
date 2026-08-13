@@ -69,9 +69,10 @@ function getMemberIds(formData: FormData): string[] {
 export async function createPerformer(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
+  const realName = String(formData.get("realName") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const bio = String(formData.get("bio") ?? "").trim();
-  const agency = String(formData.get("agency") ?? "").trim();
+  const agencyId = String(formData.get("agencyId") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const links = getLinks(formData);
 
@@ -81,9 +82,10 @@ export async function createPerformer(formData: FormData) {
     data: {
       name,
       type,
+      realName: realName || null,
       birthDate: type === "SOLO" ? birthDate : null,
       bio: bio || null,
-      agency: agency || null,
+      agencyId: agencyId || null,
       photoUrl: photoUrl || null,
       links: {
         create: links.map((l) => ({ label: l.label, url: l.url })),
@@ -118,9 +120,10 @@ export async function createPerformer(formData: FormData) {
 export async function updatePerformer(id: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
+  const realName = String(formData.get("realName") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const bio = String(formData.get("bio") ?? "").trim();
-  const agency = String(formData.get("agency") ?? "").trim();
+  const agencyId = String(formData.get("agencyId") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
   const links = getLinks(formData);
@@ -136,9 +139,10 @@ export async function updatePerformer(id: string, formData: FormData) {
       data: {
         name,
         type,
+        realName: realName || null,
         birthDate: type === "SOLO" ? birthDate : null,
         bio: bio || null,
-        agency: agency || null,
+        agencyId: agencyId || null,
         photoUrl: photoUrl || null,
         mydramalistUrl: mydramalistUrl || null,
         links: {

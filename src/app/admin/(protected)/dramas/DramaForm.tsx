@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import FileDropzone from "@/components/FileDropzone";
 
 type PerformerOption = { id: string; name: string; type: string };
 type CastEntry = { id: string; name: string; role: string };
@@ -85,17 +86,9 @@ export default function DramaForm({
         </div>
       </div>
 
+      <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
+
       <div className="row g-3">
-        <div className="col-12 col-lg-6">
-          <label className="form-label">Постер (ссылка на изображение)</label>
-          <input
-            type="url"
-            name="posterUrl"
-            defaultValue={v?.posterUrl}
-            placeholder="https://…"
-            className="form-control"
-          />
-        </div>
         <div className="col-12 col-lg-6">
           <label className="form-label">Ссылка на MyDramaList</label>
           <input

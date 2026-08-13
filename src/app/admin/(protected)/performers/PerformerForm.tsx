@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import FileDropzone from "@/components/FileDropzone";
+import { createAgencyAndReturn } from "../agencies/actions";
 
 export type PerformerLinkInput = { label: string; url: string };
 export type PerformerOption = { id: string; name: string };
@@ -9,6 +12,7 @@ export default function PerformerForm({
   action,
   submitLabel,
   soloPerformers,
+  agencies,
   defaultValues,
   defaultMemberIds,
 }: {
@@ -16,12 +20,14 @@ export default function PerformerForm({
   submitLabel: string;
   /** Existing SOLO performers, for the pairing-partner select and the band-members picker. */
   soloPerformers: PerformerOption[];
+  agencies: EntityOption[];
   defaultValues?: {
     name: string;
     type: string;
+    realName: string;
     birthDate: string;
     bio: string;
-    agency: string;
+    agencyId: string;
     photoUrl: string;
     mydramalistUrl: string;
     links: PerformerLinkInput[];
@@ -113,6 +119,18 @@ export default function PerformerForm({
       </div>
 
       {type === "SOLO" && (
+        <div>
+          <label className="form-label">Настоящее имя</label>
+          <input
+            name="realName"
+            defaultValue={v?.realName}
+            placeholder="Если сценическое имя отличается от настоящего"
+            className="form-control"
+          />
+        </div>
+      )}
+
+      {type === "SOLO" && (
         <div className="row g-3">
           <div className="col-12 col-sm-6">
             <label className="form-label">Дата рождения</label>
@@ -124,37 +142,38 @@ export default function PerformerForm({
             />
           </div>
           <div className="col-12 col-sm-6">
-            <label className="form-label">Агентство</label>
-            <input
-              name="agency"
-              defaultValue={v?.agency}
-              className="form-control"
+            <EntitySelect
+              name="agencyId"
+              label="Агентство"
+              options={agencies}
+              defaultValue={v?.agencyId}
+              placeholder="Не выбрано"
+              createLabel="Создать агентство"
+              onCreateNew={async (query) => {
+                const created = await createAgencyAndReturn(query);
+                return { id: created.id, name: created.name, photoUrl: created.logoUrl };
+              }}
             />
           </div>
         </div>
       )}
 
       {type === "BAND" && (
-        <div>
-          <label className="form-label">Агентство</label>
-          <input
-            name="agency"
-            defaultValue={v?.agency}
-            className="form-control"
-          />
-        </div>
+        <EntitySelect
+          name="agencyId"
+          label="Агентство"
+          options={agencies}
+          defaultValue={v?.agencyId}
+          placeholder="Не выбрано"
+          createLabel="Создать агентство"
+          onCreateNew={async (query) => {
+            const created = await createAgencyAndReturn(query);
+            return { id: created.id, name: created.name, photoUrl: created.logoUrl };
+          }}
+        />
       )}
 
-      <div>
-        <label className="form-label">Фото (ссылка)</label>
-        <input
-          type="url"
-          name="photoUrl"
-          defaultValue={v?.photoUrl}
-          placeholder="https://…"
-          className="form-control"
-        />
-      </div>
+      <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} />
 
       <div>
         <label className="form-label">{type === "BAND" ? "О группе" : "Биография"}</label>

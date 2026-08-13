@@ -137,3 +137,42 @@ export function CalendarIcon() {
     </svg>
   );
 }
+
+export function UploadIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1.6rem"
+      height="1.6rem"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 15V4" />
+      <path d="M7.5 8.5 12 4l4.5 4.5" />
+      <path d="M4 16v2a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-2" />
+    </svg>
+  );
+}
+
+export function CloseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.9em"
+      height="0.9em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6 6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}

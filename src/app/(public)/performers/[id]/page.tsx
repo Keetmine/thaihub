@@ -19,6 +19,7 @@ export default async function PerformerPage({
     where: { id },
     include: {
       links: true,
+      agency: true,
       dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
       bandMembers: { include: { performer: true }, orderBy: { performer: { name: "asc" } } },
       memberOfBands: { include: { band: true }, orderBy: { band: { name: "asc" } } },
@@ -100,6 +101,9 @@ export default async function PerformerPage({
         </h1>
         <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} />
       </div>
+      {performer.realName && (
+        <p className="small text-secondary mb-4">{performer.realName}</p>
+      )}
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4" style={{ maxWidth: "40rem" }}>
         {performer.photoUrl && (
@@ -120,7 +124,10 @@ export default async function PerformerPage({
           )}
           {performer.agency && (
             <p className="small text-secondary mb-0">
-              <span aria-hidden="true">🏢</span> {performer.agency}
+              <span aria-hidden="true">🏢</span>{" "}
+              <Link href={`/agencies/${performer.agency.id}`} className="link-body-emphasis">
+                {performer.agency.name}
+              </Link>
             </p>
           )}
           {performer.bio && <p className="mb-0">{performer.bio}</p>}
