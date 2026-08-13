@@ -1,0 +1,67 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import DramaForm from "../../DramaForm";
+import { updateDrama, deleteDrama } from "../../actions";
+import ConfirmForm from "@/components/ConfirmForm";
+
+export const dynamic = "force-dynamic";
+
+export default async function EditDramaPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  const [drama, performers] = await Promise.all([
+    prisma.drama.findUnique({
+      where: { id },
+      include: { performers: { include: { performer: true } } },
+    }),
+    prisma.performer.findMany({ orderBy: { name: "asc" } }),
+  ]);
+
+  if (!drama) notFound();
+
+  const boundUpdate = updateDrama.bind(null, id);
+  const boundDelete = deleteDrama.bind(null, id);
+
+  return (
+    <div>
+      <Link href="/admin/dramas" className="eyebrow text-decoration-none">
+        ← К списку сериалов
+      </Link>
+      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2rem" }}>
+        Редактировать сериал
+      </h1>
+      <DramaForm
+        action={boundUpdate}
+        performers={performers}
+        submitLabel="Сохранить изменения"
+        defaultValues={{
+          title: drama.title,
+          year: drama.year ? String(drama.year) : "",
+          posterUrl: drama.posterUrl ?? "",
+          synopsis: drama.synopsis ?? "",
+          mydramalistUrl: drama.mydramalistUrl ?? "",
+          cast: drama.performers.map((p) => ({
+            id: p.performerId,
+            name: p.performer.name,
+            role: p.role ?? "",
+          })),
+        }}
+      />
+
+      <ConfirmForm
+        action={boundDelete}
+        confirmMessage={`Удалить сериал «${drama.title}»?`}
+        className="mt-4 pt-4"
+      >
+        <button type="submit" className="btn btn-outline-danger btn-sm">
+          Удалить сериал
+        </button>
+      </ConfirmForm>
+    </div>
+  );
+}
