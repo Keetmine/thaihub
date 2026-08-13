@@ -71,6 +71,34 @@ export async function toggleFavoriteEvent(eventId: string) {
   revalidatePath(`/event/${eventId}`);
 }
 
+const WATCH_STATUSES = ["WATCHING", "COMPLETED", "ON_HOLD", "PLAN_TO_WATCH", "DROPPED"] as const;
+export type DramaWatchStatusValue = (typeof WATCH_STATUSES)[number];
+
+export async function setDramaWatchStatus(dramaId: string, status: DramaWatchStatusValue) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!WATCH_STATUSES.includes(status)) throw new Error("Некорректный статус");
+
+  await prisma.dramaWatchStatus.upsert({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    update: { status },
+    create: { userId: user.id, dramaId, status },
+  });
+
+  revalidatePath("/account");
+  revalidatePath(`/dramas/${dramaId}`);
+}
+
+export async function clearDramaWatchStatus(dramaId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  await prisma.dramaWatchStatus.deleteMany({ where: { userId: user.id, dramaId } });
+
+  revalidatePath("/account");
+  revalidatePath(`/dramas/${dramaId}`);
+}
+
 // "Я пойду" — toggles whether the current user is attending an event.
 export async function toggleGoing(eventId: string) {
   const user = await getCurrentUser();
