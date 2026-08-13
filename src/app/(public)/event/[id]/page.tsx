@@ -14,7 +14,10 @@ export default async function EventDetailPage({
 
   const event = await prisma.event.findUnique({
     where: { id },
-    include: { performers: { include: { performer: true } } },
+    include: {
+      performers: { include: { performer: true } },
+      pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
+    },
   });
 
   if (!event) notFound();
@@ -47,6 +50,17 @@ export default async function EventDetailPage({
               >
                 {performer.name}
               </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Pairings — added alongside the performer chips above */}
+        {event.pairings.length > 0 && (
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            {event.pairings.map(({ pairing }) => (
+              <span key={pairing.id} className="event-chip">
+                {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
+              </span>
             ))}
           </div>
         )}

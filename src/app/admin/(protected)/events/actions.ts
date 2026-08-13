@@ -14,6 +14,10 @@ function getPerformerIds(formData: FormData): string[] {
   return formData.getAll("performerIds").map(String).filter(Boolean);
 }
 
+function getPairingIds(formData: FormData): string[] {
+  return formData.getAll("pairingIds").map(String).filter(Boolean);
+}
+
 function getPresaleAt(formData: FormData): Date | null {
   const presaleEnabled = String(formData.get("presaleEnabled") ?? "") === "on";
   if (!presaleEnabled) return null;
@@ -41,6 +45,7 @@ export async function createEvent(formData: FormData) {
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
   const performerIds = getPerformerIds(formData);
+  const pairingIds = getPairingIds(formData);
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
@@ -60,6 +65,9 @@ export async function createEvent(formData: FormData) {
       performers: {
         create: performerIds.map((performerId) => ({ performerId })),
       },
+      pairings: {
+        create: pairingIds.map((pairingId) => ({ pairingId })),
+      },
     },
   });
 
@@ -76,6 +84,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
   const performerIds = getPerformerIds(formData);
+  const pairingIds = getPairingIds(formData);
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
@@ -85,6 +94,7 @@ export async function updateEvent(id: string, formData: FormData) {
 
   await prisma.$transaction([
     prisma.eventPerformer.deleteMany({ where: { eventId: id } }),
+    prisma.eventPairing.deleteMany({ where: { eventId: id } }),
     prisma.event.update({
       where: { id },
       data: {
@@ -97,6 +107,9 @@ export async function updateEvent(id: string, formData: FormData) {
         presaleUrl,
         performers: {
           create: performerIds.map((performerId) => ({ performerId })),
+        },
+        pairings: {
+          create: pairingIds.map((pairingId) => ({ pairingId })),
         },
       },
     }),

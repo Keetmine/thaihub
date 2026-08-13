@@ -4,15 +4,27 @@ import { useMemo, useRef, useState } from "react";
 import { createPerformerAndReturn } from "../performers/actions";
 
 type PerformerOption = { id: string; name: string; type: string };
+type PairingOption = {
+  id: string;
+  name: string | null;
+  performerA: { id: string; name: string };
+  performerB: { id: string; name: string };
+};
+
+function pairingLabel(pairing: PairingOption): string {
+  return pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`;
+}
 
 export default function EventForm({
   action,
   performers,
+  pairings,
   defaultValues,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
   performers: PerformerOption[];
+  pairings: PairingOption[];
   defaultValues?: {
     title: string;
     venue: string;
@@ -21,6 +33,7 @@ export default function EventForm({
     startTime: string;
     endTime: string;
     performerIds: string[];
+    pairingIds: string[];
     presaleDate: string;
     presaleTime: string;
     presaleUrl: string;
@@ -35,6 +48,13 @@ export default function EventForm({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const comboboxRef = useRef<HTMLDivElement>(null);
+
+  const [selectedPairingIds, setSelectedPairingIds] = useState<string[]>(
+    v?.pairingIds ?? [],
+  );
+  const [pairingQuery, setPairingQuery] = useState("");
+  const [isPairingDropdownOpen, setIsPairingDropdownOpen] = useState(false);
+  const pairingComboboxRef = useRef<HTMLDivElement>(null);
 
   const [presaleEnabled, setPresaleEnabled] = useState(Boolean(v?.presaleDate));
 
@@ -67,6 +87,32 @@ export default function EventForm({
 
   function removePerformer(id: string) {
     setSelectedIds((prev) => prev.filter((pid) => pid !== id));
+  }
+
+  const selectedPairings = useMemo(
+    () =>
+      selectedPairingIds
+        .map((id) => pairings.find((p) => p.id === id))
+        .filter((p): p is PairingOption => Boolean(p)),
+    [selectedPairingIds, pairings],
+  );
+
+  const filteredPairings = useMemo(() => {
+    const q = pairingQuery.trim().toLowerCase();
+    return pairings.filter((p) => {
+      if (selectedPairingIds.includes(p.id)) return false;
+      if (!q) return true;
+      return pairingLabel(p).toLowerCase().includes(q);
+    });
+  }, [pairings, selectedPairingIds, pairingQuery]);
+
+  function addPairing(id: string) {
+    setSelectedPairingIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setPairingQuery("");
+  }
+
+  function removePairing(id: string) {
+    setSelectedPairingIds((prev) => prev.filter((pid) => pid !== id));
   }
 
   async function handleCreatePerformer() {
@@ -218,6 +264,66 @@ export default function EventForm({
         {allPerformers.length === 0 && (
           <p className="small text-secondary mt-2">
             Нет добавленных исполнителей. Начните вводить имя, чтобы создать нового.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label className="form-label d-block">Пейринги</label>
+
+        {selectedPairings.length > 0 && (
+          <div className="d-flex flex-wrap gap-2 mb-2">
+            {selectedPairings.map((p) => (
+              <span key={p.id} className="event-chip performer-chip">
+                {pairingLabel(p)}
+                <input type="hidden" name="pairingIds" value={p.id} />
+                <button
+                  type="button"
+                  className="performer-chip-remove"
+                  onClick={() => removePairing(p.id)}
+                  aria-label={`Убрать ${pairingLabel(p)}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="performer-combobox" ref={pairingComboboxRef}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Начните вводить название пейринга…"
+            value={pairingQuery}
+            onChange={(e) => setPairingQuery(e.target.value)}
+            onFocus={() => setIsPairingDropdownOpen(true)}
+            onBlur={() => {
+              // allow click on dropdown options to register before closing
+              window.setTimeout(() => setIsPairingDropdownOpen(false), 150);
+            }}
+          />
+
+          {isPairingDropdownOpen && filteredPairings.length > 0 && (
+            <div className="performer-combobox-dropdown">
+              {filteredPairings.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="performer-combobox-option"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => addPairing(p.id)}
+                >
+                  {pairingLabel(p)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {pairings.length === 0 && (
+          <p className="small text-secondary mt-2">
+            Нет добавленных пейрингов. Создайте их на странице «Пейринги».
           </p>
         )}
       </div>
