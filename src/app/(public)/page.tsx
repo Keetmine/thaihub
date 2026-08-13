@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { dateKey, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import { getFavoritedEventIds } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +34,13 @@ export default async function HomePage() {
 
   const upcomingByDay = groupByDay(upcoming);
   const pastByDay = groupByDay(past);
+  const favoritedIds = await getFavoritedEventIds([...upcoming, ...past].map((ev) => ev.id));
 
   return (
     <div>
       <div className="dot-grid pb-1">
         <span className="eyebrow">Афиша событий</span>
-        <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.5rem" }}>
+        <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
           Все события
         </h1>
       </div>
@@ -54,7 +56,7 @@ export default async function HomePage() {
               </Link>
               <div className="d-flex flex-column gap-2 mt-2">
                 {dayEvents.map((ev) => (
-                  <EventAgendaRow key={ev.id} event={ev} />
+                  <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
                 ))}
               </div>
             </section>
@@ -78,7 +80,7 @@ export default async function HomePage() {
                 </Link>
                 <div className="d-flex flex-column gap-2 mt-2">
                   {dayEvents.map((ev) => (
-                    <EventAgendaRow key={ev.id} event={ev} />
+                    <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
                   ))}
                 </div>
               </section>

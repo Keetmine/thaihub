@@ -11,7 +11,7 @@ export default async function DramasPage() {
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.5rem" }}>
+      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
         Сериалы
       </h1>
 

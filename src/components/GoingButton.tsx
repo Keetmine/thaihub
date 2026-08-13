@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { toggleGoing } from "@/app/(public)/favorites/actions";
+import { CheckIcon } from "@/components/icons";
 
 export default function GoingButton({
   eventId,
@@ -15,7 +16,7 @@ export default function GoingButton({
   return (
     <button
       type="button"
-      className={isGoing ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+      className={`going-btn ${isGoing ? "is-going" : ""}`}
       disabled={isPending}
       aria-pressed={isGoing}
       onClick={() => {
@@ -24,7 +25,8 @@ export default function GoingButton({
         });
       }}
     >
-      {isGoing ? "Я пойду ✓" : "✅ Я пойду"}
+      <CheckIcon />
+      Я пойду
     </button>
   );
 }

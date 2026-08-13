@@ -5,7 +5,7 @@ import { formatHumanDate, formatTime } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
-import { PinIcon } from "@/components/icons";
+import { CalendarIcon, PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +49,19 @@ export default async function EventDetailPage({
       <Link href="/" className="eyebrow text-decoration-none">
         ← Все события
       </Link>
-      <h1 className="display-1-tight mt-2 mb-2" style={{ fontSize: "2.25rem" }}>
-        {event.title}
-      </h1>
+      <div className="position-relative">
+        {/* --- own block: corner favorite heart (Booking.com-style) --- */}
+        <FavoriteButton
+          kind="event"
+          id={event.id}
+          isFavorited={isEventFavorited}
+          variant="corner"
+        />
+        {/* --- end own block --- */}
+        <h1 className="display-1-tight mt-3 mb-2 pe-5" style={{ fontSize: "2.25rem" }}>
+          {event.title}
+        </h1>
+      </div>
       <p className="text-secondary mb-4 text-capitalize">
         {formatHumanDate(event.startsAt)} · {formatTime(event.startsAt)}
         {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
@@ -120,12 +130,12 @@ export default async function EventDetailPage({
               Билеты
             </a>
           )}
-          <a href={`/event/${event.id}/ics`} className="btn btn-ghost btn-sm">
-            📅 Добавить в календарь
+          <a href={`/event/${event.id}/ics`} className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2">
+            <CalendarIcon />
+            Добавить в календарь
           </a>
-          {/* --- own block: going + favorite toggles --- */}
+          {/* --- own block: going toggle (favorite heart moved to the corner above) --- */}
           <GoingButton eventId={event.id} isGoing={isGoing} />
-          <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} />
           {/* --- end own block --- */}
         </div>
       </div>

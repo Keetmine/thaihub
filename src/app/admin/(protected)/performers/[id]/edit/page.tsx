@@ -42,7 +42,7 @@ export default async function EditPerformerPage({
       <Link href="/admin/performers" className="eyebrow text-decoration-none">
         ← К списку исполнителей
       </Link>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
         Редактировать исполнителя
       </h1>
 

@@ -2,6 +2,9 @@ import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Performer } from "@/generated/prisma/client";
+import { getCurrentUser } from "@/lib/userAuth";
+import FavoriteButton from "@/components/FavoriteButton";
+import { HeartIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -89,16 +92,45 @@ async function PairingsTab() {
   );
 }
 
+function PerformerRow({
+  performer,
+  isFavorited,
+}: {
+  performer: PerformerWithCount;
+  isFavorited: boolean;
+}) {
+  return (
+    <div className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3">
+      <Link
+        href={`/performers/${performer.id}`}
+        className="text-decoration-none font-display fw-medium text-white text-truncate"
+      >
+        {performer.name}
+      </Link>
+      <div className="d-flex align-items-center gap-3 flex-shrink-0">
+        <span className="small text-secondary">{performer._count.events} событ.</span>
+        <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} />
+      </div>
+    </div>
+  );
+}
+
 function PerformerAlphabetList({
   performers,
+  favoritedIds,
   emptyMessage,
 }: {
   performers: PerformerWithCount[];
+  favoritedIds: Set<string>;
   emptyMessage: string;
 }) {
   if (performers.length === 0) {
     return <p className="text-secondary">{emptyMessage}</p>;
   }
+
+  // Already alphabetically sorted (query orderBy name:asc) — filtering
+  // preserves that order, so the favorites section stays alphabetical too.
+  const favorited = performers.filter((p) => favoritedIds.has(p.id));
 
   // Group by first letter. Cyrillic and Latin names naturally land in
   // different groups since they start with different characters; digits
@@ -124,6 +156,20 @@ function PerformerAlphabetList({
   return (
     <div className="performers-layout">
       <div className="performers-list">
+        {favorited.length > 0 && (
+          <section id="favorites" className="performers-letter-section">
+            <h2 className="performers-letter-heading d-flex align-items-center gap-2">
+              <HeartIcon filled />
+              Избранное
+            </h2>
+            <div className="d-flex flex-column gap-2">
+              {favorited.map((p) => (
+                <PerformerRow key={p.id} performer={p} isFavorited={true} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {sortedLetters.map((letter) => (
           <section
             key={letter}
@@ -133,16 +179,7 @@ function PerformerAlphabetList({
             <h2 className="performers-letter-heading">{letter}</h2>
             <div className="d-flex flex-column gap-2">
               {groups.get(letter)!.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/performers/${p.id}`}
-                  className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
-                >
-                  <span className="font-display fw-medium text-white">{p.name}</span>
-                  <span className="small text-secondary flex-shrink-0">
-                    {p._count.events} событ.
-                  </span>
-                </Link>
+                <PerformerRow key={p.id} performer={p} isFavorited={favoritedIds.has(p.id)} />
               ))}
             </div>
           </section>
@@ -150,6 +187,16 @@ function PerformerAlphabetList({
       </div>
 
       <nav className="performers-index" aria-label="Быстрый переход по буквам">
+        {favorited.length > 0 && (
+          <>
+            <a href="#favorites" className="performers-index-link performers-index-heart" aria-label="К избранному">
+              <HeartIcon filled />
+            </a>
+            <span className="performers-index-sep" aria-hidden="true">
+              •
+            </span>
+          </>
+        )}
         {sortedLetters.map((letter, i) => {
           const prevCategory = i > 0 ? categoryOf(sortedLetters[i - 1]) : null;
           const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);
@@ -188,6 +235,16 @@ export default async function PerformersPage({
           orderBy: { name: "asc" },
         });
 
+  const currentUser = view === "pairings" ? null : await getCurrentUser();
+  const favoritedIds = new Set<string>();
+  if (currentUser && performers.length > 0) {
+    const favorites = await prisma.favoritePerformer.findMany({
+      where: { userId: currentUser.id, performerId: { in: performers.map((p) => p.id) } },
+      select: { performerId: true },
+    });
+    for (const f of favorites) favoritedIds.add(f.performerId);
+  }
+
   const titles: Record<View, string> = {
     performers: "Актёры",
     bands: "Группы",
@@ -197,7 +254,7 @@ export default async function PerformersPage({
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.5rem" }}>
+      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
         {titles[view]}
       </h1>
 
@@ -208,6 +265,7 @@ export default async function PerformersPage({
       ) : (
         <PerformerAlphabetList
           performers={performers}
+          favoritedIds={favoritedIds}
           emptyMessage={view === "bands" ? "Пока нет групп." : "Пока нет актёров."}
         />
       )}

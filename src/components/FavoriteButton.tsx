@@ -6,6 +6,7 @@ import {
   toggleFavoriteEvent,
   toggleFavoritePerformer,
 } from "@/app/(public)/favorites/actions";
+import { HeartIcon } from "@/components/icons";
 
 export type FavoriteKind = "performer" | "drama" | "event";
 
@@ -19,28 +20,54 @@ export default function FavoriteButton({
   kind,
   id,
   isFavorited,
+  variant = "pill",
   className,
 }: {
   kind: FavoriteKind;
   id: string;
   isFavorited: boolean;
+  /** "pill" — inline labeled button (account rows, page headers).
+   *  "corner" — icon-only heart meant to sit absolutely positioned in the
+   *  top-right corner of a card (see `.favorite-corner` in globals.css). */
+  variant?: "pill" | "corner";
   className?: string;
 }) {
   const [isPending, startTransition] = useTransition();
 
+  function handleClick(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    startTransition(async () => {
+      await actionByKind[kind](id);
+    });
+  }
+
+  if (variant === "corner") {
+    return (
+      <button
+        type="button"
+        className={`favorite-corner ${isFavorited ? "is-favorited" : ""} ${className ?? ""}`}
+        disabled={isPending}
+        aria-pressed={isFavorited}
+        aria-label={isFavorited ? "Убрать из избранного" : "В избранное"}
+        title={isFavorited ? "Убрать из избранного" : "В избранное"}
+        onClick={handleClick}
+      >
+        <HeartIcon filled={isFavorited} />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
-      className={className ?? "btn btn-outline-secondary btn-sm"}
+      className={className ?? "favorite-pill"}
       disabled={isPending}
       aria-pressed={isFavorited}
-      onClick={() => {
-        startTransition(async () => {
-          await actionByKind[kind](id);
-        });
-      }}
+      onClick={handleClick}
     >
-      {isFavorited ? "★ В избранном" : "☆ В избранное"}
+      <HeartIcon filled={isFavorited} />
+      {isFavorited ? "В избранном" : "В избранное"}
     </button>
   );
 }

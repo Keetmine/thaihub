@@ -5,6 +5,7 @@ import { dateKey, formatHumanDate, formatTime } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import { PinIcon } from "@/components/icons";
+import { getFavoritedEventIds } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 
@@ -53,27 +54,36 @@ export default async function PerformerPage({
   const now = new Date();
   const upcoming = eventLinks.filter((l) => l.event.startsAt >= now);
   const past = eventLinks.filter((l) => l.event.startsAt < now);
+  const favoritedEventIds = await getFavoritedEventIds(eventLinks.map((l) => l.eventId));
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
 
   const Row = ({ event }: { event: (typeof eventLinks)[number]["event"] }) => (
-    <Link
-      href={`/day/${dateKey(event.startsAt)}`}
-      className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3"
-    >
-      <div>
-        <p className="font-display fw-medium text-white mb-0">{event.title}</p>
-        <p className="small text-secondary mb-0">
-          <PinIcon /> {event.venue}
-        </p>
-      </div>
-      <span className="small text-secondary text-end flex-shrink-0">
-        {formatHumanDate(event.startsAt)}
-        <br />
-        {formatTime(event.startsAt)}
-      </span>
-    </Link>
+    <div className="position-relative">
+      <FavoriteButton
+        kind="event"
+        id={event.id}
+        isFavorited={favoritedEventIds.has(event.id)}
+        variant="corner"
+      />
+      <Link
+        href={`/day/${dateKey(event.startsAt)}`}
+        className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3"
+      >
+        <div>
+          <p className="font-display fw-medium text-white mb-0 pe-5">{event.title}</p>
+          <p className="small text-secondary mb-0">
+            <PinIcon /> {event.venue}
+          </p>
+        </div>
+        <span className="small text-secondary text-end flex-shrink-0">
+          {formatHumanDate(event.startsAt)}
+          <br />
+          {formatTime(event.startsAt)}
+        </span>
+      </Link>
+    </div>
   );
 
   return (
@@ -81,7 +91,7 @@ export default async function PerformerPage({
       <Link href="/performers" className="eyebrow text-decoration-none">
         ← Все исполнители
       </Link>
-      <div className="d-flex flex-wrap align-items-center gap-3 mt-2 mb-4">
+      <div className="d-flex flex-wrap align-items-center gap-3 mt-3 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           {performer.name}{" "}
           <span className="fs-5 fw-normal text-secondary">

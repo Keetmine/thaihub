@@ -45,7 +45,7 @@ export default async function CalendarPage({
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
         <div>
           <span className="eyebrow">Афиша событий</span>
-          <h1 className="display-1-tight text-capitalize mt-2 mb-0" style={{ fontSize: "2.75rem" }}>
+          <h1 className="display-1-tight text-capitalize mt-3 mb-0" style={{ fontSize: "2.75rem" }}>
             {monthLabel(year, month)}
           </h1>
         </div>

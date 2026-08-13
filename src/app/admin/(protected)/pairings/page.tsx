@@ -24,7 +24,7 @@ export default async function AdminPairingsPage() {
   return (
     <div>
       <span className="eyebrow">Управление</span>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-2 mb-4">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Пейринги
         </h1>

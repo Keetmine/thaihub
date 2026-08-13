@@ -10,6 +10,7 @@ import {
   startOfDay,
 } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import { getFavoritedEventIds } from "@/lib/favorites";
 
 export default async function DayPage({
   params,
@@ -30,6 +31,7 @@ export default async function DayPage({
 
   const prevKey = dateKey(addDays(day, -1));
   const nextKey = dateKey(addDays(day, 1));
+  const favoritedIds = await getFavoritedEventIds(events.map((ev) => ev.id));
 
   return (
     <div>
@@ -38,7 +40,7 @@ export default async function DayPage({
           <Link href="/calendar" className="eyebrow text-decoration-none">
             ← К календарю
           </Link>
-          <h1 className="display-1-tight text-capitalize mt-2 mb-0" style={{ fontSize: "2.25rem" }}>
+          <h1 className="display-1-tight text-capitalize mt-3 mb-0" style={{ fontSize: "2.25rem" }}>
             {formatHumanDate(day)}
           </h1>
         </div>
@@ -57,7 +59,7 @@ export default async function DayPage({
       ) : (
         <div className="d-flex flex-column gap-2">
           {events.map((ev) => (
-            <EventAgendaRow key={ev.id} event={ev} />
+            <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
           ))}
         </div>
       )}

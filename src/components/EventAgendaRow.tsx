@@ -2,10 +2,18 @@ import Link from "next/link";
 import { formatTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { PinIcon } from "@/components/icons";
+import FavoriteButton from "@/components/FavoriteButton";
 
-export default function EventAgendaRow({ event }: { event: EventWithPerformers }) {
+export default function EventAgendaRow({
+  event,
+  isFavorited = false,
+}: {
+  event: EventWithPerformers;
+  isFavorited?: boolean;
+}) {
   return (
     <div className="agenda-row">
+      <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="corner" />
       <div className="agenda-time">
         <span className="agenda-time-start">{formatTime(event.startsAt)}</span>
         {event.endsAt && (

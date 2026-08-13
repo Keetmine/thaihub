@@ -15,7 +15,7 @@ export default async function NewDramaPage() {
       <Link href="/admin/dramas" className="eyebrow text-decoration-none">
         ← К списку сериалов
       </Link>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
         Новый сериал
       </h1>
       <DramaForm

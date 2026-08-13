@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import { getFavoritedEventIds } from "@/lib/favorites";
 
 export default async function SearchPage({
   searchParams,
@@ -25,10 +26,12 @@ export default async function SearchPage({
       )
   );
 
+  const favoritedIds = await getFavoritedEventIds(results.map((ev) => ev.id));
+
   return (
     <div>
       <span className="eyebrow">Поиск</span>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.25rem" }}>
+      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
         {q ? `«${q}»` : "Поиск событий"}
       </h1>
 
@@ -41,7 +44,7 @@ export default async function SearchPage({
       ) : (
         <div className="d-flex flex-column gap-2">
           {results.map((ev) => (
-            <EventAgendaRow key={ev.id} event={ev} />
+            <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
           ))}
         </div>
       )}

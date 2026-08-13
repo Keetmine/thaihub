@@ -98,3 +98,42 @@ export function CheckIcon() {
     </svg>
   );
 }
+
+export function HeartIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1.05em"
+      height="1.05em"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20.5s-7.5-4.6-10-9.3C.5 7.8 2.3 4.5 5.6 4c2-.3 3.9.6 5 2.2a1 1 0 0 0 1.6 0c1.1-1.6 3-2.5 5-2.2 3.3.5 5.1 3.8 3.6 7.2-2.5 4.7-10 9.3-10 9.3Z" />
+    </svg>
+  );
+}
+
+export function CalendarIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.95em"
+      height="0.95em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4" />
+      <path d="M16 3v4" />
+    </svg>
+  );
+}

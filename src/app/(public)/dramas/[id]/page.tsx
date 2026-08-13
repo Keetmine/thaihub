@@ -34,7 +34,7 @@ export default async function DramaDetailPage({
       <Link href="/dramas" className="eyebrow text-decoration-none">
         ← Все сериалы
       </Link>
-      <div className="d-flex flex-wrap align-items-center gap-3 mt-2 mb-2">
+      <div className="d-flex flex-wrap align-items-center gap-3 mt-3 mb-2">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {drama.title}{" "}
           {drama.year && (

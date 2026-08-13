@@ -17,7 +17,7 @@ export default async function AdminDramasPage() {
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
         <div>
           <span className="eyebrow">Управление</span>
-          <h1 className="display-1-tight mt-2 mb-0" style={{ fontSize: "2.25rem" }}>
+          <h1 className="display-1-tight mt-3 mb-0" style={{ fontSize: "2.25rem" }}>
             Сериалы
           </h1>
         </div>
