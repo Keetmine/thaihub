@@ -120,6 +120,33 @@ export async function updateEvent(id: string, formData: FormData) {
   redirect("/admin");
 }
 
+/**
+ * Minimal event creation from a performer form's events picker — only the
+ * fields createEvent already treats as required. The calling performer form
+ * links the performer to this event itself (on its own submit), since at
+ * create time the performer may not have an id yet.
+ */
+export async function createEventMinimal(
+  title: string,
+  venue: string,
+  date: string,
+  startTime: string,
+): Promise<{ id: string; title: string }> {
+  const t = title.trim();
+  const v = venue.trim();
+  if (!t || !v || !date || !startTime) {
+    throw new Error("Заполните название, место, дату и время начала");
+  }
+
+  const event = await prisma.event.create({
+    data: { title: t, venue: v, startsAt: combineDateTime(date, startTime) },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { id: event.id, title: event.title };
+}
+
 export async function deleteEvent(id: string) {
   await prisma.event.delete({ where: { id } });
   revalidatePath("/");

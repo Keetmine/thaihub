@@ -96,6 +96,18 @@ export async function updateDrama(id: string, formData: FormData) {
   redirect("/admin/dramas");
 }
 
+/** Inline-create from a performer form's dramas combobox — title only. */
+export async function createDramaAndReturn(
+  title: string,
+): Promise<{ id: string; title: string; posterUrl: string | null }> {
+  const trimmed = title.trim();
+  if (!trimmed) throw new Error("Укажите название сериала");
+
+  const drama = await prisma.drama.create({ data: { title: trimmed } });
+  revalidateDramaPaths();
+  return { id: drama.id, title: drama.title, posterUrl: drama.posterUrl };
+}
+
 export async function deleteDrama(id: string) {
   await prisma.drama.delete({ where: { id } });
   revalidateDramaPaths(id);

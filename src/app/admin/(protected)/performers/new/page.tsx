@@ -6,7 +6,7 @@ import { createPerformer } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewPerformerPage() {
-  const [soloPerformers, agencies] = await Promise.all([
+  const [soloPerformers, agencies, dramas, events] = await Promise.all([
     prisma.performer.findMany({
       where: { type: "SOLO" },
       orderBy: { name: "asc" },
@@ -15,6 +15,14 @@ export default async function NewPerformerPage() {
     prisma.agency.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, logoUrl: true },
+    }),
+    prisma.drama.findMany({
+      orderBy: { title: "asc" },
+      select: { id: true, title: true, posterUrl: true },
+    }),
+    prisma.event.findMany({
+      orderBy: { startsAt: "desc" },
+      select: { id: true, title: true },
     }),
   ]);
 
@@ -32,6 +40,8 @@ export default async function NewPerformerPage() {
         submitLabel="Создать исполнителя"
         soloPerformers={soloPerformers}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
+        dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
+        events={events.map((e) => ({ id: e.id, name: e.title }))}
       />
     </div>
   );

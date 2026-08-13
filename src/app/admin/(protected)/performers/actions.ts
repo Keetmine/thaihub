@@ -59,6 +59,16 @@ function getMemberIds(formData: FormData): string[] {
   return Array.from(new Set(ids));
 }
 
+function getDramaIds(formData: FormData): string[] {
+  const ids = formData.getAll("dramaIds").map(String).filter(Boolean);
+  return Array.from(new Set(ids));
+}
+
+function getEventIds(formData: FormData): string[] {
+  const ids = formData.getAll("eventIds").map(String).filter(Boolean);
+  return Array.from(new Set(ids));
+}
+
 /**
  * Full performer creation: profile fields + links, same shape as the edit
  * form. Solo performers can optionally be paired with an existing performer
@@ -102,6 +112,13 @@ export async function createPerformer(formData: FormData) {
         data: { name: pairingName || null, performerAId, performerBId },
       });
     }
+
+    const dramaIds = getDramaIds(formData);
+    if (dramaIds.length > 0) {
+      await prisma.performerDrama.createMany({
+        data: dramaIds.map((dramaId) => ({ performerId: performer.id, dramaId })),
+      });
+    }
   } else {
     const memberIds = getMemberIds(formData);
     if (memberIds.length > 0) {
@@ -111,9 +128,17 @@ export async function createPerformer(formData: FormData) {
     }
   }
 
+  const eventIds = getEventIds(formData);
+  if (eventIds.length > 0) {
+    await prisma.eventPerformer.createMany({
+      data: eventIds.map((eventId) => ({ eventId, performerId: performer.id })),
+    });
+  }
+
   revalidatePath("/admin/performers");
   revalidatePath("/admin/pairings");
   revalidatePath("/performers");
+  revalidatePath("/");
   redirect(`/admin/performers/${performer.id}/edit`);
 }
 
@@ -128,12 +153,16 @@ export async function updatePerformer(id: string, formData: FormData) {
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
   const links = getLinks(formData);
   const memberIds = type === "BAND" ? getMemberIds(formData) : [];
+  const dramaIds = type === "SOLO" ? getDramaIds(formData) : [];
+  const eventIds = getEventIds(formData);
 
   if (!name) throw new Error("Укажите имя исполнителя или группы");
 
   await prisma.$transaction([
     prisma.performerLink.deleteMany({ where: { performerId: id } }),
     prisma.bandMember.deleteMany({ where: { bandId: id } }),
+    prisma.performerDrama.deleteMany({ where: { performerId: id } }),
+    prisma.eventPerformer.deleteMany({ where: { performerId: id } }),
     prisma.performer.update({
       where: { id },
       data: {
@@ -151,6 +180,12 @@ export async function updatePerformer(id: string, formData: FormData) {
         bandMembers: {
           create: memberIds.map((performerId) => ({ performerId })),
         },
+        dramas: {
+          create: dramaIds.map((dramaId) => ({ dramaId })),
+        },
+        events: {
+          create: eventIds.map((eventId) => ({ eventId })),
+        },
       },
     }),
   ]);
@@ -159,6 +194,7 @@ export async function updatePerformer(id: string, formData: FormData) {
   revalidatePath(`/admin/performers/${id}/edit`);
   revalidatePath("/performers");
   revalidatePath(`/performers/${id}`);
+  revalidatePath("/");
   redirect("/admin/performers");
 }
 

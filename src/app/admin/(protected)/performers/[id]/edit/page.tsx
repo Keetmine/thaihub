@@ -16,13 +16,14 @@ export default async function EditPerformerPage({
 }) {
   const { id } = await params;
 
-  const [performer, soloPerformers, agencies] = await Promise.all([
+  const [performer, soloPerformers, agencies, dramas, events] = await Promise.all([
     prisma.performer.findUnique({
       where: { id },
       include: {
         links: true,
-        dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
+        dramas: { select: { dramaId: true } },
         bandMembers: { select: { performerId: true } },
+        events: { select: { eventId: true } },
       },
     }),
     prisma.performer.findMany({
@@ -33,6 +34,14 @@ export default async function EditPerformerPage({
     prisma.agency.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, logoUrl: true },
+    }),
+    prisma.drama.findMany({
+      orderBy: { title: "asc" },
+      select: { id: true, title: true, posterUrl: true },
+    }),
+    prisma.event.findMany({
+      orderBy: { startsAt: "desc" },
+      select: { id: true, title: true },
     }),
   ]);
 
@@ -57,7 +66,11 @@ export default async function EditPerformerPage({
           submitLabel="Сохранить изменения"
           soloPerformers={soloPerformers}
           agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
+          dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
+          events={events.map((e) => ({ id: e.id, name: e.title }))}
           defaultMemberIds={performer.bandMembers.map((m) => m.performerId)}
+          defaultDramaIds={performer.dramas.map((pd) => pd.dramaId)}
+          defaultEventIds={performer.events.map((pe) => pe.eventId)}
           defaultValues={{
             name: performer.name,
             type: performer.type,
@@ -72,26 +85,10 @@ export default async function EditPerformerPage({
         />
 
         {performer.type === "SOLO" && (
-          <>
-            <MydramalistImport
-              performerId={performer.id}
-              defaultUrl={performer.mydramalistUrl ?? ""}
-            />
-
-            {performer.dramas.length > 0 && (
-              <div className="surface p-4">
-                <label className="form-label d-block">Дорамы</label>
-                <div className="d-flex flex-wrap gap-2">
-                  {performer.dramas.map((pd) => (
-                    <span key={pd.dramaId} className="badge text-bg-secondary">
-                      {pd.drama.title}
-                      {pd.drama.year ? ` (${pd.drama.year})` : ""}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+          <MydramalistImport
+            performerId={performer.id}
+            defaultUrl={performer.mydramalistUrl ?? ""}
+          />
         )}
 
         <ConfirmForm

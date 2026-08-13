@@ -30,6 +30,7 @@ export default function EntitySelect({
   placeholder = "Выберите…",
   onCreateNew,
   createLabel = "Создать",
+  onChange,
 }: {
   name: string;
   label?: string;
@@ -38,13 +39,29 @@ export default function EntitySelect({
   placeholder?: string;
   onCreateNew?: (query: string) => Promise<EntityOption | null>;
   createLabel?: string;
+  /** Fires whenever the selection changes — for parents that need to react
+   *  (e.g. excluding this value from a sibling select's options). The
+   *  hidden input is still the source of truth for plain form submission. */
+  onChange?: (id: string) => void;
 }) {
-  const [allOptions, setAllOptions] = useState(options);
-  const [value, setValue] = useState(defaultValue ?? "");
+  // `options` can change from the parent (e.g. excluding a sibling select's
+  // current value) — merge with locally-created-this-session options rather
+  // than snapshotting once, so both stay in sync.
+  const [createdOptions, setCreatedOptions] = useState<EntityOption[]>([]);
+  const allOptions = useMemo(
+    () => [...options, ...createdOptions.filter((c) => !options.some((o) => o.id === c.id))],
+    [options, createdOptions],
+  );
+  const [value, setValueState] = useState(defaultValue ?? "");
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  function setValue(id: string) {
+    setValueState(id);
+    onChange?.(id);
+  }
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -76,7 +93,7 @@ export default function EntitySelect({
     try {
       const created = await onCreateNew(trimmedQuery);
       if (created) {
-        setAllOptions((prev) => [...prev, created]);
+        setCreatedOptions((prev) => [...prev, created]);
         setValue(created.id);
         setQuery("");
         setIsOpen(false);

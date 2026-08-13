@@ -3,35 +3,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
-import PerformerSelect, { type PerformerSelectOption } from "@/components/PerformerSelect";
+import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import { createPairing } from "./actions";
+import { createPerformerAndReturn } from "../performers/actions";
 
-export default function CreatePairingModal({
-  performers,
-}: {
-  performers: PerformerSelectOption[];
-}) {
+export default function CreatePairingModal({ performers }: { performers: EntityOption[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
   const [performerAId, setPerformerAId] = useState("");
   const [performerBId, setPerformerBId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function reset() {
-    setName("");
+  function close() {
+    setOpen(false);
     setPerformerAId("");
     setPerformerBId("");
     setError(null);
   }
 
-  function close() {
-    setOpen(false);
-    reset();
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!performerAId || !performerBId) {
       setError("Выберите обоих исполнителей");
@@ -41,10 +32,7 @@ export default function CreatePairingModal({
     setIsSubmitting(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.set("name", name);
-      formData.set("performerAId", performerAId);
-      formData.set("performerBId", performerBId);
+      const formData = new FormData(e.currentTarget);
       await createPairing(formData);
       close();
       router.refresh();
@@ -55,6 +43,11 @@ export default function CreatePairingModal({
     }
   }
 
+  async function handleCreatePerformer(query: string): Promise<EntityOption> {
+    const created = await createPerformerAndReturn(query);
+    return { id: created.id, name: created.name, photoUrl: null };
+  }
+
   return (
     <>
       <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
@@ -62,29 +55,32 @@ export default function CreatePairingModal({
       </button>
 
       <Modal open={open} onClose={close} title="Новый пейринг">
-        <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
+        <form
+          key={open ? "open" : "closed"}
+          className="d-flex flex-column gap-3"
+          onSubmit={handleSubmit}
+        >
           <div>
             <label className="form-label">Название пейринга</label>
-            <input
-              className="form-control"
-              placeholder="Необязательно"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <input name="name" className="form-control" placeholder="Необязательно" />
           </div>
 
-          <PerformerSelect
+          <EntitySelect
+            name="performerAId"
             label="Исполнитель A *"
             options={performers.filter((p) => p.id !== performerBId)}
-            value={performerAId}
             onChange={setPerformerAId}
+            createLabel="Создать исполнителя"
+            onCreateNew={handleCreatePerformer}
           />
 
-          <PerformerSelect
+          <EntitySelect
+            name="performerBId"
             label="Исполнитель B *"
             options={performers.filter((p) => p.id !== performerAId)}
-            value={performerBId}
             onChange={setPerformerBId}
+            createLabel="Создать исполнителя"
+            onCreateNew={handleCreatePerformer}
           />
 
           {error && <p className="small text-danger mb-0">{error}</p>}
