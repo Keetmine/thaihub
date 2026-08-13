@@ -44,6 +44,9 @@ export default async function PublicLayout({ children }: { children: React.React
             <NavLink href="/performers" matchPrefixes={["/performers/"]}>
               Исполнители
             </NavLink>
+            <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
+              Сериалы
+            </NavLink>
             <SearchForm />
             <NavLink href={user ? "/account" : "/login"}>{user ? "Профиль" : "Войти"}</NavLink>
             {isAdmin && <ModeToggle active="site" />}
@@ -54,6 +57,9 @@ export default async function PublicLayout({ children }: { children: React.React
             <NavLink href="/calendar">Календарь</NavLink>
             <NavLink href="/performers" matchPrefixes={["/performers/"]}>
               Исполнители
+            </NavLink>
+            <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
+              Сериалы
             </NavLink>
           </div>
 
