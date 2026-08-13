@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { scrapePerson } from "@/lib/mydramalist";
+import { scrapePerson, parsePersonHtml, type ScrapedPerson } from "@/lib/mydramalist";
 
 async function createPerformerRecord(name: string, type: string) {
   if (!name) throw new Error("Укажите имя исполнителя или группы");
@@ -100,25 +100,14 @@ export async function updatePerformer(id: string, formData: FormData) {
 }
 
 /**
- * Scrapes a mydramalist.com person page and merges the result into the
- * performer's profile: sets mydramalistUrl, overwrites photoUrl/bio when
- * the scrape found something (this is an explicit user-triggered "import"
- * action, so overwriting is acceptable), and upserts Drama + PerformerDrama
- * rows for each credited drama (matching existing dramas by case-insensitive
- * title to avoid duplicates).
- *
- * Called directly from a client component (not as a <form action>), so
- * errors thrown here reach the caller's try/catch with their message intact.
+ * Merges a scraped mydramalist.com profile into the performer's record: sets
+ * mydramalistUrl, overwrites photoUrl/bio when the scrape found something
+ * (this is an explicit user-triggered "import" action, so overwriting is
+ * acceptable), and upserts Drama + PerformerDrama rows for each credited
+ * drama (matching existing dramas by case-insensitive title to avoid
+ * duplicates). Shared by both the live-fetch and pasted-HTML import paths.
  */
-export async function importFromMydramalist(performerId: string, mydramalistUrl: string) {
-  const url = mydramalistUrl.trim();
-  if (!url) throw new Error("Укажите ссылку на профиль mydramalist.com");
-
-  const performer = await prisma.performer.findUnique({ where: { id: performerId } });
-  if (!performer) throw new Error("Исполнитель не найден");
-
-  const scraped = await scrapePerson(url);
-
+async function applyScrapedPerson(performerId: string, url: string, scraped: ScrapedPerson) {
   await prisma.performer.update({
     where: { id: performerId },
     data: {
@@ -161,4 +150,45 @@ export async function importFromMydramalist(performerId: string, mydramalistUrl:
   revalidatePath(`/admin/performers/${performerId}/edit`);
   revalidatePath("/performers");
   revalidatePath(`/performers/${performerId}`);
+}
+
+/**
+ * Fetches and scrapes a mydramalist.com person page directly. mydramalist
+ * sits behind a Cloudflare bot challenge that a server-side fetch cannot
+ * solve, so this will almost always fail — kept as the "try it anyway" path;
+ * {@link importFromMydramalistHtml} is the one that actually works today.
+ *
+ * Called directly from a client component (not as a <form action>), so
+ * errors thrown here reach the caller's try/catch with their message intact.
+ */
+export async function importFromMydramalist(performerId: string, mydramalistUrl: string) {
+  const url = mydramalistUrl.trim();
+  if (!url) throw new Error("Укажите ссылку на профиль mydramalist.com");
+
+  const performer = await prisma.performer.findUnique({ where: { id: performerId } });
+  if (!performer) throw new Error("Исполнитель не найден");
+
+  const scraped = await scrapePerson(url);
+  await applyScrapedPerson(performerId, url, scraped);
+}
+
+/**
+ * Same as {@link importFromMydramalist}, but parses HTML the admin pasted in
+ * themselves (copied from their own browser's "view page source" after the
+ * page loaded past Cloudflare) instead of fetching it server-side.
+ */
+export async function importFromMydramalistHtml(
+  performerId: string,
+  mydramalistUrl: string,
+  html: string,
+) {
+  const url = mydramalistUrl.trim();
+  if (!url) throw new Error("Укажите ссылку на профиль mydramalist.com");
+  if (!html.trim()) throw new Error("Вставьте HTML-код страницы");
+
+  const performer = await prisma.performer.findUnique({ where: { id: performerId } });
+  if (!performer) throw new Error("Исполнитель не найден");
+
+  const scraped = parsePersonHtml(html, url);
+  await applyScrapedPerson(performerId, url, scraped);
 }

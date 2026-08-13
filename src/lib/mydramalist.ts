@@ -43,11 +43,12 @@ function extractYear(text: string | undefined): number | undefined {
 
 /**
  * Fetches a mydramalist.com person profile page and extracts basic profile
- * info + filmography. Markup on mydramalist can shift over time, so every
- * field is parsed defensively — a selector miss just leaves that field
- * undefined rather than throwing, so a partial scrape still returns
- * whatever it managed to find. Only the initial fetch/parse failure throws,
- * so the caller can show a clear error message.
+ * info + filmography. mydramalist sits behind Cloudflare's managed bot
+ * challenge, which a plain server-side fetch cannot solve — this will throw
+ * for essentially every request. Kept mainly so a future change in their
+ * bot-protection can start working automatically; the practical path today
+ * is {@link parsePersonHtml} fed with HTML pasted from a real browser (see
+ * `importFromMydramalistHtml` in the admin actions).
  */
 export async function scrapePerson(url: string): Promise<ScrapedPerson> {
   let html: string;
@@ -74,9 +75,21 @@ export async function scrapePerson(url: string): Promise<ScrapedPerson> {
     );
   }
 
+  return parsePersonHtml(html, url);
+}
+
+/**
+ * Parses a mydramalist.com person profile page's HTML (already fetched by
+ * some other means — e.g. pasted by the admin from their own browser, which
+ * gets past Cloudflare's challenge for them) into profile info + filmography.
+ * Markup on mydramalist can shift over time, so every field is parsed
+ * defensively — a selector miss just leaves that field undefined rather than
+ * throwing, so a partial scrape still returns whatever it managed to find.
+ */
+export function parsePersonHtml(html: string, url: string): ScrapedPerson {
   if (/just a moment/i.test(html) && /cloudflare/i.test(html)) {
     throw new Error(
-      "mydramalist заблокировал запрос (защита от ботов). Попробуйте позже.",
+      "Это страница Cloudflare-проверки, а не сам профиль. Откройте ссылку в браузере, дождитесь загрузки настоящей страницы и скопируйте код уже после этого.",
     );
   }
 
