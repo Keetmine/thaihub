@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createPerformer, deletePerformer } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -55,14 +56,22 @@ export default async function AdminPerformersPage() {
                     событ.
                   </p>
                 </div>
-                <ConfirmForm
-                  action={boundDelete}
-                  confirmMessage={`Удалить исполнителя «${p.name}»?`}
-                >
-                  <button type="submit" className="btn btn-outline-danger btn-sm">
-                    Удалить
-                  </button>
-                </ConfirmForm>
+                <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                  <Link
+                    href={`/admin/performers/${p.id}/edit`}
+                    className="btn btn-outline-secondary btn-sm"
+                  >
+                    Редактировать
+                  </Link>
+                  <ConfirmForm
+                    action={boundDelete}
+                    confirmMessage={`Удалить исполнителя «${p.name}»?`}
+                  >
+                    <button type="submit" className="btn btn-outline-danger btn-sm">
+                      Удалить
+                    </button>
+                  </ConfirmForm>
+                </div>
               </div>
             );
           })}
