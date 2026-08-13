@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
+import WatchStatusSelect from "@/components/WatchStatusSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,20 @@ export default async function DramaDetailPage({
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
+  let watchStatus = null as Awaited<
+    ReturnType<typeof prisma.dramaWatchStatus.findUnique>
+  >;
   if (currentUser) {
-    const favorite = await prisma.favoriteDrama.findUnique({
-      where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
-    });
+    const [favorite, status] = await Promise.all([
+      prisma.favoriteDrama.findUnique({
+        where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
+      }),
+      prisma.dramaWatchStatus.findUnique({
+        where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
+      }),
+    ]);
     isFavorited = !!favorite;
+    watchStatus = status;
   }
 
   return (
@@ -43,6 +53,13 @@ export default async function DramaDetailPage({
         </h1>
         <FavoriteButton kind="drama" id={drama.id} isFavorited={isFavorited} />
       </div>
+
+      {currentUser && (
+        <div className="d-flex align-items-center gap-2 mb-4">
+          <span className="small text-secondary">Статус просмотра</span>
+          <WatchStatusSelect dramaId={drama.id} status={watchStatus?.status ?? null} />
+        </div>
+      )}
 
       <div className="row g-4">
         {drama.posterUrl && (
