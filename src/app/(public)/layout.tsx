@@ -3,6 +3,7 @@ import ModeToggle from "@/components/ModeToggle";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
+import ProfileMenu from "@/components/ProfileMenu";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/userAuth";
 
@@ -51,7 +52,7 @@ export default async function PublicLayout({ children }: { children: React.React
               Агентства
             </NavLink>
             <SearchForm />
-            <NavLink href={user ? "/account" : "/login"}>{user ? "Профиль" : "Войти"}</NavLink>
+            {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
             {isAdmin && <ModeToggle active="site" />}
           </MobileMenu>
 
@@ -71,7 +72,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
             <SearchForm />
-            <NavLink href={user ? "/account" : "/login"}>{user ? "Профиль" : "Войти"}</NavLink>
+            {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
             {isAdmin && <ModeToggle active="site" />}
           </div>
         </nav>
