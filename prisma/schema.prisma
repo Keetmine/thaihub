@@ -19,6 +19,8 @@ model Event {
   endsAt      DateTime?
   venue       String
   description String?
+  presaleAt   DateTime?
+  presaleUrl  String?
   performers  EventPerformer[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

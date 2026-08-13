@@ -14,6 +14,25 @@ function getPerformerIds(formData: FormData): string[] {
   return formData.getAll("performerIds").map(String).filter(Boolean);
 }
 
+function getPresaleAt(formData: FormData): Date | null {
+  const presaleEnabled = String(formData.get("presaleEnabled") ?? "") === "on";
+  if (!presaleEnabled) return null;
+
+  const presaleDate = String(formData.get("presaleDate") ?? "");
+  const presaleTime = String(formData.get("presaleTime") ?? "");
+  if (!presaleDate || !presaleTime) return null;
+
+  return combineDateTime(presaleDate, presaleTime);
+}
+
+function getPresaleUrl(formData: FormData): string | null {
+  const presaleEnabled = String(formData.get("presaleEnabled") ?? "") === "on";
+  if (!presaleEnabled) return null;
+
+  const presaleUrl = String(formData.get("presaleUrl") ?? "").trim();
+  return presaleUrl || null;
+}
+
 export async function createEvent(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const venue = String(formData.get("venue") ?? "").trim();
@@ -22,6 +41,8 @@ export async function createEvent(formData: FormData) {
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
   const performerIds = getPerformerIds(formData);
+  const presaleAt = getPresaleAt(formData);
+  const presaleUrl = getPresaleUrl(formData);
 
   if (!title || !venue || !date || !startTime) {
     throw new Error("Заполните обязательные поля: название, место, дата, время начала");
@@ -34,6 +55,8 @@ export async function createEvent(formData: FormData) {
       description: description || null,
       startsAt: combineDateTime(date, startTime),
       endsAt: endTime ? combineDateTime(date, endTime) : null,
+      presaleAt,
+      presaleUrl,
       performers: {
         create: performerIds.map((performerId) => ({ performerId })),
       },
@@ -53,6 +76,8 @@ export async function updateEvent(id: string, formData: FormData) {
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
   const performerIds = getPerformerIds(formData);
+  const presaleAt = getPresaleAt(formData);
+  const presaleUrl = getPresaleUrl(formData);
 
   if (!title || !venue || !date || !startTime) {
     throw new Error("Заполните обязательные поля: название, место, дата, время начала");
@@ -68,6 +93,8 @@ export async function updateEvent(id: string, formData: FormData) {
         description: description || null,
         startsAt: combineDateTime(date, startTime),
         endsAt: endTime ? combineDateTime(date, endTime) : null,
+        presaleAt,
+        presaleUrl,
         performers: {
           create: performerIds.map((performerId) => ({ performerId })),
         },

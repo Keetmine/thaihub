@@ -45,14 +45,13 @@ export default async function EditEventPage({
           startTime: formatTime(event.startsAt),
           endTime: event.endsAt ? formatTime(event.endsAt) : "",
           performerIds: event.performers.map((p) => p.performerId),
+          presaleDate: event.presaleAt ? dateKey(event.presaleAt) : "",
+          presaleTime: event.presaleAt ? formatTime(event.presaleAt) : "",
+          presaleUrl: event.presaleUrl ?? "",
         }}
       />
 
-      <form
-        action={boundDelete}
-        className="mt-4 pt-4"
-        style={{ maxWidth: "32rem" }}
-      >
+      <form action={boundDelete} className="mt-4 pt-4">
         <button type="submit" className="btn btn-outline-danger btn-sm">
           Удалить событие
         </button>

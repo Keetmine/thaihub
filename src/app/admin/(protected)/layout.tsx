@@ -2,7 +2,18 @@ import Link from "next/link";
 import ModeToggle from "@/components/ModeToggle";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
+import MobileMenu from "@/components/MobileMenu";
 import { logout } from "../login/actions";
+
+function LogoutButton() {
+  return (
+    <form action={logout}>
+      <button type="submit" className="btn btn-ghost btn-sm">
+        Выйти
+      </button>
+    </form>
+  );
+}
 
 export default function ProtectedAdminLayout({
   children,
@@ -15,6 +26,7 @@ export default function ProtectedAdminLayout({
         <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">
           <Link
             href="/admin"
+            prefetch={false}
             className="navbar-brand d-inline-flex align-items-center gap-2 mb-0 text-decoration-none"
           >
             <Logo />
@@ -30,20 +42,25 @@ export default function ProtectedAdminLayout({
             </span>
           </Link>
 
-          <div className="d-flex flex-wrap gap-1 order-3 order-sm-2 ms-sm-3">
+          <MobileMenu>
+            <NavLink href="/admin" matchPrefixes={["/admin/events/"]}>
+              События
+            </NavLink>
+            <NavLink href="/admin/performers">Исполнители</NavLink>
+            <ModeToggle active="admin" />
+            <LogoutButton />
+          </MobileMenu>
+
+          <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
             <NavLink href="/admin" matchPrefixes={["/admin/events/"]}>
               События
             </NavLink>
             <NavLink href="/admin/performers">Исполнители</NavLink>
           </div>
 
-          <div className="d-flex align-items-center gap-2 order-2 order-sm-3 ms-sm-auto">
+          <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
             <ModeToggle active="admin" />
-            <form action={logout}>
-              <button type="submit" className="btn btn-ghost btn-sm">
-                Выйти
-              </button>
-            </form>
+            <LogoutButton />
           </div>
         </nav>
       </div>

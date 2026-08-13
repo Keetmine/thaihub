@@ -87,6 +87,7 @@ body {
 
 /* ---------- Nav ---------- */
 .pill-nav {
+  position: relative;
   border-radius: 1.5rem;
   background: rgba(22, 22, 26, 0.72);
   border: 1px solid var(--bs-border-color);
@@ -534,4 +535,141 @@ body {
   .day-group-heading {
     font-size: 1.3rem;
   }
+}
+
+/* ---------- Mobile burger menu ---------- */
+.burger-btn {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.28rem;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.burger-btn span {
+  display: block;
+  width: 1.1rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--bs-body-color);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.burger-btn span.burger-line-1 {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.burger-btn span.burger-line-2 {
+  opacity: 0;
+}
+
+.burger-btn span.burger-line-3 {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.mobile-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: rgba(18, 18, 21, 0.97);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 1.25rem;
+  padding: 0.9rem;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 30;
+}
+
+.mobile-menu-panel .nav-link {
+  display: block;
+  padding: 0.6rem 0.9rem;
+}
+
+.mobile-menu-panel .search-box {
+  max-width: none;
+}
+
+.mobile-menu-panel .mode-toggle {
+  align-self: flex-start;
+}
+/* ---------- Event form: combobox, presale toggle ---------- */
+.performer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.performer-chip-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  line-height: 1;
+  padding: 0;
+  font-size: 0.95rem;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.performer-chip-remove:hover {
+  opacity: 1;
+}
+
+.performer-combobox {
+  position: relative;
+}
+
+.performer-combobox-dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.55);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.performer-combobox-option {
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--bs-body-color);
+  padding: 0.45rem 0.6rem;
+  border-radius: calc(var(--bs-border-radius) - 0.15rem);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.performer-combobox-option:hover,
+.performer-combobox-option:focus-visible {
+  background: var(--bs-secondary-bg-subtle);
+}
+
+.performer-combobox-option:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.performer-combobox-create {
+  color: var(--bs-primary-text-emphasis);
+  font-weight: 500;
 }

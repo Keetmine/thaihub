@@ -19,9 +19,8 @@ export default async function AdminPerformersPage() {
       <form
         action={createPerformer}
         className="surface d-flex flex-wrap align-items-end gap-3 mb-4 p-3"
-        style={{ maxWidth: "32rem" }}
       >
-        <div className="flex-fill" style={{ minWidth: "10rem" }}>
+        <div className="flex-fill" style={{ minWidth: "16rem" }}>
           <label className="form-label">Имя / название группы *</label>
           <input name="name" required className="form-control" />
         </div>
@@ -40,29 +39,28 @@ export default async function AdminPerformersPage() {
       {performers.length === 0 ? (
         <p className="text-secondary">Пока нет исполнителей.</p>
       ) : (
-        <div className="d-flex flex-column gap-2" style={{ maxWidth: "32rem" }}>
+        <div className="row g-3">
           {performers.map((p) => {
             const boundDelete = deletePerformer.bind(null, p.id);
             return (
-              <div
-                key={p.id}
-                className="surface d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <div>
-                  <p className="font-display fw-medium text-white mb-0">{p.name}</p>
-                  <p className="small text-secondary mb-0">
-                    {p.type === "BAND" ? "Группа" : "Соло"} · {p._count.events}{" "}
-                    событ.
-                  </p>
+              <div key={p.id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
+                <div className="surface d-flex align-items-center justify-content-between gap-3 p-3 h-100">
+                  <div>
+                    <p className="font-display fw-medium text-white mb-0">{p.name}</p>
+                    <p className="small text-secondary mb-0">
+                      {p.type === "BAND" ? "Группа" : "Соло"} · {p._count.events}{" "}
+                      событ.
+                    </p>
+                  </div>
+                  <form action={boundDelete}>
+                    <button
+                      type="submit"
+                      className="btn btn-outline-danger btn-sm"
+                    >
+                      Удалить
+                    </button>
+                  </form>
                 </div>
-                <form action={boundDelete}>
-                  <button
-                    type="submit"
-                    className="btn btn-outline-danger btn-sm"
-                  >
-                    Удалить
-                  </button>
-                </form>
               </div>
             );
           })}

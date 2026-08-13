@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Parallel-agent git worktrees living under the project root.
+    ".claude/worktrees/**",
   ]),
 ]);
 
