@@ -74,6 +74,7 @@ model Agency {
   logoUrl     String?
   description String?
   performers  Performer[]
+  dramas      Drama[]
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -117,12 +118,36 @@ model Drama {
   posterUrl      String?
   synopsis       String?
   year           Int?
+  agencyId       String?
+  agency         Agency?  @relation(fields: [agencyId], references: [id])
 
   performers     PerformerDrama[]
   favoritedBy    FavoriteDrama[]
+  watchStatuses  DramaWatchStatus[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+enum WatchStatus {
+  WATCHING
+  COMPLETED
+  ON_HOLD
+  PLAN_TO_WATCH
+  DROPPED
+}
+
+// Per-user watch-progress tracking for a drama (MyDramaList-style status),
+// distinct from FavoriteDrama (a simple heart/bookmark).
+model DramaWatchStatus {
+  userId    String
+  dramaId   String
+  status    WatchStatus
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drama     Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, dramaId])
 }
 
 model PerformerDrama {
@@ -167,6 +192,7 @@ model User {
   email        String   @unique
   passwordHash String
   name         String?
+  photoUrl     String?
   createdAt    DateTime @default(now())
 
   sessions            UserSession[]
@@ -174,6 +200,30 @@ model User {
   favoriteDramas      FavoriteDrama[]
   favoriteEvents      FavoriteEvent[]
   eventAttendances    EventAttendance[]
+  dramaWatchStatuses  DramaWatchStatus[]
+
+  friendRequestsSent     Friendship[] @relation("FriendRequester")
+  friendRequestsReceived Friendship[] @relation("FriendAddressee")
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+// Directed request row: requester -> addressee. status PENDING until the
+// addressee accepts; an accepted row represents the friendship itself (no
+// separate row needed on the other side — queries check both directions).
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  requester   User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+
+  @@unique([requesterId, addresseeId])
 }
 
 model UserSession {

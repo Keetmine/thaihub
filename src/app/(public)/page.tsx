@@ -48,7 +48,7 @@ export default async function HomePage() {
       {upcomingByDay.size === 0 ? (
         <p className="text-secondary">Предстоящих событий пока нет.</p>
       ) : (
-        <div className="d-flex flex-column gap-4" style={{ maxWidth: "42rem" }}>
+        <div className="d-flex flex-column gap-4">
           {Array.from(upcomingByDay.entries()).map(([key, dayEvents]) => (
             <section key={key}>
               <Link href={`/day/${key}`} className="day-group-heading mb-2">
@@ -65,7 +65,7 @@ export default async function HomePage() {
       )}
 
       {pastByDay.size > 0 && (
-        <div className="mt-4 pt-3" style={{ maxWidth: "42rem" }}>
+        <div className="mt-4 pt-3">
           <h2
             className="small text-secondary text-uppercase mb-3"
             style={{ letterSpacing: "0.08em" }}

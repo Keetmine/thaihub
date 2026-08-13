@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon } from "./icons";
+import Modal from "./Modal";
 
 export type EntityOption = { id: string; name: string; photoUrl?: string | null };
 
@@ -20,7 +21,8 @@ function Avatar({ option }: { option: EntityOption }) {
 /**
  * Custom searchable single-select for picking an existing entity (agency,
  * drama, …) by name + optional photo, with an inline "+ Создать «query»"
- * option when the typed name doesn't match anything existing.
+ * option (opens a small popup with just the name field) when the typed name
+ * doesn't match anything existing.
  */
 export default function EntitySelect({
   name,
@@ -55,7 +57,9 @@ export default function EntitySelect({
   const [value, setValueState] = useState(defaultValue ?? "");
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   function setValue(id: string) {
@@ -87,17 +91,24 @@ export default function EntitySelect({
   );
   const showCreateOption = !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch;
 
-  async function handleCreate() {
-    if (!onCreateNew || !trimmedQuery || isCreating) return;
+  async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!onCreateNew || isCreating) return;
+    const newName = String(new FormData(e.currentTarget).get("newName") ?? "").trim();
+    if (!newName) return;
+
     setIsCreating(true);
+    setCreateError(null);
     try {
-      const created = await onCreateNew(trimmedQuery);
+      const created = await onCreateNew(newName);
       if (created) {
         setCreatedOptions((prev) => [...prev, created]);
         setValue(created.id);
         setQuery("");
-        setIsOpen(false);
+        setCreatePrefill(null);
       }
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Не удалось создать");
     } finally {
       setIsCreating(false);
     }
@@ -167,15 +178,40 @@ export default function EntitySelect({
               <button
                 type="button"
                 className="performer-combobox-create performer-select-option"
-                disabled={isCreating}
-                onClick={handleCreate}
+                onClick={() => {
+                  setCreatePrefill(trimmedQuery);
+                  setIsOpen(false);
+                }}
               >
-                {isCreating ? "Создание…" : `+ ${createLabel} «${trimmedQuery}»`}
+                {`+ ${createLabel} «${trimmedQuery}»`}
               </button>
             )}
           </div>
         )}
       </div>
+
+      <Modal
+        open={createPrefill !== null}
+        onClose={() => setCreatePrefill(null)}
+        title={createLabel}
+      >
+        <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
+          <div>
+            <label className="form-label">Название *</label>
+            <input
+              name="newName"
+              required
+              autoFocus
+              defaultValue={createPrefill ?? ""}
+              className="form-control"
+            />
+          </div>
+          {createError && <p className="small text-danger mb-0">{createError}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isCreating}>
+            {isCreating ? "Создание…" : "Создать"}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

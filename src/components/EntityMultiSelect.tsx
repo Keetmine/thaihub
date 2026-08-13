@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Modal from "./Modal";
 
 export type EntityOption = { id: string; name: string; photoUrl?: string | null };
 
@@ -51,7 +52,9 @@ export default function EntityMultiSelect({
   const [selectedIds, setSelectedIds] = useState<string[]>(defaultSelectedIds ?? []);
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const selected = useMemo(
@@ -95,15 +98,23 @@ export default function EntityMultiSelect({
     setSelectedIds((prev) => prev.filter((sid) => sid !== id));
   }
 
-  async function handleCreate() {
-    if (!onCreateNew || !trimmedQuery || isCreating) return;
+  async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!onCreateNew || isCreating) return;
+    const newName = String(new FormData(e.currentTarget).get("newName") ?? "").trim();
+    if (!newName) return;
+
     setIsCreating(true);
+    setCreateError(null);
     try {
-      const created = await onCreateNew(trimmedQuery);
+      const created = await onCreateNew(newName);
       if (created) {
         setCreatedOptions((prev) => [...prev, created]);
         add(created.id);
+        setCreatePrefill(null);
       }
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Не удалось создать");
     } finally {
       setIsCreating(false);
     }
@@ -160,10 +171,12 @@ export default function EntityMultiSelect({
                 type="button"
                 className="performer-combobox-option performer-combobox-create"
                 onMouseDown={(e) => e.preventDefault()}
-                disabled={isCreating}
-                onClick={handleCreate}
+                onClick={() => {
+                  setCreatePrefill(trimmedQuery);
+                  setIsOpen(false);
+                }}
               >
-                {isCreating ? "Создание…" : `+ ${createLabel} «${trimmedQuery}»`}
+                {`+ ${createLabel} «${trimmedQuery}»`}
               </button>
             )}
           </div>
@@ -173,6 +186,29 @@ export default function EntityMultiSelect({
       {allOptions.length === 0 && emptyMessage && (
         <p className="small text-secondary mt-2">{emptyMessage}</p>
       )}
+
+      <Modal
+        open={createPrefill !== null}
+        onClose={() => setCreatePrefill(null)}
+        title={createLabel}
+      >
+        <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
+          <div>
+            <label className="form-label">Название *</label>
+            <input
+              name="newName"
+              required
+              autoFocus
+              defaultValue={createPrefill ?? ""}
+              className="form-control"
+            />
+          </div>
+          {createError && <p className="small text-danger mb-0">{createError}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isCreating}>
+            {isCreating ? "Создание…" : "Создать"}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

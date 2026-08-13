@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import { createPerformerAndReturn } from "../performers/actions";
 
-type PerformerOption = { id: string; name: string; type: string };
 type PairingOption = {
   id: string;
   name: string | null;
@@ -23,7 +23,7 @@ export default function EventForm({
   submitLabel,
 }: {
   action: (formData: FormData) => void;
-  performers: PerformerOption[];
+  performers: EntityOption[];
   pairings: PairingOption[];
   defaultValues?: {
     title: string;
@@ -42,90 +42,12 @@ export default function EventForm({
 }) {
   const v = defaultValues;
 
-  const [allPerformers, setAllPerformers] = useState<PerformerOption[]>(performers);
-  const [selectedIds, setSelectedIds] = useState<string[]>(v?.performerIds ?? []);
-  const [query, setQuery] = useState("");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const comboboxRef = useRef<HTMLDivElement>(null);
-
-  const [selectedPairingIds, setSelectedPairingIds] = useState<string[]>(
-    v?.pairingIds ?? [],
+  const pairingOptions: EntityOption[] = useMemo(
+    () => pairings.map((p) => ({ id: p.id, name: pairingLabel(p) })),
+    [pairings],
   );
-  const [pairingQuery, setPairingQuery] = useState("");
-  const [isPairingDropdownOpen, setIsPairingDropdownOpen] = useState(false);
-  const pairingComboboxRef = useRef<HTMLDivElement>(null);
 
   const [presaleEnabled, setPresaleEnabled] = useState(Boolean(v?.presaleDate));
-
-  const selectedPerformers = useMemo(
-    () => selectedIds.map((id) => allPerformers.find((p) => p.id === id)).filter(
-      (p): p is PerformerOption => Boolean(p),
-    ),
-    [selectedIds, allPerformers],
-  );
-
-  const filteredPerformers = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return allPerformers.filter((p) => {
-      if (selectedIds.includes(p.id)) return false;
-      if (!q) return true;
-      return p.name.toLowerCase().includes(q);
-    });
-  }, [allPerformers, selectedIds, query]);
-
-  const trimmedQuery = query.trim();
-  const hasExactMatch = allPerformers.some(
-    (p) => p.name.toLowerCase() === trimmedQuery.toLowerCase(),
-  );
-  const showCreateOption = trimmedQuery.length > 0 && !hasExactMatch;
-
-  function addPerformer(id: string) {
-    setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setQuery("");
-  }
-
-  function removePerformer(id: string) {
-    setSelectedIds((prev) => prev.filter((pid) => pid !== id));
-  }
-
-  const selectedPairings = useMemo(
-    () =>
-      selectedPairingIds
-        .map((id) => pairings.find((p) => p.id === id))
-        .filter((p): p is PairingOption => Boolean(p)),
-    [selectedPairingIds, pairings],
-  );
-
-  const filteredPairings = useMemo(() => {
-    const q = pairingQuery.trim().toLowerCase();
-    return pairings.filter((p) => {
-      if (selectedPairingIds.includes(p.id)) return false;
-      if (!q) return true;
-      return pairingLabel(p).toLowerCase().includes(q);
-    });
-  }, [pairings, selectedPairingIds, pairingQuery]);
-
-  function addPairing(id: string) {
-    setSelectedPairingIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setPairingQuery("");
-  }
-
-  function removePairing(id: string) {
-    setSelectedPairingIds((prev) => prev.filter((pid) => pid !== id));
-  }
-
-  async function handleCreatePerformer() {
-    if (!trimmedQuery || isCreating) return;
-    setIsCreating(true);
-    try {
-      const created = await createPerformerAndReturn(trimmedQuery);
-      setAllPerformers((prev) => [...prev, created]);
-      addPerformer(created.id);
-    } finally {
-      setIsCreating(false);
-    }
-  }
 
   return (
     <form
@@ -198,133 +120,29 @@ export default function EventForm({
 
       <div>
         <label className="form-label d-block">Исполнители / группы</label>
-
-        {selectedPerformers.length > 0 && (
-          <div className="d-flex flex-wrap gap-2 mb-2">
-            {selectedPerformers.map((p) => (
-              <span key={p.id} className="event-chip performer-chip">
-                {p.name}
-                <input type="hidden" name="performerIds" value={p.id} />
-                <button
-                  type="button"
-                  className="performer-chip-remove"
-                  onClick={() => removePerformer(p.id)}
-                  aria-label={`Убрать ${p.name}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="performer-combobox" ref={comboboxRef}>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Начните вводить имя исполнителя…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setIsDropdownOpen(true)}
-            onBlur={() => {
-              // allow click on dropdown options to register before closing
-              window.setTimeout(() => setIsDropdownOpen(false), 150);
-            }}
-          />
-
-          {isDropdownOpen && (filteredPerformers.length > 0 || showCreateOption) && (
-            <div className="performer-combobox-dropdown">
-              {filteredPerformers.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="performer-combobox-option"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addPerformer(p.id)}
-                >
-                  {p.name}
-                </button>
-              ))}
-              {showCreateOption && (
-                <button
-                  type="button"
-                  className="performer-combobox-option performer-combobox-create"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={handleCreatePerformer}
-                  disabled={isCreating}
-                >
-                  {isCreating ? "Создание…" : `+ Создать «${trimmedQuery}»`}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {allPerformers.length === 0 && (
-          <p className="small text-secondary mt-2">
-            Нет добавленных исполнителей. Начните вводить имя, чтобы создать нового.
-          </p>
-        )}
+        <EntityMultiSelect
+          name="performerIds"
+          options={performers}
+          defaultSelectedIds={v?.performerIds}
+          placeholder="Начните вводить имя исполнителя…"
+          createLabel="Создать исполнителя"
+          emptyMessage="Нет добавленных исполнителей. Начните вводить имя, чтобы создать нового."
+          onCreateNew={async (query) => {
+            const created = await createPerformerAndReturn(query);
+            return { id: created.id, name: created.name, photoUrl: null };
+          }}
+        />
       </div>
 
       <div>
         <label className="form-label d-block">Пейринги</label>
-
-        {selectedPairings.length > 0 && (
-          <div className="d-flex flex-wrap gap-2 mb-2">
-            {selectedPairings.map((p) => (
-              <span key={p.id} className="event-chip performer-chip">
-                {pairingLabel(p)}
-                <input type="hidden" name="pairingIds" value={p.id} />
-                <button
-                  type="button"
-                  className="performer-chip-remove"
-                  onClick={() => removePairing(p.id)}
-                  aria-label={`Убрать ${pairingLabel(p)}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="performer-combobox" ref={pairingComboboxRef}>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Начните вводить название пейринга…"
-            value={pairingQuery}
-            onChange={(e) => setPairingQuery(e.target.value)}
-            onFocus={() => setIsPairingDropdownOpen(true)}
-            onBlur={() => {
-              // allow click on dropdown options to register before closing
-              window.setTimeout(() => setIsPairingDropdownOpen(false), 150);
-            }}
-          />
-
-          {isPairingDropdownOpen && filteredPairings.length > 0 && (
-            <div className="performer-combobox-dropdown">
-              {filteredPairings.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="performer-combobox-option"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addPairing(p.id)}
-                >
-                  {pairingLabel(p)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {pairings.length === 0 && (
-          <p className="small text-secondary mt-2">
-            Нет добавленных пейрингов. Создайте их на странице «Пейринги».
-          </p>
-        )}
+        <EntityMultiSelect
+          name="pairingIds"
+          options={pairingOptions}
+          defaultSelectedIds={v?.pairingIds}
+          placeholder="Начните вводить название пейринга…"
+          emptyMessage="Нет добавленных пейрингов. Создайте их на странице «Пейринги»."
+        />
       </div>
 
       <div>

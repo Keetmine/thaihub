@@ -8,6 +8,7 @@ import { createAgencyAndReturn } from "../agencies/actions";
 import { createDramaAndReturn } from "../dramas/actions";
 import { createPerformerAndReturn } from "./actions";
 import QuickCreateEventButton from "./QuickCreateEventButton";
+import PairingManager from "./PairingManager";
 
 export type PerformerLinkInput = { label: string; url: string };
 export type PerformerOption = { id: string; name: string };
@@ -45,6 +46,7 @@ export default function PerformerForm({
   defaultMemberIds,
   defaultDramaIds,
   defaultEventIds,
+  currentPairings,
 }: {
   action: (formData: FormData) => void;
   submitLabel: string;
@@ -54,6 +56,7 @@ export default function PerformerForm({
   dramas: EntityOption[];
   events: EntityOption[];
   defaultValues?: {
+    performerId: string;
     name: string;
     type: string;
     realName: string;
@@ -68,6 +71,8 @@ export default function PerformerForm({
   defaultMemberIds?: string[];
   defaultDramaIds?: string[];
   defaultEventIds?: string[];
+  /** Existing pairings this performer is part of — edit mode only. */
+  currentPairings?: { id: string; label: string }[];
 }) {
   const v = defaultValues;
   const isCreating = !v;
@@ -471,15 +476,13 @@ export default function PerformerForm({
                 </div>
               </div>
             </>
-          ) : (
-            <p className="small text-secondary mb-0">
-              Управление пейрингами — в разделе{" "}
-              <a href="/admin/pairings" className="link-body-emphasis">
-                «Пейринги»
-              </a>
-              .
-            </p>
-          )}
+          ) : v ? (
+            <PairingManager
+              performerId={v.performerId}
+              currentPairings={currentPairings ?? []}
+              soloPerformers={allSoloPerformers}
+            />
+          ) : null}
         </div>
       )}
 

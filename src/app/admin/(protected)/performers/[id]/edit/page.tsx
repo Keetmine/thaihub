@@ -16,7 +16,7 @@ export default async function EditPerformerPage({
 }) {
   const { id } = await params;
 
-  const [performer, soloPerformers, agencies, dramas, events] = await Promise.all([
+  const [performer, soloPerformers, agencies, dramas, events, pairings] = await Promise.all([
     prisma.performer.findUnique({
       where: { id },
       include: {
@@ -43,9 +43,19 @@ export default async function EditPerformerPage({
       orderBy: { startsAt: "desc" },
       select: { id: true, title: true },
     }),
+    prisma.pairing.findMany({
+      where: { OR: [{ performerAId: id }, { performerBId: id }] },
+      include: { performerA: true, performerB: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   if (!performer) notFound();
+
+  const currentPairings = pairings.map((pair) => ({
+    id: pair.id,
+    label: pair.name || `${pair.performerA.name} × ${pair.performerB.name}`,
+  }));
 
   const boundUpdate = updatePerformer.bind(null, id);
   const boundDelete = deletePerformer.bind(null, id);
@@ -71,7 +81,9 @@ export default async function EditPerformerPage({
           defaultMemberIds={performer.bandMembers.map((m) => m.performerId)}
           defaultDramaIds={performer.dramas.map((pd) => pd.dramaId)}
           defaultEventIds={performer.events.map((pe) => pe.eventId)}
+          currentPairings={currentPairings}
           defaultValues={{
+            performerId: performer.id,
             name: performer.name,
             type: performer.type,
             realName: performer.realName ?? "",

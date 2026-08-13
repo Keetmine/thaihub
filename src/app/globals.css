@@ -1102,4 +1102,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   max-height: 9rem;
   border-radius: var(--bs-border-radius);
   object-fit: cover;
+  border: 2px solid var(--bs-border-color);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.08);
 }

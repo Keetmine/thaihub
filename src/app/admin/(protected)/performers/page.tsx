@@ -46,13 +46,22 @@ export default async function AdminPerformersPage({
             return (
               <div
                 key={p.id}
-                className="surface d-flex align-items-center justify-content-between gap-3 p-3"
+                className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div>
-                  <p className="font-display fw-medium text-white mb-0">{p.name}</p>
+                  <Link
+                    href={`/admin/performers/${p.id}/edit`}
+                    className="stretched-link text-decoration-none"
+                  >
+                    <span className="font-display fw-medium text-white d-block">{p.name}</span>
+                  </Link>
                   <p className="small text-secondary mb-0">{p._count.events} событ.</p>
                 </div>
-                <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                {/* position-relative + z-2 lifts these controls above the
+                    row's stretched-link (::after has z-index: 1), so they
+                    stay individually clickable instead of triggering the
+                    row navigation. */}
+                <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
                   <Link
                     href={`/admin/performers/${p.id}/edit`}
                     className="icon-btn"
