@@ -14,7 +14,11 @@ export default function EventAgendaRow({ event }: { event: EventWithPerformers }
       <span className="agenda-dash">—</span>
       <div className="agenda-body">
         <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
-          <h3 className="h6 font-display mb-1">{event.title}</h3>
+          <h3 className="h6 font-display mb-1">
+            <Link href={`/event/${event.id}`} className="text-reset text-decoration-none">
+              {event.title}
+            </Link>
+          </h3>
           {event.performers.length > 0 && (
             <p className="small text-secondary mb-1 flex-shrink-0">
               {event.performers.map(({ performer }, i) => (
