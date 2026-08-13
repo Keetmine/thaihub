@@ -5,6 +5,7 @@ import type { Performer } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import { HeartIcon } from "@/components/icons";
+import NameSearchBox from "@/components/NameSearchBox";
 
 export const dynamic = "force-dynamic";
 
@@ -52,8 +53,17 @@ function Tabs({ active }: { active: View }) {
   );
 }
 
-async function PairingsTab() {
+async function PairingsTab({ q }: { q: string }) {
   const pairings = await prisma.pairing.findMany({
+    where: q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { performerA: { name: { contains: q, mode: "insensitive" } } },
+            { performerB: { name: { contains: q, mode: "insensitive" } } },
+          ],
+        }
+      : undefined,
     include: { performerA: true, performerB: true },
     orderBy: { createdAt: "desc" },
   });
@@ -221,16 +231,20 @@ function PerformerAlphabetList({
 export default async function PerformersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; q?: string }>;
 }) {
-  const { view: rawView } = await searchParams;
+  const { view: rawView, q: rawQ } = await searchParams;
   const view: View = rawView === "bands" ? "bands" : rawView === "pairings" ? "pairings" : "performers";
+  const q = (rawQ ?? "").trim();
 
   const performers =
     view === "pairings"
       ? []
       : await prisma.performer.findMany({
-          where: { type: view === "bands" ? "BAND" : "SOLO" },
+          where: {
+            type: view === "bands" ? "BAND" : "SOLO",
+            ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+          },
           include: { _count: { select: { events: true } } },
           orderBy: { name: "asc" },
         });
@@ -259,9 +273,15 @@ export default async function PerformersPage({
       </h1>
 
       <Tabs active={view} />
+      <NameSearchBox
+        action="/performers"
+        q={q}
+        hiddenFields={view !== "performers" ? { view } : undefined}
+        placeholder="Поиск по имени…"
+      />
 
       {view === "pairings" ? (
-        <PairingsTab />
+        <PairingsTab q={q} />
       ) : (
         <PerformerAlphabetList
           performers={performers}
