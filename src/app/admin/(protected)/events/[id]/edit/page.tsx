@@ -13,12 +13,16 @@ export default async function EditEventPage({
 }) {
   const { id } = await params;
 
-  const [event, performers] = await Promise.all([
+  const [event, performers, pairings] = await Promise.all([
     prisma.event.findUnique({
       where: { id },
-      include: { performers: true },
+      include: { performers: true, pairings: true },
     }),
     prisma.performer.findMany({ orderBy: { name: "asc" } }),
+    prisma.pairing.findMany({
+      include: { performerA: true, performerB: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   if (!event) notFound();
@@ -37,6 +41,7 @@ export default async function EditEventPage({
       <EventForm
         action={boundUpdate}
         performers={performers}
+        pairings={pairings}
         submitLabel="Сохранить изменения"
         defaultValues={{
           title: event.title,
@@ -46,6 +51,7 @@ export default async function EditEventPage({
           startTime: formatTime(event.startsAt),
           endTime: event.endsAt ? formatTime(event.endsAt) : "",
           performerIds: event.performers.map((p) => p.performerId),
+          pairingIds: event.pairings.map((p) => p.pairingId),
           presaleDate: event.presaleAt ? dateKey(event.presaleAt) : "",
           presaleTime: event.presaleAt ? formatTime(event.presaleAt) : "",
           presaleUrl: event.presaleUrl ?? "",

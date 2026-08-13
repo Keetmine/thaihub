@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dateKey, formatHumanDate, formatTime } from "@/lib/dates";
 
+export const dynamic = "force-dynamic";
+
 export default async function PerformerPage({
   params,
 }: {
@@ -16,6 +18,13 @@ export default async function PerformerPage({
     where: { performerId: id },
     include: { event: true },
     orderBy: { event: { startsAt: "asc" } },
+  });
+
+  // Pairings this performer is part of — nice-to-have section, additive only.
+  const pairings = await prisma.pairing.findMany({
+    where: { OR: [{ performerAId: id }, { performerBId: id }] },
+    include: { performerA: true, performerB: true },
+    orderBy: { createdAt: "desc" },
   });
 
   const now = new Date();
@@ -52,6 +61,31 @@ export default async function PerformerPage({
           ({performer.type === "BAND" ? "группа" : "соло"})
         </span>
       </h1>
+
+      {pairings.length > 0 && (
+        <div className="mb-4">
+          <h2
+            className="small text-secondary text-uppercase mb-2"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            В паре с
+          </h2>
+          <div className="d-flex flex-wrap gap-2">
+            {pairings.map((pair) => {
+              const other = pair.performerAId === id ? pair.performerB : pair.performerA;
+              return (
+                <Link
+                  key={pair.id}
+                  href={`/performers/${other.id}`}
+                  className="event-chip text-decoration-none"
+                >
+                  {pair.name || other.name}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
         Предстоящие

@@ -47,6 +47,7 @@ export default function ProtectedAdminLayout({
               События
             </NavLink>
             <NavLink href="/admin/performers">Исполнители</NavLink>
+            <NavLink href="/admin/pairings">Пейринги</NavLink>
             <ModeToggle active="admin" />
             <LogoutButton />
           </MobileMenu>
@@ -56,6 +57,7 @@ export default function ProtectedAdminLayout({
               События
             </NavLink>
             <NavLink href="/admin/performers">Исполнители</NavLink>
+            <NavLink href="/admin/pairings">Пейринги</NavLink>
           </div>
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
