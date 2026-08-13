@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 export type PerformerLinkInput = { label: string; url: string };
+export type PerformerOption = { id: string; name: string };
 
 export default function PerformerForm({
   action,
   submitLabel,
+  soloPerformers,
   defaultValues,
+  defaultMemberIds,
 }: {
   action: (formData: FormData) => void;
   submitLabel: string;
+  /** Existing SOLO performers, for the pairing-partner select and the band-members picker. */
+  soloPerformers: PerformerOption[];
   defaultValues?: {
     name: string;
     type: string;
@@ -21,8 +26,13 @@ export default function PerformerForm({
     mydramalistUrl: string;
     links: PerformerLinkInput[];
   };
+  /** Pre-filled band member ids, for editing an existing BAND performer. */
+  defaultMemberIds?: string[];
 }) {
   const v = defaultValues;
+  const isCreating = !v;
+
+  const [type, setType] = useState(v?.type ?? "SOLO");
 
   const [links, setLinks] = useState<PerformerLinkInput[]>(
     v?.links && v.links.length > 0 ? v.links : [{ label: "", url: "" }],
@@ -40,6 +50,37 @@ export default function PerformerForm({
     setLinks((prev) =>
       prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)),
     );
+  }
+
+  // --- Band members (only relevant when type === "BAND") ---
+  const [memberIds, setMemberIds] = useState<string[]>(defaultMemberIds ?? []);
+  const [memberQuery, setMemberQuery] = useState("");
+  const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
+  const memberComboboxRef = useRef<HTMLDivElement>(null);
+
+  const selectedMembers = useMemo(
+    () => memberIds.map((id) => soloPerformers.find((p) => p.id === id)).filter(
+      (p): p is PerformerOption => Boolean(p),
+    ),
+    [memberIds, soloPerformers],
+  );
+
+  const filteredMemberOptions = useMemo(() => {
+    const q = memberQuery.trim().toLowerCase();
+    return soloPerformers.filter((p) => {
+      if (memberIds.includes(p.id)) return false;
+      if (!q) return true;
+      return p.name.toLowerCase().includes(q);
+    });
+  }, [soloPerformers, memberIds, memberQuery]);
+
+  function addMember(id: string) {
+    setMemberIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setMemberQuery("");
+  }
+
+  function removeMember(id: string) {
+    setMemberIds((prev) => prev.filter((mid) => mid !== id));
   }
 
   return (
@@ -60,24 +101,42 @@ export default function PerformerForm({
         </div>
         <div className="col-12 col-lg-4">
           <label className="form-label">Тип</label>
-          <select name="type" defaultValue={v?.type ?? "SOLO"} className="form-select">
+          <select
+            name="type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="form-select"
+          >
             <option value="SOLO">Соло</option>
             <option value="BAND">Группа</option>
           </select>
         </div>
       </div>
 
-      <div className="row g-3">
-        <div className="col-12 col-sm-6">
-          <label className="form-label">Дата рождения</label>
-          <input
-            type="date"
-            name="birthDate"
-            defaultValue={v?.birthDate}
-            className="form-control"
-          />
+      {type === "SOLO" && (
+        <div className="row g-3">
+          <div className="col-12 col-sm-6">
+            <label className="form-label">Дата рождения</label>
+            <input
+              type="date"
+              name="birthDate"
+              defaultValue={v?.birthDate}
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-sm-6">
+            <label className="form-label">Агентство</label>
+            <input
+              name="agency"
+              defaultValue={v?.agency}
+              className="form-control"
+            />
+          </div>
         </div>
-        <div className="col-12 col-sm-6">
+      )}
+
+      {type === "BAND" && (
+        <div>
           <label className="form-label">Агентство</label>
           <input
             name="agency"
@@ -85,7 +144,7 @@ export default function PerformerForm({
             className="form-control"
           />
         </div>
-      </div>
+      )}
 
       <div>
         <label className="form-label">Фото (ссылка)</label>
@@ -99,7 +158,7 @@ export default function PerformerForm({
       </div>
 
       <div>
-        <label className="form-label">Биография</label>
+        <label className="form-label">{type === "BAND" ? "О группе" : "Биография"}</label>
         <textarea
           name="bio"
           rows={4}
@@ -160,6 +219,96 @@ export default function PerformerForm({
           + Добавить ссылку
         </button>
       </div>
+
+      {type === "BAND" && (
+        <div>
+          <label className="form-label d-block">Участники группы</label>
+
+          {selectedMembers.length > 0 && (
+            <div className="d-flex flex-wrap gap-2 mb-2">
+              {selectedMembers.map((m) => (
+                <span key={m.id} className="event-chip performer-chip">
+                  {m.name}
+                  <input type="hidden" name="memberIds" value={m.id} />
+                  <button
+                    type="button"
+                    className="performer-chip-remove"
+                    onClick={() => removeMember(m.id)}
+                    aria-label={`Убрать ${m.name}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="performer-combobox" ref={memberComboboxRef}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Начните вводить имя участника…"
+              value={memberQuery}
+              onChange={(e) => setMemberQuery(e.target.value)}
+              onFocus={() => setIsMemberDropdownOpen(true)}
+              onBlur={() => {
+                window.setTimeout(() => setIsMemberDropdownOpen(false), 150);
+              }}
+            />
+
+            {isMemberDropdownOpen && filteredMemberOptions.length > 0 && (
+              <div className="performer-combobox-dropdown">
+                {filteredMemberOptions.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="performer-combobox-option"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => addMember(p.id)}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {soloPerformers.length === 0 && (
+            <p className="small text-secondary mt-2">
+              Нет соло-исполнителей, которых можно добавить как участников.
+            </p>
+          )}
+        </div>
+      )}
+
+      {isCreating && type === "SOLO" && (
+        <div>
+          <label className="form-label d-block">Пейринг (необязательно)</label>
+          <p className="small text-secondary mt-n1 mb-2">
+            Сразу связать этого исполнителя в пару с уже существующим.
+          </p>
+          <div className="row g-2">
+            <div className="col-12 col-sm-7">
+              <select name="pairingPartnerId" className="form-select" defaultValue="">
+                <option value="">Не создавать пейринг</option>
+                {soloPerformers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-12 col-sm-5">
+              <input
+                type="text"
+                name="pairingName"
+                placeholder="Название пейринга (необязательно)"
+                className="form-control"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-2">
         <button type="submit" className="btn btn-primary">

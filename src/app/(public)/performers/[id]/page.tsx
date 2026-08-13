@@ -18,9 +18,12 @@ export default async function PerformerPage({
     include: {
       links: true,
       dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
+      bandMembers: { include: { performer: true }, orderBy: { performer: { name: "asc" } } },
+      memberOfBands: { include: { band: true }, orderBy: { band: { name: "asc" } } },
     },
   });
   if (!performer) notFound();
+  const isBand = performer.type === "BAND";
 
   const eventLinks = await prisma.eventPerformer.findMany({
     where: { performerId: id },
@@ -28,12 +31,14 @@ export default async function PerformerPage({
     orderBy: { event: { startsAt: "asc" } },
   });
 
-  // Pairings this performer is part of — nice-to-have section, additive only.
-  const pairings = await prisma.pairing.findMany({
-    where: { OR: [{ performerAId: id }, { performerBId: id }] },
-    include: { performerA: true, performerB: true },
-    orderBy: { createdAt: "desc" },
-  });
+  // Pairings this performer is part of — solo-only, nice-to-have, additive.
+  const pairings = isBand
+    ? []
+    : await prisma.pairing.findMany({
+        where: { OR: [{ performerAId: id }, { performerBId: id }] },
+        include: { performerA: true, performerB: true },
+        orderBy: { createdAt: "desc" },
+      });
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
@@ -125,7 +130,7 @@ export default async function PerformerPage({
             </div>
           )}
 
-          {performer.dramas.length > 0 && (
+          {!isBand && performer.dramas.length > 0 && (
             <div className="mt-2">
               <h2
                 className="small text-secondary text-uppercase mb-2"
@@ -142,6 +147,50 @@ export default async function PerformerPage({
                   >
                     {pd.drama.title}
                     {pd.drama.year ? ` (${pd.drama.year})` : ""}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isBand && performer.bandMembers.length > 0 && (
+            <div className="mt-2">
+              <h2
+                className="small text-secondary text-uppercase mb-2"
+                style={{ letterSpacing: "0.08em" }}
+              >
+                Участники
+              </h2>
+              <div className="d-flex flex-wrap gap-2">
+                {performer.bandMembers.map((m) => (
+                  <Link
+                    key={m.performerId}
+                    href={`/performers/${m.performerId}`}
+                    className="event-chip text-decoration-none"
+                  >
+                    {m.performer.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!isBand && performer.memberOfBands.length > 0 && (
+            <div className="mt-2">
+              <h2
+                className="small text-secondary text-uppercase mb-2"
+                style={{ letterSpacing: "0.08em" }}
+              >
+                Группа
+              </h2>
+              <div className="d-flex flex-wrap gap-2">
+                {performer.memberOfBands.map((m) => (
+                  <Link
+                    key={m.bandId}
+                    href={`/performers/${m.bandId}`}
+                    className="event-chip text-decoration-none"
+                  >
+                    {m.band.name}
                   </Link>
                 ))}
               </div>

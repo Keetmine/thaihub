@@ -18,13 +18,6 @@ async function createPerformerRecord(name: string, type: string) {
   return performer;
 }
 
-export async function createPerformer(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "SOLO");
-
-  await createPerformerRecord(name, type);
-}
-
 export async function createPerformerAndReturn(
   name: string,
 ): Promise<{ id: string; name: string; type: string }> {
@@ -61,32 +54,98 @@ function parseBirthDate(value: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function getMemberIds(formData: FormData): string[] {
+  const ids = formData.getAll("memberIds").map(String).filter(Boolean);
+  return Array.from(new Set(ids));
+}
+
+/**
+ * Full performer creation: profile fields + links, same shape as the edit
+ * form. Solo performers can optionally be paired with an existing performer
+ * right away; band performers can have their member roster set right away.
+ * Redirects to the new performer's edit page so the admin can continue
+ * (mydramalist import, more links, etc.) without a second lookup.
+ */
+export async function createPerformer(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
+  const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
+  const bio = String(formData.get("bio") ?? "").trim();
+  const agency = String(formData.get("agency") ?? "").trim();
+  const photoUrl = String(formData.get("photoUrl") ?? "").trim();
+  const links = getLinks(formData);
+
+  if (!name) throw new Error("Укажите имя исполнителя или группы");
+
+  const performer = await prisma.performer.create({
+    data: {
+      name,
+      type,
+      birthDate: type === "SOLO" ? birthDate : null,
+      bio: bio || null,
+      agency: agency || null,
+      photoUrl: photoUrl || null,
+      links: {
+        create: links.map((l) => ({ label: l.label, url: l.url })),
+      },
+    },
+  });
+
+  if (type === "SOLO") {
+    const partnerId = String(formData.get("pairingPartnerId") ?? "").trim();
+    if (partnerId && partnerId !== performer.id) {
+      const pairingName = String(formData.get("pairingName") ?? "").trim();
+      const [performerAId, performerBId] = [performer.id, partnerId].sort();
+      await prisma.pairing.create({
+        data: { name: pairingName || null, performerAId, performerBId },
+      });
+    }
+  } else {
+    const memberIds = getMemberIds(formData);
+    if (memberIds.length > 0) {
+      await prisma.bandMember.createMany({
+        data: memberIds.map((performerId) => ({ bandId: performer.id, performerId })),
+      });
+    }
+  }
+
+  revalidatePath("/admin/performers");
+  revalidatePath("/admin/pairings");
+  revalidatePath("/performers");
+  redirect(`/admin/performers/${performer.id}/edit`);
+}
+
 export async function updatePerformer(id: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "SOLO");
+  const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const bio = String(formData.get("bio") ?? "").trim();
   const agency = String(formData.get("agency") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
   const links = getLinks(formData);
+  const memberIds = type === "BAND" ? getMemberIds(formData) : [];
 
   if (!name) throw new Error("Укажите имя исполнителя или группы");
 
   await prisma.$transaction([
     prisma.performerLink.deleteMany({ where: { performerId: id } }),
+    prisma.bandMember.deleteMany({ where: { bandId: id } }),
     prisma.performer.update({
       where: { id },
       data: {
         name,
-        type: type === "BAND" ? "BAND" : "SOLO",
-        birthDate,
+        type,
+        birthDate: type === "SOLO" ? birthDate : null,
         bio: bio || null,
         agency: agency || null,
         photoUrl: photoUrl || null,
         mydramalistUrl: mydramalistUrl || null,
         links: {
           create: links.map((l) => ({ label: l.label, url: l.url })),
+        },
+        bandMembers: {
+          create: memberIds.map((performerId) => ({ performerId })),
         },
       },
     }),

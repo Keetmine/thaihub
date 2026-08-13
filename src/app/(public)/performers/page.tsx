@@ -16,11 +16,81 @@ function categoryOf(key: string): "digit" | "en" | "ru" {
   return /[A-Z]/.test(key) ? "en" : "ru";
 }
 
-export default async function PerformersPage() {
-  const performers = await prisma.performer.findMany({
-    include: { _count: { select: { events: true } } },
-    orderBy: { name: "asc" },
+function Tabs({ active }: { active: "performers" | "pairings" }) {
+  return (
+    <div className="mode-toggle mb-4">
+      <Link
+        href="/performers"
+        prefetch={false}
+        className={`mode-toggle-option ${active === "performers" ? "active" : ""}`}
+      >
+        Исполнители
+      </Link>
+      <Link
+        href="/performers?view=pairings"
+        prefetch={false}
+        className={`mode-toggle-option ${active === "pairings" ? "active" : ""}`}
+      >
+        Пейринги
+      </Link>
+    </div>
+  );
+}
+
+async function PairingsTab() {
+  const pairings = await prisma.pairing.findMany({
+    include: { performerA: true, performerB: true },
+    orderBy: { createdAt: "desc" },
   });
+
+  if (pairings.length === 0) {
+    return <p className="text-secondary">Пока нет пейрингов.</p>;
+  }
+
+  return (
+    <div className="row g-3">
+      {pairings.map((pair) => (
+        <div key={pair.id} className="col-12 col-sm-6 col-lg-4">
+          <div className="surface p-3 h-100">
+            {pair.name && (
+              <p className="font-display fw-medium text-white mb-2">{pair.name}</p>
+            )}
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <Link
+                href={`/performers/${pair.performerA.id}`}
+                className="event-chip text-decoration-none"
+              >
+                {pair.performerA.name}
+              </Link>
+              <span className="text-secondary">×</span>
+              <Link
+                href={`/performers/${pair.performerB.id}`}
+                className="event-chip text-decoration-none"
+              >
+                {pair.performerB.name}
+              </Link>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default async function PerformersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
+  const showPairings = view === "pairings";
+
+  const performers = showPairings
+    ? []
+    : await prisma.performer.findMany({
+        include: { _count: { select: { events: true } } },
+        orderBy: { name: "asc" },
+      });
 
   // Group by first letter. Cyrillic and Latin names naturally land in
   // different groups since they start with different characters; digits
@@ -49,7 +119,12 @@ export default async function PerformersPage() {
       <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.5rem" }}>
         Исполнители
       </h1>
-      {performers.length === 0 ? (
+
+      <Tabs active={showPairings ? "pairings" : "performers"} />
+
+      {showPairings ? (
+        <PairingsTab />
+      ) : performers.length === 0 ? (
         <p className="text-secondary">Пока нет исполнителей.</p>
       ) : (
         <div className="performers-layout">

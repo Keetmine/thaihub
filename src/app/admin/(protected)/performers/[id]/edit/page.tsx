@@ -16,13 +16,21 @@ export default async function EditPerformerPage({
 }) {
   const { id } = await params;
 
-  const performer = await prisma.performer.findUnique({
-    where: { id },
-    include: {
-      links: true,
-      dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
-    },
-  });
+  const [performer, soloPerformers] = await Promise.all([
+    prisma.performer.findUnique({
+      where: { id },
+      include: {
+        links: true,
+        dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
+        bandMembers: { select: { performerId: true } },
+      },
+    }),
+    prisma.performer.findMany({
+      where: { type: "SOLO", id: { not: id } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   if (!performer) notFound();
 
@@ -43,6 +51,8 @@ export default async function EditPerformerPage({
           key={performer.updatedAt.toISOString()}
           action={boundUpdate}
           submitLabel="Сохранить изменения"
+          soloPerformers={soloPerformers}
+          defaultMemberIds={performer.bandMembers.map((m) => m.performerId)}
           defaultValues={{
             name: performer.name,
             type: performer.type,
@@ -55,23 +65,27 @@ export default async function EditPerformerPage({
           }}
         />
 
-        <MydramalistImport
-          performerId={performer.id}
-          defaultUrl={performer.mydramalistUrl ?? ""}
-        />
+        {performer.type === "SOLO" && (
+          <>
+            <MydramalistImport
+              performerId={performer.id}
+              defaultUrl={performer.mydramalistUrl ?? ""}
+            />
 
-        {performer.dramas.length > 0 && (
-          <div className="surface p-4" style={{ maxWidth: "50rem" }}>
-            <label className="form-label d-block">Дорамы</label>
-            <div className="d-flex flex-wrap gap-2">
-              {performer.dramas.map((pd) => (
-                <span key={pd.dramaId} className="badge text-bg-secondary">
-                  {pd.drama.title}
-                  {pd.drama.year ? ` (${pd.drama.year})` : ""}
-                </span>
-              ))}
-            </div>
-          </div>
+            {performer.dramas.length > 0 && (
+              <div className="surface p-4" style={{ maxWidth: "50rem" }}>
+                <label className="form-label d-block">Дорамы</label>
+                <div className="d-flex flex-wrap gap-2">
+                  {performer.dramas.map((pd) => (
+                    <span key={pd.dramaId} className="badge text-bg-secondary">
+                      {pd.drama.title}
+                      {pd.drama.year ? ` (${pd.drama.year})` : ""}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <ConfirmForm

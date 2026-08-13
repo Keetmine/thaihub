@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createPairing, deletePairing } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,8 @@ export default async function AdminPairingsPage() {
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.performer.findMany({ orderBy: { name: "asc" } }),
+    // Only solo performers can be paired — bands get members, not pairings.
+    prisma.performer.findMany({ where: { type: "SOLO" }, orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -23,6 +25,8 @@ export default async function AdminPairingsPage() {
       <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.25rem" }}>
         Пейринги
       </h1>
+
+      <AdminPerformerTabs active="pairings" />
 
       <form
         action={createPairing}
