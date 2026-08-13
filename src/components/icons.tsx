@@ -158,6 +158,25 @@ export function UploadIcon() {
   );
 }
 
+export function UserIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1.05em"
+      height="1.05em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="3.75" />
+      <path d="M4.5 20.25a7.5 7.5 0 0 1 15 0" />
+    </svg>
+  );
+}
+
 export function CloseIcon() {
   return (
     <svg
