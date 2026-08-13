@@ -36,10 +36,12 @@ export default async function HomePage() {
 
   return (
     <div>
-      <span className="eyebrow">Афиша событий</span>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.5rem" }}>
-        Все события
-      </h1>
+      <div className="dot-grid pb-1">
+        <span className="eyebrow">Афиша событий</span>
+        <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.5rem" }}>
+          Все события
+        </h1>
+      </div>
 
       {upcomingByDay.size === 0 ? (
         <p className="text-secondary">Предстоящих событий пока нет.</p>
