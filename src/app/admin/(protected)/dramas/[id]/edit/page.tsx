@@ -14,12 +14,16 @@ export default async function EditDramaPage({
 }) {
   const { id } = await params;
 
-  const [drama, performers] = await Promise.all([
+  const [drama, performers, agencies] = await Promise.all([
     prisma.drama.findUnique({
       where: { id },
       include: { performers: { include: { performer: true } } },
     }),
     prisma.performer.findMany({ orderBy: { name: "asc" } }),
+    prisma.agency.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, logoUrl: true },
+    }),
   ]);
 
   if (!drama) notFound();
@@ -38,6 +42,7 @@ export default async function EditDramaPage({
       <DramaForm
         action={boundUpdate}
         performers={performers}
+        agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
         submitLabel="Сохранить изменения"
         defaultValues={{
           title: drama.title,
@@ -45,9 +50,11 @@ export default async function EditDramaPage({
           posterUrl: drama.posterUrl ?? "",
           synopsis: drama.synopsis ?? "",
           mydramalistUrl: drama.mydramalistUrl ?? "",
+          agencyId: drama.agencyId ?? "",
           cast: drama.performers.map((p) => ({
             id: p.performerId,
             name: p.performer.name,
+            photoUrl: p.performer.photoUrl,
             role: p.role ?? "",
           })),
         }}

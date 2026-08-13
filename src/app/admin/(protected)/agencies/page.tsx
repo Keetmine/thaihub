@@ -1,8 +1,8 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteAgency } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
-import { TrashIcon } from "@/components/icons";
-import AgencyFormModal from "./AgencyFormModal";
+import { PencilIcon, TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,9 @@ export default async function AdminAgenciesPage() {
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Агентства
         </h1>
-        <AgencyFormModal />
+        <Link href="/admin/agencies/new" className="btn btn-primary">
+          + Добавить агентство
+        </Link>
       </div>
 
       {agencies.length === 0 ? (
@@ -31,7 +33,7 @@ export default async function AdminAgenciesPage() {
             return (
               <div
                 key={a.id}
-                className="surface d-flex align-items-center justify-content-between gap-3 p-3"
+                className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div className="d-flex align-items-center gap-3">
                   {a.logoUrl ? (
@@ -59,21 +61,30 @@ export default async function AdminAgenciesPage() {
                     />
                   )}
                   <div>
-                    <p className="font-display fw-medium text-white mb-0">{a.name}</p>
+                    <Link
+                      href={`/admin/agencies/${a.id}/edit`}
+                      className="stretched-link text-decoration-none"
+                    >
+                      <span className="font-display fw-medium text-white d-block">{a.name}</span>
+                    </Link>
                     <p className="small text-secondary mb-0">
                       {a._count.performers} исполнит.
                     </p>
                   </div>
                 </div>
-                <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <AgencyFormModal
-                    agency={{
-                      id: a.id,
-                      name: a.name,
-                      logoUrl: a.logoUrl ?? "",
-                      description: a.description ?? "",
-                    }}
-                  />
+                {/* position-relative + z-2 lifts these controls above the
+                    row's stretched-link (::after has z-index: 1), so they
+                    stay individually clickable instead of triggering the
+                    row navigation. */}
+                <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
+                  <Link
+                    href={`/admin/agencies/${a.id}/edit`}
+                    className="icon-btn"
+                    aria-label="Редактировать"
+                    title="Редактировать"
+                  >
+                    <PencilIcon />
+                  </Link>
                   <ConfirmForm
                     action={boundDelete}
                     confirmMessage={`Удалить агентство «${a.name}»?`}

@@ -39,6 +39,7 @@ export async function createDrama(formData: FormData) {
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
+  const agencyId = String(formData.get("agencyId") ?? "").trim();
   const year = getYear(formData);
   const cast = getCastEntries(formData);
 
@@ -53,6 +54,7 @@ export async function createDrama(formData: FormData) {
       posterUrl: posterUrl || null,
       synopsis: synopsis || null,
       mydramalistUrl: mydramalistUrl || null,
+      agencyId: agencyId || null,
       performers: {
         create: cast.map((c) => ({ performerId: c.performerId, role: c.role })),
       },
@@ -68,6 +70,7 @@ export async function updateDrama(id: string, formData: FormData) {
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
+  const agencyId = String(formData.get("agencyId") ?? "").trim();
   const year = getYear(formData);
   const cast = getCastEntries(formData);
 
@@ -85,6 +88,7 @@ export async function updateDrama(id: string, formData: FormData) {
         posterUrl: posterUrl || null,
         synopsis: synopsis || null,
         mydramalistUrl: mydramalistUrl || null,
+        agencyId: agencyId || null,
         performers: {
           create: cast.map((c) => ({ performerId: c.performerId, role: c.role })),
         },

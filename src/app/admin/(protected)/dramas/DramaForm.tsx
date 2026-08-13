@@ -2,51 +2,85 @@
 
 import { useMemo, useRef, useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
+import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import Modal from "@/components/Modal";
+import { createPerformerAndReturn } from "../performers/actions";
+import { createAgencyAndReturn } from "../agencies/actions";
 
-type PerformerOption = { id: string; name: string; type: string };
-type CastEntry = { id: string; name: string; role: string };
+type PerformerOption = { id: string; name: string; photoUrl?: string | null };
+type CastEntry = { id: string; name: string; photoUrl?: string | null; role: string };
+
+function Avatar({ name, photoUrl }: { name: string; photoUrl?: string | null }) {
+  if (photoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={photoUrl} alt="" className="performer-select-avatar" />;
+  }
+  return (
+    <span className="performer-select-avatar performer-select-avatar-placeholder">
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
 
 export default function DramaForm({
   action,
   performers,
+  agencies,
   defaultValues,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
   performers: PerformerOption[];
+  agencies: EntityOption[];
   defaultValues?: {
     title: string;
     year: string;
     posterUrl: string;
     synopsis: string;
     mydramalistUrl: string;
+    agencyId: string;
     cast: CastEntry[];
   };
   submitLabel: string;
 }) {
   const v = defaultValues;
 
+  const [createdPerformers, setCreatedPerformers] = useState<PerformerOption[]>([]);
+  const allPerformers = useMemo(
+    () => [...performers, ...createdPerformers.filter((c) => !performers.some((p) => p.id === c.id))],
+    [performers, createdPerformers],
+  );
+
   const [cast, setCast] = useState<CastEntry[]>(v?.cast ?? []);
   const [query, setQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [createPrefill, setCreatePrefill] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const comboboxRef = useRef<HTMLDivElement>(null);
 
   const filteredPerformers = useMemo(() => {
     const q = query.trim().toLowerCase();
     const castIds = new Set(cast.map((c) => c.id));
-    return performers.filter((p) => {
+    return allPerformers.filter((p) => {
       if (castIds.has(p.id)) return false;
       if (!q) return true;
       return p.name.toLowerCase().includes(q);
     });
-  }, [performers, cast, query]);
+  }, [allPerformers, cast, query]);
+
+  const trimmedQuery = query.trim();
+  const hasExactMatch = allPerformers.some(
+    (p) => p.name.toLowerCase() === trimmedQuery.toLowerCase(),
+  );
+  const showCreateOption = trimmedQuery.length > 0 && !hasExactMatch;
 
   function addCastMember(id: string) {
     setCast((prev) => {
       if (prev.some((c) => c.id === id)) return prev;
-      const performer = performers.find((p) => p.id === id);
+      const performer = allPerformers.find((p) => p.id === id);
       if (!performer) return prev;
-      return [...prev, { id: performer.id, name: performer.name, role: "" }];
+      return [...prev, { id: performer.id, name: performer.name, photoUrl: performer.photoUrl, role: "" }];
     });
     setQuery("");
   }
@@ -57,6 +91,27 @@ export default function DramaForm({
 
   function updateCastRole(id: string, role: string) {
     setCast((prev) => prev.map((c) => (c.id === id ? { ...c, role } : c)));
+  }
+
+  async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (isCreating) return;
+    const newName = String(new FormData(e.currentTarget).get("newName") ?? "").trim();
+    if (!newName) return;
+
+    setIsCreating(true);
+    setCreateError(null);
+    try {
+      const created = await createPerformerAndReturn(newName);
+      const option = { id: created.id, name: created.name, photoUrl: null };
+      setCreatedPerformers((prev) => [...prev, option]);
+      addCastMember(created.id);
+      setCreatePrefill(null);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Не удалось создать");
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   return (
@@ -99,6 +154,20 @@ export default function DramaForm({
             className="form-control"
           />
         </div>
+        <div className="col-12 col-lg-6">
+          <EntitySelect
+            name="agencyId"
+            label="Агентство"
+            options={agencies}
+            defaultValue={v?.agencyId}
+            placeholder="Не выбрано"
+            createLabel="Создать агентство"
+            onCreateNew={async (name) => {
+              const created = await createAgencyAndReturn(name);
+              return { id: created.id, name: created.name, photoUrl: created.logoUrl };
+            }}
+          />
+        </div>
       </div>
 
       <div>
@@ -122,6 +191,7 @@ export default function DramaForm({
                 className="d-flex align-items-center gap-2 p-2 rounded-3"
                 style={{ background: "var(--bs-tertiary-bg)", border: "1px solid var(--bs-border-color)" }}
               >
+                <Avatar name={c.name} photoUrl={c.photoUrl} />
                 <span
                   className="font-display fw-medium text-white flex-shrink-0"
                   style={{ minWidth: "9rem" }}
@@ -164,29 +234,66 @@ export default function DramaForm({
             }}
           />
 
-          {isDropdownOpen && filteredPerformers.length > 0 && (
+          {isDropdownOpen && (filteredPerformers.length > 0 || showCreateOption) && (
             <div className="performer-combobox-dropdown">
               {filteredPerformers.map((p) => (
                 <button
                   key={p.id}
                   type="button"
-                  className="performer-combobox-option"
+                  className="performer-combobox-option d-flex align-items-center gap-2"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => addCastMember(p.id)}
                 >
+                  <Avatar name={p.name} photoUrl={p.photoUrl} />
                   {p.name}
                 </button>
               ))}
+              {showCreateOption && (
+                <button
+                  type="button"
+                  className="performer-combobox-option performer-combobox-create"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setCreatePrefill(trimmedQuery);
+                    setIsDropdownOpen(false);
+                  }}
+                >
+                  {`+ Создать «${trimmedQuery}»`}
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        {performers.length === 0 && (
+        {allPerformers.length === 0 && (
           <p className="small text-secondary mt-2">
-            Нет исполнителей. Сначала добавьте их в разделе «Исполнители».
+            Нет исполнителей. Начните вводить имя, чтобы создать нового.
           </p>
         )}
       </div>
+
+      <Modal
+        open={createPrefill !== null}
+        onClose={() => setCreatePrefill(null)}
+        title="Создать исполнителя"
+      >
+        <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
+          <div>
+            <label className="form-label">Имя *</label>
+            <input
+              name="newName"
+              required
+              autoFocus
+              defaultValue={createPrefill ?? ""}
+              className="form-control"
+            />
+          </div>
+          {createError && <p className="small text-danger mb-0">{createError}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isCreating}>
+            {isCreating ? "Создание…" : "Создать"}
+          </button>
+        </form>
+      </Modal>
 
       <div className="mt-2">
         <button type="submit" className="btn btn-primary">
