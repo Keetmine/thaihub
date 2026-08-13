@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTime } from "@/lib/dates";
+import { getCurrentUser } from "@/lib/userAuth";
+import FavoriteButton from "@/components/FavoriteButton";
+import GoingButton from "@/components/GoingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +24,24 @@ export default async function EventDetailPage({
   });
 
   if (!event) notFound();
+
+  // --- own block: current user's favorite/attendance state for this event ---
+  const currentUser = await getCurrentUser();
+  let isEventFavorited = false;
+  let isGoing = false;
+  if (currentUser) {
+    const [favorite, attendance] = await Promise.all([
+      prisma.favoriteEvent.findUnique({
+        where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
+      }),
+      prisma.eventAttendance.findUnique({
+        where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
+      }),
+    ]);
+    isEventFavorited = !!favorite;
+    isGoing = !!attendance;
+  }
+  // --- end own block ---
 
   return (
     <div>
@@ -101,6 +122,10 @@ export default async function EventDetailPage({
           <a href={`/event/${event.id}/ics`} className="btn btn-ghost btn-sm">
             📅 Добавить в календарь
           </a>
+          {/* --- own block: going + favorite toggles --- */}
+          <GoingButton eventId={event.id} isGoing={isGoing} />
+          <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} />
+          {/* --- end own block --- */}
         </div>
       </div>
     </div>
