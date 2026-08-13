@@ -4,6 +4,7 @@ import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/userAuth";
 
 function SearchForm() {
   return (
@@ -26,6 +27,7 @@ function SearchForm() {
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const isAdmin = await isAdminAuthenticated();
+  const user = await getCurrentUser();
 
   return (
     <div className="d-flex flex-column min-vh-100">
@@ -43,6 +45,7 @@ export default async function PublicLayout({ children }: { children: React.React
               Исполнители
             </NavLink>
             <SearchForm />
+            <NavLink href={user ? "/account" : "/login"}>{user ? "Профиль" : "Войти"}</NavLink>
             {isAdmin && <ModeToggle active="site" />}
           </MobileMenu>
 
@@ -56,6 +59,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
             <SearchForm />
+            <NavLink href={user ? "/account" : "/login"}>{user ? "Профиль" : "Войти"}</NavLink>
             {isAdmin && <ModeToggle active="site" />}
           </div>
         </nav>

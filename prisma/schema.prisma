@@ -22,20 +22,50 @@ model Event {
   presaleAt   DateTime?
   presaleUrl  String?
   performers  EventPerformer[]
+  pairings    EventPairing[]
+  favoritedBy FavoriteEvent[]
+  attendees   EventAttendance[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model Performer {
-  id     String           @id @default(cuid())
-  name   String
-  type   PerformerType    @default(SOLO)
-  events EventPerformer[]
+  id             String   @id @default(cuid())
+  name           String
+  type           PerformerType @default(SOLO)
+
+  // Profile fields (populated manually or via mydramalist import).
+  birthDate      DateTime?
+  bio            String?
+  agency         String?
+  photoUrl       String?
+  mydramalistUrl String?
+
+  events         EventPerformer[]
+  dramas         PerformerDrama[]
+  links          PerformerLink[]
+  favoritedBy    FavoritePerformer[]
+  pairingsAsA    Pairing[] @relation("PairingA")
+  pairingsAsB    Pairing[] @relation("PairingB")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 enum PerformerType {
   SOLO
   BAND
+}
+
+// Arbitrary "extra info" links per performer — personal brand, café,
+// social media, etc. Free-form label so the admin can add whatever's
+// relevant without a schema change.
+model PerformerLink {
+  id          String    @id @default(cuid())
+  performerId String
+  label       String
+  url         String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
 }
 
 model EventPerformer {
@@ -45,4 +75,119 @@ model EventPerformer {
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
 
   @@id([eventId, performerId])
+}
+
+model Drama {
+  id             String   @id @default(cuid())
+  title          String
+  mydramalistUrl String?
+  posterUrl      String?
+  synopsis       String?
+  year           Int?
+
+  performers     PerformerDrama[]
+  favoritedBy    FavoriteDrama[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model PerformerDrama {
+  performerId String
+  dramaId     String
+  role        String? // character name, optional
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  drama       Drama     @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+
+  @@id([performerId, dramaId])
+}
+
+// A named pairing ("ship") of two performers, selectable on events instead
+// of / alongside individual performers.
+model Pairing {
+  id           String    @id @default(cuid())
+  name         String?
+  performerAId String
+  performerBId String
+  performerA   Performer @relation("PairingA", fields: [performerAId], references: [id], onDelete: Cascade)
+  performerB   Performer @relation("PairingB", fields: [performerBId], references: [id], onDelete: Cascade)
+  events       EventPairing[]
+
+  createdAt    DateTime @default(now())
+
+  @@unique([performerAId, performerBId])
+}
+
+model EventPairing {
+  eventId   String
+  pairingId String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  pairing   Pairing @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, pairingId])
+}
+
+// ---------- User accounts (separate from the single admin password) ----------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  sessions            UserSession[]
+  favoritePerformers  FavoritePerformer[]
+  favoriteDramas      FavoriteDrama[]
+  favoriteEvents      FavoriteEvent[]
+  eventAttendances    EventAttendance[]
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model FavoritePerformer {
+  userId      String
+  performerId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([userId, performerId])
+}
+
+model FavoriteDrama {
+  userId    String
+  dramaId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drama     Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, dramaId])
+}
+
+model FavoriteEvent {
+  userId    String
+  eventId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, eventId])
+}
+
+// "Я пойду" — the user marked themselves as attending this event.
+model EventAttendance {
+  userId    String
+  eventId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, eventId])
 }

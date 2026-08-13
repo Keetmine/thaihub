@@ -23,7 +23,7 @@ export function buildEventICS(event: {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//ThaiTrack//Event//RU",
+    "PRODID:-//ThaiHub//Event//RU",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${event.id}@thaitrack`,

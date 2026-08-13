@@ -20,7 +20,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "ThaiTrack",
+  title: "ThaiHub",
   description: "Расписание концертов и событий",
 };
 

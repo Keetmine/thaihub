@@ -12,7 +12,7 @@ export default function Logo() {
       </span>
       <span className="font-display fw-bold text-white">
         Thai
-        <span style={{ color: "var(--bs-primary-text-emphasis)" }}>Track</span>
+        <span style={{ color: "var(--bs-primary-text-emphasis)" }}>Hub</span>
       </span>
     </span>
   );
