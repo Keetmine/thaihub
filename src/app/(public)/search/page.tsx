@@ -39,7 +39,7 @@ export default async function SearchPage({
       ) : results.length === 0 ? (
         <p className="text-secondary">Ничего не найдено по запросу «{q}».</p>
       ) : (
-        <div className="d-flex flex-column gap-2" style={{ maxWidth: "40rem" }}>
+        <div className="d-flex flex-column gap-2">
           {results.map((ev) => (
             <EventAgendaRow key={ev.id} event={ev} />
           ))}

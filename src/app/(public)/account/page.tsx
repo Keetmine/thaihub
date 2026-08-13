@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { logout } from "../login/actions";
 import FavoriteButton from "@/components/FavoriteButton";
 import { formatHumanDate, formatTime } from "@/lib/dates";
+import { PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function AccountPage() {
       <div>
         <p className="font-display fw-medium text-white mb-0">{event.title}</p>
         <p className="small text-secondary mb-0">
-          <span aria-hidden="true">🍭</span> {event.venue}
+          <PinIcon /> {event.venue}
         </p>
       </div>
       <span className="small text-secondary text-end flex-shrink-0">
@@ -80,7 +81,7 @@ export default async function AccountPage() {
       {upcomingAttendances.length === 0 ? (
         <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4" style={{ maxWidth: "40rem" }}>
+        <div className="d-flex flex-column gap-2 mb-4">
           {upcomingAttendances.map((a) => (
             <EventRow key={a.eventId} event={a.event} />
           ))}
@@ -95,10 +96,7 @@ export default async function AccountPage() {
           >
             Мои события — прошедшие
           </h2>
-          <div
-            className="d-flex flex-column gap-2 opacity-50 mb-4"
-            style={{ maxWidth: "40rem" }}
-          >
+          <div className="d-flex flex-column gap-2 opacity-50 mb-4">
             {pastAttendances.map((a) => (
               <EventRow key={a.eventId} event={a.event} />
             ))}
@@ -115,7 +113,7 @@ export default async function AccountPage() {
       {favoritePerformers.length === 0 ? (
         <p className="small text-secondary mb-4">Нет избранных исполнителей.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4" style={{ maxWidth: "40rem" }}>
+        <div className="d-flex flex-column gap-2 mb-4">
           {favoritePerformers.map((f) => (
             <div
               key={f.performerId}
@@ -142,7 +140,7 @@ export default async function AccountPage() {
       {favoriteDramas.length === 0 ? (
         <p className="small text-secondary mb-4">Нет избранных сериалов.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4" style={{ maxWidth: "40rem" }}>
+        <div className="d-flex flex-column gap-2 mb-4">
           {favoriteDramas.map((f) => (
             <div
               key={f.dramaId}
@@ -169,7 +167,7 @@ export default async function AccountPage() {
       {favoriteEvents.length === 0 ? (
         <p className="small text-secondary mb-4">Нет избранных событий.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4" style={{ maxWidth: "40rem" }}>
+        <div className="d-flex flex-column gap-2 mb-4">
           {favoriteEvents.map((f) => (
             <div
               key={f.eventId}

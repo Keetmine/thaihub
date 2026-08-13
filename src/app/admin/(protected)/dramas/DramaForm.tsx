@@ -62,7 +62,6 @@ export default function DramaForm({
     <form
       action={action}
       className="surface d-flex flex-column gap-3 p-4"
-      style={{ maxWidth: "50rem" }}
     >
       <div className="row g-3">
         <div className="col-12 col-lg-8">

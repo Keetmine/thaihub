@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
+import { PinIcon } from "@/components/icons";
 
 export default function EventAgendaRow({ event }: { event: EventWithPerformers }) {
   return (
@@ -33,7 +34,7 @@ export default function EventAgendaRow({ event }: { event: EventWithPerformers }
           )}
         </div>
         <p className="small text-secondary mb-0">
-          <span aria-hidden="true">🍭</span> {event.venue}
+          <PinIcon /> {event.venue}
         </p>
         {event.description && (
           <p className="small mt-2 mb-0 text-secondary">{event.description}</p>

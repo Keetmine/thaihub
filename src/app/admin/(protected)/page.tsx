@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTime } from "@/lib/dates";
 import { deleteEvent } from "./events/actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function AdminEventsPage() {
                   </Link>
                   <p className="small text-secondary mb-0">
                     {formatHumanDate(ev.startsAt)} · {formatTime(ev.startsAt)}
-                    {ev.endsAt ? `–${formatTime(ev.endsAt)}` : ""} · 🍭 {ev.venue}
+                    {ev.endsAt ? `–${formatTime(ev.endsAt)}` : ""} · <PinIcon /> {ev.venue}
                   </p>
                   {ev.performers.length > 0 && (
                     <p className="small text-secondary opacity-50 mb-0">
@@ -63,11 +64,11 @@ export default async function AdminEventsPage() {
                 <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
                   <Link
                     href={`/admin/events/${ev.id}/edit`}
-                    className="btn btn-ghost btn-sm"
+                    className="icon-btn"
                     aria-label="Редактировать"
                     title="Редактировать"
                   >
-                    ✏️
+                    <PencilIcon />
                   </Link>
                   <ConfirmForm
                     action={boundDeleteEvent}
@@ -75,11 +76,11 @@ export default async function AdminEventsPage() {
                   >
                     <button
                       type="submit"
-                      className="btn btn-outline-danger btn-sm"
+                      className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
                       title="Удалить"
                     >
-                      🗑️
+                      <TrashIcon />
                     </button>
                   </ConfirmForm>
                 </div>

@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-export default function AdminPerformerTabs({ active }: { active: "performers" | "pairings" }) {
+export default function AdminPerformerTabs({
+  active,
+}: {
+  active: "performers" | "bands" | "pairings";
+}) {
   return (
     <div className="mode-toggle mb-4">
       <Link
@@ -8,7 +12,14 @@ export default function AdminPerformerTabs({ active }: { active: "performers" | 
         prefetch={false}
         className={`mode-toggle-option ${active === "performers" ? "active" : ""}`}
       >
-        Исполнители
+        Актёры
+      </Link>
+      <Link
+        href="/admin/performers?view=bands"
+        prefetch={false}
+        className={`mode-toggle-option ${active === "bands" ? "active" : ""}`}
+      >
+        Группы
       </Link>
       <Link
         href="/admin/pairings"

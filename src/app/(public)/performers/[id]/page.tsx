@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { dateKey, formatHumanDate, formatTime } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
+import { PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export default async function PerformerPage({
       <div>
         <p className="font-display fw-medium text-white mb-0">{event.title}</p>
         <p className="small text-secondary mb-0">
-          <span aria-hidden="true">🍭</span> {event.venue}
+          <PinIcon /> {event.venue}
         </p>
       </div>
       <span className="small text-secondary text-end flex-shrink-0">
@@ -230,7 +231,7 @@ export default async function PerformerPage({
       {upcoming.length === 0 ? (
         <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4" style={{ maxWidth: "40rem" }}>
+        <div className="d-flex flex-column gap-2 mb-4">
           {upcoming.map((l) => (
             <Row key={l.eventId} event={l.event} />
           ))}
@@ -242,7 +243,7 @@ export default async function PerformerPage({
           <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
             Прошедшие
           </h2>
-          <div className="d-flex flex-column gap-2 opacity-50" style={{ maxWidth: "40rem" }}>
+          <div className="d-flex flex-column gap-2 opacity-50">
             {past.map((l) => (
               <Row key={l.eventId} event={l.event} />
             ))}

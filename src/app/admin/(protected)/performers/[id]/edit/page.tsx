@@ -73,7 +73,7 @@ export default async function EditPerformerPage({
             />
 
             {performer.dramas.length > 0 && (
-              <div className="surface p-4" style={{ maxWidth: "50rem" }}>
+              <div className="surface p-4">
                 <label className="form-label d-block">Дорамы</label>
                 <div className="d-flex flex-wrap gap-2">
                   {performer.dramas.map((pd) => (

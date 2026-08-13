@@ -58,7 +58,7 @@ export default function MydramalistImport({
   }
 
   return (
-    <div className="surface p-4" style={{ maxWidth: "50rem" }}>
+    <div className="surface p-4">
       <label className="form-label d-block">mydramalist.com</label>
       <div className="d-flex flex-wrap gap-2">
         <input

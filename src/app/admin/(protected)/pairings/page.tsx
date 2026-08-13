@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { createPairing, deletePairing } from "./actions";
+import { deletePairing } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
+import CreatePairingModal from "./CreatePairingModal";
+import { TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -22,46 +24,16 @@ export default async function AdminPairingsPage() {
   return (
     <div>
       <span className="eyebrow">Управление</span>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.25rem" }}>
-        Пейринги
-      </h1>
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-2 mb-4">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
+          Пейринги
+        </h1>
+        <CreatePairingModal
+          performers={performers.map((p) => ({ id: p.id, name: p.name, photoUrl: p.photoUrl }))}
+        />
+      </div>
 
       <AdminPerformerTabs active="pairings" />
-
-      <form
-        action={createPairing}
-        className="surface d-flex flex-wrap align-items-end gap-3 mb-4 p-3"
-      >
-        <div className="flex-fill" style={{ minWidth: "12rem" }}>
-          <label className="form-label">Название пейринга</label>
-          <input name="name" className="form-control" placeholder="Необязательно" />
-        </div>
-        <div>
-          <label className="form-label">Исполнитель A *</label>
-          <select name="performerAId" required className="form-select">
-            <option value="">Выберите…</option>
-            {performers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="form-label">Исполнитель B *</label>
-          <select name="performerBId" required className="form-select">
-            <option value="">Выберите…</option>
-            {performers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button type="submit" className="btn btn-primary">
-          Добавить
-        </button>
-      </form>
 
       {pairings.length === 0 ? (
         <p className="text-secondary">Пока нет пейрингов.</p>
@@ -88,8 +60,13 @@ export default async function AdminPairingsPage() {
                   action={boundDelete}
                   confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
                 >
-                  <button type="submit" className="btn btn-outline-danger btn-sm">
-                    Удалить
+                  <button
+                    type="submit"
+                    className="icon-btn icon-btn-danger"
+                    aria-label="Удалить"
+                    title="Удалить"
+                  >
+                    <TrashIcon />
                   </button>
                 </ConfirmForm>
               </div>

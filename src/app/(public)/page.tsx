@@ -46,13 +46,13 @@ export default async function HomePage() {
       {upcomingByDay.size === 0 ? (
         <p className="text-secondary">Предстоящих событий пока нет.</p>
       ) : (
-        <div className="d-flex flex-column gap-5" style={{ maxWidth: "42rem" }}>
+        <div className="d-flex flex-column gap-4" style={{ maxWidth: "42rem" }}>
           {Array.from(upcomingByDay.entries()).map(([key, dayEvents]) => (
             <section key={key}>
-              <Link href={`/day/${key}`} className="day-group-heading mb-3">
+              <Link href={`/day/${key}`} className="day-group-heading mb-2">
                 {formatHumanDate(parseDateKey(key))}
               </Link>
-              <div className="d-flex flex-column gap-2 mt-3">
+              <div className="d-flex flex-column gap-2 mt-2">
                 {dayEvents.map((ev) => (
                   <EventAgendaRow key={ev.id} event={ev} />
                 ))}
@@ -63,20 +63,20 @@ export default async function HomePage() {
       )}
 
       {pastByDay.size > 0 && (
-        <div className="mt-5 pt-4" style={{ maxWidth: "42rem" }}>
+        <div className="mt-4 pt-3" style={{ maxWidth: "42rem" }}>
           <h2
-            className="small text-secondary text-uppercase mb-4"
+            className="small text-secondary text-uppercase mb-3"
             style={{ letterSpacing: "0.08em" }}
           >
             Архив событий
           </h2>
-          <div className="d-flex flex-column gap-5 opacity-75">
+          <div className="d-flex flex-column gap-4 opacity-75">
             {Array.from(pastByDay.entries()).map(([key, dayEvents]) => (
               <section key={key}>
-                <Link href={`/day/${key}`} className="day-group-heading mb-3">
+                <Link href={`/day/${key}`} className="day-group-heading mb-2">
                   {formatHumanDate(parseDateKey(key))}
                 </Link>
-                <div className="d-flex flex-column gap-2 mt-3">
+                <div className="d-flex flex-column gap-2 mt-2">
                   {dayEvents.map((ev) => (
                     <EventAgendaRow key={ev.id} event={ev} />
                   ))}

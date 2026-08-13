@@ -5,6 +5,7 @@ import { formatHumanDate, formatTime } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
+import { PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -56,9 +57,9 @@ export default async function EventDetailPage({
         {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
       </p>
 
-      <div className="surface p-4 mb-3" style={{ maxWidth: "40rem" }}>
+      <div className="surface p-4 mb-3">
         <p className="mb-3">
-          <span aria-hidden="true">🍭</span> {event.venue}
+          <PinIcon /> {event.venue}
         </p>
 
         {event.performers.length > 0 && (
@@ -91,7 +92,7 @@ export default async function EventDetailPage({
         )}
       </div>
 
-      <div className="surface p-4" style={{ maxWidth: "40rem" }}>
+      <div className="surface p-4">
         {(event.presaleAt || event.presaleUrl) && (
           <>
             <h2

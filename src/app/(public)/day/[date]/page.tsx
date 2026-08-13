@@ -55,7 +55,7 @@ export default async function DayPage({
       {events.length === 0 ? (
         <p className="text-secondary">На этот день событий нет.</p>
       ) : (
-        <div className="d-flex flex-column gap-2" style={{ maxWidth: "40rem" }}>
+        <div className="d-flex flex-column gap-2">
           {events.map((ev) => (
             <EventAgendaRow key={ev.id} event={ev} />
           ))}

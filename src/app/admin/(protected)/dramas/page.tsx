@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteDrama } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import { PencilIcon, TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -82,11 +83,11 @@ export default async function AdminDramasPage() {
                 <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
                   <Link
                     href={`/admin/dramas/${d.id}/edit`}
-                    className="btn btn-ghost btn-sm"
+                    className="icon-btn"
                     aria-label="Редактировать"
                     title="Редактировать"
                   >
-                    ✏️
+                    <PencilIcon />
                   </Link>
                   <ConfirmForm
                     action={boundDelete}
@@ -94,11 +95,11 @@ export default async function AdminDramasPage() {
                   >
                     <button
                       type="submit"
-                      className="btn btn-outline-danger btn-sm"
+                      className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
                       title="Удалить"
                     >
-                      🗑️
+                      <TrashIcon />
                     </button>
                   </ConfirmForm>
                 </div>
