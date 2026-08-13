@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dateKey, formatHumanDate, formatTime } from "@/lib/dates";
+import { getCurrentUser } from "@/lib/userAuth";
+import FavoriteButton from "@/components/FavoriteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,15 @@ export default async function PerformerPage({
     include: { performerA: true, performerB: true },
     orderBy: { createdAt: "desc" },
   });
+
+  const currentUser = await getCurrentUser();
+  let isFavorited = false;
+  if (currentUser) {
+    const favorite = await prisma.favoritePerformer.findUnique({
+      where: { userId_performerId: { userId: currentUser.id, performerId: id } },
+    });
+    isFavorited = !!favorite;
+  }
 
   const now = new Date();
   const upcoming = eventLinks.filter((l) => l.event.startsAt >= now);
@@ -64,12 +75,15 @@ export default async function PerformerPage({
       <Link href="/performers" className="eyebrow text-decoration-none">
         ← Все исполнители
       </Link>
-      <h1 className="display-1-tight mt-2 mb-4" style={{ fontSize: "2.5rem" }}>
-        {performer.name}{" "}
-        <span className="fs-5 fw-normal text-secondary">
-          ({performer.type === "BAND" ? "группа" : "соло"})
-        </span>
-      </h1>
+      <div className="d-flex flex-wrap align-items-center gap-3 mt-2 mb-4">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
+          {performer.name}{" "}
+          <span className="fs-5 fw-normal text-secondary">
+            ({performer.type === "BAND" ? "группа" : "соло"})
+          </span>
+        </h1>
+        <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} />
+      </div>
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4" style={{ maxWidth: "40rem" }}>
         {performer.photoUrl && (
@@ -121,10 +135,14 @@ export default async function PerformerPage({
               </h2>
               <div className="d-flex flex-wrap gap-2">
                 {performer.dramas.map((pd) => (
-                  <span key={pd.dramaId} className="badge text-bg-secondary">
+                  <Link
+                    key={pd.dramaId}
+                    href={`/dramas/${pd.dramaId}`}
+                    className="badge text-bg-secondary text-decoration-none"
+                  >
                     {pd.drama.title}
                     {pd.drama.year ? ` (${pd.drama.year})` : ""}
-                  </span>
+                  </Link>
                 ))}
               </div>
             </div>

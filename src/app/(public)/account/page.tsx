@@ -148,7 +148,12 @@ export default async function AccountPage() {
               key={f.dramaId}
               className="surface d-flex align-items-center justify-content-between gap-3 p-3"
             >
-              <span className="font-display fw-medium text-white">{f.drama.title}</span>
+              <Link
+                href={`/dramas/${f.drama.id}`}
+                className="text-decoration-none font-display fw-medium text-white"
+              >
+                {f.drama.title}
+              </Link>
               <FavoriteButton kind="drama" id={f.drama.id} isFavorited={true} />
             </div>
           ))}
