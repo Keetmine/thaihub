@@ -48,6 +48,12 @@ model Performer {
   pairingsAsA    Pairing[] @relation("PairingA")
   pairingsAsB    Pairing[] @relation("PairingB")
 
+  // Band <-> member-actor relation. Only meaningful when type is BAND
+  // (bandMembers) or SOLO (memberOfBands) respectively, but left
+  // unconstrained at the schema level since either side is just a Performer.
+  bandMembers    BandMember[] @relation("BandMembers")
+  memberOfBands  BandMember[] @relation("MemberOfBands")
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -55,6 +61,17 @@ model Performer {
 enum PerformerType {
   SOLO
   BAND
+}
+
+// A member-actor of a band (e.g. an idol/actor who's also in a group).
+// Bands don't get pairings or dramas of their own — those stay per-member.
+model BandMember {
+  bandId      String
+  performerId String
+  band        Performer @relation("BandMembers", fields: [bandId], references: [id], onDelete: Cascade)
+  performer   Performer @relation("MemberOfBands", fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@id([bandId, performerId])
 }
 
 // Arbitrary "extra info" links per performer — personal brand, café,
