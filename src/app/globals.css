@@ -1,26 +1,537 @@
-@import "tailwindcss";
+/* ---------- Theme tokens (public / default = orange) ---------- */
+html[data-bs-theme="dark"] {
+  --bs-body-bg: #0a0a0c;
+  --bs-body-color: #f2f0ee;
+  --bs-secondary-color: #a6a3a0;
+  --bs-tertiary-bg: #141417;
+  --bs-secondary-bg: #16161a;
+  --bs-border-color: rgba(255, 255, 255, 0.09);
+  --bs-border-color-translucent: rgba(255, 255, 255, 0.09);
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --accent-rgb: 255, 106, 61;
+  --bs-primary: #ff6a3d;
+  --bs-primary-rgb: var(--accent-rgb);
+  --bs-primary-text-emphasis: #ff9a72;
+  --bs-primary-bg-subtle: #2a160e;
+  --bs-primary-border-subtle: #5a2c17;
+  --bs-link-color: #ff9a72;
+  --bs-link-color-rgb: 255, 154, 114;
+  --bs-link-hover-color: #ffb392;
+  --bs-link-hover-color-rgb: 255, 179, 146;
+  --bs-focus-ring-color: rgba(var(--accent-rgb), 0.25);
+
+  --bs-secondary-bg-subtle: #1c1c20;
+  --bs-secondary-text-emphasis: #cfccc9;
+  --bs-secondary-border-subtle: rgba(255, 255, 255, 0.12);
+
+  --bs-danger: #ff5d6c;
+
+  --day-accent: #f9a950;
+
+  --bs-border-radius: 1rem;
+  --bs-border-radius-sm: 0.6rem;
+  --bs-border-radius-lg: 1.4rem;
+  --bs-border-radius-xl: 1.9rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  font-size: 17px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bs-body-bg);
+  letter-spacing: -0.01em;
+}
+
+/* Ambient accent wash — soft, diffuse, kept away from readable content.
+   Applied per-shell (not globally) so admin can opt out / re-theme. */
+.ambient-wash {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(65rem 40rem at 100% -15%, rgba(var(--accent-rgb), 0.10), transparent 65%),
+    radial-gradient(45rem 30rem at -15% 30%, rgba(var(--accent-rgb), 0.05), transparent 60%);
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+}
+
+.logo-badge {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  border-radius: 0.6rem;
+  background: var(--bs-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Admin theme override (violet, no ambient glow) ---------- */
+.admin-shell {
+  --accent-rgb: 139, 92, 246;
+  --bs-primary: #8b5cf6;
+  --bs-primary-rgb: var(--accent-rgb);
+  --bs-primary-text-emphasis: #c4b5fd;
+  --bs-primary-bg-subtle: #211a3a;
+  --bs-primary-border-subtle: #4c3a7a;
+  --bs-link-color: #c4b5fd;
+  --bs-link-color-rgb: 196, 181, 253;
+  --bs-link-hover-color: #ddd6fe;
+  --bs-link-hover-color-rgb: 221, 214, 254;
+  --bs-focus-ring-color: rgba(var(--accent-rgb), 0.25);
+}
+
+/* ---------- Nav ---------- */
+.pill-nav {
+  border-radius: 1.5rem;
+  background: rgba(22, 22, 26, 0.72);
+  border: 1px solid var(--bs-border-color);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+@media (min-width: 576px) {
+  .pill-nav {
+    border-radius: 999px;
+  }
+}
+
+.pill-nav .nav-link {
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+@media (max-width: 575.98px) {
+  .pill-nav .nav-link {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.85rem;
+  }
+}
+
+.pill-nav .nav-link:hover {
+  color: var(--bs-body-color);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pill-nav .nav-link.active {
+  color: var(--bs-primary-text-emphasis);
+  font-weight: 600;
+}
+
+.search-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  max-width: 12rem;
+}
+
+.search-box svg {
+  position: absolute;
+  left: 0.7rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--bs-secondary-color);
+  pointer-events: none;
+}
+
+.pill-search {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  color: var(--bs-body-color);
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 0.38rem 0.75rem 0.38rem 1.95rem;
+  width: 100%;
+}
+
+.pill-search::placeholder {
+  color: var(--bs-secondary-color);
+}
+
+.pill-search:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 575.98px) {
+  .search-box {
+    max-width: none;
+  }
+}
+
+/* ---------- Site / admin mode toggle ---------- */
+.mode-toggle {
+  display: inline-flex;
+  padding: 0.2rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.mode-toggle-option {
+  padding: 0.32rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.mode-toggle-option:hover {
+  color: var(--bs-body-color);
+}
+
+.mode-toggle-option.active {
+  background: var(--bs-primary);
+  color: #100613;
+  box-shadow: 0 4px 14px -4px rgba(var(--accent-rgb), 0.6);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+/* Bootstrap compiles .btn-primary's bg/border from a literal SASS color at
+   build time (not var(--bs-primary)), so re-theming needs explicit overrides. */
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  color: #100613;
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  box-shadow: 0 8px 24px -8px rgba(var(--accent-rgb), 0.55);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  filter: brightness(1.08);
+}
+
+.btn-sm {
+  padding: 0.35rem 0.9rem;
+}
+
+.btn-ghost {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  color: var(--bs-body-color);
+}
+
+.btn-ghost:hover {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: var(--bs-body-color);
+  background: var(--bs-secondary-bg-subtle);
+}
+
+/* Same literal-SASS-color issue as .btn-primary: Bootstrap compiles the
+   checked state's bg/border from $primary at build time, not var(--bs-primary). */
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-check-input:focus {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 0 0 0.25rem rgba(var(--accent-rgb), 0.25);
+}
+
+/* ---------- Cards / surfaces ---------- */
+.surface {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0));
+  background-color: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+}
+
+.surface-hover {
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.surface-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 14px 34px -18px rgba(var(--accent-rgb), 0.45);
+}
+
+.card {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-lg);
+}
+
+.list-group-item {
+  background: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+.list-group-item-action:hover {
+  background: var(--bs-secondary-bg-subtle);
+}
+
+/* ---------- Eyebrow / hero type ---------- */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bs-primary-text-emphasis);
+}
+
+.eyebrow::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--bs-primary);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.2);
+}
+
+.display-1-tight {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+}
+
+@media (max-width: 575.98px) {
+  .display-1-tight {
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ---------- Calendar ---------- */
+.calendar-grid {
+  display: grid;
+  /* minmax(0, 1fr), not plain 1fr — otherwise a long unwrapped event-chip
+     title forces its column past its fair share and the grid overflows
+     the page horizontally (confirmed via a real overflow measurement). */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.calendar-cell {
+  min-height: 6.5rem;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.calendar-cell:hover {
+  border-color: rgba(var(--accent-rgb), 0.4);
+  transform: translateY(-2px);
+}
+
+.calendar-cell.outside-month {
+  opacity: 0.32;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+  padding-block: 0.4rem;
+}
+
+.calendar-day-num {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+}
+
+.calendar-day-num.today {
+  background: var(--bs-primary);
+  color: #100613;
+  font-weight: 600;
+}
+
+.event-chip {
+  display: block;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary-text-emphasis);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 575.98px) {
+  .calendar-grid {
+    gap: 0.3rem;
+  }
+
+  .calendar-cell {
+    min-height: 3.6rem;
+    padding: 0.3rem;
+    border-radius: 0.65rem;
+    gap: 0.2rem;
+  }
+
+  .calendar-day-num {
+    width: 1.3rem;
+    height: 1.3rem;
+    font-size: 0.68rem;
+  }
+
+  .calendar-cell .event-chip {
+    font-size: 0;
+    padding: 0;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+  }
+
+  .calendar-weekday {
+    font-size: 0.62rem;
+    padding-block: 0.2rem;
+  }
+}
+
+/* ---------- Timeline ---------- */
+.timeline-card {
+  position: relative;
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--bs-border-radius-lg);
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid var(--bs-primary);
+}
+
+.timeline-time {
+  font-family: var(--font-geist-mono), monospace;
+  color: var(--bs-primary-text-emphasis);
+  font-size: 0.85rem;
+}
+
+.day-group-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+  text-transform: capitalize;
+  color: var(--day-accent);
+  text-decoration: none;
+}
+
+.day-group-heading::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--day-accent);
+  flex-shrink: 0;
+}
+
+.day-group-heading:hover {
+  opacity: 0.85;
+}
+
+/* ---------- Agenda row (time pulled outside the card) ---------- */
+.agenda-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--bs-border-radius-lg);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.agenda-time {
+  flex: 0 0 auto;
+  width: 3.6rem;
+  padding-top: 0.15rem;
+  text-align: right;
+}
+
+.agenda-time-start {
+  display: block;
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.1;
+  color: var(--day-accent);
+}
+
+.agenda-time-end {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--bs-secondary-color);
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.agenda-dash {
+  flex: 0 0 auto;
+  padding-top: 0.2rem;
+  color: var(--bs-border-color-translucent);
+  font-weight: 300;
+}
+
+.agenda-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.agenda-performer-link {
+  color: var(--bs-primary-text-emphasis);
+  text-decoration: none;
+}
+
+.agenda-performer-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 575.98px) {
+  .agenda-time {
+    width: 2.9rem;
+  }
+
+  .agenda-time-start {
+    font-size: 0.92rem;
+  }
+
+  .day-group-heading {
+    font-size: 1.3rem;
+  }
 }

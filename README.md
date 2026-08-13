@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ThaiTrack
 
-## Getting Started
+Личный трекер концертов и фан-событий (в первую очередь — тайских BL-актёров и их пар).
+Публичный календарь/лента событий + закрытая админка для внесения событий и исполнителей.
 
-First, run the development server:
+## Функционал
+
+- Календарь по месяцам и лента «Все события» (сгруппирована по дням)
+- Просмотр одного дня линейным расписанием
+- Страница исполнителя со списком его предстоящих/прошедших событий
+- Поиск по названию события, площадке и исполнителю
+- Админка (защищена паролем) — CRUD для событий и исполнителей
+
+## Стек
+
+Next.js (App Router, TypeScript) · Prisma + PostgreSQL · Bootstrap 5 (тёмная тема, оранжевый акцент на сайте / фиолетовый в админке) · Docker
+
+## Локальный запуск
+
+Понадобится локально запущенный PostgreSQL.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+В `.env` пропиши:
+- `DATABASE_URL` — строка подключения к своей Postgres-базе (например `postgresql://USER@localhost:5432/thaitrack?schema=public`)
+- `ADMIN_PASSWORD` — пароль для входа в `/admin`
+- `ADMIN_SESSION_SECRET` — любая длинная случайная строка (например `openssl rand -hex 24`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Дальше:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+createdb thaitrack          # если базы ещё нет
+npx prisma migrate dev      # применить миграции
+npm run db:seed             # (опционально) наполнить тестовыми событиями
+npm run dev                 # http://localhost:3000
+```
 
-## Learn More
+Админка — `/admin`, логиниться паролем из `ADMIN_PASSWORD`.
 
-To learn more about Next.js, take a look at the following resources:
+## Запуск через Docker
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cp .env.example .env   # заполнить ADMIN_PASSWORD и ADMIN_SESSION_SECRET
+docker compose up --build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Поднимет Postgres + само приложение (миграции применяются автоматически при старте контейнера), сайт — `http://localhost:3000`. База данных живёт в volume `db_data`, между рестартами не теряется.
 
-## Deploy on Vercel
+## Структура
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/(public)/*` — публичный сайт (календарь, лента событий, день, исполнители, поиск)
+- `src/app/admin/*` — админка; `admin/login` — вход, `admin/(protected)/*` — закрытые страницы за middleware-проверкой сессии (`src/proxy.ts`)
+- `prisma/schema.prisma` — модель данных (Event ↔ Performer, многие-ко-многим)
+- `src/app/globals.css` — вся тема (CSS-переменные Bootstrap переопределены под тёмный дизайн; `.admin-shell` переключает акцент на фиолетовый)
