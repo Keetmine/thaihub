@@ -176,3 +176,43 @@ export function CloseIcon() {
     </svg>
   );
 }
+
+export function UsersIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1.3em"
+      height="1.3em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+export function TvIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1.3em"
+      height="1.3em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="7" width="20" height="14" rx="2.5" />
+      <path d="M8 3l4 4 4-4" />
+    </svg>
+  );
+}

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { dateKey, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { getFavoritedEventIds } from "@/lib/favorites";
+import { getCurrentUser } from "@/lib/userAuth";
+import LandingPage from "./LandingPage";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,11 @@ function groupByDay<T extends { startsAt: Date }>(events: T[]) {
 }
 
 export default async function HomePage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return <LandingPage />;
+  }
+
   const today = startOfDay(new Date());
 
   const [upcoming, past] = await Promise.all([

@@ -3,11 +3,13 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/userAuth";
 
 const MAX_SIZE = 8 * 1024 * 1024;
 
 export async function POST(request: Request) {
-  if (!(await isAdminAuthenticated())) {
+  const [isAdmin, user] = await Promise.all([isAdminAuthenticated(), getCurrentUser()]);
+  if (!isAdmin && !user) {
     return NextResponse.json({ error: "Не авторизовано" }, { status: 401 });
   }
 
