@@ -1,21 +1,19 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const RU_ALPHABET = [
-  "А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н",
-  "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь",
-  "Э", "Ю", "Я",
-];
-
-const EN_ALPHABET = Array.from({ length: 26 }, (_, i) =>
-  String.fromCharCode(65 + i)
-);
-
-function firstLetterOf(name: string) {
+function firstLetterOf(name: string): string {
   const trimmed = name.trim();
-  return (trimmed.charAt(0) || "#").toUpperCase();
+  const ch = trimmed.charAt(0) || "#";
+  if (/[0-9]/.test(ch)) return "0-9";
+  return ch.toUpperCase();
+}
+
+function categoryOf(key: string): "digit" | "en" | "ru" {
+  if (key === "0-9") return "digit";
+  return /[A-Z]/.test(key) ? "en" : "ru";
 }
 
 export default async function PerformersPage() {
@@ -25,8 +23,9 @@ export default async function PerformersPage() {
   });
 
   // Group by first letter. Cyrillic and Latin names naturally land in
-  // different groups since they start with different characters — no
-  // cross-script merging needed.
+  // different groups since they start with different characters; digits
+  // all collapse into one "0-9" group/heading, matching common app index
+  // conventions (e.g. contacts/brand lists).
   const groups = new Map<string, typeof performers>();
   for (const p of performers) {
     const letter = firstLetterOf(p.name);
@@ -38,15 +37,11 @@ export default async function PerformersPage() {
     }
   }
 
-  // Plain code-unit sort keeps each script contiguous rather than
-  // interleaving them under a locale-specific collation.
+  // Plain code-unit sort keeps "0-9" first, then Latin, then Cyrillic,
+  // without interleaving under a locale-specific collation.
   const sortedLetters = Array.from(groups.keys()).sort((a, b) =>
     a < b ? -1 : a > b ? 1 : 0
   );
-
-  const availableLetters = new Set(groups.keys());
-  const ruIndexLetters = RU_ALPHABET.filter((l) => availableLetters.has(l));
-  const enIndexLetters = EN_ALPHABET.filter((l) => availableLetters.has(l));
 
   return (
     <div>
@@ -87,40 +82,26 @@ export default async function PerformersPage() {
             ))}
           </div>
 
-          <aside className="performers-index surface p-3">
-            {ruIndexLetters.length > 0 && (
-              <div className="mb-3">
-                <p className="performers-index-label">РУС</p>
-                <div className="performers-index-letters">
-                  {ruIndexLetters.map((letter) => (
-                    <a
-                      key={letter}
-                      href={`#letter-${letter}`}
-                      className="performers-index-letter"
-                    >
-                      {letter}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-            {enIndexLetters.length > 0 && (
-              <div>
-                <p className="performers-index-label">ENG</p>
-                <div className="performers-index-letters">
-                  {enIndexLetters.map((letter) => (
-                    <a
-                      key={letter}
-                      href={`#letter-${letter}`}
-                      className="performers-index-letter"
-                    >
-                      {letter}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </aside>
+          <nav className="performers-index" aria-label="Быстрый переход по буквам">
+            {sortedLetters.map((letter, i) => {
+              const prevCategory =
+                i > 0 ? categoryOf(sortedLetters[i - 1]) : null;
+              const showSeparator =
+                prevCategory !== null && prevCategory !== categoryOf(letter);
+              return (
+                <Fragment key={letter}>
+                  {showSeparator && (
+                    <span className="performers-index-sep" aria-hidden="true">
+                      •
+                    </span>
+                  )}
+                  <a href={`#letter-${letter}`} className="performers-index-link">
+                    {letter}
+                  </a>
+                </Fragment>
+              );
+            })}
+          </nav>
         </div>
       )}
     </div>

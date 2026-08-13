@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createPerformer, deletePerformer } from "./actions";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -39,28 +40,29 @@ export default async function AdminPerformersPage() {
       {performers.length === 0 ? (
         <p className="text-secondary">Пока нет исполнителей.</p>
       ) : (
-        <div className="row g-3">
+        <div className="d-flex flex-column gap-2">
           {performers.map((p) => {
             const boundDelete = deletePerformer.bind(null, p.id);
             return (
-              <div key={p.id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
-                <div className="surface d-flex align-items-center justify-content-between gap-3 p-3 h-100">
-                  <div>
-                    <p className="font-display fw-medium text-white mb-0">{p.name}</p>
-                    <p className="small text-secondary mb-0">
-                      {p.type === "BAND" ? "Группа" : "Соло"} · {p._count.events}{" "}
-                      событ.
-                    </p>
-                  </div>
-                  <form action={boundDelete}>
-                    <button
-                      type="submit"
-                      className="btn btn-outline-danger btn-sm"
-                    >
-                      Удалить
-                    </button>
-                  </form>
+              <div
+                key={p.id}
+                className="surface d-flex align-items-center justify-content-between gap-3 p-3"
+              >
+                <div>
+                  <p className="font-display fw-medium text-white mb-0">{p.name}</p>
+                  <p className="small text-secondary mb-0">
+                    {p.type === "BAND" ? "Группа" : "Соло"} · {p._count.events}{" "}
+                    событ.
+                  </p>
                 </div>
+                <ConfirmForm
+                  action={boundDelete}
+                  confirmMessage={`Удалить исполнителя «${p.name}»?`}
+                >
+                  <button type="submit" className="btn btn-outline-danger btn-sm">
+                    Удалить
+                  </button>
+                </ConfirmForm>
               </div>
             );
           })}

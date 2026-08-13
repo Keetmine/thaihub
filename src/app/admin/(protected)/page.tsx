@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTime } from "@/lib/dates";
 import { deleteEvent } from "./events/actions";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,10 @@ export default async function AdminEventsPage() {
                   >
                     ✏️
                   </Link>
-                  <form action={boundDeleteEvent}>
+                  <ConfirmForm
+                    action={boundDeleteEvent}
+                    confirmMessage={`Удалить событие «${ev.title}»?`}
+                  >
                     <button
                       type="submit"
                       className="btn btn-outline-danger btn-sm"
@@ -77,7 +81,7 @@ export default async function AdminEventsPage() {
                     >
                       🗑️
                     </button>
-                  </form>
+                  </ConfirmForm>
                 </div>
               </div>
             );

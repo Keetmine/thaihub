@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { dateKey, formatTime } from "@/lib/dates";
 import EventForm from "../../EventForm";
 import { updateEvent, deleteEvent } from "../../actions";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export default async function EditEventPage({
   params,
@@ -51,11 +52,15 @@ export default async function EditEventPage({
         }}
       />
 
-      <form action={boundDelete} className="mt-4 pt-4">
+      <ConfirmForm
+        action={boundDelete}
+        confirmMessage={`Удалить событие «${event.title}»?`}
+        className="mt-4 pt-4"
+      >
         <button type="submit" className="btn btn-outline-danger btn-sm">
           Удалить событие
         </button>
-      </form>
+      </ConfirmForm>
     </div>
   );
 }
