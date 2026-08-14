@@ -75,29 +75,31 @@ export default async function LocationsPage({
         </Link>
       </div>
 
-      <div className="mode-toggle mb-3">
-        <Link
-          href={`/locations?${q ? `q=${encodeURIComponent(q)}` : ""}`}
-          prefetch={false}
-          className={`mode-toggle-option ${!groupByDrama ? "active" : ""}`}
-        >
-          По алфавиту
-        </Link>
-        <Link
-          href={`/locations?group=drama${q ? `&q=${encodeURIComponent(q)}` : ""}`}
-          prefetch={false}
-          className={`mode-toggle-option ${groupByDrama ? "active" : ""}`}
-        >
-          По сериалам
-        </Link>
+      <div className="tab-bar-row">
+        <div className="tab-bar">
+          <Link
+            href={`/locations?${q ? `q=${encodeURIComponent(q)}` : ""}`}
+            prefetch={false}
+            className={`tab-bar-item ${!groupByDrama ? "active" : ""}`}
+          >
+            По алфавиту
+          </Link>
+          <Link
+            href={`/locations?group=drama${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            prefetch={false}
+            className={`tab-bar-item ${groupByDrama ? "active" : ""}`}
+          >
+            По сериалам
+          </Link>
+        </div>
+        <NameSearchBox
+          action="/locations"
+          q={q}
+          placeholder="Поиск по названию…"
+          hiddenFields={groupByDrama ? { group: "drama" } : undefined}
+          className=""
+        />
       </div>
-
-      <NameSearchBox
-        action="/locations"
-        q={q}
-        placeholder="Поиск по названию…"
-        hiddenFields={groupByDrama ? { group: "drama" } : undefined}
-      />
 
       {groupByDrama ? (
         <LocationsByDrama q={q} currentUser={currentUser} />

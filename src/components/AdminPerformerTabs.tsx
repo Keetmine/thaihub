@@ -6,7 +6,7 @@ export default function AdminPerformerTabs({
   active: "performers" | "bands" | "pairings" | "agencies";
 }) {
   return (
-    <div className="tab-bar mb-4">
+    <div className="tab-bar">
       <Link
         href="/admin/performers"
         prefetch={false}

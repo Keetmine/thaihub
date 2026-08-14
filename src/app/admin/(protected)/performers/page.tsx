@@ -79,8 +79,9 @@ function AdminPerformerRow({
   );
 }
 
-async function AdminAgenciesView() {
+async function AdminAgenciesView({ q }: { q: string }) {
   const agencies = await prisma.agency.findMany({
+    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
     include: { _count: { select: { performers: true } } },
     orderBy: { name: "asc" },
   });
@@ -88,7 +89,9 @@ async function AdminAgenciesView() {
   return (
     <>
       {agencies.length === 0 ? (
-        <p className="text-secondary">Пока нет агентств.</p>
+        <p className="text-secondary">
+          {q ? "Ничего не найдено." : "Пока нет агентств."}
+        </p>
       ) : (
         <div className="d-flex flex-column gap-2">
           {agencies.map((a) => {
@@ -207,26 +210,27 @@ export default async function AdminPerformersPage({
         </Link>
       </div>
 
-      <AdminPerformerTabs
-        active={isAgencies ? "agencies" : isBands ? "bands" : "performers"}
-      />
+      <div className="tab-bar-row">
+        <AdminPerformerTabs
+          active={isAgencies ? "agencies" : isBands ? "bands" : "performers"}
+        />
+        <NameSearchBox
+          action="/admin/performers"
+          q={q}
+          hiddenFields={isAgencies ? { view: "agencies" } : isBands ? { view: "bands" } : undefined}
+          placeholder={isAgencies ? "Поиск по названию…" : "Поиск по имени…"}
+          className=""
+        />
+      </div>
 
       {!isAgencies && (
-        <>
-          <NameSearchBox
-            action="/admin/performers"
-            q={q}
-            hiddenFields={isBands ? { view: "bands" } : undefined}
-            placeholder="Поиск по имени…"
-          />
-          <div className="surface p-3 mb-4">
-            <GmmtvSyncButton />
-          </div>
-        </>
+        <div className="surface p-3 mb-4">
+          <GmmtvSyncButton />
+        </div>
       )}
 
       {isAgencies ? (
-        <AdminAgenciesView />
+        <AdminAgenciesView q={q} />
       ) : (
         <AlphabetIndexList
           items={performers.map((p) => ({ id: p.id, name: p.name, performer: p }))}

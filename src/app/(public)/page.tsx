@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { dateKey, endOfDay, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import NameSearchBox from "@/components/NameSearchBox";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
@@ -27,29 +28,32 @@ type EventFilter = "all" | "going" | "favorited";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ filter?: string; from?: string; to?: string; q?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) {
     return <LandingPage />;
   }
 
-  const { filter: rawFilter, from: rawFrom, to: rawTo } = await searchParams;
+  const { filter: rawFilter, from: rawFrom, to: rawTo, q: rawQ } = await searchParams;
   const filter: EventFilter =
     rawFilter === "going" ? "going" : rawFilter === "favorited" ? "favorited" : "all";
+  const q = (rawQ ?? "").trim();
 
   const isValidDateKey = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
   const from = isValidDateKey(rawFrom) ? rawFrom! : "";
   const to = isValidDateKey(rawTo) ? rawTo! : "";
   const hasDateRange = Boolean(from || to);
   // Carried through onto the filter toggle links so switching Все/Иду/
-  // Избранное doesn't drop an active date range.
-  const rangeQuery = `${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`;
+  // Избранное doesn't drop an active date range or search term.
+  const rangeQuery = `${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
 
   const today = startOfDay(new Date());
 
   const eventInclude = { event: { include: { performers: { include: { performer: true } } } } };
   type OccurrenceRow = Prisma.EventOccurrenceGetPayload<{ include: typeof eventInclude }>;
+
+  const titleFilter = q ? { event: { title: { contains: q, mode: "insensitive" as const } } } : {};
 
   // With an explicit date range, show everything in it as one ascending
   // list — the upcoming/archive split stops being meaningful once you've
@@ -62,6 +66,7 @@ export default async function HomePage({
               gte: from ? startOfDay(parseDateKey(from)) : undefined,
               lte: to ? endOfDay(parseDateKey(to)) : undefined,
             },
+            ...titleFilter,
           },
           include: eventInclude,
           orderBy: { startsAt: "asc" },
@@ -70,12 +75,12 @@ export default async function HomePage({
       ]
     : await Promise.all([
         prisma.eventOccurrence.findMany({
-          where: { startsAt: { gte: today } },
+          where: { startsAt: { gte: today }, ...titleFilter },
           include: eventInclude,
           orderBy: { startsAt: "asc" },
         }),
         prisma.eventOccurrence.findMany({
-          where: { startsAt: { lt: today } },
+          where: { startsAt: { lt: today }, ...titleFilter },
           include: eventInclude,
           orderBy: { startsAt: "desc" },
         }),
@@ -117,28 +122,41 @@ export default async function HomePage({
         </div>
       </div>
 
-      <div className="mode-toggle mb-4">
-        <Link
-          href={`/?filter=all${rangeQuery}`}
-          prefetch={false}
-          className={`mode-toggle-option ${filter === "all" ? "active" : ""}`}
-        >
-          Все события
-        </Link>
-        <Link
-          href={`/?filter=going${rangeQuery}`}
-          prefetch={false}
-          className={`mode-toggle-option ${filter === "going" ? "active" : ""}`}
-        >
-          Я иду
-        </Link>
-        <Link
-          href={`/?filter=favorited${rangeQuery}`}
-          prefetch={false}
-          className={`mode-toggle-option ${filter === "favorited" ? "active" : ""}`}
-        >
-          Избранное
-        </Link>
+      <div className="tab-bar-row">
+        <div className="tab-bar">
+          <Link
+            href={`/?filter=all${rangeQuery}`}
+            prefetch={false}
+            className={`tab-bar-item ${filter === "all" ? "active" : ""}`}
+          >
+            Все события
+          </Link>
+          <Link
+            href={`/?filter=going${rangeQuery}`}
+            prefetch={false}
+            className={`tab-bar-item ${filter === "going" ? "active" : ""}`}
+          >
+            Я иду
+          </Link>
+          <Link
+            href={`/?filter=favorited${rangeQuery}`}
+            prefetch={false}
+            className={`tab-bar-item ${filter === "favorited" ? "active" : ""}`}
+          >
+            Избранное
+          </Link>
+        </div>
+        <NameSearchBox
+          action="/"
+          q={q}
+          placeholder="Поиск по названию…"
+          hiddenFields={{
+            ...(filter !== "all" ? { filter } : {}),
+            ...(from ? { from } : {}),
+            ...(to ? { to } : {}),
+          }}
+          className=""
+        />
       </div>
 
       <form className="d-flex flex-wrap align-items-end gap-2 mb-4">
@@ -171,7 +189,9 @@ export default async function HomePage({
 
       {upcomingByDay.size === 0 ? (
         hasDateRange ? null : (
-          <p className="text-secondary">Предстоящих событий пока нет.</p>
+          <p className="text-secondary">
+            {q ? "Ничего не найдено." : "Предстоящих событий пока нет."}
+          </p>
         )
       ) : (
         <div className="d-flex flex-column gap-4">

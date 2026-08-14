@@ -4,23 +4,34 @@ import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
 import FavoriteButton from "@/components/FavoriteButton";
 import { getCurrentUser } from "@/lib/userAuth";
+import { WATCH_STATUS_LABELS, WATCH_STATUS_ORDER } from "@/lib/watchStatus";
+import type { DramaWatchStatusValue } from "../favorites/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function DramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; status?: string }>;
 }) {
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, status: rawStatus } = await searchParams;
   const q = (rawQ ?? "").trim();
+  const status = WATCH_STATUS_ORDER.includes(rawStatus as DramaWatchStatusValue)
+    ? (rawStatus as DramaWatchStatusValue)
+    : null;
+
+  const currentUser = await getCurrentUser();
 
   const dramas = await prisma.drama.findMany({
-    where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
+    where: {
+      ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
+      ...(status && currentUser
+        ? { watchStatuses: { some: { userId: currentUser.id, status } } }
+        : {}),
+    },
     orderBy: { title: "asc" },
   });
 
-  const currentUser = await getCurrentUser();
   const favoritedIds = new Set<string>();
   if (currentUser && dramas.length > 0) {
     const favorites = await prisma.favoriteDrama.findMany({
@@ -30,6 +41,8 @@ export default async function DramasPage({
     for (const f of favorites) favoritedIds.add(f.dramaId);
   }
 
+  const statusQuery = q ? `&q=${encodeURIComponent(q)}` : "";
+
   return (
     <div>
       <span className="eyebrow">Каталог</span>
@@ -37,11 +50,38 @@ export default async function DramasPage({
         Сериалы
       </h1>
 
-      <NameSearchBox action="/dramas" q={q} placeholder="Поиск по названию…" />
+      <div className="tab-bar-row">
+        <div className="tab-bar">
+          <Link
+            href={`/dramas?${q ? `q=${encodeURIComponent(q)}` : ""}`}
+            prefetch={false}
+            className={`tab-bar-item ${!status ? "active" : ""}`}
+          >
+            Все
+          </Link>
+          {WATCH_STATUS_ORDER.map((s) => (
+            <Link
+              key={s}
+              href={`/dramas?status=${s}${statusQuery}`}
+              prefetch={false}
+              className={`tab-bar-item ${status === s ? "active" : ""}`}
+            >
+              {WATCH_STATUS_LABELS[s]}
+            </Link>
+          ))}
+        </div>
+        <NameSearchBox
+          action="/dramas"
+          q={q}
+          placeholder="Поиск по названию…"
+          hiddenFields={status ? { status } : undefined}
+          className=""
+        />
+      </div>
 
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
-        emptyMessage="Пока нет сериалов."
+        emptyMessage={q || status ? "Ничего не найдено." : "Пока нет сериалов."}
         renderItem={({ drama: d }) => (
           <div
             key={d.id}

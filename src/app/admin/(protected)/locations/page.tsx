@@ -2,12 +2,21 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteLocation } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import NameSearchBox from "@/components/NameSearchBox";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLocationsPage() {
+export default async function AdminLocationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q: rawQ } = await searchParams;
+  const q = (rawQ ?? "").trim();
+
   const locations = await prisma.location.findMany({
+    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
     include: { _count: { select: { dramas: true } } },
     orderBy: { name: "asc" },
   });
@@ -24,8 +33,12 @@ export default async function AdminLocationsPage() {
         </Link>
       </div>
 
+      <NameSearchBox action="/admin/locations" q={q} placeholder="Поиск по названию…" />
+
       {locations.length === 0 ? (
-        <p className="text-secondary">Пока нет локаций.</p>
+        <p className="text-secondary">
+          {q ? "Ничего не найдено." : "Пока нет локаций."}
+        </p>
       ) : (
         <div className="d-flex flex-column gap-2">
           {locations.map((l) => {

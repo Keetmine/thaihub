@@ -3,12 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./events/actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import NameSearchBox from "@/components/NameSearchBox";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminEventsPage() {
+export default async function AdminEventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q: rawQ } = await searchParams;
+  const q = (rawQ ?? "").trim();
+
   const eventsRaw = await prisma.event.findMany({
+    where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
     include: {
       performers: { include: { performer: true } },
       occurrences: { orderBy: { startsAt: "asc" } },
@@ -37,8 +46,12 @@ export default async function AdminEventsPage() {
         </div>
       </div>
 
+      <NameSearchBox action="/admin" q={q} placeholder="Поиск по названию…" />
+
       {events.length === 0 ? (
-        <p className="text-secondary">Событий пока нет.</p>
+        <p className="text-secondary">
+          {q ? "Ничего не найдено." : "Событий пока нет."}
+        </p>
       ) : (
         <div className="d-flex flex-column gap-2">
           {events.map((ev) => {

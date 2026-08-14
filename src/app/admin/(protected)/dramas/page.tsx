@@ -2,13 +2,22 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteDrama } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import NameSearchBox from "@/components/NameSearchBox";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import BlsceneSyncButton from "./BlsceneSyncButton";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDramasPage() {
+export default async function AdminDramasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q: rawQ } = await searchParams;
+  const q = (rawQ ?? "").trim();
+
   const dramas = await prisma.drama.findMany({
+    where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
     include: { _count: { select: { performers: true } } },
     orderBy: { title: "asc" },
   });
@@ -27,12 +36,16 @@ export default async function AdminDramasPage() {
         </Link>
       </div>
 
+      <NameSearchBox action="/admin/dramas" q={q} placeholder="Поиск по названию…" />
+
       <div className="surface p-3 mb-4">
         <BlsceneSyncButton />
       </div>
 
       {dramas.length === 0 ? (
-        <p className="text-secondary">Пока нет сериалов.</p>
+        <p className="text-secondary">
+          {q ? "Ничего не найдено." : "Пока нет сериалов."}
+        </p>
       ) : (
         <div className="d-flex flex-column gap-2">
           {dramas.map((d) => {

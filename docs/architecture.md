@@ -66,6 +66,16 @@ does and doesn't check.
   standard custom dropdown/combobox components used everywhere instead of
   native `<select>` — they take `{id, name, photoUrl?}` options and
   support inline "create new" via a callback.
+- **`.tab-bar-row`** (`globals.css`) is the standard layout for a list page
+  that has both underline tabs and a search box: tabs on the left, a
+  `NameSearchBox` on the right, sharing one bottom border. Used on every
+  admin and public catalog list (performers, dramas, locations, the home
+  page's Все/Иду/Избранное). When nesting a tabs component inside it,
+  drop that component's own `mb-4`/border spacing — `.tab-bar-row .tab-bar`
+  already zeroes it — and pass `className=""` to `NameSearchBox` so it
+  doesn't add its own standalone margin. Distinct from `.mode-toggle`
+  (a pill-style binary switch, e.g. the site/admin nav toggle) — don't mix
+  the two for the same kind of control.
 
 ## Known gotchas
 

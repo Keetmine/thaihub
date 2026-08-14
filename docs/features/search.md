@@ -24,3 +24,11 @@ included); the other four types render as a wrapped grid of
 
 No query at all shows a prompt instead of running anything; a query with
 zero matches across all five types shows "ничего не найдено".
+
+This is the *global* cross-entity search — distinct from the per-page
+`NameSearchBox` filters on individual list pages (`/dramas`, `/locations`,
+the home page, and their admin equivalents), which each only filter that
+one entity type by title/name via a plain `?q=` param and a `where:
+{contains}` on that page's own query, no separate route or fan-out. See
+[architecture.md](../architecture.md#conventions) for the `.tab-bar-row`
+layout those list pages use to combine that search box with tabs.

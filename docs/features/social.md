@@ -15,6 +15,15 @@ Per-drama, MyDramaList-style status (`DramaWatchStatus`, one of
 concept from favoriting a drama. Rendered as a custom dropdown matching
 the app's `.performer-select` styling, not a native `<select>`.
 
+`/dramas` filters by this status via a `.tab-bar-row` — "Все" plus one
+tab per `WATCH_STATUS_ORDER` entry (`src/lib/watchStatus.ts`), combined
+with the existing title search in the same row. `?status=` filters
+`Drama.findMany` by `watchStatuses: { some: { userId, status } }` for the
+signed-in user; logged-out visitors just see everything regardless of
+which status tab is selected, since there's no per-user status to filter
+by. Same `WATCH_STATUS_LABELS` Russian labels drive both the tabs here
+and the dropdown on a drama's own page.
+
 ## Going ("Я иду")
 
 `EventAttendance` — a user marking themselves as attending a specific
