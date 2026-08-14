@@ -153,6 +153,10 @@ model Drama {
   synopsis       String?
   year           Int?
   status         DramaStatus?
+  // TV channel/streaming platform it aired (or will air) on — TMDB
+  // doesn't reliably carry this for Thai networks, so it comes from
+  // agency Wikipedia imports instead (see wikipedia-agency-import.md).
+  network        String?
   agencyId       String?
   agency         Agency?      @relation(fields: [agencyId], references: [id])
   // The blscene.com "where was X filmed" page this drama was imported from,

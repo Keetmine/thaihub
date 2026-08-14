@@ -99,14 +99,6 @@ async function findOrCreateCastPerformer(cast: {
   return { id: created.id, created: true };
 }
 
-/** `knownDramaId`, when given, is used as-is instead of the tmdbId-then-
- *  title search — for callers that already know exactly which Drama row
- *  this show corresponds to (the bulk drama sweep, syncing a specific
- *  Drama that's already in our DB). Without it, TMDB's own title can
- *  differ just enough from ours ("2gether" vs. TMDB's "2gether: The
- *  Series") that the title fallback misses and creates a duplicate
- *  instead of updating the existing row — a real bug hit while testing
- *  the bulk sweep, not a hypothetical. */
 /** Thrown when a show's tmdbId is already claimed by a *different* Drama
  *  row than the one being synced — usually means our own catalog has two
  *  rows for what TMDB considers one show (a multi-season series split
@@ -121,7 +113,16 @@ class TmdbConflictError extends Error {
   }
 }
 
-async function importShow(
+/** `knownDramaId`, when given, is used as-is instead of the tmdbId-then-
+ *  title search — for callers that already know exactly which Drama row
+ *  this show corresponds to (the bulk drama sweep, syncing a specific
+ *  Drama that's already in our DB, or a Wikipedia agency import matching
+ *  by its own title search first). Without it, TMDB's own title can
+ *  differ just enough from ours ("2gether" vs. TMDB's "2gether: The
+ *  Series") that the title fallback misses and creates a duplicate
+ *  instead of updating the existing row — a real bug hit while testing
+ *  the bulk sweep, not a hypothetical. */
+export async function importShow(
   tvId: number,
   knownDramaId?: string,
 ): Promise<{ dramaId: string; created: boolean; castCreated: number }> {
@@ -238,7 +239,7 @@ function titlesLookRelated(a: string, b: string): boolean {
   return nb.split(/\s+/).some((w) => w.length >= 4 && wordsA.has(w));
 }
 
-async function matchTmdbTvShow(title: string, year: number | null): Promise<number | null> {
+export async function matchTmdbTvShow(title: string, year: number | null): Promise<number | null> {
   const results = await searchTmdbTvShows(title);
   const related = results.filter((r) => titlesLookRelated(title, r.name));
   if (related.length === 0) return null;
@@ -259,7 +260,7 @@ async function matchTmdbTvShow(title: string, year: number | null): Promise<numb
   return null;
 }
 
-async function matchTmdbPerson(realName: string): Promise<number | null> {
+export async function matchTmdbPerson(realName: string): Promise<number | null> {
   const results = await searchTmdbPeople(realName);
   if (results.length === 0) return null;
   const actors = results.filter((r) => r.isActor);

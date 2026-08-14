@@ -85,12 +85,17 @@ Most of the catalog was bulk-imported from blscene.com rather than typed
 in by hand — see [blscene-import.md](blscene-import.md). `Drama.status`
 (TMDB's own airing-status vocabulary — Ended/Returning Series/etc., shown
 as a badge next to the title) comes from the TMDB importer, see
-[tmdb-import.md](tmdb-import.md).
+[tmdb-import.md](tmdb-import.md). `Drama.network` (broadcaster/streamer)
+comes from the Wikipedia agency importer, see
+[wikipedia-agency-import.md](wikipedia-agency-import.md).
 
 ## Agencies
 
 `Agency` has its own roster and can also be the production/distribution
-agency on a `Drama` directly (independent of the cast's agencies).
+agency on a `Drama` directly (independent of the cast's agencies). A
+talent agency's own Wikipedia article — roster, productions, upcoming
+shows — can be bulk-imported, see
+[wikipedia-agency-import.md](wikipedia-agency-import.md).
 
 **Admin management lives inside the Performers section, not as its own
 top-level nav item** — `/admin/performers?view=agencies` renders the
