@@ -13,7 +13,7 @@ import type { EventWithPerformers } from "@/lib/types";
 import { logout } from "../login/actions";
 import FavoriteButton from "@/components/FavoriteButton";
 import WatchStatusSelect from "@/components/WatchStatusSelect";
-import { formatHumanDate, formatTime } from "@/lib/dates";
+import { formatHumanDate, formatTimeWithMsk } from "@/lib/dates";
 import { PinIcon } from "@/components/icons";
 import { WATCH_STATUS_LABELS, WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 
@@ -56,7 +56,7 @@ function EventRow({ event }: { event: EventWithPerformers }) {
       <span className="small text-secondary text-end flex-shrink-0">
         {formatHumanDate(event.startsAt)}
         <br />
-        {formatTime(event.startsAt)}
+        {formatTimeWithMsk(event.startsAt)}
       </span>
     </Link>
   );
@@ -182,7 +182,7 @@ export default function AccountTabs({
                 <Link href={`/event/${ev.id}`} className="text-decoration-none">
                   <p className="font-display fw-medium text-white mb-0">{ev.title}</p>
                   <p className="small text-secondary mb-0">
-                    {formatHumanDate(ev.startsAt)} · {formatTime(ev.startsAt)}
+                    {formatHumanDate(ev.startsAt)} · {formatTimeWithMsk(ev.startsAt)}
                   </p>
                 </Link>
                 <FavoriteButton kind="event" id={ev.id} isFavorited={true} />

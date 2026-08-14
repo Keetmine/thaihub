@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatHumanDate, formatTime } from "@/lib/dates";
+import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./events/actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
@@ -80,7 +80,7 @@ export default async function AdminEventsPage() {
                       {ev.occurrences
                         .map(
                           (o) =>
-                            `${formatHumanDate(o.startsAt)} · ${formatTime(o.startsAt)}${o.endsAt ? `–${formatTime(o.endsAt)}` : ""}`,
+                            `${formatHumanDate(o.startsAt)} · ${formatTimeRangeWithMsk(o.startsAt, o.endsAt)}`,
                         )
                         .join(" + ")}{" "}
                       · <PinIcon /> {ev.venue}

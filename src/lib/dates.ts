@@ -1,5 +1,25 @@
 const pad = (n: number) => n.toString().padStart(2, "0");
 
+// Thai (Buddhist Era) years run exactly 543 ahead of Gregorian. A native
+// <input type="date"> can hand back a BE year instead of the Gregorian
+// value it was given, under some browser/OS locale configurations (th-TH
+// renders and round-trips its date picker in BE) — any year implausibly
+// far in the future is assumed to be a leaked BE year and corrected,
+// rather than trusting the browser/scraper output verbatim.
+const BUDDHIST_ERA_OFFSET = 543;
+function normalizeYear(year: number): number {
+  return year > new Date().getFullYear() + 50 ? year - BUDDHIST_ERA_OFFSET : year;
+}
+
+/** Combines a "YYYY-MM-DD" date string and "HH:mm" time string into a
+ *  local wall-clock Date — never through `new Date(isoString)`, which
+ *  would reinterpret an unqualified string in the server's own timezone. */
+export function combineDateTime(dateStr: string, time: string): Date {
+  const [h, m] = time.split(":").map(Number);
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  return new Date(normalizeYear(y), mo - 1, d, h, m);
+}
+
 export function dateKey(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
@@ -34,6 +54,20 @@ export function formatTimeWithMsk(d: Date): string {
   const msk = new Date(d);
   msk.setHours(msk.getHours() - 4);
   return `${formatTime(d)} (МСК ${formatTime(msk)})`;
+}
+
+export function toMskTime(d: Date): Date {
+  const msk = new Date(d);
+  msk.setHours(msk.getHours() - 4);
+  return msk;
+}
+
+/** Same idea as formatTimeWithMsk but for a start–end range, so the MSK
+ *  equivalent doesn't have to be repeated per side: "18:00–21:00 (МСК
+ *  14:00–17:00)". Falls back to a single time when there's no end. */
+export function formatTimeRangeWithMsk(start: Date, end: Date | null): string {
+  if (!end) return formatTimeWithMsk(start);
+  return `${formatTime(start)}–${formatTime(end)} (МСК ${formatTime(toMskTime(start))}–${formatTime(toMskTime(end))})`;
 }
 
 // Compact "24 окт" form, for flat (non day-grouped) event lists where the

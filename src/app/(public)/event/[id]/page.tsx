@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatHumanDate, formatTime, formatTimeWithMsk } from "@/lib/dates";
+import { formatHumanDate, formatTimeRangeWithMsk, formatTimeWithMsk } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -99,8 +99,7 @@ export default async function EventDetailPage({
             {event.occurrences.map((occ) => (
               <p key={occ.id} className="mb-2 text-capitalize">
                 <CalendarIcon /> {formatHumanDate(occ.startsAt)} ·{" "}
-                <ClockIcon /> {formatTimeWithMsk(occ.startsAt)}
-                {occ.endsAt ? `–${formatTime(occ.endsAt)}` : ""}
+                <ClockIcon /> {formatTimeRangeWithMsk(occ.startsAt, occ.endsAt)}
               </p>
             ))}
             {event.ticketPrice && (

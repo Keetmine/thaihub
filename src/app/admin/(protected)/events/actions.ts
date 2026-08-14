@@ -4,12 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-
-function combineDateTime(date: string, time: string): Date {
-  const [h, m] = time.split(":").map(Number);
-  const [y, mo, d] = date.split("-").map(Number);
-  return new Date(y, mo - 1, d, h, m);
-}
+import { combineDateTime } from "@/lib/dates";
 
 function getPerformerIds(formData: FormData): string[] {
   return formData.getAll("performerIds").map(String).filter(Boolean);

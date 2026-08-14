@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatShortDate, formatTime } from "@/lib/dates";
+import { formatShortDate, formatTime, toMskTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { PinIcon, UserIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -36,6 +36,7 @@ export default function EventAgendaRow({
         {event.endsAt && (
           <span className="agenda-time-end">–{formatTime(event.endsAt)}</span>
         )}
+        <span className="agenda-time-msk">МСК {formatTime(toMskTime(event.startsAt))}</span>
       </div>
       <span className="agenda-dash">—</span>
       <div className="agenda-body">

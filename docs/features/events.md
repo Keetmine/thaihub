@@ -171,15 +171,21 @@ as a banner image at the top of the public event page when set.
 ## Thai time is always shown with a Moscow equivalent
 
 Every event in ThaiHub is a Thailand event, so every displayed event/
-presale time gets a "(МСК HH:MM)" suffix — `formatTimeWithMsk` in
-`src/lib/dates.ts`. Thailand (ICT, UTC+7) and Moscow (MSK, UTC+3) both run
-without DST, so the gap is a constant 4 hours; the helper just subtracts 4
-hours from whatever `formatTime` would already show — no timezone library,
-no per-event timezone field. Used on the event detail page's "Время:" and
-presale date/time lines. **Not** used in `EventAgendaRow`'s compact
-list-view time column (`.agenda-time` is only `3.2rem` wide — there's no
-room for the suffix without breaking that layout; the detail page has
-plenty of room instead).
+presale time shows a Moscow equivalent — `formatTimeWithMsk` (single time,
+"18:00 (МСК 14:00)") and `formatTimeRangeWithMsk` (start–end range, "18:00–
+21:00 (МСК 14:00–17:00)") in `src/lib/dates.ts`. Thailand (ICT, UTC+7) and
+Moscow (MSK, UTC+3) both run without DST, so the gap is a constant 4
+hours; both helpers just subtract 4 hours from whatever `formatTime` would
+already show — no timezone library, no per-event timezone field. Used on
+the event detail page, the admin events list, and the account page's
+going/favorited event lists.
+
+`EventAgendaRow`'s compact list-view time column (`.agenda-time`, only
+`3.2rem` wide) can't fit either helper's output without breaking the
+layout, so it shows its own compact one-line form instead: `.agenda-time-
+msk` renders just `МСК HH:MM` for the start time (no range, no
+parentheses) stacked below the Thai time via `toMskTime` — same
+underlying −4 hour shift, just formatted to fit a narrow column.
 
 ## Date in the compact list view
 
@@ -209,7 +215,16 @@ database until that confirm step** — the scrape itself is read-only.
     wall-clock time) and `new Date()` would reinterpret it in whatever
     timezone the Node process happens to run in, silently shifting the
     hour. This matches the "naive local wall-clock" convention the rest
-    of the app already uses (`combineDateTime` in `events/actions.ts`).
+    of the app already uses (`combineDateTime` in `src/lib/dates.ts`,
+    shared by every place that turns a `"YYYY-MM-DD"` + `"HH:mm"` pair
+    into a `Date` — the regular event form, the TTM importer, presale
+    dates). It also guards against a real incident: a native
+    `<input type="date">` handed back a Buddhist-era year (543 years
+    ahead of Gregorian, e.g. `2569` instead of `2026`) for a couple of
+    multi-day TTM imports, almost certainly a th-TH-locale date-picker
+    quirk in the browser that ran the import. `combineDateTime` treats
+    any year more than 50 years in the future as a leaked BE year and
+    corrects it, rather than trusting the input verbatim.
   - The artist lineup and the ticket-price display string live in a
     separate free-text "details" table that's admin-entered per event
     (not guaranteed to have every row) and — critically — **renders in

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { scrapeTtmEvent } from "@/lib/thaiticketmajor";
+import { combineDateTime } from "@/lib/dates";
 
 export type TtmImportArtist = {
   fullName: string;
@@ -102,18 +103,10 @@ export async function createEventFromTtmImport(
 
   const dates = Array.from(new Set([data.date, ...data.extraDates]));
 
-  function atDate(dateStr: string, time: string): Date {
-    const [th, tm] = time.split(":").map(Number);
-    const [ty, tmo, td] = dateStr.split("-").map(Number);
-    return new Date(ty, tmo - 1, td, th, tm);
-  }
-
-  let presaleAt: Date | null = null;
-  if (data.presaleDate && data.presaleTime) {
-    const [ph, pm] = data.presaleTime.split(":").map(Number);
-    const [py, pmo, pd] = data.presaleDate.split("-").map(Number);
-    presaleAt = new Date(py, pmo - 1, pd, ph, pm);
-  }
+  const presaleAt =
+    data.presaleDate && data.presaleTime
+      ? combineDateTime(data.presaleDate, data.presaleTime)
+      : null;
 
   const event = await prisma.$transaction(async (tx) => {
     const performerIds: string[] = [...data.extraPerformerIds];
@@ -147,8 +140,8 @@ export async function createEventFromTtmImport(
         presaleUrl: data.presaleUrl.trim() || null,
         occurrences: {
           create: dates.map((dateStr) => ({
-            startsAt: atDate(dateStr, data.startTime),
-            endsAt: data.endTime ? atDate(dateStr, data.endTime) : null,
+            startsAt: combineDateTime(dateStr, data.startTime),
+            endsAt: data.endTime ? combineDateTime(dateStr, data.endTime) : null,
           })),
         },
         performers: {
