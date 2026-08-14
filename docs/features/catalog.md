@@ -12,7 +12,9 @@ bar).
 - A `BAND` performer's roster is other `Performer` rows linked through
   `BandMember` — an idol who's both in a group and individually credited
   in a drama is one `Performer` row, referenced both directly and as a
-  band member.
+  band member. A band's current lineup, bio, photo, and label (as an
+  `Agency`) can be pulled from tpop.fandom.com — see
+  [tpop-band-import.md](tpop-band-import.md).
 - Real name, birth date, place of birth, bio, agency, photo, MyDramaList
   link are all optional profile fields, fillable manually or (for dramas)
   picked up via the blscene importer's cast data where available. GMMTV's

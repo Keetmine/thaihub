@@ -1,6 +1,12 @@
 import * as cheerio from "cheerio";
 import type { CheerioAPI, Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
+import {
+  fetchMediaWikiParsedHtml,
+  headingByText,
+  contentAfterHeading,
+  parseTableGrid,
+} from "@/lib/mediawikiParse";
 
 // Scraper for an English Wikipedia talent-agency article (e.g.
 // en.wikipedia.org/wiki/Domundi_TV). Wikipedia's content is CC BY-SA
@@ -10,6 +16,7 @@ import type { AnyNode } from "domhandler";
 // access, same split as every other importer in this project.
 
 const UA = "ThaiHubImporter/1.0 (personal fan-tracker, contact via site)";
+const API_BASE = "https://en.wikipedia.org/w/api.php";
 
 /** Extracts the page title from either a bare title or a full
  *  en.wikipedia.org/wiki/{Title} URL. */
@@ -17,87 +24,6 @@ export function parseWikipediaPageTitle(input: string): string {
   const trimmed = input.trim();
   const match = trimmed.match(/\/wiki\/([^?#]+)/);
   return decodeURIComponent(match ? match[1] : trimmed).replace(/_/g, " ");
-}
-
-async function fetchParsedHtml(pageTitle: string): Promise<string> {
-  const url = `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(
-    pageTitle,
-  )}&prop=text&format=json`;
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
-  if (!res.ok) throw new Error(`Wikipedia ${pageTitle} -> HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(`Wikipedia: ${data.error.info ?? data.error.code}`);
-  return data.parse.text["*"];
-}
-
-function headingByText($: CheerioAPI, text: string): Cheerio<AnyNode> {
-  return $("h2, h3, h4")
-    .filter((_, el) => $(el).text().trim().toLowerCase() === text.toLowerCase())
-    .first();
-}
-
-/** The element that visually follows a heading is its *wrapper* div's
- *  next sibling, not the heading tag's own — modern Wikipedia wraps
- *  every heading in a `<div class="mw-heading">`. Some pages (hit for
- *  real on GMMTV's "Former" section) insert a stray non-content element
- *  — an empty `<link>`, `<style>`, etc. — right after the wrapper before
- *  the actual content, so this skips forward past those instead of
- *  blindly trusting the first sibling. */
-function contentAfterHeading($: CheerioAPI, heading: Cheerio<AnyNode>): Cheerio<AnyNode> {
-  let node = heading.parent().next();
-  while (node.length && ["link", "style", "meta"].includes(node.get(0)?.tagName ?? "")) {
-    node = node.next();
-  }
-  return node;
-}
-
-/** Reconstructs a Wikipedia table's *visual* grid, expanding `rowspan`/
- *  `colspan` — these tables group same-year or same-network productions
- *  by leaving the year/network cell out of every row but the first,
- *  relying on rowspan to "carry it down". Reading `<td>`s by a fixed
- *  index per row (what a naive parser does) silently shifts every
- *  column left for those rows — hit for real: a "Network" cell rowspan-3
- *  meant the next two rows' own Notes text got read as their Title. */
-function parseTableGrid($: CheerioAPI, table: Cheerio<AnyNode>): string[][] {
-  const grid: string[][] = [];
-  const pending = new Map<number, { text: string; remaining: number }>();
-
-  for (const tr of table.find("tr").toArray()) {
-    const row: string[] = [];
-    const cells = $(tr).find("td, th").toArray();
-    let cellIndex = 0;
-    let col = 0;
-
-    while (cellIndex < cells.length || pending.has(col)) {
-      const carry = pending.get(col);
-      if (carry) {
-        row[col] = carry.text;
-        if (carry.remaining <= 1) pending.delete(col);
-        else pending.set(col, { text: carry.text, remaining: carry.remaining - 1 });
-        col += 1;
-        continue;
-      }
-      const $cell = $(cells[cellIndex]);
-      // A cell listing several values (multiple networks, multiple
-      // co-production companies) commonly stacks them with `<br>` rather
-      // than separating with punctuation — `.text()` alone would run
-      // them together with no space at all ("One HDBang Channel"),
-      // hence the explicit separator before extracting.
-      $cell.find("br").replaceWith(", ");
-      const text = $cell.text().replace(/\s+/g, " ").replace(/\s*,\s*/g, ", ").trim();
-      const colspan = Math.max(1, parseInt($cell.attr("colspan") || "1", 10));
-      const rowspan = Math.max(1, parseInt($cell.attr("rowspan") || "1", 10));
-      for (let c = 0; c < colspan; c++) {
-        row[col] = text;
-        if (rowspan > 1) pending.set(col, { text, remaining: rowspan - 1 });
-        col += 1;
-      }
-      cellIndex += 1;
-    }
-    grid.push(row);
-  }
-
-  return grid;
 }
 
 function parseProductionsTable(
@@ -162,7 +88,7 @@ export type WikipediaAgencyData = {
 
 export async function fetchWikipediaAgencyPage(pageTitleOrUrl: string): Promise<WikipediaAgencyData> {
   const pageTitle = parseWikipediaPageTitle(pageTitleOrUrl);
-  const html = await fetchParsedHtml(pageTitle);
+  const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
   const $ = cheerio.load(html);
 
   const infobox = $(".infobox").first();
