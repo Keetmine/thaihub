@@ -22,6 +22,9 @@ something changes, edit the doc in place rather than appending a note.
   - [gmmtv-import.md](features/gmmtv-import.md) — the GMMTV roster scraper
   - [tmdb-import.md](features/tmdb-import.md) — TMDB actor/drama importer (official API, not scraping)
   - [tmdb-company-import.md](features/tmdb-company-import.md) — TMDB production-company importer (official API, not scraping)
+  - [drama-fandom-agency-import.md](features/drama-fandom-agency-import.md) — talent-agency importer from drama.fandom.com (official MediaWiki API, not scraping)
+  - [memindy-import.md](features/memindy-import.md) — Me Mind Y artist roster importer
+  - [change2561-import.md](features/change2561-import.md) — CHANGE 2561 importer (own site + Wikipedia)
   - [wikipedia-agency-import.md](features/wikipedia-agency-import.md) — talent-agency importer (official MediaWiki API, not scraping)
   - [tpop-band-import.md](features/tpop-band-import.md) — idol-group importer from tpop.fandom.com (official MediaWiki API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator

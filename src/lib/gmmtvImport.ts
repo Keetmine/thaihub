@@ -2,6 +2,7 @@ import type { Browser } from "playwright";
 import { prisma } from "@/lib/prisma";
 import { fetchGmmtvArtistLinks, scrapeGmmtvArtist, type GmmtvArtist } from "@/lib/gmmtv";
 import { addPerformerAgency } from "@/lib/performerAgency";
+import { syncSocialLinks } from "@/lib/performerSocialLinks";
 
 export type GmmtvSyncResult = {
   checked: number;
@@ -19,25 +20,6 @@ async function getGmmtvAgencyId(): Promise<string> {
     create: { name: AGENCY_NAME },
   });
   return agency.id;
-}
-
-/** Creates the PerformerLink rows for a scraped artist's social links that
- *  aren't already on their profile (matched by exact URL, so re-running
- *  this never creates duplicates). Existing links from other sources are
- *  left untouched. */
-async function syncSocialLinks(performerId: string, socialLinks: GmmtvArtist["socialLinks"]) {
-  if (socialLinks.length === 0) return;
-  const existing = await prisma.performerLink.findMany({
-    where: { performerId },
-    select: { url: true },
-  });
-  const existingUrls = new Set(existing.map((l) => l.url));
-  const toCreate = socialLinks.filter((l) => !existingUrls.has(l.url));
-  if (toCreate.length > 0) {
-    await prisma.performerLink.createMany({
-      data: toCreate.map((l) => ({ performerId, label: l.label, url: l.url })),
-    });
-  }
 }
 
 /**

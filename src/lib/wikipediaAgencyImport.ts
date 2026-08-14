@@ -1,35 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { fetchWikipediaAgencyPage } from "@/lib/wikipediaAgency";
-import { fetchTmdbPerson, deriveNicknameFromAlsoKnownAs } from "@/lib/tmdb";
-import { matchTmdbTvShow, matchTmdbPerson, importShow } from "@/lib/tmdbImport";
-import { addPerformerAgency } from "@/lib/performerAgency";
-
-async function importAgencyProduction(
-  production: { year: number | null; title: string; network: string | null },
-  agencyId: string,
-): Promise<{ created: boolean }> {
-  const tvId = await matchTmdbTvShow(production.title, production.year);
-  if (tvId) {
-    const result = await importShow(tvId);
-    await prisma.drama.update({
-      where: { id: result.dramaId },
-      data: { network: production.network, agencyId },
-    });
-    return { created: result.created };
-  }
-
-  // TMDB has nothing for this title — still worth keeping, this agency's
-  // own page is a first-party source for its own productions. Matched by
-  // title alone (no tmdbId to key off), same as the drama-sweep's own
-  // last-resort fallback.
-  const existing = await prisma.drama.findFirst({
-    where: { title: { equals: production.title, mode: "insensitive" } },
-  });
-  const data = { title: production.title, year: production.year, network: production.network, agencyId };
-  if (existing) await prisma.drama.update({ where: { id: existing.id }, data });
-  else await prisma.drama.create({ data });
-  return { created: !existing };
-}
+import { matchTmdbTvShow, importShow } from "@/lib/tmdbImport";
+import { importAgencyProduction, findOrCreateAgencyArtist } from "@/lib/agencyTmdbMatching";
 
 async function importAgencyUpcoming(
   upcoming: { title: string; notes: string | null },
@@ -56,82 +28,6 @@ async function importAgencyUpcoming(
   return { created: !existing };
 }
 
-async function findOrCreateAgencyArtist(
-  artist: { fullName: string; nickname: string },
-  agencyId: string,
-): Promise<{ created: boolean; agencySet: boolean }> {
-  const existing = await prisma.performer.findFirst({
-    where: {
-      OR: [
-        { realName: { equals: artist.fullName, mode: "insensitive" } },
-        { name: { equals: artist.nickname, mode: "insensitive" } },
-      ],
-    },
-    include: { agencies: { select: { agencyId: true } } },
-  });
-
-  if (existing) {
-    // Adds this agency to the performer's set rather than overwriting —
-    // a performer can be signed to more than one at once (see
-    // PerformerAgency in schema.prisma), so a Wikipedia roster listing
-    // them doesn't mean any other agency they're already linked to is
-    // wrong.
-    const agencySet = !existing.agencies.some((a) => a.agencyId === agencyId);
-    if (agencySet) await addPerformerAgency(existing.id, agencyId);
-    // Same fallback-name repair as syncPerformerFromTmdb's also_known_as
-    // check, but simpler here — the wiki roster already spells out the
-    // nickname directly ("Pruk Panich (Zee)"), no TMDB lookup needed.
-    const looksLikeFallbackName =
-      !!existing.realName && existing.name.trim().toLowerCase() === existing.realName.trim().toLowerCase();
-    if (looksLikeFallbackName && artist.nickname) {
-      await prisma.performer.update({ where: { id: existing.id }, data: { name: artist.nickname } });
-    }
-    return { created: false, agencySet };
-  }
-
-  // Not in our DB by name/realName — check TMDB before creating from
-  // Wikipedia data alone, so a brand-new Performer still gets a real
-  // photo/tmdbId/place of birth when TMDB has them.
-  const personId = await matchTmdbPerson(artist.fullName);
-  if (personId) {
-    const tmdbId = String(personId);
-    // The TMDB match can resolve to someone already in our DB under a
-    // name/realName spelling different enough that the lookup above
-    // missed them (their `tmdbId` is the reliable signal, not text) —
-    // creating anyway would collide on tmdbId's uniqueness. Treat it as
-    // the same match-existing path instead of a create.
-    const byTmdbId = await prisma.performer.findUnique({
-      where: { tmdbId },
-      include: { agencies: { select: { agencyId: true } } },
-    });
-    if (byTmdbId) {
-      const agencySet = !byTmdbId.agencies.some((a) => a.agencyId === agencyId);
-      if (agencySet) await addPerformerAgency(byTmdbId.id, agencyId);
-      return { created: false, agencySet };
-    }
-
-    const person = await fetchTmdbPerson(tmdbId);
-    const nickname = deriveNicknameFromAlsoKnownAs(person.name, person.alsoKnownAs) ?? artist.nickname;
-    await prisma.performer.create({
-      data: {
-        name: nickname,
-        realName: artist.fullName,
-        type: "SOLO",
-        tmdbId,
-        photoUrl: person.photoUrl,
-        placeOfBirth: person.placeOfBirth,
-        agencies: { create: { agencyId } },
-      },
-    });
-    return { created: true, agencySet: true };
-  }
-
-  await prisma.performer.create({
-    data: { name: artist.nickname, realName: artist.fullName, type: "SOLO", agencies: { create: { agencyId } } },
-  });
-  return { created: true, agencySet: true };
-}
-
 export type WikipediaAgencyImportSummary = {
   agencyName: string;
   productionsCreated: number;
@@ -150,9 +46,10 @@ export type WikipediaAgencyImportSummary = {
  *  that for Thai networks), each "Upcoming TV series" entry as a
  *  DramaStatus.PLANNED row, and every artist in its "Current"/"Former"
  *  roster (matched against our DB by realName/nickname, checked against
- *  TMDB before creating anyone new). No review step — same dedup-and-
- *  report shape as the GMMTV/TMDB bulk importers, since a roster this
- *  size isn't practical to review row by row. */
+ *  TMDB before creating anyone new — see agencyTmdbMatching.ts). No
+ *  review step — same dedup-and-report shape as the GMMTV/TMDB bulk
+ *  importers, since a roster this size isn't practical to review row by
+ *  row. */
 export async function importWikipediaAgency(
   pageUrlOrTitle: string,
   onProgress?: (message: string) => void,

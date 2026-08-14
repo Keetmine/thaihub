@@ -6,6 +6,8 @@ import {
   headingByText,
   contentAfterHeading,
   parseTableGrid,
+  parseNameNicknameList,
+  parseProductionList,
 } from "@/lib/mediawikiParse";
 
 // Scraper for an English Wikipedia talent-agency article (e.g.
@@ -54,28 +56,6 @@ function parseProductionsTable(
     .filter((row) => row.title);
 }
 
-/** Splits one "Full Name (Nickname)" artist-list entry — same format and
- *  same caveat as ThaiTicketMajor's artist lines (see
- *  parseArtistLine in thaiticketmajor.ts): this is the reliable form
- *  (nickname always parenthesized here, no ambiguous nickname-first
- *  case like TTM has), so no heuristic guessing needed. */
-function parseAgencyArtistEntry(raw: string): { fullName: string; nickname: string } {
-  const text = raw.replace(/\s+/g, " ").trim();
-  const match = text.match(/^(.+?)\s*\(([^)]+)\)$/);
-  if (match) return { fullName: match[1].trim(), nickname: match[2].trim() };
-  return { fullName: text, nickname: text };
-}
-
-function parseArtistList($: CheerioAPI, container: Cheerio<AnyNode>): { fullName: string; nickname: string }[] {
-  return container
-    .find("li")
-    .map((_, el) => $(el).text())
-    .get()
-    .map((text) => text.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .map(parseAgencyArtistEntry);
-}
-
 export type WikipediaAgencyData = {
   name: string;
   description: string | null;
@@ -113,19 +93,29 @@ export async function fetchWikipediaAgencyPage(pageTitleOrUrl: string): Promise<
   // relevant here, a reality/variety-show table doesn't belong in the
   // Drama catalog any more than a TMDB "Self" credit does (see
   // tmdb-import.md's known-for filtering for the same reasoning). Not
-  // every agency's page uses the same heading text for that table —
-  // GMMTV's is "TV series", not "Television series" — so this tries each
-  // known variant in order and takes the first that actually parses out
-  // any rows. Deliberately excludes headings like "Drama" (GMMTV's, but
-  // a separate older/pre-BL-era catalog, out of scope here) and "TV
-  // shows" (GMMTV's variety-show table, same reality-show exclusion as
-  // above) to keep this from silently pulling in unrelated content.
-  const seriesHeadingCandidates = ["Television series", "TV series"];
+  // every agency's page uses the same heading text for that section —
+  // GMMTV's is "TV series", Change2561's is "Television dramas" — so
+  // this tries each known variant in order and takes the first that
+  // actually parses out any rows. Deliberately excludes headings like
+  // "Drama" (GMMTV's, but a separate older/pre-BL-era catalog, out of
+  // scope here) and "TV shows" (GMMTV's variety-show table, same
+  // reality-show exclusion as above) to keep this from silently pulling
+  // in unrelated content.
+  //
+  // The section itself isn't always a wikitable either — Change2561's
+  // is a plain <ul> of "Title (Year)"/"Title (YearStart–YearEnd)"
+  // entries, so each candidate tries table parsing first (the richer
+  // shape, when present) and falls back to list parsing.
+  const seriesHeadingCandidates = ["Television series", "TV series", "Television dramas"];
   let productions: { year: number | null; title: string; network: string | null }[] = [];
   for (const candidate of seriesHeadingCandidates) {
     const heading = headingByText($, candidate);
     if (!heading.length) continue;
-    const parsed = parseProductionsTable($, contentAfterHeading($, heading));
+    const content = contentAfterHeading($, heading);
+    const table = content.is("table") ? content : content.find("table").first();
+    const parsed = table.length
+      ? parseProductionsTable($, table)
+      : parseProductionList($, content).map((p) => ({ year: p.year, title: p.title, network: p.network }));
     if (parsed.length > 0) {
       productions = parsed;
       break;
@@ -164,7 +154,7 @@ export async function fetchWikipediaAgencyPage(pageTitleOrUrl: string): Promise<
     let node = currentHeading.parent().next();
     while (node.length && !(node.get(0)?.tagName === "div" && node.hasClass("mw-heading2"))) {
       if (node.hasClass("div-col") || node.get(0)?.tagName === "ul") {
-        currentArtists.push(...parseArtistList($, node));
+        currentArtists.push(...parseNameNicknameList($, node));
       }
       node = node.next();
     }
@@ -172,7 +162,7 @@ export async function fetchWikipediaAgencyPage(pageTitleOrUrl: string): Promise<
 
   const formerHeading = headingByText($, "Former");
   const formerArtists = formerHeading.length
-    ? parseArtistList($, contentAfterHeading($, formerHeading))
+    ? parseNameNicknameList($, contentAfterHeading($, formerHeading))
     : [];
 
   return { name, description, logoUrl, productions, upcoming, currentArtists, formerArtists };

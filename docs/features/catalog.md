@@ -128,12 +128,21 @@ comes from the Wikipedia agency importer, see
 ## Agencies
 
 `Agency` has its own roster and can also be the production/distribution
-agency on a `Drama` directly (independent of the cast's agencies). A
-talent agency's own Wikipedia article — roster, productions, upcoming
-shows — can be bulk-imported, see
-[wikipedia-agency-import.md](wikipedia-agency-import.md); a production
-studio's TMDB company page can be bulk-imported the same way, see
-[tmdb-company-import.md](tmdb-company-import.md).
+agency on a `Drama` directly (independent of the cast's agencies). An
+agency's roster/productions can be bulk-imported from any of several
+sources, depending on what that particular agency has published where:
+its own Wikipedia article (see
+[wikipedia-agency-import.md](wikipedia-agency-import.md)), a TMDB
+production-company page (see
+[tmdb-company-import.md](tmdb-company-import.md)), a drama.fandom.com
+category page (see
+[drama-fandom-agency-import.md](drama-fandom-agency-import.md)), or its
+own official site (see [memindy-import.md](memindy-import.md),
+[change2561-import.md](change2561-import.md) — the latter combines its
+own site for artists with its Wikipedia article for productions, since
+not every agency publishes both halves in an equally parseable place).
+All of these funnel through the same TMDB-matching/dedup rules
+(`src/lib/agencyTmdbMatching.ts`) regardless of source.
 
 **Admin management lives inside the Performers section, not as its own
 top-level nav item** — `/admin/performers?view=agencies` renders the

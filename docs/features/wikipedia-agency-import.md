@@ -11,10 +11,11 @@ API (`action=parse`), not raw-HTML scraping.
 
 Different agencies' pages are edited by different people and don't share
 one exact layout — GMMTV's productions table is headed "TV series" where
-Domundi TV's is "Television series", for instance. The parser is written
-to tolerate that (see "Productions" and "Heading structure" below) rather
-than assuming every agency page matches the first one it was built
-against.
+Domundi TV's is "Television series", and Change2561's "Television
+dramas" section isn't a table at all, just a plain list. The parser is
+written to tolerate that (see "Productions" and "Heading structure"
+below) rather than assuming every agency page matches the first one it
+was built against.
 
 ## Files
 
@@ -24,10 +25,12 @@ against.
   artist rosters.
 - **`src/lib/wikipediaAgencyImport.ts`** — DB orchestration:
   `importWikipediaAgency(pageUrlOrTitle, onProgress?)` upserts the
-  `Agency` and walks productions → upcoming → artists, reusing
-  `matchTmdbTvShow`/`matchTmdbPerson`/`importShow` from
-  `tmdbImport.ts` (exported specifically for this reuse) rather than
-  reimplementing TMDB matching.
+  `Agency` and walks productions → upcoming → artists. Production/
+  artist matching itself (`importAgencyProduction`/
+  `findOrCreateAgencyArtist`) lives in **`src/lib/agencyTmdbMatching.ts`**
+  — extracted out of this file once
+  [drama-fandom-agency-import.md](drama-fandom-agency-import.md) needed
+  byte-identical logic, see "Matching against our DB" below.
 - **`scripts/import-wikipedia-agency.ts`** — CLI entry point, no review
   screen (same dedup-and-report shape as the GMMTV/TMDB bulk importers —
   a roster this size isn't practical to review row by row):
@@ -41,16 +44,21 @@ against.
   name ("Domundi TV Co., Ltd.") — shorter, and matches how the agency is
   referred to everywhere else on the page and in the app.
 - **Productions**: tries each heading in `seriesHeadingCandidates`
-  (`"Television series"`, then `"TV series"`) in order and takes the
-  first one whose table actually parses out rows — added after GMMTV's
-  page turned out to head its production table "TV series" instead of
-  Domundi TV's "Television series". Deliberately does *not* fall back to
-  every heading that looks production-related: GMMTV also has a "Drama"
-  table (a separate, older pre-BL-era catalog, out of scope for this
-  importer) and a "TV shows" table (its variety shows — same
-  reality/variety exclusion reasoning as `tmdb-import.md`'s "Self"-credit
-  filtering for known-for shows) that must **not** get pulled in just
-  because they also contain Year/Title columns.
+  (`"Television series"`, `"TV series"`, `"Television dramas"`) in
+  order, and for each one tries table parsing first (the richer shape,
+  when present) then falls back to list parsing
+  (`parseProductionList`/`parseProductionListEntry`, `mediawikiParse.ts`
+  — the same shape `drama-fandom-agency-import.md`'s pages use), taking
+  the first candidate that actually parses out any rows. "Television
+  dramas" was added after Change2561's page turned out to list its
+  productions as a plain `<ul>` of `"Title (Year)"` entries instead of a
+  wikitable. Deliberately does *not* fall back to every heading that
+  looks production-related: GMMTV also has a "Drama" table (a separate,
+  older pre-BL-era catalog, out of scope for this importer) and a "TV
+  shows" table (its variety shows — same reality/variety exclusion
+  reasoning as `tmdb-import.md`'s "Self"-credit filtering for known-for
+  shows) that must **not** get pulled in just because they also contain
+  Year/Title columns.
 - **Upcoming TV series**: parsed into `Drama` rows with
   `status: "PLANNED"` when TMDB has no match yet; the "notes" column
   becomes `synopsis`. If TMDB *does* have the show already (common once
@@ -106,8 +114,11 @@ the real 87.
 
 ## Matching against our DB
 
-Same tmdbId-then-name/title dedup pattern as `tmdb-import.md`, reusing
-its exact matcher functions rather than a separate implementation:
+Implemented in `src/lib/agencyTmdbMatching.ts`, shared verbatim with
+[drama-fandom-agency-import.md](drama-fandom-agency-import.md) and
+[change2561-import.md](change2561-import.md) — same tmdbId-then-
+name/title dedup pattern as `tmdb-import.md`, reusing its exact matcher
+functions rather than a separate implementation:
 
 - **Productions/upcoming shows**: `matchTmdbTvShow(title, year)` first;
   on a hit, `importShow(tvId)` updates/creates the `Drama` row, then
