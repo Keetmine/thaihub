@@ -9,8 +9,8 @@ test("admin can create and delete an event", async ({ page }) => {
 
   await page.fill('input[name="title"]', title);
   await page.fill('input[name="venue"]', "Test Venue");
-  await page.fill('input[name="date"]', "2027-01-15");
-  await page.fill('input[name="startTime"]', "19:00");
+  await page.fill('input[name="occurrenceDate"]', "2027-01-15");
+  await page.fill('input[name="occurrenceStartTime"]', "19:00");
   await page.getByRole("button", { name: "Создать событие" }).click();
 
   await page.waitForURL(/\/admin$/);

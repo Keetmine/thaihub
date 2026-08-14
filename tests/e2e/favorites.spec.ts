@@ -23,7 +23,7 @@ test("a new user can sign up and favorite an event", async ({ page }) => {
     await page.goto("/");
     const firstEventLink = page.locator('a[href^="/event/"]').first();
     test.skip((await firstEventLink.count()) === 0, "no events in the database to favorite");
-    await firstEventLink.click();
+    await Promise.all([page.waitForURL(/\/event\//), firstEventLink.click()]);
 
     await page.getByRole("button", { name: "В избранное" }).click();
     await expect(page.getByRole("button", { name: "Убрать из избранного" })).toBeVisible();
