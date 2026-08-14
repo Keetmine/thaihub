@@ -21,6 +21,10 @@ model Event {
   description String?
   presaleAt   DateTime?
   presaleUrl  String?
+  // Free-text ticket price display string (e.g. "6,900 / 5,900 / 5,000
+  // baht") — deliberately not a structured number, since sources like
+  // ThaiTicketMajor list several tiers as one string.
+  ticketPrice String?
   // Optional tie-in to a drama this event is about (premiere screening,
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
   dramaId     String?

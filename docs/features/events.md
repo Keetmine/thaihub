@@ -102,3 +102,67 @@ text field.
 Event rows and the event detail page show who among the current user's
 accepted friends is also going — see
 [social.md](features/social.md#friends-going).
+
+## Ticket price
+
+`Event.ticketPrice` is a free-text field (e.g. `"6,900 / 5,900 / 5,000
+baht"`), not a structured number — sources like ThaiTicketMajor list
+several seating tiers as one string, and there's no need to model that as
+anything richer than what gets displayed. Editable in `EventForm.tsx`,
+shown on the public event page under the time/venue block when set.
+
+## Importing an event from ThaiTicketMajor
+
+`/admin/events/import-ttm` — paste a `thaiticketmajor.com/concert/...` or
+`/performance/...` URL, review/edit everything the scrape found, then
+confirm to actually create the event. **Nothing is written to the
+database until that confirm step** — the scrape itself is read-only.
+
+- **`src/lib/thaiticketmajor.ts`** — pure scraping (no DB access):
+  `scrapeTtmEvent(url)` returns title, venue, date/time, ticket price
+  text, and the artist lineup.
+  - Title/venue/poster/date come from the page's `schema.org/Event`
+    JSON-LD block (reliable, present site-wide). Date/time are kept as
+    plain `"YYYY-MM-DD"`/`"HH:mm"` strings sliced directly out of the raw
+    ISO string — **never passed through `new Date(...)`**, because the
+    JSON-LD datetime has no timezone suffix (it's already Bangkok
+    wall-clock time) and `new Date()` would reinterpret it in whatever
+    timezone the Node process happens to run in, silently shifting the
+    hour. This matches the "naive local wall-clock" convention the rest
+    of the app already uses (`combineDateTime` in `events/actions.ts`).
+  - The artist lineup and the ticket-price display string live in a
+    separate free-text "details" table that's admin-entered per event
+    (not guaranteed to have every row) and — critically — **renders in
+    Thai by default**. Setting the `__la=en` cookie (what the site's own
+    language-switch button does client-side) gets the same table back in
+    English from a plain HTTP request, no headless browser required.
+- **Artist name parsing is a best-effort heuristic, not a guarantee.**
+  ThaiTicketMajor uses two formats with no shared delimiter:
+  `"Jakrapatr Kaewpanpong (William)"` (full name, nickname in parens —
+  parsed with a regex) and `"Earth Pirapat Watthanasetsiri"` (nickname
+  first, no punctuation — parsed as "first word = nickname, rest = full
+  name"). The second form is genuinely ambiguous in general, so
+  `parseArtistLine` in `thaiticketmajor.ts` is deliberately just a
+  reasonable guess — the review screen's nickname/full-name fields are
+  always editable, never read-only text.
+- **Schema fit**: a scraped artist's nickname and full name map directly
+  onto `Performer.name` and `Performer.realName` — no translation layer
+  needed.
+- **Dedup**: `scrapeTtmEventPreview` (`src/app/admin/(protected)/events/importActions.ts`)
+  matches each artist's nickname against existing `Performer.name`,
+  case-insensitively and exactly (no fuzzy matching). A match means
+  "link the existing performer"; no match means "create a new one" —
+  shown per-row in the review screen, and overridable (unchecking a row
+  excludes it; editing its nickname clears the match, since the edited
+  text may no longer correspond to who was found).
+- **What this does NOT do**: it doesn't try to infer that a scraped
+  performer is a member of a Performer with `type: BAND` that's already
+  in the catalog (e.g. recognizing that the artists on a band's own
+  concert page are that band's members) and auto-link `BandMember` — too
+  easy to get wrong from page structure alone. Set that up manually via
+  the performer edit form after import, same as any other band roster
+  change.
+- Creation itself — `createEventFromTtmImport` — runs in one
+  `$transaction`: any artist without a match gets a new `Performer`
+  (`type: SOLO`), then the `Event` is created linking every included
+  artist plus any extra performers picked manually in the review screen.

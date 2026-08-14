@@ -67,6 +67,7 @@ export default async function EditEventPage({
           presaleDate: event.presaleAt ? dateKey(event.presaleAt) : "",
           presaleTime: event.presaleAt ? formatTime(event.presaleAt) : "",
           presaleUrl: event.presaleUrl ?? "",
+          ticketPrice: event.ticketPrice ?? "",
         }}
       />
 

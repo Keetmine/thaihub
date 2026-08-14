@@ -44,6 +44,7 @@ export default function EventForm({
     presaleDate: string;
     presaleTime: string;
     presaleUrl: string;
+    ticketPrice: string;
   };
   submitLabel: string;
 }) {
@@ -109,6 +110,16 @@ export default function EventForm({
         defaultValue={v?.locationId}
         placeholder="Не выбрано"
       />
+
+      <div>
+        <label className="form-label">Цена билетов</label>
+        <input
+          name="ticketPrice"
+          defaultValue={v?.ticketPrice}
+          placeholder="например: 6,900 / 5,900 / 5,000 бат"
+          className="form-control"
+        />
+      </div>
 
       <div className="row g-3">
         <div className="col-12 col-sm-4">

@@ -86,11 +86,16 @@ export default async function EventDetailPage({
           <CalendarIcon /> <span className="text-secondary">Дата:</span>{" "}
           {formatHumanDate(event.startsAt)}
         </p>
-        <p className={event.drama ? "mb-2" : "mb-0"}>
+        <p className={event.ticketPrice || event.drama ? "mb-2" : "mb-0"}>
           <ClockIcon /> <span className="text-secondary">Время:</span>{" "}
           {formatTime(event.startsAt)}
           {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
         </p>
+        {event.ticketPrice && (
+          <p className={event.drama ? "mb-2" : "mb-0"}>
+            <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
+          </p>
+        )}
         {event.drama && (
           <p className="mb-0">
             <span style={{ fontSize: "0.95em" }}><TvIcon /></span>{" "}

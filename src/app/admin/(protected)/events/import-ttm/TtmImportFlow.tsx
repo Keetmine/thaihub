@@ -1,0 +1,237 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import EntityMultiSelect from "@/components/EntityMultiSelect";
+import {
+  scrapeTtmEventPreview,
+  createEventFromTtmImport,
+  type TtmImportPreview,
+  type TtmImportArtist,
+} from "../importActions";
+
+type ArtistRow = TtmImportArtist & { include: boolean };
+
+export default function TtmImportFlow({
+  performers,
+  dramas,
+}: {
+  performers: EntityOption[];
+  dramas: EntityOption[];
+}) {
+  const router = useRouter();
+  const [url, setUrl] = useState("");
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<TtmImportPreview | null>(null);
+  const [artistRows, setArtistRows] = useState<ArtistRow[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  async function handleScrape() {
+    setIsScraping(true);
+    setScrapeError(null);
+    try {
+      const result = await scrapeTtmEventPreview(url.trim());
+      setPreview(result);
+      setArtistRows(result.artists.map((a) => ({ ...a, include: true })));
+    } catch (err) {
+      setScrapeError(err instanceof Error ? err.message : "Не удалось спарсить страницу");
+    } finally {
+      setIsScraping(false);
+    }
+  }
+
+  function updateArtist(i: number, patch: Partial<ArtistRow>) {
+    setArtistRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!preview) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const extraPerformerIds = formData.getAll("extraPerformerIds").map(String).filter(Boolean);
+      const result = await createEventFromTtmImport({
+        title: String(formData.get("title") ?? ""),
+        venue: String(formData.get("venue") ?? ""),
+        date: String(formData.get("date") ?? ""),
+        startTime: String(formData.get("startTime") ?? ""),
+        endTime: String(formData.get("endTime") ?? ""),
+        description: String(formData.get("description") ?? ""),
+        dramaId: String(formData.get("dramaId") ?? ""),
+        ticketPrice: String(formData.get("ticketPrice") ?? ""),
+        artists: artistRows
+          .filter((r) => r.include)
+          .map((r) => ({
+            fullName: r.fullName,
+            nickname: r.nickname,
+            performerId: r.matchedPerformerId,
+          })),
+        extraPerformerIds,
+      });
+      router.push(`/admin/events/${result.id}/edit`);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Не удалось создать событие");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (!preview) {
+    return (
+      <div className="surface d-flex flex-column gap-3 p-4" style={{ maxWidth: "40rem" }}>
+        <div>
+          <label className="form-label">Ссылка на событие ThaiTicketMajor</label>
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://www.thaiticketmajor.com/concert/..."
+            className="form-control"
+          />
+        </div>
+        {scrapeError && <p className="small text-danger mb-0">{scrapeError}</p>}
+        <div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleScrape}
+            disabled={isScraping || !url.trim()}
+          >
+            {isScraping ? "Парсинг…" : "Спарсить"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="surface d-flex flex-column gap-3 p-4">
+      <p className="small text-secondary mb-0">
+        Источник:{" "}
+        <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer">
+          {preview.sourceUrl}
+        </a>
+        {preview.dateRangeText && <> · на сайте указано: {preview.dateRangeText}</>}
+      </p>
+      <p className="small text-secondary mb-0">
+        Проверьте и при необходимости поправьте всё ниже — в базу ничего не попадёт, пока вы не
+        нажмёте «Создать событие».
+      </p>
+
+      <div className="row g-3">
+        <div className="col-12 col-lg-8">
+          <label className="form-label">Название *</label>
+          <input name="title" required defaultValue={preview.title} className="form-control" />
+        </div>
+        <div className="col-12 col-lg-4">
+          <label className="form-label">Место *</label>
+          <input name="venue" required defaultValue={preview.venue} className="form-control" />
+        </div>
+      </div>
+
+      <div className="row g-3">
+        <div className="col-12 col-sm-4">
+          <label className="form-label">Дата *</label>
+          <input
+            type="date"
+            name="date"
+            required
+            defaultValue={preview.date}
+            className="form-control"
+          />
+        </div>
+        <div className="col-6 col-sm-4">
+          <label className="form-label">Начало *</label>
+          <input
+            type="time"
+            name="startTime"
+            required
+            defaultValue={preview.startTime}
+            className="form-control"
+          />
+        </div>
+        <div className="col-6 col-sm-4">
+          <label className="form-label">Конец</label>
+          <input type="time" name="endTime" className="form-control" />
+        </div>
+      </div>
+
+      <div>
+        <label className="form-label">Цена билетов</label>
+        <input name="ticketPrice" defaultValue={preview.ticketPrice} className="form-control" />
+      </div>
+
+      <div>
+        <label className="form-label">Описание</label>
+        <textarea name="description" rows={3} className="form-control" />
+      </div>
+
+      <EntitySelect
+        name="dramaId"
+        label="Связанный сериал"
+        options={dramas}
+        placeholder="Не выбрано"
+      />
+
+      <div>
+        <label className="form-label d-block">Артисты с сайта</label>
+        {artistRows.length === 0 ? (
+          <p className="small text-secondary">На странице не найдено артистов.</p>
+        ) : (
+          <div className="d-flex flex-column gap-2">
+            {artistRows.map((row, i) => (
+              <div key={i} className="d-flex align-items-center gap-2 flex-wrap">
+                <input
+                  type="checkbox"
+                  checked={row.include}
+                  onChange={(e) => updateArtist(i, { include: e.target.checked })}
+                  aria-label="Добавить"
+                />
+                <input
+                  value={row.nickname}
+                  onChange={(e) => updateArtist(i, { nickname: e.target.value, matchedPerformerId: null })}
+                  placeholder="Ник"
+                  className="form-control form-control-sm"
+                  style={{ width: "8rem" }}
+                />
+                <input
+                  value={row.fullName}
+                  onChange={(e) => updateArtist(i, { fullName: e.target.value })}
+                  placeholder="Полное имя"
+                  className="form-control form-control-sm"
+                  style={{ width: "16rem" }}
+                />
+                <span
+                  className={`small ${row.matchedPerformerId ? "text-success" : "text-secondary"}`}
+                >
+                  {row.matchedPerformerId ? "уже есть в базе" : "будет создан новый"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="form-label d-block">Ещё исполнители (вручную)</label>
+        <EntityMultiSelect
+          name="extraPerformerIds"
+          options={performers}
+          placeholder="Начните вводить имя исполнителя…"
+        />
+      </div>
+
+      {submitError && <p className="small text-danger mb-0">{submitError}</p>}
+
+      <div className="mt-2">
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          {isSubmitting ? "Создание…" : "Создать событие"}
+        </button>
+      </div>
+    </form>
+  );
+}
