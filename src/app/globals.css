@@ -1333,3 +1333,23 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border: 2px solid var(--bs-border-color);
   box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.08);
 }
+
+/* ---------- Leaflet map (recolored to match the site's dark theme —
+   OpenStreetMap tiles are only served light) ---------- */
+.leaflet-map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.85) saturate(0.25);
+}
+
+.leaflet-map-dark .leaflet-container {
+  background: #1a1a1a;
+}
+
+.leaflet-map-dark .leaflet-popup-content-wrapper,
+.leaflet-map-dark .leaflet-popup-tip {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+}
+
+.leaflet-map-dark .leaflet-popup-content a {
+  color: var(--bs-primary-text-emphasis);
+}

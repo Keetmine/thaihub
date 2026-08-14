@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import VisitedButton from "@/components/VisitedButton";
+import LocationMap from "@/components/LocationMapLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,28 @@ export default async function LocationDetailPage({
                   </span>
                 </Link>
               ))}
+            </div>
+          )}
+
+          {location.latitude != null && location.longitude != null && (
+            <div className="mt-4">
+              <h2
+                className="small text-secondary text-uppercase mb-2"
+                style={{ letterSpacing: "0.08em" }}
+              >
+                На карте
+              </h2>
+              <LocationMap
+                locations={[
+                  {
+                    id: location.id,
+                    name: location.name,
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                  },
+                ]}
+                height="16rem"
+              />
             </div>
           )}
         </div>

@@ -36,6 +36,8 @@ export default async function EditLocationPage({
             name: location.name,
             description: location.description ?? "",
             photoUrl: location.photoUrl ?? "",
+            latitude: location.latitude,
+            longitude: location.longitude,
           }}
         />
         <ConfirmForm

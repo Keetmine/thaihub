@@ -4,6 +4,7 @@ import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
 import VisitedButton from "@/components/VisitedButton";
 import { getCurrentUser } from "@/lib/userAuth";
+import { PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,15 @@ export default async function LocationsPage({
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
-        Локации
-      </h1>
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
+          Локации
+        </h1>
+        <Link href="/locations/map" className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2">
+          <PinIcon />
+          На карте
+        </Link>
+      </div>
 
       <NameSearchBox action="/locations" q={q} placeholder="Поиск по названию…" />
 
