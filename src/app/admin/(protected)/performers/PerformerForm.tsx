@@ -27,7 +27,7 @@ function TabButton({
   return (
     <button
       type="button"
-      className={`mode-toggle-option ${active ? "active" : ""}`}
+      className={`tab-bar-item ${active ? "active" : ""}`}
       onClick={onClick}
     >
       {children}
@@ -170,7 +170,7 @@ export default function PerformerForm({
       action={action}
       className="surface d-flex flex-column gap-3 p-4"
     >
-      <div className="mode-toggle mb-1">
+      <div className="tab-bar mb-1">
         <TabButton active={effectiveTab === "general"} onClick={() => setActiveTab("general")}>
           Общая инфа
         </TabButton>
@@ -191,11 +191,11 @@ export default function PerformerForm({
 
       {/* Every tab stays mounted (display:none when inactive) so uncontrolled
           fields like FileDropzone/EntitySelect don't lose their state when
-          switching tabs. */}
-      <div
-        className="d-flex flex-column gap-3"
-        style={{ display: effectiveTab === "general" ? undefined : "none" }}
-      >
+          switching tabs. The display-toggle lives on this outer div with no
+          other classes — Bootstrap's .d-flex etc. carry !important and would
+          otherwise beat an inline display:none on the same element. */}
+      <div style={{ display: effectiveTab === "general" ? undefined : "none" }}>
+      <div className="d-flex flex-column gap-3">
         <div className="row g-3">
           <div className="col-12 col-lg-8">
             <label className="form-label">Имя / название группы *</label>
@@ -411,6 +411,7 @@ export default function PerformerForm({
             )}
           </div>
         )}
+      </div>
       </div>
 
       {type === "SOLO" && (

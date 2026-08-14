@@ -1,19 +1,25 @@
 import Link from "next/link";
 import { formatTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
-import { PinIcon } from "@/components/icons";
+import { PinIcon, UserIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
+import GoingButton from "@/components/GoingButton";
 
 export default function EventAgendaRow({
   event,
   isFavorited = false,
+  isGoing = false,
 }: {
   event: EventWithPerformers;
   isFavorited?: boolean;
+  isGoing?: boolean;
 }) {
   return (
     <div className="agenda-row">
-      <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="corner" />
+      <div className="corner-actions corner-actions-sm">
+        <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
+        <GoingButton eventId={event.id} isGoing={isGoing} variant="icon" />
+      </div>
       <div className="agenda-time">
         <span className="agenda-time-start">{formatTime(event.startsAt)}</span>
         {event.endsAt && (
@@ -22,14 +28,15 @@ export default function EventAgendaRow({
       </div>
       <span className="agenda-dash">—</span>
       <div className="agenda-body">
-        <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
-          <h3 className="h6 font-display mb-1">
-            <Link href={`/event/${event.id}`} className="text-reset text-decoration-none">
-              {event.title}
-            </Link>
-          </h3>
+        <h3 className="h6 font-display mb-1">
+          <Link href={`/event/${event.id}`} className="text-reset text-decoration-none">
+            {event.title}
+          </Link>
+        </h3>
+        <p className="small text-secondary mb-0 d-flex flex-wrap align-items-center gap-2">
           {event.performers.length > 0 && (
-            <p className="small text-secondary mb-1 flex-shrink-0">
+            <span className="d-inline-flex align-items-center gap-1">
+              <UserIcon />
               {event.performers.map(({ performer }, i) => (
                 <span key={performer.id}>
                   {i > 0 && ", "}
@@ -38,11 +45,11 @@ export default function EventAgendaRow({
                   </Link>
                 </span>
               ))}
-            </p>
+            </span>
           )}
-        </div>
-        <p className="small text-secondary mb-0">
-          <PinIcon /> {event.venue}
+          <span className="d-inline-flex align-items-center gap-1">
+            <PinIcon /> {event.venue}
+          </span>
         </p>
         {event.description && (
           <p className="small mt-2 mb-0 text-secondary">{event.description}</p>

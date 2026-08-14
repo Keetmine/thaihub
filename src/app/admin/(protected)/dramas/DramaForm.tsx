@@ -9,6 +9,27 @@ import { createAgencyAndReturn } from "../agencies/actions";
 
 type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 type CastEntry = { id: string; name: string; photoUrl?: string | null; role: string };
+type Tab = "general" | "cast";
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={`tab-bar-item ${active ? "active" : ""}`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
 
 function Avatar({ name, photoUrl }: { name: string; photoUrl?: string | null }) {
   if (photoUrl) {
@@ -45,6 +66,8 @@ export default function DramaForm({
 }) {
   const v = defaultValues;
 
+  const [activeTab, setActiveTab] = useState<Tab>("general");
+
   const [createdPerformers, setCreatedPerformers] = useState<PerformerOption[]>([]);
   const allPerformers = useMemo(
     () => [...performers, ...createdPerformers.filter((c) => !performers.some((p) => p.id === c.id))],
@@ -75,11 +98,9 @@ export default function DramaForm({
   );
   const showCreateOption = trimmedQuery.length > 0 && !hasExactMatch;
 
-  function addCastMember(id: string) {
+  function addCastMember(performer: PerformerOption) {
     setCast((prev) => {
-      if (prev.some((c) => c.id === id)) return prev;
-      const performer = allPerformers.find((p) => p.id === id);
-      if (!performer) return prev;
+      if (prev.some((c) => c.id === performer.id)) return prev;
       return [...prev, { id: performer.id, name: performer.name, photoUrl: performer.photoUrl, role: "" }];
     });
     setQuery("");
@@ -105,7 +126,7 @@ export default function DramaForm({
       const created = await createPerformerAndReturn(newName);
       const option = { id: created.id, name: created.name, photoUrl: null };
       setCreatedPerformers((prev) => [...prev, option]);
-      addCastMember(created.id);
+      addCastMember(option);
       setCreatePrefill(null);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Не удалось создать");
@@ -119,6 +140,20 @@ export default function DramaForm({
       action={action}
       className="surface d-flex flex-column gap-3 p-4"
     >
+      <div className="tab-bar mb-1">
+        <TabButton active={activeTab === "general"} onClick={() => setActiveTab("general")}>
+          Общая инфа
+        </TabButton>
+        <TabButton active={activeTab === "cast"} onClick={() => setActiveTab("cast")}>
+          Актёрский состав
+        </TabButton>
+      </div>
+
+      {/* The display-toggle lives on this outer div with no other classes —
+          Bootstrap's .d-flex etc. carry !important and would otherwise beat
+          an inline display:none on the same element. */}
+      <div style={{ display: activeTab === "general" ? undefined : "none" }}>
+      <div className="d-flex flex-column gap-3">
       <div className="row g-3">
         <div className="col-12 col-lg-8">
           <label className="form-label">Название *</label>
@@ -179,8 +214,10 @@ export default function DramaForm({
           className="form-control"
         />
       </div>
+      </div>
+      </div>
 
-      <div>
+      <div style={{ display: activeTab === "cast" ? undefined : "none" }}>
         <label className="form-label d-block">Актёрский состав</label>
 
         {cast.length > 0 && (
@@ -242,7 +279,7 @@ export default function DramaForm({
                   type="button"
                   className="performer-combobox-option d-flex align-items-center gap-2"
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addCastMember(p.id)}
+                  onClick={() => addCastMember(p)}
                 >
                   <Avatar name={p.name} photoUrl={p.photoUrl} />
                   {p.name}

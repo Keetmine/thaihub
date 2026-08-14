@@ -35,7 +35,7 @@ function TabButton({
   return (
     <button
       type="button"
-      className={`mode-toggle-option ${active ? "active" : ""}`}
+      className={`tab-bar-item ${active ? "active" : ""}`}
       onClick={onClick}
     >
       {children}
@@ -102,19 +102,21 @@ export default function AccountTabs({
 
   return (
     <div>
-      <div className="mode-toggle mb-4">
-        <TabButton active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
-          Профиль
-        </TabButton>
-        <TabButton active={activeTab === "events"} onClick={() => setActiveTab("events")}>
-          События
-        </TabButton>
-        <TabButton active={activeTab === "performers"} onClick={() => setActiveTab("performers")}>
-          Избранные актёры
-        </TabButton>
-        <TabButton active={activeTab === "dramas"} onClick={() => setActiveTab("dramas")}>
-          Сериалы
-        </TabButton>
+      <div className="tab-bar-row">
+        <div className="tab-bar">
+          <TabButton active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
+            Профиль
+          </TabButton>
+          <TabButton active={activeTab === "events"} onClick={() => setActiveTab("events")}>
+            События
+          </TabButton>
+          <TabButton active={activeTab === "performers"} onClick={() => setActiveTab("performers")}>
+            Избранные актёры
+          </TabButton>
+          <TabButton active={activeTab === "dramas"} onClick={() => setActiveTab("dramas")}>
+            Сериалы
+          </TabButton>
+        </div>
       </div>
 
       {/* Every tab stays mounted (display:none when inactive) so state isn't

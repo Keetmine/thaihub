@@ -55,7 +55,10 @@ export default async function PerformerPage({
   const now = new Date();
   const upcoming = eventLinks.filter((l) => l.event.startsAt >= now);
   const past = eventLinks.filter((l) => l.event.startsAt < now);
-  const favoritedEventIds = await getFavoritedEventIds(eventLinks.map((l) => l.eventId));
+  const favoritedEventIds = await getFavoritedEventIds(
+    eventLinks.map((l) => l.eventId),
+    currentUser?.id,
+  );
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });

@@ -7,24 +7,34 @@ import {
   monthLabel,
   WEEKDAY_NAMES_RU,
 } from "@/lib/dates";
+import { getCurrentUser } from "@/lib/userAuth";
 
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; view?: string }>;
 }) {
   const params = await searchParams;
   const now = new Date();
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) - 1 : now.getMonth();
+  // Default is "mine" (only events I'm going to) — ?view=all shows everything.
+  const showAll = params.view === "all";
 
   const gridDays = getMonthGrid(year, month);
   const rangeStart = gridDays[0];
   const rangeEnd = gridDays[gridDays.length - 1];
   rangeEnd.setHours(23, 59, 59, 999);
 
+  const currentUser = await getCurrentUser();
+
   const events = await prisma.event.findMany({
-    where: { startsAt: { gte: rangeStart, lte: rangeEnd } },
+    where: {
+      startsAt: { gte: rangeStart, lte: rangeEnd },
+      ...(!showAll && currentUser
+        ? { attendees: { some: { userId: currentUser.id } } }
+        : {}),
+    },
     include: { performers: { include: { performer: true } } },
     orderBy: { startsAt: "asc" },
   });
@@ -40,9 +50,11 @@ export default async function CalendarPage({
   const next = addMonths(new Date(year, month, 1), 1);
   const todayKey = dateKey(now);
 
+  const viewQuery = showAll ? "&view=all" : "";
+
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
         <div>
           <span className="eyebrow">Афиша событий</span>
           <h1 className="display-1-tight text-capitalize mt-3 mb-0" style={{ fontSize: "2.75rem" }}>
@@ -51,19 +63,38 @@ export default async function CalendarPage({
         </div>
         <div className="d-flex flex-wrap gap-2">
           <Link
-            href={`/calendar?year=${prev.getFullYear()}&month=${prev.getMonth() + 1}`}
+            href={`/calendar?year=${prev.getFullYear()}&month=${prev.getMonth() + 1}${viewQuery}`}
             className="btn btn-ghost btn-sm"
           >
             ← Пред.
           </Link>
-          <Link href="/calendar" className="btn btn-ghost btn-sm">
+          <Link href={`/calendar${showAll ? "?view=all" : ""}`} className="btn btn-ghost btn-sm">
             Сегодня
           </Link>
           <Link
-            href={`/calendar?year=${next.getFullYear()}&month=${next.getMonth() + 1}`}
+            href={`/calendar?year=${next.getFullYear()}&month=${next.getMonth() + 1}${viewQuery}`}
             className="btn btn-ghost btn-sm"
           >
             След. →
+          </Link>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <div className="mode-toggle">
+          <Link
+            href={`/calendar?year=${year}&month=${month + 1}`}
+            prefetch={false}
+            className={`mode-toggle-option ${!showAll ? "active" : ""}`}
+          >
+            Мои события
+          </Link>
+          <Link
+            href={`/calendar?year=${year}&month=${month + 1}&view=all`}
+            prefetch={false}
+            className={`mode-toggle-option ${showAll ? "active" : ""}`}
+          >
+            Все события
           </Link>
         </div>
       </div>

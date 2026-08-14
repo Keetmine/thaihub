@@ -3,14 +3,18 @@ export default function NameSearchBox({
   q,
   hiddenFields,
   placeholder = "Поиск по названию…",
+  className = "mb-4",
 }: {
   action: string;
   q: string;
   hiddenFields?: Record<string, string>;
   placeholder?: string;
+  /** Defaults to "mb-4" for standalone use; pass "" when placed inside a
+   *  .tab-bar-row alongside tabs, which spaces itself. */
+  className?: string;
 }) {
   return (
-    <form action={action} method="GET" className="mb-4">
+    <form action={action} method="GET" className={className}>
       {hiddenFields &&
         Object.entries(hiddenFields).map(([name, value]) => (
           <input key={name} type="hidden" name={name} value={value} />

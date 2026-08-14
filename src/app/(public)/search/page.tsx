@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
-import { getFavoritedEventIds } from "@/lib/favorites";
+import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { getCurrentUser } from "@/lib/userAuth";
 
 export default async function SearchPage({
   searchParams,
@@ -26,7 +27,12 @@ export default async function SearchPage({
       )
   );
 
-  const favoritedIds = await getFavoritedEventIds(results.map((ev) => ev.id));
+  const currentUser = await getCurrentUser();
+  const resultIds = results.map((ev) => ev.id);
+  const [favoritedIds, goingIds] = await Promise.all([
+    getFavoritedEventIds(resultIds, currentUser?.id),
+    getGoingEventIds(resultIds, currentUser?.id),
+  ]);
 
   return (
     <div>
@@ -44,7 +50,12 @@ export default async function SearchPage({
       ) : (
         <div className="d-flex flex-column gap-2">
           {results.map((ev) => (
-            <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
+            <EventAgendaRow
+              key={ev.id}
+              event={ev}
+              isFavorited={favoritedIds.has(ev.id)}
+              isGoing={goingIds.has(ev.id)}
+            />
           ))}
         </div>
       )}

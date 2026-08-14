@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export default function Modal({
   open,
@@ -24,7 +25,13 @@ export default function Modal({
 
   if (!open) return null;
 
-  return (
+  // Portalled to <body> — many callers render a <form> inside this modal
+  // (e.g. inline "create performer" popups) while themselves sitting inside
+  // a page-level <form>. Rendering inline would nest that <form> inside the
+  // page's <form>, which is invalid HTML and made native submit routing
+  // unreliable (observed: submitting the inner form on a fresh, empty
+  // DramaForm cleared the whole page instead of just adding the performer).
+  return createPortal(
     <div className="modal-overlay" onMouseDown={onClose}>
       <div
         className="modal-panel surface"
@@ -46,6 +53,7 @@ export default function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

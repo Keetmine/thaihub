@@ -1126,6 +1126,171 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   color: #4ade80;
 }
 
+/* ---------- Compact round icon actions (favorite / going / calendar-add) ---------- */
+.round-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(10, 10, 12, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.round-icon-btn:hover {
+  background: rgba(10, 10, 12, 0.75);
+  transform: scale(1.06);
+  color: #fff;
+}
+
+.round-icon-btn.is-favorited {
+  color: var(--bs-danger);
+}
+
+.round-icon-btn.is-going {
+  color: #4ade80;
+}
+
+.round-icon-btn.is-accent {
+  color: var(--bs-primary-text-emphasis);
+}
+
+/* Groups of round-icon-btns anchored to a card's top-right corner (agenda
+   rows, event detail header) — the wrapping element needs position:relative,
+   matching .favorite-corner's placement it replaces there. */
+.corner-actions {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.9rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Smaller icons for compact contexts (agenda list rows), so a 2-icon stack
+   doesn't outgrow a short row's actual content height. */
+.corner-actions-sm {
+  gap: 0.3rem;
+}
+
+.corner-actions-sm .round-icon-btn {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.corner-actions-sm .round-icon-btn svg {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+/* Lightweight hover tooltip for any icon-only control — pair with
+   data-tooltip="…" instead of the plain (unstyled) title attribute. */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(10, 10, 12, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.4rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 30;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------- Underline content tabs (section navigation — distinct from
+   .mode-toggle, which is a binary site/admin switch) ---------- */
+.tab-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 1.5rem;
+}
+
+.tab-bar-row .tab-bar {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 1.5rem;
+}
+
+.tab-bar-item {
+  position: relative;
+  padding: 0.7rem 0.05rem;
+  background: none;
+  border: none;
+  color: var(--bs-secondary-color);
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.tab-bar-item:hover {
+  color: var(--bs-body-color);
+}
+
+.tab-bar-item.active {
+  color: var(--bs-body-color);
+  font-weight: 600;
+}
+
+.tab-bar-item.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--bs-primary);
+  box-shadow: 0 0 10px -1px rgba(var(--accent-rgb), 0.7);
+}
+
+.tab-bar-row .search-box {
+  max-width: 14rem;
+  margin-bottom: 0.6rem;
+}
+
 /* ---------- File dropzone (image uploads) ---------- */
 .file-dropzone {
   display: flex;

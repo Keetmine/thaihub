@@ -20,7 +20,7 @@ function TabButton({
   return (
     <button
       type="button"
-      className={`mode-toggle-option ${active ? "active" : ""}`}
+      className={`tab-bar-item ${active ? "active" : ""}`}
       onClick={onClick}
     >
       {children}
@@ -50,7 +50,7 @@ export default function AgencyForm({
 
   return (
     <form action={action} className="surface d-flex flex-column gap-3 p-4">
-      <div className="mode-toggle mb-1">
+      <div className="tab-bar mb-1">
         <TabButton active={activeTab === "general"} onClick={() => setActiveTab("general")}>
           Общая инфа
         </TabButton>
@@ -62,23 +62,25 @@ export default function AgencyForm({
         </TabButton>
       </div>
 
-      <div
-        className="d-flex flex-column gap-3"
-        style={{ display: activeTab === "general" ? undefined : "none" }}
-      >
-        <div>
-          <label className="form-label">Название *</label>
-          <input name="name" required defaultValue={v?.name} className="form-control" />
-        </div>
-        <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} />
-        <div>
-          <label className="form-label">Описание</label>
-          <textarea
-            name="description"
-            rows={4}
-            defaultValue={v?.description}
-            className="form-control"
-          />
+      {/* The display-toggle lives on this outer div with no other classes —
+          Bootstrap's .d-flex etc. carry !important and would otherwise beat
+          an inline display:none on the same element. */}
+      <div style={{ display: activeTab === "general" ? undefined : "none" }}>
+        <div className="d-flex flex-column gap-3">
+          <div>
+            <label className="form-label">Название *</label>
+            <input name="name" required defaultValue={v?.name} className="form-control" />
+          </div>
+          <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} />
+          <div>
+            <label className="form-label">Описание</label>
+            <textarea
+              name="description"
+              rows={4}
+              defaultValue={v?.description}
+              className="form-control"
+            />
+          </div>
         </div>
       </div>
 

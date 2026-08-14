@@ -49,18 +49,32 @@ export default async function EventDetailPage({
       <Link href="/" className="eyebrow text-decoration-none">
         ← Все события
       </Link>
-      <div className="position-relative">
-        {/* --- own block: corner favorite heart (Booking.com-style) --- */}
-        <FavoriteButton
-          kind="event"
-          id={event.id}
-          isFavorited={isEventFavorited}
-          variant="corner"
-        />
-        {/* --- end own block --- */}
-        <h1 className="display-1-tight mt-3 mb-2 pe-5" style={{ fontSize: "2.25rem" }}>
+      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-3 mb-2">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {event.title}
         </h1>
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
+          <GoingButton eventId={event.id} isGoing={isGoing} variant="icon" />
+          <a
+            href={`/event/${event.id}/ics`}
+            className="round-icon-btn"
+            aria-label="Добавить в календарь"
+            data-tooltip="Добавить в календарь"
+          >
+            <CalendarIcon />
+          </a>
+          {event.presaleAt && (
+            <a
+              href={`/event/${event.id}/ics?presale=1`}
+              className="round-icon-btn is-accent"
+              aria-label="Добавить препродажу в календарь"
+              data-tooltip="Добавить препродажу в календарь"
+            >
+              <CalendarIcon />
+            </a>
+          )}
+        </div>
       </div>
       <p className="text-secondary mb-4 text-capitalize">
         {formatHumanDate(event.startsAt)} · {formatTime(event.startsAt)}
@@ -102,24 +116,20 @@ export default async function EventDetailPage({
         )}
       </div>
 
-      <div className="surface p-4">
-        {(event.presaleAt || event.presaleUrl) && (
-          <>
-            <h2
-              className="small text-secondary text-uppercase mb-2"
-              style={{ letterSpacing: "0.08em" }}
-            >
-              Препродажа билетов
-            </h2>
-            {event.presaleAt && (
-              <p className="mb-3 text-capitalize">
-                {formatHumanDate(event.presaleAt)} · {formatTime(event.presaleAt)}
-              </p>
-            )}
-          </>
-        )}
+      {(event.presaleAt || event.presaleUrl) && (
+        <div className="surface p-4">
+          <h2
+            className="small text-secondary text-uppercase mb-2"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Препродажа билетов
+          </h2>
+          {event.presaleAt && (
+            <p className="mb-3 text-capitalize">
+              {formatHumanDate(event.presaleAt)} · {formatTime(event.presaleAt)}
+            </p>
+          )}
 
-        <div className="d-flex flex-wrap gap-2">
           {event.presaleUrl && (
             <a
               href={event.presaleUrl}
@@ -130,15 +140,8 @@ export default async function EventDetailPage({
               Билеты
             </a>
           )}
-          <a href={`/event/${event.id}/ics`} className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2">
-            <CalendarIcon />
-            Добавить в календарь
-          </a>
-          {/* --- own block: going toggle (favorite heart moved to the corner above) --- */}
-          <GoingButton eventId={event.id} isGoing={isGoing} />
-          {/* --- end own block --- */}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { buildEventICS } from "@/lib/ics";
+import { buildEventICS, buildPresaleICS } from "@/lib/ics";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -13,12 +13,19 @@ export async function GET(
     return new NextResponse("Событие не найдено", { status: 404 });
   }
 
-  const ics = buildEventICS(event);
+  const isPresale = new URL(request.url).searchParams.get("presale") === "1";
+  if (isPresale && !event.presaleAt) {
+    return new NextResponse("Препродажа не указана", { status: 404 });
+  }
+
+  const ics = isPresale
+    ? buildPresaleICS({ ...event, presaleAt: event.presaleAt! })
+    : buildEventICS(event);
 
   return new NextResponse(ics, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="event-${event.id}.ics"`,
+      "Content-Disposition": `attachment; filename="${isPresale ? "presale" : "event"}-${event.id}.ics"`,
     },
   });
 }

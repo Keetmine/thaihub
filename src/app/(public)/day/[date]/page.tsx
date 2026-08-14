@@ -10,7 +10,8 @@ import {
   startOfDay,
 } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
-import { getFavoritedEventIds } from "@/lib/favorites";
+import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { getCurrentUser } from "@/lib/userAuth";
 
 export default async function DayPage({
   params,
@@ -31,7 +32,12 @@ export default async function DayPage({
 
   const prevKey = dateKey(addDays(day, -1));
   const nextKey = dateKey(addDays(day, 1));
-  const favoritedIds = await getFavoritedEventIds(events.map((ev) => ev.id));
+  const currentUser = await getCurrentUser();
+  const eventIds = events.map((ev) => ev.id);
+  const [favoritedIds, goingIds] = await Promise.all([
+    getFavoritedEventIds(eventIds, currentUser?.id),
+    getGoingEventIds(eventIds, currentUser?.id),
+  ]);
 
   return (
     <div>
@@ -59,7 +65,12 @@ export default async function DayPage({
       ) : (
         <div className="d-flex flex-column gap-2">
           {events.map((ev) => (
-            <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
+            <EventAgendaRow
+              key={ev.id}
+              event={ev}
+              isFavorited={favoritedIds.has(ev.id)}
+              isGoing={goingIds.has(ev.id)}
+            />
           ))}
         </div>
       )}

@@ -27,25 +27,25 @@ type View = "performers" | "bands" | "pairings";
 
 function Tabs({ active }: { active: View }) {
   return (
-    <div className="mode-toggle mb-4">
+    <div className="tab-bar">
       <Link
         href="/performers"
         prefetch={false}
-        className={`mode-toggle-option ${active === "performers" ? "active" : ""}`}
+        className={`tab-bar-item ${active === "performers" ? "active" : ""}`}
       >
         Актёры
       </Link>
       <Link
         href="/performers?view=bands"
         prefetch={false}
-        className={`mode-toggle-option ${active === "bands" ? "active" : ""}`}
+        className={`tab-bar-item ${active === "bands" ? "active" : ""}`}
       >
         Группы
       </Link>
       <Link
         href="/performers?view=pairings"
         prefetch={false}
-        className={`mode-toggle-option ${active === "pairings" ? "active" : ""}`}
+        className={`tab-bar-item ${active === "pairings" ? "active" : ""}`}
       >
         Пейринги
       </Link>
@@ -113,13 +113,32 @@ function PerformerRow({
     <div className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3">
       <Link
         href={`/performers/${performer.id}`}
-        className="text-decoration-none font-display fw-medium text-white text-truncate"
+        className="text-decoration-none d-flex align-items-center gap-2"
+        style={{ minWidth: 0 }}
       >
-        {performer.name}
+        {performer.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={performer.photoUrl}
+            alt=""
+            style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "2.25rem",
+              height: "2.25rem",
+              borderRadius: "50%",
+              background: "var(--bs-secondary-bg)",
+              flexShrink: 0,
+            }}
+          />
+        )}
+        <span className="font-display fw-medium text-white text-truncate">{performer.name}</span>
       </Link>
       <div className="d-flex align-items-center gap-3 flex-shrink-0">
         <span className="small text-secondary">{performer._count.events} событ.</span>
-        <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} />
+        <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} variant="icon" />
       </div>
     </div>
   );
@@ -272,13 +291,16 @@ export default async function PerformersPage({
         {titles[view]}
       </h1>
 
-      <Tabs active={view} />
-      <NameSearchBox
-        action="/performers"
-        q={q}
-        hiddenFields={view !== "performers" ? { view } : undefined}
-        placeholder="Поиск по имени…"
-      />
+      <div className="tab-bar-row">
+        <Tabs active={view} />
+        <NameSearchBox
+          action="/performers"
+          q={q}
+          hiddenFields={view !== "performers" ? { view } : undefined}
+          placeholder="Поиск по имени…"
+          className=""
+        />
+      </div>
 
       {view === "pairings" ? (
         <PairingsTab q={q} />

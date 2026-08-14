@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { dateKey, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
-import { getFavoritedEventIds } from "@/lib/favorites";
+import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getCurrentUser } from "@/lib/userAuth";
 import LandingPage from "./LandingPage";
 
@@ -41,7 +41,11 @@ export default async function HomePage() {
 
   const upcomingByDay = groupByDay(upcoming);
   const pastByDay = groupByDay(past);
-  const favoritedIds = await getFavoritedEventIds([...upcoming, ...past].map((ev) => ev.id));
+  const allIds = [...upcoming, ...past].map((ev) => ev.id);
+  const [favoritedIds, goingIds] = await Promise.all([
+    getFavoritedEventIds(allIds, user.id),
+    getGoingEventIds(allIds, user.id),
+  ]);
 
   return (
     <div>
@@ -63,7 +67,7 @@ export default async function HomePage() {
               </Link>
               <div className="d-flex flex-column gap-2 mt-2">
                 {dayEvents.map((ev) => (
-                  <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
+                  <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} isGoing={goingIds.has(ev.id)} />
                 ))}
               </div>
             </section>
@@ -87,7 +91,7 @@ export default async function HomePage() {
                 </Link>
                 <div className="d-flex flex-column gap-2 mt-2">
                   {dayEvents.map((ev) => (
-                    <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} />
+                    <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} isGoing={goingIds.has(ev.id)} />
                   ))}
                 </div>
               </section>
