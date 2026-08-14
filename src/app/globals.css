@@ -1204,6 +1204,16 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   color: #4ade80;
 }
 
+/* Forces any icon (even one with its own larger native size, like TvIcon's
+   1.3em default for standalone use e.g. LandingPage) down to match the
+   0.95em most inline info-row icons already use — CSS wins over an SVG's
+   own width/height presentation attributes, so this is enough on its own,
+   no wrapping span/font-size hack needed. */
+.icon-inline {
+  width: 0.95em;
+  height: 0.95em;
+}
+
 /* ---------- Compact round icon actions (favorite / going / calendar-add) ---------- */
 .round-icon-btn {
   display: inline-flex;

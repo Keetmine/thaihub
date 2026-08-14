@@ -96,12 +96,15 @@ since those are keyed on `Event.id`, not per-occurrence.
 (`presaleEnabled` checkbox gates whether the date/time/URL fields are read
 at all — see `getPresaleAt`/`getPresaleUrl` in `actions.ts`).
 
-On the public event page, the presale block shows the "Билеты" link (if
+On the public event page it lives inside the same info card as venue/
+date/price, right under "Цена билетов:" — not a separate `surface` block
+further down the page, so it reads as one more fact about the event
+rather than a disconnected section. It still shows the "Билеты" link (if
 `presaleUrl` is set) and a **labeled** "Добавить в календарь" button (if
-`presaleAt` is set) side by side — deliberately a text button inside the
-presale surface, not a second icon in the top icon row next to the
-regular calendar-add button, so it reads as part of the presale
-call-to-action rather than a generic page action.
+`presaleAt` is set) side by side — deliberately a text button, not a
+second icon in the top icon row next to the regular calendar-add button,
+so it reads as part of the presale call-to-action rather than a generic
+page action.
 
 ## ICS export (single event)
 

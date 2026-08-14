@@ -294,7 +294,7 @@ export function MyDramaListIcon() {
   );
 }
 
-export function CalendarIcon() {
+export function CalendarIcon({ className }: { className?: string } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -305,6 +305,7 @@ export function CalendarIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
       aria-hidden="true"
     >
       <rect x="3" y="5" width="18" height="16" rx="2.5" />
@@ -394,7 +395,7 @@ export function UsersIcon() {
   );
 }
 
-export function TvIcon() {
+export function TvIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -405,6 +406,7 @@ export function TvIcon() {
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
       aria-hidden="true"
     >
       <rect x="2" y="7" width="20" height="14" rx="2.5" />

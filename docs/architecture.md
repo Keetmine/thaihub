@@ -76,6 +76,14 @@ does and doesn't check.
   doesn't add its own standalone margin. Distinct from `.mode-toggle`
   (a pill-style binary switch, e.g. the site/admin nav toggle) — don't mix
   the two for the same kind of control.
+- **Inline text-row icons default to `0.95em`/`strokeWidth: 2`**
+  (`src/components/icons.tsx`) — that's what keeps a line like "📍
+  Локация: …" and "📅 Дата и время: …" visually matched. A few icons
+  (`TvIcon`) also see standalone use at a deliberately larger native size
+  (e.g. `LandingPage`'s feature list) — when reusing one of those inline
+  instead, pass `className="icon-inline"` (`globals.css`) rather than
+  wrapping it in a `<span style={{fontSize}}>`, which compounds instead of
+  overriding and was a real source of misaligned icons on the event page.
 
 ## Known gotchas
 

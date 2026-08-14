@@ -7,7 +7,7 @@ import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import { CalendarIcon, ClockIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
+import { CalendarIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -94,23 +94,60 @@ export default async function EventDetailPage({
         <div className={event.posterUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}>
           <div className="surface p-4 h-100">
             <p className="mb-2">
-              <PinIcon /> <span className="text-secondary">Локация:</span> {event.venue}
+              <PinIcon className="icon-inline" /> <span className="text-secondary">Локация:</span>{" "}
+              {event.venue}
             </p>
             {event.occurrences.map((occ) => (
-              <p key={occ.id} className="mb-2 text-capitalize">
-                <CalendarIcon /> {formatHumanDate(occ.startsAt)} ·{" "}
-                <ClockIcon /> {formatTimeRangeWithMsk(occ.startsAt, occ.endsAt)}
+              <p key={occ.id} className="mb-2">
+                <CalendarIcon /> <span className="text-secondary">Дата и время:</span>{" "}
+                <span className="text-capitalize">{formatHumanDate(occ.startsAt)}</span> ·{" "}
+                {formatTimeRangeWithMsk(occ.startsAt, occ.endsAt)}
               </p>
             ))}
             {event.ticketPrice && (
-              <p className={event.drama ? "mb-2" : "mb-0"}>
+              <p className="mb-0">
                 <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
               </p>
             )}
+            {(event.presaleAt || event.presaleUrl) && (
+              <div className={event.drama ? "mt-3 mb-2" : "mt-3 mb-0"}>
+                <p className="mb-2">
+                  <span className="text-secondary">Препродажа билетов:</span>{" "}
+                  {event.presaleAt ? (
+                    <>
+                      <span className="text-capitalize">{formatHumanDate(event.presaleAt)}</span>{" "}
+                      · {formatTimeWithMsk(event.presaleAt)}
+                    </>
+                  ) : (
+                    "уточняется"
+                  )}
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  {event.presaleUrl && (
+                    <a
+                      href={event.presaleUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary btn-sm"
+                    >
+                      Билеты
+                    </a>
+                  )}
+                  {event.presaleAt && (
+                    <a
+                      href={`/event/${event.id}/ics?presale=1`}
+                      className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+                    >
+                      <CalendarIcon className="icon-inline" />
+                      Добавить в календарь
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
             {event.drama && (
               <p className="mb-0">
-                <span style={{ fontSize: "0.95em" }}><TvIcon /></span>{" "}
-                <span className="text-secondary">Сериал:</span>{" "}
+                <TvIcon className="icon-inline" /> <span className="text-secondary">Сериал:</span>{" "}
                 <Link href={`/dramas/${event.drama.id}`} className="link-body-emphasis">
                   {event.drama.title}
                 </Link>
@@ -174,43 +211,6 @@ export default async function EventDetailPage({
         </div>
       )}
 
-      {(event.presaleAt || event.presaleUrl) && (
-        <div className="surface p-4">
-          <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
-          >
-            Препродажа билетов
-          </h2>
-          {event.presaleAt && (
-            <p className="mb-3 text-capitalize">
-              {formatHumanDate(event.presaleAt)} · {formatTimeWithMsk(event.presaleAt)}
-            </p>
-          )}
-
-          <div className="d-flex flex-wrap gap-2">
-            {event.presaleUrl && (
-              <a
-                href={event.presaleUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-primary btn-sm"
-              >
-                Билеты
-              </a>
-            )}
-            {event.presaleAt && (
-              <a
-                href={`/event/${event.id}/ics?presale=1`}
-                className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
-              >
-                <CalendarIcon />
-                Добавить в календарь
-              </a>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
