@@ -65,6 +65,14 @@ export default function CreatePairingModal({ performers }: { performers: EntityO
             <input name="name" className="form-control" placeholder="Необязательно" />
           </div>
 
+          <div>
+            <label className="form-label">Статус</label>
+            <select name="status" className="form-select" defaultValue="CURRENT">
+              <option value="CURRENT">Текущий</option>
+              <option value="PAST">Бывший</option>
+            </select>
+          </div>
+
           <EntitySelect
             name="performerAId"
             label="Исполнитель A *"

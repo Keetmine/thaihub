@@ -10,6 +10,7 @@ import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
+import type { PairingStatus } from "@/generated/prisma/client";
 
 export type PerformerLinkInput = { label: string; url: string };
 export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
@@ -73,7 +74,7 @@ export default function PerformerForm({
   defaultDramaIds?: string[];
   defaultEventIds?: string[];
   /** Existing pairings this performer is part of — edit mode only. */
-  currentPairings?: { id: string; label: string }[];
+  currentPairings?: { id: string; label: string; status: PairingStatus }[];
 }) {
   const v = defaultValues;
   const isCreating = !v;

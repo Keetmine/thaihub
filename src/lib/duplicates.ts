@@ -166,8 +166,12 @@ async function mergePairingsForPerformer(
     if (existing) {
       // The keeper already has this exact pairing — move the loser
       // pairing's events over (skipping ones already on the keeper's
-      // pairing) and drop the now-redundant duplicate.
+      // pairing) and drop the now-redundant duplicate. If either side
+      // was marked CURRENT, the surviving row should be too.
       await reassignJoinRows(tx.eventPairing, "pairingId", "eventId", existing.id, pairing.id);
+      if (pairing.status === "CURRENT" && existing.status !== "CURRENT") {
+        await tx.pairing.update({ where: { id: existing.id }, data: { status: "CURRENT" } });
+      }
       await tx.pairing.delete({ where: { id: pairing.id } });
     } else {
       await tx.pairing.update({

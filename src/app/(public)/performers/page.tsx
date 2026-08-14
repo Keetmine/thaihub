@@ -147,7 +147,7 @@ async function PairingsTab({ q }: { q: string }) {
         }
       : undefined,
     include: { performerA: true, performerB: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
 
   if (pairings.length === 0) {
@@ -158,10 +158,17 @@ async function PairingsTab({ q }: { q: string }) {
     <div className="row g-3">
       {pairings.map((pair) => (
         <div key={pair.id} className="col-12 col-sm-6 col-lg-4">
-          <div className="surface p-3 h-100">
-            {pair.name && (
-              <p className="font-display fw-medium text-white mb-2">{pair.name}</p>
-            )}
+          <div className={`surface p-3 h-100 ${pair.status === "PAST" ? "opacity-50" : ""}`}>
+            <div className="d-flex align-items-center gap-2 mb-2">
+              {pair.name && (
+                <p className="font-display fw-medium text-white mb-0">{pair.name}</p>
+              )}
+              {pair.status === "PAST" && (
+                <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.65rem" }}>
+                  Бывший
+                </span>
+              )}
+            </div>
             <div className="d-flex flex-wrap align-items-center gap-2">
               <Link
                 href={`/performers/${pair.performerA.id}`}

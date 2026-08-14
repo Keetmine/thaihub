@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { deletePairing } from "./actions";
+import { deletePairing, setPairingStatus } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import CreatePairingModal from "./CreatePairingModal";
@@ -15,7 +15,7 @@ export default async function AdminPairingsPage() {
         performerB: true,
         _count: { select: { events: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     }),
     // Only solo performers can be paired — bands get members, not pairings.
     prisma.performer.findMany({ where: { type: "SOLO" }, orderBy: { name: "asc" } }),
@@ -41,6 +41,11 @@ export default async function AdminPairingsPage() {
         <div className="d-flex flex-column gap-2">
           {pairings.map((pair) => {
             const boundDelete = deletePairing.bind(null, pair.id);
+            const boundToggleStatus = setPairingStatus.bind(
+              null,
+              pair.id,
+              pair.status === "CURRENT" ? "PAST" : "CURRENT",
+            );
             const fallbackLabel = `${pair.performerA.name} × ${pair.performerB.name}`;
             return (
               <div
@@ -48,27 +53,40 @@ export default async function AdminPairingsPage() {
                 className="surface d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div>
-                  <p className="font-display fw-medium text-white mb-0">
+                  <p className="font-display fw-medium text-white mb-0 d-flex align-items-center gap-2">
                     {pair.name || fallbackLabel}
+                    <span
+                      className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
+                      style={{ fontSize: "0.65rem" }}
+                    >
+                      {pair.status === "CURRENT" ? "Текущий" : "Бывший"}
+                    </span>
                   </p>
                   <p className="small text-secondary mb-0">
                     {pair.name ? fallbackLabel : "Без названия"} · {pair._count.events}{" "}
                     событ.
                   </p>
                 </div>
-                <ConfirmForm
-                  action={boundDelete}
-                  confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
-                >
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn-danger"
-                    aria-label="Удалить"
-                    title="Удалить"
+                <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                  <form action={boundToggleStatus}>
+                    <button type="submit" className="btn btn-ghost btn-sm">
+                      {pair.status === "CURRENT" ? "Отметить бывшим" : "Отметить текущим"}
+                    </button>
+                  </form>
+                  <ConfirmForm
+                    action={boundDelete}
+                    confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
                   >
-                    <TrashIcon />
-                  </button>
-                </ConfirmForm>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn-danger"
+                      aria-label="Удалить"
+                      title="Удалить"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </ConfirmForm>
+                </div>
               </div>
             );
           })}

@@ -45,7 +45,7 @@ export default async function EditPerformerPage({
     prisma.pairing.findMany({
       where: { OR: [{ performerAId: id }, { performerBId: id }] },
       include: { performerA: true, performerB: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     }),
   ]);
 
@@ -54,6 +54,7 @@ export default async function EditPerformerPage({
   const currentPairings = pairings.map((pair) => ({
     id: pair.id,
     label: pair.name || `${pair.performerA.name} × ${pair.performerB.name}`,
+    status: pair.status,
   }));
 
   const boundUpdate = updatePerformer.bind(null, id);

@@ -30,6 +30,21 @@ Admin: `src/app/admin/(protected)/pairings/` +
 `PairingManager.tsx`/`CreatePairingModal.tsx` inside the performer form
 for inline creation.
 
+**Current vs past**: `Pairing.status` (`CURRENT` | `PAST`, default
+`CURRENT`) tracks whether a ship is still active — many real-life pairs
+break up and one or both performers go on to new pairings, and a
+performer can have several `Pairing` rows at once (the schema never
+assumed exactly one). Admins toggle status from `/admin/pairings` or a
+performer's edit page (`PairingManager.tsx`, `setPairingStatus` action in
+`pairings/actions.ts`); `CreatePairingModal` also lets a new pairing be
+entered directly as `PAST` (for backfilling history). Every query that
+lists a performer's pairings orders `status` before `createdAt`, so
+current ones sort first; the public performer page
+(`(public)/performers/[id]/page.tsx`) splits them into separate "В паре
+с" (current) and "Бывшие пары" (past, shown at reduced opacity)
+sections. `mergePairingsForPerformer` (`src/lib/duplicates.ts`) upgrades
+the surviving row to `CURRENT` if either side of a merge collision was.
+
 ## Dramas
 
 `src/app/(public)/dramas/`, admin `src/app/admin/(protected)/dramas/`

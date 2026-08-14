@@ -51,8 +51,10 @@ export default async function PerformerPage({
     : await prisma.pairing.findMany({
         where: { OR: [{ performerAId: id }, { performerBId: id }] },
         include: { performerA: true, performerB: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
       });
+  const currentPairings = pairings.filter((p) => p.status === "CURRENT");
+  const pastPairings = pairings.filter((p) => p.status === "PAST");
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
@@ -196,7 +198,7 @@ export default async function PerformerPage({
         </div>
       </div>
 
-      {pairings.length > 0 && (
+      {currentPairings.length > 0 && (
         <div className="mb-4">
           <h2
             className="small text-secondary text-uppercase mb-2"
@@ -205,7 +207,32 @@ export default async function PerformerPage({
             В паре с
           </h2>
           <div className="d-flex flex-wrap gap-2">
-            {pairings.map((pair) => {
+            {currentPairings.map((pair) => {
+              const other = pair.performerAId === id ? pair.performerB : pair.performerA;
+              return (
+                <EntityMiniCard
+                  key={pair.id}
+                  href={`/performers/${other.id}`}
+                  photoUrl={other.photoUrl}
+                  name={pair.name || other.name}
+                  subtitle={pair.name ? other.name : undefined}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {pastPairings.length > 0 && (
+        <div className="mb-4">
+          <h2
+            className="small text-secondary text-uppercase mb-2"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Бывшие пары
+          </h2>
+          <div className="d-flex flex-wrap gap-2 opacity-50">
+            {pastPairings.map((pair) => {
               const other = pair.performerAId === id ? pair.performerB : pair.performerA;
               return (
                 <EntityMiniCard

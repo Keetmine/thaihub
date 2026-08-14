@@ -237,8 +237,9 @@ model PerformerDrama {
 // A named pairing ("ship") of two performers, selectable on events instead
 // of / alongside individual performers.
 model Pairing {
-  id           String    @id @default(cuid())
+  id           String        @id @default(cuid())
   name         String?
+  status       PairingStatus @default(CURRENT)
   performerAId String
   performerBId String
   performerA   Performer @relation("PairingA", fields: [performerAId], references: [id], onDelete: Cascade)
@@ -248,6 +249,11 @@ model Pairing {
   createdAt    DateTime @default(now())
 
   @@unique([performerAId, performerBId])
+}
+
+enum PairingStatus {
+  CURRENT
+  PAST
 }
 
 model EventPairing {

@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import EntitySelect from "@/components/EntitySelect";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
-import { createPairing, deletePairing } from "../pairings/actions";
+import { createPairing, deletePairing, setPairingStatus } from "../pairings/actions";
 import { createPerformerAndReturn } from "./actions";
 import type { PerformerOption } from "./PerformerForm";
+import type { PairingStatus } from "@/generated/prisma/client";
 
 export default function PairingManager({
   performerId,
@@ -15,7 +16,7 @@ export default function PairingManager({
   soloPerformers,
 }: {
   performerId: string;
-  currentPairings: { id: string; label: string }[];
+  currentPairings: { id: string; label: string; status: PairingStatus }[];
   soloPerformers: PerformerOption[];
 }) {
   const router = useRouter();
@@ -53,6 +54,11 @@ export default function PairingManager({
     router.refresh();
   }
 
+  async function handleToggleStatus(id: string, next: PairingStatus) {
+    await setPairingStatus(id, next);
+    router.refresh();
+  }
+
   return (
     <div className="d-flex flex-column gap-3">
       {currentPairings.length > 0 && (
@@ -62,20 +68,39 @@ export default function PairingManager({
               key={pair.id}
               className="surface d-flex align-items-center justify-content-between gap-3 p-3"
             >
-              <span className="font-display fw-medium text-white">{pair.label}</span>
-              <ConfirmForm
-                action={() => handleDelete(pair.id)}
-                confirmMessage={`Удалить пейринг «${pair.label}»?`}
-              >
+              <span className="font-display fw-medium text-white d-flex align-items-center gap-2">
+                {pair.label}
+                <span
+                  className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
+                  style={{ fontSize: "0.65rem" }}
+                >
+                  {pair.status === "CURRENT" ? "Текущий" : "Бывший"}
+                </span>
+              </span>
+              <div className="d-flex align-items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
-                  className="icon-btn icon-btn-danger"
-                  aria-label="Удалить"
-                  title="Удалить"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() =>
+                    handleToggleStatus(pair.id, pair.status === "CURRENT" ? "PAST" : "CURRENT")
+                  }
                 >
-                  <TrashIcon />
+                  {pair.status === "CURRENT" ? "Отметить бывшим" : "Отметить текущим"}
                 </button>
-              </ConfirmForm>
+                <ConfirmForm
+                  action={() => handleDelete(pair.id)}
+                  confirmMessage={`Удалить пейринг «${pair.label}»?`}
+                >
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn-danger"
+                    aria-label="Удалить"
+                    title="Удалить"
+                  >
+                    <TrashIcon />
+                  </button>
+                </ConfirmForm>
+              </div>
             </div>
           ))}
         </div>
