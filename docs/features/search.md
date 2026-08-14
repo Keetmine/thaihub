@@ -32,3 +32,12 @@ one entity type by title/name via a plain `?q=` param and a `where:
 {contains}` on that page's own query, no separate route or fan-out. See
 [architecture.md](../architecture.md#conventions) for the `.tab-bar-row`
 layout those list pages use to combine that search box with tabs.
+
+**`NameSearchBox` is a client component**, not a plain GET form: it
+debounces typing (400ms) before calling `router.replace` with the new
+`?q=`, but updates immediately (no debounce) when the input goes back to
+empty — either by deleting everything or via the native `<input
+type="search">`'s own "×" clear button, which fires the same `onChange`.
+`hiddenFields` (other params to preserve, e.g. `status` on `/dramas`)
+still work the same as before, just appended to the URL client-side
+instead of as literal `<input type="hidden">`s in a submitted form.

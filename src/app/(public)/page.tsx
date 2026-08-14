@@ -4,6 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { dateKey, endOfDay, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import NameSearchBox from "@/components/NameSearchBox";
+import DateRangeFilterButton from "@/components/DateRangeFilterButton";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
@@ -123,28 +124,37 @@ export default async function HomePage({
       </div>
 
       <div className="tab-bar-row">
-        <div className="tab-bar">
-          <Link
-            href={`/?filter=all${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "all" ? "active" : ""}`}
-          >
-            Все события
-          </Link>
-          <Link
-            href={`/?filter=going${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "going" ? "active" : ""}`}
-          >
-            Я иду
-          </Link>
-          <Link
-            href={`/?filter=favorited${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "favorited" ? "active" : ""}`}
-          >
-            Избранное
-          </Link>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="tab-bar">
+            <Link
+              href={`/?filter=all${rangeQuery}`}
+              prefetch={false}
+              className={`tab-bar-item ${filter === "all" ? "active" : ""}`}
+            >
+              Все события
+            </Link>
+            <Link
+              href={`/?filter=going${rangeQuery}`}
+              prefetch={false}
+              className={`tab-bar-item ${filter === "going" ? "active" : ""}`}
+            >
+              Я иду
+            </Link>
+            <Link
+              href={`/?filter=favorited${rangeQuery}`}
+              prefetch={false}
+              className={`tab-bar-item ${filter === "favorited" ? "active" : ""}`}
+            >
+              Избранное
+            </Link>
+          </div>
+          <DateRangeFilterButton
+            action="/"
+            from={from}
+            to={to}
+            clearHref={`/?filter=${filter}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            hiddenFields={filter !== "all" ? { filter } : undefined}
+          />
         </div>
         <NameSearchBox
           action="/"
@@ -158,26 +168,6 @@ export default async function HomePage({
           className=""
         />
       </div>
-
-      <form className="d-flex flex-wrap align-items-end gap-2 mb-4">
-        {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
-        <div>
-          <label className="form-label small text-secondary mb-1">С даты</label>
-          <input type="date" name="from" defaultValue={from} className="form-control form-control-sm" />
-        </div>
-        <div>
-          <label className="form-label small text-secondary mb-1">По дату</label>
-          <input type="date" name="to" defaultValue={to} className="form-control form-control-sm" />
-        </div>
-        <button type="submit" className="btn btn-outline-secondary btn-sm">
-          Показать
-        </button>
-        {hasDateRange && (
-          <Link href={`/?filter=${filter}`} prefetch={false} className="btn btn-ghost btn-sm">
-            Сбросить даты
-          </Link>
-        )}
-      </form>
 
       {hasDateRange && (
         <p className="small text-secondary mb-3">

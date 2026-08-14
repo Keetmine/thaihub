@@ -15,12 +15,22 @@ range is active, the home page drops its usual upcoming/archive split
 revisiting a past trip) and shows every matching occurrence as one
 ascending list, still day-grouped the same way. The `filter`
 (Все/Иду/Избранное) toggle and the date range compose — switching filters
-carries the active range along via `rangeQuery`, and there's a "Сбросить
-даты" link to drop the range while keeping the current filter. This is
-meant as the building block for a possible future "trip" feature (save a
-named date range, mark which of its events you actually attended) — if
-that gets built, it should stay a thin wrapper over this same query
-rather than a heavier new concept.
+carries the active range along via `rangeQuery`. This is meant as the
+building block for a possible future "trip" feature (save a named date
+range, mark which of its events you actually attended) — if that gets
+built, it should stay a thin wrapper over this same query rather than a
+heavier new concept.
+
+The from/to inputs live behind `DateRangeFilterButton` (a calendar-icon
+button, filled/`is-accent` when a range is active) rather than as
+always-visible fields — clicking it opens a small popover
+(`.date-range-filter-dropdown`) with the same two `<input type="date">`s,
+a "Показать" submit, and a "Сбросить" link when a range is set. It sits
+inside the home page's `.tab-bar-row`, to the left of the search box (see
+[architecture.md](../architecture.md#conventions)) — a reusable pattern
+for "a filter that needs real inputs but shouldn't clutter a tab row",
+distinct from `DramaStatusButton`'s dropdown (a fixed list of options
+instead of freeform inputs).
 
 Admin CRUD: `src/app/admin/(protected)/events/` (`EventForm.tsx`,
 `actions.ts`, `new/`, `[id]/edit/`).
@@ -168,24 +178,27 @@ convention as `Drama.posterUrl` for blscene imports). Editable via
 whatever URL it was pre-filled with if the admin never touches it), shown
 as a banner image at the top of the public event page when set.
 
-## Thai time is always shown with a Moscow equivalent
+## Thai time always has a Moscow equivalent available
 
 Every event in ThaiHub is a Thailand event, so every displayed event/
-presale time shows a Moscow equivalent — `formatTimeWithMsk` (single time,
-"18:00 (МСК 14:00)") and `formatTimeRangeWithMsk` (start–end range, "18:00–
-21:00 (МСК 14:00–17:00)") in `src/lib/dates.ts`. Thailand (ICT, UTC+7) and
+presale time has a Moscow equivalent nearby — Thailand (ICT, UTC+7) and
 Moscow (MSK, UTC+3) both run without DST, so the gap is a constant 4
-hours; both helpers just subtract 4 hours from whatever `formatTime` would
-already show — no timezone library, no per-event timezone field. Used on
-the event detail page, the admin events list, and the account page's
-going/favorited event lists.
+hours; `toMskTime` (`src/lib/dates.ts`) just subtracts 4 hours from a
+`Date`, no timezone library or per-event timezone field needed.
 
-`EventAgendaRow`'s compact list-view time column (`.agenda-time`, only
-`3.2rem` wide) can't fit either helper's output without breaking the
-layout, so it shows its own compact one-line form instead: `.agenda-time-
-msk` renders just `МСК HH:MM` for the start time (no range, no
-parentheses) stacked below the Thai time via `toMskTime` — same
-underlying −4 hour shift, just formatted to fit a narrow column.
+**On the single event detail page** (`event/[id]/page.tsx`) it's shown
+inline, since that's the one page worth reading closely —
+`formatTimeWithMsk` ("18:00 (МСК 14:00)") for a single time,
+`formatTimeRangeWithMsk` ("18:00–21:00 (МСК 14:00–17:00)") for a range.
+
+**Everywhere events show up as a list** — `EventAgendaRow` (home, day,
+performer/drama/location pages, search) and the account page's going/
+favorited event rows — it's hidden by default and shown on hover/focus
+instead, via `MskTimeInfo`: a small "i" icon (`.agenda-time-info`) whose
+`data-tooltip` reads "Тайское время. МСК: HH:MM[–HH:MM]". This keeps list
+rows uncluttered; the admin events list is the one exception and still
+shows it inline (`formatTimeRangeWithMsk`), since that's a dense internal
+management view, not a browsing surface.
 
 ## Date in the compact list view
 

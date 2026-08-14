@@ -244,7 +244,7 @@ export default async function PerformerPage({
       )}
 
       <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
-        Предстоящие
+        Предстоящие события
       </h2>
       {upcoming.length === 0 ? (
         <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
