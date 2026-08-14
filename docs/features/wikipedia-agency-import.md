@@ -1,12 +1,20 @@
 # Wikipedia agency importer
 
-Talent agencies (e.g. [Domundi TV](https://en.wikipedia.org/wiki/Domundi_TV))
-often have a well-maintained English Wikipedia article listing their full
-roster and production history — a lot of it for performers/dramas not yet
-in our catalog. Wikipedia's content is CC BY-SA (reuse explicitly
-permitted) and its `robots.txt` has no AI-bot disallow, a real contrast
-with TMDB/IMDb (see [tmdb-import.md](tmdb-import.md)) — so this uses the
-official MediaWiki API (`action=parse`), not raw-HTML scraping.
+Talent agencies (e.g. [Domundi TV](https://en.wikipedia.org/wiki/Domundi_TV),
+[GMMTV](https://en.wikipedia.org/wiki/GMMTV)) often have a well-maintained
+English Wikipedia article listing their full roster and production
+history — a lot of it for performers/dramas not yet in our catalog.
+Wikipedia's content is CC BY-SA (reuse explicitly permitted) and its
+`robots.txt` has no AI-bot disallow, a real contrast with TMDB/IMDb (see
+[tmdb-import.md](tmdb-import.md)) — so this uses the official MediaWiki
+API (`action=parse`), not raw-HTML scraping.
+
+Different agencies' pages are edited by different people and don't share
+one exact layout — GMMTV's productions table is headed "TV series" where
+Domundi TV's is "Television series", for instance. The parser is written
+to tolerate that (see "Productions" and "Heading structure" below) rather
+than assuming every agency page matches the first one it was built
+against.
 
 ## Files
 
@@ -32,10 +40,17 @@ official MediaWiki API (`action=parse`), not raw-HTML scraping.
 - **Name**: the *page title* ("Domundi TV"), not the infobox's full legal
   name ("Domundi TV Co., Ltd.") — shorter, and matches how the agency is
   referred to everywhere else on the page and in the app.
-- **Productions**: only the article's "Television series" table, not
-  "Television show" if a separate one exists — the latter is
-  reality/variety content, same reasoning as `tmdb-import.md`'s
-  "Self"-credit filtering for known-for shows.
+- **Productions**: tries each heading in `seriesHeadingCandidates`
+  (`"Television series"`, then `"TV series"`) in order and takes the
+  first one whose table actually parses out rows — added after GMMTV's
+  page turned out to head its production table "TV series" instead of
+  Domundi TV's "Television series". Deliberately does *not* fall back to
+  every heading that looks production-related: GMMTV also has a "Drama"
+  table (a separate, older pre-BL-era catalog, out of scope for this
+  importer) and a "TV shows" table (its variety shows — same
+  reality/variety exclusion reasoning as `tmdb-import.md`'s "Self"-credit
+  filtering for known-for shows) that must **not** get pulled in just
+  because they also contain Year/Title columns.
 - **Upcoming TV series**: parsed into `Drama` rows with
   `status: "PLANNED"` when TMDB has no match yet; the "notes" column
   becomes `synopsis`. If TMDB *does* have the show already (common once
@@ -61,10 +76,17 @@ drama title).
 `parseTableGrid()` reconstructs the table's actual visual grid — tracking
 pending `{text, remaining}` rowspans per column index across row
 iterations — instead of indexing raw `<td>`s directly. Used for both the
-"Television series" and "Upcoming TV series" tables, then columns are
-looked up by header name (`"year"`, `"title"`, `"network"`, `"notes"`)
-rather than a hardcoded position, since column order isn't guaranteed to
-match across different agencies' pages.
+production and upcoming-shows tables, then columns are looked up by
+header name (`"year"`, `"title"`, `"network"`, `"notes"`) rather than a
+hardcoded position, since column order isn't guaranteed to match across
+different agencies' pages.
+
+A cell listing several values (multiple networks, multiple
+co-production companies) commonly stacks them with `<br>` instead of
+punctuation — hit for real on GMMTV, where a network cell rendered as
+`"One HDBang Channel"` with no separator at all once `.text()` dropped
+the line break. `parseTableGrid()` replaces every `<br>` with `", "`
+before extracting each cell's text to keep multi-value cells readable.
 
 ### Heading structure
 
@@ -74,6 +96,13 @@ that wrapper div's next sibling, not the heading tag's own. Handled by
 `contentAfterHeading()`/the "Current" roster's manual sibling-walk (which
 stops at the next `mw-heading2` wrapper, since "Current" is itself
 nested inside a larger section with sibling sub-groups).
+
+`contentAfterHeading()` also skips past non-content elements
+(`<link>`/`<style>`/`<meta>`) instead of trusting the wrapper's very
+first sibling — GMMTV's "Former" section has a stray empty `<link>`
+between the heading and the actual artist list, and taking that first
+sibling at face value silently produced zero former artists instead of
+the real 87.
 
 ## Matching against our DB
 

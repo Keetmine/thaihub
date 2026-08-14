@@ -38,9 +38,17 @@ function headingByText($: CheerioAPI, text: string): Cheerio<AnyNode> {
 
 /** The element that visually follows a heading is its *wrapper* div's
  *  next sibling, not the heading tag's own — modern Wikipedia wraps
- *  every heading in a `<div class="mw-heading">`. */
+ *  every heading in a `<div class="mw-heading">`. Some pages (hit for
+ *  real on GMMTV's "Former" section) insert a stray non-content element
+ *  — an empty `<link>`, `<style>`, etc. — right after the wrapper before
+ *  the actual content, so this skips forward past those instead of
+ *  blindly trusting the first sibling. */
 function contentAfterHeading($: CheerioAPI, heading: Cheerio<AnyNode>): Cheerio<AnyNode> {
-  return heading.parent().next();
+  let node = heading.parent().next();
+  while (node.length && ["link", "style", "meta"].includes(node.get(0)?.tagName ?? "")) {
+    node = node.next();
+  }
+  return node;
 }
 
 /** Reconstructs a Wikipedia table's *visual* grid, expanding `rowspan`/
@@ -70,7 +78,13 @@ function parseTableGrid($: CheerioAPI, table: Cheerio<AnyNode>): string[][] {
         continue;
       }
       const $cell = $(cells[cellIndex]);
-      const text = $cell.text().replace(/\s+/g, " ").trim();
+      // A cell listing several values (multiple networks, multiple
+      // co-production companies) commonly stacks them with `<br>` rather
+      // than separating with punctuation — `.text()` alone would run
+      // them together with no space at all ("One HDBang Channel"),
+      // hence the explicit separator before extracting.
+      $cell.find("br").replaceWith(", ");
+      const text = $cell.text().replace(/\s+/g, " ").replace(/\s*,\s*/g, ", ").trim();
       const colspan = Math.max(1, parseInt($cell.attr("colspan") || "1", 10));
       const rowspan = Math.max(1, parseInt($cell.attr("rowspan") || "1", 10));
       for (let c = 0; c < colspan; c++) {
@@ -172,11 +186,25 @@ export async function fetchWikipediaAgencyPage(pageTitleOrUrl: string): Promise<
   // series" vs. "Television show") — only the scripted-drama one is
   // relevant here, a reality/variety-show table doesn't belong in the
   // Drama catalog any more than a TMDB "Self" credit does (see
-  // tmdb-import.md's known-for filtering for the same reasoning).
-  const seriesHeading = headingByText($, "Television series");
-  const productions = seriesHeading.length
-    ? parseProductionsTable($, contentAfterHeading($, seriesHeading))
-    : [];
+  // tmdb-import.md's known-for filtering for the same reasoning). Not
+  // every agency's page uses the same heading text for that table —
+  // GMMTV's is "TV series", not "Television series" — so this tries each
+  // known variant in order and takes the first that actually parses out
+  // any rows. Deliberately excludes headings like "Drama" (GMMTV's, but
+  // a separate older/pre-BL-era catalog, out of scope here) and "TV
+  // shows" (GMMTV's variety-show table, same reality-show exclusion as
+  // above) to keep this from silently pulling in unrelated content.
+  const seriesHeadingCandidates = ["Television series", "TV series"];
+  let productions: { year: number | null; title: string; network: string | null }[] = [];
+  for (const candidate of seriesHeadingCandidates) {
+    const heading = headingByText($, candidate);
+    if (!heading.length) continue;
+    const parsed = parseProductionsTable($, contentAfterHeading($, heading));
+    if (parsed.length > 0) {
+      productions = parsed;
+      break;
+    }
+  }
 
   const upcomingHeading = headingByText($, "Upcoming TV series");
   let upcoming: { title: string; notes: string | null }[] = [];
