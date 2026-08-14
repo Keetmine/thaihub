@@ -65,11 +65,16 @@ model Performer {
   // Profile fields (populated manually or via mydramalist import).
   realName       String?
   birthDate      DateTime?
+  placeOfBirth   String?
   bio            String?
   agencyId       String?
   agency         Agency?   @relation(fields: [agencyId], references: [id])
   photoUrl       String?
   mydramalistUrl String?
+  // TMDB person id — set once a performer's been imported/matched from
+  // TMDB (see tmdb-import.md), lets re-imports and cast matching key off
+  // a stable id instead of a fuzzy name match.
+  tmdbId         String?   @unique
 
   events         EventPerformer[]
   dramas         PerformerDrama[]
@@ -141,18 +146,22 @@ model EventPerformer {
 }
 
 model Drama {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   title          String
   mydramalistUrl String?
   posterUrl      String?
   synopsis       String?
   year           Int?
+  status         DramaStatus?
   agencyId       String?
-  agency         Agency?  @relation(fields: [agencyId], references: [id])
+  agency         Agency?      @relation(fields: [agencyId], references: [id])
   // The blscene.com "where was X filmed" page this drama was imported from,
   // if any — used to dedupe re-imports (its on-page title can differ from
   // the A-Z index's link text, so title matching alone isn't reliable).
-  blsceneUrl     String?  @unique
+  blsceneUrl     String?      @unique
+  // TMDB TV show id, set once imported/matched from TMDB — see
+  // tmdb-import.md. Same dedupe role as blsceneUrl, for a different source.
+  tmdbId         String?      @unique
 
   performers     PerformerDrama[]
   watchStatuses  DramaWatchStatus[]
@@ -161,6 +170,17 @@ model Drama {
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// TMDB's own TV status vocabulary — whether a show has finished airing or
+// not, distinct from a user's personal WatchStatus above.
+enum DramaStatus {
+  RETURNING_SERIES
+  PLANNED
+  IN_PRODUCTION
+  ENDED
+  CANCELED
+  PILOT
 }
 
 // A real-world filming location (café, park, venue…) tied to one or more

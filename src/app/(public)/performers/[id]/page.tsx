@@ -11,7 +11,7 @@ import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
-import { CakeIcon, BuildingIcon } from "@/components/icons";
+import { CakeIcon, BuildingIcon, PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +139,12 @@ export default async function PerformerPage({
             <p className="small text-secondary mb-0">
               <CakeIcon /> <span className="text-secondary">Дата рождения:</span>{" "}
               {formatBirthDate(performer.birthDate)}
+            </p>
+          )}
+          {!isBand && performer.placeOfBirth && (
+            <p className="small text-secondary mb-0">
+              <PinIcon className="icon-inline" /> <span className="text-secondary">Место рождения:</span>{" "}
+              {performer.placeOfBirth}
             </p>
           )}
           {performer.agency && (

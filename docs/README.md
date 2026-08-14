@@ -19,6 +19,8 @@ something changes, edit the doc in place rather than appending a note.
   - [catalog.md](features/catalog.md) — performers/bands, pairings, dramas, agencies
   - [locations.md](features/locations.md) — filming/venue locations, map, visited tracking
   - [blscene-import.md](features/blscene-import.md) — the blscene.com drama/location scraper
+  - [gmmtv-import.md](features/gmmtv-import.md) — the GMMTV roster scraper
+  - [tmdb-import.md](features/tmdb-import.md) — TMDB actor/drama importer (official API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator
   - [search.md](features/search.md) — cross-entity search
   - [duplicates.md](features/duplicates.md) — duplicate-name warnings + the admin merge tool
@@ -37,3 +39,5 @@ npm run test:e2e            # Playwright smoke suite — needs a running dev ser
 
 Requires a local Postgres reachable via `DATABASE_URL` in `.env`, and
 `ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET` set for the admin login.
+`TMDB_API_READ_ACCESS_TOKEN` is optional — only needed for the TMDB
+importer (see [tmdb-import.md](features/tmdb-import.md)).

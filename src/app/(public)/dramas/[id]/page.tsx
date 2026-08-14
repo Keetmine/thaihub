@@ -9,6 +9,7 @@ import VisitedButton from "@/components/VisitedButton";
 import { BuildingIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -74,10 +75,15 @@ export default async function DramaDetailPage({
       <Link href="/dramas" className="eyebrow text-decoration-none">
         ← Все сериалы
       </Link>
-      <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
+      <h1 className="display-1-tight mt-3 mb-2 d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "2.25rem" }}>
         {drama.title}{" "}
         {drama.year && (
           <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
+        )}
+        {drama.status && (
+          <span className="badge rounded-pill text-bg-secondary fs-6 fw-normal">
+            {DRAMA_STATUS_LABELS[drama.status]}
+          </span>
         )}
       </h1>
 

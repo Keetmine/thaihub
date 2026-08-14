@@ -133,6 +133,7 @@ export async function createPerformer(formData: FormData) {
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
+  const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const agencyId = String(formData.get("agencyId") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
@@ -146,6 +147,7 @@ export async function createPerformer(formData: FormData) {
       type,
       realName: realName || null,
       birthDate: type === "SOLO" ? birthDate : null,
+      placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
       bio: bio || null,
       agencyId: agencyId || null,
       photoUrl: photoUrl || null,
@@ -199,6 +201,7 @@ export async function updatePerformer(id: string, formData: FormData) {
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
+  const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const agencyId = String(formData.get("agencyId") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
@@ -222,6 +225,7 @@ export async function updatePerformer(id: string, formData: FormData) {
         type,
         realName: realName || null,
         birthDate: type === "SOLO" ? birthDate : null,
+        placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
         bio: bio || null,
         agencyId: agencyId || null,
         photoUrl: photoUrl || null,

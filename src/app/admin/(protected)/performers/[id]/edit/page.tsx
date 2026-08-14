@@ -88,6 +88,7 @@ export default async function EditPerformerPage({
             type: performer.type,
             realName: performer.realName ?? "",
             birthDate: performer.birthDate ? dateKey(performer.birthDate) : "",
+            placeOfBirth: performer.placeOfBirth ?? "",
             bio: performer.bio ?? "",
             agencyId: performer.agencyId ?? "",
             photoUrl: performer.photoUrl ?? "",
@@ -96,15 +97,21 @@ export default async function EditPerformerPage({
           }}
         />
 
-        <ConfirmForm
-          action={boundDelete}
-          confirmMessage={`Удалить исполнителя «${performer.name}»?`}
-          className="pt-2"
-        >
-          <button type="button" className="btn btn-outline-danger btn-sm">
-            Удалить исполнителя
-          </button>
-        </ConfirmForm>
+        <div className="d-flex flex-wrap align-items-center gap-3 pt-2">
+          {performer.type === "SOLO" && (
+            <Link href={`/admin/performers/${id}/import-tmdb`} className="btn btn-ghost btn-sm">
+              Импортировать с TMDB
+            </Link>
+          )}
+          <ConfirmForm
+            action={boundDelete}
+            confirmMessage={`Удалить исполнителя «${performer.name}»?`}
+          >
+            <button type="button" className="btn btn-outline-danger btn-sm">
+              Удалить исполнителя
+            </button>
+          </ConfirmForm>
+        </div>
       </div>
     </div>
   );

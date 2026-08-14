@@ -64,6 +64,7 @@ export default function PerformerForm({
     type: string;
     realName: string;
     birthDate: string;
+    placeOfBirth: string;
     bio: string;
     agencyId: string;
     photoUrl: string;
@@ -215,6 +216,15 @@ export default function PerformerForm({
                 type="date"
                 name="birthDate"
                 defaultValue={v?.birthDate}
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-sm-6">
+              <label className="form-label">Место рождения</label>
+              <input
+                name="placeOfBirth"
+                defaultValue={v?.placeOfBirth}
+                placeholder="Bangkok, Thailand"
                 className="form-control"
               />
             </div>
