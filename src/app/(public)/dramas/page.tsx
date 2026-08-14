@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { WATCH_STATUS_LABELS, WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import type { DramaWatchStatusValue } from "../favorites/actions";
+import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +24,37 @@ export default async function DramasPage({
 
   const currentUser = await getCurrentUser();
 
-  const dramas = await prisma.drama.findMany({
-    where: {
-      ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-      ...(status && currentUser
-        ? { watchStatuses: { some: { userId: currentUser.id, status } } }
-        : {}),
-    },
-    orderBy: { title: "asc" },
-  });
+  // The catalog has grown into the thousands of dramas — loading and
+  // rendering all of them by default made the page painfully slow.
+  // Without a search term, show only dramas already marked with some
+  // watch status; the full catalog is reachable through search instead
+  // of one giant always-rendered list.
+  const searchResults = q
+    ? await prisma.drama.findMany({
+        where: {
+          title: { contains: q, mode: "insensitive" as const },
+          ...(status && currentUser
+            ? { watchStatuses: { some: { userId: currentUser.id, status } } }
+            : {}),
+        },
+        orderBy: { title: "asc" },
+        take: SEARCH_RESULT_LIMIT + 1,
+      })
+    : null;
+  const searchTruncated = !!searchResults && searchResults.length > SEARCH_RESULT_LIMIT;
+
+  const dramas = searchResults
+    ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
+    : currentUser
+      ? await prisma.drama.findMany({
+          where: {
+            watchStatuses: {
+              some: status ? { userId: currentUser.id, status } : { userId: currentUser.id },
+            },
+          },
+          orderBy: { title: "asc" },
+        })
+      : [];
 
   const statusByDramaId = await getDramaWatchStatuses(
     dramas.map((d) => d.id),
@@ -76,9 +99,17 @@ export default async function DramasPage({
         />
       </div>
 
+      {searchTruncated && (
+        <p className="small text-secondary mb-3">
+          Показаны первые {SEARCH_RESULT_LIMIT} результатов — уточните запрос, чтобы увидеть более точные совпадения.
+        </p>
+      )}
+
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
-        emptyMessage={q || status ? "Ничего не найдено." : "Пока нет сериалов."}
+        emptyMessage={
+          q ? "Ничего не найдено." : "Пока нет отмеченных сериалов. Используйте поиск, чтобы найти сериал."
+        }
         renderItem={({ drama: d }) => (
           <div
             key={d.id}

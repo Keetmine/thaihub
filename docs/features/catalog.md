@@ -31,10 +31,9 @@ bar).
   instead of lumping them into the generic add-a-link list — purely a
   form-UI split, `getLinks` in `performers/actions.ts` merges them back
   into the same `PerformerLink` rows on save, no separate schema field.
-- The admin performers list (`/admin/performers`) shares the public list's
-  `AlphabetIndexList` layout (see below) plus a `NameSearchBox` search and
-  a photo per row, instead of a plain unsorted list — same component, just
-  with edit/delete icon buttons instead of a favorite toggle.
+- The admin performers list (`/admin/performers`) is a flat, paginated
+  list (see "Catalog scale" below) with a `NameSearchBox` search and a
+  photo per row, edit/delete icon buttons instead of a favorite toggle.
 
 ## Shared A-Z index layout
 
@@ -48,6 +47,41 @@ performers lists, `/dramas`, `/locations` (alphabetical view), and
 `trailingSection` renders one extra, ungrouped section after the letter
 groups with its own short index-nav symbol — used by the locations
 drama-grouped view for "Без сериала" (locations with no linked drama).
+
+## Catalog scale
+
+The performer/drama catalog grew into the thousands (bulk TMDB sync +
+Wikipedia agency imports) — rendering every row on one page stopped being
+viable. Public and admin list pages handle this differently, since
+they're solving different problems:
+
+- **Public `/performers` and `/dramas`**: without a search term, the
+  page doesn't query the full catalog at all — only rows already
+  favorited (performers) or marked with some `DramaWatchStatus`
+  (dramas — drama favorites don't exist, see [social.md](social.md))
+  are shown, so a signed-in user's own list stays small regardless of
+  catalog size. Empty state points at the search box
+  ("Используйте поиск, чтобы найти актёра/сериал") rather than showing
+  nothing with no explanation. Typing a search term switches to a real
+  catalog-wide query, capped at `SEARCH_RESULT_LIMIT` (100,
+  `src/lib/pagination.ts`) — a short/common query (a single letter)
+  can still match thousands of rows in a catalog this size, so results
+  are capped with a "уточните запрос" note rather than rendering
+  everything that matched. No page-number pagination here — narrowing
+  the search is the intended way to get to a specific entry.
+- **Admin list pages** (`/admin/performers`, `/admin/dramas`,
+  `/admin/locations`, `/admin/pairings`, the `/admin` events dashboard,
+  and the agencies tab inside `/admin/performers?view=agencies`): plain
+  `?page=` pagination, `PAGE_SIZE` (20, same `src/lib/pagination.ts`)
+  rows per page via Prisma `skip`/`take`, with a `<Pagination>`
+  (`src/components/Pagination.tsx`) prev/next + "Стр. X из Y" footer —
+  a full numbered page list isn't practical once a catalog runs into
+  the hundreds of pages. The admin events dashboard is the one
+  exception that can't paginate at the query level: it sorts by each
+  event's first occurrence date, which only exists once every event's
+  `EventOccurrence` rows are loaded, so it fetches everything, sorts in
+  JS, then slices — fine given the event count is nowhere near
+  performer/drama scale.
 
 ## Pairings
 

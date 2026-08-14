@@ -3,23 +3,33 @@ import { prisma } from "@/lib/prisma";
 import { deleteLocation } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
+import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, page: rawPage } = await searchParams;
   const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
 
-  const locations = await prisma.location.findMany({
-    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
-    include: { _count: { select: { dramas: true } } },
-    orderBy: { name: "asc" },
-  });
+  const where = q ? { name: { contains: q, mode: "insensitive" as const } } : undefined;
+  const [locations, total] = await Promise.all([
+    prisma.location.findMany({
+      where,
+      include: { _count: { select: { dramas: true } } },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.location.count({ where }),
+  ]);
+  const totalPages = totalPagesFor(total);
 
   return (
     <div>
@@ -111,6 +121,11 @@ export default async function AdminLocationsPage({
           })}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin/locations?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+      />
     </div>
   );
 }

@@ -4,10 +4,11 @@ import { deletePerformer } from "./actions";
 import { deleteAgency } from "../agencies/actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
-import AlphabetIndexList from "@/components/AlphabetIndexList";
 import NameSearchBox from "@/components/NameSearchBox";
+import Pagination from "@/components/Pagination";
 import GmmtvSyncButton from "./GmmtvSyncButton";
 import { PencilIcon, TrashIcon } from "@/components/icons";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +80,19 @@ function AdminPerformerRow({
   );
 }
 
-async function AdminAgenciesView({ q }: { q: string }) {
-  const agencies = await prisma.agency.findMany({
-    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
-    include: { _count: { select: { performers: true } } },
-    orderBy: { name: "asc" },
-  });
+async function AdminAgenciesView({ q, page }: { q: string; page: number }) {
+  const where = q ? { name: { contains: q, mode: "insensitive" as const } } : undefined;
+  const [agencies, total] = await Promise.all([
+    prisma.agency.findMany({
+      where,
+      include: { _count: { select: { performers: true } } },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.agency.count({ where }),
+  ]);
+  const totalPages = totalPagesFor(total);
 
   return (
     <>
@@ -170,6 +178,13 @@ async function AdminAgenciesView({ q }: { q: string }) {
           })}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) =>
+          `/admin/performers?view=agencies${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${p}`
+        }
+      />
     </>
   );
 }
@@ -177,23 +192,32 @@ async function AdminAgenciesView({ q }: { q: string }) {
 export default async function AdminPerformersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; q?: string }>;
+  searchParams: Promise<{ view?: string; q?: string; page?: string }>;
 }) {
-  const { view, q: rawQ } = await searchParams;
+  const { view, q: rawQ, page: rawPage } = await searchParams;
   const isBands = view === "bands";
   const isAgencies = view === "agencies";
   const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
 
-  const performers = isAgencies
-    ? []
-    : await prisma.performer.findMany({
-        where: {
-          type: isBands ? "BAND" : "SOLO",
-          ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
-        },
-        include: { _count: { select: { events: true } } },
-        orderBy: { name: "asc" },
-      });
+  const performerType: "BAND" | "SOLO" = isBands ? "BAND" : "SOLO";
+  const performersWhere = {
+    type: performerType,
+    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+  };
+  const [performers, performersTotal] = isAgencies
+    ? [[], 0]
+    : await Promise.all([
+        prisma.performer.findMany({
+          where: performersWhere,
+          include: { _count: { select: { events: true } } },
+          orderBy: { name: "asc" },
+          skip: (page - 1) * PAGE_SIZE,
+          take: PAGE_SIZE,
+        }),
+        prisma.performer.count({ where: performersWhere }),
+      ]);
+  const performersTotalPages = totalPagesFor(performersTotal);
 
   return (
     <div>
@@ -230,13 +254,26 @@ export default async function AdminPerformersPage({
       )}
 
       {isAgencies ? (
-        <AdminAgenciesView q={q} />
+        <AdminAgenciesView q={q} page={page} />
+      ) : performers.length === 0 ? (
+        <p className="text-secondary">
+          {q ? "Ничего не найдено." : isBands ? "Пока нет групп." : "Пока нет актёров."}
+        </p>
       ) : (
-        <AlphabetIndexList
-          items={performers.map((p) => ({ id: p.id, name: p.name, performer: p }))}
-          emptyMessage={isBands ? "Пока нет групп." : "Пока нет актёров."}
-          renderItem={({ performer }) => <AdminPerformerRow performer={performer} />}
-        />
+        <>
+          <div className="d-flex flex-column gap-2">
+            {performers.map((p) => (
+              <AdminPerformerRow key={p.id} performer={p} />
+            ))}
+          </div>
+          <Pagination
+            page={page}
+            totalPages={performersTotalPages}
+            buildHref={(p) =>
+              `/admin/performers?${isBands ? "view=bands&" : ""}${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
+            }
+          />
+        </>
       )}
     </div>
   );

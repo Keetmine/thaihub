@@ -3,12 +3,21 @@ import { deletePairing, setPairingStatus } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import CreatePairingModal from "./CreatePairingModal";
+import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPairingsPage() {
-  const [pairings, performers] = await Promise.all([
+export default async function AdminPairingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const page = parsePage(rawPage);
+
+  const [pairings, total, performers] = await Promise.all([
     prisma.pairing.findMany({
       include: {
         performerA: true,
@@ -16,10 +25,14 @@ export default async function AdminPairingsPage() {
         _count: { select: { events: true } },
       },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
+    prisma.pairing.count(),
     // Only solo performers can be paired — bands get members, not pairings.
     prisma.performer.findMany({ where: { type: "SOLO" }, orderBy: { name: "asc" } }),
   ]);
+  const totalPages = totalPagesFor(total);
 
   return (
     <div>
@@ -92,6 +105,7 @@ export default async function AdminPairingsPage() {
           })}
         </div>
       )}
+      <Pagination page={page} totalPages={totalPages} buildHref={(p) => `/admin/pairings?page=${p}`} />
     </div>
   );
 }

@@ -4,17 +4,20 @@ import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./events/actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
+import Pagination from "@/components/Pagination";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, page: rawPage } = await searchParams;
   const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
 
   const eventsRaw = await prisma.event.findMany({
     where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
@@ -23,9 +26,14 @@ export default async function AdminEventsPage({
       occurrences: { orderBy: { startsAt: "asc" } },
     },
   });
-  const events = eventsRaw
+  // Sorted by first occurrence date, which only exists once every event's
+  // occurrences are loaded — paginated after sorting rather than in the
+  // query itself.
+  const sortedEvents = eventsRaw
     .filter((ev) => ev.occurrences.length > 0)
     .sort((a, b) => a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime());
+  const totalPages = totalPagesFor(sortedEvents.length);
+  const events = sortedEvents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -137,6 +145,11 @@ export default async function AdminEventsPage({
           })}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+      />
     </div>
   );
 }

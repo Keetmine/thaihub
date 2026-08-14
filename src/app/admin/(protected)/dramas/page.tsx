@@ -3,24 +3,34 @@ import { prisma } from "@/lib/prisma";
 import { deleteDrama } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
+import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import BlsceneSyncButton from "./BlsceneSyncButton";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, page: rawPage } = await searchParams;
   const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
 
-  const dramas = await prisma.drama.findMany({
-    where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
-    include: { _count: { select: { performers: true } } },
-    orderBy: { title: "asc" },
-  });
+  const where = q ? { title: { contains: q, mode: "insensitive" as const } } : undefined;
+  const [dramas, total] = await Promise.all([
+    prisma.drama.findMany({
+      where,
+      include: { _count: { select: { performers: true } } },
+      orderBy: { title: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.drama.count({ where }),
+  ]);
+  const totalPages = totalPagesFor(total);
 
   return (
     <div>
@@ -126,6 +136,11 @@ export default async function AdminDramasPage({
           })}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin/dramas?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+      />
     </div>
   );
 }

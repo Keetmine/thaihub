@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import { HeartIcon } from "@/components/icons";
 import NameSearchBox from "@/components/NameSearchBox";
+import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -237,10 +238,15 @@ function PerformerAlphabetList({
   performers,
   favoritedIds,
   emptyMessage,
+  pinFavorites = true,
 }: {
   performers: PerformerWithCount[];
   favoritedIds: Set<string>;
   emptyMessage: string;
+  // False when `performers` is already just the favorites list (the
+  // no-search default view) — pinning a "favorites" section on top of a
+  // list that's entirely favorites would just repeat every row twice.
+  pinFavorites?: boolean;
 }) {
   if (performers.length === 0) {
     return <p className="text-secondary">{emptyMessage}</p>;
@@ -248,7 +254,7 @@ function PerformerAlphabetList({
 
   // Already alphabetically sorted (query orderBy name:asc) — filtering
   // preserves that order, so the favorites section stays alphabetical too.
-  const favorited = performers.filter((p) => favoritedIds.has(p.id));
+  const favorited = pinFavorites ? performers.filter((p) => favoritedIds.has(p.id)) : [];
 
   // Group by first letter. Cyrillic and Latin names naturally land in
   // different groups since they start with different characters; digits
@@ -351,20 +357,38 @@ export default async function PerformersPage({
           ? "agencies"
           : "performers";
   const q = (rawQ ?? "").trim();
+  const currentUser = view === "pairings" || view === "agencies" ? null : await getCurrentUser();
+
+  // The catalog has grown into the thousands of performers — loading and
+  // rendering all of them by default made the page painfully slow. Without
+  // a search term, show only what's already favorited; the full catalog
+  // is reachable through search instead of one giant always-rendered list.
+  const searchResults =
+    view === "pairings" || view === "agencies" || !q
+      ? null
+      : await prisma.performer.findMany({
+          where: { type: view === "bands" ? "BAND" : "SOLO", name: { contains: q, mode: "insensitive" } },
+          include: { _count: { select: { events: true } } },
+          orderBy: { name: "asc" },
+          take: SEARCH_RESULT_LIMIT + 1,
+        });
+  const searchTruncated = !!searchResults && searchResults.length > SEARCH_RESULT_LIMIT;
 
   const performers =
     view === "pairings" || view === "agencies"
       ? []
-      : await prisma.performer.findMany({
-          where: {
-            type: view === "bands" ? "BAND" : "SOLO",
-            ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
-          },
-          include: { _count: { select: { events: true } } },
-          orderBy: { name: "asc" },
-        });
-
-  const currentUser = view === "pairings" || view === "agencies" ? null : await getCurrentUser();
+      : searchResults
+        ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
+        : currentUser
+          ? await prisma.performer.findMany({
+              where: {
+                type: view === "bands" ? "BAND" : "SOLO",
+                favoritedBy: { some: { userId: currentUser.id } },
+              },
+              include: { _count: { select: { events: true } } },
+              orderBy: { name: "asc" },
+            })
+          : [];
   const favoritedIds = new Set<string>();
   if (currentUser && performers.length > 0) {
     const favorites = await prisma.favoritePerformer.findMany({
@@ -404,11 +428,25 @@ export default async function PerformersPage({
       ) : view === "agencies" ? (
         <AgenciesTab q={q} />
       ) : (
-        <PerformerAlphabetList
-          performers={performers}
-          favoritedIds={favoritedIds}
-          emptyMessage={view === "bands" ? "Пока нет групп." : "Пока нет актёров."}
-        />
+        <>
+          {searchTruncated && (
+            <p className="small text-secondary mb-3">
+              Показаны первые {SEARCH_RESULT_LIMIT} результатов — уточните запрос, чтобы увидеть более точные совпадения.
+            </p>
+          )}
+          <PerformerAlphabetList
+            performers={performers}
+            favoritedIds={favoritedIds}
+            pinFavorites={!!q}
+            emptyMessage={
+              q
+                ? "Ничего не найдено."
+                : view === "bands"
+                  ? "Пока никого нет в избранном. Используйте поиск, чтобы найти группу."
+                  : "Пока никого нет в избранном. Используйте поиск, чтобы найти актёра."
+            }
+          />
+        </>
       )}
     </div>
   );
