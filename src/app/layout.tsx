@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
@@ -22,6 +22,18 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "ThaiHub",
   description: "Расписание концертов и событий",
+  appleWebApp: {
+    title: "ThaiHub",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#160a1c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

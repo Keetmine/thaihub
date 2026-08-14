@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
-import { PinIcon, UserIcon } from "@/components/icons";
+import { PinIcon, UserIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
 
@@ -9,10 +9,12 @@ export default function EventAgendaRow({
   event,
   isFavorited = false,
   isGoing = false,
+  friendsGoing = [],
 }: {
   event: EventWithPerformers;
   isFavorited?: boolean;
   isGoing?: boolean;
+  friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
 }) {
   return (
     <div className="agenda-row">
@@ -50,6 +52,17 @@ export default function EventAgendaRow({
           <span className="d-inline-flex align-items-center gap-1">
             <PinIcon /> {event.venue}
           </span>
+          {friendsGoing.length > 0 && (
+            <span
+              className="d-inline-flex align-items-center gap-1"
+              title={friendsGoing.map((f) => f.name || "Друг").join(", ")}
+            >
+              <UsersIcon />
+              {friendsGoing.length === 1
+                ? `${friendsGoing[0].name || "Друг"} идёт`
+                : `${friendsGoing.length} друзей идут`}
+            </span>
+          )}
         </p>
       </div>
     </div>

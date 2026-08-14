@@ -40,6 +40,50 @@ export function buildEventICS(event: {
   return lines.join("\r\n");
 }
 
+/**
+ * A live, subscribable feed of several events in one VCALENDAR — used for
+ * the per-user "subscribe to my calendar" ICS feed (all events the user is
+ * going to), as opposed to buildEventICS's one-off single-event download.
+ */
+export function buildFeedICS(
+  events: {
+    id: string;
+    title: string;
+    venue: string;
+    description: string | null;
+    startsAt: Date;
+    endsAt: Date | null;
+  }[],
+): string {
+  const vevents = events.flatMap((event) => {
+    const end = event.endsAt ?? new Date(event.startsAt.getTime() + 2 * 60 * 60 * 1000);
+    return [
+      "BEGIN:VEVENT",
+      `UID:${event.id}@thaitrack`,
+      `DTSTAMP:${toICSDate(new Date())}`,
+      `DTSTART:${toICSDate(event.startsAt)}`,
+      `DTEND:${toICSDate(end)}`,
+      `SUMMARY:${escapeICSText(event.title)}`,
+      `LOCATION:${escapeICSText(event.venue)}`,
+      ...(event.description ? [`DESCRIPTION:${escapeICSText(event.description)}`] : []),
+      "END:VEVENT",
+    ];
+  });
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//ThaiHub//Feed//RU",
+    "CALSCALE:GREGORIAN",
+    "X-WR-CALNAME:ThaiHub — мои события",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
+    ...vevents,
+    "END:VCALENDAR",
+  ];
+
+  return lines.join("\r\n");
+}
+
 /** Reminder for a ticket presale window, as its own (short) calendar entry. */
 export function buildPresaleICS(event: {
   id: string;

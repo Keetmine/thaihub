@@ -39,7 +39,7 @@ export default function BlsceneSyncButton() {
 
       {isRunning && (
         <p className="small text-secondary mt-2 mb-0">
-          Может занять время — для каждого нового сериала подтягиваются локации и координаты.
+          Может занять несколько минут — проверяются все сериалы на blscene, не только новые.
         </p>
       )}
 
@@ -60,6 +60,18 @@ export default function BlsceneSyncButton() {
               ))}
             </ul>
           )}
+          {result.refreshed.length > 0 && (
+            <>
+              <p className="mb-1">Обновлено (новые локации на уже импортированных страницах):</p>
+              <ul className="mb-1 ps-3">
+                {result.refreshed.map((d) => (
+                  <li key={d.title}>
+                    {d.title} — +{d.newLocations} локаций
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {result.errors.length > 0 && (
             <ul className="mb-0 ps-3 text-danger">
               {result.errors.map((e) => (
@@ -69,7 +81,7 @@ export default function BlsceneSyncButton() {
               ))}
             </ul>
           )}
-          {result.imported.length === 0 && result.errors.length === 0 && (
+          {result.imported.length === 0 && result.refreshed.length === 0 && result.errors.length === 0 && (
             <p className="mb-0">Новых сериалов не найдено — всё уже есть.</p>
           )}
         </div>

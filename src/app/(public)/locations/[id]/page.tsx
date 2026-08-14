@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import VisitedButton from "@/components/VisitedButton";
 import LocationMap from "@/components/LocationMapLoader";
+import EventAgendaRow from "@/components/EventAgendaRow";
+import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +19,13 @@ export default async function LocationDetailPage({
 
   const location = await prisma.location.findUnique({
     where: { id },
-    include: { dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } } },
+    include: {
+      dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
+      events: {
+        include: { performers: { include: { performer: true } } },
+        orderBy: { startsAt: "asc" },
+      },
+    },
   });
 
   if (!location) notFound();
@@ -29,6 +38,14 @@ export default async function LocationDetailPage({
     });
     isVisited = !!visit;
   }
+
+  const eventIds = location.events.map((ev) => ev.id);
+  const [favoritedIds, goingIds, friendIds] = await Promise.all([
+    getFavoritedEventIds(eventIds, currentUser?.id),
+    getGoingEventIds(eventIds, currentUser?.id),
+    getFriendIds(currentUser?.id),
+  ]);
+  const friendsGoingByEvent = await getFriendsGoingByEvent(eventIds, friendIds);
 
   return (
     <div>
@@ -101,6 +118,28 @@ export default async function LocationDetailPage({
                   </span>
                 </Link>
               ))}
+            </div>
+          )}
+
+          {location.events.length > 0 && (
+            <div className="mt-4">
+              <h2
+                className="small text-secondary text-uppercase mb-2"
+                style={{ letterSpacing: "0.08em" }}
+              >
+                События здесь
+              </h2>
+              <div className="d-flex flex-column gap-2">
+                {location.events.map((ev) => (
+                  <EventAgendaRow
+                    key={ev.id}
+                    event={ev}
+                    isFavorited={favoritedIds.has(ev.id)}
+                    isGoing={goingIds.has(ev.id)}
+                    friendsGoing={friendsGoingByEvent.get(ev.id) ?? []}
+                  />
+                ))}
+              </div>
             </div>
           )}
 

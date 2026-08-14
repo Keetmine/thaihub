@@ -6,7 +6,8 @@ import EntityMultiSelect from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createDramaAndReturn } from "../dramas/actions";
-import { createPerformerAndReturn } from "./actions";
+import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
+import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
 
@@ -76,6 +77,7 @@ export default function PerformerForm({
 }) {
   const v = defaultValues;
   const isCreating = !v;
+  const [nameValue, setNameValue] = useState(v?.name ?? "");
 
   const [type, setType] = useState(v?.type ?? "SOLO");
 
@@ -156,8 +158,16 @@ export default function PerformerForm({
               name="name"
               required
               defaultValue={v?.name}
+              onChange={(e) => setNameValue(e.target.value)}
               className="form-control"
             />
+            {isCreating && (
+              <DuplicateNameWarning
+                value={nameValue}
+                checkAction={findSimilarPerformers}
+                editHrefBase="/admin/performers"
+              />
+            )}
           </div>
           <div className="col-12 col-lg-4">
             <label className="form-label">Тип</label>

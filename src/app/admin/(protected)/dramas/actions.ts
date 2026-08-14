@@ -41,6 +41,20 @@ function revalidateDramaPaths(id?: string) {
   if (id) revalidatePath(`/dramas/${id}`);
 }
 
+/** Live "похоже, уже есть" lookup for the create form's title field. */
+export async function findSimilarDramas(query: string): Promise<{ id: string; name: string }[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const dramas = await prisma.drama.findMany({
+    where: { title: { contains: q, mode: "insensitive" } },
+    select: { id: true, title: true },
+    orderBy: { title: "asc" },
+    take: 5,
+  });
+  return dramas.map((d) => ({ id: d.id, name: d.title }));
+}
+
 export async function createDrama(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();

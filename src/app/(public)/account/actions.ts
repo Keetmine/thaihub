@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -43,4 +44,26 @@ export async function changePassword(formData: FormData) {
     where: { id: user.id },
     data: { passwordHash: hashPassword(newPassword) },
   });
+}
+
+/** Returns the user's ICS feed token, generating one on first use. */
+export async function getOrCreateIcsToken(): Promise<string> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (user.icsToken) return user.icsToken;
+
+  const token = randomUUID();
+  await prisma.user.update({ where: { id: user.id }, data: { icsToken: token } });
+  return token;
+}
+
+/** Invalidates the current feed URL (e.g. if it leaked) and issues a new one. */
+export async function regenerateIcsToken(): Promise<string> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const token = randomUUID();
+  await prisma.user.update({ where: { id: user.id }, data: { icsToken: token } });
+  revalidatePath("/account/settings");
+  return token;
 }

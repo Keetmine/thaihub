@@ -21,6 +21,7 @@ export default function EventForm({
   performers,
   pairings,
   dramas,
+  locations,
   defaultValues,
   submitLabel,
 }: {
@@ -28,6 +29,7 @@ export default function EventForm({
   performers: EntityOption[];
   pairings: PairingOption[];
   dramas: EntityOption[];
+  locations: EntityOption[];
   defaultValues?: {
     title: string;
     venue: string;
@@ -38,6 +40,7 @@ export default function EventForm({
     performerIds: string[];
     pairingIds: string[];
     dramaId: string;
+    locationId: string;
     presaleDate: string;
     presaleTime: string;
     presaleUrl: string;
@@ -98,6 +101,14 @@ export default function EventForm({
           />
         </div>
       </div>
+
+      <EntitySelect
+        name="locationId"
+        label="Локация из каталога (необязательно)"
+        options={locations}
+        defaultValue={v?.locationId}
+        placeholder="Не выбрано"
+      />
 
       <div className="row g-3">
         <div className="col-12 col-sm-4">

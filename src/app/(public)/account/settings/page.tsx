@@ -2,14 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
 import FileDropzone from "@/components/FileDropzone";
-import { updateProfile } from "../actions";
+import { updateProfile, getOrCreateIcsToken } from "../actions";
 import ChangePasswordForm from "./ChangePasswordForm";
+import IcsFeedSection from "./IcsFeedSection";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const icsToken = await getOrCreateIcsToken();
 
   return (
     <div>
@@ -38,6 +40,11 @@ export default async function SettingsPage() {
         <div className="surface p-4" style={{ maxWidth: "32rem" }}>
           <h2 className="h6 fw-semibold mb-3">Смена пароля</h2>
           <ChangePasswordForm />
+        </div>
+
+        <div className="surface p-4" style={{ maxWidth: "32rem" }}>
+          <h2 className="h6 fw-semibold mb-3">Подписка на календарь</h2>
+          <IcsFeedSection token={icsToken} />
         </div>
       </div>
     </div>

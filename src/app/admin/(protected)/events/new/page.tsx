@@ -6,7 +6,7 @@ import { createEvent } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewEventPage() {
-  const [performers, pairings, dramas] = await Promise.all([
+  const [performers, pairings, dramas, locations] = await Promise.all([
     prisma.performer.findMany({ orderBy: { name: "asc" } }),
     prisma.pairing.findMany({
       include: { performerA: true, performerB: true },
@@ -15,6 +15,10 @@ export default async function NewEventPage() {
     prisma.drama.findMany({
       orderBy: { title: "asc" },
       select: { id: true, title: true, posterUrl: true },
+    }),
+    prisma.location.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, photoUrl: true },
     }),
   ]);
 
@@ -31,6 +35,7 @@ export default async function NewEventPage() {
         performers={performers}
         pairings={pairings}
         dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
+        locations={locations}
         submitLabel="Создать событие"
       />
     </div>

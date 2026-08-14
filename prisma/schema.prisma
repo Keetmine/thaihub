@@ -25,6 +25,12 @@ model Event {
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
   dramaId     String?
   drama       Drama?   @relation(fields: [dramaId], references: [id])
+  // Optional link to a known real-world Location (venue reused from a
+  // filming-location page, a recurring fan-meet spot, etc.) — `venue`
+  // stays the free-text display string either way; this just lets the
+  // event show up on that Location's page and on the map.
+  locationId  String?
+  location    Location? @relation(fields: [locationId], references: [id])
   performers  EventPerformer[]
   pairings    EventPairing[]
   favoritedBy FavoriteEvent[]
@@ -152,6 +158,7 @@ model Location {
   longitude   Float?
   dramas      DramaLocation[]
   visitedBy   LocationVisit[]
+  events      Event[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -242,6 +249,10 @@ model User {
   passwordHash String
   name         String?
   photoUrl     String?
+  // Opaque token for the read-only "subscribe to my calendar" ICS feed —
+  // generated on first request since calendar apps fetch it without a
+  // session cookie, so it needs its own unguessable credential.
+  icsToken     String?  @unique
   createdAt    DateTime @default(now())
 
   sessions            UserSession[]

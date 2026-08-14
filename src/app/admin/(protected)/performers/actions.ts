@@ -4,6 +4,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
+/** Live "похоже, уже есть" lookup for the create form's name field. */
+export async function findSimilarPerformers(
+  query: string,
+): Promise<{ id: string; name: string }[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  return prisma.performer.findMany({
+    where: { name: { contains: q, mode: "insensitive" } },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+    take: 5,
+  });
+}
+
 async function createPerformerRecord(name: string, type: string) {
   if (!name) throw new Error("Укажите имя исполнителя или группы");
 

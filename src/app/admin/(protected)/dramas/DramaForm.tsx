@@ -8,6 +8,8 @@ import Modal from "@/components/Modal";
 import { createPerformerAndReturn } from "../performers/actions";
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createLocationAndReturn } from "../locations/actions";
+import { findSimilarDramas } from "./actions";
+import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 
 type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 type CastEntry = { id: string; name: string; photoUrl?: string | null; role: string };
@@ -71,6 +73,8 @@ export default function DramaForm({
   submitLabel: string;
 }) {
   const v = defaultValues;
+  const isNewDrama = !v;
+  const [titleValue, setTitleValue] = useState(v?.title ?? "");
 
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
@@ -170,8 +174,16 @@ export default function DramaForm({
             name="title"
             required
             defaultValue={v?.title}
+            onChange={(e) => setTitleValue(e.target.value)}
             className="form-control"
           />
+          {isNewDrama && (
+            <DuplicateNameWarning
+              value={titleValue}
+              checkAction={findSimilarDramas}
+              editHrefBase="/admin/dramas"
+            />
+          )}
         </div>
 
         <div className="col-12 col-lg-4">

@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTime } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
+import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import { CalendarIcon, ClockIcon, PinIcon, TvIcon } from "@/components/icons";
+import { CalendarIcon, ClockIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -32,17 +33,26 @@ export default async function EventDetailPage({
   const currentUser = await getCurrentUser();
   let isEventFavorited = false;
   let isGoing = false;
+  let friendsGoing: { id: string; name: string | null; photoUrl: string | null }[] = [];
   if (currentUser) {
-    const [favorite, attendance] = await Promise.all([
+    const [favorite, attendance, friendIds] = await Promise.all([
       prisma.favoriteEvent.findUnique({
         where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
       }),
       prisma.eventAttendance.findUnique({
         where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
       }),
+      getFriendIds(currentUser.id),
     ]);
     isEventFavorited = !!favorite;
     isGoing = !!attendance;
+    if (friendIds.length > 0) {
+      const attendances = await prisma.eventAttendance.findMany({
+        where: { eventId: event.id, userId: { in: friendIds } },
+        select: { user: { select: { id: true, name: true, photoUrl: true } } },
+      });
+      friendsGoing = attendances.map((a) => a.user);
+    }
   }
   // --- end own block ---
 
@@ -91,6 +101,22 @@ export default async function EventDetailPage({
           </p>
         )}
       </div>
+
+      {friendsGoing.length > 0 && (
+        <div className="surface p-4 mb-3">
+          <h2
+            className="small text-secondary text-uppercase mb-2 d-flex align-items-center gap-2"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            <UsersIcon /> {friendsGoing.length === 1 ? "Друг идёт" : "Друзья идут"}
+          </h2>
+          <div className="d-flex flex-wrap gap-2">
+            {friendsGoing.map((f) => (
+              <EntityMiniCard key={f.id} href="/friends" photoUrl={f.photoUrl} name={f.name || "Без имени"} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {event.description && (
         <div className="surface p-4 mb-3">

@@ -13,7 +13,7 @@ export default async function EditEventPage({
 }) {
   const { id } = await params;
 
-  const [event, performers, pairings, dramas] = await Promise.all([
+  const [event, performers, pairings, dramas, locations] = await Promise.all([
     prisma.event.findUnique({
       where: { id },
       include: { performers: true, pairings: true },
@@ -26,6 +26,10 @@ export default async function EditEventPage({
     prisma.drama.findMany({
       orderBy: { title: "asc" },
       select: { id: true, title: true, posterUrl: true },
+    }),
+    prisma.location.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, photoUrl: true },
     }),
   ]);
 
@@ -47,6 +51,7 @@ export default async function EditEventPage({
         performers={performers}
         pairings={pairings}
         dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
+        locations={locations}
         submitLabel="Сохранить изменения"
         defaultValues={{
           title: event.title,
@@ -58,6 +63,7 @@ export default async function EditEventPage({
           performerIds: event.performers.map((p) => p.performerId),
           pairingIds: event.pairings.map((p) => p.pairingId),
           dramaId: event.dramaId ?? "",
+          locationId: event.locationId ?? "",
           presaleDate: event.presaleAt ? dateKey(event.presaleAt) : "",
           presaleTime: event.presaleAt ? formatTime(event.presaleAt) : "",
           presaleUrl: event.presaleUrl ?? "",

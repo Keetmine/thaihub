@@ -22,6 +22,7 @@ async function main() {
     console.log("\n=== Done in " + elapsedMin + " min ===");
     console.log(`Checked: ${result.checked}`);
     console.log(`Imported: ${result.imported.length}`);
+    console.log(`Refreshed: ${result.refreshed.length}`);
     console.log(`Failed: ${result.errors.length}`);
     if (result.errors.length > 0) {
       console.log("\nFailures:");

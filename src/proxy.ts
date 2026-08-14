@@ -13,7 +13,7 @@ const USER_COOKIE = "user_session";
 // Routes reachable without being logged in: the marketing landing page
 // (which itself renders the real event feed once you ARE logged in — see
 // src/app/(public)/page.tsx) and the auth forms themselves.
-const PUBLIC_PATHS = new Set(["/", "/login", "/signup"]);
+const PUBLIC_PATHS = new Set(["/", "/login", "/signup", "/manifest.webmanifest"]);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -61,6 +61,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except static assets, image optimization, and files served
-  // straight out of /public (favicon, uploaded photos/posters/logos).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|uploads/).*)"],
+  // straight out of /public (favicon, uploaded photos/posters/logos, PWA
+  // icons — the OS/browser fetches these without our session cookie).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|uploads/|icons/).*)"],
 };
