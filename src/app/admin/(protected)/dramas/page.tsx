@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { deleteDrama } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import { PencilIcon, TrashIcon } from "@/components/icons";
+import BlsceneSyncButton from "./BlsceneSyncButton";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,10 @@ export default async function AdminDramasPage() {
         <Link href="/admin/dramas/new" className="btn btn-primary btn-sm">
           + Добавить сериал
         </Link>
+      </div>
+
+      <div className="surface p-3 mb-4">
+        <BlsceneSyncButton />
       </div>
 
       {dramas.length === 0 ? (

@@ -2,7 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
+import { syncNewDramasFromBlscene, type BlsceneSyncResult } from "@/lib/blsceneImport";
 
 function getCastEntries(
   formData: FormData,
@@ -130,4 +132,25 @@ export async function deleteDrama(id: string) {
   await prisma.drama.delete({ where: { id } });
   revalidateDramaPaths(id);
   redirect("/admin/dramas");
+}
+
+/**
+ * Checks blscene.com's filming-locations index against our own dramas and
+ * imports whatever's missing (drama profile + all its locations, with
+ * coordinates resolved where blscene links to a specific Google Maps
+ * place). Can take a while for a large batch — this is a plain request/
+ * response action, so it's best suited to catching up on a handful of new
+ * shows, not a from-scratch bulk import (that's the one-off script).
+ */
+export async function syncBlsceneDramas(): Promise<BlsceneSyncResult> {
+  const browser = await chromium.launch();
+  try {
+    const result = await syncNewDramasFromBlscene(browser);
+    revalidateDramaPaths();
+    revalidatePath("/locations");
+    revalidatePath("/locations/map");
+    return result;
+  } finally {
+    await browser.close();
+  }
 }
