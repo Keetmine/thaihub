@@ -25,6 +25,17 @@ export function formatTime(d: Date): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Every event in ThaiHub is a Thailand event — stored/displayed times are
+// always Thai (ICT, UTC+7) wall-clock, entered as such whether typed by
+// hand or scraped. Moscow (MSK, UTC+3) has no DST either, so the gap is a
+// constant 4 hours — no timezone library needed, just subtract 4 hours
+// from whatever formatTime() would already show.
+export function formatTimeWithMsk(d: Date): string {
+  const msk = new Date(d);
+  msk.setHours(msk.getHours() - 4);
+  return `${formatTime(d)} (МСК ${formatTime(msk)})`;
+}
+
 export function formatHumanDate(d: Date): string {
   return d.toLocaleDateString("ru-RU", {
     weekday: "long",

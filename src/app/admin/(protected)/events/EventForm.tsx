@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import EntitySelect from "@/components/EntitySelect";
+import FileDropzone from "@/components/FileDropzone";
 import { createPerformerAndReturn } from "../performers/actions";
 
 type PairingOption = {
@@ -45,6 +46,7 @@ export default function EventForm({
     presaleTime: string;
     presaleUrl: string;
     ticketPrice: string;
+    posterUrl: string;
   };
   submitLabel: string;
 }) {
@@ -120,6 +122,8 @@ export default function EventForm({
           className="form-control"
         />
       </div>
+
+      <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
 
       <div className="row g-3">
         <div className="col-12 col-sm-4">

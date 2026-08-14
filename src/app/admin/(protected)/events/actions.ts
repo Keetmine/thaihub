@@ -50,6 +50,7 @@ export async function createEvent(formData: FormData) {
   const dramaId = String(formData.get("dramaId") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
   const ticketPrice = String(formData.get("ticketPrice") ?? "").trim();
+  const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
@@ -71,6 +72,7 @@ export async function createEvent(formData: FormData) {
           dramaId: dramaId || null,
           locationId: locationId || null,
           ticketPrice: ticketPrice || null,
+          posterUrl: posterUrl || null,
           presaleAt,
           presaleUrl,
           performers: {
@@ -101,6 +103,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const dramaId = String(formData.get("dramaId") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
   const ticketPrice = String(formData.get("ticketPrice") ?? "").trim();
+  const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
@@ -122,6 +125,7 @@ export async function updateEvent(id: string, formData: FormData) {
         dramaId: dramaId || null,
         locationId: locationId || null,
         ticketPrice: ticketPrice || null,
+        posterUrl: posterUrl || null,
         presaleAt,
         presaleUrl,
         performers: {

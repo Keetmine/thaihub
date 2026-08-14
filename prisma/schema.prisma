@@ -25,6 +25,7 @@ model Event {
   // baht") — deliberately not a structured number, since sources like
   // ThaiTicketMajor list several tiers as one string.
   ticketPrice String?
+  posterUrl   String?
   // Optional tie-in to a drama this event is about (premiere screening,
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
   dramaId     String?

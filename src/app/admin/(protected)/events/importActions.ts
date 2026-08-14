@@ -17,7 +17,9 @@ export type TtmImportPreview = {
   startTime: string;
   dateRangeText: string | null;
   ticketPrice: string;
-  posterUrl: string | null;
+  posterUrl: string;
+  presaleDate: string;
+  presaleTime: string;
   sourceUrl: string;
   artists: TtmImportArtist[];
 };
@@ -50,7 +52,9 @@ export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPrevi
     startTime: scraped.startTime ?? "",
     dateRangeText: scraped.dateRangeText,
     ticketPrice: scraped.ticketPrice ?? "",
-    posterUrl: scraped.posterUrl,
+    posterUrl: scraped.posterUrl ?? "",
+    presaleDate: scraped.presaleDate ?? "",
+    presaleTime: scraped.presaleTime ?? "",
     sourceUrl: scraped.sourceUrl,
     artists,
   };
@@ -65,6 +69,11 @@ export type TtmImportSubmission = {
   description: string;
   dramaId: string;
   ticketPrice: string;
+  posterUrl: string;
+  /** Ticket sale opening — both empty means "no presale block". */
+  presaleDate: string;
+  presaleTime: string;
+  presaleUrl: string;
   /** Artists the admin kept checked in the review screen. */
   artists: { fullName: string; nickname: string; performerId: string | null }[];
   /** Additional existing performers picked manually (not from the scrape). */
@@ -95,6 +104,13 @@ export async function createEventFromTtmImport(
     endsAt = new Date(y, mo - 1, d, eh, em);
   }
 
+  let presaleAt: Date | null = null;
+  if (data.presaleDate && data.presaleTime) {
+    const [ph, pm] = data.presaleTime.split(":").map(Number);
+    const [py, pmo, pd] = data.presaleDate.split("-").map(Number);
+    presaleAt = new Date(py, pmo - 1, pd, ph, pm);
+  }
+
   const event = await prisma.$transaction(async (tx) => {
     const performerIds: string[] = [...data.extraPerformerIds];
 
@@ -122,6 +138,9 @@ export async function createEventFromTtmImport(
         endsAt,
         dramaId: data.dramaId || null,
         ticketPrice: data.ticketPrice.trim() || null,
+        posterUrl: data.posterUrl.trim() || null,
+        presaleAt,
+        presaleUrl: data.presaleUrl.trim() || null,
         performers: {
           create: Array.from(new Set(performerIds)).map((performerId) => ({ performerId })),
         },

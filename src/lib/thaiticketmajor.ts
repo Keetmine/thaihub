@@ -34,9 +34,36 @@ export type TtmEvent = {
   startTime: string | null;
   dateRangeText: string | null;
   ticketPrice: string | null;
+  // When tickets go on sale ("Public Sale" in the page's summary panel,
+  // distinct from the free-text details table below it) — same
+  // date/time-as-strings treatment as `date`/`startTime` above, and same
+  // reason (no timezone reinterpretation). Only the first "Public Sale"
+  // entry is used when a page lists several sale phases (e.g. presale
+  // then general sale).
+  presaleDate: string | null;
+  presaleTime: string | null;
   artists: TtmArtist[];
   sourceUrl: string;
 };
+
+const MONTH_NAMES_EN = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+];
+
+/** Parses "Saturday 22 August 2026, 10:00" into {date, time} strings. */
+function parseEnglishDateTime(text: string): { date: string; time: string } | null {
+  const match = text.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\D+(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const [, dayStr, monthName, yearStr, hourStr, minuteStr] = match;
+  const monthIndex = MONTH_NAMES_EN.indexOf(monthName.toLowerCase());
+  if (monthIndex === -1) return null;
+  const pad = (n: string | number) => String(n).padStart(2, "0");
+  return {
+    date: `${yearStr}-${pad(monthIndex + 1)}-${pad(dayStr)}`,
+    time: `${pad(hourStr)}:${pad(minuteStr)}`,
+  };
+}
 
 async function fetchEnglishHtml(url: string): Promise<string> {
   const res = await fetch(url, {
@@ -121,6 +148,18 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
   const priceRow = findLabeledRow($, "Ticket Price");
   const ticketPrice = priceRow.find("td").eq(1).text().replace(/\s+/g, " ").trim() || null;
 
+  let presaleDate: string | null = null;
+  let presaleTime: string | null = null;
+  const publicSaleLabel = $("small").filter((_, el) => $(el).text().trim() === "Public Sale").first();
+  const publicSaleText = publicSaleLabel.parent().find("span").first().text().replace(/\s+/g, " ").trim();
+  if (publicSaleText) {
+    const parsed = parseEnglishDateTime(publicSaleText);
+    if (parsed) {
+      presaleDate = parsed.date;
+      presaleTime = parsed.time;
+    }
+  }
+
   const artistsRow = findLabeledRow($, "Artists");
   const artists: TtmArtist[] = artistsRow
     .find("td")
@@ -132,5 +171,17 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
     .filter(Boolean)
     .map(parseArtistLine);
 
-  return { title, venue, posterUrl, date, startTime, dateRangeText, ticketPrice, artists, sourceUrl: url };
+  return {
+    title,
+    venue,
+    posterUrl,
+    date,
+    startTime,
+    dateRangeText,
+    ticketPrice,
+    presaleDate,
+    presaleTime,
+    artists,
+    sourceUrl: url,
+  };
 }

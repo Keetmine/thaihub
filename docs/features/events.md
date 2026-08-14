@@ -111,6 +111,28 @@ several seating tiers as one string, and there's no need to model that as
 anything richer than what gets displayed. Editable in `EventForm.tsx`,
 shown on the public event page under the time/venue block when set.
 
+## Poster
+
+`Event.posterUrl` — a plain external URL (not necessarily uploaded through
+`/api/upload`; a scraped source's own image URL is stored as-is, same
+convention as `Drama.posterUrl` for blscene imports). Editable via
+`FileDropzone` in `EventForm.tsx` (drag-and-drop upload, or it just keeps
+whatever URL it was pre-filled with if the admin never touches it), shown
+as a banner image at the top of the public event page when set.
+
+## Thai time is always shown with a Moscow equivalent
+
+Every event in ThaiHub is a Thailand event, so every displayed event/
+presale time gets a "(МСК HH:MM)" suffix — `formatTimeWithMsk` in
+`src/lib/dates.ts`. Thailand (ICT, UTC+7) and Moscow (MSK, UTC+3) both run
+without DST, so the gap is a constant 4 hours; the helper just subtracts 4
+hours from whatever `formatTime` would already show — no timezone library,
+no per-event timezone field. Used on the event detail page's "Время:" and
+presale date/time lines. **Not** used in `EventAgendaRow`'s compact
+list-view time column (`.agenda-time` is only `3.2rem` wide — there's no
+room for the suffix without breaking that layout; the detail page has
+plenty of room instead).
+
 ## Importing an event from ThaiTicketMajor
 
 `/admin/events/import-ttm` — paste a `thaiticketmajor.com/concert/...` or
@@ -119,8 +141,8 @@ confirm to actually create the event. **Nothing is written to the
 database until that confirm step** — the scrape itself is read-only.
 
 - **`src/lib/thaiticketmajor.ts`** — pure scraping (no DB access):
-  `scrapeTtmEvent(url)` returns title, venue, date/time, ticket price
-  text, and the artist lineup.
+  `scrapeTtmEvent(url)` returns title, venue, date/time, poster, ticket
+  price text, ticket on-sale date/time, and the artist lineup.
   - Title/venue/poster/date come from the page's `schema.org/Event`
     JSON-LD block (reliable, present site-wide). Date/time are kept as
     plain `"YYYY-MM-DD"`/`"HH:mm"` strings sliced directly out of the raw
@@ -136,6 +158,17 @@ database until that confirm step** — the scrape itself is read-only.
     Thai by default**. Setting the `__la=en` cookie (what the site's own
     language-switch button does client-side) gets the same table back in
     English from a plain HTTP request, no headless browser required.
+  - The ticket on-sale moment ("Public Sale") lives in a *third*, entirely
+    different spot on the page — a summary panel above the details table,
+    not inside it — as free-form text like `"Saturday 22 August 2026,
+    10:00"`. `parseEnglishDateTime` parses that into the same plain
+    date/time strings (never `new Date()`, same reasoning as above). A
+    page can list several sale phases (e.g. presale then general sale);
+    only the first is used. This becomes the import's presale
+    date/time, pre-filling `Event.presaleAt`, with `Event.presaleUrl`
+    defaulting to the source page itself (that *is* where you buy the
+    tickets) — both editable/removable in the review screen the same way
+    as everything else.
 - **Artist name parsing is a best-effort heuristic, not a guarantee.**
   ThaiTicketMajor uses two formats with no shared delimiter:
   `"Jakrapatr Kaewpanpong (William)"` (full name, nickname in parens —

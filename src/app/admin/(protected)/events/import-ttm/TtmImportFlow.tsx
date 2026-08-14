@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
+import FileDropzone from "@/components/FileDropzone";
 import {
   scrapeTtmEventPreview,
   createEventFromTtmImport,
@@ -29,6 +30,8 @@ export default function TtmImportFlow({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [presaleEnabled, setPresaleEnabled] = useState(false);
+
   async function handleScrape() {
     setIsScraping(true);
     setScrapeError(null);
@@ -36,6 +39,7 @@ export default function TtmImportFlow({
       const result = await scrapeTtmEventPreview(url.trim());
       setPreview(result);
       setArtistRows(result.artists.map((a) => ({ ...a, include: true })));
+      setPresaleEnabled(Boolean(result.presaleDate));
     } catch (err) {
       setScrapeError(err instanceof Error ? err.message : "Не удалось спарсить страницу");
     } finally {
@@ -64,6 +68,10 @@ export default function TtmImportFlow({
         description: String(formData.get("description") ?? ""),
         dramaId: String(formData.get("dramaId") ?? ""),
         ticketPrice: String(formData.get("ticketPrice") ?? ""),
+        posterUrl: String(formData.get("posterUrl") ?? ""),
+        presaleDate: presaleEnabled ? String(formData.get("presaleDate") ?? "") : "",
+        presaleTime: presaleEnabled ? String(formData.get("presaleTime") ?? "") : "",
+        presaleUrl: presaleEnabled ? String(formData.get("presaleUrl") ?? "") : "",
         artists: artistRows
           .filter((r) => r.include)
           .map((r) => ({
@@ -165,6 +173,8 @@ export default function TtmImportFlow({
         <input name="ticketPrice" defaultValue={preview.ticketPrice} className="form-control" />
       </div>
 
+      <FileDropzone name="posterUrl" label="Постер" defaultValue={preview.posterUrl} />
+
       <div>
         <label className="form-label">Описание</label>
         <textarea name="description" rows={3} className="form-control" />
@@ -176,6 +186,54 @@ export default function TtmImportFlow({
         options={dramas}
         placeholder="Не выбрано"
       />
+
+      <div>
+        <div className="form-check form-switch">
+          <input
+            type="checkbox"
+            className="form-check-input"
+            role="switch"
+            id="ttmPresaleEnabled"
+            checked={presaleEnabled}
+            onChange={(e) => setPresaleEnabled(e.target.checked)}
+          />
+          <label className="form-check-label" htmlFor="ttmPresaleEnabled">
+            Препродажа билетов
+          </label>
+        </div>
+
+        {presaleEnabled && (
+          <div className="row g-3 mt-1">
+            <div className="col-12 col-sm-4">
+              <label className="form-label">Дата открытия продаж</label>
+              <input
+                type="date"
+                name="presaleDate"
+                defaultValue={preview.presaleDate}
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-sm-4">
+              <label className="form-label">Время</label>
+              <input
+                type="time"
+                name="presaleTime"
+                defaultValue={preview.presaleTime}
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-sm-4">
+              <label className="form-label">Ссылка на билеты</label>
+              <input
+                type="url"
+                name="presaleUrl"
+                defaultValue={preview.sourceUrl}
+                className="form-control"
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       <div>
         <label className="form-label d-block">Артисты с сайта</label>

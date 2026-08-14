@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatHumanDate, formatTime } from "@/lib/dates";
+import { formatHumanDate, formatTime, formatTimeWithMsk } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -78,6 +78,16 @@ export default async function EventDetailPage({
           </a>
         </div>
       </div>
+      {event.posterUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={event.posterUrl}
+          alt={event.title}
+          className="surface mb-3"
+          style={{ width: "100%", maxHeight: "24rem", objectFit: "cover" }}
+        />
+      )}
+
       <div className="surface p-4 mb-3">
         <p className="mb-2">
           <PinIcon /> <span className="text-secondary">Локация:</span> {event.venue}
@@ -88,7 +98,7 @@ export default async function EventDetailPage({
         </p>
         <p className={event.ticketPrice || event.drama ? "mb-2" : "mb-0"}>
           <ClockIcon /> <span className="text-secondary">Время:</span>{" "}
-          {formatTime(event.startsAt)}
+          {formatTimeWithMsk(event.startsAt)}
           {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
         </p>
         {event.ticketPrice && (
@@ -171,7 +181,7 @@ export default async function EventDetailPage({
           </h2>
           {event.presaleAt && (
             <p className="mb-3 text-capitalize">
-              {formatHumanDate(event.presaleAt)} · {formatTime(event.presaleAt)}
+              {formatHumanDate(event.presaleAt)} · {formatTimeWithMsk(event.presaleAt)}
             </p>
           )}
 
