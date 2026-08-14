@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
+import DramaStatusButton from "@/components/DramaStatusButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { getDramaWatchStatuses } from "@/lib/favorites";
 import { CakeIcon, BuildingIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -78,17 +80,10 @@ export default async function PerformerPage({
     getGoingEventIds(eventIds, currentUser?.id),
   ]);
 
-  const favoritedDramaIds = new Set<string>();
-  if (currentUser && performer.dramas.length > 0) {
-    const favorites = await prisma.favoriteDrama.findMany({
-      where: {
-        userId: currentUser.id,
-        dramaId: { in: performer.dramas.map((pd) => pd.dramaId) },
-      },
-      select: { dramaId: true },
-    });
-    for (const f of favorites) favoritedDramaIds.add(f.dramaId);
-  }
+  const statusByDramaId = await getDramaWatchStatuses(
+    performer.dramas.map((pd) => pd.dramaId),
+    currentUser?.id,
+  );
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
@@ -328,11 +323,9 @@ export default async function PerformerPage({
                     {pd.drama.year && <p className="small text-secondary mb-0">{pd.drama.year}</p>}
                   </div>
                 </Link>
-                <FavoriteButton
-                  kind="drama"
-                  id={pd.dramaId}
-                  isFavorited={favoritedDramaIds.has(pd.dramaId)}
-                  variant="icon"
+                <DramaStatusButton
+                  dramaId={pd.dramaId}
+                  status={statusByDramaId.get(pd.dramaId) ?? null}
                   className="flex-shrink-0"
                 />
               </div>

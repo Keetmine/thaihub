@@ -155,7 +155,6 @@ model Drama {
   blsceneUrl     String?  @unique
 
   performers     PerformerDrama[]
-  favoritedBy    FavoriteDrama[]
   watchStatuses  DramaWatchStatus[]
   events         Event[]
   locations      DramaLocation[]
@@ -211,8 +210,10 @@ enum WatchStatus {
   DROPPED
 }
 
-// Per-user watch-progress tracking for a drama (MyDramaList-style status),
-// distinct from FavoriteDrama (a simple heart/bookmark).
+// Per-user watch-progress tracking for a drama (MyDramaList-style status).
+// This is the only per-user "how do I feel about this drama" signal —
+// there's deliberately no separate drama favorite/heart, unlike
+// performers/events/agencies (see docs/features/social.md).
 model DramaWatchStatus {
   userId    String
   dramaId   String
@@ -281,7 +282,6 @@ model User {
 
   sessions            UserSession[]
   favoritePerformers  FavoritePerformer[]
-  favoriteDramas      FavoriteDrama[]
   favoriteEvents      FavoriteEvent[]
   favoriteAgencies    FavoriteAgency[]
   eventAttendances    EventAttendance[]
@@ -328,16 +328,6 @@ model FavoritePerformer {
   createdAt   DateTime  @default(now())
 
   @@id([userId, performerId])
-}
-
-model FavoriteDrama {
-  userId    String
-  dramaId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  drama     Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@id([userId, dramaId])
 }
 
 model FavoriteAgency {

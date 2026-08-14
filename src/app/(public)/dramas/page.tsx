@@ -2,9 +2,10 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
-import FavoriteButton from "@/components/FavoriteButton";
+import DramaStatusButton from "@/components/DramaStatusButton";
 import { getCurrentUser } from "@/lib/userAuth";
 import { WATCH_STATUS_LABELS, WATCH_STATUS_ORDER } from "@/lib/watchStatus";
+import { getDramaWatchStatuses } from "@/lib/favorites";
 import type { DramaWatchStatusValue } from "../favorites/actions";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +33,10 @@ export default async function DramasPage({
     orderBy: { title: "asc" },
   });
 
-  const favoritedIds = new Set<string>();
-  if (currentUser && dramas.length > 0) {
-    const favorites = await prisma.favoriteDrama.findMany({
-      where: { userId: currentUser.id, dramaId: { in: dramas.map((d) => d.id) } },
-      select: { dramaId: true },
-    });
-    for (const f of favorites) favoritedIds.add(f.dramaId);
-  }
+  const statusByDramaId = await getDramaWatchStatuses(
+    dramas.map((d) => d.id),
+    currentUser?.id,
+  );
 
   const statusQuery = q ? `&q=${encodeURIComponent(q)}` : "";
 
@@ -116,11 +113,9 @@ export default async function DramasPage({
                 {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
               </div>
             </Link>
-            <FavoriteButton
-              kind="drama"
-              id={d.id}
-              isFavorited={favoritedIds.has(d.id)}
-              variant="icon"
+            <DramaStatusButton
+              dramaId={d.id}
+              status={statusByDramaId.get(d.id) ?? null}
               className="flex-shrink-0"
             />
           </div>

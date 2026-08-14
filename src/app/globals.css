@@ -1007,6 +1007,19 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   font-weight: 600;
 }
 
+/* ---------- Drama watch-status quick-set button (replaces the drama
+   favorite/heart everywhere a drama shows up as a row/card) ---------- */
+.drama-status-btn {
+  position: relative;
+  display: inline-flex;
+}
+
+.drama-status-dropdown {
+  left: auto;
+  right: 0;
+  width: 13rem;
+}
+
 /* ---------- Profile menu (nav avatar/icon dropdown) ---------- */
 .profile-menu {
   position: relative;

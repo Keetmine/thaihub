@@ -101,7 +101,6 @@ export async function mergeDramas(keeperId: string, loserIds: string[]) {
       if (loserId === keeperId) continue;
 
       await reassignJoinRows(tx.performerDrama, "dramaId", "performerId", keeperId, loserId);
-      await reassignJoinRows(tx.favoriteDrama, "dramaId", "userId", keeperId, loserId);
       await reassignJoinRows(tx.dramaWatchStatus, "dramaId", "userId", keeperId, loserId);
       await reassignJoinRows(tx.dramaLocation, "dramaId", "locationId", keeperId, loserId);
       await tx.event.updateMany({ where: { dramaId: loserId }, data: { dramaId: keeperId } });

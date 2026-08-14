@@ -3,26 +3,48 @@
 ## Favorites
 
 A plain heart/bookmark toggle, one join table per entity type
-(`FavoritePerformer`, `FavoriteDrama`, `FavoriteAgency`, `FavoriteEvent` —
-see [data-model.md](../data-model.md)). Toggle UI: `FavoriteButton.tsx`,
+(`FavoritePerformer`, `FavoriteAgency`, `FavoriteEvent` — see
+[data-model.md](../data-model.md)). Toggle UI: `FavoriteButton.tsx`,
 server actions in `src/app/(public)/favorites/actions.ts`. Helper reads:
 `getFavoritedEventIds()` in `src/lib/favorites.ts`.
+
+**Dramas deliberately don't have a favorite/heart** — `FavoriteDrama` was
+removed (migration `remove_favorite_drama`) since watch status already
+covers "how do I feel about this drama", and having both was redundant.
+`FavoriteKind` (`FavoriteButton.tsx`) only accepts `"performer" | "event"
+| "agency"`.
 
 ## Watch status
 
 Per-drama, MyDramaList-style status (`DramaWatchStatus`, one of
-`WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`) — separate
-concept from favoriting a drama. Rendered as a custom dropdown matching
-the app's `.performer-select` styling, not a native `<select>`.
+`WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`) — the one
+per-user "how do I feel about this drama" signal, replacing what would've
+been a favorite. Two UIs:
+
+- **`WatchStatusSelect`** — a full dropdown matching the app's
+  `.performer-select` styling, used on a drama's own detail page where
+  there's room for a labeled control.
+- **`DramaStatusButton`** — a compact icon-button version used everywhere
+  a drama shows up as a row/card (the `/dramas` list, a performer's or
+  agency's filmography): a "+" when nothing's set yet, a pencil once it
+  is, both opening the same small status-picker dropdown anchored to the
+  button (`.drama-status-dropdown` in `globals.css`, reusing
+  `.performer-select-option` row styling but positioned `right: 0` off a
+  small trigger instead of stretching full-width).
+
+`getDramaWatchStatuses(dramaIds, userId)` in `src/lib/favorites.ts` batch-
+loads a `Map<dramaId, status>` for a page's rows (same shape as
+`getFavoritedEventIds`) — deliberately *not* in `src/lib/watchStatus.ts`,
+which stays free of any server-only import (Prisma) since client
+components (`AccountTabs`, `WatchStatusSelect`, `DramaStatusButton`) pull
+`WATCH_STATUS_LABELS`/`WATCH_STATUS_ORDER` from it.
 
 `/dramas` filters by this status via a `.tab-bar-row` — "Все" plus one
-tab per `WATCH_STATUS_ORDER` entry (`src/lib/watchStatus.ts`), combined
-with the existing title search in the same row. `?status=` filters
-`Drama.findMany` by `watchStatuses: { some: { userId, status } }` for the
-signed-in user; logged-out visitors just see everything regardless of
-which status tab is selected, since there's no per-user status to filter
-by. Same `WATCH_STATUS_LABELS` Russian labels drive both the tabs here
-and the dropdown on a drama's own page.
+tab per `WATCH_STATUS_ORDER` entry, combined with the existing title
+search in the same row. `?status=` filters `Drama.findMany` by
+`watchStatuses: { some: { userId, status } }` for the signed-in user;
+logged-out visitors just see everything regardless of which status tab
+is selected, since there's no per-user status to filter by.
 
 ## Going ("Я иду")
 

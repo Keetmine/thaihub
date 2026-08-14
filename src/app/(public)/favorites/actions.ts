@@ -50,28 +50,6 @@ export async function toggleFavoriteAgency(agencyId: string) {
   revalidatePath(`/agencies/${agencyId}`);
 }
 
-export async function toggleFavoriteDrama(dramaId: string) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  const existing = await prisma.favoriteDrama.findUnique({
-    where: { userId_dramaId: { userId: user.id, dramaId } },
-  });
-
-  if (existing) {
-    await prisma.favoriteDrama.delete({
-      where: { userId_dramaId: { userId: user.id, dramaId } },
-    });
-  } else {
-    await prisma.favoriteDrama.create({
-      data: { userId: user.id, dramaId },
-    });
-  }
-
-  revalidatePath("/account");
-  revalidatePath("/", "layout");
-}
-
 export async function toggleFavoriteEvent(eventId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");

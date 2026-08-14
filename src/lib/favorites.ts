@@ -1,4 +1,20 @@
 import { prisma } from "@/lib/prisma";
+import type { DramaWatchStatusValue } from "@/app/(public)/favorites/actions";
+
+/** Map of dramaId -> the signed-in user's watch status, restricted to `dramaIds`. */
+export async function getDramaWatchStatuses(
+  dramaIds: string[],
+  userId: string | null | undefined,
+): Promise<Map<string, DramaWatchStatusValue>> {
+  if (dramaIds.length === 0 || !userId) return new Map();
+
+  const statuses = await prisma.dramaWatchStatus.findMany({
+    where: { userId, dramaId: { in: dramaIds } },
+    select: { dramaId: true, status: true },
+  });
+
+  return new Map(statuses.map((s) => [s.dramaId, s.status]));
+}
 
 /** Set of event ids `userId` has favorited, restricted to `eventIds`. */
 export async function getFavoritedEventIds(

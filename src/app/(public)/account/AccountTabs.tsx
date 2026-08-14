@@ -5,7 +5,6 @@ import Link from "next/link";
 import type {
   FavoritePerformer,
   Performer,
-  FavoriteDrama,
   Drama,
   DramaWatchStatus,
 } from "@/generated/prisma/client";
@@ -68,7 +67,6 @@ export default function AccountTabs({
   upcomingAttendances,
   pastAttendances,
   favoritePerformers,
-  favoriteDramas,
   favoriteEvents,
   dramaWatchStatuses,
 }: {
@@ -77,7 +75,6 @@ export default function AccountTabs({
   upcomingAttendances: EventWithPerformers[];
   pastAttendances: EventWithPerformers[];
   favoritePerformers: (FavoritePerformer & { performer: Performer })[];
-  favoriteDramas: (FavoriteDrama & { drama: Drama })[];
   favoriteEvents: EventWithPerformers[];
   dramaWatchStatuses: (DramaWatchStatus & { drama: Drama })[];
 }) {
@@ -251,33 +248,6 @@ export default function AccountTabs({
               </div>
             </div>
           ))
-        )}
-
-        <h2
-          className="small text-secondary text-uppercase mb-2 mt-4"
-          style={sectionHeadingStyle}
-        >
-          Избранные сериалы
-        </h2>
-        {favoriteDramas.length === 0 ? (
-          <p className="small text-secondary mb-4">Нет избранных сериалов.</p>
-        ) : (
-          <div className="d-flex flex-column gap-2 mb-4">
-            {favoriteDramas.map((f) => (
-              <div
-                key={f.dramaId}
-                className="surface d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <Link
-                  href={`/dramas/${f.drama.id}`}
-                  className="text-decoration-none font-display fw-medium text-white"
-                >
-                  {f.drama.title}
-                </Link>
-                <FavoriteButton kind="drama" id={f.drama.id} isFavorited={true} />
-              </div>
-            ))}
-          </div>
         )}
       </div>
     </div>

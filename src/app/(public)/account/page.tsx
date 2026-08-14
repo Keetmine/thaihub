@@ -33,7 +33,6 @@ export default async function AccountPage({
   const [
     attendances,
     favoritePerformers,
-    favoriteDramas,
     favoriteEventRows,
     dramaWatchStatuses,
   ] = await Promise.all([
@@ -44,10 +43,6 @@ export default async function AccountPage({
     prisma.favoritePerformer.findMany({
       where: { userId: user.id },
       include: { performer: true },
-    }),
-    prisma.favoriteDrama.findMany({
-      where: { userId: user.id },
-      include: { drama: true },
     }),
     prisma.favoriteEvent.findMany({
       where: { userId: user.id },
@@ -86,7 +81,6 @@ export default async function AccountPage({
         upcomingAttendances={upcomingAttendances}
         pastAttendances={pastAttendances}
         favoritePerformers={favoritePerformers}
-        favoriteDramas={favoriteDramas}
         favoriteEvents={favoriteEvents}
         dramaWatchStatuses={dramaWatchStatuses}
       />

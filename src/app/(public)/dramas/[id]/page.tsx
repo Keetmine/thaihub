@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
-import FavoriteButton from "@/components/FavoriteButton";
 import WatchStatusSelect from "@/components/WatchStatusSelect";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import EventAgendaRow from "@/components/EventAgendaRow";
@@ -43,21 +42,13 @@ export default async function DramaDetailPage({
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   const currentUser = await getCurrentUser();
-  let isFavorited = false;
   let watchStatus = null as Awaited<
     ReturnType<typeof prisma.dramaWatchStatus.findUnique>
   >;
   if (currentUser) {
-    const [favorite, status] = await Promise.all([
-      prisma.favoriteDrama.findUnique({
-        where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
-      }),
-      prisma.dramaWatchStatus.findUnique({
-        where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
-      }),
-    ]);
-    isFavorited = !!favorite;
-    watchStatus = status;
+    watchStatus = await prisma.dramaWatchStatus.findUnique({
+      where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
+    });
   }
 
   const eventIds = events.map((ev) => ev.id);
@@ -83,15 +74,12 @@ export default async function DramaDetailPage({
       <Link href="/dramas" className="eyebrow text-decoration-none">
         ← Все сериалы
       </Link>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-2">
-        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
-          {drama.title}{" "}
-          {drama.year && (
-            <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
-          )}
-        </h1>
-        <FavoriteButton kind="drama" id={drama.id} isFavorited={isFavorited} variant="icon" />
-      </div>
+      <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
+        {drama.title}{" "}
+        {drama.year && (
+          <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
+        )}
+      </h1>
 
       <div className="row g-4">
         {(drama.posterUrl || currentUser) && (

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
+import DramaStatusButton from "@/components/DramaStatusButton";
+import { getDramaWatchStatuses } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +28,8 @@ export default async function AgencyDetailPage({
   const currentUser = await getCurrentUser();
   let isFavorited = false;
   const favoritedPerformerIds = new Set<string>();
-  const favoritedDramaIds = new Set<string>();
   if (currentUser) {
-    const [favorite, favPerformers, favDramas] = await Promise.all([
+    const [favorite, favPerformers] = await Promise.all([
       prisma.favoriteAgency.findUnique({
         where: { userId_agencyId: { userId: currentUser.id, agencyId: id } },
       }),
@@ -41,17 +42,14 @@ export default async function AgencyDetailPage({
             select: { performerId: true },
           })
         : Promise.resolve([]),
-      agency.dramas.length > 0
-        ? prisma.favoriteDrama.findMany({
-            where: { userId: currentUser.id, dramaId: { in: agency.dramas.map((d) => d.id) } },
-            select: { dramaId: true },
-          })
-        : Promise.resolve([]),
     ]);
     isFavorited = !!favorite;
     for (const f of favPerformers) favoritedPerformerIds.add(f.performerId);
-    for (const f of favDramas) favoritedDramaIds.add(f.dramaId);
   }
+  const statusByDramaId = await getDramaWatchStatuses(
+    agency.dramas.map((d) => d.id),
+    currentUser?.id,
+  );
 
   return (
     <div>
@@ -184,11 +182,9 @@ export default async function AgencyDetailPage({
                   {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
                 </div>
               </Link>
-              <FavoriteButton
-                kind="drama"
-                id={d.id}
-                isFavorited={favoritedDramaIds.has(d.id)}
-                variant="icon"
+              <DramaStatusButton
+                dramaId={d.id}
+                status={statusByDramaId.get(d.id) ?? null}
                 className="flex-shrink-0"
               />
             </div>

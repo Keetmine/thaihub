@@ -56,12 +56,12 @@ copy — read the schema file for exact field types/nullability.
 Every one of these is a two-column join table keyed on `(userId, ...)`,
 following the same shape:
 
-- **`FavoritePerformer`**, **`FavoriteDrama`**, **`FavoriteAgency`**,
-  **`FavoriteEvent`** — the heart/bookmark toggle, one per entity type.
+- **`FavoritePerformer`**, **`FavoriteAgency`**, **`FavoriteEvent`** — the
+  heart/bookmark toggle, one per entity type. Dramas don't get one —
+  `DramaWatchStatus` below is their only per-user signal.
 - **`EventAttendance`** — "Я иду" (I'm going) to this event.
 - **`DramaWatchStatus`** — MyDramaList-style status
-  (`WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`), distinct
-  from favoriting.
+  (`WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`).
 - **`LocationVisit`** — see above.
 
 See [social.md](features/social.md) for how these surface in the UI.
