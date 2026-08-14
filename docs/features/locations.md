@@ -31,14 +31,18 @@ on `.leaflet-map-dark .leaflet-tile-pane` (see `globals.css`).
 
 `/locations` has a toggle (`?group=drama`) between the default A-Z index
 (`AlphabetIndexList`, same component the performers list uses) and a
-view grouped by `Drama` — each drama title as a heading (itself sorted
-alphabetically), its linked locations listed underneath. Locations with
+view grouped by `Drama` — same `AlphabetIndexList` component, but each
+*drama* is the indexed item (grouped by the first letter of its title,
+with the same right-side letter rail), and `renderItem` renders that
+drama's heading plus its linked locations underneath. Locations with
 no linked drama at all (e.g. a venue only ever linked to an `Event`) get
-a trailing "Без сериала" group so nothing silently disappears from that
-view. The search box works in both modes — in drama-grouped mode it
-filters which `Location` rows show under each heading (via a `where` on
-the `DramaLocation` `include`, not a separate query) and drops any drama
-left with zero matching locations, rather than showing an empty heading.
+a trailing "Без сериала" group via `AlphabetIndexList`'s `trailingSection`
+prop, reachable from the index rail via a "—" link, so nothing silently
+disappears from that view. The search box works in both modes — in
+drama-grouped mode it filters which `Location` rows show under each
+heading (via a `where` on the `DramaLocation` `include`, not a separate
+query) and drops any drama left with zero matching locations, rather
+than showing an empty heading.
 
 ## What links to a Location
 

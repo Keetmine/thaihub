@@ -48,30 +48,50 @@ export default async function AdminEventsPage() {
                 key={ev.id}
                 className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
               >
-                <div>
-                  <Link
-                    href={`/admin/events/${ev.id}/edit`}
-                    className="stretched-link text-decoration-none"
+                <Link
+                  href={`/admin/events/${ev.id}/edit`}
+                  className="stretched-link text-decoration-none d-flex align-items-center gap-3"
+                  style={{ minWidth: 0 }}
+                >
+                  <div
+                    style={{
+                      width: "2.75rem",
+                      height: "2.75rem",
+                      borderRadius: "0.5rem",
+                      background: "var(--bs-secondary-bg)",
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
                   >
-                    <span className="font-display fw-medium text-white d-block">
+                    {ev.posterUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={ev.posterUrl}
+                        alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <span className="font-display fw-medium text-white d-block text-truncate">
                       {ev.title}
                     </span>
-                  </Link>
-                  <p className="small text-secondary mb-0">
-                    {ev.occurrences
-                      .map(
-                        (o) =>
-                          `${formatHumanDate(o.startsAt)} · ${formatTime(o.startsAt)}${o.endsAt ? `–${formatTime(o.endsAt)}` : ""}`,
-                      )
-                      .join(" + ")}{" "}
-                    · <PinIcon /> {ev.venue}
-                  </p>
-                  {ev.performers.length > 0 && (
-                    <p className="small text-secondary opacity-50 mb-0">
-                      {ev.performers.map((p) => p.performer.name).join(", ")}
+                    <p className="small text-secondary mb-0">
+                      {ev.occurrences
+                        .map(
+                          (o) =>
+                            `${formatHumanDate(o.startsAt)} · ${formatTime(o.startsAt)}${o.endsAt ? `–${formatTime(o.endsAt)}` : ""}`,
+                        )
+                        .join(" + ")}{" "}
+                      · <PinIcon /> {ev.venue}
                     </p>
-                  )}
-                </div>
+                    {ev.performers.length > 0 && (
+                      <p className="small text-secondary opacity-50 mb-0 text-truncate">
+                        {ev.performers.map((p) => p.performer.name).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </Link>
                 {/* position-relative + z-2 lifts these controls above the
                     row's stretched-link (::after has z-index: 1), so they
                     stay individually clickable instead of triggering the

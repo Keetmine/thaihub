@@ -15,17 +15,21 @@ function categoryOf(key: string): "digit" | "en" | "ru" {
 }
 
 /** Groups items by first letter (digits collapse into "0-9") and renders a
- *  scrollable A-Z index on the right, matching the /performers list. */
+ *  scrollable A-Z index on the right, matching the /performers list.
+ *  `trailingSection` renders an extra, ungrouped section after the letter
+ *  groups (e.g. "no drama") with its own short index-nav symbol. */
 export default function AlphabetIndexList<T extends NamedItem>({
   items,
   renderItem,
   emptyMessage,
+  trailingSection,
 }: {
   items: T[];
   renderItem: (item: T) => React.ReactNode;
   emptyMessage: string;
+  trailingSection?: { indexLabel: React.ReactNode; indexAriaLabel: string; content: React.ReactNode };
 }) {
-  if (items.length === 0) {
+  if (items.length === 0 && !trailingSection) {
     return <p className="text-secondary">{emptyMessage}</p>;
   }
 
@@ -61,6 +65,12 @@ export default function AlphabetIndexList<T extends NamedItem>({
             </div>
           </section>
         ))}
+
+        {trailingSection && (
+          <section id="trailing-section" className="performers-letter-section">
+            {trailingSection.content}
+          </section>
+        )}
       </div>
 
       <nav className="performers-index" aria-label="Быстрый переход по буквам">
@@ -80,6 +90,22 @@ export default function AlphabetIndexList<T extends NamedItem>({
             </Fragment>
           );
         })}
+        {trailingSection && (
+          <>
+            {sortedLetters.length > 0 && (
+              <span className="performers-index-sep" aria-hidden="true">
+                •
+              </span>
+            )}
+            <a
+              href="#trailing-section"
+              className="performers-index-link"
+              aria-label={trailingSection.indexAriaLabel}
+            >
+              {trailingSection.indexLabel}
+            </a>
+          </>
+        )}
       </nav>
     </div>
   );

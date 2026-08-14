@@ -20,6 +20,23 @@ bar).
 - `PerformerLink` is a free-form label+URL list per performer (social
   media, personal café, whatever) — no schema change needed to add a new
   kind of link.
+- The admin performers list (`/admin/performers`) shares the public list's
+  `AlphabetIndexList` layout (see below) plus a `NameSearchBox` search and
+  a photo per row, instead of a plain unsorted list — same component, just
+  with edit/delete icon buttons instead of a favorite toggle.
+
+## Shared A-Z index layout
+
+`src/components/AlphabetIndexList.tsx` groups any `{id, name}[]` list by
+first letter (digits collapse into one "0-9" group) and renders a
+scrollable letter rail pinned to the right (`.performers-layout` /
+`.performers-index` in `globals.css`) — used by the public and admin
+performers lists, `/dramas`, `/locations` (alphabetical view), and
+`/locations?group=drama` (grouping *dramas* alphabetically, each
+`renderItem` rendering that drama's own location list). An optional
+`trailingSection` renders one extra, ungrouped section after the letter
+groups with its own short index-nav symbol — used by the locations
+drama-grouped view for "Без сериала" (locations with no linked drama).
 
 ## Pairings
 

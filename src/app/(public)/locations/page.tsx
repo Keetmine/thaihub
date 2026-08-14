@@ -171,9 +171,11 @@ async function LocationsByDrama({
   }
 
   return (
-    <div className="d-flex flex-column gap-4">
-      {dramas.map((drama) => (
-        <section key={drama.id}>
+    <AlphabetIndexList
+      items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
+      emptyMessage="Пока нет локаций."
+      renderItem={({ drama }) => (
+        <section>
           <Link href={`/dramas/${drama.id}`} className="day-group-heading mb-2">
             {drama.title}
           </Link>
@@ -183,19 +185,26 @@ async function LocationsByDrama({
             ))}
           </div>
         </section>
-      ))}
-
-      {locationsWithoutDrama.length > 0 && (
-        <section>
-          <h2 className="day-group-heading mb-2">Без сериала</h2>
-          <div className="d-flex flex-column gap-2 mt-2">
-            {locationsWithoutDrama.map((l) => (
-              <LocationRow key={l.id} location={l} isVisited={visitedIds.has(l.id)} />
-            ))}
-          </div>
-        </section>
       )}
-    </div>
+      trailingSection={
+        locationsWithoutDrama.length > 0
+          ? {
+              indexLabel: "—",
+              indexAriaLabel: "К локациям без сериала",
+              content: (
+                <>
+                  <h2 className="day-group-heading mb-2">Без сериала</h2>
+                  <div className="d-flex flex-column gap-2 mt-2">
+                    {locationsWithoutDrama.map((l) => (
+                      <LocationRow key={l.id} location={l} isVisited={visitedIds.has(l.id)} />
+                    ))}
+                  </div>
+                </>
+              ),
+            }
+          : undefined
+      }
+    />
   );
 }
 
