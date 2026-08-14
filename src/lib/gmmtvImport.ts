@@ -1,6 +1,7 @@
 import type { Browser } from "playwright";
 import { prisma } from "@/lib/prisma";
 import { fetchGmmtvArtistLinks, scrapeGmmtvArtist, type GmmtvArtist } from "@/lib/gmmtv";
+import { addPerformerAgency } from "@/lib/performerAgency";
 
 export type GmmtvSyncResult = {
   checked: number;
@@ -44,9 +45,12 @@ async function syncSocialLinks(performerId: string, socialLinks: GmmtvArtist["so
  * an existing performer by nickname (Performer.name), case-insensitively
  * and exactly — same convention as the ThaiTicketMajor importer's artist
  * matching (see docs/features/catalog.md). `replacePhotos` controls
- * whether an existing performer's photoUrl gets overwritten; birthDate,
- * realName, and agency are always updated to GMMTV's values since GMMTV
- * is the authoritative source for its own roster.
+ * whether an existing performer's photoUrl gets overwritten; birthDate
+ * and realName are always updated to GMMTV's values since GMMTV is the
+ * authoritative source for its own roster. GMMTV is always *added* to
+ * the performer's agency set (never removes another agency they're
+ * already linked to — see PerformerAgency in schema.prisma) since a
+ * performer can be signed to more than one studio at once.
  */
 export async function importOrUpdateGmmtvArtist(
   scraped: GmmtvArtist,
@@ -67,10 +71,10 @@ export async function importOrUpdateGmmtvArtist(
       data: {
         realName: scraped.fullName || existing.realName,
         birthDate: birthDate ?? existing.birthDate,
-        agencyId,
         photoUrl: options.replacePhotos && scraped.photoUrl ? scraped.photoUrl : existing.photoUrl,
       },
     });
+    await addPerformerAgency(existing.id, agencyId);
     await syncSocialLinks(existing.id, scraped.socialLinks);
     return "updated";
   }
@@ -81,8 +85,8 @@ export async function importOrUpdateGmmtvArtist(
       type: "SOLO",
       realName: scraped.fullName || null,
       birthDate,
-      agencyId,
       photoUrl: scraped.photoUrl,
+      agencies: { create: { agencyId } },
     },
   });
   await syncSocialLinks(created.id, scraped.socialLinks);

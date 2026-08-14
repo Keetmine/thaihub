@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchWikipediaAgencyPage } from "@/lib/wikipediaAgency";
 import { fetchTmdbPerson, deriveNicknameFromAlsoKnownAs } from "@/lib/tmdb";
 import { matchTmdbTvShow, matchTmdbPerson, importShow } from "@/lib/tmdbImport";
+import { addPerformerAgency } from "@/lib/performerAgency";
 
 async function importAgencyProduction(
   production: { year: number | null; title: string; network: string | null },
@@ -66,24 +67,24 @@ async function findOrCreateAgencyArtist(
         { name: { equals: artist.nickname, mode: "insensitive" } },
       ],
     },
+    include: { agencies: { select: { agencyId: true } } },
   });
 
   if (existing) {
-    // Only fills in a missing agency — a performer's current label
-    // elsewhere might be more specific/correct than a Wikipedia roster
-    // list, so this never overwrites one that's already set.
-    const agencySet = !existing.agencyId;
+    // Adds this agency to the performer's set rather than overwriting —
+    // a performer can be signed to more than one at once (see
+    // PerformerAgency in schema.prisma), so a Wikipedia roster listing
+    // them doesn't mean any other agency they're already linked to is
+    // wrong.
+    const agencySet = !existing.agencies.some((a) => a.agencyId === agencyId);
+    if (agencySet) await addPerformerAgency(existing.id, agencyId);
     // Same fallback-name repair as syncPerformerFromTmdb's also_known_as
     // check, but simpler here — the wiki roster already spells out the
     // nickname directly ("Pruk Panich (Zee)"), no TMDB lookup needed.
     const looksLikeFallbackName =
       !!existing.realName && existing.name.trim().toLowerCase() === existing.realName.trim().toLowerCase();
-    const nameFix = looksLikeFallbackName && artist.nickname ? artist.nickname : undefined;
-    if (agencySet || nameFix) {
-      await prisma.performer.update({
-        where: { id: existing.id },
-        data: { ...(agencySet ? { agencyId } : {}), ...(nameFix ? { name: nameFix } : {}) },
-      });
+    if (looksLikeFallbackName && artist.nickname) {
+      await prisma.performer.update({ where: { id: existing.id }, data: { name: artist.nickname } });
     }
     return { created: false, agencySet };
   }
@@ -99,10 +100,13 @@ async function findOrCreateAgencyArtist(
     // missed them (their `tmdbId` is the reliable signal, not text) —
     // creating anyway would collide on tmdbId's uniqueness. Treat it as
     // the same match-existing path instead of a create.
-    const byTmdbId = await prisma.performer.findUnique({ where: { tmdbId } });
+    const byTmdbId = await prisma.performer.findUnique({
+      where: { tmdbId },
+      include: { agencies: { select: { agencyId: true } } },
+    });
     if (byTmdbId) {
-      const agencySet = !byTmdbId.agencyId;
-      if (agencySet) await prisma.performer.update({ where: { id: byTmdbId.id }, data: { agencyId } });
+      const agencySet = !byTmdbId.agencies.some((a) => a.agencyId === agencyId);
+      if (agencySet) await addPerformerAgency(byTmdbId.id, agencyId);
       return { created: false, agencySet };
     }
 
@@ -116,14 +120,14 @@ async function findOrCreateAgencyArtist(
         tmdbId,
         photoUrl: person.photoUrl,
         placeOfBirth: person.placeOfBirth,
-        agencyId,
+        agencies: { create: { agencyId } },
       },
     });
     return { created: true, agencySet: true };
   }
 
   await prisma.performer.create({
-    data: { name: artist.nickname, realName: artist.fullName, type: "SOLO", agencyId },
+    data: { name: artist.nickname, realName: artist.fullName, type: "SOLO", agencies: { create: { agencyId } } },
   });
   return { created: true, agencySet: true };
 }

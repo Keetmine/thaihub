@@ -121,6 +121,11 @@ function getEventIds(formData: FormData): string[] {
   return Array.from(new Set(ids));
 }
 
+function getAgencyIds(formData: FormData): string[] {
+  const ids = formData.getAll("agencyIds").map(String).filter(Boolean);
+  return Array.from(new Set(ids));
+}
+
 /**
  * Full performer creation: profile fields + links, same shape as the edit
  * form. Solo performers can optionally be paired with an existing performer
@@ -135,7 +140,7 @@ export async function createPerformer(formData: FormData) {
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
-  const agencyId = String(formData.get("agencyId") ?? "").trim();
+  const agencyIds = getAgencyIds(formData);
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const links = getLinks(formData);
 
@@ -149,10 +154,12 @@ export async function createPerformer(formData: FormData) {
       birthDate: type === "SOLO" ? birthDate : null,
       placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
       bio: bio || null,
-      agencyId: agencyId || null,
       photoUrl: photoUrl || null,
       links: {
         create: links.map((l) => ({ label: l.label, url: l.url })),
+      },
+      agencies: {
+        create: agencyIds.map((agencyId) => ({ agencyId })),
       },
     },
   });
@@ -203,7 +210,7 @@ export async function updatePerformer(id: string, formData: FormData) {
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
-  const agencyId = String(formData.get("agencyId") ?? "").trim();
+  const agencyIds = getAgencyIds(formData);
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
   const links = getLinks(formData);
@@ -218,6 +225,7 @@ export async function updatePerformer(id: string, formData: FormData) {
     prisma.bandMember.deleteMany({ where: { bandId: id } }),
     prisma.performerDrama.deleteMany({ where: { performerId: id } }),
     prisma.eventPerformer.deleteMany({ where: { performerId: id } }),
+    prisma.performerAgency.deleteMany({ where: { performerId: id } }),
     prisma.performer.update({
       where: { id },
       data: {
@@ -227,7 +235,6 @@ export async function updatePerformer(id: string, formData: FormData) {
         birthDate: type === "SOLO" ? birthDate : null,
         placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
         bio: bio || null,
-        agencyId: agencyId || null,
         photoUrl: photoUrl || null,
         mydramalistUrl: mydramalistUrl || null,
         links: {
@@ -241,6 +248,9 @@ export async function updatePerformer(id: string, formData: FormData) {
         },
         events: {
           create: eventIds.map((eventId) => ({ eventId })),
+        },
+        agencies: {
+          create: agencyIds.map((agencyId) => ({ agencyId })),
         },
       },
     }),

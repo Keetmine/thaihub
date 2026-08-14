@@ -131,7 +131,9 @@ comes from the Wikipedia agency importer, see
 agency on a `Drama` directly (independent of the cast's agencies). A
 talent agency's own Wikipedia article — roster, productions, upcoming
 shows — can be bulk-imported, see
-[wikipedia-agency-import.md](wikipedia-agency-import.md).
+[wikipedia-agency-import.md](wikipedia-agency-import.md); a production
+studio's TMDB company page can be bulk-imported the same way, see
+[tmdb-company-import.md](tmdb-company-import.md).
 
 **Admin management lives inside the Performers section, not as its own
 top-level nav item** — `/admin/performers?view=agencies` renders the
@@ -140,6 +142,32 @@ site's `/performers?view=agencies` consolidation. The standalone
 `/admin/agencies` list page was removed; `/admin/agencies/new` and
 `/admin/agencies/[id]/edit` still exist as real routes, just linked from
 the embedded tab view instead of their own nav entry.
+
+### A performer can belong to more than one agency
+
+`Performer` ↔ `Agency` is many-to-many (`PerformerAgency`), not a single
+`agencyId` — a drama is sometimes co-produced by two studios, so its cast
+may formally be signed to a different studio than the one that produced
+it, and a performer can move agencies over time. Every importer that
+discovers an agency association *adds* to the performer's set rather
+than overwriting it (`addPerformerAgency` in
+`src/lib/performerAgency.ts`, idempotent) — concretely: syncing GMMTV's
+roster ensures GMMTV is in the set without dropping a Studio Wabi Sabi
+membership picked up elsewhere, and vice versa. `PerformerForm.tsx`'s
+"Агентства" field is a multi-select (`EntityMultiSelect`, `agencyIds` in
+form data) instead of the old single dropdown; the public performer page
+lists all of a performer's agencies, comma-separated, each linking to
+its own agency page.
+
+No current/past status yet (a performer who's *left* an agency still
+just shows as "associated with" it) — deliberately deferred until it's
+actually needed, per the same reasoning as `Pairing.status` existing
+for pairings but not (yet) for agencies.
+
+An admin agency's roster editor (`AgencyForm.tsx`'s performer picker) is
+a full "this is exactly who's currently in this agency" replace — saving
+it clears and recreates *that agency's* `PerformerAgency` rows only, so
+it never touches a performer's membership in any other agency.
 
 ## Duplicate names
 

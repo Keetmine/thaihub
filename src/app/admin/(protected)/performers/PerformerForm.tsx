@@ -66,7 +66,7 @@ export default function PerformerForm({
     birthDate: string;
     placeOfBirth: string;
     bio: string;
-    agencyId: string;
+    agencyIds: string[];
     photoUrl: string;
     mydramalistUrl: string;
     links: PerformerLinkInput[];
@@ -229,12 +229,12 @@ export default function PerformerForm({
               />
             </div>
             <div className="col-12 col-sm-6">
-              <EntitySelect
-                name="agencyId"
-                label="Агентство"
+              <label className="form-label d-block">Агентства</label>
+              <EntityMultiSelect
+                name="agencyIds"
                 options={agencies}
-                defaultValue={v?.agencyId}
-                placeholder="Не выбрано"
+                defaultSelectedIds={v?.agencyIds}
+                placeholder="Начните вводить название агентства…"
                 createLabel="Создать агентство"
                 onCreateNew={async (query) => {
                   const created = await createAgencyAndReturn(query);
@@ -246,18 +246,20 @@ export default function PerformerForm({
         )}
 
         {type === "BAND" && (
-          <EntitySelect
-            name="agencyId"
-            label="Агентство"
-            options={agencies}
-            defaultValue={v?.agencyId}
-            placeholder="Не выбрано"
-            createLabel="Создать агентство"
-            onCreateNew={async (query) => {
-              const created = await createAgencyAndReturn(query);
-              return { id: created.id, name: created.name, photoUrl: created.logoUrl };
-            }}
-          />
+          <div>
+            <label className="form-label d-block">Агентства</label>
+            <EntityMultiSelect
+              name="agencyIds"
+              options={agencies}
+              defaultSelectedIds={v?.agencyIds}
+              placeholder="Начните вводить название агентства…"
+              createLabel="Создать агентство"
+              onCreateNew={async (query) => {
+                const created = await createAgencyAndReturn(query);
+                return { id: created.id, name: created.name, photoUrl: created.logoUrl };
+              }}
+            />
+          </div>
         )}
 
         <div className="row g-3">

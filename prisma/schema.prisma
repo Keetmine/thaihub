@@ -67,8 +67,12 @@ model Performer {
   birthDate      DateTime?
   placeOfBirth   String?
   bio            String?
-  agencyId       String?
-  agency         Agency?   @relation(fields: [agencyId], references: [id])
+  // A performer can belong to more than one agency at once — a co-produced
+  // drama's cast may formally be signed to a different studio than the one
+  // that produced it, and a performer can move agencies over time. No
+  // current-vs-past status yet (see PerformerAgency) — every row is just
+  // "this performer is associated with this agency".
+  agencies       PerformerAgency[]
   photoUrl       String?
   mydramalistUrl String?
   // TMDB person id — set once a performer's been imported/matched from
@@ -98,20 +102,37 @@ enum PerformerType {
   BAND
 }
 
-// A talent/management agency. Performers optionally belong to one; the
-// agency's own roster, description, and (later) logo make it a browsable
-// entity in its own right rather than just a free-text label.
+// A talent/management agency. Performers optionally belong to one or more
+// (see PerformerAgency); the agency's own roster, description, and
+// (later) logo make it a browsable entity in its own right rather than
+// just a free-text label.
 model Agency {
   id          String      @id @default(cuid())
   name        String      @unique
   logoUrl     String?
   description String?
-  performers  Performer[]
+  performers  PerformerAgency[]
   dramas      Drama[]
   favoritedBy FavoriteAgency[]
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+}
+
+// A performer<->agency association — many-to-many since a performer can
+// be signed to more than one studio at once (a co-produced drama's cast
+// may formally belong to a different studio than the one that produced
+// it) or move between agencies over time. No current/past status field
+// yet — every row just means "this performer is associated with this
+// agency"; deliberately left simple until that distinction is needed.
+model PerformerAgency {
+  performerId String
+  agencyId    String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  agency      Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([performerId, agencyId])
 }
 
 // A member-actor of a band (e.g. an idol/actor who's also in a group).

@@ -18,12 +18,14 @@ export default async function AgencyDetailPage({
   const agency = await prisma.agency.findUnique({
     where: { id },
     include: {
-      performers: { orderBy: { name: "asc" } },
+      performers: { include: { performer: true }, orderBy: { performer: { name: "asc" } } },
       dramas: { orderBy: { title: "asc" } },
     },
   });
 
   if (!agency) notFound();
+
+  const performers = agency.performers.map((pa) => pa.performer);
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
@@ -33,11 +35,11 @@ export default async function AgencyDetailPage({
       prisma.favoriteAgency.findUnique({
         where: { userId_agencyId: { userId: currentUser.id, agencyId: id } },
       }),
-      agency.performers.length > 0
+      performers.length > 0
         ? prisma.favoritePerformer.findMany({
             where: {
               userId: currentUser.id,
-              performerId: { in: agency.performers.map((p) => p.id) },
+              performerId: { in: performers.map((p) => p.id) },
             },
             select: { performerId: true },
           })
@@ -89,11 +91,11 @@ export default async function AgencyDetailPage({
       <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
         Исполнители
       </h2>
-      {agency.performers.length === 0 ? (
+      {performers.length === 0 ? (
         <p className="small text-secondary mb-4">Пока нет исполнителей.</p>
       ) : (
         <div className="d-flex flex-column gap-2 mb-4">
-          {agency.performers.map((p) => (
+          {performers.map((p) => (
             <div
               key={p.id}
               className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"

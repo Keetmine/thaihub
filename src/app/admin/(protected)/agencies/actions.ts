@@ -63,9 +63,9 @@ export async function createAgency(formData: FormData) {
   const agency = await createAgencyRecord(name, logoUrl, description);
 
   if (performerIds.length > 0) {
-    await prisma.performer.updateMany({
-      where: { id: { in: performerIds } },
-      data: { agencyId: agency.id },
+    await prisma.performerAgency.createMany({
+      data: performerIds.map((performerId) => ({ performerId, agencyId: agency.id })),
+      skipDuplicates: true,
     });
   }
   if (dramaIds.length > 0) {
@@ -91,12 +91,17 @@ export async function updateAgency(id: string, formData: FormData) {
 
   try {
     await prisma.$transaction([
-      prisma.performer.updateMany({ where: { agencyId: id }, data: { agencyId: null } }),
+      // The roster picker below defines this agency's *entire* current
+      // membership — clear its existing join rows and recreate exactly
+      // the selected set, rather than touching a scalar column. This
+      // only ever touches rows where agencyId = this agency, so a
+      // performer's membership in any *other* agency is untouched.
+      prisma.performerAgency.deleteMany({ where: { agencyId: id } }),
       ...(performerIds.length > 0
         ? [
-            prisma.performer.updateMany({
-              where: { id: { in: performerIds } },
-              data: { agencyId: id },
+            prisma.performerAgency.createMany({
+              data: performerIds.map((performerId) => ({ performerId, agencyId: id })),
+              skipDuplicates: true,
             }),
           ]
         : []),

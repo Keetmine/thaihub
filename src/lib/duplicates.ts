@@ -122,6 +122,10 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
 
       await reassignJoinRows(tx.bandMember, "bandId", "performerId", keeperId, loserId);
       await reassignJoinRows(tx.bandMember, "performerId", "bandId", keeperId, loserId);
+      // Union rather than keep-one — merging two performers who were each
+      // signed to a different agency should leave the survivor associated
+      // with both, not silently drop the loser's.
+      await reassignJoinRows(tx.performerAgency, "performerId", "agencyId", keeperId, loserId);
 
       await mergePairingsForPerformer(tx, keeperId, loserId);
 

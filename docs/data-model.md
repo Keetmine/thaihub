@@ -5,17 +5,24 @@ copy — read the schema file for exact field types/nullability.
 
 ## Core catalog
 
-- **`Performer`** — a solo actor or a band (`type: SOLO | BAND`). Solo
-  performers can belong to an `Agency`, have `Pairing`s, appear in
-  `Drama`s (via `PerformerDrama`, with an optional `role`), appear at
-  `Event`s (via `EventPerformer`), and have arbitrary `PerformerLink`s
-  (social media, personal brand, etc.). A `BAND` performer's members are
-  other `Performer` rows linked via `BandMember` (`bandId` ↔
-  `performerId`) — bands don't get their own dramas/pairings, only their
-  members do.
-- **`Agency`** — a talent/management agency. Has a roster (`Performer[]`)
-  and can also be linked to `Drama`s directly (production/distribution
-  agency, not necessarily the cast's agency).
+- **`Performer`** — a solo actor or a band (`type: SOLO | BAND`). A
+  performer can belong to one or more `Agency` (via `PerformerAgency`),
+  have `Pairing`s, appear in `Drama`s (via `PerformerDrama`, with an
+  optional `role`), appear at `Event`s (via `EventPerformer`), and have
+  arbitrary `PerformerLink`s (social media, personal brand, etc.). A
+  `BAND` performer's members are other `Performer` rows linked via
+  `BandMember` (`bandId` ↔ `performerId`) — bands don't get their own
+  dramas/pairings, only their members do.
+- **`Agency`** — a talent/management agency (or, for `Drama`, a
+  production/distribution studio — see below). Has a roster
+  (`PerformerAgency[]`, many-to-many).
+- **`PerformerAgency`** — join table, performer ↔ agency. Many-to-many
+  because a performer can be signed to more than one at once — a
+  co-produced drama's cast may formally belong to a different studio
+  than the one that produced it, or a performer may move agencies over
+  time — see [catalog.md](features/catalog.md#agencies). No current/past
+  status field yet; every row just means "associated with", left simple
+  until that distinction is needed.
 - **`Drama`** — a BL series. `blsceneUrl` (unique, nullable) links it back
   to its blscene.com source page when it came from the importer — see
   [blscene-import.md](features/blscene-import.md) for why that's a

@@ -23,6 +23,7 @@ export default async function EditPerformerPage({
         dramas: { select: { dramaId: true } },
         bandMembers: { select: { performerId: true } },
         events: { select: { eventId: true } },
+        agencies: { select: { agencyId: true } },
       },
     }),
     prisma.performer.findMany({
@@ -90,7 +91,7 @@ export default async function EditPerformerPage({
             birthDate: performer.birthDate ? dateKey(performer.birthDate) : "",
             placeOfBirth: performer.placeOfBirth ?? "",
             bio: performer.bio ?? "",
-            agencyId: performer.agencyId ?? "",
+            agencyIds: performer.agencies.map((pa) => pa.agencyId),
             photoUrl: performer.photoUrl ?? "",
             mydramalistUrl: performer.mydramalistUrl ?? "",
             links: performer.links.map((l) => ({ label: l.label, url: l.url })),

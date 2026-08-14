@@ -18,7 +18,7 @@ export default async function EditAgencyPage({
     prisma.agency.findUnique({
       where: { id },
       include: {
-        performers: { select: { id: true } },
+        performers: { select: { performerId: true } },
         dramas: { select: { id: true } },
       },
     }),
@@ -53,7 +53,7 @@ export default async function EditAgencyPage({
           submitLabel="Сохранить изменения"
           performers={performers}
           dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-          defaultPerformerIds={agency.performers.map((p) => p.id)}
+          defaultPerformerIds={agency.performers.map((p) => p.performerId)}
           defaultDramaIds={agency.dramas.map((d) => d.id)}
           defaultValues={{
             name: agency.name,

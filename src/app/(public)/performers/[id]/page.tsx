@@ -25,7 +25,7 @@ export default async function PerformerPage({
     where: { id },
     include: {
       links: true,
-      agency: true,
+      agencies: { include: { agency: true }, orderBy: { agency: { name: "asc" } } },
       dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
       bandMembers: { include: { performer: true }, orderBy: { performer: { name: "asc" } } },
       memberOfBands: { include: { band: true }, orderBy: { band: { name: "asc" } } },
@@ -147,12 +147,20 @@ export default async function PerformerPage({
               {performer.placeOfBirth}
             </p>
           )}
-          {performer.agency && (
+          {performer.agencies.length > 0 && (
             <p className="small text-secondary mb-0">
-              <BuildingIcon /> <span className="text-secondary">Студия:</span>{" "}
-              <Link href={`/agencies/${performer.agency.id}`} className="link-body-emphasis">
-                {performer.agency.name}
-              </Link>
+              <BuildingIcon />{" "}
+              <span className="text-secondary">
+                {performer.agencies.length > 1 ? "Студии:" : "Студия:"}
+              </span>{" "}
+              {performer.agencies.map((pa, i) => (
+                <span key={pa.agencyId}>
+                  <Link href={`/agencies/${pa.agency.id}`} className="link-body-emphasis">
+                    {pa.agency.name}
+                  </Link>
+                  {i < performer.agencies.length - 1 ? ", " : ""}
+                </span>
+              ))}
             </p>
           )}
           {performer.bio && <p className="mb-0">{performer.bio}</p>}

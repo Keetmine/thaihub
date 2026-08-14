@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { fetchTpopBandPage, fetchTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
+import { addPerformerAgency } from "@/lib/performerAgency";
 
 function synthesizeBandBio(band: TpopBandData): string | null {
   const intro =
@@ -41,24 +42,20 @@ async function findOrCreateBandMemberPerformer(
   }
 
   if (existing) {
-    // Only fills in blanks — never overwrites a manually-curated or
-    // previously-imported value, same "don't clobber" convention as the
-    // Wikipedia agency importer.
-    const data: {
-      realName?: string;
-      birthDate?: Date;
-      placeOfBirth?: string;
-      photoUrl?: string;
-      agencyId?: string;
-    } = {};
+    // Profile fields only fill in blanks — never overwrite a manually-
+    // curated or previously-imported value, same "don't clobber"
+    // convention as the Wikipedia agency importer. The agency is *added*
+    // to the performer's set instead (a performer can be signed to more
+    // than one studio at once — see PerformerAgency in schema.prisma).
+    const data: { realName?: string; birthDate?: Date; placeOfBirth?: string; photoUrl?: string } = {};
     if (!existing.realName && member.birthName) data.realName = member.birthName;
     if (!existing.birthDate && member.birthDate) data.birthDate = member.birthDate;
     if (!existing.placeOfBirth && member.birthPlace) data.placeOfBirth = member.birthPlace;
     if (!existing.photoUrl && member.photoUrl) data.photoUrl = member.photoUrl;
-    if (!existing.agencyId && agencyId) data.agencyId = agencyId;
     if (Object.keys(data).length > 0) {
       await prisma.performer.update({ where: { id: existing.id }, data });
     }
+    if (agencyId) await addPerformerAgency(existing.id, agencyId);
     return { performerId: existing.id, created: false };
   }
 
@@ -69,8 +66,8 @@ async function findOrCreateBandMemberPerformer(
       birthDate: member.birthDate,
       placeOfBirth: member.birthPlace,
       photoUrl: member.photoUrl,
-      agencyId,
       type: "SOLO",
+      ...(agencyId ? { agencies: { create: { agencyId } } } : {}),
     },
   });
   return { performerId: created.id, created: true };
@@ -111,18 +108,24 @@ export async function importTpopBand(
   let bandPerformerId: string;
   let bandCreated: boolean;
   if (existingBand) {
-    const data: { bio?: string; photoUrl?: string; agencyId?: string } = {};
+    const data: { bio?: string; photoUrl?: string } = {};
     if (!existingBand.bio && bio) data.bio = bio;
     if (!existingBand.photoUrl && band.photoUrl) data.photoUrl = band.photoUrl;
-    if (!existingBand.agencyId && agency) data.agencyId = agency.id;
     if (Object.keys(data).length > 0) {
       await prisma.performer.update({ where: { id: existingBand.id }, data });
     }
+    if (agency) await addPerformerAgency(existingBand.id, agency.id);
     bandPerformerId = existingBand.id;
     bandCreated = false;
   } else {
     const created = await prisma.performer.create({
-      data: { name: band.name, type: "BAND", bio, photoUrl: band.photoUrl, agencyId: agency?.id ?? null },
+      data: {
+        name: band.name,
+        type: "BAND",
+        bio,
+        photoUrl: band.photoUrl,
+        ...(agency ? { agencies: { create: { agencyId: agency.id } } } : {}),
+      },
     });
     bandPerformerId = created.id;
     bandCreated = true;

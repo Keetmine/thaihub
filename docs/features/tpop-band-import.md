@@ -88,36 +88,43 @@ attempt to defeat).
 ## Matching against our DB
 
 - **Band**: matched by `name` (case-insensitive) + `type: "BAND"`. An
-  existing row only gets its blank fields filled in (`bio`, `photoUrl`,
-  `agencyId`) — never overwrites a value that's already set, since a
-  band added by hand may already have curated data.
+  existing row only gets its blank profile fields filled in (`bio`,
+  `photoUrl`) — never overwrites a value that's already set, since a
+  band added by hand may already have curated data. The label is
+  *added* to its agency set (`addPerformerAgency`,
+  `src/lib/performerAgency.ts`) rather than replacing whatever's there —
+  see "A performer can belong to more than one agency" in
+  [catalog.md](catalog.md#agencies).
 - **Members**: matched by `name` *or* `realName` (case-insensitive,
   either matching) against existing `Performer` rows — a member already
   in the catalog under their stage name, or already under their real
   name (e.g. from a TMDB import, which prefers `realName` for cast
   credits — see `tmdb-import.md`), both resolve to the same match. A
   miss creates a new `Performer` (type `SOLO`) from the member page's
-  data. Either way, blank fields only — same don't-clobber rule as the
-  band itself.
+  data. Profile fields only fill in blanks; the member's own agency
+  (from their page's "Agency" field, falling back to the band's own
+  label if their page doesn't list one) is added to their set the same
+  way as the band's.
 - **`BandMember`**: upserted per member (`bandId_performerId` composite
   key) — safe to re-run, matching character-role `upsert` idempotency
   used elsewhere in this project's importers.
 
-### A band's agency and its members' agencies can legitimately differ
+### A band and its members can each have more than one agency
 
-The schema has one `agencyId` per `Performer`, with no distinction
-between "talent management agency" and "music label" — real idol groups
-often have both, signed separately. Concretely: BUS and DICE were
-already manually set to agency "Tada Entertainment" (their management)
-before this importer ever ran; tpop.fandom.com's "Label(s)"/"Agency"
-fields say "SONRAY MUSIC" (their music label) instead. Since the
-don't-clobber rule protects the band's already-set `agencyId`, and the
-members had no `agencyId` set yet, the result is a real, intentional
-split: the band shows "Tada Entertainment", its members show "SONRAY
-MUSIC" — not a bug, just this schema's one-agency-per-row limit meeting
-two genuinely different real-world agencies.
+Real idol groups often have both a talent management agency and a
+separate music label, signed independently — and a member can be signed
+to the label without the wiki listing their management, or vice versa.
+Concretely: BUS and DICE were already manually set to agency "Tada
+Entertainment" (their management) before this importer ever ran;
+tpop.fandom.com's "Label(s)"/"Agency" fields say "SONRAY MUSIC" (their
+music label) instead. Because agency associations are additive
+(`PerformerAgency`, many-to-many — see
+[catalog.md](catalog.md#agencies)), both bands now correctly show
+**both** "Tada Entertainment" and "SONRAY MUSIC", and every member picked
+up "SONRAY MUSIC" alongside whatever agency they already had — nothing
+lost, nothing needed to be chosen between.
 
 ## New fields this added
 
-None — reuses the same `Performer`/`Agency`/`BandMember` fields every
-other importer writes to. No schema change.
+None — reuses the same `Performer`/`Agency`/`PerformerAgency`/
+`BandMember` fields every other importer writes to. No schema change.

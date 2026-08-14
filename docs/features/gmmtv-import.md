@@ -49,10 +49,15 @@ All key data lives in `<meta>` tags, not the visible DOM:
 `importOrUpdateGmmtvArtist` matches an existing `Performer` by
 case-insensitive exact match on `Performer.name` (the nickname) — same
 convention as the ThaiTicketMajor importer's artist matching. If found, it
-updates `realName`/`birthDate`/`agencyId` (GMMTV is the authoritative
-source for its own roster, so these always get overwritten) and adds any
-social links not already present (deduped by exact URL, so re-running is
-idempotent). If not found, a new `Performer` is created.
+updates `realName`/`birthDate` (GMMTV is the authoritative source for its
+own roster, so these always get overwritten), adds GMMTV to the
+performer's agency set (`addPerformerAgency`,
+`src/lib/performerAgency.ts` — a performer can be signed to more than one
+agency at once, see "A performer can belong to more than one agency" in
+[catalog.md](catalog.md#agencies), so this never drops an agency they're
+already linked to), and adds any social links not already present
+(deduped by exact URL, so re-running is idempotent). If not found, a new
+`Performer` is created.
 
 **`photoUrl` is the one field that's deliberately *not* always
 overwritten** — controlled by a `replacePhotos` option:

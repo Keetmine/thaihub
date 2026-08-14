@@ -124,12 +124,14 @@ its exact matcher functions rather than a separate implementation:
   uses) falling back to the name Wikipedia already parenthesized
   ("Pruk Panich (Zee)" → nickname "Zee") if TMDB's own data doesn't
   yield one.
-- **Existing performer's agency**: only filled in if currently unset — a
-  performer's current agency elsewhere might be more specific/correct
-  than a Wikipedia roster snapshot, so this never overwrites one that's
-  already set. Also repairs the fallback-to-realName `name` state (see
-  `tmdb-import.md`'s nickname section) using the nickname Wikipedia's
-  roster already spells out, if the existing row is in that state.
+- **Existing performer's agency**: *added* to the performer's agency set
+  (`addPerformerAgency`, `src/lib/performerAgency.ts`) rather than
+  replacing it — a performer can be signed to more than one at once, see
+  "A performer can belong to more than one agency" in
+  [catalog.md](catalog.md#agencies). Also repairs the fallback-to-realName
+  `name` state (see `tmdb-import.md`'s nickname section) using the
+  nickname Wikipedia's roster already spells out, if the existing row is
+  in that state.
 - **Drama's agency/network**: set unconditionally, even on an existing
   `Drama` — unlike a performer's agency, a studio's own production
   listing is treated as authoritative for what it actually produced.
