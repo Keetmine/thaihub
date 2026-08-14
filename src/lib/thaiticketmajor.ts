@@ -192,7 +192,11 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
     }
   }
 
-  const artistsCell = findLabeledRow($, "Artists").find("td").eq(1);
+  // "Artist" (not "Artists") matches both label forms the site uses —
+  // some pages say "Artist :" (singular, e.g. weirdo-101-the-first-
+  // gravity.html), most say "Artists :" — findLabeledRow does a prefix
+  // match, and "artists" itself starts with "artist" too.
+  const artistsCell = findLabeledRow($, "Artist").find("td").eq(1);
   // Multiple artists are each wrapped in their own <div>; a single artist
   // is sometimes just bare text directly in the cell with no <div> at
   // all (e.g. gemini-art-venture-concert.html) — fall back to the cell's

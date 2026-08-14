@@ -257,6 +257,12 @@ database until that confirm step** — the scrape itself is read-only.
     gemini-art-venture-concert.html). `scrapeTtmEvent` falls back to the
     cell's own text when it finds zero `<div>`s, so a single-artist event
     doesn't silently come back with an empty lineup.
+  - The row label itself isn't consistent either: most pages say
+    "Artists :", some say "Artist :" (singular — seen on
+    weirdo-101-the-first-gravity.html, a `/performance/...` URL rather
+    than `/concert/...`). `findLabeledRow` does a prefix match, so
+    `scrapeTtmEvent` looks up `"Artist"` (not `"Artists"`) — that prefix
+    matches both, since "artists" itself starts with "artist".
 - **Schema fit**: a scraped artist's nickname and full name map directly
   onto `Performer.name` and `Performer.realName` — no translation layer
   needed.
