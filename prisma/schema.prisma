@@ -125,6 +125,10 @@ model Drama {
   year           Int?
   agencyId       String?
   agency         Agency?  @relation(fields: [agencyId], references: [id])
+  // The blscene.com "where was X filmed" page this drama was imported from,
+  // if any — used to dedupe re-imports (its on-page title can differ from
+  // the A-Z index's link text, so title matching alone isn't reliable).
+  blsceneUrl     String?  @unique
 
   performers     PerformerDrama[]
   favoritedBy    FavoriteDrama[]

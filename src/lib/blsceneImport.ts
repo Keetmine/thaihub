@@ -31,6 +31,7 @@ export async function importScrapedDrama(
       posterUrl: scraped.posterUrl,
       synopsis: scraped.synopsis,
       mydramalistUrl: scraped.mydramalistUrl,
+      blsceneUrl: scraped.sourceUrl,
     },
   });
 
@@ -79,13 +80,22 @@ export async function syncNewDramasFromBlscene(
   const log = onProgress ?? (() => {});
 
   const index = await fetchBlsceneIndex();
-  const existingTitles = new Set(
-    (await prisma.drama.findMany({ select: { title: true } })).map((d) =>
-      d.title.toLowerCase().trim(),
-    ),
+  const existingDramas = await prisma.drama.findMany({
+    select: { title: true, blsceneUrl: true },
+  });
+  // Prefer matching by blsceneUrl — a drama's on-page title (what actually
+  // gets stored) can differ from its A-Z index link text, so title-only
+  // matching can miss an already-imported drama and re-import it forever.
+  // Title is kept as a fallback so manually-added dramas (no blsceneUrl
+  // yet) still don't get duplicated.
+  const existingUrls = new Set(
+    existingDramas.map((d) => d.blsceneUrl).filter((u): u is string => !!u),
   );
+  const existingTitles = new Set(existingDramas.map((d) => d.title.toLowerCase().trim()));
 
-  const toImport = index.filter((d) => !existingTitles.has(d.title.toLowerCase().trim()));
+  const toImport = index.filter(
+    (d) => !existingUrls.has(d.url) && !existingTitles.has(d.title.toLowerCase().trim()),
+  );
   log(`${index.length} shows on blscene, ${toImport.length} not yet in our database`);
 
   const result: BlsceneSyncResult = { checked: index.length, imported: [], errors: [] };
