@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { dateKey, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates";
+import type { Prisma } from "@/generated/prisma/client";
+import { dateKey, endOfDay, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
@@ -26,32 +27,59 @@ type EventFilter = "all" | "going" | "favorited";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; from?: string; to?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) {
     return <LandingPage />;
   }
 
-  const { filter: rawFilter } = await searchParams;
+  const { filter: rawFilter, from: rawFrom, to: rawTo } = await searchParams;
   const filter: EventFilter =
     rawFilter === "going" ? "going" : rawFilter === "favorited" ? "favorited" : "all";
+
+  const isValidDateKey = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const from = isValidDateKey(rawFrom) ? rawFrom! : "";
+  const to = isValidDateKey(rawTo) ? rawTo! : "";
+  const hasDateRange = Boolean(from || to);
+  // Carried through onto the filter toggle links so switching Все/Иду/
+  // Избранное doesn't drop an active date range.
+  const rangeQuery = `${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`;
 
   const today = startOfDay(new Date());
 
   const eventInclude = { event: { include: { performers: { include: { performer: true } } } } };
-  const [upcomingOccurrences, pastOccurrences] = await Promise.all([
-    prisma.eventOccurrence.findMany({
-      where: { startsAt: { gte: today } },
-      include: eventInclude,
-      orderBy: { startsAt: "asc" },
-    }),
-    prisma.eventOccurrence.findMany({
-      where: { startsAt: { lt: today } },
-      include: eventInclude,
-      orderBy: { startsAt: "desc" },
-    }),
-  ]);
+  type OccurrenceRow = Prisma.EventOccurrenceGetPayload<{ include: typeof eventInclude }>;
+
+  // With an explicit date range, show everything in it as one ascending
+  // list — the upcoming/archive split stops being meaningful once you've
+  // picked a specific window (e.g. a past trip you want to revisit).
+  const [upcomingOccurrences, pastOccurrences]: [OccurrenceRow[], OccurrenceRow[]] = hasDateRange
+    ? [
+        await prisma.eventOccurrence.findMany({
+          where: {
+            startsAt: {
+              gte: from ? startOfDay(parseDateKey(from)) : undefined,
+              lte: to ? endOfDay(parseDateKey(to)) : undefined,
+            },
+          },
+          include: eventInclude,
+          orderBy: { startsAt: "asc" },
+        }),
+        [],
+      ]
+    : await Promise.all([
+        prisma.eventOccurrence.findMany({
+          where: { startsAt: { gte: today } },
+          include: eventInclude,
+          orderBy: { startsAt: "asc" },
+        }),
+        prisma.eventOccurrence.findMany({
+          where: { startsAt: { lt: today } },
+          include: eventInclude,
+          orderBy: { startsAt: "desc" },
+        }),
+      ]);
   const upcomingAll = upcomingOccurrences.map(flattenOccurrence);
   const pastAll = pastOccurrences.map(flattenOccurrence);
 
@@ -91,21 +119,21 @@ export default async function HomePage({
 
       <div className="mode-toggle mb-4">
         <Link
-          href="/"
+          href={`/?filter=all${rangeQuery}`}
           prefetch={false}
           className={`mode-toggle-option ${filter === "all" ? "active" : ""}`}
         >
           Все события
         </Link>
         <Link
-          href="/?filter=going"
+          href={`/?filter=going${rangeQuery}`}
           prefetch={false}
           className={`mode-toggle-option ${filter === "going" ? "active" : ""}`}
         >
           Я иду
         </Link>
         <Link
-          href="/?filter=favorited"
+          href={`/?filter=favorited${rangeQuery}`}
           prefetch={false}
           className={`mode-toggle-option ${filter === "favorited" ? "active" : ""}`}
         >
@@ -113,8 +141,38 @@ export default async function HomePage({
         </Link>
       </div>
 
+      <form className="d-flex flex-wrap align-items-end gap-2 mb-4">
+        {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
+        <div>
+          <label className="form-label small text-secondary mb-1">С даты</label>
+          <input type="date" name="from" defaultValue={from} className="form-control form-control-sm" />
+        </div>
+        <div>
+          <label className="form-label small text-secondary mb-1">По дату</label>
+          <input type="date" name="to" defaultValue={to} className="form-control form-control-sm" />
+        </div>
+        <button type="submit" className="btn btn-outline-secondary btn-sm">
+          Показать
+        </button>
+        {hasDateRange && (
+          <Link href={`/?filter=${filter}`} prefetch={false} className="btn btn-ghost btn-sm">
+            Сбросить даты
+          </Link>
+        )}
+      </form>
+
+      {hasDateRange && (
+        <p className="small text-secondary mb-3">
+          {upcomingAll.length === 0
+            ? "В этом диапазоне дат событий нет."
+            : `Событий в диапазоне: ${upcomingAll.length}.`}
+        </p>
+      )}
+
       {upcomingByDay.size === 0 ? (
-        <p className="text-secondary">Предстоящих событий пока нет.</p>
+        hasDateRange ? null : (
+          <p className="text-secondary">Предстоящих событий пока нет.</p>
+        )
       ) : (
         <div className="d-flex flex-column gap-4">
           {Array.from(upcomingByDay.entries()).map(([key, dayEvents]) => (

@@ -27,6 +27,19 @@ on `.leaflet-map-dark .leaflet-tile-pane` (see `globals.css`).
   without coordinates (blscene link had no resolvable place, or it was
   never given one) just doesn't appear there — no error, no placeholder.
 
+## List views: alphabetical vs. grouped by drama
+
+`/locations` has a toggle (`?group=drama`) between the default A-Z index
+(`AlphabetIndexList`, same component the performers list uses) and a
+view grouped by `Drama` — each drama title as a heading (itself sorted
+alphabetically), its linked locations listed underneath. Locations with
+no linked drama at all (e.g. a venue only ever linked to an `Event`) get
+a trailing "Без сериала" group so nothing silently disappears from that
+view. The search box works in both modes — in drama-grouped mode it
+filters which `Location` rows show under each heading (via a `where` on
+the `DramaLocation` `include`, not a separate query) and drops any drama
+left with zero matching locations, rather than showing an empty heading.
+
 ## What links to a Location
 
 - **`Drama`** via `DramaLocation` — many-to-many; the same real place is

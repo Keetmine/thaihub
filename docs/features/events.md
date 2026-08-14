@@ -1,10 +1,26 @@
 # Events
 
 Public list/detail: `src/app/(public)/page.tsx` (all events, with an
-Все/Иду/Избранное filter), `src/app/(public)/day/[date]/page.tsx`,
+Все/Иду/Избранное filter and a `?from=YYYY-MM-DD&to=YYYY-MM-DD` date-range
+filter — see below), `src/app/(public)/day/[date]/page.tsx`,
 `src/app/(public)/event/[id]/page.tsx`, `src/app/(public)/calendar/page.tsx`
 (month grid, defaults to showing **all** events — `?view=mine` narrows to
 just the ones the current user is going to).
+
+## Date-range filter (home page)
+
+`/?from=2026-08-20&to=2026-08-25` — either bound is optional. When a
+range is active, the home page drops its usual upcoming/archive split
+(both stop being meaningful once you've picked an explicit window — e.g.
+revisiting a past trip) and shows every matching occurrence as one
+ascending list, still day-grouped the same way. The `filter`
+(Все/Иду/Избранное) toggle and the date range compose — switching filters
+carries the active range along via `rangeQuery`, and there's a "Сбросить
+даты" link to drop the range while keeping the current filter. This is
+meant as the building block for a possible future "trip" feature (save a
+named date range, mark which of its events you actually attended) — if
+that gets built, it should stay a thin wrapper over this same query
+rather than a heavier new concept.
 
 Admin CRUD: `src/app/admin/(protected)/events/` (`EventForm.tsx`,
 `actions.ts`, `new/`, `[id]/edit/`).

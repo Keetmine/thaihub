@@ -8,28 +8,59 @@ import { PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
+function LocationRow({
+  location,
+  isVisited,
+}: {
+  location: { id: string; name: string; photoUrl: string | null };
+  isVisited: boolean;
+}) {
+  return (
+    <div
+      key={location.id}
+      className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+    >
+      <Link
+        href={`/locations/${location.id}`}
+        className="text-decoration-none d-flex align-items-center gap-3"
+        style={{ minWidth: 0 }}
+      >
+        <div
+          style={{
+            width: "2.75rem",
+            height: "2.75rem",
+            borderRadius: "0.5rem",
+            background: "var(--bs-secondary-bg)",
+            flexShrink: 0,
+            overflow: "hidden",
+          }}
+        >
+          {location.photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={location.photoUrl}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )}
+        </div>
+        <span className="font-display fw-medium text-white text-truncate">{location.name}</span>
+      </Link>
+      <VisitedButton locationId={location.id} isVisited={isVisited} className="flex-shrink-0" />
+    </div>
+  );
+}
+
 export default async function LocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; group?: string }>;
 }) {
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, group: rawGroup } = await searchParams;
   const q = (rawQ ?? "").trim();
-
-  const locations = await prisma.location.findMany({
-    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
-    orderBy: { name: "asc" },
-  });
+  const groupByDrama = rawGroup === "drama";
 
   const currentUser = await getCurrentUser();
-  const visitedIds = new Set<string>();
-  if (currentUser && locations.length > 0) {
-    const visits = await prisma.locationVisit.findMany({
-      where: { userId: currentUser.id, locationId: { in: locations.map((l) => l.id) } },
-      select: { locationId: true },
-    });
-    for (const v of visits) visitedIds.add(v.locationId);
-  }
 
   return (
     <div>
@@ -44,50 +75,138 @@ export default async function LocationsPage({
         </Link>
       </div>
 
-      <NameSearchBox action="/locations" q={q} placeholder="Поиск по названию…" />
+      <div className="mode-toggle mb-3">
+        <Link
+          href={`/locations?${q ? `q=${encodeURIComponent(q)}` : ""}`}
+          prefetch={false}
+          className={`mode-toggle-option ${!groupByDrama ? "active" : ""}`}
+        >
+          По алфавиту
+        </Link>
+        <Link
+          href={`/locations?group=drama${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+          prefetch={false}
+          className={`mode-toggle-option ${groupByDrama ? "active" : ""}`}
+        >
+          По сериалам
+        </Link>
+      </div>
 
-      <AlphabetIndexList
-        items={locations.map((l) => ({ id: l.id, name: l.name, location: l }))}
-        emptyMessage="Пока нет локаций."
-        renderItem={({ location: l }) => (
-          <div
-            key={l.id}
-            className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
-          >
-            <Link
-              href={`/locations/${l.id}`}
-              className="text-decoration-none d-flex align-items-center gap-3"
-              style={{ minWidth: 0 }}
-            >
-              <div
-                style={{
-                  width: "2.75rem",
-                  height: "2.75rem",
-                  borderRadius: "0.5rem",
-                  background: "var(--bs-secondary-bg)",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                }}
-              >
-                {l.photoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={l.photoUrl}
-                    alt=""
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                )}
-              </div>
-              <span className="font-display fw-medium text-white text-truncate">{l.name}</span>
-            </Link>
-            <VisitedButton
-              locationId={l.id}
-              isVisited={visitedIds.has(l.id)}
-              className="flex-shrink-0"
-            />
-          </div>
-        )}
+      <NameSearchBox
+        action="/locations"
+        q={q}
+        placeholder="Поиск по названию…"
+        hiddenFields={groupByDrama ? { group: "drama" } : undefined}
       />
+
+      {groupByDrama ? (
+        <LocationsByDrama q={q} currentUser={currentUser} />
+      ) : (
+        <LocationsAlphabetical q={q} currentUser={currentUser} />
+      )}
     </div>
   );
+}
+
+async function LocationsAlphabetical({
+  q,
+  currentUser,
+}: {
+  q: string;
+  currentUser: { id: string } | null;
+}) {
+  const locations = await prisma.location.findMany({
+    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
+    orderBy: { name: "asc" },
+  });
+
+  const visitedIds = await getVisitedIds(currentUser, locations.map((l) => l.id));
+
+  return (
+    <AlphabetIndexList
+      items={locations.map((l) => ({ id: l.id, name: l.name, location: l }))}
+      emptyMessage="Пока нет локаций."
+      renderItem={({ location: l }) => (
+        <LocationRow location={l} isVisited={visitedIds.has(l.id)} />
+      )}
+    />
+  );
+}
+
+async function LocationsByDrama({
+  q,
+  currentUser,
+}: {
+  q: string;
+  currentUser: { id: string } | null;
+}) {
+  const locationNameFilter = q ? { name: { contains: q, mode: "insensitive" as const } } : {};
+
+  const [dramas, locationsWithoutDrama] = await Promise.all([
+    prisma.drama.findMany({
+      where: { locations: { some: { location: locationNameFilter } } },
+      include: {
+        locations: {
+          where: { location: locationNameFilter },
+          include: { location: true },
+          orderBy: { location: { name: "asc" } },
+        },
+      },
+      orderBy: { title: "asc" },
+    }),
+    prisma.location.findMany({
+      where: { ...locationNameFilter, dramas: { none: {} } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  const allLocationIds = [
+    ...dramas.flatMap((d) => d.locations.map((dl) => dl.locationId)),
+    ...locationsWithoutDrama.map((l) => l.id),
+  ];
+  const visitedIds = await getVisitedIds(currentUser, allLocationIds);
+
+  if (dramas.length === 0 && locationsWithoutDrama.length === 0) {
+    return <p className="text-secondary">Пока нет локаций.</p>;
+  }
+
+  return (
+    <div className="d-flex flex-column gap-4">
+      {dramas.map((drama) => (
+        <section key={drama.id}>
+          <Link href={`/dramas/${drama.id}`} className="day-group-heading mb-2">
+            {drama.title}
+          </Link>
+          <div className="d-flex flex-column gap-2 mt-2">
+            {drama.locations.map(({ location: l }) => (
+              <LocationRow key={l.id} location={l} isVisited={visitedIds.has(l.id)} />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {locationsWithoutDrama.length > 0 && (
+        <section>
+          <h2 className="day-group-heading mb-2">Без сериала</h2>
+          <div className="d-flex flex-column gap-2 mt-2">
+            {locationsWithoutDrama.map((l) => (
+              <LocationRow key={l.id} location={l} isVisited={visitedIds.has(l.id)} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+async function getVisitedIds(
+  currentUser: { id: string } | null,
+  locationIds: string[],
+): Promise<Set<string>> {
+  if (!currentUser || locationIds.length === 0) return new Set();
+  const visits = await prisma.locationVisit.findMany({
+    where: { userId: currentUser.id, locationId: { in: locationIds } },
+    select: { locationId: true },
+  });
+  return new Set(visits.map((v) => v.locationId));
 }
