@@ -234,6 +234,7 @@ export default async function PerformerPage({
               event={ev}
               isFavorited={favoritedEventIds.has(ev.id)}
               isGoing={goingEventIds.has(ev.id)}
+              showDate
             />
           ))}
         </div>
@@ -251,6 +252,7 @@ export default async function PerformerPage({
                 event={ev}
                 isFavorited={favoritedEventIds.has(ev.id)}
                 isGoing={goingEventIds.has(ev.id)}
+                showDate
               />
             ))}
           </div>

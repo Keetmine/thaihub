@@ -36,6 +36,12 @@ export function formatTimeWithMsk(d: Date): string {
   return `${formatTime(d)} (МСК ${formatTime(msk)})`;
 }
 
+// Compact "24 окт" form, for flat (non day-grouped) event lists where the
+// row itself has to carry the date since there's no day heading above it.
+export function formatShortDate(d: Date): string {
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(/\.$/, "");
+}
+
 export function formatHumanDate(d: Date): string {
   return d.toLocaleDateString("ru-RU", {
     weekday: "long",

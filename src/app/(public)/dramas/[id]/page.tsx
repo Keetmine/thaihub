@@ -233,6 +233,7 @@ export default async function DramaDetailPage({
                 event={ev}
                 isFavorited={favoritedEventIds.has(ev.id)}
                 isGoing={goingEventIds.has(ev.id)}
+                showDate
               />
             ))}
           </div>

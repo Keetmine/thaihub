@@ -119,6 +119,7 @@ export default async function SearchPage({
                   isFavorited={favoritedIds.has(ev.id)}
                   isGoing={goingIds.has(ev.id)}
                   friendsGoing={friendsGoingByEvent.get(ev.id) ?? []}
+                  showDate
                 />
               ))}
             </div>

@@ -192,13 +192,17 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
     }
   }
 
-  const artistsRow = findLabeledRow($, "Artists");
-  const artists: TtmArtist[] = artistsRow
-    .find("td")
-    .eq(1)
-    .find("div")
-    .map((_, el) => $(el).text())
-    .get()
+  const artistsCell = findLabeledRow($, "Artists").find("td").eq(1);
+  // Multiple artists are each wrapped in their own <div>; a single artist
+  // is sometimes just bare text directly in the cell with no <div> at
+  // all (e.g. gemini-art-venture-concert.html) — fall back to the cell's
+  // own text in that case instead of silently returning zero artists.
+  const artistDivs = artistsCell.find("div");
+  const artistTexts =
+    artistDivs.length > 0
+      ? artistDivs.map((_, el) => $(el).text()).get()
+      : [artistsCell.text()];
+  const artists: TtmArtist[] = artistTexts
     .map((text) => text.replace(/\s+/g, " ").trim())
     .filter(Boolean)
     .map(parseArtistLine);

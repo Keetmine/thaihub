@@ -181,6 +181,16 @@ list-view time column (`.agenda-time` is only `3.2rem` wide — there's no
 room for the suffix without breaking that layout; the detail page has
 plenty of room instead).
 
+## Date in the compact list view
+
+`EventAgendaRow` normally shows only a time, since it's mostly used on
+pages that already group rows under a day heading (home, `/day/[date]`).
+Pages that list events as a flat sequence with no day heading — performer
+and drama detail pages, a location's "События здесь", search results —
+pass `showDate`, which stacks a small `formatShortDate` ("24 окт") line
+above the time in the same narrow column (`formatShortDate` in
+`src/lib/dates.ts`).
+
 ## Importing an event from ThaiTicketMajor
 
 `/admin/events/import-ttm` — paste a `thaiticketmajor.com/concert/...` or
@@ -226,6 +236,12 @@ database until that confirm step** — the scrape itself is read-only.
   `parseArtistLine` in `thaiticketmajor.ts` is deliberately just a
   reasonable guess — the review screen's nickname/full-name fields are
   always editable, never read-only text.
+  - The details table wraps each artist name in its own `<div>` — except
+    when there's only one artist, where the site sometimes puts bare text
+    directly in the cell with no `<div>` at all (seen on
+    gemini-art-venture-concert.html). `scrapeTtmEvent` falls back to the
+    cell's own text when it finds zero `<div>`s, so a single-artist event
+    doesn't silently come back with an empty lineup.
 - **Schema fit**: a scraped artist's nickname and full name map directly
   onto `Performer.name` and `Performer.realName` — no translation layer
   needed.

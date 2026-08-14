@@ -604,6 +604,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   text-align: right;
 }
 
+.agenda-date {
+  display: block;
+  font-size: 0.65rem;
+  line-height: 1.2;
+  color: var(--bs-secondary-color);
+  text-transform: capitalize;
+}
+
 .agenda-time-start {
   display: block;
   font-family: var(--font-display), var(--font-geist-sans), sans-serif;

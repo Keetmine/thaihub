@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatTime } from "@/lib/dates";
+import { formatShortDate, formatTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { PinIcon, UserIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -10,11 +10,17 @@ export default function EventAgendaRow({
   isFavorited = false,
   isGoing = false,
   friendsGoing = [],
+  showDate = false,
 }: {
   event: EventWithPerformers;
   isFavorited?: boolean;
   isGoing?: boolean;
   friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
+  // Set on flat (non day-grouped) lists — home/day pages already show the
+  // date as a section heading above a batch of rows, so only pages that
+  // list events without that heading (performer/drama/location/search)
+  // need the row itself to carry the date.
+  showDate?: boolean;
 }) {
   return (
     <div className="agenda-row">
@@ -23,6 +29,9 @@ export default function EventAgendaRow({
         <GoingButton eventId={event.id} isGoing={isGoing} variant="icon" />
       </div>
       <div className="agenda-time">
+        {showDate && (
+          <span className="agenda-date">{formatShortDate(event.startsAt)}</span>
+        )}
         <span className="agenda-time-start">{formatTime(event.startsAt)}</span>
         {event.endsAt && (
           <span className="agenda-time-end">–{formatTime(event.endsAt)}</span>
