@@ -2,7 +2,29 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
+import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
+
+/**
+ * Re-syncs the GMMTV roster: creates any new artists, updates existing
+ * ones (matched by nickname) with the latest name/birth date/agency/
+ * social links. Doesn't touch an existing performer's photo — that's
+ * deliberately a one-off decision made for the initial bulk import (see
+ * scripts/import-gmmtv.ts), not something a routine re-check should keep
+ * clobbering if an admin has since picked a better photo by hand.
+ */
+export async function syncGmmtv(): Promise<GmmtvSyncResult> {
+  const browser = await chromium.launch();
+  try {
+    const result = await syncGmmtvArtists(browser, { replacePhotos: false });
+    revalidatePath("/admin/performers");
+    revalidatePath("/performers");
+    return result;
+  } finally {
+    await browser.close();
+  }
+}
 
 /** Live "похоже, уже есть" lookup for the create form's name field. */
 export async function findSimilarPerformers(

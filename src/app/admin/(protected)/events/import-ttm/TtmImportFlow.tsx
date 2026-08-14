@@ -76,7 +76,7 @@ export default function TtmImportFlow({
     try {
       const formData = new FormData(e.currentTarget);
       const extraPerformerIds = formData.getAll("extraPerformerIds").map(String).filter(Boolean);
-      const result = await createEventFromTtmImport({
+      await createEventFromTtmImport({
         title: String(formData.get("title") ?? ""),
         venue: String(formData.get("venue") ?? ""),
         date: String(formData.get("date") ?? ""),
@@ -99,7 +99,7 @@ export default function TtmImportFlow({
           })),
         extraPerformerIds,
       });
-      router.push(`/admin/events/${result.id}/edit`);
+      router.push("/admin");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Не удалось создать событие");
     } finally {

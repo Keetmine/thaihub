@@ -15,7 +15,8 @@ bar).
   band member.
 - Real name, birth date, bio, agency, photo, MyDramaList link are all
   optional profile fields, fillable manually or (for dramas) picked up via
-  the blscene importer's cast data where available.
+  the blscene importer's cast data where available. GMMTV's roster is kept
+  in sync separately — see [gmmtv-import.md](gmmtv-import.md).
 - `PerformerLink` is a free-form label+URL list per performer (social
   media, personal café, whatever) — no schema change needed to add a new
   kind of link.

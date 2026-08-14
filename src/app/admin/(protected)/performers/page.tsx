@@ -4,6 +4,7 @@ import { deletePerformer } from "./actions";
 import { deleteAgency } from "../agencies/actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
+import GmmtvSyncButton from "./GmmtvSyncButton";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -135,6 +136,12 @@ export default async function AdminPerformersPage({
       <AdminPerformerTabs
         active={isAgencies ? "agencies" : isBands ? "bands" : "performers"}
       />
+
+      {!isAgencies && (
+        <div className="surface p-3 mb-4">
+          <GmmtvSyncButton />
+        </div>
+      )}
 
       {isAgencies ? (
         <AdminAgenciesView />
