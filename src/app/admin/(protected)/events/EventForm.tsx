@@ -17,6 +17,12 @@ function pairingLabel(pairing: PairingOption): string {
   return pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`;
 }
 
+/** One date/time this event happens on. `id` is the EventOccurrence id
+ *  when editing an existing one, or "" for a row not saved yet. */
+export type OccurrenceRow = { id: string; date: string; startTime: string; endTime: string };
+
+const EMPTY_OCCURRENCE: OccurrenceRow = { id: "", date: "", startTime: "", endTime: "" };
+
 export default function EventForm({
   action,
   performers,
@@ -35,9 +41,7 @@ export default function EventForm({
     title: string;
     venue: string;
     description: string;
-    date: string;
-    startTime: string;
-    endTime: string;
+    occurrences: OccurrenceRow[];
     performerIds: string[];
     pairingIds: string[];
     dramaId: string;
@@ -51,7 +55,6 @@ export default function EventForm({
   submitLabel: string;
 }) {
   const v = defaultValues;
-  const isCreating = !v;
 
   const pairingOptions: EntityOption[] = useMemo(
     () => pairings.map((p) => ({ id: p.id, name: pairingLabel(p) })),
@@ -60,22 +63,23 @@ export default function EventForm({
 
   const [presaleEnabled, setPresaleEnabled] = useState(Boolean(v?.presaleDate));
 
-  // Extra occurrences of the same event (e.g. a concert repeating 3 nights)
-  // — create-only. Editing an already-created event edits just that one
-  // date; use "+ Добавить ещё день" at creation time to spin up several
-  // identical events (same title/venue/performers/…) in one go.
-  const [extraDates, setExtraDates] = useState<string[]>([]);
+  // A concert repeating over several nights is still ONE event — this is
+  // a repeatable list of dates it happens on, not a single date/time
+  // pair. At least one row always stays present.
+  const [occurrences, setOccurrences] = useState<OccurrenceRow[]>(
+    v?.occurrences && v.occurrences.length > 0 ? v.occurrences : [EMPTY_OCCURRENCE],
+  );
 
-  function addDay() {
-    setExtraDates((prev) => [...prev, ""]);
+  function addOccurrence() {
+    setOccurrences((prev) => [...prev, { ...EMPTY_OCCURRENCE }]);
   }
 
-  function removeDay(index: number) {
-    setExtraDates((prev) => prev.filter((_, i) => i !== index));
+  function removeOccurrence(index: number) {
+    setOccurrences((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   }
 
-  function updateDay(index: number, value: string) {
-    setExtraDates((prev) => prev.map((d, i) => (i === index ? value : d)));
+  function updateOccurrence(index: number, patch: Partial<OccurrenceRow>) {
+    setOccurrences((prev) => prev.map((o, i) => (i === index ? { ...o, ...patch } : o)));
   }
 
   return (
@@ -125,57 +129,52 @@ export default function EventForm({
 
       <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
 
-      <div className="row g-3">
-        <div className="col-12 col-sm-4">
-          <label className="form-label">Дата *</label>
-          <input
-            type="date"
-            name="date"
-            required
-            defaultValue={v?.date}
-            className="form-control"
-          />
-        </div>
-        <div className="col-6 col-sm-4">
-          <label className="form-label">Начало *</label>
-          <input
-            type="time"
-            name="startTime"
-            required
-            defaultValue={v?.startTime}
-            className="form-control"
-          />
-        </div>
-        <div className="col-6 col-sm-4">
-          <label className="form-label">Конец</label>
-          <input
-            type="time"
-            name="endTime"
-            defaultValue={v?.endTime}
-            className="form-control"
-          />
-        </div>
-      </div>
-
-      {isCreating && (
+      <div>
+        <label className="form-label d-block">
+          Дата и время {occurrences.length > 1 ? "(несколько дней)" : ""}
+        </label>
         <div className="d-flex flex-column gap-2">
-          {extraDates.map((d, i) => (
-            <div key={i} className="row g-2 align-items-center">
+          {occurrences.map((o, i) => (
+            <div key={i} className="row g-2 align-items-end">
+              <input type="hidden" name="occurrenceId" value={o.id} />
               <div className="col-12 col-sm-4">
-                <label className="form-label">Ещё день {i + 2}</label>
+                {i === 0 && <label className="form-label small text-secondary">Дата *</label>}
                 <input
                   type="date"
-                  name="extraDates"
-                  value={d}
-                  onChange={(e) => updateDay(i, e.target.value)}
+                  name="occurrenceDate"
+                  required
+                  value={o.date}
+                  onChange={(e) => updateOccurrence(i, { date: e.target.value })}
                   className="form-control"
                 />
               </div>
-              <div className="col-auto" style={{ marginTop: "1.75rem" }}>
+              <div className="col-5 col-sm-3">
+                {i === 0 && <label className="form-label small text-secondary">Начало *</label>}
+                <input
+                  type="time"
+                  name="occurrenceStartTime"
+                  required
+                  value={o.startTime}
+                  onChange={(e) => updateOccurrence(i, { startTime: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-5 col-sm-3">
+                {i === 0 && <label className="form-label small text-secondary">Конец</label>}
+                <input
+                  type="time"
+                  name="occurrenceEndTime"
+                  value={o.endTime}
+                  onChange={(e) => updateOccurrence(i, { endTime: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-2 col-sm-2">
                 <button
                   type="button"
                   className="btn btn-outline-danger btn-sm"
-                  onClick={() => removeDay(i)}
+                  onClick={() => removeOccurrence(i)}
+                  disabled={occurrences.length === 1}
                   aria-label="Удалить день"
                 >
                   ×
@@ -187,13 +186,13 @@ export default function EventForm({
             <button
               type="button"
               className="btn btn-outline-secondary btn-sm"
-              onClick={addDay}
+              onClick={addOccurrence}
             >
               + Добавить ещё день
             </button>
           </div>
         </div>
-      )}
+      </div>
 
       <div>
         <label className="form-label">Описание</label>

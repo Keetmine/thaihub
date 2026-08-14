@@ -6,6 +6,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { CakeIcon, BuildingIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +33,17 @@ export default async function PerformerPage({
   const eventLinks = await prisma.eventPerformer.findMany({
     where: { performerId: id },
     include: {
-      event: { include: { performers: { include: { performer: true } } } },
+      event: {
+        include: {
+          performers: { include: { performer: true } },
+          occurrences: { orderBy: { startsAt: "asc" } },
+        },
+      },
     },
-    orderBy: { event: { startsAt: "asc" } },
   });
+  const performerEvents = eventLinks.flatMap((l) =>
+    l.event.occurrences.map((occ) => flattenOccurrence({ ...occ, event: l.event })),
+  );
 
   // Pairings this performer is part of — solo-only, nice-to-have, additive.
   const pairings = isBand
@@ -56,9 +64,13 @@ export default async function PerformerPage({
   }
 
   const now = new Date();
-  const upcoming = eventLinks.filter((l) => l.event.startsAt >= now);
-  const past = eventLinks.filter((l) => l.event.startsAt < now);
-  const eventIds = eventLinks.map((l) => l.eventId);
+  const upcoming = performerEvents
+    .filter((ev) => ev.startsAt >= now)
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const past = performerEvents
+    .filter((ev) => ev.startsAt < now)
+    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
+  const eventIds = performerEvents.map((ev) => ev.id);
   const [favoritedEventIds, goingEventIds] = await Promise.all([
     getFavoritedEventIds(eventIds, currentUser?.id),
     getGoingEventIds(eventIds, currentUser?.id),
@@ -216,12 +228,12 @@ export default async function PerformerPage({
         <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
       ) : (
         <div className="d-flex flex-column gap-2 mb-4">
-          {upcoming.map((l) => (
+          {upcoming.map((ev) => (
             <EventAgendaRow
-              key={l.eventId}
-              event={l.event}
-              isFavorited={favoritedEventIds.has(l.eventId)}
-              isGoing={goingEventIds.has(l.eventId)}
+              key={ev.occurrenceId}
+              event={ev}
+              isFavorited={favoritedEventIds.has(ev.id)}
+              isGoing={goingEventIds.has(ev.id)}
             />
           ))}
         </div>
@@ -233,12 +245,12 @@ export default async function PerformerPage({
             Прошедшие
           </h2>
           <div className="d-flex flex-column gap-2 opacity-50 mb-4">
-            {past.map((l) => (
+            {past.map((ev) => (
               <EventAgendaRow
-                key={l.eventId}
-                event={l.event}
-                isFavorited={favoritedEventIds.has(l.eventId)}
-                isGoing={goingEventIds.has(l.eventId)}
+                key={ev.occurrenceId}
+                event={ev}
+                isFavorited={favoritedEventIds.has(ev.id)}
+                isGoing={goingEventIds.has(ev.id)}
               />
             ))}
           </div>

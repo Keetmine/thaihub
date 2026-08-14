@@ -7,6 +7,7 @@ import LocationMap from "@/components/LocationMapLoader";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,10 @@ export default async function LocationDetailPage({
     include: {
       dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
       events: {
-        include: { performers: { include: { performer: true } } },
-        orderBy: { startsAt: "asc" },
+        include: {
+          performers: { include: { performer: true } },
+          occurrences: { orderBy: { startsAt: "asc" } },
+        },
       },
     },
   });
@@ -39,7 +42,10 @@ export default async function LocationDetailPage({
     isVisited = !!visit;
   }
 
-  const eventIds = location.events.map((ev) => ev.id);
+  const locationEvents = location.events
+    .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const eventIds = locationEvents.map((ev) => ev.id);
   const [favoritedIds, goingIds, friendIds] = await Promise.all([
     getFavoritedEventIds(eventIds, currentUser?.id),
     getGoingEventIds(eventIds, currentUser?.id),
@@ -121,7 +127,7 @@ export default async function LocationDetailPage({
             </div>
           )}
 
-          {location.events.length > 0 && (
+          {locationEvents.length > 0 && (
             <div className="mt-4">
               <h2
                 className="small text-secondary text-uppercase mb-2"
@@ -130,9 +136,9 @@ export default async function LocationDetailPage({
                 События здесь
               </h2>
               <div className="d-flex flex-column gap-2">
-                {location.events.map((ev) => (
+                {locationEvents.map((ev) => (
                   <EventAgendaRow
-                    key={ev.id}
+                    key={ev.occurrenceId}
                     event={ev}
                     isFavorited={favoritedIds.has(ev.id)}
                     isGoing={goingIds.has(ev.id)}

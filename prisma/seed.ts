@@ -29,9 +29,8 @@ async function main() {
     data: {
       title: "Bodyslam Live in Bangkok",
       venue: "Impact Arena, Bangkok",
-      startsAt: day(2, 19, 0),
-      endsAt: day(2, 22, 0),
       description: "Большой концерт в Impact Arena.",
+      occurrences: { create: { startsAt: day(2, 19, 0), endsAt: day(2, 22, 0) } },
       performers: { create: [{ performerId: artists[0].id }] },
     },
   });
@@ -40,8 +39,7 @@ async function main() {
     data: {
       title: "Palmy Acoustic Night",
       venue: "Live Café, Chiang Mai",
-      startsAt: day(2, 20, 30),
-      endsAt: day(2, 22, 30),
+      occurrences: { create: { startsAt: day(2, 20, 30), endsAt: day(2, 22, 30) } },
       performers: { create: [{ performerId: artists[1].id }] },
     },
   });
@@ -50,9 +48,8 @@ async function main() {
     data: {
       title: "Rock Fest: Slot Machine & Getsunova",
       venue: "Lumpini Park, Bangkok",
-      startsAt: day(7, 18, 0),
-      endsAt: day(7, 23, 0),
       description: "Открытый фестиваль под открытым небом.",
+      occurrences: { create: { startsAt: day(7, 18, 0), endsAt: day(7, 23, 0) } },
       performers: {
         create: [{ performerId: artists[2].id }, { performerId: artists[3].id }],
       },
@@ -63,8 +60,7 @@ async function main() {
     data: {
       title: "Getsunova Acoustic Session",
       venue: "Warehouse 30, Bangkok",
-      startsAt: day(-1, 19, 30),
-      endsAt: day(-1, 21, 0),
+      occurrences: { create: { startsAt: day(-1, 19, 30), endsAt: day(-1, 21, 0) } },
       performers: { create: [{ performerId: artists[3].id }] },
     },
   });

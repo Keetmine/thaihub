@@ -3,15 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import type {
-  Event,
-  EventAttendance,
   FavoritePerformer,
   Performer,
   FavoriteDrama,
   Drama,
-  FavoriteEvent,
   DramaWatchStatus,
 } from "@/generated/prisma/client";
+import type { EventWithPerformers } from "@/lib/types";
 import { logout } from "../login/actions";
 import FavoriteButton from "@/components/FavoriteButton";
 import WatchStatusSelect from "@/components/WatchStatusSelect";
@@ -43,7 +41,7 @@ function TabButton({
   );
 }
 
-function EventRow({ event }: { event: Event }) {
+function EventRow({ event }: { event: EventWithPerformers }) {
   return (
     <Link
       href={`/event/${event.id}`}
@@ -76,11 +74,11 @@ export default function AccountTabs({
 }: {
   initialTab: AccountTab;
   user: { name: string | null; email: string };
-  upcomingAttendances: (EventAttendance & { event: Event })[];
-  pastAttendances: (EventAttendance & { event: Event })[];
+  upcomingAttendances: EventWithPerformers[];
+  pastAttendances: EventWithPerformers[];
   favoritePerformers: (FavoritePerformer & { performer: Performer })[];
   favoriteDramas: (FavoriteDrama & { drama: Drama })[];
-  favoriteEvents: (FavoriteEvent & { event: Event })[];
+  favoriteEvents: EventWithPerformers[];
   dramaWatchStatuses: (DramaWatchStatus & { drama: Drama })[];
 }) {
   const [activeTab, setActiveTab] = useState<AccountTab>(initialTab);
@@ -144,8 +142,8 @@ export default function AccountTabs({
           <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
         ) : (
           <div className="d-flex flex-column gap-2 mb-4">
-            {upcomingAttendances.map((a) => (
-              <EventRow key={a.eventId} event={a.event} />
+            {upcomingAttendances.map((ev) => (
+              <EventRow key={ev.occurrenceId} event={ev} />
             ))}
           </div>
         )}
@@ -159,8 +157,8 @@ export default function AccountTabs({
               Мои события — прошедшие
             </h2>
             <div className="d-flex flex-column gap-2 opacity-50 mb-4">
-              {pastAttendances.map((a) => (
-                <EventRow key={a.eventId} event={a.event} />
+              {pastAttendances.map((ev) => (
+                <EventRow key={ev.occurrenceId} event={ev} />
               ))}
             </div>
           </>
@@ -176,18 +174,18 @@ export default function AccountTabs({
           <p className="small text-secondary mb-4">Нет избранных событий.</p>
         ) : (
           <div className="d-flex flex-column gap-2 mb-4">
-            {favoriteEvents.map((f) => (
+            {favoriteEvents.map((ev) => (
               <div
-                key={f.eventId}
+                key={ev.occurrenceId}
                 className="surface d-flex align-items-center justify-content-between gap-3 p-3"
               >
-                <Link href={`/event/${f.event.id}`} className="text-decoration-none">
-                  <p className="font-display fw-medium text-white mb-0">{f.event.title}</p>
+                <Link href={`/event/${ev.id}`} className="text-decoration-none">
+                  <p className="font-display fw-medium text-white mb-0">{ev.title}</p>
                   <p className="small text-secondary mb-0">
-                    {formatHumanDate(f.event.startsAt)} · {formatTime(f.event.startsAt)}
+                    {formatHumanDate(ev.startsAt)} · {formatTime(ev.startsAt)}
                   </p>
                 </Link>
-                <FavoriteButton kind="event" id={f.event.id} isFavorited={true} />
+                <FavoriteButton kind="event" id={ev.id} isFavorited={true} />
               </div>
             ))}
           </div>

@@ -16,7 +16,11 @@ export default async function EditEventPage({
   const [event, performers, pairings, dramas, locations] = await Promise.all([
     prisma.event.findUnique({
       where: { id },
-      include: { performers: true, pairings: true },
+      include: {
+        performers: true,
+        pairings: true,
+        occurrences: { orderBy: { startsAt: "asc" } },
+      },
     }),
     prisma.performer.findMany({ orderBy: { name: "asc" } }),
     prisma.pairing.findMany({
@@ -57,9 +61,12 @@ export default async function EditEventPage({
           title: event.title,
           venue: event.venue,
           description: event.description ?? "",
-          date: dateKey(event.startsAt),
-          startTime: formatTime(event.startsAt),
-          endTime: event.endsAt ? formatTime(event.endsAt) : "",
+          occurrences: event.occurrences.map((o) => ({
+            id: o.id,
+            date: dateKey(o.startsAt),
+            startTime: formatTime(o.startsAt),
+            endTime: o.endsAt ? formatTime(o.endsAt) : "",
+          })),
           performerIds: event.performers.map((p) => p.performerId),
           pairingIds: event.pairings.map((p) => p.pairingId),
           dramaId: event.dramaId ?? "",

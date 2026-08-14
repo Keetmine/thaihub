@@ -39,7 +39,7 @@ export default async function EditPerformerPage({
       select: { id: true, title: true, posterUrl: true },
     }),
     prisma.event.findMany({
-      orderBy: { startsAt: "desc" },
+      orderBy: { createdAt: "desc" },
       select: { id: true, title: true },
     }),
     prisma.pairing.findMany({

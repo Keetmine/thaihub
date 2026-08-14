@@ -31,6 +31,10 @@ export default function TtmImportFlow({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [presaleEnabled, setPresaleEnabled] = useState(false);
+  // Extra days detected in the page's date line (e.g. "24 - 25 October")
+  // pre-fill here — still editable/removable, same as EventForm's picker,
+  // since this is still just one Event with several dates.
+  const [extraDates, setExtraDates] = useState<string[]>([]);
 
   async function handleScrape() {
     setIsScraping(true);
@@ -40,6 +44,7 @@ export default function TtmImportFlow({
       setPreview(result);
       setArtistRows(result.artists.map((a) => ({ ...a, include: true })));
       setPresaleEnabled(Boolean(result.presaleDate));
+      setExtraDates(result.extraDates);
     } catch (err) {
       setScrapeError(err instanceof Error ? err.message : "Не удалось спарсить страницу");
     } finally {
@@ -49,6 +54,18 @@ export default function TtmImportFlow({
 
   function updateArtist(i: number, patch: Partial<ArtistRow>) {
     setArtistRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+
+  function addExtraDate() {
+    setExtraDates((prev) => [...prev, ""]);
+  }
+
+  function removeExtraDate(i: number) {
+    setExtraDates((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function updateExtraDate(i: number, value: string) {
+    setExtraDates((prev) => prev.map((d, idx) => (idx === i ? value : d)));
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -69,6 +86,7 @@ export default function TtmImportFlow({
         dramaId: String(formData.get("dramaId") ?? ""),
         ticketPrice: String(formData.get("ticketPrice") ?? ""),
         posterUrl: String(formData.get("posterUrl") ?? ""),
+        extraDates: extraDates.filter(Boolean),
         presaleDate: presaleEnabled ? String(formData.get("presaleDate") ?? "") : "",
         presaleTime: presaleEnabled ? String(formData.get("presaleTime") ?? "") : "",
         presaleUrl: presaleEnabled ? String(formData.get("presaleUrl") ?? "") : "",
@@ -166,6 +184,39 @@ export default function TtmImportFlow({
           <label className="form-label">Конец</label>
           <input type="time" name="endTime" className="form-control" />
         </div>
+      </div>
+
+      {extraDates.length > 0 && (
+        <div className="d-flex flex-column gap-2">
+          {extraDates.map((d, i) => (
+            <div key={i} className="row g-2 align-items-center">
+              <div className="col-12 col-sm-4">
+                <label className="form-label small text-secondary">Ещё день</label>
+                <input
+                  type="date"
+                  value={d}
+                  onChange={(e) => updateExtraDate(i, e.target.value)}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-auto" style={{ marginTop: "1.75rem" }}>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm"
+                  onClick={() => removeExtraDate(i)}
+                  aria-label="Удалить день"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div>
+        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addExtraDate}>
+          + Добавить ещё день
+        </button>
       </div>
 
       <div>

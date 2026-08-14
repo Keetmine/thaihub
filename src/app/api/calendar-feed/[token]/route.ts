@@ -13,7 +13,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
   const attendances = await prisma.eventAttendance.findMany({
     where: { userId: user.id },
-    include: { event: true },
+    include: { event: { include: { occurrences: { orderBy: { startsAt: "asc" } } } } },
   });
   const events = attendances.map((a) => a.event);
 

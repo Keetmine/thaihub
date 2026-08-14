@@ -21,7 +21,7 @@ export default async function NewPerformerPage() {
       select: { id: true, title: true, posterUrl: true },
     }),
     prisma.event.findMany({
-      orderBy: { startsAt: "desc" },
+      orderBy: { createdAt: "desc" },
       select: { id: true, title: true },
     }),
   ]);

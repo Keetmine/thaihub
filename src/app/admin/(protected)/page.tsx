@@ -8,10 +8,15 @@ import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage() {
-  const events = await prisma.event.findMany({
-    include: { performers: { include: { performer: true } } },
-    orderBy: { startsAt: "asc" },
+  const eventsRaw = await prisma.event.findMany({
+    include: {
+      performers: { include: { performer: true } },
+      occurrences: { orderBy: { startsAt: "asc" } },
+    },
   });
+  const events = eventsRaw
+    .filter((ev) => ev.occurrences.length > 0)
+    .sort((a, b) => a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime());
 
   return (
     <div>
@@ -53,8 +58,13 @@ export default async function AdminEventsPage() {
                     </span>
                   </Link>
                   <p className="small text-secondary mb-0">
-                    {formatHumanDate(ev.startsAt)} · {formatTime(ev.startsAt)}
-                    {ev.endsAt ? `–${formatTime(ev.endsAt)}` : ""} · <PinIcon /> {ev.venue}
+                    {ev.occurrences
+                      .map(
+                        (o) =>
+                          `${formatHumanDate(o.startsAt)} · ${formatTime(o.startsAt)}${o.endsAt ? `–${formatTime(o.endsAt)}` : ""}`,
+                      )
+                      .join(" + ")}{" "}
+                    · <PinIcon /> {ev.venue}
                   </p>
                   {ev.performers.length > 0 && (
                     <p className="small text-secondary opacity-50 mb-0">

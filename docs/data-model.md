@@ -26,10 +26,16 @@ copy — read the schema file for exact field types/nullability.
 
 ## Events
 
-- **`Event`** — see [events.md](features/events.md) for the full picture
+- **`Event`** — no date/time fields of its own; see `EventOccurrence`
+  below. See [events.md](features/events.md) for the full picture
   (multi-day creation, presale, ICS export). Optionally linked to a
   `Drama` (`dramaId`) and/or a `Location` (`locationId`) — both nullable,
   independent of each other.
+- **`EventOccurrence`** — one date/time an `Event` happens on
+  (`eventId`, `startsAt`, `endsAt?`). A multi-day concert is one `Event`
+  with several of these, not several `Event` rows — see
+  [events.md](features/events.md#multi-day-events-are-one-event-several-eventoccurrences).
+  Cascade-deletes with its `Event`.
 - **`EventPerformer`** / **`EventPairing`** — join tables, event ↔
   performer / event ↔ pairing.
 

@@ -4,6 +4,7 @@ import { dateKey, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates"
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 import { CalendarIcon } from "@/components/icons";
 import LandingPage from "./LandingPage";
@@ -38,18 +39,21 @@ export default async function HomePage({
 
   const today = startOfDay(new Date());
 
-  const [upcomingAll, pastAll] = await Promise.all([
-    prisma.event.findMany({
+  const eventInclude = { event: { include: { performers: { include: { performer: true } } } } };
+  const [upcomingOccurrences, pastOccurrences] = await Promise.all([
+    prisma.eventOccurrence.findMany({
       where: { startsAt: { gte: today } },
-      include: { performers: { include: { performer: true } } },
+      include: eventInclude,
       orderBy: { startsAt: "asc" },
     }),
-    prisma.event.findMany({
+    prisma.eventOccurrence.findMany({
       where: { startsAt: { lt: today } },
-      include: { performers: { include: { performer: true } } },
+      include: eventInclude,
       orderBy: { startsAt: "desc" },
     }),
   ]);
+  const upcomingAll = upcomingOccurrences.map(flattenOccurrence);
+  const pastAll = pastOccurrences.map(flattenOccurrence);
 
   const allIds = [...upcomingAll, ...pastAll].map((ev) => ev.id);
   const [favoritedIds, goingIds, friendIds] = await Promise.all([
@@ -120,7 +124,7 @@ export default async function HomePage({
               </Link>
               <div className="d-flex flex-column gap-2 mt-2">
                 {dayEvents.map((ev) => (
-                  <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} isGoing={goingIds.has(ev.id)} friendsGoing={friendsGoingByEvent.get(ev.id) ?? []} />
+                  <EventAgendaRow key={ev.occurrenceId} event={ev} isFavorited={favoritedIds.has(ev.id)} isGoing={goingIds.has(ev.id)} friendsGoing={friendsGoingByEvent.get(ev.id) ?? []} />
                 ))}
               </div>
             </section>
@@ -144,7 +148,7 @@ export default async function HomePage({
                 </Link>
                 <div className="d-flex flex-column gap-2 mt-2">
                   {dayEvents.map((ev) => (
-                    <EventAgendaRow key={ev.id} event={ev} isFavorited={favoritedIds.has(ev.id)} isGoing={goingIds.has(ev.id)} friendsGoing={friendsGoingByEvent.get(ev.id) ?? []} />
+                    <EventAgendaRow key={ev.occurrenceId} event={ev} isFavorited={favoritedIds.has(ev.id)} isGoing={goingIds.has(ev.id)} friendsGoing={friendsGoingByEvent.get(ev.id) ?? []} />
                   ))}
                 </div>
               </section>

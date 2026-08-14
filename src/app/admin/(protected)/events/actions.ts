@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 
 function combineDateTime(date: string, time: string): Date {
   const [h, m] = time.split(":").map(Number);
@@ -37,14 +38,25 @@ function getPresaleUrl(formData: FormData): string | null {
   return presaleUrl || null;
 }
 
+/** One row of the repeatable date/time picker — see EventForm.tsx. */
+type OccurrenceInput = { id: string; date: string; startTime: string; endTime: string };
+
+function getOccurrenceInputs(formData: FormData): OccurrenceInput[] {
+  const ids = formData.getAll("occurrenceId").map(String);
+  const dates = formData.getAll("occurrenceDate").map(String);
+  const startTimes = formData.getAll("occurrenceStartTime").map(String);
+  const endTimes = formData.getAll("occurrenceEndTime").map(String);
+
+  return dates
+    .map((date, i) => ({ id: ids[i] ?? "", date, startTime: startTimes[i] ?? "", endTime: endTimes[i] ?? "" }))
+    .filter((row) => row.date && row.startTime);
+}
+
 export async function createEvent(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const venue = String(formData.get("venue") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const date = String(formData.get("date") ?? "");
-  const startTime = String(formData.get("startTime") ?? "");
-  const endTime = String(formData.get("endTime") ?? "");
-  const extraDates = formData.getAll("extraDates").map(String).filter(Boolean);
+  const occurrences = getOccurrenceInputs(formData);
   const performerIds = getPerformerIds(formData);
   const pairingIds = getPairingIds(formData);
   const dramaId = String(formData.get("dramaId") ?? "").trim();
@@ -54,50 +66,79 @@ export async function createEvent(formData: FormData) {
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
-  if (!title || !venue || !date || !startTime) {
+  if (!title || !venue || occurrences.length === 0) {
     throw new Error("Заполните обязательные поля: название, место, дата, время начала");
   }
 
-  const dates = Array.from(new Set([date, ...extraDates]));
-
-  await prisma.$transaction(
-    dates.map((d) =>
-      prisma.event.create({
-        data: {
-          title,
-          venue,
-          description: description || null,
-          startsAt: combineDateTime(d, startTime),
-          endsAt: endTime ? combineDateTime(d, endTime) : null,
-          dramaId: dramaId || null,
-          locationId: locationId || null,
-          ticketPrice: ticketPrice || null,
-          posterUrl: posterUrl || null,
-          presaleAt,
-          presaleUrl,
-          performers: {
-            create: performerIds.map((performerId) => ({ performerId })),
-          },
-          pairings: {
-            create: pairingIds.map((pairingId) => ({ pairingId })),
-          },
-        },
-      }),
-    ),
-  );
+  await prisma.event.create({
+    data: {
+      title,
+      venue,
+      description: description || null,
+      dramaId: dramaId || null,
+      locationId: locationId || null,
+      ticketPrice: ticketPrice || null,
+      posterUrl: posterUrl || null,
+      presaleAt,
+      presaleUrl,
+      occurrences: {
+        create: occurrences.map((o) => ({
+          startsAt: combineDateTime(o.date, o.startTime),
+          endsAt: o.endTime ? combineDateTime(o.date, o.endTime) : null,
+        })),
+      },
+      performers: {
+        create: performerIds.map((performerId) => ({ performerId })),
+      },
+      pairings: {
+        create: pairingIds.map((pairingId) => ({ pairingId })),
+      },
+    },
+  });
 
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin");
 }
 
+/** Creates/updates/deletes an Event's EventOccurrence rows to match the
+ *  submitted list — existing rows (identified by occurrenceId) are
+ *  updated in place, new rows (blank occurrenceId) are created, and any
+ *  occurrence not present in the submission anymore is deleted. */
+async function syncOccurrences(
+  tx: Prisma.TransactionClient,
+  eventId: string,
+  occurrences: OccurrenceInput[],
+) {
+  const existing = await tx.eventOccurrence.findMany({
+    where: { eventId },
+    select: { id: true },
+  });
+  const keptIds = new Set<string>();
+
+  for (const o of occurrences) {
+    const startsAt = combineDateTime(o.date, o.startTime);
+    const endsAt = o.endTime ? combineDateTime(o.date, o.endTime) : null;
+    if (o.id) {
+      await tx.eventOccurrence.update({ where: { id: o.id }, data: { startsAt, endsAt } });
+      keptIds.add(o.id);
+    } else {
+      const created = await tx.eventOccurrence.create({ data: { eventId, startsAt, endsAt } });
+      keptIds.add(created.id);
+    }
+  }
+
+  const toDelete = existing.map((e) => e.id).filter((id) => !keptIds.has(id));
+  if (toDelete.length > 0) {
+    await tx.eventOccurrence.deleteMany({ where: { id: { in: toDelete } } });
+  }
+}
+
 export async function updateEvent(id: string, formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const venue = String(formData.get("venue") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const date = String(formData.get("date") ?? "");
-  const startTime = String(formData.get("startTime") ?? "");
-  const endTime = String(formData.get("endTime") ?? "");
+  const occurrences = getOccurrenceInputs(formData);
   const performerIds = getPerformerIds(formData);
   const pairingIds = getPairingIds(formData);
   const dramaId = String(formData.get("dramaId") ?? "").trim();
@@ -107,21 +148,20 @@ export async function updateEvent(id: string, formData: FormData) {
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
-  if (!title || !venue || !date || !startTime) {
+  if (!title || !venue || occurrences.length === 0) {
     throw new Error("Заполните обязательные поля: название, место, дата, время начала");
   }
 
-  await prisma.$transaction([
-    prisma.eventPerformer.deleteMany({ where: { eventId: id } }),
-    prisma.eventPairing.deleteMany({ where: { eventId: id } }),
-    prisma.event.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.eventPerformer.deleteMany({ where: { eventId: id } });
+    await tx.eventPairing.deleteMany({ where: { eventId: id } });
+    await syncOccurrences(tx, id, occurrences);
+    await tx.event.update({
       where: { id },
       data: {
         title,
         venue,
         description: description || null,
-        startsAt: combineDateTime(date, startTime),
-        endsAt: endTime ? combineDateTime(date, endTime) : null,
         dramaId: dramaId || null,
         locationId: locationId || null,
         ticketPrice: ticketPrice || null,
@@ -135,8 +175,8 @@ export async function updateEvent(id: string, formData: FormData) {
           create: pairingIds.map((pairingId) => ({ pairingId })),
         },
       },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath("/");
   revalidatePath("/admin");
@@ -162,7 +202,11 @@ export async function createEventMinimal(
   }
 
   const event = await prisma.event.create({
-    data: { title: t, venue: v, startsAt: combineDateTime(date, startTime) },
+    data: {
+      title: t,
+      venue: v,
+      occurrences: { create: { startsAt: combineDateTime(date, startTime) } },
+    },
   });
 
   revalidatePath("/");

@@ -11,29 +11,58 @@ Admin CRUD: `src/app/admin/(protected)/events/` (`EventForm.tsx`,
 
 ## Fields
 
-An `Event` has a title, venue (free text), start/end time, optional
-description, and optionally links to a `Drama` (`dramaId`) and/or a
-`Location` (`locationId`) — see below and
-[locations.md](features/locations.md). See
-[data-model.md](../data-model.md) for the full field list.
+An `Event` has a title, venue (free text), optional description, and
+optionally links to a `Drama` (`dramaId`) and/or a `Location`
+(`locationId`) — see below and [locations.md](features/locations.md).
+**Dates/times live on a separate `EventOccurrence` model, not on `Event`
+itself** — see the next section. See [data-model.md](../data-model.md)
+for the full field list.
 
-## Multi-day creation
+## Multi-day events are one Event, several EventOccurrences
 
-A concert that repeats over several nights isn't a new schema concept —
-it's just several ordinary `Event` rows created together, sharing
-everything (title, venue, performers, pairings, drama, presale) except
-`startsAt`/`endsAt`. There's no `EventOccurrence` parent entity; each day
-is independently editable/deletable afterward.
+A concert that repeats over several nights (e.g. LYKN's 2-day Reflexion
+Concert) is genuinely **one** `Event` — one title, one venue, one cast,
+one favorite/going state, one presale block — with several
+`EventOccurrence` child rows (`id`, `eventId`, `startsAt`,
+`endsAt?`). It shows up once per date everywhere events are listed (home,
+day view, calendar, search), but editing or deleting it acts on the whole
+thing at once, and toggling favorite/going affects every date identically
+since those are keyed on `Event.id`, not per-occurrence.
 
-- **Create-only.** `EventForm.tsx` only shows the "+ Добавить ещё день"
-  button when `defaultValues` is absent (i.e. not editing an existing
-  event). Clicking it appends a plain `<input type="date" name="extraDates">`
-  row; state is a simple `string[]` of extra date values.
-- `createEvent` (`actions.ts`) reads `formData.getAll("extraDates")`,
-  dedupes against the primary `date` field, and runs one
-  `prisma.event.create` per resulting date inside a `$transaction`.
-- `updateEvent` has no multi-day concept — editing always touches exactly
-  the one `Event` row being edited.
+- **`src/lib/eventOccurrences.ts`**'s `flattenOccurrence()` is the
+  standard way to turn one `EventOccurrence` (+ its parent `Event`) into
+  the row shape list pages render — `EventWithPerformers` in
+  `src/lib/types.ts`. Its `id` field is deliberately the **Event** id
+  (so favorite/going/detail-link behavior is identical across every date
+  of the same event); `occurrenceId` is a second field used only for
+  React list keys, since the same event can legitimately render more than
+  once in one list.
+- **Every event-listing query fetches `EventOccurrence` rows (optionally
+  filtered by date range), not `Event` rows**, then flattens each one via
+  `flattenOccurrence`. See `src/app/(public)/page.tsx`,
+  `day/[date]/page.tsx`, `calendar/page.tsx` for the direct
+  `prisma.eventOccurrence.findMany(...)` pattern; `search/page.tsx`,
+  `dramas/[id]/page.tsx`, `performers/[id]/page.tsx`,
+  `locations/[id]/page.tsx` instead match on `Event` fields first (title,
+  cast, dramaId, locationId) and then `flatMap` each matched event's
+  `occurrences` into rows, since the match criteria aren't date-based.
+- **`EventForm.tsx`** has a repeatable date/time row list (not a single
+  date field) — always at least one row, "+ Добавить ещё день" adds
+  more, available in **both** create and edit mode (editing can add/
+  remove dates from an existing event, not just adjust the one it had).
+  Each row carries an `occurrenceId` (empty for a new, unsaved row).
+- **`createEvent`**/**`updateEvent`** (`actions.ts`) read parallel
+  `occurrenceId[]`/`occurrenceDate[]`/`occurrenceStartTime[]`/
+  `occurrenceEndTime[]` arrays from the submitted form
+  (`getOccurrenceInputs`). `createEvent` just creates one `EventOccurrence`
+  per row alongside the `Event`. `updateEvent`'s `syncOccurrences` diffs
+  the submission against what's already in the DB: rows with an
+  `occurrenceId` get updated in place, rows without one get created, and
+  any existing occurrence *not* present in the submission anymore gets
+  deleted — so removing a date in the edit form actually removes that
+  `EventOccurrence` row.
+- Deleting an `Event` cascades to its `EventOccurrence` rows
+  (`onDelete: Cascade` in the schema) — no separate cleanup needed.
 
 ## Presale
 
@@ -52,21 +81,24 @@ call-to-action rather than a generic page action.
 
 `src/app/(public)/event/[id]/ics/route.ts` — `GET
 /event/[id]/ics` (add `?presale=1` for the presale reminder instead of the
-event itself) returns a one-event `.ics` file via `buildEventICS` /
-`buildPresaleICS` in `src/lib/ics.ts`. This route is explicitly exempted
-from the login gate in `src/proxy.ts` (`pathname.startsWith("/event/") &&
-pathname.endsWith("/ics")`) since calendar apps fetch it directly, without
-a session cookie.
+event itself) returns a `.ics` file via `buildEventICS` /
+`buildPresaleICS` in `src/lib/ics.ts`. `buildEventICS` emits **one VEVENT
+per `EventOccurrence`**, UID'd by occurrence id (not event id) — a 2-day
+event's `.ics` download has two calendar entries, both titled the same.
+This route is explicitly exempted from the login gate in `src/proxy.ts`
+(`pathname.startsWith("/event/") && pathname.endsWith("/ics")`) since
+calendar apps fetch it directly, without a session cookie.
 
 ## ICS subscribe feed (all "going" events)
 
 Unlike the one-off download above, `/account/settings` exposes a **live,
 subscribable** feed URL: `GET /api/calendar-feed/[token]`
-(`src/app/api/calendar-feed/[token]/route.ts`), returning every event the
-token's owner has marked "Иду" as one multi-`VEVENT` `.ics` file
-(`buildFeedICS` in `src/lib/ics.ts`). A calendar app (Google/Apple
-Calendar) that subscribes to this URL re-fetches it periodically and picks
-up newly-added "going" events automatically — no manual re-download.
+(`src/app/api/calendar-feed/[token]/route.ts`), returning every occurrence
+of every event the token's owner has marked "Иду" as one multi-`VEVENT`
+`.ics` file (`buildFeedICS` in `src/lib/ics.ts`, same per-occurrence VEVENT
+generation as above). A calendar app (Google/Apple Calendar) that
+subscribes to this URL re-fetches it periodically and picks up newly-added
+"going" events automatically — no manual re-download.
 
 - **Auth model:** the URL itself *is* the credential — `User.icsToken` (a
   random UUID, generated on first visit to settings via
@@ -199,3 +231,14 @@ database until that confirm step** — the scrape itself is read-only.
   `$transaction`: any artist without a match gets a new `Performer`
   (`type: SOLO`), then the `Event` is created linking every included
   artist plus any extra performers picked manually in the review screen.
+- **Multi-day detection**: the page's date line (e.g. `"Saturday 24 -
+  Sunday 25 October 2026"`, or a 3-night `"Friday 21, Saturday 22 and
+  Sunday 23 August 2026"`) is parsed by `parseDateRangeDays` into every
+  day mentioned, sharing the trailing month/year — strip the trailing
+  `"<Month> <Year>"`, then every remaining 1–2 digit standalone number is
+  a day. The scraper's own `date`/`startTime` (from JSON-LD) stays the
+  first day; everything else becomes `TtmEvent.extraDates`, pre-filling
+  the review screen's date rows (same "+ Добавить ещё день" UI as
+  `EventForm`, editable/removable before confirming) so the import lands
+  as one `Event` with one `EventOccurrence` per detected day — not
+  several separate events.

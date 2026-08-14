@@ -7,7 +7,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const event = await prisma.event.findUnique({ where: { id } });
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: { occurrences: { orderBy: { startsAt: "asc" } } },
+  });
 
   if (!event) {
     return new NextResponse("Событие не найдено", { status: 404 });

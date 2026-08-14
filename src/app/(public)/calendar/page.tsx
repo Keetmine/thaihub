@@ -9,6 +9,7 @@ import {
 } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getGoingEventIds } from "@/lib/favorites";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 
 export default async function CalendarPage({
   searchParams,
@@ -29,16 +30,17 @@ export default async function CalendarPage({
 
   const currentUser = await getCurrentUser();
 
-  const events = await prisma.event.findMany({
+  const occurrences = await prisma.eventOccurrence.findMany({
     where: {
       startsAt: { gte: rangeStart, lte: rangeEnd },
       ...(!showAll && currentUser
-        ? { attendees: { some: { userId: currentUser.id } } }
+        ? { event: { attendees: { some: { userId: currentUser.id } } } }
         : {}),
     },
-    include: { performers: { include: { performer: true } } },
+    include: { event: { include: { performers: { include: { performer: true } } } } },
     orderBy: { startsAt: "asc" },
   });
+  const events = occurrences.map(flattenOccurrence);
 
   const eventsByDay = new Map<string, typeof events>();
   for (const ev of events) {
@@ -132,7 +134,7 @@ export default async function CalendarPage({
               <div className="d-flex flex-column gap-1">
                 {dayEvents.slice(0, 3).map((ev) => (
                   <span
-                    key={ev.id}
+                    key={ev.occurrenceId}
                     className={`event-chip ${goingIds.has(ev.id) ? "event-chip-going" : ""}`}
                     title={ev.title}
                   >

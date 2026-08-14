@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 import AccountTabs, { type AccountTab } from "./AccountTabs";
 
 export const dynamic = "force-dynamic";
@@ -22,17 +23,23 @@ export default async function AccountPage({
     ? (tab as AccountTab)
     : "profile";
 
+  const eventWithOccurrences = {
+    include: {
+      performers: { include: { performer: true } },
+      occurrences: { orderBy: { startsAt: "asc" as const } },
+    },
+  };
+
   const [
     attendances,
     favoritePerformers,
     favoriteDramas,
-    favoriteEvents,
+    favoriteEventRows,
     dramaWatchStatuses,
   ] = await Promise.all([
     prisma.eventAttendance.findMany({
       where: { userId: user.id },
-      include: { event: true },
-      orderBy: { event: { startsAt: "asc" } },
+      include: { event: eventWithOccurrences },
     }),
     prisma.favoritePerformer.findMany({
       where: { userId: user.id },
@@ -44,8 +51,7 @@ export default async function AccountPage({
     }),
     prisma.favoriteEvent.findMany({
       where: { userId: user.id },
-      include: { event: true },
-      orderBy: { event: { startsAt: "asc" } },
+      include: { event: eventWithOccurrences },
     }),
     prisma.dramaWatchStatus.findMany({
       where: { userId: user.id },
@@ -54,8 +60,18 @@ export default async function AccountPage({
   ]);
 
   const now = new Date();
-  const upcomingAttendances = attendances.filter((a) => a.event.startsAt >= now);
-  const pastAttendances = attendances.filter((a) => a.event.startsAt < now);
+  const attendanceEvents = attendances.flatMap((a) =>
+    a.event.occurrences.map((occ) => flattenOccurrence({ ...occ, event: a.event })),
+  );
+  const upcomingAttendances = attendanceEvents
+    .filter((ev) => ev.startsAt >= now)
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const pastAttendances = attendanceEvents
+    .filter((ev) => ev.startsAt < now)
+    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
+  const favoriteEvents = favoriteEventRows
+    .flatMap((f) => f.event.occurrences.map((occ) => flattenOccurrence({ ...occ, event: f.event })))
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   return (
     <div>

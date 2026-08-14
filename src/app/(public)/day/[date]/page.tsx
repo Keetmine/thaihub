@@ -12,6 +12,7 @@ import {
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 
 export default async function DayPage({
@@ -25,11 +26,12 @@ export default async function DayPage({
   const day = parseDateKey(date);
   if (Number.isNaN(day.getTime())) notFound();
 
-  const events = await prisma.event.findMany({
+  const occurrences = await prisma.eventOccurrence.findMany({
     where: { startsAt: { gte: startOfDay(day), lte: endOfDay(day) } },
-    include: { performers: { include: { performer: true } } },
+    include: { event: { include: { performers: { include: { performer: true } } } } },
     orderBy: { startsAt: "asc" },
   });
+  const events = occurrences.map(flattenOccurrence);
 
   const prevKey = dateKey(addDays(day, -1));
   const nextKey = dateKey(addDays(day, 1));
@@ -69,7 +71,7 @@ export default async function DayPage({
         <div className="d-flex flex-column gap-2">
           {events.map((ev) => (
             <EventAgendaRow
-              key={ev.id}
+              key={ev.occurrenceId}
               event={ev}
               isFavorited={favoritedIds.has(ev.id)}
               isGoing={goingIds.has(ev.id)}

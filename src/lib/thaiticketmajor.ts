@@ -32,6 +32,12 @@ export type TtmEvent = {
   // the app already relies on (see combineDateTime in events/actions.ts).
   date: string | null;
   startTime: string | null;
+  // Extra days beyond `date`, when the page's date line lists more than
+  // one (e.g. "Saturday 24 - Sunday 25 October 2026" or a 3-night run) —
+  // parsed from `dateRangeText` below. Same start time is assumed for
+  // each (the site doesn't give per-day times in this line, and that
+  // matches how ThaiHub's own multi-day event creation already works).
+  extraDates: string[];
   dateRangeText: string | null;
   ticketPrice: string | null;
   // When tickets go on sale ("Public Sale" in the page's summary panel,
@@ -63,6 +69,30 @@ function parseEnglishDateTime(text: string): { date: string; time: string } | nu
     date: `${yearStr}-${pad(monthIndex + 1)}-${pad(dayStr)}`,
     time: `${pad(hourStr)}:${pad(minuteStr)}`,
   };
+}
+
+/**
+ * Extracts every day mentioned in a date line like "Saturday 24 - Sunday
+ * 25 October 2026" or "Friday 21, Saturday 22 and Sunday 23 August 2026"
+ * — any number of day-numbers, all sharing the trailing month/year.
+ * Single-day lines ("Saturday 24 October 2026") just return that one day.
+ * Returns full "YYYY-MM-DD" strings, sorted, deduped.
+ */
+function parseDateRangeDays(text: string): string[] {
+  const monthYearMatch = text.match(/([A-Za-z]+)\s+(\d{4})\s*$/);
+  if (!monthYearMatch || monthYearMatch.index === undefined) return [];
+
+  const [, monthName, yearStr] = monthYearMatch;
+  const monthIndex = MONTH_NAMES_EN.indexOf(monthName.toLowerCase());
+  if (monthIndex === -1) return [];
+
+  const beforeMonth = text.slice(0, monthYearMatch.index);
+  const dayNumbers = [...beforeMonth.matchAll(/\b(\d{1,2})\b/g)].map((m) => parseInt(m[1], 10));
+  if (dayNumbers.length === 0) return [];
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const days = dayNumbers.map((day) => `${yearStr}-${pad(monthIndex + 1)}-${pad(day)}`);
+  return [...new Set(days)].sort();
 }
 
 async function fetchEnglishHtml(url: string): Promise<string> {
@@ -137,6 +167,8 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
 
   const dateRow = findLabeledRow($, "Date");
   const dateRangeText = dateRow.find("td").eq(1).text().replace(/\s+/g, " ").trim() || null;
+  const rangeDays = dateRangeText ? parseDateRangeDays(dateRangeText) : [];
+  const extraDates = date ? rangeDays.filter((d) => d !== date) : rangeDays.slice(1);
 
   if (!title) {
     title = findLabeledRow($, "Event Title").find("td").eq(1).text().trim();
@@ -177,6 +209,7 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
     posterUrl,
     date,
     startTime,
+    extraDates,
     dateRangeText,
     ticketPrice,
     presaleDate,

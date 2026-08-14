@@ -9,6 +9,7 @@ import EventAgendaRow from "@/components/EventAgendaRow";
 import VisitedButton from "@/components/VisitedButton";
 import { BuildingIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,16 @@ export default async function DramaDetailPage({
 
   if (!drama) notFound();
 
-  const events = await prisma.event.findMany({
+  const dramaEvents = await prisma.event.findMany({
     where: { dramaId: id },
-    include: { performers: { include: { performer: true } } },
-    orderBy: { startsAt: "asc" },
+    include: {
+      performers: { include: { performer: true } },
+      occurrences: { orderBy: { startsAt: "asc" } },
+    },
   });
+  const events = dramaEvents
+    .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
@@ -223,7 +229,7 @@ export default async function DramaDetailPage({
           <div className="d-flex flex-column gap-2">
             {events.map((ev) => (
               <EventAgendaRow
-                key={ev.id}
+                key={ev.occurrenceId}
                 event={ev}
                 isFavorited={favoritedEventIds.has(ev.id)}
                 isGoing={goingEventIds.has(ev.id)}

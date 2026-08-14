@@ -15,6 +15,9 @@ export type TtmImportPreview = {
   venue: string;
   date: string;
   startTime: string;
+  /** Extra days detected in the page's date line (e.g. a 2-night run) —
+   *  pre-filled here, still editable/removable in the review screen. */
+  extraDates: string[];
   dateRangeText: string | null;
   ticketPrice: string;
   posterUrl: string;
@@ -50,6 +53,7 @@ export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPrevi
     venue: scraped.venue ?? "",
     date: scraped.date ?? "",
     startTime: scraped.startTime ?? "",
+    extraDates: scraped.extraDates,
     dateRangeText: scraped.dateRangeText,
     ticketPrice: scraped.ticketPrice ?? "",
     posterUrl: scraped.posterUrl ?? "",
@@ -66,6 +70,7 @@ export type TtmImportSubmission = {
   date: string;
   startTime: string;
   endTime: string;
+  extraDates: string[];
   description: string;
   dramaId: string;
   ticketPrice: string;
@@ -95,13 +100,12 @@ export async function createEventFromTtmImport(
     throw new Error("Заполните обязательные поля: название, место, дата, время начала");
   }
 
-  const [h, m] = data.startTime.split(":").map(Number);
-  const [y, mo, d] = data.date.split("-").map(Number);
-  const startsAt = new Date(y, mo - 1, d, h, m);
-  let endsAt: Date | null = null;
-  if (data.endTime) {
-    const [eh, em] = data.endTime.split(":").map(Number);
-    endsAt = new Date(y, mo - 1, d, eh, em);
+  const dates = Array.from(new Set([data.date, ...data.extraDates]));
+
+  function atDate(dateStr: string, time: string): Date {
+    const [th, tm] = time.split(":").map(Number);
+    const [ty, tmo, td] = dateStr.split("-").map(Number);
+    return new Date(ty, tmo - 1, td, th, tm);
   }
 
   let presaleAt: Date | null = null;
@@ -129,20 +133,26 @@ export async function createEventFromTtmImport(
       performerIds.push(created.id);
     }
 
+    const uniquePerformerIds = Array.from(new Set(performerIds));
+
     return tx.event.create({
       data: {
         title,
         venue,
         description: data.description.trim() || null,
-        startsAt,
-        endsAt,
         dramaId: data.dramaId || null,
         ticketPrice: data.ticketPrice.trim() || null,
         posterUrl: data.posterUrl.trim() || null,
         presaleAt,
         presaleUrl: data.presaleUrl.trim() || null,
+        occurrences: {
+          create: dates.map((dateStr) => ({
+            startsAt: atDate(dateStr, data.startTime),
+            endsAt: data.endTime ? atDate(dateStr, data.endTime) : null,
+          })),
+        },
         performers: {
-          create: Array.from(new Set(performerIds)).map((performerId) => ({ performerId })),
+          create: uniquePerformerIds.map((performerId) => ({ performerId })),
         },
       },
     });

@@ -3,6 +3,7 @@ import EventAgendaRow from "@/components/EventAgendaRow";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export default async function SearchPage({
   const { q = "" } = await searchParams;
   const query = q.trim();
 
-  const [events, performers, dramas, agencies, locations] = query
+  const [matchedEvents, performers, dramas, agencies, locations] = query
     ? await Promise.all([
         prisma.event.findMany({
           where: {
@@ -45,8 +46,10 @@ export default async function SearchPage({
               { performers: { some: { performer: { name: { contains: query, mode: "insensitive" } } } } },
             ],
           },
-          include: { performers: { include: { performer: true } } },
-          orderBy: { startsAt: "asc" },
+          include: {
+            performers: { include: { performer: true } },
+            occurrences: { orderBy: { startsAt: "asc" } },
+          },
         }),
         prisma.performer.findMany({
           where: {
@@ -75,6 +78,10 @@ export default async function SearchPage({
         }),
       ])
     : [[], [], [], [], []];
+
+  const events = matchedEvents
+    .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   const currentUser = await getCurrentUser();
   const eventIds = events.map((ev) => ev.id);
@@ -107,7 +114,7 @@ export default async function SearchPage({
             <div className="d-flex flex-column gap-2">
               {events.map((ev) => (
                 <EventAgendaRow
-                  key={ev.id}
+                  key={ev.occurrenceId}
                   event={ev}
                   isFavorited={favoritedIds.has(ev.id)}
                   isGoing={goingIds.has(ev.id)}

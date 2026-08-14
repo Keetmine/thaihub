@@ -24,6 +24,7 @@ export default async function EventDetailPage({
       performers: { include: { performer: true } },
       pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
       drama: true,
+      occurrences: { orderBy: { startsAt: "asc" } },
     },
   });
 
@@ -95,15 +96,13 @@ export default async function EventDetailPage({
             <p className="mb-2">
               <PinIcon /> <span className="text-secondary">Локация:</span> {event.venue}
             </p>
-            <p className="mb-2 text-capitalize">
-              <CalendarIcon /> <span className="text-secondary">Дата:</span>{" "}
-              {formatHumanDate(event.startsAt)}
-            </p>
-            <p className={event.ticketPrice || event.drama ? "mb-2" : "mb-0"}>
-              <ClockIcon /> <span className="text-secondary">Время:</span>{" "}
-              {formatTimeWithMsk(event.startsAt)}
-              {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
-            </p>
+            {event.occurrences.map((occ) => (
+              <p key={occ.id} className="mb-2 text-capitalize">
+                <CalendarIcon /> {formatHumanDate(occ.startsAt)} ·{" "}
+                <ClockIcon /> {formatTimeWithMsk(occ.startsAt)}
+                {occ.endsAt ? `–${formatTime(occ.endsAt)}` : ""}
+              </p>
+            ))}
             {event.ticketPrice && (
               <p className={event.drama ? "mb-2" : "mb-0"}>
                 <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
