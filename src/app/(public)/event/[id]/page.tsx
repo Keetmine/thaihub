@@ -78,43 +78,48 @@ export default async function EventDetailPage({
           </a>
         </div>
       </div>
-      {event.posterUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={event.posterUrl}
-          alt={event.title}
-          className="surface mb-3"
-          style={{ width: "100%", maxHeight: "24rem", objectFit: "cover" }}
-        />
-      )}
-
-      <div className="surface p-4 mb-3">
-        <p className="mb-2">
-          <PinIcon /> <span className="text-secondary">Локация:</span> {event.venue}
-        </p>
-        <p className="mb-2 text-capitalize">
-          <CalendarIcon /> <span className="text-secondary">Дата:</span>{" "}
-          {formatHumanDate(event.startsAt)}
-        </p>
-        <p className={event.ticketPrice || event.drama ? "mb-2" : "mb-0"}>
-          <ClockIcon /> <span className="text-secondary">Время:</span>{" "}
-          {formatTimeWithMsk(event.startsAt)}
-          {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
-        </p>
-        {event.ticketPrice && (
-          <p className={event.drama ? "mb-2" : "mb-0"}>
-            <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
-          </p>
+      <div className="row g-4 mb-3">
+        {event.posterUrl && (
+          <div className="col-12 col-sm-4 col-md-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={event.posterUrl}
+              alt={event.title}
+              className="surface"
+              style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover" }}
+            />
+          </div>
         )}
-        {event.drama && (
-          <p className="mb-0">
-            <span style={{ fontSize: "0.95em" }}><TvIcon /></span>{" "}
-            <span className="text-secondary">Сериал:</span>{" "}
-            <Link href={`/dramas/${event.drama.id}`} className="link-body-emphasis">
-              {event.drama.title}
-            </Link>
-          </p>
-        )}
+        <div className={event.posterUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}>
+          <div className="surface p-4 h-100">
+            <p className="mb-2">
+              <PinIcon /> <span className="text-secondary">Локация:</span> {event.venue}
+            </p>
+            <p className="mb-2 text-capitalize">
+              <CalendarIcon /> <span className="text-secondary">Дата:</span>{" "}
+              {formatHumanDate(event.startsAt)}
+            </p>
+            <p className={event.ticketPrice || event.drama ? "mb-2" : "mb-0"}>
+              <ClockIcon /> <span className="text-secondary">Время:</span>{" "}
+              {formatTimeWithMsk(event.startsAt)}
+              {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
+            </p>
+            {event.ticketPrice && (
+              <p className={event.drama ? "mb-2" : "mb-0"}>
+                <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
+              </p>
+            )}
+            {event.drama && (
+              <p className="mb-0">
+                <span style={{ fontSize: "0.95em" }}><TvIcon /></span>{" "}
+                <span className="text-secondary">Сериал:</span>{" "}
+                <Link href={`/dramas/${event.drama.id}`} className="link-body-emphasis">
+                  {event.drama.title}
+                </Link>
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {friendsGoing.length > 0 && (
