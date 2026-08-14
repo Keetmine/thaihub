@@ -28,7 +28,13 @@ function SearchForm() {
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const isAdmin = await isAdminAuthenticated();
-  const user = await getCurrentUser();
+  const fullUser = await getCurrentUser();
+  // Only pass the fields ProfileMenu actually needs into the client
+  // component — the full record (incl. passwordHash) would otherwise be
+  // serialized into the page's RSC payload.
+  const user = fullUser
+    ? { id: fullUser.id, name: fullUser.name, email: fullUser.email, photoUrl: fullUser.photoUrl }
+    : null;
 
   return (
     <div className="d-flex flex-column min-vh-100">

@@ -82,7 +82,7 @@ export default async function FriendsPage({
           id: { notIn: Array.from(excludedIds) },
           OR: [
             { name: { contains: q, mode: "insensitive" } },
-            { email: { equals: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
           ],
         },
         take: 20,

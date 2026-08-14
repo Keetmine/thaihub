@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import type {
-  User,
   Event,
   EventAttendance,
   FavoritePerformer,
@@ -76,7 +75,7 @@ export default function AccountTabs({
   dramaWatchStatuses,
 }: {
   initialTab: AccountTab;
-  user: User;
+  user: { name: string | null; email: string };
   upcomingAttendances: (EventAttendance & { event: Event })[];
   pastAttendances: (EventAttendance & { event: Event })[];
   favoritePerformers: (FavoritePerformer & { performer: Performer })[];
@@ -85,6 +84,16 @@ export default function AccountTabs({
   dramaWatchStatuses: (DramaWatchStatus & { drama: Drama })[];
 }) {
   const [activeTab, setActiveTab] = useState<AccountTab>(initialTab);
+  const [prevInitialTab, setPrevInitialTab] = useState(initialTab);
+
+  // initialTab comes from the URL's ?tab= param. On a soft navigation to an
+  // already-mounted /account (e.g. clicking "Мои события" in ProfileMenu
+  // while already on this page), only the prop changes — resync local state
+  // during render so the requested tab actually becomes active.
+  if (initialTab !== prevInitialTab) {
+    setPrevInitialTab(initialTab);
+    setActiveTab(initialTab);
+  }
 
   const watchStatusGroups = WATCH_STATUS_ORDER.map((status) => ({
     status,

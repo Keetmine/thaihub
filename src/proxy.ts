@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 
-// Duplicated from lib/auth.ts (kept import-free here) so the admin check
-// stays a plain string comparison, no DB round-trip needed for it.
+// Kept import-free (no Prisma) on purpose: Proxy runs on every route,
+// including prefetched ones, so per the Next.js docs it should only do an
+// "optimistic" cookie-presence check here — no DB round-trip. Real
+// authorization (validating the session against the DB) happens in the
+// Data Access Layer: getCurrentUser() in src/lib/userAuth.ts, called by the
+// pages/actions that actually need a verified identity.
 const ADMIN_COOKIE = "admin_session";
 const USER_COOKIE = "user_session";
 
@@ -12,24 +15,7 @@ const USER_COOKIE = "user_session";
 // src/app/(public)/page.tsx) and the auth forms themselves.
 const PUBLIC_PATHS = new Set(["/", "/login", "/signup"]);
 
-async function hasValidUserSession(request: NextRequest): Promise<boolean> {
-  const sessionId = request.cookies.get(USER_COOKIE)?.value;
-  if (!sessionId) return false;
-
-  try {
-    const session = await prisma.userSession.findUnique({
-      where: { id: sessionId },
-      select: { expiresAt: true },
-    });
-    return !!session && session.expiresAt > new Date();
-  } catch {
-    // If the DB is unreachable, fail closed (treat as logged out) rather
-    // than silently letting every request through.
-    return false;
-  }
-}
-
-export async function proxy(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/admin")) {
@@ -58,7 +44,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!(await hasValidUserSession(request))) {
+  // Calendar-export links (event/[id]/ics) are meant to be handed to
+  // external calendar apps (Google/Apple/Outlook "subscribe by URL"), which
+  // fetch them directly and never carry our session cookie.
+  if (pathname.startsWith("/event/") && pathname.endsWith("/ics")) {
+    return NextResponse.next();
+  }
+
+  if (!request.cookies.get(USER_COOKIE)?.value) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }

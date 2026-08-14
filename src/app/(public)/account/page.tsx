@@ -66,7 +66,7 @@ export default async function AccountPage({
 
       <AccountTabs
         initialTab={initialTab}
-        user={user}
+        user={{ name: user.name, email: user.email }}
         upcomingAttendances={upcomingAttendances}
         pastAttendances={pastAttendances}
         favoritePerformers={favoritePerformers}

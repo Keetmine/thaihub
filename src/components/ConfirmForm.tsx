@@ -20,14 +20,18 @@ export default function ConfirmForm({
 }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleConfirm() {
     setIsSubmitting(true);
+    setError(null);
     try {
       await action(new FormData());
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось выполнить действие");
     } finally {
       setIsSubmitting(false);
-      setOpen(false);
     }
   }
 
@@ -44,8 +48,16 @@ export default function ConfirmForm({
   return (
     <div className={className}>
       {trigger}
-      <Modal open={open} onClose={() => setOpen(false)} title="Подтверждение">
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setError(null);
+        }}
+        title="Подтверждение"
+      >
         <p className="mb-3">{confirmMessage}</p>
+        {error && <p className="text-danger small mb-3">{error}</p>}
         <div className="d-flex gap-2 justify-content-end">
           <button
             type="button"
