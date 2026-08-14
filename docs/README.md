@@ -21,6 +21,7 @@ something changes, edit the doc in place rather than appending a note.
   - [blscene-import.md](features/blscene-import.md) — the blscene.com drama/location scraper
   - [gmmtv-import.md](features/gmmtv-import.md) — the GMMTV roster scraper
   - [tmdb-import.md](features/tmdb-import.md) — TMDB actor/drama importer (official API, not scraping)
+  - [tmdb-company-import.md](features/tmdb-company-import.md) — TMDB production-company importer (official API, not scraping)
   - [wikipedia-agency-import.md](features/wikipedia-agency-import.md) — talent-agency importer (official MediaWiki API, not scraping)
   - [tpop-band-import.md](features/tpop-band-import.md) — idol-group importer from tpop.fandom.com (official MediaWiki API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator

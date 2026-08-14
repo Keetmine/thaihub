@@ -239,3 +239,56 @@ export async function fetchTmdbTvCredits(tvId: number): Promise<TmdbCastMember[]
       order: c.order,
     }));
 }
+
+/** Extracts a numeric TMDB company id from either a bare id or a
+ *  themoviedb.org/company/{id}-slug URL (the "tv" suffix some company
+ *  pages have, e.g. .../company/139832-studio-wabi-sabi/tv, is just a
+ *  page-view filter and doesn't affect the id). */
+export function parseTmdbCompanyId(input: string): string | null {
+  const trimmed = input.trim();
+  if (/^\d+$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/\/company\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+export type TmdbCompany = {
+  id: number;
+  name: string;
+  logoUrl: string | null;
+  description: string | null;
+};
+
+export async function fetchTmdbCompany(companyId: string): Promise<TmdbCompany> {
+  const data = await tmdbFetch<{
+    id: number;
+    name: string;
+    logo_path: string | null;
+    description: string | null;
+  }>(`/company/${companyId}`);
+  return {
+    id: data.id,
+    name: data.name,
+    logoUrl: tmdbImageUrl(data.logo_path),
+    description: data.description || null,
+  };
+}
+
+/** Every TV show TMDB credits to a production company — paginated via
+ *  `/discover/tv`, the same endpoint themoviedb.org's own company "TV"
+ *  tab is backed by (e.g. .../company/139832-studio-wabi-sabi/tv), so
+ *  this returns the same list a person browsing that page would see. */
+export async function fetchTmdbCompanyTvShows(companyId: string): Promise<{ id: number; name: string }[]> {
+  const shows: { id: number; name: string }[] = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    const data = await tmdbFetch<{
+      results: { id: number; name: string }[];
+      total_pages: number;
+    }>(`/discover/tv?with_companies=${companyId}&page=${page}`);
+    shows.push(...data.results.map((r) => ({ id: r.id, name: r.name })));
+    totalPages = data.total_pages;
+    page += 1;
+  } while (page <= totalPages);
+  return shows;
+}

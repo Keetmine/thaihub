@@ -8,8 +8,11 @@ import {
   searchTmdbTvShows,
   searchTmdbPeople,
   deriveNicknameFromAlsoKnownAs,
+  fetchTmdbCompany,
+  fetchTmdbCompanyTvShows,
   type TmdbKnownForShow,
 } from "@/lib/tmdb";
+import { addPerformerAgency } from "@/lib/performerAgency";
 
 export type TmdbImportPreview = {
   tmdbPersonId: string;
@@ -125,7 +128,7 @@ class TmdbConflictError extends Error {
 export async function importShow(
   tvId: number,
   knownDramaId?: string,
-): Promise<{ dramaId: string; created: boolean; castCreated: number }> {
+): Promise<{ dramaId: string; created: boolean; castCreated: number; castPerformerIds: string[] }> {
   const [show, credits] = await Promise.all([fetchTmdbTvShow(tvId), fetchTmdbTvCredits(tvId)]);
   const tmdbId = String(show.id);
 
@@ -156,9 +159,11 @@ export async function importShow(
     : await prisma.drama.create({ data: dramaData });
 
   let castCreated = 0;
+  const castPerformerIds: string[] = [];
   for (const member of credits) {
     const { id: performerId, created } = await findOrCreateCastPerformer(member);
     if (created) castCreated += 1;
+    castPerformerIds.push(performerId);
 
     await prisma.performerDrama.upsert({
       where: { performerId_dramaId: { performerId, dramaId: drama.id } },
@@ -167,7 +172,7 @@ export async function importShow(
     });
   }
 
-  return { dramaId: drama.id, created: !existing, castCreated };
+  return { dramaId: drama.id, created: !existing, castCreated, castPerformerIds };
 }
 
 export type TmdbImportResult = {
@@ -491,6 +496,79 @@ export async function syncAllPerformersFromTmdb(
       summary.errors += 1;
       log(`${progress} — ОШИБКА: ${outcome.message}`);
     }
+  }
+
+  return summary;
+}
+
+export type TmdbCompanySyncSummary = {
+  companyName: string;
+  totalShows: number;
+  dramasCreated: number;
+  dramasUpdated: number;
+  castCreated: number;
+  performersAgencyAdded: number;
+};
+
+/**
+ * Imports every TV show TMDB credits to a production company (e.g.
+ * Studio Wabi Sabi) — same show list themoviedb.org's own company "TV"
+ * tab shows — via `importShow`, and adds the company as an `Agency` on
+ * both every imported `Drama` and every performer in each show's cast.
+ *
+ * A studio's own TMDB catalog is authoritative for what it produced, so
+ * `Drama.agencyId` is set unconditionally (even on an already-existing
+ * row — same reasoning as the Wikipedia agency importer's productions).
+ * A cast member's agency is *added* to their set rather than overwriting
+ * — the same drama can be co-produced by two studios, so a performer
+ * formally signed elsewhere (most commonly GMMTV, in this catalog) can
+ * still appear in this company's shows without that reassigning them;
+ * see PerformerAgency in schema.prisma.
+ */
+export async function importTmdbCompany(
+  companyId: string,
+  onProgress?: (message: string) => void,
+): Promise<TmdbCompanySyncSummary> {
+  const log = onProgress ?? (() => {});
+  const company = await fetchTmdbCompany(companyId);
+  const agency = await prisma.agency.upsert({
+    where: { name: company.name },
+    update: {
+      ...(company.logoUrl ? { logoUrl: company.logoUrl } : {}),
+      ...(company.description ? { description: company.description } : {}),
+    },
+    create: { name: company.name, logoUrl: company.logoUrl, description: company.description },
+  });
+  log(`Студия: ${company.name}`);
+
+  const shows = await fetchTmdbCompanyTvShows(companyId);
+  log(`Найдено сериалов: ${shows.length}`);
+
+  const summary: TmdbCompanySyncSummary = {
+    companyName: company.name,
+    totalShows: shows.length,
+    dramasCreated: 0,
+    dramasUpdated: 0,
+    castCreated: 0,
+    performersAgencyAdded: 0,
+  };
+
+  for (const [i, show] of shows.entries()) {
+    const result = await importShow(show.id);
+    if (result.created) summary.dramasCreated += 1;
+    else summary.dramasUpdated += 1;
+    summary.castCreated += result.castCreated;
+
+    await prisma.drama.update({ where: { id: result.dramaId }, data: { agencyId: agency.id } });
+
+    for (const performerId of result.castPerformerIds) {
+      await addPerformerAgency(performerId, agency.id);
+      summary.performersAgencyAdded += 1;
+    }
+
+    log(
+      `[${i + 1}/${shows.length}] ${show.name} — ${result.created ? "создан" : "обновлён"}, состав: ${result.castCreated} новых, студия проставлена у ${result.castPerformerIds.length} исполнителей`,
+    );
   }
 
   return summary;

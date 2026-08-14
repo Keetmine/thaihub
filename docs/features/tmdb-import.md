@@ -11,12 +11,20 @@ compliant path, not just a technical convenience. Requires
 
 - **`src/lib/tmdb.ts`** — pure API client, no DB access: `fetchTmdbPerson`,
   `fetchTmdbPersonKnownForTv`, `fetchTmdbTvShow`, `fetchTmdbTvCredits`,
-  plus `tmdbImageUrl`/`parseTmdbPersonId` helpers.
+  `fetchTmdbCompany`/`fetchTmdbCompanyTvShows` (see
+  [tmdb-company-import.md](tmdb-company-import.md)), plus
+  `tmdbImageUrl`/`parseTmdbPersonId`/`parseTmdbCompanyId` helpers.
 - **`src/lib/tmdbImport.ts`** — DB orchestration:
   - `previewTmdbPersonImport` (read-only) and `commitTmdbPersonImport`
     (writes) — the one-actor reviewed-import flow, below.
   - `syncAllDramasFromTmdb` / `syncAllPerformersFromTmdb` — the whole-
     catalog bulk sweep, further down.
+  - `importShow(tvId, knownDramaId?)` — creates/updates one `Drama` plus
+    its full cast, returning `castPerformerIds` alongside the
+    created/updated counts; reused directly by both the bulk sweep above
+    and [tmdb-company-import.md](tmdb-company-import.md) (which also
+    needs to know *which* performers a show's cast resolved to, to add
+    a studio to each of them).
 - **`src/app/admin/(protected)/performers/tmdbActions.ts`** — thin
   `"use server"` wrappers the client flow calls directly (same shape as
   the TTM importer's `importActions.ts`), plus `revalidatePath` calls.
