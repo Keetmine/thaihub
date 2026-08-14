@@ -27,6 +27,29 @@ export async function toggleFavoritePerformer(performerId: string) {
   revalidatePath("/", "layout");
 }
 
+export async function toggleFavoriteAgency(agencyId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const existing = await prisma.favoriteAgency.findUnique({
+    where: { userId_agencyId: { userId: user.id, agencyId } },
+  });
+
+  if (existing) {
+    await prisma.favoriteAgency.delete({
+      where: { userId_agencyId: { userId: user.id, agencyId } },
+    });
+  } else {
+    await prisma.favoriteAgency.create({
+      data: { userId: user.id, agencyId },
+    });
+  }
+
+  revalidatePath("/account");
+  revalidatePath("/agencies");
+  revalidatePath(`/agencies/${agencyId}`);
+}
+
 export async function toggleFavoriteDrama(dramaId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");

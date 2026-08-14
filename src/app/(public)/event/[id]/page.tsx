@@ -5,7 +5,8 @@ import { formatHumanDate, formatTime } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
-import { CalendarIcon, PinIcon } from "@/components/icons";
+import EntityMiniCard from "@/components/EntityMiniCard";
+import { CalendarIcon, ClockIcon, PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -76,45 +77,58 @@ export default async function EventDetailPage({
           )}
         </div>
       </div>
-      <p className="text-secondary mb-4 text-capitalize">
-        {formatHumanDate(event.startsAt)} · {formatTime(event.startsAt)}
-        {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
-      </p>
-
       <div className="surface p-4 mb-3">
-        <p className="mb-3">
-          <PinIcon /> {event.venue}
+        <p className="mb-2">
+          <PinIcon /> <span className="text-secondary">Локация:</span> {event.venue}
         </p>
+        <p className="mb-2 text-capitalize">
+          <CalendarIcon /> <span className="text-secondary">Дата:</span>{" "}
+          {formatHumanDate(event.startsAt)}
+        </p>
+        <p className="mb-0">
+          <ClockIcon /> <span className="text-secondary">Время:</span>{" "}
+          {formatTime(event.startsAt)}
+          {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
+        </p>
+      </div>
 
-        {event.performers.length > 0 && (
-          <div className="d-flex flex-wrap gap-2 mb-3">
+      {event.description && (
+        <div className="surface p-4 mb-3">
+          <h2
+            className="small text-secondary text-uppercase mb-2"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Описание
+          </h2>
+          <p className="mb-0">{event.description}</p>
+        </div>
+      )}
+
+      {(event.performers.length > 0 || event.pairings.length > 0) && (
+        <div className="surface p-4 mb-3">
+          <h2
+            className="small text-secondary text-uppercase mb-2"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Кто выступает
+          </h2>
+          <div className="d-flex flex-wrap gap-2">
             {event.performers.map(({ performer }) => (
-              <Link
+              <EntityMiniCard
                 key={performer.id}
                 href={`/performers/${performer.id}`}
-                className="event-chip text-decoration-none"
-              >
-                {performer.name}
-              </Link>
+                photoUrl={performer.photoUrl}
+                name={performer.name}
+              />
             ))}
-          </div>
-        )}
-
-        {/* Pairings — added alongside the performer chips above */}
-        {event.pairings.length > 0 && (
-          <div className="d-flex flex-wrap gap-2 mb-3">
             {event.pairings.map(({ pairing }) => (
               <span key={pairing.id} className="event-chip">
                 {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
               </span>
             ))}
           </div>
-        )}
-
-        {event.description && (
-          <p className="text-secondary mb-0">{event.description}</p>
-        )}
-      </div>
+        </div>
+      )}
 
       {(event.presaleAt || event.presaleUrl) && (
         <div className="surface p-4">

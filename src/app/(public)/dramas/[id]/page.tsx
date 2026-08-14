@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import WatchStatusSelect from "@/components/WatchStatusSelect";
+import EntityMiniCard from "@/components/EntityMiniCard";
 
 export const dynamic = "force-dynamic";
 
@@ -54,23 +55,24 @@ export default async function DramaDetailPage({
         <FavoriteButton kind="drama" id={drama.id} isFavorited={isFavorited} />
       </div>
 
-      {currentUser && (
-        <div className="d-flex align-items-center gap-2 mb-4">
-          <span className="small text-secondary">Статус просмотра</span>
-          <WatchStatusSelect dramaId={drama.id} status={watchStatus?.status ?? null} />
-        </div>
-      )}
-
       <div className="row g-4">
-        {drama.posterUrl && (
+        {(drama.posterUrl || currentUser) && (
           <div className="col-12 col-sm-4 col-md-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={drama.posterUrl}
-              alt={drama.title}
-              className="surface"
-              style={{ width: "100%", aspectRatio: "2 / 3", objectFit: "cover" }}
-            />
+            {drama.posterUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={drama.posterUrl}
+                alt={drama.title}
+                className="surface"
+                style={{ width: "100%", aspectRatio: "2 / 3", objectFit: "cover" }}
+              />
+            )}
+            {currentUser && (
+              <div className="mt-3">
+                <span className="small text-secondary d-block mb-1">Статус просмотра</span>
+                <WatchStatusSelect dramaId={drama.id} status={watchStatus?.status ?? null} />
+              </div>
+            )}
           </div>
         )}
 
@@ -103,37 +105,13 @@ export default async function DramaDetailPage({
           ) : (
             <div className="d-flex flex-wrap gap-2">
               {drama.performers.map(({ performer, role }) => (
-                <Link
+                <EntityMiniCard
                   key={performer.id}
                   href={`/performers/${performer.id}`}
-                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
-                  style={{ width: "11rem" }}
-                >
-                  {performer.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={performer.photoUrl}
-                      alt=""
-                      style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: "2.5rem",
-                        height: "2.5rem",
-                        borderRadius: "50%",
-                        background: "var(--bs-secondary-bg)",
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
-                  <span style={{ minWidth: 0 }}>
-                    <span className="d-block font-display fw-medium text-white text-truncate">
-                      {performer.name}
-                    </span>
-                    {role && <span className="d-block small text-secondary text-truncate">{role}</span>}
-                  </span>
-                </Link>
+                  photoUrl={performer.photoUrl}
+                  name={performer.name}
+                  subtitle={role}
+                />
               ))}
             </div>
           )}

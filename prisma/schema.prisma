@@ -75,6 +75,7 @@ model Agency {
   description String?
   performers  Performer[]
   dramas      Drama[]
+  favoritedBy FavoriteAgency[]
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -199,6 +200,7 @@ model User {
   favoritePerformers  FavoritePerformer[]
   favoriteDramas      FavoriteDrama[]
   favoriteEvents      FavoriteEvent[]
+  favoriteAgencies    FavoriteAgency[]
   eventAttendances    EventAttendance[]
   dramaWatchStatuses  DramaWatchStatus[]
 
@@ -252,6 +254,16 @@ model FavoriteDrama {
   createdAt DateTime @default(now())
 
   @@id([userId, dramaId])
+}
+
+model FavoriteAgency {
+  userId    String
+  agencyId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agency    Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, agencyId])
 }
 
 model FavoriteEvent {

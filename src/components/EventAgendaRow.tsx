@@ -16,7 +16,7 @@ export default function EventAgendaRow({
 }) {
   return (
     <div className="agenda-row">
-      <div className="corner-actions corner-actions-sm">
+      <div className="corner-actions corner-actions-row">
         <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
         <GoingButton eventId={event.id} isGoing={isGoing} variant="icon" />
       </div>
@@ -51,9 +51,6 @@ export default function EventAgendaRow({
             <PinIcon /> {event.venue}
           </span>
         </p>
-        {event.description && (
-          <p className="small mt-2 mb-0 text-secondary">{event.description}</p>
-        )}
       </div>
     </div>
   );

@@ -2,18 +2,20 @@
 
 import { useTransition } from "react";
 import {
+  toggleFavoriteAgency,
   toggleFavoriteDrama,
   toggleFavoriteEvent,
   toggleFavoritePerformer,
 } from "@/app/(public)/favorites/actions";
 import { HeartIcon } from "@/components/icons";
 
-export type FavoriteKind = "performer" | "drama" | "event";
+export type FavoriteKind = "performer" | "drama" | "event" | "agency";
 
 const actionByKind: Record<FavoriteKind, (id: string) => Promise<void>> = {
   performer: toggleFavoritePerformer,
   drama: toggleFavoriteDrama,
   event: toggleFavoriteEvent,
+  agency: toggleFavoriteAgency,
 };
 
 export default function FavoriteButton({

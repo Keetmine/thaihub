@@ -111,11 +111,16 @@ body {
 /* ---------- Nav ---------- */
 .pill-nav {
   position: relative;
+  /* backdrop-filter alone creates a new stacking context; without an
+     explicit z-index here, that context has no elevated priority of its
+     own, so any other backdrop-filter/transform element later in the DOM
+     (e.g. .agenda-row) paints its entire context — profile dropdown
+     included — on top of the whole nav. */
+  z-index: 10;
   border-radius: 1.5rem;
   background: rgba(22, 22, 26, 0.72);
   border: 1px solid var(--bs-border-color);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
 }
 
 @media (min-width: 576px) {
@@ -490,9 +495,19 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-radius: 999px;
   background: var(--bs-primary-bg-subtle);
   color: var(--bs-primary-text-emphasis);
+  border: 1px solid transparent;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* "Going" events on the calendar's "Все события" view — a bolder, more
+   saturated orange so they visually stand out from the rest. */
+.event-chip-going {
+  background: rgba(var(--accent-rgb), 0.35);
+  border-color: rgba(var(--accent-rgb), 0.6);
+  color: #fff;
+  font-weight: 600;
 }
 
 @media (max-width: 575.98px) {
@@ -580,7 +595,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .agenda-time {
@@ -616,7 +630,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .agenda-body {
   flex: 1 1 auto;
   min-width: 0;
-  padding-right: 2.3rem;
+  padding-right: 5rem;
 }
 
 .agenda-performer-link {
@@ -692,7 +706,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-radius: 1.25rem;
   padding: 0.9rem;
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   z-index: 30;
 }
 
@@ -865,7 +878,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   z-index: 1050;
   background: rgba(4, 4, 6, 0.72);
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1086,7 +1098,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border: none;
   background: rgba(10, 10, 12, 0.55);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   color: #fff;
   transition: all 0.15s ease;
 }
@@ -1138,7 +1149,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border: none;
   background: rgba(10, 10, 12, 0.55);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   color: #fff;
   transition: all 0.15s ease;
   text-decoration: none;
@@ -1175,20 +1185,10 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   gap: 0.4rem;
 }
 
-/* Smaller icons for compact contexts (agenda list rows), so a 2-icon stack
-   doesn't outgrow a short row's actual content height. */
-.corner-actions-sm {
-  gap: 0.3rem;
-}
-
-.corner-actions-sm .round-icon-btn {
-  width: 1.85rem;
-  height: 1.85rem;
-}
-
-.corner-actions-sm .round-icon-btn svg {
-  width: 0.9em;
-  height: 0.9em;
+/* Icons side by side instead of stacked (agenda list rows, matching the
+   performers-list heart's sizing/spacing). */
+.corner-actions-row {
+  flex-direction: row;
 }
 
 /* Lightweight hover tooltip for any icon-only control — pair with

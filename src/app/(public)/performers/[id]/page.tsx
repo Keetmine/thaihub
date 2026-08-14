@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { dateKey, formatHumanDate, formatTime } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
-import { PinIcon } from "@/components/icons";
-import { getFavoritedEventIds } from "@/lib/favorites";
+import EventAgendaRow from "@/components/EventAgendaRow";
+import EntityMiniCard from "@/components/EntityMiniCard";
+import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,9 @@ export default async function PerformerPage({
 
   const eventLinks = await prisma.eventPerformer.findMany({
     where: { performerId: id },
-    include: { event: true },
+    include: {
+      event: { include: { performers: { include: { performer: true } } } },
+    },
     orderBy: { event: { startsAt: "asc" } },
   });
 
@@ -55,54 +57,37 @@ export default async function PerformerPage({
   const now = new Date();
   const upcoming = eventLinks.filter((l) => l.event.startsAt >= now);
   const past = eventLinks.filter((l) => l.event.startsAt < now);
-  const favoritedEventIds = await getFavoritedEventIds(
-    eventLinks.map((l) => l.eventId),
-    currentUser?.id,
-  );
+  const eventIds = eventLinks.map((l) => l.eventId);
+  const [favoritedEventIds, goingEventIds] = await Promise.all([
+    getFavoritedEventIds(eventIds, currentUser?.id),
+    getGoingEventIds(eventIds, currentUser?.id),
+  ]);
+
+  const favoritedDramaIds = new Set<string>();
+  if (currentUser && performer.dramas.length > 0) {
+    const favorites = await prisma.favoriteDrama.findMany({
+      where: {
+        userId: currentUser.id,
+        dramaId: { in: performer.dramas.map((pd) => pd.dramaId) },
+      },
+      select: { dramaId: true },
+    });
+    for (const f of favorites) favoritedDramaIds.add(f.dramaId);
+  }
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-
-  const Row = ({ event }: { event: (typeof eventLinks)[number]["event"] }) => (
-    <div className="position-relative">
-      <FavoriteButton
-        kind="event"
-        id={event.id}
-        isFavorited={favoritedEventIds.has(event.id)}
-        variant="corner"
-      />
-      <Link
-        href={`/day/${dateKey(event.startsAt)}`}
-        className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3"
-      >
-        <div>
-          <p className="font-display fw-medium text-white mb-0 pe-5">{event.title}</p>
-          <p className="small text-secondary mb-0">
-            <PinIcon /> {event.venue}
-          </p>
-        </div>
-        <span className="small text-secondary text-end flex-shrink-0">
-          {formatHumanDate(event.startsAt)}
-          <br />
-          {formatTime(event.startsAt)}
-        </span>
-      </Link>
-    </div>
-  );
 
   return (
     <div>
       <Link href="/performers" className="eyebrow text-decoration-none">
         ← Все исполнители
       </Link>
-      <div className="d-flex flex-wrap align-items-center gap-3 mt-3 mb-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-          {performer.name}{" "}
-          <span className="fs-5 fw-normal text-secondary">
-            ({performer.type === "BAND" ? "группа" : "соло"})
-          </span>
+          {performer.name}
         </h1>
-        <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} />
+        <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} variant="icon" />
       </div>
       {performer.realName && (
         <p className="small text-secondary mb-4">{performer.realName}</p>
@@ -120,14 +105,16 @@ export default async function PerformerPage({
         )}
 
         <div className="d-flex flex-column gap-2">
-          {performer.birthDate && (
+          {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
-              <span aria-hidden="true">🎂</span> {formatBirthDate(performer.birthDate)}
+              <span aria-hidden="true">🎂</span>{" "}
+              <span className="text-secondary">Дата рождения:</span>{" "}
+              {formatBirthDate(performer.birthDate)}
             </p>
           )}
           {performer.agency && (
             <p className="small text-secondary mb-0">
-              <span aria-hidden="true">🏢</span>{" "}
+              <span aria-hidden="true">🏢</span> <span className="text-secondary">Студия:</span>{" "}
               <Link href={`/agencies/${performer.agency.id}`} className="link-body-emphasis">
                 {performer.agency.name}
               </Link>
@@ -148,29 +135,6 @@ export default async function PerformerPage({
                   {l.label}
                 </a>
               ))}
-            </div>
-          )}
-
-          {!isBand && performer.dramas.length > 0 && (
-            <div className="mt-2">
-              <h2
-                className="small text-secondary text-uppercase mb-2"
-                style={{ letterSpacing: "0.08em" }}
-              >
-                Дорамы
-              </h2>
-              <div className="d-flex flex-wrap gap-2">
-                {performer.dramas.map((pd) => (
-                  <Link
-                    key={pd.dramaId}
-                    href={`/dramas/${pd.dramaId}`}
-                    className="badge text-bg-secondary text-decoration-none"
-                  >
-                    {pd.drama.title}
-                    {pd.drama.year ? ` (${pd.drama.year})` : ""}
-                  </Link>
-                ))}
-              </div>
             </div>
           )}
 
@@ -232,13 +196,13 @@ export default async function PerformerPage({
             {pairings.map((pair) => {
               const other = pair.performerAId === id ? pair.performerB : pair.performerA;
               return (
-                <Link
+                <EntityMiniCard
                   key={pair.id}
                   href={`/performers/${other.id}`}
-                  className="event-chip text-decoration-none"
-                >
-                  {pair.name || other.name}
-                </Link>
+                  photoUrl={other.photoUrl}
+                  name={pair.name || other.name}
+                  subtitle={pair.name ? other.name : undefined}
+                />
               );
             })}
           </div>
@@ -253,7 +217,12 @@ export default async function PerformerPage({
       ) : (
         <div className="d-flex flex-column gap-2 mb-4">
           {upcoming.map((l) => (
-            <Row key={l.eventId} event={l.event} />
+            <EventAgendaRow
+              key={l.eventId}
+              event={l.event}
+              isFavorited={favoritedEventIds.has(l.eventId)}
+              isGoing={goingEventIds.has(l.eventId)}
+            />
           ))}
         </div>
       )}
@@ -263,9 +232,69 @@ export default async function PerformerPage({
           <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
             Прошедшие
           </h2>
-          <div className="d-flex flex-column gap-2 opacity-50">
+          <div className="d-flex flex-column gap-2 opacity-50 mb-4">
             {past.map((l) => (
-              <Row key={l.eventId} event={l.event} />
+              <EventAgendaRow
+                key={l.eventId}
+                event={l.event}
+                isFavorited={favoritedEventIds.has(l.eventId)}
+                isGoing={goingEventIds.has(l.eventId)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {!isBand && performer.dramas.length > 0 && (
+        <>
+          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+            Сериалы
+          </h2>
+          <div className="d-flex flex-column gap-2">
+            {performer.dramas.map((pd) => (
+              <div
+                key={pd.dramaId}
+                className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+              >
+                <Link
+                  href={`/dramas/${pd.dramaId}`}
+                  className="text-decoration-none d-flex align-items-center gap-3"
+                  style={{ minWidth: 0 }}
+                >
+                  <div
+                    style={{
+                      width: "2.75rem",
+                      height: "3.75rem",
+                      borderRadius: "0.5rem",
+                      background: "var(--bs-secondary-bg)",
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {pd.drama.posterUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={pd.drama.posterUrl}
+                        alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p className="font-display fw-medium text-white mb-0 text-truncate">
+                      {pd.drama.title}
+                    </p>
+                    {pd.drama.year && <p className="small text-secondary mb-0">{pd.drama.year}</p>}
+                  </div>
+                </Link>
+                <FavoriteButton
+                  kind="drama"
+                  id={pd.dramaId}
+                  isFavorited={favoritedDramaIds.has(pd.dramaId)}
+                  variant="icon"
+                  className="flex-shrink-0"
+                />
+              </div>
             ))}
           </div>
         </>

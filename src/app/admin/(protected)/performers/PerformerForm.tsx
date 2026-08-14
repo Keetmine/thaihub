@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
@@ -11,7 +11,7 @@ import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
 
 export type PerformerLinkInput = { label: string; url: string };
-export type PerformerOption = { id: string; name: string };
+export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 
 type Tab = "general" | "dramas" | "events" | "pairing";
 
@@ -106,60 +106,13 @@ export default function PerformerForm({
     );
   }
 
-  // --- Band members (only relevant when type === "BAND") ---
+  // Solo performers created inline via the pairing-partner picker, merged in
+  // so PairingManager's own picker sees them too.
   const [createdMembers, setCreatedMembers] = useState<PerformerOption[]>([]);
   const allSoloPerformers = useMemo(
     () => [...soloPerformers, ...createdMembers.filter((c) => !soloPerformers.some((p) => p.id === c.id))],
     [soloPerformers, createdMembers],
   );
-  const [memberIds, setMemberIds] = useState<string[]>(defaultMemberIds ?? []);
-  const [memberQuery, setMemberQuery] = useState("");
-  const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
-  const [isCreatingMember, setIsCreatingMember] = useState(false);
-  const memberComboboxRef = useRef<HTMLDivElement>(null);
-
-  const selectedMembers = useMemo(
-    () => memberIds.map((id) => allSoloPerformers.find((p) => p.id === id)).filter(
-      (p): p is PerformerOption => Boolean(p),
-    ),
-    [memberIds, allSoloPerformers],
-  );
-
-  const filteredMemberOptions = useMemo(() => {
-    const q = memberQuery.trim().toLowerCase();
-    return allSoloPerformers.filter((p) => {
-      if (memberIds.includes(p.id)) return false;
-      if (!q) return true;
-      return p.name.toLowerCase().includes(q);
-    });
-  }, [allSoloPerformers, memberIds, memberQuery]);
-
-  const trimmedMemberQuery = memberQuery.trim();
-  const memberHasExactMatch = allSoloPerformers.some(
-    (p) => p.name.toLowerCase() === trimmedMemberQuery.toLowerCase(),
-  );
-  const showCreateMemberOption = trimmedMemberQuery.length > 0 && !memberHasExactMatch;
-
-  function addMember(id: string) {
-    setMemberIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setMemberQuery("");
-  }
-
-  function removeMember(id: string) {
-    setMemberIds((prev) => prev.filter((mid) => mid !== id));
-  }
-
-  async function handleCreateMember() {
-    if (!trimmedMemberQuery || isCreatingMember) return;
-    setIsCreatingMember(true);
-    try {
-      const created = await createPerformerAndReturn(trimmedMemberQuery);
-      setCreatedMembers((prev) => [...prev, { id: created.id, name: created.name }]);
-      addMember(created.id);
-    } finally {
-      setIsCreatingMember(false);
-    }
-  }
 
   // --- Events picker (quick-create needs a modal, so it feeds
   // EntityMultiSelect via externalAdditions rather than onCreateNew) ---
@@ -275,23 +228,31 @@ export default function PerformerForm({
           />
         )}
 
-        <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} />
+        <div className="row g-3">
+          <div className="col-12 col-md-8">
+            <label className="form-label">{type === "BAND" ? "О группе" : "Биография"}</label>
+            <textarea
+              name="bio"
+              rows={5}
+              defaultValue={v?.bio}
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} />
+          </div>
+        </div>
 
         <div>
-          <label className="form-label">{type === "BAND" ? "О группе" : "Биография"}</label>
-          <textarea
-            name="bio"
-            rows={4}
-            defaultValue={v?.bio}
+          <label className="form-label">Ссылка на MyDramaList</label>
+          <input
+            type="url"
+            name="mydramalistUrl"
+            defaultValue={v?.mydramalistUrl}
+            placeholder="https://mydramalist.com/…"
             className="form-control"
           />
         </div>
-
-        <input
-          type="hidden"
-          name="mydramalistUrl"
-          defaultValue={v?.mydramalistUrl ?? ""}
-        />
 
         <div>
           <label className="form-label d-block">Ссылки</label>
@@ -343,72 +304,18 @@ export default function PerformerForm({
         {type === "BAND" && (
           <div>
             <label className="form-label d-block">Участники группы</label>
-
-            {selectedMembers.length > 0 && (
-              <div className="d-flex flex-wrap gap-2 mb-2">
-                {selectedMembers.map((m) => (
-                  <span key={m.id} className="event-chip performer-chip">
-                    {m.name}
-                    <input type="hidden" name="memberIds" value={m.id} />
-                    <button
-                      type="button"
-                      className="performer-chip-remove"
-                      onClick={() => removeMember(m.id)}
-                      aria-label={`Убрать ${m.name}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="performer-combobox" ref={memberComboboxRef}>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Начните вводить имя участника…"
-                value={memberQuery}
-                onChange={(e) => setMemberQuery(e.target.value)}
-                onFocus={() => setIsMemberDropdownOpen(true)}
-                onBlur={() => {
-                  window.setTimeout(() => setIsMemberDropdownOpen(false), 150);
-                }}
-              />
-
-              {isMemberDropdownOpen && (filteredMemberOptions.length > 0 || showCreateMemberOption) && (
-                <div className="performer-combobox-dropdown">
-                  {filteredMemberOptions.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="performer-combobox-option"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => addMember(p.id)}
-                    >
-                      {p.name}
-                    </button>
-                  ))}
-                  {showCreateMemberOption && (
-                    <button
-                      type="button"
-                      className="performer-combobox-option performer-combobox-create"
-                      onMouseDown={(e) => e.preventDefault()}
-                      disabled={isCreatingMember}
-                      onClick={handleCreateMember}
-                    >
-                      {isCreatingMember ? "Создание…" : `+ Создать «${trimmedMemberQuery}»`}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {allSoloPerformers.length === 0 && (
-              <p className="small text-secondary mt-2">
-                Нет соло-исполнителей, которых можно добавить как участников.
-              </p>
-            )}
+            <EntityMultiSelect
+              name="memberIds"
+              options={soloPerformers}
+              defaultSelectedIds={defaultMemberIds}
+              placeholder="Начните вводить имя участника…"
+              createLabel="Создать исполнителя"
+              emptyMessage="Нет соло-исполнителей, которых можно добавить как участников."
+              onCreateNew={async (query) => {
+                const created = await createPerformerAndReturn(query);
+                return { id: created.id, name: created.name, photoUrl: null };
+              }}
+            />
           </div>
         )}
       </div>

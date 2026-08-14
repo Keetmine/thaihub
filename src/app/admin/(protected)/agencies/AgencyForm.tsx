@@ -71,15 +71,19 @@ export default function AgencyForm({
             <label className="form-label">Название *</label>
             <input name="name" required defaultValue={v?.name} className="form-control" />
           </div>
-          <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} />
-          <div>
-            <label className="form-label">Описание</label>
-            <textarea
-              name="description"
-              rows={4}
-              defaultValue={v?.description}
-              className="form-control"
-            />
+          <div className="row g-3">
+            <div className="col-12 col-md-8">
+              <label className="form-label">Описание</label>
+              <textarea
+                name="description"
+                rows={5}
+                defaultValue={v?.description}
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-md-4">
+              <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} />
+            </div>
           </div>
         </div>
       </div>

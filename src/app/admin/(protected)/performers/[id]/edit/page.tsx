@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dateKey } from "@/lib/dates";
 import PerformerForm from "../../PerformerForm";
-import MydramalistImport from "../../MydramalistImport";
 import { updatePerformer, deletePerformer } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 
@@ -29,7 +28,7 @@ export default async function EditPerformerPage({
     prisma.performer.findMany({
       where: { type: "SOLO", id: { not: id } },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, photoUrl: true },
     }),
     prisma.agency.findMany({
       orderBy: { name: "asc" },
@@ -95,13 +94,6 @@ export default async function EditPerformerPage({
             links: performer.links.map((l) => ({ label: l.label, url: l.url })),
           }}
         />
-
-        {performer.type === "SOLO" && (
-          <MydramalistImport
-            performerId={performer.id}
-            defaultUrl={performer.mydramalistUrl ?? ""}
-          />
-        )}
 
         <ConfirmForm
           action={boundDelete}

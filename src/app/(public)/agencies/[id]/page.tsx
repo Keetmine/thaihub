@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/userAuth";
+import FavoriteButton from "@/components/FavoriteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,15 @@ export default async function AgencyDetailPage({
   });
 
   if (!agency) notFound();
+
+  const currentUser = await getCurrentUser();
+  let isFavorited = false;
+  if (currentUser) {
+    const favorite = await prisma.favoriteAgency.findUnique({
+      where: { userId_agencyId: { userId: currentUser.id, agencyId: id } },
+    });
+    isFavorited = !!favorite;
+  }
 
   return (
     <div>
@@ -42,6 +53,7 @@ export default async function AgencyDetailPage({
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           {agency.name}
         </h1>
+        <FavoriteButton kind="agency" id={agency.id} isFavorited={isFavorited} />
       </div>
 
       {agency.description && (

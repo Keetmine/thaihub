@@ -10,7 +10,7 @@ export default async function NewPerformerPage() {
     prisma.performer.findMany({
       where: { type: "SOLO" },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, photoUrl: true },
     }),
     prisma.agency.findMany({
       orderBy: { name: "asc" },

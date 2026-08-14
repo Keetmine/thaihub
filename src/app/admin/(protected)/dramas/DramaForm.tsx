@@ -176,8 +176,6 @@ export default function DramaForm({
         </div>
       </div>
 
-      <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
-
       <div className="row g-3">
         <div className="col-12 col-lg-6">
           <label className="form-label">Ссылка на MyDramaList</label>
@@ -205,14 +203,19 @@ export default function DramaForm({
         </div>
       </div>
 
-      <div>
-        <label className="form-label">Синопсис</label>
-        <textarea
-          name="synopsis"
-          rows={4}
-          defaultValue={v?.synopsis}
-          className="form-control"
-        />
+      <div className="row g-3">
+        <div className="col-12 col-md-8">
+          <label className="form-label">Синопсис</label>
+          <textarea
+            name="synopsis"
+            rows={5}
+            defaultValue={v?.synopsis}
+            className="form-control"
+          />
+        </div>
+        <div className="col-12 col-md-4">
+          <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
+        </div>
       </div>
       </div>
       </div>

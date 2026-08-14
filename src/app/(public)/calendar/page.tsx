@@ -8,6 +8,7 @@ import {
   WEEKDAY_NAMES_RU,
 } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
+import { getGoingEventIds } from "@/lib/favorites";
 
 export default async function CalendarPage({
   searchParams,
@@ -45,6 +46,12 @@ export default async function CalendarPage({
     if (!eventsByDay.has(key)) eventsByDay.set(key, []);
     eventsByDay.get(key)!.push(ev);
   }
+
+  // In "all events" view, distinguish events the user is going to. In
+  // "mine" view every visible event already qualifies, so skip the lookup.
+  const goingIds = showAll
+    ? await getGoingEventIds(events.map((ev) => ev.id), currentUser?.id)
+    : new Set(events.map((ev) => ev.id));
 
   const prev = addMonths(new Date(year, month, 1), -1);
   const next = addMonths(new Date(year, month, 1), 1);
@@ -124,7 +131,11 @@ export default async function CalendarPage({
               </span>
               <div className="d-flex flex-column gap-1">
                 {dayEvents.slice(0, 3).map((ev) => (
-                  <span key={ev.id} className="event-chip" title={ev.title}>
+                  <span
+                    key={ev.id}
+                    className={`event-chip ${goingIds.has(ev.id) ? "event-chip-going" : ""}`}
+                    title={ev.title}
+                  >
                     {ev.title}
                   </span>
                 ))}
