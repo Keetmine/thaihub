@@ -45,6 +45,7 @@ export default function EventForm({
   submitLabel: string;
 }) {
   const v = defaultValues;
+  const isCreating = !v;
 
   const pairingOptions: EntityOption[] = useMemo(
     () => pairings.map((p) => ({ id: p.id, name: pairingLabel(p) })),
@@ -52,6 +53,24 @@ export default function EventForm({
   );
 
   const [presaleEnabled, setPresaleEnabled] = useState(Boolean(v?.presaleDate));
+
+  // Extra occurrences of the same event (e.g. a concert repeating 3 nights)
+  // — create-only. Editing an already-created event edits just that one
+  // date; use "+ Добавить ещё день" at creation time to spin up several
+  // identical events (same title/venue/performers/…) in one go.
+  const [extraDates, setExtraDates] = useState<string[]>([]);
+
+  function addDay() {
+    setExtraDates((prev) => [...prev, ""]);
+  }
+
+  function removeDay(index: number) {
+    setExtraDates((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateDay(index: number, value: string) {
+    setExtraDates((prev) => prev.map((d, i) => (i === index ? value : d)));
+  }
 
   return (
     <form
@@ -111,6 +130,44 @@ export default function EventForm({
           />
         </div>
       </div>
+
+      {isCreating && (
+        <div className="d-flex flex-column gap-2">
+          {extraDates.map((d, i) => (
+            <div key={i} className="row g-2 align-items-center">
+              <div className="col-12 col-sm-4">
+                <label className="form-label">Ещё день {i + 2}</label>
+                <input
+                  type="date"
+                  name="extraDates"
+                  value={d}
+                  onChange={(e) => updateDay(i, e.target.value)}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-auto" style={{ marginTop: "1.75rem" }}>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm"
+                  onClick={() => removeDay(i)}
+                  aria-label="Удалить день"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+          <div>
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={addDay}
+            >
+              + Добавить ещё день
+            </button>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="form-label">Описание</label>

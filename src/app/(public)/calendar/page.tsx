@@ -19,8 +19,8 @@ export default async function CalendarPage({
   const now = new Date();
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) - 1 : now.getMonth();
-  // Default is "mine" (only events I'm going to) — ?view=all shows everything.
-  const showAll = params.view === "all";
+  // Default is "all" (every event) — ?view=mine narrows to events I'm going to.
+  const showAll = params.view !== "mine";
 
   const gridDays = getMonthGrid(year, month);
   const rangeStart = gridDays[0];
@@ -57,7 +57,7 @@ export default async function CalendarPage({
   const next = addMonths(new Date(year, month, 1), 1);
   const todayKey = dateKey(now);
 
-  const viewQuery = showAll ? "&view=all" : "";
+  const viewQuery = showAll ? "" : "&view=mine";
 
   return (
     <div>
@@ -75,7 +75,7 @@ export default async function CalendarPage({
           >
             ← Пред.
           </Link>
-          <Link href={`/calendar${showAll ? "?view=all" : ""}`} className="btn btn-ghost btn-sm">
+          <Link href={`/calendar${showAll ? "" : "?view=mine"}`} className="btn btn-ghost btn-sm">
             Сегодня
           </Link>
           <Link
@@ -92,16 +92,16 @@ export default async function CalendarPage({
           <Link
             href={`/calendar?year=${year}&month=${month + 1}`}
             prefetch={false}
-            className={`mode-toggle-option ${!showAll ? "active" : ""}`}
-          >
-            Мои события
-          </Link>
-          <Link
-            href={`/calendar?year=${year}&month=${month + 1}&view=all`}
-            prefetch={false}
             className={`mode-toggle-option ${showAll ? "active" : ""}`}
           >
             Все события
+          </Link>
+          <Link
+            href={`/calendar?year=${year}&month=${month + 1}&view=mine`}
+            prefetch={false}
+            className={`mode-toggle-option ${!showAll ? "active" : ""}`}
+          >
+            Мои события
           </Link>
         </div>
       </div>

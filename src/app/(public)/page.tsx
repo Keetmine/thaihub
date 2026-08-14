@@ -4,6 +4,7 @@ import { dateKey, formatHumanDate, parseDateKey, startOfDay } from "@/lib/dates"
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getCurrentUser } from "@/lib/userAuth";
+import { CalendarIcon } from "@/components/icons";
 import LandingPage from "./LandingPage";
 
 export const dynamic = "force-dynamic";
@@ -67,9 +68,18 @@ export default async function HomePage({
     <div>
       <div className="dot-grid pb-1">
         <span className="eyebrow">Афиша событий</span>
-        <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
-          Все события
-        </h1>
+        <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
+          <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
+            Все события
+          </h1>
+          <Link
+            href="/calendar"
+            className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+          >
+            <CalendarIcon />
+            Посмотреть в календаре
+          </Link>
+        </div>
       </div>
 
       <div className="mode-toggle mb-4">

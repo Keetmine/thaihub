@@ -19,7 +19,7 @@ export default async function NewAgencyPage() {
 
   return (
     <div>
-      <Link href="/admin/agencies" className="eyebrow text-decoration-none">
+      <Link href="/admin/performers?view=agencies" className="eyebrow text-decoration-none">
         ← К списку агентств
       </Link>
       <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>

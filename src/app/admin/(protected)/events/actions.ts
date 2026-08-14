@@ -44,6 +44,7 @@ export async function createEvent(formData: FormData) {
   const date = String(formData.get("date") ?? "");
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
+  const extraDates = formData.getAll("extraDates").map(String).filter(Boolean);
   const performerIds = getPerformerIds(formData);
   const pairingIds = getPairingIds(formData);
   const dramaId = String(formData.get("dramaId") ?? "").trim();
@@ -54,24 +55,30 @@ export async function createEvent(formData: FormData) {
     throw new Error("Заполните обязательные поля: название, место, дата, время начала");
   }
 
-  await prisma.event.create({
-    data: {
-      title,
-      venue,
-      description: description || null,
-      startsAt: combineDateTime(date, startTime),
-      endsAt: endTime ? combineDateTime(date, endTime) : null,
-      dramaId: dramaId || null,
-      presaleAt,
-      presaleUrl,
-      performers: {
-        create: performerIds.map((performerId) => ({ performerId })),
-      },
-      pairings: {
-        create: pairingIds.map((pairingId) => ({ pairingId })),
-      },
-    },
-  });
+  const dates = Array.from(new Set([date, ...extraDates]));
+
+  await prisma.$transaction(
+    dates.map((d) =>
+      prisma.event.create({
+        data: {
+          title,
+          venue,
+          description: description || null,
+          startsAt: combineDateTime(d, startTime),
+          endsAt: endTime ? combineDateTime(d, endTime) : null,
+          dramaId: dramaId || null,
+          presaleAt,
+          presaleUrl,
+          performers: {
+            create: performerIds.map((performerId) => ({ performerId })),
+          },
+          pairings: {
+            create: pairingIds.map((pairingId) => ({ pairingId })),
+          },
+        },
+      }),
+    ),
+  );
 
   revalidatePath("/");
   revalidatePath("/admin");

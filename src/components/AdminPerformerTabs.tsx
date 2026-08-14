@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function AdminPerformerTabs({
   active,
 }: {
-  active: "performers" | "bands" | "pairings";
+  active: "performers" | "bands" | "pairings" | "agencies";
 }) {
   return (
     <div className="tab-bar mb-4">
@@ -27,6 +27,13 @@ export default function AdminPerformerTabs({
         className={`tab-bar-item ${active === "pairings" ? "active" : ""}`}
       >
         Пейринги
+      </Link>
+      <Link
+        href="/admin/performers?view=agencies"
+        prefetch={false}
+        className={`tab-bar-item ${active === "agencies" ? "active" : ""}`}
+      >
+        Агентства
       </Link>
     </div>
   );

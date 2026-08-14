@@ -66,16 +66,6 @@ export default async function EventDetailPage({
           >
             <CalendarIcon />
           </a>
-          {event.presaleAt && (
-            <a
-              href={`/event/${event.id}/ics?presale=1`}
-              className="round-icon-btn is-accent"
-              aria-label="Добавить препродажу в календарь"
-              data-tooltip="Добавить препродажу в календарь"
-            >
-              <CalendarIcon />
-            </a>
-          )}
         </div>
       </div>
       <div className="surface p-4 mb-3">
@@ -154,16 +144,27 @@ export default async function EventDetailPage({
             </p>
           )}
 
-          {event.presaleUrl && (
-            <a
-              href={event.presaleUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-sm"
-            >
-              Билеты
-            </a>
-          )}
+          <div className="d-flex flex-wrap gap-2">
+            {event.presaleUrl && (
+              <a
+                href={event.presaleUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary btn-sm"
+              >
+                Билеты
+              </a>
+            )}
+            {event.presaleAt && (
+              <a
+                href={`/event/${event.id}/ics?presale=1`}
+                className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+              >
+                <CalendarIcon />
+                Добавить в календарь
+              </a>
+            )}
+          </div>
         </div>
       )}
     </div>

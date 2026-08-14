@@ -46,11 +46,10 @@ export default function ProtectedAdminLayout({
             <NavLink href="/admin" matchPrefixes={["/admin/events/"]}>
               События
             </NavLink>
-            <NavLink href="/admin/performers" matchPrefixes={["/admin/pairings"]}>
+            <NavLink href="/admin/performers" matchPrefixes={["/admin/pairings", "/admin/agencies"]}>
               Исполнители
             </NavLink>
             <NavLink href="/admin/dramas">Сериалы</NavLink>
-            <NavLink href="/admin/agencies">Агентства</NavLink>
             <NavLink href="/admin/locations">Локации</NavLink>
             <ModeToggle active="admin" />
             <LogoutButton />
@@ -60,11 +59,10 @@ export default function ProtectedAdminLayout({
             <NavLink href="/admin" matchPrefixes={["/admin/events/"]}>
               События
             </NavLink>
-            <NavLink href="/admin/performers" matchPrefixes={["/admin/pairings"]}>
+            <NavLink href="/admin/performers" matchPrefixes={["/admin/pairings", "/admin/agencies"]}>
               Исполнители
             </NavLink>
             <NavLink href="/admin/dramas">Сериалы</NavLink>
-            <NavLink href="/admin/agencies">Агентства</NavLink>
             <NavLink href="/admin/locations">Локации</NavLink>
           </div>
 

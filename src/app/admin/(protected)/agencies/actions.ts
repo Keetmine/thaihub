@@ -29,7 +29,6 @@ async function createAgencyRecord(name: string, logoUrl: string, description: st
       },
     });
 
-    revalidatePath("/admin/agencies");
     revalidatePath("/admin/performers/new");
     revalidatePath("/admin/performers");
 
@@ -126,17 +125,16 @@ export async function updateAgency(id: string, formData: FormData) {
     throw error;
   }
 
-  revalidatePath("/admin/agencies");
+  revalidatePath("/admin/performers");
   revalidatePath(`/admin/agencies/${id}/edit`);
   revalidatePath("/performers");
   revalidatePath("/dramas");
   revalidatePath(`/agencies/${id}`);
-  redirect("/admin/agencies");
+  redirect("/admin/performers?view=agencies");
 }
 
 export async function deleteAgency(id: string) {
   await prisma.agency.delete({ where: { id } });
-  revalidatePath("/admin/agencies");
   revalidatePath("/admin/performers/new");
   revalidatePath("/admin/performers");
   revalidatePath("/dramas");
