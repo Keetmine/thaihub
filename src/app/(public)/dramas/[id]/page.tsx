@@ -5,6 +5,10 @@ import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import WatchStatusSelect from "@/components/WatchStatusSelect";
 import EntityMiniCard from "@/components/EntityMiniCard";
+import EventAgendaRow from "@/components/EventAgendaRow";
+import VisitedButton from "@/components/VisitedButton";
+import { BuildingIcon } from "@/components/icons";
+import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +21,20 @@ export default async function DramaDetailPage({
 
   const drama = await prisma.drama.findUnique({
     where: { id },
-    include: { performers: { include: { performer: true } } },
+    include: {
+      performers: { include: { performer: true } },
+      agency: true,
+      locations: { include: { location: true }, orderBy: { location: { name: "asc" } } },
+    },
   });
 
   if (!drama) notFound();
+
+  const events = await prisma.event.findMany({
+    where: { dramaId: id },
+    include: { performers: { include: { performer: true } } },
+    orderBy: { startsAt: "asc" },
+  });
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
@@ -40,19 +54,37 @@ export default async function DramaDetailPage({
     watchStatus = status;
   }
 
+  const eventIds = events.map((ev) => ev.id);
+  const [favoritedEventIds, goingEventIds] = await Promise.all([
+    getFavoritedEventIds(eventIds, currentUser?.id),
+    getGoingEventIds(eventIds, currentUser?.id),
+  ]);
+
+  const visitedLocationIds = new Set<string>();
+  if (currentUser && drama.locations.length > 0) {
+    const visits = await prisma.locationVisit.findMany({
+      where: {
+        userId: currentUser.id,
+        locationId: { in: drama.locations.map((dl) => dl.locationId) },
+      },
+      select: { locationId: true },
+    });
+    for (const v of visits) visitedLocationIds.add(v.locationId);
+  }
+
   return (
     <div>
       <Link href="/dramas" className="eyebrow text-decoration-none">
         ← Все сериалы
       </Link>
-      <div className="d-flex flex-wrap align-items-center gap-3 mt-3 mb-2">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-2">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {drama.title}{" "}
           {drama.year && (
             <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
           )}
         </h1>
-        <FavoriteButton kind="drama" id={drama.id} isFavorited={isFavorited} />
+        <FavoriteButton kind="drama" id={drama.id} isFavorited={isFavorited} variant="icon" />
       </div>
 
       <div className="row g-4">
@@ -77,6 +109,15 @@ export default async function DramaDetailPage({
         )}
 
         <div className="col-12 col-sm-8 col-md-9">
+          {drama.agency && (
+            <p className="small text-secondary mb-2">
+              <BuildingIcon /> <span className="text-secondary">Студия:</span>{" "}
+              <Link href={`/agencies/${drama.agency.id}`} className="link-body-emphasis">
+                {drama.agency.name}
+              </Link>
+            </p>
+          )}
+
           {drama.synopsis && (
             <p className="text-secondary mb-3">{drama.synopsis}</p>
           )}
@@ -115,8 +156,82 @@ export default async function DramaDetailPage({
               ))}
             </div>
           )}
+
+          {drama.locations.length > 0 && (
+            <>
+              <h2
+                className="small text-secondary text-uppercase mb-2 mt-4"
+                style={{ letterSpacing: "0.08em" }}
+              >
+                Локации
+              </h2>
+              <div className="d-flex flex-column gap-2">
+                {drama.locations.map(({ location }) => (
+                  <div
+                    key={location.id}
+                    className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+                  >
+                    <Link
+                      href={`/locations/${location.id}`}
+                      className="text-decoration-none d-flex align-items-center gap-3"
+                      style={{ minWidth: 0 }}
+                    >
+                      <div
+                        style={{
+                          width: "2.5rem",
+                          height: "2.5rem",
+                          borderRadius: "0.5rem",
+                          background: "var(--bs-secondary-bg)",
+                          flexShrink: 0,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {location.photoUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={location.photoUrl}
+                            alt=""
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        )}
+                      </div>
+                      <span className="font-display fw-medium text-white text-truncate">
+                        {location.name}
+                      </span>
+                    </Link>
+                    <VisitedButton
+                      locationId={location.id}
+                      isVisited={visitedLocationIds.has(location.id)}
+                      className="flex-shrink-0"
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {events.length > 0 && (
+        <div className="mt-4">
+          <h2
+            className="small text-secondary text-uppercase mb-2"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            События
+          </h2>
+          <div className="d-flex flex-column gap-2">
+            {events.map((ev) => (
+              <EventAgendaRow
+                key={ev.id}
+                event={ev}
+                isFavorited={favoritedEventIds.has(ev.id)}
+                isGoing={goingEventIds.has(ev.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

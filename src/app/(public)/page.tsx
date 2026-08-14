@@ -18,15 +18,25 @@ function groupByDay<T extends { startsAt: Date }>(events: T[]) {
   return eventsByDay;
 }
 
-export default async function HomePage() {
+type EventFilter = "all" | "going" | "favorited";
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) {
     return <LandingPage />;
   }
 
+  const { filter: rawFilter } = await searchParams;
+  const filter: EventFilter =
+    rawFilter === "going" ? "going" : rawFilter === "favorited" ? "favorited" : "all";
+
   const today = startOfDay(new Date());
 
-  const [upcoming, past] = await Promise.all([
+  const [upcomingAll, pastAll] = await Promise.all([
     prisma.event.findMany({
       where: { startsAt: { gte: today } },
       include: { performers: { include: { performer: true } } },
@@ -39,13 +49,19 @@ export default async function HomePage() {
     }),
   ]);
 
-  const upcomingByDay = groupByDay(upcoming);
-  const pastByDay = groupByDay(past);
-  const allIds = [...upcoming, ...past].map((ev) => ev.id);
+  const allIds = [...upcomingAll, ...pastAll].map((ev) => ev.id);
   const [favoritedIds, goingIds] = await Promise.all([
     getFavoritedEventIds(allIds, user.id),
     getGoingEventIds(allIds, user.id),
   ]);
+
+  const matchesFilter = (id: string) =>
+    filter === "all" ? true : filter === "going" ? goingIds.has(id) : favoritedIds.has(id);
+
+  const upcoming = upcomingAll.filter((ev) => matchesFilter(ev.id));
+  const past = pastAll.filter((ev) => matchesFilter(ev.id));
+  const upcomingByDay = groupByDay(upcoming);
+  const pastByDay = groupByDay(past);
 
   return (
     <div>
@@ -54,6 +70,30 @@ export default async function HomePage() {
         <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
           Все события
         </h1>
+      </div>
+
+      <div className="mode-toggle mb-4">
+        <Link
+          href="/"
+          prefetch={false}
+          className={`mode-toggle-option ${filter === "all" ? "active" : ""}`}
+        >
+          Все события
+        </Link>
+        <Link
+          href="/?filter=going"
+          prefetch={false}
+          className={`mode-toggle-option ${filter === "going" ? "active" : ""}`}
+        >
+          Я иду
+        </Link>
+        <Link
+          href="/?filter=favorited"
+          prefetch={false}
+          className={`mode-toggle-option ${filter === "favorited" ? "active" : ""}`}
+        >
+          Избранное
+        </Link>
       </div>
 
       {upcomingByDay.size === 0 ? (

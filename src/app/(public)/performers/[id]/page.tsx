@@ -6,6 +6,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { CakeIcon, BuildingIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -85,13 +86,13 @@ export default async function PerformerPage({
       </Link>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-          {performer.name}
+          {performer.name}{" "}
+          {performer.realName && (
+            <span className="fs-5 fw-normal text-secondary">({performer.realName})</span>
+          )}
         </h1>
         <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} variant="icon" />
       </div>
-      {performer.realName && (
-        <p className="small text-secondary mb-4">{performer.realName}</p>
-      )}
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4" style={{ maxWidth: "40rem" }}>
         {performer.photoUrl && (
@@ -107,14 +108,13 @@ export default async function PerformerPage({
         <div className="d-flex flex-column gap-2">
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
-              <span aria-hidden="true">🎂</span>{" "}
-              <span className="text-secondary">Дата рождения:</span>{" "}
+              <CakeIcon /> <span className="text-secondary">Дата рождения:</span>{" "}
               {formatBirthDate(performer.birthDate)}
             </p>
           )}
           {performer.agency && (
             <p className="small text-secondary mb-0">
-              <span aria-hidden="true">🏢</span> <span className="text-secondary">Студия:</span>{" "}
+              <BuildingIcon /> <span className="text-secondary">Студия:</span>{" "}
               <Link href={`/agencies/${performer.agency.id}`} className="link-body-emphasis">
                 {performer.agency.name}
               </Link>

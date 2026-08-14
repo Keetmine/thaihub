@@ -75,7 +75,7 @@ export default async function AdminPerformersPage({
                     confirmMessage={`Удалить исполнителя «${p.name}»?`}
                   >
                     <button
-                      type="submit"
+                      type="button"
                       className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
                       title="Удалить"

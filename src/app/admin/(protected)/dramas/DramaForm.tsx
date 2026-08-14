@@ -3,13 +3,15 @@
 import { useMemo, useRef, useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import EntityMultiSelect from "@/components/EntityMultiSelect";
 import Modal from "@/components/Modal";
 import { createPerformerAndReturn } from "../performers/actions";
 import { createAgencyAndReturn } from "../agencies/actions";
+import { createLocationAndReturn } from "../locations/actions";
 
 type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 type CastEntry = { id: string; name: string; photoUrl?: string | null; role: string };
-type Tab = "general" | "cast";
+type Tab = "general" | "cast" | "locations";
 
 function TabButton({
   active,
@@ -47,12 +49,15 @@ export default function DramaForm({
   action,
   performers,
   agencies,
+  locations,
   defaultValues,
+  defaultLocationIds,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
   performers: PerformerOption[];
   agencies: EntityOption[];
+  locations: EntityOption[];
   defaultValues?: {
     title: string;
     year: string;
@@ -62,6 +67,7 @@ export default function DramaForm({
     agencyId: string;
     cast: CastEntry[];
   };
+  defaultLocationIds?: string[];
   submitLabel: string;
 }) {
   const v = defaultValues;
@@ -146,6 +152,9 @@ export default function DramaForm({
         </TabButton>
         <TabButton active={activeTab === "cast"} onClick={() => setActiveTab("cast")}>
           Актёрский состав
+        </TabButton>
+        <TabButton active={activeTab === "locations"} onClick={() => setActiveTab("locations")}>
+          Локации
         </TabButton>
       </div>
 
@@ -310,6 +319,22 @@ export default function DramaForm({
             Нет исполнителей. Начните вводить имя, чтобы создать нового.
           </p>
         )}
+      </div>
+
+      <div style={{ display: activeTab === "locations" ? undefined : "none" }}>
+        <label className="form-label d-block">Локации съёмок</label>
+        <EntityMultiSelect
+          name="locationIds"
+          options={locations}
+          defaultSelectedIds={defaultLocationIds}
+          placeholder="Начните вводить название локации…"
+          createLabel="Создать локацию"
+          emptyMessage="Нет локаций. Начните вводить название, чтобы создать новую."
+          onCreateNew={async (name) => {
+            const created = await createLocationAndReturn(name);
+            return { id: created.id, name: created.name, photoUrl: created.photoUrl };
+          }}
+        />
       </div>
 
       <Modal

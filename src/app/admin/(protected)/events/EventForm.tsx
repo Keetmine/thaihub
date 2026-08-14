@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
+import EntitySelect from "@/components/EntitySelect";
 import { createPerformerAndReturn } from "../performers/actions";
 
 type PairingOption = {
@@ -19,12 +20,14 @@ export default function EventForm({
   action,
   performers,
   pairings,
+  dramas,
   defaultValues,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
   performers: EntityOption[];
   pairings: PairingOption[];
+  dramas: EntityOption[];
   defaultValues?: {
     title: string;
     venue: string;
@@ -34,6 +37,7 @@ export default function EventForm({
     endTime: string;
     performerIds: string[];
     pairingIds: string[];
+    dramaId: string;
     presaleDate: string;
     presaleTime: string;
     presaleUrl: string;
@@ -117,6 +121,14 @@ export default function EventForm({
           className="form-control"
         />
       </div>
+
+      <EntitySelect
+        name="dramaId"
+        label="Связанный сериал"
+        options={dramas}
+        defaultValue={v?.dramaId}
+        placeholder="Не выбрано"
+      />
 
       <div>
         <label className="form-label d-block">Исполнители / группы</label>

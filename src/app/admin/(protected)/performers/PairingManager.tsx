@@ -68,7 +68,7 @@ export default function PairingManager({
                 confirmMessage={`Удалить пейринг «${pair.label}»?`}
               >
                 <button
-                  type="submit"
+                  type="button"
                   className="icon-btn icon-btn-danger"
                   aria-label="Удалить"
                   title="Удалить"

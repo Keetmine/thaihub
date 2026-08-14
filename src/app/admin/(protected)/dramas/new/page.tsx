@@ -6,11 +6,15 @@ import { createDrama } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewDramaPage() {
-  const [performers, agencies] = await Promise.all([
+  const [performers, agencies, locations] = await Promise.all([
     prisma.performer.findMany({ orderBy: { name: "asc" } }),
     prisma.agency.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, logoUrl: true },
+    }),
+    prisma.location.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, photoUrl: true },
     }),
   ]);
 
@@ -26,6 +30,7 @@ export default async function NewDramaPage() {
         action={createDrama}
         performers={performers}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
+        locations={locations}
         submitLabel="Создать сериал"
       />
     </div>

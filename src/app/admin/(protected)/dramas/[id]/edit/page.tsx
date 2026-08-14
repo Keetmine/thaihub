@@ -14,15 +14,19 @@ export default async function EditDramaPage({
 }) {
   const { id } = await params;
 
-  const [drama, performers, agencies] = await Promise.all([
+  const [drama, performers, agencies, locations] = await Promise.all([
     prisma.drama.findUnique({
       where: { id },
-      include: { performers: { include: { performer: true } } },
+      include: { performers: { include: { performer: true } }, locations: true },
     }),
     prisma.performer.findMany({ orderBy: { name: "asc" } }),
     prisma.agency.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, logoUrl: true },
+    }),
+    prisma.location.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, photoUrl: true },
     }),
   ]);
 
@@ -43,6 +47,8 @@ export default async function EditDramaPage({
         action={boundUpdate}
         performers={performers}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
+        locations={locations}
+        defaultLocationIds={drama.locations.map((dl) => dl.locationId)}
         submitLabel="Сохранить изменения"
         defaultValues={{
           title: drama.title,
@@ -65,7 +71,7 @@ export default async function EditDramaPage({
         confirmMessage={`Удалить сериал «${drama.title}»?`}
         className="mt-4 pt-4"
       >
-        <button type="submit" className="btn btn-outline-danger btn-sm">
+        <button type="button" className="btn btn-outline-danger btn-sm">
           Удалить сериал
         </button>
       </ConfirmForm>

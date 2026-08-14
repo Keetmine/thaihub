@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import { CalendarIcon, ClockIcon, PinIcon } from "@/components/icons";
+import { CalendarIcon, ClockIcon, PinIcon, TvIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export default async function EventDetailPage({
     include: {
       performers: { include: { performer: true } },
       pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
+      drama: true,
     },
   });
 
@@ -85,11 +86,20 @@ export default async function EventDetailPage({
           <CalendarIcon /> <span className="text-secondary">Дата:</span>{" "}
           {formatHumanDate(event.startsAt)}
         </p>
-        <p className="mb-0">
+        <p className={event.drama ? "mb-2" : "mb-0"}>
           <ClockIcon /> <span className="text-secondary">Время:</span>{" "}
           {formatTime(event.startsAt)}
           {event.endsAt ? `–${formatTime(event.endsAt)}` : ""}
         </p>
+        {event.drama && (
+          <p className="mb-0">
+            <span style={{ fontSize: "0.95em" }}><TvIcon /></span>{" "}
+            <span className="text-secondary">Сериал:</span>{" "}
+            <Link href={`/dramas/${event.drama.id}`} className="link-body-emphasis">
+              {event.drama.title}
+            </Link>
+          </p>
+        )}
       </div>
 
       {event.description && (

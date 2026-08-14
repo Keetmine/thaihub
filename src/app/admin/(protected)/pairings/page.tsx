@@ -61,7 +61,7 @@ export default async function AdminPairingsPage() {
                   confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
                 >
                   <button
-                    type="submit"
+                    type="button"
                     className="icon-btn icon-btn-danger"
                     aria-label="Удалить"
                     title="Удалить"

@@ -28,9 +28,14 @@ function getYear(formData: FormData): number | null {
   return Number.isFinite(n) ? Math.trunc(n) : null;
 }
 
+function getLocationIds(formData: FormData): string[] {
+  return Array.from(new Set(formData.getAll("locationIds").map(String).filter(Boolean)));
+}
+
 function revalidateDramaPaths(id?: string) {
   revalidatePath("/admin/dramas");
   revalidatePath("/dramas");
+  revalidatePath("/locations");
   if (id) revalidatePath(`/dramas/${id}`);
 }
 
@@ -42,6 +47,7 @@ export async function createDrama(formData: FormData) {
   const agencyId = String(formData.get("agencyId") ?? "").trim();
   const year = getYear(formData);
   const cast = getCastEntries(formData);
+  const locationIds = getLocationIds(formData);
 
   if (!title) {
     throw new Error("Укажите название сериала");
@@ -58,6 +64,9 @@ export async function createDrama(formData: FormData) {
       performers: {
         create: cast.map((c) => ({ performerId: c.performerId, role: c.role })),
       },
+      locations: {
+        create: locationIds.map((locationId) => ({ locationId })),
+      },
     },
   });
 
@@ -73,6 +82,7 @@ export async function updateDrama(id: string, formData: FormData) {
   const agencyId = String(formData.get("agencyId") ?? "").trim();
   const year = getYear(formData);
   const cast = getCastEntries(formData);
+  const locationIds = getLocationIds(formData);
 
   if (!title) {
     throw new Error("Укажите название сериала");
@@ -80,6 +90,7 @@ export async function updateDrama(id: string, formData: FormData) {
 
   await prisma.$transaction([
     prisma.performerDrama.deleteMany({ where: { dramaId: id } }),
+    prisma.dramaLocation.deleteMany({ where: { dramaId: id } }),
     prisma.drama.update({
       where: { id },
       data: {
@@ -91,6 +102,9 @@ export async function updateDrama(id: string, formData: FormData) {
         agencyId: agencyId || null,
         performers: {
           create: cast.map((c) => ({ performerId: c.performerId, role: c.role })),
+        },
+        locations: {
+          create: locationIds.map((locationId) => ({ locationId })),
         },
       },
     }),

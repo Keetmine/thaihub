@@ -156,7 +156,7 @@ export default async function FriendsPage({
                       action={() => removeFriendship(f.id)}
                       confirmMessage="Отклонить заявку в друзья?"
                     >
-                      <button type="submit" className="icon-btn icon-btn-danger" aria-label="Отклонить">
+                      <button type="button" className="icon-btn icon-btn-danger" aria-label="Отклонить">
                         <TrashIcon />
                       </button>
                     </ConfirmForm>
@@ -185,7 +185,7 @@ export default async function FriendsPage({
                     action={() => removeFriendship(f.id)}
                     confirmMessage="Отменить заявку в друзья?"
                   >
-                    <button type="submit" className="btn btn-outline-secondary btn-sm">
+                    <button type="button" className="btn btn-outline-secondary btn-sm">
                       Отменить
                     </button>
                   </ConfirmForm>
@@ -214,7 +214,7 @@ export default async function FriendsPage({
                   action={() => removeFriendship(f.id)}
                   confirmMessage={`Удалить «${other(f).name || other(f).email}» из друзей?`}
                 >
-                  <button type="submit" className="icon-btn icon-btn-danger" aria-label="Удалить из друзей">
+                  <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить из друзей">
                     <TrashIcon />
                   </button>
                 </ConfirmForm>

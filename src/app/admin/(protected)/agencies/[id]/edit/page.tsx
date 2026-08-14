@@ -67,7 +67,7 @@ export default async function EditAgencyPage({
           confirmMessage={`Удалить агентство «${agency.name}»?`}
           className="pt-2"
         >
-          <button type="submit" className="btn btn-outline-danger btn-sm">
+          <button type="button" className="btn btn-outline-danger btn-sm">
             Удалить агентство
           </button>
         </ConfirmForm>

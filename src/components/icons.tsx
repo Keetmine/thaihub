@@ -136,6 +136,53 @@ export function HeartIcon({ filled = false }: { filled?: boolean }) {
   );
 }
 
+export function CakeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.95em"
+      height="0.95em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 21v-7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7" />
+      <path d="M2 21h20" />
+      <path d="M7 12V9" />
+      <path d="M12 12V9" />
+      <path d="M17 12V9" />
+      <path d="M12 3v2" />
+      <circle cx="12" cy="3" r="0.5" />
+    </svg>
+  );
+}
+
+export function BuildingIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.95em"
+      height="0.95em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4" y="3" width="16" height="18" rx="1.5" />
+      <path d="M9 8h.01" />
+      <path d="M15 8h.01" />
+      <path d="M9 12h.01" />
+      <path d="M15 12h.01" />
+      <path d="M9 21v-4h6v4" />
+    </svg>
+  );
+}
+
 export function ClockIcon() {
   return (
     <svg

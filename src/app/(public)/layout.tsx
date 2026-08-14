@@ -48,14 +48,14 @@ export default async function PublicLayout({ children }: { children: React.React
           <MobileMenu>
             <NavLink href="/">Все события</NavLink>
             <NavLink href="/calendar">Календарь</NavLink>
-            <NavLink href="/performers" matchPrefixes={["/performers/"]}>
+            <NavLink href="/performers" matchPrefixes={["/performers/", "/agencies"]}>
               Исполнители
             </NavLink>
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
               Сериалы
             </NavLink>
-            <NavLink href="/agencies" matchPrefixes={["/agencies/"]}>
-              Агентства
+            <NavLink href="/locations" matchPrefixes={["/locations/"]}>
+              Локации
             </NavLink>
             <SearchForm />
             {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
@@ -65,14 +65,14 @@ export default async function PublicLayout({ children }: { children: React.React
           <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
             <NavLink href="/">Все события</NavLink>
             <NavLink href="/calendar">Календарь</NavLink>
-            <NavLink href="/performers" matchPrefixes={["/performers/"]}>
+            <NavLink href="/performers" matchPrefixes={["/performers/", "/agencies"]}>
               Исполнители
             </NavLink>
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
               Сериалы
             </NavLink>
-            <NavLink href="/agencies" matchPrefixes={["/agencies/"]}>
-              Агентства
+            <NavLink href="/locations" matchPrefixes={["/locations/"]}>
+              Локации
             </NavLink>
           </div>
 

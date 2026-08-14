@@ -23,7 +23,7 @@ function categoryOf(key: string): "digit" | "en" | "ru" {
   return /[A-Z]/.test(key) ? "en" : "ru";
 }
 
-type View = "performers" | "bands" | "pairings";
+type View = "performers" | "bands" | "pairings" | "agencies";
 
 function Tabs({ active }: { active: View }) {
   return (
@@ -40,7 +40,7 @@ function Tabs({ active }: { active: View }) {
         prefetch={false}
         className={`tab-bar-item ${active === "bands" ? "active" : ""}`}
       >
-        Группы
+        Музыкальные группы
       </Link>
       <Link
         href="/performers?view=pairings"
@@ -49,6 +49,88 @@ function Tabs({ active }: { active: View }) {
       >
         Пейринги
       </Link>
+      <Link
+        href="/performers?view=agencies"
+        prefetch={false}
+        className={`tab-bar-item ${active === "agencies" ? "active" : ""}`}
+      >
+        Агентства
+      </Link>
+    </div>
+  );
+}
+
+async function AgenciesTab({ q }: { q: string }) {
+  const agencies = await prisma.agency.findMany({
+    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
+    include: { _count: { select: { performers: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  const currentUser = await getCurrentUser();
+  const favoritedIds = new Set<string>();
+  if (currentUser && agencies.length > 0) {
+    const favorites = await prisma.favoriteAgency.findMany({
+      where: { userId: currentUser.id, agencyId: { in: agencies.map((a) => a.id) } },
+      select: { agencyId: true },
+    });
+    for (const f of favorites) favoritedIds.add(f.agencyId);
+  }
+
+  if (agencies.length === 0) {
+    return <p className="text-secondary">Пока нет агентств.</p>;
+  }
+
+  return (
+    <div className="d-flex flex-column gap-2">
+      {agencies.map((a) => (
+        <div
+          key={a.id}
+          className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+        >
+          <Link
+            href={`/agencies/${a.id}`}
+            className="text-decoration-none d-flex align-items-center gap-3"
+            style={{ minWidth: 0 }}
+          >
+            {a.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={a.logoUrl}
+                alt=""
+                style={{
+                  width: "2.75rem",
+                  height: "2.75rem",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  flexShrink: 0,
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "2.75rem",
+                  height: "2.75rem",
+                  borderRadius: "50%",
+                  background: "var(--bs-secondary-bg)",
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            <div style={{ minWidth: 0 }}>
+              <p className="font-display fw-medium text-white mb-0 text-truncate">{a.name}</p>
+              <p className="small text-secondary mb-0">{a._count.performers} исполнит.</p>
+            </div>
+          </Link>
+          <FavoriteButton
+            kind="agency"
+            id={a.id}
+            isFavorited={favoritedIds.has(a.id)}
+            variant="icon"
+            className="flex-shrink-0"
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -253,11 +335,18 @@ export default async function PerformersPage({
   searchParams: Promise<{ view?: string; q?: string }>;
 }) {
   const { view: rawView, q: rawQ } = await searchParams;
-  const view: View = rawView === "bands" ? "bands" : rawView === "pairings" ? "pairings" : "performers";
+  const view: View =
+    rawView === "bands"
+      ? "bands"
+      : rawView === "pairings"
+        ? "pairings"
+        : rawView === "agencies"
+          ? "agencies"
+          : "performers";
   const q = (rawQ ?? "").trim();
 
   const performers =
-    view === "pairings"
+    view === "pairings" || view === "agencies"
       ? []
       : await prisma.performer.findMany({
           where: {
@@ -268,7 +357,7 @@ export default async function PerformersPage({
           orderBy: { name: "asc" },
         });
 
-  const currentUser = view === "pairings" ? null : await getCurrentUser();
+  const currentUser = view === "pairings" || view === "agencies" ? null : await getCurrentUser();
   const favoritedIds = new Set<string>();
   if (currentUser && performers.length > 0) {
     const favorites = await prisma.favoritePerformer.findMany({
@@ -280,8 +369,9 @@ export default async function PerformersPage({
 
   const titles: Record<View, string> = {
     performers: "Актёры",
-    bands: "Группы",
+    bands: "Музыкальные группы",
     pairings: "Пейринги",
+    agencies: "Агентства",
   };
 
   return (
@@ -297,13 +387,15 @@ export default async function PerformersPage({
           action="/performers"
           q={q}
           hiddenFields={view !== "performers" ? { view } : undefined}
-          placeholder="Поиск по имени…"
+          placeholder={view === "agencies" ? "Поиск по названию…" : "Поиск по имени…"}
           className=""
         />
       </div>
 
       {view === "pairings" ? (
         <PairingsTab q={q} />
+      ) : view === "agencies" ? (
+        <AgenciesTab q={q} />
       ) : (
         <PerformerAlphabetList
           performers={performers}

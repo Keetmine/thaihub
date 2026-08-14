@@ -100,7 +100,7 @@ export default async function EditPerformerPage({
           confirmMessage={`Удалить исполнителя «${performer.name}»?`}
           className="pt-2"
         >
-          <button type="submit" className="btn btn-outline-danger btn-sm">
+          <button type="button" className="btn btn-outline-danger btn-sm">
             Удалить исполнителя
           </button>
         </ConfirmForm>

@@ -90,7 +90,7 @@ export default async function AdminAgenciesPage() {
                     confirmMessage={`Удалить агентство «${a.name}»?`}
                   >
                     <button
-                      type="submit"
+                      type="button"
                       className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
                       title="Удалить"

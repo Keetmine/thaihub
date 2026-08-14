@@ -46,6 +46,7 @@ export async function createEvent(formData: FormData) {
   const endTime = String(formData.get("endTime") ?? "");
   const performerIds = getPerformerIds(formData);
   const pairingIds = getPairingIds(formData);
+  const dramaId = String(formData.get("dramaId") ?? "").trim();
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
@@ -60,6 +61,7 @@ export async function createEvent(formData: FormData) {
       description: description || null,
       startsAt: combineDateTime(date, startTime),
       endsAt: endTime ? combineDateTime(date, endTime) : null,
+      dramaId: dramaId || null,
       presaleAt,
       presaleUrl,
       performers: {
@@ -85,6 +87,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const endTime = String(formData.get("endTime") ?? "");
   const performerIds = getPerformerIds(formData);
   const pairingIds = getPairingIds(formData);
+  const dramaId = String(formData.get("dramaId") ?? "").trim();
   const presaleAt = getPresaleAt(formData);
   const presaleUrl = getPresaleUrl(formData);
 
@@ -103,6 +106,7 @@ export async function updateEvent(id: string, formData: FormData) {
         description: description || null,
         startsAt: combineDateTime(date, startTime),
         endsAt: endTime ? combineDateTime(date, endTime) : null,
+        dramaId: dramaId || null,
         presaleAt,
         presaleUrl,
         performers: {

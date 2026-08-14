@@ -21,6 +21,10 @@ model Event {
   description String?
   presaleAt   DateTime?
   presaleUrl  String?
+  // Optional tie-in to a drama this event is about (premiere screening,
+  // fan meet for the cast, etc.) — one event belongs to at most one drama.
+  dramaId     String?
+  drama       Drama?   @relation(fields: [dramaId], references: [id])
   performers  EventPerformer[]
   pairings    EventPairing[]
   favoritedBy FavoriteEvent[]
@@ -125,9 +129,47 @@ model Drama {
   performers     PerformerDrama[]
   favoritedBy    FavoriteDrama[]
   watchStatuses  DramaWatchStatus[]
+  events         Event[]
+  locations      DramaLocation[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// A real-world filming location (café, park, venue…) tied to one or more
+// dramas. Kept its own entity (not a free-text field) so it's browsable and
+// so users can track which ones they've actually visited.
+model Location {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  photoUrl    String?
+  dramas      DramaLocation[]
+  visitedBy   LocationVisit[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DramaLocation {
+  dramaId    String
+  locationId String
+  drama      Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([dramaId, locationId])
+}
+
+// A user marking a location as visited — analogous to EventAttendance but
+// for locations, with no "favorite" concept of its own.
+model LocationVisit {
+  userId     String
+  locationId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([userId, locationId])
 }
 
 enum WatchStatus {
@@ -203,6 +245,7 @@ model User {
   favoriteAgencies    FavoriteAgency[]
   eventAttendances    EventAttendance[]
   dramaWatchStatuses  DramaWatchStatus[]
+  visitedLocations    LocationVisit[]
 
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")

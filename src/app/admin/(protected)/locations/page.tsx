@@ -1,61 +1,59 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { deleteDrama } from "./actions";
+import { deleteLocation } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDramasPage() {
-  const dramas = await prisma.drama.findMany({
-    include: { _count: { select: { performers: true } } },
-    orderBy: { title: "asc" },
+export default async function AdminLocationsPage() {
+  const locations = await prisma.location.findMany({
+    include: { _count: { select: { dramas: true } } },
+    orderBy: { name: "asc" },
   });
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
-        <div>
-          <span className="eyebrow">Управление</span>
-          <h1 className="display-1-tight mt-3 mb-0" style={{ fontSize: "2.25rem" }}>
-            Сериалы
-          </h1>
-        </div>
-        <Link href="/admin/dramas/new" className="btn btn-primary btn-sm">
-          + Добавить сериал
+      <span className="eyebrow">Управление</span>
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
+          Локации
+        </h1>
+        <Link href="/admin/locations/new" className="btn btn-primary">
+          + Добавить локацию
         </Link>
       </div>
 
-      {dramas.length === 0 ? (
-        <p className="text-secondary">Пока нет сериалов.</p>
+      {locations.length === 0 ? (
+        <p className="text-secondary">Пока нет локаций.</p>
       ) : (
         <div className="d-flex flex-column gap-2">
-          {dramas.map((d) => {
-            const boundDelete = deleteDrama.bind(null, d.id);
+          {locations.map((l) => {
+            const boundDelete = deleteLocation.bind(null, l.id);
             return (
               <div
-                key={d.id}
+                key={l.id}
                 className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div className="d-flex align-items-center gap-3">
-                  {d.posterUrl ? (
+                  {l.photoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={d.posterUrl}
+                      src={l.photoUrl}
                       alt=""
                       style={{
-                        width: "2.75rem",
-                        height: "3.75rem",
-                        objectFit: "cover",
+                        width: "2.5rem",
+                        height: "2.5rem",
                         borderRadius: "0.5rem",
+                        objectFit: "cover",
                         flexShrink: 0,
                       }}
                     />
                   ) : (
                     <div
                       style={{
-                        width: "2.75rem",
-                        height: "3.75rem",
+                        width: "2.5rem",
+                        height: "2.5rem",
                         borderRadius: "0.5rem",
                         background: "var(--bs-secondary-bg)",
                         flexShrink: 0,
@@ -64,25 +62,17 @@ export default async function AdminDramasPage() {
                   )}
                   <div>
                     <Link
-                      href={`/admin/dramas/${d.id}/edit`}
+                      href={`/admin/locations/${l.id}/edit`}
                       className="stretched-link text-decoration-none"
                     >
-                      <span className="font-display fw-medium text-white d-block">
-                        {d.title}
-                      </span>
+                      <span className="font-display fw-medium text-white d-block">{l.name}</span>
                     </Link>
-                    <p className="small text-secondary mb-0">
-                      {d.year ?? "—"} · {d._count.performers} в актёрском составе
-                    </p>
+                    <p className="small text-secondary mb-0">{l._count.dramas} сериал.</p>
                   </div>
                 </div>
-                {/* position-relative + z-2 lifts these controls above the
-                    row's stretched-link (::after has z-index: 1), so they
-                    stay individually clickable instead of triggering the
-                    row navigation. */}
                 <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
                   <Link
-                    href={`/admin/dramas/${d.id}/edit`}
+                    href={`/admin/locations/${l.id}/edit`}
                     className="icon-btn"
                     aria-label="Редактировать"
                     title="Редактировать"
@@ -91,7 +81,7 @@ export default async function AdminDramasPage() {
                   </Link>
                   <ConfirmForm
                     action={boundDelete}
-                    confirmMessage={`Удалить сериал «${d.title}»?`}
+                    confirmMessage={`Удалить локацию «${l.name}»?`}
                   >
                     <button
                       type="button"
