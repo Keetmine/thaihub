@@ -12,8 +12,11 @@ compliant path, not just a technical convenience. Requires
 - **`src/lib/tmdb.ts`** — pure API client, no DB access: `fetchTmdbPerson`,
   `fetchTmdbPersonKnownForTv`, `fetchTmdbTvShow`, `fetchTmdbTvCredits`,
   plus `tmdbImageUrl`/`parseTmdbPersonId` helpers.
-- **`src/lib/tmdbImport.ts`** — DB orchestration: `previewTmdbPersonImport`
-  (read-only) and `commitTmdbPersonImport` (writes).
+- **`src/lib/tmdbImport.ts`** — DB orchestration:
+  - `previewTmdbPersonImport` (read-only) and `commitTmdbPersonImport`
+    (writes) — the one-actor reviewed-import flow, below.
+  - `syncAllDramasFromTmdb` / `syncAllPerformersFromTmdb` — the whole-
+    catalog bulk sweep, further down.
 - **`src/app/admin/(protected)/performers/tmdbActions.ts`** — thin
   `"use server"` wrappers the client flow calls directly (same shape as
   the TTM importer's `importActions.ts`), plus `revalidatePath` calls.
@@ -22,6 +25,11 @@ compliant path, not just a technical convenience. Requires
   TMDB, so this doesn't apply to them). `TmdbImportFlow.tsx` mirrors
   `TtmImportFlow.tsx`'s two-step shape: paste a person URL/id → review →
   confirm. Nothing is written until the confirm step.
+- **`scripts/sync-dramas-tmdb.ts`** / **`scripts/sync-performers-tmdb.ts`**
+  — one-off bulk sweeps over the *whole* catalog, no review screen (same
+  reasoning as the GMMTV/blscene bulk scripts: hundreds of items is too
+  many to review one by one, so this is dedup-and-report instead).
+  Run dramas first — see "Bulk sync" below for why the order matters.
 
 ## "Known For" isn't a real API field
 
@@ -54,15 +62,79 @@ what you'd expect, not perfect.
   (case-insensitive exact), then `name` (nickname). TMDB credit names are
   usually a person's real/romanized name, not their fan nickname — that's
   why `realName` is checked before `name`. No match creates a new
-  `Performer` with `name = realName = TMDB's name`, editable afterward
-  like any manually-added performer.
+  `Performer`, with `name` set to a nickname if one can be derived (below),
+  falling back to the same value as `realName` otherwise — either way,
+  editable afterward like any manually-added performer.
 - **A known-for show** matches an existing `Drama` by `tmdbId`, falling
-  back to an exact case-insensitive title match — same two-tier pattern
-  as `blscene-import.md`'s `blsceneUrl`-then-title dedupe, so a drama
-  already imported from blscene.com gets enriched (status, TMDB poster/
-  synopsis, `tmdbId`) instead of duplicated. A match either way is treated
-  as "update", never skipped — TMDB is authoritative for these fields
-  once you've explicitly chosen to pull a show in.
+  back to an exact case-insensitive title match (or, when the caller
+  already knows exactly which of our rows a `tvId` belongs to — the bulk
+  drama sweep — that row directly, bypassing the fuzzy title match; see
+  "Bulk sync" below for why) — same two-tier pattern as
+  `blscene-import.md`'s `blsceneUrl`-then-title dedupe, so a drama already
+  imported from blscene.com gets enriched (status, TMDB poster/synopsis,
+  `tmdbId`) instead of duplicated. A match either way is treated as
+  "update", never skipped — TMDB is authoritative for these fields once
+  you've explicitly chosen to pull a show in.
+
+### Nicknames from `also_known_as`
+
+A newly-created cast member's TMDB credit name is their real/romanized
+name ("Nattawin Wattanagitiphat"), not the nickname Thai fans actually
+use ("Apo") — `deriveNicknameFromAlsoKnownAs` (`src/lib/tmdb.ts`) looks
+for a `also_known_as` entry shaped like `"{Nickname} {Full Name}"`
+(TMDB lists these alongside unrelated variants — native-script name,
+ship-name mashups like "MileApo", partial-name variants) and returns the
+short Latin-script prefix once the exact full name is stripped off the
+end, or `null` if nothing in the list fits that shape confidently.
+`syncPerformerFromTmdb` also applies this **retroactively**: if a
+performer's `name` and `realName` are identical (the fallback-to-realName
+case above), a sync looks for a nickname again and renames them —
+never touches a `name` that's already distinct from `realName`, since
+that's a real curated nickname, not a fallback that needs fixing.
+
+## Bulk sync (whole catalog)
+
+`syncAllDramasFromTmdb`/`syncAllPerformersFromTmdb` sweep every `Drama`/
+solo `Performer` already in the catalog, matching each against TMDB by
+search when it doesn't have a `tmdbId` yet. **Run dramas first** — by the
+time the performer sweep runs, most catalog dramas already have a
+`tmdbId`, so `importShow`'s cast-import calls (which don't know a
+specific target row up front, unlike the drama sweep) resolve by `tmdbId`
+instead of needing the fuzzier title fallback.
+
+A bare title or name search is too ambiguous to trust blindly — "Cutie
+Pie" matches two unrelated shows, "Off" matches random unrelated people —
+so both matchers narrow candidates before accepting one, and return
+`null` (skip, reported in the summary) rather than guess:
+
+- **`matchTmdbTvShow(title, year)`** — searches, keeps only results whose
+  name is actually related to the query (`titlesLookRelated`: normalized
+  substring match, or a shared 4+ letter word — catches "2gether" vs.
+  TMDB's "2gether: The Series" while rejecting an unrelated same-language
+  result), prefers Thai-origin results (this catalog is 100% Thai dramas),
+  then a release year within ±1 of ours. Falls back to a single Thai-
+  and-title-related candidate with no year to disambiguate it, but *not*
+  when there's more than one such candidate — a real single-candidate
+  fallback caught "The Boyfriend" correctly; without the
+  `titlesLookRelated` filter it had previously accepted "Sweet Tooth,
+  Good Dentist" as the (wrong) sole Thai result.
+- **`matchTmdbPerson(realName)`** — requires `realName` (a bare nickname
+  like "Off" alone matches unrelated people; skipped if not set), prefers
+  TMDB's "Acting" department, otherwise takes the top search result.
+
+**Conflicts**: two rows in *our own* catalog occasionally turn out to be
+the same TMDB show — either a genuine duplicate (blscene import created
+both "I told sunset" and "I Told Sunset About You") or a multi-season
+series TMDB doesn't split into separate show ids per season ("SOTUS" /
+"SOTUS S" both resolve to one `tvId`). Writing the second row's `tmdbId`
+would violate the column's uniqueness — `importShow` checks for this
+before writing and throws `TmdbConflictError` instead of letting Postgres
+do it; both sync functions catch it and report a "conflict" outcome
+(which existing title it collided with) rather than crashing the whole
+sweep. A genuine duplicate should be merged via
+[duplicates.md](duplicates.md)'s admin tool; a split-season case is
+correctly left alone (merging would wrongly combine two seasons' filming
+locations into one `Drama`).
 
 ## What gets written
 

@@ -34,12 +34,59 @@ export function parseTmdbPersonId(input: string): string | null {
   return match ? match[1] : null;
 }
 
+export type TmdbTvSearchResult = {
+  id: number;
+  name: string;
+  year: number | null;
+  isThaiOrigin: boolean;
+  popularity: number;
+};
+
+export async function searchTmdbTvShows(query: string): Promise<TmdbTvSearchResult[]> {
+  const data = await tmdbFetch<{
+    results: {
+      id: number;
+      name: string;
+      first_air_date: string | null;
+      origin_country: string[];
+      popularity: number;
+    }[];
+  }>(`/search/tv?query=${encodeURIComponent(query)}`);
+  return data.results.map((r) => ({
+    id: r.id,
+    name: r.name,
+    year: r.first_air_date ? Number(r.first_air_date.slice(0, 4)) : null,
+    isThaiOrigin: r.origin_country.includes("TH"),
+    popularity: r.popularity,
+  }));
+}
+
+export type TmdbPersonSearchResult = {
+  id: number;
+  name: string;
+  isActor: boolean;
+  popularity: number;
+};
+
+export async function searchTmdbPeople(query: string): Promise<TmdbPersonSearchResult[]> {
+  const data = await tmdbFetch<{
+    results: { id: number; name: string; known_for_department: string | null; popularity: number }[];
+  }>(`/search/person?query=${encodeURIComponent(query)}`);
+  return data.results.map((r) => ({
+    id: r.id,
+    name: r.name,
+    isActor: r.known_for_department === "Acting",
+    popularity: r.popularity,
+  }));
+}
+
 export type TmdbPerson = {
   id: number;
   name: string;
   biography: string | null;
   placeOfBirth: string | null;
   photoUrl: string | null;
+  alsoKnownAs: string[];
 };
 
 export async function fetchTmdbPerson(personId: string): Promise<TmdbPerson> {
@@ -49,6 +96,7 @@ export async function fetchTmdbPerson(personId: string): Promise<TmdbPerson> {
     biography: string | null;
     place_of_birth: string | null;
     profile_path: string | null;
+    also_known_as: string[];
   }>(`/person/${personId}`);
   return {
     id: data.id,
@@ -56,7 +104,35 @@ export async function fetchTmdbPerson(personId: string): Promise<TmdbPerson> {
     biography: data.biography || null,
     placeOfBirth: data.place_of_birth || null,
     photoUrl: tmdbImageUrl(data.profile_path),
+    alsoKnownAs: data.also_known_as ?? [],
   };
+}
+
+/** Thai fan nicknames aren't a TMDB concept, but they usually show up in
+ *  `also_known_as` as "{Nickname} {Full Name}" (e.g. "Apo Nattawin
+ *  Wattanagitiphat" for a person whose TMDB `name` is "Nattawin
+ *  Wattanagitiphat") alongside unrelated variants (native-script name,
+ *  ship-name mashups like "MileApo", partial-name variants). Looks for an
+ *  entry that ends with the exact full name, is a short (<=2 word) Latin-
+ *  script prefix once that's stripped off, and returns that prefix —  or
+ *  null if nothing in the list fits that shape confidently. */
+export function deriveNicknameFromAlsoKnownAs(personName: string, alsoKnownAs: string[]): string | null {
+  const trimmedName = personName.trim();
+  const normalizedName = trimmedName.toLowerCase();
+
+  for (const aka of alsoKnownAs) {
+    const trimmed = aka.trim();
+    const lower = trimmed.toLowerCase();
+    if (lower === normalizedName || !lower.endsWith(normalizedName)) continue;
+
+    const prefix = trimmed.slice(0, trimmed.length - trimmedName.length).trim();
+    if (!prefix) continue;
+    if (prefix.split(/\s+/).length > 2) continue;
+    if (!/^[A-Za-z0-9\s'.-]+$/.test(prefix)) continue;
+
+    return prefix;
+  }
+  return null;
 }
 
 export type TmdbKnownForShow = {
