@@ -222,6 +222,78 @@ export function InfoIcon() {
   );
 }
 
+export function InstagramIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4.2" />
+      <circle cx="17.2" cy="6.8" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function TikTokIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M16.5 2h-3v13.6a2.9 2.9 0 1 1-2.05-2.77V9.7a6 6 0 1 0 5.05 5.93V9.1a7.5 7.5 0 0 0 4.5 1.5V7.5a4.5 4.5 0 0 1-4.5-4.5z" />
+    </svg>
+  );
+}
+
+export function TwitterIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 4l16 16" />
+      <path d="M20 4L4 20" />
+    </svg>
+  );
+}
+
+export function MyDramaListIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 6.5 8 4l2 2.5h8A1.5 1.5 0 0 1 19.5 8v10A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18V6.5z" />
+      <path d="M4.5 9.5h15" />
+    </svg>
+  );
+}
+
 export function CalendarIcon() {
   return (
     <svg

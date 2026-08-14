@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
 import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
+import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 
 /**
  * Re-syncs the GMMTV roster: creates any new artists, updates existing
@@ -70,11 +71,26 @@ export async function deletePerformer(id: string) {
 
 type LinkInput = { label: string; url: string };
 
+// Instagram/TikTok/Twitter get their own named fields in the form
+// (SOCIAL_PLATFORM_LABELS gives each its display label) — merged back into
+// the same PerformerLink rows as the free-form list below on save, so the
+// dedicated fields are purely a form-UI distinction, not a schema one.
+const SOCIAL_FIELD_NAMES: Record<SocialPlatform, string> = {
+  instagram: "instagramUrl",
+  tiktok: "tiktokUrl",
+  twitter: "twitterUrl",
+};
+
 function getLinks(formData: FormData): LinkInput[] {
+  const links: LinkInput[] = [];
+
+  for (const platform of Object.keys(SOCIAL_FIELD_NAMES) as SocialPlatform[]) {
+    const url = String(formData.get(SOCIAL_FIELD_NAMES[platform]) ?? "").trim();
+    if (url) links.push({ label: SOCIAL_PLATFORM_LABELS[platform], url });
+  }
+
   const labels = formData.getAll("linkLabel").map(String);
   const urls = formData.getAll("linkUrl").map(String);
-
-  const links: LinkInput[] = [];
   for (let i = 0; i < Math.max(labels.length, urls.length); i++) {
     const label = (labels[i] ?? "").trim();
     const url = (urls[i] ?? "").trim();

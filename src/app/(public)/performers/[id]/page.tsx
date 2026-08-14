@@ -6,9 +6,11 @@ import FavoriteButton from "@/components/FavoriteButton";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EntityMiniCard from "@/components/EntityMiniCard";
+import SocialLinkIcons from "@/components/SocialLinkIcons";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
+import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import { CakeIcon, BuildingIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +90,20 @@ export default async function PerformerPage({
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
 
+  const recognizedLinks = performer.links
+    .map((l) => {
+      const platform = detectSocialPlatform(l.url);
+      return platform ? { platform, url: l.url } : null;
+    })
+    .filter((item): item is { platform: SocialPlatform; url: string } => !!item);
+  const socialItems = [
+    ...recognizedLinks,
+    ...(performer.mydramalistUrl
+      ? [{ platform: "mydramalist" as const, url: performer.mydramalistUrl }]
+      : []),
+  ];
+  const otherLinks = performer.links.filter((l) => !detectSocialPlatform(l.url));
+
   return (
     <div>
       <Link href="/performers" className="eyebrow text-decoration-none">
@@ -105,16 +121,20 @@ export default async function PerformerPage({
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4" style={{ maxWidth: "40rem" }}>
         {performer.photoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={performer.photoUrl}
-            alt={performer.name}
-            className="rounded-4 flex-shrink-0"
-            style={{ width: "10rem", height: "10rem", objectFit: "cover" }}
-          />
+          <div className="flex-shrink-0 d-flex flex-column gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={performer.photoUrl}
+              alt={performer.name}
+              className="rounded-4"
+              style={{ width: "10rem", height: "10rem", objectFit: "cover" }}
+            />
+            <SocialLinkIcons items={socialItems} />
+          </div>
         )}
 
         <div className="d-flex flex-column gap-2">
+          {!performer.photoUrl && <SocialLinkIcons items={socialItems} />}
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
               <CakeIcon /> <span className="text-secondary">Дата рождения:</span>{" "}
@@ -131,9 +151,9 @@ export default async function PerformerPage({
           )}
           {performer.bio && <p className="mb-0">{performer.bio}</p>}
 
-          {performer.links.length > 0 && (
+          {otherLinks.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-1">
-              {performer.links.map((l) => (
+              {otherLinks.map((l) => (
                 <a
                   key={l.id}
                   href={l.url}

@@ -19,7 +19,15 @@ bar).
   in sync separately — see [gmmtv-import.md](gmmtv-import.md).
 - `PerformerLink` is a free-form label+URL list per performer (social
   media, personal café, whatever) — no schema change needed to add a new
-  kind of link.
+  kind of link. `src/lib/socialLinks.ts`'s `detectSocialPlatform(url)`
+  recognizes Instagram/TikTok/Twitter by host regardless of what label an
+  import or admin gave the row — used to (a) show those three (plus
+  `mydramalistUrl`) as branded icon buttons under a performer's photo via
+  `SocialLinkIcons`, everything else still a plain labeled pill, and (b)
+  give `PerformerForm` three dedicated Instagram/TikTok/Twitter fields
+  instead of lumping them into the generic add-a-link list — purely a
+  form-UI split, `getLinks` in `performers/actions.ts` merges them back
+  into the same `PerformerLink` rows on save, no separate schema field.
 - The admin performers list (`/admin/performers`) shares the public list's
   `AlphabetIndexList` layout (see below) plus a `NameSearchBox` search and
   a photo per row, instead of a plain unsorted list — same component, just

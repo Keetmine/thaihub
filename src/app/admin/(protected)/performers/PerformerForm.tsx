@@ -11,6 +11,7 @@ import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
 import type { PairingStatus } from "@/generated/prisma/client";
+import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 
 export type PerformerLinkInput = { label: string; url: string };
 export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
@@ -91,8 +92,18 @@ export default function PerformerForm({
       ? "general"
       : activeTab;
 
+  // Instagram/TikTok/Twitter get their own fields below (recognized by URL,
+  // not label) — everything else stays in the free-form list.
+  const socialDefaults: Partial<Record<SocialPlatform, string>> = {};
+  const genericLinkDefaults: PerformerLinkInput[] = [];
+  for (const l of v?.links ?? []) {
+    const platform = detectSocialPlatform(l.url);
+    if (platform) socialDefaults[platform] = l.url;
+    else genericLinkDefaults.push(l);
+  }
+
   const [links, setLinks] = useState<PerformerLinkInput[]>(
-    v?.links && v.links.length > 0 ? v.links : [{ label: "", url: "" }],
+    genericLinkDefaults.length > 0 ? genericLinkDefaults : [{ label: "", url: "" }],
   );
 
   function addLink() {
@@ -265,8 +276,41 @@ export default function PerformerForm({
           />
         </div>
 
+        <div className="row g-3">
+          <div className="col-12 col-md-4">
+            <label className="form-label">Instagram</label>
+            <input
+              type="url"
+              name="instagramUrl"
+              defaultValue={socialDefaults.instagram}
+              placeholder="https://instagram.com/…"
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <label className="form-label">TikTok</label>
+            <input
+              type="url"
+              name="tiktokUrl"
+              defaultValue={socialDefaults.tiktok}
+              placeholder="https://tiktok.com/@…"
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <label className="form-label">Twitter</label>
+            <input
+              type="url"
+              name="twitterUrl"
+              defaultValue={socialDefaults.twitter}
+              placeholder="https://x.com/…"
+              className="form-control"
+            />
+          </div>
+        </div>
+
         <div>
-          <label className="form-label d-block">Ссылки</label>
+          <label className="form-label d-block">Другие ссылки</label>
           <div className="d-flex flex-column gap-2">
             {links.map((link, i) => (
               <div key={i} className="row g-2 align-items-center">
