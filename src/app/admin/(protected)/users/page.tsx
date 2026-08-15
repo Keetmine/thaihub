@@ -88,7 +88,7 @@ export default async function AdminUsersPage({
             Использованы:{" "}
             {invites
               .filter((i) => i.usedAt)
-              .map((i) => `${i.code} → ${i.usedBy?.name || i.usedBy?.email || "?"}`)
+              .map((i) => `${i.code} → ${i.usedBy?.name || i.usedBy?.email || "удалённый аккаунт"}`)
               .join(", ")}
           </p>
         )}
