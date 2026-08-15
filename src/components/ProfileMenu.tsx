@@ -8,7 +8,7 @@ import { UserIcon } from "./icons";
 export type ProfileMenuUser = {
   id: string;
   name: string | null;
-  email: string;
+  email: string | null;
   photoUrl: string | null;
 };
 
@@ -65,6 +65,13 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
             onClick={() => setOpen(false)}
           >
             Мои события
+          </Link>
+          <Link
+            href="/trips"
+            className="profile-menu-item"
+            onClick={() => setOpen(false)}
+          >
+            Мои поездки
           </Link>
           <Link
             href="/account/settings"

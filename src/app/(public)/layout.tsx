@@ -56,6 +56,11 @@ export default async function PublicLayout({ children }: { children: React.React
             <NavLink href="/locations" matchPrefixes={["/locations/"]}>
               Локации
             </NavLink>
+            {user && (
+              <NavLink href="/trips" matchPrefixes={["/trips/"]}>
+                Поездки
+              </NavLink>
+            )}
             <SearchForm />
             {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
             {isAdmin && <ModeToggle active="site" />}
@@ -72,6 +77,11 @@ export default async function PublicLayout({ children }: { children: React.React
             <NavLink href="/locations" matchPrefixes={["/locations/"]}>
               Локации
             </NavLink>
+            {user && (
+              <NavLink href="/trips" matchPrefixes={["/trips/"]}>
+                Поездки
+              </NavLink>
+            )}
           </div>
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">

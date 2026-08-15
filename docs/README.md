@@ -1,6 +1,6 @@
-# ThaiHub docs
+# MyBLHub docs
 
-ThaiHub is a personal fan-tracker for Thai BL (Boys Love) actors/pairings,
+MyBLHub is a personal fan-tracker for Thai BL (Boys Love) actors/pairings,
 their dramas, and real-world events (concerts, fan meets). Single Next.js
 app, Postgres via Prisma, one shared admin password + real per-user
 accounts for everyone else.
@@ -28,6 +28,8 @@ something changes, edit the doc in place rather than appending a note.
   - [wikipedia-agency-import.md](features/wikipedia-agency-import.md) — talent-agency importer (official MediaWiki API, not scraping)
   - [tpop-band-import.md](features/tpop-band-import.md) — idol-group importer from tpop.fandom.com (official MediaWiki API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator
+  - [trips.md](features/trips.md) — user trips: a date range showing every event inside it
+  - [telegram-notifications.md](features/telegram-notifications.md) — bot reminders for upcoming events
   - [search.md](features/search.md) — cross-entity search
   - [duplicates.md](features/duplicates.md) — duplicate-name warnings + the admin merge tool
   - [auth.md](features/auth.md) — admin password gate + real user accounts

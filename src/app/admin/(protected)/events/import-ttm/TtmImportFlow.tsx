@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
+import DatePickerInput from "@/components/DatePickerInput";
 import {
   scrapeTtmEventPreview,
   createEventFromTtmImport,
@@ -162,13 +163,7 @@ export default function TtmImportFlow({
       <div className="row g-3">
         <div className="col-12 col-sm-4">
           <label className="form-label">Дата *</label>
-          <input
-            type="date"
-            name="date"
-            required
-            defaultValue={preview.date}
-            className="form-control"
-          />
+          <DatePickerInput name="date" required defaultValue={preview.date} />
         </div>
         <div className="col-6 col-sm-4">
           <label className="form-label">Начало *</label>
@@ -192,12 +187,7 @@ export default function TtmImportFlow({
             <div key={i} className="row g-2 align-items-center">
               <div className="col-12 col-sm-4">
                 <label className="form-label small text-secondary">Ещё день</label>
-                <input
-                  type="date"
-                  value={d}
-                  onChange={(e) => updateExtraDate(i, e.target.value)}
-                  className="form-control"
-                />
+                <DatePickerInput value={d} onValueChange={(next) => updateExtraDate(i, next)} />
               </div>
               <div className="col-auto" style={{ marginTop: "1.75rem" }}>
                 <button
@@ -257,12 +247,7 @@ export default function TtmImportFlow({
           <div className="row g-3 mt-1">
             <div className="col-12 col-sm-4">
               <label className="form-label">Дата открытия продаж</label>
-              <input
-                type="date"
-                name="presaleDate"
-                defaultValue={preview.presaleDate}
-                className="form-control"
-              />
+              <DatePickerInput name="presaleDate" defaultValue={preview.presaleDate} />
             </div>
             <div className="col-12 col-sm-4">
               <label className="form-label">Время</label>

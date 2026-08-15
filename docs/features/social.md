@@ -90,3 +90,26 @@ block with mini-cards instead of a text line, since it has more room.
 Friend mini-cards on the event detail page link to `/friends` — there's
 no individual public user-profile page to deep-link to, so this is
 intentionally the closest existing destination rather than a dead link.
+
+## Public user profiles
+
+`/users/[id]` (`(public)/users/[id]/page.tsx`) — any logged-in user can
+open anyone's profile (own id redirects to `/account`): avatar, name, a
+«Ваш друг» badge when applicable, member-since + counts, the trips this
+*viewer* is allowed to see (PUBLIC always, FRIENDS only for the owner's
+accepted friends — same rules as the trip page itself), favorite
+performers as `EntityMiniCard`s, and the upcoming events the person is
+going to — the latter only when the **viewer** has premium (events are
+subscription-gated; non-premium viewers see just the count). Linked from
+every `UserRow` on `/friends` (avatar+name are the link) and from the
+"Поездка пользователя X" note on a shared trip page. A friend's shared
+trips are shown *only* here — `/friends` itself no longer lists them.
+
+## Account page event grouping
+
+The account tabs show a multi-day event as **one row with a combined
+date list** («16, 17, 18 октября 2026», `formatCombinedDateList`) —
+`AccountEventEntry` in `AccountTabs.tsx`, built per *event* rather than
+per occurrence. Per-date splitting stays only where lists are sorted by
+date (the home афиша, day view, calendar, trip pages). An event counts
+as upcoming until its **last** date has passed.

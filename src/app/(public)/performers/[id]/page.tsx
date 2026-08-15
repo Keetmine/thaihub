@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import SocialLinkIcons from "@/components/SocialLinkIcons";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
@@ -13,6 +14,7 @@ import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { performerHref, parsePerformerIdFromParam } from "@/lib/performerSlug";
+import { dramaHref } from "@/lib/dramaSlug";
 import { CakeIcon, BuildingIcon, PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -120,7 +122,7 @@ export default async function PerformerPage({
       <Link href="/performers" className="eyebrow text-decoration-none">
         ← Все исполнители
       </Link>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           {performer.name}{" "}
           {performer.realName && (
@@ -187,7 +189,7 @@ export default async function PerformerPage({
                     className="flex-shrink-0"
                     style={{ width: "8.5rem", position: "relative" }}
                   >
-                    <Link href={`/dramas/${pd.dramaId}`} className="text-decoration-none d-block">
+                    <Link href={dramaHref(pd.drama)} className="text-decoration-none d-block">
                       <div
                         style={{
                           position: "relative",
@@ -349,15 +351,23 @@ export default async function PerformerPage({
       {upcoming.length === 0 ? (
         <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4">
+        <div className="d-flex flex-column gap-3 mb-4">
           {upcoming.map((ev) => (
-            <EventAgendaRow
+            currentUser?.isPremium ? (
+
+              <EventAgendaRow
               key={ev.occurrenceId}
               event={ev}
               isFavorited={favoritedEventIds.has(ev.id)}
               isGoing={goingEventIds.has(ev.id)}
               showDate
             />
+
+            ) : (
+
+              <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+
+            )
           ))}
         </div>
       )}
@@ -367,15 +377,23 @@ export default async function PerformerPage({
           <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
             Прошедшие
           </h2>
-          <div className="d-flex flex-column gap-2 opacity-50 mb-4">
+          <div className="d-flex flex-column gap-3 opacity-50 mb-4">
             {past.map((ev) => (
-              <EventAgendaRow
+              currentUser?.isPremium ? (
+
+                <EventAgendaRow
                 key={ev.occurrenceId}
                 event={ev}
                 isFavorited={favoritedEventIds.has(ev.id)}
                 isGoing={goingEventIds.has(ev.id)}
                 showDate
               />
+
+              ) : (
+
+                <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+
+              )
             ))}
           </div>
         </>

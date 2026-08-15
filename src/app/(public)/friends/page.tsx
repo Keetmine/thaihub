@@ -11,19 +11,21 @@ import { sendFriendRequest, acceptFriendRequest, removeFriendship } from "./acti
 export const dynamic = "force-dynamic";
 
 function UserRow({
+  userId,
   name,
   email,
   photoUrl,
   action,
 }: {
+  userId: string;
   name: string | null;
-  email: string;
+  email: string | null;
   photoUrl: string | null;
   action: React.ReactNode;
 }) {
   return (
     <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
-      <div className="d-flex align-items-center gap-3">
+      <Link href={`/users/${userId}`} className="text-decoration-none d-flex align-items-center gap-3">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -45,7 +47,7 @@ function UserRow({
           <p className="font-display fw-medium text-white mb-0">{name || email}</p>
           {name && <p className="small text-secondary mb-0">{email}</p>}
         </div>
-      </div>
+      </Link>
       {action}
     </div>
   );
@@ -92,7 +94,7 @@ export default async function FriendsPage({
   return (
     <div>
       <span className="eyebrow">Профиль</span>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
         Друзья
       </h1>
 
@@ -114,6 +116,7 @@ export default async function FriendsPage({
               {searchResults.map((u) => (
                 <UserRow
                   key={u.id}
+                  userId={u.id}
                   name={u.name}
                   email={u.email}
                   photoUrl={u.photoUrl}
@@ -141,6 +144,7 @@ export default async function FriendsPage({
             {incoming.map((f) => (
               <UserRow
                 key={f.id}
+                userId={other(f).id}
                 name={other(f).name}
                 email={other(f).email}
                 photoUrl={other(f).photoUrl}
@@ -153,7 +157,7 @@ export default async function FriendsPage({
                       pendingLabel="…"
                     />
                     <ConfirmForm
-                      action={() => removeFriendship(f.id)}
+                      action={removeFriendship.bind(null, f.id)}
                       confirmMessage="Отклонить заявку в друзья?"
                     >
                       <button type="button" className="icon-btn icon-btn-danger" aria-label="Отклонить">
@@ -177,12 +181,13 @@ export default async function FriendsPage({
             {outgoing.map((f) => (
               <UserRow
                 key={f.id}
+                userId={other(f).id}
                 name={other(f).name}
                 email={other(f).email}
                 photoUrl={other(f).photoUrl}
                 action={
                   <ConfirmForm
-                    action={() => removeFriendship(f.id)}
+                    action={removeFriendship.bind(null, f.id)}
                     confirmMessage="Отменить заявку в друзья?"
                   >
                     <button type="button" className="btn btn-outline-secondary btn-sm">
@@ -206,12 +211,13 @@ export default async function FriendsPage({
           {accepted.map((f) => (
             <UserRow
               key={f.id}
+              userId={other(f).id}
               name={other(f).name}
               email={other(f).email}
               photoUrl={other(f).photoUrl}
               action={
                 <ConfirmForm
-                  action={() => removeFriendship(f.id)}
+                  action={removeFriendship.bind(null, f.id)}
                   confirmMessage={`Удалить «${other(f).name || other(f).email}» из друзей?`}
                 >
                   <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить из друзей">

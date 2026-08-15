@@ -25,7 +25,7 @@ function categoryOf(key: string): "digit" | "en" | "ru" {
   return /[A-Z]/.test(key) ? "en" : "ru";
 }
 
-type View = "performers" | "bands" | "pairings" | "agencies";
+type View = "performers" | "bands" | "agencies";
 
 function Tabs({ active }: { active: View }) {
   return (
@@ -43,13 +43,6 @@ function Tabs({ active }: { active: View }) {
         className={`tab-bar-item ${active === "bands" ? "active" : ""}`}
       >
         Музыкальные группы
-      </Link>
-      <Link
-        href="/performers?view=pairings"
-        prefetch={false}
-        className={`tab-bar-item ${active === "pairings" ? "active" : ""}`}
-      >
-        Пейринги
       </Link>
       <Link
         href="/performers?view=agencies"
@@ -131,62 +124,6 @@ async function AgenciesTab({ q }: { q: string }) {
             variant="icon"
             className="flex-shrink-0"
           />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-async function PairingsTab({ q }: { q: string }) {
-  const pairings = await prisma.pairing.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { performerA: { name: { contains: q, mode: "insensitive" } } },
-            { performerB: { name: { contains: q, mode: "insensitive" } } },
-          ],
-        }
-      : undefined,
-    include: { performerA: true, performerB: true },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-  });
-
-  if (pairings.length === 0) {
-    return <p className="text-secondary">Пока нет пейрингов.</p>;
-  }
-
-  return (
-    <div className="row g-3">
-      {pairings.map((pair) => (
-        <div key={pair.id} className="col-12 col-sm-6 col-lg-4">
-          <div className={`surface p-3 h-100 ${pair.status === "PAST" ? "opacity-50" : ""}`}>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              {pair.name && (
-                <p className="font-display fw-medium text-white mb-0">{pair.name}</p>
-              )}
-              {pair.status === "PAST" && (
-                <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.65rem" }}>
-                  Бывший
-                </span>
-              )}
-            </div>
-            <div className="d-flex flex-wrap align-items-center gap-2">
-              <Link
-                href={performerHref(pair.performerA)}
-                className="event-chip text-decoration-none"
-              >
-                {pair.performerA.name}
-              </Link>
-              <span className="text-secondary">×</span>
-              <Link
-                href={performerHref(pair.performerB)}
-                className="event-chip text-decoration-none"
-              >
-                {pair.performerB.name}
-              </Link>
-            </div>
-          </div>
         </div>
       ))}
     </div>
@@ -350,22 +287,16 @@ export default async function PerformersPage({
 }) {
   const { view: rawView, q: rawQ } = await searchParams;
   const view: View =
-    rawView === "bands"
-      ? "bands"
-      : rawView === "pairings"
-        ? "pairings"
-        : rawView === "agencies"
-          ? "agencies"
-          : "performers";
+    rawView === "bands" ? "bands" : rawView === "agencies" ? "agencies" : "performers";
   const q = (rawQ ?? "").trim();
-  const currentUser = view === "pairings" || view === "agencies" ? null : await getCurrentUser();
+  const currentUser = view === "agencies" ? null : await getCurrentUser();
 
   // The catalog has grown into the thousands of performers — loading and
   // rendering all of them by default made the page painfully slow. Without
   // a search term, show only what's already favorited; the full catalog
   // is reachable through search instead of one giant always-rendered list.
   const searchResults =
-    view === "pairings" || view === "agencies" || !q
+    view === "agencies" || !q
       ? null
       : await prisma.performer.findMany({
           where: { type: view === "bands" ? "BAND" : "SOLO", name: { contains: q, mode: "insensitive" } },
@@ -376,7 +307,7 @@ export default async function PerformersPage({
   const searchTruncated = !!searchResults && searchResults.length > SEARCH_RESULT_LIMIT;
 
   const performers =
-    view === "pairings" || view === "agencies"
+    view === "agencies"
       ? []
       : searchResults
         ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
@@ -402,14 +333,13 @@ export default async function PerformersPage({
   const titles: Record<View, string> = {
     performers: "Актёры",
     bands: "Музыкальные группы",
-    pairings: "Пейринги",
     agencies: "Агентства",
   };
 
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
         {titles[view]}
       </h1>
 
@@ -424,9 +354,7 @@ export default async function PerformersPage({
         />
       </div>
 
-      {view === "pairings" ? (
-        <PairingsTab q={q} />
-      ) : view === "agencies" ? (
+      {view === "agencies" ? (
         <AgenciesTab q={q} />
       ) : (
         <>

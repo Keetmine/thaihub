@@ -30,6 +30,9 @@ export async function changePassword(formData: FormData) {
   const newPassword = String(formData.get("newPassword") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
+  if (!user.passwordHash) {
+    throw new Error("Аккаунт создан через Telegram — пароля у него нет");
+  }
   if (!verifyPassword(currentPassword, user.passwordHash)) {
     throw new Error("Неверный текущий пароль");
   }

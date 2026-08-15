@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import EntitySelect from "@/components/EntitySelect";
 import FileDropzone from "@/components/FileDropzone";
-import { createPerformerAndReturn } from "../performers/actions";
+import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
+import DatePickerInput from "@/components/DatePickerInput";
 
 type PairingOption = {
   id: string;
@@ -139,13 +140,11 @@ export default function EventForm({
               <input type="hidden" name="occurrenceId" value={o.id} />
               <div className="col-12 col-sm-4">
                 {i === 0 && <label className="form-label small text-secondary">Дата *</label>}
-                <input
-                  type="date"
+                <DatePickerInput
                   name="occurrenceDate"
                   required
                   value={o.date}
-                  onChange={(e) => updateOccurrence(i, { date: e.target.value })}
-                  className="form-control"
+                  onValueChange={(date) => updateOccurrence(i, { date })}
                 />
               </div>
               <div className="col-5 col-sm-3">
@@ -220,7 +219,7 @@ export default function EventForm({
           defaultSelectedIds={v?.performerIds}
           placeholder="Начните вводить имя исполнителя…"
           createLabel="Создать исполнителя"
-          emptyMessage="Нет добавленных исполнителей. Начните вводить имя, чтобы создать нового."
+          searchOptions={searchPerformerOptions}
           onCreateNew={async (query) => {
             const created = await createPerformerAndReturn(query);
             return { id: created.id, name: created.name, photoUrl: null };
@@ -259,12 +258,7 @@ export default function EventForm({
           <div className="row g-3 mt-1">
             <div className="col-12 col-sm-4">
               <label className="form-label">Дата препродажи</label>
-              <input
-                type="date"
-                name="presaleDate"
-                defaultValue={v?.presaleDate}
-                className="form-control"
-              />
+              <DatePickerInput name="presaleDate" defaultValue={v?.presaleDate} />
             </div>
             <div className="col-12 col-sm-4">
               <label className="form-label">Время препродажи</label>
