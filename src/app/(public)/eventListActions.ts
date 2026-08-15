@@ -1,6 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "@/lib/userAuth";
+import { isPremiumActive } from "@/lib/premium";
 import {
   fetchEventListPage,
   type EventListFilters,
@@ -15,5 +16,5 @@ export async function loadEventListPage(
   offset: number,
 ): Promise<EventListPage> {
   const user = await getCurrentUser();
-  return fetchEventListPage(user?.id ?? null, !!user?.isPremium, filters, phase, offset);
+  return fetchEventListPage(user?.id ?? null, isPremiumActive(user), filters, phase, offset);
 }

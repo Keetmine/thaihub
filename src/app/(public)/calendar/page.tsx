@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import { isPremiumActive } from "@/lib/premium";
 
 export default async function CalendarPage({
   searchParams,
@@ -22,7 +23,7 @@ export default async function CalendarPage({
 
   // Календарь — платная функция (см. PremiumUpsell / /admin/users).
   const gateUser = await getCurrentUser();
-  if (!gateUser?.isPremium) {
+  if (!isPremiumActive(gateUser)) {
     return (
       <div>
         <span className="eyebrow">Афиша событий</span>

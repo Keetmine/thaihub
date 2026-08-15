@@ -81,3 +81,46 @@ export async function sendUpcomingEventReminders(): Promise<{ sent: number; skip
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+const EXPIRY_WARN_DAYS = 3;
+
+/**
+ * Напоминание «подписка заканчивается через N дней» в Telegram. Дедуп —
+ * premiumExpiryNotifiedFor: помним, для какого premiumUntil уже слали
+ * (после продления дата меняется, и напоминание сработает снова).
+ */
+export async function sendPremiumExpiryReminders(): Promise<number> {
+  const now = new Date();
+  const warnBefore = new Date(now.getTime() + EXPIRY_WARN_DAYS * 24 * 60 * 60 * 1000);
+
+  const expiring = await prisma.user.findMany({
+    where: {
+      telegramId: { not: null },
+      premiumUntil: { gt: now, lte: warnBefore },
+    },
+  });
+
+  let sent = 0;
+  for (const user of expiring) {
+    if (user.premiumExpiryNotifiedFor?.getTime() === user.premiumUntil!.getTime()) continue;
+    try {
+      const dateStr = user.premiumUntil!.toLocaleDateString("ru-RU", {
+        day: "numeric",
+        month: "long",
+      });
+      const appUrl = process.env.APP_URL || "";
+      await sendTelegramMessage(
+        user.telegramId!,
+        `⏳ Подписка MyBLHub заканчивается ${dateStr}. Продлите, чтобы не потерять афишу, календарь и поездки.${appUrl ? `\n${appUrl}` : ""}`,
+      );
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { premiumExpiryNotifiedFor: user.premiumUntil },
+      });
+      sent += 1;
+    } catch (err) {
+      console.warn(`premium expiry reminder failed (user ${user.id}): ${err instanceof Error ? err.message : err}`);
+    }
+  }
+  return sent;
+}

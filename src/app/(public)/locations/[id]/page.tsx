@@ -10,6 +10,7 @@ import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -139,7 +140,7 @@ export default async function LocationDetailPage({
               </h2>
               <div className="d-flex flex-column gap-3">
                 {locationEvents.map((ev) => (
-                  currentUser?.isPremium ? (
+                  isPremiumActive(currentUser) ? (
 
                     <EventAgendaRow
                     key={ev.occurrenceId}

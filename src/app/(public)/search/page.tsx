@@ -8,6 +8,7 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +117,7 @@ export default async function SearchPage({
           <Section title="События" count={events.length}>
             <div className="d-flex flex-column gap-3">
               {events.map((ev) => (
-                currentUser?.isPremium ? (
+                isPremiumActive(currentUser) ? (
 
                   <EventAgendaRow
                   key={ev.occurrenceId}

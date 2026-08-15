@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildFeedICS } from "@/lib/ics";
+import { isPremiumActive } from "@/lib/premium";
 
 // Public by design (no session cookie) — calendar apps poll this on their
 // own, so the unguessable token in the URL *is* the credential.
@@ -13,7 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   // Подписка на календарь — часть платного «расписания»: у кого флаг
   // сняли, у того фид перестаёт отдаваться (календарные приложения
   // просто увидят 403 при следующем опросе).
-  if (!user.isPremium) {
+  if (!isPremiumActive(user)) {
     return new NextResponse("Доступно по подписке", { status: 403 });
   }
 

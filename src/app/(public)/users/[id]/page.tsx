@@ -9,6 +9,7 @@ import { eventHref } from "@/lib/eventSlug";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { CalendarIcon, PinIcon } from "@/components/icons";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
         Идёт на события
       </h2>
-      {!viewer.isPremium ? (
+      {!isPremiumActive(viewer) ? (
         <p className="small text-secondary mb-4">
           🔒 {upcomingGoing.length > 0 ? `Событий: ${upcomingGoing.length} — с` : "С"}писки событий
           доступны по подписке.

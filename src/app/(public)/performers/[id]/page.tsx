@@ -16,6 +16,7 @@ import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { performerHref, parsePerformerIdFromParam } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { CakeIcon, BuildingIcon, PinIcon } from "@/components/icons";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -353,7 +354,7 @@ export default async function PerformerPage({
       ) : (
         <div className="d-flex flex-column gap-3 mb-4">
           {upcoming.map((ev) => (
-            currentUser?.isPremium ? (
+            isPremiumActive(currentUser) ? (
 
               <EventAgendaRow
               key={ev.occurrenceId}
@@ -379,7 +380,7 @@ export default async function PerformerPage({
           </h2>
           <div className="d-flex flex-column gap-3 opacity-50 mb-4">
             {past.map((ev) => (
-              currentUser?.isPremium ? (
+              isPremiumActive(currentUser) ? (
 
                 <EventAgendaRow
                 key={ev.occurrenceId}

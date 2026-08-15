@@ -12,6 +12,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import { VisibilitySelect } from "../TripVisibilityControls";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function TripPage({
   const isOwner = trip.userId === user.id;
   // Управление поездкой (видимость, личные события) — часть платного
   // функционала; владелец без подписки видит свою поездку read-only.
-  const canManage = isOwner && user.isPremium;
+  const canManage = isOwner && isPremiumActive(user);
   if (!isOwner) {
     if (trip.visibility === "PRIVATE") notFound();
     if (trip.visibility === "FRIENDS") {

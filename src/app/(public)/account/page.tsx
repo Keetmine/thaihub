@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import AccountTabs, { type AccountTab, type AccountEventEntry } from "./AccountTabs";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,7 @@ export default async function AccountPage({
           email: user.email,
           telegramUsername: user.telegramUsername,
           photoUrl: user.photoUrl,
-          isPremium: user.isPremium,
+          isPremium: isPremiumActive(user),
           createdAt: user.createdAt,
         }}
         stats={{
@@ -101,10 +102,10 @@ export default async function AccountPage({
           friends: friendIds.length,
           trips: tripsCount,
         }}
-        upcomingAttendances={user.isPremium ? upcomingAttendances : []}
-        pastAttendances={user.isPremium ? pastAttendances : []}
-        favoriteEvents={user.isPremium ? favoriteEvents : []}
-        eventsLocked={!user.isPremium}
+        upcomingAttendances={isPremiumActive(user) ? upcomingAttendances : []}
+        pastAttendances={isPremiumActive(user) ? pastAttendances : []}
+        favoriteEvents={isPremiumActive(user) ? favoriteEvents : []}
+        eventsLocked={!isPremiumActive(user)}
       />
     </div>
   );

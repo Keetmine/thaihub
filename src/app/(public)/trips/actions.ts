@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { combineDateTime } from "@/lib/dates";
 import type { TripVisibility } from "@/generated/prisma/client";
+import { isPremiumActive } from "@/lib/premium";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -14,7 +15,7 @@ function parseVisibility(raw: unknown): TripVisibility {
 export async function createTrip(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!user.isPremium) throw new Error("Поездки доступны по подписке");
+  if (!isPremiumActive(user)) throw new Error("Поездки доступны по подписке");
 
   const title = String(formData.get("title") ?? "").trim();
   const startDate = String(formData.get("startDate") ?? "");
@@ -56,7 +57,7 @@ export async function deleteTrip(tripId: string) {
 export async function setTripVisibility(tripId: string, visibility: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!user.isPremium) throw new Error("Поездки доступны по подписке");
+  if (!isPremiumActive(user)) throw new Error("Поездки доступны по подписке");
   await prisma.trip.updateMany({
     where: { id: tripId, userId: user.id },
     data: { visibility: parseVisibility(visibility) },
@@ -73,7 +74,7 @@ export async function setTripVisibility(tripId: string, visibility: string) {
 async function requireOwnTrip(tripId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!user.isPremium) throw new Error("Поездки доступны по подписке");
+  if (!isPremiumActive(user)) throw new Error("Поездки доступны по подписке");
   const trip = await prisma.trip.findUnique({ where: { id: tripId } });
   if (!trip || trip.userId !== user.id) throw new Error("Поездка не найдена");
   return trip;

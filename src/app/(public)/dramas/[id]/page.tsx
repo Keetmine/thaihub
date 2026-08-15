@@ -13,6 +13,7 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { parseDramaIdFromParam } from "@/lib/dramaSlug";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -226,7 +227,7 @@ export default async function DramaDetailPage({
           </h2>
           <div className="d-flex flex-column gap-3">
             {events.map((ev) => (
-              currentUser?.isPremium ? (
+              isPremiumActive(currentUser) ? (
 
                 <EventAgendaRow
                 key={ev.occurrenceId}

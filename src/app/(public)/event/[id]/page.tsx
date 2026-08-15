@@ -13,6 +13,7 @@ import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { parseEventIdFromParam } from "@/lib/eventSlug";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function EventDetailPage({
   // События целиком за подпиской: без неё страница не раскрывает ничего,
   // кроме факта существования и дат (название/площадка/состав не
   // рендерятся вовсе — в HTML их нет).
-  if (!currentUser?.isPremium) {
+  if (!isPremiumActive(currentUser)) {
     return (
       <div>
         <Link href="/" className="eyebrow text-decoration-none">

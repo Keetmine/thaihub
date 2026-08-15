@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildEventICS, buildPresaleICS } from "@/lib/ics";
 import { getCurrentUser } from "@/lib/userAuth";
+import { isPremiumActive } from "@/lib/premium";
 
 export async function GET(
   request: Request,
@@ -11,7 +12,7 @@ export async function GET(
   // из браузера, кука сессии при этом есть; маршрут остаётся вне
   // login-гейта proxy.ts, но проверяет доступ сам).
   const user = await getCurrentUser();
-  if (!user?.isPremium) {
+  if (!isPremiumActive(user)) {
     return new NextResponse("Доступно по подписке", { status: 403 });
   }
 

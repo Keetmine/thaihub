@@ -7,6 +7,7 @@ import CreateTripButton from "./CreateTripButton";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { CalendarIcon } from "@/components/icons";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function TripsPage() {
   if (!user) redirect("/login");
 
   // Поездки целиком — платная функция (см. PremiumUpsell / /admin/users).
-  if (!user.isPremium) {
+  if (!isPremiumActive(user)) {
     return (
       <div>
         <span className="eyebrow">Планирование</span>

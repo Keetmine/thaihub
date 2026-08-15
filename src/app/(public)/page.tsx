@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { CalendarIcon } from "@/components/icons";
 import LandingPage from "./LandingPage";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function HomePage({
 
   // Афиша — платная функция: без подписки вместо списка сразу заглушка
   // (как на /trips). Никакие данные событий при этом не запрашиваются.
-  if (!user.isPremium) {
+  if (!isPremiumActive(user)) {
     return (
       <div>
         <div className="dot-grid pb-1">

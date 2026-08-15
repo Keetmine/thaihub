@@ -15,6 +15,7 @@ import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import { isPremiumActive } from "@/lib/premium";
 
 export default async function DayPage({
   params,
@@ -29,7 +30,7 @@ export default async function DayPage({
 
   // Дневной вид — часть календаря, т.е. платной функции.
   const currentUser = await getCurrentUser();
-  if (!currentUser?.isPremium) {
+  if (!isPremiumActive(currentUser)) {
     return (
       <div>
         <Link href="/calendar" className="eyebrow text-decoration-none">
