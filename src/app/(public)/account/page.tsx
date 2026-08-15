@@ -61,6 +61,7 @@ export default async function AccountPage({
   const toEntry = (event: EventWithOcc): AccountEventEntry => ({
     id: event.id,
     title: event.title,
+    slug: event.slug,
     venue: event.venue,
     occurrences: event.occurrences.map((o) => ({ startsAt: o.startsAt, endsAt: o.endsAt })),
   });
@@ -79,6 +80,7 @@ export default async function AccountPage({
   const attendanceEntries: AccountEventEntry[] = Array.from(byEvent.values()).map(({ event, occs }) => ({
     id: event.id,
     title: event.title,
+    slug: event.slug,
     venue: event.venue,
     occurrences: occs.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()),
   }));

@@ -8,6 +8,7 @@ import PremiumUpsell from "@/components/PremiumUpsell";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { CalendarIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
+import { tripHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export default async function TripsPage() {
               return (
                 <Link
                   key={t.id}
-                  href={`/trips/${t.id}`}
+                  href={tripHref(t)}
                   className={`surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3 ${isPast ? "opacity-50" : ""}`}
                 >
                   <div>

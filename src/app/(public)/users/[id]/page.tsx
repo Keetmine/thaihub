@@ -12,6 +12,7 @@ import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import FriendNotifyToggle from "./FriendNotifyToggle";
 import { ACHIEVEMENTS } from "@/lib/achievements";
+import { listHref, tripHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -217,7 +218,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             {trips.map((t) => (
               <Link
                 key={t.id}
-                href={`/trips/${t.id}`}
+                href={tripHref(t)}
                 className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div>
@@ -245,7 +246,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             {placeLists.map((l) => (
               <Link
                 key={l.id}
-                href={`/lists/${l.id}`}
+                href={listHref(l)}
                 className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div style={{ minWidth: 0 }}>

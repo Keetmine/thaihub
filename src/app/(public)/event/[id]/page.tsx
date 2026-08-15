@@ -10,7 +10,7 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import { CalendarIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
-import { parseEventIdFromParam } from "@/lib/eventSlug";
+import { slugOrIdWhere } from "@/lib/slugHelpers";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
 import GoingDateChips from "./GoingDateChips";
@@ -40,10 +40,8 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
-  const id = parseEventIdFromParam(rawId);
-
-  const event = await prisma.event.findUnique({
-    where: { id },
+  const event = await prisma.event.findFirst({
+    where: slugOrIdWhere(rawId),
     include: {
       performers: { include: { performer: true } },
       pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },

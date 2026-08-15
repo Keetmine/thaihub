@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
+import { agencyHref, locationHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -171,7 +172,7 @@ export default async function SearchPage({
               {locations.map((l) => (
                 <EntityMiniCard
                   key={l.id}
-                  href={`/locations/${l.id}`}
+                  href={locationHref(l)}
                   photoUrl={l.photoUrl}
                   name={l.name}
                   round={false}
@@ -185,7 +186,7 @@ export default async function SearchPage({
               {agencies.map((a) => (
                 <EntityMiniCard
                   key={a.id}
-                  href={`/agencies/${a.id}`}
+                  href={agencyHref(a)}
                   photoUrl={a.logoUrl}
                   name={a.name}
                 />

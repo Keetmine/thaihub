@@ -17,6 +17,7 @@ export type AccountTab = "profile" | "events" | "stats";
 export type AccountEventEntry = {
   id: string;
   title: string;
+  slug: string | null;
   venue: string;
   occurrences: { startsAt: Date; endsAt: Date | null }[];
 };

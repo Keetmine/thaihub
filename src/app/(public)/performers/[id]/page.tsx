@@ -13,7 +13,8 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
-import { performerHref, parsePerformerIdFromParam } from "@/lib/performerSlug";
+import { performerHref } from "@/lib/performerSlug";
+import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { CakeIcon, BuildingIcon, PinIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
@@ -26,9 +27,8 @@ export default async function PerformerPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
-  const id = parsePerformerIdFromParam(rawId);
-  const performer = await prisma.performer.findUnique({
-    where: { id },
+  const performer = await prisma.performer.findFirst({
+    where: slugOrIdWhere(rawId),
     include: {
       links: true,
       agencies: { include: { agency: true }, orderBy: { agency: { name: "asc" } } },
@@ -38,6 +38,7 @@ export default async function PerformerPage({
     },
   });
   if (!performer) notFound();
+  const id = performer.id;
   const isBand = performer.type === "BAND";
 
   const eventLinks = await prisma.eventPerformer.findMany({
@@ -170,7 +171,7 @@ export default async function PerformerPage({
               </span>{" "}
               {performer.agencies.map((pa, i) => (
                 <span key={pa.agencyId}>
-                  <Link href={`/agencies/${pa.agency.id}`} className="link-body-emphasis">
+                  <Link href={agencyHref(pa.agency)} className="link-body-emphasis">
                     {pa.agency.name}
                   </Link>
                   {i < performer.agencies.length - 1 ? ", " : ""}

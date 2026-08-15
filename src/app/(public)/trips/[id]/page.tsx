@@ -21,6 +21,7 @@ import {
   RemoveTripPlaceButton,
 } from "../TripPlacesControls";
 import { isPremiumActive } from "@/lib/premium";
+import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function TripPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const { id } = await params;
+  const { id: rawParam } = await params;
   const { view } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
   // поездки; ?view=all — все события её дат; ?view=places — «что
@@ -42,8 +43,8 @@ export default async function TripPage({
   // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
   const showPlaces = view === "places";
-  const trip = await prisma.trip.findUnique({
-    where: { id },
+  const trip = await prisma.trip.findFirst({
+    where: slugOrIdWhere(rawParam),
     include: {
       personalEvents: {
         orderBy: { startsAt: "asc" },
@@ -199,21 +200,21 @@ export default async function TripPage({
       <div className="tab-bar-row">
         <div className="tab-bar">
           <Link
-            href={`/trips/${trip.id}`}
+            href={tripHref(trip)}
             prefetch={false}
             className={`tab-bar-item ${showAll ? "" : "active"}`}
           >
             {isOwner ? "Мой план" : "План"} ({planCount})
           </Link>
           <Link
-            href={`/trips/${trip.id}?view=all`}
+            href={`${tripHref(trip)}?view=all`}
             prefetch={false}
             className={`tab-bar-item ${showAll ? "active" : ""}`}
           >
             Все события дат ({totalCount})
           </Link>
           <Link
-            href={`/trips/${trip.id}?view=places`}
+            href={`${tripHref(trip)}?view=places`}
             prefetch={false}
             className={`tab-bar-item ${showPlaces ? "active" : ""}`}
           >
@@ -256,7 +257,7 @@ export default async function TripPage({
               <div key={tl.listId} className="mb-4">
                 <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
                   <Link
-                    href={`/lists/${tl.listId}`}
+                    href={listHref(tl.list)}
                     className="small text-secondary text-uppercase text-decoration-none"
                     style={{ letterSpacing: "0.08em" }}
                   >
@@ -268,7 +269,7 @@ export default async function TripPage({
                   {tl.list.items.map((i) => (
                     <Link
                       key={i.locationId}
-                      href={`/locations/${i.location.id}`}
+                      href={locationHref(i.location)}
                       className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-2 px-3"
                     >
                       <span className="text-white">{i.location.name}</span>
@@ -290,7 +291,7 @@ export default async function TripPage({
                       key={tp.locationId}
                       className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3"
                     >
-                      <Link href={`/locations/${tp.location.id}`} className="text-decoration-none text-white">
+                      <Link href={locationHref(tp.location)} className="text-decoration-none text-white">
                         {tp.location.name}
                       </Link>
                       {isOwner && <RemoveTripPlaceButton tripId={trip.id} locationId={tp.locationId} />}
@@ -317,7 +318,7 @@ export default async function TripPage({
               {placeLocations.map((l) => (
                 <Link
                   key={l.id}
-                  href={`/locations/${l.id}`}
+                  href={locationHref(l)}
                   className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
                 >
                   {l.photoUrl ? (

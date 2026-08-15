@@ -11,6 +11,7 @@ import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
+import { slugOrIdWhere } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,10 @@ export default async function LocationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: rawParam } = await params;
 
-  const location = await prisma.location.findUnique({
-    where: { id },
+  const location = await prisma.location.findFirst({
+    where: slugOrIdWhere(rawParam),
     include: {
       dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
       events: {
@@ -35,6 +36,7 @@ export default async function LocationDetailPage({
   });
 
   if (!location) notFound();
+  const id = location.id;
 
   const currentUser = await getCurrentUser();
   let isVisited = false;

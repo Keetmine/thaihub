@@ -8,10 +8,11 @@ export type EventWithPerformers = {
   id: string;
   occurrenceId: string;
   title: string;
+  slug: string | null;
   venue: string;
   description: string | null;
   startsAt: Date;
   endsAt: Date | null;
   posterUrl: string | null;
-  performers: { performer: { id: string; name: string } }[];
+  performers: { performer: { id: string; name: string; slug: string | null } }[];
 };

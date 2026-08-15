@@ -88,6 +88,7 @@ export async function fetchEventListPage(
       id: "",
       occurrenceId: ev.occurrenceId,
       title: "",
+      slug: null,
       venue: "",
       description: null,
       posterUrl: null,

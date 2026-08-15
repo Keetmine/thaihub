@@ -10,7 +10,7 @@ export type StatsForTab = {
   upcomingEvents: number;
   uniqueVenues: number;
   performersSeenLive: number;
-  topPerformers: { id: string; name: string; photoUrl: string | null; count: number }[];
+  topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
   completedDramas: number;

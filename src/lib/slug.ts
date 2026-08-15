@@ -1,11 +1,30 @@
-// Shared slugify used by performerSlug.ts/dramaSlug.ts/eventSlug.ts — every
-// public detail URL follows the same TMDB-style `/{section}/{cuid}-{slug}`
-// scheme (see performerSlug.ts for the full rationale).
+// Единая слагификация всех публичных URL. Кириллица транслитерируется
+// (поездка «Бангкок, октябрь» → bangkok-oktyabr), диакритика
+// снимается, остальное - на дефисы. Пустой результат (например,
+// название только на тайском) означает «слага нет» — вызывающие
+// откатываются на id.
+const CYRILLIC: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh",
+  з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o",
+  п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts",
+  ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu",
+  я: "ya",
+};
+
 export function slugify(text: string): string {
   return text
+    .toLowerCase()
+    .replace(/[а-яё]/g, (ch) => CYRILLIC[ch] ?? "")
     .normalize("NFKD")
     .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+/** Короткий суффикс уникальности для пользовательского контента
+ *  (поездки/списки): названия там повторяются постоянно, а нумерация
+ *  -2/-3 раскрывала бы чужие количества. 4 знака base36 читабельны и
+ *  дают ~1.7 млн вариантов. */
+export function shortCode(): string {
+  return Math.random().toString(36).slice(2, 6).padEnd(4, "0");
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import CreateListButton from "./CreateListButton";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
+import { listHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function ListsPage() {
             {lists.map((l) => (
               <Link
                 key={l.id}
-                href={`/lists/${l.id}`}
+                href={listHref(l)}
                 className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div style={{ minWidth: 0 }}>

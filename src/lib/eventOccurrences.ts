@@ -7,10 +7,11 @@ type OccurrenceWithEvent = {
   event: {
     id: string;
     title: string;
+    slug: string | null;
     venue: string;
     description: string | null;
     posterUrl: string | null;
-    performers: { performer: { id: string; name: string } }[];
+    performers: { performer: { id: string; name: string; slug: string | null } }[];
   };
 };
 
@@ -22,6 +23,7 @@ export function flattenOccurrence(occ: OccurrenceWithEvent): EventWithPerformers
     id: occ.event.id,
     occurrenceId: occ.id,
     title: occ.event.title,
+    slug: occ.event.slug,
     venue: occ.event.venue,
     description: occ.event.description,
     posterUrl: occ.event.posterUrl,

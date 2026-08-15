@@ -15,6 +15,11 @@ datasource db {
 model Event {
   id          String   @id @default(cuid())
   title       String
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
+  // каталожные — из названия с нумерацией при совпадении, поездки и
+  // списки — название + короткий код. null — слаг не сгенерирован
+  // (например, тайское название), ссылки откатываются на id.
+  slug           String?  @unique
   venue       String
   description String?
   presaleAt   DateTime?
@@ -64,6 +69,11 @@ model EventOccurrence {
 model Performer {
   id             String   @id @default(cuid())
   name           String
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
+  // каталожные — из названия с нумерацией при совпадении, поездки и
+  // списки — название + короткий код. null — слаг не сгенерирован
+  // (например, тайское название), ссылки откатываются на id.
+  slug           String?  @unique
   type           PerformerType @default(SOLO)
 
   // Profile fields (populated manually or via mydramalist import).
@@ -113,6 +123,11 @@ enum PerformerType {
 model Agency {
   id          String      @id @default(cuid())
   name        String      @unique
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
+  // каталожные — из названия с нумерацией при совпадении, поездки и
+  // списки — название + короткий код. null — слаг не сгенерирован
+  // (например, тайское название), ссылки откатываются на id.
+  slug           String?  @unique
   logoUrl     String?
   description String?
   performers  PerformerAgency[]
@@ -173,6 +188,11 @@ model EventPerformer {
 model Drama {
   id             String       @id @default(cuid())
   title          String
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
+  // каталожные — из названия с нумерацией при совпадении, поездки и
+  // списки — название + короткий код. null — слаг не сгенерирован
+  // (например, тайское название), ссылки откатываются на id.
+  slug           String?  @unique
   mydramalistUrl String?
   posterUrl      String?
   synopsis       String?
@@ -218,6 +238,11 @@ enum DramaStatus {
 model Location {
   id          String   @id @default(cuid())
   name        String
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
+  // каталожные — из названия с нумерацией при совпадении, поездки и
+  // списки — название + короткий код. null — слаг не сгенерирован
+  // (например, тайское название), ссылки откатываются на id.
+  slug           String?  @unique
   description String?
   photoUrl    String?
   latitude    Float?
@@ -383,6 +408,11 @@ model User {
 model Trip {
   id        String   @id @default(cuid())
   userId    String
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
+  // каталожные — из названия с нумерацией при совпадении, поездки и
+  // списки — название + короткий код. null — слаг не сгенерирован
+  // (например, тайское название), ссылки откатываются на id.
+  slug           String?  @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   startDate DateTime
@@ -432,6 +462,11 @@ model TripPersonalEvent {
 model PlaceList {
   id          String         @id @default(cuid())
   userId      String
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
+  // каталожные — из названия с нумерацией при совпадении, поездки и
+  // списки — название + короткий код. null — слаг не сгенерирован
+  // (например, тайское название), ссылки откатываются на id.
+  slug           String?  @unique
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String?

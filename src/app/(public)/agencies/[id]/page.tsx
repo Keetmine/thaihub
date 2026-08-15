@@ -7,6 +7,7 @@ import DramaStatusButton from "@/components/DramaStatusButton";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
+import { slugOrIdWhere } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,10 @@ export default async function AgencyDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: rawParam } = await params;
 
-  const agency = await prisma.agency.findUnique({
-    where: { id },
+  const agency = await prisma.agency.findFirst({
+    where: slugOrIdWhere(rawParam),
     include: {
       performers: { include: { performer: true }, orderBy: { performer: { name: "asc" } } },
       dramas: { orderBy: { title: "asc" } },
@@ -26,6 +27,7 @@ export default async function AgencyDetailPage({
   });
 
   if (!agency) notFound();
+  const id = agency.id;
 
   const performers = agency.performers.map((pa) => pa.performer);
 

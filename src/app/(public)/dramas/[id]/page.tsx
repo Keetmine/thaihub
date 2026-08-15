@@ -12,7 +12,7 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
-import { parseDramaIdFromParam } from "@/lib/dramaSlug";
+import { agencyHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +23,10 @@ export default async function DramaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
-  const id = parseDramaIdFromParam(rawId);
 
-  const drama = await prisma.drama.findUnique({
-    where: { id },
+
+  const drama = await prisma.drama.findFirst({
+    where: slugOrIdWhere(rawId),
     include: {
       performers: { include: { performer: true } },
       agency: true,
@@ -35,6 +35,7 @@ export default async function DramaDetailPage({
   });
 
   if (!drama) notFound();
+  const id = drama.id;
 
   const dramaEvents = await prisma.event.findMany({
     where: { dramaId: id },
@@ -118,7 +119,7 @@ export default async function DramaDetailPage({
           {drama.agency && (
             <p className="small text-secondary mb-2">
               <BuildingIcon /> <span className="text-secondary">Студия:</span>{" "}
-              <Link href={`/agencies/${drama.agency.id}`} className="link-body-emphasis">
+              <Link href={agencyHref(drama.agency)} className="link-body-emphasis">
                 {drama.agency.name}
               </Link>
             </p>
@@ -178,7 +179,7 @@ export default async function DramaDetailPage({
                     className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
                   >
                     <Link
-                      href={`/locations/${location.id}`}
+                      href={locationHref(location)}
                       className="text-decoration-none d-flex align-items-center gap-3"
                       style={{ minWidth: 0 }}
                     >

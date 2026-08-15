@@ -10,6 +10,7 @@ import { AddPlaceBox, ListVisibilitySelect, PlaceRowControls } from "./ListContr
 import CreateOwnPlaceButton from "./CreateOwnPlaceButton";
 import EditListButton from "./EditListButton";
 import VisitedButton from "@/components/VisitedButton";
+import { locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +20,9 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
   // решает по самому списку.
   const user = await getCurrentUser();
 
-  const { id } = await params;
-  const list = await prisma.placeList.findUnique({
-    where: { id },
+  const { id: rawParam } = await params;
+  const list = await prisma.placeList.findFirst({
+    where: slugOrIdWhere(rawParam),
     include: {
       user: { select: { id: true, name: true } },
       items: {
@@ -121,7 +122,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
               className="surface d-flex align-items-center justify-content-between gap-3 p-3"
             >
               <Link
-                href={`/locations/${i.location.id}`}
+                href={locationHref(i.location)}
                 className="text-decoration-none d-flex align-items-center gap-3"
                 style={{ minWidth: 0 }}
               >

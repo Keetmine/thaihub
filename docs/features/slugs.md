@@ -1,0 +1,29 @@
+# Public URL slugs
+
+Все публичные сущности живут по читаемым слагам без id:
+`/performers/fourth`, `/dramas/my-fellow-citizens`,
+`/event/pond-phuwin-space-soul-dyssey-concert`, `/locations/tavi-cafe`,
+`/agencies/gmmtv`. Пользовательский контент (поездки, списки мест), где
+названия повторяются постоянно, получает суффикс-код:
+`/trips/bangkok-oktyabr-xjlj` (нумерация -2/-3 раскрывала бы чужие
+количества, а код читабельнее cuid'а).
+
+- **`src/lib/slug.ts`** — `slugify` (с транслитерацией кириллицы:
+  «Пхукет весной» → `phuket-vesnoy`) и `shortCode()`.
+- **`slug` колонки** (`@unique`, nullable) у Performer/Drama/Event/
+  Location/Agency/Trip/PlaceList. null — слаг не сгенерирован
+  (например, тайское название) → ссылки откатываются на id.
+- **Генерация — в одном месте**: расширение Prisma-клиента
+  (`src/lib/prisma.ts`) навешивает слаг на каждый `create`/`upsert`
+  этих моделей, какой бы путь ни создавал запись (админ-формы, полтора
+  десятка импортёров, инлайн-комбобоксы). Каталожные — слаг из названия
+  с нумерацией при совпадении; Trip/PlaceList — название + код. Слаг
+  **стабилен при переименовании** — сохранённые ссылки не ломаются.
+- **`src/lib/slugHelpers.ts`** — построители ссылок
+  (`performerHref`/`dramaHref`/`eventHref`/`locationHref`/`agencyHref`/
+  `tripHref`/`listHref`; старые `*Slug.ts` — тонкие реэкспорты) и
+  `slugOrIdWhere(param)` — резолвер страниц принимает слаг, голый cuid
+  и легаси-формат `{cuid}-{slug}`, так что все старые ссылки работают.
+- **Бэкфилл**: `scripts/backfill-slugs.ts` (одноразовый, безопасен к
+  перезапуску; коллизии нумеруются в порядке createdAt — старейшая
+  запись получает «чистый» слаг).

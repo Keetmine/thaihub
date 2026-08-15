@@ -8,6 +8,7 @@ import { HeartIcon } from "@/components/icons";
 import NameSearchBox from "@/components/NameSearchBox";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { performerHref } from "@/lib/performerSlug";
+import { agencyHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ async function AgenciesTab({ q }: { q: string }) {
           className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
         >
           <Link
-            href={`/agencies/${a.id}`}
+            href={agencyHref(a)}
             className="text-decoration-none d-flex align-items-center gap-3"
             style={{ minWidth: 0 }}
           >

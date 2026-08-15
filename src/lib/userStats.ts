@@ -10,7 +10,7 @@ export type UserStats = {
   upcomingEvents: number;
   uniqueVenues: number;
   performersSeenLive: number;
-  topPerformers: { id: string; name: string; photoUrl: string | null; count: number }[];
+  topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
   completedDramas: number;
@@ -38,7 +38,7 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
           occurrence: { include: { attendances: { select: { userId: true } } } },
           event: {
             include: {
-              performers: { include: { performer: { select: { id: true, name: true, photoUrl: true } } } },
+              performers: { include: { performer: { select: { id: true, name: true, slug: true, photoUrl: true } } } },
             },
           },
         },
@@ -68,7 +68,7 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
 
   const venues = new Set(attended.map((a) => a.event.venue.trim().toLowerCase()));
 
-  const performerCounts = new Map<string, { id: string; name: string; photoUrl: string | null; count: number }>();
+  const performerCounts = new Map<string, { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }>();
   for (const a of attended) {
     for (const { performer } of a.event.performers) {
       const cur = performerCounts.get(performer.id);

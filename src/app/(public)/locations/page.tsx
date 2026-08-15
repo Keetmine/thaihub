@@ -6,6 +6,7 @@ import VisitedButton from "@/components/VisitedButton";
 import { getCurrentUser } from "@/lib/userAuth";
 import { PinIcon } from "@/components/icons";
 import { dramaHref } from "@/lib/dramaSlug";
+import { locationHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ function LocationRow({
       className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
     >
       <Link
-        href={`/locations/${location.id}`}
+        href={locationHref(location)}
         className="text-decoration-none d-flex align-items-center gap-3"
         style={{ minWidth: 0 }}
       >
