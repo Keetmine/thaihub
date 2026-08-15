@@ -18,7 +18,7 @@ export default async function DuplicatesPage() {
       <Link href="/admin" className="eyebrow text-decoration-none">
         ← Админка
       </Link>
-      <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2rem" }}>
         Возможные дубли
       </h1>
       <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>

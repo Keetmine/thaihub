@@ -14,12 +14,11 @@ export default async function EditDramaPage({
 }) {
   const { id } = await params;
 
-  const [drama, performers, agencies, locations] = await Promise.all([
+  const [drama, agencies, locations] = await Promise.all([
     prisma.drama.findUnique({
       where: { id },
       include: { performers: { include: { performer: true } }, locations: true },
     }),
-    prisma.performer.findMany({ orderBy: { name: "asc" } }),
     prisma.agency.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, logoUrl: true },
@@ -40,12 +39,11 @@ export default async function EditDramaPage({
       <Link href="/admin/dramas" className="eyebrow text-decoration-none">
         ← К списку сериалов
       </Link>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
         Редактировать сериал
       </h1>
       <DramaForm
         action={boundUpdate}
-        performers={performers}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
         locations={locations}
         defaultLocationIds={drama.locations.map((dl) => dl.locationId)}

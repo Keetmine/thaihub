@@ -21,7 +21,7 @@ export default async function ImportTtmPage() {
       <Link href="/admin" className="eyebrow text-decoration-none">
         ← К списку событий
       </Link>
-      <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2rem" }}>
         Импорт с ThaiTicketMajor
       </h1>
       <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>

@@ -6,8 +6,8 @@ import { createEvent } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewEventPage() {
-  const [performers, pairings, dramas, locations] = await Promise.all([
-    prisma.performer.findMany({ orderBy: { name: "asc" } }),
+  // Каталог исполнителей не грузим — комбобокс формы ищет асинхронно.
+  const [pairings, dramas, locations] = await Promise.all([
     prisma.pairing.findMany({
       include: { performerA: true, performerB: true },
       orderBy: { createdAt: "desc" },
@@ -27,12 +27,12 @@ export default async function NewEventPage() {
       <Link href="/admin" className="eyebrow text-decoration-none">
         ← К списку событий
       </Link>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
         Новое событие
       </h1>
       <EventForm
         action={createEvent}
-        performers={performers}
+        performers={[]}
         pairings={pairings}
         dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
         locations={locations}

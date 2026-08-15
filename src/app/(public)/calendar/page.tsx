@@ -10,6 +10,7 @@ import {
 import { getCurrentUser } from "@/lib/userAuth";
 import { getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
+import PremiumUpsell from "@/components/PremiumUpsell";
 
 export default async function CalendarPage({
   searchParams,
@@ -18,6 +19,20 @@ export default async function CalendarPage({
 }) {
   const params = await searchParams;
   const now = new Date();
+
+  // Календарь — платная функция (см. PremiumUpsell / /admin/users).
+  const gateUser = await getCurrentUser();
+  if (!gateUser?.isPremium) {
+    return (
+      <div>
+        <span className="eyebrow">Афиша событий</span>
+        <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
+          Календарь
+        </h1>
+        <PremiumUpsell feature="Календарь" />
+      </div>
+    );
+  }
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) - 1 : now.getMonth();
   // Default is "all" (every event) — ?view=mine narrows to events I'm going to.
@@ -28,7 +43,7 @@ export default async function CalendarPage({
   const rangeEnd = gridDays[gridDays.length - 1];
   rangeEnd.setHours(23, 59, 59, 999);
 
-  const currentUser = await getCurrentUser();
+  const currentUser = gateUser;
 
   const occurrences = await prisma.eventOccurrence.findMany({
     where: {
@@ -63,7 +78,7 @@ export default async function CalendarPage({
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
         <div>
           <span className="eyebrow">Афиша событий</span>
           <h1 className="display-1-tight text-capitalize mt-3 mb-0" style={{ fontSize: "2.75rem" }}>

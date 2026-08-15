@@ -5,6 +5,7 @@ import AlphabetIndexList from "@/components/AlphabetIndexList";
 import VisitedButton from "@/components/VisitedButton";
 import { getCurrentUser } from "@/lib/userAuth";
 import { PinIcon } from "@/components/icons";
+import { dramaHref } from "@/lib/dramaSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ export default async function LocationsPage({
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           Локации
         </h1>
@@ -178,7 +179,7 @@ async function LocationsByDrama({
       emptyMessage="Пока нет локаций."
       renderItem={({ drama }) => (
         <section>
-          <Link href={`/dramas/${drama.id}`} className="day-group-heading mb-2">
+          <Link href={dramaHref(drama)} className="day-group-heading mb-2">
             {drama.title}
           </Link>
           <div className="d-flex flex-column gap-2 mt-2">

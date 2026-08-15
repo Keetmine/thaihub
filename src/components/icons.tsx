@@ -336,7 +336,7 @@ export function UploadIcon() {
   );
 }
 
-export function UserIcon() {
+export function UserIcon({ className }: { className?: string } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -347,6 +347,7 @@ export function UserIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
       aria-hidden="true"
     >
       <circle cx="12" cy="8" r="3.75" />
@@ -374,7 +375,7 @@ export function CloseIcon() {
   );
 }
 
-export function UsersIcon() {
+export function UsersIcon({ className }: { className?: string } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -385,6 +386,7 @@ export function UsersIcon() {
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
       aria-hidden="true"
     >
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

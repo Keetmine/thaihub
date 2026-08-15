@@ -37,7 +37,7 @@ export default async function AdminEventsPage({
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-5">
         <div className="dot-grid pb-1">
           <span className="eyebrow">Управление</span>
           <h1 className="display-1-tight mt-3 mb-0" style={{ fontSize: "2.25rem" }}>

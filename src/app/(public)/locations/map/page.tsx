@@ -15,7 +15,7 @@ export default async function LocationsMapPage() {
       <Link href="/locations" className="eyebrow text-decoration-none">
         ← Все локации
       </Link>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
         Карта локаций
       </h1>
 

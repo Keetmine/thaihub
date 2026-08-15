@@ -5,9 +5,11 @@ import { getCurrentUser } from "@/lib/userAuth";
 import VisitedButton from "@/components/VisitedButton";
 import LocationMap from "@/components/LocationMapLoader";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import EventCardLocked from "@/components/EventCardLocked";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { dramaHref } from "@/lib/dramaSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +60,7 @@ export default async function LocationDetailPage({
       <Link href="/locations" className="eyebrow text-decoration-none">
         ← Все локации
       </Link>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           {location.name}
         </h1>
@@ -96,7 +98,7 @@ export default async function LocationDetailPage({
               {location.dramas.map(({ drama }) => (
                 <Link
                   key={drama.id}
-                  href={`/dramas/${drama.id}`}
+                  href={dramaHref(drama)}
                   className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
                   style={{ width: "11rem" }}
                 >
@@ -135,9 +137,11 @@ export default async function LocationDetailPage({
               >
                 События здесь
               </h2>
-              <div className="d-flex flex-column gap-2">
+              <div className="d-flex flex-column gap-3">
                 {locationEvents.map((ev) => (
-                  <EventAgendaRow
+                  currentUser?.isPremium ? (
+
+                    <EventAgendaRow
                     key={ev.occurrenceId}
                     event={ev}
                     isFavorited={favoritedIds.has(ev.id)}
@@ -145,6 +149,12 @@ export default async function LocationDetailPage({
                     friendsGoing={friendsGoingByEvent.get(ev.id) ?? []}
                     showDate
                   />
+
+                  ) : (
+
+                    <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+
+                  )
                 ))}
               </div>
             </div>

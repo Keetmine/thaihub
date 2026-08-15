@@ -13,16 +13,18 @@ export default async function EditEventPage({
 }) {
   const { id } = await params;
 
-  const [event, performers, pairings, dramas, locations] = await Promise.all([
+  // Полный каталог исполнителей в форму больше не грузим (~17 тыс. строк
+  // подвешивали селект) — комбобокс ищет асинхронно, а как options нужны
+  // только уже привязанные к событию.
+  const [event, pairings, dramas, locations] = await Promise.all([
     prisma.event.findUnique({
       where: { id },
       include: {
-        performers: true,
+        performers: { include: { performer: true } },
         pairings: true,
         occurrences: { orderBy: { startsAt: "asc" } },
       },
     }),
-    prisma.performer.findMany({ orderBy: { name: "asc" } }),
     prisma.pairing.findMany({
       include: { performerA: true, performerB: true },
       orderBy: { createdAt: "desc" },
@@ -47,12 +49,16 @@ export default async function EditEventPage({
       <Link href="/admin" className="eyebrow text-decoration-none">
         ← К списку событий
       </Link>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
         Редактировать событие
       </h1>
       <EventForm
         action={boundUpdate}
-        performers={performers}
+        performers={event.performers.map((p) => ({
+          id: p.performer.id,
+          name: p.performer.name,
+          photoUrl: p.performer.photoUrl,
+        }))}
         pairings={pairings}
         dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
         locations={locations}

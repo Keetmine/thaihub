@@ -3,16 +3,9 @@
 // ignored on lookup (see parsePerformerIdFromParam), so a stale/short
 // slug in a bookmarked link never breaks. Safe because a Prisma cuid()
 // never contains a hyphen itself, so splitting on the first "-" always
-// isolates the id cleanly.
-
-function slugify(text: string): string {
-  return text
-    .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "") // strip combining diacritics ("é" -> "e") without a transliteration library
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+// isolates the id cleanly. Same scheme as dramaSlug.ts/eventSlug.ts,
+// sharing the slugify implementation in slug.ts.
+import { slugify } from "@/lib/slug";
 
 /** Builds a performer's public URL. Falls back to a bare `/performers/{id}`
  *  when there's nothing slug-worthy to add — most commonly a Thai-script-

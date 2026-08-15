@@ -18,7 +18,7 @@ export default async function SettingsPage() {
       <Link href="/account" className="eyebrow text-decoration-none">
         ← Профиль
       </Link>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
         Настройки
       </h1>
 

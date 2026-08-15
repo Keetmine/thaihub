@@ -4,7 +4,7 @@ export default function HelpPage() {
   return (
     <div>
       <span className="eyebrow">Справка</span>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
         Помощь
       </h1>
 
@@ -12,7 +12,7 @@ export default function HelpPage() {
         <div className="surface p-4">
           <h2 className="h6 fw-semibold mb-2">Что это за сайт?</h2>
           <p className="text-secondary mb-0">
-            ThaiHub — трекер концертов и фан-событий тайских BL-актёров: расписание
+            MyBLHub — трекер концертов и фан-событий тайских BL-актёров: расписание
             событий, профили исполнителей и сериалов, избранное и статусы просмотра.
           </p>
         </div>

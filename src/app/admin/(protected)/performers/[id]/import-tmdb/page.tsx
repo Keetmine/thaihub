@@ -23,7 +23,7 @@ export default async function ImportTmdbPage({
       <Link href={`/admin/performers/${id}/edit`} className="eyebrow text-decoration-none">
         ← К исполнителю
       </Link>
-      <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2rem" }}>
         Импорт с TMDB — {performer.name}
       </h1>
       <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>

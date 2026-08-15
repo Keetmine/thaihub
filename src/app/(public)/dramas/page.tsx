@@ -8,6 +8,7 @@ import { WATCH_STATUS_LABELS, WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import type { DramaWatchStatusValue } from "../favorites/actions";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
+import { dramaHref } from "@/lib/dramaSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,7 @@ export default async function DramasPage({
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
         Сериалы
       </h1>
 
@@ -116,7 +117,7 @@ export default async function DramasPage({
             className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
           >
             <Link
-              href={`/dramas/${d.id}`}
+              href={dramaHref(d)}
               className="text-decoration-none d-flex align-items-center gap-3"
               style={{ minWidth: 0 }}
             >

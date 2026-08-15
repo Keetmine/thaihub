@@ -6,6 +6,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { performerHref } from "@/lib/performerSlug";
+import { dramaHref } from "@/lib/dramaSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function AgencyDetailPage({
         ← Все агентства
       </Link>
 
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <div className="d-flex flex-wrap align-items-center gap-4">
           {agency.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -157,7 +158,7 @@ export default async function AgencyDetailPage({
               className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
             >
               <Link
-                href={`/dramas/${d.id}`}
+                href={dramaHref(d)}
                 className="text-decoration-none d-flex align-items-center gap-3"
                 style={{ minWidth: 0 }}
               >

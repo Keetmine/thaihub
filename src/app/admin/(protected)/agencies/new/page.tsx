@@ -22,7 +22,7 @@ export default async function NewAgencyPage() {
       <Link href="/admin/performers?view=agencies" className="eyebrow text-decoration-none">
         ← К списку агентств
       </Link>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
         Новое агентство
       </h1>
       <AgencyForm

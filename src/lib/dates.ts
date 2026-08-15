@@ -45,7 +45,7 @@ export function formatTime(d: Date): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Every event in ThaiHub is a Thailand event — stored/displayed times are
+// Every event in MyBLHub is a Thailand event — stored/displayed times are
 // always Thai (ICT, UTC+7) wall-clock, entered as such whether typed by
 // hand or scraped. Moscow (MSK, UTC+3) has no DST either, so the gap is a
 // constant 4 hours — no timezone library needed, just subtract 4 hours
@@ -74,6 +74,37 @@ export function formatTimeRangeWithMsk(start: Date, end: Date | null): string {
 // row itself has to carry the date since there's no day heading above it.
 export function formatShortDate(d: Date): string {
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(/\.$/, "");
+}
+
+/** Combines several occurrence dates that share the same year+month into
+ *  one compact list — "21, 22, 23 августа 2026" — with the month/year
+ *  stated once, trailing the last day, matching natural Russian phrasing.
+ *  Dates spanning more than one month become several such groups (each
+ *  still just day-numbers + its own trailing "month year") joined by ", ".
+ *  Used on the event page to combine same-time multi-date occurrences
+ *  into a single line instead of one full date per line. */
+export function formatCombinedDateList(dates: Date[]): string {
+  const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime());
+  const groups: Date[][] = [];
+  for (const d of sorted) {
+    const lastGroup = groups[groups.length - 1];
+    const lastDate = lastGroup?.[lastGroup.length - 1];
+    if (lastDate && lastDate.getFullYear() === d.getFullYear() && lastDate.getMonth() === d.getMonth()) {
+      lastGroup.push(d);
+    } else {
+      groups.push([d]);
+    }
+  }
+  return groups
+    .map((group) => {
+      const lastDay = group[group.length - 1];
+      const monthYear = lastDay
+        .toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+        .replace(/\s?г\.$/, "");
+      const otherDays = group.slice(0, -1).map((d) => d.getDate());
+      return [...otherDays, monthYear].join(", ");
+    })
+    .join(", ");
 }
 
 export function formatHumanDate(d: Date): string {

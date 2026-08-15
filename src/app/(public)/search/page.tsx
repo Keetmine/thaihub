@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 import { performerHref } from "@/lib/performerSlug";
+import { dramaHref } from "@/lib/dramaSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +101,7 @@ export default async function SearchPage({
   return (
     <div>
       <span className="eyebrow">Поиск</span>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
         {q ? `«${q}»` : "Поиск"}
       </h1>
 
@@ -112,9 +114,11 @@ export default async function SearchPage({
       ) : (
         <>
           <Section title="События" count={events.length}>
-            <div className="d-flex flex-column gap-2">
+            <div className="d-flex flex-column gap-3">
               {events.map((ev) => (
-                <EventAgendaRow
+                currentUser?.isPremium ? (
+
+                  <EventAgendaRow
                   key={ev.occurrenceId}
                   event={ev}
                   isFavorited={favoritedIds.has(ev.id)}
@@ -122,6 +126,12 @@ export default async function SearchPage({
                   friendsGoing={friendsGoingByEvent.get(ev.id) ?? []}
                   showDate
                 />
+
+                ) : (
+
+                  <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+
+                )
               ))}
             </div>
           </Section>
@@ -144,7 +154,7 @@ export default async function SearchPage({
               {dramas.map((d) => (
                 <EntityMiniCard
                   key={d.id}
-                  href={`/dramas/${d.id}`}
+                  href={dramaHref(d)}
                   photoUrl={d.posterUrl}
                   name={d.title}
                   round={false}

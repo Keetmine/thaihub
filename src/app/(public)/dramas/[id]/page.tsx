@@ -5,12 +5,14 @@ import { getCurrentUser } from "@/lib/userAuth";
 import WatchStatusSelect from "@/components/WatchStatusSelect";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
 import { BuildingIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
+import { parseDramaIdFromParam } from "@/lib/dramaSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,8 @@ export default async function DramaDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parseDramaIdFromParam(rawId);
 
   const drama = await prisma.drama.findUnique({
     where: { id },
@@ -76,7 +79,7 @@ export default async function DramaDetailPage({
       <Link href="/dramas" className="eyebrow text-decoration-none">
         ← Все сериалы
       </Link>
-      <h1 className="display-1-tight mt-3 mb-2 d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "2.25rem" }}>
+      <h1 className="display-1-tight mt-3 mb-3 d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "2.25rem" }}>
         {drama.title}{" "}
         {drama.year && (
           <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
@@ -221,15 +224,23 @@ export default async function DramaDetailPage({
           >
             События
           </h2>
-          <div className="d-flex flex-column gap-2">
+          <div className="d-flex flex-column gap-3">
             {events.map((ev) => (
-              <EventAgendaRow
+              currentUser?.isPremium ? (
+
+                <EventAgendaRow
                 key={ev.occurrenceId}
                 event={ev}
                 isFavorited={favoritedEventIds.has(ev.id)}
                 isGoing={goingEventIds.has(ev.id)}
                 showDate
               />
+
+              ) : (
+
+                <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+
+              )
             ))}
           </div>
         </div>
