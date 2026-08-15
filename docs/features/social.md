@@ -46,7 +46,17 @@ search in the same row. `?status=` filters `Drama.findMany` by
 logged-out visitors just see everything regardless of which status tab
 is selected, since there's no per-user status to filter by.
 
-## Going ("Я иду")
+## Going ("Я иду") — per occurrence
+
+**«Иду» ставится на конкретную дату события** (`EventAttendance` keyed
+`(userId, occurrenceId)`, with a denormalized `eventId` for
+whole-event lookups): на двухдневном концерте можно выбрать только
+25-е — и только оно попадёт в «мои события», календарь, план поездки и
+ICS-фид. Списковые карточки (одна карточка = одна дата) переключают
+свою дату; страница события показывает чипы «Пойду: [+ 24 авг] [✓ 25
+авг]» (`GoingDateChips`). Фильтры «Я иду», friends-going индикаторы и
+телеграм-напоминания тоже работают по датам. Старые событийные отметки
+миграция размножила на все даты события.
 
 `EventAttendance` — a user marking themselves as attending a specific
 event. Toggle UI: `GoingButton.tsx`. Drives:

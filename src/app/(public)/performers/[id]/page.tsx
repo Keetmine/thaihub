@@ -8,7 +8,7 @@ import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import SocialLinkIcons from "@/components/SocialLinkIcons";
-import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
@@ -83,9 +83,10 @@ export default async function PerformerPage({
     .filter((ev) => ev.startsAt < now)
     .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
   const eventIds = performerEvents.map((ev) => ev.id);
+  const occIds = performerEvents.map((ev) => ev.occurrenceId);
   const [favoritedEventIds, goingEventIds] = await Promise.all([
     getFavoritedEventIds(eventIds, currentUser?.id),
-    getGoingEventIds(eventIds, currentUser?.id),
+    getGoingOccurrenceIds(occIds, currentUser?.id),
   ]);
 
   const statusByDramaId = await getDramaWatchStatuses(
@@ -360,7 +361,7 @@ export default async function PerformerPage({
               key={ev.occurrenceId}
               event={ev}
               isFavorited={favoritedEventIds.has(ev.id)}
-              isGoing={goingEventIds.has(ev.id)}
+              isGoing={goingEventIds.has(ev.occurrenceId)}
               showDate
             />
 
@@ -386,7 +387,7 @@ export default async function PerformerPage({
                 key={ev.occurrenceId}
                 event={ev}
                 isFavorited={favoritedEventIds.has(ev.id)}
-                isGoing={goingEventIds.has(ev.id)}
+                isGoing={goingEventIds.has(ev.occurrenceId)}
                 showDate
               />
 

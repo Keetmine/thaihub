@@ -74,6 +74,13 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
             Мои поездки
           </Link>
           <Link
+            href="/lists"
+            className="profile-menu-item"
+            onClick={() => setOpen(false)}
+          >
+            Мои списки мест
+          </Link>
+          <Link
             href="/account/settings"
             className="profile-menu-item"
             onClick={() => setOpen(false)}

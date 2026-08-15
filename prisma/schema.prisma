@@ -56,6 +56,7 @@ model EventOccurrence {
   startsAt DateTime
   endsAt   DateTime?
   telegramNotifications TelegramNotification[]
+  attendances EventAttendance[]
 
   @@index([eventId])
 }
@@ -224,6 +225,9 @@ model Location {
   dramas      DramaLocation[]
   visitedBy   LocationVisit[]
   events      Event[]
+  listItems   PlaceListItem[]
+  tripPlaces  TripPlace[]
+  personalEvents TripPersonalEvent[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -356,6 +360,7 @@ model User {
   mutedByFriends      FriendNotificationMute[] @relation("MuteTarget")
   eventNotes          EventNote[]
   achievements        UserAchievement[]
+  placeLists          PlaceList[]
   // Приватность публичного профиля: true — чужие видят только имя/фото
   // (активность, актёров, поездки не показываем). Друзья видят всё.
   hideProfileActivity Boolean @default(false)
@@ -381,6 +386,8 @@ model Trip {
   visibility TripVisibility @default(PRIVATE)
   createdAt DateTime @default(now())
   personalEvents TripPersonalEvent[]
+  placeLists TripPlaceList[]
+  places     TripPlace[]
 
   @@index([userId])
 }
@@ -403,9 +410,63 @@ model TripPersonalEvent {
   title     String
   note      String?
   startsAt  DateTime
+  // Личное событие можно привязать к известной локации — карточка
+  // показывает место со ссылкой, оно попадает на карту поездки.
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
   createdAt DateTime  @default(now())
 
   @@index([tripId])
+}
+
+// Пользовательская подборка локаций («где вкусная еда», «кафешки из
+// дорам») — с той же моделью видимости, что у поездок. Показывается
+// списком и на карте; прикрепляется к поездкам (TripPlaceList).
+model PlaceList {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  visibility  TripVisibility @default(PRIVATE)
+  items       PlaceListItem[]
+  trips       TripPlaceList[]
+  createdAt   DateTime       @default(now())
+
+  @@index([userId])
+}
+
+model PlaceListItem {
+  listId     String
+  locationId String
+  note       String?
+  list       PlaceList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  location   Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@id([listId, locationId])
+}
+
+// Прикрепление целого списка мест к поездке.
+model TripPlaceList {
+  tripId String
+  listId String
+  trip   Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  list   PlaceList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@id([tripId, listId])
+}
+
+// Отдельное важное место, добавленное прямо в поездку (без списка).
+model TripPlace {
+  tripId     String
+  locationId String
+  note       String?
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([tripId, locationId])
 }
 
 // Дедуп пресейл-напоминаний: одно на (юзер, событие) — сама препродажа
@@ -555,13 +616,19 @@ model FavoriteEvent {
   @@id([userId, eventId])
 }
 
-// "Я пойду" — the user marked themselves as attending this event.
+// «Я пойду» — теперь на КОНКРЕТНУЮ дату (occurrence), а не на событие
+// целиком: у двухдневного концерта можно идти только на 25-е. eventId
+// денормализован для выборок «идёт ли на событие вообще» (индикатор
+// друзей, фильтры).
 model EventAttendance {
-  userId    String
-  eventId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  userId       String
+  occurrenceId String
+  eventId      String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrence   EventOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  event        Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
 
-  @@id([userId, eventId])
+  @@id([userId, occurrenceId])
+  @@index([eventId])
 }

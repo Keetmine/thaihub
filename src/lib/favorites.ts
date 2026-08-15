@@ -31,6 +31,22 @@ export async function getFavoritedEventIds(
   return new Set(favorites.map((f) => f.eventId));
 }
 
+/** Set of occurrence ids `userId` is attending — «иду» теперь на
+ *  конкретную дату, и карточки списков подсвечиваются именно по ней. */
+export async function getGoingOccurrenceIds(
+  occurrenceIds: string[],
+  userId: string | null | undefined,
+): Promise<Set<string>> {
+  if (occurrenceIds.length === 0 || !userId) return new Set();
+
+  const attendances = await prisma.eventAttendance.findMany({
+    where: { userId, occurrenceId: { in: occurrenceIds } },
+    select: { occurrenceId: true },
+  });
+
+  return new Set(attendances.map((a) => a.occurrenceId));
+}
+
 /** Set of event ids `userId` is marked as attending ("Я пойду"), restricted to `eventIds`. */
 export async function getGoingEventIds(
   eventIds: string[],

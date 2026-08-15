@@ -95,9 +95,9 @@ export default async function HomePage({
             gte: from ? startOfDay(parseDateKey(from)) : undefined,
             lte: to ? endOfDay(parseDateKey(to)) : undefined,
           },
+          ...(filter === "going" ? { attendances: { some: { userId: user.id } } } : {}),
           event: {
             ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-            ...(filter === "going" ? { attendees: { some: { userId: user.id } } } : {}),
             ...(filter === "favorited" ? { favoritedBy: { some: { userId: user.id } } } : {}),
           },
         },

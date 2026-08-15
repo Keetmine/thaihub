@@ -5,12 +5,13 @@ import { toggleGoing } from "@/app/(public)/favorites/actions";
 import { CheckIcon, PlusIcon } from "@/components/icons";
 
 export default function GoingButton({
-  eventId,
+  occurrenceId,
   isGoing,
   variant = "pill",
   className,
 }: {
-  eventId: string;
+  /** «Иду» ставится на конкретную дату события. */
+  occurrenceId: string;
   isGoing: boolean;
   /** "pill" — inline labeled button (event detail page, existing look).
    *  "icon" — icon-only toggle (plus → check) meant to sit inline alongside
@@ -24,7 +25,7 @@ export default function GoingButton({
     e.preventDefault();
     e.stopPropagation();
     startTransition(async () => {
-      await toggleGoing(eventId);
+      await toggleGoing(occurrenceId);
     });
   }
 

@@ -8,7 +8,7 @@ import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
 import { BuildingIcon } from "@/components/icons";
-import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
@@ -58,9 +58,10 @@ export default async function DramaDetailPage({
   }
 
   const eventIds = events.map((ev) => ev.id);
+  const occIds = events.map((ev) => ev.occurrenceId);
   const [favoritedEventIds, goingEventIds] = await Promise.all([
     getFavoritedEventIds(eventIds, currentUser?.id),
-    getGoingEventIds(eventIds, currentUser?.id),
+    getGoingOccurrenceIds(occIds, currentUser?.id),
   ]);
 
   const visitedLocationIds = new Set<string>();
@@ -233,7 +234,7 @@ export default async function DramaDetailPage({
                 key={ev.occurrenceId}
                 event={ev}
                 isFavorited={favoritedEventIds.has(ev.id)}
-                isGoing={goingEventIds.has(ev.id)}
+                isGoing={goingEventIds.has(ev.occurrenceId)}
                 showDate
               />
 

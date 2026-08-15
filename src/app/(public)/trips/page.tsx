@@ -40,7 +40,7 @@ export default async function TripsPage() {
       const range = { startsAt: { gte: t.startDate, lte: endOfDay(t.endDate) } };
       const [plan, total] = await Promise.all([
         prisma.eventOccurrence.count({
-          where: { ...range, event: { attendees: { some: { userId: user.id } } } },
+          where: { ...range, attendances: { some: { userId: user.id } } },
         }),
         prisma.eventOccurrence.count({ where: range }),
       ]);

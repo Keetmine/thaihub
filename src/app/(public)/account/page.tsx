@@ -40,7 +40,7 @@ export default async function AccountPage({
     await Promise.all([
       prisma.eventAttendance.findMany({
         where: { userId: user.id },
-        include: { event: eventWithOccurrences },
+        include: { event: eventWithOccurrences, occurrence: true },
       }),
       prisma.favoriteEvent.findMany({
         where: { userId: user.id },
@@ -67,7 +67,21 @@ export default async function AccountPage({
   const lastDate = (e: AccountEventEntry) => e.occurrences[e.occurrences.length - 1]?.startsAt ?? now;
   const firstDate = (e: AccountEventEntry) => e.occurrences[0]?.startsAt ?? now;
 
-  const attendanceEntries = attendances.map((a) => toEntry(a.event));
+  // «Иду» теперь per-дата: одна запись на событие, но только с датами,
+  // на которые реально отмечен (24-е и 25-е — по отметкам, не все).
+  const byEvent = new Map<string, { event: (typeof attendances)[number]["event"]; occs: { startsAt: Date; endsAt: Date | null }[] }>();
+  for (const a of attendances) {
+    const cur = byEvent.get(a.eventId);
+    const occ = { startsAt: a.occurrence.startsAt, endsAt: a.occurrence.endsAt };
+    if (cur) cur.occs.push(occ);
+    else byEvent.set(a.eventId, { event: a.event, occs: [occ] });
+  }
+  const attendanceEntries: AccountEventEntry[] = Array.from(byEvent.values()).map(({ event, occs }) => ({
+    id: event.id,
+    title: event.title,
+    venue: event.venue,
+    occurrences: occs.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()),
+  }));
   // «Предстоящее», пока не прошла последняя дата события.
   const upcomingAttendances = attendanceEntries
     .filter((e) => lastDate(e) >= now)
@@ -102,7 +116,7 @@ export default async function AccountPage({
           createdAt: user.createdAt,
         }}
         stats={{
-          going: attendances.length,
+          going: byEvent.size,
           favoriteEvents: favoriteEventRows.length,
           favoritePerformers: favoritePerformersCount,
           dramas: watchCount,

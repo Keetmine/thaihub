@@ -6,6 +6,8 @@ import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { updateTripPersonalEvent, deleteTripPersonalEvent } from "./actions";
+import LocationPickerField from "./LocationPickerField";
+import Link from "next/link";
 
 const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
@@ -13,6 +15,7 @@ export type PersonalEventData = {
   id: string;
   title: string;
   note: string | null;
+  location: { id: string; name: string } | null;
   startsAt: Date;
   // "YYYY-MM-DD" и "HH:mm" для формы редактирования — сериализуем на
   // сервере, чтобы не дублировать dateKey/formatTime в клиенте.
@@ -24,7 +27,13 @@ export type PersonalEventData = {
 export function PersonalEventFields({
   defaults,
 }: {
-  defaults?: { title: string; note: string | null; dateKey: string; timeValue: string };
+  defaults?: {
+    title: string;
+    note: string | null;
+    dateKey: string;
+    timeValue: string;
+    location?: { id: string; name: string } | null;
+  };
 }) {
   return (
     <>
@@ -55,6 +64,7 @@ export function PersonalEventFields({
           />
         </div>
       </div>
+      <LocationPickerField defaultLocation={defaults?.location} />
       <div>
         <label className="form-label small text-secondary">Заметка</label>
         <textarea name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
@@ -124,7 +134,16 @@ export default function PersonalEventCard({
         </h3>
         <p className="small text-secondary mb-0">
           {hasTime && event.timeValue}
-          {hasTime && event.note && " · "}
+          {hasTime && (event.note || event.location) && " · "}
+          {event.location && (
+            <Link
+              href={`/locations/${event.location.id}`}
+              className="agenda-performer-link"
+            >
+              📍 {event.location.name}
+            </Link>
+          )}
+          {event.location && event.note && " · "}
           {event.note}
         </p>
       </div>
@@ -137,6 +156,7 @@ export default function PersonalEventCard({
               note: event.note,
               dateKey: event.dateKey,
               timeValue: hasTime ? event.timeValue : "",
+              location: event.location,
             }}
           />
           <button type="submit" className="btn btn-primary">

@@ -6,8 +6,8 @@ import VisitedButton from "@/components/VisitedButton";
 import LocationMap from "@/components/LocationMapLoader";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
-import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
-import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
@@ -49,12 +49,13 @@ export default async function LocationDetailPage({
     .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
   const eventIds = locationEvents.map((ev) => ev.id);
+  const occIds = locationEvents.map((ev) => ev.occurrenceId);
   const [favoritedIds, goingIds, friendIds] = await Promise.all([
     getFavoritedEventIds(eventIds, currentUser?.id),
-    getGoingEventIds(eventIds, currentUser?.id),
+    getGoingOccurrenceIds(occIds, currentUser?.id),
     getFriendIds(currentUser?.id),
   ]);
-  const friendsGoingByEvent = await getFriendsGoingByEvent(eventIds, friendIds);
+  const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
   return (
     <div>
@@ -146,8 +147,8 @@ export default async function LocationDetailPage({
                     key={ev.occurrenceId}
                     event={ev}
                     isFavorited={favoritedIds.has(ev.id)}
-                    isGoing={goingIds.has(ev.id)}
-                    friendsGoing={friendsGoingByEvent.get(ev.id) ?? []}
+                    isGoing={goingIds.has(ev.occurrenceId)}
+                    friendsGoing={friendsGoingByEvent.get(ev.occurrenceId) ?? []}
                     showDate
                   />
 

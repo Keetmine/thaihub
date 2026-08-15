@@ -100,30 +100,34 @@ export async function clearDramaWatchStatus(dramaId: string) {
   revalidatePath(`/dramas/${dramaId}`);
 }
 
-// "Я пойду" — toggles whether the current user is attending an event.
-export async function toggleGoing(eventId: string) {
+// «Я пойду» — на конкретную ДАТУ события (occurrence): у двухдневного
+// концерта можно идти только на один день.
+export async function toggleGoing(occurrenceId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const occurrence = await prisma.eventOccurrence.findUnique({ where: { id: occurrenceId } });
+  if (!occurrence) throw new Error("Дата события не найдена");
+
   const existing = await prisma.eventAttendance.findUnique({
-    where: { userId_eventId: { userId: user.id, eventId } },
+    where: { userId_occurrenceId: { userId: user.id, occurrenceId } },
   });
 
   if (existing) {
     await prisma.eventAttendance.delete({
-      where: { userId_eventId: { userId: user.id, eventId } },
+      where: { userId_occurrenceId: { userId: user.id, occurrenceId } },
     });
   } else {
     await prisma.eventAttendance.create({
-      data: { userId: user.id, eventId },
+      data: { userId: user.id, occurrenceId, eventId: occurrence.eventId },
     });
     // Друзьям — «X идёт на …» (Г2). Fire-and-forget: сбой телеграма не
     // должен ломать саму отметку.
     void import("@/lib/telegramNotifications")
-      .then((m) => m.notifyFriendsAboutGoing(user.id, eventId))
+      .then((m) => m.notifyFriendsAboutGoing(user.id, occurrenceId))
       .catch(() => {});
   }
 
   revalidatePath("/account");
-  revalidatePath(`/event/${eventId}`);
+  revalidatePath(`/event/${occurrence.eventId}`);
 }

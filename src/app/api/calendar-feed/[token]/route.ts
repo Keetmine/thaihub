@@ -20,9 +20,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
   const attendances = await prisma.eventAttendance.findMany({
     where: { userId: user.id },
-    include: { event: { include: { occurrences: { orderBy: { startsAt: "asc" } } } } },
+    include: { event: true, occurrence: true },
   });
-  const events = attendances.map((a) => a.event);
+  // «Иду» per-дата: в фид попадают только отмеченные даты события.
+  const byEvent = new Map<string, { event: (typeof attendances)[number]["event"] & { occurrences: (typeof attendances)[number]["occurrence"][] } }>();
+  for (const a of attendances) {
+    const cur = byEvent.get(a.eventId);
+    if (cur) cur.event.occurrences.push(a.occurrence);
+    else byEvent.set(a.eventId, { event: { ...a.event, occurrences: [a.occurrence] } });
+  }
+  const events = Array.from(byEvent.values()).map((e) => e.event);
 
   return new NextResponse(buildFeedICS(events), {
     headers: {

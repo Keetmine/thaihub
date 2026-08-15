@@ -80,15 +80,16 @@ async function requireOwnTrip(tripId: string) {
   return trip;
 }
 
-function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date } {
+function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null } {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
   const date = String(formData.get("date") ?? "");
   const time = String(formData.get("time") ?? "").trim();
+  const locationId = String(formData.get("locationId") ?? "").trim();
   if (!title || !date) throw new Error("Заполните название и дату");
   // Без времени событие встаёт на начало дня — в списке поездки такие
   // сортируются раньше всех событий этого дня.
-  return { title, note: note || null, startsAt: combineDateTime(date, time || "00:00") };
+  return { title, note: note || null, startsAt: combineDateTime(date, time || "00:00"), locationId: locationId || null };
 }
 
 export async function createTripPersonalEvent(tripId: string, formData: FormData) {
@@ -118,5 +119,43 @@ export async function deleteTripPersonalEvent(tripId: string, personalEventId: s
   await prisma.tripPersonalEvent.deleteMany({
     where: { id: personalEventId, tripId: trip.id },
   });
+  revalidatePath(`/trips/${trip.id}`);
+}
+
+// ---------- «Что посетить»: списки и отдельные места (Г4+) ----------
+
+export async function attachListToTrip(tripId: string, listId: string) {
+  const trip = await requireOwnTrip(tripId);
+  // Прикрепить можно только свой список.
+  const list = await prisma.placeList.findUnique({ where: { id: listId } });
+  const user = await getCurrentUser();
+  if (!list || list.userId !== user!.id) throw new Error("Список не найден");
+  await prisma.tripPlaceList.upsert({
+    where: { tripId_listId: { tripId: trip.id, listId } },
+    update: {},
+    create: { tripId: trip.id, listId },
+  });
+  revalidatePath(`/trips/${trip.id}`);
+}
+
+export async function detachListFromTrip(tripId: string, listId: string) {
+  const trip = await requireOwnTrip(tripId);
+  await prisma.tripPlaceList.deleteMany({ where: { tripId: trip.id, listId } });
+  revalidatePath(`/trips/${trip.id}`);
+}
+
+export async function addPlaceToTrip(tripId: string, locationId: string) {
+  const trip = await requireOwnTrip(tripId);
+  await prisma.tripPlace.upsert({
+    where: { tripId_locationId: { tripId: trip.id, locationId } },
+    update: {},
+    create: { tripId: trip.id, locationId },
+  });
+  revalidatePath(`/trips/${trip.id}`);
+}
+
+export async function removePlaceFromTrip(tripId: string, locationId: string) {
+  const trip = await requireOwnTrip(tripId);
+  await prisma.tripPlace.deleteMany({ where: { tripId: trip.id, locationId } });
   revalidatePath(`/trips/${trip.id}`);
 }

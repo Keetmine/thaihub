@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { endOfDay, parseDateKey, startOfDay } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
-import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
-import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import type { EventWithPerformers } from "@/lib/types";
 
 // Постраничная выдача афиши для бесконечной прокрутки на главной: сначала
@@ -26,6 +26,7 @@ export type FriendGoing = { id: string; name: string | null; photoUrl: string | 
 export type EventListPage = {
   events: EventWithPerformers[];
   favoritedIds: string[];
+  // occurrenceId'ы, на которые юзер идёт (отметка — per-дата).
   goingIds: string[];
   // Map не сериализуется через границу server action — массив пар.
   friendsGoing: [string, FriendGoing[]][];
@@ -52,9 +53,12 @@ export async function fetchEventListPage(
   // пост-фильтрация в JS ломала бы нумерацию страниц.
   const eventWhere = {
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-    ...(filter === "going" && userId ? { attendees: { some: { userId } } } : {}),
     ...(filter === "favorited" && userId ? { favoritedBy: { some: { userId } } } : {}),
   };
+  // «Иду» — отметка на конкретной дате, поэтому фильтр на occurrence,
+  // а не на событии: показываются только выбранные дни.
+  const occurrenceWhere =
+    filter === "going" && userId ? { attendances: { some: { userId } } } : {};
 
   const startsAt = hasDateRange
     ? {
@@ -66,7 +70,7 @@ export async function fetchEventListPage(
       : { lt: today };
 
   const occurrences = await prisma.eventOccurrence.findMany({
-    where: { startsAt, event: eventWhere },
+    where: { startsAt, event: eventWhere, ...occurrenceWhere },
     include: { event: { include: { performers: { include: { performer: true } } } } },
     orderBy: { startsAt: phase === "upcoming" ? "asc" : "desc" },
     skip: offset,
@@ -94,12 +98,13 @@ export async function fetchEventListPage(
   }
 
   const eventIds = isPremium ? events.map((ev) => ev.id) : [];
+  const occurrenceIds = isPremium ? events.map((ev) => ev.occurrenceId) : [];
   const [favoritedIds, goingIds, friendIds] = await Promise.all([
     getFavoritedEventIds(eventIds, userId),
-    getGoingEventIds(eventIds, userId),
+    getGoingOccurrenceIds(occurrenceIds, userId),
     getFriendIds(userId),
   ]);
-  const friendsGoingByEvent = await getFriendsGoingByEvent(eventIds, friendIds);
+  const friendsGoingByEvent = await getFriendsGoingByOccurrence(occurrenceIds, friendIds);
 
   const next = hasMoreInPhase
     ? { phase, offset: offset + EVENT_PAGE_SIZE }

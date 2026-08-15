@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { dateKey, endOfDay, formatShortDate, formatTime } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
-import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
-import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { deleteTrip } from "../actions";
 import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -13,6 +13,12 @@ import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import LocationMapLoader from "@/components/LocationMapLoader";
+import {
+  AddTripPlaceBox,
+  AttachListSelect,
+  DetachListButton,
+  RemoveTripPlaceButton,
+} from "../TripPlacesControls";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +44,10 @@ export default async function TripPage({
   const trip = await prisma.trip.findUnique({
     where: { id },
     include: {
-      personalEvents: { orderBy: { startsAt: "asc" } },
+      personalEvents: {
+        orderBy: { startsAt: "asc" },
+        include: { location: { select: { id: true, name: true } } },
+      },
       user: { select: { id: true, name: true } },
     },
   });
@@ -64,25 +73,26 @@ export default async function TripPage({
     prisma.eventOccurrence.findMany({
       where: {
         ...rangeWhere,
-        ...(showAll ? {} : { event: { attendees: { some: { userId: trip.userId } } } }),
+        ...(showAll ? {} : { attendances: { some: { userId: trip.userId } } }),
       },
       include: { event: { include: { performers: { include: { performer: true } } } } },
       orderBy: { startsAt: "asc" },
     }),
     prisma.eventOccurrence.count({
-      where: { ...rangeWhere, event: { attendees: { some: { userId: trip.userId } } } },
+      where: { ...rangeWhere, attendances: { some: { userId: trip.userId } } },
     }),
     prisma.eventOccurrence.count({ where: rangeWhere }),
   ]);
   const events = occurrences.map(flattenOccurrence);
 
   const eventIds = events.map((ev) => ev.id);
+  const occIds = events.map((ev) => ev.occurrenceId);
   const [favoritedIds, goingIds, friendIds] = await Promise.all([
     getFavoritedEventIds(eventIds, user.id),
-    getGoingEventIds(eventIds, user.id),
+    getGoingOccurrenceIds(occIds, user.id),
     getFriendIds(user.id),
   ]);
-  const friendsGoingByEvent = await getFriendsGoingByEvent(eventIds, friendIds);
+  const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
   // Публичные и личные события — одна хронологическая лента. Личные
   // видит только владелец: даже в публичной поездке брони/встречи —
@@ -91,6 +101,7 @@ export default async function TripPage({
     id: p.id,
     title: p.title,
     note: p.note,
+    location: p.location,
     startsAt: p.startsAt,
     dateKey: dateKey(p.startsAt),
     timeValue: formatTime(p.startsAt),
@@ -100,24 +111,43 @@ export default async function TripPage({
     ...personal.map((p) => ({ kind: "personal" as const, startsAt: p.startsAt, key: `own-${p.id}`, personalEvent: p })),
   ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
-  // «Что посетить» (Г4): локации съёмок дорам, которые владелец смотрит/
-  // смотрел (DramaWatchStatus) — приоритетный шорт-лист паломничества.
-  const placeLocations = showPlaces
-    ? await prisma.location.findMany({
-        where: {
-          dramas: {
-            some: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
+  // «Что посетить» (Г4): локации съёмок дорам владельца + прикреплённые
+  // списки мест + отдельные добавленные места.
+  const [placeLocations, tripLists, tripPlaces, myLists] = showPlaces
+    ? await Promise.all([
+        prisma.location.findMany({
+          where: {
+            dramas: {
+              some: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
+            },
           },
-        },
-        include: {
-          dramas: {
-            where: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
-            include: { drama: { select: { id: true, title: true } } },
+          include: {
+            dramas: {
+              where: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
+              include: { drama: { select: { id: true, title: true } } },
+            },
           },
-        },
-        orderBy: { name: "asc" },
-      })
-    : [];
+          orderBy: { name: "asc" },
+        }),
+        prisma.tripPlaceList.findMany({
+          where: { tripId: trip.id },
+          include: { list: { include: { items: { include: { location: true } } } } },
+        }),
+        prisma.tripPlace.findMany({
+          where: { tripId: trip.id },
+          include: { location: true },
+        }),
+        isOwner
+          ? prisma.placeList.findMany({
+              where: { userId: user.id },
+              select: { id: true, title: true },
+              orderBy: { createdAt: "desc" },
+            })
+          : Promise.resolve([]),
+      ])
+    : [[], [], [], []];
+  const attachedListIds = new Set(tripLists.map((t) => t.listId));
+  const availableLists = myLists.filter((l) => !attachedListIds.has(l.id));
 
   const boundDelete = deleteTrip.bind(null, trip.id);
 
@@ -184,26 +214,96 @@ export default async function TripPage({
       </div>
 
       {showPlaces ? (
-        placeLocations.length === 0 ? (
-          <p className="text-secondary">
-            Здесь появятся локации съёмок ваших сериалов — отметьте статус
-            просмотра на страницах дорам, и мы соберём, что посетить в
-            поездке.
-          </p>
+        (() => {
+          const pinMap = new Map<string, { id: string; name: string; latitude: number; longitude: number }>();
+          const addPin = (l: { id: string; name: string; latitude: number | null; longitude: number | null }) => {
+            if (l.latitude != null && l.longitude != null && !pinMap.has(l.id)) {
+              pinMap.set(l.id, { id: l.id, name: l.name, latitude: l.latitude, longitude: l.longitude });
+            }
+          };
+          placeLocations.forEach(addPin);
+          tripLists.forEach((tl) => tl.list.items.forEach((i) => addPin(i.location)));
+          tripPlaces.forEach((tp) => addPin(tp.location));
+          const pins = Array.from(pinMap.values());
+          const isEmpty =
+            placeLocations.length === 0 && tripLists.length === 0 && tripPlaces.length === 0;
+          return isEmpty && !isOwner ? (
+          <p className="text-secondary">Пока здесь пусто.</p>
         ) : (
           <>
+            {isOwner && (
+              <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <AttachListSelect tripId={trip.id} availableLists={availableLists} />
+                <AddTripPlaceBox tripId={trip.id} />
+              </div>
+            )}
+            {pins.length > 0 && (
+              <div className="mb-4">
+                <LocationMapLoader locations={pins} height="22rem" />
+              </div>
+            )}
+
+            {tripLists.map((tl) => (
+              <div key={tl.listId} className="mb-4">
+                <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                  <Link
+                    href={`/lists/${tl.listId}`}
+                    className="small text-secondary text-uppercase text-decoration-none"
+                    style={{ letterSpacing: "0.08em" }}
+                  >
+                    📋 {tl.list.title} ({tl.list.items.length})
+                  </Link>
+                  {isOwner && <DetachListButton tripId={trip.id} listId={tl.listId} />}
+                </div>
+                <div className="d-flex flex-column gap-2">
+                  {tl.list.items.map((i) => (
+                    <Link
+                      key={i.locationId}
+                      href={`/locations/${i.location.id}`}
+                      className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-2 px-3"
+                    >
+                      <span className="text-white">{i.location.name}</span>
+                      {i.note && <span className="small text-secondary text-truncate">— {i.note}</span>}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {tripPlaces.length > 0 && (
+              <div className="mb-4">
+                <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+                  Отдельные места
+                </h2>
+                <div className="d-flex flex-column gap-2">
+                  {tripPlaces.map((tp) => (
+                    <div
+                      key={tp.locationId}
+                      className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3"
+                    >
+                      <Link href={`/locations/${tp.location.id}`} className="text-decoration-none text-white">
+                        {tp.location.name}
+                      </Link>
+                      {isOwner && <RemoveTripPlaceButton tripId={trip.id} locationId={tp.locationId} />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isEmpty && isOwner && (
+              <p className="text-secondary">
+                Прикрепите список мест, добавьте отдельные места или отметьте
+                статус просмотра на страницах дорам — здесь соберётся, что
+                посетить в поездке.
+              </p>
+            )}
+            {placeLocations.length > 0 && (
+            <>
             <p className="small text-secondary mb-3">
               Локации съёмок сериалов{isOwner ? ", которые вы смотрите" : " владельца поездки"}:{" "}
               {placeLocations.length}.
             </p>
-            <div className="mb-4">
-              <LocationMapLoader
-                locations={placeLocations
-                  .filter((l) => l.latitude != null && l.longitude != null)
-                  .map((l) => ({ id: l.id, name: l.name, latitude: l.latitude!, longitude: l.longitude! }))}
-                height="22rem"
-              />
-            </div>
             <div className="d-flex flex-column gap-2">
               {placeLocations.map((l) => (
                 <Link
@@ -232,8 +332,11 @@ export default async function TripPage({
                 </Link>
               ))}
             </div>
+            </>
+            )}
           </>
-        )
+        );
+        })()
       ) : timeline.length === 0 ? (
         <p className="text-secondary">
           {showAll
@@ -251,7 +354,7 @@ export default async function TripPage({
                 event={item.event}
                 isFavorited={favoritedIds.has(item.event.id)}
                 isGoing={goingIds.has(item.event.id)}
-                friendsGoing={friendsGoingByEvent.get(item.event.id) ?? []}
+                friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
               />
             ) : (
               <PersonalEventCard

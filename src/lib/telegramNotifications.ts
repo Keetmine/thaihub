@@ -23,12 +23,10 @@ export async function sendUpcomingEventReminders(): Promise<{ sent: number; skip
   const occurrences = await prisma.eventOccurrence.findMany({
     where: { startsAt: { gt: now, lte: until } },
     include: {
-      event: {
-        include: {
-          attendees: { include: { user: true } },
-          favoritedBy: { include: { user: true } },
-        },
-      },
+      // «Иду» — по конкретной дате (attendances на occurrence);
+      // избранное остаётся событийным.
+      attendances: { include: { user: true } },
+      event: { include: { favoritedBy: { include: { user: true } } } },
       telegramNotifications: { select: { userId: true } },
     },
   });
@@ -41,7 +39,7 @@ export async function sendUpcomingEventReminders(): Promise<{ sent: number; skip
     // «Иду» и избранное складываем в одну карту — человек может быть в
     // обоих списках, напоминание всё равно одно.
     const recipients = new Map<string, { id: string; telegramId: string | null }>();
-    for (const a of occ.event.attendees) recipients.set(a.user.id, a.user);
+    for (const a of occ.attendances) recipients.set(a.user.id, a.user);
     for (const f of occ.event.favoritedBy) {
       if (!recipients.has(f.user.id)) recipients.set(f.user.id, f.user);
     }
@@ -185,15 +183,17 @@ export async function sendPresaleReminders(): Promise<number> {
  * Telegram и подпиской, не отключившие уведомления об этом человеке
  * (FriendNotificationMute).
  */
-export async function notifyFriendsAboutGoing(userId: string, eventId: string): Promise<void> {
+export async function notifyFriendsAboutGoing(userId: string, occurrenceId: string): Promise<void> {
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
 
-  const [actor, event, friendIds] = await Promise.all([
+  const [actor, occurrence, friendIds] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
-    prisma.event.findUnique({ where: { id: eventId }, include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } } }),
+    prisma.eventOccurrence.findUnique({ where: { id: occurrenceId }, include: { event: true } }),
     getFriendIds(userId),
   ]);
-  if (!actor || !event || friendIds.length === 0) return;
+  if (!actor || !occurrence) return;
+  const event = occurrence.event;
+  if (friendIds.length === 0) return;
 
   const friends = await prisma.user.findMany({
     where: {
@@ -205,9 +205,7 @@ export async function notifyFriendsAboutGoing(userId: string, eventId: string): 
   });
 
   const name = actor.name || "Ваш друг";
-  const when = event.occurrences[0]
-    ? ` (${formatHumanDate(event.occurrences[0].startsAt)})`
-    : "";
+  const when = ` (${formatHumanDate(occurrence.startsAt)})`;
   const appUrl = process.env.APP_URL || "";
   const link = appUrl ? `\n${appUrl}${eventHref(event)}` : "";
 

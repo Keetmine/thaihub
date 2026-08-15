@@ -30,9 +30,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
     include: {
       favoritePerformers: { include: { performer: true }, orderBy: { createdAt: "desc" } },
       eventAttendances: {
-        include: {
-          event: { include: { occurrences: { orderBy: { startsAt: "asc" } } } },
-        },
+        include: { event: true, occurrence: true },
       },
       _count: { select: { favoriteEvents: true, dramaWatchStatuses: true } },
     },
@@ -50,6 +48,16 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       })
     : null;
 
+  // Списки мест, видимые этому зрителю (та же модель, что у поездок).
+  const placeLists = await prisma.placeList.findMany({
+    where: {
+      userId: user.id,
+      OR: [{ visibility: "PUBLIC" }, ...(isFriend ? [{ visibility: "FRIENDS" as const }] : [])],
+    },
+    include: { _count: { select: { items: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
   // Поездки, которые этому зрителю можно видеть.
   const trips = await prisma.trip.findMany({
     where: {
@@ -61,9 +69,16 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   });
 
   const now = new Date();
-  const upcomingGoing = user.eventAttendances
-    .map((a) => a.event)
-    .filter((e) => e.occurrences.some((o) => o.startsAt >= now))
+  // «Иду» per-дата: собираем события с отмеченными будущими датами.
+  const goingByEvent = new Map<string, { event: (typeof user.eventAttendances)[number]["event"]; occurrences: { startsAt: Date }[] }>();
+  for (const a of user.eventAttendances) {
+    if (a.occurrence.startsAt < now) continue;
+    const cur = goingByEvent.get(a.eventId);
+    if (cur) cur.occurrences.push({ startsAt: a.occurrence.startsAt });
+    else goingByEvent.set(a.eventId, { event: a.event, occurrences: [{ startsAt: a.occurrence.startsAt }] });
+  }
+  const upcomingGoing = Array.from(goingByEvent.values())
+    .map((g) => ({ ...g.event, occurrences: g.occurrences.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()) }))
     .sort(
       (a, b) =>
         (a.occurrences[0]?.startsAt.getTime() ?? 0) - (b.occurrences[0]?.startsAt.getTime() ?? 0),
@@ -215,6 +230,31 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                 <span className="small text-secondary flex-shrink-0">
                   {VISIBILITY_LABELS[t.visibility]}
                 </span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {placeLists.length > 0 && (
+        <>
+          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+            Списки мест
+          </h2>
+          <div className="d-flex flex-column gap-2 mb-4">
+            {placeLists.map((l) => (
+              <Link
+                key={l.id}
+                href={`/lists/${l.id}`}
+                className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
+              >
+                <div style={{ minWidth: 0 }}>
+                  <p className="font-display fw-medium text-white mb-0 text-truncate">{l.title}</p>
+                  {l.description && (
+                    <p className="small text-secondary mb-0 text-truncate">{l.description}</p>
+                  )}
+                </div>
+                <span className="small text-secondary flex-shrink-0">{l._count.items} мест</span>
               </Link>
             ))}
           </div>

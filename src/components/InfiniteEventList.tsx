@@ -54,7 +54,7 @@ function MonthSections({
                   key={ev.occurrenceId}
                   event={ev}
                   isFavorited={favoritedIds.has(ev.id)}
-                  isGoing={goingIds.has(ev.id)}
+                  isGoing={goingIds.has(ev.occurrenceId)}
                   friendsGoing={friendsGoing.get(ev.id) ?? []}
                 />
               ),

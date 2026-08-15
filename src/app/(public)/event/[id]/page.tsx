@@ -6,7 +6,6 @@ import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
-import GoingButton from "@/components/GoingButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { CalendarIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
@@ -14,6 +13,7 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { parseEventIdFromParam } from "@/lib/eventSlug";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
+import GoingDateChips from "./GoingDateChips";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -77,22 +77,23 @@ export default async function EventDetailPage({
     );
   }
   let isEventFavorited = false;
-  let isGoing = false;
+  let goingOccurrenceIds: string[] = [];
   let friendsGoing: { id: string; name: string | null; photoUrl: string | null }[] = [];
   let ownNote: { text: string; visibility: string } | null = null;
   let friendNotes: FriendNote[] = [];
   if (currentUser) {
-    const [favorite, attendance, friendIds] = await Promise.all([
+    const [favorite, attendances, friendIds] = await Promise.all([
       prisma.favoriteEvent.findUnique({
         where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
       }),
-      prisma.eventAttendance.findUnique({
-        where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
+      prisma.eventAttendance.findMany({
+        where: { userId: currentUser.id, eventId: event.id },
+        select: { occurrenceId: true },
       }),
       getFriendIds(currentUser.id),
     ]);
     isEventFavorited = !!favorite;
-    isGoing = !!attendance;
+    goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
     if (friendIds.length > 0) {
       const attendances = await prisma.eventAttendance.findMany({
         where: { eventId: event.id, userId: { in: friendIds } },
@@ -133,7 +134,6 @@ export default async function EventDetailPage({
         </h1>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
-          <GoingButton eventId={event.id} isGoing={isGoing} variant="icon" />
           <a
             href={`/event/${event.id}/ics`}
             className="round-icon-btn"
@@ -176,6 +176,14 @@ export default async function EventDetailPage({
                 </p>
               );
             })}
+            {currentUser && (
+              <div className="mb-2">
+                <GoingDateChips
+                  occurrences={event.occurrences.map((o) => ({ id: o.id, startsAt: o.startsAt }))}
+                  goingIds={goingOccurrenceIds}
+                />
+              </div>
+            )}
             {event.ticketPrice && (
               <p className="mb-0">
                 <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}

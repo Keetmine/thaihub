@@ -35,11 +35,10 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       prisma.eventAttendance.findMany({
         where: { userId },
         include: {
+          occurrence: { include: { attendances: { select: { userId: true } } } },
           event: {
             include: {
-              occurrences: { orderBy: { startsAt: "asc" } },
               performers: { include: { performer: { select: { id: true, name: true, photoUrl: true } } } },
-              attendees: { select: { userId: true } },
             },
           },
         },
@@ -56,12 +55,16 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       }),
     ]);
 
-  // «Посещено» = события, у которых последняя дата уже прошла.
-  const attended = attendances.filter((a) => {
-    const last = a.event.occurrences[a.event.occurrences.length - 1];
-    return last && last.startsAt < now;
-  });
-  const upcoming = attendances.length - attended.length;
+  // «Иду» теперь per-дата: «посещено» — прошедшие отмеченные даты,
+  // событие считается один раз даже при нескольких отмеченных днях.
+  const attendedRows = attendances.filter((a) => a.occurrence.startsAt < now);
+  const attendedEventIds = new Set(attendedRows.map((a) => a.eventId));
+  const attended = Array.from(
+    new Map(attendedRows.map((a) => [a.eventId, a])).values(),
+  );
+  const upcoming = new Set(
+    attendances.filter((a) => a.occurrence.startsAt >= now).map((a) => a.eventId),
+  ).size;
 
   const venues = new Set(attended.map((a) => a.event.venue.trim().toLowerCase()));
 
@@ -80,19 +83,23 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
   const byYear = new Map<number, number>();
   const attendedDays: string[] = [];
   for (const a of attended) {
-    const first = a.event.occurrences[0];
-    if (!first) continue;
-    byYear.set(first.startsAt.getFullYear(), (byYear.get(first.startsAt.getFullYear()) ?? 0) + 1);
-    attendedDays.push(dateKey(first.startsAt));
+    const d = a.occurrence.startsAt;
+    byYear.set(d.getFullYear(), (byYear.get(d.getFullYear()) ?? 0) + 1);
+  }
+  // «Дубль» — два РАЗНЫХ посещённых события в один день.
+  for (const a of attendedRows) attendedDays.push(`${a.eventId}|${dateKey(a.occurrence.startsAt)}`);
+  const dayToEvents = new Map<string, Set<string>>();
+  for (const a of attendedRows) {
+    const k = dateKey(a.occurrence.startsAt);
+    if (!dayToEvents.has(k)) dayToEvents.set(k, new Set());
+    dayToEvents.get(k)!.add(a.eventId);
   }
 
-  // «Дубль» — два посещённых события с первой датой в один день.
-  const doubleDay = attendedDays.length !== new Set(attendedDays).size;
+  const doubleDay = Array.from(dayToEvents.values()).some((set) => set.size >= 2);
 
-  // «Марафон» — 3 посещённых события в пределах 7 дней.
-  const sortedTimes = attended
-    .map((a) => a.event.occurrences[0]?.startsAt.getTime() ?? 0)
-    .filter(Boolean)
+  // «Марафон» — 3 посещённые даты в пределах 7 дней.
+  const sortedTimes = attendedRows
+    .map((a) => a.occurrence.startsAt.getTime())
     .sort((a, b) => a - b);
   let marathonWeek = false;
   for (let i = 0; i + 2 < sortedTimes.length; i++) {
@@ -105,7 +112,7 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
   // «Компанией» — событие, куда шли ≥3 друзей... точнее: ≥3 других
   // посетителей-друзей не проверяем по дружбе (дорого) — считаем «шли
   // втроём+» по общему числу отметившихся, включая юзера: 4+.
-  const wentWithThreeFriends = attended.some((a) => a.event.attendees.length >= 4);
+  const wentWithThreeFriends = attendedRows.some((a) => a.occurrence.attendances.length >= 4);
 
   // «Ранняя пташка» — отметка «иду» раньше даты открытия продаж.
   const earlyBird = attendances.some(
@@ -117,7 +124,7 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
   const pastOrCurrentTrips = trips.filter((t) => t.startDate <= now);
 
   return {
-    attendedEvents: attended.length,
+    attendedEvents: attendedEventIds.size,
     upcomingEvents: upcoming,
     uniqueVenues: venues.size,
     performersSeenLive: performerCounts.size,

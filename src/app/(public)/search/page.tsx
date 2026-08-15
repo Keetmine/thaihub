@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
-import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 import { performerHref } from "@/lib/performerSlug";
@@ -89,12 +89,13 @@ export default async function SearchPage({
 
   const currentUser = await getCurrentUser();
   const eventIds = events.map((ev) => ev.id);
+  const occIds = events.map((ev) => ev.occurrenceId);
   const [favoritedIds, goingIds, friendIds] = await Promise.all([
     getFavoritedEventIds(eventIds, currentUser?.id),
-    getGoingEventIds(eventIds, currentUser?.id),
+    getGoingOccurrenceIds(occIds, currentUser?.id),
     getFriendIds(currentUser?.id),
   ]);
-  const friendsGoingByEvent = await getFriendsGoingByEvent(eventIds, friendIds);
+  const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
   const totalCount =
     events.length + performers.length + dramas.length + agencies.length + locations.length;
@@ -123,8 +124,8 @@ export default async function SearchPage({
                   key={ev.occurrenceId}
                   event={ev}
                   isFavorited={favoritedIds.has(ev.id)}
-                  isGoing={goingIds.has(ev.id)}
-                  friendsGoing={friendsGoingByEvent.get(ev.id) ?? []}
+                  isGoing={goingIds.has(ev.occurrenceId)}
+                  friendsGoing={friendsGoingByEvent.get(ev.occurrenceId) ?? []}
                   showDate
                 />
 

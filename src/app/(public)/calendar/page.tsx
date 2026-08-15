@@ -8,7 +8,7 @@ import {
   WEEKDAY_NAMES_RU,
 } from "@/lib/dates";
 import { getCurrentUser } from "@/lib/userAuth";
-import { getGoingEventIds } from "@/lib/favorites";
+import { getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { isPremiumActive } from "@/lib/premium";
@@ -49,8 +49,9 @@ export default async function CalendarPage({
   const occurrences = await prisma.eventOccurrence.findMany({
     where: {
       startsAt: { gte: rangeStart, lte: rangeEnd },
+      // «Мои события» — по отметкам на конкретные даты.
       ...(!showAll && currentUser
-        ? { event: { attendees: { some: { userId: currentUser.id } } } }
+        ? { attendances: { some: { userId: currentUser.id } } }
         : {}),
     },
     include: { event: { include: { performers: { include: { performer: true } } } } },
@@ -68,8 +69,8 @@ export default async function CalendarPage({
   // In "all events" view, distinguish events the user is going to. In
   // "mine" view every visible event already qualifies, so skip the lookup.
   const goingIds = showAll
-    ? await getGoingEventIds(events.map((ev) => ev.id), currentUser?.id)
-    : new Set(events.map((ev) => ev.id));
+    ? await getGoingOccurrenceIds(events.map((ev) => ev.occurrenceId), currentUser?.id)
+    : new Set(events.map((ev) => ev.occurrenceId));
 
   const prev = addMonths(new Date(year, month, 1), -1);
   const next = addMonths(new Date(year, month, 1), 1);
@@ -151,7 +152,7 @@ export default async function CalendarPage({
                 {dayEvents.slice(0, 3).map((ev) => (
                   <span
                     key={ev.occurrenceId}
-                    className={`event-chip ${goingIds.has(ev.id) ? "event-chip-going" : ""}`}
+                    className={`event-chip ${goingIds.has(ev.occurrenceId) ? "event-chip-going" : ""}`}
                     title={ev.title}
                   >
                     {ev.title}
