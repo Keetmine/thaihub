@@ -28,6 +28,9 @@ compliant path, not just a technical convenience. Requires
 - **`src/app/admin/(protected)/performers/tmdbActions.ts`** — thin
   `"use server"` wrappers the client flow calls directly (same shape as
   the TTM importer's `importActions.ts`), plus `revalidatePath` calls.
+- **`src/lib/localImage.ts`** — `downloadRemoteImage(url, folder)`, used
+  by every DB-persisting TMDB image write (see "Local image storage"
+  below).
 - **Admin flow**: `/admin/performers/[id]/import-tmdb` — a "Импортировать
   с TMDB" link on a **solo** performer's edit page (bands aren't people on
   TMDB, so this doesn't apply to them). `TmdbImportFlow.tsx` mirrors
@@ -38,6 +41,12 @@ compliant path, not just a technical convenience. Requires
   reasoning as the GMMTV/blscene bulk scripts: hundreds of items is too
   many to review one by one, so this is dedup-and-report instead).
   Run dramas first — see "Bulk sync" below for why the order matters.
+  The same sweep is also reachable from the admin UI: an "Импортировать
+  с TMDB" button on `/admin/dramas` (`TmdbSyncButton.tsx` +
+  `syncTmdbDramas` in that folder's `actions.ts`) and `/admin/performers`
+  (same component/action names, next to `GmmtvSyncButton`) — same
+  running/result-summary pattern as the GMMTV and blscene sync buttons,
+  since (like those) there's nothing to review per item.
 
 ## "Known For" isn't a real API field
 
@@ -182,6 +191,66 @@ photos.ts` (photo only) and `scripts/backfill-agency-profile-details.ts`
 performers with at least one `Agency` (this catalog's thousands of
 incidental cast members outside that scope were judged not worth the
 TMDB request volume for now).
+
+## Local image storage
+
+TMDB image URLs (`https://image.tmdb.org/t/p/w500/...`) are never stored
+as-is — every DB-persisting write downloads the file first and stores a
+local `/uploads/tmdb/...` URL instead, via `downloadRemoteImage(url,
+"tmdb")` (`src/lib/localImage.ts`), called from `findOrCreateCastPerformer`
+and `importShow` (`Drama.posterUrl`) in `tmdbImport.ts`,
+`importTmdbCompany` (`Agency.logoUrl`), and `findOrCreateAgencyArtist`
+(`agencyTmdbMatching.ts`). Rationale: a remote CDN URL baked into the DB
+is a standing external dependency (TMDB could re-path, rate-limit, or
+just go down) for something that's cheap to own outright once fetched.
+
+- **Filename = the remote URL's own last path segment** (TMDB's image
+  paths are already unique, content-addressed-looking ids like
+  `kL8HP4KyRl0AmSg0MMhcnJhpX78.jpg`), so re-syncing the same person/show
+  is a cheap `fs.access` check, not a re-download — safe to call on
+  every sync, not just once. All three fields share one flat
+  `public/uploads/tmdb/` folder rather than a per-field subfolder, since
+  the filenames themselves already can't collide.
+- **Everything is stored as WebP** (`toWebp` in `localImage.ts`, sharp,
+  q82) — the basename is kept and the extension becomes `.webp`; GIFs
+  are saved as-is to preserve animation. The manual `/api/upload`
+  endpoint re-encodes to WebP the same way. Files downloaded before this
+  existed are converted in place by `scripts/convert-uploads-webp.ts`
+  (walks `public/uploads/` recursively, converts each JPEG/PNG, repoints
+  every DB image field that referenced the old filename, deletes the
+  original; safe to re-run).
+- **Never blocks an import**: any failure (network error, non-2xx,
+  content-type outside the same JPEG/PNG/WEBP/GIF allowlist
+  `/api/upload` uses) falls back to returning the original remote URL
+  and logs a warning — a broken image fetch shouldn't sink an otherwise-
+  good sync. `tmdb.ts` itself stays untouched (still a pure, synchronous
+  URL builder) since some of its callers are preview-only
+  (`fetchTmdbPersonKnownForTv`'s `posterUrl` is shown on the review
+  screen but never persisted) and shouldn't trigger a download at all.
+- **Proxy caveat (real incident, not hypothetical)**: TMDB's image CDN
+  (`tmdb-image-prod.b-cdn.net`, behind `image.tmdb.org`) is DNS-blocked
+  by some ISPs — resolves to 127.0.0.1, so every image download fails
+  with `fetch failed` while the API host itself still works. curl works
+  around it via the `HTTPS_PROXY` env var automatically, but Node's
+  built-in fetch ignores proxy env vars unless `NODE_USE_ENV_PROXY=1`
+  is set — which is why the `dev`/`start` npm scripts set it (a no-op
+  when no proxy vars are configured) and `scripts/backfill-tmdb-images.ts`
+  should be run with it too on such networks.
+- **`scripts/backfill-tmdb-images.ts`** — one-off catch-up
+  (`npx tsx scripts/backfill-tmdb-images.ts`) for every row imported
+  before this existed: sweeps `Drama.posterUrl`/`Performer.photoUrl`/
+  `Agency.logoUrl` still pointing at `image.tmdb.org`, downloads each via
+  the same `downloadRemoteImage`, 16-way concurrent. Safe to re-run —
+  already-local rows are excluded by the query itself, and a row that
+  failed last time just gets retried.
+- **Docker persistence**: `public/uploads` (both this and the manual
+  admin upload endpoint) needs a named volume in `docker-compose.yml`
+  (`uploads_data:/app/public/uploads`) or every downloaded/uploaded file
+  is lost on the next `docker compose up --build` — it otherwise lives
+  only in the container's writable layer. The `public` folder's `COPY`
+  in the `Dockerfile` also needs `--chown=nextjs:nodejs` (the container
+  runs as that non-root user) so it can actually write into the mounted
+  volume.
 
 ## New fields this added
 

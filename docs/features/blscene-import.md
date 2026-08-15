@@ -18,17 +18,23 @@ scrapable with a normal `fetch` + `cheerio`, no headless browser needed
 - **`src/lib/blsceneImport.ts`** — the DB-writing orchestration:
   `importScrapedDrama` (create a new `Drama` + link its locations),
   `syncNewDramasFromBlscene` (diff the index against what's already in the
-  DB, import what's missing, refresh what's already there — see below).
-  Both the admin button and the one-off script call this same function.
+  DB, import what's missing, refresh what's already there — see below),
+  `refreshBlsceneLocations` (the refresh-only half of the same sweep, no
+  new-drama import — used by the admin button below). The script and the
+  admin button intentionally call different functions now (see "Admin
+  button" below for why).
 - **`scripts/import-blscene.ts`** — one-off backfill
   (`npx tsx scripts/import-blscene.ts`), used for the initial bulk import
-  of the whole index. Logs progress to stdout; not something you need to
-  run again in normal operation, since the admin button covers ongoing
-  sync.
+  of the whole index and for catching up on new shows blscene adds later
+  — `syncNewDramasFromBlscene`'s import+refresh sweep, same as before.
 - **Admin button** — "Проверить актуальный список (blscene)" on
-  `/admin/dramas` (`BlsceneSyncButton.tsx` → `syncBlsceneDramas` server
-  action in `src/app/admin/(protected)/dramas/actions.ts`), for catching
-  new shows blscene adds later without re-running the script.
+  `/admin/locations` (`BlsceneLocationsSyncButton.tsx` →
+  `syncBlsceneLocations` server action in
+  `src/app/admin/(protected)/locations/actions.ts`), for catching newly
+  added filming locations on already-imported dramas' pages. Deliberately
+  scoped to locations only — new-drama importing from blscene stays a
+  script-only operation (`scripts/import-blscene.ts`), so this button
+  can't be used to bulk-create dramas by accident.
 
 ## Dedup: matching by URL, not title
 
@@ -56,7 +62,7 @@ cleanup tool.)*
 
 ## Locations that don't match anything else: refresh pass
 
-Every sync run does two passes:
+`syncNewDramasFromBlscene` (the script's sweep) does two passes:
 
 1. **Import** — index entries with no matching `Drama` (by URL or title)
    get scraped and created fresh via `importScrapedDrama`.
@@ -69,6 +75,10 @@ Every sync run does two passes:
    resolve to an existing `Location` row linked to that drama). This means
    a full sync run always re-fetches every drama's page, not just new
    ones — expect it to take a few minutes, not seconds.
+
+`refreshBlsceneLocations` (the admin button's sweep) is just pass 2 —
+same `refreshScrapedDrama` call, same re-fetch-every-page cost, but
+skipping pass 1 entirely so it can never create a new `Drama`.
 
 ## Location dedup + coordinate resolution
 

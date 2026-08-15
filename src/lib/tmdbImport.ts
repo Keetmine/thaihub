@@ -14,6 +14,7 @@ import {
 } from "@/lib/tmdb";
 import { addPerformerAgency } from "@/lib/performerAgency";
 import { syncSocialLinks } from "@/lib/performerSocialLinks";
+import { downloadRemoteImage } from "@/lib/localImage";
 
 export type TmdbImportPreview = {
   tmdbPersonId: string;
@@ -89,6 +90,7 @@ async function findOrCreateCastPerformer(cast: {
   // real name in both `name` and `realName`.
   const person = await fetchTmdbPerson(tmdbId);
   const nickname = deriveNicknameFromAlsoKnownAs(person.name, person.alsoKnownAs);
+  const photoUrl = await downloadRemoteImage(cast.photoUrl ?? person.photoUrl, "tmdb");
 
   const created = await prisma.performer.create({
     data: {
@@ -96,7 +98,7 @@ async function findOrCreateCastPerformer(cast: {
       realName: cast.name,
       type: "SOLO",
       tmdbId,
-      photoUrl: cast.photoUrl ?? person.photoUrl,
+      photoUrl,
       placeOfBirth: person.placeOfBirth,
       birthDate: person.birthDate ? new Date(person.birthDate) : null,
     },
@@ -151,7 +153,7 @@ export async function importShow(
   const dramaData = {
     title: show.name,
     synopsis: show.overview,
-    posterUrl: show.posterUrl,
+    posterUrl: await downloadRemoteImage(show.posterUrl, "tmdb"),
     year: show.year,
     status: show.status,
     tmdbId,
@@ -541,13 +543,14 @@ export async function importTmdbCompany(
 ): Promise<TmdbCompanySyncSummary> {
   const log = onProgress ?? (() => {});
   const company = await fetchTmdbCompany(companyId);
+  const logoUrl = await downloadRemoteImage(company.logoUrl, "tmdb");
   const agency = await prisma.agency.upsert({
     where: { name: company.name },
     update: {
-      ...(company.logoUrl ? { logoUrl: company.logoUrl } : {}),
+      ...(logoUrl ? { logoUrl } : {}),
       ...(company.description ? { description: company.description } : {}),
     },
-    create: { name: company.name, logoUrl: company.logoUrl, description: company.description },
+    create: { name: company.name, logoUrl, description: company.description },
   });
   log(`Студия: ${company.name}`);
 

@@ -25,8 +25,20 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-please}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?Set ADMIN_SESSION_SECRET in a .env file next to docker-compose.yml (any long random string)}
       NODE_ENV: production
+      # Опциональные интеграции — пустые значения просто отключают фичу.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      APP_URL: ${APP_URL:-}
+      TMDB_API_READ_ACCESS_TOKEN: ${TMDB_API_READ_ACCESS_TOKEN:-}
     ports:
       - "3000:3000"
+    volumes:
+      # Admin-uploaded photos and TMDB-downloaded images (src/lib/localImage.ts)
+      # both land in public/uploads — without a named volume here they'd live
+      # only in the container's writable layer and vanish on the next
+      # `docker compose up --build`.
+      - uploads_data:/app/public/uploads
 
 volumes:
   db_data:
+  uploads_data:

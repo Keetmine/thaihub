@@ -14,6 +14,12 @@ export type BlsceneSyncResult = {
   errors: { title: string; message: string }[];
 };
 
+export type BlsceneLocationRefreshResult = {
+  checked: number;
+  refreshed: { title: string; newLocations: number }[];
+  errors: { title: string; message: string }[];
+};
+
 /**
  * Links `dramaId` to every scraped location, creating Location rows (+
  * resolving coordinates) for any that don't already exist by name — the
@@ -165,6 +171,48 @@ export async function syncNewDramasFromBlscene(
   for (const [i, entry] of toRefresh.entries()) {
     const existing = byUrl.get(entry.url)!;
     log(`[refresh ${i + 1}/${toRefresh.length}] ${entry.title}`);
+    try {
+      const scraped = await scrapeBlsceneDrama(entry.url);
+      const { newLocations } = await refreshScrapedDrama(existing.id, scraped, browser);
+      if (newLocations > 0) {
+        result.refreshed.push({ title: scraped.title, newLocations });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log(`  ! refresh failed: ${message}`);
+      result.errors.push({ title: entry.title, message });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Re-scrapes every already-imported drama's blscene page to pick up filming
+ * locations added there since our last visit — the locations-only half of
+ * `syncNewDramasFromBlscene`, for the admin "check for new locations" action
+ * on the locations page (new-drama importing stays on the dramas side,
+ * covered by the standalone backfill script instead).
+ */
+export async function refreshBlsceneLocations(
+  browser: Browser,
+  onProgress?: (message: string) => void,
+): Promise<BlsceneLocationRefreshResult> {
+  const log = onProgress ?? (() => {});
+
+  const index = await fetchBlsceneIndex();
+  const existingDramas = await prisma.drama.findMany({
+    select: { id: true, title: true, blsceneUrl: true },
+  });
+  const byUrl = new Map(existingDramas.filter((d) => d.blsceneUrl).map((d) => [d.blsceneUrl!, d]));
+  const toRefresh = index.filter((d) => byUrl.has(d.url));
+  log(`${toRefresh.length} already-imported shows to check for new locations`);
+
+  const result: BlsceneLocationRefreshResult = { checked: toRefresh.length, refreshed: [], errors: [] };
+
+  for (const [i, entry] of toRefresh.entries()) {
+    const existing = byUrl.get(entry.url)!;
+    log(`[${i + 1}/${toRefresh.length}] ${entry.title}`);
     try {
       const scraped = await scrapeBlsceneDrama(entry.url);
       const { newLocations } = await refreshScrapedDrama(existing.id, scraped, browser);

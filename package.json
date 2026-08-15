@@ -1,11 +1,11 @@
 {
-  "name": "thai-scheduler",
+  "name": "myblhub",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_USE_ENV_PROXY=1 next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_USE_ENV_PROXY=1 next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
     "test:e2e": "playwright test"
@@ -24,7 +24,8 @@
     "playwright": "^1.62.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
