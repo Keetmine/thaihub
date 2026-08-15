@@ -69,6 +69,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
     );
 
   const displayName = user.name || "Пользователь";
+  // Приватный профиль: не-друзьям показываем только имя/фото (Г8).
+  const showActivity = isFriend || !user.hideProfileActivity;
 
   return (
     <div>
@@ -112,14 +114,24 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             {isFriend && <FriendNotifyToggle friendId={user.id} muted={!!muteRow} />}
           </div>
           <p className="text-secondary small mb-0">
-            На MyBLHub с {formatShortDate(user.createdAt)} {user.createdAt.getFullYear()} ·{" "}
-            {ownerFriendIds.length} друзей · {user.eventAttendances.length} событий ·{" "}
-            {user.favoritePerformers.length} любимых актёров · {user._count.dramaWatchStatuses}{" "}
-            сериалов
+            На MyBLHub с {formatShortDate(user.createdAt)} {user.createdAt.getFullYear()}
+            {showActivity && (
+              <>
+                {" "}· {ownerFriendIds.length} друзей · {user.eventAttendances.length} событий ·{" "}
+                {user.favoritePerformers.length} любимых актёров · {user._count.dramaWatchStatuses}{" "}
+                сериалов
+              </>
+            )}
           </p>
         </div>
       </div>
 
+      {!showActivity && (
+        <p className="small text-secondary">Этот профиль скрывает свою активность.</p>
+      )}
+
+      {showActivity && (
+      <>
       <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
         Идёт на события
       </h2>
@@ -201,6 +213,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             ))}
           </div>
         </>
+      )}
+      </>
       )}
     </div>
   );

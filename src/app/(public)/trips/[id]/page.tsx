@@ -12,6 +12,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import { VisibilitySelect } from "../TripVisibilityControls";
+import LocationMapLoader from "@/components/LocationMapLoader";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +30,11 @@ export default async function TripPage({
   const { id } = await params;
   const { view } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
-  // поездки; ?view=all — все события её дат. Для гостей план владельца —
-  // и есть смысл расшаренной поездки.
+  // поездки; ?view=all — все события её дат; ?view=places — «что
+  // посетить»: локации съёмок дорам владельца. Для гостей план
+  // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
+  const showPlaces = view === "places";
   const trip = await prisma.trip.findUnique({
     where: { id },
     include: {
@@ -97,6 +100,25 @@ export default async function TripPage({
     ...personal.map((p) => ({ kind: "personal" as const, startsAt: p.startsAt, key: `own-${p.id}`, personalEvent: p })),
   ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
+  // «Что посетить» (Г4): локации съёмок дорам, которые владелец смотрит/
+  // смотрел (DramaWatchStatus) — приоритетный шорт-лист паломничества.
+  const placeLocations = showPlaces
+    ? await prisma.location.findMany({
+        where: {
+          dramas: {
+            some: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
+          },
+        },
+        include: {
+          dramas: {
+            where: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
+            include: { drama: { select: { id: true, title: true } } },
+          },
+        },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
   const boundDelete = deleteTrip.bind(null, trip.id);
 
   return (
@@ -151,10 +173,68 @@ export default async function TripPage({
           >
             Все события дат ({totalCount})
           </Link>
+          <Link
+            href={`/trips/${trip.id}?view=places`}
+            prefetch={false}
+            className={`tab-bar-item ${showPlaces ? "active" : ""}`}
+          >
+            Что посетить
+          </Link>
         </div>
       </div>
 
-      {timeline.length === 0 ? (
+      {showPlaces ? (
+        placeLocations.length === 0 ? (
+          <p className="text-secondary">
+            Здесь появятся локации съёмок ваших сериалов — отметьте статус
+            просмотра на страницах дорам, и мы соберём, что посетить в
+            поездке.
+          </p>
+        ) : (
+          <>
+            <p className="small text-secondary mb-3">
+              Локации съёмок сериалов{isOwner ? ", которые вы смотрите" : " владельца поездки"}:{" "}
+              {placeLocations.length}.
+            </p>
+            <div className="mb-4">
+              <LocationMapLoader
+                locations={placeLocations
+                  .filter((l) => l.latitude != null && l.longitude != null)
+                  .map((l) => ({ id: l.id, name: l.name, latitude: l.latitude!, longitude: l.longitude! }))}
+                height="22rem"
+              />
+            </div>
+            <div className="d-flex flex-column gap-2">
+              {placeLocations.map((l) => (
+                <Link
+                  key={l.id}
+                  href={`/locations/${l.id}`}
+                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
+                >
+                  {l.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={l.photoUrl}
+                      alt=""
+                      style={{ width: "3rem", height: "3rem", borderRadius: "0.6rem", objectFit: "cover", flexShrink: 0 }}
+                    />
+                  ) : (
+                    <div
+                      style={{ width: "3rem", height: "3rem", borderRadius: "0.6rem", background: "var(--bs-secondary-bg)", flexShrink: 0 }}
+                    />
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <p className="font-display fw-medium text-white mb-0 text-truncate">{l.name}</p>
+                    <p className="small text-secondary mb-0 text-truncate">
+                      {l.dramas.map((d) => d.drama.title).join(", ")}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )
+      ) : timeline.length === 0 ? (
         <p className="text-secondary">
           {showAll
             ? "В даты этой поездки не попадает ни одно событие."

@@ -13,6 +13,7 @@ import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { parseEventIdFromParam } from "@/lib/eventSlug";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import EventNoteSection, { type FriendNote } from "./EventNoteSection";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,8 @@ export default async function EventDetailPage({
   let isEventFavorited = false;
   let isGoing = false;
   let friendsGoing: { id: string; name: string | null; photoUrl: string | null }[] = [];
+  let ownNote: { text: string; visibility: string } | null = null;
+  let friendNotes: FriendNote[] = [];
   if (currentUser) {
     const [favorite, attendance, friendIds] = await Promise.all([
       prisma.favoriteEvent.findUnique({
@@ -97,6 +100,25 @@ export default async function EventDetailPage({
       });
       friendsGoing = attendances.map((a) => a.user);
     }
+
+    // Заметки (Г6): своя + друзей с видимостью FRIENDS.
+    const notes = await prisma.eventNote.findMany({
+      where: {
+        eventId: event.id,
+        OR: [
+          { userId: currentUser.id },
+          ...(friendIds.length > 0
+            ? [{ userId: { in: friendIds }, visibility: "FRIENDS" as const }]
+            : []),
+        ],
+      },
+      include: { user: { select: { name: true, photoUrl: true } } },
+    });
+    const own = notes.find((n) => n.userId === currentUser.id);
+    ownNote = own ? { text: own.text, visibility: own.visibility } : null;
+    friendNotes = notes
+      .filter((n) => n.userId !== currentUser.id)
+      .map((n) => ({ id: n.id, text: n.text, userName: n.user.name, userPhotoUrl: n.user.photoUrl }));
   }
   // --- end own block ---
 
@@ -224,6 +246,8 @@ export default async function EventDetailPage({
           </div>
         </div>
       )}
+
+      <EventNoteSection eventId={event.id} ownNote={ownNote} friendNotes={friendNotes} />
 
       {event.description && (
         <div className="surface p-4 mb-3">

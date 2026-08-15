@@ -31,6 +31,22 @@ export default async function SettingsPage() {
               <input name="name" defaultValue={user.name ?? ""} className="form-control" />
             </div>
             <FileDropzone name="photoUrl" label="Фото" defaultValue={user.photoUrl ?? ""} />
+            <div className="form-check">
+              <input
+                type="checkbox"
+                className="form-check-input"
+                id="hideProfileActivity"
+                name="hideProfileActivity"
+                defaultChecked={user.hideProfileActivity}
+              />
+              <label className="form-check-label small" htmlFor="hideProfileActivity">
+                Скрывать активность в профиле
+                <span className="text-secondary d-block">
+                  Не-друзья увидят только имя и фото — без событий, поездок,
+                  актёров и статистики.
+                </span>
+              </label>
+            </div>
             <button type="submit" className="btn btn-primary">
               Сохранить
             </button>
