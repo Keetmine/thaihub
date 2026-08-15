@@ -53,6 +53,7 @@ model EventOccurrence {
   event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   startsAt DateTime
   endsAt   DateTime?
+  telegramNotifications TelegramNotification[]
 
   @@index([eventId])
 }
@@ -315,10 +316,20 @@ model EventPairing {
 
 model User {
   id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
+  // Both nullable because a Telegram-auth account has neither — an
+  // email+password account always has both (enforced in the signup
+  // action, not the schema).
+  email        String?  @unique
+  passwordHash String?
   name         String?
   photoUrl     String?
+  // Telegram user id from the Login Widget (doubles as the DM chat id
+  // for bot notifications). Set = "can log in via Telegram".
+  telegramId       String? @unique
+  telegramUsername String?
+  // Manually toggled from /admin/users for now — no payment provider
+  // yet, this is just the switch the paid features check.
+  isPremium    Boolean  @default(false)
   // Opaque token for the read-only "subscribe to my calendar" ICS feed —
   // generated on first request since calendar apps fetch it without a
   // session cookie, so it needs its own unguessable credential.
@@ -332,9 +343,67 @@ model User {
   eventAttendances    EventAttendance[]
   dramaWatchStatuses  DramaWatchStatus[]
   visitedLocations    LocationVisit[]
+  trips               Trip[]
+  telegramNotifications TelegramNotification[]
 
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
+}
+
+// A user's planned trip (to Thailand) — a named date range; the trip page
+// shows every event occurrence falling inside it, so "what's happening
+// while I'm there" is one click instead of a manual date-range filter.
+model Trip {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  // Кто может открыть страницу поездки: PRIVATE — только владелец,
+  // FRIENDS — владелец и его принятые друзья, PUBLIC — любой залогиненный.
+  // Личные события поездки при этом видны только владельцу всегда.
+  visibility TripVisibility @default(PRIVATE)
+  createdAt DateTime @default(now())
+  personalEvents TripPersonalEvent[]
+
+  @@index([userId])
+}
+
+enum TripVisibility {
+  PRIVATE
+  FRIENDS
+  PUBLIC
+}
+
+// A user's own private entry inside a trip (dinner reservation, museum
+// day, flight) — rendered chronologically among the public events of the
+// trip's date range, visible only to the trip's owner. Deliberately much
+// simpler than Event: one date/time, free-text note, no venue entity or
+// performers.
+model TripPersonalEvent {
+  id        String    @id @default(cuid())
+  tripId    String
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  title     String
+  note      String?
+  startsAt  DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([tripId])
+}
+
+// Dedup ledger for Telegram event reminders — one row per (user,
+// occurrence) that's already been messaged, so the periodic job never
+// notifies twice about the same date of the same event.
+model TelegramNotification {
+  userId       String
+  occurrenceId String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrence   EventOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  sentAt       DateTime        @default(now())
+
+  @@id([userId, occurrenceId])
 }
 
 enum FriendshipStatus {

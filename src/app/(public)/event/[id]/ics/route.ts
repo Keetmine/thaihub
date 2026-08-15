@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildEventICS, buildPresaleICS } from "@/lib/ics";
+import { getCurrentUser } from "@/lib/userAuth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // События за подпиской — экспорт в календарь тоже (скачивается кнопкой
+  // из браузера, кука сессии при этом есть; маршрут остаётся вне
+  // login-гейта proxy.ts, но проверяет доступ сам).
+  const user = await getCurrentUser();
+  if (!user?.isPremium) {
+    return new NextResponse("Доступно по подписке", { status: 403 });
+  }
+
   const { id } = await params;
   const event = await prisma.event.findUnique({
     where: { id },

@@ -27,6 +27,66 @@ value itself is the shared secret, not a generated session id).
 
 Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
 
+## Telegram login
+
+Optional third way in (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_BOT_USERNAME`
+env vars; the login-page widget only renders when the username is set).
+Official Telegram Login Widget on `/login` → redirects to
+`/api/auth/telegram` with a signed profile; `verifyTelegramAuth`
+(`src/lib/telegram.ts`) checks the HMAC signature (secret =
+SHA256(bot token)) and a 24h `auth_date` freshness window, then the
+route finds-or-creates a `User` by `telegramId` and sets the same
+`user_session` as a password login. Telegram accounts have `email` and
+`passwordHash` both `null` (the columns went nullable for this) — the
+password-login action treats a null hash as "wrong password", and
+`changePassword` rejects them with an explanation. **Widget caveat**: it
+only renders on the domain bound to the bot via BotFather's `/setdomain`
+— it will not appear on localhost.
+
+The same bot also sends event reminders — see
+[telegram-notifications.md](telegram-notifications.md).
+
+## Premium flag
+
+`User.isPremium` (boolean, default false) — toggled per-user from
+`/admin/users` (no payment provider yet; the switch *is* the
+subscription). What it gates:
+
+- the calendar (`/calendar`), the day view (`/day/[date]`) and the ICS
+  subscribe feed (`/api/calendar-feed` returns 403 for non-premium
+  owners);
+- **all event data**: the home page shows a plain `PremiumUpsell`
+  instead of the list for non-premium users (no event data queried at
+  all); embedded lists on performer/drama/location pages and search
+  render `EventCardLocked` — the real date plus blurred placeholder
+  bars — so it's still visible *that* a performer has events, just not
+  which; the event detail page shows only the dates + `PremiumUpsell`.
+  All masking happens **server-side** (locked cards receive nothing but
+  a date; `fetchEventListPage` blanks title/venue/performers/poster
+  before the payload leaves the server), so the blur cannot be removed
+  via devtools — the data simply isn't in the HTML or any action
+  response. Single-event ICS export returns 403 too, the account page's
+  events tab receives empty arrays, and the `loadEventListPage` server
+  action re-checks premium itself, so calling it directly leaks
+  nothing;
+- the whole trips feature (see [trips.md](trips.md)): `/trips` shows
+  `PremiumUpsell`, `createTrip`/`setTripVisibility` and every
+  personal-event action throw for non-premium users, and the home page
+  hides trip tabs. A trip created while premium stays readable by its
+  owner at `/trips/[id]` after the flag is revoked (read-only — manage
+  buttons hidden, `deleteTrip` still allowed so people can clean up),
+  and shared FRIENDS/PUBLIC trips stay viewable by others regardless of
+  the *viewer's* premium status.
+
+Non-premium users see `PremiumUpsell`
+(`src/components/PremiumUpsell.tsx`) in place of the page content.
+
+## Admin user management
+
+`/admin/users` — list (name/email/telegram, registration date, activity
+counts), search, per-user premium toggle (`PremiumToggle.tsx` →
+`setUserPremium`), and delete (cascades to all user-owned rows).
+
 ## `src/proxy.ts` — what it does and doesn't check
 
 Per this Next.js version's own guidance (proxy runs on every route,

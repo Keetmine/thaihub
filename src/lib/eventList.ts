@@ -1,0 +1,118 @@
+import { prisma } from "@/lib/prisma";
+import { endOfDay, parseDateKey, startOfDay } from "@/lib/dates";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
+import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
+import type { EventWithPerformers } from "@/lib/types";
+
+// Постраничная выдача афиши для бесконечной прокрутки на главной: сначала
+// фаза "upcoming" (от сегодня, по возрастанию), после её исчерпания —
+// "past" (архив, по убыванию). При активном диапазоне дат архивной фазы
+// нет — там всё показывается одним восходящим списком (см. events.md).
+
+export const EVENT_PAGE_SIZE = 20;
+
+export type EventListFilters = {
+  filter: "all" | "going" | "favorited";
+  from: string;
+  to: string;
+  q: string;
+};
+
+export type EventListPhase = "upcoming" | "past";
+
+export type FriendGoing = { id: string; name: string | null; photoUrl: string | null };
+
+export type EventListPage = {
+  events: EventWithPerformers[];
+  favoritedIds: string[];
+  goingIds: string[];
+  // Map не сериализуется через границу server action — массив пар.
+  friendsGoing: [string, FriendGoing[]][];
+  // Откуда продолжать: null — всё загружено.
+  next: { phase: EventListPhase; offset: number } | null;
+  // true — события «заперты» подпиской: в events остались ТОЛЬКО даты
+  // (остальные поля затёрты ещё на сервере), клиент рендерит
+  // EventCardLocked. Реальные данные до браузера не доходят.
+  locked: boolean;
+};
+
+export async function fetchEventListPage(
+  userId: string | null,
+  isPremium: boolean,
+  filters: EventListFilters,
+  phase: EventListPhase,
+  offset: number,
+): Promise<EventListPage> {
+  const { filter, from, to, q } = filters;
+  const hasDateRange = Boolean(from || to);
+  const today = startOfDay(new Date());
+
+  // Фильтры Иду/Избранное применяются прямо в SQL — при offset-пагинации
+  // пост-фильтрация в JS ломала бы нумерацию страниц.
+  const eventWhere = {
+    ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
+    ...(filter === "going" && userId ? { attendees: { some: { userId } } } : {}),
+    ...(filter === "favorited" && userId ? { favoritedBy: { some: { userId } } } : {}),
+  };
+
+  const startsAt = hasDateRange
+    ? {
+        gte: from ? startOfDay(parseDateKey(from)) : undefined,
+        lte: to ? endOfDay(parseDateKey(to)) : undefined,
+      }
+    : phase === "upcoming"
+      ? { gte: today }
+      : { lt: today };
+
+  const occurrences = await prisma.eventOccurrence.findMany({
+    where: { startsAt, event: eventWhere },
+    include: { event: { include: { performers: { include: { performer: true } } } } },
+    orderBy: { startsAt: phase === "upcoming" ? "asc" : "desc" },
+    skip: offset,
+    take: EVENT_PAGE_SIZE + 1,
+  });
+
+  const hasMoreInPhase = occurrences.length > EVENT_PAGE_SIZE;
+  let events = occurrences.slice(0, EVENT_PAGE_SIZE).map(flattenOccurrence);
+
+  // Без подписки наружу уходят только даты: видно, ЧТО события есть и
+  // КОГДА, но ни названий, ни площадок, ни составов в ответе нет —
+  // «разблюрить» через девтулзы нечего.
+  if (!isPremium) {
+    events = events.map((ev) => ({
+      id: "",
+      occurrenceId: ev.occurrenceId,
+      title: "",
+      venue: "",
+      description: null,
+      posterUrl: null,
+      startsAt: ev.startsAt,
+      endsAt: null,
+      performers: [],
+    }));
+  }
+
+  const eventIds = isPremium ? events.map((ev) => ev.id) : [];
+  const [favoritedIds, goingIds, friendIds] = await Promise.all([
+    getFavoritedEventIds(eventIds, userId),
+    getGoingEventIds(eventIds, userId),
+    getFriendIds(userId),
+  ]);
+  const friendsGoingByEvent = await getFriendsGoingByEvent(eventIds, friendIds);
+
+  const next = hasMoreInPhase
+    ? { phase, offset: offset + EVENT_PAGE_SIZE }
+    : phase === "upcoming" && !hasDateRange
+      ? { phase: "past" as const, offset: 0 }
+      : null;
+
+  return {
+    events,
+    favoritedIds: Array.from(favoritedIds),
+    goingIds: Array.from(goingIds),
+    friendsGoing: Array.from(friendsGoingByEvent.entries()),
+    next,
+    locked: !isPremium,
+  };
+}

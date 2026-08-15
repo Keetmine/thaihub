@@ -10,6 +10,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   if (!user) {
     return new NextResponse("Ссылка недействительна", { status: 404 });
   }
+  // Подписка на календарь — часть платного «расписания»: у кого флаг
+  // сняли, у того фид перестаёт отдаваться (календарные приложения
+  // просто увидят 403 при следующем опросе).
+  if (!user.isPremium) {
+    return new NextResponse("Доступно по подписке", { status: 403 });
+  }
 
   const attendances = await prisma.eventAttendance.findMany({
     where: { userId: user.id },
@@ -20,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   return new NextResponse(buildFeedICS(events), {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `inline; filename="thaihub-${user.id}.ics"`,
+      "Content-Disposition": `inline; filename="myblhub-${user.id}.ics"`,
     },
   });
 }

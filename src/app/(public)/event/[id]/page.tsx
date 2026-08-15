@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatHumanDate, formatTimeRangeWithMsk, formatTimeWithMsk } from "@/lib/dates";
+import { formatCombinedDateList, formatHumanDate, formatTimeRangeWithMsk, formatTimeWithMsk } from "@/lib/dates";
+import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -9,15 +10,35 @@ import GoingButton from "@/components/GoingButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { CalendarIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
+import { dramaHref } from "@/lib/dramaSlug";
+import { parseEventIdFromParam } from "@/lib/eventSlug";
+import PremiumUpsell from "@/components/PremiumUpsell";
 
 export const dynamic = "force-dynamic";
+
+/** Groups occurrences that share the same start/end time-of-day (e.g. a
+ *  run of shows all at "18:00–20:00" on consecutive dates) so they render
+ *  as one combined date line instead of one full date per occurrence —
+ *  occurrences with a distinct time of their own stay in their own
+ *  single-item group and keep the full weekday date format. */
+function groupOccurrencesByTime(occurrences: EventOccurrence[]): EventOccurrence[][] {
+  const groups = new Map<string, EventOccurrence[]>();
+  for (const occ of occurrences) {
+    const timeOfDay = (d: Date) => `${d.getHours()}:${d.getMinutes()}`;
+    const key = `${timeOfDay(occ.startsAt)}-${occ.endsAt ? timeOfDay(occ.endsAt) : ""}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(occ);
+  }
+  return Array.from(groups.values());
+}
 
 export default async function EventDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parseEventIdFromParam(rawId);
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -33,6 +54,26 @@ export default async function EventDetailPage({
 
   // --- own block: current user's favorite/attendance state for this event ---
   const currentUser = await getCurrentUser();
+
+  // События целиком за подпиской: без неё страница не раскрывает ничего,
+  // кроме факта существования и дат (название/площадка/состав не
+  // рендерятся вовсе — в HTML их нет).
+  if (!currentUser?.isPremium) {
+    return (
+      <div>
+        <Link href="/" className="eyebrow text-decoration-none">
+          ← Все события
+        </Link>
+        <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
+          Событие
+        </h1>
+        <p className="text-secondary mb-4">
+          {event.occurrences.map((o) => formatHumanDate(o.startsAt)).join(", ")}
+        </p>
+        <PremiumUpsell feature="Страницы событий" />
+      </div>
+    );
+  }
   let isEventFavorited = false;
   let isGoing = false;
   let friendsGoing: { id: string; name: string | null; photoUrl: string | null }[] = [];
@@ -63,7 +104,7 @@ export default async function EventDetailPage({
       <Link href="/" className="eyebrow text-decoration-none">
         ← Все события
       </Link>
-      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-3 mb-2">
+      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-3 mb-3">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {event.title}
         </h1>
@@ -98,13 +139,20 @@ export default async function EventDetailPage({
               <PinIcon className="icon-inline" /> <span className="text-secondary">Локация:</span>{" "}
               {event.venue}
             </p>
-            {event.occurrences.map((occ) => (
-              <p key={occ.id} className="mb-2">
-                <CalendarIcon /> <span className="text-secondary">Дата и время:</span>{" "}
-                <span className="text-capitalize">{formatHumanDate(occ.startsAt)}</span> ·{" "}
-                {formatTimeRangeWithMsk(occ.startsAt, occ.endsAt)}
-              </p>
-            ))}
+            {groupOccurrencesByTime(event.occurrences).map((group) => {
+              const first = group[0];
+              return (
+                <p key={group.map((o) => o.id).join("-")} className="mb-2">
+                  <CalendarIcon /> <span className="text-secondary">Дата и время:</span>{" "}
+                  {group.length === 1 ? (
+                    <span className="text-capitalize">{formatHumanDate(first.startsAt)}</span>
+                  ) : (
+                    formatCombinedDateList(group.map((o) => o.startsAt))
+                  )}{" "}
+                  · {formatTimeRangeWithMsk(first.startsAt, first.endsAt)}
+                </p>
+              );
+            })}
             {event.ticketPrice && (
               <p className="mb-0">
                 <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
@@ -134,7 +182,9 @@ export default async function EventDetailPage({
                       Билеты
                     </a>
                   )}
-                  {event.presaleAt && (
+                  {/* Напоминание о препродаже имеет смысл только до её
+                      старта — для уже прошедшей кнопку не показываем. */}
+                  {event.presaleAt && event.presaleAt > new Date() && (
                     <a
                       href={`/event/${event.id}/ics?presale=1`}
                       className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
@@ -149,7 +199,7 @@ export default async function EventDetailPage({
             {event.drama && (
               <p className="mb-0">
                 <TvIcon className="icon-inline" /> <span className="text-secondary">Сериал:</span>{" "}
-                <Link href={`/dramas/${event.drama.id}`} className="link-body-emphasis">
+                <Link href={dramaHref(event.drama)} className="link-body-emphasis">
                   {event.drama.title}
                 </Link>
               </p>
