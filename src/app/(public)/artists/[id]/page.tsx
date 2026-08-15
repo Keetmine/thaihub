@@ -122,7 +122,7 @@ export default async function PerformerPage({
 
   return (
     <div>
-      <Link href="/performers" className="eyebrow text-decoration-none">
+      <Link href="/artists" className="eyebrow text-decoration-none">
         ← Все исполнители
       </Link>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">

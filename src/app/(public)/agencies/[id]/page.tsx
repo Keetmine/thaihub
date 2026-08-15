@@ -59,7 +59,7 @@ export default async function AgencyDetailPage({
 
   return (
     <div>
-      <Link href="/performers?view=agencies" className="eyebrow text-decoration-none">
+      <Link href="/artists?view=agencies" className="eyebrow text-decoration-none">
         ← Все агентства
       </Link>
 

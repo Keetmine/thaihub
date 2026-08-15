@@ -215,7 +215,7 @@ export default function AccountTabs({
           <div className="d-flex flex-wrap gap-2 mb-4">
             <StatTile value={stats.going} label="иду" />
             <StatTile value={stats.favoriteEvents} label="избранных событий" />
-            <StatTile value={stats.favoritePerformers} label="любимых актёров" href="/performers" />
+            <StatTile value={stats.favoritePerformers} label="любимых актёров" href="/artists" />
             <StatTile value={stats.dramas} label="сериалов" href="/dramas" />
             <StatTile value={stats.friends} label="друзей" href="/friends" />
             <StatTile value={stats.trips} label="поездок" href="/trips" />

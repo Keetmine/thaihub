@@ -46,7 +46,7 @@ export async function toggleFavoriteAgency(agencyId: string) {
   }
 
   revalidatePath("/account");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   revalidatePath(`/agencies/${agencyId}`);
 }
 

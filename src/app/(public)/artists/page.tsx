@@ -32,21 +32,21 @@ function Tabs({ active }: { active: View }) {
   return (
     <div className="tab-bar">
       <Link
-        href="/performers"
+        href="/artists"
         prefetch={false}
         className={`tab-bar-item ${active === "performers" ? "active" : ""}`}
       >
         Актёры
       </Link>
       <Link
-        href="/performers?view=bands"
+        href="/artists?view=bands"
         prefetch={false}
         className={`tab-bar-item ${active === "bands" ? "active" : ""}`}
       >
         Музыкальные группы
       </Link>
       <Link
-        href="/performers?view=agencies"
+        href="/artists?view=agencies"
         prefetch={false}
         className={`tab-bar-item ${active === "agencies" ? "active" : ""}`}
       >
@@ -347,7 +347,7 @@ export default async function PerformersPage({
       <div className="tab-bar-row">
         <Tabs active={view} />
         <NameSearchBox
-          action="/performers"
+          action="/artists"
           q={q}
           hiddenFields={view !== "performers" ? { view } : undefined}
           placeholder={view === "agencies" ? "Поиск по названию…" : "Поиск по имени…"}

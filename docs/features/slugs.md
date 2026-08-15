@@ -1,7 +1,7 @@
 # Public URL slugs
 
 Все публичные сущности живут по читаемым слагам без id:
-`/performers/fourth`, `/dramas/my-fellow-citizens`,
+`/artists/fourth`, `/dramas/my-fellow-citizens`,
 `/event/pond-phuwin-space-soul-dyssey-concert`, `/locations/tavi-cafe`,
 `/agencies/gmmtv`. Пользовательский контент (поездки, списки мест), где
 названия повторяются постоянно, получает суффикс-код:

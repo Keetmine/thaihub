@@ -47,7 +47,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <MobileMenu>
             <NavLink href="/">Все события</NavLink>
-            <NavLink href="/performers" matchPrefixes={["/performers/", "/agencies"]}>
+            <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
               Исполнители
             </NavLink>
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
@@ -68,7 +68,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
             <NavLink href="/">Все события</NavLink>
-            <NavLink href="/performers" matchPrefixes={["/performers/", "/agencies"]}>
+            <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
               Исполнители
             </NavLink>
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>

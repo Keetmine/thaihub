@@ -13,7 +13,7 @@ function href(prefix: string, entity: Sluggable, name: string): string {
   return legacy ? `/${prefix}/${entity.id}-${legacy}` : `/${prefix}/${entity.id}`;
 }
 
-export const performerHref = (p: Sluggable & { name: string }) => href("performers", p, p.name);
+export const performerHref = (p: Sluggable & { name: string }) => href("artists", p, p.name);
 export const dramaHref = (d: Sluggable & { title: string }) => href("dramas", d, d.title);
 export const eventHref = (e: Sluggable & { title: string }) => href("event", e, e.title);
 export const locationHref = (l: Sluggable & { name: string }) => href("locations", l, l.name);

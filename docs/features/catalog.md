@@ -3,7 +3,7 @@
 ## Performers & bands
 
 One `Performer` model covers both solo actors and bands
-(`type: SOLO | BAND`). Public: `src/app/(public)/performers/` (list +
+(`type: SOLO | BAND`). Public: `src/app/(public)/artists/` (list +
 `[id]` detail, `?view=agencies` — see below). Admin:
 `src/app/admin/(protected)/performers/` (`PerformerForm.tsx`,
 `AdminPerformerTabs.tsx` for the Актёры/Группы/Пейринги/Агентства tab
@@ -22,8 +22,9 @@ bar).
   [gmmtv-import.md](gmmtv-import.md) — and a performer's place of birth,
   birth date, social links, and known-for dramas (with full cast) can be
   pulled from TMDB — see [tmdb-import.md](tmdb-import.md).
-- **Public performer URLs are pretty, TMDB-style**:
-  `/performers/{id}-{nickname-realname-slug}` — `performerHref()` in
+- **Public performer URLs**: `/artists/{slug}` (см. slugs.md; раздел
+  переименован из /performers — старые ссылки редиректятся навсегда
+  через next.config) — `performerHref()` in
   `src/lib/performerSlug.ts` builds the link everywhere one is needed,
   `parsePerformerIdFromParam()` strips the slug back off on the way in.
   The id (a Prisma cuid, never containing a hyphen) is always the real
