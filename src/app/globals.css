@@ -804,6 +804,66 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* ---------- Единые заголовки секций ---------- */
+/* Один класс вместо 40+ копий "small text-secondary text-uppercase" с
+   inline letterSpacing — правится в одном месте (см. SectionHeading). */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+/* ---------- Тонкий кастомный скроллбар ---------- */
+/* Для горизонтальных рядов (постеры) и внутренних списков — нативная
+   полоса громоздкая на тёмной теме. */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.thin-scroll::-webkit-scrollbar {
+  height: 5px;
+  width: 5px;
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Длинный список внутри блока прокручивается сам, а не тянет страницу. */
+.scroll-list {
+  max-height: 26rem;
+  overflow-y: auto;
+  /* капля воздуха, чтобы тень последней карточки не резалась */
+  padding-right: 0.25rem;
+}
+
+/* ---------- Закреплённая шапка ---------- */
+/* top:0 + собственная подложка-градиент: с отступом сверху в зазоре
+   просвечивал контент, а сквозь полупрозрачный pill-nav — заголовки. */
+.nav-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
+  background: var(--bs-body-bg);
+}
+
 /* ---------- Custom date picker (DatePickerInput) ---------- */
 .date-picker {
   position: relative;

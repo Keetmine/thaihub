@@ -83,6 +83,17 @@ does and doesn't check.
   `onValueChange`) use; controlled is required inside index-keyed row
   lists (EventForm's occurrence rows) where internal state would stick
   to the position rather than the row.
+- **`SectionHeading`** (`src/components/SectionHeading.tsx`) / класс
+  `.section-heading` — единый заголовок секции (бывшая копипаста "small
+  text-secondary text-uppercase" + inline letterSpacing в 40+ местах);
+  опциональные `icon` и `action` (контрол справа). **`StatTile`**
+  (`src/components/StatTile.tsx`) — общая плитка-счётчик (кабинет,
+  профиль, админ-дашборд). Утилиты `.thin-scroll` (тонкий кастомный
+  скроллбар для горизонтальных рядов и внутренних списков) и
+  `.scroll-list` (длинный список прокручивается внутри блока, max-height
+  26rem). `.nav-sticky` — закреплённая шапка с непрозрачной подложкой в
+  обоих layout'ах. Иконки (`icons.tsx`) — единый stroke-стиль,
+  currentColor (у PinIcon больше НЕТ зашитого красного).
 - **`.tab-bar-row`** (`globals.css`) is the standard layout for a list page
   that has both underline tabs and a search box: tabs on the left, a
   `NameSearchBox` on the right, sharing one bottom border. Used on every

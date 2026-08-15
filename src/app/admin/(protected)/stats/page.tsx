@@ -1,26 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
+import StatTile from "@/components/StatTile";
 
 export const dynamic = "force-dynamic";
-
-function StatCard({ value, label, href }: { value: number; label: string; href?: string }) {
-  const inner = (
-    <>
-      <span className="font-display fw-bold d-block" style={{ fontSize: "1.6rem" }}>
-        {value}
-      </span>
-      <span className="small text-secondary">{label}</span>
-    </>
-  );
-  return href ? (
-    <Link href={href} className="surface surface-hover text-decoration-none text-reset text-center p-3 flex-fill">
-      {inner}
-    </Link>
-  ) : (
-    <div className="surface text-center p-3 flex-fill">{inner}</div>
-  );
-}
 
 // Админ-дашборд (Г10): состояние продукта одним экраном — пользователи и
 // подписки, объём каталога, свежие регистрации и события.
@@ -65,30 +48,30 @@ export default async function AdminStatsPage() {
         Дашборд
       </h1>
 
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         Пользователи
       </h2>
       <div className="d-flex flex-wrap gap-2 mb-4">
-        <StatCard value={usersTotal} label="всего" href="/admin/users" />
-        <StatCard value={premiumActive} label="с подпиской" href="/admin/users" />
-        <StatCard value={usersThisWeek} label="за неделю" />
-        <StatCard value={withTelegram} label="с Telegram" />
+        <StatTile value={usersTotal} label="всего" href="/admin/users" />
+        <StatTile value={premiumActive} label="с подпиской" href="/admin/users" />
+        <StatTile value={usersThisWeek} label="за неделю" />
+        <StatTile value={withTelegram} label="с Telegram" />
       </div>
 
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         Каталог
       </h2>
       <div className="d-flex flex-wrap gap-2 mb-4">
-        <StatCard value={eventsTotal} label="событий" href="/admin" />
-        <StatCard value={dramasTotal} label="сериалов" href="/admin/dramas" />
-        <StatCard value={performersTotal} label="исполнителей" href="/admin/performers" />
-        <StatCard value={locationsTotal} label="локаций" href="/admin/locations" />
-        <StatCard value={tripsTotal} label="поездок" />
+        <StatTile value={eventsTotal} label="событий" href="/admin" />
+        <StatTile value={dramasTotal} label="сериалов" href="/admin/dramas" />
+        <StatTile value={performersTotal} label="исполнителей" href="/admin/performers" />
+        <StatTile value={locationsTotal} label="локаций" href="/admin/locations" />
+        <StatTile value={tripsTotal} label="поездок" />
       </div>
 
       <div className="row g-4">
         <div className="col-12 col-md-6">
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Новые пользователи
           </h2>
           <div className="d-flex flex-column gap-2">
@@ -103,7 +86,7 @@ export default async function AdminStatsPage() {
           </div>
         </div>
         <div className="col-12 col-md-6">
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Недавно добавленные события
           </h2>
           <div className="d-flex flex-column gap-2">

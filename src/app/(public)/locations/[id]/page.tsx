@@ -90,8 +90,7 @@ export default async function LocationDetailPage({
           )}
 
           <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
+            className="section-heading mb-2"
           >
             Сериалы
           </h2>
@@ -136,12 +135,11 @@ export default async function LocationDetailPage({
           {locationEvents.length > 0 && (
             <div className="mt-4">
               <h2
-                className="small text-secondary text-uppercase mb-2"
-                style={{ letterSpacing: "0.08em" }}
+                className="section-heading mb-2"
               >
                 События здесь
               </h2>
-              <div className="d-flex flex-column gap-3">
+              <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
                 {locationEvents.map((ev) => (
                   isPremiumActive(currentUser) ? (
 
@@ -167,8 +165,7 @@ export default async function LocationDetailPage({
           {location.latitude != null && location.longitude != null && (
             <div className="mt-4">
               <h2
-                className="small text-secondary text-uppercase mb-2"
-                style={{ letterSpacing: "0.08em" }}
+                className="section-heading mb-2"
               >
                 На карте
               </h2>

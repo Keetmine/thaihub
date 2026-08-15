@@ -13,7 +13,6 @@ export function PinIcon({ className }: { className?: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
-      style={{ color: "var(--bs-danger)" }}
       aria-hidden="true"
     >
       <path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z" />
@@ -183,7 +182,7 @@ export function BuildingIcon() {
   );
 }
 
-export function ClockIcon() {
+export function ClockIcon({ className }: { className?: string } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -194,6 +193,7 @@ export function ClockIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
       aria-hidden="true"
     >
       <circle cx="12" cy="12" r="9" />
@@ -202,7 +202,7 @@ export function ClockIcon() {
   );
 }
 
-export function InfoIcon() {
+export function InfoIcon({ className }: { className?: string } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -213,6 +213,7 @@ export function InfoIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
       aria-hidden="true"
     >
       <circle cx="12" cy="12" r="9" />
@@ -413,6 +414,28 @@ export function TvIcon({ className }: { className?: string }) {
     >
       <rect x="2" y="7" width="20" height="14" rx="2.5" />
       <path d="M8 3l4 4 4-4" />
+    </svg>
+  );
+}
+
+export function TicketIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.95em"
+      height="0.95em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2.5 2.5 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2.5 2.5 0 0 0 0-6z" />
+      <path d="M13 5v2" />
+      <path d="M13 11v2" />
+      <path d="M13 17v2" />
     </svg>
   );
 }

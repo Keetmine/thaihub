@@ -148,8 +148,7 @@ export default function InfiniteEventList({
       {past.length > 0 && (
         <div className="mt-4 pt-3">
           <h2
-            className="small text-secondary text-uppercase mb-3"
-            style={{ letterSpacing: "0.08em" }}
+            className="section-heading mb-3"
           >
             Архив событий
           </h2>

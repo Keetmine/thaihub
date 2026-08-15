@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import { CalendarIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
+import { CalendarIcon, ClockIcon, InfoIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
@@ -186,12 +186,14 @@ export default async function EventDetailPage({
             )}
             {event.ticketPrice && (
               <p className="mb-0">
+                <TicketIcon className="icon-inline" />{" "}
                 <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
               </p>
             )}
             {(event.presaleAt || event.presaleUrl) && (
               <div className={event.drama ? "mt-3 mb-2" : "mt-3 mb-0"}>
                 <p className="mb-2">
+                  <ClockIcon className="icon-inline" />{" "}
                   <span className="text-secondary">Препродажа билетов:</span>{" "}
                   {event.presaleAt ? (
                     <>
@@ -229,8 +231,8 @@ export default async function EventDetailPage({
             )}
             {(event.performers.length > 0 || event.pairings.length > 0) && (
               <div className={event.drama ? "mt-3 mb-3" : "mt-3 mb-0"}>
-                <p className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
-                  Кто выступает
+                <p className="section-heading mb-2">
+                  <UsersIcon className="icon-inline" /> Кто выступает
                 </p>
                 <div className="d-flex flex-wrap gap-2">
                   {event.performers.map(({ performer }) => (
@@ -264,8 +266,7 @@ export default async function EventDetailPage({
       {friendsGoing.length > 0 && (
         <div className="surface p-4 mb-3">
           <h2
-            className="small text-secondary text-uppercase mb-2 d-flex align-items-center gap-2"
-            style={{ letterSpacing: "0.08em" }}
+            className="section-heading mb-2 d-flex align-items-center gap-2"
           >
             <UsersIcon /> {friendsGoing.length === 1 ? "Друг идёт" : "Друзья идут"}
           </h2>
@@ -281,11 +282,8 @@ export default async function EventDetailPage({
 
       {event.description && (
         <div className="surface p-4 mb-3">
-          <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
-          >
-            Описание
+          <h2 className="section-heading mb-2">
+            <InfoIcon className="icon-inline" /> Описание
           </h2>
           <p className="mb-0">{event.description}</p>
         </div>

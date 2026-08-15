@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveEventNote } from "./noteActions";
+import { PencilIcon } from "@/components/icons";
 
 export type FriendNote = {
   id: string;
@@ -32,8 +33,8 @@ export default function EventNoteSection({
   return (
     <div className="surface p-4 mb-3">
       <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-        <h2 className="small text-secondary text-uppercase mb-0" style={{ letterSpacing: "0.08em" }}>
-          Заметки
+        <h2 className="section-heading mb-0">
+          <PencilIcon /> Заметки
         </h2>
         {!isEditing && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsEditing(true)}>

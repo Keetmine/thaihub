@@ -25,7 +25,7 @@ function Section({
   if (count === 0) return null;
   return (
     <div className="mb-4">
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         {title} ({count})
       </h2>
       {children}

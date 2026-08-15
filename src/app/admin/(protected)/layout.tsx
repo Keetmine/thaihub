@@ -31,7 +31,7 @@ export default async function ProtectedAdminLayout({
 
   return (
     <div className="d-flex flex-column flex-fill">
-      <div className="container pt-4">
+      <div className="container pt-4 nav-sticky">
         <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">
           <Link
             href="/admin"

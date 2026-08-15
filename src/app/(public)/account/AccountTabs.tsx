@@ -9,6 +9,7 @@ import MskTimeInfo from "@/components/MskTimeInfo";
 import { formatCombinedDateList, formatHumanDate, formatShortDate, formatTime } from "@/lib/dates";
 import { PinIcon } from "@/components/icons";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
+import StatTile from "@/components/StatTile";
 
 export type AccountTab = "profile" | "events" | "stats";
 
@@ -28,8 +29,6 @@ function entryDatesLine(e: AccountEventEntry): string {
   if (dates.length === 1) return formatHumanDate(dates[0]);
   return formatCombinedDateList(dates);
 }
-
-const sectionHeadingStyle = { letterSpacing: "0.08em" } as const;
 
 function TabButton({
   active,
@@ -74,24 +73,6 @@ function EventRow({ event }: { event: AccountEventEntry }) {
         )}
       </span>
     </Link>
-  );
-}
-
-function StatTile({ value, label, href }: { value: number; label: string; href?: string }) {
-  const inner = (
-    <>
-      <span className="font-display fw-bold d-block" style={{ fontSize: "1.4rem" }}>
-        {value}
-      </span>
-      <span className="small text-secondary">{label}</span>
-    </>
-  );
-  return href ? (
-    <Link href={href} className="surface surface-hover text-decoration-none text-reset text-center p-3 flex-fill">
-      {inner}
-    </Link>
-  ) : (
-    <div className="surface text-center p-3 flex-fill">{inner}</div>
   );
 }
 
@@ -245,8 +226,7 @@ export default function AccountTabs({
           </p>
         )}
         <h2
-          className="small text-secondary text-uppercase mb-2"
-          style={sectionHeadingStyle}
+          className="section-heading mb-2"
         >
           Мои события — предстоящие
         </h2>
@@ -263,8 +243,7 @@ export default function AccountTabs({
         {pastAttendances.length > 0 && (
           <>
             <h2
-              className="small text-secondary text-uppercase mb-2"
-              style={sectionHeadingStyle}
+              className="section-heading mb-2"
             >
               Мои события — прошедшие
             </h2>
@@ -277,8 +256,7 @@ export default function AccountTabs({
         )}
 
         <h2
-          className="small text-secondary text-uppercase mb-2 mt-4"
-          style={sectionHeadingStyle}
+          className="section-heading mb-2 mt-4"
         >
           Избранные события
         </h2>

@@ -92,7 +92,7 @@ export default async function AgencyDetailPage({
         </p>
       )}
 
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         Исполнители
       </h2>
       {performers.length === 0 ? (
@@ -147,7 +147,7 @@ export default async function AgencyDetailPage({
         </div>
       )}
 
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         Сериалы
       </h2>
       {agency.dramas.length === 0 ? (

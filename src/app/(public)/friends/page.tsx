@@ -106,7 +106,7 @@ export default async function FriendsPage({
 
       {q && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Результаты поиска
           </h2>
           {searchResults.length === 0 ? (
@@ -137,7 +137,7 @@ export default async function FriendsPage({
 
       {incoming.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Заявки в друзья
           </h2>
           <div className="d-flex flex-column gap-2 mb-4">
@@ -174,7 +174,7 @@ export default async function FriendsPage({
 
       {outgoing.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Отправленные заявки
           </h2>
           <div className="d-flex flex-column gap-2 mb-4">
@@ -201,7 +201,7 @@ export default async function FriendsPage({
         </>
       )}
 
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         Мои друзья
       </h2>
       {accepted.length === 0 ? (

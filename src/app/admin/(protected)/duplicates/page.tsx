@@ -34,8 +34,7 @@ export default async function DuplicatesPage() {
           {dramaGroups.length > 0 && (
             <div>
               <h2
-                className="small text-secondary text-uppercase mb-2"
-                style={{ letterSpacing: "0.08em" }}
+                className="section-heading mb-2"
               >
                 Сериалы ({dramaGroups.length})
               </h2>
@@ -60,8 +59,7 @@ export default async function DuplicatesPage() {
           {performerGroups.length > 0 && (
             <div>
               <h2
-                className="small text-secondary text-uppercase mb-2"
-                style={{ letterSpacing: "0.08em" }}
+                className="section-heading mb-2"
               >
                 Исполнители ({performerGroups.length})
               </h2>

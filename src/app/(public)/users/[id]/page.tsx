@@ -160,7 +160,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       <>
       {badges.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Ачивки
           </h2>
           <div className="d-flex flex-wrap gap-2 mb-4">
@@ -172,7 +172,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           </div>
         </>
       )}
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         Идёт на события
       </h2>
       {!isPremiumActive(viewer) ? (
@@ -183,7 +183,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       ) : upcomingGoing.length === 0 ? (
         <p className="small text-secondary mb-4">Пока никуда не собирается.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4">
+        <div className="d-flex flex-column gap-2 mb-4 scroll-list thin-scroll">
           {upcomingGoing.map((event) => {
             const dates = event.occurrences.map((o) => o.startsAt);
             const first = event.occurrences[0];
@@ -211,7 +211,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {trips.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Поездки
           </h2>
           <div className="d-flex flex-column gap-2 mb-4">
@@ -239,7 +239,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {placeLists.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Списки мест
           </h2>
           <div className="d-flex flex-column gap-2 mb-4">
@@ -264,7 +264,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {user.favoritePerformers.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Любимые актёры
           </h2>
           <div className="d-flex flex-wrap gap-2 mb-4">

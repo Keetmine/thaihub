@@ -258,8 +258,7 @@ export default async function TripPage({
                 <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
                   <Link
                     href={listHref(tl.list)}
-                    className="small text-secondary text-uppercase text-decoration-none"
-                    style={{ letterSpacing: "0.08em" }}
+                    className="section-heading text-decoration-none"
                   >
                     📋 {tl.list.title} ({tl.list.items.length})
                   </Link>
@@ -282,7 +281,7 @@ export default async function TripPage({
 
             {tripPlaces.length > 0 && (
               <div className="mb-4">
-                <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+                <h2 className="section-heading mb-2">
                   Отдельные места
                 </h2>
                 <div className="d-flex flex-column gap-2">

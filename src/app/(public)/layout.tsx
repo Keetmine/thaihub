@@ -39,7 +39,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <div className="d-flex flex-column min-vh-100">
       <div className="ambient-wash" />
-      <div className="container pt-4">
+      <div className="container pt-4 nav-sticky">
         <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">
           <Link href="/" prefetch={false} className="navbar-brand mb-0 text-decoration-none">
             <Logo />

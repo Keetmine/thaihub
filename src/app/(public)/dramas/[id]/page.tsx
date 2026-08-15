@@ -143,8 +143,7 @@ export default async function DramaDetailPage({
           )}
 
           <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
+            className="section-heading mb-2"
           >
             Актёрский состав
           </h2>
@@ -167,8 +166,7 @@ export default async function DramaDetailPage({
           {drama.locations.length > 0 && (
             <>
               <h2
-                className="small text-secondary text-uppercase mb-2 mt-4"
-                style={{ letterSpacing: "0.08em" }}
+                className="section-heading mb-2 mt-4"
               >
                 Локации
               </h2>
@@ -222,12 +220,11 @@ export default async function DramaDetailPage({
       {events.length > 0 && (
         <div className="mt-4">
           <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
+            className="section-heading mb-2"
           >
             События
           </h2>
-          <div className="d-flex flex-column gap-3">
+          <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
             {events.map((ev) => (
               isPremiumActive(currentUser) ? (
 

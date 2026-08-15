@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import LocationMapLoader from "@/components/LocationMapLoader";
+import StatTile from "@/components/StatTile";
 import { performerHref } from "@/lib/performerSlug";
 
 // Сериализуемые версии для клиентской вкладки (Д1/Д2).
@@ -30,19 +31,6 @@ export type AchievementForTab = {
   target: number;
 };
 
-function Tile({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="surface text-center p-3 flex-fill" style={{ minWidth: "8rem" }}>
-      <span className="font-display fw-bold d-block" style={{ fontSize: "1.5rem" }}>
-        {value}
-      </span>
-      <span className="small text-secondary">{label}</span>
-    </div>
-  );
-}
-
-const heading = { letterSpacing: "0.08em" } as const;
-
 export default function StatsTab({
   stats,
   achievements,
@@ -55,22 +43,22 @@ export default function StatsTab({
 
   return (
     <div>
-      <h2 className="small text-secondary text-uppercase mb-2" style={heading}>
+      <h2 className="section-heading mb-2">
         Мой фан-профиль
       </h2>
       <div className="d-flex flex-wrap gap-2 mb-4">
-        <Tile value={stats.attendedEvents} label="посещено событий" />
-        <Tile value={stats.uniqueVenues} label="площадок" />
-        <Tile value={stats.performersSeenLive} label="актёров вживую" />
-        <Tile value={stats.visitedLocations} label="локаций съёмок" />
-        <Tile value={stats.completedDramas} label="досмотрено дорам" />
-        <Tile value={stats.trips} label="поездок" />
-        <Tile value={stats.daysInThailand} label="дней в Таиланде" />
+        <StatTile value={stats.attendedEvents} label="посещено событий" />
+        <StatTile value={stats.uniqueVenues} label="площадок" />
+        <StatTile value={stats.performersSeenLive} label="актёров вживую" />
+        <StatTile value={stats.visitedLocations} label="локаций съёмок" />
+        <StatTile value={stats.completedDramas} label="досмотрено дорам" />
+        <StatTile value={stats.trips} label="поездок" />
+        <StatTile value={stats.daysInThailand} label="дней в Таиланде" />
       </div>
 
       {stats.topPerformers.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={heading}>
+          <h2 className="section-heading mb-2">
             Чаще всего видела вживую
           </h2>
           <div className="d-flex flex-wrap gap-2 mb-4">
@@ -104,7 +92,7 @@ export default function StatsTab({
 
       {stats.eventsByYear.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={heading}>
+          <h2 className="section-heading mb-2">
             События по годам
           </h2>
           <div className="d-flex align-items-end gap-3 mb-4" style={{ height: "6rem" }}>
@@ -130,7 +118,7 @@ export default function StatsTab({
 
       {stats.visitedLocationPins.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={heading}>
+          <h2 className="section-heading mb-2">
             Карта посещённого
           </h2>
           <div className="mb-4">
@@ -139,7 +127,7 @@ export default function StatsTab({
         </>
       )}
 
-      <h2 className="small text-secondary text-uppercase mb-2" style={heading}>
+      <h2 className="section-heading mb-2">
         Ачивки · {unlockedCount}/{achievements.length}
       </h2>
       <div className="row g-2 mb-4">

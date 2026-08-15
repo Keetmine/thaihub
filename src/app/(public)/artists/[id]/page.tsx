@@ -182,10 +182,10 @@ export default async function PerformerPage({
 
           {!isBand && performer.dramas.length > 0 && (
             <div className="mt-1">
-              <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+              <h2 className="section-heading mb-2">
                 Сериалы
               </h2>
-              <div className="d-flex gap-3 pb-2" style={{ overflowX: "auto" }}>
+              <div className="d-flex gap-3 pb-2 thin-scroll" style={{ overflowX: "auto" }}>
                 {sortedDramas.map((pd) => (
                   <div
                     key={pd.dramaId}
@@ -255,8 +255,7 @@ export default async function PerformerPage({
           {isBand && performer.bandMembers.length > 0 && (
             <div className="mt-2">
               <h2
-                className="small text-secondary text-uppercase mb-2"
-                style={{ letterSpacing: "0.08em" }}
+                className="section-heading mb-2"
               >
                 Участники
               </h2>
@@ -277,8 +276,7 @@ export default async function PerformerPage({
           {!isBand && performer.memberOfBands.length > 0 && (
             <div className="mt-2">
               <h2
-                className="small text-secondary text-uppercase mb-2"
-                style={{ letterSpacing: "0.08em" }}
+                className="section-heading mb-2"
               >
                 Группа
               </h2>
@@ -301,8 +299,7 @@ export default async function PerformerPage({
       {currentPairings.length > 0 && (
         <div className="mb-4">
           <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
+            className="section-heading mb-2"
           >
             В паре с
           </h2>
@@ -326,8 +323,7 @@ export default async function PerformerPage({
       {pastPairings.length > 0 && (
         <div className="mb-4">
           <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
+            className="section-heading mb-2"
           >
             Бывшие пары
           </h2>
@@ -348,13 +344,13 @@ export default async function PerformerPage({
         </div>
       )}
 
-      <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+      <h2 className="section-heading mb-2">
         Предстоящие события
       </h2>
       {upcoming.length === 0 ? (
         <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
       ) : (
-        <div className="d-flex flex-column gap-3 mb-4">
+        <div className="d-flex flex-column gap-3 mb-4 scroll-list thin-scroll">
           {upcoming.map((ev) => (
             isPremiumActive(currentUser) ? (
 
@@ -377,10 +373,10 @@ export default async function PerformerPage({
 
       {past.length > 0 && (
         <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+          <h2 className="section-heading mb-2">
             Прошедшие
           </h2>
-          <div className="d-flex flex-column gap-3 opacity-50 mb-4">
+          <div className="d-flex flex-column gap-3 opacity-50 mb-4 scroll-list thin-scroll">
             {past.map((ev) => (
               isPremiumActive(currentUser) ? (
 
