@@ -10,6 +10,7 @@ import { BuildingIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
+import { performerHref } from "@/lib/performerSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -148,7 +149,7 @@ export default async function DramaDetailPage({
               {drama.performers.map(({ performer, role }) => (
                 <EntityMiniCard
                   key={performer.id}
-                  href={`/performers/${performer.id}`}
+                  href={performerHref(performer)}
                   photoUrl={performer.photoUrl}
                   name={performer.name}
                   subtitle={role}

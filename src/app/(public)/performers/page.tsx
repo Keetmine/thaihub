@@ -7,6 +7,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import { HeartIcon } from "@/components/icons";
 import NameSearchBox from "@/components/NameSearchBox";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
+import { performerHref } from "@/lib/performerSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -172,14 +173,14 @@ async function PairingsTab({ q }: { q: string }) {
             </div>
             <div className="d-flex flex-wrap align-items-center gap-2">
               <Link
-                href={`/performers/${pair.performerA.id}`}
+                href={performerHref(pair.performerA)}
                 className="event-chip text-decoration-none"
               >
                 {pair.performerA.name}
               </Link>
               <span className="text-secondary">×</span>
               <Link
-                href={`/performers/${pair.performerB.id}`}
+                href={performerHref(pair.performerB)}
                 className="event-chip text-decoration-none"
               >
                 {pair.performerB.name}
@@ -202,7 +203,7 @@ function PerformerRow({
   return (
     <div className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3">
       <Link
-        href={`/performers/${performer.id}`}
+        href={performerHref(performer)}
         className="text-decoration-none d-flex align-items-center gap-2"
         style={{ minWidth: 0 }}
       >

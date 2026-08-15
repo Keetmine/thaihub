@@ -13,6 +13,7 @@ import {
   type TmdbKnownForShow,
 } from "@/lib/tmdb";
 import { addPerformerAgency } from "@/lib/performerAgency";
+import { syncSocialLinks } from "@/lib/performerSocialLinks";
 
 export type TmdbImportPreview = {
   tmdbPersonId: string;
@@ -97,8 +98,10 @@ async function findOrCreateCastPerformer(cast: {
       tmdbId,
       photoUrl: cast.photoUrl ?? person.photoUrl,
       placeOfBirth: person.placeOfBirth,
+      birthDate: person.birthDate ? new Date(person.birthDate) : null,
     },
   });
+  await syncSocialLinks(created.id, person.socialLinks);
   return { id: created.id, created: true };
 }
 
@@ -195,13 +198,20 @@ export async function commitTmdbPersonImport(input: {
   placeOfBirth: string;
   selectedTvIds: number[];
 }): Promise<TmdbImportResult> {
+  // Re-fetched rather than threaded through from the review screen's
+  // preview payload — birthDate/socialLinks aren't editable fields there
+  // (only placeOfBirth is), so there's nothing worth adding to that
+  // round-trip just to avoid one extra request here.
+  const person = await fetchTmdbPerson(input.tmdbPersonId);
   await prisma.performer.update({
     where: { id: input.performerId },
     data: {
       tmdbId: input.tmdbPersonId,
       placeOfBirth: input.placeOfBirth || null,
+      birthDate: person.birthDate ? new Date(person.birthDate) : null,
     },
   });
+  await syncSocialLinks(input.performerId, person.socialLinks);
 
   let createdDramas = 0;
   let updatedDramas = 0;

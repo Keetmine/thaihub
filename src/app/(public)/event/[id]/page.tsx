@@ -8,6 +8,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { CalendarIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
+import { performerHref } from "@/lib/performerSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -197,7 +198,7 @@ export default async function EventDetailPage({
             {event.performers.map(({ performer }) => (
               <EntityMiniCard
                 key={performer.id}
-                href={`/performers/${performer.id}`}
+                href={performerHref(performer)}
                 photoUrl={performer.photoUrl}
                 name={performer.name}
               />

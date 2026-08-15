@@ -9,6 +9,7 @@ import type {
   DramaWatchStatus,
 } from "@/generated/prisma/client";
 import type { EventWithPerformers } from "@/lib/types";
+import { performerHref } from "@/lib/performerSlug";
 import { logout } from "../login/actions";
 import FavoriteButton from "@/components/FavoriteButton";
 import WatchStatusSelect from "@/components/WatchStatusSelect";
@@ -210,7 +211,7 @@ export default function AccountTabs({
                 className="surface d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <Link
-                  href={`/performers/${f.performer.id}`}
+                  href={performerHref(f.performer)}
                   className="text-decoration-none font-display fw-medium text-white"
                 >
                   {f.performer.name}

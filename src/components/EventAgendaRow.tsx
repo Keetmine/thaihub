@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatShortDate, formatTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
+import { performerHref } from "@/lib/performerSlug";
 import { PinIcon, UserIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
@@ -57,7 +58,7 @@ export default function EventAgendaRow({
               {event.performers.map(({ performer }, i) => (
                 <span key={performer.id}>
                   {i > 0 && ", "}
-                  <Link href={`/performers/${performer.id}`} className="agenda-performer-link">
+                  <Link href={performerHref(performer)} className="agenda-performer-link">
                     {performer.name}
                   </Link>
                 </span>

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchTmdbPerson, deriveNicknameFromAlsoKnownAs } from "@/lib/tmdb";
 import { matchTmdbTvShow, matchTmdbPerson, importShow } from "@/lib/tmdbImport";
 import { addPerformerAgency } from "@/lib/performerAgency";
+import { syncSocialLinks } from "@/lib/performerSocialLinks";
 
 // Shared "match against TMDB first, fall back to the agency's own page
 // as a first-party source" logic for every agency importer sourced from
@@ -98,7 +99,7 @@ export async function findOrCreateAgencyArtist(
 
     const person = await fetchTmdbPerson(tmdbId);
     const nickname = deriveNicknameFromAlsoKnownAs(person.name, person.alsoKnownAs) ?? artist.nickname;
-    await prisma.performer.create({
+    const created = await prisma.performer.create({
       data: {
         name: nickname,
         realName: artist.fullName,
@@ -106,9 +107,11 @@ export async function findOrCreateAgencyArtist(
         tmdbId,
         photoUrl: person.photoUrl,
         placeOfBirth: person.placeOfBirth,
+        birthDate: person.birthDate ? new Date(person.birthDate) : null,
         agencies: { create: { agencyId } },
       },
     });
+    await syncSocialLinks(created.id, person.socialLinks);
     return { created: true, agencySet: true };
   }
 

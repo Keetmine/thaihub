@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import { getDramaWatchStatuses } from "@/lib/favorites";
+import { performerHref } from "@/lib/performerSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export default async function AgencyDetailPage({
               className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
             >
               <Link
-                href={`/performers/${p.id}`}
+                href={performerHref(p)}
                 className="text-decoration-none d-flex align-items-center gap-2"
                 style={{ minWidth: 0 }}
               >

@@ -87,8 +87,14 @@ export type TmdbPerson = {
   placeOfBirth: string | null;
   photoUrl: string | null;
   alsoKnownAs: string[];
+  birthDate: string | null;
+  socialLinks: { label: string; url: string }[];
 };
 
+/** `external_ids` (Instagram/Twitter/TikTok handles, bare — not full
+ *  URLs) isn't on the base `/person/{id}` response, but comes along for
+ *  free via `append_to_response` in the same request rather than a
+ *  second round-trip. */
 export async function fetchTmdbPerson(personId: string): Promise<TmdbPerson> {
   const data = await tmdbFetch<{
     id: number;
@@ -97,7 +103,24 @@ export async function fetchTmdbPerson(personId: string): Promise<TmdbPerson> {
     place_of_birth: string | null;
     profile_path: string | null;
     also_known_as: string[];
-  }>(`/person/${personId}`);
+    birthday: string | null;
+    external_ids?: {
+      instagram_id: string | null;
+      twitter_id: string | null;
+      tiktok_id: string | null;
+      facebook_id: string | null;
+      youtube_id: string | null;
+    };
+  }>(`/person/${personId}?append_to_response=external_ids`);
+
+  const ext = data.external_ids;
+  const socialLinks: { label: string; url: string }[] = [];
+  if (ext?.instagram_id) socialLinks.push({ label: "Instagram", url: `https://instagram.com/${ext.instagram_id}` });
+  if (ext?.twitter_id) socialLinks.push({ label: "Twitter", url: `https://x.com/${ext.twitter_id}` });
+  if (ext?.tiktok_id) socialLinks.push({ label: "TikTok", url: `https://tiktok.com/@${ext.tiktok_id}` });
+  if (ext?.facebook_id) socialLinks.push({ label: "Facebook", url: `https://facebook.com/${ext.facebook_id}` });
+  if (ext?.youtube_id) socialLinks.push({ label: "YouTube", url: `https://youtube.com/${ext.youtube_id}` });
+
   return {
     id: data.id,
     name: data.name,
@@ -105,6 +128,8 @@ export async function fetchTmdbPerson(personId: string): Promise<TmdbPerson> {
     placeOfBirth: data.place_of_birth || null,
     photoUrl: tmdbImageUrl(data.profile_path),
     alsoKnownAs: data.also_known_as ?? [],
+    birthDate: data.birthday || null,
+    socialLinks,
   };
 }
 

@@ -5,6 +5,7 @@ import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByEvent } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
+import { performerHref } from "@/lib/performerSlug";
 
 export const dynamic = "force-dynamic";
 
@@ -130,7 +131,7 @@ export default async function SearchPage({
               {performers.map((p) => (
                 <EntityMiniCard
                   key={p.id}
-                  href={`/performers/${p.id}`}
+                  href={performerHref(p)}
                   photoUrl={p.photoUrl}
                   name={p.name}
                 />

@@ -162,6 +162,27 @@ screen for potentially dozens of names per show would be unwieldy. The
 result screen reports created-drama/updated-drama/created-performer
 counts after the fact instead.
 
+### Birth date and social links
+
+`fetchTmdbPerson` also fetches `birthday` and `external_ids`
+(Instagram/Twitter/TikTok/Facebook/YouTube handles, via
+`append_to_response=external_ids` on the same request rather than a
+second round-trip) — expanded into full URLs and returned as
+`TmdbPerson.socialLinks`. Every path that creates a new `Performer` from
+a TMDB match (`findOrCreateCastPerformer` here,
+`findOrCreateAgencyArtist` in `agencyTmdbMatching.ts`,
+`commitTmdbPersonImport` above) sets `birthDate` and calls
+`syncSocialLinks` (`src/lib/performerSocialLinks.ts`) on create.
+
+These two fields were added to `fetchTmdbPerson` after the fact, so
+every `Performer` created before that fix has a `tmdbId` but is still
+missing them even though TMDB has the data — `scripts/backfill-agency-
+photos.ts` (photo only) and `scripts/backfill-agency-profile-details.ts`
+(birth date + social links) are one-off catch-up passes, scoped to
+performers with at least one `Agency` (this catalog's thousands of
+incidental cast members outside that scope were judged not worth the
+TMDB request volume for now).
+
 ## New fields this added
 
 - `Performer.placeOfBirth` (`String?`) — also a plain editable field in
@@ -171,13 +192,15 @@ counts after the fact instead.
   `IN_PRODUCTION`/`ENDED`/`CANCELED`/`PILOT`, TMDB's own TV status
   vocabulary) — shown as a badge next to the title/year on a drama's
   public page (`DRAMA_STATUS_LABELS` in `src/lib/dramaStatus.ts`), and a
-  smaller "Выходит" (`RETURNING_SERIES` only) badge next to each title in
-  a performer's own drama list — that list is sorted newest-`year`-first
-  (undated entries last), so a currently-airing show reads clearly
-  amongst their older credits without needing to open each one. Distinct
-  from `DramaWatchStatus` (a signed-in user's personal watch progress,
-  see [social.md](social.md)) — this is the show's own real-world airing
-  status, not per-user.
+  smaller "Выходит" (`RETURNING_SERIES` only) badge overlaid on the
+  poster in a performer's own drama list. That list renders as a
+  horizontal scrolling poster row (TMDB "Known For"-style — posters,
+  title, year, the per-user `DramaStatusButton` overlaid top-right),
+  sorted newest-`year`-first with undated entries last, so a currently-
+  airing show reads clearly amongst their older credits without needing
+  to open each one. Distinct from `DramaWatchStatus` (a signed-in user's
+  personal watch progress, see [social.md](social.md)) — this is the
+  show's own real-world airing status, not per-user.
 - `Drama.tmdbId` (`String? @unique`).
 
 `src/lib/dramaStatus.ts` mirrors `src/lib/watchStatus.ts`'s

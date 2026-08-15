@@ -12,6 +12,7 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
+import { performerHref, parsePerformerIdFromParam } from "@/lib/performerSlug";
 import { CakeIcon, BuildingIcon, PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,8 @@ export default async function PerformerPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parsePerformerIdFromParam(rawId);
   const performer = await prisma.performer.findUnique({
     where: { id },
     include: {
@@ -202,7 +204,7 @@ export default async function PerformerPage({
                 {performer.bandMembers.map((m) => (
                   <Link
                     key={m.performerId}
-                    href={`/performers/${m.performerId}`}
+                    href={performerHref(m.performer)}
                     className="event-chip text-decoration-none"
                   >
                     {m.performer.name}
@@ -224,7 +226,7 @@ export default async function PerformerPage({
                 {performer.memberOfBands.map((m) => (
                   <Link
                     key={m.bandId}
-                    href={`/performers/${m.bandId}`}
+                    href={performerHref(m.band)}
                     className="event-chip text-decoration-none"
                   >
                     {m.band.name}
@@ -250,7 +252,7 @@ export default async function PerformerPage({
               return (
                 <EntityMiniCard
                   key={pair.id}
-                  href={`/performers/${other.id}`}
+                  href={performerHref(other)}
                   photoUrl={other.photoUrl}
                   name={pair.name || other.name}
                   subtitle={pair.name ? other.name : undefined}
@@ -275,7 +277,7 @@ export default async function PerformerPage({
               return (
                 <EntityMiniCard
                   key={pair.id}
-                  href={`/performers/${other.id}`}
+                  href={performerHref(other)}
                   photoUrl={other.photoUrl}
                   name={pair.name || other.name}
                   subtitle={pair.name ? other.name : undefined}
@@ -329,24 +331,17 @@ export default async function PerformerPage({
           <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
             Сериалы
           </h2>
-          <div className="d-flex flex-column gap-2">
+          <div className="d-flex gap-3 pb-2" style={{ overflowX: "auto" }}>
             {sortedDramas.map((pd) => (
-              <div
-                key={pd.dramaId}
-                className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <Link
-                  href={`/dramas/${pd.dramaId}`}
-                  className="text-decoration-none d-flex align-items-center gap-3"
-                  style={{ minWidth: 0 }}
-                >
+              <div key={pd.dramaId} className="flex-shrink-0" style={{ width: "8.5rem", position: "relative" }}>
+                <Link href={`/dramas/${pd.dramaId}`} className="text-decoration-none d-block">
                   <div
                     style={{
-                      width: "2.75rem",
-                      height: "3.75rem",
+                      position: "relative",
+                      width: "100%",
+                      aspectRatio: "2 / 3",
                       borderRadius: "0.5rem",
                       background: "var(--bs-secondary-bg)",
-                      flexShrink: 0,
                       overflow: "hidden",
                     }}
                   >
@@ -358,29 +353,23 @@ export default async function PerformerPage({
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
                     )}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p className="font-display fw-medium text-white mb-0 d-flex align-items-center gap-2">
-                      <span className="text-truncate" style={{ minWidth: 0 }}>
-                        {pd.drama.title}
+                    {pd.drama.status === "RETURNING_SERIES" && (
+                      <span
+                        className="badge rounded-pill text-bg-secondary"
+                        style={{ position: "absolute", top: "0.375rem", left: "0.375rem", fontSize: "0.6rem" }}
+                      >
+                        {DRAMA_STATUS_LABELS.RETURNING_SERIES}
                       </span>
-                      {pd.drama.status === "RETURNING_SERIES" && (
-                        <span
-                          className="badge rounded-pill text-bg-secondary flex-shrink-0"
-                          style={{ fontSize: "0.65rem" }}
-                        >
-                          {DRAMA_STATUS_LABELS.RETURNING_SERIES}
-                        </span>
-                      )}
-                    </p>
-                    {pd.drama.year && <p className="small text-secondary mb-0">{pd.drama.year}</p>}
+                    )}
                   </div>
+                  <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                    {pd.drama.title}
+                  </p>
+                  {pd.drama.year && <p className="small text-secondary mb-0">{pd.drama.year}</p>}
                 </Link>
-                <DramaStatusButton
-                  dramaId={pd.dramaId}
-                  status={statusByDramaId.get(pd.dramaId) ?? null}
-                  className="flex-shrink-0"
-                />
+                <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                  <DramaStatusButton dramaId={pd.dramaId} status={statusByDramaId.get(pd.dramaId) ?? null} />
+                </div>
               </div>
             ))}
           </div>

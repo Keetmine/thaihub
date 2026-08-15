@@ -19,9 +19,19 @@ bar).
   link are all optional profile fields, fillable manually or (for dramas)
   picked up via the blscene importer's cast data where available. GMMTV's
   roster is kept in sync separately — see
-  [gmmtv-import.md](gmmtv-import.md) — and a performer's place of birth
-  plus their known-for dramas (with full cast) can be pulled from TMDB —
-  see [tmdb-import.md](tmdb-import.md).
+  [gmmtv-import.md](gmmtv-import.md) — and a performer's place of birth,
+  birth date, social links, and known-for dramas (with full cast) can be
+  pulled from TMDB — see [tmdb-import.md](tmdb-import.md).
+- **Public performer URLs are pretty, TMDB-style**:
+  `/performers/{id}-{nickname-realname-slug}` — `performerHref()` in
+  `src/lib/performerSlug.ts` builds the link everywhere one is needed,
+  `parsePerformerIdFromParam()` strips the slug back off on the way in.
+  The id (a Prisma cuid, never containing a hyphen) is always the real
+  identifier; the slug is purely decorative and ignored on lookup, so a
+  bare `/performers/{id}` still resolves and a stale slug in an old
+  bookmark never breaks. Falls back to a bare id link when there's
+  nothing Latin-script to slugify (a Thai-only name with no romanized
+  form).
 - `PerformerLink` is a free-form label+URL list per performer (social
   media, personal café, whatever) — no schema change needed to add a new
   kind of link. `src/lib/socialLinks.ts`'s `detectSocialPlatform(url)`
