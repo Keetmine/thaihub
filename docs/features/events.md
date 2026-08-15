@@ -89,6 +89,14 @@ since those are keyed on `Event.id`, not per-occurrence.
   `EventOccurrence` row.
 - Deleting an `Event` cascades to its `EventOccurrence` rows
   (`onDelete: Cascade` in the schema) — no separate cleanup needed.
+- **The event detail page** (`event/[id]/page.tsx`) groups occurrences
+  that share the same time-of-day via `groupOccurrencesByTime` and
+  renders each group as one line: a single-occurrence group keeps the
+  full weekday date format, a multi-occurrence group instead uses
+  `formatCombinedDateList` (`src/lib/dates.ts`) to compact same-month
+  dates into "21, 22, 23 августа 2026" followed by the one shared time —
+  avoids a full "Дата и время: ..." line per date for a show that just
+  repeats on consecutive nights at the same time.
 
 ## Presale
 
@@ -101,7 +109,9 @@ date/price, right under "Цена билетов:" — not a separate `surface` 
 further down the page, so it reads as one more fact about the event
 rather than a disconnected section. It still shows the "Билеты" link (if
 `presaleUrl` is set) and a **labeled** "Добавить в календарь" button (if
-`presaleAt` is set) side by side — deliberately a text button, not a
+`presaleAt` is set **and still in the future** — a reminder for a
+presale that already started is noise, so the button disappears once
+`presaleAt` passes) side by side — deliberately a text button, not a
 second icon in the top icon row next to the regular calendar-add button,
 so it reads as part of the presale call-to-action rather than a generic
 page action.
@@ -183,7 +193,7 @@ as a banner image at the top of the public event page when set.
 
 ## Thai time always has a Moscow equivalent available
 
-Every event in ThaiHub is a Thailand event, so every displayed event/
+Every event in MyBLHub is a Thailand event, so every displayed event/
 presale time has a Moscow equivalent nearby — Thailand (ICT, UTC+7) and
 Moscow (MSK, UTC+3) both run without DST, so the gap is a constant 4
 hours; `toMskTime` (`src/lib/dates.ts`) just subtracts 4 hours from a
@@ -194,24 +204,63 @@ inline, since that's the one page worth reading closely —
 `formatTimeWithMsk` ("18:00 (МСК 14:00)") for a single time,
 `formatTimeRangeWithMsk` ("18:00–21:00 (МСК 14:00–17:00)") for a range.
 
-**Everywhere events show up as a list** — `EventAgendaRow` (home, day,
-performer/drama/location pages, search) and the account page's going/
-favorited event rows — it's hidden by default and shown on hover/focus
-instead, via `MskTimeInfo`: a small "i" icon (`.agenda-time-info`) whose
-`data-tooltip` reads "Тайское время. МСК: HH:MM[–HH:MM]". This keeps list
-rows uncluttered; the admin events list is the one exception and still
-shows it inline (`formatTimeRangeWithMsk`), since that's a dense internal
-management view, not a browsing surface.
+**Everywhere events show up as a list** — `EventCard` (home, day view,
+trip pages) and `EventAgendaRow` (performer/drama/location pages,
+search), plus the account page's going/favorited event rows — it's
+hidden by default and shown on hover/focus instead, via `MskTimeInfo`: a
+small "i" icon (`.agenda-time-info`) whose `data-tooltip` reads "Тайское
+время. МСК: HH:MM[–HH:MM]". This keeps list rows uncluttered; the admin
+events list is the one exception and still shows it inline
+(`formatTimeRangeWithMsk`), since that's a dense internal management
+view, not a browsing surface.
 
-## Date in the compact list view
+## Premium gating
 
-`EventAgendaRow` normally shows only a time, since it's mostly used on
-pages that already group rows under a day heading (home, `/day/[date]`).
-Pages that list events as a flat sequence with no day heading — performer
-and drama detail pages, a location's "События здесь", search results —
-pass `showDate`, which stacks a small `formatShortDate` ("24 окт") line
-above the time in the same narrow column (`formatShortDate` in
-`src/lib/dates.ts`).
+All event data is subscription-gated — non-premium users see only that
+events exist and their dates. See the "Premium flag" section of
+[auth.md](auth.md) for the full gate matrix and the server-side masking
+design (`EventCardLocked`, blanked payloads — nothing to un-blur via
+devtools).
+
+## The two list row components
+
+- **`EventCard`** (`src/components/EventCard.tsx`) — the main browsing
+  row: a date block (big day number + month + weekday), the event's
+  poster thumbnail when it has one, title/time/venue/performers, and the
+  corner favorite/going icons. Used on the home page, `/day/[date]` and
+  trip pages. Cards are grouped under **month** headings
+  (`.month-group-heading`) — the earlier per-day headings with 1–2 rows
+  each read as a wall of repeating dates, and the card already carries
+  its own date.
+
+### Infinite scroll (home page)
+
+The home page no longer loads the whole catalog of occurrences: it
+server-renders the first 20 (`fetchEventListPage` in
+`src/lib/eventList.ts`, phase "upcoming" offset 0) and hands off to
+`InfiniteEventList` (`src/components/InfiniteEventList.tsx`), which
+fetches further pages through the `loadEventListPage` server action
+(`(public)/eventListActions.ts`) when an IntersectionObserver sentinel
+comes within ~600px of the viewport. Paging runs in two phases —
+"upcoming" (ascending from today) and then "past" (the archive,
+descending) — with an explicit date range collapsing to a single
+"upcoming" phase over that range, matching the pre-existing no-split
+behavior. Because pages are offset-based, the Все/Иду/Избранное filter
+is applied **in the SQL where-clause** (`attendees/favoritedBy some`)
+rather than post-filtering in JS, and the client dedupes rows by
+`occurrenceId` in case data shifts between page fetches. The month
+grouping (`groupByMonth`) therefore lives in the client component now,
+computed over the accumulated list. The server page keys
+`InfiniteEventList` by `filter|from|to|q` — without the key, switching
+the Все/Иду/Избранное tabs (a soft navigation that only changes props)
+left the client component's accumulated state in place and the list
+never visually changed (a real bug, not hypothetical).
+- **`EventAgendaRow`** (`src/components/EventAgendaRow.tsx`) — the
+  compact text row for embedded lists on performer/drama/location pages
+  and search results, where a poster-and-date-block card per event would
+  crowd the page. Normally shows only a time; those flat-sequence pages
+  pass `showDate`, which stacks a small `formatShortDate` ("24 окт")
+  line above the time in the same narrow column.
 
 ## Importing an event from ThaiTicketMajor
 

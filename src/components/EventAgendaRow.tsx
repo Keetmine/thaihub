@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatShortDate, formatTime } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { performerHref } from "@/lib/performerSlug";
+import { eventHref } from "@/lib/eventSlug";
 import { PinIcon, UserIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
@@ -47,7 +48,7 @@ export default function EventAgendaRow({
       <span className="agenda-dash">—</span>
       <div className="agenda-body">
         <h3 className="h6 font-display mb-1">
-          <Link href={`/event/${event.id}`} className="text-reset text-decoration-none">
+          <Link href={eventHref(event)} className="text-reset text-decoration-none">
             {event.title}
           </Link>
         </h3>
@@ -73,7 +74,7 @@ export default function EventAgendaRow({
               className="d-inline-flex align-items-center gap-1"
               title={friendsGoing.map((f) => f.name || "Друг").join(", ")}
             >
-              <UsersIcon />
+              <UsersIcon className="icon-inline" />
               {friendsGoing.length === 1
                 ? `${friendsGoing[0].name || "Друг"} идёт`
                 : `${friendsGoing.length} друзей идут`}

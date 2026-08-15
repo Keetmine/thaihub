@@ -104,6 +104,12 @@ Admin: `src/app/admin/(protected)/pairings/` +
 `PairingManager.tsx`/`CreatePairingModal.tsx` inside the performer form
 for inline creation.
 
+**Deliberately admin-only as a browsable entity**: there is no public
+pairings tab/listing anymore (the `/performers?view=pairings` tab was
+removed). Publicly, pairings surface in exactly two places — the "В паре
+с"/"Бывшие пары" blocks on a performer's page, and the lineup chips on
+an event that has a pairing attached.
+
 **Current vs past**: `Pairing.status` (`CURRENT` | `PAST`, default
 `CURRENT`) tracks whether a ship is still active — many real-life pairs
 break up and one or both performers go on to new pairings, and a
@@ -193,3 +199,16 @@ it never touches a performer's membership in any other agency.
 Both `PerformerForm.tsx` and `DramaForm.tsx` show a live "похоже, уже
 есть" hint under the name field on **create** (not edit) forms — see
 [duplicates.md](duplicates.md).
+
+## Async performer search in admin forms
+
+The performer pickers in `EventForm` (`EntityMultiSelect` with a
+`searchOptions` prop) and `DramaForm` (its own inline cast combobox) no
+longer receive the full performer catalog as a prop — ~17k rows made
+the select freeze the page. Both now query `searchPerformerOptions`
+(`admin/performers/actions.ts`: name OR realName contains, top 20, min
+2 chars) with a 300ms debounce and stale-response sequencing; `options`
+only needs to cover already-selected ids (the edit pages pass the
+event's/drama's own attached performers, the new pages pass `[]`).
+`EntityMultiSelect` keeps its old client-side filtering mode for small
+catalogs (pairings, locations) when `searchOptions` isn't passed.

@@ -22,6 +22,8 @@ function Avatar({ option }: { option: EntityOption }) {
  * a new one inline by name when nothing matches. Renders one hidden
  * `<input name=... value=id>` per selected chip, for plain form submission.
  */
+const SEARCH_DEBOUNCE_MS = 300;
+
 export default function EntityMultiSelect({
   name,
   options,
@@ -31,6 +33,7 @@ export default function EntityMultiSelect({
   createLabel = "Создать",
   emptyMessage,
   externalAdditions,
+  searchOptions,
 }: {
   name: string;
   options: EntityOption[];
@@ -42,6 +45,11 @@ export default function EntityMultiSelect({
   /** Options created via an external flow (e.g. a "new event" modal) —
    *  each new entry appended here is automatically selected. */
   externalAdditions?: EntityOption[];
+  /** Async mode for catalogs too big to ship to the client (~17k
+   *  performers): `options` then only needs to cover the already-selected
+   *  ids, and the dropdown is fed by this debounced server-side search
+   *  instead of client-side filtering. */
+  searchOptions?: (query: string) => Promise<EntityOption[]>;
 }) {
   const [createdOptions, setCreatedOptions] = useState<EntityOption[]>([]);
   const allOptions = useMemo(
@@ -55,6 +63,10 @@ export default function EntityMultiSelect({
   const [createPrefill, setCreatePrefill] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<EntityOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
   const ref = useRef<HTMLDivElement>(null);
 
   const selected = useMemo(
@@ -64,20 +76,49 @@ export default function EntityMultiSelect({
     [selectedIds, allOptions],
   );
 
+  function handleQueryChange(next: string) {
+    setQuery(next);
+    if (!searchOptions) return;
+    const q = next.trim();
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (q.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const seq = ++searchSeqRef.current;
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchOptions(q);
+        // Отбрасываем ответ, если пользователь уже набрал новый запрос.
+        if (seq === searchSeqRef.current) setSearchResults(results);
+      } finally {
+        if (seq === searchSeqRef.current) setIsSearching(false);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+  }
+
   const filtered = useMemo(() => {
+    if (searchOptions) {
+      return searchResults.filter((o) => !selectedIds.includes(o.id));
+    }
     const q = query.trim().toLowerCase();
     return allOptions.filter((o) => {
       if (selectedIds.includes(o.id)) return false;
       if (!q) return true;
       return o.name.toLowerCase().includes(q);
     });
-  }, [allOptions, selectedIds, query]);
+  }, [allOptions, selectedIds, query, searchOptions, searchResults]);
 
   const trimmedQuery = query.trim();
-  const hasExactMatch = allOptions.some(
+  const hasExactMatch = [...allOptions, ...searchResults].some(
     (o) => o.name.toLowerCase() === trimmedQuery.toLowerCase(),
   );
-  const showCreateOption = !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch;
+  // В async-режиме не предлагаем «создать», пока идёт поиск — иначе
+  // кнопка мелькает до прихода результатов с точным совпадением.
+  const showCreateOption =
+    !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch && !(searchOptions && isSearching);
 
   function add(id: string) {
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -147,11 +188,18 @@ export default function EntityMultiSelect({
           className="form-control"
           placeholder={placeholder}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
           onBlur={() => window.setTimeout(() => setIsOpen(false), 150)}
         />
 
+        {isOpen && searchOptions && trimmedQuery.length > 0 && filtered.length === 0 && !showCreateOption && (
+          <div className="performer-combobox-dropdown">
+            <div className="performer-combobox-option text-secondary" aria-disabled>
+              {trimmedQuery.length < 2 ? "Введите минимум 2 символа" : isSearching ? "Поиск…" : "Никого не найдено"}
+            </div>
+          </div>
+        )}
         {isOpen && (filtered.length > 0 || showCreateOption) && (
           <div className="performer-combobox-dropdown">
             {filtered.map((o) => (

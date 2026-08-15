@@ -65,7 +65,24 @@ does and doesn't check.
 - **`EntitySelect` / `EntityMultiSelect`** (`src/components/`) are the
   standard custom dropdown/combobox components used everywhere instead of
   native `<select>` — they take `{id, name, photoUrl?}` options and
-  support inline "create new" via a callback.
+  support inline "create new" via a callback. For catalogs too big to
+  ship to the client, `EntityMultiSelect` has an async `searchOptions`
+  mode — see "Async performer search" in
+  [features/catalog.md](features/catalog.md).
+- **`DatePickerInput`** (`src/components/DatePickerInput.tsx`) is the
+  standard date field — no native `<input type="date">` anywhere (native
+  pickers look different per browser/OS, and Thai-locale ones round-trip
+  Buddhist-era years, see `normalizeYear` in `src/lib/dates.ts`). It
+  submits a canonical `YYYY-MM-DD` via a hidden input under `name`,
+  shows ДД.ММ.ГГГГ in a visible (controlled, keyboard-inert but
+  `required`-validatable) text field, and renders its calendar through a
+  `createPortal` to `<body>` with fixed positioning + a flip-up near the
+  viewport bottom — absolute positioning inside a parent got clipped by
+  scrollable ancestors (`.modal-panel { overflow-y: auto }`). Supports
+  both uncontrolled (`defaultValue`) and controlled (`value` +
+  `onValueChange`) use; controlled is required inside index-keyed row
+  lists (EventForm's occurrence rows) where internal state would stick
+  to the position rather than the row.
 - **`.tab-bar-row`** (`globals.css`) is the standard layout for a list page
   that has both underline tabs and a search box: tabs on the left, a
   `NameSearchBox` on the right, sharing one bottom border. Used on every

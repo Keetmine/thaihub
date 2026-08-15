@@ -618,7 +618,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   font-weight: 700;
   font-size: 0.95rem;
   line-height: 1.1;
-  color: var(--day-accent);
+  /* Plain body color, not --day-accent — a long list repeats this on
+     every row, so keeping it the same bright accent as the (much rarer)
+     day-group heading made the whole list read as uniformly loud. Bold
+     weight alone still gives it enough visual priority over the muted
+     end-time/date below it. */
+  color: var(--bs-body-color);
 }
 
 .agenda-time-end {
@@ -667,12 +672,16 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding-right: 5rem;
 }
 
+/* Quiet by default (same reasoning as .agenda-time-start above — a row
+   can list several of these, and every list page shows many rows), the
+   accent color only shows up on hover to signal interactivity. */
 .agenda-performer-link {
-  color: var(--bs-primary-text-emphasis);
+  color: var(--bs-body-color);
   text-decoration: none;
 }
 
 .agenda-performer-link:hover {
+  color: var(--bs-link-hover-color);
   text-decoration: underline;
 }
 
@@ -688,6 +697,253 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   .day-group-heading {
     font-size: 1.3rem;
   }
+}
+
+/* ---------- Event card (poster + date block listing row) ---------- */
+.event-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--bs-border-radius);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.event-card-date {
+  flex: 0 0 auto;
+  width: 3.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.event-card-day {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  font-size: 1.45rem;
+  color: var(--bs-body-color);
+}
+
+.event-card-month {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bs-secondary-color);
+}
+
+.event-card-weekday {
+  font-size: 0.65rem;
+  color: var(--bs-secondary-color);
+  opacity: 0.7;
+}
+
+.event-card-poster {
+  display: block;
+  width: 3.6rem;
+  border-radius: 0.55rem;
+  overflow: hidden;
+}
+
+.event-card-poster img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+
+.event-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Room for the corner favorite/going icons so text never runs under them. */
+  padding-right: 5rem;
+}
+
+@media (max-width: 575.98px) {
+  .event-card {
+    gap: 0.6rem;
+    padding: 0.7rem 0.75rem;
+  }
+
+  /* Отступ под угловые иконки обязателен и на мобильном — без него
+     заголовок и бейдж «личное» заезжают под кнопки (реальный багрепорт
+     со скриншота поездки). Иконки при этом ужимаются, чтобы съедать
+     меньше и без того узкой карточки. */
+  .event-card-body {
+    padding-right: 3.9rem;
+  }
+
+  .event-card .corner-actions {
+    top: 0.6rem;
+    right: 0.6rem;
+    gap: 0.3rem;
+  }
+
+  .event-card .corner-actions .round-icon-btn,
+  .event-card .corner-actions .icon-btn {
+    width: 1.85rem;
+    height: 1.85rem;
+  }
+
+  .event-card-date {
+    width: 2.5rem;
+  }
+
+  .event-card-day {
+    font-size: 1.2rem;
+  }
+
+  .event-card-poster {
+    width: 3rem;
+  }
+
+  .event-card-body .h5 {
+    font-size: 1rem;
+  }
+}
+
+/* ---------- Custom date picker (DatePickerInput) ---------- */
+.date-picker {
+  position: relative;
+}
+
+.date-picker-toggle {
+  cursor: pointer;
+  caret-color: transparent;
+}
+
+/* Позиция (fixed + координаты) приходит инлайном из DatePickerInput —
+   компонент рендерит календарь порталом в body, чтобы его не резал
+   overflow прокручиваемых родителей (например .modal-panel). z-index
+   выше модалки (1050), т.к. пикер открывается и из модалок. */
+.date-picker-dropdown {
+  z-index: 1100;
+  min-width: 17rem;
+  padding: 0.75rem;
+  border-radius: var(--bs-border-radius);
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-secondary-bg);
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.45);
+}
+
+.date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 2.1rem);
+  gap: 0.15rem;
+  justify-content: center;
+}
+
+.date-picker-weekdays {
+  margin-bottom: 0.25rem;
+}
+
+.date-picker-weekdays span {
+  text-align: center;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+}
+
+.date-picker-day {
+  width: 2.1rem;
+  height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0.55rem;
+  background: none;
+  color: var(--bs-body-color);
+  font-size: 0.85rem;
+}
+
+.date-picker-day:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.date-picker-day.is-outside {
+  color: var(--bs-secondary-color);
+  opacity: 0.45;
+}
+
+.date-picker-day.is-today {
+  box-shadow: inset 0 0 0 1px var(--bs-primary);
+}
+
+.date-picker-day.is-selected {
+  background: var(--bs-primary);
+  color: #fff;
+  opacity: 1;
+}
+
+/* ---------- Locked (subscription-gated) event cards ---------- */
+/* Данных события в DOM нет — плашки чисто декоративные, блюр поверх
+   серого градиента имитирует «размытый текст». */
+.event-card-locked {
+  user-select: none;
+}
+
+.event-card-locked-poster {
+  flex-shrink: 0;
+  width: 3.6rem;
+  aspect-ratio: 3 / 4;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.locked-bar {
+  border-radius: 0.35rem;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  filter: blur(3px);
+}
+
+.locked-bar-title {
+  height: 1.05rem;
+  width: 62%;
+  margin-bottom: 0.5rem;
+}
+
+.locked-bar-line {
+  height: 0.7rem;
+  width: 48%;
+  margin-bottom: 0.35rem;
+}
+
+.locked-bar-short {
+  width: 32%;
+  margin-bottom: 0;
+}
+
+.event-card-locked-badge {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.9rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bs-secondary-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+  .event-card-locked-poster {
+    width: 3rem;
+  }
+}
+
+/* Month separators in the redesigned event list. */
+.month-group-heading {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+  color: var(--bs-secondary-color);
 }
 
 /* ---------- Mobile burger menu ---------- */
@@ -1212,6 +1468,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .icon-inline {
   width: 0.95em;
   height: 0.95em;
+}
+
+/* Every icon in icons.tsx is an inline <svg aria-hidden="true"> sitting
+   directly next to text (e.g. "<PinIcon /> Bangkok") — an inline SVG's
+   default vertical-align is "baseline", which sits it low relative to
+   the surrounding text's own baseline (a well-known cross-browser SVG
+   quirk), reading as visibly "crooked" once several appear in the same
+   info row. One global nudge fixes every icon at once rather than
+   patching each call site's wrapper. */
+svg[aria-hidden="true"] {
+  vertical-align: -0.15em;
 }
 
 /* ---------- Compact round icon actions (favorite / going / calendar-add) ---------- */

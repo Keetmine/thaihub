@@ -12,5 +12,6 @@ export type EventWithPerformers = {
   description: string | null;
   startsAt: Date;
   endsAt: Date | null;
+  posterUrl: string | null;
   performers: { performer: { id: string; name: string } }[];
 };

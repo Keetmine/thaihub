@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CalendarIcon } from "@/components/icons";
+import DatePickerInput from "@/components/DatePickerInput";
 
 /** Compact calendar-icon button that opens a small popover with the
  *  from/to date inputs — keeps a date-range filter out of the tab-bar-row
@@ -54,19 +55,13 @@ export default function DateRangeFilterButton({
               <input key={name} type="hidden" name={name} value={value} />
             ))}
           <label className="form-label small text-secondary mb-1">С даты</label>
-          <input
-            type="date"
-            name="from"
-            defaultValue={from}
-            className="form-control form-control-sm mb-2"
-          />
+          <div className="mb-2">
+            <DatePickerInput name="from" defaultValue={from} />
+          </div>
           <label className="form-label small text-secondary mb-1">По дату</label>
-          <input
-            type="date"
-            name="to"
-            defaultValue={to}
-            className="form-control form-control-sm mb-2"
-          />
+          <div className="mb-2">
+            <DatePickerInput name="to" defaultValue={to} />
+          </div>
           <div className="d-flex gap-2">
             <button type="submit" className="btn btn-outline-secondary btn-sm flex-fill">
               Показать

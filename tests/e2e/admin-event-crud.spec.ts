@@ -9,7 +9,14 @@ test("admin can create and delete an event", async ({ page }) => {
 
   await page.fill('input[name="title"]', title);
   await page.fill('input[name="venue"]', "Test Venue");
-  await page.fill('input[name="occurrenceDate"]', "2027-01-15");
+  // Дата выбирается через кастомный DatePickerInput (нативного
+  // input type=date больше нет): открыть календарь, кликнуть 15-е
+  // текущего месяца.
+  await page.locator(".date-picker .date-picker-toggle").first().click();
+  await page
+    .locator(".date-picker-dropdown .date-picker-day:not(.is-outside)")
+    .filter({ hasText: /^15$/ })
+    .click();
   await page.fill('input[name="occurrenceStartTime"]', "19:00");
   await page.getByRole("button", { name: "Создать событие" }).click();
 
