@@ -8,7 +8,7 @@ import type { Browser } from "playwright";
 // standalone tsx script.
 
 const UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36 ThaiHubImporter/1.0 (personal fan-tracker, contact via site)";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36 MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
 
 const INDEX_URL = "https://blscene.com/where-were-they-filmed-bl-shows-a-z/";
 

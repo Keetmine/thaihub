@@ -17,7 +17,7 @@ import {
 // there's an official API built for exactly this. Pure functions, no DB
 // access, same split as every other importer in this project.
 
-const UA = "ThaiHubImporter/1.0 (personal fan-tracker, contact via site)";
+const UA = "MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
 const API_BASE = "https://en.wikipedia.org/w/api.php";
 
 /** Extracts the page title from either a bare title or a full

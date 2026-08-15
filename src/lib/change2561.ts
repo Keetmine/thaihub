@@ -12,7 +12,7 @@
 // dramas together with music videos/ad campaigns under labels that
 // don't cleanly separate by a stable marker.
 
-const UA = "ThaiHubImporter/1.0 (personal fan-tracker, contact via site)";
+const UA = "MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
 const LIST_URL = "https://www.change2561.com/changeartist";
 
 export async function fetchChange2561ArtistIds(): Promise<string[]> {

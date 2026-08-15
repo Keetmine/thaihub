@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ThaiHub — трекер тайских BL-событий",
-    short_name: "ThaiHub",
+    name: "MyBLHub — трекер тайских BL-событий",
+    short_name: "MyBLHub",
     description: "Расписание концертов и фан-событий тайских BL-актёров",
     start_url: "/",
     display: "standalone",

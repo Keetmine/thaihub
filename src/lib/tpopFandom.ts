@@ -16,7 +16,7 @@ import { fetchMediaWikiParsedHtml, textWithBreaks } from "@/lib/mediawikiParse";
 // for an API endpoint (as opposed to working around the challenge on
 // the rendered page, which this does not attempt).
 
-const UA = "ThaiHubImporter/1.0 (personal fan-tracker, contact via site)";
+const UA = "MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
 const API_BASE = "https://tpop.fandom.com/api.php";
 
 /** Extracts the page title from either a bare title or a full

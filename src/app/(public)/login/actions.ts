@@ -8,8 +8,10 @@ export async function login(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+  // passwordHash is null for Telegram-auth accounts — they can't log in
+  // with a password at all, same error as a wrong one.
+  if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) {
     redirect("/login?error=1");
   }
 

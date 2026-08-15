@@ -11,7 +11,7 @@ export default function Logo() {
         </svg>
       </span>
       <span className="font-display fw-bold text-white">
-        Thai
+        MyBL
         <span style={{ color: "var(--bs-primary-text-emphasis)" }}>Hub</span>
       </span>
     </span>

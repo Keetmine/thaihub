@@ -15,7 +15,7 @@ import * as cheerio from "cheerio";
 //    plain HTTP request — no headless browser needed.
 
 const UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36 ThaiHubImporter/1.0 (personal fan-tracker, contact via site)";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36 MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
 
 export type TtmArtist = { fullName: string; nickname: string };
 
@@ -36,7 +36,7 @@ export type TtmEvent = {
   // one (e.g. "Saturday 24 - Sunday 25 October 2026" or a 3-night run) —
   // parsed from `dateRangeText` below. Same start time is assumed for
   // each (the site doesn't give per-day times in this line, and that
-  // matches how ThaiHub's own multi-day event creation already works).
+  // matches how MyBLHub's own multi-day event creation already works).
   extraDates: string[];
   dateRangeText: string | null;
   ticketPrice: string | null;

@@ -15,7 +15,7 @@ const PLATFORM_LABELS: Record<Platform, string> = {
   mydramalist: "MyDramaList",
 };
 
-/** Branded icon-only buttons for the handful of platforms ThaiHub
+/** Branded icon-only buttons for the handful of platforms MyBLHub
  *  recognizes (Instagram/TikTok/Twitter by URL, MyDramaList from its own
  *  field) — everything else stays a labeled text pill, rendered by the
  *  caller from whatever PerformerLink rows this filtered out. */

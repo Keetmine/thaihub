@@ -41,7 +41,7 @@ export function buildEventICS(event: IcsEvent): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//ThaiHub//Event//RU",
+    "PRODID:-//MyBLHub//Event//RU",
     "CALSCALE:GREGORIAN",
     ...buildVEvents(event),
     "END:VCALENDAR",
@@ -60,9 +60,9 @@ export function buildFeedICS(events: IcsEvent[]): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//ThaiHub//Feed//RU",
+    "PRODID:-//MyBLHub//Feed//RU",
     "CALSCALE:GREGORIAN",
-    "X-WR-CALNAME:ThaiHub — мои события",
+    "X-WR-CALNAME:MyBLHub — мои события",
     "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
     ...events.flatMap(buildVEvents),
     "END:VCALENDAR",
@@ -84,7 +84,7 @@ export function buildPresaleICS(event: {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//ThaiHub//Presale//RU",
+    "PRODID:-//MyBLHub//Presale//RU",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${event.id}-presale@thaitrack`,

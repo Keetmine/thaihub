@@ -20,10 +20,10 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "ThaiHub",
+  title: "MyBLHub",
   description: "Расписание концертов и событий",
   appleWebApp: {
-    title: "ThaiHub",
+    title: "MyBLHub",
     statusBarStyle: "black-translucent",
   },
   icons: {
