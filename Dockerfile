@@ -16,6 +16,11 @@ ENV NODE_ENV=production
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
 
+# Браузеры Playwright кладём в общесистемный путь — процесс работает под
+# nextjs, а ставится браузер под root'ом ниже (см. RUN после COPY
+# node_modules: версия браузера обязана совпадать с версией пакета).
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
+
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -27,6 +32,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copying the full node_modules is simpler and safer than chasing every
 # transitive dep by hand.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Chromium для рантайм-Playwright: blscene/GMMTV-кнопки админки делают
+# chromium.launch() при обработке запроса — без браузера в образе они
+# падают на проде. Версия браузера берётся из нашего же node_modules.
+RUN node_modules/.bin/playwright install --with-deps chromium \
+  && chmod -R a+rX /opt/pw-browsers
+
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 

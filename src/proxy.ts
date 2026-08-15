@@ -13,7 +13,7 @@ const USER_COOKIE = "user_session";
 // Routes reachable without being logged in: the marketing landing page
 // (which itself renders the real event feed once you ARE logged in — see
 // src/app/(public)/page.tsx) and the auth forms themselves.
-const PUBLIC_PATHS = new Set(["/", "/login", "/signup", "/manifest.webmanifest"]);
+const PUBLIC_PATHS = new Set(["/", "/login", "/signup", "/manifest.webmanifest", "/robots.txt"]);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -23,11 +23,10 @@ export function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
-    const cookie = request.cookies.get(ADMIN_COOKIE)?.value;
-    const isValid =
-      !!cookie && !!process.env.ADMIN_SESSION_SECRET && cookie === process.env.ADMIN_SESSION_SECRET;
-
-    if (!isValid) {
+    // Только optimistic-проверка наличия куки (без БД — proxy бежит на
+    // каждый запрос); реальная валидация серверной сессии — в
+    // isAdminAuthenticated(), которую вызывают admin-страницы/экшены.
+    if (!request.cookies.get(ADMIN_COOKIE)?.value) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
     return NextResponse.next();

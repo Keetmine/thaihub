@@ -1,0 +1,14 @@
+# HTTPS-фронт для MyBLHub: Caddy сам выпускает/продлевает сертификаты
+# Let's Encrypt для {$DOMAIN} (env задаётся в docker-compose). При
+# DOMAIN=localhost работает как обычный локальный reverse-proxy c
+# самоподписанным сертификатом.
+{$DOMAIN} {
+	encode gzip zstd
+
+	# Статика загруженных картинок кэшируется агрессивно — имена файлов
+	# контентно-стабильные (uuid / TMDB-id), содержимое не меняется.
+	@uploads path /uploads/*
+	header @uploads Cache-Control "public, max-age=2592000, immutable"
+
+	reverse_proxy app:3000
+}

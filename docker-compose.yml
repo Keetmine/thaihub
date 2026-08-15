@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: thaitrack
-      POSTGRES_PASSWORD: thaitrack
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-thaitrack}
       POSTGRES_DB: thaitrack
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -21,8 +21,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://thaitrack:thaitrack@db:5432/thaitrack?schema=public
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-please}
+      DATABASE_URL: postgresql://thaitrack:${POSTGRES_PASSWORD:-thaitrack}@db:5432/thaitrack?schema=public
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in a .env file next to docker-compose.yml}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?Set ADMIN_SESSION_SECRET in a .env file next to docker-compose.yml (any long random string)}
       NODE_ENV: production
       # Опциональные интеграции — пустые значения просто отключают фичу.
@@ -30,8 +30,15 @@ services:
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       APP_URL: ${APP_URL:-}
       TMDB_API_READ_ACCESS_TOKEN: ${TMDB_API_READ_ACCESS_TOKEN:-}
-    ports:
-      - "3000:3000"
+    # Наружу порт не торчит — трафик идёт только через caddy (HTTPS).
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     volumes:
       # Admin-uploaded photos and TMDB-downloaded images (src/lib/localImage.ts)
       # both land in public/uploads — without a named volume here they'd live
@@ -39,6 +46,55 @@ services:
       # `docker compose up --build`.
       - uploads_data:/app/public/uploads
 
+  # HTTPS-терминация: Caddy сам получает и продлевает сертификаты
+  # Let's Encrypt для DOMAIN (myblhub.com). Локально (без DOMAIN) сервис
+  # можно не поднимать: `docker compose up app db`.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Ежедневные бэкапы: pg_dump + tar загруженных картинок в ./backups
+  # на хосте (держите этот каталог на другом диске или синкайте наружу).
+  # Хранится 14 последних копий каждого вида.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-thaitrack}
+    volumes:
+      - ./backups:/backups
+      - uploads_data:/uploads:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        while true; do
+          ts=$$(date +%Y%m%d-%H%M%S)
+          pg_dump -h db -U thaitrack thaitrack | gzip > "/backups/db-$$ts.sql.gz" \
+            && echo "backup: db-$$ts.sql.gz"
+          tar czf "/backups/uploads-$$ts.tar.gz" -C /uploads . \
+            && echo "backup: uploads-$$ts.tar.gz"
+          ls -1t /backups/db-*.sql.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+          ls -1t /backups/uploads-*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+          sleep 86400
+        done
+
 volumes:
   db_data:
   uploads_data:
+  caddy_data:
+  caddy_config:

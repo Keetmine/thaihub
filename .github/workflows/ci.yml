@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+      - run: npx eslint --max-warnings=0 .
+      - run: npx next build
+        env:
+          # Сборке БД не нужна (все страницы force-dynamic), но Prisma
+          # требует валидный URL в конфиге.
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
