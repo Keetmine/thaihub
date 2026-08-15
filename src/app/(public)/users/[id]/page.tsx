@@ -11,6 +11,7 @@ import { CalendarIcon, PinIcon } from "@/components/icons";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import FriendNotifyToggle from "./FriendNotifyToggle";
+import { ACHIEVEMENTS } from "@/lib/achievements";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,15 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   // Приватный профиль: не-друзьям показываем только имя/фото (Г8).
   const showActivity = isFriend || !user.hideProfileActivity;
 
+  // Бейджи-ачивки (Д2): только уже зафиксированные — пересчёт делает сам
+  // владелец при заходе в кабинет.
+  const unlockedRows = showActivity
+    ? await prisma.userAchievement.findMany({ where: { userId: user.id }, orderBy: { unlockedAt: "asc" } })
+    : [];
+  const badges = unlockedRows
+    .map((r) => ACHIEVEMENTS.find((a) => a.key === r.key))
+    .filter((a): a is (typeof ACHIEVEMENTS)[number] => !!a);
+
   return (
     <div>
       <Link href="/friends" className="eyebrow text-decoration-none">
@@ -132,6 +142,20 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {showActivity && (
       <>
+      {badges.length > 0 && (
+        <>
+          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+            Ачивки
+          </h2>
+          <div className="d-flex flex-wrap gap-2 mb-4">
+            {badges.map((b) => (
+              <span key={b.key} className="event-chip" title={b.description}>
+                {b.emoji} {b.title}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
       <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
         Идёт на события
       </h2>

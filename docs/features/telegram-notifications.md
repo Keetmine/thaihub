@@ -31,10 +31,36 @@ No external cron: the docker-compose deploy is a single always-on app
 container, so an in-process timer is the simplest reliable place. The
 whole thing no-ops when `TELEGRAM_BOT_TOKEN` is unset.
 
+## Other notifications
+
+The same half-hourly job also sends: **presale reminders** («продажа
+открывается через час», `sendPresaleReminders` — favorited/going users
+with Telegram *and an active subscription*, dedup in
+`TelegramPresaleNotification` per (user, event)) and **premium expiry
+reminders** (3 days before `premiumUntil`, dedup via
+`premiumExpiryNotifiedFor`). Separately, `notifyFriendsAboutGoing` fires
+from `toggleGoing` (fire-and-forget) — «X идёт на …» to the actor's
+friends, unless a friend muted them (`FriendNotificationMute`, toggled
+by the bell button on the friend's profile page); receivers also need
+Telegram + active premium.
+
+## Payments webhook
+
+`/api/telegram/webhook` (registered once via
+`scripts/setup-telegram-webhook.ts`, authenticated by
+`TELEGRAM_WEBHOOK_SECRET` header) handles Telegram Stars subscription
+payments: `pre_checkout_query` is confirmed if the payload (our userId,
+embedded by `createPremiumInvoiceLink`) resolves to a user;
+`successful_payment` extends `premiumUntil` by 30 days
+(`extendPremium`), links `telegramId` if missing, and thanks the payer.
+The paywall (`PremiumUpsell` → `BuyPremiumButton` →
+`getPremiumInvoiceLink`) opens the invoice link in Telegram.
+
 ## Files
 
 - `src/lib/telegram.ts` — bot API client: `verifyTelegramAuth` (login
   widget HMAC check), `sendTelegramMessage` (returns `false` on 403
   instead of throwing).
-- `src/lib/telegramNotifications.ts` — the reminder sweep itself.
+- `src/lib/telegramNotifications.ts` — all reminder sweeps + friend
+  notifications.
 - `src/instrumentation.ts` — the timer.

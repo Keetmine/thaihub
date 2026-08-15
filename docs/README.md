@@ -28,6 +28,7 @@ something changes, edit the doc in place rather than appending a note.
   - [wikipedia-agency-import.md](features/wikipedia-agency-import.md) — talent-agency importer (official MediaWiki API, not scraping)
   - [tpop-band-import.md](features/tpop-band-import.md) — idol-group importer from tpop.fandom.com (official MediaWiki API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator
+  - [gamification.md](features/gamification.md) — stats tab + achievements
   - [trips.md](features/trips.md) — user trips: a date range showing every event inside it
   - [telegram-notifications.md](features/telegram-notifications.md) — bot reminders for upcoming events
   - [search.md](features/search.md) — cross-entity search

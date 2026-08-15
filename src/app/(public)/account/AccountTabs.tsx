@@ -8,8 +8,9 @@ import FavoriteButton from "@/components/FavoriteButton";
 import MskTimeInfo from "@/components/MskTimeInfo";
 import { formatCombinedDateList, formatHumanDate, formatShortDate, formatTime } from "@/lib/dates";
 import { PinIcon } from "@/components/icons";
+import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
 
-export type AccountTab = "profile" | "events";
+export type AccountTab = "profile" | "events" | "stats";
 
 /** Одно событие кабинета целиком, со всеми его датами — многодневный
  *  концерт здесь одна строка, а не строка на дату. */
@@ -97,11 +98,15 @@ export default function AccountTabs({
   initialTab,
   user,
   stats,
+  statsData,
+  achievements,
   upcomingAttendances,
   pastAttendances,
   favoriteEvents,
   eventsLocked = false,
 }: {
+  statsData: StatsForTab;
+  achievements: AchievementForTab[];
   initialTab: AccountTab;
   user: {
     name: string | null;
@@ -149,6 +154,9 @@ export default function AccountTabs({
           </TabButton>
           <TabButton active={activeTab === "events"} onClick={() => setActiveTab("events")}>
             События
+          </TabButton>
+          <TabButton active={activeTab === "stats"} onClick={() => setActiveTab("stats")}>
+            Статистика
           </TabButton>
         </div>
       </div>
@@ -223,6 +231,10 @@ export default function AccountTabs({
             </form>
           </div>
         </div>
+      </div>
+
+      <div style={{ display: activeTab === "stats" ? undefined : "none" }}>
+        {activeTab === "stats" && <StatsTab stats={statsData} achievements={achievements} />}
       </div>
 
       <div style={{ display: activeTab === "events" ? undefined : "none" }}>

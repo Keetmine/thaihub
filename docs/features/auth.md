@@ -5,10 +5,14 @@ Two entirely separate systems — don't conflate them.
 ## Admin
 
 One shared password (`ADMIN_PASSWORD` env var), no per-admin accounts.
-`src/app/admin/login/actions.ts`'s `login` action checks the submitted
-password against `ADMIN_PASSWORD` and, on success, sets a cookie
-(`admin_session`) to `ADMIN_SESSION_SECRET` (also an env var — the cookie
-value itself is the shared secret, not a generated session id).
+On success `login` creates an **AdminSession row** and stores its id in
+the `admin_session` cookie (`createAdminSession` in `src/lib/auth.ts`) —
+revocable by deleting the row, unlike the old cookie-holds-the-secret
+scheme. `proxy.ts` only checks cookie *presence*; real validation is
+`isAdminAuthenticated()` called by the `(protected)` admin layout, and
+**every admin server action starts with `await requireAdmin()`** — the
+actions are reachable by POST regardless of layout rendering, so each
+one guards itself.
 
 ## Real users
 
@@ -26,6 +30,13 @@ value itself is the shared secret, not a generated session id).
   cookie check alone isn't enough).
 
 Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
+
+**Invite-only signup**: registration requires a one-time `InviteCode`
+(generated/deleted in the invites block on `/admin/users`); the code is
+claimed in the same transaction that creates the user, so a code can't
+be raced. **Rate limiting**: `assertRateLimit` (`src/lib/rateLimit.ts`,
+in-memory fixed window, 10 attempts / 10 min per IP from
+X-Forwarded-For) guards user login, signup, and admin login.
 
 ## Telegram login
 
@@ -48,9 +59,14 @@ The same bot also sends event reminders — see
 
 ## Premium flag
 
-`User.isPremium` (boolean, default false) — toggled per-user from
-`/admin/users` (no payment provider yet; the switch *is* the
-subscription). What it gates:
+`User.premiumUntil` (nullable date) — the subscription is a 30-day term,
+active while the date is in the future (`isPremiumActive` in
+`src/lib/premium.ts` — every gate checks through it). Granted +1 month
+at a time from `/admin/users` (extends from the current end if still
+active) or by a Telegram Stars payment (see
+[telegram-notifications.md](telegram-notifications.md), "Payments
+webhook"); a Telegram reminder goes out 3 days before expiry. What it
+gates:
 
 - the calendar (`/calendar`), the day view (`/day/[date]`) and the ICS
   subscribe feed (`/api/calendar-feed` returns 403 for non-premium

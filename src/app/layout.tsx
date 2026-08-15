@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,7 +44,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-bs-theme="dark"
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-100`}
     >
-      <body className="d-flex flex-column min-vh-100">{children}</body>
+      <body className="d-flex flex-column min-vh-100">
+        <ServiceWorkerRegistrar />
+        {children}
+      </body>
     </html>
   );
 }

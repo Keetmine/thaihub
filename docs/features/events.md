@@ -214,6 +214,14 @@ events list is the one exception and still shows it inline
 (`formatTimeRangeWithMsk`), since that's a dense internal management
 view, not a browsing surface.
 
+## Event notes
+
+`EventNote` (one per user+event, `@@unique`): a personal or
+friends-visible note on the event page (`EventNoteSection.tsx` +
+`saveEventNote` in `noteActions.ts`). Empty text deletes; friends'
+FRIENDS-visibility notes render below your own with the author's
+name/avatar.
+
 ## Premium gating
 
 All event data is subscription-gated — non-premium users see only that

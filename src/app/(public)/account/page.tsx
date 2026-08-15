@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
+import { computeUserStats } from "@/lib/userStats";
+import { syncAchievements } from "@/lib/achievements";
 import AccountTabs, { type AccountTab, type AccountEventEntry } from "./AccountTabs";
 import { isPremiumActive } from "@/lib/premium";
 
@@ -10,7 +12,7 @@ export const dynamic = "force-dynamic";
 // Вкладок всего две: профиль и события. Избранные актёры и сериалы из
 // кабинета убраны — те же списки и так живут на /performers и /dramas
 // (вид по умолчанию без поиска — именно избранное/со статусом).
-const VALID_TABS: AccountTab[] = ["profile", "events"];
+const VALID_TABS: AccountTab[] = ["profile", "events", "stats"];
 
 export default async function AccountPage({
   searchParams,
@@ -77,6 +79,11 @@ export default async function AccountPage({
     .map((f) => toEntry(f.event))
     .sort((a, b) => firstDate(a).getTime() - firstDate(b).getTime());
 
+  // Статистика и ачивки (Д1/Д2): считаются при открытии кабинета; новые
+  // ачивки фиксируются и поздравляются ботом внутри syncAchievements.
+  const fullStats = await computeUserStats(user.id);
+  const achievements = await syncAchievements(user.id, fullStats);
+
   return (
     <div>
       <span className="eyebrow">Аккаунт</span>
@@ -102,6 +109,29 @@ export default async function AccountPage({
           friends: friendIds.length,
           trips: tripsCount,
         }}
+        statsData={{
+          attendedEvents: fullStats.attendedEvents,
+          upcomingEvents: fullStats.upcomingEvents,
+          uniqueVenues: fullStats.uniqueVenues,
+          performersSeenLive: fullStats.performersSeenLive,
+          topPerformers: fullStats.topPerformers,
+          visitedLocations: fullStats.visitedLocations,
+          visitedLocationPins: fullStats.visitedLocationPins,
+          completedDramas: fullStats.completedDramas,
+          trips: fullStats.trips,
+          daysInThailand: fullStats.daysInThailand,
+          friends: fullStats.friends,
+          eventsByYear: fullStats.eventsByYear,
+        }}
+        achievements={achievements.map((a) => ({
+          key: a.key,
+          emoji: a.emoji,
+          title: a.title,
+          description: a.description,
+          unlocked: a.unlocked,
+          value: a.value,
+          target: a.target,
+        }))}
         upcomingAttendances={isPremiumActive(user) ? upcomingAttendances : []}
         pastAttendances={isPremiumActive(user) ? pastAttendances : []}
         favoriteEvents={isPremiumActive(user) ? favoriteEvents : []}

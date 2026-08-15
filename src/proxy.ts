@@ -13,7 +13,7 @@ const USER_COOKIE = "user_session";
 // Routes reachable without being logged in: the marketing landing page
 // (which itself renders the real event feed once you ARE logged in — see
 // src/app/(public)/page.tsx) and the auth forms themselves.
-const PUBLIC_PATHS = new Set(["/", "/login", "/signup", "/manifest.webmanifest", "/robots.txt"]);
+const PUBLIC_PATHS = new Set(["/", "/login", "/signup", "/manifest.webmanifest", "/robots.txt", "/sw.js"]);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

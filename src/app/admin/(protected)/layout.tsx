@@ -62,6 +62,7 @@ export default async function ProtectedAdminLayout({
             <NavLink href="/admin/locations">Локации</NavLink>
             <NavLink href="/admin/duplicates">Дубли</NavLink>
             <NavLink href="/admin/users">Пользователи</NavLink>
+            <NavLink href="/admin/stats">Дашборд</NavLink>
             <ModeToggle active="admin" />
             <LogoutButton />
           </MobileMenu>
@@ -77,6 +78,7 @@ export default async function ProtectedAdminLayout({
             <NavLink href="/admin/locations">Локации</NavLink>
             <NavLink href="/admin/duplicates">Дубли</NavLink>
             <NavLink href="/admin/users">Пользователи</NavLink>
+            <NavLink href="/admin/stats">Дашборд</NavLink>
           </div>
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
