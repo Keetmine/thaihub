@@ -30,6 +30,8 @@ services:
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       APP_URL: ${APP_URL:-}
       TMDB_API_READ_ACCESS_TOKEN: ${TMDB_API_READ_ACCESS_TOKEN:-}
+      PREMIUM_PRICE_STARS: ${PREMIUM_PRICE_STARS:-250}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
     # Наружу порт не торчит — трафик идёт только через caddy (HTTPS).
     expose:
       - "3000"

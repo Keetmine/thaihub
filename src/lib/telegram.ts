@@ -79,3 +79,40 @@ export async function sendTelegramMessage(chatId: string, text: string): Promise
   }
   return true;
 }
+
+// ---------- Оплата подписки (Telegram Stars) ----------
+
+export const PREMIUM_PRICE_STARS = Number(process.env.PREMIUM_PRICE_STARS || 250);
+
+/**
+ * Ссылка-инвойс на месяц подписки в Telegram Stars (валюта XTR — без
+ * банковского эквайринга и provider_token). В payload кладём наш userId:
+ * по нему вебхук зачисляет оплату, поэтому привязка Telegram к аккаунту
+ * для покупки не обязательна.
+ */
+export async function createPremiumInvoiceLink(userId: string): Promise<string> {
+  const res = await fetch(`https://api.telegram.org/bot${botToken()}/createInvoiceLink`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: "Подписка MyBLHub — 1 месяц",
+      description: "Полная афиша событий, календарь, поездки и уведомления на 30 дней.",
+      payload: userId,
+      currency: "XTR",
+      prices: [{ label: "Подписка на месяц", amount: PREMIUM_PRICE_STARS }],
+    }),
+  });
+  const data = (await res.json()) as { ok: boolean; result?: string; description?: string };
+  if (!data.ok || !data.result) {
+    throw new Error(`createInvoiceLink failed: ${data.description ?? res.status}`);
+  }
+  return data.result;
+}
+
+export async function answerPreCheckoutQuery(id: string, ok: boolean, errorMessage?: string): Promise<void> {
+  await fetch(`https://api.telegram.org/bot${botToken()}/answerPreCheckoutQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pre_checkout_query_id: id, ok, ...(errorMessage ? { error_message: errorMessage } : {}) }),
+  });
+}
