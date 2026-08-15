@@ -130,7 +130,7 @@ export default async function PerformerPage({
         <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} variant="icon" />
       </div>
 
-      <div className="d-flex flex-column flex-sm-row gap-4 mb-4" style={{ maxWidth: "40rem" }}>
+      <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
         {performer.photoUrl && (
           <div className="flex-shrink-0 d-flex flex-column gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -138,13 +138,13 @@ export default async function PerformerPage({
               src={performer.photoUrl}
               alt={performer.name}
               className="rounded-4"
-              style={{ width: "10rem", height: "10rem", objectFit: "cover" }}
+              style={{ width: "16rem", height: "16rem", objectFit: "cover" }}
             />
             <SocialLinkIcons items={socialItems} />
           </div>
         )}
 
-        <div className="d-flex flex-column gap-2">
+        <div className="d-flex flex-column gap-2" style={{ minWidth: 0, flex: 1 }}>
           {!performer.photoUrl && <SocialLinkIcons items={socialItems} />}
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
@@ -174,6 +174,61 @@ export default async function PerformerPage({
               ))}
             </p>
           )}
+
+          {!isBand && performer.dramas.length > 0 && (
+            <div className="mt-1">
+              <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+                Сериалы
+              </h2>
+              <div className="d-flex gap-3 pb-2" style={{ overflowX: "auto" }}>
+                {sortedDramas.map((pd) => (
+                  <div
+                    key={pd.dramaId}
+                    className="flex-shrink-0"
+                    style={{ width: "8.5rem", position: "relative" }}
+                  >
+                    <Link href={`/dramas/${pd.dramaId}`} className="text-decoration-none d-block">
+                      <div
+                        style={{
+                          position: "relative",
+                          width: "100%",
+                          aspectRatio: "2 / 3",
+                          borderRadius: "0.5rem",
+                          background: "var(--bs-secondary-bg)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {pd.drama.posterUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={pd.drama.posterUrl}
+                            alt=""
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        )}
+                        {pd.drama.status === "RETURNING_SERIES" && (
+                          <span
+                            className="badge rounded-pill text-bg-secondary"
+                            style={{ position: "absolute", top: "0.375rem", left: "0.375rem", fontSize: "0.6rem" }}
+                          >
+                            {DRAMA_STATUS_LABELS.RETURNING_SERIES}
+                          </span>
+                        )}
+                      </div>
+                      <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                        {pd.drama.title}
+                      </p>
+                      {pd.drama.year && <p className="small text-secondary mb-0">{pd.drama.year}</p>}
+                    </Link>
+                    <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                      <DramaStatusButton dramaId={pd.dramaId} status={statusByDramaId.get(pd.dramaId) ?? null} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {performer.bio && <p className="mb-0">{performer.bio}</p>}
 
           {otherLinks.length > 0 && (
@@ -321,56 +376,6 @@ export default async function PerformerPage({
                 isGoing={goingEventIds.has(ev.id)}
                 showDate
               />
-            ))}
-          </div>
-        </>
-      )}
-
-      {!isBand && performer.dramas.length > 0 && (
-        <>
-          <h2 className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
-            Сериалы
-          </h2>
-          <div className="d-flex gap-3 pb-2" style={{ overflowX: "auto" }}>
-            {sortedDramas.map((pd) => (
-              <div key={pd.dramaId} className="flex-shrink-0" style={{ width: "8.5rem", position: "relative" }}>
-                <Link href={`/dramas/${pd.dramaId}`} className="text-decoration-none d-block">
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      aspectRatio: "2 / 3",
-                      borderRadius: "0.5rem",
-                      background: "var(--bs-secondary-bg)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {pd.drama.posterUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={pd.drama.posterUrl}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
-                    {pd.drama.status === "RETURNING_SERIES" && (
-                      <span
-                        className="badge rounded-pill text-bg-secondary"
-                        style={{ position: "absolute", top: "0.375rem", left: "0.375rem", fontSize: "0.6rem" }}
-                      >
-                        {DRAMA_STATUS_LABELS.RETURNING_SERIES}
-                      </span>
-                    )}
-                  </div>
-                  <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
-                    {pd.drama.title}
-                  </p>
-                  {pd.drama.year && <p className="small text-secondary mb-0">{pd.drama.year}</p>}
-                </Link>
-                <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
-                  <DramaStatusButton dramaId={pd.dramaId} status={statusByDramaId.get(pd.dramaId) ?? null} />
-                </div>
-              </div>
             ))}
           </div>
         </>

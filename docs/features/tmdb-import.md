@@ -193,7 +193,8 @@ TMDB request volume for now).
   vocabulary) — shown as a badge next to the title/year on a drama's
   public page (`DRAMA_STATUS_LABELS` in `src/lib/dramaStatus.ts`), and a
   smaller "Выходит" (`RETURNING_SERIES` only) badge overlaid on the
-  poster in a performer's own drama list. That list renders as a
+  poster in a performer's own drama list. That list sits in the profile
+  column next to their (now larger, `16rem`) photo and renders as a
   horizontal scrolling poster row (TMDB "Known For"-style — posters,
   title, year, the per-user `DramaStatusButton` overlaid top-right),
   sorted newest-`year`-first with undated entries last, so a currently-
