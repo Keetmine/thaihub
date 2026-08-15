@@ -24,6 +24,7 @@ export default async function EditDramaPage({
       select: { id: true, name: true, logoUrl: true },
     }),
     prisma.location.findMany({
+      where: { createdByUserId: null },
       orderBy: { name: "asc" },
       select: { id: true, name: true, photoUrl: true },
     }),

@@ -34,6 +34,7 @@ export default async function EditEventPage({
       select: { id: true, title: true, posterUrl: true },
     }),
     prisma.location.findMany({
+      where: { createdByUserId: null },
       orderBy: { name: "asc" },
       select: { id: true, name: true, photoUrl: true },
     }),

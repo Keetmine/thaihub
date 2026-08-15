@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 export default async function LocationsMapPage() {
   const locations = await prisma.location.findMany({
-    where: { latitude: { not: null }, longitude: { not: null } },
+    where: {
+      createdByUserId: null, latitude: { not: null }, longitude: { not: null } },
     orderBy: { name: "asc" },
   });
 

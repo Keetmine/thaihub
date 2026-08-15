@@ -119,7 +119,10 @@ async function LocationsAlphabetical({
   currentUser: { id: string } | null;
 }) {
   const locations = await prisma.location.findMany({
-    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
+    where: {
+      createdByUserId: null,
+      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+    },
     orderBy: { name: "asc" },
   });
 
@@ -158,7 +161,7 @@ async function LocationsByDrama({
       orderBy: { title: "asc" },
     }),
     prisma.location.findMany({
-      where: { ...locationNameFilter, dramas: { none: {} } },
+      where: { createdByUserId: null, ...locationNameFilter, dramas: { none: {} } },
       orderBy: { name: "asc" },
     }),
   ]);

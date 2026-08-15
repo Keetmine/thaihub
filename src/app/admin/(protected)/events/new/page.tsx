@@ -17,6 +17,7 @@ export default async function NewEventPage() {
       select: { id: true, title: true, posterUrl: true },
     }),
     prisma.location.findMany({
+      where: { createdByUserId: null },
       orderBy: { name: "asc" },
       select: { id: true, name: true, photoUrl: true },
     }),

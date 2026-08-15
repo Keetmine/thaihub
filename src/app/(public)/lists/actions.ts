@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import type { TripVisibility } from "@/generated/prisma/client";
+import { resolveMapsCoords } from "@/lib/blscene";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -88,10 +89,66 @@ export async function searchLocationOptions(
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
   const q = query.trim();
   if (q.length < 2) return [];
+  const user = await getCurrentUser();
   return prisma.location.findMany({
-    where: { name: { contains: q, mode: "insensitive" } },
+    where: {
+      name: { contains: q, mode: "insensitive" },
+      // Каталог + собственные места искателя (чужие пользовательские не
+      // показываем).
+      OR: [{ createdByUserId: null }, ...(user ? [{ createdByUserId: user.id }] : [])],
+    },
     select: { id: true, name: true, photoUrl: true },
     orderBy: { name: "asc" },
     take: 20,
   });
+}
+
+/**
+ * Создание своего места (не из каталога дорам) сразу в список: название +
+ * ссылка Google Maps ИЛИ голые координаты «13.75, 100.50». Длинные
+ * maps-ссылки несут координаты в URL (regex), короткие maps.app.goo.gl
+ * резолвятся реальным браузером (resolveMapsCoords — тот же механизм,
+ * что у blscene-импортёра). Такое место помечено createdByUserId и в
+ * общий каталог локаций не попадает.
+ */
+export async function createOwnPlace(listId: string, formData: FormData) {
+  const { user, list } = await requireOwnList(listId);
+
+  const name = String(formData.get("name") ?? "").trim();
+  const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+  if (!name) throw new Error("Укажите название места");
+
+  let coords: { lat: number; lng: number } | null = null;
+  if (mapsInput) {
+    // Голые координаты «13.7563, 100.5018» — без похода куда-либо.
+    const raw = mapsInput.match(/^(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/);
+    if (raw) {
+      coords = { lat: parseFloat(raw[1]), lng: parseFloat(raw[2]) };
+    } else {
+      // Короткая ссылка требует браузера; длинная разберётся regex'ом
+      // внутри без его использования. Браузер поднимаем лениво и только
+      // если ссылка вообще есть.
+      const { chromium } = await import("playwright");
+      const browser = await chromium.launch();
+      try {
+        coords = await resolveMapsCoords(mapsInput, browser);
+      } finally {
+        await browser.close();
+      }
+    }
+  }
+
+  const location = await prisma.location.create({
+    data: {
+      name,
+      createdByUserId: user.id,
+      latitude: coords?.lat ?? null,
+      longitude: coords?.lng ?? null,
+    },
+  });
+  await prisma.placeListItem.create({
+    data: { listId: list.id, locationId: location.id, note: note || null },
+  });
+  revalidatePath(`/lists/${listId}`);
 }

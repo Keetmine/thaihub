@@ -7,6 +7,7 @@ import LocationMapLoader from "@/components/LocationMapLoader";
 import ConfirmForm from "@/components/ConfirmForm";
 import { deletePlaceList } from "../actions";
 import { AddPlaceBox, ListVisibilitySelect, PlaceRowControls } from "./ListControls";
+import CreateOwnPlaceButton from "./CreateOwnPlaceButton";
 
 export const dynamic = "force-dynamic";
 
@@ -77,8 +78,9 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
       </div>
 
       {isOwner && (
-        <div className="mb-4">
+        <div className="mb-4 d-flex flex-wrap align-items-center gap-2">
           <AddPlaceBox listId={list.id} />
+          <CreateOwnPlaceButton listId={list.id} />
         </div>
       )}
 

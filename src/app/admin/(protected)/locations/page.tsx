@@ -19,7 +19,11 @@ export default async function AdminLocationsPage({
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
-  const where = q ? { name: { contains: q, mode: "insensitive" as const } } : undefined;
+  // Пользовательские места (createdByUserId) — не часть каталога.
+  const where = {
+    createdByUserId: null,
+    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+  };
   const [locations, total] = await Promise.all([
     prisma.location.findMany({
       where,

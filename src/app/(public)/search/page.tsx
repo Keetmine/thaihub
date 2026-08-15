@@ -76,7 +76,8 @@ export default async function SearchPage({
           take: 24,
         }),
         prisma.location.findMany({
-          where: { name: { contains: query, mode: "insensitive" } },
+          where: {
+            createdByUserId: null, name: { contains: query, mode: "insensitive" } },
           orderBy: { name: "asc" },
           take: 24,
         }),
