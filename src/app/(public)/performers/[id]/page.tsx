@@ -11,6 +11,7 @@ import { getFavoritedEventIds, getGoingEventIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
+import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { CakeIcon, BuildingIcon, PinIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +87,14 @@ export default async function PerformerPage({
     performer.dramas.map((pd) => pd.dramaId),
     currentUser?.id,
   );
+
+  // Newest first by release year — dramas with no known year (yet to be
+  // enriched/matched) sort last rather than interleaving arbitrarily.
+  const sortedDramas = [...performer.dramas].sort((a, b) => {
+    if (a.drama.year == null) return b.drama.year == null ? 0 : 1;
+    if (b.drama.year == null) return -1;
+    return b.drama.year - a.drama.year;
+  });
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
@@ -321,7 +330,7 @@ export default async function PerformerPage({
             Сериалы
           </h2>
           <div className="d-flex flex-column gap-2">
-            {performer.dramas.map((pd) => (
+            {sortedDramas.map((pd) => (
               <div
                 key={pd.dramaId}
                 className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
@@ -351,8 +360,18 @@ export default async function PerformerPage({
                     )}
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <p className="font-display fw-medium text-white mb-0 text-truncate">
-                      {pd.drama.title}
+                    <p className="font-display fw-medium text-white mb-0 d-flex align-items-center gap-2">
+                      <span className="text-truncate" style={{ minWidth: 0 }}>
+                        {pd.drama.title}
+                      </span>
+                      {pd.drama.status === "RETURNING_SERIES" && (
+                        <span
+                          className="badge rounded-pill text-bg-secondary flex-shrink-0"
+                          style={{ fontSize: "0.65rem" }}
+                        >
+                          {DRAMA_STATUS_LABELS.RETURNING_SERIES}
+                        </span>
+                      )}
                     </p>
                     {pd.drama.year && <p className="small text-secondary mb-0">{pd.drama.year}</p>}
                   </div>

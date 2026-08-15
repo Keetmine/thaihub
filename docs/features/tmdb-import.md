@@ -170,7 +170,11 @@ counts after the fact instead.
 - `Drama.status` (`DramaStatus?` enum: `RETURNING_SERIES`/`PLANNED`/
   `IN_PRODUCTION`/`ENDED`/`CANCELED`/`PILOT`, TMDB's own TV status
   vocabulary) — shown as a badge next to the title/year on a drama's
-  public page (`DRAMA_STATUS_LABELS` in `src/lib/dramaStatus.ts`). Distinct
+  public page (`DRAMA_STATUS_LABELS` in `src/lib/dramaStatus.ts`), and a
+  smaller "Выходит" (`RETURNING_SERIES` only) badge next to each title in
+  a performer's own drama list — that list is sorted newest-`year`-first
+  (undated entries last), so a currently-airing show reads clearly
+  amongst their older credits without needing to open each one. Distinct
   from `DramaWatchStatus` (a signed-in user's personal watch progress,
   see [social.md](social.md)) — this is the show's own real-world airing
   status, not per-user.
