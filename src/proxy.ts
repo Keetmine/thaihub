@@ -43,6 +43,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Публичные списки мест шарятся наружу прямой ссылкой — /lists/{id}
+  // пропускаем без куки, страница сама отдаёт 404/редирект по видимости
+  // (сам /lists — кабинетный список СВОИХ, остаётся за логином).
+  if (/^\/lists\/[^/]+$/.test(pathname)) {
+    return NextResponse.next();
+  }
+
   // Calendar-export links (event/[id]/ics) are meant to be handed to
   // external calendar apps (Google/Apple/Outlook "subscribe by URL"), which
   // fetch them directly and never carry our session cookie.

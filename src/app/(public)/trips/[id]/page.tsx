@@ -12,6 +12,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import { VisibilitySelect } from "../TripVisibilityControls";
+import EditTripButton from "../EditTripButton";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import {
   AddTripPlaceBox,
@@ -171,6 +172,14 @@ export default async function TripPage({
             {canManage && (
               <>
                 <VisibilitySelect tripId={trip.id} visibility={trip.visibility} />
+                <EditTripButton
+                  trip={{
+                    id: trip.id,
+                    title: trip.title,
+                    startKey: dateKey(trip.startDate),
+                    endKey: dateKey(trip.endDate),
+                  }}
+                />
                 <AddPersonalEventButton tripId={trip.id} />
               </>
             )}

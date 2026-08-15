@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toggleLocationVisit } from "@/app/(public)/locations/actions";
 import { CheckIcon, PlusIcon } from "@/components/icons";
 
@@ -15,27 +15,41 @@ export default function VisitedButton({
 }) {
   const [isPending, startTransition] = useTransition();
 
+  // Оптимистично, как FavoriteButton/GoingButton.
+  const [active, setActive] = useState(isVisited);
+  const [prevProp, setPrevProp] = useState(isVisited);
+  if (isVisited !== prevProp) {
+    setPrevProp(isVisited);
+    setActive(isVisited);
+  }
+
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    const next = !active;
+    setActive(next);
     startTransition(async () => {
-      await toggleLocationVisit(locationId);
+      try {
+        await toggleLocationVisit(locationId);
+      } catch {
+        setActive(!next);
+      }
     });
   }
 
-  const label = isVisited ? "Убрать из посещённых" : "Отметить как посещённое";
+  const label = active ? "Убрать из посещённых" : "Отметить как посещённое";
 
   return (
     <button
       type="button"
-      className={`round-icon-btn ${isVisited ? "is-going" : ""} ${className ?? ""}`}
+      className={`round-icon-btn ${active ? "is-going" : ""} ${className ?? ""}`}
       disabled={isPending}
-      aria-pressed={isVisited}
+      aria-pressed={active}
       aria-label={label}
       data-tooltip={label}
       onClick={handleClick}
     >
-      {isVisited ? <CheckIcon /> : <PlusIcon />}
+      {active ? <CheckIcon /> : <PlusIcon />}
     </button>
   );
 }

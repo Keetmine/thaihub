@@ -38,7 +38,7 @@ manually re-entering a date filter every time.
   reach, mirroring `deleteTrip`'s scoped-`deleteMany` pattern.
 - Actions (`trips/actions.ts`): `createTrip` (validates dates via
   `combineDateTime`, so Buddhist-era years from Thai-locale date inputs
-  get normalized like everywhere else), `deleteTrip` (scoped
+  get normalized like everywhere else), `updateTrip` (название/даты, модалка «Редактировать»), `deleteTrip` (scoped
   `deleteMany` by `{id, userId}` so deleting someone else's trip is a
   no-op). No edit — recreate is cheap.
 - Nav: «Поездки» appears in the public nav only when logged in, plus a

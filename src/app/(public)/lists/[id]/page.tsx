@@ -8,12 +8,16 @@ import ConfirmForm from "@/components/ConfirmForm";
 import { deletePlaceList } from "../actions";
 import { AddPlaceBox, ListVisibilitySelect, PlaceRowControls } from "./ListControls";
 import CreateOwnPlaceButton from "./CreateOwnPlaceButton";
+import EditListButton from "./EditListButton";
+import VisitedButton from "@/components/VisitedButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlaceListPage({ params }: { params: Promise<{ id: string }> }) {
+  // Гость (без логина) может открыть ПУБЛИЧНЫЙ список по прямой ссылке —
+  // proxy.ts пропускает /lists/[id] без куки, а гейт видимости ниже
+  // решает по самому списку.
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
 
   const { id } = await params;
   const list = await prisma.placeList.findUnique({
@@ -22,21 +26,35 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
       user: { select: { id: true, name: true } },
       items: {
         include: { location: true },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       },
     },
   });
   if (!list) notFound();
 
   // Та же модель видимости, что у поездок: чужому 404, не 403.
-  const isOwner = list.userId === user.id;
+  const isOwner = !!user && list.userId === user.id;
   if (!isOwner) {
     if (list.visibility === "PRIVATE") notFound();
     if (list.visibility === "FRIENDS") {
+      if (!user) redirect("/login");
       const ownerFriendIds = await getFriendIds(list.userId);
       if (!ownerFriendIds.includes(user.id)) notFound();
     }
   }
+
+  // Отметки «посетила» текущего зрителя (личное, доступно любому
+  // залогиненному зрителю списка).
+  const visitedIds = user
+    ? new Set(
+        (
+          await prisma.locationVisit.findMany({
+            where: { userId: user.id, locationId: { in: list.items.map((i) => i.locationId) } },
+            select: { locationId: true },
+          })
+        ).map((v) => v.locationId),
+      )
+    : new Set<string>();
 
   const pins = list.items
     .filter((i) => i.location.latitude != null && i.location.longitude != null)
@@ -64,6 +82,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
         {isOwner ? (
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <ListVisibilitySelect listId={list.id} visibility={list.visibility} />
+            <EditListButton list={{ id: list.id, title: list.title, description: list.description }} />
             <ConfirmForm action={boundDelete} confirmMessage={`Удалить список «${list.title}»?`}>
               <button type="button" className="btn btn-outline-secondary btn-sm">
                 Удалить список
@@ -125,9 +144,20 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
                   {i.note && <p className="small text-secondary mb-0 text-truncate">{i.note}</p>}
                 </div>
               </Link>
-              {isOwner && (
-                <PlaceRowControls listId={list.id} locationId={i.locationId} note={i.note} />
-              )}
+              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                {user && (
+                  <VisitedButton locationId={i.locationId} isVisited={visitedIds.has(i.locationId)} />
+                )}
+                {isOwner && (
+                  <PlaceRowControls
+                    listId={list.id}
+                    locationId={i.locationId}
+                    note={i.note}
+                    canEditPlace={i.location.createdByUserId === user!.id}
+                    place={{ name: i.location.name, photoUrl: i.location.photoUrl }}
+                  />
+                )}
+              </div>
             </div>
           ))}
         </div>

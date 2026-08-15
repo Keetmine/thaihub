@@ -48,3 +48,17 @@ export async function deleteInviteCode(code: string): Promise<void> {
   await prisma.inviteCode.deleteMany({ where: { code, usedAt: null } });
   revalidatePath("/admin/users");
 }
+
+/** Промокод на месяц подписки (подарочный). */
+export async function createPromoCode(): Promise<void> {
+  await requireAdmin();
+  const code = `GIFT-${randomBytes(4).toString("hex").toUpperCase()}`;
+  await prisma.promoCode.create({ data: { code, months: 1 } });
+  revalidatePath("/admin/users");
+}
+
+export async function deletePromoCode(code: string): Promise<void> {
+  await requireAdmin();
+  await prisma.promoCode.deleteMany({ where: { code, usedAt: null } });
+  revalidatePath("/admin/users");
+}

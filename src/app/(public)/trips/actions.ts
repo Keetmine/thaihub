@@ -44,6 +44,28 @@ export async function createTrip(formData: FormData) {
   redirect(`/trips/${trip.id}`);
 }
 
+/** Редактирование названия/дат/видимости поездки. */
+export async function updateTrip(tripId: string, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!isPremiumActive(user)) throw new Error("Поездки доступны по подписке");
+
+  const title = String(formData.get("title") ?? "").trim();
+  const startDate = String(formData.get("startDate") ?? "");
+  const endDate = String(formData.get("endDate") ?? "");
+  if (!title || !startDate || !endDate) throw new Error("Заполните название и обе даты");
+  const start = combineDateTime(startDate, "00:00");
+  const end = combineDateTime(endDate, "00:00");
+  if (end < start) throw new Error("Дата окончания раньше даты начала");
+
+  await prisma.trip.updateMany({
+    where: { id: tripId, userId: user.id },
+    data: { title, startDate: start, endDate: end },
+  });
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath("/trips");
+}
+
 export async function deleteTrip(tripId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");

@@ -1,4 +1,5 @@
 import BuyPremiumButton from "@/components/BuyPremiumButton";
+import PromoCodeRedeem from "@/components/PromoCodeRedeem";
 import { PREMIUM_PRICE_STARS } from "@/lib/telegram";
 
 const FEATURES = [
@@ -44,6 +45,9 @@ export default function PremiumUpsell({ feature }: { feature: string }) {
             Напишите нам, чтобы подключить подписку к вашему аккаунту.
           </p>
         )}
+        <div className="mt-3">
+          <PromoCodeRedeem />
+        </div>
       </div>
     </div>
   );

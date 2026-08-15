@@ -374,6 +374,7 @@ model User {
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
   usedInviteCodes        InviteCode[]
+  redeemedPromoCodes     PromoCode[] @relation("PromoRedeemer")
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -446,6 +447,9 @@ model PlaceListItem {
   listId     String
   locationId String
   note       String?
+  // Ручной порядок в списке (кнопки вверх/вниз); сортировка
+  // (position, createdAt) — у старых записей position 0.
+  position   Int       @default(0)
   list       PlaceList @relation(fields: [listId], references: [id], onDelete: Cascade)
   location   Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
   createdAt  DateTime  @default(now())
@@ -581,6 +585,17 @@ model AdminSession {
   id        String   @id @default(cuid())
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// Промокод подписки: одноразовый, даёт months месяцев премиума при
+// активации (генерация в админке, активация на пейволле).
+model PromoCode {
+  code      String    @id
+  months    Int       @default(1)
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+  usedById  String?
+  usedBy    User?     @relation("PromoRedeemer", fields: [usedById], references: [id], onDelete: SetNull)
 }
 
 // Регистрация по инвайтам: код генерируется в админке, одноразовый.

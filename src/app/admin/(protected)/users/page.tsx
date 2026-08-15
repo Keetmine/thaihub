@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { createInviteCode, deleteInviteCode, deleteUser } from "./actions";
+import { createInviteCode, createPromoCode, deleteInviteCode, deletePromoCode, deleteUser } from "./actions";
 import PremiumToggle from "./PremiumToggle";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
@@ -33,6 +33,13 @@ export default async function AdminUsersPage({
       },
     },
   });
+
+  const promos = await prisma.promoCode.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { usedBy: { select: { name: true, email: true } } },
+    take: 30,
+  });
+  const freePromos = promos.filter((p) => !p.usedAt);
 
   const invites = await prisma.inviteCode.findMany({
     orderBy: { createdAt: "desc" },
@@ -82,6 +89,40 @@ export default async function AdminUsersPage({
             {invites
               .filter((i) => i.usedAt)
               .map((i) => `${i.code} → ${i.usedBy?.name || i.usedBy?.email || "?"}`)
+              .join(", ")}
+          </p>
+        )}
+      </div>
+
+      <div className="surface p-3 mb-4">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+          <h2 className="h6 mb-0">Промокоды подписки (+1 месяц)</h2>
+          <form action={createPromoCode}>
+            <button type="submit" className="btn btn-ghost btn-sm">
+              + Создать промокод
+            </button>
+          </form>
+        </div>
+        {freePromos.length === 0 ? (
+          <p className="small text-secondary mb-0">Свободных промокодов нет.</p>
+        ) : (
+          <div className="d-flex flex-wrap gap-2">
+            {freePromos.map((c) => (
+              <form key={c.code} action={deletePromoCode.bind(null, c.code)} className="d-inline">
+                <span className="event-chip font-monospace">{c.code}</span>{" "}
+                <button type="submit" className="btn btn-link btn-sm text-danger p-0" title="Удалить код">
+                  ×
+                </button>
+              </form>
+            ))}
+          </div>
+        )}
+        {promos.some((c) => c.usedAt) && (
+          <p className="small text-secondary mt-2 mb-0">
+            Активированы:{" "}
+            {promos
+              .filter((c) => c.usedAt)
+              .map((c) => `${c.code} → ${c.usedBy?.name || c.usedBy?.email || "?"}`)
               .join(", ")}
           </p>
         )}

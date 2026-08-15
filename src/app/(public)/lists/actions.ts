@@ -117,6 +117,7 @@ export async function createOwnPlace(listId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
+  const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   if (!name) throw new Error("Укажите название места");
 
   let coords: { lat: number; lng: number } | null = null;
@@ -143,6 +144,7 @@ export async function createOwnPlace(listId: string, formData: FormData) {
     data: {
       name,
       createdByUserId: user.id,
+      photoUrl: photoUrl || null,
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
     },
@@ -150,5 +152,83 @@ export async function createOwnPlace(listId: string, formData: FormData) {
   await prisma.placeListItem.create({
     data: { listId: list.id, locationId: location.id, note: note || null },
   });
+  revalidatePath(`/lists/${listId}`);
+}
+
+/** Редактирование названия/описания списка. */
+export async function updatePlaceList(listId: string, formData: FormData) {
+  const { list } = await requireOwnList(listId);
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  if (!title) throw new Error("Укажите название списка");
+  await prisma.placeList.update({
+    where: { id: list.id },
+    data: { title, description: description || null },
+  });
+  revalidatePath(`/lists/${listId}`);
+  revalidatePath("/lists");
+}
+
+/** Редактирование СВОЕГО места (созданного пользователем): название,
+ *  фото, ссылка/координаты. Каталожные локации отсюда не редактируются. */
+export async function updateOwnPlace(locationId: string, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const location = await prisma.location.findUnique({ where: { id: locationId } });
+  if (!location || location.createdByUserId !== user.id) throw new Error("Место не найдено");
+
+  const name = String(formData.get("name") ?? "").trim();
+  const photoUrl = String(formData.get("photoUrl") ?? "").trim();
+  const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
+  if (!name) throw new Error("Укажите название места");
+
+  let coords: { lat: number; lng: number } | null = null;
+  if (mapsInput) {
+    const raw = mapsInput.match(/^(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/);
+    if (raw) coords = { lat: parseFloat(raw[1]), lng: parseFloat(raw[2]) };
+    else {
+      const { chromium } = await import("playwright");
+      const browser = await chromium.launch();
+      try {
+        coords = await resolveMapsCoords(mapsInput, browser);
+      } finally {
+        await browser.close();
+      }
+    }
+  }
+
+  await prisma.location.update({
+    where: { id: locationId },
+    data: {
+      name,
+      photoUrl: photoUrl || null,
+      ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+    },
+  });
+  revalidatePath("/lists");
+}
+
+/** Перестановка места в списке кнопками вверх/вниз: перечитываем текущий
+ *  порядок, свапаем соседей и переписываем position всем подряд —
+ *  надёжнее, чем жонглировать парой значений при position-дефолте 0. */
+export async function movePlaceInList(listId: string, locationId: string, direction: "up" | "down") {
+  const { list } = await requireOwnList(listId);
+  const items = await prisma.placeListItem.findMany({
+    where: { listId: list.id },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+  });
+  const idx = items.findIndex((i) => i.locationId === locationId);
+  const target = direction === "up" ? idx - 1 : idx + 1;
+  if (idx < 0 || target < 0 || target >= items.length) return;
+  [items[idx], items[target]] = [items[target], items[idx]];
+  await prisma.$transaction(
+    items.map((item, i) =>
+      prisma.placeListItem.update({
+        where: { listId_locationId: { listId: list.id, locationId: item.locationId } },
+        data: { position: i },
+      }),
+    ),
+  );
   revalidatePath(`/lists/${listId}`);
 }

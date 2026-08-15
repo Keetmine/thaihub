@@ -31,6 +31,12 @@ one guards itself.
 
 Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
 
+**Promo codes**: одноразовый `PromoCode` (+1 месяц подписки) —
+генерация/удаление в блоке на `/admin/users`, активация полем
+«Промокод» на пейволле (`PromoCodeRedeem` → `redeemPromoCode`,
+транзакционное использование + rate limit). Месяц прибавляется к
+текущему сроку.
+
 **Invite-only signup**: registration requires a one-time `InviteCode`
 (generated/deleted in the invites block on `/admin/users`); the code is
 claimed in the same transaction that creates the user, so a code can't

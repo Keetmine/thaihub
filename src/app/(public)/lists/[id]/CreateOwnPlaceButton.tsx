@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { createOwnPlace } from "../actions";
+import FileDropzone from "@/components/FileDropzone";
 
 /** Создание своего места (не из каталога) прямо в список: название +
  *  ссылка Google Maps (короткая или длинная) или координаты — точка
@@ -61,6 +62,7 @@ export default function CreateOwnPlaceButton({ listId }: { listId: string }) {
               ссылки распознаются чуть дольше (несколько секунд).
             </p>
           </div>
+          <FileDropzone name="photoUrl" label="Фото (необязательно)" defaultValue="" />
           <div>
             <label className="form-label small text-secondary">Заметка</label>
             <input type="text" name="note" placeholder="манго-рис брать обязательно" className="form-control" />

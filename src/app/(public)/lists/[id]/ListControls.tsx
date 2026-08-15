@@ -3,11 +3,15 @@
 import { useRef, useState, useTransition } from "react";
 import {
   addPlaceToList,
+  movePlaceInList,
   removePlaceFromList,
   searchLocationOptions,
   setPlaceListVisibility,
   setPlaceNote,
+  updateOwnPlace,
 } from "../actions";
+import Modal from "@/components/Modal";
+import FileDropzone from "@/components/FileDropzone";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 
 /** Селектор видимости списка (владельцу). */
@@ -125,27 +129,62 @@ export function AddPlaceBox({ listId }: { listId: string }) {
   );
 }
 
-/** Кнопка удаления места + инлайн-заметка. */
+/** Контролы строки места: порядок ↑↓, заметка, редактирование своего
+ *  места (название/фото/координаты), удаление из списка. */
 export function PlaceRowControls({
   listId,
   locationId,
   note,
+  canEditPlace = false,
+  place,
 }: {
   listId: string;
   locationId: string;
   note: string | null;
+  /** true — место создано этим пользователем и его можно редактировать. */
+  canEditPlace?: boolean;
+  place?: { name: string; photoUrl: string | null };
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingPlace, setIsEditingPlace] = useState(false);
   const [isPending, startTransition] = useTransition();
   const boundNote = setPlaceNote.bind(null, listId, locationId);
+  const boundPlace = updateOwnPlace.bind(null, locationId);
 
   async function saveNote(formData: FormData) {
     await boundNote(formData);
     setIsEditing(false);
   }
 
+  async function savePlace(formData: FormData) {
+    await boundPlace(formData);
+    setIsEditingPlace(false);
+  }
+
   return (
     <div className="d-flex align-items-center gap-2 flex-shrink-0">
+      <div className="d-flex flex-column">
+        <button
+          type="button"
+          className="btn btn-link btn-sm p-0 text-secondary"
+          aria-label="Выше"
+          title="Выше"
+          disabled={isPending}
+          onClick={() => startTransition(async () => movePlaceInList(listId, locationId, "up"))}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          className="btn btn-link btn-sm p-0 text-secondary"
+          aria-label="Ниже"
+          title="Ниже"
+          disabled={isPending}
+          onClick={() => startTransition(async () => movePlaceInList(listId, locationId, "down"))}
+        >
+          ▼
+        </button>
+      </div>
       {isEditing ? (
         <form action={saveNote} className="d-flex align-items-center gap-2">
           <input name="note" defaultValue={note ?? ""} className="form-control form-control-sm" autoFocus />
@@ -158,6 +197,17 @@ export function PlaceRowControls({
           {note ? "✎" : "+ заметка"}
         </button>
       )}
+      {canEditPlace && place && (
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Редактировать место"
+          title="Редактировать место"
+          onClick={() => setIsEditingPlace(true)}
+        >
+          ✎
+        </button>
+      )}
       <button
         type="button"
         className="icon-btn icon-btn-danger"
@@ -168,6 +218,27 @@ export function PlaceRowControls({
       >
         ×
       </button>
+
+      {canEditPlace && place && (
+        <Modal open={isEditingPlace} onClose={() => setIsEditingPlace(false)} title="Редактировать место">
+          <form action={savePlace} className="d-flex flex-column gap-3">
+            <div>
+              <label className="form-label small text-secondary">Название</label>
+              <input type="text" name="name" required defaultValue={place.name} className="form-control" />
+            </div>
+            <FileDropzone name="photoUrl" label="Фото" defaultValue={place.photoUrl ?? ""} />
+            <div>
+              <label className="form-label small text-secondary">
+                Ссылка Google Maps или координаты (если нужно обновить точку)
+              </label>
+              <input type="text" name="mapsUrl" placeholder="https://maps.app.goo.gl/…" className="form-control" />
+            </div>
+            <button type="submit" className="btn btn-primary">
+              Сохранить
+            </button>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
