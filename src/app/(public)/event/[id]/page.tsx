@@ -99,7 +99,9 @@ export default async function EventDetailPage({
         where: { eventId: event.id, userId: { in: friendIds } },
         select: { user: { select: { id: true, name: true, photoUrl: true } } },
       });
-      friendsGoing = attendances.map((a) => a.user);
+      // «Иду» per-дата — у идущего на все 3 дня будет 3 строки; в блоке
+      // «Друзья идут» человек выводится один раз.
+      friendsGoing = Array.from(new Map(attendances.map((a) => [a.user.id, a.user])).values());
     }
 
     // Заметки (Г6): своя + друзей с видимостью FRIENDS.
@@ -227,6 +229,28 @@ export default async function EventDetailPage({
                 </div>
               </div>
             )}
+            {(event.performers.length > 0 || event.pairings.length > 0) && (
+              <div className={event.drama ? "mt-3 mb-3" : "mt-3 mb-0"}>
+                <p className="small text-secondary text-uppercase mb-2" style={{ letterSpacing: "0.08em" }}>
+                  Кто выступает
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  {event.performers.map(({ performer }) => (
+                    <EntityMiniCard
+                      key={performer.id}
+                      href={performerHref(performer)}
+                      photoUrl={performer.photoUrl}
+                      name={performer.name}
+                    />
+                  ))}
+                  {event.pairings.map(({ pairing }) => (
+                    <span key={pairing.id} className="event-chip">
+                      {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {event.drama && (
               <p className="mb-0">
                 <TvIcon className="icon-inline" /> <span className="text-secondary">Сериал:</span>{" "}
@@ -266,32 +290,6 @@ export default async function EventDetailPage({
             Описание
           </h2>
           <p className="mb-0">{event.description}</p>
-        </div>
-      )}
-
-      {(event.performers.length > 0 || event.pairings.length > 0) && (
-        <div className="surface p-4 mb-3">
-          <h2
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
-          >
-            Кто выступает
-          </h2>
-          <div className="d-flex flex-wrap gap-2">
-            {event.performers.map(({ performer }) => (
-              <EntityMiniCard
-                key={performer.id}
-                href={performerHref(performer)}
-                photoUrl={performer.photoUrl}
-                name={performer.name}
-              />
-            ))}
-            {event.pairings.map(({ pairing }) => (
-              <span key={pairing.id} className="event-chip">
-                {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
-              </span>
-            ))}
-          </div>
         </div>
       )}
 

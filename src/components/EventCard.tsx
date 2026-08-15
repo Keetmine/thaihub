@@ -34,7 +34,7 @@ export default function EventCard({
     <div className="event-card">
       <div className="corner-actions corner-actions-row">
         <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
-        <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} variant="icon" />
+        <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>
 
       <div className="event-card-date">

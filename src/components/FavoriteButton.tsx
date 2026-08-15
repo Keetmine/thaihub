@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   toggleFavoriteAgency,
   toggleFavoriteEvent,
@@ -37,11 +37,30 @@ export default function FavoriteButton({
 }) {
   const [isPending, startTransition] = useTransition();
 
+  // Оптимистичное локальное состояние: сердечко закрашивается сразу по
+  // клику, не дожидаясь сервера. Особенно важно в бесконечной ленте —
+  // она клиентская с накопленным состоянием, и revalidatePath серверной
+  // страницы её не перерисовывает. Проп с сервера при этом остаётся
+  // источником истины: если он поменялся (навигация/refresh), локальное
+  // состояние пересинхронизируется.
+  const [active, setActive] = useState(isFavorited);
+  const [prevProp, setPrevProp] = useState(isFavorited);
+  if (isFavorited !== prevProp) {
+    setPrevProp(isFavorited);
+    setActive(isFavorited);
+  }
+
   function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    const next = !active;
+    setActive(next);
     startTransition(async () => {
-      await actionByKind[kind](id);
+      try {
+        await actionByKind[kind](id);
+      } catch {
+        setActive(!next);
+      }
     });
   }
 
@@ -49,31 +68,31 @@ export default function FavoriteButton({
     return (
       <button
         type="button"
-        className={`favorite-corner ${isFavorited ? "is-favorited" : ""} ${className ?? ""}`}
+        className={`favorite-corner ${active ? "is-favorited" : ""} ${className ?? ""}`}
         disabled={isPending}
-        aria-pressed={isFavorited}
-        aria-label={isFavorited ? "Убрать из избранного" : "В избранное"}
-        title={isFavorited ? "Убрать из избранного" : "В избранное"}
+        aria-pressed={active}
+        aria-label={active ? "Убрать из избранного" : "В избранное"}
+        title={active ? "Убрать из избранного" : "В избранное"}
         onClick={handleClick}
       >
-        <HeartIcon filled={isFavorited} />
+        <HeartIcon filled={active} />
       </button>
     );
   }
 
   if (variant === "icon") {
-    const label = isFavorited ? "Убрать из избранного" : "В избранное";
+    const label = active ? "Убрать из избранного" : "В избранное";
     return (
       <button
         type="button"
-        className={`round-icon-btn ${isFavorited ? "is-favorited" : ""} ${className ?? ""}`}
+        className={`round-icon-btn ${active ? "is-favorited" : ""} ${className ?? ""}`}
         disabled={isPending}
-        aria-pressed={isFavorited}
+        aria-pressed={active}
         aria-label={label}
         data-tooltip={label}
         onClick={handleClick}
       >
-        <HeartIcon filled={isFavorited} />
+        <HeartIcon filled={active} />
       </button>
     );
   }
@@ -83,11 +102,11 @@ export default function FavoriteButton({
       type="button"
       className={className ?? "favorite-pill"}
       disabled={isPending}
-      aria-pressed={isFavorited}
+      aria-pressed={active}
       onClick={handleClick}
     >
-      <HeartIcon filled={isFavorited} />
-      {isFavorited ? "В избранном" : "В избранное"}
+      <HeartIcon filled={active} />
+      {active ? "В избранном" : "В избранное"}
     </button>
   );
 }

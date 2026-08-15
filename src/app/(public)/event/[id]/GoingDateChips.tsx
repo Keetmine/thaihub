@@ -18,14 +18,21 @@ export default function GoingDateChips({
   const [isPending, startTransition] = useTransition();
 
   function toggle(id: string) {
-    startTransition(async () => {
-      await toggleGoing(id);
+    // Оптимистично: чип переключается сразу, при ошибке откатываем.
+    const flip = () =>
       setGoing((prev) => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
         return next;
       });
+    flip();
+    startTransition(async () => {
+      try {
+        await toggleGoing(id);
+      } catch {
+        flip();
+      }
     });
   }
 
