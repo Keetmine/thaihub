@@ -5,7 +5,7 @@ import FileDropzone from "@/components/FileDropzone";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import Modal from "@/components/Modal";
-import { createPerformerAndReturn } from "../performers/actions";
+import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createLocationAndReturn } from "../locations/actions";
 import { findSimilarDramas } from "./actions";
@@ -49,7 +49,6 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl?: string | null }) 
 
 export default function DramaForm({
   action,
-  performers,
   agencies,
   locations,
   defaultValues,
@@ -57,7 +56,6 @@ export default function DramaForm({
   submitLabel,
 }: {
   action: (formData: FormData) => void;
-  performers: PerformerOption[];
   agencies: EntityOption[];
   locations: EntityOption[];
   defaultValues?: {
@@ -78,12 +76,6 @@ export default function DramaForm({
 
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
-  const [createdPerformers, setCreatedPerformers] = useState<PerformerOption[]>([]);
-  const allPerformers = useMemo(
-    () => [...performers, ...createdPerformers.filter((c) => !performers.some((p) => p.id === c.id))],
-    [performers, createdPerformers],
-  );
-
   const [cast, setCast] = useState<CastEntry[]>(v?.cast ?? []);
   const [query, setQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -92,21 +84,45 @@ export default function DramaForm({
   const [createError, setCreateError] = useState<string | null>(null);
   const comboboxRef = useRef<HTMLDivElement>(null);
 
+  // Каталог актёров (~17 тыс.) больше не приходит пропсом целиком —
+  // ищем на сервере по мере ввода (searchPerformerOptions), с тем же
+  // дебаунсом/отбросом устаревших ответов, что в EntityMultiSelect.
+  const [searchResults, setSearchResults] = useState<PerformerOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
+
+  function handleQueryChange(next: string) {
+    setQuery(next);
+    const q = next.trim();
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (q.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const seq = ++searchSeqRef.current;
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchPerformerOptions(q);
+        if (seq === searchSeqRef.current) setSearchResults(results);
+      } finally {
+        if (seq === searchSeqRef.current) setIsSearching(false);
+      }
+    }, 300);
+  }
+
   const filteredPerformers = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const castIds = new Set(cast.map((c) => c.id));
-    return allPerformers.filter((p) => {
-      if (castIds.has(p.id)) return false;
-      if (!q) return true;
-      return p.name.toLowerCase().includes(q);
-    });
-  }, [allPerformers, cast, query]);
+    return searchResults.filter((p) => !castIds.has(p.id));
+  }, [searchResults, cast]);
 
   const trimmedQuery = query.trim();
-  const hasExactMatch = allPerformers.some(
+  const hasExactMatch = searchResults.some(
     (p) => p.name.toLowerCase() === trimmedQuery.toLowerCase(),
   );
-  const showCreateOption = trimmedQuery.length > 0 && !hasExactMatch;
+  const showCreateOption = trimmedQuery.length > 0 && !hasExactMatch && !isSearching;
 
   function addCastMember(performer: PerformerOption) {
     setCast((prev) => {
@@ -134,9 +150,7 @@ export default function DramaForm({
     setCreateError(null);
     try {
       const created = await createPerformerAndReturn(newName);
-      const option = { id: created.id, name: created.name, photoUrl: null };
-      setCreatedPerformers((prev) => [...prev, option]);
-      addCastMember(option);
+      addCastMember({ id: created.id, name: created.name, photoUrl: null });
       setCreatePrefill(null);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Не удалось создать");
@@ -287,7 +301,7 @@ export default function DramaForm({
             className="form-control"
             placeholder="Начните вводить имя исполнителя…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleQueryChange(e.target.value)}
             onFocus={() => setIsDropdownOpen(true)}
             onBlur={() => {
               // allow click on dropdown options to register before closing
@@ -295,6 +309,13 @@ export default function DramaForm({
             }}
           />
 
+          {isDropdownOpen && trimmedQuery.length > 0 && filteredPerformers.length === 0 && !showCreateOption && (
+            <div className="performer-combobox-dropdown">
+              <div className="performer-combobox-option text-secondary" aria-disabled>
+                {trimmedQuery.length < 2 ? "Введите минимум 2 символа" : isSearching ? "Поиск…" : "Никого не найдено"}
+              </div>
+            </div>
+          )}
           {isDropdownOpen && (filteredPerformers.length > 0 || showCreateOption) && (
             <div className="performer-combobox-dropdown">
               {filteredPerformers.map((p) => (
@@ -326,11 +347,6 @@ export default function DramaForm({
           )}
         </div>
 
-        {allPerformers.length === 0 && (
-          <p className="small text-secondary mt-2">
-            Нет исполнителей. Начните вводить имя, чтобы создать нового.
-          </p>
-        )}
       </div>
 
       <div style={{ display: activeTab === "locations" ? undefined : "none" }}>

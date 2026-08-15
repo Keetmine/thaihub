@@ -2,9 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
-import { syncNewDramasFromBlscene, type BlsceneSyncResult } from "@/lib/blsceneImport";
+import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
 
 function getCastEntries(
   formData: FormData,
@@ -149,22 +148,12 @@ export async function deleteDrama(id: string) {
 }
 
 /**
- * Checks blscene.com's filming-locations index against our own dramas and
- * imports whatever's missing (drama profile + all its locations, with
- * coordinates resolved where blscene links to a specific Google Maps
- * place). Can take a while for a large batch — this is a plain request/
- * response action, so it's best suited to catching up on a handful of new
- * shows, not a from-scratch bulk import (that's the one-off script).
+ * Sweeps every drama in the catalog through TMDB (see
+ * `syncAllDramasFromTmdb` for matching/dedup details) — the admin-UI
+ * counterpart to `scripts/sync-dramas-tmdb.ts`, same underlying sweep.
  */
-export async function syncBlsceneDramas(): Promise<BlsceneSyncResult> {
-  const browser = await chromium.launch();
-  try {
-    const result = await syncNewDramasFromBlscene(browser);
-    revalidateDramaPaths();
-    revalidatePath("/locations");
-    revalidatePath("/locations/map");
-    return result;
-  } finally {
-    await browser.close();
-  }
+export async function syncTmdbDramas(): Promise<DramaSyncSummary> {
+  const result = await syncAllDramasFromTmdb();
+  revalidateDramaPaths();
+  return result;
 }

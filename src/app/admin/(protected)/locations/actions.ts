@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
+import { refreshBlsceneLocations, type BlsceneLocationRefreshResult } from "@/lib/blsceneImport";
 
 function getCoordinate(formData: FormData, key: string): number | null {
   const raw = String(formData.get(key) ?? "").trim();
@@ -89,4 +91,23 @@ export async function deleteLocation(id: string) {
   await prisma.location.delete({ where: { id } });
   revalidatePath("/admin/locations");
   revalidatePath("/locations");
+}
+
+/**
+ * Re-checks every already-imported drama's blscene page for filming
+ * locations added since our last visit. New-drama importing lives in the
+ * standalone backfill script instead — this only ever adds locations to
+ * dramas we already have.
+ */
+export async function syncBlsceneLocations(): Promise<BlsceneLocationRefreshResult> {
+  const browser = await chromium.launch();
+  try {
+    const result = await refreshBlsceneLocations(browser);
+    revalidatePath("/admin/locations");
+    revalidatePath("/locations");
+    revalidatePath("/locations/map");
+    return result;
+  } finally {
+    await browser.close();
+  }
 }

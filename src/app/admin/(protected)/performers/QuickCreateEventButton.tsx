@@ -4,6 +4,7 @@ import { useState } from "react";
 import Modal from "@/components/Modal";
 import type { EntityOption } from "@/components/EntityMultiSelect";
 import { createEventMinimal } from "../events/actions";
+import DatePickerInput from "@/components/DatePickerInput";
 
 export default function QuickCreateEventButton({
   onCreated,
@@ -63,7 +64,7 @@ export default function QuickCreateEventButton({
           <div className="row g-2">
             <div className="col-6">
               <label className="form-label">Дата *</label>
-              <input type="date" name="date" required className="form-control" />
+              <DatePickerInput name="date" required />
             </div>
             <div className="col-6">
               <label className="form-label">Начало *</label>

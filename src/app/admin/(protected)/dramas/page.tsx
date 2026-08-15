@@ -5,7 +5,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
-import BlsceneSyncButton from "./BlsceneSyncButton";
+import TmdbSyncButton from "./TmdbSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export default async function AdminDramasPage({
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-5">
         <div>
           <span className="eyebrow">Управление</span>
           <h1 className="display-1-tight mt-3 mb-0" style={{ fontSize: "2.25rem" }}>
@@ -49,7 +49,7 @@ export default async function AdminDramasPage({
       <NameSearchBox action="/admin/dramas" q={q} placeholder="Поиск по названию…" />
 
       <div className="surface p-3 mb-4">
-        <BlsceneSyncButton />
+        <TmdbSyncButton />
       </div>
 
       {dramas.length === 0 ? (

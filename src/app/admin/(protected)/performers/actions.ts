@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
 import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
+import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdbImport";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 
 /**
@@ -27,7 +28,44 @@ export async function syncGmmtv(): Promise<GmmtvSyncResult> {
   }
 }
 
+/**
+ * Sweeps every solo performer in the catalog through TMDB (see
+ * `syncAllPerformersFromTmdb` for matching/dedup details) — the admin-UI
+ * counterpart to `scripts/sync-performers-tmdb.ts`, same underlying sweep.
+ */
+export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
+  const result = await syncAllPerformersFromTmdb();
+  revalidatePath("/admin/performers");
+  revalidatePath("/performers");
+  return result;
+}
+
 /** Live "похоже, уже есть" lookup for the create form's name field. */
+/**
+ * Асинхронный поиск для комбобоксов выбора актёров (EventForm/DramaForm):
+ * каталог вырос до ~17 тыс. исполнителей, и передача полного списка в
+ * клиентский селект подвешивала страницу — вместо этого клиент ищет по
+ * мере ввода. Ищет и по нику (name), и по реальному имени.
+ */
+export async function searchPerformerOptions(
+  query: string,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  return prisma.performer.findMany({
+    where: {
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { realName: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, name: true, photoUrl: true },
+    orderBy: { name: "asc" },
+    take: 20,
+  });
+}
+
 export async function findSimilarPerformers(
   query: string,
 ): Promise<{ id: string; name: string }[]> {

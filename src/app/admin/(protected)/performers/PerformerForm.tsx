@@ -12,6 +12,7 @@ import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
 import type { PairingStatus } from "@/generated/prisma/client";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
+import DatePickerInput from "@/components/DatePickerInput";
 
 export type PerformerLinkInput = { label: string; url: string };
 export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
@@ -212,12 +213,7 @@ export default function PerformerForm({
           <div className="row g-3">
             <div className="col-12 col-sm-6">
               <label className="form-label">Дата рождения</label>
-              <input
-                type="date"
-                name="birthDate"
-                defaultValue={v?.birthDate}
-                className="form-control"
-              />
+              <DatePickerInput name="birthDate" defaultValue={v?.birthDate} />
             </div>
             <div className="col-12 col-sm-6">
               <label className="form-label">Место рождения</label>

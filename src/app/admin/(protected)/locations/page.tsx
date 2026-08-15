@@ -5,6 +5,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
+import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function AdminLocationsPage({
   return (
     <div>
       <span className="eyebrow">Управление</span>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Локации
         </h1>
@@ -44,6 +45,10 @@ export default async function AdminLocationsPage({
       </div>
 
       <NameSearchBox action="/admin/locations" q={q} placeholder="Поиск по названию…" />
+
+      <div className="surface p-3 mb-4">
+        <BlsceneLocationsSyncButton />
+      </div>
 
       {locations.length === 0 ? (
         <p className="text-secondary">

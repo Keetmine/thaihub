@@ -7,6 +7,7 @@ import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import GmmtvSyncButton from "./GmmtvSyncButton";
+import TmdbSyncButton from "./TmdbSyncButton";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
@@ -222,7 +223,7 @@ export default async function AdminPerformersPage({
   return (
     <div>
       <span className="eyebrow">Управление</span>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
+      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {isAgencies ? "Агентства" : isBands ? "Группы" : "Актёры"}
         </h1>
@@ -248,8 +249,9 @@ export default async function AdminPerformersPage({
       </div>
 
       {!isAgencies && (
-        <div className="surface p-3 mb-4">
+        <div className="surface p-3 mb-4 d-flex flex-column gap-3">
           <GmmtvSyncButton />
+          <TmdbSyncButton />
         </div>
       )}
 

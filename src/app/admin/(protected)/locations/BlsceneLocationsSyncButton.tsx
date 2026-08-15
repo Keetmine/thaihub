@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { syncBlsceneDramas } from "./actions";
-import type { BlsceneSyncResult } from "@/lib/blsceneImport";
+import { syncBlsceneLocations } from "./actions";
+import type { BlsceneLocationRefreshResult } from "@/lib/blsceneImport";
 
-export default function BlsceneSyncButton() {
+export default function BlsceneLocationsSyncButton() {
   const router = useRouter();
   const [isRunning, setIsRunning] = useState(false);
-  const [result, setResult] = useState<BlsceneSyncResult | null>(null);
+  const [result, setResult] = useState<BlsceneLocationRefreshResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleClick() {
@@ -16,7 +16,7 @@ export default function BlsceneSyncButton() {
     setError(null);
     setResult(null);
     try {
-      const res = await syncBlsceneDramas();
+      const res = await syncBlsceneLocations();
       setResult(res);
       router.refresh();
     } catch (err) {
@@ -39,7 +39,8 @@ export default function BlsceneSyncButton() {
 
       {isRunning && (
         <p className="small text-secondary mt-2 mb-0">
-          Может занять несколько минут — проверяются все сериалы на blscene, не только новые.
+          Может занять несколько минут — проверяются страницы всех уже импортированных сериалов
+          на предмет новых локаций.
         </p>
       )}
 
@@ -47,30 +48,15 @@ export default function BlsceneSyncButton() {
 
       {result && !isRunning && (
         <div className="small text-secondary mt-2">
-          <p className="mb-1">
-            Проверено {result.checked} сериалов на blscene, новых —{" "}
-            {result.imported.length + result.errors.length}.
-          </p>
-          {result.imported.length > 0 && (
+          <p className="mb-1">Проверено {result.checked} сериалов на blscene.</p>
+          {result.refreshed.length > 0 && (
             <ul className="mb-1 ps-3">
-              {result.imported.map((d) => (
+              {result.refreshed.map((d) => (
                 <li key={d.title}>
-                  {d.title} — {d.locationsImported} локаций ({d.locationsWithCoords} с координатами)
+                  {d.title} — +{d.newLocations} локаций
                 </li>
               ))}
             </ul>
-          )}
-          {result.refreshed.length > 0 && (
-            <>
-              <p className="mb-1">Обновлено (новые локации на уже импортированных страницах):</p>
-              <ul className="mb-1 ps-3">
-                {result.refreshed.map((d) => (
-                  <li key={d.title}>
-                    {d.title} — +{d.newLocations} локаций
-                  </li>
-                ))}
-              </ul>
-            </>
           )}
           {result.errors.length > 0 && (
             <ul className="mb-0 ps-3 text-danger">
@@ -81,8 +67,8 @@ export default function BlsceneSyncButton() {
               ))}
             </ul>
           )}
-          {result.imported.length === 0 && result.refreshed.length === 0 && result.errors.length === 0 && (
-            <p className="mb-0">Новых сериалов не найдено — всё уже есть.</p>
+          {result.refreshed.length === 0 && result.errors.length === 0 && (
+            <p className="mb-0">Новых локаций не найдено.</p>
           )}
         </div>
       )}
