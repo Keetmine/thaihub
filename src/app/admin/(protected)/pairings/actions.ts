@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { PairingStatus } from "@/generated/prisma/client";
+import { requireAdmin } from "@/lib/auth";
 
 export async function createPairing(formData: FormData) {
+  await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const performerAId = String(formData.get("performerAId") ?? "").trim();
   const performerBId = String(formData.get("performerBId") ?? "").trim();
@@ -46,12 +48,14 @@ export async function createPairing(formData: FormData) {
 }
 
 export async function deletePairing(id: string) {
+  await requireAdmin();
   await prisma.pairing.delete({ where: { id } });
   revalidatePath("/admin/pairings");
   revalidatePath("/admin/events");
 }
 
 export async function setPairingStatus(id: string, status: PairingStatus) {
+  await requireAdmin();
   const pairing = await prisma.pairing.update({ where: { id }, data: { status } });
   revalidatePath("/admin/pairings");
   revalidatePath("/admin/performers");

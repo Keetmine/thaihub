@@ -8,10 +8,12 @@ import {
   type TmdbImportResult,
 } from "@/lib/tmdbImport";
 import { parseTmdbPersonId } from "@/lib/tmdb";
+import { requireAdmin } from "@/lib/auth";
 
 export type { TmdbImportPreview, TmdbImportResult };
 
 export async function previewTmdbImport(input: string): Promise<TmdbImportPreview> {
+  await requireAdmin();
   const personId = parseTmdbPersonId(input);
   if (!personId) {
     throw new Error("Не удалось распознать TMDB id — вставьте ссылку вида themoviedb.org/person/12345 или сам id");
@@ -25,6 +27,7 @@ export async function commitTmdbImport(input: {
   placeOfBirth: string;
   selectedTvIds: number[];
 }): Promise<TmdbImportResult> {
+  await requireAdmin();
   const result = await commitTmdbPersonImport(input);
   revalidatePath(`/admin/performers/${input.performerId}/edit`);
   revalidatePath("/admin/performers");

@@ -8,5 +8,8 @@ const email = process.argv[2];
 if (!email) throw new Error("usage: tsx set-premium-test-user.ts <email>");
 
 prisma.user
-  .updateMany({ where: { email }, data: { isPremium: true } })
+  .updateMany({
+    where: { email },
+    data: { premiumUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+  })
   .finally(() => prisma.$disconnect());

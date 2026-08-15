@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { deleteUser } from "./actions";
+import { createInviteCode, deleteInviteCode, deleteUser } from "./actions";
 import PremiumToggle from "./PremiumToggle";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
@@ -34,6 +34,13 @@ export default async function AdminUsersPage({
     },
   });
 
+  const invites = await prisma.inviteCode.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { usedBy: { select: { name: true, email: true } } },
+    take: 30,
+  });
+  const freeInvites = invites.filter((i) => !i.usedAt);
+
   return (
     <div>
       <span className="eyebrow">Управление</span>
@@ -45,6 +52,40 @@ export default async function AdminUsersPage({
       </div>
 
       <NameSearchBox action="/admin/users" q={q} placeholder="Поиск по имени, email, telegram…" />
+
+      <div className="surface p-3 mb-4">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+          <h2 className="h6 mb-0">Инвайт-коды</h2>
+          <form action={createInviteCode}>
+            <button type="submit" className="btn btn-ghost btn-sm">
+              + Создать код
+            </button>
+          </form>
+        </div>
+        {freeInvites.length === 0 ? (
+          <p className="small text-secondary mb-0">Свободных кодов нет.</p>
+        ) : (
+          <div className="d-flex flex-wrap gap-2">
+            {freeInvites.map((i) => (
+              <form key={i.code} action={deleteInviteCode.bind(null, i.code)} className="d-inline">
+                <span className="event-chip font-monospace">{i.code}</span>{" "}
+                <button type="submit" className="btn btn-link btn-sm text-danger p-0" title="Удалить код">
+                  ×
+                </button>
+              </form>
+            ))}
+          </div>
+        )}
+        {invites.some((i) => i.usedAt) && (
+          <p className="small text-secondary mt-2 mb-0">
+            Использованы:{" "}
+            {invites
+              .filter((i) => i.usedAt)
+              .map((i) => `${i.code} → ${i.usedBy?.name || i.usedBy?.email || "?"}`)
+              .join(", ")}
+          </p>
+        )}
+      </div>
 
       {users.length === 0 ? (
         <p className="text-secondary">{q ? "Никого не найдено." : "Пока нет пользователей."}</p>
@@ -88,7 +129,7 @@ export default async function AdminUsersPage({
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-shrink-0">
-                  <PremiumToggle userId={u.id} isPremium={u.isPremium} />
+                  <PremiumToggle userId={u.id} premiumUntil={u.premiumUntil} />
                   <ConfirmForm
                     action={boundDelete}
                     confirmMessage={`Удалить пользователя «${displayName}» со всеми его данными?`}

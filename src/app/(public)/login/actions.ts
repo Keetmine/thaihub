@@ -3,8 +3,10 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createUserSession, destroyUserSession, verifyPassword } from "@/lib/userAuth";
+import { assertRateLimit } from "@/lib/rateLimit";
 
 export async function login(formData: FormData) {
+  await assertRateLimit("login");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 

@@ -327,9 +327,13 @@ model User {
   // for bot notifications). Set = "can log in via Telegram".
   telegramId       String? @unique
   telegramUsername String?
-  // Manually toggled from /admin/users for now — no payment provider
-  // yet, this is just the switch the paid features check.
-  isPremium    Boolean  @default(false)
+  // Подписка действует, пока premiumUntil в будущем (null — не было).
+  // Продлевается из админки (+1 месяц) или оплатой; гейты проверяют
+  // через isPremiumActive() (src/lib/premium.ts).
+  premiumUntil DateTime?
+  // Для какого premiumUntil уже отправлено телеграм-напоминание об
+  // истечении — дедуп напоминалки «подписка кончается через 3 дня».
+  premiumExpiryNotifiedFor DateTime?
   // Opaque token for the read-only "subscribe to my calendar" ICS feed —
   // generated on first request since calendar apps fetch it without a
   // session cookie, so it needs its own unguessable credential.
@@ -348,6 +352,7 @@ model User {
 
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
+  usedInviteCodes        InviteCode[]
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -432,6 +437,24 @@ model UserSession {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// Серверные админ-сессии: кука хранит id строки (а не сам секрет, как
+// раньше) — сессию можно отозвать удалением строки, утечка куки не
+// «вечная». Аккаунтов у админки по-прежнему нет — одна на пароль.
+model AdminSession {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// Регистрация по инвайтам: код генерируется в админке, одноразовый.
+model InviteCode {
+  code      String    @id
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+  usedById  String?
+  usedBy    User?     @relation(fields: [usedById], references: [id], onDelete: SetNull)
 }
 
 model FavoritePerformer {

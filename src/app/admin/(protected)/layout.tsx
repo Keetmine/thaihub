@@ -3,6 +3,8 @@ import ModeToggle from "@/components/ModeToggle";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
+import { redirect } from "next/navigation";
+import { isAdminAuthenticated } from "@/lib/auth";
 import { logout } from "../login/actions";
 
 function LogoutButton() {
@@ -15,11 +17,18 @@ function LogoutButton() {
   );
 }
 
-export default function ProtectedAdminLayout({
+export default async function ProtectedAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // proxy.ts проверяет только наличие куки — реальная валидация серверной
+  // сессии для всех admin-страниц происходит здесь (для server actions —
+  // в requireAdmin() внутри каждого экшена).
+  if (!(await isAdminAuthenticated())) {
+    redirect("/admin/login");
+  }
+
   return (
     <div className="d-flex flex-column flex-fill">
       <div className="container pt-4">

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
 import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdbImport";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
+import { requireAdmin } from "@/lib/auth";
 
 /**
  * Re-syncs the GMMTV roster: creates any new artists, updates existing
@@ -17,6 +18,7 @@ import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
  * clobbering if an admin has since picked a better photo by hand.
  */
 export async function syncGmmtv(): Promise<GmmtvSyncResult> {
+  await requireAdmin();
   const browser = await chromium.launch();
   try {
     const result = await syncGmmtvArtists(browser, { replacePhotos: false });
@@ -34,6 +36,7 @@ export async function syncGmmtv(): Promise<GmmtvSyncResult> {
  * counterpart to `scripts/sync-performers-tmdb.ts`, same underlying sweep.
  */
 export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
+  await requireAdmin();
   const result = await syncAllPerformersFromTmdb();
   revalidatePath("/admin/performers");
   revalidatePath("/performers");
@@ -50,6 +53,7 @@ export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
 export async function searchPerformerOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  await requireAdmin();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -69,6 +73,7 @@ export async function searchPerformerOptions(
 export async function findSimilarPerformers(
   query: string,
 ): Promise<{ id: string; name: string }[]> {
+  await requireAdmin();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -96,11 +101,13 @@ async function createPerformerRecord(name: string, type: string) {
 export async function createPerformerAndReturn(
   name: string,
 ): Promise<{ id: string; name: string; type: string }> {
+  await requireAdmin();
   const performer = await createPerformerRecord(name.trim(), "SOLO");
   return { id: performer.id, name: performer.name, type: performer.type };
 }
 
 export async function deletePerformer(id: string) {
+  await requireAdmin();
   await prisma.performer.delete({ where: { id } });
   revalidatePath("/admin/performers");
   revalidatePath("/performers");
@@ -172,6 +179,7 @@ function getAgencyIds(formData: FormData): string[] {
  * (mydramalist import, more links, etc.) without a second lookup.
  */
 export async function createPerformer(formData: FormData) {
+  await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();
@@ -242,6 +250,7 @@ export async function createPerformer(formData: FormData) {
 }
 
 export async function updatePerformer(id: string, formData: FormData) {
+  await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();

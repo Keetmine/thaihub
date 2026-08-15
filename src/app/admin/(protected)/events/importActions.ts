@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { scrapeTtmEvent } from "@/lib/thaiticketmajor";
 import { combineDateTime } from "@/lib/dates";
+import { requireAdmin } from "@/lib/auth";
 
 export type TtmImportArtist = {
   fullName: string;
@@ -36,6 +37,7 @@ export type TtmImportPreview = {
  * does the actual writes once an admin has reviewed/edited the result.
  */
 export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPreview> {
+  await requireAdmin();
   const scraped = await scrapeTtmEvent(url);
 
   const existingPerformers = await prisma.performer.findMany({
@@ -95,6 +97,7 @@ export type TtmImportSubmission = {
 export async function createEventFromTtmImport(
   data: TtmImportSubmission,
 ): Promise<{ id: string }> {
+  await requireAdmin();
   const title = data.title.trim();
   const venue = data.venue.trim();
   if (!title || !venue || !data.date || !data.startTime) {

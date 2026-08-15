@@ -1,46 +1,60 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setUserPremium } from "./actions";
+import { grantPremiumMonth, revokePremium } from "./actions";
 
+function formatDate(d: Date): string {
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** Управление подпиской пользователя: показать срок, продлить на месяц,
+ *  отключить досрочно. */
 export default function PremiumToggle({
   userId,
-  isPremium,
+  premiumUntil,
 }: {
   userId: string;
-  isPremium: boolean;
+  premiumUntil: Date | null;
 }) {
-  const [checked, setChecked] = useState(isPremium);
+  const [until, setUntil] = useState(premiumUntil);
   const [isPending, startTransition] = useTransition();
-
-  function handleChange(next: boolean) {
-    setChecked(next);
-    startTransition(async () => {
-      try {
-        await setUserPremium(userId, next);
-      } catch {
-        setChecked(!next);
-      }
-    });
-  }
+  const isActive = !!until && until > new Date();
 
   return (
-    <div className="form-check form-switch mb-0">
-      <input
-        className="form-check-input"
-        type="checkbox"
-        role="switch"
-        id={`premium-${userId}`}
-        checked={checked}
+    <div className="d-flex align-items-center gap-2">
+      <span className={`small ${isActive ? "text-warning" : "text-secondary"}`}>
+        {isActive ? `до ${formatDate(until!)}` : "Базовый"}
+      </span>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
         disabled={isPending}
-        onChange={(e) => handleChange(e.target.checked)}
-      />
-      <label
-        className={`form-check-label small ${checked ? "text-warning" : "text-secondary"}`}
-        htmlFor={`premium-${userId}`}
+        onClick={() =>
+          startTransition(async () => {
+            await grantPremiumMonth(userId);
+            const base = until && until > new Date() ? new Date(until) : new Date();
+            base.setDate(base.getDate() + 30);
+            setUntil(base);
+          })
+        }
       >
-        {checked ? "Подписка" : "Базовый"}
-      </label>
+        +1 мес
+      </button>
+      {isActive && (
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm text-danger"
+          disabled={isPending}
+          onClick={() =>
+            startTransition(async () => {
+              await revokePremium(userId);
+              setUntil(null);
+            })
+          }
+        >
+          Снять
+        </button>
+      )}
     </div>
   );
 }

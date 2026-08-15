@@ -31,12 +31,19 @@ export default async function SignupPage({
         {error === "1" && (
           <p className="small text-danger text-center mb-3">Проверьте email и пароль (мин. 6 символов)</p>
         )}
+        {error === "invite" && (
+          <p className="small text-danger text-center mb-3">
+            Неверный или уже использованный инвайт-код
+          </p>
+        )}
         <label className="form-label">Имя</label>
         <input name="name" className="form-control mb-3" />
         <label className="form-label">Email</label>
         <input type="email" name="email" required className="form-control mb-3" />
         <label className="form-label">Пароль</label>
         <input type="password" name="password" required minLength={6} className="form-control mb-3" />
+        <label className="form-label">Инвайт-код</label>
+        <input name="inviteCode" required className="form-control mb-3" placeholder="Код приглашения" />
         <button type="submit" className="btn btn-primary w-100 mb-3">
           Зарегистрироваться
         </button>

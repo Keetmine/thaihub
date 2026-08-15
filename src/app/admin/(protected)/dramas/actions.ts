@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
+import { requireAdmin } from "@/lib/auth";
 
 function getCastEntries(
   formData: FormData,
@@ -42,6 +43,7 @@ function revalidateDramaPaths(id?: string) {
 
 /** Live "похоже, уже есть" lookup for the create form's title field. */
 export async function findSimilarDramas(query: string): Promise<{ id: string; name: string }[]> {
+  await requireAdmin();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -55,6 +57,7 @@ export async function findSimilarDramas(query: string): Promise<{ id: string; na
 }
 
 export async function createDrama(formData: FormData) {
+  await requireAdmin();
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
@@ -90,6 +93,7 @@ export async function createDrama(formData: FormData) {
 }
 
 export async function updateDrama(id: string, formData: FormData) {
+  await requireAdmin();
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
@@ -133,6 +137,7 @@ export async function updateDrama(id: string, formData: FormData) {
 export async function createDramaAndReturn(
   title: string,
 ): Promise<{ id: string; title: string; posterUrl: string | null }> {
+  await requireAdmin();
   const trimmed = title.trim();
   if (!trimmed) throw new Error("Укажите название сериала");
 
@@ -142,6 +147,7 @@ export async function createDramaAndReturn(
 }
 
 export async function deleteDrama(id: string) {
+  await requireAdmin();
   await prisma.drama.delete({ where: { id } });
   revalidateDramaPaths(id);
   redirect("/admin/dramas");
@@ -153,6 +159,7 @@ export async function deleteDrama(id: string) {
  * counterpart to `scripts/sync-dramas-tmdb.ts`, same underlying sweep.
  */
 export async function syncTmdbDramas(): Promise<DramaSyncSummary> {
+  await requireAdmin();
   const result = await syncAllDramasFromTmdb();
   revalidateDramaPaths();
   return result;
