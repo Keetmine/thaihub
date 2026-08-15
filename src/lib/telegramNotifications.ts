@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { formatHumanDate, formatTime } from "@/lib/dates";
 import { eventHref } from "@/lib/eventSlug";
+import { isPremiumActive } from "@/lib/premium";
+import { getFriendIds } from "@/lib/friends";
 
 const LOOKAHEAD_HOURS = 24;
 
@@ -123,4 +125,101 @@ export async function sendPremiumExpiryReminders(): Promise<number> {
     }
   }
   return sent;
+}
+
+const PRESALE_LOOKAHEAD_MINUTES = 60;
+
+/**
+ * Пресейл-напоминания (Г1): «через час открываются продажи» — всем с
+ * Telegram и активной подпиской, кто отметил «иду» или добавил событие
+ * в избранное. Дедуп — TelegramPresaleNotification (одна препродажа на
+ * событие, потому ключ (userId, eventId)).
+ */
+export async function sendPresaleReminders(): Promise<number> {
+  const now = new Date();
+  const until = new Date(now.getTime() + PRESALE_LOOKAHEAD_MINUTES * 60 * 1000);
+
+  const events = await prisma.event.findMany({
+    where: { presaleAt: { gt: now, lte: until } },
+    include: {
+      attendees: { include: { user: true } },
+      favoritedBy: { include: { user: true } },
+      presaleNotifications: { select: { userId: true } },
+    },
+  });
+
+  let sent = 0;
+  for (const event of events) {
+    const alreadyNotified = new Set(event.presaleNotifications.map((n) => n.userId));
+    const recipients = new Map<string, (typeof event.attendees)[number]["user"]>();
+    for (const a of event.attendees) recipients.set(a.user.id, a.user);
+    for (const f of event.favoritedBy) {
+      if (!recipients.has(f.user.id)) recipients.set(f.user.id, f.user);
+    }
+
+    for (const user of recipients.values()) {
+      if (!user.telegramId || alreadyNotified.has(user.id) || !isPremiumActive(user)) continue;
+      const timeStr = formatTime(event.presaleAt!);
+      const appUrl = process.env.APP_URL || "";
+      const link = appUrl ? `\n${appUrl}${eventHref(event)}` : "";
+      try {
+        await sendTelegramMessage(
+          user.telegramId,
+          `🎟 <b>${escapeHtml(event.title)}</b>\nПродажа билетов открывается сегодня в ${timeStr} (тайское время)!${link}`,
+        );
+        await prisma.telegramPresaleNotification.create({
+          data: { userId: user.id, eventId: event.id },
+        });
+        sent += 1;
+      } catch (err) {
+        console.warn(`presale reminder failed (user ${user.id}, event ${event.id}): ${err instanceof Error ? err.message : err}`);
+      }
+    }
+  }
+  return sent;
+}
+
+/**
+ * Уведомление друзьям «X идёт на событие» (Г2) — вызывается из
+ * toggleGoing сразу после отметки (fire-and-forget). Получают друзья с
+ * Telegram и подпиской, не отключившие уведомления об этом человеке
+ * (FriendNotificationMute).
+ */
+export async function notifyFriendsAboutGoing(userId: string, eventId: string): Promise<void> {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return;
+
+  const [actor, event, friendIds] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.event.findUnique({ where: { id: eventId }, include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } } }),
+    getFriendIds(userId),
+  ]);
+  if (!actor || !event || friendIds.length === 0) return;
+
+  const friends = await prisma.user.findMany({
+    where: {
+      id: { in: friendIds },
+      telegramId: { not: null },
+      // не заглушившие этого друга
+      friendMutes: { none: { mutedFriendId: userId } },
+    },
+  });
+
+  const name = actor.name || "Ваш друг";
+  const when = event.occurrences[0]
+    ? ` (${formatHumanDate(event.occurrences[0].startsAt)})`
+    : "";
+  const appUrl = process.env.APP_URL || "";
+  const link = appUrl ? `\n${appUrl}${eventHref(event)}` : "";
+
+  for (const friend of friends) {
+    if (!isPremiumActive(friend)) continue;
+    try {
+      await sendTelegramMessage(
+        friend.telegramId!,
+        `👥 ${escapeHtml(name)} идёт на <b>${escapeHtml(event.title)}</b>${when}${link}`,
+      );
+    } catch (err) {
+      console.warn(`friend-going notify failed (to ${friend.id}): ${err instanceof Error ? err.message : err}`);
+    }
+  }
 }

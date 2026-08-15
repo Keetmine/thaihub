@@ -117,6 +117,11 @@ export async function toggleGoing(eventId: string) {
     await prisma.eventAttendance.create({
       data: { userId: user.id, eventId },
     });
+    // Друзьям — «X идёт на …» (Г2). Fire-and-forget: сбой телеграма не
+    // должен ломать саму отметку.
+    void import("@/lib/telegramNotifications")
+      .then((m) => m.notifyFriendsAboutGoing(user.id, eventId))
+      .catch(() => {});
   }
 
   revalidatePath("/account");

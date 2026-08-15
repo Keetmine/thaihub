@@ -10,6 +10,7 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import { CalendarIcon, PinIcon } from "@/components/icons";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
+import FriendNotifyToggle from "./FriendNotifyToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,11 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
     getFriendIds(viewer.id),
   ]);
   const isFriend = viewerFriendIds.includes(user.id);
+  const muteRow = isFriend
+    ? await prisma.friendNotificationMute.findUnique({
+        where: { userId_mutedFriendId: { userId: viewer.id, mutedFriendId: user.id } },
+      })
+    : null;
 
   // Поездки, которые этому зрителю можно видеть.
   const trips = await prisma.trip.findMany({
@@ -103,6 +109,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                 Ваш друг
               </span>
             )}
+            {isFriend && <FriendNotifyToggle friendId={user.id} muted={!!muteRow} />}
           </div>
           <p className="text-secondary small mb-0">
             На MyBLHub с {formatShortDate(user.createdAt)} {user.createdAt.getFullYear()} ·{" "}

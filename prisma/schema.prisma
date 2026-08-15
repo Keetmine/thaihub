@@ -43,6 +43,8 @@ model Event {
   pairings    EventPairing[]
   favoritedBy FavoriteEvent[]
   attendees   EventAttendance[]
+  notes       EventNote[]
+  presaleNotifications TelegramPresaleNotification[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -349,6 +351,14 @@ model User {
   visitedLocations    LocationVisit[]
   trips               Trip[]
   telegramNotifications TelegramNotification[]
+  telegramPresaleNotifications TelegramPresaleNotification[]
+  friendMutes         FriendNotificationMute[] @relation("MuteOwner")
+  mutedByFriends      FriendNotificationMute[] @relation("MuteTarget")
+  eventNotes          EventNote[]
+  achievements        UserAchievement[]
+  // Приватность публичного профиля: true — чужие видят только имя/фото
+  // (активность, актёров, поездки не показываем). Друзья видят всё.
+  hideProfileActivity Boolean @default(false)
 
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
@@ -396,6 +406,64 @@ model TripPersonalEvent {
   createdAt DateTime  @default(now())
 
   @@index([tripId])
+}
+
+// Дедуп пресейл-напоминаний: одно на (юзер, событие) — сама препродажа
+// у события одна (Event.presaleAt), в отличие от дат выступлений.
+model TelegramPresaleNotification {
+  userId  String
+  eventId String
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sentAt  DateTime @default(now())
+
+  @@id([userId, eventId])
+}
+
+// «Отписка» от уведомлений о конкретном друге: по умолчанию уведомления
+// о всех друзьях включены, строка здесь их выключает (userId больше не
+// получает «mutedFriend идёт на …»).
+model FriendNotificationMute {
+  userId        String
+  mutedFriendId String
+  user          User @relation("MuteOwner", fields: [userId], references: [id], onDelete: Cascade)
+  mutedFriend   User @relation("MuteTarget", fields: [mutedFriendId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@id([userId, mutedFriendId])
+}
+
+// Заметка пользователя к событию — личная или видимая друзьям. Одна на
+// (юзер, событие): редактируется, а не копится.
+model EventNote {
+  id         String       @id @default(cuid())
+  userId     String
+  eventId    String
+  text       String
+  visibility NoteVisibility @default(PERSONAL)
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event      Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, eventId])
+}
+
+enum NoteVisibility {
+  PERSONAL
+  FRIENDS
+}
+
+// Разблокированные ачивки (Д2): условия считаются из данных на лету
+// (src/lib/achievements.ts), строка фиксирует момент получения — для
+// «новых» поздравлений в Telegram и стабильного порядка в профиле.
+model UserAchievement {
+  userId     String
+  key        String
+  unlockedAt DateTime @default(now())
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, key])
 }
 
 // Dedup ledger for Telegram event reminders — one row per (user,
