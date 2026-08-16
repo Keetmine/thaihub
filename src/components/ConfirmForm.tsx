@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, isValidElement, useState } from "react";
+import { useState } from "react";
 import Modal from "./Modal";
 
 export default function ConfirmForm({
@@ -12,11 +12,9 @@ export default function ConfirmForm({
   action: (formData: FormData) => void | Promise<void>;
   confirmMessage: string;
   className?: string;
-  children: React.ReactElement<{
-    onClick?: (e: React.MouseEvent) => void;
-    type?: string;
-    disabled?: boolean;
-  }>;
+  /** Кнопка-триггер. ОБЯЗАТЕЛЬНО с type="button" — обёртка перехватывает
+   *  клик, но тип кнопки не переписывает (см. заметку ниже). */
+  children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,19 +33,23 @@ export default function ConfirmForm({
     }
   }
 
-  const trigger = isValidElement(children)
-    ? cloneElement(children, {
-        type: "button",
-        onClick: (e: React.MouseEvent) => {
-          e.preventDefault();
-          setOpen(true);
-        },
-      })
-    : children;
-
+  // Раньше onClick навешивался на children через cloneElement, но после
+  // клиентской навигации элемент из RSC-потока приходит таким, что клон
+  // молча теряет обработчик (на прямой загрузке работало — из-за этого
+  // модалка «иногда» не открывалась). Обёртка с display:contents ловит
+  // клик всегда и не влияет на разметку; preventDefault из предка
+  // отменяет и сабмит, но children всё равно обязан быть type="button".
   return (
     <div className={className}>
-      {trigger}
+      <span
+        style={{ display: "contents" }}
+        onClick={(e) => {
+          e.preventDefault();
+          setOpen(true);
+        }}
+      >
+        {children}
+      </span>
       <Modal
         open={open}
         onClose={() => {

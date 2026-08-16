@@ -61,11 +61,14 @@ does and doesn't check.
   toggles create-vs-edit behavior.
 - **`ConfirmForm`** (`src/components/ConfirmForm.tsx`) wraps a delete
   button in a custom in-app confirmation modal (not a native
-  `window.confirm()`). Its trigger's `type` gets forced to `"button"` via
-  `cloneElement` — always write `type="button"` on the JSX passed as its
-  child, not `type="submit"` (a real hydration-mismatch bug from writing
-  `type="submit"` there was fixed across the whole app; don't reintroduce
-  it).
+  `window.confirm()`). The click is intercepted by a `display: contents`
+  wrapper span, NOT by `cloneElement` on the child — cloning an element
+  that arrived through the RSC stream silently dropped the `onClick`
+  after client-side navigation (direct loads worked, so the modal only
+  "sometimes" failed to open). The wrapper does not rewrite the
+  trigger's `type`, so always write `type="button"` on the JSX passed as
+  its child, never `type="submit"` (both a hydration-mismatch bug and
+  accidental form submits came from that historically).
 - **`EntitySelect` / `EntityMultiSelect`** (`src/components/`) are the
   standard custom dropdown/combobox components used everywhere instead of
   native `<select>` — they take `{id, name, photoUrl?}` options and
