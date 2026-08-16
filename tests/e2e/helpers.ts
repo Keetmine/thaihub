@@ -3,33 +3,30 @@ import { execFileSync } from "child_process";
 import path from "path";
 import type { Page } from "@playwright/test";
 
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "change-me-please";
+export const ADMIN_EMAIL = "admin-e2e@test.local";
+export const ADMIN_TEST_PASSWORD = "admin-e2e-password";
 
 export async function loginAsAdmin(page: Page) {
-  await page.goto("/admin/login");
-  await page.fill('input[name="password"]', ADMIN_PASSWORD);
+  // Отдельного админ-логина больше нет — админ это роль пользователя.
+  // Тестовый админ создаётся/обновляется отдельным tsx-процессом
+  // (Prisma ESM-only, из spec-файла её не импортировать).
+  execFileSync("npx", ["tsx", path.join(__dirname, "create-admin-user.ts")], {
+    cwd: path.join(__dirname, "../.."),
+  });
+  await page.goto("/login");
+  await page.fill('input[name="email"]', ADMIN_EMAIL);
+  await page.fill('input[name="password"]', ADMIN_TEST_PASSWORD);
   await page.click('button[type="submit"]');
+  await page.waitForURL(/\/account/);
+  await page.goto("/admin");
   await page.waitForURL(/\/admin$/);
 }
 
 export async function signupTestUser(page: Page, email: string, password: string) {
-  // Регистрация только по инвайтам — код создаётся отдельным tsx-процессом
-  // (Prisma ESM-only, из spec-файла её не импортировать).
-  const inviteCode = execFileSync(
-    "npx",
-    ["tsx", path.join(__dirname, "create-invite.ts")],
-    { cwd: path.join(__dirname, "../..") },
-  )
-    .toString()
-    .trim()
-    .split("\n")
-    .pop()!;
-
   await page.goto("/signup");
   await page.fill('input[name="name"]', "Smoke Test");
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
-  await page.fill('input[name="inviteCode"]', inviteCode);
   await page.click('button[type="submit"]');
   await page.waitForURL(/\/account/);
 }

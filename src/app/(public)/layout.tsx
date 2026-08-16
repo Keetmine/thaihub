@@ -1,11 +1,10 @@
 import Link from "next/link";
-import ModeToggle from "@/components/ModeToggle";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
 import ProfileMenu from "@/components/ProfileMenu";
-import { isAdminAuthenticated } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/userAuth";
+import { GridIcon } from "@/components/icons";
 
 function SearchForm() {
   return (
@@ -27,8 +26,8 @@ function SearchForm() {
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const isAdmin = await isAdminAuthenticated();
   const fullUser = await getCurrentUser();
+  const isAdmin = !!fullUser?.isAdmin;
   // Only pass the fields ProfileMenu actually needs into the client
   // component — the full record (incl. passwordHash) would otherwise be
   // serialized into the page's RSC payload.
@@ -62,8 +61,18 @@ export default async function PublicLayout({ children }: { children: React.React
               </NavLink>
             )}
             <SearchForm />
+            {isAdmin && (
+              <Link
+                href="/admin"
+                prefetch={false}
+                className="icon-btn"
+                aria-label="Админка"
+                data-tooltip="Админка"
+              >
+                <GridIcon />
+              </Link>
+            )}
             {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
-            {isAdmin && <ModeToggle active="site" />}
           </MobileMenu>
 
           <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
@@ -86,8 +95,18 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
             <SearchForm />
+            {isAdmin && (
+              <Link
+                href="/admin"
+                prefetch={false}
+                className="icon-btn"
+                aria-label="Админка"
+                data-tooltip="Админка"
+              >
+                <GridIcon />
+              </Link>
+            )}
             {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
-            {isAdmin && <ModeToggle active="site" />}
           </div>
         </nav>
       </div>

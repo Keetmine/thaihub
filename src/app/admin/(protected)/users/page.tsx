@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { createInviteCode, createPromoCode, deleteInviteCode, deletePromoCode, deleteUser } from "./actions";
+import { createPromoCode, deletePromoCode, deleteUser } from "./actions";
 import PremiumToggle from "./PremiumToggle";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
@@ -41,12 +41,6 @@ export default async function AdminUsersPage({
   });
   const freePromos = promos.filter((p) => !p.usedAt);
 
-  const invites = await prisma.inviteCode.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { usedBy: { select: { name: true, email: true } } },
-    take: 30,
-  });
-  const freeInvites = invites.filter((i) => !i.usedAt);
 
   return (
     <div>
@@ -59,40 +53,6 @@ export default async function AdminUsersPage({
       </div>
 
       <NameSearchBox action="/admin/users" q={q} placeholder="Поиск по имени, email, telegram…" />
-
-      <div className="surface p-3 mb-4">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-          <h2 className="h6 mb-0">Инвайт-коды</h2>
-          <form action={createInviteCode}>
-            <button type="submit" className="btn btn-ghost btn-sm">
-              + Создать код
-            </button>
-          </form>
-        </div>
-        {freeInvites.length === 0 ? (
-          <p className="small text-secondary mb-0">Свободных кодов нет.</p>
-        ) : (
-          <div className="d-flex flex-wrap gap-2">
-            {freeInvites.map((i) => (
-              <form key={i.code} action={deleteInviteCode.bind(null, i.code)} className="d-inline">
-                <span className="event-chip font-monospace">{i.code}</span>{" "}
-                <button type="submit" className="btn btn-link btn-sm text-danger p-0" title="Удалить код">
-                  ×
-                </button>
-              </form>
-            ))}
-          </div>
-        )}
-        {invites.some((i) => i.usedAt) && (
-          <p className="small text-secondary mt-2 mb-0">
-            Использованы:{" "}
-            {invites
-              .filter((i) => i.usedAt)
-              .map((i) => `${i.code} → ${i.usedBy?.name || i.usedBy?.email || "удалённый аккаунт"}`)
-              .join(", ")}
-          </p>
-        )}
-      </div>
 
       <div className="surface p-3 mb-4">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">

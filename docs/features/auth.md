@@ -1,18 +1,19 @@
 # Auth
 
-Two entirely separate systems — don't conflate them.
-
 ## Admin
 
-One shared password (`ADMIN_PASSWORD` env var), no per-admin accounts.
-On success `login` creates an **AdminSession row** and stores its id in
-the `admin_session` cookie (`createAdminSession` in `src/lib/auth.ts`) —
-revocable by deleting the row, unlike the old cookie-holds-the-secret
-scheme. `proxy.ts` only checks cookie *presence*; real validation is
-`isAdminAuthenticated()` called by the `(protected)` admin layout, and
-**every admin server action starts with `await requireAdmin()`** — the
-actions are reachable by POST regardless of layout rendering, so each
-one guards itself.
+Admin is a **user role**, not a separate login: `User.isAdmin` (set via
+DB/script; keetmine@gmail.com is admin). There is no `/admin/login`, no
+`ADMIN_PASSWORD`, no `AdminSession` — an admin signs in like any user
+and gets an админка icon button next to their profile in the public
+nav. `proxy.ts` only checks *presence* of the ordinary `user_session`
+cookie for `/admin/*` (redirects to `/login` otherwise); real
+validation is `isAdminAuthenticated()` (current user's `isAdmin`)
+called by the `(protected)` admin layout, and **every admin server
+action starts with `await requireAdmin()`** — the actions are reachable
+by POST regardless of layout rendering, so each one guards itself.
+E2e tests upsert a dedicated admin user via
+`tests/e2e/create-admin-user.ts`.
 
 ## Real users
 
@@ -37,12 +38,27 @@ Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
 транзакционное использование + rate limit). Месяц прибавляется к
 текущему сроку.
 
-**Invite-only signup**: registration requires a one-time `InviteCode`
-(generated/deleted in the invites block on `/admin/users`); the code is
-claimed in the same transaction that creates the user, so a code can't
-be raced. **Rate limiting**: `assertRateLimit` (`src/lib/rateLimit.ts`,
-in-memory fixed window, 10 attempts / 10 min per IP from
-X-Forwarded-For) guards user login, signup, and admin login.
+**Signup is open** — no invite codes (the `InviteCode` system was
+removed; anyone can register with email+password). **Rate limiting**:
+`assertRateLimit` (`src/lib/rateLimit.ts`, in-memory fixed window, 10
+attempts / 10 min per IP from X-Forwarded-For) guards user login and
+signup.
+
+## Google login
+
+`/api/auth/google` → Google consent → `/api/auth/google/callback`
+(plain OAuth 2.0 authorization-code flow, no library; CSRF state
+cookie). The callback exchanges the code directly with Google and reads
+the profile from the `id_token` payload (signature deliberately not
+verified — the token arrives straight from Google over HTTPS in
+exchange for code+client_secret). Account resolution: by `googleId`,
+then by email (links Google to an existing email account), else a new
+`User` is created (`passwordHash` null, like Telegram accounts).
+Requires `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` env vars — the
+login/signup buttons render only when configured. Redirect URI must be
+`{APP_URL}/api/auth/google/callback` in the Google console. Apple
+Sign-In is NOT implemented — it requires a paid Apple Developer
+account (own key/team setup); revisit if that appears.
 
 ## Telegram login
 

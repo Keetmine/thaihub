@@ -448,6 +448,11 @@ model User {
   // action, not the schema).
   email        String?  @unique
   passwordHash String?
+  // Роль админа: доступ к /admin без отдельного пароля — обычная
+  // сессия пользователя + этот флаг (см. requireAdmin в lib/auth.ts).
+  isAdmin      Boolean  @default(false)
+  // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
+  googleId     String?  @unique
   name         String?
   photoUrl     String?
   // Telegram user id from the Login Widget (doubles as the DM chat id
@@ -489,7 +494,6 @@ model User {
 
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
-  usedInviteCodes        InviteCode[]
   redeemedPromoCodes     PromoCode[] @relation("PromoRedeemer")
 }
 
@@ -704,15 +708,6 @@ model UserSession {
   createdAt DateTime @default(now())
 }
 
-// Серверные админ-сессии: кука хранит id строки (а не сам секрет, как
-// раньше) — сессию можно отозвать удалением строки, утечка куки не
-// «вечная». Аккаунтов у админки по-прежнему нет — одна на пароль.
-model AdminSession {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
 // Промокод подписки: одноразовый, даёт months месяцев премиума при
 // активации (генерация в админке, активация на пейволле).
 model PromoCode {
@@ -724,14 +719,6 @@ model PromoCode {
   usedBy    User?     @relation("PromoRedeemer", fields: [usedById], references: [id], onDelete: SetNull)
 }
 
-// Регистрация по инвайтам: код генерируется в админке, одноразовый.
-model InviteCode {
-  code      String    @id
-  createdAt DateTime  @default(now())
-  usedAt    DateTime?
-  usedById  String?
-  usedBy    User?     @relation(fields: [usedById], references: [id], onDelete: SetNull)
-}
 
 model FavoritePerformer {
   userId      String

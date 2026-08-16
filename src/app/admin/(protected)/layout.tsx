@@ -1,11 +1,9 @@
 import Link from "next/link";
-import ModeToggle from "@/components/ModeToggle";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { logout } from "../login/actions";
 import {
   GridIcon,
   CalendarIcon,
@@ -15,16 +13,6 @@ import {
   CopyIcon,
   UserIcon,
 } from "@/components/icons";
-
-function LogoutButton() {
-  return (
-    <form action={logout}>
-      <button type="submit" className="btn btn-ghost btn-sm w-100">
-        Выйти
-      </button>
-    </form>
-  );
-}
 
 // Пункты сайдбара — единый источник и для мобильного меню.
 const NAV_SECTIONS: {
@@ -82,7 +70,7 @@ export default async function ProtectedAdminLayout({
   // сессии для всех admin-страниц происходит здесь (для server actions —
   // в requireAdmin() внутри каждого экшена).
   if (!(await isAdminAuthenticated())) {
-    redirect("/admin/login");
+    redirect("/");
   }
 
   return (
@@ -120,9 +108,10 @@ export default async function ProtectedAdminLayout({
           ))}
         </div>
 
-        <div className="admin-sidebar-footer d-flex flex-column gap-2 pt-3 mt-3">
-          <ModeToggle active="admin" />
-          <LogoutButton />
+        <div className="admin-sidebar-footer d-flex flex-column gap-1 pt-3 mt-3">
+          <Link href="/" prefetch={false} className="nav-link">
+            ← На сайт
+          </Link>
         </div>
       </aside>
 
@@ -144,8 +133,9 @@ export default async function ProtectedAdminLayout({
                   {item.title}
                 </NavLink>
               ))}
-              <ModeToggle active="admin" />
-              <LogoutButton />
+              <Link href="/" prefetch={false} className="nav-link">
+                ← На сайт
+              </Link>
             </MobileMenu>
           </nav>
         </div>

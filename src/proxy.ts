@@ -7,7 +7,6 @@ import type { NextRequest } from "next/server";
 // authorization (validating the session against the DB) happens in the
 // Data Access Layer: getCurrentUser() in src/lib/userAuth.ts, called by the
 // pages/actions that actually need a verified identity.
-const ADMIN_COOKIE = "admin_session";
 const USER_COOKIE = "user_session";
 
 // Routes reachable without being logged in: the marketing landing page
@@ -19,15 +18,13 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/admin")) {
-    if (pathname === "/admin/login") {
-      return NextResponse.next();
-    }
-
-    // Только optimistic-проверка наличия куки (без БД — proxy бежит на
-    // каждый запрос); реальная валидация серверной сессии — в
-    // isAdminAuthenticated(), которую вызывают admin-страницы/экшены.
-    if (!request.cookies.get(ADMIN_COOKIE)?.value) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+    // Админка — это роль пользователя (User.isAdmin), отдельного логина
+    // нет. Тут только optimistic-проверка наличия user-куки (без БД —
+    // proxy бежит на каждый запрос); реальная проверка роли — в
+    // isAdminAuthenticated()/requireAdmin(), которые вызывают
+    // admin-layout и каждый admin server action.
+    if (!request.cookies.get(USER_COOKIE)?.value) {
+      return NextResponse.redirect(new URL("/login", request.url));
     }
     return NextResponse.next();
   }

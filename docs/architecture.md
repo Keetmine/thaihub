@@ -30,9 +30,9 @@ One app, two route groups, both under the same Next.js project:
   page instead of the event feed when logged out.
 - `src/app/admin/*` — CRUD admin. `src/app/admin/layout.tsx` wraps
   everything (just applies the violet admin theme class); `src/app/admin/(protected)/*`
-  is the actual authenticated admin area, gated by a
-  single shared `ADMIN_PASSWORD`. `src/app/admin/login/*` is deliberately
-  outside `(protected)`. The protected layout is an admin-panel shell: a
+  is the actual authenticated admin area, gated by the `User.isAdmin`
+  role (no separate admin login — see [auth.md](features/auth.md)).
+  The protected layout is an admin-panel shell: a
   left sidebar (`.admin-sidebar`, section-grouped links; burger menu on
   mobile) next to the content. `/admin` itself is the dashboard
   (`/admin/stats` redirects there), the events list lives at
@@ -108,9 +108,7 @@ does and doesn't check.
   page's Все/Иду/Избранное). When nesting a tabs component inside it,
   drop that component's own `mb-4`/border spacing — `.tab-bar-row .tab-bar`
   already zeroes it — and pass `className=""` to `NameSearchBox` so it
-  doesn't add its own standalone margin. Distinct from `.mode-toggle`
-  (a pill-style binary switch, e.g. the site/admin nav toggle) — don't mix
-  the two for the same kind of control.
+  doesn't add its own standalone margin.
 - **Inline text-row icons default to `0.95em`/`strokeWidth: 2`**
   (`src/components/icons.tsx`) — that's what keeps a line like "📍
   Локация: …" and "📅 Дата и время: …" visually matched. A few icons

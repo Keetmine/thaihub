@@ -22,8 +22,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://thaitrack:${POSTGRES_PASSWORD:-thaitrack}@db:5432/thaitrack?schema=public
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in a .env file next to docker-compose.yml}
-      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?Set ADMIN_SESSION_SECRET in a .env file next to docker-compose.yml (any long random string)}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       NODE_ENV: production
       # Опциональные интеграции — пустые значения просто отключают фичу.
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}

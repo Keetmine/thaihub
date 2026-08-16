@@ -50,6 +50,6 @@ npm run test:e2e            # Playwright smoke suite — needs a running dev ser
 ```
 
 Requires a local Postgres reachable via `DATABASE_URL` in `.env`, and
-`ADMIN_PASSWORD` / `ADMIN_SESSION_SECRET` set for the admin login.
+admin access granted via the `User.isAdmin` role (no admin password).
 `TMDB_API_READ_ACCESS_TOKEN` is optional — only needed for the TMDB
 importer (see [tmdb-import.md](features/tmdb-import.md)).

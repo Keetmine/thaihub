@@ -198,7 +198,7 @@ body {
   }
 }
 
-/* ---------- Site / admin mode toggle ---------- */
+/* ---------- Pill-переключатель (например Все/Мои в календаре) ---------- */
 .mode-toggle {
   display: inline-flex;
   padding: 0.2rem;
@@ -898,12 +898,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-top: 1px solid var(--bs-border-color);
 }
 
-.admin-sidebar-footer .mode-toggle {
-  width: 100%;
-  justify-content: center;
-}
-
-/* ---------- Цветные статусы сериалов ---------- */
+.admin-sidebar-footer /* ---------- Цветные статусы сериалов ---------- */
 /* Ещё не вышедшие — красный, выходящие сейчас — зелёный, уже
    вышедшие — голубой (см. DRAMA_STATUS_BADGE_CLASS в lib/dramaStatus). */
 .status-badge-upcoming {
@@ -1176,9 +1171,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   max-width: none;
 }
 
-.mobile-menu-panel .mode-toggle {
-  align-self: flex-start;
-}
+.mobile-menu-panel 
 /* ---------- Event form: combobox, presale toggle ---------- */
 .performer-chip {
   display: inline-flex;
@@ -1739,18 +1732,7 @@ svg[aria-hidden="true"] {
 }
 
 /* ---------- Underline content tabs (section navigation — distinct from
-   .mode-toggle, which is a binary site/admin switch) ---------- */
-.tab-bar-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-bottom: 1px solid var(--bs-border-color);
-  margin-bottom: 1.5rem;
-}
-
-.tab-bar-row .tab-bar {
+   .tab-bar-row .tab-bar {
   border-bottom: none;
   margin-bottom: 0;
 }
