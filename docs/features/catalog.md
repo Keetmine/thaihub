@@ -227,15 +227,25 @@ Both `PerformerForm.tsx` and `DramaForm.tsx` show a live "похоже, уже
 есть" hint under the name field on **create** (not edit) forms — see
 [duplicates.md](duplicates.md).
 
-## Async performer search in admin forms
+## Async entity search in admin forms
 
-The performer pickers in `EventForm` (`EntityMultiSelect` with a
-`searchOptions` prop) and `DramaForm` (its own inline cast combobox) no
-longer receive the full performer catalog as a prop — ~17k rows made
-the select freeze the page. Both now query `searchPerformerOptions`
-(`admin/performers/actions.ts`: name OR realName contains, top 20, min
-2 chars) with a 300ms debounce and stale-response sequencing; `options`
-only needs to cover already-selected ids (the edit pages pass the
-event's/drama's own attached performers, the new pages pass `[]`).
-`EntityMultiSelect` keeps its old client-side filtering mode for small
-catalogs (pairings, locations) when `searchOptions` isn't passed.
+No admin combobox receives a full heavy catalog as a prop anymore —
+~18k performers made selects freeze the page, and every other catalog
+was creeping the same way. Both `EntityMultiSelect` **and**
+`EntitySelect` support a `searchOptions` prop: nothing loads upfront,
+options are fetched server-side as you type (top 20, min 2 chars,
+300ms debounce, stale-response sequencing); `options` then only needs
+to cover already-selected ids (edit pages pass the entity's own linked
+rows, new pages pass `[]`).
+
+Search actions, all `requireAdmin`-guarded: `searchPerformerOptions` /
+`searchSoloPerformerOptions` (performers/actions.ts — solo variant for
+band members and pairing partners), `searchDramaOptions`
+(dramas/actions.ts), `searchEventOptions` (events/actions.ts),
+`searchLocationOptions` (locations/actions.ts, каталожные only). Wired
+into: EventForm (performers, drama, location), DramaForm (cast,
+locations), PerformerForm (band members, dramas, events, pairing
+partner), PairingManager, CreatePairingModal, AgencyForm (roster,
+dramas), TtmImportFlow (drama, extra performers). Small lists
+(agencies, a performer's own pairings) keep the client-side filtering
+mode — `searchOptions` simply isn't passed there.

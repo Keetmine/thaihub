@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import { searchSoloPerformerOptions } from "../performers/actions";
 import { createPairing } from "./actions";
 import { createPerformerAndReturn } from "../performers/actions";
 
@@ -77,6 +78,9 @@ export default function CreatePairingModal({ performers }: { performers: EntityO
             name="performerAId"
             label="Исполнитель A *"
             options={performers.filter((p) => p.id !== performerBId)}
+            searchOptions={async (q) =>
+              (await searchSoloPerformerOptions(q)).filter((p) => p.id !== performerBId)
+            }
             onChange={setPerformerAId}
             createLabel="Создать исполнителя"
             onCreateNew={handleCreatePerformer}
@@ -86,6 +90,9 @@ export default function CreatePairingModal({ performers }: { performers: EntityO
             name="performerBId"
             label="Исполнитель B *"
             options={performers.filter((p) => p.id !== performerAId)}
+            searchOptions={async (q) =>
+              (await searchSoloPerformerOptions(q)).filter((p) => p.id !== performerAId)
+            }
             onChange={setPerformerBId}
             createLabel="Создать исполнителя"
             onCreateNew={handleCreatePerformer}

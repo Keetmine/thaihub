@@ -15,19 +15,17 @@ export default async function EditDramaPage({
 }) {
   const { id } = await params;
 
-  const [drama, agencies, locations] = await Promise.all([
+  const [drama, agencies] = await Promise.all([
     prisma.drama.findUnique({
       where: { id },
-      include: { performers: { include: { performer: true } }, locations: true },
+      include: {
+        performers: { include: { performer: true } },
+        locations: { select: { location: { select: { id: true, name: true, photoUrl: true } } } },
+      },
     }),
     prisma.agency.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, logoUrl: true },
-    }),
-    prisma.location.findMany({
-      where: { createdByUserId: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
     }),
   ]);
 
@@ -48,8 +46,8 @@ export default async function EditDramaPage({
       <DramaForm
         action={boundUpdate}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
-        locations={locations}
-        defaultLocationIds={drama.locations.map((dl) => dl.locationId)}
+        locations={drama.locations.map((dl) => dl.location)}
+        defaultLocationIds={drama.locations.map((dl) => dl.location.id)}
         submitLabel="Сохранить изменения"
         defaultValues={{
           title: drama.title,

@@ -1,21 +1,13 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import AgencyForm from "../AgencyForm";
 import { createAgency } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewAgencyPage() {
-  const [performers, dramas] = await Promise.all([
-    prisma.performer.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
-    }),
-    prisma.drama.findMany({
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, posterUrl: true },
-    }),
-  ]);
+  // Каталоги ищутся асинхронно (searchOptions) — заранее ничего не грузим.
+  const performers: { id: string; name: string; photoUrl: string | null }[] = [];
+  const dramas: { id: string; title: string; posterUrl: string | null }[] = [];
 
   return (
     <div>

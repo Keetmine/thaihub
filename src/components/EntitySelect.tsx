@@ -24,6 +24,8 @@ function Avatar({ option }: { option: EntityOption }) {
  * option (opens a small popup with just the name field) when the typed name
  * doesn't match anything existing.
  */
+const SEARCH_DEBOUNCE_MS = 300;
+
 export default function EntitySelect({
   name,
   label,
@@ -32,6 +34,7 @@ export default function EntitySelect({
   placeholder = "Выберите…",
   onCreateNew,
   createLabel = "Создать",
+  searchOptions,
   onChange,
 }: {
   name: string;
@@ -41,6 +44,10 @@ export default function EntitySelect({
   placeholder?: string;
   onCreateNew?: (query: string) => Promise<EntityOption | null>;
   createLabel?: string;
+  /** Асинхронный режим для больших каталогов (см. EntityMultiSelect):
+   *  ничего не грузим заранее, варианты ищутся на сервере по мере ввода;
+   *  `options` тогда должен покрывать только текущее выбранное значение. */
+  searchOptions?: (query: string) => Promise<EntityOption[]>;
   /** Fires whenever the selection changes — for parents that need to react
    *  (e.g. excluding this value from a sibling select's options). The
    *  hidden input is still the source of truth for plain form submission. */
@@ -60,7 +67,34 @@ export default function EntitySelect({
   const [createPrefill, setCreatePrefill] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<EntityOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
   const ref = useRef<HTMLDivElement>(null);
+
+  function handleQueryChange(next: string) {
+    setQuery(next);
+    if (!searchOptions) return;
+    const q = next.trim();
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (q.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const seq = ++searchSeqRef.current;
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchOptions(q);
+        // Отбрасываем ответ, если пользователь уже набрал новый запрос.
+        if (seq === searchSeqRef.current) setSearchResults(results);
+      } finally {
+        if (seq === searchSeqRef.current) setIsSearching(false);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+  }
 
   function setValue(id: string) {
     setValueState(id);
@@ -77,19 +111,22 @@ export default function EntitySelect({
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const selected = allOptions.find((o) => o.id === value);
+  const selected =
+    allOptions.find((o) => o.id === value) ?? searchResults.find((o) => o.id === value);
 
   const filtered = useMemo(() => {
+    if (searchOptions) return searchResults;
     const q = query.trim().toLowerCase();
     if (!q) return allOptions;
     return allOptions.filter((o) => o.name.toLowerCase().includes(q));
-  }, [allOptions, query]);
+  }, [allOptions, query, searchOptions, searchResults]);
 
   const trimmedQuery = query.trim();
-  const hasExactMatch = allOptions.some(
+  const hasExactMatch = [...allOptions, ...searchResults].some(
     (o) => o.name.toLowerCase() === trimmedQuery.toLowerCase(),
   );
-  const showCreateOption = !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch;
+  const showCreateOption =
+    !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch && !(searchOptions && isSearching);
 
   async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -141,9 +178,17 @@ export default function EntitySelect({
               className="form-control form-control-sm mb-2"
               placeholder="Поиск…"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => handleQueryChange(e.target.value)}
               autoFocus
             />
+            {searchOptions && trimmedQuery.length < 2 && (
+              <p className="small text-secondary px-2 py-1 mb-0">
+                Начните вводить название для поиска…
+              </p>
+            )}
+            {searchOptions && isSearching && (
+              <p className="small text-secondary px-2 py-1 mb-0">Поиск…</p>
+            )}
             {value && (
               <button
                 type="button"
@@ -162,6 +207,12 @@ export default function EntitySelect({
                 type="button"
                 className="performer-select-option"
                 onClick={() => {
+                  // В async-режиме результат живёт только в searchResults —
+                  // сохраняем выбранный, чтобы триггер знал имя после
+                  // очистки поиска.
+                  if (searchOptions && !allOptions.some((x) => x.id === o.id)) {
+                    setCreatedOptions((prev) => [...prev, o]);
+                  }
                   setValue(o.id);
                   setQuery("");
                   setIsOpen(false);
@@ -171,9 +222,11 @@ export default function EntitySelect({
                 <span className="flex-fill text-start text-truncate">{o.name}</span>
               </button>
             ))}
-            {filtered.length === 0 && !showCreateOption && (
-              <p className="small text-secondary px-2 py-1 mb-0">Ничего не найдено</p>
-            )}
+            {filtered.length === 0 &&
+              !showCreateOption &&
+              !(searchOptions && (trimmedQuery.length < 2 || isSearching)) && (
+                <p className="small text-secondary px-2 py-1 mb-0">Ничего не найдено</p>
+              )}
             {showCreateOption && (
               <button
                 type="button"

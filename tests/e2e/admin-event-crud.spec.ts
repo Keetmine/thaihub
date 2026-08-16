@@ -26,7 +26,14 @@ test("admin can create and delete an event", async ({ page }) => {
   // Clean up — open the event's edit page and delete it via the
   // ConfirmForm modal (a custom in-app dialog, not a native confirm()).
   await page.getByText(title).click();
-  await page.getByRole("button", { name: "Удалить событие" }).click();
+  // Клик может прийтись до гидрации (React ещё не навесил onClick на
+  // триггер ConfirmForm) — кликаем с ретраем, пока модалка не откроется.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Удалить событие" }).click();
+    await expect(
+      page.getByRole("button", { name: "Удалить", exact: true }),
+    ).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15000 });
   await page.getByRole("button", { name: "Удалить", exact: true }).click();
   await page.waitForURL(/\/admin\/events$/);
   await expect(page.getByText(title)).not.toBeVisible();

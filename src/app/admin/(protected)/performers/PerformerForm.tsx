@@ -5,7 +5,9 @@ import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
 import { createAgencyAndReturn } from "../agencies/actions";
-import { createDramaAndReturn } from "../dramas/actions";
+import { createDramaAndReturn, searchDramaOptions } from "../dramas/actions";
+import { searchEventOptions } from "../events/actions";
+import { searchSoloPerformerOptions } from "./actions";
 import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
@@ -416,6 +418,7 @@ export default function PerformerForm({
               placeholder="Начните вводить имя участника…"
               createLabel="Создать исполнителя"
               emptyMessage="Нет соло-исполнителей, которых можно добавить как участников."
+              searchOptions={searchSoloPerformerOptions}
               onCreateNew={async (query) => {
                 const created = await createPerformerAndReturn(query);
                 return { id: created.id, name: created.name, photoUrl: null };
@@ -435,6 +438,7 @@ export default function PerformerForm({
             defaultSelectedIds={defaultDramaIds}
             placeholder="Начните вводить название сериала…"
             createLabel="Создать сериал"
+            searchOptions={searchDramaOptions}
             onCreateNew={async (query) => {
               const created = await createDramaAndReturn(query);
               return { id: created.id, name: created.title, photoUrl: created.posterUrl };
@@ -451,6 +455,7 @@ export default function PerformerForm({
           defaultSelectedIds={defaultEventIds}
           placeholder="Начните вводить название события…"
           externalAdditions={createdEvents}
+          searchOptions={searchEventOptions}
         />
         <QuickCreateEventButton
           onCreated={(event) => setCreatedEvents((prev) => [...prev, event])}
@@ -472,6 +477,7 @@ export default function PerformerForm({
                     options={allSoloPerformers}
                     placeholder="Не создавать пейринг"
                     createLabel="Создать исполнителя"
+                    searchOptions={searchSoloPerformerOptions}
                     onCreateNew={async (query) => {
                       const created = await createPerformerAndReturn(query);
                       setCreatedMembers((prev) => [...prev, { id: created.id, name: created.name }]);

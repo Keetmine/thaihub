@@ -14,25 +14,22 @@ export default async function EditAgencyPage({
 }) {
   const { id } = await params;
 
-  const [agency, performers, dramas] = await Promise.all([
-    prisma.agency.findUnique({
-      where: { id },
-      include: {
-        performers: { select: { performerId: true } },
-        dramas: { select: { id: true } },
+  // Каталоги в комбобоксы не грузятся (async searchOptions) — только
+  // записи, уже привязанные к агентству, чтобы селекты показали выбор.
+  const agency = await prisma.agency.findUnique({
+    where: { id },
+    include: {
+      performers: {
+        select: { performer: { select: { id: true, name: true, photoUrl: true } } },
       },
-    }),
-    prisma.performer.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
-    }),
-    prisma.drama.findMany({
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, posterUrl: true },
-    }),
-  ]);
+      dramas: { select: { id: true, title: true, posterUrl: true } },
+    },
+  });
 
   if (!agency) notFound();
+
+  const performers = agency.performers.map((p) => p.performer);
+  const dramas = agency.dramas;
 
   const boundUpdate = updateAgency.bind(null, id);
   const boundDelete = deleteAgency.bind(null, id);
@@ -53,7 +50,7 @@ export default async function EditAgencyPage({
           submitLabel="Сохранить изменения"
           performers={performers}
           dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-          defaultPerformerIds={agency.performers.map((p) => p.performerId)}
+          defaultPerformerIds={performers.map((p) => p.id)}
           defaultDramaIds={agency.dramas.map((d) => d.id)}
           defaultValues={{
             name: agency.name,

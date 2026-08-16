@@ -6,22 +6,12 @@ import { createEvent } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewEventPage() {
-  // Каталог исполнителей не грузим — комбобокс формы ищет асинхронно.
-  const [pairings, dramas, locations] = await Promise.all([
-    prisma.pairing.findMany({
-      include: { performerA: true, performerB: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.drama.findMany({
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, posterUrl: true },
-    }),
-    prisma.location.findMany({
-      where: { createdByUserId: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
-    }),
-  ]);
+  // Каталоги (исполнители/сериалы/локации) не грузим — комбобоксы формы
+  // ищут асинхронно (searchOptions).
+  const pairings = await prisma.pairing.findMany({
+    include: { performerA: true, performerB: true },
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <div>
@@ -35,8 +25,8 @@ export default async function NewEventPage() {
         action={createEvent}
         performers={[]}
         pairings={pairings}
-        dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-        locations={locations}
+        dramas={[]}
+        locations={[]}
         submitLabel="Создать событие"
       />
     </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect from "@/components/EntitySelect";
+import { searchSoloPerformerOptions } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
 import { createPairing, deletePairing, setPairingStatus } from "../pairings/actions";
@@ -116,6 +117,7 @@ export default function PairingManager({
               defaultValue=""
               placeholder="Выберите партнёра"
               createLabel="Создать исполнителя"
+              searchOptions={searchSoloPerformerOptions}
               onChange={setPartnerId}
               onCreateNew={async (query) => {
                 const created = await createPerformerAndReturn(query);

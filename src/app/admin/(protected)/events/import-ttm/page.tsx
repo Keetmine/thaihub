@@ -1,20 +1,10 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import TtmImportFlow from "./TtmImportFlow";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImportTtmPage() {
-  const [performers, dramas] = await Promise.all([
-    prisma.performer.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
-    }),
-    prisma.drama.findMany({
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, posterUrl: true },
-    }),
-  ]);
+  // Каталоги не грузим — комбобоксы ищут асинхронно (searchOptions).
 
   return (
     <div>
@@ -30,10 +20,7 @@ export default async function ImportTtmPage() {
         привяжем к событию, остальных создадим как новых после вашего
         подтверждения.
       </p>
-      <TtmImportFlow
-        performers={performers}
-        dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-      />
+      <TtmImportFlow performers={[]} dramas={[]} />
     </div>
   );
 }

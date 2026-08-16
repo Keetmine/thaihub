@@ -3,8 +3,8 @@
 import { useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
-import { createPerformerAndReturn } from "../performers/actions";
-import { createDramaAndReturn } from "../dramas/actions";
+import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
+import { createDramaAndReturn, searchDramaOptions } from "../dramas/actions";
 
 type Tab = "general" | "performers" | "dramas";
 
@@ -97,6 +97,7 @@ export default function AgencyForm({
           placeholder="Начните вводить имя исполнителя…"
           createLabel="Создать исполнителя"
           emptyMessage="Нет исполнителей."
+          searchOptions={searchPerformerOptions}
           onCreateNew={async (query) => {
             const created = await createPerformerAndReturn(query);
             return { id: created.id, name: created.name, photoUrl: null };
@@ -113,6 +114,7 @@ export default function AgencyForm({
           placeholder="Начните вводить название сериала…"
           createLabel="Создать сериал"
           emptyMessage="Нет сериалов."
+          searchOptions={searchDramaOptions}
           onCreateNew={async (query) => {
             const created = await createDramaAndReturn(query);
             return { id: created.id, name: created.title, photoUrl: created.posterUrl };

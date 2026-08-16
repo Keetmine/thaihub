@@ -6,25 +6,12 @@ import { createPerformer } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewPerformerPage() {
-  const [soloPerformers, agencies, dramas, events] = await Promise.all([
-    prisma.performer.findMany({
-      where: { type: "SOLO" },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
-    }),
-    prisma.agency.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, logoUrl: true },
-    }),
-    prisma.drama.findMany({
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, posterUrl: true },
-    }),
-    prisma.event.findMany({
-      orderBy: { createdAt: "desc" },
-      select: { id: true, title: true },
-    }),
-  ]);
+  // Тяжёлые каталоги (исполнители/сериалы/события) в комбобоксы не
+  // грузятся — они ищутся на сервере по мере ввода (searchOptions).
+  const agencies = await prisma.agency.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, logoUrl: true },
+  });
 
   return (
     <div>
@@ -38,10 +25,10 @@ export default async function NewPerformerPage() {
       <PerformerForm
         action={createPerformer}
         submitLabel="Создать исполнителя"
-        soloPerformers={soloPerformers}
+        soloPerformers={[]}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
-        dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-        events={events.map((e) => ({ id: e.id, name: e.title }))}
+        dramas={[]}
+        events={[]}
       />
     </div>
   );

@@ -6,11 +6,20 @@ import MobileMenu from "@/components/MobileMenu";
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { logout } from "../login/actions";
+import {
+  GridIcon,
+  CalendarIcon,
+  UsersIcon,
+  TvIcon,
+  PinIcon,
+  CopyIcon,
+  UserIcon,
+} from "@/components/icons";
 
 function LogoutButton() {
   return (
     <form action={logout}>
-      <button type="submit" className="btn btn-ghost btn-sm">
+      <button type="submit" className="btn btn-ghost btn-sm w-100">
         Выйти
       </button>
     </form>
@@ -20,30 +29,46 @@ function LogoutButton() {
 // Пункты сайдбара — единый источник и для мобильного меню.
 const NAV_SECTIONS: {
   label: string | null;
-  items: { href: string; title: string; matchPrefixes?: string[] }[];
+  items: {
+    href: string;
+    title: string;
+    icon: React.ComponentType<{ className?: string }>;
+    matchPrefixes?: string[];
+  }[];
 }[] = [
   {
     label: null,
-    items: [{ href: "/admin", title: "Дашборд" }],
+    items: [{ href: "/admin", title: "Дашборд", icon: GridIcon }],
   },
   {
     label: "Каталог",
     items: [
-      { href: "/admin/events", title: "События", matchPrefixes: ["/admin/events/"] },
+      {
+        href: "/admin/events",
+        title: "События",
+        icon: CalendarIcon,
+        matchPrefixes: ["/admin/events/"],
+      },
       {
         href: "/admin/performers",
         title: "Исполнители",
+        icon: UsersIcon,
         matchPrefixes: ["/admin/performers/", "/admin/pairings", "/admin/agencies"],
       },
-      { href: "/admin/dramas", title: "Сериалы", matchPrefixes: ["/admin/dramas/"] },
-      { href: "/admin/locations", title: "Локации", matchPrefixes: ["/admin/locations/"] },
+      { href: "/admin/dramas", title: "Сериалы", icon: TvIcon, matchPrefixes: ["/admin/dramas/"] },
+      {
+        href: "/admin/locations",
+        title: "Локации",
+        icon: PinIcon,
+        matchPrefixes: ["/admin/locations/"],
+      },
     ],
   },
   {
     label: "Сервис",
     items: [
-      { href: "/admin/duplicates", title: "Дубли" },
-      { href: "/admin/users", title: "Пользователи" },
+      { href: "/admin/duplicates", title: "Дубли", icon: CopyIcon },
+      { href: "/admin/users", title: "Пользователи", icon: UserIcon },
     ],
   },
 ];
@@ -61,27 +86,18 @@ export default async function ProtectedAdminLayout({
   }
 
   return (
-    <div className="d-flex flex-column flex-fill">
-      <div className="container pt-4 nav-sticky">
-        <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">
+    <div className="container py-3 py-md-4 flex-fill d-flex flex-column">
+      {/* Мобильная шапка: панель-сайдбар не помещается — бургер. */}
+      <div className="d-sm-none nav-sticky pt-2">
+        <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 py-2">
           <Link
             href="/admin"
             prefetch={false}
             className="navbar-brand d-inline-flex align-items-center gap-2 mb-0 text-decoration-none"
           >
             <Logo />
-            <span
-              className="badge rounded-pill fw-semibold"
-              style={{
-                background: "var(--bs-primary-bg-subtle)",
-                color: "var(--bs-primary-text-emphasis)",
-                fontSize: "0.65rem",
-              }}
-            >
-              ADMIN
-            </span>
+            <span className="admin-badge badge rounded-pill fw-semibold">ADMIN</span>
           </Link>
-
           <MobileMenu>
             {NAV_SECTIONS.flatMap((s) => s.items).map((item) => (
               <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
@@ -91,37 +107,51 @@ export default async function ProtectedAdminLayout({
             <ModeToggle active="admin" />
             <LogoutButton />
           </MobileMenu>
-
-          <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
-            <ModeToggle active="admin" />
-            <LogoutButton />
-          </div>
         </nav>
       </div>
-      <div className="container flex-fill py-4 py-md-5">
-        <div className="d-flex align-items-start gap-4">
-          {/* Сайдбар вместо горизонтального меню — пунктов будет только
-              больше; на мобильных остаётся бургер в шапке. */}
-          <aside className="admin-sidebar d-none d-sm-block flex-shrink-0">
+
+      <div className="d-flex align-items-start gap-4 flex-fill">
+        {/* Панель-сайдбар (см. скетчи admin-panel): логотип сверху,
+            разделы с иконками, переключатель Сайт/Админка и выход внизу. */}
+        <aside className="admin-sidebar d-none d-sm-flex flex-column flex-shrink-0">
+          <Link
+            href="/admin"
+            prefetch={false}
+            className="admin-sidebar-brand d-inline-flex align-items-center gap-2 text-decoration-none"
+          >
+            <Logo />
+            <span className="admin-badge badge rounded-pill fw-semibold">ADMIN</span>
+          </Link>
+
+          <div className="flex-fill">
             {NAV_SECTIONS.map((section, i) => (
               <div key={i} className={i > 0 ? "mt-3" : undefined}>
                 {section.label && (
                   <p className="admin-sidebar-label mb-1">{section.label}</p>
                 )}
                 <div className="d-flex flex-column gap-1">
-                  {section.items.map((item) => (
-                    <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
-                      {item.title}
-                    </NavLink>
-                  ))}
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
+                        <Icon className="admin-sidebar-icon" /> {item.title}
+                      </NavLink>
+                    );
+                  })}
                 </div>
               </div>
             ))}
-          </aside>
-          <main className="flex-fill" style={{ minWidth: 0 }}>
-            {children}
-          </main>
-        </div>
+          </div>
+
+          <div className="admin-sidebar-footer d-flex flex-column gap-2 pt-3 mt-3">
+            <ModeToggle active="admin" />
+            <LogoutButton />
+          </div>
+        </aside>
+
+        <main className="flex-fill py-2" style={{ minWidth: 0 }}>
+          {children}
+        </main>
       </div>
     </div>
   );

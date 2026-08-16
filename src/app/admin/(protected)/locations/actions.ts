@@ -42,6 +42,29 @@ async function createLocationRecord(
 }
 
 /** Inline-create from a combobox (drama form's locations field). */
+/**
+ * Асинхронный поиск для комбобоксов выбора локации (EventForm, DramaForm,
+ * TTM-импорт): каталог ~570 локаций с фото — грузим по мере ввода.
+ * Только каталожные (без пользовательских «своих мест»).
+ */
+export async function searchLocationOptions(
+  query: string,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  await requireAdmin();
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  return prisma.location.findMany({
+    where: {
+      createdByUserId: null,
+      name: { contains: q, mode: "insensitive" },
+    },
+    select: { id: true, name: true, photoUrl: true },
+    orderBy: { name: "asc" },
+    take: 20,
+  });
+}
+
 export async function createLocationAndReturn(
   name: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }> {

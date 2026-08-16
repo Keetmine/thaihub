@@ -44,6 +44,27 @@ function revalidateDramaPaths(id?: string) {
 }
 
 /** Live "похоже, уже есть" lookup for the create form's title field. */
+/**
+ * Асинхронный поиск для комбобоксов выбора сериала (EventForm,
+ * PerformerForm, AgencyForm): каталог ~4.6 тыс. — полный список в
+ * клиентском селекте не нужен, ищем на сервере по мере ввода.
+ */
+export async function searchDramaOptions(
+  query: string,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  await requireAdmin();
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const dramas = await prisma.drama.findMany({
+    where: { title: { contains: q, mode: "insensitive" } },
+    select: { id: true, title: true, posterUrl: true },
+    orderBy: { title: "asc" },
+    take: 20,
+  });
+  return dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }));
+}
+
 export async function findSimilarDramas(query: string): Promise<{ id: string; name: string }[]> {
   await requireAdmin();
   const q = query.trim();

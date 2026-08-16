@@ -7,7 +7,7 @@ import EntityMultiSelect from "@/components/EntityMultiSelect";
 import Modal from "@/components/Modal";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { createAgencyAndReturn } from "../agencies/actions";
-import { createLocationAndReturn } from "../locations/actions";
+import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
 import { findSimilarDramas } from "./actions";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 
@@ -358,6 +358,7 @@ export default function DramaForm({
           placeholder="Начните вводить название локации…"
           createLabel="Создать локацию"
           emptyMessage="Нет локаций. Начните вводить название, чтобы создать новую."
+          searchOptions={searchLocationOptions}
           onCreateNew={async (name) => {
             const created = await createLocationAndReturn(name);
             return { id: created.id, name: created.name, photoUrl: created.photoUrl };

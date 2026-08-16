@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import { searchPerformerOptions } from "../../performers/actions";
+import { searchDramaOptions } from "../../dramas/actions";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
 import DatePickerInput from "@/components/DatePickerInput";
@@ -226,6 +228,7 @@ export default function TtmImportFlow({
         label="Связанный сериал"
         options={dramas}
         placeholder="Не выбрано"
+        searchOptions={searchDramaOptions}
       />
 
       <div>
@@ -316,6 +319,7 @@ export default function TtmImportFlow({
           name="extraPerformerIds"
           options={performers}
           placeholder="Начните вводить имя исполнителя…"
+          searchOptions={searchPerformerOptions}
         />
       </div>
 

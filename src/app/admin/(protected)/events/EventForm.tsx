@@ -5,6 +5,8 @@ import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSe
 import EntitySelect from "@/components/EntitySelect";
 import FileDropzone from "@/components/FileDropzone";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
+import { searchDramaOptions } from "../dramas/actions";
+import { searchLocationOptions } from "../locations/actions";
 import DatePickerInput from "@/components/DatePickerInput";
 
 type PairingOption = {
@@ -116,6 +118,7 @@ export default function EventForm({
         options={locations}
         defaultValue={v?.locationId}
         placeholder="Не выбрано"
+        searchOptions={searchLocationOptions}
       />
 
       <div>
@@ -209,6 +212,7 @@ export default function EventForm({
         options={dramas}
         defaultValue={v?.dramaId}
         placeholder="Не выбрано"
+        searchOptions={searchDramaOptions}
       />
 
       <div>

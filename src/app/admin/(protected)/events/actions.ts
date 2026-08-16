@@ -48,6 +48,26 @@ function getOccurrenceInputs(formData: FormData): OccurrenceInput[] {
     .filter((row) => row.date && row.startTime);
 }
 
+/**
+ * Асинхронный поиск для комбобокса выбора событий (PerformerForm):
+ * список событий постоянно растёт — грузим варианты по мере ввода.
+ */
+export async function searchEventOptions(
+  query: string,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  await requireAdmin();
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const events = await prisma.event.findMany({
+    where: { title: { contains: q, mode: "insensitive" } },
+    select: { id: true, title: true, posterUrl: true },
+    orderBy: { title: "asc" },
+    take: 20,
+  });
+  return events.map((e) => ({ id: e.id, name: e.title, photoUrl: e.posterUrl }));
+}
+
 export async function createEvent(formData: FormData) {
   await requireAdmin();
   const title = String(formData.get("title") ?? "").trim();

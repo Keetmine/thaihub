@@ -70,6 +70,28 @@ export async function searchPerformerOptions(
   });
 }
 
+/** То же, но только SOLO — для выбора участников группы и пейрингов. */
+export async function searchSoloPerformerOptions(
+  query: string,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  await requireAdmin();
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  return prisma.performer.findMany({
+    where: {
+      type: "SOLO",
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { realName: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, name: true, photoUrl: true },
+    orderBy: { name: "asc" },
+    take: 20,
+  });
+}
+
 export async function findSimilarPerformers(
   query: string,
 ): Promise<{ id: string; name: string }[]> {

@@ -16,31 +16,29 @@ export default async function EditEventPage({
   // Полный каталог исполнителей в форму больше не грузим (~17 тыс. строк
   // подвешивали селект) — комбобокс ищет асинхронно, а как options нужны
   // только уже привязанные к событию.
-  const [event, pairings, dramas, locations] = await Promise.all([
+  const [event, pairings] = await Promise.all([
     prisma.event.findUnique({
       where: { id },
       include: {
         performers: { include: { performer: true } },
         pairings: true,
         occurrences: { orderBy: { startsAt: "asc" } },
+        drama: { select: { id: true, title: true, posterUrl: true } },
+        location: { select: { id: true, name: true, photoUrl: true } },
       },
     }),
     prisma.pairing.findMany({
       include: { performerA: true, performerB: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.drama.findMany({
-      orderBy: { title: "asc" },
-      select: { id: true, title: true, posterUrl: true },
-    }),
-    prisma.location.findMany({
-      where: { createdByUserId: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
-    }),
   ]);
 
   if (!event) notFound();
+
+  // Каталоги сериалов/локаций комбобоксы ищут асинхронно — как options
+  // достаточно текущего выбора.
+  const dramas = event.drama ? [event.drama] : [];
+  const locations = event.location ? [event.location] : [];
 
   const boundUpdate = updateEvent.bind(null, id);
   const boundDelete = deleteEvent.bind(null, id);

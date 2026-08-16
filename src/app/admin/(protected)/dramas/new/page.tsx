@@ -6,17 +6,11 @@ import { createDrama } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewDramaPage() {
-  const [agencies, locations] = await Promise.all([
-    prisma.agency.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, logoUrl: true },
-    }),
-    prisma.location.findMany({
-      where: { createdByUserId: null },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, photoUrl: true },
-    }),
-  ]);
+  // Каталог локаций комбобокс ищет асинхронно — заранее не грузим.
+  const agencies = await prisma.agency.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, logoUrl: true },
+  });
 
   return (
     <div>
@@ -29,7 +23,7 @@ export default async function NewDramaPage() {
       <DramaForm
         action={createDrama}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
-        locations={locations}
+        locations={[]}
         submitLabel="Создать сериал"
       />
     </div>

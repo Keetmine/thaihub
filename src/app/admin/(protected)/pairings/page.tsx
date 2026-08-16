@@ -30,7 +30,9 @@ export default async function AdminPairingsPage({
     }),
     prisma.pairing.count(),
     // Only solo performers can be paired — bands get members, not pairings.
-    prisma.performer.findMany({ where: { type: "SOLO" }, orderBy: { name: "asc" } }),
+    // Каталог соло-исполнителей в модалку не грузится — партнёры ищутся
+    // асинхронно (searchSoloPerformerOptions).
+    Promise.resolve([] as { id: string; name: string; photoUrl: string | null }[]),
   ]);
   const totalPages = totalPagesFor(total);
 
@@ -41,9 +43,7 @@ export default async function AdminPairingsPage({
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Пейринги
         </h1>
-        <CreatePairingModal
-          performers={performers.map((p) => ({ id: p.id, name: p.name, photoUrl: p.photoUrl }))}
-        />
+        <CreatePairingModal performers={performers} />
       </div>
 
       <AdminPerformerTabs active="pairings" />
