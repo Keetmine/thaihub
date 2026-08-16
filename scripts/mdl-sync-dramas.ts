@@ -1,0 +1,228 @@
+import "dotenv/config";
+import { prisma } from "../src/lib/prisma";
+import { MdlClient } from "../src/lib/mdlClient";
+import {
+  parseMdlDramaPage,
+  parseMdlSearchTitles,
+  mdlSearchUrl,
+  mdlIdFromUrl,
+  absMdlUrl,
+  type MdlRelatedEntry,
+} from "../src/lib/mydramalist";
+import { downloadRemoteImage } from "../src/lib/localImage";
+
+/**
+ * Массовый проход по всем сериалам каталога: находит страницу на
+ * MyDramaList (по сохранённой ссылке или поиском по названию), парсит
+ * Details/синопсис/Related Content и обновляет запись. Резюмится по
+ * mdlSyncedAt (уже синхронизированные пропускаются), связи Related
+ * Content разрешаются в конце прохода. Запуск:
+ *   npx tsx scripts/mdl-sync-dramas.ts [--limit N] [--force]
+ */
+
+const DELAY_MS = 400;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function normTitle(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[’'"“”:!?.,\-–—()\[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+type Found = { url: string; mdl: ReturnType<typeof parseMdlDramaPage> };
+
+const THAI_SCRIPT = /[\u0E00-\u0E7F]/;
+
+/**
+ * Ищет страницу тайтла. Для латинских названий — точное совпадение
+ * нормализованного названия (при нескольких — ближайший год). Для
+ * тайских названий результат нельзя сверить по заголовку (MDL отдаёт
+ * английский) — верифицируем кандидатов их страницами: Native Title /
+ * Also Known As должны содержать наше название.
+ */
+async function findMdl(
+  client: MdlClient,
+  title: string,
+  year: number | null,
+): Promise<Found | null> {
+  const html = await client.fetchHtml(mdlSearchUrl(title));
+  const results = parseMdlSearchTitles(html);
+
+  if (THAI_SCRIPT.test(title)) {
+    for (const r of results.slice(0, 3)) {
+      const url = absMdlUrl(r.path);
+      await sleep(DELAY_MS);
+      try {
+        const mdl = parseMdlDramaPage(await client.fetchHtml(url), url);
+        const t = title.trim();
+        if (mdl.nativeTitle?.trim() === t || (mdl.alsoKnownAs ?? "").includes(t)) {
+          return { url, mdl };
+        }
+      } catch {
+        // кандидат не разобрался — пробуем следующего
+      }
+    }
+    return null;
+  }
+
+  const target = normTitle(title);
+  const exact = results.filter((r) => normTitle(r.title) === target);
+  let path: string | null = null;
+  if (exact.length === 1) path = exact[0].path;
+  else if (exact.length > 1) {
+    const byYear = year
+      ? exact.find((r) => r.year != null && Math.abs(r.year - year) <= 1)
+      : null;
+    path = (byYear ?? exact[0]).path;
+  } else if (results.length > 0 && year) {
+    const near = results.filter(
+      (r) => r.year != null && Math.abs(r.year - year) <= 1 && normTitle(r.title).includes(target),
+    );
+    if (near.length === 1) path = near[0].path;
+  }
+  if (!path) return null;
+  const url = absMdlUrl(path);
+  await sleep(DELAY_MS);
+  return { url, mdl: parseMdlDramaPage(await client.fetchHtml(url), url) };
+}
+
+async function main() {
+  const limitArg = process.argv.indexOf("--limit");
+  const limit = limitArg >= 0 ? Number(process.argv[limitArg + 1]) : Infinity;
+  const force = process.argv.includes("--force");
+
+  const dramas = await prisma.drama.findMany({
+    where: force ? {} : { mdlSyncedAt: null },
+    orderBy: { title: "asc" },
+    select: {
+      id: true,
+      title: true,
+      year: true,
+      mydramalistUrl: true,
+      posterUrl: true,
+      synopsis: true,
+      network: true,
+    },
+  });
+  console.log(`К синхронизации: ${Math.min(dramas.length, limit)} из ${dramas.length}`);
+
+  const client = new MdlClient();
+  await client.init();
+
+  const relatedByDrama: { dramaId: string; related: MdlRelatedEntry[] }[] = [];
+  let done = 0;
+  let notFound = 0;
+  let failed = 0;
+
+  try {
+    for (const drama of dramas.slice(0, Number.isFinite(limit) ? limit : undefined)) {
+      try {
+        let found: Found | null = null;
+        if (drama.mydramalistUrl) {
+          const url = drama.mydramalistUrl;
+          found = { url, mdl: parseMdlDramaPage(await client.fetchHtml(url), url) };
+        } else {
+          found = await findMdl(client, drama.title, drama.year);
+        }
+        if (!found) {
+          notFound += 1;
+          // отмечаем, чтобы не искать заново при резюме; ссылки нет
+          await prisma.drama.update({
+            where: { id: drama.id },
+            data: { mdlSyncedAt: new Date() },
+          });
+          console.log(`  [нет на MDL] ${drama.title}`);
+          continue;
+        }
+        const { url, mdl } = found;
+
+        const posterUrl =
+          !drama.posterUrl && mdl.posterUrl
+            ? await downloadRemoteImage(mdl.posterUrl, "mdl")
+            : undefined;
+
+        await prisma.drama.update({
+          where: { id: drama.id },
+          data: {
+            mydramalistUrl: url,
+            nativeTitle: mdl.nativeTitle,
+            alsoKnownAs: mdl.alsoKnownAs,
+            synopsis: mdl.synopsis ?? drama.synopsis,
+            director: mdl.director,
+            screenwriter: mdl.screenwriter,
+            genres: mdl.genres,
+            tags: mdl.tags,
+            episodes: mdl.episodes,
+            airedFrom: mdl.airedFrom,
+            airedTo: mdl.airedTo,
+            airedOn: mdl.airedOn,
+            duration: mdl.duration,
+            contentRating: mdl.contentRating,
+            mdlScore: mdl.rating,
+            network: mdl.network ?? drama.network,
+            year: mdl.year ?? drama.year,
+            ...(mdl.status ? { status: mdl.status } : {}),
+            ...(posterUrl ? { posterUrl } : {}),
+            mdlSyncedAt: new Date(),
+          },
+        });
+        if (mdl.related.length > 0) {
+          relatedByDrama.push({ dramaId: drama.id, related: mdl.related });
+        }
+        done += 1;
+        if (done % 25 === 0) console.log(`  …${done} готово (${drama.title})`);
+      } catch (e) {
+        failed += 1;
+        console.log(`  [ошибка] ${drama.title}: ${e instanceof Error ? e.message : e}`);
+        if (failed > 50 && failed > done) {
+          throw new Error("Слишком много ошибок подряд — останавливаюсь");
+        }
+      }
+      await sleep(DELAY_MS);
+    }
+  } finally {
+    await client.close();
+  }
+
+  // Related Content → DramaRelation (разрешаем по mdl-id или названию).
+  console.log("\nСвязываю Related Content…");
+  const all = await prisma.drama.findMany({
+    select: { id: true, title: true, mydramalistUrl: true },
+  });
+  const byMdlId = new Map<string, string>();
+  const byTitle = new Map<string, string>();
+  for (const d of all) {
+    const mid = d.mydramalistUrl ? mdlIdFromUrl(d.mydramalistUrl) : null;
+    if (mid) byMdlId.set(mid, d.id);
+    byTitle.set(normTitle(d.title), d.id);
+  }
+  let links = 0;
+  for (const { dramaId, related } of relatedByDrama) {
+    for (const rel of related) {
+      const relId =
+        (mdlIdFromUrl(rel.url) ? byMdlId.get(mdlIdFromUrl(rel.url)!) : undefined) ??
+        byTitle.get(normTitle(rel.title));
+      if (!relId || relId === dramaId) continue;
+      await prisma.dramaRelation.upsert({
+        where: { dramaId_relatedId: { dramaId, relatedId: relId } },
+        create: { dramaId, relatedId: relId, relation: rel.relation },
+        update: { relation: rel.relation },
+      });
+      links += 1;
+    }
+  }
+
+  console.log(
+    `\nГотово: обновлено ${done}, не найдено ${notFound}, ошибок ${failed}, связей ${links}.`,
+  );
+}
+
+main()
+  .catch((e) => {
+    console.error("FATAL", e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

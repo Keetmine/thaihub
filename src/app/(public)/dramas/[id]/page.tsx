@@ -7,13 +7,24 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
-import { BuildingIcon } from "@/components/icons";
+import { BuildingIcon, CalendarIcon, TvIcon, UserIcon, InfoIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
+import { dramaHref } from "@/lib/dramaSlug";
+
+const WEEKDAYS_RU: Record<string, string> = {
+  Monday: "по понедельникам",
+  Tuesday: "по вторникам",
+  Wednesday: "по средам",
+  Thursday: "по четвергам",
+  Friday: "по пятницам",
+  Saturday: "по субботам",
+  Sunday: "по воскресеньям",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +42,8 @@ export default async function DramaDetailPage({
       performers: { include: { performer: true } },
       agency: true,
       locations: { include: { location: true }, orderBy: { location: { name: "asc" } } },
+      relatedFrom: { include: { related: true } },
+      relatedTo: { include: { drama: true } },
     },
   });
 
@@ -65,6 +78,17 @@ export default async function DramaDetailPage({
     getGoingOccurrenceIds(occIds, currentUser?.id),
   ]);
 
+  // Related Content с MDL: связь направленная, показываем обе стороны.
+  const relatedItems = [
+    ...drama.relatedFrom.map((r) => ({ drama: r.related, relation: r.relation })),
+    ...drama.relatedTo
+      .filter((r) => !drama.relatedFrom.some((f) => f.relatedId === r.dramaId))
+      .map((r) => ({ drama: r.drama, relation: r.relation })),
+  ];
+
+  const formatAired = (d: Date) =>
+    d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+
   const visitedLocationIds = new Set<string>();
   if (currentUser && drama.locations.length > 0) {
     const visits = await prisma.locationVisit.findMany({
@@ -95,6 +119,13 @@ export default async function DramaDetailPage({
           </span>
         )}
       </h1>
+      {(drama.nativeTitle || drama.alsoKnownAs) && (
+        <p className="small text-secondary mb-3" style={{ marginTop: "-0.5rem" }}>
+          {drama.nativeTitle}
+          {drama.nativeTitle && drama.alsoKnownAs ? " · " : ""}
+          {drama.alsoKnownAs}
+        </p>
+      )}
 
       <div className="row g-4">
         {(drama.posterUrl || currentUser) && (
@@ -126,6 +157,57 @@ export default async function DramaDetailPage({
               </Link>
             </p>
           )}
+
+          {drama.genres.length > 0 && (
+            <div className="d-flex flex-wrap gap-2 mb-3">
+              {drama.genres.map((g) => (
+                <span key={g} className="event-chip">{g}</span>
+              ))}
+            </div>
+          )}
+
+          <div className="d-flex flex-column gap-1 mb-3">
+            {(drama.episodes || drama.duration) && (
+              <p className="small text-secondary mb-0">
+                <TvIcon className="icon-inline" /> <span className="text-secondary">Эпизоды:</span>{" "}
+                {drama.episodes ? `${drama.episodes}` : "?"}
+                {drama.duration ? ` × ${drama.duration}` : ""}
+              </p>
+            )}
+            {drama.airedFrom && (
+              <p className="small text-secondary mb-0">
+                <CalendarIcon /> <span className="text-secondary">Эфир:</span>{" "}
+                {formatAired(drama.airedFrom)}
+                {drama.airedTo && drama.airedTo.getTime() !== drama.airedFrom.getTime()
+                  ? ` — ${formatAired(drama.airedTo)}`
+                  : ""}
+                {drama.airedOn ? ` (${WEEKDAYS_RU[drama.airedOn] ?? drama.airedOn})` : ""}
+              </p>
+            )}
+            {drama.director && (
+              <p className="small text-secondary mb-0">
+                <UserIcon className="icon-inline" /> <span className="text-secondary">Режиссёр:</span>{" "}
+                {drama.director}
+              </p>
+            )}
+            {drama.screenwriter && (
+              <p className="small text-secondary mb-0">
+                <UserIcon className="icon-inline" /> <span className="text-secondary">Сценарий:</span>{" "}
+                {drama.screenwriter}
+              </p>
+            )}
+            {drama.contentRating && (
+              <p className="small text-secondary mb-0">
+                <InfoIcon /> <span className="text-secondary">Рейтинг:</span> {drama.contentRating}
+              </p>
+            )}
+            {drama.mdlScore != null && (
+              <p className="small text-secondary mb-0">
+                <span className="text-secondary">Оценка MDL:</span> ★{" "}
+                {drama.mdlScore.toFixed(1)}
+              </p>
+            )}
+          </div>
 
           {drama.synopsis && (
             <p className="text-secondary mb-3">{drama.synopsis}</p>
@@ -163,6 +245,26 @@ export default async function DramaDetailPage({
                 />
               ))}
             </div>
+          )}
+
+          {relatedItems.length > 0 && (
+            <>
+              <h2 className="section-heading mb-2 mt-4">
+                Связанные сериалы
+              </h2>
+              <div className="d-flex flex-wrap gap-2">
+                {relatedItems.map(({ drama: rel, relation }) => (
+                  <EntityMiniCard
+                    key={rel.id}
+                    href={dramaHref(rel)}
+                    photoUrl={rel.posterUrl}
+                    name={rel.title}
+                    subtitle={relation}
+                    round={false}
+                  />
+                ))}
+              </div>
+            </>
           )}
 
           {drama.locations.length > 0 && (

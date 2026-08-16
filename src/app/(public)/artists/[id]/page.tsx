@@ -16,7 +16,7 @@ import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
-import { CakeIcon, BuildingIcon, PinIcon, MusicNoteIcon } from "@/components/icons";
+import { CakeIcon, BuildingIcon, PinIcon, MusicNoteIcon, UserIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -182,6 +182,18 @@ export default async function PerformerPage({
             <p className="small text-secondary mb-0">
               <CakeIcon /> <span className="text-secondary">Дата рождения:</span>{" "}
               {formatBirthDate(performer.birthDate)} ({currentAge(performer.birthDate)})
+            </p>
+          )}
+          {!isBand && performer.nationality && (
+            <p className="small text-secondary mb-0">
+              <PinIcon className="icon-inline" />{" "}
+              <span className="text-secondary">Национальность:</span> {performer.nationality}
+            </p>
+          )}
+          {!isBand && performer.alsoKnownAs && (
+            <p className="small text-secondary mb-0">
+              <UserIcon className="icon-inline" />{" "}
+              <span className="text-secondary">Также известен как:</span> {performer.alsoKnownAs}
             </p>
           )}
           {!isBand && performer.musicAlias && (
