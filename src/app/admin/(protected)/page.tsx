@@ -1,155 +1,110 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
-import { deleteEvent } from "./events/actions";
-import ConfirmForm from "@/components/ConfirmForm";
-import NameSearchBox from "@/components/NameSearchBox";
-import Pagination from "@/components/Pagination";
-import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
-import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { formatShortDate } from "@/lib/dates";
+import StatTile from "@/components/StatTile";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminEventsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; page?: string }>;
-}) {
-  const { q: rawQ, page: rawPage } = await searchParams;
-  const q = (rawQ ?? "").trim();
-  const page = parsePage(rawPage);
+// Админ-дашборд (Г10): состояние продукта одним экраном — пользователи и
+// подписки, объём каталога, свежие регистрации и события.
+export default async function AdminStatsPage() {
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const eventsRaw = await prisma.event.findMany({
-    where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
-    include: {
-      performers: { include: { performer: true } },
-      occurrences: { orderBy: { startsAt: "asc" } },
-    },
-  });
-  // Sorted by first occurrence date, which only exists once every event's
-  // occurrences are loaded — paginated after sorting rather than in the
-  // query itself.
-  const sortedEvents = eventsRaw
-    .filter((ev) => ev.occurrences.length > 0)
-    .sort((a, b) => a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime());
-  const totalPages = totalPagesFor(sortedEvents.length);
-  const events = sortedEvents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const [
+    usersTotal,
+    premiumActive,
+    usersThisWeek,
+    withTelegram,
+    eventsTotal,
+    dramasTotal,
+    performersTotal,
+    locationsTotal,
+    tripsTotal,
+    recentUsers,
+    recentEvents,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { premiumUntil: { gt: now } } }),
+    prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.user.count({ where: { telegramId: { not: null } } }),
+    prisma.event.count(),
+    prisma.drama.count(),
+    prisma.performer.count(),
+    prisma.location.count(),
+    prisma.trip.count(),
+    prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    prisma.event.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } },
+    }),
+  ]);
 
   return (
     <div>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-5">
-        <div className="dot-grid pb-1">
-          <span className="eyebrow">Управление</span>
-          <h1 className="display-1-tight mt-3 mb-0" style={{ fontSize: "2.25rem" }}>
-            События
-          </h1>
-        </div>
-        <div className="d-flex gap-2">
-          <Link href="/admin/events/import-ttm" className="btn btn-ghost btn-sm">
-            Импортировать с ThaiTicketMajor
-          </Link>
-          <Link href="/admin/events/new" className="btn btn-primary btn-sm">
-            + Добавить событие
-          </Link>
-        </div>
+      <span className="eyebrow">Управление</span>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
+        Дашборд
+      </h1>
+
+      <h2 className="section-heading mb-2">
+        Пользователи
+      </h2>
+      <div className="d-flex flex-wrap gap-2 mb-4">
+        <StatTile value={usersTotal} label="всего" href="/admin/users" />
+        <StatTile value={premiumActive} label="с подпиской" href="/admin/users" />
+        <StatTile value={usersThisWeek} label="за неделю" />
+        <StatTile value={withTelegram} label="с Telegram" />
       </div>
 
-      <NameSearchBox action="/admin" q={q} placeholder="Поиск по названию…" />
+      <h2 className="section-heading mb-2">
+        Каталог
+      </h2>
+      <div className="d-flex flex-wrap gap-2 mb-4">
+        <StatTile value={eventsTotal} label="событий" href="/admin/events" />
+        <StatTile value={dramasTotal} label="сериалов" href="/admin/dramas" />
+        <StatTile value={performersTotal} label="исполнителей" href="/admin/performers" />
+        <StatTile value={locationsTotal} label="локаций" href="/admin/locations" />
+        <StatTile value={tripsTotal} label="поездок" />
+      </div>
 
-      {events.length === 0 ? (
-        <p className="text-secondary">
-          {q ? "Ничего не найдено." : "Событий пока нет."}
-        </p>
-      ) : (
-        <div className="d-flex flex-column gap-2">
-          {events.map((ev) => {
-            const boundDeleteEvent = deleteEvent.bind(null, ev.id);
-            return (
-              <div
-                key={ev.id}
-                className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <Link
-                  href={`/admin/events/${ev.id}/edit`}
-                  className="stretched-link text-decoration-none d-flex align-items-center gap-3"
-                  style={{ minWidth: 0 }}
-                >
-                  <div
-                    style={{
-                      width: "2.75rem",
-                      height: "2.75rem",
-                      borderRadius: "0.5rem",
-                      background: "var(--bs-secondary-bg)",
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {ev.posterUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={ev.posterUrl}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <span className="font-display fw-medium text-white d-block text-truncate">
-                      {ev.title}
-                    </span>
-                    <p className="small text-secondary mb-0">
-                      {ev.occurrences
-                        .map(
-                          (o) =>
-                            `${formatHumanDate(o.startsAt)} · ${formatTimeRangeWithMsk(o.startsAt, o.endsAt)}`,
-                        )
-                        .join(" + ")}{" "}
-                      · <PinIcon /> {ev.venue}
-                    </p>
-                    {ev.performers.length > 0 && (
-                      <p className="small text-secondary opacity-50 mb-0 text-truncate">
-                        {ev.performers.map((p) => p.performer.name).join(", ")}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-                {/* position-relative + z-2 lifts these controls above the
-                    row's stretched-link (::after has z-index: 1), so they
-                    stay individually clickable instead of triggering the
-                    row navigation. */}
-                <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
-                  <Link
-                    href={`/admin/events/${ev.id}/edit`}
-                    className="icon-btn"
-                    aria-label="Редактировать"
-                    title="Редактировать"
-                  >
-                    <PencilIcon />
-                  </Link>
-                  <ConfirmForm
-                    action={boundDeleteEvent}
-                    confirmMessage={`Удалить событие «${ev.title}»?`}
-                  >
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn-danger"
-                      aria-label="Удалить"
-                      title="Удалить"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </ConfirmForm>
-                </div>
+      <div className="row g-4">
+        <div className="col-12 col-md-6">
+          <h2 className="section-heading mb-2">
+            Новые пользователи
+          </h2>
+          <div className="d-flex flex-column gap-2">
+            {recentUsers.map((u) => (
+              <div key={u.id} className="surface d-flex justify-content-between gap-3 p-3">
+                <span className="text-truncate">{u.name || u.email || `tg:${u.telegramUsername}`}</span>
+                <span className="small text-secondary flex-shrink-0">
+                  {formatShortDate(u.createdAt)}
+                </span>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      )}
-      <Pagination
-        page={page}
-        totalPages={totalPages}
-        buildHref={(p) => `/admin?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
-      />
+        <div className="col-12 col-md-6">
+          <h2 className="section-heading mb-2">
+            Недавно добавленные события
+          </h2>
+          <div className="d-flex flex-column gap-2">
+            {recentEvents.map((e) => (
+              <Link
+                key={e.id}
+                href={`/admin/events/${e.id}/edit`}
+                className="surface surface-hover text-decoration-none d-flex justify-content-between gap-3 p-3"
+              >
+                <span className="text-truncate">{e.title}</span>
+                <span className="small text-secondary flex-shrink-0">
+                  {e.occurrences[0] ? formatShortDate(e.occurrences[0].startsAt) : "—"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

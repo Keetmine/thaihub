@@ -15,7 +15,7 @@ export default async function DuplicatesPage() {
 
   return (
     <div>
-      <Link href="/admin" className="eyebrow text-decoration-none">
+      <Link href="/admin/events" className="eyebrow text-decoration-none">
         ← Админка
       </Link>
       <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2rem" }}>

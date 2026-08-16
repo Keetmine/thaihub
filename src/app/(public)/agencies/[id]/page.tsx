@@ -4,19 +4,28 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import DramaStatusButton from "@/components/DramaStatusButton";
+import NameSearchBox from "@/components/NameSearchBox";
 import { getDramaWatchStatuses } from "@/lib/favorites";
+import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
-import { slugOrIdWhere } from "@/lib/slugHelpers";
+import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
 export default async function AgencyDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; q?: string }>;
 }) {
-  const { id: rawParam } = await params;
+  const [{ id: rawParam }, { tab: rawTab, q: rawQ }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+  const tab = rawTab === "dramas" ? "dramas" : "performers";
+  const q = (rawQ ?? "").trim();
 
   const agency = await prisma.agency.findFirst({
     where: slugOrIdWhere(rawParam),
@@ -28,8 +37,22 @@ export default async function AgencyDetailPage({
 
   if (!agency) notFound();
   const id = agency.id;
+  const href = agencyHref(agency);
 
-  const performers = agency.performers.map((pa) => pa.performer);
+  const allPerformers = agency.performers.map((pa) => pa.performer);
+  // Поиск — только внутри этого агентства: фильтруем уже загруженный
+  // ростер/фильмографию (это десятки записей, не каталог).
+  const needle = q.toLowerCase();
+  const performers = q
+    ? allPerformers.filter(
+        (p) =>
+          p.name.toLowerCase().includes(needle) ||
+          (p.realName ?? "").toLowerCase().includes(needle),
+      )
+    : allPerformers;
+  const dramas = q
+    ? agency.dramas.filter((d) => d.title.toLowerCase().includes(needle))
+    : agency.dramas;
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
@@ -39,11 +62,11 @@ export default async function AgencyDetailPage({
       prisma.favoriteAgency.findUnique({
         where: { userId_agencyId: { userId: currentUser.id, agencyId: id } },
       }),
-      performers.length > 0
+      allPerformers.length > 0
         ? prisma.favoritePerformer.findMany({
             where: {
               userId: currentUser.id,
-              performerId: { in: performers.map((p) => p.id) },
+              performerId: { in: allPerformers.map((p) => p.id) },
             },
             select: { performerId: true },
           })
@@ -92,87 +115,109 @@ export default async function AgencyDetailPage({
         </p>
       )}
 
-      <h2 className="section-heading mb-2">
-        Исполнители
-      </h2>
-      {performers.length === 0 ? (
-        <p className="small text-secondary mb-4">Пока нет исполнителей.</p>
+      <div className="tab-bar-row">
+        <div className="tab-bar">
+          <Link
+            href={q ? `${href}?q=${encodeURIComponent(q)}` : href}
+            prefetch={false}
+            className={`tab-bar-item ${tab === "performers" ? "active" : ""}`}
+          >
+            Исполнители ({allPerformers.length})
+          </Link>
+          <Link
+            href={`${href}?tab=dramas${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            prefetch={false}
+            className={`tab-bar-item ${tab === "dramas" ? "active" : ""}`}
+          >
+            Сериалы ({agency.dramas.length})
+          </Link>
+        </div>
+        <NameSearchBox
+          action={href}
+          q={q}
+          hiddenFields={tab === "dramas" ? { tab } : undefined}
+          placeholder={tab === "dramas" ? "Поиск по названию…" : "Поиск по имени…"}
+          className=""
+        />
+      </div>
+
+      {tab === "performers" ? (
+        performers.length === 0 ? (
+          <p className="small text-secondary mb-4">
+            {q ? "Никого не нашлось." : "Пока нет исполнителей."}
+          </p>
+        ) : (
+          // Компактная сетка карточек (как постеры сериалов на странице
+          // актёра) вместо списка на всю ширину — исполнителей у агентства
+          // бывает много, а в строке была только аватарка и имя.
+          <div className="d-flex flex-wrap gap-3 mb-4">
+            {performers.map((p) => (
+              <div
+                key={p.id}
+                className="flex-shrink-0"
+                style={{ width: "8.5rem", position: "relative" }}
+              >
+                <Link href={performerHref(p)} className="text-decoration-none d-block">
+                  <div
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      borderRadius: "0.5rem",
+                      background: "var(--bs-secondary-bg)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {p.photoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.photoUrl}
+                        alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    )}
+                  </div>
+                  <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                    {p.name}
+                  </p>
+                  {p.realName && (
+                    <p className="small text-secondary mb-0" style={{ lineHeight: 1.3 }}>
+                      ({p.realName})
+                    </p>
+                  )}
+                </Link>
+                <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                  <FavoriteButton
+                    kind="performer"
+                    id={p.id}
+                    isFavorited={favoritedPerformerIds.has(p.id)}
+                    variant="icon"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : dramas.length === 0 ? (
+        <p className="small text-secondary">
+          {q ? "Ничего не нашлось." : "Пока нет сериалов."}
+        </p>
       ) : (
-        // Компактная сетка карточек (как постеры сериалов на странице
-        // актёра) вместо списка на всю ширину — исполнителей у агентства
-        // бывает много, а в строке была только аватарка и имя.
-        <div className="d-flex flex-wrap gap-3 mb-4">
-          {performers.map((p) => (
+        // Тот же формат постер-карточек, что и в фильмографии актёра.
+        <div className="d-flex flex-wrap gap-3">
+          {dramas.map((d) => (
             <div
-              key={p.id}
+              key={d.id}
               className="flex-shrink-0"
               style={{ width: "8.5rem", position: "relative" }}
             >
-              <Link href={performerHref(p)} className="text-decoration-none d-block">
+              <Link href={dramaHref(d)} className="text-decoration-none d-block">
                 <div
                   style={{
+                    position: "relative",
                     width: "100%",
-                    aspectRatio: "1 / 1",
+                    aspectRatio: "2 / 3",
                     borderRadius: "0.5rem",
                     background: "var(--bs-secondary-bg)",
-                    overflow: "hidden",
-                  }}
-                >
-                  {p.photoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.photoUrl}
-                      alt=""
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  )}
-                </div>
-                <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
-                  {p.name}
-                </p>
-                {p.realName && (
-                  <p className="small text-secondary mb-0" style={{ lineHeight: 1.3 }}>
-                    ({p.realName})
-                  </p>
-                )}
-              </Link>
-              <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
-                <FavoriteButton
-                  kind="performer"
-                  id={p.id}
-                  isFavorited={favoritedPerformerIds.has(p.id)}
-                  variant="icon"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <h2 className="section-heading mb-2">
-        Сериалы
-      </h2>
-      {agency.dramas.length === 0 ? (
-        <p className="small text-secondary">Пока нет сериалов.</p>
-      ) : (
-        <div className="d-flex flex-column gap-2">
-          {agency.dramas.map((d) => (
-            <div
-              key={d.id}
-              className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
-            >
-              <Link
-                href={dramaHref(d)}
-                className="text-decoration-none d-flex align-items-center gap-3"
-                style={{ minWidth: 0 }}
-              >
-                <div
-                  style={{
-                    width: "2.75rem",
-                    height: "3.75rem",
-                    borderRadius: "0.5rem",
-                    background: "var(--bs-secondary-bg)",
-                    flexShrink: 0,
                     overflow: "hidden",
                   }}
                 >
@@ -184,17 +229,26 @@ export default async function AgencyDetailPage({
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   )}
+                  {d.status === "RETURNING_SERIES" && (
+                    <span
+                      className={`badge rounded-pill ${DRAMA_STATUS_BADGE_CLASS.RETURNING_SERIES}`}
+                      style={{ position: "absolute", top: "0.375rem", left: "0.375rem", fontSize: "0.6rem" }}
+                    >
+                      {DRAMA_STATUS_LABELS.RETURNING_SERIES}
+                    </span>
+                  )}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <p className="font-display fw-medium text-white mb-0 text-truncate">{d.title}</p>
-                  {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
-                </div>
+                <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                  {d.title}
+                </p>
+                {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
               </Link>
-              <DramaStatusButton
-                dramaId={d.id}
-                status={statusByDramaId.get(d.id) ?? null}
-                className="flex-shrink-0"
-              />
+              <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                <DramaStatusButton
+                  dramaId={d.id}
+                  status={statusByDramaId.get(d.id) ?? null}
+                />
+              </div>
             </div>
           ))}
         </div>

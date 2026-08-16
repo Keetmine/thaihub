@@ -20,7 +20,7 @@ test("admin can create and delete an event", async ({ page }) => {
   await page.fill('input[name="occurrenceStartTime"]', "19:00");
   await page.getByRole("button", { name: "Создать событие" }).click();
 
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/events$/);
   await expect(page.getByText(title)).toBeVisible();
 
   // Clean up — open the event's edit page and delete it via the
@@ -28,6 +28,6 @@ test("admin can create and delete an event", async ({ page }) => {
   await page.getByText(title).click();
   await page.getByRole("button", { name: "Удалить событие" }).click();
   await page.getByRole("button", { name: "Удалить", exact: true }).click();
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/events$/);
   await expect(page.getByText(title)).not.toBeVisible();
 });

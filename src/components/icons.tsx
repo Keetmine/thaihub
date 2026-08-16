@@ -418,6 +418,57 @@ export function TvIcon({ className }: { className?: string }) {
   );
 }
 
+export function SpotifyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M7.5 9.7c3-.9 6.3-.5 9 1" />
+      <path d="M8 12.6c2.4-.7 5-.4 7.2.8" />
+      <path d="M8.5 15.4c1.8-.5 3.7-.3 5.4.6" />
+    </svg>
+  );
+}
+
+export function AppleMusicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 18V6.5l9-2v11" />
+      <circle cx="6.75" cy="18" r="2.25" />
+      <circle cx="15.75" cy="15.5" r="2.25" />
+    </svg>
+  );
+}
+
+export function YouTubeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.5" y="6" width="19" height="12.5" rx="3.5" />
+      <path d="M10.2 9.5l4.6 2.75-4.6 2.75z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function MusicNoteIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.95em"
+      height="0.95em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M9 18V5l10-2v13" />
+      <circle cx="6.5" cy="18" r="2.5" />
+      <circle cx="16.5" cy="16" r="2.5" />
+    </svg>
+  );
+}
+
 export function TicketIcon({ className }: { className?: string } = {}) {
   return (
     <svg

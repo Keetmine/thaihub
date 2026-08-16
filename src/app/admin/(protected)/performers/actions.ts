@@ -124,6 +124,9 @@ const SOCIAL_FIELD_NAMES: Record<SocialPlatform, string> = {
   instagram: "instagramUrl",
   tiktok: "tiktokUrl",
   twitter: "twitterUrl",
+  spotify: "spotifyUrl",
+  applemusic: "applemusicUrl",
+  youtube: "youtubeUrl",
 };
 
 function getLinks(formData: FormData): LinkInput[] {
@@ -183,6 +186,7 @@ export async function createPerformer(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();
+  const musicAlias = String(formData.get("musicAlias") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
@@ -197,6 +201,7 @@ export async function createPerformer(formData: FormData) {
       name,
       type,
       realName: realName || null,
+      musicAlias: musicAlias || null,
       birthDate: type === "SOLO" ? birthDate : null,
       placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
       bio: bio || null,
@@ -254,6 +259,7 @@ export async function updatePerformer(id: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();
+  const musicAlias = String(formData.get("musicAlias") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
@@ -279,6 +285,7 @@ export async function updatePerformer(id: string, formData: FormData) {
         name,
         type,
         realName: realName || null,
+        musicAlias: musicAlias || null,
         birthDate: type === "SOLO" ? birthDate : null,
         placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
         bio: bio || null,

@@ -17,6 +17,37 @@ function LogoutButton() {
   );
 }
 
+// Пункты сайдбара — единый источник и для мобильного меню.
+const NAV_SECTIONS: {
+  label: string | null;
+  items: { href: string; title: string; matchPrefixes?: string[] }[];
+}[] = [
+  {
+    label: null,
+    items: [{ href: "/admin", title: "Дашборд" }],
+  },
+  {
+    label: "Каталог",
+    items: [
+      { href: "/admin/events", title: "События", matchPrefixes: ["/admin/events/"] },
+      {
+        href: "/admin/performers",
+        title: "Исполнители",
+        matchPrefixes: ["/admin/performers/", "/admin/pairings", "/admin/agencies"],
+      },
+      { href: "/admin/dramas", title: "Сериалы", matchPrefixes: ["/admin/dramas/"] },
+      { href: "/admin/locations", title: "Локации", matchPrefixes: ["/admin/locations/"] },
+    ],
+  },
+  {
+    label: "Сервис",
+    items: [
+      { href: "/admin/duplicates", title: "Дубли" },
+      { href: "/admin/users", title: "Пользователи" },
+    ],
+  },
+];
+
 export default async function ProtectedAdminLayout({
   children,
 }: {
@@ -52,34 +83,14 @@ export default async function ProtectedAdminLayout({
           </Link>
 
           <MobileMenu>
-            <NavLink href="/admin" matchPrefixes={["/admin/events/"]}>
-              События
-            </NavLink>
-            <NavLink href="/admin/performers" matchPrefixes={["/admin/pairings", "/admin/agencies"]}>
-              Исполнители
-            </NavLink>
-            <NavLink href="/admin/dramas">Сериалы</NavLink>
-            <NavLink href="/admin/locations">Локации</NavLink>
-            <NavLink href="/admin/duplicates">Дубли</NavLink>
-            <NavLink href="/admin/users">Пользователи</NavLink>
-            <NavLink href="/admin/stats">Дашборд</NavLink>
+            {NAV_SECTIONS.flatMap((s) => s.items).map((item) => (
+              <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
+                {item.title}
+              </NavLink>
+            ))}
             <ModeToggle active="admin" />
             <LogoutButton />
           </MobileMenu>
-
-          <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
-            <NavLink href="/admin" matchPrefixes={["/admin/events/"]}>
-              События
-            </NavLink>
-            <NavLink href="/admin/performers" matchPrefixes={["/admin/pairings", "/admin/agencies"]}>
-              Исполнители
-            </NavLink>
-            <NavLink href="/admin/dramas">Сериалы</NavLink>
-            <NavLink href="/admin/locations">Локации</NavLink>
-            <NavLink href="/admin/duplicates">Дубли</NavLink>
-            <NavLink href="/admin/users">Пользователи</NavLink>
-            <NavLink href="/admin/stats">Дашборд</NavLink>
-          </div>
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
             <ModeToggle active="admin" />
@@ -87,7 +98,31 @@ export default async function ProtectedAdminLayout({
           </div>
         </nav>
       </div>
-      <main className="flex-fill container py-4 py-md-5">{children}</main>
+      <div className="container flex-fill py-4 py-md-5">
+        <div className="d-flex align-items-start gap-4">
+          {/* Сайдбар вместо горизонтального меню — пунктов будет только
+              больше; на мобильных остаётся бургер в шапке. */}
+          <aside className="admin-sidebar d-none d-sm-block flex-shrink-0">
+            {NAV_SECTIONS.map((section, i) => (
+              <div key={i} className={i > 0 ? "mt-3" : undefined}>
+                {section.label && (
+                  <p className="admin-sidebar-label mb-1">{section.label}</p>
+                )}
+                <div className="d-flex flex-column gap-1">
+                  {section.items.map((item) => (
+                    <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
+                      {item.title}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </aside>
+          <main className="flex-fill" style={{ minWidth: 0 }}>
+            {children}
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

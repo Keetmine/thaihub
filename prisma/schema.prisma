@@ -107,6 +107,14 @@ model Performer {
   bandMembers    BandMember[] @relation("BandMembers")
   memberOfBands  BandMember[] @relation("MemberOfBands")
 
+  // Музыкальная сторона: сценический псевдоним сольного музыканта
+  // (у группы «псевдоним» — это её name) и дискография. Ссылки на муз.
+  // площадки (Spotify и т.п.) живут в общих PerformerLink — платформа
+  // распознаётся по URL (см. src/lib/socialLinks.ts).
+  musicAlias     String?
+  albums         Album[]
+  songs          Song[]
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -114,6 +122,45 @@ model Performer {
 enum PerformerType {
   SOLO
   BAND
+}
+
+// Дискография исполнителя (группы или сольного музыканта). Заполняется
+// импортом с tpop.fandom.com (scripts/import-tpop-discography.ts) или
+// руками; треки альбомов пока не ведём — только сами альбомы и
+// отдельные песни/синглы.
+model Album {
+  id          String    @id @default(cuid())
+  performerId String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  title       String
+  type        AlbumType @default(ALBUM)
+  year        Int?
+  coverUrl    String?
+  songs       Song[]
+  createdAt   DateTime  @default(now())
+
+  @@unique([performerId, title])
+}
+
+enum AlbumType {
+  ALBUM
+  EP
+  SINGLE
+}
+
+model Song {
+  id          String    @id @default(cuid())
+  performerId String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  albumId     String?
+  album       Album?    @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  title       String
+  // Пояснение из источника: «(with SIZZY)», название OST и т.п.
+  note        String?
+  year        Int?
+  // Ссылка на площадку/клип, если появится источник.
+  url         String?
+  createdAt   DateTime  @default(now())
 }
 
 // A talent/management agency. Performers optionally belong to one or more

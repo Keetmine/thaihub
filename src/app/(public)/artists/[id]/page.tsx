@@ -16,10 +16,16 @@ import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
-import { CakeIcon, BuildingIcon, PinIcon } from "@/components/icons";
+import { CakeIcon, BuildingIcon, PinIcon, MusicNoteIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
+
+const ALBUM_TYPE_LABELS = {
+  ALBUM: "Альбом",
+  EP: "EP",
+  SINGLE: "Сингл",
+} as const;
 
 export default async function PerformerPage({
   params,
@@ -35,6 +41,8 @@ export default async function PerformerPage({
       dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
       bandMembers: { include: { performer: true }, orderBy: { performer: { name: "asc" } } },
       memberOfBands: { include: { band: true }, orderBy: { band: { name: "asc" } } },
+      albums: { orderBy: [{ year: "desc" }, { title: "asc" }] },
+      songs: { orderBy: [{ year: "desc" }, { title: "asc" }] },
     },
   });
   if (!performer) notFound();
@@ -176,6 +184,12 @@ export default async function PerformerPage({
               {formatBirthDate(performer.birthDate)} ({currentAge(performer.birthDate)})
             </p>
           )}
+          {!isBand && performer.musicAlias && (
+            <p className="small text-secondary mb-0">
+              <MusicNoteIcon /> <span className="text-secondary">Выступает как:</span>{" "}
+              {performer.musicAlias}
+            </p>
+          )}
           {!isBand && performer.placeOfBirth && (
             <p className="small text-secondary mb-0">
               <PinIcon className="icon-inline" /> <span className="text-secondary">Место рождения:</span>{" "}
@@ -287,6 +301,89 @@ export default async function PerformerPage({
                     name={m.performer.name}
                     subtitle={m.performer.realName}
                   />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {performer.albums.length > 0 && (
+            <div className="mt-2">
+              <h2 className="section-heading mb-2">
+                <MusicNoteIcon className="icon-inline" /> Альбомы
+              </h2>
+              <div className="d-flex gap-3 pb-2 thin-scroll" style={{ overflowX: "auto" }}>
+                {performer.albums.map((album) => (
+                  <div key={album.id} className="flex-shrink-0" style={{ width: "8.5rem" }}>
+                    <div
+                      className="d-flex align-items-center justify-content-center"
+                      style={{
+                        width: "100%",
+                        aspectRatio: "1 / 1",
+                        borderRadius: "0.5rem",
+                        background: "var(--bs-secondary-bg)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {album.coverUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={album.coverUrl}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <span className="text-secondary fs-3">
+                          <MusicNoteIcon />
+                        </span>
+                      )}
+                    </div>
+                    <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                      {album.title}
+                    </p>
+                    <p className="small text-secondary mb-0">
+                      {ALBUM_TYPE_LABELS[album.type]}
+                      {album.year ? ` · ${album.year}` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {performer.songs.length > 0 && (
+            <div className="mt-2">
+              <h2 className="section-heading mb-2">
+                <MusicNoteIcon className="icon-inline" /> Песни и синглы
+              </h2>
+              <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
+                {performer.songs.map((song) => (
+                  <div
+                    key={song.id}
+                    className="surface d-flex align-items-baseline justify-content-between gap-3 px-3 py-2"
+                  >
+                    <span style={{ minWidth: 0 }}>
+                      <span className="text-white">
+                        {song.url ? (
+                          <a
+                            href={song.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="link-body-emphasis"
+                          >
+                            {song.title}
+                          </a>
+                        ) : (
+                          song.title
+                        )}
+                      </span>
+                      {song.note && (
+                        <span className="small text-secondary"> · {song.note}</span>
+                      )}
+                    </span>
+                    {song.year && (
+                      <span className="small text-secondary flex-shrink-0">{song.year}</span>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

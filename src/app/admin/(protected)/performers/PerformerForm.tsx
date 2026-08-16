@@ -64,6 +64,7 @@ export default function PerformerForm({
     name: string;
     type: string;
     realName: string;
+    musicAlias: string;
     birthDate: string;
     placeOfBirth: string;
     bio: string;
@@ -198,14 +199,25 @@ export default function PerformerForm({
         </div>
 
         {type === "SOLO" && (
-          <div>
-            <label className="form-label">Настоящее имя</label>
-            <input
-              name="realName"
-              defaultValue={v?.realName}
-              placeholder="Если сценическое имя отличается от настоящего"
-              className="form-control"
-            />
+          <div className="row g-3">
+            <div className="col-12 col-sm-6">
+              <label className="form-label">Настоящее имя</label>
+              <input
+                name="realName"
+                defaultValue={v?.realName}
+                placeholder="Если сценическое имя отличается от настоящего"
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-sm-6">
+              <label className="form-label">Музыкальный псевдоним</label>
+              <input
+                name="musicAlias"
+                defaultValue={v?.musicAlias}
+                placeholder="Если выступает сольно под другим именем"
+                className="form-control"
+              />
+            </div>
           </div>
         )}
 
@@ -312,6 +324,36 @@ export default function PerformerForm({
               name="twitterUrl"
               defaultValue={socialDefaults.twitter}
               placeholder="https://x.com/…"
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <label className="form-label">Spotify</label>
+            <input
+              type="url"
+              name="spotifyUrl"
+              defaultValue={socialDefaults.spotify}
+              placeholder="https://open.spotify.com/artist/…"
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <label className="form-label">Apple Music</label>
+            <input
+              type="url"
+              name="applemusicUrl"
+              defaultValue={socialDefaults.applemusic}
+              placeholder="https://music.apple.com/…"
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <label className="form-label">YouTube</label>
+            <input
+              type="url"
+              name="youtubeUrl"
+              defaultValue={socialDefaults.youtube}
+              placeholder="https://youtube.com/@…"
               className="form-control"
             />
           </div>

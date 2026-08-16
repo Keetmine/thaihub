@@ -94,8 +94,8 @@ export async function createEvent(formData: FormData) {
   });
 
   revalidatePath("/");
-  revalidatePath("/admin");
-  redirect("/admin");
+  revalidatePath("/admin/events");
+  redirect("/admin/events");
 }
 
 /** Creates/updates/deletes an Event's EventOccurrence rows to match the
@@ -177,8 +177,8 @@ export async function updateEvent(id: string, formData: FormData) {
   });
 
   revalidatePath("/");
-  revalidatePath("/admin");
-  redirect("/admin");
+  revalidatePath("/admin/events");
+  redirect("/admin/events");
 }
 
 /**
@@ -209,7 +209,7 @@ export async function createEventMinimal(
   });
 
   revalidatePath("/");
-  revalidatePath("/admin");
+  revalidatePath("/admin/events");
   return { id: event.id, title: event.title };
 }
 
@@ -217,6 +217,6 @@ export async function deleteEvent(id: string) {
   await requireAdmin();
   await prisma.event.delete({ where: { id } });
   revalidatePath("/");
-  revalidatePath("/admin");
-  redirect("/admin");
+  revalidatePath("/admin/events");
+  redirect("/admin/events");
 }

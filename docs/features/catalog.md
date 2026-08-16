@@ -96,6 +96,23 @@ they're solving different problems:
   JS, then slices — fine given the event count is nowhere near
   performer/drama scale.
 
+## Music
+
+A performer has a music side, solo or as a band: `Performer.musicAlias`
+(сценический псевдоним сольного музыканта, shown as «Выступает как» on
+the performer page and editable in the admin form), a discography
+(`Album` — type ALBUM/EP/SINGLE, year, locally-stored cover; `Song` —
+year, optional `note` like "with SIZZY" or an OST name, optional `url`),
+and music-platform links. Platform links reuse the generic
+`PerformerLink` rows — `detectSocialPlatform` (`src/lib/socialLinks.ts`)
+now also recognizes Spotify / Apple Music / YouTube by URL, each with a
+dedicated admin form field and an icon in the performer page's social
+row. Discography renders as «Альбомы» (cover row) + «Песни и синглы»
+(scroll list) sections. Data source so far: the tpop.fandom.com
+discography importer — see
+[tpop-band-import.md](tpop-band-import.md#discography-import-albums--songs);
+no admin CRUD for albums/songs yet.
+
 ## Pairings
 
 A `Pairing` names a two-performer "ship" (`performerAId`/`performerBId`,

@@ -818,6 +818,43 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   font-weight: 500;
 }
 
+/* ---------- Сайдбар админки ---------- */
+/* Вертикальное меню разделов слева от контента (layout админки);
+   на мобильных вместо него бургер в шапке. */
+.admin-sidebar {
+  width: 12.5rem;
+  position: sticky;
+  /* под закреплённой шапкой (.nav-sticky) */
+  top: 6.5rem;
+}
+
+.admin-sidebar .nav-link {
+  display: block;
+  padding: 0.4rem 0.85rem;
+  border-radius: 0.6rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+}
+
+.admin-sidebar .nav-link:hover {
+  color: var(--bs-body-color);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-sidebar .nav-link.active {
+  color: var(--bs-primary-text-emphasis);
+  background: var(--bs-primary-bg-subtle);
+}
+
+.admin-sidebar-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bs-secondary-color);
+  opacity: 0.7;
+  padding-left: 0.85rem;
+}
+
 /* ---------- Цветные статусы сериалов ---------- */
 /* Ещё не вышедшие — красный, выходящие сейчас — зелёный, уже
    вышедшие — голубой (см. DRAMA_STATUS_BADGE_CLASS в lib/dramaStatus). */

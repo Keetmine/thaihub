@@ -30,9 +30,13 @@ One app, two route groups, both under the same Next.js project:
   page instead of the event feed when logged out.
 - `src/app/admin/*` — CRUD admin. `src/app/admin/layout.tsx` wraps
   everything (just applies the violet admin theme class); `src/app/admin/(protected)/*`
-  is the actual authenticated admin area with its own nav, gated by a
+  is the actual authenticated admin area, gated by a
   single shared `ADMIN_PASSWORD`. `src/app/admin/login/*` is deliberately
-  outside `(protected)`.
+  outside `(protected)`. The protected layout is an admin-panel shell: a
+  left sidebar (`.admin-sidebar`, section-grouped links; burger menu on
+  mobile) next to the content. `/admin` itself is the dashboard
+  (`/admin/stats` redirects there), the events list lives at
+  `/admin/events`.
 - `src/app/api/*` — route handlers for things that aren't page navigations:
   file upload, the per-event `.ics` download, the per-user `.ics`
   subscribe feed.

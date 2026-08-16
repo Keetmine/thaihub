@@ -100,7 +100,7 @@ export default function TtmImportFlow({
           })),
         extraPerformerIds,
       });
-      router.push("/admin");
+      router.push("/admin/events");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Не удалось создать событие");
     } finally {

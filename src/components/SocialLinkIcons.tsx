@@ -1,4 +1,12 @@
-import { InstagramIcon, TikTokIcon, TwitterIcon, MyDramaListIcon } from "@/components/icons";
+import {
+  InstagramIcon,
+  TikTokIcon,
+  TwitterIcon,
+  MyDramaListIcon,
+  SpotifyIcon,
+  AppleMusicIcon,
+  YouTubeIcon,
+} from "@/components/icons";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 
 type Platform = SocialPlatform | "mydramalist";
@@ -7,6 +15,9 @@ const PLATFORM_ICONS: Record<Platform, React.ComponentType> = {
   instagram: InstagramIcon,
   tiktok: TikTokIcon,
   twitter: TwitterIcon,
+  spotify: SpotifyIcon,
+  applemusic: AppleMusicIcon,
+  youtube: YouTubeIcon,
   mydramalist: MyDramaListIcon,
 };
 

@@ -88,6 +88,7 @@ export default async function EditPerformerPage({
             name: performer.name,
             type: performer.type,
             realName: performer.realName ?? "",
+            musicAlias: performer.musicAlias ?? "",
             birthDate: performer.birthDate ? dateKey(performer.birthDate) : "",
             placeOfBirth: performer.placeOfBirth ?? "",
             bio: performer.bio ?? "",

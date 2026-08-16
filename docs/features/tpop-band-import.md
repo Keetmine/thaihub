@@ -128,3 +128,26 @@ lost, nothing needed to be chosen between.
 
 None — reuses the same `Performer`/`Agency`/`PerformerAgency`/
 `BandMember` fields every other importer writes to. No schema change.
+
+## Discography import (albums + songs)
+
+`scripts/import-tpop-discography.ts <tpop-url-or-title>` — отдельный
+проход по секции `==Discography==` той же статьи (сырой wikitext через
+`action=parse&prop=wikitext`, парсер — `src/lib/tpopDiscography.ts`).
+Исполнитель матчится по названию статьи против `Performer.name` /
+`musicAlias` (без регистра) и должен уже существовать.
+
+- Подсекции с "album"/"EP" в заголовке → `Album` (тип ALBUM/EP), с
+  обложкой со страницы самого альбома (`prop=pageimages`, URL викии
+  обрезается до базового — суффикс `/revision/latest` у всех
+  одинаковый и ломал локальные имена файлов). Апсерт по
+  `(performerId, title)`.
+- Подсекции singles/collaborations/OSTs/soundtracks → `Song` с годом и
+  note из `{{small|…}}` («with SIZZY», название OST — для OST-строк
+  название песни и OST меняются местами). Повторный запуск докидывает
+  только новые (дедуп по title+note в коде — на Song нет уникального
+  индекса).
+
+Выводится на публичной странице исполнителя: секции «Альбомы» (ряд
+обложек) и «Песни и синглы» (список с годами и note) — см.
+[catalog.md](catalog.md#music).
