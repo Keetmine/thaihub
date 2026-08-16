@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe3bd"/>
+      <stop offset="1" stop-color="#ffd096"/>
+    </linearGradient>
+    <linearGradient id="c1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb469"/>
+      <stop offset="1" stop-color="#ff9040"/>
+    </linearGradient>
+    <linearGradient id="c2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff8f45"/>
+      <stop offset="1" stop-color="#f96a1b"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="512" height="512" rx="118"/>
+    </clipPath>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+  <g clip-path="url(#clip)">
+    <circle cx="170" cy="342" r="268" fill="url(#c1)" opacity="0.55"/>
+    <circle cx="170" cy="342" r="168" fill="url(#c2)" opacity="0.75"/>
+  </g>
+  <g transform="translate(170 340) scale(1.18) translate(-170 -340)">
+    <path fill="#e8431f" d="M170 414c-4 0-8-1.6-11-4.6-11.4-10.8-42-37.6-56-56C92 339 86 324 86 308c0-31 24-54 53-54 12.6 0 24.4 5 31 14 6.6-9 18.4-14 31-14 29 0 53 23 53 54 0 16-6 31-17 45.4-14 18.4-44.6 45.2-56 56-3 3-7 4.6-11 4.6z"/>
+  </g>
+</svg>

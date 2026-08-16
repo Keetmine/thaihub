@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import DramaForm from "../../DramaForm";
+import MdlImportButton from "../../MdlImportButton";
 import { updateDrama, deleteDrama } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 
@@ -43,6 +44,7 @@ export default async function EditDramaPage({
       <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
         Редактировать сериал
       </h1>
+      <MdlImportButton dramaId={id} />
       <DramaForm
         action={boundUpdate}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}

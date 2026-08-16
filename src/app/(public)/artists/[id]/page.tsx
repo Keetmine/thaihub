@@ -12,7 +12,7 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
-import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
+import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -105,6 +105,25 @@ export default async function PerformerPage({
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  const currentAge = (d: Date) => {
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    if (
+      today.getMonth() < d.getMonth() ||
+      (today.getMonth() === d.getMonth() && today.getDate() < d.getDate())
+    ) {
+      age -= 1;
+    }
+    const mod10 = age % 10;
+    const mod100 = age % 100;
+    const word =
+      mod10 === 1 && mod100 !== 11
+        ? "год"
+        : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+          ? "года"
+          : "лет";
+    return `${age} ${word}`;
+  };
 
   const recognizedLinks = performer.links
     .map((l) => {
@@ -154,7 +173,7 @@ export default async function PerformerPage({
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
               <CakeIcon /> <span className="text-secondary">Дата рождения:</span>{" "}
-              {formatBirthDate(performer.birthDate)}
+              {formatBirthDate(performer.birthDate)} ({currentAge(performer.birthDate)})
             </p>
           )}
           {!isBand && performer.placeOfBirth && (
@@ -213,7 +232,7 @@ export default async function PerformerPage({
                         )}
                         {pd.drama.status === "RETURNING_SERIES" && (
                           <span
-                            className="badge rounded-pill text-bg-secondary"
+                            className={`badge rounded-pill ${DRAMA_STATUS_BADGE_CLASS.RETURNING_SERIES}`}
                             style={{ position: "absolute", top: "0.375rem", left: "0.375rem", fontSize: "0.6rem" }}
                           >
                             {DRAMA_STATUS_LABELS.RETURNING_SERIES}
@@ -261,13 +280,13 @@ export default async function PerformerPage({
               </h2>
               <div className="d-flex flex-wrap gap-2">
                 {performer.bandMembers.map((m) => (
-                  <Link
+                  <EntityMiniCard
                     key={m.performerId}
                     href={performerHref(m.performer)}
-                    className="event-chip text-decoration-none"
-                  >
-                    {m.performer.name}
-                  </Link>
+                    photoUrl={m.performer.photoUrl}
+                    name={m.performer.name}
+                    subtitle={m.performer.realName}
+                  />
                 ))}
               </div>
             </div>

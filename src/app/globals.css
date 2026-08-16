@@ -818,6 +818,29 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   font-weight: 500;
 }
 
+/* ---------- Цветные статусы сериалов ---------- */
+/* Ещё не вышедшие — красный, выходящие сейчас — зелёный, уже
+   вышедшие — голубой (см. DRAMA_STATUS_BADGE_CLASS в lib/dramaStatus). */
+.status-badge-upcoming {
+  background: rgba(248, 81, 73, 0.16);
+  color: #ff8f88;
+}
+
+.status-badge-airing {
+  background: rgba(63, 185, 80, 0.16);
+  color: #56d364;
+}
+
+.status-badge-ended {
+  background: rgba(83, 155, 245, 0.16);
+  color: #79b8ff;
+}
+
+.status-badge-canceled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--bs-secondary-color);
+}
+
 /* ---------- Тонкий кастомный скроллбар ---------- */
 /* Для горизонтальных рядов (постеры) и внутренних списков — нативная
    полоса громоздкая на тёмной теме. */

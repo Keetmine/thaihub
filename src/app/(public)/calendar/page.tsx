@@ -26,7 +26,9 @@ export default async function CalendarPage({
   if (!isPremiumActive(gateUser)) {
     return (
       <div>
-        <span className="eyebrow">Афиша событий</span>
+        <Link href="/" className="eyebrow text-decoration-none">
+          ← Все события
+        </Link>
         <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
           Календарь
         </h1>
@@ -82,7 +84,9 @@ export default async function CalendarPage({
     <div>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
         <div>
-          <span className="eyebrow">Афиша событий</span>
+          <Link href="/" className="eyebrow text-decoration-none">
+            ← Все события
+          </Link>
           <h1 className="display-1-tight text-capitalize mt-3 mb-0" style={{ fontSize: "2.75rem" }}>
             {monthLabel(year, month)}
           </h1>

@@ -10,7 +10,7 @@ import VisitedButton from "@/components/VisitedButton";
 import { BuildingIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
-import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
+import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
@@ -88,7 +88,9 @@ export default async function DramaDetailPage({
           <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
         )}
         {drama.status && (
-          <span className="badge rounded-pill text-bg-secondary fs-6 fw-normal">
+          <span
+            className={`badge rounded-pill fs-6 fw-normal ${DRAMA_STATUS_BADGE_CLASS[drama.status]}`}
+          >
             {DRAMA_STATUS_LABELS[drama.status]}
           </span>
         )}

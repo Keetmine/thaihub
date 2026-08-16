@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
+import { fetchMdlDrama } from "@/lib/mydramalist";
+import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
 
 function getCastEntries(
@@ -163,4 +165,60 @@ export async function syncTmdbDramas(): Promise<DramaSyncSummary> {
   const result = await syncAllDramasFromTmdb();
   revalidateDramaPaths();
   return result;
+}
+
+export type MdlImportSummary = {
+  filled: string[];
+  skipped: string[];
+};
+
+/**
+ * Подтягивает данные сериала со страницы MyDramaList (см.
+ * `src/lib/mydramalist.ts`) по ссылке из поля mydramalistUrl. Пустые
+ * поля заполняются, занятые не трогаются (кроме статуса — он всегда
+ * освежается, т.к. выводится из дат эфира). Постер скачивается локально
+ * в WebP, как и все картинки в проекте.
+ */
+export async function importFromMydramalist(id: string, url: string): Promise<MdlImportSummary> {
+  await requireAdmin();
+  const trimmed = url.trim();
+  if (!trimmed) throw new Error("Сначала укажите ссылку на MyDramaList");
+
+  const drama = await prisma.drama.findUnique({ where: { id } });
+  if (!drama) throw new Error("Сериал не найден");
+
+  const mdl = await fetchMdlDrama(trimmed);
+
+  const filled: string[] = [];
+  const skipped: string[] = [];
+  const data: Record<string, unknown> = { mydramalistUrl: trimmed };
+
+  if (!drama.synopsis && mdl.synopsis) {
+    data.synopsis = mdl.synopsis;
+    filled.push("описание");
+  } else if (drama.synopsis) skipped.push("описание");
+
+  if (!drama.year && mdl.year) {
+    data.year = mdl.year;
+    filled.push("год");
+  } else if (drama.year) skipped.push("год");
+
+  if (!drama.network && mdl.network) {
+    data.network = mdl.network;
+    filled.push("канал");
+  } else if (drama.network) skipped.push("канал");
+
+  if (!drama.posterUrl && mdl.posterUrl) {
+    data.posterUrl = await downloadRemoteImage(mdl.posterUrl, "mdl");
+    filled.push("постер");
+  } else if (drama.posterUrl) skipped.push("постер");
+
+  if (mdl.status && mdl.status !== drama.status) {
+    data.status = mdl.status;
+    filled.push("статус");
+  }
+
+  await prisma.drama.update({ where: { id }, data });
+  revalidateDramaPaths(id);
+  return { filled, skipped };
 }

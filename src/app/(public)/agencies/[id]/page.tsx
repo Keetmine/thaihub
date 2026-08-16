@@ -98,50 +98,52 @@ export default async function AgencyDetailPage({
       {performers.length === 0 ? (
         <p className="small text-secondary mb-4">Пока нет исполнителей.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4">
+        // Компактная сетка карточек (как постеры сериалов на странице
+        // актёра) вместо списка на всю ширину — исполнителей у агентства
+        // бывает много, а в строке была только аватарка и имя.
+        <div className="d-flex flex-wrap gap-3 mb-4">
           {performers.map((p) => (
             <div
               key={p.id}
-              className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+              className="flex-shrink-0"
+              style={{ width: "8.5rem", position: "relative" }}
             >
-              <Link
-                href={performerHref(p)}
-                className="text-decoration-none d-flex align-items-center gap-2"
-                style={{ minWidth: 0 }}
-              >
-                {p.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={p.photoUrl}
-                    alt=""
-                    style={{
-                      width: "2.25rem",
-                      height: "2.25rem",
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: "2.25rem",
-                      height: "2.25rem",
-                      borderRadius: "50%",
-                      background: "var(--bs-secondary-bg)",
-                      flexShrink: 0,
-                    }}
-                  />
+              <Link href={performerHref(p)} className="text-decoration-none d-block">
+                <div
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    borderRadius: "0.5rem",
+                    background: "var(--bs-secondary-bg)",
+                    overflow: "hidden",
+                  }}
+                >
+                  {p.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.photoUrl}
+                      alt=""
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  )}
+                </div>
+                <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                  {p.name}
+                </p>
+                {p.realName && (
+                  <p className="small text-secondary mb-0" style={{ lineHeight: 1.3 }}>
+                    ({p.realName})
+                  </p>
                 )}
-                <span className="font-display fw-medium text-white text-truncate">{p.name}</span>
               </Link>
-              <FavoriteButton
-                kind="performer"
-                id={p.id}
-                isFavorited={favoritedPerformerIds.has(p.id)}
-                variant="icon"
-                className="flex-shrink-0"
-              />
+              <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                <FavoriteButton
+                  kind="performer"
+                  id={p.id}
+                  isFavorited={favoritedPerformerIds.has(p.id)}
+                  variant="icon"
+                />
+              </div>
             </div>
           ))}
         </div>

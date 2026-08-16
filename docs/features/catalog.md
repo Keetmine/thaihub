@@ -138,14 +138,23 @@ Most of the catalog was bulk-imported from blscene.com rather than typed
 in by hand — see [blscene-import.md](blscene-import.md). `Drama.status`
 (TMDB's own airing-status vocabulary — Ended/Returning Series/etc., shown
 as a badge next to the title) comes from the TMDB importer, see
-[tmdb-import.md](tmdb-import.md). `Drama.network` (broadcaster/streamer)
+[tmdb-import.md](tmdb-import.md); a drama can also be enriched
+point-by-point from its MyDramaList page, see
+[mydramalist-import.md](mydramalist-import.md). Status badges are
+color-coded (`DRAMA_STATUS_BADGE_CLASS` in `src/lib/dramaStatus.ts` +
+`.status-badge-*` in `globals.css`): not-yet-aired red, currently airing
+green, finished blue, canceled gray. `Drama.network` (broadcaster/streamer)
 comes from the Wikipedia agency importer, see
 [wikipedia-agency-import.md](wikipedia-agency-import.md).
 
 ## Agencies
 
 `Agency` has its own roster and can also be the production/distribution
-agency on a `Drama` directly (independent of the cast's agencies). An
+agency on a `Drama` directly (independent of the cast's agencies). The
+public agency page shows its roster as a compact wrapped card grid
+(square photo, nickname, real name in parentheses, favorite heart
+overlaid) rather than full-width rows — rosters run to dozens of
+performers. An
 agency's roster/productions can be bulk-imported from any of several
 sources, depending on what that particular agency has published where:
 its own Wikipedia article (see
