@@ -2036,3 +2036,20 @@ svg[aria-hidden="true"] {
 .search-section[open] .search-section-chevron {
   transform: rotate(90deg);
 }
+
+/* ---------- Источники (сноски) — намеренно незаметные ---------- */
+.sources-block {
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+  opacity: 0.65;
+}
+
+.sources-block a {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.sources-block a:hover {
+  color: var(--bs-link-hover-color);
+}

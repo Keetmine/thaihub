@@ -30,10 +30,14 @@ const ALBUM_TYPE_LABELS = {
 
 export default async function PerformerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ events?: string }>;
 }) {
   const { id: rawId } = await params;
+  const { events: eventsTab } = await searchParams;
+  const showPastEvents = eventsTab === "past";
   const performer = await prisma.performer.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
@@ -256,14 +260,14 @@ export default async function PerformerPage({
               {performer.height && (
                 <>
                   <span className="text-secondary">Рост:</span>{" "}
-                  <span className="text-body">{performer.height}</span>
+                  <span className="text-body">{performer.height.replace(/\s*\(.*?\)/g, "").trim()}</span>
                 </>
               )}
               {performer.height && performer.weight && " · "}
               {performer.weight && (
                 <>
                   <span className="text-secondary">Вес:</span>{" "}
-                  <span className="text-body">{performer.weight}</span>
+                  <span className="text-body">{performer.weight.replace(/\s*\(.*?\)/g, "").trim()}</span>
                 </>
               )}
             </p>
@@ -577,14 +581,34 @@ export default async function PerformerPage({
             </div>
       )}
 
-      <h2 className="section-heading mb-2">
-        Предстоящие события
-      </h2>
-      {upcoming.length === 0 ? (
-        <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
+      <h2 className="section-heading mb-2">События</h2>
+      <div className="tab-bar mb-3">
+        <Link
+          href={performerHref(performer)}
+          prefetch={false}
+          scroll={false}
+          className={`tab-bar-item ${!showPastEvents ? "active" : ""}`}
+        >
+          Предстоящие ({upcoming.length})
+        </Link>
+        <Link
+          href={`${performerHref(performer)}?events=past`}
+          prefetch={false}
+          scroll={false}
+          className={`tab-bar-item ${showPastEvents ? "active" : ""}`}
+        >
+          Прошедшие ({past.length})
+        </Link>
+      </div>
+      {(showPastEvents ? past : upcoming).length === 0 ? (
+        <p className="small text-secondary mb-4">
+          {showPastEvents ? "Прошедших событий нет." : "Нет предстоящих событий."}
+        </p>
       ) : (
-        <div className="d-flex flex-column gap-3 mb-4 scroll-list thin-scroll">
-          {upcoming.map((ev) => (
+        <div
+          className={`d-flex flex-column gap-3 mb-4 scroll-list thin-scroll ${showPastEvents ? "opacity-50" : ""}`}
+        >
+          {(showPastEvents ? past : upcoming).map((ev) => (
             isPremiumActive(currentUser) ? (
 
               <EventAgendaRow
@@ -602,33 +626,6 @@ export default async function PerformerPage({
             )
           ))}
         </div>
-      )}
-
-      {past.length > 0 && (
-        <>
-          <h2 className="section-heading mb-2">
-            Прошедшие
-          </h2>
-          <div className="d-flex flex-column gap-3 opacity-50 mb-4 scroll-list thin-scroll">
-            {past.map((ev) => (
-              isPremiumActive(currentUser) ? (
-
-                <EventAgendaRow
-                key={ev.occurrenceId}
-                event={ev}
-                isFavorited={favoritedEventIds.has(ev.id)}
-                isGoing={goingEventIds.has(ev.occurrenceId)}
-                showDate
-              />
-
-              ) : (
-
-                <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
-
-              )
-            ))}
-          </div>
-        </>
       )}
 
       {performer.mvAppearances.length > 0 && (
@@ -688,16 +685,16 @@ export default async function PerformerPage({
       )}
 
       {(performer.sourceUrl || (Array.isArray(performer.references) && performer.references.length > 0)) && (
-        <div className="surface p-4 mb-3">
-          <h2 className="section-heading mb-2">Источники</h2>
-          <ol className="small text-secondary ps-3 mb-0 d-flex flex-column gap-1">
+        <div className="mb-3 sources-block">
+          <h2 className="section-heading mb-2" style={{ opacity: 0.55 }}>Источники</h2>
+          <ol className="ps-3 mb-0 d-flex flex-column gap-1">
             {(Array.isArray(performer.references)
               ? (performer.references as { label: string; url: string | null }[])
               : []
             ).map((r, i) => (
               <li key={i}>
                 {r.url ? (
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="link-body-emphasis">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer">
                     {r.label || r.url}
                   </a>
                 ) : (
@@ -708,12 +705,7 @@ export default async function PerformerPage({
             {/* Страница-источник — обычным пунктом списка, следующим номером */}
             {performer.sourceUrl && (
               <li>
-                <a
-                  href={performer.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="link-body-emphasis"
-                >
+                <a href={performer.sourceUrl} target="_blank" rel="noopener noreferrer">
                   tpop.fandom.com (CC BY-SA)
                 </a>
               </li>

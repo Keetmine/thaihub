@@ -8,11 +8,14 @@ import { performerHref } from "@/lib/performerSlug";
 
 export const dynamic = "force-dynamic";
 
-/** Из ссылки на публичную страницу артиста (или голого слага) — слаг. */
-function slugFromInput(raw: string): string {
+/** Из ссылки на публичную страницу (артист или сериал) — тип и слаг. */
+function parseCompareInput(raw: string): { kind: "performer" | "drama" | "any"; slug: string } {
   const t = raw.trim();
-  const m = t.match(/\/artists\/([^/?#]+)/);
-  return (m ? m[1] : t).trim();
+  const artist = t.match(/\/artists\/([^/?#]+)/);
+  if (artist) return { kind: "performer", slug: artist[1] };
+  const drama = t.match(/\/dramas\/([^/?#]+)/);
+  if (drama) return { kind: "drama", slug: drama[1] };
+  return { kind: "any", slug: t };
 }
 
 async function comparePerformer(slug: string) {
@@ -25,15 +28,33 @@ async function comparePerformer(slug: string) {
   });
 }
 
+async function compareDrama(slug: string) {
+  return prisma.drama.findFirst({
+    where: { OR: [{ slug }, { id: slug }] },
+    include: {
+      _count: { select: { performers: true, locations: true, events: true, watchStatuses: true } },
+    },
+  });
+}
+
 export default async function DuplicatesPage({
   searchParams,
 }: {
   searchParams: Promise<{ a?: string; b?: string }>;
 }) {
   const { a: rawA, b: rawB } = await searchParams;
+  const inputA = rawA ? parseCompareInput(rawA) : null;
+  const inputB = rawB ? parseCompareInput(rawB) : null;
+  // Сериалы, если хотя бы одна ссылка /dramas/ — иначе артисты.
+  const compareKind =
+    inputA?.kind === "drama" || inputB?.kind === "drama" ? "drama" : "performer";
   const [compareA, compareB] =
-    rawA && rawB
-      ? await Promise.all([comparePerformer(slugFromInput(rawA)), comparePerformer(slugFromInput(rawB))])
+    inputA && inputB && compareKind === "performer"
+      ? await Promise.all([comparePerformer(inputA.slug), comparePerformer(inputB.slug)])
+      : [null, null];
+  const [dramaA, dramaB] =
+    inputA && inputB && compareKind === "drama"
+      ? await Promise.all([compareDrama(inputA.slug), compareDrama(inputB.slug)])
       : [null, null];
   const [dramaGroups, performerGroups] = await Promise.all([
     findDuplicateDramaGroups(),
@@ -61,8 +82,8 @@ export default async function DuplicatesPage({
       <div className="surface p-4 mb-4" style={{ maxWidth: "44rem" }}>
         <h2 className="section-heading mb-2">Сравнить и слить вручную</h2>
         <p className="small text-secondary mb-3">
-          Вставьте ссылки на две страницы артистов (или слаги) — покажем их
-          рядом и дадим слить в одну запись.
+          Вставьте ссылки на две страницы артистов или сериалов (или слаги)
+          — покажем их рядом и дадим слить в одну запись.
         </p>
         <form action="/admin/duplicates" className="d-flex flex-wrap gap-2">
           <input name="a" required defaultValue={rawA ?? ""} placeholder="/artists/… или слаг" className="form-control" style={{ minWidth: "16rem", flex: 1 }} />
@@ -71,7 +92,50 @@ export default async function DuplicatesPage({
         </form>
       </div>
 
-      {rawA && rawB && (
+      {rawA && rawB && compareKind === "drama" && (
+        <div className="mb-4">
+          {!dramaA || !dramaB ? (
+            <p className="small text-danger">
+              {!dramaA && `Не найдено: ${rawA}. `}
+              {!dramaB && `Не найдено: ${rawB}.`}
+            </p>
+          ) : dramaA.id === dramaB.id ? (
+            <p className="small text-secondary">Это одна и та же запись.</p>
+          ) : (
+            <div className="row g-3" style={{ maxWidth: "56rem" }}>
+              {[dramaA, dramaB].map((d, i) => {
+                const other = i === 0 ? dramaB : dramaA;
+                return (
+                  <div key={d.id} className="col-12 col-md-6">
+                    <div className="surface p-3 h-100 d-flex flex-column gap-2">
+                      <div className="d-flex align-items-center gap-3">
+                        <LetterAvatar name={d.title} photoUrl={d.posterUrl} size={2.75} height={3.75} rounded={false} />
+                        <div style={{ minWidth: 0 }}>
+                          <a href={`/dramas/${d.slug ?? d.id}`} target="_blank" rel="noopener noreferrer" className="font-display fw-medium text-white d-block text-truncate">
+                            {d.title} ↗
+                          </a>
+                          <span className="small text-secondary">{d.year ?? "год не указан"}</span>
+                        </div>
+                      </div>
+                      <p className="small text-secondary mb-0">
+                        Каст: {d._count.performers} · Локации: {d._count.locations} · События: {d._count.events} · Статусы: {d._count.watchStatuses}
+                      </p>
+                      {d.mydramalistUrl && <p className="small text-secondary mb-0 text-truncate">MDL: {d.mydramalistUrl}</p>}
+                      <form action={mergeDramasAction.bind(null, d.id, [other.id])} className="mt-auto">
+                        <button type="submit" className="btn btn-primary btn-sm w-100">
+                          Оставить эту запись (вторая вольётся)
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {rawA && rawB && compareKind === "performer" && (
         <div className="mb-4">
           {!compareA || !compareB ? (
             <p className="small text-danger">
