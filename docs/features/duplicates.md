@@ -101,3 +101,10 @@ genuinely deleted, not soft-deleted. The confirm dialog in
 (фото, реальное имя, счётчики связей, агентства, источник) с кнопкой
 «Оставить эту запись» на каждой — вторая вливается через
 `mergePerformersAction`.
+
+## mergeAgencies
+
+Слияние агентств (`mergeAgencies`): PerformerAgency/FavoriteAgency —
+через reassignJoinRows, Drama.agencyId — updateMany, пустые
+logoUrl/description дозаполняются. Использовано разово для чистки
+мусорных агентств с датами в имени (15 штук слито в базовые).

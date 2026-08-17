@@ -77,7 +77,7 @@ function stripParenthetical(text: string): string | null {
  *  `<br>`-joined (see textWithBreaks); this picks the one still marked
  *  "present", falling back to the first entry if none is (a page not
  *  using that convention) rather than returning nothing. */
-function parseCurrentAgencyName(rawAgencyField: string | null): string | null {
+export function parseCurrentAgencyName(rawAgencyField: string | null): string | null {
   if (!rawAgencyField) return null;
   const segments = rawAgencyField
     .split(/,\s*/)
@@ -152,7 +152,10 @@ export async function fetchTpopBandPage(pageTitleOrUrl: string): Promise<TpopBan
     origin: infoboxText($, infobox, "Origin"),
     genre: infoboxText($, infobox, "Genre(s)"),
     debut: infoboxText($, infobox, "Debut"),
-    label: infoboxText($, infobox, "Label(s)"),
+    // Поле лейбла бывает историей («Bridge Management (2026-present),
+    // Gene Lab (2018-present)») — сырая строка превращалась в мусорное
+    // агентство с датами в имени; выбираем текущий, как у участников.
+    label: parseCurrentAgencyName(infoboxText($, infobox, "Label(s)")),
     members,
   };
 }

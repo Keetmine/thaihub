@@ -30,6 +30,10 @@
    фолбэк по realName без дефисов/пробелов («Opas-iamkajorn» ↔
    «Opasiamkajorn»); мимо — создаётся новый. Former artists
    импортируются, но текущим агентством не привязываются.
+   Лейбл группы («Label(s)») идёт через `parseCurrentAgencyName`, как и
+   агентство участника, — сырая история («Bridge Management
+   (2026-present), Gene Lab (2018-present)») больше не превращается в
+   мусорное агентство с датами в имени.
 3. **Расширенный профиль** (`src/lib/tpopArtistExtras.ts`, поля на
    Performer): occupation[], instruments[], soloDebut, height, weight,
    mvAppearances[] (текстом), trivia[], awards (Json-таблица

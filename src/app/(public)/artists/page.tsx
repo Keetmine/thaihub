@@ -9,8 +9,9 @@ import NameSearchBox from "@/components/NameSearchBox";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref } from "@/lib/slugHelpers";
-import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
+import { performerNameWhere, performerRealNameParen } from "@/lib/searchWhere";
 import LazyList from "@/components/LazyList";
+import AlphabetIndexList from "@/components/AlphabetIndexList";
 
 export const dynamic = "force-dynamic";
 
@@ -91,8 +92,10 @@ async function AgenciesTab({ q }: { q: string }) {
   }
 
   return (
-    <div className="d-flex flex-column gap-2">
-      {agencies.map((a) => (
+    <AlphabetIndexList
+      items={agencies.map((a) => ({ id: a.id, name: a.name, agency: a }))}
+      emptyMessage="Пока нет агентств."
+      renderItem={({ agency: a }) => (
         <div
           key={a.id}
           className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
@@ -145,8 +148,8 @@ async function AgenciesTab({ q }: { q: string }) {
             className="flex-shrink-0"
           />
         </div>
-      ))}
-    </div>
+      )}
+    />
   );
 }
 
@@ -189,7 +192,10 @@ function PerformerRow({
           </div>
         )}
         <span className="font-display fw-medium text-white text-truncate">
-          {performerOptionLabel(performer)}
+          {performer.name}
+          {performerRealNameParen(performer) && (
+            <span className="text-secondary fw-normal"> ({performerRealNameParen(performer)})</span>
+          )}
         </span>
       </Link>
       <div className="d-flex align-items-center gap-3 flex-shrink-0">

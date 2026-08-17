@@ -1,5 +1,5 @@
 import LetterAvatar from "@/components/LetterAvatar";
-import { performerOptionLabel } from "@/lib/searchWhere";
+import { performerRealNameParen } from "@/lib/searchWhere";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deletePerformer } from "./actions";
@@ -32,7 +32,10 @@ function AdminPerformerRow({
         <LetterAvatar name={performer.name} photoUrl={performer.photoUrl} size={2.25} />
         <div style={{ minWidth: 0 }}>
           <span className="font-display fw-medium text-white d-block text-truncate">
-            {performerOptionLabel(performer)}
+            {performer.name}
+            {performerRealNameParen(performer) && (
+              <span className="text-secondary fw-normal"> ({performerRealNameParen(performer)})</span>
+            )}
           </span>
           <p className="small text-secondary mb-0">{performer._count.events} событ.</p>
         </div>
@@ -197,18 +200,56 @@ export default async function AdminPerformersPage({
     type: performerType,
     ...(q ? performerNameWhere(q) : {}),
   };
-  const [performers, performersTotal] = isAgencies
+  // При поиске — ранжирование как на фронте: точные совпадения по
+  // имени/реальному имени/алиасу, затем префиксные, затем contains
+  // (иначе «Tle» хоронился под алфавитным списком contains-совпадений).
+  const nameFields = ["name", "realName", "musicAlias"] as const;
+  const [performersRaw, performersTotal] = isAgencies
     ? [[], 0]
     : await Promise.all([
-        prisma.performer.findMany({
-          where: performersWhere,
-          include: { _count: { select: { events: true } } },
-          orderBy: { name: "asc" },
-          skip: (page - 1) * PAGE_SIZE,
-          take: PAGE_SIZE,
-        }),
+        q
+          ? Promise.all([
+              prisma.performer.findMany({
+                where: {
+                  type: performerType,
+                  OR: nameFields.map((f) => ({ [f]: { equals: q, mode: "insensitive" } })),
+                },
+                include: { _count: { select: { events: true } } },
+                orderBy: { name: "asc" },
+                take: 20,
+              }),
+              prisma.performer.findMany({
+                where: {
+                  type: performerType,
+                  OR: nameFields.map((f) => ({ [f]: { startsWith: q, mode: "insensitive" } })),
+                },
+                include: { _count: { select: { events: true } } },
+                orderBy: { name: "asc" },
+                take: 20,
+              }),
+              prisma.performer.findMany({
+                where: performersWhere,
+                include: { _count: { select: { events: true } } },
+                orderBy: { name: "asc" },
+                skip: (page - 1) * PAGE_SIZE,
+                take: PAGE_SIZE,
+              }),
+            ]).then(([exact, prefix, rest]) => {
+              const seen = new Set<string>();
+              return [...exact, ...prefix, ...rest].filter((p) =>
+                seen.has(p.id) ? false : (seen.add(p.id), true),
+              );
+            })
+          : prisma.performer.findMany({
+              where: performersWhere,
+              include: { _count: { select: { events: true } } },
+              orderBy: { name: "asc" },
+              skip: (page - 1) * PAGE_SIZE,
+              take: PAGE_SIZE,
+            }),
         prisma.performer.count({ where: performersWhere }),
       ]);
+  const performers = performersRaw;
   const performersTotalPages = totalPagesFor(performersTotal);
 
   return (

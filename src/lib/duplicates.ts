@@ -208,6 +208,30 @@ export async function mergeDramas(keeperId: string, loserIds: string[]) {
   });
 }
 
+/** Слияние агентств: связи артистов/сериалов/избранного — на выжившее,
+ *  пустые поля дозаполняются, проигравшие удаляются. */
+export async function mergeAgencies(keeperId: string, loserIds: string[]) {
+  await prisma.$transaction(async (tx) => {
+    for (const loserId of loserIds) {
+      if (loserId === keeperId) continue;
+      const [keeper, loser] = await Promise.all([
+        tx.agency.findUnique({ where: { id: keeperId } }),
+        tx.agency.findUnique({ where: { id: loserId } }),
+      ]);
+      if (keeper && loser) {
+        const data = fillBlanks(keeper, loser, ["logoUrl", "description"] as (keyof typeof keeper)[]);
+        if (Object.keys(data).length > 0) {
+          await tx.agency.update({ where: { id: keeperId }, data });
+        }
+      }
+      await reassignJoinRows(tx.performerAgency, "agencyId", "performerId", keeperId, loserId);
+      await reassignJoinRows(tx.favoriteAgency, "agencyId", "userId", keeperId, loserId);
+      await tx.drama.updateMany({ where: { agencyId: loserId }, data: { agencyId: keeperId } });
+      await tx.agency.delete({ where: { id: loserId } });
+    }
+  });
+}
+
 export async function mergePerformers(keeperId: string, loserIds: string[]) {
   await prisma.$transaction(async (tx) => {
     for (const loserId of loserIds) {
