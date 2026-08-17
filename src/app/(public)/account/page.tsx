@@ -29,6 +29,18 @@ export default async function AccountPage({
     ? (tab as AccountTab)
     : "profile";
 
+  // Списки актёров — выводятся в профиле рядом с «Чаще всего видела вживую».
+  const artistLists = await prisma.performerList.findMany({
+    where: { userId: user.id },
+    include: {
+      items: {
+        include: { performer: { select: { id: true, slug: true, name: true, photoUrl: true } } },
+        orderBy: { position: "asc" },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
   const eventWithOccurrences = {
     include: {
       performers: { include: { performer: true } },
@@ -125,6 +137,17 @@ export default async function AccountPage({
           friends: friendIds.length,
           trips: tripsCount,
         }}
+        artistLists={artistLists.map((l) => ({
+          id: l.id,
+          slug: l.slug,
+          title: l.title,
+          items: l.items.map((i) => ({
+            id: i.performer.id,
+            slug: i.performer.slug,
+            name: i.performer.name,
+            photoUrl: i.performer.photoUrl,
+          })),
+        }))}
         statsData={{
           attendedEvents: fullStats.attendedEvents,
           upcomingEvents: fullStats.upcomingEvents,

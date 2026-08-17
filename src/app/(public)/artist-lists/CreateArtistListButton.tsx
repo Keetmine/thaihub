@@ -4,13 +4,17 @@ import { useState } from "react";
 import Modal from "@/components/Modal";
 import { createPerformerList } from "./actions";
 
-export default function CreateArtistListButton() {
+export default function CreateArtistListButton({ small = false }: { small?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      <button type="button" className="btn btn-primary" onClick={() => setIsOpen(true)}>
-        + Создать список актёров
+      <button
+        type="button"
+        className={small ? "btn btn-ghost btn-sm" : "btn btn-primary"}
+        onClick={() => setIsOpen(true)}
+      >
+        + Создать список{small ? "" : " актёров"}
       </button>
 
       <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Новый список актёров">
