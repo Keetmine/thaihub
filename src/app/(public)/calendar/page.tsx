@@ -13,6 +13,8 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import MonthYearJump from "./MonthYearJump";
 import { isPremiumActive } from "@/lib/premium";
+import LetterAvatar from "@/components/LetterAvatar";
+import { performerHref } from "@/lib/performerSlug";
 
 export default async function CalendarPage({
   searchParams,
@@ -39,8 +41,10 @@ export default async function CalendarPage({
   }
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) - 1 : now.getMonth();
-  // Default is "all" (every event) — ?view=mine narrows to events I'm going to.
-  const showAll = params.view !== "mine";
+  // Default is "all" (every event) — ?view=mine narrows to events I'm going
+  // to, ?view=birthdays switches to the performers-birthday calendar.
+  const showBirthdays = params.view === "birthdays";
+  const showAll = !showBirthdays && params.view !== "mine";
 
   const gridDays = getMonthGrid(year, month);
   const rangeStart = gridDays[0];
@@ -49,7 +53,27 @@ export default async function CalendarPage({
 
   const currentUser = gateUser;
 
-  const occurrences = await prisma.eventOccurrence.findMany({
+  // Дни рождения: все исполнители (актёры, маскоты, группы…) с датой
+  // рождения в месяцах, попадающих в сетку (на краях — до трёх месяцев).
+  type BirthdayRow = { id: string; name: string; slug: string | null; photoUrl: string | null; birthDate: Date };
+  const birthdaysByDay = new Map<string, BirthdayRow[]>();
+  if (showBirthdays) {
+    const monthsInGrid = [...new Set(gridDays.map((d) => d.getMonth() + 1))];
+    const rows = await prisma.$queryRaw<BirthdayRow[]>`
+      SELECT id, name, slug, "photoUrl", "birthDate"
+      FROM "Performer"
+      WHERE "birthDate" IS NOT NULL
+        AND EXTRACT(MONTH FROM "birthDate") = ANY(${monthsInGrid})
+      ORDER BY name ASC
+    `;
+    for (const r of rows) {
+      const key = `${String(r.birthDate.getMonth() + 1).padStart(2, "0")}-${String(r.birthDate.getDate()).padStart(2, "0")}`;
+      if (!birthdaysByDay.has(key)) birthdaysByDay.set(key, []);
+      birthdaysByDay.get(key)!.push(r);
+    }
+  }
+
+  const occurrences = showBirthdays ? [] : await prisma.eventOccurrence.findMany({
     where: {
       startsAt: { gte: rangeStart, lte: rangeEnd },
       // «Мои события» — по отметкам на конкретные даты.
@@ -79,7 +103,7 @@ export default async function CalendarPage({
   const next = addMonths(new Date(year, month, 1), 1);
   const todayKey = dateKey(now);
 
-  const viewQuery = showAll ? "" : "&view=mine";
+  const viewQuery = showBirthdays ? "&view=birthdays" : showAll ? "" : "&view=mine";
 
   return (
     <div>
@@ -100,7 +124,10 @@ export default async function CalendarPage({
           >
             ← Пред.
           </Link>
-          <Link href={`/calendar${showAll ? "" : "?view=mine"}`} className="btn btn-ghost btn-sm">
+          <Link
+            href={`/calendar${viewQuery ? `?${viewQuery.slice(1)}` : ""}`}
+            className="btn btn-ghost btn-sm"
+          >
             Сегодня
           </Link>
           <Link
@@ -124,9 +151,16 @@ export default async function CalendarPage({
           <Link
             href={`/calendar?year=${year}&month=${month + 1}&view=mine`}
             prefetch={false}
-            className={`mode-toggle-option ${!showAll ? "active" : ""}`}
+            className={`mode-toggle-option ${!showAll && !showBirthdays ? "active" : ""}`}
           >
             Мои события
+          </Link>
+          <Link
+            href={`/calendar?year=${year}&month=${month + 1}&view=birthdays`}
+            prefetch={false}
+            className={`mode-toggle-option ${showBirthdays ? "active" : ""}`}
+          >
+            Дни рождения
           </Link>
         </div>
       </div>
@@ -142,9 +176,40 @@ export default async function CalendarPage({
       <div className="calendar-grid">
         {gridDays.map((day) => {
           const key = dateKey(day);
-          const dayEvents = eventsByDay.get(key) ?? [];
           const inMonth = day.getMonth() === month;
           const isToday = key === todayKey;
+
+          if (showBirthdays) {
+            const bdayKey = `${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+            const celebrants = birthdaysByDay.get(bdayKey) ?? [];
+            return (
+              <div key={key} className={`calendar-cell ${inMonth ? "" : "outside-month"}`}>
+                <span className={`calendar-day-num ${isToday ? "today" : ""}`}>
+                  {day.getDate()}
+                </span>
+                <div className="d-flex flex-column gap-1">
+                  {celebrants.slice(0, 3).map((p) => (
+                    <Link
+                      key={p.id}
+                      href={performerHref(p)}
+                      className="event-chip d-inline-flex align-items-center gap-1 text-decoration-none"
+                      title={`${p.name} — ${day.getFullYear() - p.birthDate.getFullYear()} лет`}
+                    >
+                      <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.1} />
+                      <span className="text-truncate">{p.name}</span>
+                    </Link>
+                  ))}
+                  {celebrants.length > 3 && (
+                    <span className="small text-secondary d-none d-sm-inline">
+                      +{celebrants.length - 3} ещё
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          const dayEvents = eventsByDay.get(key) ?? [];
           return (
             <Link
               href={`/day/${key}`}
