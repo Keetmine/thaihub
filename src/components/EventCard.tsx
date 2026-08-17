@@ -78,7 +78,10 @@ export default function EventCard({
             {event.performers.length > 0 && (
               <span>
                 <UserIcon className="icon-inline" />{" "}
-                {event.performers.map(({ performer }, i) => (
+                {/* Фестивальный состав в 20+ имён ломал вёрстку — режем
+                    до первых и показываем «и ещё N» (все — на странице
+                    события). */}
+                {event.performers.slice(0, 6).map(({ performer }, i) => (
                   <span key={performer.id}>
                     {i > 0 && ", "}
                     <Link href={performerHref(performer)} className="agenda-performer-link">
@@ -86,6 +89,9 @@ export default function EventCard({
                     </Link>
                   </span>
                 ))}
+                {event.performers.length > 6 && (
+                  <span className="text-secondary"> и ещё {event.performers.length - 6}…</span>
+                )}
               </span>
             )}
             {friendsGoing.length > 0 && (

@@ -107,7 +107,7 @@ export default async function SearchPage({
     <div>
       <span className="eyebrow">Поиск</span>
       <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
-        {q ? `«${q}»` : "Поиск"}
+        {q || "Поиск"}
       </h1>
 
       {!query ? (

@@ -25,6 +25,7 @@ export default function DramaStatusButton({
 }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -32,8 +33,17 @@ export default function DramaStatusButton({
     function onClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
     }
+    // Скролл (в т.ч. внутренний скролл постер-ряда) уводит кнопку из-под
+    // fixed-меню — просто закрываем его.
+    function onScroll() {
+      setIsOpen(false);
+    }
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("scroll", onScroll, true);
+    };
   }, []);
 
   async function choose(value: DramaWatchStatusValue | null) {
@@ -65,14 +75,24 @@ export default function DramaStatusButton({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          // Fixed-координаты: ряды постеров скроллятся по горизонтали
+          // (overflow), absolute-дропдаун ими обрезался.
+          const rect = e.currentTarget.getBoundingClientRect();
+          setCoords({
+            top: rect.bottom + 6,
+            left: Math.max(8, Math.min(rect.right - 208, window.innerWidth - 216)),
+          });
           setIsOpen((v) => !v);
         }}
       >
         {status ? <PencilIcon /> : <PlusIcon />}
       </button>
 
-      {isOpen && (
-        <div className="performer-select-dropdown drama-status-dropdown">
+      {isOpen && coords && (
+        <div
+          className="performer-select-dropdown drama-status-dropdown"
+          style={{ position: "fixed", top: coords.top, left: coords.left, right: "auto" }}
+        >
           <button type="button" className="performer-select-option" onClick={() => choose(null)}>
             <span className="flex-fill text-start">Не отмечено</span>
             {!status && <CheckIcon />}

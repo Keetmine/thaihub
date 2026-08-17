@@ -58,9 +58,10 @@ export default function EventAgendaRow({
         </h3>
         <p className="small text-secondary mb-0 d-flex flex-wrap align-items-center gap-2">
           {event.performers.length > 0 && (
-            <span className="d-inline-flex align-items-center gap-1">
-              <UserIcon />
-              {event.performers.map(({ performer }, i) => (
+            // Инлайн-текст, не flex: gap отрывал запятые от имён.
+            <span>
+              <UserIcon className="icon-inline" />{" "}
+              {event.performers.slice(0, 6).map(({ performer }, i) => (
                 <span key={performer.id}>
                   {i > 0 && ", "}
                   <Link href={performerHref(performer)} className="agenda-performer-link">
@@ -68,6 +69,9 @@ export default function EventAgendaRow({
                   </Link>
                 </span>
               ))}
+              {event.performers.length > 6 && (
+                <span className="text-secondary"> и ещё {event.performers.length - 6}…</span>
+              )}
             </span>
           )}
           <span className="d-inline-flex align-items-center gap-1">
