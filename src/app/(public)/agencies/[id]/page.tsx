@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -82,9 +83,7 @@ export default async function AgencyDetailPage({
 
   return (
     <div>
-      <Link href="/artists?view=agencies" className="eyebrow text-decoration-none">
-        ← Все агентства
-      </Link>
+      <BackLink fallbackHref="/artists?view=agencies" fallbackLabel="← Все агентства" />
 
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <div className="d-flex flex-wrap align-items-center gap-4">
@@ -98,9 +97,17 @@ export default async function AgencyDetailPage({
             />
           ) : (
             <div
-              className="rounded-circle flex-shrink-0"
-              style={{ width: "6rem", height: "6rem", background: "var(--bs-secondary-bg)" }}
-            />
+              className="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center fs-2 fw-semibold"
+              style={{
+                width: "6rem",
+                height: "6rem",
+                background: "var(--bs-secondary-bg)",
+                color: "var(--bs-secondary-color)",
+                opacity: 0.7,
+              }}
+            >
+              {agency.name.charAt(0).toUpperCase()}
+            </div>
           )}
           <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
             {agency.name}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -103,9 +104,7 @@ export default async function DramaDetailPage({
 
   return (
     <div>
-      <Link href="/dramas" className="eyebrow text-decoration-none">
-        ← Все сериалы
-      </Link>
+      <BackLink fallbackHref="/dramas" fallbackLabel="← Все сериалы" />
       <h1 className="display-1-tight mt-3 mb-3 d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "2.25rem" }}>
         {drama.title}{" "}
         {drama.year && (
@@ -242,6 +241,7 @@ export default async function DramaDetailPage({
                   photoUrl={performer.photoUrl}
                   name={performer.name}
                   subtitle={role}
+                  style={{ flex: "1 1 10rem", minWidth: "10rem", maxWidth: "15rem" }}
                 />
               ))}
             </div>

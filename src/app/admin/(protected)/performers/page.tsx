@@ -265,7 +265,7 @@ export default async function AdminPerformersPage({
       </div>
 
       {!isAgencies && (
-        <div className="surface p-3 mb-4 d-flex flex-column gap-3">
+        <div className="surface p-3 mb-4 d-flex flex-wrap align-items-start gap-3">
           <GmmtvSyncButton />
           <TmdbSyncButton />
         </div>

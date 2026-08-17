@@ -3,6 +3,7 @@ import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
 import ProfileMenu from "@/components/ProfileMenu";
+import NavDepthTracker from "@/components/NavDepthTracker";
 import { getCurrentUser } from "@/lib/userAuth";
 import { GridIcon } from "@/components/icons";
 
@@ -37,6 +38,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
   return (
     <div className="d-flex flex-column min-vh-100">
+      <NavDepthTracker />
       <div className="ambient-wash" />
       <div className="container pt-4 nav-sticky">
         <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">

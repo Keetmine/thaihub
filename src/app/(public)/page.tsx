@@ -13,7 +13,7 @@ import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
-type EventFilter = "all" | "going" | "favorited";
+type EventFilter = "all" | "going" | "favorited" | "artists";
 
 export default async function HomePage({
   searchParams,
@@ -72,7 +72,9 @@ export default async function HomePage({
       ? "going"
       : rawFilter === "favorited"
         ? "favorited"
-        : "all";
+        : rawFilter === "artists"
+          ? "artists"
+          : "all";
 
   const from = activeTrip ? dateKey(activeTrip.startDate) : isValidDateKey(rawFrom) ? rawFrom! : "";
   const to = activeTrip ? dateKey(activeTrip.endDate) : isValidDateKey(rawTo) ? rawTo! : "";
@@ -144,6 +146,13 @@ export default async function HomePage({
             className={`tab-bar-item ${filter === "favorited" ? "active" : ""}`}
           >
             Избранное
+          </Link>
+          <Link
+            href={`/?filter=artists${rangeQuery}`}
+            prefetch={false}
+            className={`tab-bar-item ${filter === "artists" ? "active" : ""}`}
+          >
+            Мои артисты
           </Link>
           {myTrips.map((t) => (
             <Link

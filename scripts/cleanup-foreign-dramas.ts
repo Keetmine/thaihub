@@ -29,6 +29,7 @@ import { prisma } from "../src/lib/prisma";
  */
 
 const CJK = /[぀-ヿㇰ-ㇿ㐀-䶿一-鿿]/;
+const THAI = /[฀-๿]/;
 const UPLOADS_ROOT = path.join(process.cwd(), "public");
 
 const execFileAsync = promisify(execFile);
@@ -72,6 +73,11 @@ async function deleteLocalImages(urls: (string | null)[]): Promise<number> {
 
 async function main() {
   const apply = process.argv.includes("--apply");
+  // --thai: применить те же три правила и к тайским названиям;
+  // --skip-us: не перепроверять origin_country (долгие TMDB-запросы).
+  const includeThai = process.argv.includes("--thai");
+  const skipUs = process.argv.includes("--skip-us");
+  const matchesScript = (t: string) => CJK.test(t) || (includeThai && THAI.test(t));
 
   const candidates = await prisma.drama.findMany({
     where: { mydramalistUrl: null },
@@ -94,14 +100,16 @@ async function main() {
 
   // 1) японские/китайские названия
   const byScript = candidates.filter(
-    (d) => CJK.test(d.title) && !hasAgencyCast(d) && !guarded(d),
+    (d) => matchesScript(d.title) && !hasAgencyCast(d) && !guarded(d),
   );
 
   // 2) американские (по TMDB origin_country) — среди оставшихся latin-titled
   const byScriptIds = new Set(byScript.map((d) => d.id));
-  const usCheck = candidates.filter(
-    (d) => !byScriptIds.has(d.id) && d.tmdbId && !hasAgencyCast(d) && !guarded(d),
-  );
+  const usCheck = skipUs
+    ? []
+    : candidates.filter(
+        (d) => !byScriptIds.has(d.id) && d.tmdbId && !hasAgencyCast(d) && !guarded(d),
+      );
   console.log(
     `Кандидаты без MDL: ${candidates.length}; CJK-названия: ${byScript.length}; ` +
       `проверяю origin_country у ${usCheck.length} с tmdbId…`,
@@ -123,7 +131,7 @@ async function main() {
   console.log("Примеры US:", american.slice(0, 8).map((d) => d.title).join(" · "));
 
   const skippedGuard = candidates.filter(
-    (d) => (CJK.test(d.title) || false) && (hasAgencyCast(d) || guarded(d)),
+    (d) => matchesScript(d.title) && (hasAgencyCast(d) || guarded(d)),
   ).length;
   console.log(`Пропущено из-за связей/каста с агентствами (CJK): ${skippedGuard}`);
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -61,9 +62,7 @@ export default async function LocationDetailPage({
 
   return (
     <div>
-      <Link href="/locations" className="eyebrow text-decoration-none">
-        ← Все локации
-      </Link>
+      <BackLink fallbackHref="/locations" fallbackLabel="← Все локации" />
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           {location.name}

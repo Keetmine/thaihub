@@ -6,6 +6,8 @@ export default function EntityMiniCard({
   name,
   subtitle,
   round = true,
+  className = "",
+  style,
 }: {
   href: string;
   photoUrl?: string | null;
@@ -13,12 +15,15 @@ export default function EntityMiniCard({
   subtitle?: string | null;
   /** Circular avatar (performers) vs rounded-rect poster (dramas). */
   round?: boolean;
+  className?: string;
+  /** Переопределение размеров (по умолчанию фикс 11rem). */
+  style?: React.CSSProperties;
 }) {
   return (
     <Link
       href={href}
-      className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
-      style={{ width: "11rem" }}
+      className={`surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 ${className}`}
+      style={style ?? { width: "11rem" }}
     >
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element

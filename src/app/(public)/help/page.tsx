@@ -16,7 +16,8 @@ export default async function HelpPage({
         Помощь
       </h1>
 
-      <div className="d-flex flex-column gap-3" style={{ maxWidth: "40rem" }}>
+      <div className="row g-4">
+        <div className="col-12 col-lg-7 d-flex flex-column gap-3">
         <div className="surface p-4">
           <h2 className="h6 fw-semibold mb-2">Что это за сайт?</h2>
           <p className="text-secondary mb-0">
@@ -56,7 +57,9 @@ export default async function HelpPage({
           </p>
         </div>
 
-        <div className="surface p-4" id="feedback">
+        </div>
+        <div className="col-12 col-lg-5">
+          <div className="surface p-4 position-sticky" id="feedback" style={{ top: "6.5rem" }}>
           <h2 className="h6 fw-semibold mb-2">Написать нам</h2>
           <p className="text-secondary small mb-3">
             Вопрос, идея или не хватает какого-то сериала/актёра — напишите, мы
@@ -66,6 +69,7 @@ export default async function HelpPage({
             defaultKind={fb ? "CONTENT_REQUEST" : "QUESTION"}
             context={fb ? `Поиск: «${fb}»` : ""}
           />
+          </div>
         </div>
       </div>
     </div>

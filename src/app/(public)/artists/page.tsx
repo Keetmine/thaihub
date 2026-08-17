@@ -116,14 +116,20 @@ async function AgenciesTab({ q }: { q: string }) {
               />
             ) : (
               <div
+                className="d-flex align-items-center justify-content-center"
                 style={{
                   width: "2.75rem",
                   height: "2.75rem",
                   borderRadius: "50%",
                   background: "var(--bs-secondary-bg)",
                   flexShrink: 0,
+                  color: "var(--bs-secondary-color)",
+                  opacity: 0.7,
+                  fontWeight: 600,
                 }}
-              />
+              >
+                {a.name.charAt(0).toUpperCase()}
+              </div>
             )}
             <div style={{ minWidth: 0 }}>
               <p className="font-display fw-medium text-white mb-0 text-truncate">{a.name}</p>
@@ -331,21 +337,30 @@ export default async function PerformersPage({
         });
   const searchTruncated = !!searchResults && searchResults.length > SEARCH_RESULT_LIMIT;
 
+  // Группы и маскоты — короткие списки, показываем целиком; актёров без
+  // поиска — только избранных (каталог в тысячи строк).
+  const showAllByDefault = view === "bands" || view === "mascots";
   const performers =
     view === "agencies"
       ? []
       : searchResults
         ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
-        : currentUser
+        : showAllByDefault
           ? await prisma.performer.findMany({
-              where: {
-                type: typeOfView(view),
-                favoritedBy: { some: { userId: currentUser.id } },
-              },
+              where: { type: typeOfView(view) },
               include: { _count: { select: { events: true } } },
               orderBy: { name: "asc" },
             })
-          : [];
+          : currentUser
+            ? await prisma.performer.findMany({
+                where: {
+                  type: typeOfView(view),
+                  favoritedBy: { some: { userId: currentUser.id } },
+                },
+                include: { _count: { select: { events: true } } },
+                orderBy: { name: "asc" },
+              })
+            : [];
   const favoritedIds = new Set<string>();
   if (currentUser && performers.length > 0) {
     const favorites = await prisma.favoritePerformer.findMany({
@@ -392,14 +407,14 @@ export default async function PerformersPage({
           <PerformerAlphabetList
             performers={performers}
             favoritedIds={favoritedIds}
-            pinFavorites={!!q}
+            pinFavorites={!!q || showAllByDefault}
             emptyMessage={
               q
                 ? "Ничего не найдено."
                 : view === "bands"
-                  ? "Пока никого нет в избранном. Используйте поиск, чтобы найти группу."
+                  ? "Пока нет групп."
                   : view === "mascots"
-                    ? "Пока никого нет в избранном. Используйте поиск, чтобы найти маскота."
+                    ? "Пока нет маскотов."
                     : "Пока никого нет в избранном. Используйте поиск, чтобы найти актёра."
             }
           />

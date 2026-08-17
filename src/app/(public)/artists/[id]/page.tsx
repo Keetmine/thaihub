@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -172,12 +173,10 @@ export default async function PerformerPage({
 
   return (
     <div>
-      <Link
-        href={isMascot ? "/artists?view=mascots" : "/artists"}
-        className="eyebrow text-decoration-none"
-      >
-        {isMascot ? "← Все маскоты" : "← Все исполнители"}
-      </Link>
+      <BackLink
+        fallbackHref={isMascot ? "/artists?view=mascots" : "/artists"}
+        fallbackLabel={isMascot ? "← Все маскоты" : "← Все исполнители"}
+      />
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           {performer.name}{" "}
@@ -401,30 +400,13 @@ export default async function PerformerPage({
           )}
 
 
-          {!isBand && performer.memberOfBands.length > 0 && (
-            <div className="mt-2">
-              <h2
-                className="section-heading mb-2"
-              >
-                Группа
-              </h2>
-              <div className="d-flex flex-wrap gap-2">
-                {performer.memberOfBands.map((m) => (
-                  <Link
-                    key={m.bandId}
-                    href={performerHref(m.band)}
-                    className="event-chip text-decoration-none"
-                  >
-                    {m.band.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {(currentPairings.length > 0 || pastPairings.length > 0 || mascotCards.size > 0) && (
+      {(currentPairings.length > 0 ||
+        pastPairings.length > 0 ||
+        mascotCards.size > 0 ||
+        (!isBand && performer.memberOfBands.length > 0)) && (
         <div className="d-flex flex-wrap gap-5 mb-4">
         {currentPairings.length > 0 && (
         <div>
@@ -487,6 +469,21 @@ export default async function PerformerPage({
                 ))}
               </div>
             </div>
+        )}
+        {!isBand && performer.memberOfBands.length > 0 && (
+          <div>
+            <h2 className="section-heading mb-2">Группа</h2>
+            <div className="d-flex flex-wrap gap-2">
+              {performer.memberOfBands.map((m) => (
+                <EntityMiniCard
+                  key={m.bandId}
+                  href={performerHref(m.band)}
+                  photoUrl={m.band.photoUrl}
+                  name={m.band.name}
+                />
+              ))}
+            </div>
+          </div>
         )}
         </div>
       )}

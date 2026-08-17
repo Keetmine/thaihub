@@ -13,7 +13,7 @@ import type { EventWithPerformers } from "@/lib/types";
 export const EVENT_PAGE_SIZE = 20;
 
 export type EventListFilters = {
-  filter: "all" | "going" | "favorited";
+  filter: "all" | "going" | "favorited" | "artists";
   from: string;
   to: string;
   q: string;
@@ -54,6 +54,28 @@ export async function fetchEventListPage(
   const eventWhere = {
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
     ...(filter === "favorited" && userId ? { favoritedBy: { some: { userId } } } : {}),
+    // «Мои артисты» — события, где выступает кто-то из избранных
+    // исполнителей (актёры, группы и маскоты — все Performer) либо
+    // пейринг с их участием.
+    ...(filter === "artists" && userId
+      ? {
+          OR: [
+            { performers: { some: { performer: { favoritedBy: { some: { userId } } } } } },
+            {
+              pairings: {
+                some: {
+                  pairing: {
+                    OR: [
+                      { performerA: { favoritedBy: { some: { userId } } } },
+                      { performerB: { favoritedBy: { some: { userId } } } },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
   };
   // «Иду» — отметка на конкретной дате, поэтому фильтр на occurrence,
   // а не на событии: показываются только выбранные дни.
