@@ -488,7 +488,14 @@ export async function importTpopArtist(
 
 export async function importTpopAgency(
   pageUrlOrTitle: string,
-  options?: { runId?: string | null; onProgress?: (m: string) => void; skipFormer?: boolean },
+  options?: {
+    runId?: string | null;
+    onProgress?: (m: string) => void;
+    skipFormer?: boolean;
+    /** Импортировать только эти группы/дуэты (по названию, без регистра);
+     *  солистов фильтр не касается. */
+    onlyGroups?: string[];
+  },
 ): Promise<TpopAgencyImportSummary> {
   const ctx: Ctx = {
     runId: options?.runId ?? null,
@@ -534,7 +541,12 @@ export async function importTpopAgency(
     await recordItem(ctx, "agency", agency.id, "created", agency.name);
   }
 
+  const groupFilter = options?.onlyGroups?.map((n) => n.trim().toLowerCase());
   for (const group of [...pageData.groups, ...pageData.duos]) {
+    if (groupFilter && !groupFilter.includes(group.name.trim().toLowerCase())) {
+      ctx.log(`— ${group.name} (пропущена фильтром)`);
+      continue;
+    }
     await importArtist(ctx, group, agency.id, true);
   }
   for (const solo of pageData.soloists) {

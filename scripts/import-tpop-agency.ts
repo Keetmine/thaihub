@@ -14,12 +14,17 @@ async function main() {
     process.exit(1);
   }
   const skipFormer = process.argv.includes("--skip-former");
+  // --only-groups "Name1,Name2" — импортировать только эти группы
+  const onlyGroupsArg = process.argv.indexOf("--only-groups");
+  const onlyGroups =
+    onlyGroupsArg >= 0 ? process.argv[onlyGroupsArg + 1].split(",").map((s) => s.trim()) : undefined;
   const run = await prisma.importRun.create({ data: { kind: "tpop-agency" } });
   try {
     const summary = await importTpopAgency(url, {
       runId: run.id,
       onProgress: (m) => console.log(m),
       skipFormer,
+      onlyGroups,
     });
     await prisma.importRun.update({
       where: { id: run.id },
