@@ -119,7 +119,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
           Список пуст — найдите локацию через поиск выше и добавьте её.
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
           {list.items.map((i) => (
             <div
               key={i.locationId}
