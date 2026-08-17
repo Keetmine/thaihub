@@ -8,6 +8,7 @@ import Modal from "@/components/Modal";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
+import { searchNovelOptions, createNovelAndReturn } from "../novels/actions";
 import { findSimilarDramas } from "./actions";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 
@@ -51,6 +52,7 @@ export default function DramaForm({
   action,
   agencies,
   locations,
+  novels,
   defaultValues,
   defaultLocationIds,
   submitLabel,
@@ -58,6 +60,8 @@ export default function DramaForm({
   action: (formData: FormData) => void;
   agencies: EntityOption[];
   locations: EntityOption[];
+  /** Выбранная новелла (для триггера селекта); каталог ищется асинхронно. */
+  novels?: EntityOption[];
   defaultValues?: {
     title: string;
     year: string;
@@ -65,6 +69,7 @@ export default function DramaForm({
     synopsis: string;
     mydramalistUrl: string;
     agencyId: string;
+    novelId: string;
     cast: CastEntry[];
     nativeTitle: string;
     alsoKnownAs: string;
@@ -232,6 +237,21 @@ export default function DramaForm({
             defaultValue={v?.mydramalistUrl}
             placeholder="https://mydramalist.com/…"
             className="form-control"
+          />
+        </div>
+        <div className="col-12 col-lg-6">
+          <EntitySelect
+            name="novelId"
+            label="Новелла-первоисточник"
+            options={novels ?? []}
+            defaultValue={v?.novelId}
+            placeholder="Не выбрано"
+            createLabel="Создать новеллу"
+            searchOptions={searchNovelOptions}
+            onCreateNew={async (title) => {
+              const created = await createNovelAndReturn(title);
+              return { id: created.id, name: created.title };
+            }}
           />
         </div>
         <div className="col-12 col-lg-6">

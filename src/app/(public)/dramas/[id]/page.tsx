@@ -13,7 +13,7 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
-import { agencyHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { agencyHref, locationHref, novelHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
 import { dramaHref } from "@/lib/dramaSlug";
 
@@ -43,6 +43,7 @@ export default async function DramaDetailPage({
       performers: { include: { performer: true } },
       agency: true,
       locations: { include: { location: true }, orderBy: { location: { name: "asc" } } },
+      novel: true,
       relatedFrom: { include: { related: true } },
       relatedTo: { include: { drama: true } },
     },
@@ -148,6 +149,15 @@ export default async function DramaDetailPage({
         )}
 
         <div className="col-12 col-sm-8 col-md-9">
+          {drama.novel && (
+            <p className="small text-secondary mb-2">
+              <span className="text-secondary">📖 По новелле:</span>{" "}
+              <Link href={novelHref(drama.novel)} className="link-body-emphasis">
+                {drama.novel.title}
+              </Link>
+              {drama.novel.author ? ` (${drama.novel.author})` : ""}
+            </p>
+          )}
           {drama.agency && (
             <p className="small text-secondary mb-2">
               <BuildingIcon /> <span className="text-secondary">Студия:</span>{" "}
@@ -241,7 +251,7 @@ export default async function DramaDetailPage({
                   photoUrl={performer.photoUrl}
                   name={performer.name}
                   subtitle={role}
-                  style={{ flex: "1 1 10rem", minWidth: "10rem", maxWidth: "15rem" }}
+                  style={{ flex: "1 1 10rem", minWidth: "70px", maxWidth: "15rem" }}
                 />
               ))}
             </div>

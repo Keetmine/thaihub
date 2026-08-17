@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 // Вкладок всего две: профиль и события. Избранные актёры и сериалы из
 // кабинета убраны — те же списки и так живут на /performers и /dramas
 // (вид по умолчанию без поиска — именно избранное/со статусом).
-const VALID_TABS: AccountTab[] = ["profile", "events", "stats"];
+const VALID_TABS: AccountTab[] = ["profile", "events"];
 
 export default async function AccountPage({
   searchParams,

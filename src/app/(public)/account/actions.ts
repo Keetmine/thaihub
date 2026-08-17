@@ -13,10 +13,20 @@ export async function updateProfile(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const hideProfileActivity = String(formData.get("hideProfileActivity") ?? "") === "on";
+  const hideAchievements = String(formData.get("hideAchievements") ?? "") === "on";
+  const hideFavoritePerformers = String(formData.get("hideFavoritePerformers") ?? "") === "on";
+  const hideVisitedPlaces = String(formData.get("hideVisitedPlaces") ?? "") === "on";
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { name: name || null, photoUrl: photoUrl || null, hideProfileActivity },
+    data: {
+      name: name || null,
+      photoUrl: photoUrl || null,
+      hideProfileActivity,
+      hideAchievements,
+      hideFavoritePerformers,
+      hideVisitedPlaces,
+    },
   });
 
   revalidatePath("/account");

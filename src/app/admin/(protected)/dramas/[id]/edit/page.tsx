@@ -22,6 +22,7 @@ export default async function EditDramaPage({
       include: {
         performers: { include: { performer: true } },
         locations: { select: { location: { select: { id: true, name: true, photoUrl: true } } } },
+        novel: { select: { id: true, title: true, coverUrl: true } },
       },
     }),
     prisma.agency.findMany({
@@ -58,6 +59,7 @@ export default async function EditDramaPage({
         action={boundUpdate}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
         locations={drama.locations.map((dl) => dl.location)}
+        novels={drama.novel ? [{ id: drama.novel.id, name: drama.novel.title, photoUrl: drama.novel.coverUrl }] : []}
         defaultLocationIds={drama.locations.map((dl) => dl.location.id)}
         submitLabel="Сохранить изменения"
         defaultValues={{
@@ -67,6 +69,7 @@ export default async function EditDramaPage({
           synopsis: drama.synopsis ?? "",
           mydramalistUrl: drama.mydramalistUrl ?? "",
           agencyId: drama.agencyId ?? "",
+          novelId: drama.novelId ?? "",
           nativeTitle: drama.nativeTitle ?? "",
           alsoKnownAs: drama.alsoKnownAs ?? "",
           director: drama.director ?? "",

@@ -1,0 +1,112 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
+
+function getLinks(formData: FormData): { label: string; url: string }[] {
+  const labels = formData.getAll("linkLabel").map(String);
+  const urls = formData.getAll("linkUrl").map(String);
+  const links: { label: string; url: string }[] = [];
+  for (let i = 0; i < Math.max(labels.length, urls.length); i++) {
+    const url = (urls[i] ?? "").trim();
+    if (!url) continue;
+    links.push({ label: (labels[i] ?? "").trim() || url, url });
+  }
+  return links;
+}
+
+function getDramaIds(formData: FormData): string[] {
+  return Array.from(new Set(formData.getAll("dramaIds").map(String).filter(Boolean)));
+}
+
+function getFields(formData: FormData) {
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) throw new Error("Укажите название новеллы");
+  return {
+    title,
+    author: String(formData.get("author") ?? "").trim() || null,
+    coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
+    description: String(formData.get("description") ?? "").trim() || null,
+  };
+}
+
+function revalidateNovelPaths(id?: string) {
+  revalidatePath("/novels");
+  revalidatePath("/admin/novels");
+  if (id) revalidatePath(`/novels/${id}`);
+}
+
+export async function createNovel(formData: FormData) {
+  await requireAdmin();
+  const fields = getFields(formData);
+  await prisma.novel.create({
+    data: {
+      ...fields,
+      links: { create: getLinks(formData) },
+      dramas: { connect: getDramaIds(formData).map((id) => ({ id })) },
+    },
+  });
+  revalidateNovelPaths();
+  redirect("/admin/novels");
+}
+
+export async function updateNovel(id: string, formData: FormData) {
+  await requireAdmin();
+  const fields = getFields(formData);
+  await prisma.$transaction([
+    prisma.novelLink.deleteMany({ where: { novelId: id } }),
+    prisma.drama.updateMany({ where: { novelId: id }, data: { novelId: null } }),
+    prisma.novel.update({
+      where: { id },
+      data: {
+        ...fields,
+        links: { create: getLinks(formData) },
+        dramas: { connect: getDramaIds(formData).map((dId) => ({ id: dId })) },
+      },
+    }),
+  ]);
+  revalidateNovelPaths(id);
+  redirect("/admin/novels");
+}
+
+export async function deleteNovel(id: string) {
+  await requireAdmin();
+  await prisma.novel.delete({ where: { id } });
+  revalidateNovelPaths(id);
+  redirect("/admin/novels");
+}
+
+/** Async-поиск для комбобокса «Новелла» в форме сериала. */
+export async function searchNovelOptions(
+  query: string,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  await requireAdmin();
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const novels = await prisma.novel.findMany({
+    where: {
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { author: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, title: true, coverUrl: true },
+    orderBy: { title: "asc" },
+    take: 20,
+  });
+  return novels.map((n) => ({ id: n.id, name: n.title, photoUrl: n.coverUrl }));
+}
+
+/** Inline-создание из комбобокса формы сериала. */
+export async function createNovelAndReturn(
+  title: string,
+): Promise<{ id: string; title: string }> {
+  await requireAdmin();
+  const trimmed = title.trim();
+  if (!trimmed) throw new Error("Укажите название новеллы");
+  const novel = await prisma.novel.create({ data: { title: trimmed } });
+  revalidateNovelPaths();
+  return { id: novel.id, title: novel.title };
+}

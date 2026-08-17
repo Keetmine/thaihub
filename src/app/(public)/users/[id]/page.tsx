@@ -13,7 +13,7 @@ import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import FriendNotifyToggle from "./FriendNotifyToggle";
 import { ACHIEVEMENTS } from "@/lib/achievements";
-import { listHref, tripHref } from "@/lib/slugHelpers";
+import { listHref, tripHref, locationHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -89,11 +89,24 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   const displayName = user.name || "Пользователь";
   // Приватный профиль: не-друзьям показываем только имя/фото (Г8).
   const showActivity = isFriend || !user.hideProfileActivity;
+  const showAchievements = showActivity && (isFriend || !user.hideAchievements);
+  const showFavorites = showActivity && (isFriend || !user.hideFavoritePerformers);
+  const showVisited = showActivity && (isFriend || !user.hideVisitedPlaces);
 
   // Бейджи-ачивки (Д2): только уже зафиксированные — пересчёт делает сам
   // владелец при заходе в кабинет.
-  const unlockedRows = showActivity
+  const unlockedRows = showAchievements
     ? await prisma.userAchievement.findMany({ where: { userId: user.id }, orderBy: { unlockedAt: "asc" } })
+    : [];
+
+  // Посещённые места — с собственным приватность-переключателем.
+  const visitedPlaces = showVisited
+    ? await prisma.locationVisit.findMany({
+        where: { userId: user.id },
+        include: { location: { select: { id: true, slug: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 24,
+      })
     : [];
   const badges = unlockedRows
     .map((r) => ACHIEVEMENTS.find((a) => a.key === r.key))
@@ -264,7 +277,24 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
         </>
       )}
 
-      {user.favoritePerformers.length > 0 && (
+      {visitedPlaces.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2">Посещённые места</h2>
+          <div className="d-flex flex-wrap gap-2 mb-4">
+            {visitedPlaces.map((v) => (
+              <Link
+                key={v.locationId}
+                href={locationHref(v.location)}
+                className="event-chip text-decoration-none"
+              >
+                📍 {v.location.name}
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {showFavorites && user.favoritePerformers.length > 0 && (
         <>
           <h2 className="section-heading mb-2">
             Любимые актёры

@@ -16,6 +16,7 @@ const CATALOG_SLUG_MODELS: Record<string, string> = {
   Event: "title",
   Location: "name",
   Agency: "name",
+  Novel: "title",
 };
 const CODED_SLUG_MODELS: Record<string, string> = {
   Trip: "title",

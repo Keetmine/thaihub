@@ -2,6 +2,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
+import ScrollTopButton from "@/components/ScrollTopButton";
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated } from "@/lib/auth";
 import {
@@ -12,6 +13,7 @@ import {
   PinIcon,
   CopyIcon,
   UserIcon,
+  BookIcon,
   ChatIcon,
   FlagIcon,
   MegaphoneIcon,
@@ -51,6 +53,7 @@ const NAV_SECTIONS: {
         matchPrefixes: ["/admin/performers/", "/admin/pairings", "/admin/agencies"],
       },
       { href: "/admin/dramas", title: "Сериалы", icon: TvIcon, matchPrefixes: ["/admin/dramas/"] },
+      { href: "/admin/novels", title: "Новеллы", icon: BookIcon, matchPrefixes: ["/admin/novels/"] },
       {
         href: "/admin/locations",
         title: "Локации",
@@ -160,6 +163,7 @@ export default async function ProtectedAdminLayout({
         </div>
 
         <main className="admin-content flex-fill">{children}</main>
+        <ScrollTopButton />
       </div>
     </div>
   );

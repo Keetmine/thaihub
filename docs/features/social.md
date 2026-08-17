@@ -123,3 +123,11 @@ date list** («16, 17, 18 октября 2026», `formatCombinedDateList`) —
 per occurrence. Per-date splitting stays only where lists are sorted by
 date (the home афиша, day view, calendar, trip pages). An event counts
 as upcoming until its **last** date has passed.
+
+## Приватность профиля (гранулярная)
+
+Друзья видят всё всегда. Для остальных — четыре переключателя в
+настройках аккаунта: `hideProfileActivity` (мастер: только имя/фото),
+`hideAchievements`, `hideFavoritePerformers`, `hideVisitedPlaces`.
+Публичный профиль (/users/[id]) гейтит соответствующие секции; там же
+появилась секция «Посещённые места» (chips, последние 24).

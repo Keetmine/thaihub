@@ -17,7 +17,7 @@ import { prisma } from "../src/lib/prisma";
  * Без --apply — только отчёт (dry-run).
  */
 
-const NON_LATIN = /[฀-๿぀-ヿㇰ-ㇿ一-鿿가-힯]/;
+const NON_LATIN = /[฀-๿぀-ヿㇰ-ㇿ一-鿿가-힯Ѐ-ӿ]/;
 
 const FOREIGN_PLACE =
   /south korea|north korea|\bkorea\b|japan|china|taiwan|hong ?kong|philippines|vietnam|singapore|malaysia|indonesia|india\b|myanmar|cambodia|laos\b|usa|u\.s\.a|united states|america|canada|mexico|brazil|\buk\b|united kingdom|england|scotland|ireland|france|germany|italy|spain|sweden|norway|denmark|netherlands|belgium|austria|switzerland|poland|russia|ukraine|australia|new zealand|韩国|日本|中国|臺灣|台灣|香港|서울|한국|일본/i;

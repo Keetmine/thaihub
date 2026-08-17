@@ -418,6 +418,15 @@ export function TvIcon({ className }: { className?: string }) {
   );
 }
 
+export function BookIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z" />
+      <path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-2.5" />
+    </svg>
+  );
+}
+
 export function GridIcon({ className }: { className?: string } = {}) {
   return (
     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">

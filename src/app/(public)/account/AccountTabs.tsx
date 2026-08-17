@@ -11,7 +11,7 @@ import { PinIcon } from "@/components/icons";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
 import StatTile from "@/components/StatTile";
 
-export type AccountTab = "profile" | "events" | "stats";
+export type AccountTab = "profile" | "events";
 
 /** Одно событие кабинета целиком, со всеми его датами — многодневный
  *  концерт здесь одна строка, а не строка на дату. */
@@ -137,32 +137,31 @@ export default function AccountTabs({
           <TabButton active={activeTab === "events"} onClick={() => setActiveTab("events")}>
             События
           </TabButton>
-          <TabButton active={activeTab === "stats"} onClick={() => setActiveTab("stats")}>
-            Статистика
-          </TabButton>
         </div>
       </div>
 
       {/* Every tab stays mounted (display:none when inactive) so state isn't
           lost when switching tabs, consistent with PerformerForm's pattern. */}
       <div style={{ display: activeTab === "profile" ? undefined : "none" }}>
-        <div className="surface p-4 mb-4" style={{ maxWidth: "44rem" }}>
-          <div className="d-flex flex-wrap align-items-center gap-4 mb-4">
+        {/* Как публичный профиль (/users/[id]): шапка на всю ширину,
+            без узкой карточки. */}
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+          <div className="d-flex flex-wrap align-items-center gap-4">
             {user.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.photoUrl}
                 alt=""
                 className="rounded-circle flex-shrink-0"
-                style={{ width: "5rem", height: "5rem", objectFit: "cover" }}
+                style={{ width: "5.5rem", height: "5.5rem", objectFit: "cover" }}
               />
             ) : (
               <div
                 className="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center font-display fw-bold"
                 style={{
-                  width: "5rem",
-                  height: "5rem",
-                  fontSize: "2rem",
+                  width: "5.5rem",
+                  height: "5.5rem",
+                  fontSize: "2.2rem",
                   background: "var(--bs-primary-bg-subtle)",
                   color: "var(--bs-primary-text-emphasis)",
                 }}
@@ -172,7 +171,9 @@ export default function AccountTabs({
             )}
             <div style={{ minWidth: 0 }}>
               <div className="d-flex flex-wrap align-items-center gap-2">
-                <h2 className="h4 font-display mb-0">{user.name || user.email}</h2>
+                <h2 className="display-1-tight mb-0" style={{ fontSize: "1.9rem" }}>
+                  {user.name || user.email}
+                </h2>
                 {user.isPremium ? (
                   <span className="badge rounded-pill text-bg-warning" style={{ fontSize: "0.65rem" }}>
                     Подписка
@@ -186,22 +187,10 @@ export default function AccountTabs({
               <p className="text-secondary small mb-0">
                 {user.email ||
                   (user.telegramUsername ? `Telegram: @${user.telegramUsername}` : "Вход через Telegram")}
-              </p>
-              <p className="text-secondary small mb-0" style={{ opacity: 0.7 }}>
-                На MyBLHub с {memberSince}
+                {" "}· На MyBLHub с {memberSince}
               </p>
             </div>
           </div>
-
-          <div className="d-flex flex-wrap gap-2 mb-4">
-            <StatTile value={stats.going} label="иду" />
-            <StatTile value={stats.favoriteEvents} label="избранных событий" />
-            <StatTile value={stats.favoritePerformers} label="любимых актёров" href="/artists" />
-            <StatTile value={stats.dramas} label="сериалов" href="/dramas" />
-            <StatTile value={stats.friends} label="друзей" href="/friends" />
-            <StatTile value={stats.trips} label="поездок" href="/trips" />
-          </div>
-
           <div className="d-flex flex-wrap gap-2">
             <Link href="/account/settings" className="btn btn-ghost btn-sm">
               Настройки
@@ -213,10 +202,17 @@ export default function AccountTabs({
             </form>
           </div>
         </div>
-      </div>
 
-      <div style={{ display: activeTab === "stats" ? undefined : "none" }}>
-        {activeTab === "stats" && <StatsTab stats={statsData} achievements={achievements} />}
+        <div className="d-flex flex-wrap gap-2 mb-4">
+          <StatTile value={stats.going} label="иду" />
+          <StatTile value={stats.favoriteEvents} label="избранных событий" />
+          <StatTile value={stats.favoritePerformers} label="любимых актёров" href="/artists" />
+          <StatTile value={stats.dramas} label="сериалов" href="/dramas" />
+          <StatTile value={stats.friends} label="друзей" href="/friends" />
+          <StatTile value={stats.trips} label="поездок" href="/trips" />
+        </div>
+
+        <StatsTab stats={statsData} achievements={achievements} />
       </div>
 
       <div style={{ display: activeTab === "events" ? undefined : "none" }}>

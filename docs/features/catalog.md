@@ -113,6 +113,16 @@ discography importer — see
 [tpop-band-import.md](tpop-band-import.md#discography-import-albums--songs);
 no admin CRUD for albums/songs yet.
 
+## Novels
+
+`Novel` — первоисточник экранизаций: название (слаг как у каталога),
+автор, обложка, описание и свободные ссылки «где почитать/скачать»
+(`NovelLink`). `Drama.novelId` — необязательная связь; на странице
+сериала выводится строка «📖 По новелле», на странице новеллы — секция
+«Экранизации». Публичный раздел `/novels` (+ пункт в главном меню),
+админ-CRUD в `/admin/novels`; в форме сериала новелла выбирается
+async-комбобоксом с inline-созданием.
+
 ## Mascots
 
 Маскот (актёра или пейринга — например, Polca у Tay × New) — это

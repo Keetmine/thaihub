@@ -264,6 +264,30 @@ model EventPerformer {
   @@id([eventId, performerId])
 }
 
+// Новелла-первоисточник: многие лакорны — экранизации веб-новелл.
+// Ссылки — где почитать/купить/скачать (свободный label+url).
+model Novel {
+  id          String      @id @default(cuid())
+  title       String
+  // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts).
+  slug        String?     @unique
+  author      String?
+  coverUrl    String?
+  description String?
+  links       NovelLink[]
+  dramas      Drama[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model NovelLink {
+  id      String @id @default(cuid())
+  novelId String
+  label   String
+  url     String
+  novel   Novel  @relation(fields: [novelId], references: [id], onDelete: Cascade)
+}
+
 model Drama {
   id             String       @id @default(cuid())
   title          String
@@ -283,6 +307,9 @@ model Drama {
   network        String?
   agencyId       String?
   agency         Agency?      @relation(fields: [agencyId], references: [id])
+  // Первоисточник-новелла (если сериал — экранизация).
+  novelId        String?
+  novel          Novel?       @relation(fields: [novelId], references: [id])
   // The blscene.com "where was X filmed" page this drama was imported from,
   // if any — used to dedupe re-imports (its on-page title can differ from
   // the A-Z index's link text, so title matching alone isn't reliable).
@@ -513,9 +540,13 @@ model User {
   achievements        UserAchievement[]
   placeLists          PlaceList[]
   createdLocations    Location[] @relation("UserCreatedLocations")
-  // Приватность публичного профиля: true — чужие видят только имя/фото
-  // (активность, актёров, поездки не показываем). Друзья видят всё.
+  // Приватность публичного профиля. Друзья видят всё всегда.
+  // hideProfileActivity — мастер-выключатель (чужие видят только
+  // имя/фото); остальные — точечные блоки при открытом профиле.
   hideProfileActivity Boolean @default(false)
+  hideAchievements    Boolean @default(false)
+  hideFavoritePerformers Boolean @default(false)
+  hideVisitedPlaces   Boolean @default(false)
 
   feedbacks              Feedback[]
   reports                Report[]

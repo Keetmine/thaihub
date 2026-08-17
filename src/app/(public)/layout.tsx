@@ -4,6 +4,7 @@ import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
 import ProfileMenu from "@/components/ProfileMenu";
 import NavDepthTracker from "@/components/NavDepthTracker";
+import ScrollTopButton from "@/components/ScrollTopButton";
 import { getCurrentUser } from "@/lib/userAuth";
 import { GridIcon } from "@/components/icons";
 
@@ -54,6 +55,9 @@ export default async function PublicLayout({ children }: { children: React.React
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
               Сериалы
             </NavLink>
+            <NavLink href="/novels" matchPrefixes={["/novels/"]}>
+              Новеллы
+            </NavLink>
             <NavLink href="/locations" matchPrefixes={["/locations/"]}>
               Локации
             </NavLink>
@@ -85,6 +89,9 @@ export default async function PublicLayout({ children }: { children: React.React
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
               Сериалы
             </NavLink>
+            <NavLink href="/novels" matchPrefixes={["/novels/"]}>
+              Новеллы
+            </NavLink>
             <NavLink href="/locations" matchPrefixes={["/locations/"]}>
               Локации
             </NavLink>
@@ -113,6 +120,7 @@ export default async function PublicLayout({ children }: { children: React.React
         </nav>
       </div>
       <main className="flex-fill container py-4 py-md-5">{children}</main>
+      <ScrollTopButton />
     </div>
   );
 }
