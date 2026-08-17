@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
 import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdbImport";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 import { requireAdmin } from "@/lib/auth";
 import { logImportRun } from "@/lib/importRun";
-import { performerNameWhere } from "@/lib/searchWhere";
+import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
 
 /**
  * Re-syncs the GMMTV roster: creates any new artists, updates existing
@@ -58,19 +59,68 @@ export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
  * клиентский селект подвешивала страницу — вместо этого клиент ищет по
  * мере ввода. Ищет и по нику (name), и по реальному имени.
  */
+/**
+ * Ранжированный поиск: точные совпадения ника/имени → совпадения по
+ * началу → просто contains. Без этого «tay» тонул в двадцати
+ * «Amart-tay-akul» из-за алфавитной сортировки и take: 20. В подписи
+ * вариантов показываем настоящее имя в скобках.
+ */
+async function rankedPerformerSearch(
+  q: string,
+  extra: Prisma.PerformerWhereInput,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  const select = { id: true, name: true, realName: true, photoUrl: true } as const;
+  const nameFields = ["name", "realName", "musicAlias"] as const;
+
+  const [exact, prefix, rest] = await Promise.all([
+    prisma.performer.findMany({
+      where: {
+        ...extra,
+        OR: nameFields.map((f) => ({ [f]: { equals: q, mode: "insensitive" } })),
+      },
+      select,
+      orderBy: { name: "asc" },
+      take: 20,
+    }),
+    prisma.performer.findMany({
+      where: {
+        ...extra,
+        OR: nameFields.map((f) => ({ [f]: { startsWith: q, mode: "insensitive" } })),
+      },
+      select,
+      orderBy: { name: "asc" },
+      take: 20,
+    }),
+    prisma.performer.findMany({
+      where: { ...extra, ...performerNameWhere(q) },
+      select,
+      orderBy: { name: "asc" },
+      take: 20,
+    }),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: typeof exact = [];
+  for (const p of [...exact, ...prefix, ...rest]) {
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    merged.push(p);
+    if (merged.length >= 20) break;
+  }
+  return merged.map((p) => ({
+    id: p.id,
+    name: performerOptionLabel(p),
+    photoUrl: p.photoUrl,
+  }));
+}
+
 export async function searchPerformerOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
   await requireAdmin();
   const q = query.trim();
   if (q.length < 2) return [];
-
-  return prisma.performer.findMany({
-    where: performerNameWhere(q),
-    select: { id: true, name: true, photoUrl: true },
-    orderBy: { name: "asc" },
-    take: 20,
-  });
+  return rankedPerformerSearch(q, {});
 }
 
 /** То же, но только SOLO — для выбора участников группы и пейрингов. */
@@ -80,13 +130,7 @@ export async function searchSoloPerformerOptions(
   await requireAdmin();
   const q = query.trim();
   if (q.length < 2) return [];
-
-  return prisma.performer.findMany({
-    where: { type: "SOLO", ...performerNameWhere(q) },
-    select: { id: true, name: true, photoUrl: true },
-    orderBy: { name: "asc" },
-    take: 20,
-  });
+  return rankedPerformerSearch(q, { type: "SOLO" });
 }
 
 export async function findSimilarPerformers(

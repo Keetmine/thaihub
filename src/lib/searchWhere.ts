@@ -25,3 +25,12 @@ export function performerNameWhere(q: string): Prisma.PerformerWhereInput {
     ],
   };
 }
+
+/** Подпись варианта в комбобоксах: ник + настоящее имя в скобках,
+ *  если оно есть и отличается от ника. */
+export function performerOptionLabel(p: { name: string; realName: string | null }): string {
+  if (!p.realName || p.realName.trim().toLowerCase() === p.name.trim().toLowerCase()) {
+    return p.name;
+  }
+  return `${p.name} (${p.realName})`;
+}

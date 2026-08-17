@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { performerOptionLabel } from "@/lib/searchWhere";
 import { eventHref } from "@/lib/slugHelpers";
 import { dateKey, formatTime } from "@/lib/dates";
 import EventForm from "../../EventForm";
@@ -66,7 +67,7 @@ export default async function EditEventPage({
         action={boundUpdate}
         performers={event.performers.map((p) => ({
           id: p.performer.id,
-          name: p.performer.name,
+          name: performerOptionLabel(p.performer),
           photoUrl: p.performer.photoUrl,
         }))}
         pairings={pairings}

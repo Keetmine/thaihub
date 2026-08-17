@@ -97,13 +97,36 @@ export async function searchDramaOptions(
   const q = query.trim();
   if (q.length < 2) return [];
 
-  const dramas = await prisma.drama.findMany({
-    where: dramaTitleWhere(q),
-    select: { id: true, title: true, posterUrl: true },
-    orderBy: { title: "asc" },
-    take: 20,
-  });
-  return dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }));
+  // Точные/префиксные совпадения названия — вперёд (см. rankedPerformerSearch).
+  const select = { id: true, title: true, posterUrl: true } as const;
+  const [exact, prefix, rest] = await Promise.all([
+    prisma.drama.findMany({
+      where: { title: { equals: q, mode: "insensitive" } },
+      select,
+      take: 20,
+    }),
+    prisma.drama.findMany({
+      where: { title: { startsWith: q, mode: "insensitive" } },
+      select,
+      orderBy: { title: "asc" },
+      take: 20,
+    }),
+    prisma.drama.findMany({
+      where: dramaTitleWhere(q),
+      select,
+      orderBy: { title: "asc" },
+      take: 20,
+    }),
+  ]);
+  const seen = new Set<string>();
+  const merged: typeof exact = [];
+  for (const d of [...exact, ...prefix, ...rest]) {
+    if (seen.has(d.id)) continue;
+    seen.add(d.id);
+    merged.push(d);
+    if (merged.length >= 20) break;
+  }
+  return merged.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }));
 }
 
 export async function findSimilarDramas(query: string): Promise<{ id: string; name: string }[]> {

@@ -120,8 +120,14 @@ export default function EntityMultiSelect({
   const showCreateOption =
     !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch && !(searchOptions && isSearching);
 
-  function add(id: string) {
-    setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  function add(option: EntityOption) {
+    // В async-режиме вариант живёт только в searchResults — сохраняем его
+    // в createdOptions, иначе чип и hidden input не отрендерятся (баг
+    // «второй актёр не добавляется»).
+    if (!allOptions.some((o) => o.id === option.id)) {
+      setCreatedOptions((prev) => [...prev, option]);
+    }
+    setSelectedIds((prev) => (prev.includes(option.id) ? prev : [...prev, option.id]));
     setQuery("");
   }
 
@@ -150,8 +156,7 @@ export default function EntityMultiSelect({
     try {
       const created = await onCreateNew(newName);
       if (created) {
-        setCreatedOptions((prev) => [...prev, created]);
-        add(created.id);
+        add(created);
         setCreatePrefill(null);
       }
     } catch (err) {
@@ -208,7 +213,7 @@ export default function EntityMultiSelect({
                 type="button"
                 className="performer-combobox-option d-flex align-items-center gap-2"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => add(o.id)}
+                onClick={() => add(o)}
               >
                 <Avatar option={o} />
                 {o.name}

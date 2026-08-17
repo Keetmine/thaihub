@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { performerOptionLabel } from "@/lib/searchWhere";
 import { performerHref } from "@/lib/performerSlug";
 import { dateKey } from "@/lib/dates";
 import PerformerForm from "../../PerformerForm";
@@ -26,7 +27,9 @@ export default async function EditPerformerPage({
         links: true,
         dramas: { select: { drama: { select: { id: true, title: true, posterUrl: true } } } },
         bandMembers: {
-          select: { performer: { select: { id: true, name: true, photoUrl: true } } },
+          select: {
+            performer: { select: { id: true, name: true, realName: true, photoUrl: true } },
+          },
         },
         events: { select: { event: { select: { id: true, title: true } } } },
         agencies: { select: { agencyId: true } },
@@ -34,7 +37,7 @@ export default async function EditPerformerPage({
           select: {
             performerId: true,
             pairingId: true,
-            performer: { select: { id: true, name: true, photoUrl: true } },
+            performer: { select: { id: true, name: true, realName: true, photoUrl: true } },
           },
         },
       },
@@ -90,14 +93,22 @@ export default async function EditPerformerPage({
           key={performer.updatedAt.toISOString()}
           action={boundUpdate}
           submitLabel="Сохранить изменения"
-          soloPerformers={performer.bandMembers.map((m) => m.performer)}
+          soloPerformers={performer.bandMembers.map((m) => ({
+            id: m.performer.id,
+            name: performerOptionLabel(m.performer),
+            photoUrl: m.performer.photoUrl,
+          }))}
           pairingOptions={allPairings.map((p) => ({
             id: p.id,
             name: p.name || `${p.performerA.name} × ${p.performerB.name}`,
           }))}
           mascotOwnerOptions={performer.mascotOwners
             .filter((o) => o.performer)
-            .map((o) => o.performer!)}
+            .map((o) => ({
+              id: o.performer!.id,
+              name: performerOptionLabel(o.performer!),
+              photoUrl: o.performer!.photoUrl,
+            }))}
           defaultMascotPerformerIds={performer.mascotOwners
             .map((o) => o.performerId)
             .filter((x): x is string => !!x)}
