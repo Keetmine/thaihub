@@ -690,35 +690,35 @@ export default async function PerformerPage({
       {(performer.sourceUrl || (Array.isArray(performer.references) && performer.references.length > 0)) && (
         <div className="surface p-4 mb-3">
           <h2 className="section-heading mb-2">Источники</h2>
-          {Array.isArray(performer.references) && performer.references.length > 0 && (
-            <ol className="small text-secondary ps-3 mb-2 d-flex flex-column gap-1">
-              {(performer.references as { label: string; url: string | null }[]).map((r, i) => (
-                <li key={i}>
-                  {r.url ? (
-                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="link-body-emphasis">
-                      {r.label || r.url}
-                    </a>
-                  ) : (
-                    r.label
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
-          {performer.sourceUrl && (
-            <p className="small text-secondary mb-0">
-              Данные страницы:{" "}
-              <a
-                href={performer.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link-body-emphasis"
-              >
-                tpop.fandom.com
-              </a>{" "}
-              (CC BY-SA)
-            </p>
-          )}
+          <ol className="small text-secondary ps-3 mb-0 d-flex flex-column gap-1">
+            {(Array.isArray(performer.references)
+              ? (performer.references as { label: string; url: string | null }[])
+              : []
+            ).map((r, i) => (
+              <li key={i}>
+                {r.url ? (
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="link-body-emphasis">
+                    {r.label || r.url}
+                  </a>
+                ) : (
+                  r.label
+                )}
+              </li>
+            ))}
+            {/* Страница-источник — обычным пунктом списка, следующим номером */}
+            {performer.sourceUrl && (
+              <li>
+                <a
+                  href={performer.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link-body-emphasis"
+                >
+                  tpop.fandom.com (CC BY-SA)
+                </a>
+              </li>
+            )}
+          </ol>
         </div>
       )}
     </div>
