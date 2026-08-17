@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 /** Отзывы и комментарии живут у трёх типов объектов — экшены общие,
  *  тип задаётся kind. path — страница для revalidate. */
@@ -56,8 +57,48 @@ export async function addComment(kind: ReviewKind, id: string, formData: FormDat
   const text = String(formData.get("text") ?? "").trim();
   if (!text) throw new Error("Пустой комментарий");
   if (text.length > 3000) throw new Error("Слишком длинный комментарий");
-  await prisma.comment.create({ data: { userId: user.id, ...targetWhere(kind, id), text } });
+
+  // Ответ: один уровень вложенности — ответ на ответ прикрепляется к корню.
+  let parentId: string | null = String(formData.get("parentId") ?? "").trim() || null;
+  let parentAuthor: { id: string; telegramId: string | null; name: string | null } | null = null;
+  if (parentId) {
+    const parent = await prisma.comment.findFirst({
+      where: { id: parentId, ...targetWhere(kind, id) },
+      include: { user: { select: { id: true, telegramId: true, name: true } } },
+    });
+    if (!parent) throw new Error("Родительский комментарий не найден");
+    parentId = parent.parentId ?? parent.id;
+    parentAuthor = parent.user;
+  }
+
+  await prisma.comment.create({
+    data: { userId: user.id, ...targetWhere(kind, id), parentId, text },
+  });
+
+  // Автору родителя — телеграм-уведомление (fire-and-forget).
+  if (parentAuthor && parentAuthor.id !== user.id && parentAuthor.telegramId) {
+    void sendTelegramMessage(
+      parentAuthor.telegramId,
+      `💬 ${user.name ?? "Кто-то"} ответил(а) на ваш комментарий:\n«${text.slice(0, 200)}»`,
+    ).catch(() => {});
+  }
   revalidatePath(pagePath(kind, id));
+}
+
+/** Лайк/анлайк комментария. Возвращает новое число лайков. */
+export async function toggleCommentLike(commentId: string): Promise<{ liked: boolean; count: number }> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const existing = await prisma.commentLike.findUnique({
+    where: { commentId_userId: { commentId, userId: user.id } },
+  });
+  if (existing) {
+    await prisma.commentLike.delete({ where: { commentId_userId: { commentId, userId: user.id } } });
+  } else {
+    await prisma.commentLike.create({ data: { commentId, userId: user.id } });
+  }
+  const count = await prisma.commentLike.count({ where: { commentId } });
+  return { liked: !existing, count };
 }
 
 /** Удалить комментарий может автор или админ (модерация). */

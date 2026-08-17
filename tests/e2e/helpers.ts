@@ -28,7 +28,8 @@ export async function signupTestUser(page: Page, email: string, password: string
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/account/);
+  // после регистрации — онбординг выбора любимых артистов
+  await page.waitForURL(/\/welcome/);
 }
 
 export async function loginTestUser(page: Page, email: string, password: string) {

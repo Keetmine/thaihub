@@ -12,7 +12,7 @@ const USER_COOKIE = "user_session";
 // Routes reachable without being logged in: the marketing landing page
 // (which itself renders the real event feed once you ARE logged in — see
 // src/app/(public)/page.tsx) and the auth forms themselves.
-const PUBLIC_PATHS = new Set(["/", "/about", "/wiki", "/help", "/login", "/signup", "/manifest.webmanifest", "/robots.txt", "/sw.js"]);
+const PUBLIC_PATHS = new Set(["/", "/about", "/wiki", "/help", "/login", "/signup", "/forgot-password", "/manifest.webmanifest", "/robots.txt", "/sw.js"]);
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -43,7 +43,7 @@ export function proxy(request: NextRequest) {
   // Публичные списки мест шарятся наружу прямой ссылкой — /lists/{id}
   // пропускаем без куки, страница сама отдаёт 404/редирект по видимости
   // (сам /lists — кабинетный список СВОИХ, остаётся за логином).
-  if (/^\/(lists|artist-lists|wiki)\/[^/]+$/.test(pathname)) {
+  if (/^\/(lists|artist-lists|wiki|reset-password)\/[^/]+$/.test(pathname)) {
     return NextResponse.next();
   }
 

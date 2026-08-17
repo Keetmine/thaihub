@@ -45,7 +45,7 @@ export default async function SearchPage({
   const { q = "" } = await searchParams;
   const query = q.trim();
 
-  const [matchedEvents, performers, dramas, agencies, locations] = query
+  const [matchedEvents, performers, dramas, agencies, locations, novels, wikiArticles] = query
     ? await Promise.all([
         prisma.event.findMany({
           where: {
@@ -85,8 +85,24 @@ export default async function SearchPage({
           orderBy: { name: "asc" },
           take: 24,
         }),
+        prisma.novel.findMany({
+          where: {
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { author: { contains: query, mode: "insensitive" } },
+            ],
+          },
+          orderBy: { title: "asc" },
+          take: 24,
+        }),
+        prisma.wikiArticle.findMany({
+          where: { published: true, title: { contains: query, mode: "insensitive" } },
+          select: { id: true, slug: true, title: true },
+          orderBy: { title: "asc" },
+          take: 12,
+        }),
       ])
-    : [[], [], [], [], []];
+    : [[], [], [], [], [], [], []];
 
   const events = matchedEvents
     .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
@@ -103,7 +119,8 @@ export default async function SearchPage({
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
   const totalCount =
-    events.length + performers.length + dramas.length + agencies.length + locations.length;
+    events.length + performers.length + dramas.length + agencies.length + locations.length +
+    novels.length + wikiArticles.length;
 
   return (
     <div>

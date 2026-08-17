@@ -7,7 +7,9 @@ type Window = { count: number; resetAt: number };
 const windows = new Map<string, Window>();
 
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_ATTEMPTS = 10;
+// 30 попыток за 10 минут: брутфорсу всё ещё тесно, а полный e2e-прогон
+// (10+ логинов с одного IP) и семья за одним роутером — проходят.
+const MAX_ATTEMPTS = 30;
 
 async function clientKey(scope: string): Promise<string> {
   const h = await headers();

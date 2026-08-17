@@ -591,6 +591,8 @@ model User {
   tripMemberships     TripMember[]
   reviews             Review[]
   comments            Comment[]
+  commentLikes        CommentLike[]
+  passwordResetTokens PasswordResetToken[]
   createdLocations    Location[] @relation("UserCreatedLocations")
   // Приватность публичного профиля. Друзья видят всё всегда.
   // hideProfileActivity — мастер-выключатель (чужие видят только
@@ -986,7 +988,8 @@ model Review {
   @@index([eventId])
 }
 
-// Комментарий (простая лента, без веток) к сериалу/новелле/событию.
+// Комментарий к сериалу/новелле/событию: плоский или ответ (parentId,
+// один уровень вложенности) + лайки.
 model Comment {
   id        String   @id @default(cuid())
   userId    String
@@ -997,12 +1000,40 @@ model Comment {
   novel     Novel?   @relation(fields: [novelId], references: [id], onDelete: Cascade)
   eventId   String?
   event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  likes     CommentLike[]
   text      String
   createdAt DateTime @default(now())
 
   @@index([dramaId])
   @@index([novelId])
   @@index([eventId])
+  @@index([parentId])
+}
+
+model CommentLike {
+  commentId String
+  userId    String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([commentId, userId])
+}
+
+// Токен сброса пароля: одноразовый, живёт час. Письмо уходит через SMTP
+// (env SMTP_*); без настроенной почты флоу сообщает «недоступно».
+model PasswordResetToken {
+  token     String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ---------- Обращения, модерация, платежи, рассылки, импорты ----------

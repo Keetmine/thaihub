@@ -1,3 +1,4 @@
+import { JsonLd, tvSeriesJsonLd } from "@/lib/seo";
 import ReviewsAndComments from "@/components/ReviewsAndComments";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
@@ -30,6 +31,25 @@ const WEEKDAYS_RU: Record<string, string> = {
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await params;
+  const drama = await prisma.drama.findFirst({
+    where: slugOrIdWhere(rawId),
+    select: { title: true, year: true, synopsis: true, posterUrl: true },
+  });
+  if (!drama) return { title: "Сериал — MyBLHub" };
+  return {
+    title: `${drama.title}${drama.year ? ` (${drama.year})` : ""} — MyBLHub`,
+    description:
+      drama.synopsis?.slice(0, 160) ??
+      `${drama.title}: каст, локации съёмок, события и отзывы на MyBLHub.`,
+    openGraph: {
+      title: drama.title,
+      ...(drama.posterUrl ? { images: [drama.posterUrl] } : {}),
+    },
+  };
+}
+
 export default async function DramaDetailPage({
   params,
 }: {
@@ -51,6 +71,15 @@ export default async function DramaDetailPage({
   });
 
   if (!drama) notFound();
+
+  // Средняя оценка из наших отзывов — в шапку, рядом с MDL.
+  const ratingAgg = await prisma.review.aggregate({
+    where: { dramaId: drama.id },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+  const ourRating = ratingAgg._count.rating > 0 ? ratingAgg._avg.rating : null;
+  const ourRatingCount = ratingAgg._count.rating;
   const id = drama.id;
 
   const dramaEvents = await prisma.event.findMany({
@@ -217,10 +246,23 @@ export default async function DramaDetailPage({
                 <InfoIcon /> <span className="text-secondary">Рейтинг:</span> {drama.contentRating}
               </p>
             )}
-            {drama.mdlScore != null && (
+            {(drama.mdlScore != null || ourRating != null) && (
               <p className="small text-secondary mb-0">
-                <span className="text-secondary">Оценка MDL:</span> ★{" "}
-                {drama.mdlScore.toFixed(1)}
+                {ourRating != null && (
+                  <>
+                    <span className="text-secondary">Оценка MyBLHub:</span>{" "}
+                    <span style={{ color: ourRating >= 7 ? "#3bb33b" : ourRating >= 5 ? "inherit" : "#e5484d" }}>
+                      ★ {ourRating.toFixed(1)}
+                    </span>{" "}
+                    <span className="text-secondary">({ourRatingCount})</span>
+                  </>
+                )}
+                {ourRating != null && drama.mdlScore != null && " · "}
+                {drama.mdlScore != null && (
+                  <>
+                    <span className="text-secondary">MDL:</span> ★ {drama.mdlScore.toFixed(1)}
+                  </>
+                )}
               </p>
             )}
           </div>
@@ -370,6 +412,7 @@ export default async function DramaDetailPage({
       <div className="mt-4">
         <ReviewsAndComments kind="drama" id={drama.id} />
       </div>
+      <JsonLd data={tvSeriesJsonLd(drama)} />
     </div>
   );
 }

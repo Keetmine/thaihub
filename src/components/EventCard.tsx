@@ -15,11 +15,14 @@ const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
  *  old text-only agenda row, which read as a wall of repeating lines
  *  once a day had more than a couple of events. */
 export default function EventCard({
+  ticketUrl,
   event,
   isFavorited = false,
   isGoing = false,
   friendsGoing = [],
 }: {
+  /** Прикреплённый билет текущего юзера (показывается 🎫-кнопкой). */
+  ticketUrl?: string | null;
   event: EventWithPerformers;
   isFavorited?: boolean;
   isGoing?: boolean;
@@ -93,6 +96,17 @@ export default function EventCard({
                   <span className="text-secondary"> и ещё {event.performers.length - 6}…</span>
                 )}
               </span>
+            )}
+            {ticketUrl && (
+              <a
+                href={ticketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="d-inline-flex align-items-center gap-1 text-decoration-none"
+                style={{ color: "var(--bs-primary-text-emphasis)" }}
+              >
+                🎫 Мой билет
+              </a>
             )}
             {friendsGoing.length > 0 && (
               <span

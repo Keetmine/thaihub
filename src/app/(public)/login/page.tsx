@@ -46,7 +46,12 @@ export default async function LoginPage({
         <label className="form-label">Email</label>
         <input type="email" name="email" required autoFocus className="form-control mb-3" />
         <label className="form-label">Пароль</label>
-        <PasswordInput name="password" required autoComplete="current-password" className="mb-3" />
+        <PasswordInput name="password" required autoComplete="current-password" className="mb-1" />
+        <p className="small text-end mb-3">
+          <Link href="/forgot-password" className="text-secondary text-decoration-none">
+            Забыли пароль?
+          </Link>
+        </p>
         <button type="submit" className="btn btn-primary w-100 mb-3">
           Войти
         </button>

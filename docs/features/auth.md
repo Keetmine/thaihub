@@ -138,8 +138,8 @@ cookie-presence check only** — it never touches the database:
   internally (a redirect response would just confuse a `fetch` caller
   instead of sending a person anywhere useful).
 - `/`, `/about` (лендинг по постоянному адресу), `/wiki` (индекс) и
-  `/wiki/[slug]`, `/login`, `/signup`, `/manifest.webmanifest` — always
-  public.
+  `/wiki/[slug]`, `/login`, `/signup`, `/forgot-password`,
+  `/reset-password/[token]`, `/manifest.webmanifest` — always public.
 - **Каталог открыт без логина ради SEO** (regex в proxy): `/artists`,
   `/dramas`, `/novels`, `/locations`, `/agencies`, `/day`, `/event`,
   `/search` со всеми подстраницами. Страницы null-safe по
@@ -174,3 +174,22 @@ you need to add it to `PUBLIC_PATHS` or the `matcher` exclusion in
 заполняют — экшен молча отвечает как при успехе, не создавая аккаунт.
 Плюс общий rate limit. Следующая ступень при появлении спама —
 Cloudflare Turnstile.
+
+## Сброс пароля
+
+`/forgot-password` → `requestPasswordReset`: одноразовый токен
+(`PasswordResetToken`, час жизни), письмо через SMTP
+(`src/lib/mailer.ts`, env SMTP_HOST/PORT/USER/PASS/FROM + SITE_URL).
+Пока SMTP не настроен, форма честно отвечает «временно недоступно —
+напишите нам». `/reset-password/[token]` — форма нового пароля,
+`resetPassword` помечает токен использованным. Существование ящика не
+раскрывается («письмо отправлено» в любом случае). Ссылка «Забыли
+пароль?» — на /login. Rate-limit: MAX_ATTEMPTS поднят до 30/10мин
+(полный e2e-прогон делает 10+ логинов с одного IP).
+
+## Онбординг (/welcome)
+
+После регистрации редирект на /welcome: плитки самых «событийных»
+артистов + мультиселект с поиском — выбранные уходят в избранное
+(`saveOnboardingFavorites`, skipDuplicates), «Пропустить» ведёт на
+главную. Логин ведёт на /account, как раньше.

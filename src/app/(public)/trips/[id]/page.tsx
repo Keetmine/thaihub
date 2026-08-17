@@ -136,6 +136,13 @@ export default async function TripPage({
   ]);
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
+  // Билеты юзера к датам плана — 🎫 прямо в карточке события.
+  const myTickets = await prisma.eventAttendance.findMany({
+    where: { userId: user.id, occurrenceId: { in: occIds }, ticketUrl: { not: null } },
+    select: { occurrenceId: true, ticketUrl: true },
+  });
+  const ticketByOccurrence = new Map(myTickets.map((t) => [t.occurrenceId, t.ticketUrl]));
+
   // Право менять конкретную запись: автор, владелец поездки или другой
   // участник, если автор разрешил галочкой (editableByOthers).
   const canTouch = (item: { createdById: string | null; editableByOthers: boolean }): boolean => {
@@ -462,6 +469,7 @@ export default async function TripPage({
                 isFavorited={favoritedIds.has(item.event.id)}
                 isGoing={goingIds.has(item.event.occurrenceId)}
                 friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
+                ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
               />
             ) : item.kind === "personal" ? (
               <PersonalEventCard

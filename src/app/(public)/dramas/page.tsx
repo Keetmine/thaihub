@@ -69,6 +69,16 @@ export default async function DramasPage({
     currentUser?.id,
   );
 
+  // Средние оценки из отзывов — бейджем в строке каталога.
+  const ratings = await prisma.review.groupBy({
+    by: ["dramaId"],
+    where: { dramaId: { in: dramas.map((d) => d.id) } },
+    _avg: { rating: true },
+  });
+  const ratingByDramaId = new Map(
+    ratings.filter((r) => r.dramaId).map((r) => [r.dramaId as string, r._avg.rating as number]),
+  );
+
   const statusQuery = q ? `&q=${encodeURIComponent(q)}` : "";
 
   return (
@@ -149,7 +159,15 @@ export default async function DramasPage({
               </div>
               <div style={{ minWidth: 0 }}>
                 <p className="font-display fw-medium text-white mb-0 text-truncate">{d.title}</p>
-                {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
+                <p className="small text-secondary mb-0">
+                  {d.year}
+                  {d.year && ratingByDramaId.has(d.id) && " · "}
+                  {ratingByDramaId.has(d.id) && (
+                    <span style={{ color: ratingByDramaId.get(d.id)! >= 7 ? "#3bb33b" : undefined }}>
+                      ★ {ratingByDramaId.get(d.id)!.toFixed(1)}
+                    </span>
+                  )}
+                </p>
               </div>
             </Link>
             <DramaStatusButton

@@ -1,3 +1,4 @@
+import { JsonLd, personJsonLd } from "@/lib/seo";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -27,6 +28,25 @@ const ALBUM_TYPE_LABELS = {
   EP: "EP",
   SINGLE: "Сингл",
 } as const;
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await params;
+  const performer = await prisma.performer.findFirst({
+    where: slugOrIdWhere(rawId),
+    select: { name: true, realName: true, bio: true, photoUrl: true },
+  });
+  if (!performer) return { title: "Исполнитель — MyBLHub" };
+  return {
+    title: `${performer.name}${performer.realName ? ` (${performer.realName})` : ""} — MyBLHub`,
+    description:
+      performer.bio?.slice(0, 160) ??
+      `${performer.name}: профиль, сериалы, события, дискография на MyBLHub.`,
+    openGraph: {
+      title: performer.name,
+      ...(performer.photoUrl ? { images: [performer.photoUrl] } : {}),
+    },
+  };
+}
 
 export default async function PerformerPage({
   params,
@@ -713,6 +733,7 @@ export default async function PerformerPage({
           </ol>
         </div>
       )}
+      <JsonLd data={personJsonLd(performer)} />
     </div>
   );
 }

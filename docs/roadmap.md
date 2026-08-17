@@ -101,9 +101,9 @@
 - [x] Каталог открыт без логина (2026-08-17, см. auth.md): proxy
       пропускает /artists, /dramas, /novels, /locations, /agencies,
       /day, /event, /search; действия редиректят анонима на /login.
-- [ ] generateMetadata на страницах каталога (title/description из
-      данных), sitemap.xml (Next route), JSON-LD (Event, Person,
-      TVSeries), OG-картинки.
+- [x] generateMetadata на деталках сериалов/артистов, app/sitemap.ts
+      (весь открытый каталог), JSON-LD Person/TVSeries
+      (src/lib/seo.tsx). OG-картинки — из постеров/фото.
 - [ ] Метрики: Google Search Console + Яндекс.Вебмастер (после
       открытия каталога), Яндекс.Метрика или privacy-friendly
       Plausible/Umami, Sentry (уже в роадмапе).

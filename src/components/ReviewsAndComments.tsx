@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
+import CommentLikeButton from "@/components/CommentLikeButton";
 import { TrashIcon, StarIcon, ChatIcon } from "@/components/icons";
 import {
   saveReview,
@@ -10,6 +11,90 @@ import {
   deleteComment,
   type ReviewKind,
 } from "@/app/(public)/reviews/actions";
+
+type CommentWithMeta = {
+  id: string;
+  text: string;
+  createdAt: Date;
+  user: { id: string; name: string | null; photoUrl: string | null };
+  likes: { userId: string }[];
+  replies?: CommentWithMeta[];
+};
+
+function CommentRow({
+  comment: c,
+  currentUser,
+  kind,
+  targetId,
+  canReply,
+  replyToId,
+}: {
+  comment: CommentWithMeta;
+  currentUser: { id: string; isAdmin: boolean } | null;
+  kind: ReviewKind;
+  targetId: string;
+  canReply: boolean;
+  /** Для ответов на ответы форма цепляется к корню треда. */
+  replyToId?: string;
+}) {
+  const boundAdd = addComment.bind(null, kind, targetId);
+  return (
+    <div className="d-flex align-items-start gap-2">
+      <Avatar name={c.user.name} photoUrl={c.user.photoUrl} />
+      <div className="flex-fill" style={{ minWidth: 0 }}>
+        <p className="small mb-1">
+          <span className="text-white fw-medium">{c.user.name ?? "Без имени"}</span>
+          <span className="text-secondary"> · {fmtDate(c.createdAt)}</span>
+        </p>
+        <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
+          {c.text}
+        </p>
+        <div className="d-flex align-items-center gap-3">
+          <CommentLikeButton
+            commentId={c.id}
+            initialCount={c.likes.length}
+            initiallyLiked={!!currentUser && c.likes.some((l) => l.userId === currentUser.id)}
+            disabled={!currentUser}
+          />
+          {(canReply || replyToId) && currentUser && (
+            <details>
+              <summary
+                className="small text-secondary"
+                style={{ cursor: "pointer", listStyle: "none" }}
+              >
+                Ответить
+              </summary>
+              <form action={boundAdd} className="d-flex gap-2 mt-2">
+                <input type="hidden" name="parentId" value={replyToId ?? c.id} />
+                <input
+                  name="text"
+                  required
+                  maxLength={3000}
+                  placeholder={`Ответ для ${c.user.name ?? "автора"}…`}
+                  className="form-control form-control-sm"
+                />
+                <button type="submit" className="btn btn-primary btn-sm flex-shrink-0">
+                  Отправить
+                </button>
+              </form>
+            </details>
+          )}
+        </div>
+      </div>
+      {currentUser && (c.user.id === currentUser.id || currentUser.isAdmin) && (
+        <ConfirmForm action={deleteComment.bind(null, c.id)} confirmMessage="Удалить комментарий?">
+          <button
+            type="button"
+            className="icon-btn icon-btn-danger flex-shrink-0"
+            aria-label="Удалить комментарий"
+          >
+            <TrashIcon />
+          </button>
+        </ConfirmForm>
+      )}
+    </div>
+  );
+}
 
 /** Кинопоиск-стайл цвет оценки: 7+ зелёная, 5–6 серая, ниже — красная. */
 function ratingColor(r: number): string {
@@ -65,8 +150,18 @@ export default async function ReviewsAndComments({
       orderBy: { createdAt: "desc" },
     }),
     prisma.comment.findMany({
-      where,
-      include: { user: { select: { id: true, name: true, photoUrl: true } } },
+      where: { ...where, parentId: null },
+      include: {
+        user: { select: { id: true, name: true, photoUrl: true } },
+        likes: { select: { userId: true } },
+        replies: {
+          include: {
+            user: { select: { id: true, name: true, photoUrl: true } },
+            likes: { select: { userId: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
@@ -181,7 +276,9 @@ export default async function ReviewsAndComments({
         <h2 className="section-heading mb-3 d-flex align-items-center gap-2">
           <ChatIcon /> Комментарии
           {comments.length > 0 && (
-            <span className="small text-secondary fw-normal">({comments.length})</span>
+            <span className="small text-secondary fw-normal">
+              ({comments.reduce((sum, c) => sum + 1 + c.replies.length, 0)})
+            </span>
           )}
         </h2>
 
@@ -213,30 +310,31 @@ export default async function ReviewsAndComments({
         ) : (
           <div className="d-flex flex-column gap-3">
             {comments.map((c) => (
-              <div key={c.id} className="d-flex align-items-start gap-2">
-                <Avatar name={c.user.name} photoUrl={c.user.photoUrl} />
-                <div className="flex-fill" style={{ minWidth: 0 }}>
-                  <p className="small mb-1">
-                    <span className="text-white fw-medium">{c.user.name ?? "Без имени"}</span>
-                    <span className="text-secondary"> · {fmtDate(c.createdAt)}</span>
-                  </p>
-                  <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
-                    {c.text}
-                  </p>
-                </div>
-                {currentUser && (c.user.id === currentUser.id || currentUser.isAdmin) && (
-                  <ConfirmForm
-                    action={deleteComment.bind(null, c.id)}
-                    confirmMessage="Удалить комментарий?"
+              <div key={c.id}>
+                <CommentRow
+                  comment={c}
+                  currentUser={currentUser}
+                  kind={kind}
+                  targetId={id}
+                  canReply={!!currentUser}
+                />
+                {(c.replies?.length ?? 0) > 0 && (
+                  <div
+                    className="d-flex flex-column gap-2 mt-2 ms-4 ps-3"
+                    style={{ borderLeft: "2px solid var(--bs-border-color)" }}
                   >
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn-danger flex-shrink-0"
-                      aria-label="Удалить комментарий"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </ConfirmForm>
+                    {c.replies!.map((r) => (
+                      <CommentRow
+                        key={r.id}
+                        comment={r}
+                        currentUser={currentUser}
+                        kind={kind}
+                        targetId={id}
+                        canReply={false}
+                        replyToId={c.id}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
             ))}
