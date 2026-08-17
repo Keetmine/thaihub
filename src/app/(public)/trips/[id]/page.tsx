@@ -122,6 +122,7 @@ export default async function TripPage({
     text: t.text,
     done: t.done,
     date: t.date ? t.date.toISOString() : null,
+    hasTime: t.hasTime,
   }));
 
   const timeline: (
@@ -357,7 +358,7 @@ export default async function TripPage({
                 canEdit={canManage}
               />
             ) : (
-              <TodoRow key={item.key} todo={item.todo} canEdit={canManage} />
+              <TodoRow key={item.key} todo={item.todo} canEdit={canManage} showDate />
             ),
           )}
         </div>

@@ -61,6 +61,7 @@ export default async function LocationsPage({
   const { q: rawQ, group: rawGroup } = await searchParams;
   const q = (rawQ ?? "").trim();
   const groupByDrama = rawGroup === "drama";
+  const showMine = rawGroup === "mine";
 
   const currentUser = await getCurrentUser();
 
@@ -87,7 +88,7 @@ export default async function LocationsPage({
           <Link
             href={`/locations?${q ? `q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
-            className={`tab-bar-item ${!groupByDrama ? "active" : ""}`}
+            className={`tab-bar-item ${!groupByDrama && !showMine ? "active" : ""}`}
           >
             По алфавиту
           </Link>
@@ -98,18 +99,29 @@ export default async function LocationsPage({
           >
             По сериалам
           </Link>
+          {currentUser && (
+            <Link
+              href={`/locations?group=mine${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              prefetch={false}
+              className={`tab-bar-item ${showMine ? "active" : ""}`}
+            >
+              Мои места
+            </Link>
+          )}
         </div>
         <NameSearchBox
           action="/locations"
           q={q}
           placeholder="Поиск по названию…"
-          hiddenFields={groupByDrama ? { group: "drama" } : undefined}
+          hiddenFields={groupByDrama ? { group: "drama" } : showMine ? { group: "mine" } : undefined}
           className=""
         />
       </div>
 
       {groupByDrama ? (
         <LocationsByDrama q={q} currentUser={currentUser} />
+      ) : showMine && currentUser ? (
+        <MyPlaces q={q} userId={currentUser.id} />
       ) : (
         <LocationsAlphabetical q={q} currentUser={currentUser} />
       )}
@@ -230,4 +242,64 @@ async function getVisitedIds(
     select: { locationId: true },
   });
   return new Set(visits.map((v) => v.locationId));
+}
+
+
+async function MyPlaces({ q, userId }: { q: string; userId: string }) {
+  // Собственные места пользователя (созданные из списков по ссылке
+  // Google Maps) — каталог их не показывает, тут им отдельная вкладка.
+  const places = await prisma.location.findMany({
+    where: {
+      createdByUserId: userId,
+      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+    },
+    orderBy: { name: "asc" },
+  });
+
+  if (places.length === 0) {
+    return (
+      <p className="text-secondary">
+        {q
+          ? "Ничего не найдено."
+          : "Своих мест пока нет — добавляйте их в списках мест по ссылке Google Maps."}{" "}
+        <Link href="/lists" className="link-body-emphasis">
+          Мои списки →
+        </Link>
+      </p>
+    );
+  }
+
+  return (
+    <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
+      {places.map((l) => (
+        <Link
+          key={l.id}
+          href={locationHref(l)}
+          className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
+        >
+          <div
+            className="d-flex align-items-center justify-content-center flex-shrink-0"
+            style={{
+              width: "2.5rem",
+              height: "2.5rem",
+              borderRadius: "0.5rem",
+              background: "var(--bs-secondary-bg)",
+              overflow: "hidden",
+              color: "var(--bs-secondary-color)",
+            }}
+          >
+            {l.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={l.photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <span className="fw-semibold" style={{ opacity: 0.6 }}>
+                {l.name.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <span className="font-display fw-medium text-white text-truncate">{l.name}</span>
+        </Link>
+      ))}
+    </div>
+  );
 }

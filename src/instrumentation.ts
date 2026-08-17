@@ -33,3 +33,18 @@ export async function register() {
   setTimeout(run, 60 * 1000);
   setInterval(run, INTERVAL_MS);
 }
+
+/** Хук Next.js: любая необработанная серверная ошибка (страницы,
+ *  route handlers, server actions) попадает в /admin/errors. */
+export async function onRequestError(
+  err: unknown,
+  request: { path: string },
+  context: { routerKind: string },
+) {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  void context;
+  const { logError } = await import("@/lib/errorLog");
+  const digest =
+    err && typeof err === "object" && "digest" in err ? String((err as { digest: unknown }).digest) : undefined;
+  await logError(err, { path: request.path, digest });
+}

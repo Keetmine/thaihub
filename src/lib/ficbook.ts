@@ -100,9 +100,11 @@ export async function fetchFicbookHtml(url: string): Promise<string> {
     // перейдём к браузеру
   }
 
-  // 2) браузер решает JS-проверку. На машине с дисплеем headless может
-  // не пройти — пробуем оба режима.
-  for (const headless of [true, false]) {
+  // 2) браузер решает JS-проверку. Headless фикбук часто режет на уровне
+  // соединения (ERR_CONNECTION_RESET) — каждая попытка в своём try,
+  // падение одной не валит импорт, идём к следующему режиму/ретраю.
+  let lastError = "";
+  for (const headless of [true, false, false]) {
     const browser = await chromium.launch({ headless }).catch(() => null);
     if (!browser) continue;
     try {
@@ -115,11 +117,16 @@ export async function fetchFicbookHtml(url: string): Promise<string> {
       }
       const html = await page.content();
       if (!CHALLENGE.test(html) && html.length > 50000) return html;
+      lastError = "JS-проверка не пройдена";
+    } catch (e) {
+      lastError = e instanceof Error ? e.message.split("\n")[0] : String(e);
     } finally {
       await browser.close();
     }
   }
-  throw new Error("Фикбук не отдал страницу (JS-проверка) — попробуйте ещё раз");
+  throw new Error(
+    `Фикбук не отдал страницу (${lastError || "JS-проверка"}) — попробуйте ещё раз`,
+  );
 }
 
 /** og:image со страницы оригинала — фикбук своих обложек не отдаёт. */

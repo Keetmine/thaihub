@@ -29,10 +29,17 @@ export default async function TripsPage() {
     );
   }
 
-  const trips = await prisma.trip.findMany({
+  const tripsRaw = await prisma.trip.findMany({
     where: { userId: user.id },
     orderBy: { startDate: "asc" },
   });
+  // Будущие и текущие — сверху (ближайшая первой), прошедшие — внизу
+  // (свежие из прошедших выше).
+  const todayRef = new Date();
+  const trips = [
+    ...tripsRaw.filter((t) => t.endDate >= todayRef),
+    ...tripsRaw.filter((t) => t.endDate < todayRef).reverse(),
+  ];
 
   // Для каждой поездки: сколько событий в плане (владелец «идёт») и
   // сколько всего в её датах.

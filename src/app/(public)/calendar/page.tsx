@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import MonthYearJump from "./MonthYearJump";
 import { isPremiumActive } from "@/lib/premium";
 
 export default async function CalendarPage({
@@ -91,7 +92,8 @@ export default async function CalendarPage({
             {monthLabel(year, month)}
           </h1>
         </div>
-        <div className="d-flex flex-wrap gap-2">
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <MonthYearJump year={year} month={month} viewQuery={viewQuery} />
           <Link
             href={`/calendar?year=${prev.getFullYear()}&month=${prev.getMonth() + 1}${viewQuery}`}
             className="btn btn-ghost btn-sm"

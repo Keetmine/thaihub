@@ -77,6 +77,7 @@ const NAV_SECTIONS: {
       { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
       { href: "/admin/finance", title: "Финансы", icon: StarIcon },
       { href: "/admin/imports", title: "Импорты", icon: ImportIcon },
+      { href: "/admin/errors", title: "Ошибки", icon: FlagIcon },
       { href: "/admin/duplicates", title: "Дубли", icon: CopyIcon },
       { href: "/admin/settings", title: "Настройки", icon: SettingsIcon },
     ],

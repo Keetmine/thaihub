@@ -19,15 +19,27 @@ export type TodoData = {
   done: boolean;
   /** ISO-строка (клиентский компонент — Date не сериализуем). */
   date: string | null;
+  hasTime: boolean;
 };
+
+const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
 /** Строка дела: чекбокс + текст + дата + правка/удаление. Используется
- *  и во вкладке «Дела», и в хронологии «Мой план» (датированные). */
-export function TodoRow({ todo, canEdit }: { todo: TodoData; canEdit: boolean }) {
+ *  и во вкладке «Дела», и в хронологии «Мой план» (датированные,
+ *  showDate — та же дата-колонка, что у событий). */
+export function TodoRow({
+  todo,
+  canEdit,
+  showDate = false,
+}: {
+  todo: TodoData;
+  canEdit: boolean;
+  showDate?: boolean;
+}) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -43,8 +55,23 @@ export function TodoRow({ todo, canEdit }: { todo: TodoData; canEdit: boolean })
     }
   }
 
+  const d = todo.date ? new Date(todo.date) : null;
+  const timeLabel =
+    d && todo.hasTime
+      ? d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+      : null;
+
   return (
     <div className="surface d-flex align-items-center gap-3 p-3">
+      {showDate && d && (
+        <div className="event-card-date flex-shrink-0">
+          <span className="event-card-day">{d.getDate()}</span>
+          <span className="event-card-month">
+            {d.toLocaleDateString("ru-RU", { month: "short" }).replace(/\.$/, "")}
+          </span>
+          <span className="event-card-weekday">{WEEKDAYS_SHORT[d.getDay()]}</span>
+        </div>
+      )}
       <input
         type="checkbox"
         className="form-check-input flex-shrink-0 m-0"
@@ -59,7 +86,8 @@ export function TodoRow({ todo, canEdit }: { todo: TodoData; canEdit: boolean })
       >
         {todo.text}
       </span>
-      {todo.date && (
+      {timeLabel && <span className="small text-secondary flex-shrink-0">{timeLabel}</span>}
+      {!showDate && todo.date && (
         <span className="small text-secondary flex-shrink-0">{fmtDate(todo.date)}</span>
       )}
       {canEdit && (
@@ -99,12 +127,23 @@ export function TodoRow({ todo, canEdit }: { todo: TodoData; canEdit: boolean })
             <label className="form-label small text-secondary">Что сделать</label>
             <input name="text" required defaultValue={todo.text} className="form-control" />
           </div>
-          <div>
-            <label className="form-label small text-secondary">Дата (необязательно)</label>
-            <DatePickerInput
-              name="date"
-              defaultValue={todo.date ? todo.date.slice(0, 10) : ""}
-            />
+          <div className="row g-2">
+            <div className="col-7">
+              <label className="form-label small text-secondary">Дата (необязательно)</label>
+              <DatePickerInput
+                name="date"
+                defaultValue={todo.date ? todo.date.slice(0, 10) : ""}
+              />
+            </div>
+            <div className="col-5">
+              <label className="form-label small text-secondary">Время</label>
+              <input
+                type="time"
+                name="time"
+                defaultValue={timeLabel ?? ""}
+                className="form-control"
+              />
+            </div>
           </div>
           <button type="submit" className="btn btn-primary">
             Сохранить
@@ -162,6 +201,10 @@ export default function TripTodos({
           <div>
             <label className="form-label small text-secondary">Дата (необязательно)</label>
             <DatePickerInput name="date" />
+          </div>
+          <div>
+            <label className="form-label small text-secondary">Время</label>
+            <input type="time" name="time" className="form-control" style={{ width: "7rem" }} />
           </div>
           <button type="submit" className="btn btn-primary">
             Добавить

@@ -26,6 +26,9 @@
 - **Импорты** (`/admin/imports`) — журнал `ImportRun` (обёртка
   `logImportRun` вокруг админских синков TMDB/GMMTV/MDL) + ссылки на
   места запуска. Консольные scripts/*.ts сюда не пишут.
+- **Ошибки** (`/admin/errors`) — лог серверных ошибок: хук
+  `onRequestError` в instrumentation.ts пишет всё упавшее в страницах/
+  экшенах/роутах в `ErrorLog` (+ `logError` для точечных catch).
 - **Настройки** (`/admin/settings`) — `SiteSetting` (ключ-значение):
   цена подписки в Stars (используется инвойсом и пейволлом через
   `getPremiumPriceStars`), пустое значение = дефолт из env/кода.

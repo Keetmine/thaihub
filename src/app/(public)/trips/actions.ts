@@ -184,15 +184,21 @@ export async function removePlaceFromTrip(tripId: string, locationId: string) {
 
 // ---------- Туду-лист поездки ----------
 
+function parseTodoDate(formData: FormData): { date: Date | null; hasTime: boolean } {
+  const dateRaw = String(formData.get("date") ?? "").trim();
+  if (!dateRaw) return { date: null, hasTime: false };
+  const timeRaw = String(formData.get("time") ?? "").trim();
+  const date = new Date(`${dateRaw}T${timeRaw || "00:00"}`);
+  if (Number.isNaN(date.getTime())) return { date: null, hasTime: false };
+  return { date, hasTime: Boolean(timeRaw) };
+}
+
 export async function createTripTodo(tripId: string, formData: FormData): Promise<void> {
   await requireOwnTrip(tripId);
   const text = String(formData.get("text") ?? "").trim();
   if (!text) throw new Error("Введите текст дела");
-  const dateRaw = String(formData.get("date") ?? "").trim();
-  const date = dateRaw ? new Date(dateRaw) : null;
-  await prisma.tripTodo.create({
-    data: { tripId, text, date: date && !Number.isNaN(date.getTime()) ? date : null },
-  });
+  const { date, hasTime } = parseTodoDate(formData);
+  await prisma.tripTodo.create({ data: { tripId, text, date, hasTime } });
   revalidatePath(`/trips/${tripId}`);
 }
 
@@ -216,11 +222,10 @@ export async function updateTripTodo(todoId: string, formData: FormData): Promis
   const todo = await requireOwnTodo(todoId);
   const text = String(formData.get("text") ?? "").trim();
   if (!text) throw new Error("Введите текст дела");
-  const dateRaw = String(formData.get("date") ?? "").trim();
-  const date = dateRaw ? new Date(dateRaw) : null;
+  const { date, hasTime } = parseTodoDate(formData);
   await prisma.tripTodo.update({
     where: { id: todoId },
-    data: { text, date: date && !Number.isNaN(date.getTime()) ? date : null },
+    data: { text, date, hasTime },
   });
   revalidatePath(`/trips/${todo.tripId}`);
 }

@@ -692,6 +692,9 @@ model TripTodo {
   text      String
   done      Boolean   @default(false)
   date      DateTime?
+  // Время указано? (date хранит и время; без флага «00:00» неотличим
+  // от «без времени»).
+  hasTime   Boolean   @default(false)
   createdAt DateTime  @default(now())
 
   @@index([tripId])
@@ -959,4 +962,15 @@ model SiteSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Лог серверных ошибок (instrumentation.onRequestError + точечные
+// catch'и) — выводится в /admin/errors.
+model ErrorLog {
+  id        String   @id @default(cuid())
+  message   String
+  stack     String?
+  path      String?
+  digest    String?
+  createdAt DateTime @default(now())
 }
