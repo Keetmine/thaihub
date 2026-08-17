@@ -418,6 +418,15 @@ export function TvIcon({ className }: { className?: string }) {
   );
 }
 
+export function TagIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg viewBox="0 0 24 24" width="0.95em" height="0.95em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M20.6 13.4 12 22 2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z" />
+      <circle cx="7.5" cy="7.5" r="0.75" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function BookIcon({ className }: { className?: string } = {}) {
   return (
     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">

@@ -8,7 +8,7 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
-import { BuildingIcon, CalendarIcon, TvIcon, UserIcon, InfoIcon } from "@/components/icons";
+import { BuildingIcon, BookIcon, CalendarIcon, TagIcon, TvIcon, UserIcon, InfoIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
@@ -130,6 +130,7 @@ export default async function DramaDetailPage({
       <div className="row g-4">
         {(drama.posterUrl || currentUser) && (
           <div className="col-12 col-sm-4 col-md-3">
+            <div className="position-sticky" style={{ top: "6.5rem" }}>
             {drama.posterUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -145,19 +146,11 @@ export default async function DramaDetailPage({
                 <WatchStatusSelect dramaId={drama.id} status={watchStatus?.status ?? null} />
               </div>
             )}
+            </div>
           </div>
         )}
 
         <div className="col-12 col-sm-8 col-md-9">
-          {drama.novel && (
-            <p className="small text-secondary mb-2">
-              <span className="text-secondary">📖 По новелле:</span>{" "}
-              <Link href={novelHref(drama.novel)} className="link-body-emphasis">
-                {drama.novel.title}
-              </Link>
-              {drama.novel.author ? ` (${drama.novel.author})` : ""}
-            </p>
-          )}
           {drama.agency && (
             <p className="small text-secondary mb-2">
               <BuildingIcon /> <span className="text-secondary">Студия:</span>{" "}
@@ -166,13 +159,26 @@ export default async function DramaDetailPage({
               </Link>
             </p>
           )}
+          {drama.novel && (
+            <p className="small text-secondary mb-2">
+              <BookIcon className="icon-inline" />{" "}
+              <span className="text-secondary">По новелле:</span>{" "}
+              <Link href={novelHref(drama.novel)} className="link-body-emphasis">
+                {drama.novel.title}
+              </Link>
+              {drama.novel.author ? ` (${drama.novel.author})` : ""}
+            </p>
+          )}
 
           {drama.genres.length > 0 && (
-            <div className="d-flex flex-wrap gap-2 mb-3">
+            <p className="small text-secondary mb-2 d-flex flex-wrap align-items-center gap-2">
+              <span className="d-inline-flex align-items-center gap-1">
+                <TagIcon /> <span className="text-secondary">Жанры:</span>
+              </span>
               {drama.genres.map((g) => (
-                <span key={g} className="event-chip">{g}</span>
+                <span key={g} className="tag-chip">{g}</span>
               ))}
-            </div>
+            </p>
           )}
 
           <div className="d-flex flex-column gap-1 mb-3">
