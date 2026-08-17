@@ -12,7 +12,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import TripTodos, { TodoRow } from "../TripTodos";
-import TripMembersButton from "../TripMembersControls";
+import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
 import LocationMapLoader from "@/components/LocationMapLoader";
@@ -66,17 +66,22 @@ export default async function TripPage({
   // его принятые друзья, PUBLIC — любой залогиненный. Чужому 404, а не
   // 403 — не подтверждаем само существование поездки.
   const isOwner = trip.userId === user.id;
-  // Совместная поездка: участники (TripMember) видят её независимо от
-  // видимости и наравне с владельцем вносят события/дела.
-  const isMember = trip.members.some((m) => m.userId === user.id);
+  // Совместная поездка: принявшие инвайт участники (ACCEPTED) видят её
+  // независимо от видимости и наравне с владельцем вносят события/дела.
+  // PENDING — приглашение: видит страницу с баннером «принять/отклонить»,
+  // но не личное/дела.
+  const myMembership = trip.members.find((m) => m.userId === user.id);
+  const isMember = myMembership?.status === "ACCEPTED";
+  const isInvited = myMembership?.status === "PENDING";
+  const acceptedMembers = trip.members.filter((m) => m.status === "ACCEPTED");
   const isParticipant = isOwner || isMember;
-  const isShared = trip.members.length > 0;
+  const isShared = acceptedMembers.length > 0;
   // Управление поездкой (видимость, личные события) — часть платного
   // функционала; владелец без подписки видит свою поездку read-only.
   const canManage = isOwner && isPremiumActive(user);
   // Вносить события/дела могут все участники с подпиской.
   const canContribute = isParticipant && isPremiumActive(user);
-  if (!isParticipant) {
+  if (!isParticipant && !isInvited) {
     if (trip.visibility === "PRIVATE") notFound();
     if (trip.visibility === "FRIENDS") {
       const ownerFriendIds = await getFriendIds(trip.userId);
@@ -84,10 +89,10 @@ export default async function TripPage({
     }
   }
 
-  const participantIds = [trip.userId, ...trip.members.map((m) => m.userId)];
+  const participantIds = [trip.userId, ...acceptedMembers.map((m) => m.userId)];
   const nameById = new Map<string, string | null>([
     [trip.userId, trip.user.name],
-    ...trip.members.map((m) => [m.userId, m.user.name] as [string, string | null]),
+    ...acceptedMembers.map((m) => [m.userId, m.user.name] as [string, string | null]),
   ]);
   // Фильтр «Только моё» (совместные поездки): в плане остаются лишь мои
   // отметки «иду», мои личные события и мои дела.
@@ -270,7 +275,11 @@ export default async function TripPage({
               tripId={trip.id}
               isOwner={isOwner}
               owner={{ id: trip.userId, name: trip.user.name }}
-              members={trip.members.map((m) => ({ id: m.userId, name: m.user.name }))}
+              members={trip.members.map((m) => ({
+                id: m.userId,
+                name: m.user.name,
+                pending: m.status === "PENDING",
+              }))}
               availableFriends={availableFriends}
             />
             {isOwner && (
@@ -287,6 +296,16 @@ export default async function TripPage({
           </Link>
         )}
       </div>
+
+      {isInvited && (
+        <div className="surface d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 mb-4">
+          <span>
+            {trip.user.name ?? "Пользователь"} приглашает вас в эту поездку —
+            вы будете видеть общий план и сможете добавлять свои события и дела.
+          </span>
+          <TripInviteActions tripId={trip.id} />
+        </div>
+      )}
 
       <div className="tab-bar-row">
         <div className="tab-bar">

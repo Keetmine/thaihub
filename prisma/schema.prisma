@@ -624,12 +624,19 @@ enum TripVisibility {
 // performers.
 // Со-путешественник: полноценный доступ к поездке (видит всё, вносит
 // события/дела). Права на чужие записи — по editableByOthers записи;
-// владелец поездки может всё.
+// владелец поездки может всё. Добавление — через инвайт: PENDING до
+// принятия, участником считается только ACCEPTED.
+enum TripMemberStatus {
+  PENDING
+  ACCEPTED
+}
+
 model TripMember {
   tripId    String
   userId    String
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    TripMemberStatus @default(PENDING)
   createdAt DateTime @default(now())
 
   @@id([tripId, userId])

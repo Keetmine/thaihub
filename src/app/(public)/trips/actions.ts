@@ -31,8 +31,8 @@ export async function createTrip(formData: FormData) {
     throw new Error("Дата окончания раньше даты начала");
   }
 
-  // Совместная поездка сразу из формы: выбранные друзья становятся
-  // участниками (только реальные друзья — чужие id отбрасываем).
+  // Совместная поездка сразу из формы: выбранным друзьям уходит
+  // приглашение (только реальным друзьям — чужие id отбрасываем).
   const requestedMemberIds = formData.getAll("memberIds").map(String).filter(Boolean);
   const friendIds = requestedMemberIds.length > 0 ? await getFriendIds(user.id) : [];
   const memberIds = [...new Set(requestedMemberIds.filter((id) => friendIds.includes(id)))];
@@ -119,7 +119,10 @@ async function requireTripAccess(tripId: string) {
   const trip = await prisma.trip.findFirst({
     where: {
       id: tripId,
-      OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }],
+      OR: [
+        { userId: user.id },
+        { members: { some: { userId: user.id, status: "ACCEPTED" } } },
+      ],
     },
   });
   if (!trip) throw new Error("Поездка не найдена");
@@ -143,12 +146,35 @@ function canTouchItem(
 export async function addTripMember(tripId: string, friendId: string): Promise<void> {
   const trip = await requireOwnTrip(tripId);
   if (friendId === trip.userId) throw new Error("Владелец уже в поездке");
+  // Добавление — это приглашение: участником друг станет, когда примет.
   await prisma.tripMember.upsert({
     where: { tripId_userId: { tripId, userId: friendId } },
     create: { tripId, userId: friendId },
     update: {},
   });
   revalidatePath(`/trips/${tripId}`);
+}
+
+/** Принять приглашение в поездку (есть PENDING-строка на меня). */
+export async function acceptTripInvite(tripId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  await prisma.tripMember.updateMany({
+    where: { tripId, userId: user.id, status: "PENDING" },
+    data: { status: "ACCEPTED" },
+  });
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath("/trips");
+}
+
+/** Отклонить приглашение — строка удаляется, владелец может позвать снова. */
+export async function declineTripInvite(tripId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  await prisma.tripMember.deleteMany({
+    where: { tripId, userId: user.id, status: "PENDING" },
+  });
+  revalidatePath("/trips");
 }
 
 export async function removeTripMember(tripId: string, userId: string): Promise<void> {
@@ -300,7 +326,10 @@ async function requireOwnTodo(todoId: string) {
     where: {
       id: todoId,
       trip: {
-        OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }],
+        OR: [
+          { userId: user.id },
+          { members: { some: { userId: user.id, status: "ACCEPTED" } } },
+        ],
       },
     },
     include: { trip: { select: { userId: true } } },

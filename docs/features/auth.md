@@ -140,6 +140,14 @@ cookie-presence check only** — it never touches the database:
 - `/`, `/about` (лендинг по постоянному адресу), `/wiki` (индекс) и
   `/wiki/[slug]`, `/login`, `/signup`, `/manifest.webmanifest` — always
   public.
+- **Каталог открыт без логина ради SEO** (regex в proxy): `/artists`,
+  `/dramas`, `/novels`, `/locations`, `/agencies`, `/day`, `/event`,
+  `/search` со всеми подстраницами. Страницы null-safe по
+  `getCurrentUser()`; действия («в избранное», «иду», статусы) сами
+  редиректят анонима на /login. Анониму без поиска показываются
+  свежие сериалы по дате эфира и самые «событийные» актёры (вместо
+  пустых списков «ваших» статусов/избранного). Личное (аккаунт,
+  поездки, списки, друзья, календарь, /help) — за логином.
 - `/event/[id]/ics` — public (calendar apps fetch it directly, no session
   cookie).
 - Everything else — redirects to `/login` unless a `user_session` cookie

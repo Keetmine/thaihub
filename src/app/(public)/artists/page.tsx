@@ -360,7 +360,14 @@ export default async function PerformersPage({
                 include: { _count: { select: { events: true } } },
                 orderBy: { name: "asc" },
               })
-            : [];
+            : // Анониму (каталог открыт для SEO) — самые «событийные»
+              // актёры вместо пустого списка избранного.
+              await prisma.performer.findMany({
+                where: { type: typeOfView(view), events: { some: {} } },
+                include: { _count: { select: { events: true } } },
+                orderBy: { events: { _count: "desc" } },
+                take: 60,
+              });
   const favoritedIds = new Set<string>();
   if (currentUser && performers.length > 0) {
     const favorites = await prisma.favoritePerformer.findMany({

@@ -54,7 +54,10 @@ export default async function HomePage({
   // тоже за подпиской — то есть только после её возврата).
   const myTrips = await prisma.trip.findMany({
     where: {
-      OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }],
+      OR: [
+        { userId: user.id },
+        { members: { some: { userId: user.id, status: "ACCEPTED" } } },
+      ],
       endDate: { gte: startOfDay(new Date()) },
     },
     orderBy: { startDate: "asc" },
@@ -65,7 +68,10 @@ export default async function HomePage({
       (await prisma.trip.findFirst({
         where: {
           id: rawTrip,
-          OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }],
+          OR: [
+            { userId: user.id },
+            { members: { some: { userId: user.id, status: "ACCEPTED" } } },
+          ],
         },
       })))
     : null;

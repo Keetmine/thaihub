@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
 import { login } from "./actions";
 import { telegramBotUsername } from "@/lib/telegram";
@@ -45,7 +46,7 @@ export default async function LoginPage({
         <label className="form-label">Email</label>
         <input type="email" name="email" required autoFocus className="form-control mb-3" />
         <label className="form-label">Пароль</label>
-        <input type="password" name="password" required className="form-control mb-3" />
+        <PasswordInput name="password" required autoComplete="current-password" className="mb-3" />
         <button type="submit" className="btn btn-primary w-100 mb-3">
           Войти
         </button>

@@ -47,6 +47,15 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Каталог открыт без логина ради SEO: сериалы, исполнители, события,
+  // локации, новеллы, агентства, поиск. Страницы написаны null-safe
+  // (getCurrentUser() → null), а действия («в избранное», «иду») сами
+  // редиректят анонима на /login. Личное (аккаунт, поездки, списки,
+  // друзья, календарь) остаётся за логином.
+  if (/^\/(artists|dramas|novels|locations|agencies|day|event|search)(\/.*)?$/.test(pathname)) {
+    return NextResponse.next();
+  }
+
   // Calendar-export links (event/[id]/ics) are meant to be handed to
   // external calendar apps (Google/Apple/Outlook "subscribe by URL"), which
   // fetch them directly and never carry our session cookie.

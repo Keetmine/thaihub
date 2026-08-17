@@ -1,5 +1,6 @@
 "use client";
 
+import PasswordInput from "@/components/PasswordInput";
 import { useState } from "react";
 import { changePassword } from "../actions";
 
@@ -28,32 +29,15 @@ export default function ChangePasswordForm() {
     <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
       <div>
         <label className="form-label">Текущий пароль</label>
-        <input
-          type="password"
-          name="currentPassword"
-          required
-          className="form-control"
-        />
+        <PasswordInput name="currentPassword" required autoComplete="current-password" />
       </div>
       <div>
         <label className="form-label">Новый пароль</label>
-        <input
-          type="password"
-          name="newPassword"
-          required
-          minLength={6}
-          className="form-control"
-        />
+        <PasswordInput name="newPassword" required minLength={6} autoComplete="new-password" />
       </div>
       <div>
         <label className="form-label">Повторите новый пароль</label>
-        <input
-          type="password"
-          name="confirmPassword"
-          required
-          minLength={6}
-          className="form-control"
-        />
+        <PasswordInput name="confirmPassword" required minLength={6} autoComplete="new-password" />
       </div>
       {error && <p className="small text-danger mb-0">{error}</p>}
       {success && <p className="small text-success mb-0">Пароль изменён.</p>}

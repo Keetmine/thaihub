@@ -56,7 +56,13 @@ export default async function DramasPage({
           },
           orderBy: { title: "asc" },
         })
-      : [];
+      : // Анониму (каталог открыт для SEO) — свежие по дате эфира, а не
+        // пустой список «ваших статусов».
+        await prisma.drama.findMany({
+          where: { airedFrom: { not: null } },
+          orderBy: { airedFrom: "desc" },
+          take: 60,
+        });
 
   const statusByDramaId = await getDramaWatchStatuses(
     dramas.map((d) => d.id),
@@ -81,7 +87,7 @@ export default async function DramasPage({
           >
             Все
           </Link>
-          {WATCH_STATUS_ORDER.map((s) => (
+          {currentUser && WATCH_STATUS_ORDER.map((s) => (
             <Link
               key={s}
               href={`/dramas?status=${s}${statusQuery}`}

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { endOfDay, formatShortDate } from "@/lib/dates";
 import CreateTripButton from "./CreateTripButton";
+import { TripInviteActions } from "./TripMembersControls";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { CalendarIcon } from "@/components/icons";
@@ -38,15 +39,28 @@ export default async function TripsPage() {
     orderBy: { name: "asc" },
   });
 
-  // Свои поездки + совместные, куда меня добавили участником.
-  const tripsRaw = await prisma.trip.findMany({
-    where: { OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }] },
-    include: {
-      user: { select: { id: true, name: true } },
-      _count: { select: { members: true } },
-    },
-    orderBy: { startDate: "asc" },
-  });
+  // Свои поездки + совместные, где я принял приглашение; отдельным
+  // блоком — ещё не отвеченные приглашения.
+  const [tripsRaw, invites] = await Promise.all([
+    prisma.trip.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          { members: { some: { userId: user.id, status: "ACCEPTED" } } },
+        ],
+      },
+      include: {
+        user: { select: { id: true, name: true } },
+        _count: { select: { members: { where: { status: "ACCEPTED" } } } },
+      },
+      orderBy: { startDate: "asc" },
+    }),
+    prisma.tripMember.findMany({
+      where: { userId: user.id, status: "PENDING" },
+      include: { trip: { include: { user: { select: { name: true } } } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   // Будущие и текущие — сверху (ближайшая первой), прошедшие — внизу
   // (свежие из прошедших выше).
   const todayRef = new Date();
@@ -68,7 +82,7 @@ export default async function TripsPage() {
               some: {
                 OR: [
                   { userId: t.userId },
-                  { user: { tripMemberships: { some: { tripId: t.id } } } },
+                  { user: { tripMemberships: { some: { tripId: t.id, status: "ACCEPTED" } } } },
                 ],
               },
             },
@@ -94,6 +108,31 @@ export default async function TripsPage() {
           Поездка — это даты, когда вы в Таиланде: на её странице собраны все
           события, попадающие в этот период.
         </p>
+        {invites.length > 0 && (
+          <div className="mb-4 d-flex flex-column gap-2">
+            <h2 className="section-heading mb-0">Приглашения</h2>
+            {invites.map((inv) => (
+              <div
+                key={inv.tripId}
+                className="surface d-flex flex-wrap align-items-center justify-content-between gap-3 p-3"
+              >
+                <div>
+                  <p className="font-display fw-medium text-white mb-0">
+                    <Link href={tripHref(inv.trip)} className="text-white text-decoration-none">
+                      {inv.trip.title}
+                    </Link>
+                  </p>
+                  <p className="small text-secondary mb-0">
+                    {formatShortDate(inv.trip.startDate)} – {formatShortDate(inv.trip.endDate)}{" "}
+                    {inv.trip.endDate.getFullYear()} · приглашает {inv.trip.user.name ?? "друг"}
+                  </p>
+                </div>
+                <TripInviteActions tripId={inv.tripId} />
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mb-4">
           <CreateTripButton
             friends={friends.map((f) => ({ id: f.id, name: f.name ?? "Без имени", photoUrl: f.photoUrl }))}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
 import { signup } from "./actions";
 
@@ -47,7 +48,7 @@ export default async function SignupPage({
         <label className="form-label">Email</label>
         <input type="email" name="email" required className="form-control mb-3" />
         <label className="form-label">Пароль</label>
-        <input type="password" name="password" required minLength={6} className="form-control mb-3" />
+        <PasswordInput name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
         <button type="submit" className="btn btn-primary w-100 mb-3">
           Зарегистрироваться
         </button>
