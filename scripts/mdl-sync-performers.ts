@@ -47,13 +47,24 @@ async function main() {
   const limitArg = process.argv.indexOf("--limit");
   const limit = limitArg >= 0 ? Number(process.argv[limitArg + 1]) : Infinity;
   const force = process.argv.includes("--force");
+  // Точечный прогон одного актёра: --performer <slug или имя> (игнорирует
+  // mdlSyncedAt — синкает всегда).
+  const performerArg = process.argv.indexOf("--performer");
+  const onlyPerformer = performerArg >= 0 ? process.argv[performerArg + 1] : null;
 
   const performers = await prisma.performer.findMany({
-    where: {
-      type: "SOLO",
-      agencies: { some: {} },
-      ...(force ? {} : { mdlSyncedAt: null }),
-    },
+    where: onlyPerformer
+      ? {
+          OR: [
+            { slug: onlyPerformer },
+            { name: { equals: onlyPerformer, mode: "insensitive" } },
+          ],
+        }
+      : {
+          type: "SOLO",
+          agencies: { some: {} },
+          ...(force ? {} : { mdlSyncedAt: null }),
+        },
     orderBy: { name: "asc" },
     include: {
       links: true,
