@@ -53,8 +53,9 @@ export default async function CalendarPage({
 
   const currentUser = gateUser;
 
-  // Дни рождения: все исполнители (актёры, маскоты, группы…) с датой
-  // рождения в месяцах, попадающих в сетку (на краях — до трёх месяцев).
+  // Дни рождения: исполнители с датой рождения, СОСТОЯЩИЕ в агентствах
+  // (без фильтра сетку заполняли тысячи случайных актёров из импортов),
+  // в месяцах, попадающих в сетку (на краях — до трёх месяцев).
   type BirthdayRow = { id: string; name: string; slug: string | null; photoUrl: string | null; birthDate: Date };
   const birthdaysByDay = new Map<string, BirthdayRow[]>();
   if (showBirthdays) {
@@ -64,6 +65,9 @@ export default async function CalendarPage({
       FROM "Performer"
       WHERE "birthDate" IS NOT NULL
         AND EXTRACT(MONTH FROM "birthDate") = ANY(${monthsInGrid})
+        AND EXISTS (
+          SELECT 1 FROM "PerformerAgency" pa WHERE pa."performerId" = "Performer".id
+        )
       ORDER BY name ASC
     `;
     for (const r of rows) {
