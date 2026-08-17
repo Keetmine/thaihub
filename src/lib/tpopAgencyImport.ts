@@ -4,6 +4,7 @@ import {
   fetchTpopAgencyPage,
   fetchTpopArtistExtras,
   fetchTpopPageStreamingLink,
+  fetchTpopConcertPage,
   type TpopConcertEntry,
 } from "@/lib/tpopArtistExtras";
 import { fetchTpopBandPage, fetchTpopMemberPage, parseTpopPageTitle } from "@/lib/tpopFandom";
@@ -163,9 +164,63 @@ async function searchTtm(query: string): Promise<{ url: string; title: string }[
   return out;
 }
 
+/** Привязывает к событию всех артистов концерта (включая гостей),
+ *  которых удалось найти в каталоге по имени/алиасу. */
+async function linkEventArtists(eventId: string, artistNames: string[]): Promise<number> {
+  let linked = 0;
+  for (const raw of artistNames) {
+    const name = raw.replace(/\(.*?\)/g, "").trim();
+    if (name.length < 2) continue;
+    const performer = await prisma.performer.findFirst({
+      where: {
+        OR: [
+          { name: { equals: name, mode: "insensitive" } },
+          { musicAlias: { equals: name, mode: "insensitive" } },
+        ],
+      },
+    });
+    if (!performer) continue;
+    await prisma.eventPerformer.upsert({
+      where: { eventId_performerId: { eventId, performerId: performer.id } },
+      update: {},
+      create: { eventId, performerId: performer.id },
+    });
+    linked += 1;
+  }
+  return linked;
+}
+
+/** Старые страницы TTM живы по предсказуемым слагам — пробуем угадать
+ *  URL по названию концерта (поиск сайта старые продажи не отдаёт). */
+async function guessTtmEvent(title: string): Promise<TtmEvent | null> {
+  const slug = title
+    .toLowerCase()
+    .replace(/["'«»“”‘’:.,!?]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (slug.length < 8) return null;
+  for (const section of ["concert", "performance"]) {
+    const url = `https://www.thaiticketmajor.com/${section}/${slug}.html`;
+    try {
+      const res = await fetch(url, { headers: { "User-Agent": TTM_UA } });
+      if (!res.ok) continue;
+      return await scrapeTtmEvent(url);
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 /** Создаёт событие из спарсенных TTM-данных (та же логика полей, что и
  *  ручной импорт /admin/events/import-ttm, но без ревью-экрана). */
-async function createEventFromTtm(ctx: Ctx, performerId: string, ttm: TtmEvent): Promise<void> {
+async function createEventFromTtm(
+  ctx: Ctx,
+  performerId: string,
+  ttm: TtmEvent,
+  extraArtists: string[] = [],
+): Promise<void> {
   if (!ttm.date) return;
   const startTime = ttm.startTime ?? "19:00";
   const dates = [ttm.date, ...ttm.extraDates];
@@ -188,9 +243,39 @@ async function createEventFromTtm(ctx: Ctx, performerId: string, ttm: TtmEvent):
       performers: { create: { performerId } },
     },
   });
+  // артисты с TTM-страницы + с вики-страницы концерта (гости включая)
+  await linkEventArtists(event.id, [
+    ...ttm.artists.map((a) => a.nickname || a.fullName),
+    ...extraArtists,
+  ]);
   ctx.summary.eventsCreated += 1;
   await recordItem(ctx, "event", event.id, "created", ttm.title);
   ctx.log(`  [событие] создано с TTM: ${ttm.title}`);
+}
+
+/** Создаёт событие по данным вики-страницы концерта (прошедшие: TTM не
+ *  нашёлся) — даты без времени (hasTime=false), постер из инфобокса. */
+async function createEventFromWiki(
+  ctx: Ctx,
+  performerId: string,
+  wiki: { title: string; venue: string | null; posterUrl: string | null; artists: string[]; dates: string[] },
+): Promise<void> {
+  if (wiki.dates.length === 0) return;
+  const event = await prisma.event.create({
+    data: {
+      title: wiki.title,
+      venue: wiki.venue ?? "TBA",
+      posterUrl: await downloadRemoteImage(wiki.posterUrl, "posters"),
+      occurrences: {
+        create: wiki.dates.map((d) => ({ startsAt: new Date(`${d}T00:00`), hasTime: false })),
+      },
+      performers: { create: { performerId } },
+    },
+  });
+  await linkEventArtists(event.id, wiki.artists);
+  ctx.summary.eventsCreated += 1;
+  await recordItem(ctx, "event", event.id, "created", wiki.title);
+  ctx.log(`  [событие] создано с вики концерта: ${wiki.title}`);
 }
 
 /** Сверяет список концертов артиста с афишей; новые ищет на TTM. */
@@ -210,7 +295,12 @@ async function importConcerts(
       (e) => e.norm === cNorm || e.norm.includes(cNorm) || cNorm.includes(e.norm),
     );
     if (match) {
-      // концерт уже в афише — убеждаемся, что артист привязан
+      // концерт уже в афише — убеждаемся, что артист привязан (пустой id
+      // = событие создано этим же прогоном строкой другого артиста)
+      if (!match.id) {
+        ctx.summary.concertsMatched += 1;
+        continue;
+      }
       await prisma.eventPerformer.upsert({
         where: { eventId_performerId: { eventId: match.id, performerId } },
         update: {},
@@ -220,25 +310,44 @@ async function importConcerts(
       continue;
     }
 
-    // не нашли у себя — пробуем thaiticketmajor
+    // не нашли у себя — собираем данные: вики-страница концерта (артисты,
+    // даты, постер) + TTM (страницы прошедших живы по угаданному слагу,
+    // текущие — через поиск).
     try {
-      const results = await searchTtm(concert.title.slice(0, 60));
-      const hit = results.find((r) => {
-        const rNorm = normTitle(r.title);
-        return rNorm.includes(cNorm) || cNorm.includes(rNorm);
-      });
-      if (hit) {
-        const ttm = await scrapeTtmEvent(hit.url);
-        // после скрейпа перепроверяем точное название против афиши
-        const already = normed.find((e) => e.norm === normTitle(ttm.title));
-        if (!already) {
-          await createEventFromTtm(ctx, performerId, ttm);
-          continue;
-        }
+      const wiki = concert.wikiHref
+        ? await fetchTpopConcertPage(concert.wikiHref).catch(() => null)
+        : null;
+
+      let ttm: TtmEvent | null = await guessTtmEvent(wiki?.title ?? concert.title);
+      if (!ttm) {
+        const results = await searchTtm(concert.title.slice(0, 60));
+        const hit = results.find((r) => {
+          const rNorm = normTitle(r.title);
+          return rNorm.includes(cNorm) || cNorm.includes(rNorm);
+        });
+        if (hit) ttm = await scrapeTtmEvent(hit.url);
       }
-      ctx.summary.concertsNotFound.push(`${concert.title}${concert.year ? ` (${concert.year})` : ""}`);
+
+      // после скрейпа перепроверяем точное название против афиши
+      const finalTitle = ttm?.title ?? wiki?.title;
+      if (finalTitle && normed.some((e) => e.norm === normTitle(finalTitle))) {
+        ctx.summary.concertsMatched += 1;
+        continue;
+      }
+
+      if (ttm?.date) {
+        await createEventFromTtm(ctx, performerId, ttm, wiki?.artists ?? []);
+        // защита от повторного создания в этом же прогоне (тот же концерт
+        // в списках нескольких артистов / в двух секциях одной страницы)
+        normed.push({ id: "", norm: normTitle(ttm.title) });
+      } else if (wiki && wiki.dates.length > 0) {
+        await createEventFromWiki(ctx, performerId, wiki);
+        normed.push({ id: "", norm: normTitle(wiki.title) });
+      } else {
+        ctx.summary.concertsNotFound.push(`${concert.title}${concert.year ? ` (${concert.year})` : ""}`);
+      }
     } catch {
-      ctx.summary.concertsNotFound.push(`${concert.title} — ошибка TTM`);
+      ctx.summary.concertsNotFound.push(`${concert.title} — ошибка источника`);
     }
   }
 }

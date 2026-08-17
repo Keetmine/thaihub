@@ -29,7 +29,12 @@ export type TpopAwardRow = {
 
 export type TpopReference = { label: string; url: string | null };
 
-export type TpopConcertEntry = { title: string; year: string | null };
+export type TpopConcertEntry = {
+  title: string;
+  year: string | null;
+  /** Ссылка на вики-страницу самого концерта (не артиста «(with …)»). */
+  wikiHref: string | null;
+};
 
 export type TpopArtistExtras = {
   occupation: string[];
@@ -44,6 +49,26 @@ export type TpopArtistExtras = {
   concerts: TpopConcertEntry[];
   sourceUrl: string;
 };
+
+/** Все элементы после заголовка секции до следующего заголовка того же
+ *  (или более высокого) уровня h2 — в отличие от contentAfterHeading,
+ *  который отдаёт только ПЕРВЫЙ элемент и потому не видит подсекции
+ *  (у «Concerts» строки живут внутри h3 Tours/Solo/…). */
+function sectionElements($: CheerioAPI, heading: Cheerio<AnyNode>): Cheerio<AnyNode>[] {
+  const parent = heading.parent();
+  const isWrapped =
+    parent.length > 0 && parent.get(0)?.tagName === "div" && (parent.attr("class") ?? "").includes("mw-heading");
+  let node = (isWrapped ? parent : heading).next();
+  const out: Cheerio<AnyNode>[] = [];
+  while (node.length) {
+    const tag = node.get(0)?.tagName ?? "";
+    const cls = node.attr("class") ?? "";
+    if (tag === "h2" || (tag === "div" && cls.includes("mw-heading2"))) break;
+    out.push(node);
+    node = node.next();
+  }
+  return out;
+}
 
 function infoboxList($: CheerioAPI, infobox: Cheerio<AnyNode>, label: string): string[] {
   const item = infobox
@@ -72,14 +97,12 @@ function sectionListItems($: CheerioAPI, headingText: string): string[] {
   const heading = headingByText($, headingText);
   if (!heading.length) return [];
   const out: string[] = [];
-  contentAfterHeading($, heading).each((_, el) => {
-    $(el)
-      .find("li")
-      .each((__, li) => {
-        const text = $(li).text().replace(/\[\d+\]/g, "").trim();
-        if (text) out.push(text);
-      });
-  });
+  for (const el of sectionElements($, heading)) {
+    el.find("li").each((__, li) => {
+      const text = $(li).text().replace(/\[\d+\]/g, "").trim();
+      if (text) out.push(text);
+    });
+  }
   return out;
 }
 
@@ -88,15 +111,36 @@ function sectionListItems($: CheerioAPI, headingText: string): string[] {
 function parseConcerts($: CheerioAPI): TpopConcertEntry[] {
   const entries: TpopConcertEntry[] = [];
   for (const section of ["Concerts", "Fanmeetings", "Concerts and events"]) {
-    for (const raw of sectionListItems($, section)) {
-      const year = raw.match(/\b(20\d{2})\b/)?.[1] ?? null;
-      // «(2024) Title» / «Title (2024)» → чистое название
-      const title = raw
-        .replace(/\(\s*20\d{2}[^)]*\)/g, "")
-        .replace(/^\s*[-–—:]\s*/, "")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-      if (title) entries.push({ title, year });
+    const heading = headingByText($, section);
+    if (!heading.length) continue;
+    for (const el of sectionElements($, heading)) {
+      el
+        .find("li")
+        .each((__, liEl) => {
+          const li = $(liEl);
+          const raw = li.text().replace(/\[\d+\]/g, "").trim();
+          if (!raw) return;
+          const year = raw.match(/\b(20\d{2})\b/)?.[1] ?? null;
+          const title = raw
+            .replace(/\(\s*20\d{2}[^)]*\)/g, "")
+            .replace(/\(with[^)]*\)?/gi, "")
+            .replace(/[\[\]]/g, "")
+            .replace(/^\s*[-–—:]\s*/, "")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+          if (!title) return;
+          // Ссылка на страницу концерта: текст ссылки должен совпадать с
+          // названием (иначе это ссылка на артиста из «(with Gemini)»).
+          let wikiHref: string | null = null;
+          li.find('a[href^="/wiki/"]').each((___, a) => {
+            if (wikiHref) return;
+            const linkText = $(a).text().trim().toLowerCase();
+            if (linkText && linkText === title.toLowerCase()) {
+              wikiHref = $(a).attr("href") ?? null;
+            }
+          });
+          entries.push({ title, year, wikiHref });
+        });
     }
   }
   return entries;
@@ -106,9 +150,8 @@ function parseAwards($: CheerioAPI): TpopAwardRow[] {
   const heading = headingByText($, "Awards and nominations");
   if (!heading.length) return [];
   const rows: TpopAwardRow[] = [];
-  contentAfterHeading($, heading).each((_, el) => {
-    const tables =
-      $(el).is("table") ? $(el) : $(el).find("table");
+  for (const el of sectionElements($, heading)) {
+    const tables = el.is("table") ? el : el.find("table");
     tables.each((__, tableEl) => {
       const grid = parseTableGrid($, $(tableEl));
       if (grid.length < 2) return;
@@ -133,7 +176,7 @@ function parseAwards($: CheerioAPI): TpopAwardRow[] {
         });
       }
     });
-  });
+  }
   return rows;
 }
 
@@ -238,5 +281,87 @@ export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopA
     former: sectionArtistLinks($, "Former artists"),
     references: parseReferences($),
     sourceUrl: `https://tpop.fandom.com/wiki/${encodeURIComponent(pageTitle.replace(/ /g, "_"))}`,
+  };
+}
+
+export type TpopConcertPage = {
+  title: string;
+  posterUrl: string | null;
+  venue: string | null;
+  artists: string[];
+  /** ISO-даты "YYYY-MM-DD" (диапазоны развёрнуты по дням). */
+  dates: string[];
+};
+
+const MONTHS: Record<string, number> = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+};
+
+function iso(y: number, m: number, d: number): string {
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/** «August 26-27, 2023», «August 31 - September 1, 2024», «May 4, 2025»
+ *  (и несколько дат сразу) → список ISO-дат. Диапазоны разворачиваются,
+ *  но не длиннее 14 дней (защита от мусорного парса). */
+export function parseConcertDates(text: string): string[] {
+  const out: string[] = [];
+  let rest = text;
+
+  // кросс-месячные диапазоны
+  rest = rest.replace(
+    /([A-Za-z]+)\s+(\d{1,2})\s*[-–]\s*([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})/g,
+    (_, m1, d1, m2, d2, y) => {
+      const from = new Date(Date.UTC(Number(y), (MONTHS[m1.toLowerCase()] ?? 1) - 1, Number(d1)));
+      const to = new Date(Date.UTC(Number(y), (MONTHS[m2.toLowerCase()] ?? 1) - 1, Number(d2)));
+      for (let d = new Date(from), i = 0; d <= to && i < 14; d.setUTCDate(d.getUTCDate() + 1), i++) {
+        out.push(iso(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()));
+      }
+      return " ";
+    },
+  );
+  // диапазон дней внутри месяца
+  rest = rest.replace(/([A-Za-z]+)\s+(\d{1,2})\s*[-–]\s*(\d{1,2}),?\s*(\d{4})/g, (_, m1, d1, d2, y) => {
+    const month = MONTHS[m1.toLowerCase()];
+    if (month) {
+      for (let d = Number(d1), i = 0; d <= Number(d2) && i < 14; d++, i++) out.push(iso(Number(y), month, d));
+    }
+    return " ";
+  });
+  // одиночные даты
+  rest.replace(/([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})/g, (_, m1, d1, y) => {
+    const month = MONTHS[m1.toLowerCase()];
+    if (month) out.push(iso(Number(y), month, Number(d1)));
+    return " ";
+  });
+  return [...new Set(out)].sort();
+}
+
+/** Вики-страница концерта: инфобокс name/image/artist/date/venue. */
+export async function fetchTpopConcertPage(pageTitleOrUrl: string): Promise<TpopConcertPage> {
+  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
+  const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
+  const $ = cheerio.load(html);
+  const infobox = $(".portable-infobox").first();
+  const photo = infobox.find(".pi-image img").first().attr("src") ?? null;
+
+  const artists = textWithBreaks($, infobox.find('[data-source="artist"] .pi-data-value').first())
+    .split(/\n|,|&/)
+    .map((a) => a.trim())
+    .filter(Boolean);
+
+  const dateText = textWithBreaks($, infobox.find('[data-source="date"] .pi-data-value').first());
+  const venueText = textWithBreaks($, infobox.find('[data-source="venue"] .pi-data-value').first())
+    .replace(/\n/g, ", ")
+    .trim();
+  const venue = venueText || null;
+
+  return {
+    title: infobox.find(".pi-title").first().text().trim() || pageTitle,
+    posterUrl: photo ? (photo.startsWith("http") ? photo : `https:${photo}`) : null,
+    venue,
+    artists,
+    dates: parseConcertDates(dateText),
   };
 }
