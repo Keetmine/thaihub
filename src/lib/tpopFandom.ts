@@ -105,20 +105,26 @@ export async function fetchTpopBandPage(pageTitleOrUrl: string): Promise<TpopBan
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
 
-  // "Current" lineup only — a page's big historical Members table
-  // (kept separately, further down the article) also lists pre-debut/
-  // departed members, which don't belong in a band's current roster.
-  const currentValue = infoboxValue($, infobox, "Current");
-  const members: TpopBandMemberLink[] = currentValue
-    ? currentValue
-        .find("li a")
-        .toArray()
-        .map((el) => {
-          const $a = $(el);
-          return { name: $a.text().trim(), href: $a.attr("href") ?? "" };
-        })
-        .filter((m) => m.name && m.href)
-    : [];
+  // "Current" lineup — a page's big historical Members table (kept
+  // separately, further down the article) also lists pre-debut/departed
+  // members, which don't belong in a band's current roster. У
+  // РАСПАВШИХСЯ групп (SIZZY) поля Current нет вовсе — состав лежит в
+  // «Former»: без этого фолбэка страница выглядела как соло-артист
+  // (0 участников) и импортёр создавал группу типом SOLO.
+  const membersFrom = (label: string): TpopBandMemberLink[] => {
+    const value = infoboxValue($, infobox, label);
+    if (!value) return [];
+    return value
+      .find("li a")
+      .toArray()
+      .map((el) => {
+        const $a = $(el);
+        return { name: $a.text().trim(), href: $a.attr("href") ?? "" };
+      })
+      .filter((m) => m.name && m.href);
+  };
+  const current = membersFrom("Current");
+  const members = current.length > 0 ? current : membersFrom("Former");
 
   return {
     name: pageTitle,
