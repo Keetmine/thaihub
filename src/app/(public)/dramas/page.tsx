@@ -9,6 +9,7 @@ import { getDramaWatchStatuses } from "@/lib/favorites";
 import type { DramaWatchStatusValue } from "../favorites/actions";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { dramaHref } from "@/lib/dramaSlug";
+import { dramaTitleWhere } from "@/lib/searchWhere";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export default async function DramasPage({
   const searchResults = q
     ? await prisma.drama.findMany({
         where: {
-          title: { contains: q, mode: "insensitive" as const },
+          ...dramaTitleWhere(q),
           ...(status && currentUser
             ? { watchStatuses: { some: { userId: currentUser.id, status } } }
             : {}),

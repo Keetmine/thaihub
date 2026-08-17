@@ -10,6 +10,7 @@ import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
 import { agencyHref, locationHref } from "@/lib/slugHelpers";
+import { dramaTitleWhere, performerNameWhere } from "@/lib/searchWhere";
 
 export const dynamic = "force-dynamic";
 
@@ -59,15 +60,14 @@ export default async function SearchPage({
         prisma.performer.findMany({
           where: {
             OR: [
-              { name: { contains: query, mode: "insensitive" } },
-              { realName: { contains: query, mode: "insensitive" } },
+              performerNameWhere(query),
             ],
           },
           orderBy: { name: "asc" },
           take: 24,
         }),
         prisma.drama.findMany({
-          where: { title: { contains: query, mode: "insensitive" } },
+          where: dramaTitleWhere(query),
           orderBy: { title: "asc" },
           take: 24,
         }),

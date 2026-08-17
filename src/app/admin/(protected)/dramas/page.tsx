@@ -7,6 +7,7 @@ import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import TmdbSyncButton from "./TmdbSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { dramaTitleWhere } from "@/lib/searchWhere";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function AdminDramasPage({
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
-  const where = q ? { title: { contains: q, mode: "insensitive" as const } } : undefined;
+  const where = q ? dramaTitleWhere(q) : undefined;
   const [dramas, total] = await Promise.all([
     prisma.drama.findMany({
       where,

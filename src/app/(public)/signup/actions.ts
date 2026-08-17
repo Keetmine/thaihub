@@ -11,6 +11,12 @@ export async function signup(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "").trim();
 
+  // Ханипот (см. signup/page.tsx): заполнен — значит бот. Отвечаем как
+  // при успехе, чтобы не подсказывать, что регистрация не прошла.
+  if (String(formData.get("website") ?? "").trim()) {
+    redirect("/account");
+  }
+
   if (!email || password.length < 6) {
     redirect("/signup?error=1");
   }

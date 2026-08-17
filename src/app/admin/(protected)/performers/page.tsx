@@ -10,6 +10,7 @@ import GmmtvSyncButton from "./GmmtvSyncButton";
 import TmdbSyncButton from "./TmdbSyncButton";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { performerNameWhere } from "@/lib/searchWhere";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,7 @@ function AdminPerformerRow({
 }
 
 async function AdminAgenciesView({ q, page }: { q: string; page: number }) {
-  const where = q ? { name: { contains: q, mode: "insensitive" as const } } : undefined;
+  const where = q ? ({ name: { contains: q, mode: "insensitive" as const } }) : undefined;
   const [agencies, total] = await Promise.all([
     prisma.agency.findMany({
       where,
@@ -204,7 +205,7 @@ export default async function AdminPerformersPage({
   const performerType: "BAND" | "SOLO" = isBands ? "BAND" : "SOLO";
   const performersWhere = {
     type: performerType,
-    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+    ...(q ? performerNameWhere(q) : {}),
   };
   const [performers, performersTotal] = isAgencies
     ? [[], 0]

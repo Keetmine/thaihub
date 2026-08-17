@@ -898,7 +898,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-top: 1px solid var(--bs-border-color);
 }
 
-.admin-sidebar-footer /* ---------- Цветные статусы сериалов ---------- */
+/* ---------- Цветные статусы сериалов ---------- */
 /* Ещё не вышедшие — красный, выходящие сейчас — зелёный, уже
    вышедшие — голубой (см. DRAMA_STATUS_BADGE_CLASS в lib/dramaStatus). */
 .status-badge-upcoming {
@@ -1171,7 +1171,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   max-width: none;
 }
 
-.mobile-menu-panel 
 /* ---------- Event form: combobox, presale toggle ---------- */
 .performer-chip {
   display: inline-flex;
@@ -1731,8 +1730,18 @@ svg[aria-hidden="true"] {
   transform: translateX(-50%) translateY(0);
 }
 
-/* ---------- Underline content tabs (section navigation — distinct from
-   .tab-bar-row .tab-bar {
+/* ---------- Underline content tabs (section navigation) ---------- */
+.tab-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 1.5rem;
+}
+
+.tab-bar-row .tab-bar {
   border-bottom: none;
   margin-bottom: 0;
 }

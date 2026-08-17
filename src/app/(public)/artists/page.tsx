@@ -9,6 +9,7 @@ import NameSearchBox from "@/components/NameSearchBox";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref } from "@/lib/slugHelpers";
+import { performerNameWhere } from "@/lib/searchWhere";
 
 export const dynamic = "force-dynamic";
 
@@ -300,7 +301,7 @@ export default async function PerformersPage({
     view === "agencies" || !q
       ? null
       : await prisma.performer.findMany({
-          where: { type: view === "bands" ? "BAND" : "SOLO", name: { contains: q, mode: "insensitive" } },
+          where: { type: view === "bands" ? "BAND" : "SOLO", ...performerNameWhere(q) },
           include: { _count: { select: { events: true } } },
           orderBy: { name: "asc" },
           take: SEARCH_RESULT_LIMIT + 1,

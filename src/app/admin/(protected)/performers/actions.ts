@@ -8,6 +8,7 @@ import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
 import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdbImport";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 import { requireAdmin } from "@/lib/auth";
+import { performerNameWhere } from "@/lib/searchWhere";
 
 /**
  * Re-syncs the GMMTV roster: creates any new artists, updates existing
@@ -58,12 +59,7 @@ export async function searchPerformerOptions(
   if (q.length < 2) return [];
 
   return prisma.performer.findMany({
-    where: {
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { realName: { contains: q, mode: "insensitive" } },
-      ],
-    },
+    where: performerNameWhere(q),
     select: { id: true, name: true, photoUrl: true },
     orderBy: { name: "asc" },
     take: 20,
@@ -79,13 +75,7 @@ export async function searchSoloPerformerOptions(
   if (q.length < 2) return [];
 
   return prisma.performer.findMany({
-    where: {
-      type: "SOLO",
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { realName: { contains: q, mode: "insensitive" } },
-      ],
-    },
+    where: { type: "SOLO", ...performerNameWhere(q) },
     select: { id: true, name: true, photoUrl: true },
     orderBy: { name: "asc" },
     take: 20,
@@ -209,6 +199,9 @@ export async function createPerformer(formData: FormData) {
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();
   const musicAlias = String(formData.get("musicAlias") ?? "").trim();
+  const alsoKnownAs = String(formData.get("alsoKnownAs") ?? "").trim();
+  const nationality = String(formData.get("nationality") ?? "").trim();
+  const gender = String(formData.get("gender") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
@@ -224,6 +217,9 @@ export async function createPerformer(formData: FormData) {
       type,
       realName: realName || null,
       musicAlias: musicAlias || null,
+      alsoKnownAs: alsoKnownAs || null,
+      nationality: nationality || null,
+      gender: gender || null,
       birthDate: type === "SOLO" ? birthDate : null,
       placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
       bio: bio || null,
@@ -282,6 +278,9 @@ export async function updatePerformer(id: string, formData: FormData) {
   const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
   const realName = String(formData.get("realName") ?? "").trim();
   const musicAlias = String(formData.get("musicAlias") ?? "").trim();
+  const alsoKnownAs = String(formData.get("alsoKnownAs") ?? "").trim();
+  const nationality = String(formData.get("nationality") ?? "").trim();
+  const gender = String(formData.get("gender") ?? "").trim();
   const birthDate = parseBirthDate(String(formData.get("birthDate") ?? ""));
   const placeOfBirth = String(formData.get("placeOfBirth") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
@@ -308,6 +307,9 @@ export async function updatePerformer(id: string, formData: FormData) {
         type,
         realName: realName || null,
         musicAlias: musicAlias || null,
+        alsoKnownAs: alsoKnownAs || null,
+        nationality: nationality || null,
+        gender: gender || null,
         birthDate: type === "SOLO" ? birthDate : null,
         placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
         bio: bio || null,

@@ -67,6 +67,9 @@ export default function PerformerForm({
     type: string;
     realName: string;
     musicAlias: string;
+    alsoKnownAs: string;
+    nationality: string;
+    gender: string;
     birthDate: string;
     placeOfBirth: string;
     bio: string;
@@ -219,6 +222,32 @@ export default function PerformerForm({
                 placeholder="Если выступает сольно под другим именем"
                 className="form-control"
               />
+            </div>
+            <div className="col-12 col-sm-6">
+              <label className="form-label">Также известен как</label>
+              <input
+                name="alsoKnownAs"
+                defaultValue={v?.alsoKnownAs}
+                placeholder="Другие написания имени, через запятую"
+                className="form-control"
+              />
+            </div>
+            <div className="col-6 col-sm-3">
+              <label className="form-label">Национальность</label>
+              <input
+                name="nationality"
+                defaultValue={v?.nationality}
+                placeholder="Thai"
+                className="form-control"
+              />
+            </div>
+            <div className="col-6 col-sm-3">
+              <label className="form-label">Пол</label>
+              <select name="gender" defaultValue={v?.gender ?? ""} className="form-select">
+                <option value="">Не указан</option>
+                <option value="Male">Мужской</option>
+                <option value="Female">Женский</option>
+              </select>
             </div>
           </div>
         )}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createPromoCode, deletePromoCode, deleteUser } from "./actions";
 import PremiumToggle from "./PremiumToggle";
@@ -116,7 +117,15 @@ export default async function AdminUsersPage({
                     />
                   )}
                   <div>
-                    <span className="font-display fw-medium text-white d-block">{displayName}</span>
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="font-display fw-medium text-white d-block text-decoration-none"
+                    >
+                      {displayName}
+                      {u.isAdmin && (
+                        <span className="admin-badge badge rounded-pill fw-semibold ms-2">ADMIN</span>
+                      )}
+                    </Link>
                     <p className="small text-secondary mb-0">
                       {[
                         u.email,

@@ -7,6 +7,8 @@ import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
 import { fetchMdlDrama } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
+import type { DramaStatus } from "@/generated/prisma/client";
+import { dramaTitleWhere } from "@/lib/searchWhere";
 
 function getCastEntries(
   formData: FormData,
@@ -23,6 +25,44 @@ function getCastEntries(
     entries.push({ performerId: id, role: role || null });
   });
   return entries;
+}
+
+
+function getCsv(formData: FormData, field: string): string[] {
+  return String(formData.get(field) ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const DRAMA_STATUSES = new Set([
+  "PLANNED", "IN_PRODUCTION", "PILOT", "RETURNING_SERIES", "ENDED", "CANCELED",
+]);
+
+/** Общие поля формы сериала (create и update) — включая MDL-детали. */
+function getDramaDetailFields(formData: FormData) {
+  const str = (f: string) => String(formData.get(f) ?? "").trim();
+  const num = (f: string) => {
+    const raw = str(f);
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.trunc(n) : null;
+  };
+  const statusRaw = str("status");
+  return {
+    nativeTitle: str("nativeTitle") || null,
+    alsoKnownAs: str("alsoKnownAs") || null,
+    director: str("director") || null,
+    screenwriter: str("screenwriter") || null,
+    genres: getCsv(formData, "genres"),
+    tags: getCsv(formData, "tags"),
+    episodes: num("episodes"),
+    airedOn: str("airedOn") || null,
+    duration: str("duration") || null,
+    contentRating: str("contentRating") || null,
+    network: str("network") || null,
+    status: DRAMA_STATUSES.has(statusRaw) ? (statusRaw as DramaStatus) : null,
+  };
 }
 
 function getYear(formData: FormData): number | null {
@@ -57,7 +97,7 @@ export async function searchDramaOptions(
   if (q.length < 2) return [];
 
   const dramas = await prisma.drama.findMany({
-    where: { title: { contains: q, mode: "insensitive" } },
+    where: dramaTitleWhere(q),
     select: { id: true, title: true, posterUrl: true },
     orderBy: { title: "asc" },
     take: 20,
@@ -102,6 +142,7 @@ export async function createDrama(formData: FormData) {
       synopsis: synopsis || null,
       mydramalistUrl: mydramalistUrl || null,
       agencyId: agencyId || null,
+      ...getDramaDetailFields(formData),
       performers: {
         create: cast.map((c) => ({ performerId: c.performerId, role: c.role })),
       },
@@ -142,6 +183,7 @@ export async function updateDrama(id: string, formData: FormData) {
         synopsis: synopsis || null,
         mydramalistUrl: mydramalistUrl || null,
         agencyId: agencyId || null,
+        ...getDramaDetailFields(formData),
         performers: {
           create: cast.map((c) => ({ performerId: c.performerId, role: c.role })),
         },

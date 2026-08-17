@@ -66,6 +66,18 @@ export default function DramaForm({
     mydramalistUrl: string;
     agencyId: string;
     cast: CastEntry[];
+    nativeTitle: string;
+    alsoKnownAs: string;
+    director: string;
+    screenwriter: string;
+    genres: string;
+    tags: string;
+    episodes: string;
+    airedOn: string;
+    duration: string;
+    contentRating: string;
+    network: string;
+    status: string;
   };
   defaultLocationIds?: string[];
   submitLabel: string;
@@ -250,6 +262,95 @@ export default function DramaForm({
         </div>
         <div className="col-12 col-md-4">
           <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
+        </div>
+      </div>
+
+      <div className="row g-3">
+        <div className="col-12 col-md-6">
+          <label className="form-label">Родное название</label>
+          <input name="nativeTitle" defaultValue={v?.nativeTitle} className="form-control" />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label">Другие названия</label>
+          <input
+            name="alsoKnownAs"
+            defaultValue={v?.alsoKnownAs}
+            placeholder="Через запятую"
+            className="form-control"
+          />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label">Режиссёр</label>
+          <input name="director" defaultValue={v?.director} className="form-control" />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label">Сценарист</label>
+          <input name="screenwriter" defaultValue={v?.screenwriter} className="form-control" />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label">Жанры</label>
+          <input
+            name="genres"
+            defaultValue={v?.genres}
+            placeholder="Comedy, Romance — через запятую"
+            className="form-control"
+          />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label">Теги</label>
+          <input
+            name="tags"
+            defaultValue={v?.tags}
+            placeholder="Через запятую"
+            className="form-control"
+          />
+        </div>
+        <div className="col-6 col-md-3">
+          <label className="form-label">Эпизоды</label>
+          <input type="number" name="episodes" defaultValue={v?.episodes} className="form-control" />
+        </div>
+        <div className="col-6 col-md-3">
+          <label className="form-label">Длительность</label>
+          <input
+            name="duration"
+            defaultValue={v?.duration}
+            placeholder="43 min."
+            className="form-control"
+          />
+        </div>
+        <div className="col-6 col-md-3">
+          <label className="form-label">День эфира</label>
+          <input
+            name="airedOn"
+            defaultValue={v?.airedOn}
+            placeholder="Thursday"
+            className="form-control"
+          />
+        </div>
+        <div className="col-6 col-md-3">
+          <label className="form-label">Канал / платформа</label>
+          <input name="network" defaultValue={v?.network} className="form-control" />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label">Возрастной рейтинг</label>
+          <input
+            name="contentRating"
+            defaultValue={v?.contentRating}
+            placeholder="15+ - Teens 15 or older"
+            className="form-control"
+          />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label">Статус</label>
+          <select name="status" defaultValue={v?.status ?? ""} className="form-select">
+            <option value="">Не указан</option>
+            <option value="PLANNED">Запланирован</option>
+            <option value="IN_PRODUCTION">В производстве</option>
+            <option value="PILOT">Пилот</option>
+            <option value="RETURNING_SERIES">Выходит</option>
+            <option value="ENDED">Завершён</option>
+            <option value="CANCELED">Отменён</option>
+          </select>
         </div>
       </div>
       </div>

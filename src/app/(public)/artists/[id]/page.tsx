@@ -208,6 +208,11 @@ export default async function PerformerPage({
               {performer.placeOfBirth}
             </p>
           )}
+          {performer.bio && (
+            <p className="small text-secondary mb-0" style={{ whiteSpace: "pre-line" }}>
+              {performer.bio}
+            </p>
+          )}
           {performer.agencies.length > 0 && (
             <p className="small text-secondary mb-0">
               <BuildingIcon />{" "}
@@ -278,8 +283,6 @@ export default async function PerformerPage({
               </div>
             </div>
           )}
-
-          {performer.bio && <p className="mb-0">{performer.bio}</p>}
 
           {otherLinks.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-1">

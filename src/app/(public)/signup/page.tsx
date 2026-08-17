@@ -32,6 +32,16 @@ export default async function SignupPage({
         {error === "1" && (
           <p className="small text-danger text-center mb-3">Проверьте email и пароль (мин. 6 символов)</p>
         )}
+        {/* Ханипот против ботов: поле скрыто от людей, автозаполнялки
+            ботов его заполняют — такие регистрации молча отбрасываются. */}
+        <input
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", opacity: 0 }}
+        />
         <label className="form-label">Имя</label>
         <input name="name" className="form-control mb-3" />
         <label className="form-label">Email</label>
