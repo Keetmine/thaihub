@@ -54,7 +54,9 @@ export default async function AdminFeedbackPage({
         <p className="text-secondary">Пока пусто.</p>
       ) : (
         <div className="d-flex flex-column gap-2">
-          {items.map((f) => (
+          {items.map((f) => {
+            const replyEmail = f.email || f.user?.email || null;
+            return (
             <div key={f.id} className="surface d-flex flex-wrap justify-content-between gap-3 p-3">
               <div style={{ minWidth: 0, flex: 1 }}>
                 <p className="small mb-1">
@@ -63,6 +65,8 @@ export default async function AdminFeedbackPage({
                     <Link href={`/admin/users/${f.user.id}`} className="link-body-emphasis">
                       {f.user.name || f.user.email}
                     </Link>
+                  ) : f.email ? (
+                    <span className="text-secondary">аноним · {f.email}</span>
                   ) : (
                     <span className="text-secondary">аккаунт удалён</span>
                   )}{" "}
@@ -75,6 +79,14 @@ export default async function AdminFeedbackPage({
                 {f.context && <p className="small text-secondary mb-0 mt-1">{f.context}</p>}
               </div>
               <div className="d-flex align-items-start gap-2 flex-shrink-0">
+                {replyEmail && (
+                  <a
+                    href={`mailto:${replyEmail}?subject=${encodeURIComponent("Ответ на ваше обращение — MyBLHub")}&body=${encodeURIComponent(`\n\n> ${f.text.slice(0, 500)}`)}`}
+                    className="btn btn-ghost btn-sm"
+                  >
+                    Ответить
+                  </a>
+                )}
                 {f.status === "NEW" ? (
                   <form action={setFeedbackStatus.bind(null, f.id, "DONE")}>
                     <button type="submit" className="btn btn-ghost btn-sm">✓ Обработано</button>
@@ -91,7 +103,8 @@ export default async function AdminFeedbackPage({
                 </ConfirmForm>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import FeedbackForm from "@/components/FeedbackForm";
+import { getCurrentUser } from "@/lib/userAuth";
 
 export default async function HelpPage({
   searchParams,
@@ -9,6 +10,7 @@ export default async function HelpPage({
   // ?fb=<запрос> — переход из пустого поиска: подставляем контекст и
   // сразу выбираем «добавьте сериал/актёра».
   const { fb } = await searchParams;
+  const user = await getCurrentUser();
   return (
     <div>
       <span className="eyebrow">Справка</span>
@@ -68,6 +70,8 @@ export default async function HelpPage({
           <FeedbackForm
             defaultKind={fb ? "CONTENT_REQUEST" : "QUESTION"}
             context={fb ? `Поиск: «${fb}»` : ""}
+            defaultEmail={user?.email ?? ""}
+            emailRequired={!user}
           />
           </div>
         </div>

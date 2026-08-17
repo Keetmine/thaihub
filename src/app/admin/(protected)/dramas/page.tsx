@@ -1,3 +1,4 @@
+import LetterAvatar from "@/components/LetterAvatar";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteDrama } from "./actions";
@@ -67,30 +68,13 @@ export default async function AdminDramasPage({
                 className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div className="d-flex align-items-center gap-3">
-                  {d.posterUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={d.posterUrl}
-                      alt=""
-                      style={{
-                        width: "2.75rem",
-                        height: "3.75rem",
-                        objectFit: "cover",
-                        borderRadius: "0.5rem",
-                        flexShrink: 0,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: "2.75rem",
-                        height: "3.75rem",
-                        borderRadius: "0.5rem",
-                        background: "var(--bs-secondary-bg)",
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
+                  <LetterAvatar
+                    name={d.title}
+                    photoUrl={d.posterUrl}
+                    size={2.75}
+                    height={3.75}
+                    rounded={false}
+                  />
                   <div>
                     <Link
                       href={`/admin/dramas/${d.id}/edit`}

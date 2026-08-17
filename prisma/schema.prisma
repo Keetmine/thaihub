@@ -997,6 +997,9 @@ model Feedback {
   userId    String?
   user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   kind      FeedbackKind   @default(QUESTION)
+  // Почта для ответа: обращения принимаются и от анонимов (форма
+  // открыта), а залогиненным подставляется почта аккаунта.
+  email     String?
   text      String
   // Откуда пришло обращение (например, поисковый запрос без результатов).
   context   String?

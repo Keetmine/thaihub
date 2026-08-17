@@ -1,3 +1,4 @@
+import LetterAvatar from "@/components/LetterAvatar";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createPromoCode, deletePromoCode, deleteUser } from "./actions";
@@ -102,20 +103,7 @@ export default async function AdminUsersPage({
                 className="surface d-flex flex-wrap align-items-center justify-content-between gap-3 p-3"
               >
                 <div className="d-flex align-items-center gap-3">
-                  {u.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={u.photoUrl}
-                      alt=""
-                      className="rounded-circle flex-shrink-0"
-                      style={{ width: "2.5rem", height: "2.5rem", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <div
-                      className="rounded-circle flex-shrink-0"
-                      style={{ width: "2.5rem", height: "2.5rem", background: "var(--bs-secondary-bg)" }}
-                    />
-                  )}
+                  <LetterAvatar name={u.name ?? u.email} photoUrl={u.photoUrl} size={2.5} />
                   <div>
                     <Link
                       href={`/admin/users/${u.id}`}

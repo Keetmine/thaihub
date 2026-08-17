@@ -14,19 +14,23 @@ const KINDS = new Set(["QUESTION", "SUGGESTION", "CONTENT_REQUEST"]);
  * на почту, когда будут SMTP-доступы.
  */
 export async function submitFeedback(formData: FormData): Promise<{ ok: boolean }> {
+  // Форма открыта и анонимам (страница /help публичная) — тогда ответ
+  // возможен только на оставленную почту.
   const user = await getCurrentUser();
-  if (!user) throw new Error("Требуется вход");
   await assertRateLimit("signup"); // тот же лимит 10/10мин против спама
 
   const text = String(formData.get("text") ?? "").trim();
   const kindRaw = String(formData.get("kind") ?? "QUESTION");
   const context = String(formData.get("context") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().slice(0, 320) || null;
   if (!text) throw new Error("Напишите текст обращения");
   if (text.length > 4000) throw new Error("Слишком длинный текст");
+  if (!user && !email) throw new Error("Оставьте почту, чтобы мы могли ответить");
 
   await prisma.feedback.create({
     data: {
-      userId: user.id,
+      userId: user?.id ?? null,
+      email,
       kind: (KINDS.has(kindRaw) ? kindRaw : "QUESTION") as FeedbackKind,
       text,
       context: context || null,

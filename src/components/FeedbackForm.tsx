@@ -10,10 +10,16 @@ export default function FeedbackForm({
   defaultKind = "QUESTION",
   context = "",
   compact = false,
+  defaultEmail = "",
+  emailRequired = false,
 }: {
   defaultKind?: "QUESTION" | "SUGGESTION" | "CONTENT_REQUEST";
   context?: string;
   compact?: boolean;
+  /** Почта аккаунта для залогиненных — подставляется в поле. */
+  defaultEmail?: string;
+  /** Аноним без почты не получит ответ — поле обязательно. */
+  emailRequired?: boolean;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -52,6 +58,19 @@ export default function FeedbackForm({
           <option value="SUGGESTION">Предложение / идея</option>
           <option value="CONTENT_REQUEST">Добавьте сериал или актёра</option>
         </select>
+      </div>
+      <div>
+        <label className="form-label">
+          Почта для ответа{emailRequired ? "" : " (необязательно)"}
+        </label>
+        <input
+          type="email"
+          name="email"
+          required={emailRequired}
+          defaultValue={defaultEmail}
+          placeholder="you@example.com"
+          className="form-control"
+        />
       </div>
       <div>
         <label className="form-label">Сообщение</label>

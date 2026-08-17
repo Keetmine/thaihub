@@ -351,23 +351,22 @@ export default async function PerformersPage({
               include: { _count: { select: { events: true } } },
               orderBy: { name: "asc" },
             })
-          : currentUser
-            ? await prisma.performer.findMany({
-                where: {
-                  type: typeOfView(view),
-                  favoritedBy: { some: { userId: currentUser.id } },
-                },
-                include: { _count: { select: { events: true } } },
-                orderBy: { name: "asc" },
-              })
-            : // Анониму (каталог открыт для SEO) — самые «событийные»
-              // актёры вместо пустого списка избранного.
-              await prisma.performer.findMany({
-                where: { type: typeOfView(view), events: { some: {} } },
-                include: { _count: { select: { events: true } } },
-                orderBy: { events: { _count: "desc" } },
-                take: 60,
-              });
+          : // Без поиска: избранные юзера + все, у кого есть хотя бы
+            // одно событие (анониму — только событийные). Полный каталог
+            // в тысячи актёров — через поиск.
+            await prisma.performer.findMany({
+              where: {
+                type: typeOfView(view),
+                OR: [
+                  { events: { some: {} } },
+                  ...(currentUser
+                    ? [{ favoritedBy: { some: { userId: currentUser.id } } }]
+                    : []),
+                ],
+              },
+              include: { _count: { select: { events: true } } },
+              orderBy: { name: "asc" },
+            });
   const favoritedIds = new Set<string>();
   if (currentUser && performers.length > 0) {
     const favorites = await prisma.favoritePerformer.findMany({
@@ -387,9 +386,16 @@ export default async function PerformersPage({
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
+      <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2.5rem" }}>
         {titles[view]}
       </h1>
+      {view === "performers" && !q && (
+        <p className="text-secondary mb-4" style={{ maxWidth: "44rem" }}>
+          Здесь показаны избранные и актёры с событиями в афише — а всего в
+          каталоге тысячи актёров. Если кого-то нет в списке, наберите имя в
+          поиске справа.
+        </p>
+      )}
 
       <div className="tab-bar-row">
         <Tabs active={view} />

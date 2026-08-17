@@ -1,3 +1,4 @@
+import LetterAvatar from "@/components/LetterAvatar";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteLocation } from "./actions";
@@ -68,30 +69,7 @@ export default async function AdminLocationsPage({
                 className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div className="d-flex align-items-center gap-3">
-                  {l.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={l.photoUrl}
-                      alt=""
-                      style={{
-                        width: "2.5rem",
-                        height: "2.5rem",
-                        borderRadius: "0.5rem",
-                        objectFit: "cover",
-                        flexShrink: 0,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: "2.5rem",
-                        height: "2.5rem",
-                        borderRadius: "0.5rem",
-                        background: "var(--bs-secondary-bg)",
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
+                  <LetterAvatar name={l.name} photoUrl={l.photoUrl} size={2.5} rounded={false} />
                   <div>
                     <Link
                       href={`/admin/locations/${l.id}/edit`}

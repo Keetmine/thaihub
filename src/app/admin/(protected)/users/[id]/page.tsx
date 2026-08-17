@@ -162,7 +162,7 @@ export default async function AdminUserPage({
               {user.eventNotes.map((n) => (
                 <div key={n.id} className="surface d-flex justify-content-between gap-3 p-3">
                   <div style={{ minWidth: 0 }}>
-                    <Link href={eventHref(n.event)} className="small link-body-emphasis d-block text-truncate">
+                    <Link href={eventHref(n.event)} target="_blank" rel="noopener noreferrer" className="small link-body-emphasis d-block text-truncate">
                       {n.event.title}
                     </Link>
                     <p className="small text-secondary mb-0">{n.text}</p>
@@ -192,7 +192,7 @@ export default async function AdminUserPage({
               {user.placeLists.map((l) => (
                 <div key={l.id} className="surface d-flex justify-content-between gap-3 p-3">
                   <div style={{ minWidth: 0 }}>
-                    <Link href={listHref(l)} className="link-body-emphasis d-block text-truncate">
+                    <Link href={listHref(l)} target="_blank" rel="noopener noreferrer" className="link-body-emphasis d-block text-truncate">
                       {l.title}
                     </Link>
                     <span className="small text-secondary">
@@ -224,7 +224,7 @@ export default async function AdminUserPage({
               {user.createdLocations.map((loc) => (
                 <div key={loc.id} className="surface d-flex justify-content-between gap-3 p-3">
                   <div style={{ minWidth: 0 }}>
-                    <Link href={locationHref(loc)} className="link-body-emphasis d-block text-truncate">
+                    <Link href={locationHref(loc)} target="_blank" rel="noopener noreferrer" className="link-body-emphasis d-block text-truncate">
                       {loc.name}
                     </Link>
                     {loc.description && (
@@ -253,7 +253,7 @@ export default async function AdminUserPage({
               {user.trips.map((t) => (
                 <div key={t.id} className="surface d-flex justify-content-between gap-3 p-3">
                   <div style={{ minWidth: 0 }}>
-                    <Link href={tripHref(t)} className="link-body-emphasis d-block text-truncate">
+                    <Link href={tripHref(t)} target="_blank" rel="noopener noreferrer" className="link-body-emphasis d-block text-truncate">
                       {t.title}
                     </Link>
                     <span className="small text-secondary">
@@ -286,6 +286,8 @@ export default async function AdminUserPage({
                 <Link
                   key={performer.id}
                   href={performerHref(performer)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="event-chip text-decoration-none"
                 >
                   {performer.name}
@@ -303,6 +305,8 @@ export default async function AdminUserPage({
                 <div key={`${a.occurrenceId}`} className="surface d-flex justify-content-between gap-3 p-3">
                   <Link
                     href={eventHref(a.occurrence.event)}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="small link-body-emphasis text-truncate"
                   >
                     {a.occurrence.event.title}

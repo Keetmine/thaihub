@@ -1,3 +1,4 @@
+import LetterAvatar from "@/components/LetterAvatar";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
@@ -74,25 +75,7 @@ export default async function AdminEventsPage({
                   className="stretched-link text-decoration-none d-flex align-items-center gap-3"
                   style={{ minWidth: 0 }}
                 >
-                  <div
-                    style={{
-                      width: "2.75rem",
-                      height: "2.75rem",
-                      borderRadius: "0.5rem",
-                      background: "var(--bs-secondary-bg)",
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {ev.posterUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={ev.posterUrl}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
-                  </div>
+                  <LetterAvatar name={ev.title} photoUrl={ev.posterUrl} size={2.75} rounded={false} />
                   <div style={{ minWidth: 0 }}>
                     <span className="font-display fw-medium text-white d-block text-truncate">
                       {ev.title}

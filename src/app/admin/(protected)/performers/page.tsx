@@ -1,3 +1,4 @@
+import LetterAvatar from "@/components/LetterAvatar";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deletePerformer } from "./actions";
@@ -27,24 +28,7 @@ function AdminPerformerRow({
         className="stretched-link text-decoration-none d-flex align-items-center gap-3"
         style={{ minWidth: 0 }}
       >
-        {performer.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={performer.photoUrl}
-            alt=""
-            style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "2.25rem",
-              height: "2.25rem",
-              borderRadius: "50%",
-              background: "var(--bs-secondary-bg)",
-              flexShrink: 0,
-            }}
-          />
-        )}
+        <LetterAvatar name={performer.name} photoUrl={performer.photoUrl} size={2.25} />
         <div style={{ minWidth: 0 }}>
           <span className="font-display fw-medium text-white d-block text-truncate">
             {performer.name}
