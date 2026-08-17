@@ -79,3 +79,17 @@ is a no-op navigation to the same URL, like any other tab. Under the hood `?trip
 into the same `from`/`to` values as the manual range filter; the search
 box keeps working within an active trip (its hidden fields carry `trip`
 instead of `from`/`to`).
+
+## Дела поездки (TripTodo)
+
+Вкладка «Дела» (только владельцу, между «Все события дат» и «Что
+посетить»): обычный туду — добавить пункт (текст + необязательная
+дата), чекбокс выполнения, правка/удаление. Датированные дела попадают
+в хронологию «Мой план» той же строкой (TodoRow) с полным управлением.
+Форма добавления ремоунтится по ключу после сабмита — иначе
+DatePickerInput молча тащит прошлую дату в следующий пункт.
+
+Блок «локации съёмок сериалов, которые вы смотрите» из «Что посетить»
+убран — там остались только прикреплённые списки и отдельные места;
+поиск в «добавить место» ищет и по названию места, и по названию
+сериала (searchLocationOptions в lists/actions).

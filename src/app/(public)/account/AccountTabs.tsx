@@ -10,9 +10,6 @@ import { formatCombinedDateList, formatHumanDate, formatShortDate, formatTime } 
 import { PinIcon } from "@/components/icons";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
 import StatTile from "@/components/StatTile";
-import CreateArtistListButton from "@/app/(public)/artist-lists/CreateArtistListButton";
-import { artistListHref } from "@/lib/slugHelpers";
-import { performerHref } from "@/lib/performerSlug";
 
 export type AccountTab = "profile" | "events";
 
@@ -222,69 +219,8 @@ export default function AccountTabs({
           <StatTile value={stats.trips} label="поездок" href="/trips" />
         </div>
 
-        <StatsTab stats={statsData} achievements={achievements} />
+        <StatsTab stats={statsData} achievements={achievements} artistLists={artistLists} />
 
-        {/* Кастомные списки актёров — в том же чип-формате, что
-            «Чаще всего видела вживую». */}
-        <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
-          <h2 className="section-heading mb-0">Мои списки актёров</h2>
-          <CreateArtistListButton small />
-        </div>
-        {(artistLists ?? []).length === 0 ? (
-          <p className="small text-secondary mb-4">
-            Создайте свой список — «видела вживую», «пил пиво»…
-          </p>
-        ) : (
-          <div className="d-flex flex-column gap-3 mb-4">
-            {(artistLists ?? []).map((l) => (
-              <div key={l.id}>
-                <Link
-                  href={artistListHref(l)}
-                  className="small text-secondary text-decoration-none d-inline-block mb-2"
-                >
-                  {l.title} ({l.items.length}) →
-                </Link>
-                <div className="d-flex flex-wrap gap-2">
-                  {l.items.length === 0 && (
-                    <span className="small text-secondary">Пока пусто</span>
-                  )}
-                  {l.items.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={performerHref(p)}
-                      className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 pe-3"
-                    >
-                      {p.photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.photoUrl}
-                          alt=""
-                          className="rounded-circle"
-                          style={{ width: "2.2rem", height: "2.2rem", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <span
-                          className="rounded-circle d-inline-flex align-items-center justify-content-center small"
-                          style={{
-                            width: "2.2rem",
-                            height: "2.2rem",
-                            background: "var(--bs-secondary-bg)",
-                            color: "var(--bs-secondary-color)",
-                            opacity: 0.7,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {p.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                      <span className="small text-white">{p.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       <div style={{ display: activeTab === "events" ? undefined : "none" }}>

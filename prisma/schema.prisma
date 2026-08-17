@@ -587,6 +587,7 @@ model Trip {
   personalEvents TripPersonalEvent[]
   placeLists TripPlaceList[]
   places     TripPlace[]
+  todos      TripTodo[]
 
   @@index([userId])
 }
@@ -682,6 +683,20 @@ model PlaceListItem {
 }
 
 // Прикрепление целого списка мест к поездке.
+// Туду-лист поездки: пункт с чекбоксом и (необязательно) датой —
+// датированные дела попадают в хронологию «Мой план».
+model TripTodo {
+  id        String    @id @default(cuid())
+  tripId    String
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  text      String
+  done      Boolean   @default(false)
+  date      DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tripId])
+}
+
 model TripPlaceList {
   tripId String
   listId String

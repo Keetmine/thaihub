@@ -92,10 +92,15 @@ export async function searchLocationOptions(
   const user = await getCurrentUser();
   return prisma.location.findMany({
     where: {
-      name: { contains: q, mode: "insensitive" },
+      // Ищем и по названию места, и по названию сериала, который там
+      // снимали («кафе из Bad Buddy» находится по «bad buddy»).
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { dramas: { some: { drama: { title: { contains: q, mode: "insensitive" } } } } },
+      ],
       // Каталог + собственные места искателя (чужие пользовательские не
       // показываем).
-      OR: [{ createdByUserId: null }, ...(user ? [{ createdByUserId: user.id }] : [])],
+      AND: [{ OR: [{ createdByUserId: null }, ...(user ? [{ createdByUserId: user.id }] : [])] }],
     },
     select: { id: true, name: true, photoUrl: true },
     orderBy: { name: "asc" },

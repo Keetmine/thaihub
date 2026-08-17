@@ -11,6 +11,7 @@ import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
+import TripTodos, { TodoRow } from "../TripTodos";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
 import LocationMapLoader from "@/components/LocationMapLoader";
@@ -43,6 +44,7 @@ export default async function TripPage({
   // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
   const showPlaces = view === "places";
+  const showTodos = view === "todos";
   const trip = await prisma.trip.findFirst({
     where: slugOrIdWhere(rawParam),
     include: {
@@ -108,29 +110,37 @@ export default async function TripPage({
     dateKey: dateKey(p.startsAt),
     timeValue: formatTime(p.startsAt),
   }));
-  const timeline: ({ kind: "public"; startsAt: Date; key: string; event: (typeof events)[number] } | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData })[] = [
+  // Дела поездки — приватное планирование, видит только владелец.
+  const todos = isOwner
+    ? await prisma.tripTodo.findMany({
+        where: { tripId: trip.id },
+        orderBy: [{ done: "asc" }, { date: "asc" }],
+      })
+    : [];
+  const todoData = todos.map((t) => ({
+    id: t.id,
+    text: t.text,
+    done: t.done,
+    date: t.date ? t.date.toISOString() : null,
+  }));
+
+  const timeline: (
+    | { kind: "public"; startsAt: Date; key: string; event: (typeof events)[number] }
+    | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData }
+    | { kind: "todo"; startsAt: Date; key: string; todo: (typeof todoData)[number] }
+  )[] = [
     ...events.map((ev) => ({ kind: "public" as const, startsAt: ev.startsAt, key: `pub-${ev.occurrenceId}`, event: ev })),
     ...personal.map((p) => ({ kind: "personal" as const, startsAt: p.startsAt, key: `own-${p.id}`, personalEvent: p })),
+    // Датированные дела попадают в хронологию плана.
+    ...todoData
+      .filter((t) => t.date)
+      .map((t) => ({ kind: "todo" as const, startsAt: new Date(t.date!), key: `todo-${t.id}`, todo: t })),
   ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   // «Что посетить» (Г4): локации съёмок дорам владельца + прикреплённые
   // списки мест + отдельные добавленные места.
-  const [placeLocations, tripLists, tripPlaces, myLists] = showPlaces
+  const [tripLists, tripPlaces, myLists] = showPlaces
     ? await Promise.all([
-        prisma.location.findMany({
-          where: {
-            dramas: {
-              some: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
-            },
-          },
-          include: {
-            dramas: {
-              where: { drama: { watchStatuses: { some: { userId: trip.userId } } } },
-              include: { drama: { select: { id: true, title: true } } },
-            },
-          },
-          orderBy: { name: "asc" },
-        }),
         prisma.tripPlaceList.findMany({
           where: { tripId: trip.id },
           include: { list: { include: { items: { include: { location: true } } } } },
@@ -147,7 +157,7 @@ export default async function TripPage({
             })
           : Promise.resolve([]),
       ])
-    : [[], [], [], []];
+    : [[], [], []];
   const attachedListIds = new Set(tripLists.map((t) => t.listId));
   const availableLists = myLists.filter((l) => !attachedListIds.has(l.id));
 
@@ -202,7 +212,7 @@ export default async function TripPage({
           <Link
             href={tripHref(trip)}
             prefetch={false}
-            className={`tab-bar-item ${showAll ? "" : "active"}`}
+            className={`tab-bar-item ${!showAll && !showPlaces && !showTodos ? "active" : ""}`}
           >
             {isOwner ? "Мой план" : "План"} ({planCount})
           </Link>
@@ -213,6 +223,15 @@ export default async function TripPage({
           >
             Все события дат ({totalCount})
           </Link>
+          {isOwner && (
+            <Link
+              href={`${tripHref(trip)}?view=todos`}
+              prefetch={false}
+              className={`tab-bar-item ${showTodos ? "active" : ""}`}
+            >
+              Дела ({todoData.length})
+            </Link>
+          )}
           <Link
             href={`${tripHref(trip)}?view=places`}
             prefetch={false}
@@ -223,7 +242,9 @@ export default async function TripPage({
         </div>
       </div>
 
-      {showPlaces ? (
+      {showTodos ? (
+        <TripTodos tripId={trip.id} todos={todoData} canEdit={canManage} />
+      ) : showPlaces ? (
         (() => {
           const pinMap = new Map<string, { id: string; name: string; latitude: number; longitude: number }>();
           const addPin = (l: { id: string; name: string; latitude: number | null; longitude: number | null }) => {
@@ -231,12 +252,11 @@ export default async function TripPage({
               pinMap.set(l.id, { id: l.id, name: l.name, latitude: l.latitude, longitude: l.longitude });
             }
           };
-          placeLocations.forEach(addPin);
           tripLists.forEach((tl) => tl.list.items.forEach((i) => addPin(i.location)));
           tripPlaces.forEach((tp) => addPin(tp.location));
           const pins = Array.from(pinMap.values());
           const isEmpty =
-            placeLocations.length === 0 && tripLists.length === 0 && tripPlaces.length === 0;
+            tripLists.length === 0 && tripPlaces.length === 0;
           return isEmpty && !isOwner ? (
           <p className="text-secondary">Пока здесь пусто.</p>
         ) : (
@@ -307,42 +327,6 @@ export default async function TripPage({
                 посетить в поездке.
               </p>
             )}
-            {placeLocations.length > 0 && (
-            <>
-            <p className="small text-secondary mb-3">
-              Локации съёмок сериалов{isOwner ? ", которые вы смотрите" : " владельца поездки"}:{" "}
-              {placeLocations.length}.
-            </p>
-            <div className="d-flex flex-column gap-2">
-              {placeLocations.map((l) => (
-                <Link
-                  key={l.id}
-                  href={locationHref(l)}
-                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
-                >
-                  {l.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={l.photoUrl}
-                      alt=""
-                      style={{ width: "3rem", height: "3rem", borderRadius: "0.6rem", objectFit: "cover", flexShrink: 0 }}
-                    />
-                  ) : (
-                    <div
-                      style={{ width: "3rem", height: "3rem", borderRadius: "0.6rem", background: "var(--bs-secondary-bg)", flexShrink: 0 }}
-                    />
-                  )}
-                  <div style={{ minWidth: 0 }}>
-                    <p className="font-display fw-medium text-white mb-0 text-truncate">{l.name}</p>
-                    <p className="small text-secondary mb-0 text-truncate">
-                      {l.dramas.map((d) => d.drama.title).join(", ")}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            </>
-            )}
           </>
         );
         })()
@@ -362,16 +346,18 @@ export default async function TripPage({
                 key={item.key}
                 event={item.event}
                 isFavorited={favoritedIds.has(item.event.id)}
-                isGoing={goingIds.has(item.event.id)}
+                isGoing={goingIds.has(item.event.occurrenceId)}
                 friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
               />
-            ) : (
+            ) : item.kind === "personal" ? (
               <PersonalEventCard
                 key={item.key}
                 tripId={trip.id}
                 event={item.personalEvent}
                 canEdit={canManage}
               />
+            ) : (
+              <TodoRow key={item.key} todo={item.todo} canEdit={canManage} />
             ),
           )}
         </div>

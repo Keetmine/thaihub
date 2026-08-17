@@ -181,3 +181,52 @@ export async function removePlaceFromTrip(tripId: string, locationId: string) {
   await prisma.tripPlace.deleteMany({ where: { tripId: trip.id, locationId } });
   revalidatePath(`/trips/${trip.id}`);
 }
+
+// ---------- Туду-лист поездки ----------
+
+export async function createTripTodo(tripId: string, formData: FormData): Promise<void> {
+  await requireOwnTrip(tripId);
+  const text = String(formData.get("text") ?? "").trim();
+  if (!text) throw new Error("Введите текст дела");
+  const dateRaw = String(formData.get("date") ?? "").trim();
+  const date = dateRaw ? new Date(dateRaw) : null;
+  await prisma.tripTodo.create({
+    data: { tripId, text, date: date && !Number.isNaN(date.getTime()) ? date : null },
+  });
+  revalidatePath(`/trips/${tripId}`);
+}
+
+async function requireOwnTodo(todoId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Требуется вход");
+  const todo = await prisma.tripTodo.findFirst({
+    where: { id: todoId, trip: { userId: user.id } },
+  });
+  if (!todo) throw new Error("Дело не найдено");
+  return todo;
+}
+
+export async function toggleTripTodo(todoId: string): Promise<void> {
+  const todo = await requireOwnTodo(todoId);
+  await prisma.tripTodo.update({ where: { id: todoId }, data: { done: !todo.done } });
+  revalidatePath(`/trips/${todo.tripId}`);
+}
+
+export async function updateTripTodo(todoId: string, formData: FormData): Promise<void> {
+  const todo = await requireOwnTodo(todoId);
+  const text = String(formData.get("text") ?? "").trim();
+  if (!text) throw new Error("Введите текст дела");
+  const dateRaw = String(formData.get("date") ?? "").trim();
+  const date = dateRaw ? new Date(dateRaw) : null;
+  await prisma.tripTodo.update({
+    where: { id: todoId },
+    data: { text, date: date && !Number.isNaN(date.getTime()) ? date : null },
+  });
+  revalidatePath(`/trips/${todo.tripId}`);
+}
+
+export async function deleteTripTodo(todoId: string): Promise<void> {
+  const todo = await requireOwnTodo(todoId);
+  await prisma.tripTodo.delete({ where: { id: todoId } });
+  revalidatePath(`/trips/${todo.tripId}`);
+}
