@@ -37,17 +37,32 @@ const globalForPrisma = globalThis as unknown as {
 const base = globalForPrisma.prismaBase ?? makeBase();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prismaBase = base;
 
-async function uniqueCatalogSlug(model: string, name: string): Promise<string | null> {
+async function uniqueCatalogSlug(
+  model: string,
+  name: string,
+  // Для тёзок-исполнителей: занято «tui» → пробуем «tui-kiatkamol-lata»
+  // (ник + реальное имя) прежде, чем скатываться в безликие -2/-3.
+  disambiguator?: string | null,
+): Promise<string | null> {
   const baseSlug = slugify(name);
   if (!baseSlug) return null;
   // findFirst по slug через «сырое» делегирование — модель динамическая.
   const delegate = (base as unknown as Record<string, { findFirst: (q: object) => Promise<unknown> }>)[
     model.charAt(0).toLowerCase() + model.slice(1)
   ];
-  for (let n = 0; n < 50; n++) {
-    const candidate = n === 0 ? baseSlug : `${baseSlug}-${n + 1}`;
-    const exists = await delegate.findFirst({ where: { slug: candidate }, select: { slug: true } });
-    if (!exists) return candidate;
+  const taken = async (candidate: string) =>
+    !!(await delegate.findFirst({ where: { slug: candidate }, select: { slug: true } }));
+
+  if (!(await taken(baseSlug))) return baseSlug;
+
+  if (disambiguator) {
+    const combined = slugify(`${name} ${disambiguator}`);
+    if (combined && combined !== baseSlug && !(await taken(combined))) return combined;
+  }
+
+  for (let n = 1; n < 50; n++) {
+    const candidate = `${baseSlug}-${n + 1}`;
+    if (!(await taken(candidate))) return candidate;
   }
   return `${baseSlug}-${shortCode()}`;
 }
@@ -66,7 +81,13 @@ export const prisma = base.$extends({
           const catalogField = CATALOG_SLUG_MODELS[model];
           const codedField = CODED_SLUG_MODELS[model];
           if (catalogField && typeof a.data[catalogField] === "string") {
-            a.data.slug = await uniqueCatalogSlug(model, a.data[catalogField] as string);
+            a.data.slug = await uniqueCatalogSlug(
+              model,
+              a.data[catalogField] as string,
+              model === "Performer" && typeof a.data.realName === "string"
+                ? (a.data.realName as string)
+                : null,
+            );
           } else if (codedField && typeof a.data[codedField] === "string") {
             a.data.slug = codedSlug(a.data[codedField] as string);
           }
@@ -79,7 +100,13 @@ export const prisma = base.$extends({
           const catalogField = CATALOG_SLUG_MODELS[model];
           const codedField = CODED_SLUG_MODELS[model];
           if (catalogField && typeof a.create[catalogField] === "string") {
-            a.create.slug = await uniqueCatalogSlug(model, a.create[catalogField] as string);
+            a.create.slug = await uniqueCatalogSlug(
+              model,
+              a.create[catalogField] as string,
+              model === "Performer" && typeof a.create.realName === "string"
+                ? (a.create.realName as string)
+                : null,
+            );
           } else if (codedField && typeof a.create[codedField] === "string") {
             a.create.slug = codedSlug(a.create[codedField] as string);
           }
