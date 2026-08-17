@@ -35,14 +35,20 @@ export default function EntityMiniCard({
         />
       ) : (
         <div
+          className="d-flex align-items-center justify-content-center"
           style={{
             width: "2.5rem",
             height: "2.5rem",
             borderRadius: round ? "50%" : "0.375rem",
             background: "var(--bs-secondary-bg)",
             flexShrink: 0,
+            color: "var(--bs-secondary-color)",
+            opacity: 0.7,
+            fontWeight: 600,
           }}
-        />
+        >
+          {name.charAt(0).toUpperCase()}
+        </div>
       )}
       <span style={{ minWidth: 0 }}>
         <span className="d-block font-display fw-medium text-white text-truncate">{name}</span>

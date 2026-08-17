@@ -166,14 +166,20 @@ function PerformerRow({
           />
         ) : (
           <div
+            className="d-flex align-items-center justify-content-center small"
             style={{
               width: "2.25rem",
               height: "2.25rem",
               borderRadius: "50%",
               background: "var(--bs-secondary-bg)",
               flexShrink: 0,
+              color: "var(--bs-secondary-color)",
+              opacity: 0.7,
+              fontWeight: 600,
             }}
-          />
+          >
+            {performer.name.charAt(0).toUpperCase()}
+          </div>
         )}
         <span className="font-display fw-medium text-white text-truncate">{performer.name}</span>
       </Link>

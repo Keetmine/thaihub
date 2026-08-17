@@ -32,13 +32,15 @@ const PLATFORM_LABELS: Record<Platform, string> = {
  *  caller from whatever PerformerLink rows this filtered out. */
 export default function SocialLinkIcons({
   items,
+  className = "",
 }: {
   items: { platform: Platform; url: string }[];
+  className?: string;
 }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="d-flex flex-wrap gap-2">
+    <div className={`d-flex flex-wrap gap-2 ${className}`}>
       {items.map(({ platform, url }) => {
         const Icon = PLATFORM_ICONS[platform];
         const label = PLATFORM_LABELS[platform];
