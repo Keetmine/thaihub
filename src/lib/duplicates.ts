@@ -153,10 +153,50 @@ async function reassignJoinRows(
  *  are dropped rather than violating a unique constraint, and the losers
  *  are deleted. Runs in one transaction — either the whole merge lands or
  *  none of it does. */
+/** Пустые скалярные поля выжившего заполняются из вливаемого — фото,
+ *  био, даты и т.п. не должны теряться при слиянии, если у проигравшего
+ *  они были, а у выжившего нет. Занятые поля не трогаем. */
+function fillBlanks<T extends Record<string, unknown>>(
+  keeper: T,
+  loser: T,
+  fields: (keyof T)[],
+): Partial<T> {
+  const data: Partial<T> = {};
+  for (const f of fields) {
+    const kv = keeper[f];
+    const lv = loser[f];
+    const keeperEmpty =
+      kv == null || kv === "" || (Array.isArray(kv) && kv.length === 0);
+    const loserHas =
+      lv != null && lv !== "" && !(Array.isArray(lv) && lv.length === 0);
+    if (keeperEmpty && loserHas) data[f] = lv;
+  }
+  return data;
+}
+
 export async function mergeDramas(keeperId: string, loserIds: string[]) {
   await prisma.$transaction(async (tx) => {
     for (const loserId of loserIds) {
       if (loserId === keeperId) continue;
+
+      const [keeper, loser] = await Promise.all([
+        tx.drama.findUnique({ where: { id: keeperId } }),
+        tx.drama.findUnique({ where: { id: loserId } }),
+      ]);
+      if (keeper && loser) {
+        const data = fillBlanks(keeper, loser, [
+          "posterUrl", "description", "year", "nativeTitle", "alsoKnownAs",
+          "director", "screenwriter", "genres", "tags", "episodes",
+          "airedFrom", "airedTo", "airedOn", "duration", "contentRating",
+          "mdlScore", "mydramalistUrl", "trailerUrl", "agencyId", "novelId",
+        ] as (keyof typeof keeper)[]);
+        if (Object.keys(data).length > 0) {
+          await tx.drama.update({
+            where: { id: keeperId },
+            data: data as Prisma.DramaUpdateInput,
+          });
+        }
+      }
 
       await reassignJoinRows(tx.performerDrama, "dramaId", "performerId", keeperId, loserId);
       await reassignJoinRows(tx.dramaWatchStatus, "dramaId", "userId", keeperId, loserId);
@@ -172,6 +212,28 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
   await prisma.$transaction(async (tx) => {
     for (const loserId of loserIds) {
       if (loserId === keeperId) continue;
+
+      const [keeper, loser] = await Promise.all([
+        tx.performer.findUnique({ where: { id: keeperId } }),
+        tx.performer.findUnique({ where: { id: loserId } }),
+      ]);
+      if (keeper && loser) {
+        const data = fillBlanks(keeper, loser, [
+          "photoUrl", "realName", "bio", "birthDate", "placeOfBirth",
+          "nationality", "gender", "musicAlias", "alsoKnownAs",
+          "occupation", "instruments", "soloDebut", "height", "weight",
+          "mvAppearances", "trivia", "awards", "references", "sourceUrl",
+          "mydramalistUrl",
+        ] as (keyof typeof keeper)[]);
+        if (Object.keys(data).length > 0) {
+          // Json-поля (awards/references): в data попадают только не-null
+          // значения (fillBlanks), каст безопасен.
+          await tx.performer.update({
+            where: { id: keeperId },
+            data: data as Prisma.PerformerUpdateInput,
+          });
+        }
+      }
 
       await reassignJoinRows(tx.eventPerformer, "performerId", "eventId", keeperId, loserId);
       await reassignJoinRows(tx.performerDrama, "performerId", "dramaId", keeperId, loserId);
