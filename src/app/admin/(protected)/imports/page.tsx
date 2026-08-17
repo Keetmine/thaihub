@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { runTpopAgencyImport } from "./actions";
+import RunningImportsWatcher from "./RunningImportsWatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +35,13 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 // ссылки на места, откуда они запускаются. Массовые прогоны из консоли
 // (scripts/*.ts) сюда не пишут — у них свои логи.
 export default async function AdminImportsPage() {
+  const hasRunningPromise = prisma.importRun.findFirst({ where: { status: "RUNNING" } });
   const [runs, recentItems] = await Promise.all([
     prisma.importRun.findMany({ orderBy: { startedAt: "desc" }, take: 100 }),
     prisma.importedItem.findMany({ orderBy: { createdAt: "desc" }, take: 60 }),
   ]);
+
+  const runningRun = await hasRunningPromise;
 
   const fmt = (d: Date) =>
     d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -73,11 +77,29 @@ export default async function AdminImportsPage() {
             placeholder="https://tpop.fandom.com/wiki/…"
             className="form-control"
           />
-          <button type="submit" className="btn btn-primary btn-sm flex-shrink-0">
-            Импортировать
+          <button
+            type="submit"
+            className="btn btn-primary btn-sm flex-shrink-0"
+            disabled={!!runningRun}
+          >
+            {runningRun ? "Импорт идёт…" : "Импортировать"}
           </button>
         </form>
+        {runningRun && (
+          <div className="d-flex align-items-center gap-2 mt-3 small">
+            <span
+              className="spinner-border spinner-border-sm text-warning flex-shrink-0"
+              role="status"
+              aria-label="Импорт выполняется"
+            />
+            <span className="text-secondary text-truncate">
+              {runningRun.summary || "Выполняется…"}
+            </span>
+          </div>
+        )}
       </div>
+
+      <RunningImportsWatcher hasRunning={!!runningRun} />
 
       <h2 className="section-heading mb-2">Последнее спарсенное</h2>
       {recentItems.length === 0 ? (

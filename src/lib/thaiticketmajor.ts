@@ -116,6 +116,12 @@ async function fetchEnglishHtml(url: string): Promise<string> {
 export function parseArtistLine(raw: string): TtmArtist {
   const text = raw.replace(/\s+/g, " ").trim();
 
+  // Обратная форма «(Ник) Полное Имя» (Love Out Loud 2023 и др.).
+  const leadingParen = text.match(/^\(([^)]+)\)\s*(.+)$/);
+  if (leadingParen) {
+    return { fullName: leadingParen[2].trim(), nickname: leadingParen[1].trim() };
+  }
+
   const parenMatch = text.match(/^(.+?)\s*\(([^)]+)\)$/);
   if (parenMatch) {
     return { fullName: parenMatch[1].trim(), nickname: parenMatch[2].trim() };
@@ -126,6 +132,18 @@ export function parseArtistLine(raw: string): TtmArtist {
     return { fullName: words.slice(1).join(" "), nickname: words[0] };
   }
   return { fullName: text, nickname: text };
+}
+
+/** Текст элемента, разрезанный по <br> (клон — живое дерево не мутируем). */
+function htmlToLines($: cheerio.CheerioAPI, el: cheerio.Cheerio<import("domhandler").AnyNode>): string[] {
+  const clone = el.clone();
+  clone.find("br").replaceWith("\n");
+  clone.find("div").prepend("\n");
+  return clone
+    .text()
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 function findLabeledRow($: cheerio.CheerioAPI, label: string) {
@@ -194,21 +212,42 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
 
   // "Artist" (not "Artists") matches both label forms the site uses —
   // some pages say "Artist :" (singular, e.g. weirdo-101-the-first-
-  // gravity.html), most say "Artists :" — findLabeledRow does a prefix
-  // match, and "artists" itself starts with "artist" too.
-  const artistsCell = findLabeledRow($, "Artist").find("td").eq(1);
+  // gravity.html), most say "Artists :". Фестивальные страницы (Love Out
+  // Loud Fan Fest) подписывают ту же строку «Performers :», встречается
+  // и «Line Up» — берём первую непустую из известных меток.
+  let artistsCell = findLabeledRow($, "Artist").find("td").eq(1);
+  for (const label of ["Performers", "Performer", "Line Up", "Lineup"]) {
+    if (artistsCell.length > 0 && artistsCell.text().trim()) break;
+    artistsCell = findLabeledRow($, label).find("td").eq(1);
+  }
   // Multiple artists are each wrapped in their own <div>; a single artist
   // is sometimes just bare text directly in the cell with no <div> at
   // all (e.g. gemini-art-venture-concert.html) — fall back to the cell's
   // own text in that case instead of silently returning zero artists.
-  const artistDivs = artistsCell.find("div");
-  const artistTexts =
-    artistDivs.length > 0
-      ? artistDivs.map((_, el) => $(el).text()).get()
-      : [artistsCell.text()];
-  const artists: TtmArtist[] = artistTexts
+  // Внутри ячейки/дивов имена разделены <br> и « / » («Name (Nick) /
+  // Name (Nick)») — режем и по ним, иначе фестивальный состав слипся бы
+  // в одну «строку-артиста».
+  // htmlToLines обходит всю ячейку: и голые строки до <div>-блоков, и
+  // сами блоки (див получает свой \n) — фестивальные страницы держат
+  // часть состава прямо в td, часть в дивах.
+  const artistBlocks = htmlToLines($, artistsCell);
+  const artists: TtmArtist[] = artistBlocks
+    .flatMap((line) => line.split(/\s\/\s/))
+    // «LYKN — William Jakrapatr, Lego Rapeepong, …» (riser-concert-the-
+    // first-rise): группа — тире — участники через запятую; разворачиваем
+    // в отдельных артистов (голову-группу тоже оставляем).
+    .flatMap((line) => {
+      const dash = line.split(/\s+[—–-]\s+/);
+      if (dash.length === 2) {
+        // участники бывают обёрнуты в общие скобки: «LYKN — (William …,
+        // Tui Chayatorn)» — срезаем их до разбиения по запятым
+        const tail = dash[1].trim().replace(/^\(/, "").replace(/\)$/, "");
+        return [dash[0], ...tail.split(",")];
+      }
+      return [line];
+    })
     .map((text) => text.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
+    .filter((text) => text && !/^(tba|special guest)/i.test(text))
     .map(parseArtistLine);
 
   return {

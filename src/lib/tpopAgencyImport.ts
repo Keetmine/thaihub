@@ -166,7 +166,7 @@ async function searchTtm(query: string): Promise<{ url: string; title: string }[
 
 /** Привязывает к событию всех артистов концерта (включая гостей),
  *  которых удалось найти в каталоге по имени/алиасу. */
-async function linkEventArtists(eventId: string, artistNames: string[]): Promise<number> {
+export async function linkEventArtists(eventId: string, artistNames: string[]): Promise<number> {
   let linked = 0;
   for (const raw of artistNames) {
     const name = raw.replace(/\(.*?\)/g, "").trim();

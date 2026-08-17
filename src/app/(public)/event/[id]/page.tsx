@@ -48,7 +48,17 @@ export default async function EventDetailPage({
   const event = await prisma.event.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
-      performers: { include: { performer: true } },
+      performers: {
+        include: {
+          performer: {
+            include: {
+              // Группа на событии → показываем и её участников (не
+              // дублируя тех, кто привязан к событию отдельно).
+              bandMembers: { include: { performer: true } },
+            },
+          },
+        },
+      },
       pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
       drama: true,
       occurrences: {
@@ -269,6 +279,29 @@ export default async function EventDetailPage({
                       name={performer.name}
                     />
                   ))}
+                  {(() => {
+                    // Участники выступающих групп — сразу в общий список,
+                    // без дублей с напрямую привязанными артистами.
+                    const directIds = new Set(event.performers.map((ep) => ep.performer.id));
+                    const seen = new Set<string>();
+                    return event.performers.flatMap(({ performer }) =>
+                      performer.bandMembers
+                        .filter((bm) => {
+                          if (directIds.has(bm.performer.id) || seen.has(bm.performer.id)) return false;
+                          seen.add(bm.performer.id);
+                          return true;
+                        })
+                        .map((bm) => (
+                          <EntityMiniCard
+                            key={`bm-${bm.performer.id}`}
+                            href={performerHref(bm.performer)}
+                            photoUrl={bm.performer.photoUrl}
+                            name={bm.performer.name}
+                            subtitle={performer.name}
+                          />
+                        )),
+                    );
+                  })()}
                   {event.pairings.map(({ pairing }) => (
                     <span key={pairing.id} className="event-chip">
                       {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
