@@ -1017,6 +1017,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding-right: 0.25rem;
 }
 
+/* В админке внутренние скроллы спискам не нужны: список занимает всю
+   ширину контента и растёт вниз, страница скроллится сама. overflow-x
+   остаётся hidden, чтобы длинные строки не рождали горизонтальный
+   скролл. */
+.admin-content .scroll-list-lg,
+.admin-content .scroll-list {
+  max-height: none;
+  overflow-y: visible;
+  padding-right: 0;
+}
+
 /* ---------- Закреплённая шапка ---------- */
 /* top:0 + собственная подложка-градиент: с отступом сверху в зазоре
    просвечивал контент, а сквозь полупрозрачный pill-nav — заголовки. */
