@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState } from "react";
 import { requestPasswordReset } from "./actions";
 
@@ -26,7 +28,7 @@ export default function ForgotForm() {
     return (
       <p className="small text-warning text-center mb-0">
         Автоматический сброс временно недоступен — напишите нам через{" "}
-        <a href="/help#feedback" className="link-body-emphasis">форму обращений</a>, поможем руками.
+        <Link href="/help#feedback" className="link-body-emphasis">форму обращений</Link>, поможем руками.
       </p>
     );
   }
