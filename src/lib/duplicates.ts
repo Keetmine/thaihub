@@ -26,9 +26,30 @@ export async function findDuplicatePerformerGroups(): Promise<
     },
     orderBy: { createdAt: "asc" },
   });
-  return groupByNormName(performers, (p) => p.name).flatMap((g) =>
+  const byNick = groupByNormName(performers, (p) => p.name).flatMap((g) =>
     splitByDiscriminator(g, (p) => p.realName),
   );
+
+  // Вторая сетка: одинаковое РЕАЛЬНОЕ имя при разных никах — тоже
+  // вероятные дубли (Jeff / Jeff Demo Project с одним Worakamol Satoe).
+  // Нормализация без дефисов/пробелов ловит «Opas-iamkajorn» ↔
+  // «Opasiamkajorn». Группы, целиком совпадающие с уже найденными по
+  // нику, не дублируем.
+  const seenSets = new Set(byNick.map((g) => g.rows.map((r) => r.id).sort().join("|")));
+  const normReal = (v: string) => v.toLowerCase().replace(/[-\s]/g, "");
+  const byReal = new Map<string, typeof performers>();
+  for (const p of performers) {
+    if (!p.realName || p.realName.trim().length < 5) continue;
+    const key = normReal(p.realName);
+    if (!byReal.has(key)) byReal.set(key, []);
+    byReal.get(key)!.push(p);
+  }
+  const realGroups = [...byReal.entries()]
+    .filter(([, rows]) => rows.length > 1)
+    .map(([key, rows]) => ({ key: `real::${key}`, rows }))
+    .filter((g) => !seenSets.has(g.rows.map((r) => r.id).sort().join("|")));
+
+  return [...byNick, ...realGroups];
 }
 
 /** Groups of Dramas sharing the exact same (normalized) title.
