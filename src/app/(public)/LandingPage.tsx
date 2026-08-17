@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import { prisma } from "@/lib/prisma";
 import { CalendarIcon, HeartIcon, TvIcon, UsersIcon } from "@/components/icons";
 
 const FEATURES = [
@@ -43,7 +44,24 @@ const STEPS = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Живые примеры вместо выдуманных: ближайшие события из афиши
+  // (многодневное событие показываем один раз — первой датой).
+  const upcomingRaw = await prisma.eventOccurrence.findMany({
+    where: { startsAt: { gte: new Date() } },
+    orderBy: { startsAt: "asc" },
+    take: 12,
+    include: {
+      event: {
+        include: { performers: { include: { performer: { select: { name: true } } }, take: 3 } },
+      },
+    },
+  });
+  const seenEvents = new Set<string>();
+  const upcoming = upcomingRaw
+    .filter((occ) => !seenEvents.has(occ.eventId) && seenEvents.add(occ.eventId))
+    .slice(0, 3);
+
   return (
     <div className="d-flex flex-column gap-5">
       {/* ---------- Hero ---------- */}
@@ -89,17 +107,31 @@ export default function LandingPage() {
           </div>
           <div className="col-12 col-lg-5">
             <div className="d-flex flex-column gap-2">
-              <div className="agenda-row">
-                <div className="agenda-time">
-                  <span className="agenda-time-start">19:00</span>
+              {upcoming.map((occ) => (
+                <div key={occ.id} className="agenda-row">
+                  <div className="agenda-time">
+                    <span className="agenda-time-start">
+                      {occ.startsAt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(/\.$/, "")}
+                    </span>
+                  </div>
+                  <span className="agenda-dash">—</span>
+                  <div className="agenda-body">
+                    <p className="h6 font-display mb-1">{occ.event.title}</p>
+                    <p className="small text-secondary mb-0">
+                      {occ.event.venue}
+                      {occ.event.performers.length > 0 &&
+                        ` · ${occ.event.performers.map((ep) => ep.performer.name).join(", ")}`}
+                    </p>
+                  </div>
                 </div>
-                <span className="agenda-dash">—</span>
-                <div className="agenda-body">
-                  <p className="h6 font-display mb-1">Bodyslam Live in Bangkok</p>
-                  <p className="small text-secondary mb-0">Impact Arena, Bangkok</p>
+              ))}
+              {upcoming.length === 0 && (
+                <div className="agenda-row">
+                  <div className="agenda-body">
+                    <p className="small text-secondary mb-0">Афиша пополняется каждую неделю.</p>
+                  </div>
                 </div>
-              </div>
-              <div className="event-chip d-inline-flex align-self-start">NuNew × Palmy</div>
+              )}
             </div>
           </div>
         </div>

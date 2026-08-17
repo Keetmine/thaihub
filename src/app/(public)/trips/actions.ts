@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { getFriendIds } from "@/lib/friends";
 import { combineDateTime } from "@/lib/dates";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { isPremiumActive } from "@/lib/premium";
@@ -30,6 +31,12 @@ export async function createTrip(formData: FormData) {
     throw new Error("Дата окончания раньше даты начала");
   }
 
+  // Совместная поездка сразу из формы: выбранные друзья становятся
+  // участниками (только реальные друзья — чужие id отбрасываем).
+  const requestedMemberIds = formData.getAll("memberIds").map(String).filter(Boolean);
+  const friendIds = requestedMemberIds.length > 0 ? await getFriendIds(user.id) : [];
+  const memberIds = [...new Set(requestedMemberIds.filter((id) => friendIds.includes(id)))];
+
   const trip = await prisma.trip.create({
     data: {
       userId: user.id,
@@ -37,6 +44,7 @@ export async function createTrip(formData: FormData) {
       startDate: start,
       endDate: end,
       visibility: parseVisibility(formData.get("visibility")),
+      members: { create: memberIds.map((userId) => ({ userId })) },
     },
   });
 
@@ -157,7 +165,7 @@ export async function leaveTrip(tripId: string): Promise<void> {
   redirect("/trips");
 }
 
-function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null; editableByOthers: boolean } {
+function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null; editableByOthers: boolean; isPrivate: boolean } {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
   const date = String(formData.get("date") ?? "");
@@ -172,6 +180,7 @@ function parsePersonalEventForm(formData: FormData): { title: string; note: stri
     startsAt: combineDateTime(date, time || "00:00"),
     locationId: locationId || null,
     editableByOthers: formData.get("editableByOthers") === "on",
+    isPrivate: formData.get("isPrivate") === "on",
   };
 }
 
@@ -276,6 +285,7 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
       hasTime,
       createdById: user.id,
       editableByOthers: formData.get("editableByOthers") === "on",
+      isPrivate: formData.get("isPrivate") === "on",
     },
   });
   revalidatePath(`/trips/${tripId}`);
@@ -314,7 +324,13 @@ export async function updateTripTodo(todoId: string, formData: FormData): Promis
   const { date, hasTime } = parseTodoDate(formData);
   await prisma.tripTodo.update({
     where: { id: todoId },
-    data: { text, date, hasTime, editableByOthers: formData.get("editableByOthers") === "on" },
+    data: {
+      text,
+      date,
+      hasTime,
+      editableByOthers: formData.get("editableByOthers") === "on",
+      isPrivate: formData.get("isPrivate") === "on",
+    },
   });
   revalidatePath(`/trips/${todo.tripId}`);
 }

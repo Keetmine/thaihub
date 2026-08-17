@@ -25,6 +25,7 @@ export type PersonalEventData = {
   // и разрешение другим участникам править/удалять запись.
   author: string | null;
   editableByOthers: boolean;
+  isPrivate: boolean;
   canEdit: boolean;
 };
 
@@ -42,6 +43,7 @@ export function PersonalEventFields({
     timeValue: string;
     location?: { id: string; name: string } | null;
     editableByOthers?: boolean;
+    isPrivate?: boolean;
   };
   showShareToggle?: boolean;
 }) {
@@ -80,22 +82,36 @@ export function PersonalEventFields({
         <textarea name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
       </div>
       {showShareToggle ? (
-        <label className="form-check d-flex align-items-center gap-2 mb-0">
-          <input
-            type="checkbox"
-            name="editableByOthers"
-            defaultChecked={defaults?.editableByOthers ?? false}
-            className="form-check-input m-0"
-          />
-          <span className="form-check-label small">
-            Участники поездки могут редактировать и удалять
-          </span>
-        </label>
+        <>
+          <label className="form-check d-flex align-items-center gap-2 mb-0">
+            <input
+              type="checkbox"
+              name="editableByOthers"
+              defaultChecked={defaults?.editableByOthers ?? false}
+              className="form-check-input m-0"
+            />
+            <span className="form-check-label small">
+              Участники поездки могут редактировать и удалять
+            </span>
+          </label>
+          <label className="form-check d-flex align-items-center gap-2 mb-0">
+            <input
+              type="checkbox"
+              name="isPrivate"
+              defaultChecked={defaults?.isPrivate ?? false}
+              className="form-check-input m-0"
+            />
+            <span className="form-check-label small">Приватное — видно только мне</span>
+          </label>
+        </>
       ) : (
-        // Без галочки сохраняем прежнее значение флага, иначе update
-        // сбросил бы его (чекбокс в FormData отличим от «не показан»
+        // Без галочек сохраняем прежние значения флагов, иначе update
+        // сбросил бы их (чекбокс в FormData отличим от «не показан»
         // только этим hidden).
-        defaults?.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />
+        <>
+          {defaults?.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />}
+          {defaults?.isPrivate && <input type="hidden" name="isPrivate" value="on" />}
+        </>
       )}
     </>
   );
@@ -161,6 +177,11 @@ export default function PersonalEventCard({
           <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
             личное
           </span>
+          {event.isPrivate && (
+            <span className="badge rounded-pill text-bg-dark border" style={{ fontSize: "0.6rem" }}>
+              приватное
+            </span>
+          )}
           {event.author && (
             <span className="small text-secondary fw-normal">{event.author}</span>
           )}
@@ -191,6 +212,7 @@ export default function PersonalEventCard({
               timeValue: hasTime ? event.timeValue : "",
               location: event.location,
               editableByOthers: event.editableByOthers,
+              isPrivate: event.isPrivate,
             }}
             showShareToggle={showShareToggle}
           />

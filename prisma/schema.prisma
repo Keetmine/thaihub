@@ -650,6 +650,8 @@ model TripPersonalEvent {
   // легаси) и можно ли другим участникам её править/удалять.
   createdById String?
   editableByOthers Boolean @default(false)
+  // Приватная запись — видна только автору, даже другим участникам.
+  isPrivate Boolean @default(false)
   createdAt DateTime  @default(now())
 
   @@index([tripId])
@@ -731,6 +733,8 @@ model TripTodo {
   // Совместные поездки: автор и право правки другими участниками.
   createdById String?
   editableByOthers Boolean @default(false)
+  // Приватное дело — видно только автору.
+  isPrivate Boolean @default(false)
   // Время указано? (date хранит и время; без флага «00:00» неотличим
   // от «без времени»).
   hasTime   Boolean   @default(false)

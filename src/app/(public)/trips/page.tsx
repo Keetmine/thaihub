@@ -8,6 +8,7 @@ import PremiumUpsell from "@/components/PremiumUpsell";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { CalendarIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
+import { getFriendIds } from "@/lib/friends";
 import { tripHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,14 @@ export default async function TripsPage() {
       </div>
     );
   }
+
+  // Друзья — в мультиселект «С кем едете» формы создания.
+  const friendIds = await getFriendIds(user.id);
+  const friends = await prisma.user.findMany({
+    where: { id: { in: friendIds } },
+    select: { id: true, name: true, photoUrl: true },
+    orderBy: { name: "asc" },
+  });
 
   // Свои поездки + совместные, куда меня добавили участником.
   const tripsRaw = await prisma.trip.findMany({
@@ -86,7 +95,9 @@ export default async function TripsPage() {
           события, попадающие в этот период.
         </p>
         <div className="mb-4">
-          <CreateTripButton />
+          <CreateTripButton
+            friends={friends.map((f) => ({ id: f.id, name: f.name ?? "Без имени", photoUrl: f.photoUrl }))}
+          />
         </div>
 
         {trips.length === 0 ? (

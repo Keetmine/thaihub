@@ -137,7 +137,9 @@ cookie-presence check only** — it never touches the database:
 - `/api/*` — always passes through; API routes handle their own auth
   internally (a redirect response would just confuse a `fetch` caller
   instead of sending a person anywhere useful).
-- `/`, `/login`, `/signup`, `/manifest.webmanifest` — always public.
+- `/`, `/about` (лендинг по постоянному адресу), `/wiki` (индекс) и
+  `/wiki/[slug]`, `/login`, `/signup`, `/manifest.webmanifest` — always
+  public.
 - `/event/[id]/ics` — public (calendar apps fetch it directly, no session
   cookie).
 - Everything else — redirects to `/login` unless a `user_session` cookie

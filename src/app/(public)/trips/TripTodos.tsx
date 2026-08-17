@@ -25,6 +25,7 @@ export type TodoData = {
   author: string | null;
   canEdit: boolean;
   editableByOthers: boolean;
+  isPrivate: boolean;
 };
 
 const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
@@ -91,6 +92,11 @@ export function TodoRow({
         style={{ minWidth: 0 }}
       >
         {todo.text}
+        {todo.isPrivate && (
+          <span className="badge rounded-pill text-bg-dark border ms-2" style={{ fontSize: "0.6rem" }}>
+            приватное
+          </span>
+        )}
         {todo.author && (
           <span className="small text-secondary ms-2">{todo.author}</span>
         )}
@@ -155,20 +161,34 @@ export function TodoRow({
             </div>
           </div>
           {showShareToggle ? (
-            <label className="form-check d-flex align-items-center gap-2 mb-0">
-              <input
-                type="checkbox"
-                name="editableByOthers"
-                defaultChecked={todo.editableByOthers}
-                className="form-check-input m-0"
-              />
-              <span className="form-check-label small">
-                Участники поездки могут редактировать и удалять
-              </span>
-            </label>
+            <>
+              <label className="form-check d-flex align-items-center gap-2 mb-0">
+                <input
+                  type="checkbox"
+                  name="editableByOthers"
+                  defaultChecked={todo.editableByOthers}
+                  className="form-check-input m-0"
+                />
+                <span className="form-check-label small">
+                  Участники поездки могут редактировать и удалять
+                </span>
+              </label>
+              <label className="form-check d-flex align-items-center gap-2 mb-0">
+                <input
+                  type="checkbox"
+                  name="isPrivate"
+                  defaultChecked={todo.isPrivate}
+                  className="form-check-input m-0"
+                />
+                <span className="form-check-label small">Приватное — видно только мне</span>
+              </label>
+            </>
           ) : (
-            // Сохраняем прежний флаг, когда галочка скрыта (соло-поездка).
-            todo.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />
+            // Сохраняем прежние флаги, когда галочки скрыты (соло-поездка).
+            <>
+              {todo.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />}
+              {todo.isPrivate && <input type="hidden" name="isPrivate" value="on" />}
+            </>
           )}
           <button type="submit" className="btn btn-primary">
             Сохранить
@@ -235,16 +255,22 @@ export default function TripTodos({
             <input type="time" name="time" className="form-control" style={{ width: "7rem" }} />
           </div>
           {showShareToggle && (
-            <label className="form-check d-flex align-items-center gap-2 w-100 mb-0">
-              <input
-                type="checkbox"
-                name="editableByOthers"
-                className="form-check-input m-0"
-              />
-              <span className="form-check-label small">
-                Участники поездки могут редактировать и удалять
-              </span>
-            </label>
+            <div className="d-flex flex-wrap gap-3 w-100">
+              <label className="form-check d-flex align-items-center gap-2 mb-0">
+                <input
+                  type="checkbox"
+                  name="editableByOthers"
+                  className="form-check-input m-0"
+                />
+                <span className="form-check-label small">
+                  Участники могут редактировать и удалять
+                </span>
+              </label>
+              <label className="form-check d-flex align-items-center gap-2 mb-0">
+                <input type="checkbox" name="isPrivate" className="form-check-input m-0" />
+                <span className="form-check-label small">Приватное — видно только мне</span>
+              </label>
+            </div>
           )}
           <button type="submit" className="btn btn-primary">
             Добавить

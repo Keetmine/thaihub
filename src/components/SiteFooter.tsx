@@ -1,17 +1,9 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import Logo from "@/components/Logo";
 
-// Футер публичного сайта: ссылки по разделам + опубликованные
-// вики-статьи (вики доступна только отсюда).
-export default async function SiteFooter() {
-  const wiki = await prisma.wikiArticle.findMany({
-    where: { published: true },
-    select: { slug: true, id: true, title: true },
-    orderBy: { createdAt: "asc" },
-    take: 6,
-  });
-
+// Футер публичного сайта: ссылки по разделам; вики и «О нас» (лендинг)
+// доступны отсюда и без логина.
+export default function SiteFooter() {
   const col = "d-flex flex-column gap-1";
   const link = "small text-secondary text-decoration-none footer-link";
 
@@ -50,11 +42,8 @@ export default async function SiteFooter() {
             <div className={col}>
               <Link href="/help" className={link}>Помощь</Link>
               <Link href="/help#feedback" className={link}>Написать нам</Link>
-              {wiki.map((w) => (
-                <Link key={w.id} href={`/wiki/${w.slug ?? w.id}`} className={link}>
-                  {w.title}
-                </Link>
-              ))}
+              <Link href="/wiki" className={link}>Вики</Link>
+              <Link href="/about" className={link}>О нас</Link>
             </div>
           </div>
         </div>

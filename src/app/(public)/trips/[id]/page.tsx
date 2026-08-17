@@ -145,6 +145,8 @@ export default async function TripPage({
   // видят только участники: даже в публичной поездке брони/встречи —
   // не для чужих глаз.
   const personal: PersonalEventData[] = (isParticipant ? trip.personalEvents : [])
+    // Приватные записи видит только автор — даже другие участники.
+    .filter((p) => !p.isPrivate || isMine(p.createdById))
     .filter((p) => !onlyMine || isMine(p.createdById))
     .map((p) => ({
       id: p.id,
@@ -156,6 +158,7 @@ export default async function TripPage({
       timeValue: formatTime(p.startsAt),
       author: authorLabel(p.createdById),
       editableByOthers: p.editableByOthers,
+      isPrivate: p.isPrivate,
       canEdit: canTouch(p),
     }));
   // Дела поездки — планирование участников, чужим не показываем.
@@ -166,6 +169,7 @@ export default async function TripPage({
       })
     : [];
   const todoData = todos
+    .filter((t) => !t.isPrivate || isMine(t.createdById))
     .filter((t) => !onlyMine || isMine(t.createdById))
     .map((t) => ({
       id: t.id,
@@ -176,6 +180,7 @@ export default async function TripPage({
       author: authorLabel(t.createdById),
       canEdit: canTouch(t),
       editableByOthers: t.editableByOthers,
+      isPrivate: t.isPrivate,
     }));
 
   const timeline: (

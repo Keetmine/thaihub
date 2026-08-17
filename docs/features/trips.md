@@ -9,7 +9,10 @@ manually re-entering a date filter every time.
   «совместная», organizer's name shown; ascending by start date, past
   ones dimmed, each with a count of events falling inside it); creation lives behind a «+ Создать поездку»
   button opening a `Modal` popup (`CreateTripButton.tsx`) rather than an
-  always-visible form. **Premium-only** — the whole trips feature sits
+  always-visible form; в форме есть мультиселект «С кем едете»
+  (EntityMultiSelect по друзьям, с аватарками) — выбранные друзья сразу
+  становятся участниками (`createTrip` фильтрует id по реальным
+  друзьям). **Premium-only** — the whole trips feature sits
   behind `User.isPremium` (see [auth.md](auth.md) for the exact gate
   matrix, including what happens to trips created before the flag was
   revoked).
@@ -103,6 +106,13 @@ instead of `from`/`to`).
 и другие участники — только при поднятом флаге (`canTouchItem` в
 `trips/actions.ts`, продублировано в UI per-item полем `canEdit`).
 В совместной поездке у записей подписывается автор (имя серым).
+
+Вторая галочка — «Приватное — видно только мне» (`isPrivate` на
+TripTodo и TripPersonalEvent): запись не показывается никому, кроме
+автора, даже другим участникам и владельцу (бейдж «приватное» у
+автора). Обе галочки видны только в совместных поездках; в соло-формах
+прежние значения флагов сохраняются hidden-инпутами, иначе update
+сбросил бы их.
 
 Фильтр «Только моё» (`?mine=1`, кнопка справа от табов, только в
 совместных поездках): план сужается до собственных отметок «иду»,

@@ -5,8 +5,9 @@ import Modal from "@/components/Modal";
 import { createTrip } from "./actions";
 import { VisibilityRadios } from "./TripVisibilityControls";
 import DatePickerInput from "@/components/DatePickerInput";
+import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 
-export default function CreateTripButton() {
+export default function CreateTripButton({ friends = [] }: { friends?: EntityOption[] }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -38,6 +39,18 @@ export default function CreateTripButton() {
               <DatePickerInput name="endDate" required />
             </div>
           </div>
+          {friends.length > 0 && (
+            <div>
+              <label className="form-label small text-secondary">
+                С кем едете (участники видят план и могут добавлять свои события)
+              </label>
+              <EntityMultiSelect
+                name="memberIds"
+                options={friends}
+                placeholder="Выберите друзей…"
+              />
+            </div>
+          )}
           <VisibilityRadios />
           <button type="submit" className="btn btn-primary">
             Создать
