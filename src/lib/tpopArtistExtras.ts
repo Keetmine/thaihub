@@ -308,13 +308,23 @@ export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopA
     }
   }
 
+  const groups = sectionArtistLinks($, "Groups");
+  const duos = [...sectionArtistLinks($, "Duos"), ...sectionArtistLinks($, "Duo")];
+  let soloists = sectionArtistLinks($, "Soloists");
+  // У маленьких лейблов (Change Music) артисты лежат плоским списком
+  // прямо в «Artists», без подсекций — тогда берём их оттуда (тип
+  // группа/соло всё равно определяется по инфобоксу каждой страницы).
+  if (groups.length + duos.length + soloists.length === 0) {
+    soloists = sectionArtistLinks($, "Artists");
+  }
+
   return {
     name: pageTitle,
     photoUrl: photo,
     description: introParas.join("\n\n") || null,
-    groups: sectionArtistLinks($, "Groups"),
-    duos: [...sectionArtistLinks($, "Duos"), ...sectionArtistLinks($, "Duo")],
-    soloists: sectionArtistLinks($, "Soloists"),
+    groups,
+    duos,
+    soloists,
     former: sectionArtistLinks($, "Former artists"),
     references: parseReferences($),
     sourceUrl: `https://tpop.fandom.com/wiki/${encodeURIComponent(pageTitle.replace(/ /g, "_"))}`,
