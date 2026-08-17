@@ -126,6 +126,20 @@ model Performer {
   // (у группы «псевдоним» — это её name) и дискография. Ссылки на муз.
   // площадки (Spotify и т.п.) живут в общих PerformerLink — платформа
   // распознаётся по URL (см. src/lib/socialLinks.ts).
+  // --- tpop.fandom (см. tpop-agency-import.md): профиль музыканта ---
+  occupation    String[] @default([])
+  instruments   String[] @default([])
+  soloDebut     String?
+  height        String?
+  weight        String?
+  // «Music video appearances» — просто текстом, без ссылок.
+  mvAppearances String[] @default([])
+  trivia        String[] @default([])
+  // Таблица «Awards and nominations»: [{year, award, category, nominee, result}]
+  awards        Json?
+  // Секция «References» источника: [{label, url}] + страница-источник.
+  references    Json?
+  sourceUrl     String?
   musicAlias     String?
   albums         Album[]
   songs          Song[]
@@ -178,6 +192,8 @@ model Album {
   type        AlbumType @default(ALBUM)
   year        Int?
   coverUrl    String?
+  // Ссылка на площадку/страницу альбома (YouTube/Spotify), если нашлась.
+  url         String?
   songs       Song[]
   createdAt   DateTime  @default(now())
 
@@ -1060,11 +1076,27 @@ model Broadcast {
 }
 
 // Журнал запусков импортов/синков из админки (/admin/imports).
+// Что именно создал/обновил автоматический импорт — лента «последнего
+// спарсенного» в /admin/imports (руками добавленное сюда не пишется).
+model ImportedItem {
+  id         String     @id @default(cuid())
+  runId      String?
+  run        ImportRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  entityType String // performer | agency | event | album | song
+  entityId   String
+  action     String // created | updated
+  label      String
+  createdAt  DateTime   @default(now())
+
+  @@index([createdAt])
+}
+
 model ImportRun {
   id         String    @id @default(cuid())
   kind       String // "tmdb-dramas" | "tmdb-performers" | "gmmtv" | "mdl-drama" | "blscene"
   status     String    @default("RUNNING") // RUNNING | DONE | FAILED
   summary    String?
+  items      ImportedItem[]
   startedAt  DateTime  @default(now())
   finishedAt DateTime?
 }

@@ -156,6 +156,24 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
       await reassignJoinRows(tx.performerDrama, "performerId", "dramaId", keeperId, loserId);
       await reassignJoinRows(tx.favoritePerformer, "performerId", "userId", keeperId, loserId);
       await tx.performerLink.updateMany({ where: { performerId: loserId }, data: { performerId: keeperId } });
+      // Музыка и кастомные списки: без переноса каскад удаления проигравшего
+      // молча снёс бы альбомы/песни/строки списков. Альбом с тем же
+      // названием у выжившего — переносим песни внутрь и убираем дубль
+      // (уникальный индекс (performerId, title) не даёт просто пересадить).
+      const loserAlbums = await tx.album.findMany({ where: { performerId: loserId } });
+      for (const album of loserAlbums) {
+        const clash = await tx.album.findUnique({
+          where: { performerId_title: { performerId: keeperId, title: album.title } },
+        });
+        if (clash) {
+          await tx.song.updateMany({ where: { albumId: album.id }, data: { albumId: clash.id } });
+          await tx.album.delete({ where: { id: album.id } });
+        } else {
+          await tx.album.update({ where: { id: album.id }, data: { performerId: keeperId } });
+        }
+      }
+      await tx.song.updateMany({ where: { performerId: loserId }, data: { performerId: keeperId } });
+      await reassignJoinRows(tx.performerListItem, "performerId", "listId", keeperId, loserId);
 
       await reassignJoinRows(tx.bandMember, "bandId", "performerId", keeperId, loserId);
       await reassignJoinRows(tx.bandMember, "performerId", "bandId", keeperId, loserId);

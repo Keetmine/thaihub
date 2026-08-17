@@ -233,6 +233,41 @@ export default async function PerformerPage({
               {performer.placeOfBirth}
             </p>
           )}
+          {performer.occupation.length > 0 && (
+            <p className="small text-secondary mb-0">
+              <span className="text-secondary">Занятия:</span>{" "}
+              <span className="text-body">{performer.occupation.join(", ")}</span>
+            </p>
+          )}
+          {performer.instruments.length > 0 && (
+            <p className="small text-secondary mb-0">
+              <span className="text-secondary">Инструменты:</span>{" "}
+              <span className="text-body">{performer.instruments.join(", ")}</span>
+            </p>
+          )}
+          {performer.soloDebut && (
+            <p className="small text-secondary mb-0">
+              <span className="text-secondary">Сольный дебют:</span>{" "}
+              <span className="text-body">{performer.soloDebut}</span>
+            </p>
+          )}
+          {(performer.height || performer.weight) && (
+            <p className="small text-secondary mb-0">
+              {performer.height && (
+                <>
+                  <span className="text-secondary">Рост:</span>{" "}
+                  <span className="text-body">{performer.height}</span>
+                </>
+              )}
+              {performer.height && performer.weight && " · "}
+              {performer.weight && (
+                <>
+                  <span className="text-secondary">Вес:</span>{" "}
+                  <span className="text-body">{performer.weight}</span>
+                </>
+              )}
+            </p>
+          )}
           {performer.agencies.length > 0 && (
             <p className="small text-secondary mb-0">
               <BuildingIcon />{" "}
@@ -594,6 +629,97 @@ export default async function PerformerPage({
             ))}
           </div>
         </>
+      )}
+
+      {performer.mvAppearances.length > 0 && (
+        <div className="surface p-4 mb-3">
+          <h2 className="section-heading mb-2">Появления в клипах</h2>
+          <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
+            {performer.mvAppearances.map((mv, i) => (
+              <li key={i}>{mv}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {Array.isArray(performer.awards) && performer.awards.length > 0 && (
+        <div className="surface p-4 mb-3">
+          <h2 className="section-heading mb-2">Награды и номинации</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table className="table table-dark table-sm small mb-0 align-middle">
+              <thead>
+                <tr className="text-secondary">
+                  <th>Год</th>
+                  <th>Премия</th>
+                  <th>Категория</th>
+                  <th>Номинант</th>
+                  <th>Результат</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(performer.awards as { year: string; award: string; category: string; nominee: string; result: string }[]).map(
+                  (a, i) => (
+                    <tr key={i}>
+                      <td className="text-secondary">{a.year}</td>
+                      <td>{a.award}</td>
+                      <td>{a.category}</td>
+                      <td className="text-secondary">{a.nominee}</td>
+                      <td className={/won|winner/i.test(a.result) ? "text-success" : "text-secondary"}>
+                        {a.result}
+                      </td>
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {performer.trivia.length > 0 && (
+        <div className="surface p-4 mb-3">
+          <h2 className="section-heading mb-2">Факты</h2>
+          <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
+            {performer.trivia.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(performer.sourceUrl || (Array.isArray(performer.references) && performer.references.length > 0)) && (
+        <div className="surface p-4 mb-3">
+          <h2 className="section-heading mb-2">Источники</h2>
+          {Array.isArray(performer.references) && performer.references.length > 0 && (
+            <ol className="small text-secondary ps-3 mb-2 d-flex flex-column gap-1">
+              {(performer.references as { label: string; url: string | null }[]).map((r, i) => (
+                <li key={i}>
+                  {r.url ? (
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="link-body-emphasis">
+                      {r.label || r.url}
+                    </a>
+                  ) : (
+                    r.label
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+          {performer.sourceUrl && (
+            <p className="small text-secondary mb-0">
+              Данные страницы:{" "}
+              <a
+                href={performer.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link-body-emphasis"
+              >
+                tpop.fandom.com
+              </a>{" "}
+              (CC BY-SA)
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

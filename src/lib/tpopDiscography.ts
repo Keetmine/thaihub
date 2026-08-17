@@ -24,6 +24,7 @@ export type TpopAlbumEntry = {
 
 export type TpopSongEntry = {
   title: string;
+  pageTitle: string | null; // вики-статья песни, если строка была [[ссылкой]]
   note: string | null;
   year: number | null;
 };
@@ -175,7 +176,7 @@ export async function fetchTpopDiscography(pageTitleOrUrl: string): Promise<Tpop
         year: parsed.year,
       });
     } else {
-      songs.push({ title: parsed.title, note: parsed.note, year: parsed.year });
+      songs.push({ title: parsed.title, pageTitle: parsed.pageTitle, note: parsed.note, year: parsed.year });
     }
   }
 
