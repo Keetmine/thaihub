@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Logo from "@/components/Logo";
 import PasswordInput from "@/components/PasswordInput";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +24,7 @@ export default async function ResetPasswordPage({
       {!valid ? (
         <p className="small text-warning text-center mb-0">
           Ссылка недействительна или устарела —{" "}
-          <a href="/forgot-password" className="link-body-emphasis">запросите сброс ещё раз</a>.
+          <Link href="/forgot-password" className="link-body-emphasis">запросите сброс ещё раз</Link>.
         </p>
       ) : (
         <form action={resetPassword.bind(null, token)}>
