@@ -20,6 +20,7 @@ export const locationHref = (l: Sluggable & { name: string }) => href("locations
 export const novelHref = (n: Sluggable & { title: string }) => href("novels", n, n.title);
 export const agencyHref = (a: Sluggable & { name: string }) => href("agencies", a, a.name);
 export const tripHref = (t: Sluggable) => `/trips/${t.slug ?? t.id}`;
+export const artistListHref = (l: Sluggable) => `/artist-lists/${l.slug ?? l.id}`;
 export const listHref = (l: Sluggable) => `/lists/${l.slug ?? l.id}`;
 
 /**

@@ -40,10 +40,28 @@ export default async function NovelPage({
           </div>
         )}
         <div className={novel.coverUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}>
+          {novel.tags.length > 0 && (
+            <div className="d-flex flex-wrap gap-2 mb-3">
+              {novel.tags.slice(0, 16).map((t) => (
+                <span key={t} className="event-chip">{t}</span>
+              ))}
+            </div>
+          )}
           {novel.author && (
             <p className="small text-secondary mb-2">
               <UserIcon className="icon-inline" />{" "}
               <span className="text-secondary">Автор:</span> {novel.author}
+            </p>
+          )}
+          {novel.originalAuthor && (
+            <p className="small text-secondary mb-2">
+              <UserIcon className="icon-inline" />{" "}
+              <span className="text-secondary">Автор оригинала:</span> {novel.originalAuthor}
+            </p>
+          )}
+          {novel.size && (
+            <p className="small text-secondary mb-2">
+              <span className="text-secondary">Размер:</span> {novel.size}
             </p>
           )}
           {novel.description && (

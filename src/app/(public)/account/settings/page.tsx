@@ -2,11 +2,27 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
 import FileDropzone from "@/components/FileDropzone";
-import { updateProfile, getOrCreateIcsToken } from "../actions";
+import { updateProfile, updatePrivacy, getOrCreateIcsToken } from "../actions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
+import SettingsTabs from "./SettingsTabs";
 
 export const dynamic = "force-dynamic";
+
+const PRIVACY_TOGGLES = [
+  {
+    name: "hideProfileActivity",
+    label: "Скрыть всю активность",
+    hint: "Не-друзья увидят только имя и фото.",
+  },
+  { name: "hideAchievements", label: "Скрыть ачивки", hint: null },
+  {
+    name: "hideFavoritePerformers",
+    label: "Скрыть фан-профиль (любимых актёров)",
+    hint: null,
+  },
+  { name: "hideVisitedPlaces", label: "Скрыть посещённые места", hint: null },
+] as const;
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -18,92 +34,74 @@ export default async function SettingsPage() {
       <Link href="/account" className="eyebrow text-decoration-none">
         ← Профиль
       </Link>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
+      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
         Настройки
       </h1>
 
-      <div className="d-flex flex-column gap-3">
-        <div className="surface p-4" style={{ maxWidth: "32rem" }}>
-          <h2 className="h6 fw-semibold mb-3">Профиль</h2>
-          <form action={updateProfile} className="d-flex flex-column gap-3">
-            <div>
-              <label className="form-label">Имя</label>
-              <input name="name" defaultValue={user.name ?? ""} className="form-control" />
-            </div>
-            <FileDropzone name="photoUrl" label="Фото" defaultValue={user.photoUrl ?? ""} />
-            <div>
-              <p className="small fw-semibold mb-2">Приватность</p>
-              <p className="small text-secondary mb-2">
-                Друзья видят всё всегда; настройки ниже — для остальных.
-              </p>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="hideProfileActivity"
-                  name="hideProfileActivity"
-                  defaultChecked={user.hideProfileActivity}
-                />
-                <label className="form-check-label small" htmlFor="hideProfileActivity">
-                  Скрыть всю активность
-                  <span className="text-secondary d-block">
-                    Не-друзья увидят только имя и фото.
-                  </span>
-                </label>
+      <SettingsTabs
+        profile={
+          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+            <form action={updateProfile} className="row g-3">
+              <div className="col-12 col-md-6 d-flex flex-column gap-3">
+                <div>
+                  <label className="form-label">Имя</label>
+                  <input name="name" defaultValue={user.name ?? ""} className="form-control" />
+                </div>
+                <p className="small text-secondary mb-0">
+                  Имя видно друзьям и в публичном профиле.
+                </p>
               </div>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="hideAchievements"
-                  name="hideAchievements"
-                  defaultChecked={user.hideAchievements}
-                />
-                <label className="form-check-label small" htmlFor="hideAchievements">
-                  Скрыть ачивки
-                </label>
+              <div className="col-12 col-md-6">
+                <FileDropzone name="photoUrl" label="Фото" defaultValue={user.photoUrl ?? ""} />
               </div>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="hideFavoritePerformers"
-                  name="hideFavoritePerformers"
-                  defaultChecked={user.hideFavoritePerformers}
-                />
-                <label className="form-check-label small" htmlFor="hideFavoritePerformers">
-                  Скрыть фан-профиль (любимых актёров)
-                </label>
+              <div className="col-12">
+                <button type="submit" className="btn btn-primary btn-sm">
+                  Сохранить
+                </button>
               </div>
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="hideVisitedPlaces"
-                  name="hideVisitedPlaces"
-                  defaultChecked={user.hideVisitedPlaces}
-                />
-                <label className="form-check-label small" htmlFor="hideVisitedPlaces">
-                  Скрыть посещённые места
-                </label>
+            </form>
+          </div>
+        }
+        privacy={
+          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+            <p className="small text-secondary mb-3">
+              Друзья видят всё всегда; настройки ниже — для остальных.
+            </p>
+            <form action={updatePrivacy} className="d-flex flex-column gap-2">
+              {PRIVACY_TOGGLES.map((t) => (
+                <div className="form-check" key={t.name}>
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id={t.name}
+                    name={t.name}
+                    defaultChecked={Boolean(user[t.name])}
+                  />
+                  <label className="form-check-label small" htmlFor={t.name}>
+                    {t.label}
+                    {t.hint && <span className="text-secondary d-block">{t.hint}</span>}
+                  </label>
+                </div>
+              ))}
+              <div className="mt-2">
+                <button type="submit" className="btn btn-primary btn-sm">
+                  Сохранить
+                </button>
               </div>
-            </div>
-            <button type="submit" className="btn btn-primary">
-              Сохранить
-            </button>
-          </form>
-        </div>
-
-        <div className="surface p-4" style={{ maxWidth: "32rem" }}>
-          <h2 className="h6 fw-semibold mb-3">Смена пароля</h2>
-          <ChangePasswordForm />
-        </div>
-
-        <div className="surface p-4" style={{ maxWidth: "32rem" }}>
-          <h2 className="h6 fw-semibold mb-3">Подписка на календарь</h2>
-          <IcsFeedSection token={icsToken} />
-        </div>
-      </div>
+            </form>
+          </div>
+        }
+        security={
+          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+            <ChangePasswordForm />
+          </div>
+        }
+        calendar={
+          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+            <IcsFeedSection token={icsToken} />
+          </div>
+        }
+      />
     </div>
   );
 }

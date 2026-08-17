@@ -61,7 +61,7 @@ export default async function AdminEventsPage({
           {q ? "Ничего не найдено." : "Событий пока нет."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
           {events.map((ev) => {
             const boundDeleteEvent = deleteEvent.bind(null, ev.id);
             return (

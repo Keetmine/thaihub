@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { parseFicbookPage, fetchFicbookHtml, fetchOriginalCover } from "@/lib/ficbook";
+import { downloadRemoteImage } from "@/lib/localImage";
+import { logImportRun } from "@/lib/importRun";
 
 function getLinks(formData: FormData): { label: string; url: string }[] {
   const labels = formData.getAll("linkLabel").map(String);
@@ -29,6 +32,12 @@ function getFields(formData: FormData) {
     author: String(formData.get("author") ?? "").trim() || null,
     coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
     description: String(formData.get("description") ?? "").trim() || null,
+    originalAuthor: String(formData.get("originalAuthor") ?? "").trim() || null,
+    size: String(formData.get("size") ?? "").trim() || null,
+    tags: String(formData.get("tags") ?? "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean),
   };
 }
 
@@ -109,4 +118,49 @@ export async function createNovelAndReturn(
   const novel = await prisma.novel.create({ data: { title: trimmed } });
   revalidateNovelPaths();
   return { id: novel.id, title: novel.title };
+}
+
+/**
+ * Импорт новеллы со страницы Фикбука: название, описание, автор
+ * (переводчик), автор оригинала, ссылка на оригинал, бейджи+метки,
+ * размер; обложка — og:image со страницы оригинала (у Фикбука своих
+ * нет). Создаёт новеллу с двумя ссылками (Фикбук, Оригинал) и ведёт на
+ * редактирование. Сайт за JS-проверкой — см. src/lib/ficbook.ts.
+ */
+export async function importNovelFromFicbook(url: string): Promise<{ id: string }> {
+  await requireAdmin();
+  const trimmed = url.trim();
+  if (!trimmed) throw new Error("Вставьте ссылку на Фикбук");
+
+  const fic = await logImportRun(
+    "ficbook-novel",
+    async () => parseFicbookPage(await fetchFicbookHtml(trimmed), trimmed),
+    (f) => f.title,
+  );
+
+  let coverUrl: string | null = null;
+  if (fic.originalUrl) {
+    const remote = await fetchOriginalCover(fic.originalUrl);
+    if (remote) coverUrl = await downloadRemoteImage(remote, "novels");
+  }
+
+  const novel = await prisma.novel.create({
+    data: {
+      title: fic.title,
+      author: fic.author,
+      originalAuthor: fic.originalAuthor,
+      description: fic.description,
+      tags: fic.tags,
+      size: fic.size,
+      coverUrl,
+      links: {
+        create: [
+          { label: "Фикбук", url: trimmed },
+          ...(fic.originalUrl ? [{ label: "Оригинал", url: fic.originalUrl }] : []),
+        ],
+      },
+    },
+  });
+  revalidateNovelPaths(novel.id);
+  return { id: novel.id };
 }

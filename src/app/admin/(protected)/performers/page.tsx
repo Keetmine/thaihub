@@ -103,7 +103,7 @@ async function AdminAgenciesView({ q, page }: { q: string; page: number }) {
           {q ? "Ничего не найдено." : "Пока нет агентств."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
           {agencies.map((a) => {
             const boundDelete = deleteAgency.bind(null, a.id);
             return (
@@ -279,7 +279,7 @@ export default async function AdminPerformersPage({
         </p>
       ) : (
         <>
-          <div className="d-flex flex-column gap-2">
+          <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
             {performers.map((p) => (
               <AdminPerformerRow key={p.id} performer={p} />
             ))}

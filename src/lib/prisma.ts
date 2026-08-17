@@ -21,6 +21,7 @@ const CATALOG_SLUG_MODELS: Record<string, string> = {
 const CODED_SLUG_MODELS: Record<string, string> = {
   Trip: "title",
   PlaceList: "title",
+  PerformerList: "title",
 };
 
 function makeBase(): PrismaClient {

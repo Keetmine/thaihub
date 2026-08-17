@@ -47,6 +47,9 @@ export default async function EditNovelPage({
         defaultValues={{
           title: novel.title,
           author: novel.author ?? "",
+          originalAuthor: novel.originalAuthor ?? "",
+          size: novel.size ?? "",
+          tags: novel.tags.join(", "),
           coverUrl: novel.coverUrl ?? "",
           description: novel.description ?? "",
           links: novel.links.map((l) => ({ label: l.label, url: l.url })),

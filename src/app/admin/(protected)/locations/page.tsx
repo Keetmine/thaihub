@@ -59,7 +59,7 @@ export default async function AdminLocationsPage({
           {q ? "Ничего не найдено." : "Пока нет локаций."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
           {locations.map((l) => {
             const boundDelete = deleteLocation.bind(null, l.id);
             return (

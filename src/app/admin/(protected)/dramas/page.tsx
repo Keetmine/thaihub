@@ -58,7 +58,7 @@ export default async function AdminDramasPage({
           {q ? "Ничего не найдено." : "Пока нет сериалов."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
           {dramas.map((d) => {
             const boundDelete = deleteDrama.bind(null, d.id);
             return (

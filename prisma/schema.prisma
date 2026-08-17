@@ -111,6 +111,7 @@ model Performer {
   // mascots — маскоты этого актёра.
   mascotOwners   MascotOwner[] @relation("MascotOwners")
   mascots        MascotOwner[] @relation("PerformerMascots")
+  inUserLists    PerformerListItem[]
 
   // Музыкальная сторона: сценический псевдоним сольного музыканта
   // (у группы «псевдоним» — это её name) и дискография. Ссылки на муз.
@@ -274,6 +275,12 @@ model Novel {
   author      String?
   coverUrl    String?
   description String?
+  // Поля импорта с Фикбука (см. ficbook-import в admin/novels):
+  // автор оригинала (для переводов), теги-бейджи (Слэш, Перевод, NC-17,
+  // Завершён) вместе с «Метками», размер («N страниц, M слов»).
+  originalAuthor String?
+  tags        String[]    @default([])
+  size        String?
   links       NovelLink[]
   dramas      Drama[]
   createdAt   DateTime    @default(now())
@@ -539,6 +546,7 @@ model User {
   eventNotes          EventNote[]
   achievements        UserAchievement[]
   placeLists          PlaceList[]
+  performerLists      PerformerList[]
   createdLocations    Location[] @relation("UserCreatedLocations")
   // Приватность публичного профиля. Друзья видят всё всегда.
   // hideProfileActivity — мастер-выключатель (чужие видят только
@@ -613,6 +621,33 @@ model TripPersonalEvent {
 // Пользовательская подборка локаций («где вкусная еда», «кафешки из
 // дорам») — с той же моделью видимости, что у поездок. Показывается
 // списком и на карте; прикрепляется к поездкам (TripPlaceList).
+// Кастомный список актёров пользователя («пил пиво», «видела вживую»…)
+// — аналог PlaceList, та же видимость и слаг название+код.
+model PerformerList {
+  id          String              @id @default(cuid())
+  userId      String
+  slug        String?             @unique
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  visibility  TripVisibility      @default(PRIVATE)
+  items       PerformerListItem[]
+  createdAt   DateTime            @default(now())
+
+  @@index([userId])
+}
+
+model PerformerListItem {
+  listId      String
+  performerId String
+  note        String?
+  position    Int           @default(0)
+  list        PerformerList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  performer   Performer     @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@id([listId, performerId])
+}
+
 model PlaceList {
   id          String         @id @default(cuid())
   userId      String

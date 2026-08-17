@@ -951,7 +951,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .scroll-list {
   max-height: 26rem;
   overflow-y: auto;
+  overflow-x: hidden;
   /* капля воздуха, чтобы тень последней карточки не резалась */
+  padding-right: 0.25rem;
+}
+
+/* Высокая версия для главных каталогов (список занимает почти экран,
+   но прокручивается внутри себя, «наверх» страницы всегда близко). */
+.scroll-list-lg {
+  max-height: 74vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 0.25rem;
 }
 

@@ -22,6 +22,9 @@ export default function NovelForm({
   defaultValues?: {
     title: string;
     author: string;
+    originalAuthor: string;
+    size: string;
+    tags: string;
     coverUrl: string;
     description: string;
     links: NovelLinkInput[];
@@ -42,6 +45,28 @@ export default function NovelForm({
         <div className="col-12 col-md-4">
           <label className="form-label">Автор</label>
           <input name="author" defaultValue={v?.author} className="form-control" />
+        </div>
+        <div className="col-12 col-md-4">
+          <label className="form-label">Автор оригинала</label>
+          <input name="originalAuthor" defaultValue={v?.originalAuthor} className="form-control" />
+        </div>
+        <div className="col-12 col-md-4">
+          <label className="form-label">Размер</label>
+          <input
+            name="size"
+            defaultValue={v?.size}
+            placeholder="1 011 страниц, 481 434 слова"
+            className="form-control"
+          />
+        </div>
+        <div className="col-12 col-md-4">
+          <label className="form-label">Теги и метки</label>
+          <input
+            name="tags"
+            defaultValue={v?.tags}
+            placeholder="Слэш, Перевод, NC-17 — через запятую"
+            className="form-control"
+          />
         </div>
       </div>
 

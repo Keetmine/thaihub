@@ -13,7 +13,7 @@ import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import FriendNotifyToggle from "./FriendNotifyToggle";
 import { ACHIEVEMENTS } from "@/lib/achievements";
-import { listHref, tripHref, locationHref } from "@/lib/slugHelpers";
+import { listHref, tripHref, locationHref, artistListHref } from "@/lib/slugHelpers";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +52,16 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
   // Списки мест, видимые этому зрителю (та же модель, что у поездок).
   const placeLists = await prisma.placeList.findMany({
+    where: {
+      userId: user.id,
+      OR: [{ visibility: "PUBLIC" }, ...(isFriend ? [{ visibility: "FRIENDS" as const }] : [])],
+    },
+    include: { _count: { select: { items: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // Кастомные списки актёров — та же модель видимости.
+  const artistLists = await prisma.performerList.findMany({
     where: {
       userId: user.id,
       OR: [{ visibility: "PUBLIC" }, ...(isFriend ? [{ visibility: "FRIENDS" as const }] : [])],
@@ -271,6 +281,29 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                   )}
                 </div>
                 <span className="small text-secondary flex-shrink-0">{l._count.items} мест</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {artistLists.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2">Списки актёров</h2>
+          <div className="d-flex flex-column gap-2 mb-4">
+            {artistLists.map((l) => (
+              <Link
+                key={l.id}
+                href={artistListHref(l)}
+                className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
+              >
+                <div style={{ minWidth: 0 }}>
+                  <p className="font-display fw-medium text-white mb-0 text-truncate">{l.title}</p>
+                  {l.description && (
+                    <p className="small text-secondary mb-0 text-truncate">{l.description}</p>
+                  )}
+                </div>
+                <span className="small text-secondary flex-shrink-0">{l._count.items} актёров</span>
               </Link>
             ))}
           </div>

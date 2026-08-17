@@ -241,7 +241,7 @@ function PerformerAlphabetList({
   );
 
   return (
-    <div className="performers-layout">
+    <div className="performers-layout scroll-list-lg thin-scroll">
       <div className="performers-list">
         {favorited.length > 0 && (
           <section id="favorites" className="performers-letter-section">

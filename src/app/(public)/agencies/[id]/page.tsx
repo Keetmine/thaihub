@@ -157,10 +157,7 @@ export default async function AgencyDetailPage({
           // Компактная сетка карточек (как постеры сериалов на странице
           // актёра) вместо списка на всю ширину — исполнителей у агентства
           // бывает много, а в строке была только аватарка и имя.
-          <div
-            className="d-flex flex-wrap gap-3 mb-4 scroll-list thin-scroll"
-            style={{ maxHeight: "38rem" }}
-          >
+          <div className="d-flex flex-wrap gap-3 mb-4 scroll-list-lg thin-scroll">
             {performers.map((p) => (
               <div
                 key={p.id}
@@ -213,7 +210,7 @@ export default async function AgencyDetailPage({
         </p>
       ) : (
         // Тот же формат постер-карточек, что и в фильмографии актёра.
-        <div className="d-flex flex-wrap gap-3">
+        <div className="d-flex flex-wrap gap-3 scroll-list-lg thin-scroll">
           {dramas.map((d) => (
             <div
               key={d.id}

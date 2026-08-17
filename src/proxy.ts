@@ -43,7 +43,7 @@ export function proxy(request: NextRequest) {
   // Публичные списки мест шарятся наружу прямой ссылкой — /lists/{id}
   // пропускаем без куки, страница сама отдаёт 404/редирект по видимости
   // (сам /lists — кабинетный список СВОИХ, остаётся за логином).
-  if (/^\/lists\/[^/]+$/.test(pathname)) {
+  if (/^\/(lists|artist-lists)\/[^/]+$/.test(pathname)) {
     return NextResponse.next();
   }
 

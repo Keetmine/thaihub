@@ -12,24 +12,34 @@ export async function updateProfile(formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
-  const hideProfileActivity = String(formData.get("hideProfileActivity") ?? "") === "on";
-  const hideAchievements = String(formData.get("hideAchievements") ?? "") === "on";
-  const hideFavoritePerformers = String(formData.get("hideFavoritePerformers") ?? "") === "on";
-  const hideVisitedPlaces = String(formData.get("hideVisitedPlaces") ?? "") === "on";
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
       name: name || null,
       photoUrl: photoUrl || null,
-      hideProfileActivity,
-      hideAchievements,
-      hideFavoritePerformers,
-      hideVisitedPlaces,
     },
   });
 
   revalidatePath("/account");
+  revalidatePath("/account/settings");
+}
+
+/** Отдельная форма приватности (вкладка в настройках) — не смешиваем с
+ *  именем/фото, чтобы сабмит одной вкладки не затирал другую. */
+export async function updatePrivacy(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      hideProfileActivity: String(formData.get("hideProfileActivity") ?? "") === "on",
+      hideAchievements: String(formData.get("hideAchievements") ?? "") === "on",
+      hideFavoritePerformers: String(formData.get("hideFavoritePerformers") ?? "") === "on",
+      hideVisitedPlaces: String(formData.get("hideVisitedPlaces") ?? "") === "on",
+    },
+  });
   revalidatePath("/account/settings");
 }
 

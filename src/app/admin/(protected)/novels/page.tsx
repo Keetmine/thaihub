@@ -4,6 +4,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { deleteNovel } from "./actions";
+import FicbookImportButton from "./FicbookImportButton";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +36,12 @@ export default async function AdminNovelsPage({
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Новеллы
         </h1>
-        <Link href="/admin/novels/new" className="btn btn-primary btn-sm">
-          + Добавить новеллу
-        </Link>
+        <div className="d-flex flex-wrap gap-2">
+          <FicbookImportButton />
+          <Link href="/admin/novels/new" className="btn btn-primary btn-sm">
+            + Добавить новеллу
+          </Link>
+        </div>
       </div>
 
       <NameSearchBox action="/admin/novels" q={q} placeholder="Поиск по названию или автору…" />
@@ -45,7 +49,7 @@ export default async function AdminNovelsPage({
       {novels.length === 0 ? (
         <p className="text-secondary">{q ? "Ничего не найдено." : "Пока нет новелл."}</p>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
           {novels.map((n) => (
             <div
               key={n.id}
