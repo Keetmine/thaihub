@@ -373,8 +373,11 @@ async function importArtist(
     performerId = row?.id ?? null;
     if (result.bandCreated) ctx.summary.performersCreated += 1;
     else ctx.summary.performersUpdated += 1;
-    if (performerId && result.bandCreated) {
-      await recordItem(ctx, "performer", performerId, "created", band.name);
+    // и создание, и обновление — в ленту «последнего спарсенного»,
+    // иначе повторный импорт уже известной группы выглядит как «ничего
+    // не произошло».
+    if (performerId) {
+      await recordItem(ctx, "performer", performerId, result.bandCreated ? "created" : "updated", band.name);
     }
   } else {
     const member = await fetchTpopMemberPage(page).catch(() => null);
