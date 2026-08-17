@@ -17,6 +17,9 @@ const AIR_TABS = [
   { key: "airing", label: "В эфире" },
   { key: "upcoming", label: "Анонсы" },
   { key: "aired", label: "Вышедшие" },
+  // Сериалы, которым MDL-синк не дал дат эфира, — без этой вкладки они
+  // были видны только во «Все» и счётчики вкладок не сходились с суммой.
+  { key: "undated", label: "Без дат" },
 ] as const;
 type AirTab = (typeof AIR_TABS)[number]["key"];
 
@@ -26,6 +29,7 @@ function airWhere(tab: AirTab, now: Date) {
     return { airedFrom: { lte: now }, OR: [{ airedTo: { gte: now } }, { airedTo: null }] };
   if (tab === "upcoming") return { airedFrom: { gt: now } };
   if (tab === "aired") return { airedTo: { lt: now } };
+  if (tab === "undated") return { airedFrom: null, airedTo: null };
   return {};
 }
 
