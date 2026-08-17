@@ -70,6 +70,19 @@ export function formatTimeRangeWithMsk(start: Date, end: Date | null): string {
   return `${formatTime(start)}–${formatTime(end)} (МСК ${formatTime(toMskTime(start))}–${formatTime(toMskTime(end))})`;
 }
 
+// Zone-версии тех же подписей: «в скобках» — время в выбранной юзером
+// таймзоне (User.timezone, настройки → Профиль), а не жёсткий МСК.
+import { formatTimeInZone, tzShortLabel } from "./timezones";
+
+export function formatTimeWithZone(d: Date, tz: string): string {
+  return `${formatTime(d)} (${tzShortLabel(tz)} ${formatTimeInZone(d, tz)})`;
+}
+
+export function formatTimeRangeWithZone(start: Date, end: Date | null, tz: string): string {
+  if (!end) return formatTimeWithZone(start, tz);
+  return `${formatTime(start)}–${formatTime(end)} (${tzShortLabel(tz)} ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)})`;
+}
+
 // Compact "24 окт" form, for flat (non day-grouped) event lists where the
 // row itself has to carry the date since there's no day heading above it.
 export function formatShortDate(d: Date): string {

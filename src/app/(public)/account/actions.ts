@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { isKnownTimezone } from "@/lib/timezones";
 import { getCurrentUser, hashPassword, verifyPassword } from "@/lib/userAuth";
 
 export async function updateProfile(formData: FormData) {
@@ -12,12 +13,15 @@ export async function updateProfile(formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
+  const timezone = String(formData.get("timezone") ?? "");
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
       name: name || null,
       photoUrl: photoUrl || null,
+      // Неизвестное значение молча не пишем — остаётся прежняя зона.
+      ...(isKnownTimezone(timezone) ? { timezone } : {}),
     },
   });
 

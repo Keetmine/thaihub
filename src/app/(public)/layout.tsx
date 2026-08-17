@@ -3,6 +3,8 @@ import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
 import ProfileMenu from "@/components/ProfileMenu";
+import { TimezoneProvider } from "@/components/TimezoneProvider";
+import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import NavDepthTracker from "@/components/NavDepthTracker";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
@@ -35,7 +37,13 @@ export default async function PublicLayout({ children }: { children: React.React
   // component — the full record (incl. passwordHash) would otherwise be
   // serialized into the page's RSC payload.
   const user = fullUser
-    ? { id: fullUser.id, name: fullUser.name, email: fullUser.email, photoUrl: fullUser.photoUrl }
+    ? {
+        id: fullUser.id,
+        name: fullUser.name,
+        email: fullUser.email,
+        photoUrl: fullUser.photoUrl,
+        timezone: fullUser.timezone,
+      }
     : null;
 
   return (
@@ -141,7 +149,9 @@ export default async function PublicLayout({ children }: { children: React.React
           </div>
         </nav>
       </div>
-      <main className="flex-fill container py-4 py-md-5">{children}</main>
+      <main className="flex-fill container py-4 py-md-5">
+        <TimezoneProvider timezone={user?.timezone ?? DEFAULT_TIMEZONE}>{children}</TimezoneProvider>
+      </main>
       <SiteFooter />
       <ScrollTopButton />
     </div>

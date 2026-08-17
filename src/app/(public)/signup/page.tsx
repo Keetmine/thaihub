@@ -53,6 +53,7 @@ export default async function SignupPage({
           Зарегистрироваться
         </button>
         {hasGoogle && (
+          // eslint-disable-next-line @next/next/no-html-link-for-pages -- API-роут OAuth, не страница
           <a href="/api/auth/google" className="btn btn-outline-secondary w-100 mb-3">
             <svg viewBox="0 0 24 24" width="1.1em" height="1.1em" aria-hidden="true" style={{ marginRight: "0.5rem", verticalAlign: "-0.2em" }}>
               <path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.87c2.27-2.1 3.58-5.17 3.58-8.81z"/>

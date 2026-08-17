@@ -3,7 +3,8 @@ import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatCombinedDateList, formatHumanDate, formatTimeRangeWithMsk, formatTimeWithMsk } from "@/lib/dates";
+import { formatCombinedDateList, formatHumanDate, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
+import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
@@ -63,6 +64,7 @@ export default async function EventDetailPage({
 
   // --- own block: current user's favorite/attendance state for this event ---
   const currentUser = await getCurrentUser();
+  const viewerTz = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
   // События целиком за подпиской: без неё страница не раскрывает ничего,
   // кроме факта существования и дат (название/площадка/состав не
@@ -196,7 +198,7 @@ export default async function EventDetailPage({
                   ) : (
                     formatCombinedDateList(group.map((o) => o.startsAt))
                   )}
-                  {first.hasTime && <> · {formatTimeRangeWithMsk(first.startsAt, first.endsAt)}</>}
+                  {first.hasTime && <> · {formatTimeRangeWithZone(first.startsAt, first.endsAt, viewerTz)}</>}
                 </p>
               );
             })}
@@ -222,7 +224,7 @@ export default async function EventDetailPage({
                   {event.presaleAt ? (
                     <>
                       <span className="text-capitalize">{formatHumanDate(event.presaleAt)}</span>{" "}
-                      · {formatTimeWithMsk(event.presaleAt)}
+                      · {formatTimeWithZone(event.presaleAt, viewerTz)}
                     </>
                   ) : (
                     "уточняется"

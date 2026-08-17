@@ -552,6 +552,8 @@ model User {
   // generated on first request since calendar apps fetch it without a
   // session cookie, so it needs its own unguessable credential.
   icsToken     String?  @unique
+  // Таймзона для «времени в скобках» рядом с тайским (дефолт — МСК).
+  timezone     String   @default("Europe/Moscow")
   createdAt    DateTime @default(now())
 
   sessions            UserSession[]

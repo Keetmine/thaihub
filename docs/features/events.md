@@ -224,6 +224,18 @@ view, not a browsing surface.
 `src/lib/coTravelers.ts`). Empty text deletes; чужие видимые заметки
 рендерятся под своей с именем/аватаркой автора.
 
+## Таймзона зрителя
+
+Время событий всегда тайское; «в скобках» — конвертация в таймзону из
+настроек юзера (`User.timezone`, IANA, дефолт `Europe/Moscow`; селект в
+Настройки → Профиль, список зон в `src/lib/timezones.ts`). В списках —
+тултип `MskTimeInfo` (клиентский, зона из контекста `TimezoneProvider`,
+которого ставит публичный layout); на странице события — инлайн через
+`formatTimeWithZone`/`formatTimeRangeWithZone` (`src/lib/dates.ts`).
+Конвертация: тайское настенное время → инстант (−7ч ICT) → Intl с
+`timeZone` (DST зон учитывается автоматически). Админка остаётся на
+жёстком МСК.
+
 ## Билеты («Мои билеты»)
 
 `EventAttendance.ticketUrl`: к каждому своему «иду» на дату можно

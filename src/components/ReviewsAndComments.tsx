@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -143,9 +144,9 @@ export default async function ReviewsAndComments({
           </details>
         ) : (
           <p className="small text-secondary">
-            <a href="/login" className="link-body-emphasis">
+            <Link href="/login" className="link-body-emphasis">
               Войдите
-            </a>
+            </Link>
             , чтобы оставить отзыв.
           </p>
         )}
@@ -200,9 +201,9 @@ export default async function ReviewsAndComments({
           </form>
         ) : (
           <p className="small text-secondary">
-            <a href="/login" className="link-body-emphasis">
+            <Link href="/login" className="link-body-emphasis">
               Войдите
-            </a>
+            </Link>
             , чтобы комментировать.
           </p>
         )}

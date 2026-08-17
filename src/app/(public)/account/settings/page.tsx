@@ -1,3 +1,4 @@
+import { TIMEZONES } from "@/lib/timezones";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -46,6 +47,20 @@ export default async function SettingsPage() {
                 <div>
                   <label className="form-label">Имя</label>
                   <input name="name" defaultValue={user.name ?? ""} className="form-control" />
+                </div>
+                <div>
+                  <label className="form-label">Таймзона</label>
+                  <select name="timezone" defaultValue={user.timezone} className="form-select">
+                    {TIMEZONES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="small text-secondary mb-0 mt-1">
+                    Время событий показывается тайское, а в скобках — в этой
+                    зоне.
+                  </p>
                 </div>
                 <p className="small text-secondary mb-0">
                   Имя видно друзьям и в публичном профиле.
