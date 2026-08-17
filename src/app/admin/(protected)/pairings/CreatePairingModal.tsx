@@ -51,7 +51,7 @@ export default function CreatePairingModal({ performers }: { performers: EntityO
 
   return (
     <>
-      <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+      <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
         + Добавить пейринг
       </button>
 

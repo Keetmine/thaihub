@@ -7,24 +7,34 @@ function norm(s: string) {
 
 export type DuplicateGroup<T> = { key: string; rows: T[] };
 
-/** Groups of Performers sharing the exact same (normalized) name. */
+/** Groups of Performers sharing the exact same (normalized) name.
+ *  Одинаковый ник при РАЗНЫХ реальных именах — не дубли (два разных
+ *  человека с ником Pond): такие группы дробятся по реальному имени,
+ *  записи без реального имени при конфликте отбрасываются как
+ *  неоднозначные. */
 export async function findDuplicatePerformerGroups(): Promise<
-  DuplicateGroup<{ id: string; name: string; type: string; createdAt: Date; _count: { events: number; dramas: number } }>[]
+  DuplicateGroup<{ id: string; name: string; realName: string | null; type: string; createdAt: Date; _count: { events: number; dramas: number } }>[]
 > {
   const performers = await prisma.performer.findMany({
     select: {
       id: true,
       name: true,
+      realName: true,
       type: true,
       createdAt: true,
       _count: { select: { events: true, dramas: true } },
     },
     orderBy: { createdAt: "asc" },
   });
-  return groupByNormName(performers, (p) => p.name);
+  return groupByNormName(performers, (p) => p.name).flatMap((g) =>
+    splitByDiscriminator(g, (p) => p.realName),
+  );
 }
 
-/** Groups of Dramas sharing the exact same (normalized) title. */
+/** Groups of Dramas sharing the exact same (normalized) title.
+ *  Одно название при разных годах — не дубли (ремейк/одноимённый
+ *  проект): группы дробятся по году, записи без года при конфликте
+ *  отбрасываются. */
 export async function findDuplicateDramaGroups(): Promise<
   DuplicateGroup<{ id: string; title: string; year: number | null; createdAt: Date; _count: { performers: number; locations: number; events: number } }>[]
 > {
@@ -38,7 +48,34 @@ export async function findDuplicateDramaGroups(): Promise<
     },
     orderBy: { createdAt: "asc" },
   });
-  return groupByNormName(dramas, (d) => d.title);
+  return groupByNormName(dramas, (d) => d.title).flatMap((g) =>
+    splitByDiscriminator(g, (d) => (d.year != null ? String(d.year) : null)),
+  );
+}
+
+/** Дробит группу «одинаковых» по дискриминатору (реальное имя / год):
+ *  один известный вариант на группу — вся группа остаётся вместе (null
+ *  считаем совпадением); несколько разных — подгруппы по значению, null
+ *  отбрасывается как неоднозначный. */
+function splitByDiscriminator<T>(
+  group: DuplicateGroup<T>,
+  getValue: (row: T) => string | null,
+): DuplicateGroup<T>[] {
+  const distinct = new Set(
+    group.rows.map(getValue).filter((v): v is string => v != null).map(norm),
+  );
+  if (distinct.size <= 1) return [group];
+  const byValue = new Map<string, T[]>();
+  for (const row of group.rows) {
+    const v = getValue(row);
+    if (v == null) continue;
+    const key = norm(v);
+    if (!byValue.has(key)) byValue.set(key, []);
+    byValue.get(key)!.push(row);
+  }
+  return [...byValue.entries()]
+    .filter(([, rows]) => rows.length > 1)
+    .map(([suffix, rows]) => ({ key: `${group.key}::${suffix}`, rows }));
 }
 
 function groupByNormName<T>(rows: T[], getName: (row: T) => string): DuplicateGroup<T>[] {

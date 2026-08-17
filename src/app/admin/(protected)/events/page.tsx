@@ -1,24 +1,26 @@
 import LetterAvatar from "@/components/LetterAvatar";
+import LazyList from "@/components/LazyList";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
-import Pagination from "@/components/Pagination";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
-import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; tab?: string; sort?: string }>;
 }) {
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const { q: rawQ, tab: rawTab, sort: rawSort } = await searchParams;
   const q = (rawQ ?? "").trim();
-  const page = parsePage(rawPage);
+  // «Текущие» — события с будущими датами, «Архив» — целиком прошедшие.
+  const isArchive = rawTab === "archive";
+  // Сортировка: по дате события (дефолт) или по дате добавления записи.
+  const sortByAdded = rawSort === "added";
 
   const eventsRaw = await prisma.event.findMany({
     where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
@@ -27,14 +29,37 @@ export default async function AdminEventsPage({
       occurrences: { orderBy: { startsAt: "asc" } },
     },
   });
-  // Sorted by first occurrence date, which only exists once every event's
-  // occurrences are loaded — paginated after sorting rather than in the
-  // query itself.
-  const sortedEvents = eventsRaw
-    .filter((ev) => ev.occurrences.length > 0)
-    .sort((a, b) => a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime());
-  const totalPages = totalPagesFor(sortedEvents.length);
-  const events = sortedEvents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const now = new Date();
+  const withDates = eventsRaw.filter((ev) => ev.occurrences.length > 0);
+  const tabEvents = withDates.filter((ev) => {
+    const last = ev.occurrences[ev.occurrences.length - 1].startsAt;
+    return isArchive ? last < now : last >= now;
+  });
+  // Sorted after load: дата первого шоу есть только после выборки
+  // occurrences. Архив — свежепрошедшие сверху.
+  const sortedEvents = [...tabEvents].sort((a, b) =>
+    sortByAdded
+      ? b.createdAt.getTime() - a.createdAt.getTime()
+      : isArchive
+        ? b.occurrences[0].startsAt.getTime() - a.occurrences[0].startsAt.getTime()
+        : a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime(),
+  );
+  // Все события уже выбраны (сортировка по датам возможна только после
+  // загрузки occurrences) — отдаём их одним ленивым списком по 30.
+  const events = sortedEvents;
+
+  const tabCounts = {
+    current: isArchive ? withDates.length - tabEvents.length : tabEvents.length,
+    archive: isArchive ? tabEvents.length : withDates.length - tabEvents.length,
+  };
+  const baseQuery = (tab: string, sort: string) =>
+    `/admin/events?${[
+      tab === "archive" ? "tab=archive" : "",
+      sort === "added" ? "sort=added" : "",
+      q ? `q=${encodeURIComponent(q)}` : "",
+    ]
+      .filter(Boolean)
+      .join("&")}`;
 
   return (
     <div>
@@ -55,7 +80,51 @@ export default async function AdminEventsPage({
         </div>
       </div>
 
-      <NameSearchBox action="/admin/events" q={q} placeholder="Поиск по названию…" />
+      <div className="tab-bar-row">
+        <div className="tab-bar">
+          <Link
+            href={baseQuery("current", rawSort ?? "")}
+            prefetch={false}
+            className={`tab-bar-item ${!isArchive ? "active" : ""}`}
+          >
+            Текущие ({tabCounts.current})
+          </Link>
+          <Link
+            href={baseQuery("archive", rawSort ?? "")}
+            prefetch={false}
+            className={`tab-bar-item ${isArchive ? "active" : ""}`}
+          >
+            Архив ({tabCounts.archive})
+          </Link>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <span className="small text-secondary">Сортировка:</span>
+          <Link
+            href={baseQuery(isArchive ? "archive" : "current", "")}
+            prefetch={false}
+            className={`btn btn-sm ${!sortByAdded ? "btn-primary" : "btn-ghost"}`}
+          >
+            по дате события
+          </Link>
+          <Link
+            href={baseQuery(isArchive ? "archive" : "current", "added")}
+            prefetch={false}
+            className={`btn btn-sm ${sortByAdded ? "btn-primary" : "btn-ghost"}`}
+          >
+            по дате добавления
+          </Link>
+          <NameSearchBox
+            action="/admin/events"
+            q={q}
+            placeholder="Поиск по названию…"
+            hiddenFields={{
+              ...(isArchive ? { tab: "archive" } : {}),
+              ...(sortByAdded ? { sort: "added" } : {}),
+            }}
+            className=""
+          />
+        </div>
+      </div>
 
       {events.length === 0 ? (
         <p className="text-secondary">
@@ -63,6 +132,7 @@ export default async function AdminEventsPage({
         </p>
       ) : (
         <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
+          <LazyList batch={30}>
           {events.map((ev) => {
             const boundDeleteEvent = deleteEvent.bind(null, ev.id);
             return (
@@ -126,13 +196,9 @@ export default async function AdminEventsPage({
               </div>
             );
           })}
+          </LazyList>
         </div>
       )}
-      <Pagination
-        page={page}
-        totalPages={totalPages}
-        buildHref={(p) => `/admin/events?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
-      />
     </div>
   );
 }

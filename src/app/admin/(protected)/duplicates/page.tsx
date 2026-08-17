@@ -22,7 +22,9 @@ export default async function DuplicatesPage() {
         Возможные дубли
       </h1>
       <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>
-        Записи с одинаковым (без учёта регистра) названием. Слияние переносит все связи —
+        Записи с одинаковым (без учёта регистра) названием; одинаковый ник
+        при разных реальных именах и одно название сериала при разных годах
+        дублями не считаются. Слияние переносит все связи —
         события, избранное, статусы просмотра, пейринги и т.п. — на выбранную запись и
         удаляет остальные. Действие необратимо.
       </p>
@@ -72,7 +74,7 @@ export default async function DuplicatesPage() {
                     rows={group.rows.map((p) => ({
                       id: p.id,
                       label: p.name,
-                      sublabel: `${p.type === "BAND" ? "группа" : "соло"}, ${p._count.events} событий, ${p._count.dramas} сериалов`,
+                      sublabel: `${p.realName ? `${p.realName} · ` : ""}${p.type === "BAND" ? "группа" : "соло"}, ${p._count.events} событий, ${p._count.dramas} сериалов`,
                     }))}
                     onMerge={mergePerformersAction}
                   />

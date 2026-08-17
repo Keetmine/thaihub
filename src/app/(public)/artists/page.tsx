@@ -9,7 +9,8 @@ import NameSearchBox from "@/components/NameSearchBox";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref } from "@/lib/slugHelpers";
-import { performerNameWhere } from "@/lib/searchWhere";
+import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
+import LazyList from "@/components/LazyList";
 
 export const dynamic = "force-dynamic";
 
@@ -187,7 +188,9 @@ function PerformerRow({
             {performer.name.charAt(0).toUpperCase()}
           </div>
         )}
-        <span className="font-display fw-medium text-white text-truncate">{performer.name}</span>
+        <span className="font-display fw-medium text-white text-truncate">
+          {performerOptionLabel(performer)}
+        </span>
       </Link>
       <div className="d-flex align-items-center gap-3 flex-shrink-0">
         <span className="small text-secondary">{performer._count.events} событ.</span>
@@ -249,9 +252,11 @@ function PerformerAlphabetList({
               Избранное
             </h2>
             <div className="d-flex flex-column gap-2">
-              {favorited.map((p) => (
-                <PerformerRow key={p.id} performer={p} isFavorited={true} />
-              ))}
+              <LazyList batch={30}>
+                {favorited.map((p) => (
+                  <PerformerRow key={p.id} performer={p} isFavorited={true} />
+                ))}
+              </LazyList>
             </div>
           </section>
         )}
@@ -264,9 +269,11 @@ function PerformerAlphabetList({
           >
             <h2 className="performers-letter-heading">{letter}</h2>
             <div className="d-flex flex-column gap-2">
-              {groups.get(letter)!.map((p) => (
-                <PerformerRow key={p.id} performer={p} isFavorited={favoritedIds.has(p.id)} />
-              ))}
+              <LazyList batch={30}>
+                {groups.get(letter)!.map((p) => (
+                  <PerformerRow key={p.id} performer={p} isFavorited={favoritedIds.has(p.id)} />
+                ))}
+              </LazyList>
             </div>
           </section>
         ))}

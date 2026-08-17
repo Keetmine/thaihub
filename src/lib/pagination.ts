@@ -1,4 +1,4 @@
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 30;
 
 // A short/common search term (a single letter, say) can still match
 // thousands of rows in a large catalog — capping search results keeps

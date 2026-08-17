@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import LazyList from "./LazyList";
 
 type NamedItem = { id: string; name: string };
 
@@ -59,9 +60,11 @@ export default function AlphabetIndexList<T extends NamedItem>({
           >
             <h2 className="performers-letter-heading">{letter}</h2>
             <div className="d-flex flex-column gap-2">
-              {groups.get(letter)!.map((item) => (
-                <Fragment key={item.id}>{renderItem(item)}</Fragment>
-              ))}
+              <LazyList batch={30}>
+                {groups.get(letter)!.map((item) => (
+                  <Fragment key={item.id}>{renderItem(item)}</Fragment>
+                ))}
+              </LazyList>
             </div>
           </section>
         ))}

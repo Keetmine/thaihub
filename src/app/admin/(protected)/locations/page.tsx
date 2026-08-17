@@ -44,7 +44,7 @@ export default async function AdminLocationsPage({
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Локации
         </h1>
-        <Link href="/admin/locations/new" className="btn btn-primary">
+        <Link href="/admin/locations/new" className="btn btn-primary btn-sm">
           + Добавить локацию
         </Link>
       </div>

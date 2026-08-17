@@ -1,4 +1,5 @@
 import LetterAvatar from "@/components/LetterAvatar";
+import { performerOptionLabel } from "@/lib/searchWhere";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deletePerformer } from "./actions";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 function AdminPerformerRow({
   performer,
 }: {
-  performer: { id: string; name: string; photoUrl: string | null; _count: { events: number } };
+  performer: { id: string; name: string; realName: string | null; photoUrl: string | null; _count: { events: number } };
 }) {
   const boundDelete = deletePerformer.bind(null, performer.id);
   return (
@@ -31,7 +32,7 @@ function AdminPerformerRow({
         <LetterAvatar name={performer.name} photoUrl={performer.photoUrl} size={2.25} />
         <div style={{ minWidth: 0 }}>
           <span className="font-display fw-medium text-white d-block text-truncate">
-            {performer.name}
+            {performerOptionLabel(performer)}
           </span>
           <p className="small text-secondary mb-0">{performer._count.events} событ.</p>
         </div>
@@ -219,7 +220,7 @@ export default async function AdminPerformersPage({
         </h1>
         <Link
           href={isAgencies ? "/admin/agencies/new" : "/admin/performers/new"}
-          className="btn btn-primary"
+          className="btn btn-primary btn-sm"
         >
           {isAgencies ? "+ Добавить агентство" : "+ Добавить исполнителя"}
         </Link>

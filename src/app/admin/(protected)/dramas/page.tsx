@@ -12,17 +12,36 @@ import { dramaTitleWhere } from "@/lib/searchWhere";
 
 export const dynamic = "force-dynamic";
 
+const AIR_TABS = [
+  { key: "all", label: "Все" },
+  { key: "airing", label: "В эфире" },
+  { key: "upcoming", label: "Анонсы" },
+  { key: "aired", label: "Вышедшие" },
+] as const;
+type AirTab = (typeof AIR_TABS)[number]["key"];
+
+/** Фильтр вкладки по датам эфира (airedFrom/airedTo из MDL). */
+function airWhere(tab: AirTab, now: Date) {
+  if (tab === "airing")
+    return { airedFrom: { lte: now }, OR: [{ airedTo: { gte: now } }, { airedTo: null }] };
+  if (tab === "upcoming") return { airedFrom: { gt: now } };
+  if (tab === "aired") return { airedTo: { lt: now } };
+  return {};
+}
+
 export default async function AdminDramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; tab?: string }>;
 }) {
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const { q: rawQ, page: rawPage, tab: rawTab } = await searchParams;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const tab: AirTab = (AIR_TABS.find((t) => t.key === rawTab)?.key ?? "all") as AirTab;
+  const now = new Date();
 
-  const where = q ? dramaTitleWhere(q) : undefined;
-  const [dramas, total] = await Promise.all([
+  const where = { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(tab, now) };
+  const [dramas, total, tabCounts] = await Promise.all([
     prisma.drama.findMany({
       where,
       include: { _count: { select: { performers: true } } },
@@ -31,6 +50,11 @@ export default async function AdminDramasPage({
       take: PAGE_SIZE,
     }),
     prisma.drama.count({ where }),
+    Promise.all(
+      AIR_TABS.map((t) =>
+        prisma.drama.count({ where: { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(t.key, now) } }),
+      ),
+    ),
   ]);
   const totalPages = totalPagesFor(total);
 
@@ -48,7 +72,27 @@ export default async function AdminDramasPage({
         </Link>
       </div>
 
-      <NameSearchBox action="/admin/dramas" q={q} placeholder="Поиск по названию…" />
+      <div className="tab-bar-row">
+        <div className="tab-bar">
+          {AIR_TABS.map((t, i) => (
+            <Link
+              key={t.key}
+              href={`/admin/dramas?tab=${t.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              prefetch={false}
+              className={`tab-bar-item ${tab === t.key ? "active" : ""}`}
+            >
+              {t.label} ({tabCounts[i]})
+            </Link>
+          ))}
+        </div>
+        <NameSearchBox
+          action="/admin/dramas"
+          q={q}
+          placeholder="Поиск по названию…"
+          hiddenFields={tab !== "all" ? { tab } : undefined}
+          className=""
+        />
+      </div>
 
       <div className="surface p-3 mb-4">
         <TmdbSyncButton />
@@ -124,7 +168,7 @@ export default async function AdminDramasPage({
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/dramas?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+        buildHref={(p) => `/admin/dramas?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${p}`}
       />
     </div>
   );
