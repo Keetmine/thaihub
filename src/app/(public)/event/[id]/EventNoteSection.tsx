@@ -74,6 +74,16 @@ export default function EventNoteSection({
               />{" "}
               Видна друзьям
             </label>
+            <label className="form-check mb-0 small">
+              <input
+                type="radio"
+                name="visibility"
+                value="TRIP"
+                defaultChecked={ownNote?.visibility === "TRIP"}
+                className="form-check-input"
+              />{" "}
+              Участникам моих поездок
+            </label>
             <button type="submit" className="btn btn-primary btn-sm ms-auto">
               Сохранить
             </button>
@@ -84,7 +94,12 @@ export default function EventNoteSection({
         <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
           {ownNote.text}{" "}
           <span className="small text-secondary">
-            · {ownNote.visibility === "FRIENDS" ? "видна друзьям" : "личная"}
+            ·{" "}
+            {ownNote.visibility === "FRIENDS"
+              ? "видна друзьям"
+              : ownNote.visibility === "TRIP"
+                ? "видна участникам поездок"
+                : "личная"}
           </span>
         </p>
       ) : friendNotes.length === 0 ? (

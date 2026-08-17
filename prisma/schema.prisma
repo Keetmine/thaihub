@@ -52,6 +52,8 @@ model Event {
   presaleNotifications TelegramPresaleNotification[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  reviews    Review[]
+  comments   Comment[]
 }
 
 model EventOccurrence {
@@ -302,6 +304,8 @@ model Novel {
   dramas      Drama[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  reviews    Review[]
+  comments   Comment[]
 }
 
 model NovelLink {
@@ -372,6 +376,8 @@ model Drama {
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  reviews    Review[]
+  comments   Comment[]
 }
 
 // «Related Content» с MyDramaList: drama → related с подписью
@@ -565,6 +571,8 @@ model User {
   placeLists          PlaceList[]
   performerLists      PerformerList[]
   tripMemberships     TripMember[]
+  reviews             Review[]
+  comments            Comment[]
   createdLocations    Location[] @relation("UserCreatedLocations")
   // Приватность публичного профиля. Друзья видят всё всегда.
   // hideProfileActivity — мастер-выключатель (чужие видят только
@@ -815,6 +823,8 @@ model EventNote {
 enum NoteVisibility {
   PERSONAL
   FRIENDS
+  // Видна со-путешественникам: участникам общих совместных поездок автора.
+  TRIP
 }
 
 // Разблокированные ачивки (Д2): условия считаются из данных на лету
@@ -923,9 +933,57 @@ model EventAttendance {
   user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   occurrence   EventOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
   event        Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  // Купленный билет (обычно PDF из /uploads/tickets) — «заметка высокого
+  // приоритета» к своему «иду» на конкретную дату.
+  ticketUrl    String?
   createdAt    DateTime        @default(now())
 
   @@id([userId, occurrenceId])
+  @@index([eventId])
+}
+
+// Отзыв (оценка 1–10 + текст) к сериалу/новелле/событию — ровно одна из
+// трёх ссылок задана. Один отзыв на юзера на объект: составные @@unique
+// работают, т.к. NULL в Postgres не конфликтует.
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dramaId   String?
+  drama     Drama?   @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  novelId   String?
+  novel     Novel?   @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  eventId   String?
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rating    Int
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dramaId])
+  @@unique([userId, novelId])
+  @@unique([userId, eventId])
+  @@index([dramaId])
+  @@index([novelId])
+  @@index([eventId])
+}
+
+// Комментарий (простая лента, без веток) к сериалу/новелле/событию.
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dramaId   String?
+  drama     Drama?   @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  novelId   String?
+  novel     Novel?   @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  eventId   String?
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([dramaId])
+  @@index([novelId])
   @@index([eventId])
 }
 

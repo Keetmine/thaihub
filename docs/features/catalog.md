@@ -282,3 +282,17 @@ partner), PairingManager, CreatePairingModal, AgencyForm (roster,
 dramas), TtmImportFlow (drama, extra performers). Small lists
 (agencies, a performer's own pairings) keep the client-side filtering
 mode — `searchOptions` simply isn't passed there.
+
+## Отзывы и комментарии (кинопоиск-стайл)
+
+Модели `Review` (оценка 1–10 + обязательный текст, один отзыв на юзера
+на объект — составные `@@unique` с NULL-полями) и `Comment` (плоская
+лента, без веток) с nullable-ссылками на Drama/Novel/Event — ровно одна
+задана. Общий server-компонент `src/components/ReviewsAndComments.tsx`
+(рендерится внизу страниц сериала, новеллы и события) + экшены в
+`src/app/(public)/reviews/actions.ts` (`saveReview`/`deleteReview`/
+`addComment`/`deleteComment`). Цвет оценки как на Кинопоиске: 7+
+зелёная, 5–6 серая, ниже — красная; средняя оценка в заголовке блока.
+Форма отзыва — `<details>`-свёртка (без JS), комментарий удаляет автор
+или админ. Анониму (открытый каталог) всё видно, вместо форм — CTA
+«войдите».

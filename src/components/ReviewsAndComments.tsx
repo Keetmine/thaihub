@@ -1,0 +1,247 @@
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/userAuth";
+import ConfirmForm from "@/components/ConfirmForm";
+import { TrashIcon, StarIcon, ChatIcon } from "@/components/icons";
+import {
+  saveReview,
+  deleteReview,
+  addComment,
+  deleteComment,
+  type ReviewKind,
+} from "@/app/(public)/reviews/actions";
+
+/** Кинопоиск-стайл цвет оценки: 7+ зелёная, 5–6 серая, ниже — красная. */
+function ratingColor(r: number): string {
+  if (r >= 7) return "#3bb33b";
+  if (r >= 5) return "var(--bs-secondary-color)";
+  return "#e5484d";
+}
+
+function Avatar({ name, photoUrl }: { name: string | null; photoUrl: string | null }) {
+  if (photoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={photoUrl}
+        alt=""
+        className="rounded-circle flex-shrink-0"
+        style={{ width: "2rem", height: "2rem", objectFit: "cover" }}
+      />
+    );
+  }
+  return (
+    <span
+      className="rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center small"
+      style={{ width: "2rem", height: "2rem", background: "var(--bs-secondary-bg)", color: "var(--bs-secondary-color)" }}
+    >
+      {(name ?? "?").charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** Отзывы (оценка 1–10 + текст, один на юзера) и комментарии — общий блок
+ *  для сериалов, новелл и событий. Server component: сам делает выборки.
+ *  Анониму (открытый каталог) всё видно, формы заменяются CTA «войдите». */
+export default async function ReviewsAndComments({
+  kind,
+  id,
+}: {
+  kind: ReviewKind;
+  id: string;
+}) {
+  const where =
+    kind === "drama" ? { dramaId: id } : kind === "novel" ? { novelId: id } : { eventId: id };
+  const currentUser = await getCurrentUser();
+
+  const [reviews, comments] = await Promise.all([
+    prisma.review.findMany({
+      where,
+      include: { user: { select: { id: true, name: true, photoUrl: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.comment.findMany({
+      where,
+      include: { user: { select: { id: true, name: true, photoUrl: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
+
+  const ownReview = currentUser ? reviews.find((r) => r.user.id === currentUser.id) : undefined;
+  const avg = reviews.length
+    ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10
+    : null;
+
+  const boundSaveReview = saveReview.bind(null, kind, id);
+  const boundDeleteReview = deleteReview.bind(null, kind, id);
+  const boundAddComment = addComment.bind(null, kind, id);
+
+  return (
+    <>
+      {/* ---------- Отзывы ---------- */}
+      <section className="surface p-4 mb-3">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <h2 className="section-heading mb-0 d-flex align-items-center gap-2">
+            <StarIcon /> Отзывы
+            {avg !== null && (
+              <span className="fw-semibold" style={{ color: ratingColor(avg) }}>
+                {avg}
+              </span>
+            )}
+            {reviews.length > 0 && (
+              <span className="small text-secondary fw-normal">({reviews.length})</span>
+            )}
+          </h2>
+        </div>
+
+        {currentUser ? (
+          <details className="mb-3">
+            <summary className="btn btn-ghost btn-sm d-inline-flex">
+              {ownReview ? "Редактировать мой отзыв" : "+ Написать отзыв"}
+            </summary>
+            <form action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
+              <div className="d-flex align-items-center gap-2">
+                <label className="form-label small text-secondary mb-0">Оценка</label>
+                <select
+                  name="rating"
+                  defaultValue={ownReview?.rating ?? 8}
+                  className="form-select form-select-sm w-auto"
+                >
+                  {Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <span className="small text-secondary">из 10</span>
+              </div>
+              <textarea
+                name="text"
+                rows={4}
+                required
+                defaultValue={ownReview?.text}
+                placeholder="Чем зацепило, что не понравилось, кому советуете…"
+                className="form-control"
+              />
+              <div className="d-flex gap-2">
+                <button type="submit" className="btn btn-primary btn-sm">
+                  {ownReview ? "Сохранить" : "Опубликовать"}
+                </button>
+                {ownReview && (
+                  <ConfirmForm action={boundDeleteReview} confirmMessage="Удалить ваш отзыв?">
+                    <button type="button" className="btn btn-outline-secondary btn-sm">
+                      Удалить отзыв
+                    </button>
+                  </ConfirmForm>
+                )}
+              </div>
+            </form>
+          </details>
+        ) : (
+          <p className="small text-secondary">
+            <a href="/login" className="link-body-emphasis">
+              Войдите
+            </a>
+            , чтобы оставить отзыв.
+          </p>
+        )}
+
+        {reviews.length === 0 ? (
+          <p className="small text-secondary mb-0">Пока нет отзывов — будьте первыми.</p>
+        ) : (
+          <div className="d-flex flex-column gap-3">
+            {reviews.map((r) => (
+              <div key={r.id} className="d-flex align-items-start gap-2">
+                <Avatar name={r.user.name} photoUrl={r.user.photoUrl} />
+                <div style={{ minWidth: 0 }}>
+                  <p className="small mb-1">
+                    <span className="text-white fw-medium">{r.user.name ?? "Без имени"}</span>{" "}
+                    <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
+                      {r.rating}
+                    </span>
+                    <span className="text-secondary"> · {fmtDate(r.createdAt)}</span>
+                  </p>
+                  <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                    {r.text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ---------- Комментарии ---------- */}
+      <section className="surface p-4 mb-3">
+        <h2 className="section-heading mb-3 d-flex align-items-center gap-2">
+          <ChatIcon /> Комментарии
+          {comments.length > 0 && (
+            <span className="small text-secondary fw-normal">({comments.length})</span>
+          )}
+        </h2>
+
+        {currentUser ? (
+          <form action={boundAddComment} className="d-flex flex-column gap-2 mb-3">
+            <textarea
+              name="text"
+              rows={2}
+              required
+              maxLength={3000}
+              placeholder="Ваш комментарий…"
+              className="form-control"
+            />
+            <button type="submit" className="btn btn-primary btn-sm align-self-start">
+              Отправить
+            </button>
+          </form>
+        ) : (
+          <p className="small text-secondary">
+            <a href="/login" className="link-body-emphasis">
+              Войдите
+            </a>
+            , чтобы комментировать.
+          </p>
+        )}
+
+        {comments.length === 0 ? (
+          <p className="small text-secondary mb-0">Пока нет комментариев.</p>
+        ) : (
+          <div className="d-flex flex-column gap-3">
+            {comments.map((c) => (
+              <div key={c.id} className="d-flex align-items-start gap-2">
+                <Avatar name={c.user.name} photoUrl={c.user.photoUrl} />
+                <div className="flex-fill" style={{ minWidth: 0 }}>
+                  <p className="small mb-1">
+                    <span className="text-white fw-medium">{c.user.name ?? "Без имени"}</span>
+                    <span className="text-secondary"> · {fmtDate(c.createdAt)}</span>
+                  </p>
+                  <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                    {c.text}
+                  </p>
+                </div>
+                {currentUser && (c.user.id === currentUser.id || currentUser.isAdmin) && (
+                  <ConfirmForm
+                    action={deleteComment.bind(null, c.id)}
+                    confirmMessage="Удалить комментарий?"
+                  >
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn-danger flex-shrink-0"
+                      aria-label="Удалить комментарий"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </ConfirmForm>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
+  );
+}

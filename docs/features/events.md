@@ -216,11 +216,29 @@ view, not a browsing surface.
 
 ## Event notes
 
-`EventNote` (one per user+event, `@@unique`): a personal or
-friends-visible note on the event page (`EventNoteSection.tsx` +
-`saveEventNote` in `noteActions.ts`). Empty text deletes; friends'
-FRIENDS-visibility notes render below your own with the author's
-name/avatar.
+`EventNote` (one per user+event, `@@unique`): заметка на странице
+события (`EventNoteSection.tsx` + `saveEventNote` в `noteActions.ts`).
+Видимость (`NoteVisibility`): **PERSONAL** (только автор, дефолт),
+**FRIENDS** (принятые друзья) или **TRIP** — со-путешественники:
+участники общих совместных поездок автора (`getCoTravelerIds` в
+`src/lib/coTravelers.ts`). Empty text deletes; чужие видимые заметки
+рендерятся под своей с именем/аватаркой автора.
+
+## Билеты («Мои билеты»)
+
+`EventAttendance.ticketUrl`: к каждому своему «иду» на дату можно
+прикрепить купленный билет — PDF или фото (блок `TicketSection.tsx` с
+оранжевой рамкой сразу под шапкой события; по строке на каждую
+отмеченную дату). Файл грузится через `/api/upload-ticket` (PDF/JPEG/
+PNG/WEBP до 10MB, без пережатия, SVG запрещён) в
+`/public/uploads/tickets/`, привязывается экшеном
+`setAttendanceTicket` (принимает только пути из каталога билетов;
+требует существующую отметку «иду»). Открепление удаляет и файл.
+
+## Отзывы и комментарии
+
+Общий блок `ReviewsAndComments` (см. [catalog.md](catalog.md)) внизу
+страницы события — за премиум-гейтом вместе со всей страницей.
 
 ## Premium gating
 

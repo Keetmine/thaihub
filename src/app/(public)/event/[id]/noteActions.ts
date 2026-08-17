@@ -11,7 +11,9 @@ export async function saveEventNote(eventId: string, formData: FormData) {
   if (!user) redirect("/login");
 
   const text = String(formData.get("text") ?? "").trim();
-  const visibility = String(formData.get("visibility") ?? "") === "FRIENDS" ? "FRIENDS" : "PERSONAL";
+  const rawVisibility = String(formData.get("visibility") ?? "");
+  const visibility =
+    rawVisibility === "FRIENDS" ? "FRIENDS" : rawVisibility === "TRIP" ? "TRIP" : "PERSONAL";
 
   if (!text) {
     await prisma.eventNote.deleteMany({ where: { userId: user.id, eventId } });

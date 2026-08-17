@@ -1,3 +1,4 @@
+import ReviewsAndComments from "@/components/ReviewsAndComments";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -365,6 +366,10 @@ export default async function DramaDetailPage({
           </div>
         </div>
       )}
+
+      <div className="mt-4">
+        <ReviewsAndComments kind="drama" id={drama.id} />
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import ReviewsAndComments from "@/components/ReviewsAndComments";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BackLink from "@/components/BackLink";
@@ -107,6 +108,10 @@ export default async function NovelPage({
             </>
           )}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <ReviewsAndComments kind="novel" id={novel.id} />
       </div>
     </div>
   );

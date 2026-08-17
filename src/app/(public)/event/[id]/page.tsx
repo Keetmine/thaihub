@@ -1,3 +1,4 @@
+import ReviewsAndComments from "@/components/ReviewsAndComments";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -15,6 +16,8 @@ import { slugOrIdWhere } from "@/lib/slugHelpers";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
 import GoingDateChips from "./GoingDateChips";
+import TicketSection, { type TicketRow } from "./TicketSection";
+import { getCoTravelerIds } from "@/lib/coTravelers";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -83,19 +86,34 @@ export default async function EventDetailPage({
   let friendsGoing: { id: string; name: string | null; photoUrl: string | null }[] = [];
   let ownNote: { text: string; visibility: string } | null = null;
   let friendNotes: FriendNote[] = [];
+  let ticketRows: TicketRow[] = [];
   if (currentUser) {
-    const [favorite, attendances, friendIds] = await Promise.all([
+    const [favorite, attendances, friendIds, coTravelerIds] = await Promise.all([
       prisma.favoriteEvent.findUnique({
         where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
       }),
       prisma.eventAttendance.findMany({
         where: { userId: currentUser.id, eventId: event.id },
-        select: { occurrenceId: true },
+        select: { occurrenceId: true, ticketUrl: true },
       }),
       getFriendIds(currentUser.id),
+      getCoTravelerIds(currentUser.id),
     ]);
     isEventFavorited = !!favorite;
     goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
+    // «Мои билеты»: строка на каждую дату с отметкой «иду».
+    ticketRows = attendances
+      .map((a) => {
+        const occ = event.occurrences.find((o) => o.id === a.occurrenceId);
+        return occ
+          ? {
+              occurrenceId: a.occurrenceId,
+              dateLabel: formatHumanDate(occ.startsAt),
+              ticketUrl: a.ticketUrl,
+            }
+          : null;
+      })
+      .filter((r): r is TicketRow => r !== null);
     if (friendIds.length > 0) {
       const attendances = await prisma.eventAttendance.findMany({
         where: { eventId: event.id, userId: { in: friendIds } },
@@ -106,7 +124,8 @@ export default async function EventDetailPage({
       friendsGoing = Array.from(new Map(attendances.map((a) => [a.user.id, a.user])).values());
     }
 
-    // Заметки (Г6): своя + друзей с видимостью FRIENDS.
+    // Заметки (Г6): своя + друзей с видимостью FRIENDS + со-путешественников
+    // по совместным поездкам с видимостью TRIP.
     const notes = await prisma.eventNote.findMany({
       where: {
         eventId: event.id,
@@ -114,6 +133,9 @@ export default async function EventDetailPage({
           { userId: currentUser.id },
           ...(friendIds.length > 0
             ? [{ userId: { in: friendIds }, visibility: "FRIENDS" as const }]
+            : []),
+          ...(coTravelerIds.length > 0
+            ? [{ userId: { in: coTravelerIds }, visibility: "TRIP" as const }]
             : []),
         ],
       },
@@ -308,6 +330,7 @@ export default async function EventDetailPage({
         </div>
       )}
 
+      <TicketSection rows={ticketRows} />
       <EventNoteSection eventId={event.id} ownNote={ownNote} friendNotes={friendNotes} />
 
       {event.description && (
@@ -319,6 +342,7 @@ export default async function EventDetailPage({
         </div>
       )}
 
+      <ReviewsAndComments kind="event" id={event.id} />
     </div>
   );
 }
