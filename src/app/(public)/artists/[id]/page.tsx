@@ -43,11 +43,34 @@ export default async function PerformerPage({
       memberOfBands: { include: { band: true }, orderBy: { band: { name: "asc" } } },
       albums: { orderBy: [{ year: "desc" }, { title: "asc" }] },
       songs: { orderBy: [{ year: "desc" }, { title: "asc" }] },
+      // MASCOT: чьи это маскоты; SOLO: маскоты самого актёра
+      mascotOwners: {
+        include: {
+          performer: true,
+          pairing: { include: { performerA: true, performerB: true } },
+        },
+      },
+      mascots: { include: { mascot: true } },
     },
   });
   if (!performer) notFound();
   const id = performer.id;
   const isBand = performer.type === "BAND";
+  const isMascot = performer.type === "MASCOT";
+
+  // Маскоты актёра: привязанные напрямую + маскоты его пейрингов.
+  const pairingMascotOwners = isMascot
+    ? []
+    : await prisma.mascotOwner.findMany({
+        where: {
+          pairing: { OR: [{ performerAId: id }, { performerBId: id }] },
+        },
+        include: { mascot: true },
+      });
+  const mascotCards = new Map<string, { id: string; slug: string | null; name: string; photoUrl: string | null }>();
+  for (const m of [...performer.mascots, ...pairingMascotOwners]) {
+    mascotCards.set(m.mascot.id, m.mascot);
+  }
 
   const eventLinks = await prisma.eventPerformer.findMany({
     where: { performerId: id },
@@ -149,8 +172,11 @@ export default async function PerformerPage({
 
   return (
     <div>
-      <Link href="/artists" className="eyebrow text-decoration-none">
-        ← Все исполнители
+      <Link
+        href={isMascot ? "/artists?view=mascots" : "/artists"}
+        className="eyebrow text-decoration-none"
+      >
+        {isMascot ? "← Все маскоты" : "← Все исполнители"}
       </Link>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
@@ -399,6 +425,45 @@ export default async function PerformerPage({
                       <span className="small text-secondary flex-shrink-0">{song.year}</span>
                     )}
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isMascot && performer.mascotOwners.length > 0 && (
+            <div className="mt-2">
+              <h2 className="section-heading mb-2">Чей маскот</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {performer.mascotOwners.map((o) =>
+                  o.performer ? (
+                    <EntityMiniCard
+                      key={o.id}
+                      href={performerHref(o.performer)}
+                      photoUrl={o.performer.photoUrl}
+                      name={o.performer.name}
+                    />
+                  ) : o.pairing ? (
+                    <span key={o.id} className="event-chip">
+                      {o.pairing.name ||
+                        `${o.pairing.performerA.name} × ${o.pairing.performerB.name}`}
+                    </span>
+                  ) : null,
+                )}
+              </div>
+            </div>
+          )}
+
+          {mascotCards.size > 0 && (
+            <div className="mt-2">
+              <h2 className="section-heading mb-2">Маскоты</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {Array.from(mascotCards.values()).map((m) => (
+                  <EntityMiniCard
+                    key={m.id}
+                    href={performerHref(m)}
+                    photoUrl={m.photoUrl}
+                    name={m.name}
+                  />
                 ))}
               </div>
             </div>

@@ -107,6 +107,11 @@ model Performer {
   bandMembers    BandMember[] @relation("BandMembers")
   memberOfBands  BandMember[] @relation("MemberOfBands")
 
+  // Маскоты: owners — чей это маскот (сам Performer типа MASCOT),
+  // mascots — маскоты этого актёра.
+  mascotOwners   MascotOwner[] @relation("MascotOwners")
+  mascots        MascotOwner[] @relation("PerformerMascots")
+
   // Музыкальная сторона: сценический псевдоним сольного музыканта
   // (у группы «псевдоним» — это её name) и дискография. Ссылки на муз.
   // площадки (Spotify и т.п.) живут в общих PerformerLink — платформа
@@ -130,6 +135,25 @@ model Performer {
 enum PerformerType {
   SOLO
   BAND
+  // Маскот (актёра или пейринга): та же карточка Performer — фото, био,
+  // др, соцссылки, дискография; «хозяева» — через MascotOwner.
+  MASCOT
+}
+
+// Привязка маскота к «хозяевам»: актёру и/или пейрингу (у маскота может
+// быть несколько хозяев, у актёра/пейринга — несколько маскотов).
+model MascotOwner {
+  id          String     @id @default(cuid())
+  mascotId    String
+  mascot      Performer  @relation("MascotOwners", fields: [mascotId], references: [id], onDelete: Cascade)
+  performerId String?
+  performer   Performer? @relation("PerformerMascots", fields: [performerId], references: [id], onDelete: Cascade)
+  pairingId   String?
+  pairing     Pairing?   @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+
+  @@index([mascotId])
+  @@index([performerId])
+  @@index([pairingId])
 }
 
 // Дискография исполнителя (группы или сольного музыканта). Заполняется
@@ -423,6 +447,7 @@ model Pairing {
   createdAt    DateTime @default(now())
 
   @@unique([performerAId, performerBId])
+  mascots      MascotOwner[]
 }
 
 enum PairingStatus {
@@ -492,6 +517,9 @@ model User {
   // (активность, актёров, поездки не показываем). Друзья видят всё.
   hideProfileActivity Boolean @default(false)
 
+  feedbacks              Feedback[]
+  reports                Report[]
+  payments               Payment[]
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
   redeemedPromoCodes     PromoCode[] @relation("PromoRedeemer")
@@ -765,4 +793,89 @@ model EventAttendance {
 
   @@id([userId, occurrenceId])
   @@index([eventId])
+}
+
+// ---------- Обращения, модерация, платежи, рассылки, импорты ----------
+
+// Обращение пользователя из формы помощи/поиска: вопрос, предложение
+// или запрос на добавление контента (сериала/актёра). Выводится в
+// /admin/feedback. TODO: дублировать на почту, когда появится SMTP.
+model Feedback {
+  id        String         @id @default(cuid())
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind      FeedbackKind   @default(QUESTION)
+  text      String
+  // Откуда пришло обращение (например, поисковый запрос без результатов).
+  context   String?
+  status    FeedbackStatus @default(NEW)
+  createdAt DateTime       @default(now())
+}
+
+enum FeedbackKind {
+  QUESTION
+  SUGGESTION
+  CONTENT_REQUEST
+}
+
+enum FeedbackStatus {
+  NEW
+  DONE
+}
+
+// Жалоба на пользовательский контент (списки, заметки, профили) —
+// очередь в /admin/moderation.
+model Report {
+  id         String       @id @default(cuid())
+  reporterId String?
+  reporter   User?        @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  targetType String // "placeList" | "profile" | "eventNote"
+  targetId   String
+  reason     String?
+  status     ReportStatus @default(NEW)
+  createdAt  DateTime     @default(now())
+}
+
+enum ReportStatus {
+  NEW
+  RESOLVED
+}
+
+// Журнал оплат Telegram Stars — раньше successful_payment только
+// зачислял премиум и терялся в логах; теперь каждая оплата — строка.
+model Payment {
+  id               String   @id @default(cuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  provider         String   @default("telegram_stars")
+  amount           Int // в Stars (XTR)
+  telegramChargeId String?  @unique
+  createdAt        DateTime @default(now())
+}
+
+// Журнал telegram-рассылок из /admin/broadcast.
+model Broadcast {
+  id        String   @id @default(cuid())
+  text      String
+  audience  String // "all" | "premium"
+  sentCount Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Журнал запусков импортов/синков из админки (/admin/imports).
+model ImportRun {
+  id         String    @id @default(cuid())
+  kind       String // "tmdb-dramas" | "tmdb-performers" | "gmmtv" | "mdl-drama" | "blscene"
+  status     String    @default("RUNNING") // RUNNING | DONE | FAILED
+  summary    String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+}
+
+// Ключ-значение настроек сайта, правится в /admin/settings без деплоя
+// (цена подписки и т.п.). Читать через src/lib/siteSettings.ts.
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

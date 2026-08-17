@@ -1,6 +1,6 @@
 import BuyPremiumButton from "@/components/BuyPremiumButton";
 import PromoCodeRedeem from "@/components/PromoCodeRedeem";
-import { PREMIUM_PRICE_STARS } from "@/lib/telegram";
+import { getPremiumPriceStars } from "@/lib/siteSettings";
 
 const FEATURES = [
   "Полная афиша: названия, площадки, составы и страницы событий",
@@ -13,8 +13,9 @@ const FEATURES = [
  *  когда настроен бот (Telegram Stars, см. premiumActions/webhook);
  *  без него — прежняя просьба написать нам. Серверный компонент —
  *  читает env в рантайме. */
-export default function PremiumUpsell({ feature }: { feature: string }) {
+export default async function PremiumUpsell({ feature }: { feature: string }) {
   const canPay = !!process.env.TELEGRAM_BOT_TOKEN;
+  const price = await getPremiumPriceStars();
 
   return (
     <div className="surface p-5" style={{ maxWidth: "34rem", margin: "0 auto" }}>
@@ -24,7 +25,7 @@ export default function PremiumUpsell({ feature }: { feature: string }) {
         </div>
         <h2 className="h4 font-display mb-1">{feature} — по подписке</h2>
         <p className="text-secondary small mb-0">
-          {PREMIUM_PRICE_STARS} Stars в месяц · продление в один клик
+          {price} Stars в месяц · продление в один клик
         </p>
       </div>
 

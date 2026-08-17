@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -114,7 +115,10 @@ export default async function SearchPage({
           Введите название события, исполнителя, сериала, локации или агентства в поиске сверху.
         </p>
       ) : totalCount === 0 ? (
-        <p className="text-secondary">Ничего не найдено по запросу «{q}».</p>
+        <div>
+          <p className="text-secondary">Ничего не найдено по запросу «{q}».</p>
+          <SearchFeedbackCta q={q} />
+        </div>
       ) : (
         <>
           <Section title="События" count={events.length}>
@@ -193,8 +197,27 @@ export default async function SearchPage({
               ))}
             </div>
           </Section>
+          <SearchFeedbackCta q={q} />
         </>
       )}
+    </div>
+  );
+}
+
+/** «Не нашли — напишите нам»: ведёт на форму обращений с контекстом
+ *  поискового запроса (см. /help#feedback). */
+function SearchFeedbackCta({ q }: { q: string }) {
+  return (
+    <div className="surface p-4 mt-4" style={{ maxWidth: "34rem" }}>
+      <p className="small text-secondary mb-2">
+        Не нашли сериал или актёра, которого искали? Напишите нам — добавим.
+      </p>
+      <Link
+        href={`/help?fb=${encodeURIComponent(q)}#feedback`}
+        className="btn btn-ghost btn-sm"
+      >
+        Написать нам
+      </Link>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { locationHref } from "@/lib/slugHelpers";
 import LocationForm from "../../LocationForm";
 import { updateLocation, deleteLocation } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -25,9 +26,19 @@ export default async function EditLocationPage({
       <Link href="/admin/locations" className="eyebrow text-decoration-none">
         ← К списку локаций
       </Link>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
-        Редактировать локацию
-      </h1>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
+          Редактировать локацию
+        </h1>
+        <a
+          href={locationHref(location)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost btn-sm"
+        >
+          Посмотреть на сайте ↗
+        </a>
+      </div>
       <div className="d-flex flex-column gap-3">
         <LocationForm
           action={boundUpdate}

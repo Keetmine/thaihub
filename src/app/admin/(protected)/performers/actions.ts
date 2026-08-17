@@ -8,6 +8,7 @@ import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
 import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdbImport";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 import { requireAdmin } from "@/lib/auth";
+import { logImportRun } from "@/lib/importRun";
 import { performerNameWhere } from "@/lib/searchWhere";
 
 /**
@@ -22,7 +23,11 @@ export async function syncGmmtv(): Promise<GmmtvSyncResult> {
   await requireAdmin();
   const browser = await chromium.launch();
   try {
-    const result = await syncGmmtvArtists(browser, { replacePhotos: false });
+    const result = await logImportRun(
+      "gmmtv",
+      () => syncGmmtvArtists(browser, { replacePhotos: false }),
+      (r) => `создано ${r.created}, обновлено ${r.updated}`,
+    );
     revalidatePath("/admin/performers");
     revalidatePath("/performers");
     return result;
@@ -38,7 +43,9 @@ export async function syncGmmtv(): Promise<GmmtvSyncResult> {
  */
 export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
   await requireAdmin();
-  const result = await syncAllPerformersFromTmdb();
+  const result = await logImportRun("tmdb-performers", syncAllPerformersFromTmdb, (r) =>
+    `синхронизировано ${r.synced} из ${r.total}, не найдено ${r.notFound}`,
+  );
   revalidatePath("/admin/performers");
   revalidatePath("/performers");
   return result;
@@ -97,11 +104,28 @@ export async function findSimilarPerformers(
   });
 }
 
+function parseType(raw: string): "SOLO" | "BAND" | "MASCOT" {
+  return raw === "BAND" ? "BAND" : raw === "MASCOT" ? "MASCOT" : "SOLO";
+}
+
+function getMascotOwnerData(formData: FormData) {
+  const performerIds = Array.from(
+    new Set(formData.getAll("mascotPerformerIds").map(String).filter(Boolean)),
+  );
+  const pairingIds = Array.from(
+    new Set(formData.getAll("mascotPairingIds").map(String).filter(Boolean)),
+  );
+  return [
+    ...performerIds.map((performerId) => ({ performerId })),
+    ...pairingIds.map((pairingId) => ({ pairingId })),
+  ];
+}
+
 async function createPerformerRecord(name: string, type: string) {
   if (!name) throw new Error("Укажите имя исполнителя или группы");
 
   const performer = await prisma.performer.create({
-    data: { name, type: type === "BAND" ? "BAND" : "SOLO" },
+    data: { name, type: parseType(type) },
   });
 
   revalidatePath("/admin/performers");
@@ -196,7 +220,7 @@ function getAgencyIds(formData: FormData): string[] {
 export async function createPerformer(formData: FormData) {
   await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
+  const type = parseType(String(formData.get("type") ?? "SOLO"));
   const realName = String(formData.get("realName") ?? "").trim();
   const musicAlias = String(formData.get("musicAlias") ?? "").trim();
   const alsoKnownAs = String(formData.get("alsoKnownAs") ?? "").trim();
@@ -220,7 +244,7 @@ export async function createPerformer(formData: FormData) {
       alsoKnownAs: alsoKnownAs || null,
       nationality: nationality || null,
       gender: gender || null,
-      birthDate: type === "SOLO" ? birthDate : null,
+      birthDate: type !== "BAND" ? birthDate : null,
       placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
       bio: bio || null,
       photoUrl: photoUrl || null,
@@ -249,11 +273,19 @@ export async function createPerformer(formData: FormData) {
         data: dramaIds.map((dramaId) => ({ performerId: performer.id, dramaId })),
       });
     }
-  } else {
+  } else if (type === "BAND") {
     const memberIds = getMemberIds(formData);
     if (memberIds.length > 0) {
       await prisma.bandMember.createMany({
         data: memberIds.map((performerId) => ({ bandId: performer.id, performerId })),
+      });
+    }
+  } else {
+    // MASCOT: привязка к «хозяевам» — актёрам и/или пейрингам.
+    const owners = getMascotOwnerData(formData);
+    if (owners.length > 0) {
+      await prisma.mascotOwner.createMany({
+        data: owners.map((o) => ({ mascotId: performer.id, ...o })),
       });
     }
   }
@@ -275,7 +307,7 @@ export async function createPerformer(formData: FormData) {
 export async function updatePerformer(id: string, formData: FormData) {
   await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "SOLO") === "BAND" ? "BAND" : "SOLO";
+  const type = parseType(String(formData.get("type") ?? "SOLO"));
   const realName = String(formData.get("realName") ?? "").trim();
   const musicAlias = String(formData.get("musicAlias") ?? "").trim();
   const alsoKnownAs = String(formData.get("alsoKnownAs") ?? "").trim();
@@ -298,6 +330,7 @@ export async function updatePerformer(id: string, formData: FormData) {
     prisma.performerLink.deleteMany({ where: { performerId: id } }),
     prisma.bandMember.deleteMany({ where: { bandId: id } }),
     prisma.performerDrama.deleteMany({ where: { performerId: id } }),
+    prisma.mascotOwner.deleteMany({ where: { mascotId: id } }),
     prisma.eventPerformer.deleteMany({ where: { performerId: id } }),
     prisma.performerAgency.deleteMany({ where: { performerId: id } }),
     prisma.performer.update({
@@ -310,7 +343,7 @@ export async function updatePerformer(id: string, formData: FormData) {
         alsoKnownAs: alsoKnownAs || null,
         nationality: nationality || null,
         gender: gender || null,
-        birthDate: type === "SOLO" ? birthDate : null,
+        birthDate: type !== "BAND" ? birthDate : null,
         placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
         bio: bio || null,
         photoUrl: photoUrl || null,
@@ -320,6 +353,9 @@ export async function updatePerformer(id: string, formData: FormData) {
         },
         bandMembers: {
           create: memberIds.map((performerId) => ({ performerId })),
+        },
+        mascotOwners: {
+          create: type === "MASCOT" ? getMascotOwnerData(formData) : [],
         },
         dramas: {
           create: dramaIds.map((dramaId) => ({ dramaId })),

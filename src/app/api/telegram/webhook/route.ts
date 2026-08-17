@@ -55,6 +55,17 @@ export async function POST(request: Request) {
             : { telegramId: String(update.message.from.id) }),
         },
       });
+      // Журнал оплат (/admin/finance): upsert по charge id — Telegram
+      // может ретраить вебхук, дубль не создаётся.
+      await prisma.payment.upsert({
+        where: { telegramChargeId: payment.telegram_payment_charge_id },
+        create: {
+          userId: user.id,
+          amount: payment.total_amount,
+          telegramChargeId: payment.telegram_payment_charge_id,
+        },
+        update: {},
+      });
       console.log(
         `premium payment: user ${user.id}, charge ${payment.telegram_payment_charge_id}, until ${until.toISOString()}`,
       );

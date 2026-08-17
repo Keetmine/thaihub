@@ -155,3 +155,10 @@ asset path the browser/OS fetches without cookies (like the PWA icons),
 you need to add it to `PUBLIC_PATHS` or the `matcher` exclusion in
 `src/proxy.ts` yourself — it won't work automatically. See
 [pwa.md](pwa.md) for a concrete example of this exact gotcha.
+
+## Антиспам на регистрации
+
+Скрытое honeypot-поле `website` в форме: боты-автозаполнялки его
+заполняют — экшен молча отвечает как при успехе, не создавая аккаунт.
+Плюс общий rate limit. Следующая ступень при появлении спама —
+Cloudflare Turnstile.

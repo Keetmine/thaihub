@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { dramaHref } from "@/lib/dramaSlug";
 import DramaForm from "../../DramaForm";
 import MdlImportButton from "../../MdlImportButton";
 import { updateDrama, deleteDrama } from "../../actions";
@@ -39,9 +40,19 @@ export default async function EditDramaPage({
       <Link href="/admin/dramas" className="eyebrow text-decoration-none">
         ← К списку сериалов
       </Link>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
-        Редактировать сериал
-      </h1>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
+          Редактировать сериал
+        </h1>
+        <a
+          href={dramaHref(drama)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost btn-sm"
+        >
+          Посмотреть на сайте ↗
+        </a>
+      </div>
       <MdlImportButton dramaId={id} />
       <DramaForm
         action={boundUpdate}

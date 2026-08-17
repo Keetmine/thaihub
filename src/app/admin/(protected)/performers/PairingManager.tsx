@@ -6,7 +6,7 @@ import EntitySelect from "@/components/EntitySelect";
 import { searchSoloPerformerOptions } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
-import { createPairing, deletePairing, setPairingStatus } from "../pairings/actions";
+import { createPairing, deletePairing, setPairingStatus, swapPairingOrder } from "../pairings/actions";
 import { createPerformerAndReturn } from "./actions";
 import type { PerformerOption } from "./PerformerForm";
 import type { PairingStatus } from "@/generated/prisma/client";
@@ -79,6 +79,17 @@ export default function PairingManager({
                 </span>
               </span>
               <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  title="Поменять A и B местами"
+                  onClick={async () => {
+                    await swapPairingOrder(pair.id);
+                    router.refresh();
+                  }}
+                >
+                  ⇄
+                </button>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"

@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function AdminPerformerTabs({
   active,
 }: {
-  active: "performers" | "bands" | "pairings" | "agencies";
+  active: "performers" | "bands" | "mascots" | "pairings" | "agencies";
 }) {
   return (
     <div className="tab-bar">
@@ -20,6 +20,13 @@ export default function AdminPerformerTabs({
         className={`tab-bar-item ${active === "bands" ? "active" : ""}`}
       >
         Группы
+      </Link>
+      <Link
+        href="/admin/performers?view=mascots"
+        prefetch={false}
+        className={`tab-bar-item ${active === "mascots" ? "active" : ""}`}
+      >
+        Маскоты
       </Link>
       <Link
         href="/admin/pairings"

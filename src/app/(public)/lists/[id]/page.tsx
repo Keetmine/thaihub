@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ReportButton from "@/components/ReportButton";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -91,9 +92,12 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
             </ConfirmForm>
           </div>
         ) : (
-          <Link href={`/users/${list.user.id}`} className="small text-secondary text-decoration-none">
-            Список {list.user.name ? `пользователя ${list.user.name}` : "друга"} →
-          </Link>
+          <div className="d-flex flex-column align-items-end gap-1">
+            <Link href={`/users/${list.user.id}`} className="small text-secondary text-decoration-none">
+              Список {list.user.name ? `пользователя ${list.user.name}` : "друга"} →
+            </Link>
+            {!!user && <ReportButton targetType="placeList" targetId={list.id} />}
+          </div>
         )}
       </div>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { performerHref } from "@/lib/performerSlug";
 import { dateKey } from "@/lib/dates";
 import PerformerForm from "../../PerformerForm";
 import { updatePerformer, deletePerformer } from "../../actions";
@@ -18,7 +19,7 @@ export default async function EditPerformerPage({
   // Тяжёлые каталоги в комбобоксы не грузятся (searchOptions ищет на
   // сервере) — передаются только уже связанные записи, чтобы селекты
   // могли показать текущий выбор.
-  const [performer, agencies, pairings] = await Promise.all([
+  const [performer, agencies, pairings, allPairings] = await Promise.all([
     prisma.performer.findUnique({
       where: { id },
       include: {
@@ -29,6 +30,13 @@ export default async function EditPerformerPage({
         },
         events: { select: { event: { select: { id: true, title: true } } } },
         agencies: { select: { agencyId: true } },
+        mascotOwners: {
+          select: {
+            performerId: true,
+            pairingId: true,
+            performer: { select: { id: true, name: true, photoUrl: true } },
+          },
+        },
       },
     }),
     prisma.agency.findMany({
@@ -39,6 +47,11 @@ export default async function EditPerformerPage({
       where: { OR: [{ performerAId: id }, { performerBId: id }] },
       include: { performerA: true, performerB: true },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+    }),
+    // все пейринги — для привязки маскота (список короткий)
+    prisma.pairing.findMany({
+      include: { performerA: true, performerB: true },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -58,9 +71,19 @@ export default async function EditPerformerPage({
       <Link href="/admin/performers" className="eyebrow text-decoration-none">
         ← К списку исполнителей
       </Link>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
-        Редактировать исполнителя
-      </h1>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
+          Редактировать исполнителя
+        </h1>
+        <a
+          href={performerHref(performer)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost btn-sm"
+        >
+          Посмотреть на сайте ↗
+        </a>
+      </div>
 
       <div className="d-flex flex-column gap-3">
         <PerformerForm
@@ -68,6 +91,19 @@ export default async function EditPerformerPage({
           action={boundUpdate}
           submitLabel="Сохранить изменения"
           soloPerformers={performer.bandMembers.map((m) => m.performer)}
+          pairingOptions={allPairings.map((p) => ({
+            id: p.id,
+            name: p.name || `${p.performerA.name} × ${p.performerB.name}`,
+          }))}
+          mascotOwnerOptions={performer.mascotOwners
+            .filter((o) => o.performer)
+            .map((o) => o.performer!)}
+          defaultMascotPerformerIds={performer.mascotOwners
+            .map((o) => o.performerId)
+            .filter((x): x is string => !!x)}
+          defaultMascotPairingIds={performer.mascotOwners
+            .map((o) => o.pairingId)
+            .filter((x): x is string => !!x)}
           agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
           dramas={performer.dramas.map((pd) => ({
             id: pd.drama.id,

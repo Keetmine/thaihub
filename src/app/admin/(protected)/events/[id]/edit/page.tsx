@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { eventHref } from "@/lib/slugHelpers";
 import { dateKey, formatTime } from "@/lib/dates";
 import EventForm from "../../EventForm";
 import { updateEvent, deleteEvent } from "../../actions";
@@ -48,9 +49,19 @@ export default async function EditEventPage({
       <Link href="/admin/events" className="eyebrow text-decoration-none">
         ← К списку событий
       </Link>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
-        Редактировать событие
-      </h1>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
+          Редактировать событие
+        </h1>
+        <a
+          href={eventHref(event)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost btn-sm"
+        >
+          Посмотреть на сайте ↗
+        </a>
+      </div>
       <EventForm
         action={boundUpdate}
         performers={event.performers.map((p) => ({

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ReportButton from "@/components/ReportButton";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -138,6 +139,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
               </span>
             )}
             {isFriend && <FriendNotifyToggle friendId={user.id} muted={!!muteRow} />}
+            <ReportButton targetType="profile" targetId={user.id} />
           </div>
           <p className="text-secondary small mb-0">
             На MyBLHub с {formatShortDate(user.createdAt)} {user.createdAt.getFullYear()}

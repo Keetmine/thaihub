@@ -12,6 +12,13 @@ import {
   PinIcon,
   CopyIcon,
   UserIcon,
+  ChatIcon,
+  FlagIcon,
+  MegaphoneIcon,
+  ChartIcon,
+  StarIcon,
+  ImportIcon,
+  SettingsIcon,
 } from "@/components/icons";
 
 // Пункты сайдбара — единый источник и для мобильного меню.
@@ -53,10 +60,22 @@ const NAV_SECTIONS: {
     ],
   },
   {
+    label: "Коммьюнити",
+    items: [
+      { href: "/admin/users", title: "Пользователи", icon: UserIcon, matchPrefixes: ["/admin/users/"] },
+      { href: "/admin/feedback", title: "Обращения", icon: ChatIcon },
+      { href: "/admin/moderation", title: "Модерация", icon: FlagIcon },
+      { href: "/admin/broadcast", title: "Рассылки", icon: MegaphoneIcon },
+    ],
+  },
+  {
     label: "Сервис",
     items: [
+      { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
+      { href: "/admin/finance", title: "Финансы", icon: StarIcon },
+      { href: "/admin/imports", title: "Импорты", icon: ImportIcon },
       { href: "/admin/duplicates", title: "Дубли", icon: CopyIcon },
-      { href: "/admin/users", title: "Пользователи", icon: UserIcon },
+      { href: "/admin/settings", title: "Настройки", icon: SettingsIcon },
     ],
   },
 ];

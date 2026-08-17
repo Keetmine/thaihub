@@ -22,12 +22,16 @@ function firstLetterOf(name: string): string {
   return ch.toUpperCase();
 }
 
+function typeOfView(view: View): "SOLO" | "BAND" | "MASCOT" {
+  return view === "bands" ? "BAND" : view === "mascots" ? "MASCOT" : "SOLO";
+}
+
 function categoryOf(key: string): "digit" | "en" | "ru" {
   if (key === "0-9") return "digit";
   return /[A-Z]/.test(key) ? "en" : "ru";
 }
 
-type View = "performers" | "bands" | "agencies";
+type View = "performers" | "bands" | "mascots" | "agencies";
 
 function Tabs({ active }: { active: View }) {
   return (
@@ -45,6 +49,13 @@ function Tabs({ active }: { active: View }) {
         className={`tab-bar-item ${active === "bands" ? "active" : ""}`}
       >
         Музыкальные группы
+      </Link>
+      <Link
+        href="/artists?view=mascots"
+        prefetch={false}
+        className={`tab-bar-item ${active === "mascots" ? "active" : ""}`}
+      >
+        Маскоты
       </Link>
       <Link
         href="/artists?view=agencies"
@@ -289,7 +300,13 @@ export default async function PerformersPage({
 }) {
   const { view: rawView, q: rawQ } = await searchParams;
   const view: View =
-    rawView === "bands" ? "bands" : rawView === "agencies" ? "agencies" : "performers";
+    rawView === "bands"
+      ? "bands"
+      : rawView === "mascots"
+        ? "mascots"
+        : rawView === "agencies"
+          ? "agencies"
+          : "performers";
   const q = (rawQ ?? "").trim();
   const currentUser = view === "agencies" ? null : await getCurrentUser();
 
@@ -301,7 +318,7 @@ export default async function PerformersPage({
     view === "agencies" || !q
       ? null
       : await prisma.performer.findMany({
-          where: { type: view === "bands" ? "BAND" : "SOLO", ...performerNameWhere(q) },
+          where: { type: typeOfView(view), ...performerNameWhere(q) },
           include: { _count: { select: { events: true } } },
           orderBy: { name: "asc" },
           take: SEARCH_RESULT_LIMIT + 1,
@@ -316,7 +333,7 @@ export default async function PerformersPage({
         : currentUser
           ? await prisma.performer.findMany({
               where: {
-                type: view === "bands" ? "BAND" : "SOLO",
+                type: typeOfView(view),
                 favoritedBy: { some: { userId: currentUser.id } },
               },
               include: { _count: { select: { events: true } } },
@@ -335,6 +352,7 @@ export default async function PerformersPage({
   const titles: Record<View, string> = {
     performers: "Актёры",
     bands: "Музыкальные группы",
+    mascots: "Маскоты",
     agencies: "Агентства",
   };
 
@@ -374,7 +392,9 @@ export default async function PerformersPage({
                 ? "Ничего не найдено."
                 : view === "bands"
                   ? "Пока никого нет в избранном. Используйте поиск, чтобы найти группу."
-                  : "Пока никого нет в избранном. Используйте поиск, чтобы найти актёра."
+                  : view === "mascots"
+                    ? "Пока никого нет в избранном. Используйте поиск, чтобы найти маскота."
+                    : "Пока никого нет в избранном. Используйте поиск, чтобы найти актёра."
             }
           />
         </>

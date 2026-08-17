@@ -113,6 +113,18 @@ discography importer — see
 [tpop-band-import.md](tpop-band-import.md#discography-import-albums--songs);
 no admin CRUD for albums/songs yet.
 
+## Mascots
+
+Маскот (актёра или пейринга — например, Polca у Tay × New) — это
+`Performer` с `type: MASCOT`: та же карточка со слагом, фото, био, «др»,
+соцссылками и дискографией, свой таб «Маскоты» в публичном и админском
+каталогах. «Хозяева» — через `MascotOwner` (mascotId → performerId
+и/или pairingId, many-to-many в обе стороны): на странице маскота —
+секция «Чей маскот», на странице актёра — «Маскоты» (привязанные
+напрямую + маскоты его пейрингов). Владельцы задаются в админ-форме
+исполнителя при типе «Маскот». Дорамы/пейринги к маскоту не
+привязываются (вкладки скрыты), события — можно.
+
 ## Pairings
 
 A `Pairing` names a two-performer "ship" (`performerAId`/`performerBId`,
@@ -127,6 +139,11 @@ pairings tab/listing anymore (the `/performers?view=pairings` tab was
 removed). Publicly, pairings surface in exactly two places — the "В паре
 с"/"Бывшие пары" blocks on a performer's page, and the lineup chips on
 an event that has a pairing attached.
+
+**Порядок имён важен** (TAY × New, а не New × TAY): везде пара
+выводится как «A × B», поэтому в `/admin/pairings` и в PairingManager
+есть кнопка ⇄ — `swapPairingOrder` меняет performerA и performerB
+местами.
 
 **Current vs past**: `Pairing.status` (`CURRENT` | `PAST`, default
 `CURRENT`) tracks whether a ship is still active — many real-life pairs

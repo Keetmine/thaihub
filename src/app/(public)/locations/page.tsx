@@ -71,10 +71,15 @@ export default async function LocationsPage({
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
           Локации
         </h1>
-        <Link href="/locations/map" className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2">
-          <PinIcon />
-          На карте
-        </Link>
+        <div className="d-flex flex-wrap gap-2">
+          <Link href="/locations/map" className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2">
+            <PinIcon />
+            На карте
+          </Link>
+          <Link href="/lists" className="btn btn-ghost btn-sm">
+            Мои места и списки →
+          </Link>
+        </div>
       </div>
 
       <div className="tab-bar-row">

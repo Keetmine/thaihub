@@ -1,6 +1,14 @@
 import Link from "next/link";
+import FeedbackForm from "@/components/FeedbackForm";
 
-export default function HelpPage() {
+export default async function HelpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fb?: string }>;
+}) {
+  // ?fb=<запрос> — переход из пустого поиска: подставляем контекст и
+  // сразу выбираем «добавьте сериал/актёра».
+  const { fb } = await searchParams;
   return (
     <div>
       <span className="eyebrow">Справка</span>
@@ -48,11 +56,16 @@ export default function HelpPage() {
           </p>
         </div>
 
-        <div className="surface p-4">
-          <h2 className="h6 fw-semibold mb-2">Что-то не работает</h2>
-          <p className="text-secondary mb-0">
-            Напишите администратору сайта напрямую — обратной связи через форму пока нет.
+        <div className="surface p-4" id="feedback">
+          <h2 className="h6 fw-semibold mb-2">Написать нам</h2>
+          <p className="text-secondary small mb-3">
+            Вопрос, идея или не хватает какого-то сериала/актёра — напишите, мы
+            читаем все обращения.
           </p>
+          <FeedbackForm
+            defaultKind={fb ? "CONTENT_REQUEST" : "QUESTION"}
+            context={fb ? `Поиск: «${fb}»` : ""}
+          />
         </div>
       </div>
     </div>

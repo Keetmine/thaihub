@@ -198,11 +198,16 @@ export default async function AdminPerformersPage({
 }) {
   const { view, q: rawQ, page: rawPage } = await searchParams;
   const isBands = view === "bands";
+  const isMascots = view === "mascots";
   const isAgencies = view === "agencies";
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
-  const performerType: "BAND" | "SOLO" = isBands ? "BAND" : "SOLO";
+  const performerType: "BAND" | "SOLO" | "MASCOT" = isMascots
+    ? "MASCOT"
+    : isBands
+      ? "BAND"
+      : "SOLO";
   const performersWhere = {
     type: performerType,
     ...(q ? performerNameWhere(q) : {}),
@@ -226,7 +231,7 @@ export default async function AdminPerformersPage({
       <span className="eyebrow">Управление</span>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
-          {isAgencies ? "Агентства" : isBands ? "Группы" : "Актёры"}
+          {isAgencies ? "Агентства" : isMascots ? "Маскоты" : isBands ? "Группы" : "Актёры"}
         </h1>
         <Link
           href={isAgencies ? "/admin/agencies/new" : "/admin/performers/new"}
@@ -238,12 +243,22 @@ export default async function AdminPerformersPage({
 
       <div className="tab-bar-row">
         <AdminPerformerTabs
-          active={isAgencies ? "agencies" : isBands ? "bands" : "performers"}
+          active={
+            isAgencies ? "agencies" : isMascots ? "mascots" : isBands ? "bands" : "performers"
+          }
         />
         <NameSearchBox
           action="/admin/performers"
           q={q}
-          hiddenFields={isAgencies ? { view: "agencies" } : isBands ? { view: "bands" } : undefined}
+          hiddenFields={
+            isAgencies
+              ? { view: "agencies" }
+              : isMascots
+                ? { view: "mascots" }
+                : isBands
+                  ? { view: "bands" }
+                  : undefined
+          }
           placeholder={isAgencies ? "Поиск по названию…" : "Поиск по имени…"}
           className=""
         />

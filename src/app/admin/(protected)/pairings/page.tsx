@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { deletePairing, setPairingStatus } from "./actions";
+import { deletePairing, setPairingStatus, swapPairingOrder } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import CreatePairingModal from "./CreatePairingModal";
@@ -81,6 +81,15 @@ export default async function AdminPairingsPage({
                   </p>
                 </div>
                 <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                  <form action={swapPairingOrder.bind(null, pair.id)}>
+                    <button
+                      type="submit"
+                      className="btn btn-ghost btn-sm"
+                      title="Поменять A и B местами"
+                    >
+                      ⇄
+                    </button>
+                  </form>
                   <form action={boundToggleStatus}>
                     <button type="submit" className="btn btn-ghost btn-sm">
                       {pair.status === "CURRENT" ? "Отметить бывшим" : "Отметить текущим"}

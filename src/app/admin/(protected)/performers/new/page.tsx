@@ -8,10 +8,17 @@ export const dynamic = "force-dynamic";
 export default async function NewPerformerPage() {
   // Тяжёлые каталоги (исполнители/сериалы/события) в комбобоксы не
   // грузятся — они ищутся на сервере по мере ввода (searchOptions).
-  const agencies = await prisma.agency.findMany({
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, logoUrl: true },
-  });
+  const [agencies, pairings] = await Promise.all([
+    prisma.agency.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, logoUrl: true },
+    }),
+    // для привязки маскота к пейрингу — список короткий, грузим целиком
+    prisma.pairing.findMany({
+      include: { performerA: true, performerB: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   return (
     <div>
@@ -26,6 +33,10 @@ export default async function NewPerformerPage() {
         action={createPerformer}
         submitLabel="Создать исполнителя"
         soloPerformers={[]}
+        pairingOptions={pairings.map((p) => ({
+          id: p.id,
+          name: p.name || `${p.performerA.name} × ${p.performerB.name}`,
+        }))}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
         dramas={[]}
         events={[]}

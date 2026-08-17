@@ -90,7 +90,10 @@ export const PREMIUM_PRICE_STARS = Number(process.env.PREMIUM_PRICE_STARS || 250
  * по нему вебхук зачисляет оплату, поэтому привязка Telegram к аккаунту
  * для покупки не обязательна.
  */
-export async function createPremiumInvoiceLink(userId: string): Promise<string> {
+export async function createPremiumInvoiceLink(
+  userId: string,
+  priceStars: number = PREMIUM_PRICE_STARS,
+): Promise<string> {
   const res = await fetch(`https://api.telegram.org/bot${botToken()}/createInvoiceLink`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -99,7 +102,7 @@ export async function createPremiumInvoiceLink(userId: string): Promise<string> 
       description: "Полная афиша событий, календарь, поездки и уведомления на 30 дней.",
       payload: userId,
       currency: "XTR",
-      prices: [{ label: "Подписка на месяц", amount: PREMIUM_PRICE_STARS }],
+      prices: [{ label: "Подписка на месяц", amount: priceStars }],
     }),
   });
   const data = (await res.json()) as { ok: boolean; result?: string; description?: string };

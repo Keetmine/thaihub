@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { agencyHref } from "@/lib/slugHelpers";
 import AgencyForm from "../../AgencyForm";
 import { updateAgency, deleteAgency } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -39,9 +40,19 @@ export default async function EditAgencyPage({
       <Link href="/admin/performers?view=agencies" className="eyebrow text-decoration-none">
         ← К списку агентств
       </Link>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
-        Редактировать агентство
-      </h1>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
+          Редактировать агентство
+        </h1>
+        <a
+          href={agencyHref(agency)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost btn-sm"
+        >
+          Посмотреть на сайте ↗
+        </a>
+      </div>
 
       <div className="d-flex flex-column gap-3">
         <AgencyForm

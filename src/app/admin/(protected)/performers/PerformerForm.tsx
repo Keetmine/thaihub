@@ -50,6 +50,10 @@ export default function PerformerForm({
   events,
   defaultValues,
   defaultMemberIds,
+  pairingOptions,
+  mascotOwnerOptions,
+  defaultMascotPerformerIds,
+  defaultMascotPairingIds,
   defaultDramaIds,
   defaultEventIds,
   currentPairings,
@@ -80,6 +84,12 @@ export default function PerformerForm({
   };
   /** Pre-filled band member ids, for editing an existing BAND performer. */
   defaultMemberIds?: string[];
+  /** Маскоты: варианты пейрингов (список короткий, грузится целиком) и
+   *  уже привязанные владельцы (актёры/пейринги) для режима MASCOT. */
+  pairingOptions?: EntityOption[];
+  mascotOwnerOptions?: EntityOption[];
+  defaultMascotPerformerIds?: string[];
+  defaultMascotPairingIds?: string[];
   defaultDramaIds?: string[];
   defaultEventIds?: string[];
   /** Existing pairings this performer is part of — edit mode only. */
@@ -96,7 +106,7 @@ export default function PerformerForm({
   // one of those is active, fall back to "general" (derived, not stored, so
   // switching type doesn't leave every panel hidden for a render).
   const effectiveTab: Tab =
-    type === "BAND" && (activeTab === "dramas" || activeTab === "pairing")
+    type !== "SOLO" && (activeTab === "dramas" || activeTab === "pairing")
       ? "general"
       : activeTab;
 
@@ -199,6 +209,7 @@ export default function PerformerForm({
             >
               <option value="SOLO">Соло</option>
               <option value="BAND">Группа</option>
+              <option value="MASCOT">Маскот</option>
             </select>
           </div>
         </div>
@@ -279,6 +290,35 @@ export default function PerformerForm({
                   const created = await createAgencyAndReturn(query);
                   return { id: created.id, name: created.name, photoUrl: created.logoUrl };
                 }}
+              />
+            </div>
+          </div>
+        )}
+
+        {type === "MASCOT" && (
+          <div className="row g-3">
+            <div className="col-12 col-sm-6">
+              <label className="form-label">День рождения маскота</label>
+              <DatePickerInput name="birthDate" defaultValue={v?.birthDate} />
+            </div>
+            <div className="col-12 col-sm-6">
+              <label className="form-label d-block">Чей маскот — актёры</label>
+              <EntityMultiSelect
+                name="mascotPerformerIds"
+                options={mascotOwnerOptions ?? []}
+                defaultSelectedIds={defaultMascotPerformerIds}
+                placeholder="Начните вводить имя актёра…"
+                searchOptions={searchSoloPerformerOptions}
+              />
+            </div>
+            <div className="col-12">
+              <label className="form-label d-block">Чей маскот — пейринги</label>
+              <EntityMultiSelect
+                name="mascotPairingIds"
+                options={pairingOptions ?? []}
+                defaultSelectedIds={defaultMascotPairingIds}
+                placeholder="Начните вводить название пейринга…"
+                emptyMessage="Пейринги создаются в разделе «Пейринги»."
               />
             </div>
           </div>

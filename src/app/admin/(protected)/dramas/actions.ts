@@ -7,6 +7,7 @@ import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
 import { fetchMdlDrama } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
+import { logImportRun } from "@/lib/importRun";
 import type { DramaStatus } from "@/generated/prisma/client";
 import { dramaTitleWhere } from "@/lib/searchWhere";
 
@@ -225,7 +226,9 @@ export async function deleteDrama(id: string) {
  */
 export async function syncTmdbDramas(): Promise<DramaSyncSummary> {
   await requireAdmin();
-  const result = await syncAllDramasFromTmdb();
+  const result = await logImportRun("tmdb-dramas", syncAllDramasFromTmdb, (r) =>
+    `создано ${r.created}, обновлено ${r.updated}, не найдено ${r.notFound}`,
+  );
   revalidateDramaPaths();
   return result;
 }
@@ -250,7 +253,7 @@ export async function importFromMydramalist(id: string, url: string): Promise<Md
   const drama = await prisma.drama.findUnique({ where: { id } });
   if (!drama) throw new Error("Сериал не найден");
 
-  const mdl = await fetchMdlDrama(trimmed);
+  const mdl = await logImportRun("mdl-drama", () => fetchMdlDrama(trimmed), (m) => m.title);
 
   const filled: string[] = [];
   const skipped: string[] = [];

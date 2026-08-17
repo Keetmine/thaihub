@@ -62,3 +62,17 @@ export async function setPairingStatus(id: string, status: PairingStatus) {
   revalidatePath(`/performers/${pairing.performerAId}`);
   revalidatePath(`/performers/${pairing.performerBId}`);
 }
+
+/** Меняет A и B местами — порядок в названии важен (TAY × New, а не
+ *  New × TAY): везде пара выводится как «A × B». */
+export async function swapPairingOrder(id: string): Promise<void> {
+  await requireAdmin();
+  const pairing = await prisma.pairing.findUnique({ where: { id } });
+  if (!pairing) throw new Error("Пейринг не найден");
+  await prisma.pairing.update({
+    where: { id },
+    data: { performerAId: pairing.performerBId, performerBId: pairing.performerAId },
+  });
+  revalidatePath("/admin/pairings");
+  revalidatePath("/performers");
+}
