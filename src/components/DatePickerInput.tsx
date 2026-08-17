@@ -2,7 +2,19 @@
 
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { dateKey, getMonthGrid, monthLabel, parseDateKey, WEEKDAY_NAMES_RU } from "@/lib/dates";
+import { dateKey, getMonthGrid, parseDateKey, WEEKDAY_NAMES_RU } from "@/lib/dates";
+
+const PICKER_MONTHS = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+];
+
+function pickerYears(current: number): number[] {
+  const nowYear = new Date().getFullYear();
+  const years = new Set<number>([current]);
+  for (let y = nowYear - 3; y <= nowYear + 5; y++) years.add(y);
+  return Array.from(years).sort((a, b) => a - b);
+}
 
 /** Отображаемый формат — ДД.ММ.ГГГГ; в форму (hidden input) уходит
  *  каноничный YYYY-MM-DD, как отдавал бы нативный input type=date. */
@@ -149,8 +161,35 @@ export default function DatePickerInput({
             >
               ←
             </button>
-            <span className="fw-semibold small text-capitalize">
-              {monthLabel(viewYear, viewMonth)}
+            {/* Быстрый переход: месяц и год селектами вместо листания
+                по одному месяцу (поездки бывают через годы). */}
+            <span className="d-flex gap-1">
+              <select
+                className="form-select form-select-sm w-auto"
+                value={viewMonth}
+                onChange={(e) => setViewMonth(Number(e.target.value))}
+                onMouseDown={(e) => e.stopPropagation()}
+                aria-label="Месяц"
+              >
+                {PICKER_MONTHS.map((m, i) => (
+                  <option key={m} value={i}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="form-select form-select-sm w-auto"
+                value={viewYear}
+                onChange={(e) => setViewYear(Number(e.target.value))}
+                onMouseDown={(e) => e.stopPropagation()}
+                aria-label="Год"
+              >
+                {pickerYears(viewYear).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </span>
             <button
               type="button"

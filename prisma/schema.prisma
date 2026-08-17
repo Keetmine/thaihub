@@ -60,6 +60,12 @@ model EventOccurrence {
   event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   startsAt DateTime
   endsAt   DateTime?
+  // Время не указано — startsAt хранит 00:00, hasTime=false (иначе
+  // полночь неотличима от «без времени»).
+  hasTime  Boolean   @default(true)
+  // Состав конкретного дня (фестивали: в разные дни — разные группы).
+  // Пусто = день наследует общий состав события.
+  lineup   OccurrenceLineup[]
   telegramNotifications TelegramNotification[]
   attendances EventAttendance[]
 
@@ -112,6 +118,7 @@ model Performer {
   mascotOwners   MascotOwner[] @relation("MascotOwners")
   mascots        MascotOwner[] @relation("PerformerMascots")
   inUserLists    PerformerListItem[]
+  occurrenceLineups OccurrenceLineup[]
 
   // Музыкальная сторона: сценический псевдоним сольного музыканта
   // (у группы «псевдоним» — это её name) и дискография. Ссылки на муз.
@@ -254,6 +261,16 @@ model PerformerLink {
   label       String
   url         String
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+}
+
+// Лайнап конкретного дня фестиваля (см. EventOccurrence.lineup).
+model OccurrenceLineup {
+  occurrenceId String
+  performerId  String
+  occurrence   EventOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  performer    Performer       @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@id([occurrenceId, performerId])
 }
 
 model EventPerformer {
@@ -973,4 +990,16 @@ model ErrorLog {
   path      String?
   digest    String?
   createdAt DateTime @default(now())
+}
+
+// Вики-статья («как купить билеты», «виза в Таиланд»…): HTML из
+// админ-редактора, публичная страница /wiki/[slug] (ссылки — в футере).
+model WikiArticle {
+  id        String   @id @default(cuid())
+  slug      String?  @unique
+  title     String
+  content   String   @default("")
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

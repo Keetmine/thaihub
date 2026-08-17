@@ -35,15 +35,19 @@ export default function EventAgendaRow({
         {showDate && (
           <span className="agenda-date">{formatShortDate(event.startsAt)}</span>
         )}
-        <span className="agenda-time-start">{formatTime(event.startsAt)}</span>
-        {event.endsAt && (
-          <span className="agenda-time-end">–{formatTime(event.endsAt)}</span>
+        {event.hasTime !== false && (
+          <>
+            <span className="agenda-time-start">{formatTime(event.startsAt)}</span>
+            {event.endsAt && (
+              <span className="agenda-time-end">–{formatTime(event.endsAt)}</span>
+            )}
+            <MskTimeInfo
+              startsAt={event.startsAt}
+              endsAt={event.endsAt}
+              className="agenda-time-info-stacked"
+            />
+          </>
         )}
-        <MskTimeInfo
-          startsAt={event.startsAt}
-          endsAt={event.endsAt}
-          className="agenda-time-info-stacked"
-        />
       </div>
       <span className="agenda-dash">—</span>
       <div className="agenda-body">

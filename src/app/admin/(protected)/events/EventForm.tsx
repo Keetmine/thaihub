@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import EntitySelect from "@/components/EntitySelect";
 import FileDropzone from "@/components/FileDropzone";
@@ -22,9 +22,16 @@ function pairingLabel(pairing: PairingOption): string {
 
 /** One date/time this event happens on. `id` is the EventOccurrence id
  *  when editing an existing one, or "" for a row not saved yet. */
-export type OccurrenceRow = { id: string; date: string; startTime: string; endTime: string };
+export type OccurrenceRow = {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  /** Лайнап дня (фестивали): выбранные исполнители. Пусто — общий состав. */
+  lineup: EntityOption[];
+};
 
-const EMPTY_OCCURRENCE: OccurrenceRow = { id: "", date: "", startTime: "", endTime: "" };
+const EMPTY_OCCURRENCE: OccurrenceRow = { id: "", date: "", startTime: "", endTime: "", lineup: [] };
 
 export default function EventForm({
   action,
@@ -151,11 +158,10 @@ export default function EventForm({
                 />
               </div>
               <div className="col-5 col-sm-3">
-                {i === 0 && <label className="form-label small text-secondary">Начало *</label>}
+                {i === 0 && <label className="form-label small text-secondary">Начало</label>}
                 <input
                   type="time"
                   name="occurrenceStartTime"
-                  required
                   value={o.startTime}
                   onChange={(e) => updateOccurrence(i, { startTime: e.target.value })}
                   className="form-control"
@@ -181,6 +187,48 @@ export default function EventForm({
                 >
                   ×
                 </button>
+              </div>
+              <input
+                type="hidden"
+                name="occurrenceLineup"
+                value={o.lineup.map((p) => p.id).join(",")}
+              />
+              <div className="col-12">
+                <details open={o.lineup.length > 0}>
+                  <summary className="small text-secondary" style={{ cursor: "pointer" }}>
+                    Состав этого дня {o.lineup.length > 0 ? `(${o.lineup.length})` : "(как у события)"}
+                  </summary>
+                  <div className="mt-2">
+                    {o.lineup.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2 mb-2">
+                        {o.lineup.map((p) => (
+                          <span key={p.id} className="event-chip performer-chip">
+                            {p.name}
+                            <button
+                              type="button"
+                              className="performer-chip-remove"
+                              aria-label={`Убрать ${p.name}`}
+                              onClick={() =>
+                                updateOccurrence(i, {
+                                  lineup: o.lineup.filter((x) => x.id !== p.id),
+                                })
+                              }
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <LineupPicker
+                      onPick={(picked) => {
+                        if (!o.lineup.some((x) => x.id === picked.id)) {
+                          updateOccurrence(i, { lineup: [...o.lineup, picked] });
+                        }
+                      }}
+                    />
+                  </div>
+                </details>
               </div>
             </div>
           ))}
@@ -293,5 +341,72 @@ export default function EventForm({
         </button>
       </div>
     </form>
+  );
+}
+
+
+/** Мини-поиск исполнителя для лайнапа дня (фестивали) — результат сразу
+ *  отдаётся наверх, состояние строки живёт в OccurrenceRow.lineup. */
+function LineupPicker({ onPick }: { onPick: (p: EntityOption) => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<EntityOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const seqRef = useRef(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function onChange(next: string) {
+    setQuery(next);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    const q = next.trim();
+    if (q.length < 2) {
+      setResults([]);
+      setIsSearching(false);
+      return;
+    }
+    setIsSearching(true);
+    const seq = ++seqRef.current;
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        const rows = await searchPerformerOptions(q);
+        if (seq === seqRef.current) setResults(rows);
+      } finally {
+        if (seq === seqRef.current) setIsSearching(false);
+      }
+    }, 300);
+  }
+
+  return (
+    <div className="performer-combobox" style={{ maxWidth: "22rem" }}>
+      <input
+        type="text"
+        className="form-control form-control-sm"
+        placeholder="Добавить исполнителя в этот день…"
+        value={query}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {query.trim().length >= 2 && (
+        <div className="performer-combobox-dropdown">
+          {isSearching && <div className="performer-combobox-option text-secondary">Поиск…</div>}
+          {!isSearching && results.length === 0 && (
+            <div className="performer-combobox-option text-secondary">Никого не найдено</div>
+          )}
+          {results.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="performer-combobox-option d-flex align-items-center gap-2"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onPick(p);
+                setQuery("");
+                setResults([]);
+              }}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

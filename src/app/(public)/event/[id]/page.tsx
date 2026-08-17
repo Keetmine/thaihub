@@ -47,7 +47,12 @@ export default async function EventDetailPage({
       performers: { include: { performer: true } },
       pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
       drama: true,
-      occurrences: { orderBy: { startsAt: "asc" } },
+      occurrences: {
+        orderBy: { startsAt: "asc" },
+        include: {
+          lineup: { include: { performer: { select: { id: true, slug: true, name: true, photoUrl: true } } } },
+        },
+      },
     },
   });
 
@@ -168,8 +173,8 @@ export default async function EventDetailPage({
                     <span className="text-capitalize">{formatHumanDate(first.startsAt)}</span>
                   ) : (
                     formatCombinedDateList(group.map((o) => o.startsAt))
-                  )}{" "}
-                  · {formatTimeRangeWithMsk(first.startsAt, first.endsAt)}
+                  )}
+                  {first.hasTime && <> · {formatTimeRangeWithMsk(first.startsAt, first.endsAt)}</>}
                 </p>
               );
             })}
@@ -245,6 +250,34 @@ export default async function EventDetailPage({
                       {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
                     </span>
                   ))}
+                </div>
+              </div>
+            )}
+            {event.occurrences.some((o) => o.lineup.length > 0) && (
+              <div className="mt-3 mb-3">
+                <p className="section-heading mb-2">
+                  <CalendarIcon className="icon-inline" /> Лайнап по дням
+                </p>
+                <div className="d-flex flex-column gap-2">
+                  {event.occurrences
+                    .filter((o) => o.lineup.length > 0)
+                    .map((o) => (
+                      <div key={o.id}>
+                        <p className="small text-secondary mb-1 text-capitalize">
+                          {formatHumanDate(o.startsAt)}
+                        </p>
+                        <div className="d-flex flex-wrap gap-2">
+                          {o.lineup.map((l) => (
+                            <EntityMiniCard
+                              key={l.performer.id}
+                              href={performerHref(l.performer)}
+                              photoUrl={l.performer.photoUrl}
+                              name={l.performer.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

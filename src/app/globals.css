@@ -1888,3 +1888,53 @@ svg[aria-hidden="true"] {
   border-color: rgba(var(--accent-rgb), 0.5);
   color: var(--bs-primary-text-emphasis);
 }
+
+/* ---------- Футер ---------- */
+.footer-link:hover {
+  color: var(--bs-body-color) !important;
+}
+
+/* ---------- Вики ---------- */
+.wiki-content h2 {
+  font-size: 1.35rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.wiki-content h3 {
+  font-size: 1.1rem;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.wiki-content p {
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.75rem;
+}
+
+.wiki-content ul,
+.wiki-content ol {
+  color: var(--bs-secondary-color);
+  padding-left: 1.25rem;
+}
+
+.wiki-content img {
+  max-width: 100%;
+  border-radius: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.wiki-content a {
+  color: var(--bs-link-color);
+}
+
+.rich-editor:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+.rich-editor h2 {
+  font-size: 1.3rem;
+}
+
+.rich-editor h3 {
+  font-size: 1.1rem;
+}

@@ -17,6 +17,7 @@ const CATALOG_SLUG_MODELS: Record<string, string> = {
   Location: "name",
   Agency: "name",
   Novel: "title",
+  WikiArticle: "title",
 };
 const CODED_SLUG_MODELS: Record<string, string> = {
   Trip: "title",

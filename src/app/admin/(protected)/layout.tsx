@@ -69,6 +69,7 @@ const NAV_SECTIONS: {
       { href: "/admin/feedback", title: "Обращения", icon: ChatIcon },
       { href: "/admin/moderation", title: "Модерация", icon: FlagIcon },
       { href: "/admin/broadcast", title: "Рассылки", icon: MegaphoneIcon },
+      { href: "/admin/wiki", title: "Вики", icon: BookIcon, matchPrefixes: ["/admin/wiki/"] },
     ],
   },
   {

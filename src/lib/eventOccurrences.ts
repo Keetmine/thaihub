@@ -4,6 +4,7 @@ type OccurrenceWithEvent = {
   id: string;
   startsAt: Date;
   endsAt: Date | null;
+  hasTime?: boolean;
   event: {
     id: string;
     title: string;
@@ -28,6 +29,7 @@ export function flattenOccurrence(occ: OccurrenceWithEvent): EventWithPerformers
     description: occ.event.description,
     posterUrl: occ.event.posterUrl,
     startsAt: occ.startsAt,
+    hasTime: occ.hasTime ?? true,
     endsAt: occ.endsAt,
     performers: occ.event.performers,
   };

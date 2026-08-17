@@ -60,11 +60,13 @@ export default function EventCard({
             wrap длинное название площадки сжималось в столбик по одному
             слову на узких экранах. */}
         <p className="small text-secondary mb-1 d-flex flex-wrap align-items-center column-gap-2 row-gap-0">
-          <span className="d-inline-flex align-items-center gap-1 text-nowrap">
-            {formatTime(event.startsAt)}
-            {event.endsAt && <>–{formatTime(event.endsAt)}</>}
-            <MskTimeInfo startsAt={event.startsAt} endsAt={event.endsAt} />
-          </span>
+          {event.hasTime !== false && (
+            <span className="d-inline-flex align-items-center gap-1 text-nowrap">
+              {formatTime(event.startsAt)}
+              {event.endsAt && <>–{formatTime(event.endsAt)}</>}
+              <MskTimeInfo startsAt={event.startsAt} endsAt={event.endsAt} />
+            </span>
+          )}
           <span>
             <PinIcon /> {event.venue}
           </span>

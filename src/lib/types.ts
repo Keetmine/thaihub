@@ -12,6 +12,8 @@ export type EventWithPerformers = {
   venue: string;
   description: string | null;
   startsAt: Date;
+  /** false — время не указано (startsAt хранит 00:00). */
+  hasTime?: boolean;
   endsAt: Date | null;
   posterUrl: string | null;
   performers: { performer: { id: string; name: string; slug: string | null } }[];

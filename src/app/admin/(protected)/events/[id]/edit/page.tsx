@@ -24,7 +24,14 @@ export default async function EditEventPage({
       include: {
         performers: { include: { performer: true } },
         pairings: true,
-        occurrences: { orderBy: { startsAt: "asc" } },
+        occurrences: {
+          orderBy: { startsAt: "asc" },
+          include: {
+            lineup: {
+              include: { performer: { select: { id: true, name: true, realName: true, photoUrl: true } } },
+            },
+          },
+        },
         drama: { select: { id: true, title: true, posterUrl: true } },
         location: { select: { id: true, name: true, photoUrl: true } },
       },
@@ -81,8 +88,13 @@ export default async function EditEventPage({
           occurrences: event.occurrences.map((o) => ({
             id: o.id,
             date: dateKey(o.startsAt),
-            startTime: formatTime(o.startsAt),
+            startTime: o.hasTime ? formatTime(o.startsAt) : "",
             endTime: o.endsAt ? formatTime(o.endsAt) : "",
+            lineup: o.lineup.map((l) => ({
+              id: l.performer.id,
+              name: performerOptionLabel(l.performer),
+              photoUrl: l.performer.photoUrl,
+            })),
           })),
           performerIds: event.performers.map((p) => p.performerId),
           pairingIds: event.pairings.map((p) => p.pairingId),

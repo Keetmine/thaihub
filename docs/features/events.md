@@ -368,3 +368,13 @@ database until that confirm step** — the scrape itself is read-only.
   `EventForm`, editable/removable before confirming) so the import lands
   as one `Event` with one `EventOccurrence` per detected day — not
   several separate events.
+
+## Время и лайнапы дней
+
+Время начала события необязательно: пустое поле «Начало» хранится как
+00:00 + `EventOccurrence.hasTime=false`, и время не выводится нигде в
+интерфейсе (карточки, agenda, страница события). У каждого дня может
+быть свой лайнап (фестивали): `OccurrenceLineup`, в админ-форме —
+свёртка «Состав этого дня» под строкой даты (csv в hidden-инпуте, свой
+на строку); публично — секция «Лайнап по дням» на странице события.
+Пустой лайнап = день наследует общий состав.

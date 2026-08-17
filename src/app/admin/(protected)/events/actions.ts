@@ -35,17 +35,32 @@ function getPresaleUrl(formData: FormData): string | null {
 }
 
 /** One row of the repeatable date/time picker — see EventForm.tsx. */
-type OccurrenceInput = { id: string; date: string; startTime: string; endTime: string };
+type OccurrenceInput = {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  lineup: string[];
+};
 
 function getOccurrenceInputs(formData: FormData): OccurrenceInput[] {
   const ids = formData.getAll("occurrenceId").map(String);
   const dates = formData.getAll("occurrenceDate").map(String);
   const startTimes = formData.getAll("occurrenceStartTime").map(String);
   const endTimes = formData.getAll("occurrenceEndTime").map(String);
+  // Лайнап дня (фестивали) — csv в hidden-инпуте своей строки.
+  const lineups = formData.getAll("occurrenceLineup").map(String);
 
   return dates
-    .map((date, i) => ({ id: ids[i] ?? "", date, startTime: startTimes[i] ?? "", endTime: endTimes[i] ?? "" }))
-    .filter((row) => row.date && row.startTime);
+    .map((date, i) => ({
+      id: ids[i] ?? "",
+      date,
+      startTime: startTimes[i] ?? "",
+      endTime: endTimes[i] ?? "",
+      lineup: (lineups[i] ?? "").split(",").map((x) => x.trim()).filter(Boolean),
+    }))
+    // время теперь необязательно — достаточно даты
+    .filter((row) => row.date);
 }
 
 /**
@@ -84,7 +99,7 @@ export async function createEvent(formData: FormData) {
   const presaleUrl = getPresaleUrl(formData);
 
   if (!title || !venue || occurrences.length === 0) {
-    throw new Error("Заполните обязательные поля: название, место, дата, время начала");
+    throw new Error("Заполните обязательные поля: название, место, дата");
   }
 
   await prisma.event.create({
@@ -100,8 +115,10 @@ export async function createEvent(formData: FormData) {
       presaleUrl,
       occurrences: {
         create: occurrences.map((o) => ({
-          startsAt: combineDateTime(o.date, o.startTime),
+          startsAt: combineDateTime(o.date, o.startTime || "00:00"),
           endsAt: o.endTime ? combineDateTime(o.date, o.endTime) : null,
+          hasTime: Boolean(o.startTime),
+          lineup: { create: o.lineup.map((performerId) => ({ performerId })) },
         })),
       },
       performers: {
@@ -134,13 +151,33 @@ async function syncOccurrences(
   const keptIds = new Set<string>();
 
   for (const o of occurrences) {
-    const startsAt = combineDateTime(o.date, o.startTime);
+    const startsAt = combineDateTime(o.date, o.startTime || "00:00");
     const endsAt = o.endTime ? combineDateTime(o.date, o.endTime) : null;
+    const hasTime = Boolean(o.startTime);
     if (o.id) {
-      await tx.eventOccurrence.update({ where: { id: o.id }, data: { startsAt, endsAt } });
+      await tx.eventOccurrence.update({
+        where: { id: o.id },
+        data: {
+          startsAt,
+          endsAt,
+          hasTime,
+          lineup: {
+            deleteMany: {},
+            create: o.lineup.map((performerId) => ({ performerId })),
+          },
+        },
+      });
       keptIds.add(o.id);
     } else {
-      const created = await tx.eventOccurrence.create({ data: { eventId, startsAt, endsAt } });
+      const created = await tx.eventOccurrence.create({
+        data: {
+          eventId,
+          startsAt,
+          endsAt,
+          hasTime,
+          lineup: { create: o.lineup.map((performerId) => ({ performerId })) },
+        },
+      });
       keptIds.add(created.id);
     }
   }
@@ -167,7 +204,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const presaleUrl = getPresaleUrl(formData);
 
   if (!title || !venue || occurrences.length === 0) {
-    throw new Error("Заполните обязательные поля: название, место, дата, время начала");
+    throw new Error("Заполните обязательные поля: название, место, дата");
   }
 
   await prisma.$transaction(async (tx) => {
