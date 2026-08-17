@@ -12,6 +12,7 @@ something changes, edit the doc in place rather than appending a note.
 ## Index
 
 - [architecture.md](architecture.md) — stack, route layout, conventions, known gotchas
+- [deploy.md](deploy.md) — деплой на сервер + автодеплой через GitHub Actions
 - [features/slugs.md](features/slugs.md) — публичные слаги всех сущностей
 - [data-model.md](data-model.md) — every Prisma model and what it's for
 - [testing.md](testing.md) — the Playwright smoke suite, how to run it

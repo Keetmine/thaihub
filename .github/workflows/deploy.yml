@@ -1,0 +1,35 @@
+# Автодеплой: любой пуш в main пересобирает и перезапускает сайт на
+# сервере. Нужны секреты репозитория (Settings → Secrets → Actions):
+#   DEPLOY_HOST — IP сервера
+#   DEPLOY_USER — пользователь SSH (обычно root или deploy)
+#   DEPLOY_SSH_KEY — приватный ключ (пара к ключу из authorized_keys)
+#   DEPLOY_PATH — путь к проекту на сервере (например /opt/myblhub)
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose up -d --build
+            docker image prune -f
