@@ -1011,7 +1011,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
    себя; высота с запасом, чтобы шапка страницы и пагинация под списком
    оставались видны без прокрутки страницы). */
 .scroll-list-lg {
-  max-height: 56vh;
+  max-height: 42vh;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 0.25rem;

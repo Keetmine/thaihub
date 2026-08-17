@@ -206,9 +206,8 @@ function PerformerAlphabetList({
   performers: PerformerWithCount[];
   favoritedIds: Set<string>;
   emptyMessage: string;
-  // False when `performers` is already just the favorites list (the
-  // no-search default view) — pinning a "favorites" section on top of a
-  // list that's entirely favorites would just repeat every row twice.
+  // Секция «Избранное» сверху (дефолт: список = избранные + событийные,
+  // избранных удобно видеть первыми).
   pinFavorites?: boolean;
 }) {
   if (performers.length === 0) {
@@ -386,16 +385,9 @@ export default async function PerformersPage({
   return (
     <div>
       <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2.5rem" }}>
+      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
         {titles[view]}
       </h1>
-      {view === "performers" && !q && (
-        <p className="text-secondary mb-4" style={{ maxWidth: "44rem" }}>
-          Здесь показаны избранные и актёры с событиями в афише — а всего в
-          каталоге тысячи актёров. Если кого-то нет в списке, наберите имя в
-          поиске справа.
-        </p>
-      )}
 
       <div className="tab-bar-row">
         <Tabs active={view} />
@@ -407,6 +399,13 @@ export default async function PerformersPage({
           className=""
         />
       </div>
+      {view === "performers" && !q && (
+        <p className="small text-secondary mb-3" style={{ maxWidth: "44rem" }}>
+          Здесь показаны избранные и актёры с событиями в афише — а всего в
+          каталоге тысячи актёров. Если кого-то нет в списке, наберите имя в
+          поиске справа.
+        </p>
+      )}
 
       {view === "agencies" ? (
         <AgenciesTab q={q} />
@@ -420,7 +419,7 @@ export default async function PerformersPage({
           <PerformerAlphabetList
             performers={performers}
             favoritedIds={favoritedIds}
-            pinFavorites={!!q || showAllByDefault}
+            pinFavorites
             emptyMessage={
               q
                 ? "Ничего не найдено."

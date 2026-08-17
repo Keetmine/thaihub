@@ -7,7 +7,7 @@ import NavDepthTracker from "@/components/NavDepthTracker";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
 import { getCurrentUser } from "@/lib/userAuth";
-import { GridIcon } from "@/components/icons";
+import { GridIcon, HeartIcon } from "@/components/icons";
 
 function SearchForm() {
   return (
@@ -79,6 +79,16 @@ export default async function PublicLayout({ children }: { children: React.React
                 <GridIcon />
               </Link>
             )}
+            {user && (
+              <Link
+                href="/?filter=favorited"
+                prefetch={false}
+                className="icon-btn"
+                aria-label="Избранное"
+              >
+                <HeartIcon />
+              </Link>
+            )}
             {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
           </MobileMenu>
 
@@ -105,6 +115,17 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
             <SearchForm />
+            {user && (
+              <Link
+                href="/?filter=favorited"
+                prefetch={false}
+                className="icon-btn"
+                aria-label="Избранное"
+                data-tooltip="Избранное"
+              >
+                <HeartIcon />
+              </Link>
+            )}
             {isAdmin && (
               <Link
                 href="/admin"
