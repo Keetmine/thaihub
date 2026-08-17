@@ -12,6 +12,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import TripTodos, { TodoRow } from "../TripTodos";
+import TripMembersButton from "../TripMembersControls";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
 import LocationMapLoader from "@/components/LocationMapLoader";
@@ -31,13 +32,13 @@ export default async function TripPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; mine?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const { id: rawParam } = await params;
-  const { view } = await searchParams;
+  const { view, mine } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
   // поездки; ?view=all — все события её дат; ?view=places — «что
   // посетить»: локации съёмок дорам владельца. Для гостей план
@@ -53,6 +54,10 @@ export default async function TripPage({
         include: { location: { select: { id: true, name: true } } },
       },
       user: { select: { id: true, name: true } },
+      members: {
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
   if (!trip) notFound();
@@ -61,10 +66,17 @@ export default async function TripPage({
   // его принятые друзья, PUBLIC — любой залогиненный. Чужому 404, а не
   // 403 — не подтверждаем само существование поездки.
   const isOwner = trip.userId === user.id;
+  // Совместная поездка: участники (TripMember) видят её независимо от
+  // видимости и наравне с владельцем вносят события/дела.
+  const isMember = trip.members.some((m) => m.userId === user.id);
+  const isParticipant = isOwner || isMember;
+  const isShared = trip.members.length > 0;
   // Управление поездкой (видимость, личные события) — часть платного
   // функционала; владелец без подписки видит свою поездку read-only.
   const canManage = isOwner && isPremiumActive(user);
-  if (!isOwner) {
+  // Вносить события/дела могут все участники с подпиской.
+  const canContribute = isParticipant && isPremiumActive(user);
+  if (!isParticipant) {
     if (trip.visibility === "PRIVATE") notFound();
     if (trip.visibility === "FRIENDS") {
       const ownerFriendIds = await getFriendIds(trip.userId);
@@ -72,18 +84,39 @@ export default async function TripPage({
     }
   }
 
+  const participantIds = [trip.userId, ...trip.members.map((m) => m.userId)];
+  const nameById = new Map<string, string | null>([
+    [trip.userId, trip.user.name],
+    ...trip.members.map((m) => [m.userId, m.user.name] as [string, string | null]),
+  ]);
+  // Фильтр «Только моё» (совместные поездки): в плане остаются лишь мои
+  // отметки «иду», мои личные события и мои дела.
+  const onlyMine = isShared && isParticipant && mine === "1";
+  // Автор записи для подписи в карточке (легаси-записи без createdById —
+  // владельца); подписываем только в совместных поездках.
+  const authorLabel = (createdById: string | null): string | null =>
+    isShared ? (nameById.get(createdById ?? trip.userId) ?? null) : null;
+
   const rangeWhere = { startsAt: { gte: trip.startDate, lte: endOfDay(trip.endDate) } };
   const [occurrences, planCount, totalCount] = await Promise.all([
     prisma.eventOccurrence.findMany({
       where: {
         ...rangeWhere,
-        ...(showAll ? {} : { attendances: { some: { userId: trip.userId } } }),
+        // План совместной поездки — отметки «иду» всех участников;
+        // «Только моё» сужает до текущего юзера.
+        ...(showAll
+          ? {}
+          : {
+              attendances: {
+                some: { userId: onlyMine ? user.id : { in: participantIds } },
+              },
+            }),
       },
       include: { event: { include: { performers: { include: { performer: true } } } } },
       orderBy: { startsAt: "asc" },
     }),
     prisma.eventOccurrence.count({
-      where: { ...rangeWhere, attendances: { some: { userId: trip.userId } } },
+      where: { ...rangeWhere, attendances: { some: { userId: { in: participantIds } } } },
     }),
     prisma.eventOccurrence.count({ where: rangeWhere }),
   ]);
@@ -98,32 +131,52 @@ export default async function TripPage({
   ]);
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
+  // Право менять конкретную запись: автор, владелец поездки или другой
+  // участник, если автор разрешил галочкой (editableByOthers).
+  const canTouch = (item: { createdById: string | null; editableByOthers: boolean }): boolean => {
+    if (!canContribute) return false;
+    const authorId = item.createdById ?? trip.userId;
+    return authorId === user.id || isOwner || item.editableByOthers;
+  };
+  const isMine = (createdById: string | null): boolean =>
+    (createdById ?? trip.userId) === user.id;
+
   // Публичные и личные события — одна хронологическая лента. Личные
-  // видит только владелец: даже в публичной поездке брони/встречи —
+  // видят только участники: даже в публичной поездке брони/встречи —
   // не для чужих глаз.
-  const personal: PersonalEventData[] = (isOwner ? trip.personalEvents : []).map((p) => ({
-    id: p.id,
-    title: p.title,
-    note: p.note,
-    location: p.location,
-    startsAt: p.startsAt,
-    dateKey: dateKey(p.startsAt),
-    timeValue: formatTime(p.startsAt),
-  }));
-  // Дела поездки — приватное планирование, видит только владелец.
-  const todos = isOwner
+  const personal: PersonalEventData[] = (isParticipant ? trip.personalEvents : [])
+    .filter((p) => !onlyMine || isMine(p.createdById))
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      note: p.note,
+      location: p.location,
+      startsAt: p.startsAt,
+      dateKey: dateKey(p.startsAt),
+      timeValue: formatTime(p.startsAt),
+      author: authorLabel(p.createdById),
+      editableByOthers: p.editableByOthers,
+      canEdit: canTouch(p),
+    }));
+  // Дела поездки — планирование участников, чужим не показываем.
+  const todos = isParticipant
     ? await prisma.tripTodo.findMany({
         where: { tripId: trip.id },
         orderBy: [{ done: "asc" }, { date: "asc" }],
       })
     : [];
-  const todoData = todos.map((t) => ({
-    id: t.id,
-    text: t.text,
-    done: t.done,
-    date: t.date ? t.date.toISOString() : null,
-    hasTime: t.hasTime,
-  }));
+  const todoData = todos
+    .filter((t) => !onlyMine || isMine(t.createdById))
+    .map((t) => ({
+      id: t.id,
+      text: t.text,
+      done: t.done,
+      date: t.date ? t.date.toISOString() : null,
+      hasTime: t.hasTime,
+      author: authorLabel(t.createdById),
+      canEdit: canTouch(t),
+      editableByOthers: t.editableByOthers,
+    }));
 
   const timeline: (
     | { kind: "public"; startsAt: Date; key: string; event: (typeof events)[number] }
@@ -150,7 +203,7 @@ export default async function TripPage({
           where: { tripId: trip.id },
           include: { location: true },
         }),
-        isOwner
+        isParticipant
           ? prisma.placeList.findMany({
               where: { userId: user.id },
               select: { id: true, title: true },
@@ -161,6 +214,17 @@ export default async function TripPage({
     : [[], [], []];
   const attachedListIds = new Set(tripLists.map((t) => t.listId));
   const availableLists = myLists.filter((l) => !attachedListIds.has(l.id));
+
+  // Кандидаты в участники — друзья владельца, которых ещё нет в поездке
+  // (friendIds для владельца — его же друзья).
+  const memberIdSet = new Set(trip.members.map((m) => m.userId));
+  const availableFriends = isOwner
+    ? await prisma.user.findMany({
+        where: { id: { in: friendIds.filter((id) => !memberIdSet.has(id)) } },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
 
   const boundDelete = deleteTrip.bind(null, trip.id);
 
@@ -179,7 +243,7 @@ export default async function TripPage({
             {trip.endDate.getFullYear()}
           </p>
         </div>
-        {isOwner ? (
+        {isParticipant ? (
           <div className="d-flex align-items-center gap-2 flex-wrap">
             {canManage && (
               <>
@@ -192,14 +256,25 @@ export default async function TripPage({
                     endKey: dateKey(trip.endDate),
                   }}
                 />
-                <AddPersonalEventButton tripId={trip.id} />
               </>
             )}
-            <ConfirmForm action={boundDelete} confirmMessage={`Удалить поездку «${trip.title}»?`}>
-              <button type="button" className="btn btn-outline-secondary btn-sm">
-                Удалить поездку
-              </button>
-            </ConfirmForm>
+            {canContribute && (
+              <AddPersonalEventButton tripId={trip.id} showShareToggle={isShared} />
+            )}
+            <TripMembersButton
+              tripId={trip.id}
+              isOwner={isOwner}
+              owner={{ id: trip.userId, name: trip.user.name }}
+              members={trip.members.map((m) => ({ id: m.userId, name: m.user.name }))}
+              availableFriends={availableFriends}
+            />
+            {isOwner && (
+              <ConfirmForm action={boundDelete} confirmMessage={`Удалить поездку «${trip.title}»?`}>
+                <button type="button" className="btn btn-outline-secondary btn-sm">
+                  Удалить поездку
+                </button>
+              </ConfirmForm>
+            )}
           </div>
         ) : (
           <Link href={`/users/${trip.user.id}`} className="small text-secondary text-decoration-none">
@@ -215,7 +290,7 @@ export default async function TripPage({
             prefetch={false}
             className={`tab-bar-item ${!showAll && !showPlaces && !showTodos ? "active" : ""}`}
           >
-            {isOwner ? "Мой план" : "План"} ({planCount})
+            {isShared ? "План" : isOwner ? "Мой план" : "План"} ({planCount})
           </Link>
           <Link
             href={`${tripHref(trip)}?view=all`}
@@ -224,7 +299,7 @@ export default async function TripPage({
           >
             Все события дат ({totalCount})
           </Link>
-          {isOwner && (
+          {isParticipant && (
             <Link
               href={`${tripHref(trip)}?view=todos`}
               prefetch={false}
@@ -241,10 +316,24 @@ export default async function TripPage({
             Что посетить
           </Link>
         </div>
+        {isShared && isParticipant && !showAll && !showPlaces && (
+          <Link
+            href={`${tripHref(trip)}${showTodos ? "?view=todos" : ""}${onlyMine ? "" : showTodos ? "&mine=1" : "?mine=1"}`}
+            prefetch={false}
+            className={`btn btn-sm ${onlyMine ? "btn-primary" : "btn-ghost"}`}
+          >
+            Только моё
+          </Link>
+        )}
       </div>
 
       {showTodos ? (
-        <TripTodos tripId={trip.id} todos={todoData} canEdit={canManage} />
+        <TripTodos
+          tripId={trip.id}
+          todos={todoData}
+          canAdd={canContribute}
+          showShareToggle={isShared}
+        />
       ) : showPlaces ? (
         (() => {
           const pinMap = new Map<string, { id: string; name: string; latitude: number; longitude: number }>();
@@ -258,11 +347,11 @@ export default async function TripPage({
           const pins = Array.from(pinMap.values());
           const isEmpty =
             tripLists.length === 0 && tripPlaces.length === 0;
-          return isEmpty && !isOwner ? (
+          return isEmpty && !isParticipant ? (
           <p className="text-secondary">Пока здесь пусто.</p>
         ) : (
           <>
-            {isOwner && (
+            {canContribute && (
               <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
                 <AttachListSelect tripId={trip.id} availableLists={availableLists} />
                 <AddTripPlaceBox tripId={trip.id} />
@@ -283,7 +372,7 @@ export default async function TripPage({
                   >
                     📋 {tl.list.title} ({tl.list.items.length})
                   </Link>
-                  {isOwner && <DetachListButton tripId={trip.id} listId={tl.listId} />}
+                  {canContribute && <DetachListButton tripId={trip.id} listId={tl.listId} />}
                 </div>
                 <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
                   {tl.list.items.map((i) => (
@@ -314,14 +403,14 @@ export default async function TripPage({
                       <Link href={locationHref(tp.location)} className="text-decoration-none text-white">
                         {tp.location.name}
                       </Link>
-                      {isOwner && <RemoveTripPlaceButton tripId={trip.id} locationId={tp.locationId} />}
+                      {canContribute && <RemoveTripPlaceButton tripId={trip.id} locationId={tp.locationId} />}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {isEmpty && isOwner && (
+            {isEmpty && isParticipant && (
               <p className="text-secondary">
                 Прикрепите список мест, добавьте отдельные места или отметьте
                 статус просмотра на страницах дорам — здесь соберётся, что
@@ -335,7 +424,7 @@ export default async function TripPage({
         <p className="text-secondary">
           {showAll
             ? "В даты этой поездки не попадает ни одно событие."
-            : isOwner
+            : isParticipant
               ? "В плане пока пусто: отметьте «я иду» на событиях (вкладка «Все события дат») или добавьте личное — перелёт, бронь, встречу."
               : "В плане этой поездки пока пусто."}
         </p>
@@ -355,10 +444,11 @@ export default async function TripPage({
                 key={item.key}
                 tripId={trip.id}
                 event={item.personalEvent}
-                canEdit={canManage}
+                canEdit={item.personalEvent.canEdit}
+                showShareToggle={isShared}
               />
             ) : (
-              <TodoRow key={item.key} todo={item.todo} canEdit={canManage} showDate />
+              <TodoRow key={item.key} todo={item.todo} showDate showShareToggle={isShared} />
             ),
           )}
         </div>

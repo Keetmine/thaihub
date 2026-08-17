@@ -564,6 +564,7 @@ model User {
   achievements        UserAchievement[]
   placeLists          PlaceList[]
   performerLists      PerformerList[]
+  tripMemberships     TripMember[]
   createdLocations    Location[] @relation("UserCreatedLocations")
   // Приватность публичного профиля. Друзья видят всё всегда.
   // hideProfileActivity — мастер-выключатель (чужие видят только
@@ -605,6 +606,7 @@ model Trip {
   placeLists TripPlaceList[]
   places     TripPlace[]
   todos      TripTodo[]
+  members    TripMember[]
 
   @@index([userId])
 }
@@ -620,6 +622,19 @@ enum TripVisibility {
 // trip's date range, visible only to the trip's owner. Deliberately much
 // simpler than Event: one date/time, free-text note, no venue entity or
 // performers.
+// Со-путешественник: полноценный доступ к поездке (видит всё, вносит
+// события/дела). Права на чужие записи — по editableByOthers записи;
+// владелец поездки может всё.
+model TripMember {
+  tripId    String
+  userId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([tripId, userId])
+}
+
 model TripPersonalEvent {
   id        String    @id @default(cuid())
   tripId    String
@@ -631,6 +646,10 @@ model TripPersonalEvent {
   // показывает место со ссылкой, оно попадает на карту поездки.
   locationId String?
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  // Совместные поездки: кто создал запись (null — владелец поездки,
+  // легаси) и можно ли другим участникам её править/удалять.
+  createdById String?
+  editableByOthers Boolean @default(false)
   createdAt DateTime  @default(now())
 
   @@index([tripId])
@@ -709,6 +728,9 @@ model TripTodo {
   text      String
   done      Boolean   @default(false)
   date      DateTime?
+  // Совместные поездки: автор и право правки другими участниками.
+  createdById String?
+  editableByOthers Boolean @default(false)
   // Время указано? (date хранит и время; без флага «00:00» неотличим
   // от «без времени»).
   hasTime   Boolean   @default(false)

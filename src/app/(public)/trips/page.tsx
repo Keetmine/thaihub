@@ -29,8 +29,13 @@ export default async function TripsPage() {
     );
   }
 
+  // Свои поездки + совместные, куда меня добавили участником.
   const tripsRaw = await prisma.trip.findMany({
-    where: { userId: user.id },
+    where: { OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }] },
+    include: {
+      user: { select: { id: true, name: true } },
+      _count: { select: { members: true } },
+    },
     orderBy: { startDate: "asc" },
   });
   // Будущие и текущие — сверху (ближайшая первой), прошедшие — внизу
@@ -41,14 +46,24 @@ export default async function TripsPage() {
     ...tripsRaw.filter((t) => t.endDate < todayRef).reverse(),
   ];
 
-  // Для каждой поездки: сколько событий в плане (владелец «идёт») и
-  // сколько всего в её датах.
+  // Для каждой поездки: сколько событий в плане (отметки «иду» всех
+  // участников) и сколько всего в её датах.
   const counts = await Promise.all(
     trips.map(async (t) => {
       const range = { startsAt: { gte: t.startDate, lte: endOfDay(t.endDate) } };
       const [plan, total] = await Promise.all([
         prisma.eventOccurrence.count({
-          where: { ...range, attendances: { some: { userId: user.id } } },
+          where: {
+            ...range,
+            attendances: {
+              some: {
+                OR: [
+                  { userId: t.userId },
+                  { user: { tripMemberships: { some: { tripId: t.id } } } },
+                ],
+              },
+            },
+          },
         }),
         prisma.eventOccurrence.count({ where: range }),
       ]);
@@ -87,7 +102,22 @@ export default async function TripsPage() {
                   className={`surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3 ${isPast ? "opacity-50" : ""}`}
                 >
                   <div>
-                    <p className="font-display fw-medium text-white mb-0">{t.title}</p>
+                    <p className="font-display fw-medium text-white mb-0">
+                      {t.title}
+                      {(t._count.members > 0 || t.userId !== user.id) && (
+                        <span
+                          className="badge rounded-pill text-bg-secondary ms-2 align-middle"
+                          style={{ fontSize: "0.6rem" }}
+                        >
+                          совместная
+                        </span>
+                      )}
+                    </p>
+                    {t.userId !== user.id && (
+                      <p className="small text-secondary mb-0">
+                        Организатор: {t.user.name ?? "без имени"}
+                      </p>
+                    )}
                     <p className="small text-secondary mb-0">
                       <CalendarIcon className="icon-inline" />{" "}
                       {formatShortDate(t.startDate)} – {formatShortDate(t.endDate)}{" "}

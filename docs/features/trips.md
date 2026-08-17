@@ -5,18 +5,20 @@ A `Trip` is a user's named date range (`title`, `startDate`, `endDate`)
 manually re-entering a date filter every time.
 
 - **`/trips`** (`src/app/(public)/trips/page.tsx`) — the user's own
-  trips (ascending by start date, past ones dimmed, each with a count of
-  events falling inside it); creation lives behind a «+ Создать поездку»
+  trips plus shared trips they were added to as a member (badge
+  «совместная», organizer's name shown; ascending by start date, past
+  ones dimmed, each with a count of events falling inside it); creation lives behind a «+ Создать поездку»
   button opening a `Modal` popup (`CreateTripButton.tsx`) rather than an
   always-visible form. **Premium-only** — the whole trips feature sits
   behind `User.isPremium` (see [auth.md](auth.md) for the exact gate
   matrix, including what happens to trips created before the flag was
   revoked).
 - **`/trips/[id]`** — two tabs over the trip's date range:
-  **«Мой план»** (default) shows only the occurrences of events the trip
-  *owner* marked «я иду» (filtered in SQL via `attendees some userId`),
-  merged with the owner's personal events — for a shared trip a guest
-  sees the owner's plan, which is the point of sharing; **«Все события
+  **«Мой план»** (default; «План» when the trip has members) shows the
+  occurrences of events any *participant* (owner + members) marked «я
+  иду» (filtered in SQL via `attendees some userId in participantIds`),
+  merged with the participants' personal events — for a guest viewer
+  the plan of the participants is the point of sharing; **«Все события
   дат» (`?view=all`)** shows everything in the range, so picking new
   events into the plan is one «иду» click away. Both tab labels carry
   live counts, and the trips list page shows «N в плане · M всего» per
@@ -33,9 +35,9 @@ manually re-entering a date filter every time.
   A personal event without a time is stored at 00:00, sorting before
   that day's public events, and the card hides the meaningless "00:00".
   All three actions (`createTripPersonalEvent`/`update…`/`delete…` in
-  `trips/actions.ts`) go through `requireOwnTrip`, and update/delete
-  additionally scope the row by `tripId` — no cross-user or cross-trip
-  reach, mirroring `deleteTrip`'s scoped-`deleteMany` pattern.
+  `trips/actions.ts`) go through `requireTripAccess` (owner OR member),
+  scope the row by `tripId`, and update/delete additionally enforce
+  per-item permissions via `canTouchItem` (see «Совместные поездки»).
 - Actions (`trips/actions.ts`): `createTrip` (validates dates via
   `combineDateTime`, so Buddhist-era years from Thai-locale date inputs
   get normalized like everywhere else), `updateTrip` (название/даты, модалка «Редактировать»), `deleteTrip` (scoped
@@ -59,9 +61,10 @@ Chosen at creation (radio group in the create modal,
 owner toolbar (`VisibilitySelect` → `setTripVisibility`, scoped
 `updateMany` by owner). Labels live in `src/lib/tripVisibility.ts` — a
 client-safe module importable from server pages too (same split as
-`dramaStatus.ts`). **Personal events stay owner-only at every
-visibility level** — reservations/meetups aren't shown to guests even
-on a public trip; guests see only the public events of the date range.
+`dramaStatus.ts`). **Personal events and todos stay participant-only at
+every visibility level** — reservations/meetups aren't shown to guests
+even on a public trip; guests see only the public events of the date
+range. Trip members see the trip regardless of its visibility.
 Friends' shared trips are surfaced on their profile pages
 (`/users/[id]`, see [social.md](social.md)) — not on `/friends` (an
 earlier «Поездки друзей» section there was removed as duplication).
@@ -80,12 +83,37 @@ into the same `from`/`to` values as the manual range filter; the search
 box keeps working within an active trip (its hidden fields carry `trip`
 instead of `from`/`to`).
 
+## Совместные поездки (TripMember)
+
+Владелец добавляет в поездку друзей (модалка «Участники (N)» на
+странице поездки, `TripMembersControls.tsx`; кандидаты — ACCEPTED-друзья
+владельца, ещё не состоящие в поездке). Участник видит поездку при
+любой видимости, она появляется у него в `/trips` и в табах главной, и
+он наравне с владельцем вносит события/дела/места (гейт
+`requireTripAccess` в actions: владелец ИЛИ участник, премиум обязателен
+обоим). Выйти из поездки участник может сам (кнопка в той же модалке);
+владелец может убрать любого.
+
+Права на записи (личные события и дела): у каждой записи есть
+`createdById` (null = владелец, легаси) и флаг `editableByOthers` —
+галочка «Участники поездки могут редактировать и удалять» в формах
+создания/правки (показывается только в совместных поездках; в
+соло-формах прежнее значение сохраняется hidden-инпутом, иначе update
+сбросил бы флаг). Менять/удалять запись могут: автор, владелец поездки,
+и другие участники — только при поднятом флаге (`canTouchItem` в
+`trips/actions.ts`, продублировано в UI per-item полем `canEdit`).
+В совместной поездке у записей подписывается автор (имя серым).
+
+Фильтр «Только моё» (`?mine=1`, кнопка справа от табов, только в
+совместных поездках): план сужается до собственных отметок «иду»,
+личных событий и дел текущего юзера.
+
 ## Дела поездки (TripTodo)
 
-Вкладка «Дела» (только владельцу, между «Все события дат» и «Что
-посетить»): обычный туду — добавить пункт (текст + необязательная
-дата), чекбокс выполнения, правка/удаление. Датированные дела попадают
-в хронологию «Мой план» той же строкой (TodoRow) с полным управлением.
+Вкладка «Дела» (участникам, между «Все события дат» и «Что посетить»):
+обычный туду — добавить пункт (текст + необязательная дата), чекбокс
+выполнения, правка/удаление по правам выше. Датированные дела попадают
+в хронологию «Мой план» той же строкой (TodoRow).
 Форма добавления ремоунтится по ключу после сабмита — иначе
 DatePickerInput молча тащит прошлую дату в следующий пункт.
 

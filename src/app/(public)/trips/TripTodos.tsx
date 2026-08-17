@@ -20,6 +20,11 @@ export type TodoData = {
   /** ISO-строка (клиентский компонент — Date не сериализуем). */
   date: string | null;
   hasTime: boolean;
+  // Совместные поездки: имя автора (когда участников >1), право текущего
+  // юзера менять запись и разрешение автора на правку другими.
+  author: string | null;
+  canEdit: boolean;
+  editableByOthers: boolean;
 };
 
 const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
@@ -33,16 +38,17 @@ function fmtDate(iso: string): string {
  *  showDate — та же дата-колонка, что у событий). */
 export function TodoRow({
   todo,
-  canEdit,
   showDate = false,
+  showShareToggle = false,
 }: {
   todo: TodoData;
-  canEdit: boolean;
   showDate?: boolean;
+  showShareToggle?: boolean;
 }) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const canEdit = todo.canEdit;
 
   async function toggle() {
     if (!canEdit || pending) return;
@@ -85,6 +91,9 @@ export function TodoRow({
         style={{ minWidth: 0 }}
       >
         {todo.text}
+        {todo.author && (
+          <span className="small text-secondary ms-2">{todo.author}</span>
+        )}
       </span>
       {timeLabel && <span className="small text-secondary flex-shrink-0">{timeLabel}</span>}
       {!showDate && todo.date && (
@@ -145,6 +154,22 @@ export function TodoRow({
               />
             </div>
           </div>
+          {showShareToggle ? (
+            <label className="form-check d-flex align-items-center gap-2 mb-0">
+              <input
+                type="checkbox"
+                name="editableByOthers"
+                defaultChecked={todo.editableByOthers}
+                className="form-check-input m-0"
+              />
+              <span className="form-check-label small">
+                Участники поездки могут редактировать и удалять
+              </span>
+            </label>
+          ) : (
+            // Сохраняем прежний флаг, когда галочка скрыта (соло-поездка).
+            todo.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />
+          )}
           <button type="submit" className="btn btn-primary">
             Сохранить
           </button>
@@ -158,11 +183,14 @@ export function TodoRow({
 export default function TripTodos({
   tripId,
   todos,
-  canEdit,
+  canAdd,
+  showShareToggle = false,
 }: {
   tripId: string;
   todos: TodoData[];
-  canEdit: boolean;
+  /** Может ли текущий юзер добавлять дела (участник с подпиской). */
+  canAdd: boolean;
+  showShareToggle?: boolean;
 }) {
   const router = useRouter();
   // Ключ формы: после добавления форму ремоунтим, иначе DatePickerInput
@@ -179,7 +207,7 @@ export default function TripTodos({
 
   return (
     <div style={{ maxWidth: "44rem" }}>
-      {canEdit && (
+      {canAdd && (
         <form
           key={formKey}
           action={async (fd) => {
@@ -206,6 +234,18 @@ export default function TripTodos({
             <label className="form-label small text-secondary">Время</label>
             <input type="time" name="time" className="form-control" style={{ width: "7rem" }} />
           </div>
+          {showShareToggle && (
+            <label className="form-check d-flex align-items-center gap-2 w-100 mb-0">
+              <input
+                type="checkbox"
+                name="editableByOthers"
+                className="form-check-input m-0"
+              />
+              <span className="form-check-label small">
+                Участники поездки могут редактировать и удалять
+              </span>
+            </label>
+          )}
           <button type="submit" className="btn btn-primary">
             Добавить
           </button>
@@ -214,12 +254,12 @@ export default function TripTodos({
 
       {sorted.length === 0 ? (
         <p className="text-secondary">
-          {canEdit ? "Пока пусто — добавьте первое дело." : "Список дел пуст."}
+          {canAdd ? "Пока пусто — добавьте первое дело." : "Список дел пуст."}
         </p>
       ) : (
         <div className="d-flex flex-column gap-2">
           {sorted.map((t) => (
-            <TodoRow key={t.id} todo={t} canEdit={canEdit} />
+            <TodoRow key={t.id} todo={t} showShareToggle={showShareToggle} />
           ))}
         </div>
       )}

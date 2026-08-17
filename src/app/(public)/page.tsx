@@ -53,13 +53,21 @@ export default async function HomePage({
   // созданные при активной подписке, доступны со страницы /trips… которая
   // тоже за подпиской — то есть только после её возврата).
   const myTrips = await prisma.trip.findMany({
-    where: { userId: user.id, endDate: { gte: startOfDay(new Date()) } },
+    where: {
+      OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }],
+      endDate: { gte: startOfDay(new Date()) },
+    },
     orderBy: { startDate: "asc" },
   });
 
   const activeTrip = rawTrip
     ? (myTrips.find((t) => t.id === rawTrip) ??
-      (await prisma.trip.findFirst({ where: { id: rawTrip, userId: user.id } })))
+      (await prisma.trip.findFirst({
+        where: {
+          id: rawTrip,
+          OR: [{ userId: user.id }, { members: { some: { userId: user.id } } }],
+        },
+      })))
     : null;
 
   // Таб поездки — самостоятельный режим, не фильтр: он показывает ВСЕ

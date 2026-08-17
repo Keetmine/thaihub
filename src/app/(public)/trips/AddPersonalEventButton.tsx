@@ -5,7 +5,13 @@ import Modal from "@/components/Modal";
 import { createTripPersonalEvent } from "./actions";
 import { PersonalEventFields } from "./PersonalEventCard";
 
-export default function AddPersonalEventButton({ tripId }: { tripId: string }) {
+export default function AddPersonalEventButton({
+  tripId,
+  showShareToggle = false,
+}: {
+  tripId: string;
+  showShareToggle?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const boundCreate = createTripPersonalEvent.bind(null, tripId);
 
@@ -22,7 +28,7 @@ export default function AddPersonalEventButton({ tripId }: { tripId: string }) {
 
       <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Личное событие">
         <form action={handleCreate} className="d-flex flex-column gap-3">
-          <PersonalEventFields />
+          <PersonalEventFields showShareToggle={showShareToggle} />
           <button type="submit" className="btn btn-primary">
             Добавить
           </button>

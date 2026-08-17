@@ -21,11 +21,19 @@ export type PersonalEventData = {
   // сервере, чтобы не дублировать dateKey/formatTime в клиенте.
   dateKey: string;
   timeValue: string;
+  // Совместные поездки: имя автора (показывается, когда участников >1)
+  // и разрешение другим участникам править/удалять запись.
+  author: string | null;
+  editableByOthers: boolean;
+  canEdit: boolean;
 };
 
-/** Форма создания/редактирования — общая для обеих модалок. */
+/** Форма создания/редактирования — общая для обеих модалок.
+ *  showShareToggle — галочка «участники могут редактировать» (совместные
+ *  поездки); в соло-поездке не показываем, чтобы не путать. */
 export function PersonalEventFields({
   defaults,
+  showShareToggle = false,
 }: {
   defaults?: {
     title: string;
@@ -33,7 +41,9 @@ export function PersonalEventFields({
     dateKey: string;
     timeValue: string;
     location?: { id: string; name: string } | null;
+    editableByOthers?: boolean;
   };
+  showShareToggle?: boolean;
 }) {
   return (
     <>
@@ -69,6 +79,24 @@ export function PersonalEventFields({
         <label className="form-label small text-secondary">Заметка</label>
         <textarea name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
       </div>
+      {showShareToggle ? (
+        <label className="form-check d-flex align-items-center gap-2 mb-0">
+          <input
+            type="checkbox"
+            name="editableByOthers"
+            defaultChecked={defaults?.editableByOthers ?? false}
+            className="form-check-input m-0"
+          />
+          <span className="form-check-label small">
+            Участники поездки могут редактировать и удалять
+          </span>
+        </label>
+      ) : (
+        // Без галочки сохраняем прежнее значение флага, иначе update
+        // сбросил бы его (чекбокс в FormData отличим от «не показан»
+        // только этим hidden).
+        defaults?.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />
+      )}
     </>
   );
 }
@@ -80,10 +108,12 @@ export default function PersonalEventCard({
   tripId,
   event,
   canEdit = true,
+  showShareToggle = false,
 }: {
   tripId: string;
   event: PersonalEventData;
   canEdit?: boolean;
+  showShareToggle?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const d = event.startsAt;
@@ -131,6 +161,9 @@ export default function PersonalEventCard({
           <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
             личное
           </span>
+          {event.author && (
+            <span className="small text-secondary fw-normal">{event.author}</span>
+          )}
         </h3>
         <p className="small text-secondary mb-0">
           {hasTime && event.timeValue}
@@ -157,7 +190,9 @@ export default function PersonalEventCard({
               dateKey: event.dateKey,
               timeValue: hasTime ? event.timeValue : "",
               location: event.location,
+              editableByOthers: event.editableByOthers,
             }}
+            showShareToggle={showShareToggle}
           />
           <button type="submit" className="btn btn-primary">
             Сохранить
