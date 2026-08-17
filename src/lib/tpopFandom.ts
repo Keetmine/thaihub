@@ -54,7 +54,14 @@ function infoboxText($: CheerioAPI, infobox: Cheerio<AnyNode>, label: string): s
 
 function infoboxImage($: CheerioAPI, infobox: Cheerio<AnyNode>): string | null {
   const src = infobox.find(".pi-image img").first().attr("src") ?? null;
-  return src ? (src.startsWith("http") ? src : `https:${src}`) : null;
+  if (!src) return null;
+  const abs = src.startsWith("http") ? src : `https:${src}`;
+  // Викия отдаёт …/Имя.webp/revision/latest/scale-to-width-down/268?cb=… —
+  // последний сегмент у ВСЕХ картинок одинаковый («268»), из-за чего
+  // downloadRemoteImage сохранял фото разных людей в один файл (фото
+  // Билкина перезаписало фото Брайта). Базовый URL без /revision/ отдаёт
+  // тот же файл под настоящим именем.
+  return abs.replace(/\/revision\/.*$/, "");
 }
 
 /** A bilingual field ("Pasawee Sriarunotai (พศวีร์ ศรีอรุโณทัย)", or the

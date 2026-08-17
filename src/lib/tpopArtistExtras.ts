@@ -272,7 +272,10 @@ export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopA
   const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
-  const photo = infobox.find(".pi-image img").first().attr("src") ?? null;
+  const photoRaw = infobox.find(".pi-image img").first().attr("src") ?? null;
+  const photo = photoRaw
+    ? (photoRaw.startsWith("http") ? photoRaw : `https:${photoRaw}`).replace(/\/revision\/.*$/, "")
+    : null;
 
   // Краткое описание: вводные абзацы до первого заголовка, а если их
   // нет (агентские страницы часто начинаются сразу с Background) —
@@ -307,7 +310,7 @@ export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopA
 
   return {
     name: pageTitle,
-    photoUrl: photo ? (photo.startsWith("http") ? photo : `https:${photo}`) : null,
+    photoUrl: photo,
     description: introParas.join("\n\n") || null,
     groups: sectionArtistLinks($, "Groups"),
     duos: [...sectionArtistLinks($, "Duos"), ...sectionArtistLinks($, "Duo")],
@@ -378,7 +381,10 @@ export async function fetchTpopConcertPage(pageTitleOrUrl: string): Promise<Tpop
   const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
-  const photo = infobox.find(".pi-image img").first().attr("src") ?? null;
+  const photoRaw2 = infobox.find(".pi-image img").first().attr("src") ?? null;
+  const photo = photoRaw2
+    ? (photoRaw2.startsWith("http") ? photoRaw2 : `https:${photoRaw2}`).replace(/\/revision\/.*$/, "")
+    : null;
 
   const artists = textWithBreaks($, infobox.find('[data-source="artist"] .pi-data-value').first())
     .split(/\n|,|&/)
@@ -393,7 +399,7 @@ export async function fetchTpopConcertPage(pageTitleOrUrl: string): Promise<Tpop
 
   return {
     title: infobox.find(".pi-title").first().text().trim() || pageTitle,
-    posterUrl: photo ? (photo.startsWith("http") ? photo : `https:${photo}`) : null,
+    posterUrl: photo,
     venue,
     artists,
     dates: parseConcertDates(dateText),
