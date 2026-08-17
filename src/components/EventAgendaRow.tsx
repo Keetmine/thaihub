@@ -5,8 +5,9 @@ import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
 import { PinIcon, UserIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
+import LetterAvatar from "@/components/LetterAvatar";
 import GoingButton from "@/components/GoingButton";
-import MskTimeInfo from "@/components/MskTimeInfo";
+import { TzTimeText } from "@/components/MskTimeInfo";
 
 export default function EventAgendaRow({
   event,
@@ -36,20 +37,17 @@ export default function EventAgendaRow({
           <span className="agenda-date">{formatShortDate(event.startsAt)}</span>
         )}
         {event.hasTime !== false && (
-          <>
-            <span className="agenda-time-start">{formatTime(event.startsAt)}</span>
-            {event.endsAt && (
-              <span className="agenda-time-end">–{formatTime(event.endsAt)}</span>
-            )}
-            <MskTimeInfo
-              startsAt={event.startsAt}
-              endsAt={event.endsAt}
-              className="agenda-time-info-stacked"
-            />
-          </>
+          <TzTimeText
+            startsAt={event.startsAt}
+            endsAt={event.endsAt}
+            className="agenda-time-start"
+          />
         )}
       </div>
       <span className="agenda-dash">—</span>
+      <Link href={eventHref(event)} className="flex-shrink-0 d-none d-sm-block" tabIndex={-1}>
+        <LetterAvatar name={event.title} photoUrl={event.posterUrl} size={3.25} rounded={false} />
+      </Link>
       <div className="agenda-body">
         <h3 className="h6 font-display mb-1">
           <Link href={eventHref(event)} className="text-reset text-decoration-none">

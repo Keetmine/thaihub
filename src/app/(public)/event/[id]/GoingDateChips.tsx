@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toggleGoing } from "@/app/(public)/favorites/actions";
 import { formatShortDate } from "@/lib/dates";
+import { CheckIcon, PlusIcon } from "@/components/icons";
 
 /** Переключатели «иду» по датам события: у многодневного концерта можно
  *  выбрать только свои дни — в списки/календарь/план поездки попадают
@@ -36,25 +37,46 @@ export default function GoingDateChips({
     });
   }
 
+  const now = new Date();
+  const allPast = occurrences.every((occ) => occ.startsAt < now);
+
   return (
-    <p className="mb-0 d-flex flex-wrap align-items-center gap-2">
-      <span className="text-secondary">Пойду:</span>
-      {occurrences.map((occ) => {
-        const active = going.has(occ.id);
-        return (
-          <button
-            key={occ.id}
-            type="button"
-            disabled={isPending}
-            onClick={() => toggle(occ.id)}
-            className={`event-chip border-0 ${active ? "event-chip-going" : ""}`}
-            aria-pressed={active}
-          >
-            {active ? "✓ " : "+ "}
-            {formatShortDate(occ.startsAt)}
-          </button>
-        );
-      })}
-    </p>
+    <div className="mb-0">
+      <p className="small text-secondary mb-1">
+        {allPast
+          ? "Были на этом событии? Отметьте даты — они попадут в вашу статистику:"
+          : "Пойдёте? Отметьте свои даты — они попадут в календарь и план поездки:"}
+      </p>
+      <p className="mb-0 d-flex flex-wrap align-items-center gap-2">
+        {occurrences.map((occ) => {
+          const active = going.has(occ.id);
+          const isPast = occ.startsAt < now;
+          return (
+            <button
+              key={occ.id}
+              type="button"
+              disabled={isPending}
+              onClick={() => toggle(occ.id)}
+              className={`btn btn-sm d-inline-flex align-items-center gap-1 ${
+                active ? "btn-primary" : "btn-ghost"
+              }`}
+              aria-pressed={active}
+              title={
+                active
+                  ? isPast
+                    ? "Убрать отметку о посещении"
+                    : "Убрать из моего плана"
+                  : isPast
+                    ? "Отметить, что были в этот день"
+                    : "Пойду в этот день"
+              }
+            >
+              {active ? <CheckIcon /> : <PlusIcon />}
+              {formatShortDate(occ.startsAt)}
+            </button>
+          );
+        })}
+      </p>
+    </div>
   );
 }

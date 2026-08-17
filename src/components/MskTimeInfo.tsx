@@ -32,3 +32,38 @@ export default function MskTimeInfo({
     </span>
   );
 }
+
+/** Вариант для узкой колонки времени в EventAgendaRow: вместо отдельной
+ *  иконки (не влезала и переносилась на свою строку) тултип несёт само
+ *  время — пунктирное подчёркивание как аффорданс. */
+export function TzTimeText({
+  startsAt,
+  endsAt,
+  className,
+}: {
+  startsAt: Date | string;
+  endsAt?: Date | string | null;
+  className?: string;
+}) {
+  const tz = useViewerTimezone();
+  const start = new Date(startsAt);
+  const end = endsAt ? new Date(endsAt) : null;
+  const short = tzShortLabel(tz);
+  const label = end
+    ? `Тайское время. ${short}: ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
+    : `Тайское время. ${short}: ${formatTimeInZone(start, tz)}`;
+  const fmt = (d: Date) =>
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+  return (
+    <span
+      className={className}
+      data-tooltip={label}
+      tabIndex={0}
+      style={{ textDecoration: "underline dotted", textUnderlineOffset: "3px", cursor: "help" }}
+    >
+      {fmt(start)}
+      {end && `–${fmt(end)}`}
+    </span>
+  );
+}

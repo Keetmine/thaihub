@@ -25,13 +25,15 @@ function Section({
   children: React.ReactNode;
 }) {
   if (count === 0) return null;
+  // Нативный details — секции сворачиваются без строчки JS.
   return (
-    <div className="mb-4">
-      <h2 className="section-heading mb-2">
+    <details open className="mb-4 search-section">
+      <summary className="section-heading mb-2 d-inline-flex align-items-center gap-2">
+        <span className="search-section-chevron" aria-hidden>▸</span>
         {title} ({count})
-      </h2>
+      </summary>
       {children}
-    </div>
+    </details>
   );
 }
 
@@ -106,9 +108,14 @@ export default async function SearchPage({
   return (
     <div>
       <span className="eyebrow">Поиск</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
+      <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
         {q || "Поиск"}
       </h1>
+      {q && (
+        <p className="text-secondary mb-5">
+          Вы искали «{q}» — вот что нашлось по каталогу:
+        </p>
+      )}
 
       {!query ? (
         <p className="text-secondary">
@@ -158,15 +165,29 @@ export default async function SearchPage({
           </Section>
 
           <Section title="Сериалы" count={dramas.length}>
-            <div className="d-flex flex-wrap gap-2">
+            {/* Постер-карточки, как ряд сериалов на странице актёра. */}
+            <div className="d-flex flex-wrap gap-3">
               {dramas.map((d) => (
-                <EntityMiniCard
-                  key={d.id}
-                  href={dramaHref(d)}
-                  photoUrl={d.posterUrl}
-                  name={d.title}
-                  round={false}
-                />
+                <Link key={d.id} href={dramaHref(d)} className="text-decoration-none" style={{ width: "8.5rem" }}>
+                  <div
+                    className="surface"
+                    style={{ width: "100%", aspectRatio: "2 / 3", borderRadius: "0.5rem", overflow: "hidden" }}
+                  >
+                    {d.posterUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={d.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div
+                        className="d-flex align-items-center justify-content-center h-100 fw-semibold"
+                        style={{ color: "var(--bs-secondary-color)", opacity: 0.7 }}
+                      >
+                        {d.title.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <span className="d-block small text-white mt-1 text-truncate">{d.title}</span>
+                  {d.year && <span className="d-block small text-secondary">{d.year}</span>}
+                </Link>
               ))}
             </div>
           </Section>

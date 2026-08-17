@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
+import LetterAvatar from "@/components/LetterAvatar";
 import { CalendarIcon, ClockIcon, InfoIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -190,6 +191,16 @@ export default async function EventDetailPage({
               className="surface"
               style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover" }}
             />
+            {event.presaleUrl && (
+              <a
+                href={event.presaleUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary w-100 mt-2 d-inline-flex align-items-center justify-content-center gap-2"
+              >
+                <TicketIcon /> Билеты
+              </a>
+            )}
           </div>
         )}
         <div className={event.posterUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}>
@@ -241,7 +252,9 @@ export default async function EventDetailPage({
                   )}
                 </p>
                 <div className="d-flex flex-wrap gap-2">
-                  {event.presaleUrl && (
+                  {/* Кнопка «Билеты» живёт под постером; без постера —
+                      остаётся здесь, чтобы не потеряться. */}
+                  {event.presaleUrl && !event.posterUrl && (
                     <a
                       href={event.presaleUrl}
                       target="_blank"
@@ -271,14 +284,31 @@ export default async function EventDetailPage({
                   <UsersIcon className="icon-inline" /> Кто выступает
                 </p>
                 <div className="d-flex flex-wrap gap-2">
-                  {event.performers.map(({ performer }) => (
-                    <EntityMiniCard
-                      key={performer.id}
-                      href={performerHref(performer)}
-                      photoUrl={performer.photoUrl}
-                      name={performer.name}
-                    />
-                  ))}
+                  {/* До 8 артистов — крупные карточки; фестивальные
+                      составы в 15–30 имён — компактными пиллами, иначе
+                      блок раздувается на пол-экрана. */}
+                  {event.performers.length <= 8 ? (
+                    event.performers.map(({ performer }) => (
+                      <EntityMiniCard
+                        key={performer.id}
+                        href={performerHref(performer)}
+                        photoUrl={performer.photoUrl}
+                        name={performer.name}
+                      />
+                    ))
+                  ) : (
+                    event.performers.map(({ performer }) => (
+                      <Link
+                        key={performer.id}
+                        href={performerHref(performer)}
+                        className="surface surface-hover text-decoration-none d-inline-flex align-items-center gap-2 py-1 ps-1 pe-3"
+                        style={{ borderRadius: "2rem" }}
+                      >
+                        <LetterAvatar name={performer.name} photoUrl={performer.photoUrl} size={1.75} />
+                        <span className="small text-white">{performer.name}</span>
+                      </Link>
+                    ))
+                  )}
                   {(() => {
                     // Участники выступающих групп — сразу в общий список,
                     // без дублей с напрямую привязанными артистами.

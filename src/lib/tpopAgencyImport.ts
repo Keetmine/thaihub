@@ -185,17 +185,30 @@ async function searchTtm(query: string): Promise<{ url: string; title: string }[
  *  которых удалось найти в каталоге по имени/алиасу. */
 export async function linkEventArtists(eventId: string, artistNames: string[]): Promise<number> {
   let linked = 0;
+  // Группы, уже привязанные к событию, — контекст для разруливания
+  // тёзок: «Tui» из состава LYKN важнее случайного актёра Tui.
+  const linkedBands = await prisma.eventPerformer.findMany({
+    where: { eventId, performer: { type: "BAND" } },
+    select: { performerId: true },
+  });
+  const bandIds = linkedBands.map((b) => b.performerId);
+
   for (const raw of artistNames) {
     const name = raw.replace(/\(.*?\)/g, "").trim();
     if (name.length < 2) continue;
-    const performer = await prisma.performer.findFirst({
+    const candidates = await prisma.performer.findMany({
       where: {
         OR: [
           { name: { equals: name, mode: "insensitive" } },
           { musicAlias: { equals: name, mode: "insensitive" } },
         ],
       },
+      include: { memberOfBands: { select: { bandId: true } } },
     });
+    const performer =
+      candidates.find((c) => c.memberOfBands.some((m) => bandIds.includes(m.bandId))) ??
+      candidates.find((c) => c.sourceUrl) ??
+      candidates[0];
     if (!performer) continue;
     await prisma.eventPerformer.upsert({
       where: { eventId_performerId: { eventId, performerId: performer.id } },
