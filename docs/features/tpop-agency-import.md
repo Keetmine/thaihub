@@ -1,8 +1,13 @@
-# tpop.fandom: импорт агентства целиком
+# tpop.fandom: импорт агентства целиком (и одиночных артистов)
 
 `/admin/imports` → форма «tpop.fandom: импорт агентства» (URL страницы
 вида https://tpop.fandom.com/wiki/RISER_MUSIC) или CLI:
-`npx tsx scripts/import-tpop-agency.ts <url>`. Доступ — через
+`npx tsx scripts/import-tpop-agency.ts <url>`. Рядом — форма
+одиночного импорта артиста/группы (`importTpopArtist`, CLI
+`scripts/import-tpop-artist.ts <url>`, kind `tpop-artist`): тот же
+полный пайплайн для одной страницы, агентство берётся из поля Agency
+самой страницы (текущее — parseCurrentAgencyName), тип группа/соло
+определяется по инфобоксу. Доступ — через
 официальный MediaWiki `api.php` (см. [tpop-band-import.md]
 (tpop-band-import.md)); контент CC BY-SA, на странице исполнителя
 внизу выводится блок «Источники» (сноски References + ссылка на

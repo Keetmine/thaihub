@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { runTpopAgencyImport } from "./actions";
+import { runTpopAgencyImport, runTpopArtistImport } from "./actions";
 import RunningImportsWatcher from "./RunningImportsWatcher";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,7 @@ const KIND_LABELS: Record<string, string> = {
   blscene: "blscene: локации",
   "ttm-event": "ThaiTicketMajor: событие",
   "tpop-agency": "tpop.fandom: агентство",
+  "tpop-artist": "tpop.fandom: артист",
 };
 
 // Куда вести из ленты «последнего спарсенного» — на админ-редактирование.
@@ -97,6 +98,31 @@ export default async function AdminImportsPage() {
             </span>
           </div>
         )}
+      </div>
+
+      <div className="surface p-4 mb-4" style={{ maxWidth: "44rem" }}>
+        <h2 className="section-heading mb-2">tpop.fandom: импорт артиста</h2>
+        <p className="small text-secondary mb-3">
+          Страница артиста или группы (например,
+          https://tpop.fandom.com/wiki/TYTAN): создаст/обновит с полным
+          профилем, дискографией и концертами; агентство возьмётся из поля
+          Agency его страницы.
+        </p>
+        <form action={runTpopArtistImport} className="d-flex gap-2">
+          <input
+            name="url"
+            required
+            placeholder="https://tpop.fandom.com/wiki/…"
+            className="form-control"
+          />
+          <button
+            type="submit"
+            className="btn btn-primary btn-sm flex-shrink-0"
+            disabled={!!runningRun}
+          >
+            {runningRun ? "Импорт идёт…" : "Импортировать"}
+          </button>
+        </form>
       </div>
 
       <RunningImportsWatcher hasRunning={!!runningRun} />

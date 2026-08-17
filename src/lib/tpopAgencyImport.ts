@@ -443,6 +443,46 @@ async function importArtist(
   await importDiscography(ctx, performerId, page);
 }
 
+/** Одиночный импорт артиста/группы по его странице (без контекста
+ *  агентства): тип определяется по инфобоксу, агентство берётся из
+ *  поля Agency самой страницы (текущее — parseCurrentAgencyName). */
+export async function importTpopArtist(
+  pageUrlOrTitle: string,
+  options?: { runId?: string | null; onProgress?: (m: string) => void },
+): Promise<TpopAgencyImportSummary> {
+  const ctx: Ctx = {
+    runId: options?.runId ?? null,
+    log: options?.onProgress ?? (() => {}),
+    summary: {
+      agencyName: "",
+      performersCreated: 0,
+      performersUpdated: 0,
+      albumsTouched: 0,
+      songsCreated: 0,
+      eventsCreated: 0,
+      concertsMatched: 0,
+      concertsNotFound: [],
+    },
+  };
+  const page = parseTpopPageTitle(pageUrlOrTitle);
+
+  // Агентство — из личной страницы (у групп importTpopBand возьмёт Label сам).
+  let agencyId: string | null = null;
+  const member = await fetchTpopMemberPage(page).catch(() => null);
+  if (member?.agency) {
+    const agency = await prisma.agency.upsert({
+      where: { name: member.agency },
+      update: {},
+      create: { name: member.agency },
+    });
+    agencyId = agency.id;
+    ctx.summary.agencyName = agency.name;
+  }
+
+  await importArtist(ctx, { name: page, href: `/wiki/${page.replace(/ /g, "_")}` }, agencyId, agencyId != null);
+  return ctx.summary;
+}
+
 export async function importTpopAgency(
   pageUrlOrTitle: string,
   options?: { runId?: string | null; onProgress?: (m: string) => void; skipFormer?: boolean },
