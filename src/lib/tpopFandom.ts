@@ -24,7 +24,15 @@ const API_BASE = "https://tpop.fandom.com/api.php";
 export function parseTpopPageTitle(input: string): string {
   const trimmed = input.trim();
   const match = trimmed.match(/\/wiki\/([^?#]+)/);
-  return decodeURIComponent(match ? match[1] : trimmed).replace(/_/g, " ");
+  const raw = match ? match[1] : trimmed;
+  // Названия вида «100%» — голый процент не декодируется (URI malformed).
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    decoded = raw;
+  }
+  return decoded.replace(/_/g, " ");
 }
 
 function infoboxValue($: CheerioAPI, infobox: Cheerio<AnyNode>, label: string): Cheerio<AnyNode> | null {
@@ -114,14 +122,19 @@ export async function fetchTpopBandPage(pageTitleOrUrl: string): Promise<TpopBan
   const membersFrom = (label: string): TpopBandMemberLink[] => {
     const value = infoboxValue($, infobox, label);
     if (!value) return [];
+    // Участник — либо синяя ссылка, либо «красная» (страницы нет,
+    // <span class="new">, у Bodyslam-подобных рок-групп весь состав
+    // такой) — без них страница выглядела соло-артистом.
     return value
-      .find("li a")
+      .find("li")
       .toArray()
       .map((el) => {
-        const $a = $(el);
-        return { name: $a.text().trim(), href: $a.attr("href") ?? "" };
+        const $li = $(el);
+        const $a = $li.find("a").first();
+        if ($a.length) return { name: $a.text().trim(), href: $a.attr("href") ?? "" };
+        return { name: $li.text().trim(), href: "" };
       })
-      .filter((m) => m.name && m.href);
+      .filter((m) => m.name);
   };
   const current = membersFrom("Current");
   const members = current.length > 0 ? current : membersFrom("Former");

@@ -13,11 +13,13 @@ async function main() {
     console.error("Usage: npx tsx scripts/import-tpop-agency.ts <tpop-agency-url>");
     process.exit(1);
   }
+  const skipFormer = process.argv.includes("--skip-former");
   const run = await prisma.importRun.create({ data: { kind: "tpop-agency" } });
   try {
     const summary = await importTpopAgency(url, {
       runId: run.id,
       onProgress: (m) => console.log(m),
+      skipFormer,
     });
     await prisma.importRun.update({
       where: { id: run.id },

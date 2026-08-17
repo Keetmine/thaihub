@@ -445,7 +445,7 @@ async function importArtist(
 
 export async function importTpopAgency(
   pageUrlOrTitle: string,
-  options?: { runId?: string | null; onProgress?: (m: string) => void },
+  options?: { runId?: string | null; onProgress?: (m: string) => void; skipFormer?: boolean },
 ): Promise<TpopAgencyImportSummary> {
   const ctx: Ctx = {
     runId: options?.runId ?? null,
@@ -498,9 +498,11 @@ export async function importTpopAgency(
     await importArtist(ctx, solo, agency.id, true);
   }
   // Бывшие артисты: страницы импортируем/обогащаем, но текущим агентством
-  // не привязываем.
-  for (const former of pageData.former) {
-    await importArtist(ctx, former, agency.id, false);
+  // не привязываем; skipFormer — не трогаем вовсе.
+  if (!options?.skipFormer) {
+    for (const former of pageData.former) {
+      await importArtist(ctx, former, agency.id, false);
+    }
   }
 
   return ctx.summary;

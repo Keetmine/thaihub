@@ -16,6 +16,26 @@ async function findOrCreateBandMemberPerformer(
   memberLink: { name: string; href: string },
   fallbackAgencyId: string | null,
 ): Promise<{ performerId: string; created: boolean }> {
+  // «Красная» ссылка — своей страницы у участника нет: ищем/создаём по
+  // имени из списка, без фетча.
+  if (!memberLink.href) {
+    const existingByName = await prisma.performer.findFirst({
+      where: { name: { equals: memberLink.name, mode: "insensitive" } },
+    });
+    if (existingByName) {
+      if (fallbackAgencyId) await addPerformerAgency(existingByName.id, fallbackAgencyId);
+      return { performerId: existingByName.id, created: false };
+    }
+    const created = await prisma.performer.create({
+      data: {
+        name: memberLink.name,
+        type: "SOLO",
+        ...(fallbackAgencyId ? { agencies: { create: { agencyId: fallbackAgencyId } } } : {}),
+      },
+    });
+    return { performerId: created.id, created: true };
+  }
+
   const member = await fetchTpopMemberPage(memberLink.href);
 
   const existing = await prisma.performer.findFirst({

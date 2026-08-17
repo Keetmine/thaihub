@@ -276,7 +276,7 @@ export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopA
     name: pageTitle,
     photoUrl: photo ? (photo.startsWith("http") ? photo : `https:${photo}`) : null,
     groups: sectionArtistLinks($, "Groups"),
-    duos: sectionArtistLinks($, "Duos"),
+    duos: [...sectionArtistLinks($, "Duos"), ...sectionArtistLinks($, "Duo")],
     soloists: sectionArtistLinks($, "Soloists"),
     former: sectionArtistLinks($, "Former artists"),
     references: parseReferences($),
