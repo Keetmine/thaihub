@@ -237,6 +237,8 @@ export async function fetchTpopPageStreamingLink(pageTitleOrUrl: string): Promis
 export type TpopAgencyPage = {
   name: string;
   photoUrl: string | null;
+  /** Первые абзацы статьи (до первого заголовка) — для Agency.description. */
+  description: string | null;
   groups: { name: string; href: string }[];
   duos: { name: string; href: string }[];
   soloists: { name: string; href: string }[];
@@ -272,9 +274,41 @@ export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopA
   const infobox = $(".portable-infobox").first();
   const photo = infobox.find(".pi-image img").first().attr("src") ?? null;
 
+  // Краткое описание: вводные абзацы до первого заголовка, а если их
+  // нет (агентские страницы часто начинаются сразу с Background) —
+  // первые абзацы секций Background/History.
+  const introParas: string[] = [];
+  $(".mw-parser-output").first().children().each((_, el) => {
+    const tag = el.tagName ?? "";
+    const cls = $(el).attr("class") ?? "";
+    if (tag === "h2" || cls.includes("mw-heading")) return false;
+    if (tag === "p") {
+      const text = $(el).text().replace(/\[\d+\]/g, "").replace(/\s+/g, " ").trim();
+      if (text) introParas.push(text);
+    }
+    return undefined;
+  });
+  if (introParas.length === 0) {
+    for (const sec of ["Background", "History"]) {
+      const heading = headingByText($, sec);
+      if (!heading.length) continue;
+      for (const el of sectionElements($, heading)) {
+        const collect = (node: typeof el) => {
+          const text = node.text().replace(/\[\d+\]/g, "").replace(/\s+/g, " ").trim();
+          if (text) introParas.push(text);
+        };
+        if (el.is("p")) collect(el);
+        else el.find("p").each((_, pEl) => collect($(pEl)));
+        if (introParas.length >= 2) break;
+      }
+      if (introParas.length > 0) break;
+    }
+  }
+
   return {
     name: pageTitle,
     photoUrl: photo ? (photo.startsWith("http") ? photo : `https:${photo}`) : null,
+    description: introParas.join("\n\n") || null,
     groups: sectionArtistLinks($, "Groups"),
     duos: [...sectionArtistLinks($, "Duos"), ...sectionArtistLinks($, "Duo")],
     soloists: sectionArtistLinks($, "Soloists"),

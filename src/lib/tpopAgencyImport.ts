@@ -42,6 +42,23 @@ type Ctx = {
   summary: TpopAgencyImportSummary;
 };
 
+/** Дозаполняет пустые поля агентства (лого, описание) с его страницы на
+ *  tpop.fandom, если она существует. Занятые поля не трогает. */
+export async function enrichAgencyFromTpop(agencyId: string): Promise<boolean> {
+  const agency = await prisma.agency.findUnique({ where: { id: agencyId } });
+  if (!agency || (agency.logoUrl && agency.description)) return false;
+  const page = await fetchTpopAgencyPage(agency.name).catch(() => null);
+  if (!page) return false;
+  const data: Record<string, unknown> = {};
+  if (!agency.logoUrl && page.photoUrl) {
+    data.logoUrl = await downloadRemoteImage(page.photoUrl, "agencies");
+  }
+  if (!agency.description && page.description) data.description = page.description;
+  if (Object.keys(data).length === 0) return false;
+  await prisma.agency.update({ where: { id: agencyId }, data });
+  return true;
+}
+
 async function recordItem(
   ctx: Ctx,
   entityType: string,
@@ -417,6 +434,8 @@ async function importArtist(
       if (!existing.photoUrl && member?.photoUrl) {
         data.photoUrl = await downloadRemoteImage(member.photoUrl, "performers");
       }
+      if (!existing.birthDate && member?.birthDate) data.birthDate = member.birthDate;
+      if (!existing.placeOfBirth && member?.birthPlace) data.placeOfBirth = member.birthPlace;
       if (Object.keys(data).length > 0) {
         await prisma.performer.update({ where: { id: existing.id }, data });
       }
@@ -429,6 +448,8 @@ async function importArtist(
           name: displayName,
           type: "SOLO",
           realName: member?.birthName ?? null,
+          birthDate: member?.birthDate ?? null,
+          placeOfBirth: member?.birthPlace ?? null,
           photoUrl: member?.photoUrl
             ? await downloadRemoteImage(member.photoUrl, "performers")
             : null,
@@ -480,6 +501,10 @@ export async function importTpopArtist(
     });
     agencyId = agency.id;
     ctx.summary.agencyName = agency.name;
+    // описание/лого агентства с его собственной tpop-страницы (если есть)
+    if (await enrichAgencyFromTpop(agency.id)) {
+      ctx.log(`  [агентство] ${agency.name}: дозаполнено с tpop`);
+    }
   }
 
   await importArtist(ctx, { name: page, href: `/wiki/${page.replace(/ /g, "_")}` }, agencyId, agencyId != null);
@@ -533,12 +558,19 @@ export async function importTpopAgency(
     agency = await prisma.agency.create({
       data: {
         name: pageData.name,
+        description: pageData.description,
         logoUrl: pageData.photoUrl
           ? await downloadRemoteImage(pageData.photoUrl, "agencies")
           : null,
       },
     });
     await recordItem(ctx, "agency", agency.id, "created", agency.name);
+  }
+  if (!agency.description && pageData.description) {
+    agency = await prisma.agency.update({
+      where: { id: agency.id },
+      data: { description: pageData.description },
+    });
   }
 
   const groupFilter = options?.onlyGroups?.map((n) => n.trim().toLowerCase());
