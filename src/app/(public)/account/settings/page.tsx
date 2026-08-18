@@ -7,6 +7,15 @@ import { updateProfile, updatePrivacy, getOrCreateIcsToken } from "../actions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
 import SettingsTabs from "./SettingsTabs";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Настройки",
+  description: "Настройки аккаунта и приватности.",
+  path: "/account/settings",
+  noIndex: true,
+});
+
 
 export const dynamic = "force-dynamic";
 

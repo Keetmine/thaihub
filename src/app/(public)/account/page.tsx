@@ -8,6 +8,15 @@ import AccountTabs, { type AccountTab } from "./AccountTabs";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { isPremiumActive } from "@/lib/premium";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Профиль",
+  description: "Ваш профиль на MyBLHub.",
+  path: "/account",
+  noIndex: true,
+});
+
 
 export const dynamic = "force-dynamic";
 

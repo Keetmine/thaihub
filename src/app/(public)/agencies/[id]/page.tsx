@@ -11,6 +11,25 @@ import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const agency = await prisma.agency.findFirst({
+    where: slugOrIdWhere(id),
+    select: { name: true, description: true, logoUrl: true, slug: true },
+  });
+  if (!agency) return pageMetadata({ title: "Агентство", description: "Агентство не найдено." });
+  return pageMetadata({
+    title: agency.name,
+    description:
+      agency.description?.slice(0, 160) ??
+      `${agency.name}: артисты агентства, их сериалы и события на MyBLHub.`,
+    path: `/agencies/${agency.slug ?? id}`,
+    image: agency.logoUrl,
+  });
+}
+
 
 export const dynamic = "force-dynamic";
 

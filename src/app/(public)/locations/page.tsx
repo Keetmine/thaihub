@@ -7,6 +7,15 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { PinIcon } from "@/components/icons";
 import { dramaHref } from "@/lib/dramaSlug";
 import { locationHref } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Локации съёмок",
+  description:
+    "Места съёмок тайских BL-сериалов: адреса, карта и сериалы, которые там снимали.",
+  path: "/locations",
+});
+
 
 export const dynamic = "force-dynamic";
 

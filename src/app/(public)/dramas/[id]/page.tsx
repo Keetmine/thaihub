@@ -1,4 +1,4 @@
-import { JsonLd, tvSeriesJsonLd } from "@/lib/seo";
+import { pageMetadata, JsonLd, tvSeriesJsonLd } from "@/lib/seo";
 import ReviewsAndComments from "@/components/ReviewsAndComments";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
@@ -37,17 +37,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     where: slugOrIdWhere(rawId),
     select: { title: true, year: true, synopsis: true, posterUrl: true },
   });
-  if (!drama) return { title: "Сериал — MyBLHub" };
-  return {
-    title: `${drama.title}${drama.year ? ` (${drama.year})` : ""} — MyBLHub`,
+  if (!drama) return pageMetadata({ title: "Сериал", description: "Сериал не найден." });
+  return pageMetadata({
+    title: `${drama.title}${drama.year ? ` (${drama.year})` : ""}`,
     description:
       drama.synopsis?.slice(0, 160) ??
-      `${drama.title}: каст, локации съёмок, события и отзывы на MyBLHub.`,
-    openGraph: {
-      title: drama.title,
-      ...(drama.posterUrl ? { images: [drama.posterUrl] } : {}),
-    },
-  };
+      `${drama.title}: актёрский состав, локации съёмок, события и отзывы на MyBLHub.`,
+    path: `/dramas/${rawId}`,
+    image: drama.posterUrl,
+    type: "article",
+  });
 }
 
 export default async function DramaDetailPage({

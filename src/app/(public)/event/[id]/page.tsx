@@ -21,6 +21,35 @@ import GoingDateChips from "./GoingDateChips";
 import TicketSection, { type TicketRow } from "./TicketSection";
 import { getCoTravelerIds } from "@/lib/coTravelers";
 import { isPremiumActive } from "@/lib/premium";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const event = await prisma.event.findFirst({
+    where: slugOrIdWhere(id),
+    select: {
+      title: true,
+      venue: true,
+      description: true,
+      posterUrl: true,
+      slug: true,
+      occurrences: { orderBy: { startsAt: "asc" }, take: 1, select: { startsAt: true } },
+    },
+  });
+  if (!event) return pageMetadata({ title: "Событие", description: "Событие не найдено." });
+  const date = event.occurrences[0]?.startsAt;
+  const when = date ? formatHumanDate(date) : null;
+  return pageMetadata({
+    title: event.title,
+    description:
+      event.description?.slice(0, 160) ??
+      `${event.title}${when ? `, ${when}` : ""} — ${event.venue}. Билеты, состав и детали события.`,
+    path: `/event/${event.slug ?? id}`,
+    image: event.posterUrl,
+    type: "article",
+  });
+}
+
 
 export const dynamic = "force-dynamic";
 

@@ -2,6 +2,15 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import { novelHref } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Новеллы",
+  description:
+    "Новеллы, по которым сняты тайские BL-сериалы: авторы, описания и экранизации.",
+  path: "/novels",
+});
+
 
 export const dynamic = "force-dynamic";
 

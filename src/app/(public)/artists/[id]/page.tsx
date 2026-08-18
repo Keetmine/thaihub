@@ -1,4 +1,4 @@
-import { JsonLd, personJsonLd } from "@/lib/seo";
+import { JsonLd, pageMetadata, personJsonLd } from "@/lib/seo";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -35,17 +35,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     where: slugOrIdWhere(rawId),
     select: { name: true, realName: true, bio: true, photoUrl: true },
   });
-  if (!performer) return { title: "Исполнитель — MyBLHub" };
-  return {
-    title: `${performer.name}${performer.realName ? ` (${performer.realName})` : ""} — MyBLHub`,
+  if (!performer) return pageMetadata({ title: "Исполнитель", description: "Профиль не найден." });
+  return pageMetadata({
+    title: `${performer.name}${performer.realName ? ` (${performer.realName})` : ""}`,
     description:
       performer.bio?.slice(0, 160) ??
-      `${performer.name}: профиль, сериалы, события, дискография на MyBLHub.`,
-    openGraph: {
-      title: performer.name,
-      ...(performer.photoUrl ? { images: [performer.photoUrl] } : {}),
-    },
-  };
+      `${performer.name}: профиль, сериалы, события и дискография на MyBLHub.`,
+    path: `/artists/${rawId}`,
+    image: performer.photoUrl,
+    type: "article",
+  });
 }
 
 export default async function PerformerPage({

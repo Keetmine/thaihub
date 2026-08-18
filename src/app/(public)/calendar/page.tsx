@@ -15,6 +15,15 @@ import MonthYearJump from "./MonthYearJump";
 import { isPremiumActive } from "@/lib/premium";
 import LetterAvatar from "@/components/LetterAvatar";
 import { performerHref } from "@/lib/performerSlug";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Календарь событий",
+  description:
+    "Календарь концертов и фанмитов тайских BL-актёров, включая дни рождения.",
+  path: "/calendar",
+});
+
 
 export default async function CalendarPage({
   searchParams,

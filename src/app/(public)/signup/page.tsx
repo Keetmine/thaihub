@@ -2,6 +2,15 @@ import Link from "next/link";
 import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
 import { signup } from "./actions";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Регистрация",
+  description: "Регистрация в MyBLHub.",
+  path: "/signup",
+  noIndex: true,
+});
+
 
 export default async function SignupPage({
   searchParams,

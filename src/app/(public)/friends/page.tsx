@@ -7,6 +7,15 @@ import FriendActionButton from "@/components/FriendActionButton";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
 import { sendFriendRequest, acceptFriendRequest, removeFriendship } from "./actions";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Друзья",
+  description: "Ваши друзья на MyBLHub.",
+  path: "/friends",
+  noIndex: true,
+});
+
 
 export const dynamic = "force-dynamic";
 

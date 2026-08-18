@@ -12,6 +12,15 @@ import { agencyHref } from "@/lib/slugHelpers";
 import { performerNameWhere, performerRealNameParen } from "@/lib/searchWhere";
 import LazyList from "@/components/LazyList";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Актёры и группы",
+  description:
+    "Каталог тайских BL-актёров и групп: профили, сериалы, концерты и фанмиты, дискография.",
+  path: "/artists",
+});
+
 
 export const dynamic = "force-dynamic";
 

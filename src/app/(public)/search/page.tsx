@@ -12,6 +12,15 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
 import { agencyHref, locationHref } from "@/lib/slugHelpers";
 import { dramaTitleWhere, performerNameWhere } from "@/lib/searchWhere";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Поиск",
+  description:
+    "Поиск по актёрам, сериалам, новеллам, событиям и локациям MyBLHub.",
+  path: "/search",
+});
+
 
 export const dynamic = "force-dynamic";
 

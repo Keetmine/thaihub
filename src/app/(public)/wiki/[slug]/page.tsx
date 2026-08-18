@@ -2,6 +2,25 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BackLink from "@/components/BackLink";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = await prisma.wikiArticle.findFirst({
+    where: { ...slugOrIdWhere(slug), published: true },
+    select: { title: true, content: true, slug: true },
+  });
+  if (!article) return pageMetadata({ title: "Статья", description: "Статья не найдена." });
+  // Из HTML-содержимого выжимаем текст на описание.
+  const text = article.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return pageMetadata({
+    title: article.title,
+    description: text.slice(0, 160) || `${article.title} — гид MyBLHub.`,
+    path: `/wiki/${article.slug ?? slug}`,
+    type: "article",
+  });
+}
+
 
 export const dynamic = "force-dynamic";
 

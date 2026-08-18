@@ -35,6 +35,7 @@ something changes, edit the doc in place rather than appending a note.
   - [place-lists.md](features/place-lists.md) — пользовательские списки локаций + привязка к поездкам
   - [trips.md](features/trips.md) — user trips: a date range showing every event inside it
   - [telegram-notifications.md](features/telegram-notifications.md) — bot reminders for upcoming events
+  - [seo.md](features/seo.md) — заголовки, превью ссылок в мессенджерах, robots и sitemap
   - [search.md](features/search.md) — cross-entity search
   - [duplicates.md](features/duplicates.md) — duplicate-name warnings + the admin merge tool
   - [admin-notifications.md](features/admin-notifications.md) — бейджи очередей + уведомления админам в Telegram

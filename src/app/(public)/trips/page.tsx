@@ -11,6 +11,15 @@ import { CalendarIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { tripHref } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Поездки",
+  description: "Ваши поездки и совместные планы.",
+  path: "/trips",
+  noIndex: true,
+});
+
 
 export const dynamic = "force-dynamic";
 

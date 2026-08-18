@@ -6,6 +6,26 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { UserIcon } from "@/components/icons";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const novel = await prisma.novel.findFirst({
+    where: slugOrIdWhere(id),
+    select: { title: true, description: true, coverUrl: true, author: true, slug: true },
+  });
+  if (!novel) return pageMetadata({ title: "Новелла", description: "Новелла не найдена." });
+  return pageMetadata({
+    title: novel.title,
+    description:
+      novel.description?.slice(0, 160) ??
+      `${novel.title}${novel.author ? ` — ${novel.author}` : ""}: описание новеллы и её экранизации.`,
+    path: `/novels/${novel.slug ?? id}`,
+    image: novel.coverUrl,
+    type: "article",
+  });
+}
+
 
 export const dynamic = "force-dynamic";
 

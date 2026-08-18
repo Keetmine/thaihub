@@ -4,6 +4,15 @@ import Logo from "@/components/Logo";
 import { login } from "./actions";
 import { telegramBotUsername } from "@/lib/telegram";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Вход",
+  description: "Вход в MyBLHub.",
+  path: "/login",
+  noIndex: true,
+});
+
 
 export default async function LoginPage({
   searchParams,

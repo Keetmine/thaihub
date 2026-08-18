@@ -5,6 +5,15 @@ import { getCurrentUser } from "@/lib/userAuth";
 import CreateListButton from "./CreateListButton";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { listHref } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Списки мест",
+  description: "Ваши списки мест в Таиланде.",
+  path: "/lists",
+  noIndex: true,
+});
+
 
 export const dynamic = "force-dynamic";
 

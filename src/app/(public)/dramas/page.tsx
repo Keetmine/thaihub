@@ -10,6 +10,15 @@ import type { DramaWatchStatusValue } from "../favorites/actions";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleWhere } from "@/lib/searchWhere";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Сериалы",
+  description:
+    "Тайские BL-сериалы: описания, актёрский состав, годы выхода и места съёмок.",
+  path: "/dramas",
+});
+
 
 export const dynamic = "force-dynamic";
 

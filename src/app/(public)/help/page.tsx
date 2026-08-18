@@ -1,6 +1,15 @@
 import Link from "next/link";
 import FeedbackForm from "@/components/FeedbackForm";
 import { getCurrentUser } from "@/lib/userAuth";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Помощь",
+  description:
+    "Как пользоваться MyBLHub и как написать нам, если чего-то не хватает.",
+  path: "/help",
+});
+
 
 export default async function HelpPage({
   searchParams,

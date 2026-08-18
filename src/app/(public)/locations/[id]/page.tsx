@@ -13,6 +13,25 @@ import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const location = await prisma.location.findFirst({
+    where: slugOrIdWhere(id),
+    select: { name: true, description: true, photoUrl: true, slug: true },
+  });
+  if (!location) return pageMetadata({ title: "Локация", description: "Локация не найдена." });
+  return pageMetadata({
+    title: location.name,
+    description:
+      location.description?.slice(0, 160) ??
+      `${location.name}: место съёмок тайских BL-сериалов — как добраться и что здесь снимали.`,
+    path: `/locations/${location.slug ?? id}`,
+    image: location.photoUrl,
+  });
+}
+
 
 export const dynamic = "force-dynamic";
 
