@@ -1,5 +1,6 @@
 import Link from "next/link";
 import QuickSearch from "@/components/admin/QuickSearch";
+import QuickSearchButton from "@/components/admin/QuickSearchButton";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
@@ -125,6 +126,8 @@ export default async function ProtectedAdminLayout({
           <span className="admin-badge badge rounded-pill fw-semibold">{isAdmin ? "ADMIN" : "MANAGER"}</span>
         </Link>
 
+        <QuickSearchButton />
+
         <div className="flex-fill">
           {sections.map((section, i) => (
             <div key={i} className={i > 0 ? "mt-3" : undefined}>
@@ -164,6 +167,7 @@ export default async function ProtectedAdminLayout({
               <Logo />
               <span className="admin-badge badge rounded-pill fw-semibold">{isAdmin ? "ADMIN" : "MANAGER"}</span>
             </Link>
+            <QuickSearchButton compact />
             <MobileMenu>
               {sections.flatMap((s) => s.items).map((item) => (
                 <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { quickSearchAdmin, type QuickHit } from "@/app/admin/(protected)/quickSearchActions";
+import { QUICK_SEARCH_EVENT } from "./QuickSearchButton";
 
 /** Быстрый переход к любой записи каталога: Cmd/Ctrl+K из любого места
  *  админки. Раньше, чтобы поправить артиста, надо было идти в раздел,
@@ -26,8 +27,15 @@ export default function QuickSearch() {
       }
       if (e.key === "Escape") closeRef.current();
     }
+    // Кнопка «Поиск» в сайдбаре открывает ту же палитру — про хоткей
+    // знают не все.
+    const onOpenRequest = () => setOpen(true);
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    window.addEventListener(QUICK_SEARCH_EVENT, onOpenRequest);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener(QUICK_SEARCH_EVENT, onOpenRequest);
+    };
   }, []);
 
   // Ref на close, чтобы глобальный keydown-слушатель всегда звал
