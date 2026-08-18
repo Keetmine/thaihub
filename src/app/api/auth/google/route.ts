@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "crypto";
 
-import { googleRedirectUri } from "@/lib/googleOauth";
+import { googleRedirectUri, publicOrigin } from "@/lib/googleOauth";
 
 // Начало входа через Google (OAuth 2.0 authorization code flow, без
 // сторонних библиотек): редиректим на согласие Google со state-кукой
@@ -12,7 +12,7 @@ import { googleRedirectUri } from "@/lib/googleOauth";
 export async function GET(request: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
-    return NextResponse.redirect(new URL("/login?error=google", request.url));
+    return NextResponse.redirect(new URL("/login?error=google", publicOrigin(request.nextUrl.origin)));
   }
 
   const state = randomBytes(16).toString("hex");

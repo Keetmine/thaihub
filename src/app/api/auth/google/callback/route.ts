@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createUserSession } from "@/lib/userAuth";
-import { googleRedirectUri } from "@/lib/googleOauth";
+import { googleRedirectUri, publicOrigin } from "@/lib/googleOauth";
 
 // Callback входа через Google: сверяем state, меняем code на токены
 // напрямую у Google и берём профиль из id_token. Подпись JWT не
@@ -19,7 +19,7 @@ type GoogleIdToken = {
 };
 
 function fail(request: NextRequest): NextResponse {
-  return NextResponse.redirect(new URL("/login?error=google", request.url));
+  return NextResponse.redirect(new URL("/login?error=google", publicOrigin(request.nextUrl.origin)));
 }
 
 export async function GET(request: NextRequest) {
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
   }
 
   await createUserSession(user.id);
-  const res = NextResponse.redirect(new URL("/account", request.url));
+  const res = NextResponse.redirect(new URL("/account", publicOrigin(request.nextUrl.origin)));
   res.cookies.delete("google_oauth_state");
   return res;
 }

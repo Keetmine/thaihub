@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createUserSession } from "@/lib/userAuth";
 import { verifyTelegramAuth } from "@/lib/telegram";
+import { publicOrigin } from "@/lib/googleOauth";
 
 // Колбэк Telegram Login Widget (data-auth-url): виджет редиректит сюда
 // GET-запросом с профилем и подписью в query-параметрах. Проверяем
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const payload = verifyTelegramAuth(url.searchParams);
   if (!payload) {
-    return NextResponse.redirect(new URL("/login?error=telegram", request.url));
+    return NextResponse.redirect(new URL("/login?error=telegram", publicOrigin(url.origin)));
   }
 
   const name =
@@ -41,5 +42,5 @@ export async function GET(request: Request) {
       });
 
   await createUserSession(user.id);
-  return NextResponse.redirect(new URL("/", request.url));
+  return NextResponse.redirect(new URL("/", publicOrigin(url.origin)));
 }
