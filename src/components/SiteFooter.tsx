@@ -44,6 +44,7 @@ export default function SiteFooter() {
               <Link href="/help#feedback" className={link}>Написать нам</Link>
               <Link href="/wiki" className={link}>Вики</Link>
               <Link href="/about" className={link}>О нас</Link>
+              <Link href="/terms" className={link}>Условия</Link>
             </div>
           </div>
         </div>

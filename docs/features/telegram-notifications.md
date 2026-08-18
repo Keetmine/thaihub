@@ -64,3 +64,16 @@ The paywall (`PremiumUpsell` → `BuyPremiumButton` →
 - `src/lib/telegramNotifications.ts` — all reminder sweeps + friend
   notifications.
 - `src/instrumentation.ts` — the timer.
+
+## Команды бота
+
+`/start`, `/terms`, `/support` — обрабатываются в
+`src/app/api/telegram/webhook/route.ts`, список для кнопки «Меню»
+регистрируется скриптом `scripts/setup-telegram-commands.ts` (разовый
+запуск, как и вебхук).
+
+`/terms` и `/support` обязательны для ботов, принимающих Telegram Stars
+(Live Checklist в core.telegram.org/bots/payments-stars). Оттуда же ещё
+одно требование, которое кодом не закрыть: **на аккаунте-владельце бота
+должна быть включена двухэтапная аутентификация** — без неё оплата
+падает с `PROVIDER_ACCOUNT_INVALID`. Условия лежат на `/terms`.

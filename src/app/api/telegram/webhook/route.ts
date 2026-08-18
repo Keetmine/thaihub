@@ -5,20 +5,45 @@ import { extendPremium } from "@/lib/premium";
 import { notifyAdmins } from "@/lib/adminNotify";
 
 // Вебхук Telegram-бота — регистрируется скриптом
-// scripts/setup-telegram-webhook.ts (setWebhook с secret_token). Пока
-// обрабатывает только оплату подписки Stars: pre_checkout_query
-// подтверждаем, successful_payment зачисляем по payload (наш userId,
-// заложен в инвойс createPremiumInvoiceLink).
+// scripts/setup-telegram-webhook.ts (setWebhook с secret_token).
+// Обрабатывает оплату подписки Stars (pre_checkout_query подтверждаем,
+// successful_payment зачисляем по payload — это наш userId, заложенный
+// в инвойс createPremiumInvoiceLink) и команды /start, /terms,
+// /support: последние две обязательны для ботов, принимающих Stars
+// (Live Checklist в core.telegram.org/bots/payments-stars).
 type TelegramUpdate = {
   pre_checkout_query?: { id: string; invoice_payload: string };
   message?: {
+    text?: string;
     from?: { id: number };
+    chat?: { id: number };
     successful_payment?: {
       invoice_payload: string;
       total_amount: number;
       telegram_payment_charge_id: string;
     };
   };
+};
+
+const APP_URL = process.env.APP_URL ?? "https://myblhub.com";
+
+/** Ответы на команды. Бот молчал на любой текст — для платёжного бота
+ *  это прямое нарушение требований Telegram, да и человеку непонятно. */
+const COMMAND_REPLIES: Record<string, string> = {
+  "/start":
+    `Привет! Это бот <b>MyBLHub</b> — трекера концертов и фанмитов тайских BL-актёров.\n\n` +
+    `Я присылаю напоминания о событиях из избранного, сигналы о старте продаж билетов и новости друзей.\n\n` +
+    `Сайт: ${APP_URL}\n` +
+    `Команды: /terms — условия, /support — поддержка`,
+  "/terms":
+    `<b>Условия использования MyBLHub</b>\n\n` +
+    `Подписка открывает афишу событий, календарь, поездки и уведомления на 30 дней с момента оплаты.\n\n` +
+    `Оплата разовая, автопродления нет — подписка просто заканчивается.\n\n` +
+    `Возврат: напишите нам в течение 14 дней, если сервис не заработал как обещано, — вернём звёзды.\n\n` +
+    `Полный текст: ${APP_URL}/terms`,
+  "/support":
+    `Нужна помощь? Напишите нам: ${APP_URL}/help\n\n` +
+    `Опишите, что случилось, — отвечаем в течение пары дней.`,
 };
 
 export async function POST(request: Request) {
@@ -35,6 +60,14 @@ export async function POST(request: Request) {
     const { id, invoice_payload } = update.pre_checkout_query;
     const user = await prisma.user.findUnique({ where: { id: invoice_payload } });
     await answerPreCheckoutQuery(id, !!user, user ? undefined : "Аккаунт не найден");
+    return NextResponse.json({ ok: true });
+  }
+
+  // Команды: отвечаем и выходим — оплата этим же апдейтом не приходит.
+  const text = update.message?.text?.trim().split(/\s+/)[0].toLowerCase();
+  const chatId = update.message?.chat?.id ?? update.message?.from?.id;
+  if (text && chatId && COMMAND_REPLIES[text]) {
+    await sendTelegramMessage(String(chatId), COMMAND_REPLIES[text]).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 
