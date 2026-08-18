@@ -3,6 +3,7 @@ import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
 import { login } from "./actions";
 import { telegramBotUsername } from "@/lib/telegram";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
 
 export default async function LoginPage({
   searchParams,
@@ -70,18 +71,7 @@ export default async function LoginPage({
         {botUsername && (
           <div className="text-center mb-3">
             <p className="small text-secondary mb-2">или</p>
-            {/* Официальный Telegram Login Widget: после подтверждения
-                Telegram редиректит на data-auth-url с подписанным
-                профилем (проверяется в /api/auth/telegram). Работает
-                только с домена, привязанного к боту через /setdomain. */}
-            <script
-              async
-              src="https://telegram.org/js/telegram-widget.js?22"
-              data-telegram-login={botUsername}
-              data-size="large"
-              data-auth-url="/api/auth/telegram"
-              data-request-access="write"
-            />
+            <TelegramLoginButton botUsername={botUsername} />
           </div>
         )}
         <p className="small text-secondary text-center mb-0">
