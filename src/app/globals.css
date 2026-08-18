@@ -2229,3 +2229,34 @@ svg[aria-hidden="true"] {
     radial-gradient(38rem 12rem at 0% 0%, rgba(var(--accent-rgb), 0.14), transparent 70%),
     rgba(255, 255, 255, 0.025);
 }
+
+/* ---------- Воздух между секциями ---------- */
+/* Заголовки секций разделяют крупные блоки — без отступа сверху списки
+   «слипались» друг с другом (список песен и карточка наград и т.п.).
+   Первый заголовок в своём контейнере (в т.ч. внутри .surface-карточки)
+   отступ не получает. */
+.section-heading {
+  margin-top: 2.25rem;
+}
+
+.section-heading:first-child,
+.surface > .section-heading:first-child,
+.tab-bar + .section-heading,
+.tab-bar-row + .section-heading {
+  margin-top: 0;
+}
+
+/* Внутри карточек-блоков подзаголовки разделяются мягче. */
+.surface .section-heading {
+  margin-top: 1.5rem;
+}
+
+.surface .section-heading:first-child {
+  margin-top: 0;
+}
+
+/* Внутренние списки: последняя строка не липнет к нижней кромке. */
+.scroll-list,
+.scroll-list-lg {
+  padding-bottom: 0.35rem;
+}

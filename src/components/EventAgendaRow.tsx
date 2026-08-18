@@ -15,6 +15,7 @@ export default function EventAgendaRow({
   isGoing = false,
   friendsGoing = [],
   showDate = false,
+  extraDates = 0,
 }: {
   event: EventWithPerformers;
   isFavorited?: boolean;
@@ -25,6 +26,9 @@ export default function EventAgendaRow({
   // list events without that heading (performer/drama/location/search)
   // need the row itself to carry the date.
   showDate?: boolean;
+  /** Сколько ещё дат у события помимо показанной («+2 даты») — для
+   *  списков, где событие выводится одной строкой (избранное). */
+  extraDates?: number;
 }) {
   return (
     <div className="agenda-row">
@@ -42,6 +46,11 @@ export default function EventAgendaRow({
             endsAt={event.endsAt}
             className="agenda-time-start"
           />
+        )}
+        {extraDates > 0 && (
+          <span className="agenda-date small text-secondary">
+            +{extraDates} {extraDates === 1 ? "дата" : extraDates < 5 ? "даты" : "дат"}
+          </span>
         )}
       </div>
       <span className="agenda-dash">—</span>

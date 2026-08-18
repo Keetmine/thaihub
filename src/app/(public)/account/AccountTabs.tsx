@@ -4,32 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { eventHref } from "@/lib/eventSlug";
 import { logout } from "../login/actions";
-import FavoriteButton from "@/components/FavoriteButton";
-import MskTimeInfo from "@/components/MskTimeInfo";
-import { formatCombinedDateList, formatHumanDate, formatShortDate, formatTime } from "@/lib/dates";
+import { formatShortDate } from "@/lib/dates";
 import { PinIcon } from "@/components/icons";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
 import StatTile from "@/components/StatTile";
+import EventAgendaRow from "@/components/EventAgendaRow";
+import type { EventWithPerformers } from "@/lib/types";
 
 export type AccountTab = "profile" | "events";
 
 /** Одно событие кабинета целиком, со всеми его датами — многодневный
  *  концерт здесь одна строка, а не строка на дату. */
-export type AccountEventEntry = {
-  id: string;
-  title: string;
-  slug: string | null;
-  venue: string;
-  occurrences: { startsAt: Date; endsAt: Date | null }[];
-};
-
-function entryDatesLine(e: AccountEventEntry): string {
-  const dates = e.occurrences.map((o) => o.startsAt);
-  if (dates.length === 0) return "";
-  if (dates.length === 1) return formatHumanDate(dates[0]);
-  return formatCombinedDateList(dates);
-}
-
 function TabButton({
   active,
   onClick,
@@ -50,32 +35,6 @@ function TabButton({
   );
 }
 
-function EventRow({ event }: { event: AccountEventEntry }) {
-  const first = event.occurrences[0];
-  return (
-    <Link
-      href={eventHref(event)}
-      className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3"
-    >
-      <div>
-        <p className="font-display fw-medium text-white mb-0">{event.title}</p>
-        <p className="small text-secondary mb-0">
-          <PinIcon /> {event.venue}
-        </p>
-      </div>
-      <span className="small text-secondary text-end flex-shrink-0 d-flex flex-column align-items-end">
-        <span className="text-capitalize">{entryDatesLine(event)}</span>
-        {first && (
-          <span className="d-inline-flex align-items-center gap-1">
-            {formatTime(first.startsAt)}
-            <MskTimeInfo startsAt={first.startsAt} endsAt={first.endsAt} />
-          </span>
-        )}
-      </span>
-    </Link>
-  );
-}
-
 export default function AccountTabs({
   initialTab,
   user,
@@ -86,6 +45,8 @@ export default function AccountTabs({
   upcomingAttendances,
   pastAttendances,
   favoriteEvents,
+  favoritedEventIds,
+  goingOccurrenceIds,
   eventsLocked = false,
 }: {
   statsData: StatsForTab;
@@ -113,14 +74,18 @@ export default function AccountTabs({
     title: string;
     items: { id: string; slug: string | null; name: string; photoUrl: string | null }[];
   }[];
-  upcomingAttendances: AccountEventEntry[];
-  pastAttendances: AccountEventEntry[];
-  favoriteEvents: AccountEventEntry[];
+  upcomingAttendances: EventWithPerformers[];
+  pastAttendances: EventWithPerformers[];
+  favoriteEvents: { row: EventWithPerformers; extraDates: number }[];
+  favoritedEventIds: string[];
+  goingOccurrenceIds: string[];
   /** true — события скрыты подпиской: серверная страница передала пустые
    *  массивы (данные до клиента не доходят), вкладка объясняет почему. */
   eventsLocked?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<AccountTab>(initialTab);
+  const favoritedSet = new Set(favoritedEventIds);
+  const goingSet = new Set(goingOccurrenceIds);
   const [prevInitialTab, setPrevInitialTab] = useState(initialTab);
 
   // initialTab comes from the URL's ?tab= param. On a soft navigation to an
@@ -237,9 +202,15 @@ export default function AccountTabs({
         {upcomingAttendances.length === 0 ? (
           <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
         ) : (
-          <div className="d-flex flex-column gap-2 mb-4">
+          <div className="d-flex flex-column gap-3 mb-5">
             {upcomingAttendances.map((ev) => (
-              <EventRow key={ev.id} event={ev} />
+              <EventAgendaRow
+                key={ev.occurrenceId}
+                event={ev}
+                isFavorited={favoritedSet.has(ev.id)}
+                isGoing={goingSet.has(ev.occurrenceId)}
+                showDate
+              />
             ))}
           </div>
         )}
@@ -251,9 +222,15 @@ export default function AccountTabs({
             >
               Мои события — прошедшие
             </h2>
-            <div className="d-flex flex-column gap-2 opacity-50 mb-4">
+            <div className="d-flex flex-column gap-3 opacity-50 mb-5">
               {pastAttendances.map((ev) => (
-                <EventRow key={ev.id} event={ev} />
+                <EventAgendaRow
+                  key={ev.occurrenceId}
+                  event={ev}
+                  isFavorited={favoritedSet.has(ev.id)}
+                  isGoing={goingSet.has(ev.occurrenceId)}
+                  showDate
+                />
               ))}
             </div>
           </>
@@ -267,30 +244,17 @@ export default function AccountTabs({
         {favoriteEvents.length === 0 ? (
           <p className="small text-secondary mb-4">Нет избранных событий.</p>
         ) : (
-          <div className="d-flex flex-column gap-2 mb-4">
-            {favoriteEvents.map((ev) => {
-              const first = ev.occurrences[0];
-              return (
-                <div
-                  key={ev.id}
-                  className="surface d-flex align-items-center justify-content-between gap-3 p-3"
-                >
-                  <Link href={eventHref(ev)} className="text-decoration-none">
-                    <p className="font-display fw-medium text-white mb-0">{ev.title}</p>
-                    <p className="small text-secondary mb-0 d-flex align-items-center gap-1 text-capitalize">
-                      {entryDatesLine(ev)}
-                      {first && (
-                        <>
-                          {" "}· {formatTime(first.startsAt)}
-                          <MskTimeInfo startsAt={first.startsAt} endsAt={first.endsAt} />
-                        </>
-                      )}
-                    </p>
-                  </Link>
-                  <FavoriteButton kind="event" id={ev.id} isFavorited={true} />
-                </div>
-              );
-            })}
+          <div className="d-flex flex-column gap-3 mb-5">
+            {favoriteEvents.map(({ row, extraDates }) => (
+              <EventAgendaRow
+                key={row.id}
+                event={row}
+                isFavorited={favoritedSet.has(row.id)}
+                isGoing={goingSet.has(row.occurrenceId)}
+                showDate
+                extraDates={extraDates}
+              />
+            ))}
           </div>
         )}
       </div>

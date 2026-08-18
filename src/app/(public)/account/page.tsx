@@ -4,7 +4,9 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { computeUserStats } from "@/lib/userStats";
 import { syncAchievements } from "@/lib/achievements";
-import AccountTabs, { type AccountTab, type AccountEventEntry } from "./AccountTabs";
+import AccountTabs, { type AccountTab } from "./AccountTabs";
+import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
@@ -66,46 +68,32 @@ export default async function AccountPage({
 
   const now = new Date();
 
-  // В кабинете многодневное событие — ОДНА строка со всеми датами
-  // («16, 17, 18 октября»), а не строка на дату: разбивка по датам
-  // нужна только там, где список сортируется по датам (афиша, календарь).
-  type EventWithOcc = (typeof attendances)[number]["event"];
-  const toEntry = (event: EventWithOcc): AccountEventEntry => ({
-    id: event.id,
-    title: event.title,
-    slug: event.slug,
-    venue: event.venue,
-    occurrences: event.occurrences.map((o) => ({ startsAt: o.startsAt, endsAt: o.endsAt })),
-  });
-  const lastDate = (e: AccountEventEntry) => e.occurrences[e.occurrences.length - 1]?.startsAt ?? now;
-  const firstDate = (e: AccountEventEntry) => e.occurrences[0]?.startsAt ?? now;
-
-  // «Иду» теперь per-дата: одна запись на событие, но только с датами,
-  // на которые реально отмечен (24-е и 25-е — по отметкам, не все).
-  const byEvent = new Map<string, { event: (typeof attendances)[number]["event"]; occs: { startsAt: Date; endsAt: Date | null }[] }>();
-  for (const a of attendances) {
-    const cur = byEvent.get(a.eventId);
-    const occ = { startsAt: a.occurrence.startsAt, endsAt: a.occurrence.endsAt };
-    if (cur) cur.occs.push(occ);
-    else byEvent.set(a.eventId, { event: a.event, occs: [occ] });
-  }
-  const attendanceEntries: AccountEventEntry[] = Array.from(byEvent.values()).map(({ event, occs }) => ({
-    id: event.id,
-    title: event.title,
-    slug: event.slug,
-    venue: event.venue,
-    occurrences: occs.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()),
-  }));
-  // «Предстоящее», пока не прошла последняя дата события.
-  const upcomingAttendances = attendanceEntries
-    .filter((e) => lastDate(e) >= now)
-    .sort((a, b) => firstDate(a).getTime() - firstDate(b).getTime());
-  const pastAttendances = attendanceEntries
-    .filter((e) => lastDate(e) < now)
-    .sort((a, b) => firstDate(b).getTime() - firstDate(a).getTime());
+  // Кабинет показывает события тем же EventAgendaRow, что афиша, поиск
+  // и страницы артистов: строка на дату (постер, площадка, состав,
+  // кнопки избранного/«иду») — единый компонент вместо своей вёрстки.
+  // «Иду» — только отмеченные даты, избранное — все даты события.
+  const attendanceRows = attendances
+    .map((a) => flattenOccurrence({ ...a.occurrence, event: a.event }))
+    .sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime());
+  const upcomingAttendances = attendanceRows.filter((e) => e.startsAt >= now);
+  const pastAttendances = attendanceRows.filter((e) => e.startsAt < now).reverse();
+  // Избранное — про событие целиком (FavoriteEvent по eventId), поэтому
+  // многодневный концерт даёт ОДНУ строку (первая дата + «+N дат»), в
+  // отличие от «иду», где отметки стоят на конкретные даты.
   const favoriteEvents = favoriteEventRows
-    .map((f) => toEntry(f.event))
-    .sort((a, b) => firstDate(a).getTime() - firstDate(b).getTime());
+    .filter((f) => f.event.occurrences.length > 0)
+    .map((f) => ({
+      row: flattenOccurrence({ ...f.event.occurrences[0], event: f.event }),
+      extraDates: f.event.occurrences.length - 1,
+    }))
+    .sort((x, y) => x.row.startsAt.getTime() - y.row.startsAt.getTime());
+
+  // Состояния кнопок в строках.
+  const allRows = [...attendanceRows, ...favoriteEvents.map((f) => f.row)];
+  const [favoritedEventIds, goingOccurrenceIds] = await Promise.all([
+    getFavoritedEventIds(allRows.map((e) => e.id), user.id),
+    getGoingOccurrenceIds(allRows.map((e) => e.occurrenceId), user.id),
+  ]);
 
   // Статистика и ачивки (Д1/Д2): считаются при открытии кабинета; новые
   // ачивки фиксируются и поздравляются ботом внутри syncAchievements.
@@ -130,7 +118,7 @@ export default async function AccountPage({
           createdAt: user.createdAt,
         }}
         stats={{
-          going: byEvent.size,
+          going: new Set(attendances.map((a) => a.eventId)).size,
           favoriteEvents: favoriteEventRows.length,
           favoritePerformers: favoritePerformersCount,
           dramas: watchCount,
@@ -174,6 +162,8 @@ export default async function AccountPage({
         upcomingAttendances={isPremiumActive(user) ? upcomingAttendances : []}
         pastAttendances={isPremiumActive(user) ? pastAttendances : []}
         favoriteEvents={isPremiumActive(user) ? favoriteEvents : []}
+        favoritedEventIds={[...favoritedEventIds]}
+        goingOccurrenceIds={[...goingOccurrenceIds]}
         eventsLocked={!isPremiumActive(user)}
       />
     </div>

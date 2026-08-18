@@ -566,7 +566,7 @@ export default async function PerformerPage({
             </div>
       )}
       {performer.albums.length > 0 && (
-        <div className="mt-2">
+        <div className="mb-4">
           <h2 className="section-heading mb-2">
             <MusicNoteIcon className="icon-inline" /> Альбомы
           </h2>
@@ -610,7 +610,7 @@ export default async function PerformerPage({
       )}
 
       {performer.songs.length > 0 && (
-        <div className="mt-2">
+        <div className="mb-4">
           <h2 className="section-heading mb-2">
             <MusicNoteIcon className="icon-inline" /> Песни и синглы
           </h2>

@@ -182,3 +182,39 @@ export async function fetchTpopDiscography(pageTitleOrUrl: string): Promise<Tpop
 
   return { pageTitle, albums, songs };
 }
+
+/** Прямой URL файла викии по его имени («NuNew_Kata_promotional_image.png»). */
+async function fetchTpopFileUrl(fileName: string): Promise<string | null> {
+  const url = `${API_BASE}?action=query&titles=${encodeURIComponent(`File:${fileName}`)}&prop=imageinfo&iiprop=url&format=json`;
+  const res = await fetch(url, { headers: { "User-Agent": UA } });
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    query?: { pages?: Record<string, { imageinfo?: { url?: string }[] }> };
+  };
+  const page = Object.values(data.query?.pages ?? {})[0];
+  const src = page?.imageinfo?.[0]?.url ?? null;
+  // Обрезаем /revision/... — иначе все файлы сохраняются под одним именем.
+  return src ? src.replace(/\/revision\/.*$/, "") : null;
+}
+
+function normForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+/** Фолбэк обложки: у многих синглов своей вики-страницы нет (красная
+ *  ссылка), но промо-картинка лежит файлом в статье артиста —
+ *  «NuNew_Kata_promotional_image_(4).png» подходит альбому «Kata». */
+export async function fetchTpopAlbumImageFromArtistPage(
+  artistPageTitle: string,
+  albumTitle: string,
+): Promise<string | null> {
+  const url = `${API_BASE}?action=parse&page=${encodeURIComponent(artistPageTitle)}&prop=images&format=json`;
+  const res = await fetch(url, { headers: { "User-Agent": UA } });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { parse?: { images?: string[] } };
+  const files = (data.parse?.images ?? []).filter((f) => /\.(png|jpe?g|webp)$/i.test(f));
+  const needle = normForMatch(albumTitle);
+  if (needle.length < 3) return null;
+  const hit = files.find((f) => normForMatch(f).includes(needle));
+  return hit ? fetchTpopFileUrl(hit) : null;
+}

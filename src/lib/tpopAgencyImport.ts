@@ -9,7 +9,11 @@ import {
 } from "@/lib/tpopArtistExtras";
 import { fetchTpopBandPage, fetchTpopMemberPage, parseTpopPageTitle } from "@/lib/tpopFandom";
 import { importTpopBand } from "@/lib/tpopFandomImport";
-import { fetchTpopDiscography, fetchTpopPageImage } from "@/lib/tpopDiscography";
+import {
+  fetchTpopDiscography,
+  fetchTpopPageImage,
+  fetchTpopAlbumImageFromArtistPage,
+} from "@/lib/tpopDiscography";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { addPerformerAgency } from "@/lib/performerAgency";
 import { scrapeTtmEvent, type TtmEvent } from "@/lib/thaiticketmajor";
@@ -111,6 +115,13 @@ async function importDiscography(ctx: Ctx, performerId: string, page: string): P
     if (album.pageTitle) {
       coverUrl = await downloadRemoteImage(await fetchTpopPageImage(album.pageTitle), "albums");
       url = await fetchTpopPageStreamingLink(album.pageTitle);
+    }
+    if (!coverUrl) {
+      // Своей страницы у сингла нет — ищем промо-файл в статье артиста.
+      coverUrl = await downloadRemoteImage(
+        await fetchTpopAlbumImageFromArtistPage(page, album.title),
+        "albums",
+      );
     }
     const existing = await prisma.album.findUnique({
       where: { performerId_title: { performerId, title: album.title } },
