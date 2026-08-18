@@ -34,3 +34,20 @@ export function flattenOccurrence(occ: OccurrenceWithEvent): EventWithPerformers
     performers: occ.event.performers,
   };
 }
+
+/** Схлопывает строки-даты одного события в одну: ближайшая (первая по
+ *  порядку) дата + сколько дат осталось. Для списков «события сущности»
+ *  (артист, сериал, локация, поиск), где трёхдневный фестиваль не должен
+ *  занимать три одинаковые строки. В афише/календаре, наоборот, нужна
+ *  строка на дату — там эта функция не применяется. */
+export function groupByEvent(
+  rows: EventWithPerformers[],
+): { row: EventWithPerformers; extraDates: number }[] {
+  const byEvent = new Map<string, { row: EventWithPerformers; extraDates: number }>();
+  for (const row of rows) {
+    const existing = byEvent.get(row.id);
+    if (existing) existing.extraDates += 1;
+    else byEvent.set(row.id, { row, extraDates: 0 });
+  }
+  return [...byEvent.values()];
+}

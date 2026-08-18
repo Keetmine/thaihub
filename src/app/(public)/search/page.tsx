@@ -5,7 +5,7 @@ import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
-import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -104,9 +104,14 @@ export default async function SearchPage({
       ])
     : [[], [], [], [], [], [], []];
 
-  const events = matchedEvents
-    .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
-    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  // Результаты поиска — про события, а не про их даты: многодневный
+  // фестиваль одной строкой с «+N дат».
+  const eventRows = groupByEvent(
+    matchedEvents
+      .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
+      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
+  );
+  const events = eventRows.map((e) => e.row);
 
   const currentUser = await getCurrentUser();
   const eventIds = events.map((ev) => ev.id);
@@ -147,21 +152,22 @@ export default async function SearchPage({
         <>
           <Section title="События" count={events.length}>
             <div className="d-flex flex-column gap-3">
-              {events.map((ev) => (
+              {eventRows.map(({ row, extraDates }) => (
                 isPremiumActive(currentUser) ? (
 
                   <EventAgendaRow
-                  key={ev.occurrenceId}
-                  event={ev}
-                  isFavorited={favoritedIds.has(ev.id)}
-                  isGoing={goingIds.has(ev.occurrenceId)}
-                  friendsGoing={friendsGoingByEvent.get(ev.occurrenceId) ?? []}
+                  key={row.id}
+                  event={row}
+                  isFavorited={favoritedIds.has(row.id)}
+                  isGoing={goingIds.has(row.occurrenceId)}
+                  friendsGoing={friendsGoingByEvent.get(row.occurrenceId) ?? []}
                   showDate
+                  extraDates={extraDates}
                 />
 
                 ) : (
 
-                  <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+                  <EventCardLocked key={row.id} startsAt={row.startsAt} />
 
                 )
               ))}

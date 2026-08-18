@@ -11,7 +11,7 @@ import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import SocialLinkIcons from "@/components/SocialLinkIcons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
-import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
@@ -133,12 +133,19 @@ export default async function PerformerPage({
   }
 
   const now = new Date();
-  const upcoming = performerEvents
-    .filter((ev) => ev.startsAt >= now)
-    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
-  const past = performerEvents
-    .filter((ev) => ev.startsAt < now)
-    .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
+  // Многодневный фестиваль — ОДНА строка с «+N дат»: список событий
+  // артиста про сами события, а не про отдельные даты (в афише и
+  // календаре, наоборот, строка на дату).
+  const upcoming = groupByEvent(
+    performerEvents
+      .filter((ev) => ev.startsAt >= now)
+      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
+  );
+  const past = groupByEvent(
+    performerEvents
+      .filter((ev) => ev.startsAt < now)
+      .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime()),
+  );
   const eventIds = performerEvents.map((ev) => ev.id);
   const occIds = performerEvents.map((ev) => ev.occurrenceId);
   const [favoritedEventIds, goingEventIds] = await Promise.all([
@@ -492,20 +499,21 @@ export default async function PerformerPage({
         <div
           className={`d-flex flex-column gap-3 mb-4 scroll-list thin-scroll ${showPastEvents ? "opacity-50" : ""}`}
         >
-          {(showPastEvents ? past : upcoming).map((ev) => (
+          {(showPastEvents ? past : upcoming).map(({ row, extraDates }) => (
             isPremiumActive(currentUser) ? (
 
               <EventAgendaRow
-              key={ev.occurrenceId}
-              event={ev}
-              isFavorited={favoritedEventIds.has(ev.id)}
-              isGoing={goingEventIds.has(ev.occurrenceId)}
+              key={row.id}
+              event={row}
+              isFavorited={favoritedEventIds.has(row.id)}
+              isGoing={goingEventIds.has(row.occurrenceId)}
               showDate
+              extraDates={extraDates}
             />
 
             ) : (
 
-              <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+              <EventCardLocked key={row.id} startsAt={row.startsAt} />
 
             )
           ))}

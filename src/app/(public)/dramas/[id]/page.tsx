@@ -12,7 +12,7 @@ import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
 import { BuildingIcon, BookIcon, CalendarIcon, TagIcon, TvIcon, UserIcon, InfoIcon } from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
-import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, locationHref, novelHref, slugOrIdWhere } from "@/lib/slugHelpers";
@@ -89,9 +89,12 @@ export default async function DramaDetailPage({
       occurrences: { orderBy: { startsAt: "asc" } },
     },
   });
-  const events = dramaEvents
-    .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
-    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const eventsRows = groupByEvent(
+    dramaEvents
+      .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
+      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
+  );
+  const events = eventsRows.map((e) => e.row);
 
   const currentUser = await getCurrentUser();
   let watchStatus = null as Awaited<
@@ -388,20 +391,21 @@ export default async function DramaDetailPage({
             События
           </h2>
           <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
-            {events.map((ev) => (
+            {eventsRows.map(({ row, extraDates }) => (
               isPremiumActive(currentUser) ? (
 
                 <EventAgendaRow
-                key={ev.occurrenceId}
-                event={ev}
-                isFavorited={favoritedEventIds.has(ev.id)}
-                isGoing={goingEventIds.has(ev.occurrenceId)}
+                key={row.id}
+                event={row}
+                isFavorited={favoritedEventIds.has(row.id)}
+                isGoing={goingEventIds.has(row.occurrenceId)}
                 showDate
+                extraDates={extraDates}
               />
 
               ) : (
 
-                <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
+                <EventCardLocked key={row.id} startsAt={row.startsAt} />
 
               )
             ))}
