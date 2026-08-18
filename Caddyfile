@@ -5,10 +5,17 @@
 {$DOMAIN} {
 	encode gzip zstd
 
-	# Статика загруженных картинок кэшируется агрессивно — имена файлов
-	# контентно-стабильные (uuid / TMDB-id), содержимое не меняется.
-	@uploads path /uploads/*
-	header @uploads Cache-Control "public, max-age=2592000, immutable"
+	# Загруженные картинки отдаёт Caddy напрямую из общего с приложением
+	# volume: Next знает только те файлы public/, что были на момент
+	# сборки, и на всё загруженное позже отвечает 404. Кэшируем
+	# агрессивно — имена контентно-стабильные (uuid / TMDB-id).
+	handle /uploads/* {
+		header Cache-Control "public, max-age=2592000, immutable"
+		root * /srv
+		file_server
+	}
 
-	reverse_proxy app:3000
+	handle {
+		reverse_proxy app:3000
+	}
 }
