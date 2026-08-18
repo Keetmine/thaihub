@@ -15,7 +15,9 @@ const KINDS = new Set(["QUESTION", "SUGGESTION", "CONTENT_REQUEST"]);
  * docs/features/admin-notifications.md). TODO: дублировать на почту,
  * когда будут SMTP-доступы.
  */
-export async function submitFeedback(formData: FormData): Promise<{ ok: boolean }> {
+export type FeedbackResult = { ok: true } | { ok: false; error: string };
+
+export async function submitFeedback(formData: FormData): Promise<FeedbackResult> {
   // Форма открыта и анонимам (страница /help публичная) — тогда ответ
   // возможен только на оставленную почту.
   const user = await getCurrentUser();
@@ -25,9 +27,11 @@ export async function submitFeedback(formData: FormData): Promise<{ ok: boolean 
   const kindRaw = String(formData.get("kind") ?? "QUESTION");
   const context = String(formData.get("context") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().slice(0, 320) || null;
-  if (!text) throw new Error("Напишите текст обращения");
-  if (text.length > 4000) throw new Error("Слишком длинный текст");
-  if (!user && !email) throw new Error("Оставьте почту, чтобы мы могли ответить");
+  // Ошибки возвращаем значением: текст исключения из server action до
+  // клиента в проде не доезжает (см. promoActions.ts).
+  if (!text) return { ok: false, error: "Напишите текст обращения" };
+  if (text.length > 4000) return { ok: false, error: "Слишком длинный текст" };
+  if (!user && !email) return { ok: false, error: "Оставьте почту, чтобы мы могли ответить" };
 
   await prisma.feedback.create({
     data: {

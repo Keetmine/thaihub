@@ -6,30 +6,44 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { extendPremium } from "@/lib/premium";
 import { assertRateLimit } from "@/lib/rateLimit";
 
+/** Результат активации. Ошибка возвращается значением, а не броском:
+ *  в проде Next не отдаёт клиенту текст исключения из server action —
+ *  вместо «Код не найден» прилетала минифицированная ошибка React. */
+export type RedeemResult = { ok: true; until: Date } | { ok: false; error: string };
+
 /** Активация промокода подписки: код одноразовый, месяцы прибавляются к
  *  текущему сроку (extendPremium × months). Код помечается использованным
  *  той же транзакцией — параллельная активация не пройдёт. */
-export async function redeemPromoCode(code: string): Promise<{ until: Date }> {
+export async function redeemPromoCode(code: string): Promise<RedeemResult> {
   await assertRateLimit("login");
   const user = await getCurrentUser();
-  if (!user) throw new Error("Требуется вход");
+  if (!user) return { ok: false, error: "Требуется вход" };
 
   const trimmed = code.trim().toUpperCase();
-  if (!trimmed) throw new Error("Введите код");
+  if (!trimmed) return { ok: false, error: "Введите код" };
+
+  const promo = await prisma.promoCode.findUnique({ where: { code: trimmed } });
+  if (!promo) return { ok: false, error: "Такого кода нет" };
+  if (promo.usedAt) return { ok: false, error: "Код уже использован" };
 
   const until = await prisma.$transaction(async (tx) => {
     const claimed = await tx.promoCode.updateMany({
       where: { code: trimmed, usedAt: null },
       data: { usedAt: new Date(), usedById: user.id },
     });
-    if (claimed.count === 0) throw new Error("Код не найден или уже использован");
-    const promo = await tx.promoCode.findUnique({ where: { code: trimmed } });
+    // Кто-то успел активировать код между проверкой выше и этой строкой.
+    if (claimed.count === 0) return null;
     let next = user.premiumUntil;
-    for (let i = 0; i < (promo?.months ?? 1); i++) next = extendPremium(next);
-    await tx.user.update({ where: { id: user.id }, data: { premiumUntil: next, premiumExpiryNotifiedFor: null } });
+    for (let i = 0; i < (promo.months ?? 1); i++) next = extendPremium(next);
+    await tx.user.update({
+      where: { id: user.id },
+      data: { premiumUntil: next, premiumExpiryNotifiedFor: null },
+    });
     return next!;
   });
 
+  if (!until) return { ok: false, error: "Код уже использован" };
+
   revalidatePath("/");
-  return { until };
+  return { ok: true, until };
 }

@@ -13,14 +13,21 @@ export default function PromoCodeRedeem() {
     e.preventDefault();
     setStatus("busy");
     try {
-      const { until } = await redeemPromoCode(code);
+      const result = await redeemPromoCode(code);
+      if (!result.ok) {
+        setStatus("error");
+        setMessage(result.error);
+        return;
+      }
       setStatus("done");
       setMessage(
-        `Подписка активна до ${new Date(until).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })} — обновите страницу!`,
+        `Подписка активна до ${new Date(result.until).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })} — обновите страницу!`,
       );
-    } catch (err) {
+    } catch {
+      // Сеть/сервер недоступны — текст исключения из server action в
+      // проде всё равно не доезжает, поэтому пишем своё.
       setStatus("error");
-      setMessage(err instanceof Error ? err.message : "Не удалось активировать код");
+      setMessage("Не удалось связаться с сервером, попробуйте ещё раз");
     }
   }
 

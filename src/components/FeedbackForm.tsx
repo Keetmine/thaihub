@@ -31,10 +31,11 @@ export default function FeedbackForm({
     setIsSubmitting(true);
     setError(null);
     try {
-      await submitFeedback(new FormData(e.currentTarget));
-      setDone(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось отправить");
+      const result = await submitFeedback(new FormData(e.currentTarget));
+      if (result.ok) setDone(true);
+      else setError(result.error);
+    } catch {
+      setError("Не удалось связаться с сервером, попробуйте ещё раз");
     } finally {
       setIsSubmitting(false);
     }
