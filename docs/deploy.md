@@ -66,6 +66,26 @@ GOOGLE_CLIENT_SECRET=...    #   https://myblhub.com/api/auth/google/callback
 ```
 `PREMIUM_PRICE_STARS` опционален — цена правится в /admin/settings.
 
+Почта (сброс пароля + дубль админ-уведомлений; без этих переменных
+почтовые флоу честно отключены). Выбранный сервис — Яндекс 360 для
+бизнеса, бесплатный тариф: ящик admin@myblhub.com на домене и его же
+SMTP. Cloudflare-решения не используем — аудитория в РФ. Подключение:
+360.yandex.ru → домен → TXT-подтверждение → MX `mx.yandex.net` + SPF
+`v=spf1 redirect=_spf.yandex.net` + DKIM из панели → создать ящик →
+включить «Пароли приложений» и сгенерировать пароль для SMTP (обычный
+пароль аккаунта в SMTP не работает):
+
+```
+SMTP_HOST=smtp.yandex.ru
+SMTP_PORT=465
+SMTP_USER=admin@myblhub.com
+SMTP_PASS=<пароль приложения>
+SMTP_FROM=admin@myblhub.com
+```
+
+После этого в /admin/settings указать `admin_notify_email` — админ-
+уведомления начнут дублироваться письмом.
+
 ## Автодеплой (GitHub Actions)
 
 Секреты репозитория (Settings → Secrets and variables → Actions):
