@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmForm from "@/components/ConfirmForm";
 import LetterAvatar from "@/components/LetterAvatar";
+import FileDropzone from "@/components/FileDropzone";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { saveAlbum, deleteAlbum, saveSong, deleteSong } from "./musicActions";
 
@@ -83,7 +84,10 @@ export default function MusicManager({
             <input name="year" type="number" placeholder="2026" className="form-control" />
           </div>
           <div className="col-12 col-md-3">
-            <button type="submit" className="btn btn-primary btn-sm w-100">
+            <FileDropzone name="coverUrl" label="Обложка" />
+          </div>
+          <div className="col-12">
+            <button type="submit" className="btn btn-primary btn-sm">
               + Добавить альбом
             </button>
           </div>
@@ -95,8 +99,10 @@ export default function MusicManager({
               editingAlbum === a.id ? (
                 <form key={a.id} action={submitAlbum} className="row g-2 align-items-end surface p-2">
                   <input type="hidden" name="albumId" value={a.id} />
-                  <input type="hidden" name="coverUrl" value={a.coverUrl ?? ""} />
-                  <div className="col-12 col-md-4">
+                  <div className="col-12 col-md-3">
+                    <FileDropzone name="coverUrl" label="Обложка" defaultValue={a.coverUrl ?? ""} />
+                  </div>
+                  <div className="col-12 col-md-3">
                     <input name="title" required defaultValue={a.title} className="form-control form-control-sm" />
                   </div>
                   <div className="col-6 col-md-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
@@ -10,6 +10,7 @@ import { searchEventOptions } from "../events/actions";
 import { searchSoloPerformerOptions } from "./actions";
 import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
 import FormSection from "@/components/admin/FormSection";
+import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
@@ -102,7 +103,16 @@ export default function PerformerForm({
 
   const [type, setType] = useState(v?.type ?? "SOLO");
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useUnsavedGuard(formRef);
   const [activeTab, setActiveTab] = useState<Tab>("general");
+
+  /** Правки всех вкладок сохраняются одной кнопкой — при уходе на
+   *  другую вкладку ничего не теряется, но пользователь должен видеть,
+   *  что несохранённое есть. */
+  function switchTab(next: Tab) {
+    setActiveTab(next);
+  }
   // Дорамы/Пейринг don't apply to bands — if the type switches to BAND while
   // one of those is active, fall back to "general" (derived, not stored, so
   // switching type doesn't leave every panel hidden for a render).
@@ -153,24 +163,25 @@ export default function PerformerForm({
 
   return (
     <form
+      ref={formRef}
       action={action}
       className="surface d-flex flex-column gap-3 p-4"
     >
       <div className="tab-bar mb-1">
-        <TabButton active={effectiveTab === "general"} onClick={() => setActiveTab("general")}>
+        <TabButton active={effectiveTab === "general"} onClick={() => switchTab("general")}>
           Общая инфа
         </TabButton>
         {type === "SOLO" && (
-          <TabButton active={effectiveTab === "dramas"} onClick={() => setActiveTab("dramas")}>
+          <TabButton active={effectiveTab === "dramas"} onClick={() => switchTab("dramas")}>
             Сериалы
           </TabButton>
         )}
-        <TabButton active={effectiveTab === "events"} onClick={() => setActiveTab("events")}>
+        <TabButton active={effectiveTab === "events"} onClick={() => switchTab("events")}>
           Евенты
         </TabButton>
 
         {type === "SOLO" && (
-          <TabButton active={effectiveTab === "pairing"} onClick={() => setActiveTab("pairing")}>
+          <TabButton active={effectiveTab === "pairing"} onClick={() => switchTab("pairing")}>
             Пейринг
           </TabButton>
         )}
@@ -597,7 +608,9 @@ export default function PerformerForm({
           {submitLabel}
         </button>
         <span className="small text-secondary">
-          Изменения вкладок «Общая инфа», «Сериалы», «Евенты» и «Пейринг» сохраняются вместе.
+          {dirty
+            ? "● Есть несохранённые изменения — они пропадут, если уйти со страницы."
+            : "Изменения всех вкладок сохраняются вместе."}
         </span>
       </div>
     </form>

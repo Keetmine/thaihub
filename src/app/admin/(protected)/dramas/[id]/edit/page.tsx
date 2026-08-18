@@ -23,6 +23,7 @@ export default async function EditDramaPage({
         performers: { include: { performer: true } },
         locations: { select: { location: { select: { id: true, name: true, photoUrl: true } } } },
         novel: { select: { id: true, title: true, coverUrl: true } },
+        agencies: { select: { agencyId: true } },
       },
     }),
     prisma.agency.findMany({
@@ -68,7 +69,7 @@ export default async function EditDramaPage({
           posterUrl: drama.posterUrl ?? "",
           synopsis: drama.synopsis ?? "",
           mydramalistUrl: drama.mydramalistUrl ?? "",
-          agencyId: drama.agencyId ?? "",
+          agencyIds: drama.agencies.map((a) => a.agencyId),
           novelId: drama.novelId ?? "",
           nativeTitle: drama.nativeTitle ?? "",
           alsoKnownAs: drama.alsoKnownAs ?? "",

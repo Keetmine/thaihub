@@ -63,6 +63,7 @@ export default async function DramaDetailPage({
     include: {
       performers: { include: { performer: true } },
       agency: true,
+      agencies: { include: { agency: true } },
       locations: { include: { location: true }, orderBy: { location: { name: "asc" } } },
       novel: true,
       relatedFrom: { include: { related: true } },
@@ -184,14 +185,33 @@ export default async function DramaDetailPage({
         )}
 
         <div className="col-12 col-sm-8 col-md-9">
-          {drama.agency && (
-            <p className="small text-secondary mb-2">
-              <BuildingIcon /> <span className="text-secondary">Студия:</span>{" "}
-              <Link href={agencyHref(drama.agency)} className="link-body-emphasis">
-                {drama.agency.name}
-              </Link>
-            </p>
-          )}
+          {(() => {
+            // У сериала может быть несколько студий (DramaAgency);
+            // легаси-поле agency подставляется, если связей ещё нет.
+            const studios =
+              drama.agencies.length > 0
+                ? drama.agencies.map((a) => a.agency)
+                : drama.agency
+                  ? [drama.agency]
+                  : [];
+            if (studios.length === 0) return null;
+            return (
+              <p className="small text-secondary mb-2">
+                <BuildingIcon />{" "}
+                <span className="text-secondary">
+                  {studios.length > 1 ? "Студии:" : "Студия:"}
+                </span>{" "}
+                {studios.map((a, i) => (
+                  <span key={a.id}>
+                    {i > 0 && ", "}
+                    <Link href={agencyHref(a)} className="link-body-emphasis">
+                      {a.name}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            );
+          })()}
           {drama.novel && (
             <p className="small text-secondary mb-2">
               <BookIcon className="icon-inline" />{" "}

@@ -143,13 +143,23 @@ export async function findSimilarDramas(query: string): Promise<{ id: string; na
   return dramas.map((d) => ({ id: d.id, name: d.title }));
 }
 
+/** Агентства сериала: мультиселект отдаёт agencyIds, первое сохраняем и
+ *  в легаси-поле agencyId (по нему всё ещё строится «Студия» на
+ *  публичной странице), остальные — в DramaAgency. */
+function getAgencyIds(formData: FormData): string[] {
+  const many = formData.getAll("agencyIds").map(String).filter(Boolean);
+  if (many.length > 0) return [...new Set(many)];
+  const single = String(formData.get("agencyId") ?? "").trim();
+  return single ? [single] : [];
+}
+
 export async function createDrama(formData: FormData) {
   await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
-  const agencyId = String(formData.get("agencyId") ?? "").trim();
+  const agencyIds = getAgencyIds(formData);
   const novelId = String(formData.get("novelId") ?? "").trim();
   const year = getYear(formData);
   const cast = getCastEntries(formData);
@@ -166,7 +176,8 @@ export async function createDrama(formData: FormData) {
       posterUrl: posterUrl || null,
       synopsis: synopsis || null,
       mydramalistUrl: mydramalistUrl || null,
-      agencyId: agencyId || null,
+      agencyId: agencyIds[0] ?? null,
+      agencies: { create: agencyIds.map((agencyId) => ({ agencyId })) },
       novelId: novelId || null,
       ...getDramaDetailFields(formData),
       performers: {
@@ -188,7 +199,7 @@ export async function updateDrama(id: string, formData: FormData) {
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
   const mydramalistUrl = String(formData.get("mydramalistUrl") ?? "").trim();
-  const agencyId = String(formData.get("agencyId") ?? "").trim();
+  const agencyIds = getAgencyIds(formData);
   const novelId = String(formData.get("novelId") ?? "").trim();
   const year = getYear(formData);
   const cast = getCastEntries(formData);
@@ -201,6 +212,7 @@ export async function updateDrama(id: string, formData: FormData) {
   await prisma.$transaction([
     prisma.performerDrama.deleteMany({ where: { dramaId: id } }),
     prisma.dramaLocation.deleteMany({ where: { dramaId: id } }),
+    prisma.dramaAgency.deleteMany({ where: { dramaId: id } }),
     prisma.drama.update({
       where: { id },
       data: {
@@ -209,7 +221,8 @@ export async function updateDrama(id: string, formData: FormData) {
         posterUrl: posterUrl || null,
         synopsis: synopsis || null,
         mydramalistUrl: mydramalistUrl || null,
-        agencyId: agencyId || null,
+        agencyId: agencyIds[0] ?? null,
+        agencies: { create: agencyIds.map((agencyId) => ({ agencyId })) },
         novelId: novelId || null,
         ...getDramaDetailFields(formData),
         performers: {

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import FormSection from "@/components/admin/FormSection";
+import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
@@ -69,7 +70,7 @@ export default function DramaForm({
     posterUrl: string;
     synopsis: string;
     mydramalistUrl: string;
-    agencyId: string;
+    agencyIds: string[];
     novelId: string;
     cast: CastEntry[];
     nativeTitle: string;
@@ -92,6 +93,8 @@ export default function DramaForm({
   const isNewDrama = !v;
   const [titleValue, setTitleValue] = useState(v?.title ?? "");
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useUnsavedGuard(formRef);
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
   const [cast, setCast] = useState<CastEntry[]>(v?.cast ?? []);
@@ -179,6 +182,7 @@ export default function DramaForm({
 
   return (
     <form
+      ref={formRef}
       action={action}
       className="surface d-flex flex-column gap-3 p-4"
     >
@@ -257,12 +261,12 @@ export default function DramaForm({
           />
         </div>
         <div className="col-12 col-lg-6">
-          <EntitySelect
-            name="agencyId"
-            label="Агентство"
+          <label className="form-label d-block">Агентства / студии</label>
+          <EntityMultiSelect
+            name="agencyIds"
             options={agencies}
-            defaultValue={v?.agencyId}
-            placeholder="Не выбрано"
+            defaultSelectedIds={v?.agencyIds}
+            placeholder="Начните вводить название студии…"
             createLabel="Создать агентство"
             onCreateNew={async (name) => {
               const created = await createAgencyAndReturn(name);
@@ -529,7 +533,9 @@ export default function DramaForm({
           {submitLabel}
         </button>
         <span className="small text-secondary">
-          Все вкладки сохраняются одной кнопкой.
+          {dirty
+            ? "● Есть несохранённые изменения — они пропадут, если уйти со страницы."
+            : "Все вкладки сохраняются одной кнопкой."}
         </span>
       </div>
     </form>
