@@ -2260,3 +2260,103 @@ svg[aria-hidden="true"] {
 .scroll-list-lg {
   padding-bottom: 0.35rem;
 }
+
+/* ---------- Профиль: герои-метрики и чипы-навигация ---------- */
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: var(--bs-border-radius-lg, 1rem);
+  border: 1px solid var(--bs-border-color);
+  background:
+    radial-gradient(20rem 8rem at 100% 0%, rgba(var(--accent-rgb), 0.16), transparent 70%),
+    rgba(255, 255, 255, 0.025);
+}
+
+.hero-stat-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.hero-stat-value {
+  font-family: var(--font-display, inherit);
+  font-weight: 700;
+  font-size: 2.1rem;
+  line-height: 1;
+  color: #fff;
+}
+
+.hero-stat-label {
+  font-size: 0.86rem;
+  color: var(--bs-body-color);
+}
+
+.hero-stat-hint {
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+}
+
+.nav-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 2rem;
+  border: 1px solid var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--bs-secondary-color);
+  font-size: 0.8rem;
+}
+
+.nav-chip-value {
+  font-weight: 700;
+  color: var(--bs-primary-text-emphasis);
+}
+
+.nav-chip-link:hover {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.07);
+}
+
+/* ---------- Списки актёров: карточка со стопкой аватарок ---------- */
+.list-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--bs-border-radius);
+  border: 1px solid var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.list-card:hover {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+.facepile {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.facepile > * {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bs-body-bg);
+  background: var(--bs-secondary-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+
+.facepile > * + * {
+  margin-left: -0.7rem;
+}

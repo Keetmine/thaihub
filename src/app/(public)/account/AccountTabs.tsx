@@ -7,7 +7,7 @@ import { logout } from "../login/actions";
 import { formatShortDate } from "@/lib/dates";
 import { PinIcon } from "@/components/icons";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
-import StatTile from "@/components/StatTile";
+import ProfileOverview from "./ProfileOverview";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import type { EventWithPerformers } from "@/lib/types";
 
@@ -175,14 +175,7 @@ export default function AccountTabs({
           </div>
         </div>
 
-        <div className="d-flex flex-wrap gap-2 mb-4">
-          <StatTile value={stats.going} label="иду" icon="🎟" />
-          <StatTile value={stats.favoriteEvents} label="избранных событий" icon="❤️" />
-          <StatTile value={stats.favoritePerformers} label="любимых актёров" icon="⭐️" href="/artists" />
-          <StatTile value={stats.dramas} label="сериалов" icon="📺" href="/dramas" />
-          <StatTile value={stats.friends} label="друзей" icon="👥" href="/friends" />
-          <StatTile value={stats.trips} label="поездок" icon="✈️" href="/trips" />
-        </div>
+        <ProfileOverview stats={statsData} nav={stats} />
 
         <StatsTab stats={statsData} achievements={achievements} artistLists={artistLists} />
 

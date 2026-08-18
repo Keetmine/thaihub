@@ -52,19 +52,6 @@ export default function StatsTab({
 
   return (
     <div>
-      <h2 className="section-heading mb-2">
-        Мой фан-профиль
-      </h2>
-      <div className="d-flex flex-wrap gap-2 mb-4">
-        <StatTile value={stats.attendedEvents} label="посещено событий" icon="🎤" muted />
-        <StatTile value={stats.uniqueVenues} label="площадок" icon="📍" muted />
-        <StatTile value={stats.performersSeenLive} label="актёров вживую" icon="👀" muted />
-        <StatTile value={stats.visitedLocations} label="локаций съёмок" icon="🎬" muted />
-        <StatTile value={stats.completedDramas} label="досмотрено дорам" icon="📺" muted />
-        <StatTile value={stats.trips} label="поездок" icon="✈️" muted />
-        <StatTile value={stats.daysInThailand} label="дней в Таиланде" icon="🌴" muted />
-      </div>
-
       {stats.topPerformers.length > 0 && (
         <>
           <h2 className="section-heading mb-2">
@@ -110,52 +97,32 @@ export default function StatsTab({
             Создайте свой список — «видела вживую», «пил пиво»…
           </p>
         ) : (
-          <div className="d-flex flex-column gap-3 mb-4">
+          <div className="row g-2 mb-4">
             {(artistLists ?? []).map((l) => (
-              <div key={l.id}>
-                <Link
-                  href={artistListHref(l)}
-                  className="small text-secondary text-decoration-none d-inline-block mb-2"
-                >
-                  {l.title} ({l.items.length}) →
-                </Link>
-                <div className="d-flex flex-wrap gap-2">
-                  {l.items.length === 0 && (
-                    <span className="small text-secondary">Пока пусто</span>
-                  )}
-                  {l.items.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={performerHref(p)}
-                      className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 pe-3"
-                    >
-                      {p.photoUrl ? (
+              <div key={l.id} className="col-12 col-md-6">
+                <Link href={artistListHref(l)} className="list-card text-decoration-none">
+                  <span className="facepile">
+                    {l.items.slice(0, 4).map((p) =>
+                      p.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.photoUrl}
-                          alt=""
-                          className="rounded-circle"
-                          style={{ width: "2.2rem", height: "2.2rem", objectFit: "cover" }}
-                        />
+                        <img key={p.id} src={p.photoUrl} alt="" />
                       ) : (
-                        <span
-                          className="rounded-circle d-inline-flex align-items-center justify-content-center small"
-                          style={{
-                            width: "2.2rem",
-                            height: "2.2rem",
-                            background: "var(--bs-secondary-bg)",
-                            color: "var(--bs-secondary-color)",
-                            opacity: 0.7,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {p.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                      <span className="small text-white">{p.name}</span>
-                    </Link>
-                  ))}
-                </div>
+                        <span key={p.id}>{p.name.charAt(0).toUpperCase()}</span>
+                      ),
+                    )}
+                    {l.items.length === 0 && <span>—</span>}
+                  </span>
+                  <span style={{ minWidth: 0 }}>
+                    <span className="d-block text-white fw-medium text-truncate">{l.title}</span>
+                    <span className="small text-secondary">
+                      {l.items.length === 0
+                        ? "пока пусто"
+                        : `${l.items.length} ${l.items.length === 1 ? "артист" : l.items.length < 5 ? "артиста" : "артистов"}`}
+                      {l.items.length > 4 && ` · ${l.items.slice(0, 2).map((p) => p.name).join(", ")}…`}
+                    </span>
+                  </span>
+                  <span className="ms-auto text-secondary flex-shrink-0">→</span>
+                </Link>
               </div>
             ))}
           </div>
