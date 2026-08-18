@@ -46,9 +46,10 @@ export default function ProfileOverview({
         {heroes.map((h) => (
           <div key={h.label} className="col-6 col-lg-3">
             <div className="hero-stat h-100">
-              <span className="hero-stat-icon">{h.icon}</span>
               <span className="hero-stat-value">{h.value}</span>
-              <span className="hero-stat-label">{h.label}</span>
+              <span className="hero-stat-label">
+                <span className="hero-stat-icon">{h.icon}</span> {h.label}
+              </span>
               <span className="hero-stat-hint">{h.hint}</span>
             </div>
           </div>

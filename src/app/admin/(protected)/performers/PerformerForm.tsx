@@ -519,6 +519,7 @@ export default function PerformerForm({
           <label className="form-label d-block">Сериалы</label>
           <EntityMultiSelect
             name="dramaIds"
+            selectedVariant="card"
             options={dramas}
             defaultSelectedIds={defaultDramaIds}
             placeholder="Начните вводить название сериала…"
@@ -536,6 +537,7 @@ export default function PerformerForm({
         <label className="form-label d-block">Евенты</label>
         <EntityMultiSelect
           name="eventIds"
+          selectedVariant="card"
           options={events}
           defaultSelectedIds={defaultEventIds}
           placeholder="Начните вводить название события…"

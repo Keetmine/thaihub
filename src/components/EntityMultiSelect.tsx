@@ -34,6 +34,7 @@ export default function EntityMultiSelect({
   emptyMessage,
   externalAdditions,
   searchOptions,
+  selectedVariant = "chip",
 }: {
   name: string;
   options: EntityOption[];
@@ -50,6 +51,9 @@ export default function EntityMultiSelect({
    *  ids, and the dropdown is fed by this debounced server-side search
    *  instead of client-side filtering. */
   searchOptions?: (query: string) => Promise<EntityOption[]>;
+  /** «card» — выбранные показываются карточками с постером/фото (списки
+   *  сериалов и событий: по чипам без картинок непонятно, что выбрано). */
+  selectedVariant?: "chip" | "card";
 }) {
   const [createdOptions, setCreatedOptions] = useState<EntityOption[]>([]);
   const allOptions = useMemo(
@@ -168,7 +172,27 @@ export default function EntityMultiSelect({
 
   return (
     <div>
-      {selected.length > 0 && (
+      {selected.length > 0 && selectedVariant === "card" && (
+        <div className="d-flex flex-wrap gap-2 mb-2">
+          {selected.map((o) => (
+            <div key={o.id} className="selected-card">
+              <input type="hidden" name={name} value={o.id} />
+              <Avatar option={o} />
+              <span className="selected-card-name">{o.name}</span>
+              <button
+                type="button"
+                className="performer-chip-remove"
+                onClick={() => remove(o.id)}
+                aria-label={`Убрать ${o.name}`}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selected.length > 0 && selectedVariant === "chip" && (
         <div className="d-flex flex-wrap gap-2 mb-2">
           {selected.map((o) => (
             <span key={o.id} className="event-chip performer-chip">

@@ -2275,9 +2275,8 @@ svg[aria-hidden="true"] {
 }
 
 .hero-stat-icon {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   line-height: 1;
-  margin-bottom: 0.35rem;
 }
 
 .hero-stat-value {
@@ -2473,4 +2472,30 @@ details.admin-section[open] > summary.admin-section-head::before {
   background: rgba(18, 18, 22, 0.92);
   backdrop-filter: blur(8px);
   border-radius: 0 0 var(--bs-border-radius-lg, 1rem) var(--bs-border-radius-lg, 1rem);
+}
+
+/* ---------- Выбранные записи карточками (сериалы, события) ---------- */
+.selected-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 15rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.35rem;
+  border-radius: var(--bs-border-radius);
+  border: 1px solid var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.selected-card .performer-select-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.35rem;
+}
+
+.selected-card-name {
+  font-size: 0.82rem;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

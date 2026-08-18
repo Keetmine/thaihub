@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/userAuth";
 import { CalendarIcon, HeartIcon, TvIcon, UsersIcon } from "@/components/icons";
 
 const FEATURES = [
@@ -57,6 +58,9 @@ export default async function LandingPage() {
       },
     },
   });
+  // Авторизованному незачем показывать «Зарегистрироваться / Войти» —
+  // он уже внутри (страница /about открыта всем).
+  const currentUser = await getCurrentUser();
   const seenEvents = new Set<string>();
   const upcoming = upcomingRaw
     .filter((occ) => !seenEvents.has(occ.eventId) && seenEvents.add(occ.eventId))
@@ -81,12 +85,25 @@ export default async function LandingPage() {
           и статусы просмотра — чтобы вы ничего не упустили.
         </p>
         <div className="d-flex flex-wrap justify-content-center gap-2">
-          <Link href="/signup" className="btn btn-primary">
-            Зарегистрироваться
-          </Link>
-          <Link href="/login" className="btn btn-ghost">
-            Войти
-          </Link>
+          {currentUser ? (
+            <>
+              <Link href="/" className="btn btn-primary">
+                К афише событий
+              </Link>
+              <Link href="/account" className="btn btn-ghost">
+                Мой профиль
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/signup" className="btn btn-primary">
+                Зарегистрироваться
+              </Link>
+              <Link href="/login" className="btn btn-ghost">
+                Войти
+              </Link>
+            </>
+          )}
         </div>
       </section>
 
@@ -198,18 +215,28 @@ export default async function LandingPage() {
       {/* ---------- Final CTA ---------- */}
       <section className="surface dot-grid text-center p-4 p-md-5">
         <h2 className="display-1-tight mb-3" style={{ fontSize: "1.9rem" }}>
-          Готовы начать?
+          {currentUser ? "Рады видеть снова" : "Готовы начать?"}
         </h2>
         <p className="text-secondary mx-auto mb-4" style={{ maxWidth: "28rem" }}>
-          Регистрация занимает меньше минуты — email и пароль, без лишних вопросов.
+          {currentUser
+            ? "Загляните в афишу — там всё, что скоро происходит."
+            : "Регистрация занимает меньше минуты — email и пароль, без лишних вопросов."}
         </p>
         <div className="d-flex flex-wrap justify-content-center gap-2">
-          <Link href="/signup" className="btn btn-primary">
-            Создать аккаунт
-          </Link>
-          <Link href="/login" className="btn btn-ghost">
-            У меня уже есть аккаунт
-          </Link>
+          {currentUser ? (
+            <Link href="/" className="btn btn-primary">
+              Открыть афишу
+            </Link>
+          ) : (
+            <>
+              <Link href="/signup" className="btn btn-primary">
+                Создать аккаунт
+              </Link>
+              <Link href="/login" className="btn btn-ghost">
+                У меня уже есть аккаунт
+              </Link>
+            </>
+          )}
         </div>
       </section>
     </div>

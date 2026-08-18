@@ -48,7 +48,6 @@ export default function WelcomePicker({
             >
               <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.75} />
               <span className={`small ${active ? "text-white fw-medium" : "text-secondary"}`}>
-                {active ? "✓ " : ""}
                 {p.name}
               </span>
             </button>

@@ -187,14 +187,9 @@ export default function AccountTabs({
             🔒 Списки событий доступны по подписке.
           </p>
         )}
-        <h2
-          className="section-heading mb-2"
-        >
-          Мои события — предстоящие
-        </h2>
-        {upcomingAttendances.length === 0 ? (
-          <p className="small text-secondary mb-4">Нет предстоящих событий.</p>
-        ) : (
+        {upcomingAttendances.length > 0 && (
+          <>
+          <h2 className="section-heading mb-2">Мои события — предстоящие</h2>
           <div className="d-flex flex-column gap-3 mb-5">
             {upcomingAttendances.map((ev) => (
               <EventAgendaRow
@@ -206,6 +201,7 @@ export default function AccountTabs({
               />
             ))}
           </div>
+          </>
         )}
 
         {pastAttendances.length > 0 && (
@@ -229,14 +225,9 @@ export default function AccountTabs({
           </>
         )}
 
-        <h2
-          className="section-heading mb-2 mt-4"
-        >
-          Избранные события
-        </h2>
-        {favoriteEvents.length === 0 ? (
-          <p className="small text-secondary mb-4">Нет избранных событий.</p>
-        ) : (
+        {favoriteEvents.length > 0 && (
+          <>
+          <h2 className="section-heading mb-2 mt-4">Избранные события</h2>
           <div className="d-flex flex-column gap-3 mb-5">
             {favoriteEvents.map(({ row, extraDates }) => (
               <EventAgendaRow
@@ -249,7 +240,16 @@ export default function AccountTabs({
               />
             ))}
           </div>
+          </>
         )}
+
+        {upcomingAttendances.length === 0 &&
+          pastAttendances.length === 0 &&
+          favoriteEvents.length === 0 && (
+            <p className="small text-secondary">
+              Пока пусто: отмечайте «иду» на событиях и добавляйте их в избранное — они появятся здесь.
+            </p>
+          )}
       </div>
     </div>
   );
