@@ -33,27 +33,31 @@ export function pageMetadata(input: {
   /** Личные страницы: в поиске им делать нечего. */
   noIndex?: boolean;
 }): Metadata {
-  const title = pageTitle(input.title);
+  // В metadata.title кладём ТОЛЬКО свою часть: суффикс « — MyBLHub»
+  // дописывает title.template из корневого layout, иначе он попадал в
+  // заголовок дважды. А вот в OpenGraph шаблон не применяется — там
+  // нужно полное название.
+  const fullTitle = pageTitle(input.title);
   const url = `${SITE_URL}${input.path ?? ""}`;
   const image = absoluteImage(input.image) ?? `${SITE_URL}/og-default.png`;
 
   return {
-    title,
+    ...(input.title ? { title: input.title } : {}),
     description: input.description,
     alternates: { canonical: url },
     ...(input.noIndex ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
-      title,
+      title: fullTitle,
       description: input.description,
       url,
       siteName: SITE_NAME,
       locale: "ru_RU",
       type: input.type ?? "website",
-      images: [{ url: image, width: 1200, height: 630, alt: title }],
+      images: [{ url: image, width: 1200, height: 630, alt: fullTitle }],
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: fullTitle,
       description: input.description,
       images: [image],
     },
