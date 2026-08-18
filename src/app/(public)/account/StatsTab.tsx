@@ -56,13 +56,13 @@ export default function StatsTab({
         Мой фан-профиль
       </h2>
       <div className="d-flex flex-wrap gap-2 mb-4">
-        <StatTile value={stats.attendedEvents} label="посещено событий" />
-        <StatTile value={stats.uniqueVenues} label="площадок" />
-        <StatTile value={stats.performersSeenLive} label="актёров вживую" />
-        <StatTile value={stats.visitedLocations} label="локаций съёмок" />
-        <StatTile value={stats.completedDramas} label="досмотрено дорам" />
-        <StatTile value={stats.trips} label="поездок" />
-        <StatTile value={stats.daysInThailand} label="дней в Таиланде" />
+        <StatTile value={stats.attendedEvents} label="посещено событий" icon="🎤" muted />
+        <StatTile value={stats.uniqueVenues} label="площадок" icon="📍" muted />
+        <StatTile value={stats.performersSeenLive} label="актёров вживую" icon="👀" muted />
+        <StatTile value={stats.visitedLocations} label="локаций съёмок" icon="🎬" muted />
+        <StatTile value={stats.completedDramas} label="досмотрено дорам" icon="📺" muted />
+        <StatTile value={stats.trips} label="поездок" icon="✈️" muted />
+        <StatTile value={stats.daysInThailand} label="дней в Таиланде" icon="🌴" muted />
       </div>
 
       {stats.topPerformers.length > 0 && (
@@ -198,40 +198,57 @@ export default function StatsTab({
         </>
       )}
 
-      <h2 className="section-heading mb-2">
-        Ачивки · {unlockedCount}/{achievements.length}
-      </h2>
+      {/* Ачивки: полученные впереди и с акцентом, остальные — по
+          близости к цели (сначала те, до которых рукой подать). */}
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <h2 className="section-heading mb-0">Ачивки</h2>
+        <span className="small text-secondary">
+          {unlockedCount} из {achievements.length}
+        </span>
+        <div className="achv-bar flex-fill" style={{ maxWidth: "12rem" }}>
+          <span style={{ width: `${Math.round((unlockedCount / achievements.length) * 100)}%` }} />
+        </div>
+      </div>
       <div className="row g-2 mb-4">
-        {achievements.map((a) => (
-          <div key={a.key} className="col-6 col-md-4 col-lg-3">
-            <div
-              className="surface p-3 h-100"
-              style={a.unlocked ? undefined : { opacity: 0.45 }}
-              title={a.description}
-            >
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <span style={{ fontSize: "1.3rem" }}>{a.emoji}</span>
-                <span className="small fw-semibold text-white">{a.title}</span>
-              </div>
-              <p className="small text-secondary mb-2" style={{ fontSize: "0.72rem" }}>
-                {a.description}
-              </p>
-              {!a.unlocked && a.target > 1 && (
-                <div className="progress" style={{ height: "0.3rem" }}>
-                  <div
-                    className="progress-bar bg-primary"
-                    style={{ width: `${Math.round((a.value / a.target) * 100)}%` }}
-                  />
+        {[...achievements]
+          .sort((a, b) => {
+            if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
+            return b.value / Math.max(b.target, 1) - a.value / Math.max(a.target, 1);
+          })
+          .map((a) => {
+            const pct = Math.min(100, Math.round((a.value / Math.max(a.target, 1)) * 100));
+            return (
+              <div key={a.key} className="col-6 col-md-4 col-lg-3">
+                <div
+                  className={`achv d-flex flex-column gap-2 ${a.unlocked ? "achv-unlocked" : "achv-locked"}`}
+                  title={a.description}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="achv-badge">{a.emoji}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="achv-title d-block">{a.title}</span>
+                      {a.unlocked && (
+                        <span className="small" style={{ color: "var(--bs-primary-text-emphasis)", fontSize: "0.7rem" }}>
+                          ✓ получена
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <p className="achv-desc">{a.description}</p>
+                  {!a.unlocked && a.target > 1 && (
+                    <div className="mt-auto">
+                      <div className="achv-bar mb-1">
+                        <span style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="small text-secondary" style={{ fontSize: "0.7rem" }}>
+                        {a.value} / {a.target}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {!a.unlocked && a.target > 1 && (
-                <span className="small text-secondary" style={{ fontSize: "0.7rem" }}>
-                  {a.value}/{a.target}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+              </div>
+            );
+          })}
       </div>
     </div>
   );

@@ -150,9 +150,9 @@ export default function AccountTabs({
       {/* Every tab stays mounted (display:none when inactive) so state isn't
           lost when switching tabs, consistent with PerformerForm's pattern. */}
       <div style={{ display: activeTab === "profile" ? undefined : "none" }}>
-        {/* Как публичный профиль (/users/[id]): шапка на всю ширину,
-            без узкой карточки. */}
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        {/* Шапка — единая карточка с мягким акцентным фоном: раньше
+            аватар, имя и кнопки «висели» на пустом фоне вразнобой. */}
+        <div className="profile-hero d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
           <div className="d-flex flex-wrap align-items-center gap-4">
             {user.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -211,12 +211,12 @@ export default function AccountTabs({
         </div>
 
         <div className="d-flex flex-wrap gap-2 mb-4">
-          <StatTile value={stats.going} label="иду" />
-          <StatTile value={stats.favoriteEvents} label="избранных событий" />
-          <StatTile value={stats.favoritePerformers} label="любимых актёров" href="/artists" />
-          <StatTile value={stats.dramas} label="сериалов" href="/dramas" />
-          <StatTile value={stats.friends} label="друзей" href="/friends" />
-          <StatTile value={stats.trips} label="поездок" href="/trips" />
+          <StatTile value={stats.going} label="иду" icon="🎟" />
+          <StatTile value={stats.favoriteEvents} label="избранных событий" icon="❤️" />
+          <StatTile value={stats.favoritePerformers} label="любимых актёров" icon="⭐️" href="/artists" />
+          <StatTile value={stats.dramas} label="сериалов" icon="📺" href="/dramas" />
+          <StatTile value={stats.friends} label="друзей" icon="👥" href="/friends" />
+          <StatTile value={stats.trips} label="поездок" icon="✈️" href="/trips" />
         </div>
 
         <StatsTab stats={statsData} achievements={achievements} artistLists={artistLists} />
