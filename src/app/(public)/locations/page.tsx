@@ -145,11 +145,14 @@ async function LocationsAlphabetical({
   q: string;
   currentUser: { id: string } | null;
 }) {
+  // Только то, что рисует строка: description локаций — это длинные
+  // тексты, из-за которых страница весила больше мегабайта.
   const locations = await prisma.location.findMany({
     where: {
       createdByUserId: null,
       ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
     },
+    select: { id: true, name: true, photoUrl: true, slug: true },
     orderBy: { name: "asc" },
   });
 
@@ -178,10 +181,16 @@ async function LocationsByDrama({
   const [dramas, locationsWithoutDrama] = await Promise.all([
     prisma.drama.findMany({
       where: { locations: { some: { location: locationNameFilter } } },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        slug: true,
         locations: {
           where: { location: locationNameFilter },
-          include: { location: true },
+          select: {
+            locationId: true,
+            location: { select: { id: true, name: true, photoUrl: true, slug: true } },
+          },
           orderBy: { location: { name: "asc" } },
         },
       },
@@ -189,6 +198,7 @@ async function LocationsByDrama({
     }),
     prisma.location.findMany({
       where: { createdByUserId: null, ...locationNameFilter, dramas: { none: {} } },
+      select: { id: true, name: true, photoUrl: true, slug: true },
       orderBy: { name: "asc" },
     }),
   ]);

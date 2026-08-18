@@ -112,6 +112,25 @@ export async function createPremiumInvoiceLink(
   return data.result;
 }
 
+/**
+ * Возврат оплаченных звёзд (refundStarPayment). Нужен и для проверки
+ * оплаты на живом боте — песочницы у Stars нет, поэтому тестовый платёж
+ * проводится настоящими звёздами и возвращается этой же кнопкой, — и
+ * для обычных просьб о возврате.
+ */
+export async function refundStarPayment(
+  telegramUserId: string,
+  chargeId: string,
+): Promise<void> {
+  const res = await fetch(`https://api.telegram.org/bot${botToken()}/refundStarPayment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: Number(telegramUserId), telegram_payment_charge_id: chargeId }),
+  });
+  const data = (await res.json()) as { ok: boolean; description?: string };
+  if (!data.ok) throw new Error(`refundStarPayment failed: ${data.description ?? res.status}`);
+}
+
 export async function answerPreCheckoutQuery(id: string, ok: boolean, errorMessage?: string): Promise<void> {
   await fetch(`https://api.telegram.org/bot${botToken()}/answerPreCheckoutQuery`, {
     method: "POST",

@@ -27,7 +27,10 @@ export default function TelegramLoginButton({ botUsername }: { botUsername: stri
     script.async = true;
     script.setAttribute("data-telegram-login", botUsername);
     script.setAttribute("data-size", "large");
-    script.setAttribute("data-auth-url", "/api/auth/telegram");
+    // Абсолютный URL обязателен: с относительным путём виджет
+    // подтверждает вход и никуда не переходит — с виду «кнопка не
+    // работает».
+    script.setAttribute("data-auth-url", `${window.location.origin}/api/auth/telegram`);
     script.setAttribute("data-request-access", "write");
     container.appendChild(script);
   }, [botUsername]);

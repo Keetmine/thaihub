@@ -1113,6 +1113,10 @@ model Payment {
   provider         String   @default("telegram_stars")
   amount           Int // в Stars (XTR)
   telegramChargeId String?  @unique
+  // Возврат звёзд (refundStarPayment): Telegram по тому же charge id
+  // возвращает оплату пользователю. Держим отметку, чтобы не вернуть
+  // дважды и чтобы возвраты не считались в выручке.
+  refundedAt       DateTime?
   createdAt        DateTime @default(now())
 }
 

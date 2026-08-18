@@ -3,6 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
 import { getPremiumPriceStars } from "@/lib/siteSettings";
+import ConfirmForm from "@/components/ConfirmForm";
+import { refundPayment } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,7 @@ export default async function AdminFinancePage() {
       orderBy: { premiumUntil: "asc" },
     }),
     getPremiumPriceStars(),
-    prisma.payment.aggregate({ _sum: { amount: true } }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { refundedAt: null } }),
   ]);
 
   return (
@@ -51,7 +53,7 @@ export default async function AdminFinancePage() {
           ) : (
             <div className="d-flex flex-column gap-2">
               {payments.map((p) => (
-                <div key={p.id} className="surface d-flex justify-content-between gap-3 p-3">
+                <div key={p.id} className="surface d-flex align-items-center justify-content-between gap-3 p-3">
                   <span className="text-truncate">
                     {p.user ? (
                       <Link href={`/admin/users/${p.user.id}`} className="link-body-emphasis">
@@ -60,9 +62,27 @@ export default async function AdminFinancePage() {
                     ) : (
                       <span className="text-secondary">аккаунт удалён</span>
                     )}
+                    {p.refundedAt && (
+                      <span className="badge rounded-pill text-bg-secondary ms-2">возвращено</span>
+                    )}
                   </span>
-                  <span className="small text-secondary flex-shrink-0">
-                    ★ {p.amount} · {formatShortDate(p.createdAt)} {p.createdAt.getFullYear()}
+                  <span className="d-flex align-items-center gap-2 flex-shrink-0">
+                    <span className="small text-secondary">
+                      ★ {p.amount} · {formatShortDate(p.createdAt)} {p.createdAt.getFullYear()}
+                    </span>
+                    {!p.refundedAt && p.telegramChargeId && p.user && (
+                      <ConfirmForm
+                        action={async () => {
+                          "use server";
+                          await refundPayment(p.id);
+                        }}
+                        confirmMessage={`Вернуть ${p.amount} Stars? Подписка пользователя будет снята.`}
+                      >
+                        <button type="button" className="btn btn-ghost btn-sm">
+                          Вернуть
+                        </button>
+                      </ConfirmForm>
+                    )}
                   </span>
                 </div>
               ))}
