@@ -23,6 +23,11 @@ export const SETTING_KEYS = [
       "Через запятую: feedback, report, import, error, payment. " +
       "По умолчанию всё, кроме error. Пустая строка выключает совсем.",
   },
+  {
+    key: "admin_notify_email",
+    label: "Почта для тех же уведомлений",
+    hint: "Работает только когда настроен SMTP (SMTP_HOST/SMTP_FROM). Пусто — не слать.",
+  },
 ] as const;
 
 export async function getSetting(key: string): Promise<string | null> {

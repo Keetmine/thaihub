@@ -1,17 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { getSetting } from "@/lib/siteSettings";
+import { isMailerConfigured, sendMail } from "@/lib/mailer";
 
 // Уведомления админам о том, что требует реакции: обращение, жалоба,
 // упавший импорт, серверная ошибка, оплата. Без них об очереди узнаёшь,
 // только зайдя в админку (см. docs/features/admin-notifications.md).
-// Канал — Telegram: бот уже есть, и у админов есть telegramId. Почта
-// добавится, когда появятся SMTP-доступы.
+// Каналы: Telegram (бот уже есть, у админов есть telegramId) и почта —
+// письмо уходит, только если настроен SMTP и задан адрес получателя,
+// иначе канал молча пропускается.
 
 export type AdminNotifyKind = "feedback" | "report" | "import" | "error" | "payment";
 
 /** Ключ настройки, которым канал отключается из /admin/settings. */
 export const ADMIN_NOTIFY_SETTING = "admin_notify_kinds";
+/** Почта, на которую дублируются те же уведомления (пусто — не слать). */
+export const ADMIN_NOTIFY_EMAIL_SETTING = "admin_notify_email";
 
 /** Значение по умолчанию: включено всё, кроме ошибок — их поток шумный,
  *  а счётчик в сайдбаре и так виден. */
@@ -62,6 +66,15 @@ export async function notifyAdmins(
     await Promise.all(
       admins.map((a) => sendTelegramMessage(a.telegramId!, text).catch(() => false)),
     );
+
+    // Почтовый дубль — то же сообщение, первой строкой в теме.
+    const mailTo = (await getSetting(ADMIN_NOTIFY_EMAIL_SETTING))?.trim();
+    if (mailTo && isMailerConfigured()) {
+      const subject = text.split("\n")[0].slice(0, 120);
+      await sendMail(mailTo, `MyBLHub: ${subject}`, text).catch((e) =>
+        console.error("admin notify mail failed", e),
+      );
+    }
   } catch (error) {
     console.error("admin notify failed", error);
   }

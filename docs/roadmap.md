@@ -97,13 +97,12 @@
       features/admin-notifications.md. Почтовый канал ждёт SMTP
       (см. ниже).
 
-## Обращения и жалобы → почта (TODO)
+## Обращения и жалобы → почта
 
-- [ ] Дублировать новые Feedback/Report на почту админа. Ждём от
-      владельца: почтовый ящик на домене (admin@myblhub.com) и
-      SMTP-доступы (или решение через Google Workspace) — без них
-      отправлять не с чего. Пока всё видно в /admin/feedback и
-      /admin/moderation.
+- [x] Код готов: notifyAdmins дублирует уведомления письмом на адрес из
+      настройки `admin_notify_email`. Ждёт от владельца ящик на домене
+      (admin@myblhub.com) и SMTP-доступы в .env — до этого канал молча
+      пропускается, всё видно в /admin/feedback и /admin/moderation.
 
 ## Вики-статьи (TODO — контент)
 
