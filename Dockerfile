@@ -42,6 +42,15 @@ RUN node_modules/.bin/playwright install --with-deps chromium \
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 
+# Разовые прогоны данных (scripts/*.ts: досинк MyDramaList, бэкфиллы,
+# импорты blscene/GMMTV/TMDB) запускаются на проде через
+# `docker compose exec app npx tsx scripts/<name>.ts`. Они импортируют
+# ../src/lib напрямую, а standalone-сборка исходников не содержит — без
+# src и tsconfig (в нём алиас @/*) tsx падает на первом же импорте.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
+
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh && chown nextjs:nodejs docker-entrypoint.sh
 

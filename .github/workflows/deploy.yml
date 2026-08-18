@@ -31,5 +31,14 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch origin main
             git reset --hard origin/main
+            # Слепок до пересборки: энтрипоинт гонит `prisma migrate deploy`
+            # на старте, и суточного крон-бэкапа мало — между ним и деплоем
+            # может быть почти сутки правок. Держим 5 последних.
+            mkdir -p backups
+            if docker compose ps --status running --services | grep -qx db; then
+              docker compose exec -T db pg_dump -U thaitrack thaitrack \
+                | gzip > "backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql.gz"
+              ls -1t backups/pre-deploy-*.sql.gz | tail -n +6 | xargs -r rm --
+            fi
             docker compose up -d --build
             docker image prune -f

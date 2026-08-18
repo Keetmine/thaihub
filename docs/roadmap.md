@@ -12,8 +12,8 @@
       битых ссылок в БД нет.
 - [x] А3. Dockerfile: `playwright install --with-deps chromium` в
       runner-образ — иначе кнопки blscene/GMMTV падают на проде.
-- [ ] А4. (руками, @BotFather) `/setdomain` → myblhub.com для
-      @myblhub_bot, иначе виджет входа не рендерится.
+- [x] А4. (руками, @BotFather) `/setdomain` → myblhub.com для
+      @myblhub_bot — сделано владельцем 2026-08-18.
 
 ## Б. Блокеры прода
 
