@@ -158,7 +158,9 @@ function parseAwards($: CheerioAPI): TpopAwardRow[] {
       const header = grid[0].map((h) => h.toLowerCase());
       const col = (name: string) => header.findIndex((h) => h.includes(name));
       const yearI = col("year");
-      const awardI = col("award");
+      // Колонка премии называется по-разному: «Award», «Event»,
+      // «Ceremony» (у NuNew — Event, из-за чего «Премия» была пустой).
+      const awardI = Math.max(col("award"), col("event"), col("ceremony"));
       const categoryI = col("categor");
       const nomineeI = Math.max(col("nominee"), col("nominated work"), col("recipient"));
       const resultI = col("result");

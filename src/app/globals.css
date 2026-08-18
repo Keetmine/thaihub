@@ -2053,3 +2053,48 @@ svg[aria-hidden="true"] {
 .sources-block a:hover {
   color: var(--bs-link-hover-color);
 }
+
+/* ---------- Награды и номинации (страница исполнителя) ---------- */
+.award-row {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--bs-border-radius);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--bs-border-color);
+}
+
+.award-year {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+
+.award-result {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2rem;
+  color: var(--bs-secondary-color);
+  background: rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+}
+
+.award-result.is-won {
+  color: #7ee787;
+  background: rgba(59, 179, 59, 0.14);
+}
+
+@media (max-width: 575.98px) {
+  .award-row {
+    grid-template-columns: 2.75rem 1fr;
+    row-gap: 0.4rem;
+  }
+
+  .award-result {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
