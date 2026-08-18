@@ -1,7 +1,8 @@
 import BuyPremiumButton from "@/components/BuyPremiumButton";
 import PromoCodeRedeem from "@/components/PromoCodeRedeem";
 import Link from "next/link";
-import { getPaymentMode, getPremiumPriceStars } from "@/lib/siteSettings";
+import { getPaymentMode, getPremiumPriceStars, getSubscriptionContact } from "@/lib/siteSettings";
+import { TelegramIcon } from "@/components/icons";
 
 const FEATURES = [
   "Полная афиша: названия, площадки, составы и страницы событий",
@@ -16,7 +17,11 @@ const FEATURES = [
  *  кнопка вела бы прямо в ошибку Telegram). Серверный компонент — читает
  *  настройки в рантайме. */
 export default async function PremiumUpsell({ feature }: { feature: string }) {
-  const [mode, price] = await Promise.all([getPaymentMode(), getPremiumPriceStars()]);
+  const [mode, price, contact] = await Promise.all([
+    getPaymentMode(),
+    getPremiumPriceStars(),
+    getSubscriptionContact(),
+  ]);
   const canPay = !!process.env.TELEGRAM_BOT_TOKEN && mode === "stars";
 
   return (
@@ -44,13 +49,27 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
         {canPay ? (
           <BuyPremiumButton />
         ) : (
-          <p className="text-secondary small mb-0">
-            Оплата через Telegram сейчас недоступна.{" "}
-            <Link href="/help#feedback" className="link-body-emphasis">
-              Напишите нам
-            </Link>{" "}
-            — подключим подписку к вашему аккаунту и пришлём промокод.
-          </p>
+          <div className="d-flex flex-column align-items-center gap-2">
+            {contact && (
+              <a
+                href={`https://t.me/${contact}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-primary d-inline-flex align-items-center gap-2"
+              >
+                <TelegramIcon />
+                Написать в Telegram
+              </a>
+            )}
+            <p className="text-secondary small mb-0">
+              Напишите — подключим подписку к вашему аккаунту и подскажем, как
+              оплатить.{" "}
+              <Link href="/help#feedback" className="link-body-emphasis">
+                Или через форму на сайте
+              </Link>
+              .
+            </p>
+          </div>
         )}
         <div className="mt-3">
           <PromoCodeRedeem />

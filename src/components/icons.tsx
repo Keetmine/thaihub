@@ -632,3 +632,18 @@ export function HistoryIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function TelegramIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="1.1em"
+      height="1.1em"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M21.94 4.3 18.9 19.1c-.23 1.02-.84 1.27-1.7.79l-4.7-3.46-2.27 2.18c-.25.25-.46.46-.94.46l.33-4.78 8.7-7.86c.38-.34-.08-.53-.59-.19l-10.75 6.77-4.63-1.45c-1-.31-1.02-1 .21-1.48l18.1-6.98c.84-.3 1.57.2 1.28 1.2z" />
+    </svg>
+  );
+}

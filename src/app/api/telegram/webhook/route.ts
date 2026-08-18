@@ -15,7 +15,7 @@ type TelegramUpdate = {
   pre_checkout_query?: { id: string; invoice_payload: string };
   message?: {
     text?: string;
-    from?: { id: number };
+    from?: { id: number; first_name?: string; username?: string };
     chat?: { id: number };
     successful_payment?: {
       invoice_payload: string;
@@ -64,10 +64,30 @@ export async function POST(request: Request) {
   }
 
   // Команды: отвечаем и выходим — оплата этим же апдейтом не приходит.
-  const text = update.message?.text?.trim().split(/\s+/)[0].toLowerCase();
+  const rawText = update.message?.text?.trim();
+  const command = rawText?.split(/\s+/)[0].toLowerCase();
   const chatId = update.message?.chat?.id ?? update.message?.from?.id;
-  if (text && chatId && COMMAND_REPLIES[text]) {
-    await sendTelegramMessage(String(chatId), COMMAND_REPLIES[text]).catch(() => {});
+  if (command && chatId && COMMAND_REPLIES[command]) {
+    await sendTelegramMessage(String(chatId), COMMAND_REPLIES[command]).catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
+
+  // Любой другой текст — это человек, который пишет боту как живому
+  // адресату (чаще всего просьба про подписку). Бот отвечать не умеет,
+  // поэтому пересылаем админам и подтверждаем отправителю, что
+  // сообщение дошло — иначе оно просто пропадало.
+  if (rawText && chatId) {
+    const from = update.message?.from;
+    const who = from?.username ? `@${from.username}` : (from?.first_name ?? String(chatId));
+    await notifyAdmins(
+      "feedback",
+      `✉️ Сообщение боту от ${who} (id ${chatId}):\n\n${rawText.slice(0, 800)}`,
+    );
+    await sendTelegramMessage(
+      String(chatId),
+      "Спасибо, передал(а) сообщение — вам ответят здесь же или на сайте. " +
+        `Если вопрос про подписку, можно сразу написать напрямую: ${APP_URL}/help`,
+    ).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 
