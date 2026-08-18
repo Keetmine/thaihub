@@ -2360,3 +2360,46 @@ svg[aria-hidden="true"] {
 .facepile > * + * {
   margin-left: -0.7rem;
 }
+
+/* ---------- Ряд постеров (сериалы, альбомы на странице артиста) ----------
+   Фиксированная ширина карточки оставляла справа обрезанную полоску
+   следующего постера. Тут ширина резиновая: в видимую область всегда
+   помещается целое число карточек, прокрутка — за их пределами. */
+.poster-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 6 * 1rem) / 7);
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+@media (max-width: 1399.98px) {
+  .poster-row {
+    grid-auto-columns: calc((100% - 5 * 1rem) / 6);
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .poster-row {
+    grid-auto-columns: calc((100% - 4 * 1rem) / 5);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .poster-row {
+    grid-auto-columns: calc((100% - 3 * 1rem) / 4);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .poster-row {
+    grid-auto-columns: calc((100% - 2 * 1rem) / 3);
+  }
+}
+
+@media (max-width: 479.98px) {
+  .poster-row {
+    grid-auto-columns: calc((100% - 1rem) / 2);
+  }
+}

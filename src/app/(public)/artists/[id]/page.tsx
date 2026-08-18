@@ -517,12 +517,11 @@ export default async function PerformerPage({
               <h2 className="section-heading mb-2">
                 Сериалы
               </h2>
-              <div className="d-flex gap-3 pb-2 thin-scroll" style={{ overflowX: "auto" }}>
+              <div className="poster-row thin-scroll">
                 {sortedDramas.map((pd) => (
                   <div
                     key={pd.dramaId}
-                    className="flex-shrink-0"
-                    style={{ width: "8.5rem", position: "relative" }}
+                    style={{ position: "relative" }}
                   >
                     <Link href={dramaHref(pd.drama)} className="text-decoration-none d-block">
                       <div
@@ -570,9 +569,9 @@ export default async function PerformerPage({
           <h2 className="section-heading mb-2">
             <MusicNoteIcon className="icon-inline" /> Альбомы
           </h2>
-          <div className="d-flex gap-3 pb-2 thin-scroll" style={{ overflowX: "auto" }}>
+          <div className="poster-row thin-scroll">
             {performer.albums.map((album) => (
-              <div key={album.id} className="flex-shrink-0" style={{ width: "8.5rem" }}>
+              <div key={album.id}>
                 <div
                   className="d-flex align-items-center justify-content-center"
                   style={{
