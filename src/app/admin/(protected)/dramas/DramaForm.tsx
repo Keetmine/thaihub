@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import FormSection from "@/components/admin/FormSection";
 import FileDropzone from "@/components/FileDropzone";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
@@ -198,6 +199,7 @@ export default function DramaForm({
           an inline display:none on the same element. */}
       <div style={{ display: activeTab === "general" ? undefined : "none" }}>
       <div className="d-flex flex-column gap-3">
+      <FormSection title="Основное" hint="название, год, источник, кто снимал">
       <div className="row g-3">
         <div className="col-12 col-lg-8">
           <label className="form-label">Название *</label>
@@ -270,6 +272,9 @@ export default function DramaForm({
         </div>
       </div>
 
+      </FormSection>
+
+      <FormSection title="Описание и постер">
       <div className="row g-3">
         <div className="col-12 col-md-8">
           <label className="form-label">Синопсис</label>
@@ -285,6 +290,9 @@ export default function DramaForm({
         </div>
       </div>
 
+      </FormSection>
+
+      <FormSection title="Названия и авторы" hint="данные из MyDramaList">
       <div className="row g-3">
         <div className="col-12 col-md-6">
           <label className="form-label">Родное название</label>
@@ -325,6 +333,11 @@ export default function DramaForm({
             className="form-control"
           />
         </div>
+        </div>
+      </FormSection>
+
+      <FormSection title="Эфир и классификация" hint="эпизоды, канал, рейтинг, статус">
+      <div className="row g-3">
         <div className="col-6 col-md-3">
           <label className="form-label">Эпизоды</label>
           <input type="number" name="episodes" defaultValue={v?.episodes} className="form-control" />
@@ -373,6 +386,7 @@ export default function DramaForm({
           </select>
         </div>
       </div>
+      </FormSection>
       </div>
       </div>
 
@@ -510,10 +524,13 @@ export default function DramaForm({
         </form>
       </Modal>
 
-      <div className="mt-2">
+      <div className="admin-form-actions">
         <button type="submit" className="btn btn-primary">
           {submitLabel}
         </button>
+        <span className="small text-secondary">
+          Все вкладки сохраняются одной кнопкой.
+        </span>
       </div>
     </form>
   );

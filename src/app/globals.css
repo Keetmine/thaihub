@@ -2403,3 +2403,74 @@ svg[aria-hidden="true"] {
     grid-auto-columns: calc((100% - 1rem) / 2);
   }
 }
+
+/* ---------- Секции админ-форм ---------- */
+.admin-section {
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1rem 1.1rem;
+}
+
+.admin-section + .admin-section {
+  margin-top: 0.85rem;
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  cursor: default;
+  list-style: none;
+}
+
+details.admin-section > summary.admin-section-head {
+  cursor: pointer;
+}
+
+details.admin-section > summary.admin-section-head::-webkit-details-marker {
+  display: none;
+}
+
+details.admin-section > summary.admin-section-head::before {
+  content: "▸";
+  font-size: 0.75em;
+  color: var(--bs-secondary-color);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+details.admin-section[open] > summary.admin-section-head::before {
+  transform: rotate(90deg);
+}
+
+.admin-section-title {
+  font-family: var(--font-display, inherit);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.admin-section-hint {
+  font-size: 0.76rem;
+  color: var(--bs-secondary-color);
+}
+
+/* Липкая панель сохранения: у длинных форм кнопка уезжала в самый низ. */
+.admin-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem -1.5rem -1.5rem;
+  padding: 0.85rem 1.5rem;
+  border-top: 1px solid var(--bs-border-color);
+  background: rgba(18, 18, 22, 0.92);
+  backdrop-filter: blur(8px);
+  border-radius: 0 0 var(--bs-border-radius-lg, 1rem) var(--bs-border-radius-lg, 1rem);
+}

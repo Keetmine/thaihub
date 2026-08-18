@@ -9,6 +9,7 @@ import { createDramaAndReturn, searchDramaOptions } from "../dramas/actions";
 import { searchEventOptions } from "../events/actions";
 import { searchSoloPerformerOptions } from "./actions";
 import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
+import FormSection from "@/components/admin/FormSection";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
@@ -167,6 +168,7 @@ export default function PerformerForm({
         <TabButton active={effectiveTab === "events"} onClick={() => setActiveTab("events")}>
           Евенты
         </TabButton>
+
         {type === "SOLO" && (
           <TabButton active={effectiveTab === "pairing"} onClick={() => setActiveTab("pairing")}>
             Пейринг
@@ -181,6 +183,7 @@ export default function PerformerForm({
           otherwise beat an inline display:none on the same element. */}
       <div style={{ display: effectiveTab === "general" ? undefined : "none" }}>
       <div className="d-flex flex-column gap-3">
+        <FormSection title="Основное" hint="как исполнитель называется и кто он">
         <div className="row g-3">
           <div className="col-12 col-lg-8">
             <label className="form-label">Имя / название группы *</label>
@@ -214,7 +217,10 @@ export default function PerformerForm({
           </div>
         </div>
 
+        </FormSection>
+
         {type === "SOLO" && (
+          <FormSection title="Профиль" hint="имена, национальность, дата и место рождения, агентства">
           <div className="row g-3">
             <div className="col-12 col-sm-6">
               <label className="form-label">Настоящее имя</label>
@@ -261,9 +267,11 @@ export default function PerformerForm({
               </select>
             </div>
           </div>
+          </FormSection>
         )}
 
         {type === "SOLO" && (
+          <FormSection title="Рождение и агентства">
           <div className="row g-3">
             <div className="col-12 col-sm-6">
               <label className="form-label">Дата рождения</label>
@@ -293,6 +301,7 @@ export default function PerformerForm({
               />
             </div>
           </div>
+          </FormSection>
         )}
 
         {type === "MASCOT" && (
@@ -341,6 +350,7 @@ export default function PerformerForm({
           </div>
         )}
 
+        <FormSection title="Биография и фото">
         <div className="row g-3">
           <div className="col-12 col-md-8">
             <label className="form-label">{type === "BAND" ? "О группе" : "Биография"}</label>
@@ -356,6 +366,9 @@ export default function PerformerForm({
           </div>
         </div>
 
+        </FormSection>
+
+        <FormSection title="Ссылки и соцсети" hint="MyDramaList, соцсети, музыкальные площадки">
         <div>
           <label className="form-label">Ссылка на MyDramaList</label>
           <input
@@ -476,8 +489,10 @@ export default function PerformerForm({
             + Добавить ссылку
           </button>
         </div>
+        </FormSection>
 
         {type === "BAND" && (
+          <FormSection title="Состав группы">
           <div>
             <label className="form-label d-block">Участники группы</label>
             <EntityMultiSelect
@@ -494,6 +509,7 @@ export default function PerformerForm({
               }}
             />
           </div>
+          </FormSection>
         )}
       </div>
       </div>
@@ -574,10 +590,13 @@ export default function PerformerForm({
         </div>
       )}
 
-      <div className="mt-2">
+      <div className="admin-form-actions">
         <button type="submit" className="btn btn-primary">
           {submitLabel}
         </button>
+        <span className="small text-secondary">
+          Изменения вкладок «Общая инфа», «Сериалы», «Евенты» и «Пейринг» сохраняются вместе.
+        </span>
       </div>
     </form>
   );
