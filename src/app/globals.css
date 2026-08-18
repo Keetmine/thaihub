@@ -2538,3 +2538,61 @@ details.admin-section[open] > summary.admin-section-head::before {
 .attention-label {
   font-size: 0.78rem;
 }
+
+/* ---------- Быстрый поиск по админке (Cmd/Ctrl+K) ---------- */
+.quick-search-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 8vh 1rem 1rem;
+}
+
+.quick-search {
+  width: min(44rem, 100%);
+  border-radius: var(--bs-border-radius-lg, 1rem);
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.quick-search > input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.quick-search > input:focus {
+  box-shadow: none;
+}
+
+.quick-search-hits {
+  max-height: 24rem;
+  overflow-y: auto;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.quick-search-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 1rem;
+  border: none;
+  background: transparent;
+}
+
+.quick-search-hit.is-active {
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.quick-search-foot {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}

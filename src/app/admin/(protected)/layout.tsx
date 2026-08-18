@@ -1,4 +1,5 @@
 import Link from "next/link";
+import QuickSearch from "@/components/admin/QuickSearch";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
@@ -177,6 +178,7 @@ export default async function ProtectedAdminLayout({
         </div>
 
         <main className="admin-content flex-fill">{children}</main>
+        <QuickSearch />
         <ScrollTopButton />
       </div>
     </div>
