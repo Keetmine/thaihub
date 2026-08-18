@@ -2,6 +2,12 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { SITE_URL } from "@/lib/seo";
 
+// Считается на запрос, а не на сборке: внутри `docker build` базы нет,
+// и попытка пререндера роняла весь билд (DatabaseNotReachable). Плюс
+// каталог пополняется постоянно — статический слепок времени сборки
+// устаревал бы к первому же импорту.
+export const dynamic = "force-dynamic";
+
 // Sitemap открытого каталога: сериалы, артисты, новеллы, локации,
 // агентства, вики. События опущены — их страницы за премиум-гейтом.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
