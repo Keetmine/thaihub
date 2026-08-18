@@ -1,6 +1,7 @@
 import BuyPremiumButton from "@/components/BuyPremiumButton";
 import PromoCodeRedeem from "@/components/PromoCodeRedeem";
-import { getPremiumPriceStars } from "@/lib/siteSettings";
+import Link from "next/link";
+import { getPaymentMode, getPremiumPriceStars } from "@/lib/siteSettings";
 
 const FEATURES = [
   "Полная афиша: названия, площадки, составы и страницы событий",
@@ -9,13 +10,14 @@ const FEATURES = [
   "Подписка на календарь (ICS) и напоминания в Telegram",
 ];
 
-/** Продающая заглушка платной функции. Кнопка оплаты появляется, только
- *  когда настроен бот (Telegram Stars, см. premiumActions/webhook);
- *  без него — прежняя просьба написать нам. Серверный компонент —
- *  читает env в рантайме. */
+/** Продающая заглушка платной функции. Кнопка оплаты появляется, когда
+ *  настроен бот И режим оплаты — stars (переключается в /admin/settings:
+ *  приём Stars зависит от страны владельца бота, и пока он недоступен,
+ *  кнопка вела бы прямо в ошибку Telegram). Серверный компонент — читает
+ *  настройки в рантайме. */
 export default async function PremiumUpsell({ feature }: { feature: string }) {
-  const canPay = !!process.env.TELEGRAM_BOT_TOKEN;
-  const price = await getPremiumPriceStars();
+  const [mode, price] = await Promise.all([getPaymentMode(), getPremiumPriceStars()]);
+  const canPay = !!process.env.TELEGRAM_BOT_TOKEN && mode === "stars";
 
   return (
     <div className="surface p-5" style={{ maxWidth: "34rem", margin: "0 auto" }}>
@@ -25,7 +27,7 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
         </div>
         <h2 className="h4 font-display mb-1">{feature} — по подписке</h2>
         <p className="text-secondary small mb-0">
-          {price} Stars в месяц · продление в один клик
+          {canPay ? `${price} Stars в месяц · продление в один клик` : "Подписка на месяц"}
         </p>
       </div>
 
@@ -43,7 +45,11 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
           <BuyPremiumButton />
         ) : (
           <p className="text-secondary small mb-0">
-            Напишите нам, чтобы подключить подписку к вашему аккаунту.
+            Оплата через Telegram сейчас недоступна.{" "}
+            <Link href="/help#feedback" className="link-body-emphasis">
+              Напишите нам
+            </Link>{" "}
+            — подключим подписку к вашему аккаунту и пришлём промокод.
           </p>
         )}
         <div className="mt-3">

@@ -24,6 +24,14 @@ export const SETTING_KEYS = [
       "По умолчанию всё, кроме error. Пустая строка выключает совсем.",
   },
   {
+    key: "payment_mode",
+    label: "Способ оплаты подписки",
+    hint:
+      "stars — кнопка оплаты через Telegram; promo — кнопка скрыта, " +
+      "остаётся промокод и просьба написать нам (пока Stars недоступны). " +
+      "По умолчанию stars.",
+  },
+  {
     key: "admin_notify_email",
     label: "Почта для тех же уведомлений",
     hint: "Работает только когда настроен SMTP (SMTP_HOST/SMTP_FROM). Пусто — не слать.",
@@ -39,4 +47,11 @@ export async function getPremiumPriceStars(): Promise<number> {
   const raw = await getSetting("premium_price_stars");
   const n = raw ? Number(raw) : NaN;
   return Number.isFinite(n) && n > 0 ? Math.trunc(n) : PREMIUM_PRICE_STARS;
+}
+
+/** Как сейчас продаётся подписка. Оплата Stars привязана к стране
+ *  владельца бота и может быть недоступна — тогда пейволл не должен
+ *  вести в ошибку Telegram, а честно звать написать нам. */
+export async function getPaymentMode(): Promise<"stars" | "promo"> {
+  return (await getSetting("payment_mode")) === "promo" ? "promo" : "stars";
 }
