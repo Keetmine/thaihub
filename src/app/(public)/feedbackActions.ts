@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { assertRateLimit } from "@/lib/rateLimit";
+import { notifyAdmins } from "@/lib/adminNotify";
 import type { FeedbackKind } from "@/generated/prisma/client";
 
 const KINDS = new Set(["QUESTION", "SUGGESTION", "CONTENT_REQUEST"]);
@@ -10,8 +11,9 @@ const KINDS = new Set(["QUESTION", "SUGGESTION", "CONTENT_REQUEST"]);
 /**
  * Обращение из формы помощи/поиска: вопрос, предложение или запрос на
  * добавление сериала/актёра. Сохраняется в Feedback и выводится в
- * /admin/feedback. TODO (по просьбе владельца): дублировать обращения
- * на почту, когда будут SMTP-доступы.
+ * /admin/feedback, плюс уходит админам в Telegram (см.
+ * docs/features/admin-notifications.md). TODO: дублировать на почту,
+ * когда будут SMTP-доступы.
  */
 export async function submitFeedback(formData: FormData): Promise<{ ok: boolean }> {
   // Форма открыта и анонимам (страница /help публичная) — тогда ответ
@@ -36,6 +38,12 @@ export async function submitFeedback(formData: FormData): Promise<{ ok: boolean 
       context: context || null,
     },
   });
+
+  const from = user?.name ?? user?.email ?? email ?? "аноним";
+  await notifyAdmins(
+    "feedback",
+    `📨 Новое обращение от ${from}\n\n${text.slice(0, 500)}${text.length > 500 ? "…" : ""}`,
+  );
   return { ok: true };
 }
 
@@ -57,5 +65,11 @@ export async function submitReport(
       reason: reason.trim() || null,
     },
   });
+
+  await notifyAdmins(
+    "report",
+    `🚩 Жалоба на ${targetType} от ${user.name ?? user.email ?? user.id}` +
+      (reason.trim() ? `\n\n${reason.trim().slice(0, 500)}` : ""),
+  );
   return { ok: true };
 }

@@ -7,6 +7,7 @@ import MobileMenu from "@/components/MobileMenu";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import { redirect } from "next/navigation";
 import { isAdminAuthenticated, isCatalogEditor } from "@/lib/auth";
+import { adminBadgeCounts } from "@/lib/adminNotify";
 import {
   GridIcon,
   CalendarIcon,
@@ -108,6 +109,9 @@ export default async function ProtectedAdminLayout({
   if (!isEditor) {
     redirect("/");
   }
+  // Бейджи очередей: сколько ждёт разбора в обращениях, модерации,
+  // импортах и ошибках. Менеджеру каталога видны только его разделы.
+  const badges = isAdmin ? await adminBadgeCounts() : {};
   const sections = NAV_SECTIONS.map((section) => ({
     ...section,
     items: isAdmin ? section.items : section.items.filter((i) => i.managerOk),
@@ -139,9 +143,11 @@ export default async function ProtectedAdminLayout({
               <div className="d-flex flex-column gap-1">
                 {section.items.map((item) => {
                   const Icon = item.icon;
+                  const badge = badges[item.href] ?? 0;
                   return (
                     <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
                       <Icon className="admin-sidebar-icon" /> {item.title}
+                      {badge > 0 && <span className="admin-nav-badge">{badge > 99 ? "99+" : badge}</span>}
                     </NavLink>
                   );
                 })}
@@ -174,6 +180,9 @@ export default async function ProtectedAdminLayout({
               {sections.flatMap((s) => s.items).map((item) => (
                 <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
                   {item.title}
+                  {(badges[item.href] ?? 0) > 0 && (
+                    <span className="admin-nav-badge">{badges[item.href]}</span>
+                  )}
                 </NavLink>
               ))}
               <Link href="/" prefetch={false} className="nav-link">

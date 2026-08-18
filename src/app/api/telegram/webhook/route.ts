@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { answerPreCheckoutQuery, sendTelegramMessage } from "@/lib/telegram";
 import { extendPremium } from "@/lib/premium";
+import { notifyAdmins } from "@/lib/adminNotify";
 
 // Вебхук Telegram-бота — регистрируется скриптом
 // scripts/setup-telegram-webhook.ts (setWebhook с secret_token). Пока
@@ -68,6 +69,10 @@ export async function POST(request: Request) {
       });
       console.log(
         `premium payment: user ${user.id}, charge ${payment.telegram_payment_charge_id}, until ${until.toISOString()}`,
+      );
+      await notifyAdmins(
+        "payment",
+        `⭐️ Оплата подписки: ${user.name ?? user.email ?? user.id}, ${payment.total_amount} Stars. Активна до ${until.toLocaleDateString("ru-RU")}.`,
       );
       if (update.message?.from) {
         await sendTelegramMessage(

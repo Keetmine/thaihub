@@ -16,6 +16,13 @@ export const SETTING_KEYS = [
     label: "Заголовок пейволла",
     hint: "По умолчанию «Афиша событий — по подписке»",
   },
+  {
+    key: "admin_notify_kinds",
+    label: "Уведомления админам в Telegram",
+    hint:
+      "Через запятую: feedback, report, import, error, payment. " +
+      "По умолчанию всё, кроме error. Пустая строка выключает совсем.",
+  },
 ] as const;
 
 export async function getSetting(key: string): Promise<string | null> {

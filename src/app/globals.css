@@ -2738,3 +2738,17 @@ details.admin-section[open] > summary.admin-section-head::before {
   border-left: 2px solid rgba(255, 206, 123, 0.5);
   padding-left: 0.6rem;
 }
+
+/* Бейдж-счётчик очереди в сайдбаре админки. */
+.admin-nav-badge {
+  margin-left: auto;
+  min-width: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--bs-danger, #d9534f);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.35rem;
+  text-align: center;
+}
