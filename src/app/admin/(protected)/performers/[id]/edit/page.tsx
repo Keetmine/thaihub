@@ -144,6 +144,13 @@ export default async function EditPerformerPage({
             agencyIds: performer.agencies.map((pa) => pa.agencyId),
             photoUrl: performer.photoUrl ?? "",
             mydramalistUrl: performer.mydramalistUrl ?? "",
+            occupation: performer.occupation.join(", "),
+            instruments: performer.instruments.join(", "),
+            soloDebut: performer.soloDebut ?? "",
+            height: performer.height ?? "",
+            weight: performer.weight ?? "",
+            mvAppearances: performer.mvAppearances.join("\n"),
+            trivia: performer.trivia.join("\n"),
             links: performer.links.map((l) => ({ label: l.label, url: l.url })),
           }}
         />

@@ -261,6 +261,33 @@ function getAgencyIds(formData: FormData): string[] {
  * Redirects to the new performer's edit page so the admin can continue
  * (mydramalist import, more links, etc.) without a second lookup.
  */
+/** Поля профиля музыканта (приходят импортом с tpop.fandom, но теперь
+ *  правятся и руками): списки — через запятую, «факты»/«клипы» — по
+ *  строке на пункт. */
+function getMusicProfileFields(formData: FormData) {
+  const csv = (key: string) =>
+    String(formData.get(key) ?? "")
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  const lines = (key: string) =>
+    String(formData.get(key) ?? "")
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
+
+  return {
+    occupation: csv("occupation"),
+    instruments: csv("instruments"),
+    soloDebut: text("soloDebut"),
+    height: text("height"),
+    weight: text("weight"),
+    mvAppearances: lines("mvAppearances"),
+    trivia: lines("trivia"),
+  };
+}
+
 export async function createPerformer(formData: FormData) {
   await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
@@ -292,6 +319,7 @@ export async function createPerformer(formData: FormData) {
       placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
       bio: bio || null,
       photoUrl: photoUrl || null,
+      ...getMusicProfileFields(formData),
       links: {
         create: links.map((l) => ({ label: l.label, url: l.url })),
       },
@@ -392,6 +420,7 @@ export async function updatePerformer(id: string, formData: FormData) {
         bio: bio || null,
         photoUrl: photoUrl || null,
         mydramalistUrl: mydramalistUrl || null,
+        ...getMusicProfileFields(formData),
         links: {
           create: links.map((l) => ({ label: l.label, url: l.url })),
         },

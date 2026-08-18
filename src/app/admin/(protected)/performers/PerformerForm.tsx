@@ -82,6 +82,13 @@ export default function PerformerForm({
     agencyIds: string[];
     photoUrl: string;
     mydramalistUrl: string;
+    occupation?: string;
+    instruments?: string;
+    soloDebut?: string;
+    height?: string;
+    weight?: string;
+    mvAppearances?: string;
+    trivia?: string;
     links: PerformerLinkInput[];
   };
   /** Pre-filled band member ids, for editing an existing BAND performer. */
@@ -377,6 +384,71 @@ export default function PerformerForm({
           </div>
         </div>
 
+        </FormSection>
+
+        <FormSection
+          title="Профиль музыканта"
+          hint="занятия, инструменты, рост/вес, клипы, факты — заполняется импортом с tpop.fandom, правится руками"
+          collapsible
+          defaultOpen={false}
+        >
+          <div className="row g-3">
+            <div className="col-12 col-md-6">
+              <label className="form-label">Занятия</label>
+              <input
+                name="occupation"
+                defaultValue={v?.occupation}
+                placeholder="Singer, actor — через запятую"
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label">Инструменты</label>
+              <input
+                name="instruments"
+                defaultValue={v?.instruments}
+                placeholder="Guitar, piano — через запятую"
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-md-4">
+              <label className="form-label">Сольный дебют</label>
+              <input
+                name="soloDebut"
+                defaultValue={v?.soloDebut}
+                placeholder="August 9, 2023"
+                className="form-control"
+              />
+            </div>
+            <div className="col-6 col-md-4">
+              <label className="form-label">Рост</label>
+              <input name="height" defaultValue={v?.height} placeholder="175 cm" className="form-control" />
+            </div>
+            <div className="col-6 col-md-4">
+              <label className="form-label">Вес</label>
+              <input name="weight" defaultValue={v?.weight} placeholder="65 kg" className="form-control" />
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label">Появления в клипах</label>
+              <textarea
+                name="mvAppearances"
+                rows={3}
+                defaultValue={v?.mvAppearances}
+                placeholder="По одному пункту на строку"
+                className="form-control"
+              />
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label">Факты</label>
+              <textarea
+                name="trivia"
+                rows={3}
+                defaultValue={v?.trivia}
+                placeholder="По одному факту на строку"
+                className="form-control"
+              />
+            </div>
+          </div>
         </FormSection>
 
         <FormSection title="Ссылки и соцсети" hint="MyDramaList, соцсети, музыкальные площадки">

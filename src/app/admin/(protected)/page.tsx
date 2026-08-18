@@ -23,6 +23,12 @@ export default async function AdminStatsPage() {
     tripsTotal,
     recentUsers,
     recentEvents,
+    newFeedback,
+    openReports,
+    failedImports,
+    recentErrors,
+    dramasWithoutPoster,
+    eventsWithoutPerformers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { premiumUntil: { gt: now } } }),
@@ -39,7 +45,23 @@ export default async function AdminStatsPage() {
       take: 5,
       include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } },
     }),
+    // «Требует внимания»: очереди, о которых иначе узнаёшь случайно.
+    prisma.feedback.count({ where: { status: "NEW" } }),
+    prisma.report.count({ where: { status: "NEW" } }),
+    prisma.importRun.count({ where: { status: "FAILED" } }),
+    prisma.errorLog.count({ where: { createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } }),
+    prisma.drama.count({ where: { posterUrl: null } }),
+    prisma.event.count({ where: { performers: { none: {} } } }),
   ]);
+
+  const attention = [
+    { count: newFeedback, label: "новых обращений", href: "/admin/feedback", urgent: true },
+    { count: openReports, label: "открытых жалоб", href: "/admin/moderation", urgent: true },
+    { count: failedImports, label: "упавших импортов", href: "/admin/imports", urgent: true },
+    { count: recentErrors, label: "ошибок за сутки", href: "/admin/errors", urgent: true },
+    { count: dramasWithoutPoster, label: "сериалов без постера", href: "/admin/dramas", urgent: false },
+    { count: eventsWithoutPerformers, label: "событий без состава", href: "/admin/events", urgent: false },
+  ].filter((a) => a.count > 0);
 
   return (
     <div>
@@ -47,6 +69,24 @@ export default async function AdminStatsPage() {
       <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
         Дашборд
       </h1>
+
+      {attention.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2">Требует внимания</h2>
+          <div className="d-flex flex-wrap gap-2 mb-4">
+            {attention.map((a) => (
+              <Link
+                key={a.label}
+                href={a.href}
+                className={`attention-card text-decoration-none ${a.urgent ? "is-urgent" : ""}`}
+              >
+                <span className="attention-count">{a.count}</span>
+                <span className="attention-label">{a.label}</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2 className="section-heading mb-2">
         Пользователи

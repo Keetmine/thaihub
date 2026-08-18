@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import EntitySelect from "@/components/EntitySelect";
+import FormSection from "@/components/admin/FormSection";
+import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { searchDramaOptions } from "../dramas/actions";
@@ -71,6 +73,8 @@ export default function EventForm({
     [pairings],
   );
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useUnsavedGuard(formRef);
   const [presaleEnabled, setPresaleEnabled] = useState(Boolean(v?.presaleDate));
 
   // A concert repeating over several nights is still ONE event — this is
@@ -94,9 +98,11 @@ export default function EventForm({
 
   return (
     <form
+      ref={formRef}
       action={action}
       className="surface d-flex flex-column gap-3 p-4"
     >
+      <FormSection title="Основное" hint="что за событие и где проходит">
       <div className="row g-3">
         <div className="col-12 col-lg-7">
           <label className="form-label">Название *</label>
@@ -139,7 +145,9 @@ export default function EventForm({
       </div>
 
       <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
+      </FormSection>
 
+      <FormSection title="Даты и время" hint="многодневное событие — несколько дней в одной записи">
       <div>
         <label className="form-label d-block">
           Дата и время {occurrences.length > 1 ? "(несколько дней)" : ""}
@@ -244,6 +252,9 @@ export default function EventForm({
         </div>
       </div>
 
+      </FormSection>
+
+      <FormSection title="Описание и состав" hint="кто выступает и с каким сериалом связано">
       <div>
         <label className="form-label">Описание</label>
         <textarea
@@ -290,6 +301,9 @@ export default function EventForm({
         />
       </div>
 
+      </FormSection>
+
+      <FormSection title="Билеты и препродажа">
       <div>
         <div className="form-check form-switch">
           <input
@@ -335,10 +349,17 @@ export default function EventForm({
         )}
       </div>
 
-      <div className="mt-2">
+      </FormSection>
+
+      <div className="admin-form-actions">
         <button type="submit" className="btn btn-primary">
           {submitLabel}
         </button>
+        {dirty && (
+          <span className="small text-secondary">
+            ● Есть несохранённые изменения — они пропадут, если уйти со страницы.
+          </span>
+        )}
       </div>
     </form>
   );
