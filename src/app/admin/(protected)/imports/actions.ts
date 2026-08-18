@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopAgency, importTpopArtist } from "@/lib/tpopAgencyImport";
 
 /** Импорт агентства с tpop.fandom.com из формы на /admin/imports.
@@ -10,7 +10,7 @@ import { importTpopAgency, importTpopArtist } from "@/lib/tpopAgencyImport";
  *  статусом RUNNING и уходим в фон, прогресс пишется в run.summary
  *  (страница импортов поллит и показывает живой статус). */
 export async function runTpopAgencyImport(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const url = String(formData.get("url") ?? "").trim();
   if (!url) throw new Error("Укажите ссылку на страницу агентства");
   if (!/tpop\.fandom\.com/.test(url) && /\//.test(url)) {
@@ -73,7 +73,7 @@ export async function runTpopAgencyImport(formData: FormData): Promise<void> {
 /** Одиночный импорт артиста/группы с tpop.fandom (та же фоновая схема
  *  с прогрессом в run.summary, что и у агентского импорта). */
 export async function runTpopArtistImport(formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const url = String(formData.get("url") ?? "").trim();
   if (!url) throw new Error("Укажите ссылку на страницу артиста");
   if (!/tpop\.fandom\.com/.test(url) && /\//.test(url)) {

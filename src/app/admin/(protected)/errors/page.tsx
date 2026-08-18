@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 // Лог серверных ошибок: onRequestError (instrumentation.ts) пишет сюда
 // всё, что упало в страницах/экшенах/роутах.
 export default async function AdminErrorsPage() {
+  await requireAdminPage();
   const errors = await prisma.errorLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,

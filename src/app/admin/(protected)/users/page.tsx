@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import LetterAvatar from "@/components/LetterAvatar";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +16,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requireAdminPage();
   const { q: rawQ } = await searchParams;
   const q = (rawQ ?? "").trim();
 

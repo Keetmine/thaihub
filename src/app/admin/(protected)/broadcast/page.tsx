@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
 import BroadcastForm from "./BroadcastForm";
@@ -5,6 +6,7 @@ import BroadcastForm from "./BroadcastForm";
 export const dynamic = "force-dynamic";
 
 export default async function AdminBroadcastPage() {
+  await requireAdminPage();
   const [withTelegram, premiumWithTelegram, history] = await Promise.all([
     prisma.user.count({ where: { telegramId: { not: null } } }),
     prisma.user.count({

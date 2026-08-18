@@ -8,7 +8,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
 import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdbImport";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { logImportRun } from "@/lib/importRun";
 import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
 
@@ -21,7 +21,7 @@ import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
  * clobbering if an admin has since picked a better photo by hand.
  */
 export async function syncGmmtv(): Promise<GmmtvSyncResult> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const browser = await chromium.launch();
   try {
     const result = await logImportRun(
@@ -43,7 +43,7 @@ export async function syncGmmtv(): Promise<GmmtvSyncResult> {
  * counterpart to `scripts/sync-performers-tmdb.ts`, same underlying sweep.
  */
 export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const result = await logImportRun("tmdb-performers", syncAllPerformersFromTmdb, (r) =>
     `синхронизировано ${r.synced} из ${r.total}, не найдено ${r.notFound}`,
   );
@@ -117,7 +117,7 @@ async function rankedPerformerSearch(
 export async function searchPerformerOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
   return rankedPerformerSearch(q, {});
@@ -127,7 +127,7 @@ export async function searchPerformerOptions(
 export async function searchSoloPerformerOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
   return rankedPerformerSearch(q, { type: "SOLO" });
@@ -136,7 +136,7 @@ export async function searchSoloPerformerOptions(
 export async function findSimilarPerformers(
   query: string,
 ): Promise<{ id: string; name: string }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -181,13 +181,13 @@ async function createPerformerRecord(name: string, type: string) {
 export async function createPerformerAndReturn(
   name: string,
 ): Promise<{ id: string; name: string; type: string }> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const performer = await createPerformerRecord(name.trim(), "SOLO");
   return { id: performer.id, name: performer.name, type: performer.type };
 }
 
 export async function deletePerformer(id: string) {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.performer.delete({ where: { id } });
   revalidatePath("/admin/performers");
   revalidatePath("/performers");
@@ -262,7 +262,7 @@ function getAgencyIds(formData: FormData): string[] {
  * (mydramalist import, more links, etc.) without a second lookup.
  */
 export async function createPerformer(formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
   const type = parseType(String(formData.get("type") ?? "SOLO"));
   const realName = String(formData.get("realName") ?? "").trim();
@@ -349,7 +349,7 @@ export async function createPerformer(formData: FormData) {
 }
 
 export async function updatePerformer(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
   const type = parseType(String(formData.get("type") ?? "SOLO"));
   const realName = String(formData.get("realName") ?? "").trim();

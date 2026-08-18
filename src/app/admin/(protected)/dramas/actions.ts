@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
 import { fetchMdlDrama } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { logImportRun } from "@/lib/importRun";
 import type { DramaStatus } from "@/generated/prisma/client";
 import { dramaTitleWhere } from "@/lib/searchWhere";
@@ -93,7 +93,7 @@ function revalidateDramaPaths(id?: string) {
 export async function searchDramaOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -130,7 +130,7 @@ export async function searchDramaOptions(
 }
 
 export async function findSimilarDramas(query: string): Promise<{ id: string; name: string }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -144,7 +144,7 @@ export async function findSimilarDramas(query: string): Promise<{ id: string; na
 }
 
 export async function createDrama(formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
@@ -183,7 +183,7 @@ export async function createDrama(formData: FormData) {
 }
 
 export async function updateDrama(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
   const synopsis = String(formData.get("synopsis") ?? "").trim();
@@ -230,7 +230,7 @@ export async function updateDrama(id: string, formData: FormData) {
 export async function createDramaAndReturn(
   title: string,
 ): Promise<{ id: string; title: string; posterUrl: string | null }> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const trimmed = title.trim();
   if (!trimmed) throw new Error("Укажите название сериала");
 
@@ -240,7 +240,7 @@ export async function createDramaAndReturn(
 }
 
 export async function deleteDrama(id: string) {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.drama.delete({ where: { id } });
   revalidateDramaPaths(id);
   redirect("/admin/dramas");
@@ -252,7 +252,7 @@ export async function deleteDrama(id: string) {
  * counterpart to `scripts/sync-dramas-tmdb.ts`, same underlying sweep.
  */
 export async function syncTmdbDramas(): Promise<DramaSyncSummary> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const result = await logImportRun("tmdb-dramas", syncAllDramasFromTmdb, (r) =>
     `создано ${r.created}, обновлено ${r.updated}, не найдено ${r.notFound}`,
   );
@@ -273,7 +273,7 @@ export type MdlImportSummary = {
  * в WebP, как и все картинки в проекте.
  */
 export async function importFromMydramalist(id: string, url: string): Promise<MdlImportSummary> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const trimmed = url.trim();
   if (!trimmed) throw new Error("Сначала укажите ссылку на MyDramaList");
 

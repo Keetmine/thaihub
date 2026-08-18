@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SETTING_KEYS } from "@/lib/siteSettings";
 import { saveSettings } from "./actions";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 // Настройки сайта без деплоя: значения хранятся в SiteSetting, пустое
 // поле = «использовать дефолт из кода/env».
 export default async function AdminSettingsPage() {
+  await requireAdminPage();
   const rows = await prisma.siteSetting.findMany();
   const values = new Map(rows.map((r) => [r.key, r.value]));
 

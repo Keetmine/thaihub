@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -33,6 +34,7 @@ export default async function AdminUserPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireAdminPage();
   const { id } = await params;
   const me = await getCurrentUser();
 
@@ -127,6 +129,7 @@ export default async function AdminUserPage({
           <AdminRoleToggle
             userId={user.id}
             isAdmin={user.isAdmin}
+            isManager={user.isManager}
             isSelf={me?.id === user.id}
           />
           <PremiumToggle userId={user.id} premiumUntil={user.premiumUntil} />

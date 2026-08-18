@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { performerHref, eventHref } from "@/lib/slugHelpers";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 // Аналитика продукта: регистрации по дням (30 дней, CSS-бары без
 // чарт-библиотек), конверсия в премиум, топы по избранному и «иду».
 export default async function AdminAnalyticsPage() {
+  await requireAdminPage();
   const now = new Date();
   const from = new Date(now);
   from.setDate(from.getDate() - 29);

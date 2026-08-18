@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { parseFicbookPage, fetchFicbookHtml, fetchOriginalCover } from "@/lib/ficbook";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { logImportRun } from "@/lib/importRun";
@@ -48,7 +48,7 @@ function revalidateNovelPaths(id?: string) {
 }
 
 export async function createNovel(formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const fields = getFields(formData);
   await prisma.novel.create({
     data: {
@@ -62,7 +62,7 @@ export async function createNovel(formData: FormData) {
 }
 
 export async function updateNovel(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const fields = getFields(formData);
   await prisma.$transaction([
     prisma.novelLink.deleteMany({ where: { novelId: id } }),
@@ -81,7 +81,7 @@ export async function updateNovel(id: string, formData: FormData) {
 }
 
 export async function deleteNovel(id: string) {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.novel.delete({ where: { id } });
   revalidateNovelPaths(id);
   redirect("/admin/novels");
@@ -91,7 +91,7 @@ export async function deleteNovel(id: string) {
 export async function searchNovelOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
   const novels = await prisma.novel.findMany({
@@ -112,7 +112,7 @@ export async function searchNovelOptions(
 export async function createNovelAndReturn(
   title: string,
 ): Promise<{ id: string; title: string }> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const trimmed = title.trim();
   if (!trimmed) throw new Error("Укажите название новеллы");
   const novel = await prisma.novel.create({ data: { title: trimmed } });
@@ -128,7 +128,7 @@ export async function createNovelAndReturn(
  * редактирование. Сайт за JS-проверкой — см. src/lib/ficbook.ts.
  */
 export async function importNovelFromFicbook(url: string): Promise<{ id: string }> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const trimmed = url.trim();
   if (!trimmed) throw new Error("Вставьте ссылку на Фикбук");
 

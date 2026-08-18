@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -8,6 +9,7 @@ import { formatShortDate } from "@/lib/dates";
 export const dynamic = "force-dynamic";
 
 export default async function AdminWikiPage() {
+  await requireAdminPage();
   const articles = await prisma.wikiArticle.findMany({ orderBy: { createdAt: "desc" } });
 
   return (

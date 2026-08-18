@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
@@ -131,6 +132,7 @@ export default async function AdminModerationPage({
 }: {
   searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
+  await requireAdminPage();
   const { tab: rawTab, page: rawPage } = await searchParams;
   const tab: TabKey = (TABS.find((t) => t.key === rawTab)?.key ?? "reports") as TabKey;
   const page = Math.max(1, Number(rawPage) || 1);

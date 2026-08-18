@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { combineDateTime } from "@/lib/dates";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 
 function getPerformerIds(formData: FormData): string[] {
   return formData.getAll("performerIds").map(String).filter(Boolean);
@@ -70,7 +70,7 @@ function getOccurrenceInputs(formData: FormData): OccurrenceInput[] {
 export async function searchEventOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -84,7 +84,7 @@ export async function searchEventOptions(
 }
 
 export async function createEvent(formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const venue = String(formData.get("venue") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -189,7 +189,7 @@ async function syncOccurrences(
 }
 
 export async function updateEvent(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const venue = String(formData.get("venue") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -250,7 +250,7 @@ export async function createEventMinimal(
   date: string,
   startTime: string,
 ): Promise<{ id: string; title: string }> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const t = title.trim();
   const v = venue.trim();
   if (!t || !v || !date || !startTime) {
@@ -271,7 +271,7 @@ export async function createEventMinimal(
 }
 
 export async function deleteEvent(id: string) {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.event.delete({ where: { id } });
   revalidatePath("/");
   revalidatePath("/admin/events");

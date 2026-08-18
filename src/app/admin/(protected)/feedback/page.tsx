@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -20,6 +21,7 @@ export default async function AdminFeedbackPage({
 }: {
   searchParams: Promise<{ all?: string }>;
 }) {
+  await requireAdminPage();
   const { all } = await searchParams;
   const showAll = all === "1";
 

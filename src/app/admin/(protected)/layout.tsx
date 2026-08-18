@@ -4,7 +4,7 @@ import NavLink from "@/components/NavLink";
 import MobileMenu from "@/components/MobileMenu";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import { redirect } from "next/navigation";
-import { isAdminAuthenticated } from "@/lib/auth";
+import { isAdminAuthenticated, isCatalogEditor } from "@/lib/auth";
 import {
   GridIcon,
   CalendarIcon,
@@ -31,31 +31,36 @@ const NAV_SECTIONS: {
     title: string;
     icon: React.ComponentType<{ className?: string }>;
     matchPrefixes?: string[];
+    /** Раздел доступен менеджеру каталога (иначе — только админу). */
+    managerOk?: boolean;
   }[];
 }[] = [
   {
     label: null,
-    items: [{ href: "/admin", title: "Дашборд", icon: GridIcon }],
+    items: [{ href: "/admin", title: "Дашборд", icon: GridIcon, managerOk: true }],
   },
   {
     label: "Каталог",
     items: [
       {
         href: "/admin/events",
+        managerOk: true,
         title: "События",
         icon: CalendarIcon,
         matchPrefixes: ["/admin/events/"],
       },
       {
         href: "/admin/performers",
+        managerOk: true,
         title: "Исполнители",
         icon: UsersIcon,
         matchPrefixes: ["/admin/performers/", "/admin/pairings", "/admin/agencies"],
       },
-      { href: "/admin/dramas", title: "Сериалы", icon: TvIcon, matchPrefixes: ["/admin/dramas/"] },
-      { href: "/admin/novels", title: "Новеллы", icon: BookIcon, matchPrefixes: ["/admin/novels/"] },
+      { href: "/admin/dramas", title: "Сериалы", icon: TvIcon, matchPrefixes: ["/admin/dramas/"], managerOk: true },
+      { href: "/admin/novels", title: "Новеллы", icon: BookIcon, matchPrefixes: ["/admin/novels/"], managerOk: true },
       {
         href: "/admin/locations",
+        managerOk: true,
         title: "Локации",
         icon: PinIcon,
         matchPrefixes: ["/admin/locations/"],
@@ -77,9 +82,9 @@ const NAV_SECTIONS: {
     items: [
       { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
       { href: "/admin/finance", title: "Финансы", icon: StarIcon },
-      { href: "/admin/imports", title: "Импорты", icon: ImportIcon },
+      { href: "/admin/imports", title: "Импорты", icon: ImportIcon, managerOk: true },
       { href: "/admin/errors", title: "Ошибки", icon: FlagIcon },
-      { href: "/admin/duplicates", title: "Дубли", icon: CopyIcon },
+      { href: "/admin/duplicates", title: "Дубли", icon: CopyIcon, managerOk: true },
       { href: "/admin/settings", title: "Настройки", icon: SettingsIcon },
     ],
   },
@@ -92,10 +97,17 @@ export default async function ProtectedAdminLayout({
 }) {
   // proxy.ts проверяет только наличие куки — реальная валидация серверной
   // сессии для всех admin-страниц происходит здесь (для server actions —
-  // в requireAdmin() внутри каждого экшена).
-  if (!(await isAdminAuthenticated())) {
+  // в requireAdmin()/requireCatalogEditor() внутри каждого экшена).
+  // Менеджер каталога видит только каталожные разделы.
+  const isAdmin = await isAdminAuthenticated();
+  const isEditor = isAdmin || (await isCatalogEditor());
+  if (!isEditor) {
     redirect("/");
   }
+  const sections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: isAdmin ? section.items : section.items.filter((i) => i.managerOk),
+  })).filter((section) => section.items.length > 0);
 
   return (
     <div className="d-flex align-items-stretch flex-fill">
@@ -109,11 +121,11 @@ export default async function ProtectedAdminLayout({
           className="admin-sidebar-brand d-inline-flex align-items-center gap-2 text-decoration-none"
         >
           <Logo />
-          <span className="admin-badge badge rounded-pill fw-semibold">ADMIN</span>
+          <span className="admin-badge badge rounded-pill fw-semibold">{isAdmin ? "ADMIN" : "MANAGER"}</span>
         </Link>
 
         <div className="flex-fill">
-          {NAV_SECTIONS.map((section, i) => (
+          {sections.map((section, i) => (
             <div key={i} className={i > 0 ? "mt-3" : undefined}>
               {section.label && (
                 <p className="admin-sidebar-label mb-1">{section.label}</p>
@@ -149,10 +161,10 @@ export default async function ProtectedAdminLayout({
               className="navbar-brand d-inline-flex align-items-center gap-2 mb-0 text-decoration-none"
             >
               <Logo />
-              <span className="admin-badge badge rounded-pill fw-semibold">ADMIN</span>
+              <span className="admin-badge badge rounded-pill fw-semibold">{isAdmin ? "ADMIN" : "MANAGER"}</span>
             </Link>
             <MobileMenu>
-              {NAV_SECTIONS.flatMap((s) => s.items).map((item) => (
+              {sections.flatMap((s) => s.items).map((item) => (
                 <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
                   {item.title}
                 </NavLink>

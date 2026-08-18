@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 // Финансы: журнал оплат Stars (пишется вебхуком), активные подписки и
 // грубая оценка MRR (активные подписчики × текущая цена).
 export default async function AdminFinancePage() {
+  await requireAdminPage();
   const now = new Date();
   const [payments, activeSubs, price, starsTotal] = await Promise.all([
     prisma.payment.findMany({

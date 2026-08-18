@@ -1,10 +1,12 @@
+import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import WikiForm from "../WikiForm";
 import { createWikiArticle } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default function NewWikiPage() {
+export default async function NewWikiPage() {
+  await requireAdminPage();
   return (
     <div>
       <Link href="/admin/wiki" className="eyebrow text-decoration-none">

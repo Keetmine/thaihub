@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
 import { refreshBlsceneLocations, type BlsceneLocationRefreshResult } from "@/lib/blsceneImport";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 
 function getCoordinate(formData: FormData, key: string): number | null {
   const raw = String(formData.get(key) ?? "").trim();
@@ -50,7 +50,7 @@ async function createLocationRecord(
 export async function searchLocationOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
 
@@ -68,13 +68,13 @@ export async function searchLocationOptions(
 export async function createLocationAndReturn(
   name: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const location = await createLocationRecord(name.trim(), "", "", null, null);
   return { id: location.id, name: location.name, photoUrl: location.photoUrl };
 }
 
 export async function createLocation(formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
@@ -86,7 +86,7 @@ export async function createLocation(formData: FormData) {
 }
 
 export async function updateLocation(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
@@ -115,7 +115,7 @@ export async function updateLocation(id: string, formData: FormData) {
 }
 
 export async function deleteLocation(id: string) {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.location.delete({ where: { id } });
   revalidatePath("/admin/locations");
   revalidatePath("/locations");
@@ -128,7 +128,7 @@ export async function deleteLocation(id: string) {
  * dramas we already have.
  */
 export async function syncBlsceneLocations(): Promise<BlsceneLocationRefreshResult> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const browser = await chromium.launch();
   try {
     const result = await refreshBlsceneLocations(browser);

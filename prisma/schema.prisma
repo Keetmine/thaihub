@@ -237,6 +237,7 @@ model Agency {
   description String?
   performers  PerformerAgency[]
   dramas      Drama[]
+  dramaLinks  DramaAgency[]
   favoritedBy FavoriteAgency[]
 
   createdAt   DateTime    @default(now())
@@ -349,8 +350,11 @@ model Drama {
   // doesn't reliably carry this for Thai networks, so it comes from
   // agency Wikipedia imports instead (see wikipedia-agency-import.md).
   network        String?
+  // Основное агентство (легаси, одно) + полный набор через DramaAgency:
+  // у сериала бывает несколько студий-производителей.
   agencyId       String?
   agency         Agency?      @relation(fields: [agencyId], references: [id])
+  agencies       DramaAgency[]
   // Первоисточник-новелла (если сериал — экранизация).
   novelId        String?
   novel          Novel?       @relation(fields: [novelId], references: [id])
@@ -398,6 +402,16 @@ model Drama {
 
 // «Related Content» с MyDramaList: drama → related с подписью
 // («Thai shared universe», «Thai compilation», «sequel» и т.п.).
+// Сериал ↔ студии: many-to-many, как PerformerAgency у исполнителей.
+model DramaAgency {
+  dramaId  String
+  agencyId String
+  drama    Drama  @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@id([dramaId, agencyId])
+}
+
 model DramaRelation {
   id        String  @id @default(cuid())
   dramaId   String
@@ -549,6 +563,10 @@ model User {
   // Роль админа: доступ к /admin без отдельного пароля — обычная
   // сессия пользователя + этот флаг (см. requireAdmin в lib/auth.ts).
   isAdmin      Boolean  @default(false)
+  // Менеджер каталога: полный доступ к разделам «Каталог» админки
+  // (события, исполнители, сериалы, новеллы, локации, импорты), но без
+  // пользователей, финансов, рассылок и настроек — это только админ.
+  isManager    Boolean  @default(false)
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
   googleId     String?  @unique
   name         String?

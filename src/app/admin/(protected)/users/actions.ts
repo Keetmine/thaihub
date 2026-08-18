@@ -68,6 +68,15 @@ export async function setAdminRole(userId: string, isAdmin: boolean): Promise<vo
   revalidatePath(`/admin/users/${userId}`);
 }
 
+/** Роль менеджера каталога: правит каталог, но не видит пользователей,
+ *  финансы, рассылки и настройки (см. isCatalogEditor). */
+export async function setManagerRole(userId: string, isManager: boolean): Promise<void> {
+  await requireAdmin();
+  await prisma.user.update({ where: { id: userId }, data: { isManager } });
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${userId}`);
+}
+
 // --- Модерация пользовательского контента (см. /admin/users/[id]) ---
 
 export async function adminDeleteEventNote(noteId: string): Promise<void> {

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 
 function getIds(formData: FormData, key: string): string[] {
   return Array.from(new Set(formData.getAll(key).map(String).filter(Boolean)));
@@ -46,7 +46,7 @@ async function createAgencyRecord(name: string, logoUrl: string, description: st
 export async function createAgencyAndReturn(
   name: string,
 ): Promise<{ id: string; name: string; logoUrl: string | null }> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const agency = await createAgencyRecord(name.trim(), "", "");
   return { id: agency.id, name: agency.name, logoUrl: agency.logoUrl };
 }
@@ -56,7 +56,7 @@ export async function createAgencyAndReturn(
  * Redirects to the new agency's edit page so the admin can keep going.
  */
 export async function createAgency(formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
   const logoUrl = String(formData.get("logoUrl") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -84,7 +84,7 @@ export async function createAgency(formData: FormData) {
 }
 
 export async function updateAgency(id: string, formData: FormData) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
   const logoUrl = String(formData.get("logoUrl") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -143,7 +143,7 @@ export async function updateAgency(id: string, formData: FormData) {
 }
 
 export async function deleteAgency(id: string) {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.agency.delete({ where: { id } });
   revalidatePath("/admin/performers/new");
   revalidatePath("/admin/performers");

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 
 // Альбомы и песни исполнителя раньше появлялись только через импорт с
 // tpop.fandom — руками ни добавить, ни поправить. Эти экшены питают
@@ -14,7 +14,7 @@ function parseYear(raw: FormDataEntryValue | null): number | null {
 }
 
 export async function saveAlbum(performerId: string, formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const id = String(formData.get("albumId") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("Введите название альбома");
@@ -40,13 +40,13 @@ export async function saveAlbum(performerId: string, formData: FormData): Promis
 }
 
 export async function deleteAlbum(performerId: string, albumId: string): Promise<void> {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.album.delete({ where: { id: albumId } });
   revalidatePath(`/admin/performers/${performerId}/edit`);
 }
 
 export async function saveSong(performerId: string, formData: FormData): Promise<void> {
-  await requireAdmin();
+  await requireCatalogEditor();
   const id = String(formData.get("songId") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("Введите название песни");
@@ -68,7 +68,7 @@ export async function saveSong(performerId: string, formData: FormData): Promise
 }
 
 export async function deleteSong(performerId: string, songId: string): Promise<void> {
-  await requireAdmin();
+  await requireCatalogEditor();
   await prisma.song.delete({ where: { id: songId } });
   revalidatePath(`/admin/performers/${performerId}/edit`);
 }
