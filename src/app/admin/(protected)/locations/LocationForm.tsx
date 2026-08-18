@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import FileDropzone from "@/components/FileDropzone";
 
@@ -33,6 +34,11 @@ export default function LocationForm({
   };
 }) {
   const v = defaultValues;
+  // Координаты держим здесь и отправляем скрытыми полями: карта
+  // подгружается клиентски, и сохранение до её монтажа раньше стирало
+  // уже проставленные координаты (полей просто не было в форме).
+  const [lat, setLat] = useState<number | null>(v?.latitude ?? null);
+  const [lng, setLng] = useState<number | null>(v?.longitude ?? null);
 
   return (
     <form action={action} className="surface d-flex flex-column gap-3 p-4">
@@ -58,7 +64,16 @@ export default function LocationForm({
 
       <div>
         <label className="form-label d-block">Координаты</label>
-        <LocationPicker defaultLatitude={v?.latitude} defaultLongitude={v?.longitude} />
+        <input type="hidden" name="latitude" value={lat ?? ""} />
+        <input type="hidden" name="longitude" value={lng ?? ""} />
+        <LocationPicker
+          defaultLatitude={v?.latitude}
+          defaultLongitude={v?.longitude}
+          onChange={(nextLat, nextLng) => {
+            setLat(nextLat);
+            setLng(nextLng);
+          }}
+        />
       </div>
 
       <div className="mt-2">

@@ -9,6 +9,13 @@ import { PencilIcon, TrashIcon } from "@/components/icons";
 import TmdbSyncButton from "./TmdbSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { dramaTitleWhere } from "@/lib/searchWhere";
+import BulkList from "@/components/admin/BulkList";
+import {
+  bulkDelete,
+  bulkSetDramaAgency,
+  bulkSetDramaStatus,
+} from "../bulkActions";
+import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +33,10 @@ type AirTab = (typeof AIR_TABS)[number]["key"];
 /** Фильтр вкладки по датам эфира (airedFrom/airedTo из MDL). */
 function airWhere(tab: AirTab, now: Date) {
   if (tab === "airing")
-    return { airedFrom: { lte: now }, OR: [{ airedTo: { gte: now } }, { airedTo: null }] };
+    return {
+      airedFrom: { lte: now },
+      OR: [{ airedTo: { gte: now } }, { airedTo: null }],
+    };
   if (tab === "upcoming") return { airedFrom: { gt: now } };
   if (tab === "aired") return { airedTo: { lt: now } };
   if (tab === "undated") return { airedFrom: null, airedTo: null };
@@ -41,11 +51,12 @@ export default async function AdminDramasPage({
   const { q: rawQ, page: rawPage, tab: rawTab } = await searchParams;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
-  const tab: AirTab = (AIR_TABS.find((t) => t.key === rawTab)?.key ?? "all") as AirTab;
+  const tab: AirTab = (AIR_TABS.find((t) => t.key === rawTab)?.key ??
+    "all") as AirTab;
   const now = new Date();
 
   const where = { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(tab, now) };
-  const [dramas, total, tabCounts] = await Promise.all([
+  const [dramas, total, tabCounts, agencies] = await Promise.all([
     prisma.drama.findMany({
       where,
       include: { _count: { select: { performers: true } } },
@@ -56,9 +67,15 @@ export default async function AdminDramasPage({
     prisma.drama.count({ where }),
     Promise.all(
       AIR_TABS.map((t) =>
-        prisma.drama.count({ where: { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(t.key, now) } }),
+        prisma.drama.count({
+          where: { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(t.key, now) },
+        }),
       ),
     ),
+    prisma.agency.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
   const totalPages = totalPagesFor(total);
 
@@ -67,7 +84,10 @@ export default async function AdminDramasPage({
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-5">
         <div>
           <span className="eyebrow">Управление</span>
-          <h1 className="display-1-tight mt-3 mb-0" style={{ fontSize: "2.25rem" }}>
+          <h1
+            className="display-1-tight mt-3 mb-0"
+            style={{ fontSize: "2.25rem" }}
+          >
             Сериалы
           </h1>
         </div>
@@ -107,72 +127,108 @@ export default async function AdminDramasPage({
           {q ? "Ничего не найдено." : "Пока нет сериалов."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
-          {dramas.map((d) => {
+        <BulkList
+          rows={dramas.map((d) => {
             const boundDelete = deleteDrama.bind(null, d.id);
-            return (
-              <div
-                key={d.id}
-                className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <div className="d-flex align-items-center gap-3">
-                  <LetterAvatar
-                    name={d.title}
-                    photoUrl={d.posterUrl}
-                    size={2.75}
-                    height={3.75}
-                    rounded={false}
-                  />
-                  <div>
+            return {
+              id: d.id,
+              node: (
+                <div className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3">
+                  <div className="d-flex align-items-center gap-3">
+                    <LetterAvatar
+                      name={d.title}
+                      photoUrl={d.posterUrl}
+                      size={2.75}
+                      height={3.75}
+                      rounded={false}
+                    />
+                    <div>
+                      <Link
+                        href={`/admin/dramas/${d.id}/edit`}
+                        className="stretched-link text-decoration-none"
+                      >
+                        <span className="font-display fw-medium text-white d-block">
+                          {d.title}
+                        </span>
+                      </Link>
+                      <p className="small text-secondary mb-0">
+                        {d.year ?? "—"} · {d._count.performers} в актёрском
+                        составе
+                      </p>
+                    </div>
+                  </div>
+                  {/* position-relative + z-2 lifts these controls above the
+                      row's stretched-link (::after has z-index: 1), so they
+                      stay individually clickable instead of triggering the
+                      row navigation. */}
+                  <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
                     <Link
                       href={`/admin/dramas/${d.id}/edit`}
-                      className="stretched-link text-decoration-none"
+                      className="icon-btn"
+                      aria-label="Редактировать"
+                      title="Редактировать"
                     >
-                      <span className="font-display fw-medium text-white d-block">
-                        {d.title}
-                      </span>
+                      <PencilIcon />
                     </Link>
-                    <p className="small text-secondary mb-0">
-                      {d.year ?? "—"} · {d._count.performers} в актёрском составе
-                    </p>
+                    <ConfirmForm
+                      action={boundDelete}
+                      confirmMessage={`Удалить сериал «${d.title}»?`}
+                    >
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        aria-label="Удалить"
+                        title="Удалить"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </ConfirmForm>
                   </div>
                 </div>
-                {/* position-relative + z-2 lifts these controls above the
-                    row's stretched-link (::after has z-index: 1), so they
-                    stay individually clickable instead of triggering the
-                    row navigation. */}
-                <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
-                  <Link
-                    href={`/admin/dramas/${d.id}/edit`}
-                    className="icon-btn"
-                    aria-label="Редактировать"
-                    title="Редактировать"
-                  >
-                    <PencilIcon />
-                  </Link>
-                  <ConfirmForm
-                    action={boundDelete}
-                    confirmMessage={`Удалить сериал «${d.title}»?`}
-                  >
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn-danger"
-                      aria-label="Удалить"
-                      title="Удалить"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </ConfirmForm>
-                </div>
-              </div>
-            );
+              ),
+            };
           })}
-        </div>
+          actions={[
+            {
+              kind: "delete",
+              label: "Удалить выбранные",
+              confirmTemplate: "Удалить {n} сериалов? Действие необратимо.",
+              run: async (ids) => {
+                "use server";
+                await bulkDelete("drama", ids);
+              },
+            },
+            {
+              kind: "select",
+              label: "Сменить агентство",
+              placeholder: "Агентство…",
+              options: agencies,
+              run: async (ids, value) => {
+                "use server";
+                await bulkSetDramaAgency(ids, value);
+              },
+            },
+            {
+              kind: "select",
+              label: "Проставить статус",
+              placeholder: "Статус…",
+              options: Object.entries(DRAMA_STATUS_LABELS).map(
+                ([id, name]) => ({ id, name }),
+              ),
+              run: async (ids, value) => {
+                "use server";
+                await bulkSetDramaStatus(ids, value);
+              },
+            },
+          ]}
+        />
       )}
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/dramas?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${p}`}
+        buildHref={(p) =>
+          `/admin/dramas?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${p}`
+        }
       />
     </div>
   );

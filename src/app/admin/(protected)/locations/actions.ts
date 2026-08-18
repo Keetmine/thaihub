@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
 import { refreshBlsceneLocations, type BlsceneLocationRefreshResult } from "@/lib/blsceneImport";
 import { requireCatalogEditor } from "@/lib/auth";
+import { logAudit, diffRecords } from "@/lib/audit";
 
 function getCoordinate(formData: FormData, key: string): number | null {
   const raw = String(formData.get(key) ?? "").trim();
@@ -82,6 +83,12 @@ export async function createLocation(formData: FormData) {
   const longitude = getCoordinate(formData, "longitude");
 
   const location = await createLocationRecord(name, description, photoUrl, latitude, longitude);
+  await logAudit({
+    action: "CREATE",
+    entityType: "Location",
+    entityId: location.id,
+    entityLabel: location.name,
+  });
   redirect(`/admin/locations/${location.id}/edit`);
 }
 
@@ -95,6 +102,8 @@ export async function updateLocation(id: string, formData: FormData) {
 
   if (!name) throw new Error("Укажите название локации");
 
+  const before = await prisma.location.findUnique({ where: { id } });
+
   await prisma.location.update({
     where: { id },
     data: {
@@ -106,6 +115,20 @@ export async function updateLocation(id: string, formData: FormData) {
     },
   });
 
+  if (before) {
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Location",
+      entityId: id,
+      entityLabel: name,
+      changes: diffRecords(
+        before,
+        { name, description, photoUrl, latitude, longitude },
+        ["name", "description", "photoUrl", "latitude", "longitude"],
+      ),
+    });
+  }
+
   revalidatePath("/admin/locations");
   revalidatePath(`/admin/locations/${id}/edit`);
   revalidatePath("/locations");
@@ -116,7 +139,14 @@ export async function updateLocation(id: string, formData: FormData) {
 
 export async function deleteLocation(id: string) {
   await requireCatalogEditor();
+  const existing = await prisma.location.findUnique({ where: { id }, select: { name: true } });
   await prisma.location.delete({ where: { id } });
+  await logAudit({
+    action: "DELETE",
+    entityType: "Location",
+    entityId: id,
+    entityLabel: existing?.name ?? id,
+  });
   revalidatePath("/admin/locations");
   revalidatePath("/locations");
 }

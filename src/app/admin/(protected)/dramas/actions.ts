@@ -7,6 +7,7 @@ import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
 import { fetchMdlDrama } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireCatalogEditor } from "@/lib/auth";
+import { logAudit, diffRecords } from "@/lib/audit";
 import { logImportRun } from "@/lib/importRun";
 import type { DramaStatus } from "@/generated/prisma/client";
 import { dramaTitleWhere } from "@/lib/searchWhere";
@@ -169,7 +170,7 @@ export async function createDrama(formData: FormData) {
     throw new Error("Укажите название сериала");
   }
 
-  await prisma.drama.create({
+  const created = await prisma.drama.create({
     data: {
       title,
       year,
@@ -187,6 +188,13 @@ export async function createDrama(formData: FormData) {
         create: locationIds.map((locationId) => ({ locationId })),
       },
     },
+  });
+
+  await logAudit({
+    action: "CREATE",
+    entityType: "Drama",
+    entityId: created.id,
+    entityLabel: created.title,
   });
 
   revalidateDramaPaths();
@@ -208,6 +216,11 @@ export async function updateDrama(id: string, formData: FormData) {
   if (!title) {
     throw new Error("Укажите название сериала");
   }
+
+  const before = await prisma.drama.findUnique({
+    where: { id },
+    include: { agencies: { select: { agencyId: true } } },
+  });
 
   await prisma.$transaction([
     prisma.performerDrama.deleteMany({ where: { dramaId: id } }),
@@ -235,6 +248,33 @@ export async function updateDrama(id: string, formData: FormData) {
     }),
   ]);
 
+  if (before) {
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Drama",
+      entityId: id,
+      entityLabel: title,
+      changes: diffRecords(
+        { ...before, agencyIds: before.agencies.map((a) => a.agencyId).sort() },
+        {
+          title,
+          year,
+          posterUrl,
+          synopsis,
+          mydramalistUrl,
+          novelId,
+          agencyIds: [...agencyIds].sort(),
+          ...getDramaDetailFields(formData),
+        },
+        [
+          "title", "year", "posterUrl", "synopsis", "mydramalistUrl", "novelId",
+          "agencyIds", "status", "network", "episodes", "nativeTitle", "director",
+          "screenwriter", "genres", "tags", "duration", "contentRating",
+        ],
+      ),
+    });
+  }
+
   revalidateDramaPaths(id);
   redirect("/admin/dramas");
 }
@@ -254,7 +294,14 @@ export async function createDramaAndReturn(
 
 export async function deleteDrama(id: string) {
   await requireCatalogEditor();
+  const existing = await prisma.drama.findUnique({ where: { id }, select: { title: true } });
   await prisma.drama.delete({ where: { id } });
+  await logAudit({
+    action: "DELETE",
+    entityType: "Drama",
+    entityId: id,
+    entityLabel: existing?.title ?? id,
+  });
   revalidateDramaPaths(id);
   redirect("/admin/dramas");
 }

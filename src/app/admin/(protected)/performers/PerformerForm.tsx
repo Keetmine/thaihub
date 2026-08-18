@@ -21,7 +21,12 @@ import DatePickerInput from "@/components/DatePickerInput";
 export type PerformerLinkInput = { label: string; url: string };
 export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 
-type Tab = "general" | "dramas" | "events" | "pairing";
+type Tab = "general" | "dramas" | "events" | "pairing" | (string & {});
+
+/** Вкладка, живущая ВНЕ формы профиля: у музыки свои server actions и
+ *  своя кнопка сохранения, а вложенные <form> в HTML запрещены — так
+ *  что панель рендерится соседом формы, а таб-бар общий. */
+export type ExtraTab = { key: string; label: string; content: React.ReactNode };
 
 function TabButton({
   active,
@@ -59,6 +64,7 @@ export default function PerformerForm({
   defaultDramaIds,
   defaultEventIds,
   currentPairings,
+  extraTabs = [],
 }: {
   action: (formData: FormData) => void;
   submitLabel: string;
@@ -103,6 +109,8 @@ export default function PerformerForm({
   defaultEventIds?: string[];
   /** Existing pairings this performer is part of — edit mode only. */
   currentPairings?: { id: string; label: string; status: PairingStatus }[];
+  /** Вкладки вне формы (см. ExtraTab) — сейчас это «Музыка». */
+  extraTabs?: ExtraTab[];
 }) {
   const v = defaultValues;
   const isCreating = !v;
@@ -127,6 +135,7 @@ export default function PerformerForm({
     type !== "SOLO" && (activeTab === "dramas" || activeTab === "pairing")
       ? "general"
       : activeTab;
+  const activeExtra = extraTabs.find((t) => t.key === effectiveTab) ?? null;
 
   // Instagram/TikTok/Twitter get their own fields below (recognized by URL,
   // not label) — everything else stays in the free-form list.
@@ -169,11 +178,7 @@ export default function PerformerForm({
   const [createdEvents, setCreatedEvents] = useState<EntityOption[]>([]);
 
   return (
-    <form
-      ref={formRef}
-      action={action}
-      className="surface d-flex flex-column gap-3 p-4"
-    >
+    <div className="surface d-flex flex-column gap-3 p-4">
       <div className="tab-bar mb-1">
         <TabButton active={effectiveTab === "general"} onClick={() => switchTab("general")}>
           Общая инфа
@@ -192,7 +197,19 @@ export default function PerformerForm({
             Пейринг
           </TabButton>
         )}
+        {extraTabs.map((t) => (
+          <TabButton key={t.key} active={effectiveTab === t.key} onClick={() => switchTab(t.key)}>
+            {t.label}
+          </TabButton>
+        ))}
       </div>
+
+      <form
+        ref={formRef}
+        action={action}
+        className="d-flex flex-column gap-3"
+        style={{ display: activeExtra ? "none" : undefined }}
+      >
 
       {/* Every tab stays mounted (display:none when inactive) so uncontrolled
           fields like FileDropzone/EntitySelect don't lose their state when
@@ -685,6 +702,20 @@ export default function PerformerForm({
             : "Изменения всех вкладок сохраняются вместе."}
         </span>
       </div>
-    </form>
+      </form>
+
+      {extraTabs.map((t) => (
+        <div key={t.key} style={{ display: effectiveTab === t.key ? undefined : "none" }}>
+          {dirty && (
+            <p className="admin-tab-warning small mb-3">
+              ● В профиле есть несохранённые правки. Эта вкладка сохраняется
+              отдельной кнопкой — вернитесь на вкладку профиля и нажмите
+              «{submitLabel}», иначе правки профиля пропадут.
+            </p>
+          )}
+          {t.content}
+        </div>
+      ))}
+    </div>
   );
 }

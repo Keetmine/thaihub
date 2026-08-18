@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
+import { logAudit, diffRecords } from "@/lib/audit";
 import { parseFicbookPage, fetchFicbookHtml, fetchOriginalCover } from "@/lib/ficbook";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { logImportRun } from "@/lib/importRun";
@@ -50,12 +51,18 @@ function revalidateNovelPaths(id?: string) {
 export async function createNovel(formData: FormData) {
   await requireCatalogEditor();
   const fields = getFields(formData);
-  await prisma.novel.create({
+  const created = await prisma.novel.create({
     data: {
       ...fields,
       links: { create: getLinks(formData) },
       dramas: { connect: getDramaIds(formData).map((id) => ({ id })) },
     },
+  });
+  await logAudit({
+    action: "CREATE",
+    entityType: "Novel",
+    entityId: created.id,
+    entityLabel: created.title,
   });
   revalidateNovelPaths();
   redirect("/admin/novels");
@@ -64,6 +71,7 @@ export async function createNovel(formData: FormData) {
 export async function updateNovel(id: string, formData: FormData) {
   await requireCatalogEditor();
   const fields = getFields(formData);
+  const before = await prisma.novel.findUnique({ where: { id } });
   await prisma.$transaction([
     prisma.novelLink.deleteMany({ where: { novelId: id } }),
     prisma.drama.updateMany({ where: { novelId: id }, data: { novelId: null } }),
@@ -76,13 +84,29 @@ export async function updateNovel(id: string, formData: FormData) {
       },
     }),
   ]);
+  if (before) {
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Novel",
+      entityId: id,
+      entityLabel: String(fields.title ?? before.title),
+      changes: diffRecords(before, fields, Object.keys(fields)),
+    });
+  }
   revalidateNovelPaths(id);
   redirect("/admin/novels");
 }
 
 export async function deleteNovel(id: string) {
   await requireCatalogEditor();
+  const existing = await prisma.novel.findUnique({ where: { id }, select: { title: true } });
   await prisma.novel.delete({ where: { id } });
+  await logAudit({
+    action: "DELETE",
+    entityType: "Novel",
+    entityId: id,
+    entityLabel: existing?.title ?? id,
+  });
   revalidateNovelPaths(id);
   redirect("/admin/novels");
 }

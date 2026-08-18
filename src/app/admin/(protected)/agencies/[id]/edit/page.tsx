@@ -5,6 +5,7 @@ import { agencyHref } from "@/lib/slugHelpers";
 import AgencyForm from "../../AgencyForm";
 import { updateAgency, deleteAgency } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import AuditTrail from "@/components/admin/AuditTrail";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,9 @@ export default async function EditAgencyPage({
             Удалить агентство
           </button>
         </ConfirmForm>
+      </div>
+      <div className="mt-4">
+        <AuditTrail entityType="Agency" entityId={agency.id} hideWhenEmpty />
       </div>
     </div>
   );

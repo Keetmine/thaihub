@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { logAudit } from "@/lib/audit";
 
 function norm(s: string) {
   return s.trim().toLowerCase();
@@ -174,7 +175,45 @@ function fillBlanks<T extends Record<string, unknown>>(
   return data;
 }
 
+/** Подписи выжившего и проигравших для строки истории. */
+async function mergedLabels(
+  model: "drama" | "agency" | "performer",
+  keeperId: string,
+  loserIds: string[],
+): Promise<{ keeper: string; losers: string[] }> {
+  const ids = [keeperId, ...loserIds];
+  if (model === "drama") {
+    const rows = await prisma.drama.findMany({ where: { id: { in: ids } }, select: { id: true, title: true } });
+    const byId = new Map(rows.map((r) => [r.id, r.title]));
+    return { keeper: byId.get(keeperId) ?? keeperId, losers: loserIds.map((id) => byId.get(id) ?? id) };
+  }
+  const rows =
+    model === "agency"
+      ? await prisma.agency.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+      : await prisma.performer.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } });
+  const byId = new Map(rows.map((r) => [r.id, r.name]));
+  return { keeper: byId.get(keeperId) ?? keeperId, losers: loserIds.map((id) => byId.get(id) ?? id) };
+}
+
+async function logMerge(
+  entityType: string,
+  keeperId: string,
+  merged: { keeper: string; losers: string[] },
+): Promise<void> {
+  if (merged.losers.length === 0) return;
+  await logAudit({
+    action: "MERGE",
+    entityType,
+    entityId: keeperId,
+    entityLabel: merged.keeper,
+    note: `слито: ${merged.losers.join(", ")}`,
+  });
+}
+
 export async function mergeDramas(keeperId: string, loserIds: string[]) {
+  // Подписи проигравших запоминаем до транзакции — после слияния их
+  // записей уже нет, а в истории должно остаться, что во что слили.
+  const merged = await mergedLabels("drama", keeperId, loserIds);
   await prisma.$transaction(async (tx) => {
     for (const loserId of loserIds) {
       if (loserId === keeperId) continue;
@@ -206,11 +245,13 @@ export async function mergeDramas(keeperId: string, loserIds: string[]) {
       await tx.drama.delete({ where: { id: loserId } });
     }
   });
+  await logMerge("Drama", keeperId, merged);
 }
 
 /** Слияние агентств: связи артистов/сериалов/избранного — на выжившее,
  *  пустые поля дозаполняются, проигравшие удаляются. */
 export async function mergeAgencies(keeperId: string, loserIds: string[]) {
+  const merged = await mergedLabels("agency", keeperId, loserIds);
   await prisma.$transaction(async (tx) => {
     for (const loserId of loserIds) {
       if (loserId === keeperId) continue;
@@ -230,9 +271,11 @@ export async function mergeAgencies(keeperId: string, loserIds: string[]) {
       await tx.agency.delete({ where: { id: loserId } });
     }
   });
+  await logMerge("Agency", keeperId, merged);
 }
 
 export async function mergePerformers(keeperId: string, loserIds: string[]) {
+  const merged = await mergedLabels("performer", keeperId, loserIds);
   await prisma.$transaction(async (tx) => {
     for (const loserId of loserIds) {
       if (loserId === keeperId) continue;
@@ -294,6 +337,7 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
       await tx.performer.delete({ where: { id: loserId } });
     }
   });
+  await logMerge("Performer", keeperId, merged);
 }
 
 /**

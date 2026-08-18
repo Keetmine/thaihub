@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import NovelForm from "../../NovelForm";
 import { updateNovel } from "../../actions";
 import { novelHref } from "@/lib/slugHelpers";
+import AuditTrail from "@/components/admin/AuditTrail";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,9 @@ export default async function EditNovelPage({
           links: novel.links.map((l) => ({ label: l.label, url: l.url })),
         }}
       />
+      <div className="mt-4">
+        <AuditTrail entityType="Novel" entityId={novel.id} hideWhenEmpty />
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdb
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logImportRun } from "@/lib/importRun";
+import { logAudit, diffRecords } from "@/lib/audit";
 import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
 
 /**
@@ -188,7 +189,14 @@ export async function createPerformerAndReturn(
 
 export async function deletePerformer(id: string) {
   await requireCatalogEditor();
+  const existing = await prisma.performer.findUnique({ where: { id }, select: { name: true } });
   await prisma.performer.delete({ where: { id } });
+  await logAudit({
+    action: "DELETE",
+    entityType: "Performer",
+    entityId: id,
+    entityLabel: existing?.name ?? id,
+  });
   revalidatePath("/admin/performers");
   revalidatePath("/performers");
   redirect("/admin/performers");
@@ -369,6 +377,13 @@ export async function createPerformer(formData: FormData) {
     });
   }
 
+  await logAudit({
+    action: "CREATE",
+    entityType: "Performer",
+    entityId: performer.id,
+    entityLabel: performer.name,
+  });
+
   revalidatePath("/admin/performers");
   revalidatePath("/admin/pairings");
   revalidatePath("/performers");
@@ -397,6 +412,13 @@ export async function updatePerformer(id: string, formData: FormData) {
   const eventIds = getEventIds(formData);
 
   if (!name) throw new Error("Укажите имя исполнителя или группы");
+
+  // Снимок до правки: история сравнивает его с тем, что ушло в update
+  // (см. src/lib/audit.ts). Связи (агентства) берём отдельным списком id.
+  const before = await prisma.performer.findUnique({
+    where: { id },
+    include: { agencies: { select: { agencyId: true } } },
+  });
 
   await prisma.$transaction([
     prisma.performerLink.deleteMany({ where: { performerId: id } }),
@@ -442,6 +464,40 @@ export async function updatePerformer(id: string, formData: FormData) {
       },
     }),
   ]);
+
+  if (before) {
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Performer",
+      entityId: id,
+      entityLabel: name,
+      changes: diffRecords(
+        { ...before, agencyIds: before.agencies.map((a) => a.agencyId).sort() },
+        {
+          name,
+          type,
+          realName,
+          musicAlias,
+          alsoKnownAs,
+          nationality,
+          gender,
+          birthDate,
+          placeOfBirth,
+          bio,
+          photoUrl,
+          mydramalistUrl,
+          agencyIds: [...agencyIds].sort(),
+          ...getMusicProfileFields(formData),
+        },
+        [
+          "name", "type", "realName", "musicAlias", "alsoKnownAs", "nationality",
+          "gender", "birthDate", "placeOfBirth", "bio", "photoUrl", "mydramalistUrl",
+          "agencyIds", "occupation", "instruments", "soloDebut", "height", "weight",
+          "mvAppearances", "trivia",
+        ],
+      ),
+    });
+  }
 
   revalidatePath("/admin/performers");
   revalidatePath(`/admin/performers/${id}/edit`);

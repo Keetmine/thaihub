@@ -8,6 +8,7 @@ import PerformerForm from "../../PerformerForm";
 import { updatePerformer, deletePerformer } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import MusicManager from "../../MusicManager";
+import AuditTrail from "@/components/admin/AuditTrail";
 
 export const dynamic = "force-dynamic";
 
@@ -153,37 +154,39 @@ export default async function EditPerformerPage({
             trivia: performer.trivia.join("\n"),
             links: performer.links.map((l) => ({ label: l.label, url: l.url })),
           }}
+          extraTabs={[
+            {
+              key: "music",
+              label: `Музыка (${performer.albums.length + performer.songs.length})`,
+              content: (
+                <MusicManager
+                  performerId={performer.id}
+                  albums={performer.albums.map((a) => ({
+                    id: a.id,
+                    title: a.title,
+                    type: a.type,
+                    year: a.year,
+                    coverUrl: a.coverUrl,
+                    url: a.url,
+                  }))}
+                  songs={performer.songs.map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    note: s.note,
+                    year: s.year,
+                    url: s.url,
+                    albumId: s.albumId,
+                  }))}
+                />
+              ),
+            },
+            {
+              key: "history",
+              label: "История",
+              content: <AuditTrail entityType="Performer" entityId={performer.id} />,
+            },
+          ]}
         />
-
-        {/* Музыка — отдельным блоком, а не вкладкой формы: у альбомов и
-            песен свои server actions, а вложенные <form> запрещены. */}
-        <div className="surface p-4">
-          <h2 className="section-heading mb-3">
-            Музыка{" "}
-            <span className="small text-secondary fw-normal">
-              {performer.albums.length} альбомов · {performer.songs.length} песен
-            </span>
-          </h2>
-          <MusicManager
-            performerId={performer.id}
-            albums={performer.albums.map((a) => ({
-              id: a.id,
-              title: a.title,
-              type: a.type,
-              year: a.year,
-              coverUrl: a.coverUrl,
-              url: a.url,
-            }))}
-            songs={performer.songs.map((s) => ({
-              id: s.id,
-              title: s.title,
-              note: s.note,
-              year: s.year,
-              url: s.url,
-              albumId: s.albumId,
-            }))}
-          />
-        </div>
 
         <div className="d-flex flex-wrap align-items-center gap-3 pt-2">
           {performer.type === "SOLO" && (

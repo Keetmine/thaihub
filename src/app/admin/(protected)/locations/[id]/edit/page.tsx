@@ -5,6 +5,7 @@ import { locationHref } from "@/lib/slugHelpers";
 import LocationForm from "../../LocationForm";
 import { updateLocation, deleteLocation } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import AuditTrail from "@/components/admin/AuditTrail";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,9 @@ export default async function EditLocationPage({
             Удалить локацию
           </button>
         </ConfirmForm>
+      </div>
+      <div className="mt-4">
+        <AuditTrail entityType="Location" entityId={location.id} hideWhenEmpty />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import DramaForm from "../../DramaForm";
 import MdlImportButton from "../../MdlImportButton";
 import { updateDrama, deleteDrama } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import AuditTrail from "@/components/admin/AuditTrail";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,9 @@ export default async function EditDramaPage({
           Удалить сериал
         </button>
       </ConfirmForm>
+      <div className="mt-4">
+        <AuditTrail entityType="Drama" entityId={drama.id} hideWhenEmpty />
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { combineDateTime } from "@/lib/dates";
 import { requireCatalogEditor } from "@/lib/auth";
+import { logAudit, diffRecords } from "@/lib/audit";
 
 function getPerformerIds(formData: FormData): string[] {
   return formData.getAll("performerIds").map(String).filter(Boolean);
@@ -102,7 +103,7 @@ export async function createEvent(formData: FormData) {
     throw new Error("Заполните обязательные поля: название, место, дата");
   }
 
-  await prisma.event.create({
+  const created = await prisma.event.create({
     data: {
       title,
       venue,
@@ -128,6 +129,13 @@ export async function createEvent(formData: FormData) {
         create: pairingIds.map((pairingId) => ({ pairingId })),
       },
     },
+  });
+
+  await logAudit({
+    action: "CREATE",
+    entityType: "Event",
+    entityId: created.id,
+    entityLabel: created.title,
   });
 
   revalidatePath("/");
@@ -207,6 +215,8 @@ export async function updateEvent(id: string, formData: FormData) {
     throw new Error("Заполните обязательные поля: название, место, дата");
   }
 
+  const before = await prisma.event.findUnique({ where: { id } });
+
   await prisma.$transaction(async (tx) => {
     await tx.eventPerformer.deleteMany({ where: { eventId: id } });
     await tx.eventPairing.deleteMany({ where: { eventId: id } });
@@ -232,6 +242,20 @@ export async function updateEvent(id: string, formData: FormData) {
       },
     });
   });
+
+  if (before) {
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Event",
+      entityId: id,
+      entityLabel: title,
+      changes: diffRecords(
+        before,
+        { title, venue, description, dramaId, locationId, ticketPrice, posterUrl, presaleAt, presaleUrl },
+        ["title", "venue", "description", "dramaId", "locationId", "ticketPrice", "posterUrl", "presaleAt", "presaleUrl"],
+      ),
+    });
+  }
 
   revalidatePath("/");
   revalidatePath("/admin/events");
@@ -272,7 +296,14 @@ export async function createEventMinimal(
 
 export async function deleteEvent(id: string) {
   await requireCatalogEditor();
+  const existing = await prisma.event.findUnique({ where: { id }, select: { title: true } });
   await prisma.event.delete({ where: { id } });
+  await logAudit({
+    action: "DELETE",
+    entityType: "Event",
+    entityId: id,
+    entityLabel: existing?.title ?? id,
+  });
   revalidatePath("/");
   revalidatePath("/admin/events");
   redirect("/admin/events");

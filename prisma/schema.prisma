@@ -567,6 +567,7 @@ model User {
   // (события, исполнители, сериалы, новеллы, локации, импорты), но без
   // пользователей, финансов, рассылок и настроек — это только админ.
   isManager    Boolean  @default(false)
+  auditLogs    AuditLog[]
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
   googleId     String?  @unique
   name         String?
@@ -1179,4 +1180,40 @@ model WikiArticle {
   published Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// История правок каталога: кто, когда и что поменял. Пишется из
+// admin server actions через src/lib/audit.ts (см. docs/features/
+// audit-log.md). Раньше правки были анонимны — после появления роли
+// менеджера стало неясно, кто затёр поле и что там было раньше.
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  MERGE
+  BULK
+}
+
+model AuditLog {
+  id     String @id @default(cuid())
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Подпись автора на момент правки: юзера могут удалить, а история
+  // должна остаться читаемой.
+  userLabel  String
+  action     AuditAction
+  // Имя Prisma-модели: "Performer", "Drama", "Event"…
+  entityType String
+  entityId   String
+  // Название записи на момент правки (после удаления её уже не достать).
+  entityLabel String
+  // [{ field, label, from, to }] — только реально изменившиеся поля.
+  changes    Json?
+  // Свободная приписка: «слито с X», «массовое действие: 12 записей».
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }

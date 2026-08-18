@@ -7,6 +7,7 @@ import { dateKey, formatTime } from "@/lib/dates";
 import EventForm from "../../EventForm";
 import { updateEvent, deleteEvent } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
+import AuditTrail from "@/components/admin/AuditTrail";
 
 export default async function EditEventPage({
   params,
@@ -117,6 +118,9 @@ export default async function EditEventPage({
           Удалить событие
         </button>
       </ConfirmForm>
+      <div className="mt-4">
+        <AuditTrail entityType="Event" entityId={event.id} hideWhenEmpty />
+      </div>
     </div>
   );
 }

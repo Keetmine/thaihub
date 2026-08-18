@@ -19,15 +19,26 @@ function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }
 export default function LocationPicker({
   defaultLatitude,
   defaultLongitude,
+  onChange,
 }: {
   defaultLatitude?: number | null;
   defaultLongitude?: number | null;
+  /** Координаты уезжают наверх, потому что скрытые поля формы живут в
+   *  LocationForm: карта грузится клиентски (ssr:false), и до её монтажа
+   *  полей latitude/longitude в форме не было вовсе — сохранение в этот
+   *  момент молча стирало координаты. */
+  onChange?: (lat: number | null, lng: number | null) => void;
 }) {
   const [position, setPosition] = useState<[number, number] | null>(
     defaultLatitude != null && defaultLongitude != null
       ? [defaultLatitude, defaultLongitude]
       : null,
   );
+
+  function apply(next: [number, number] | null) {
+    setPosition(next);
+    onChange?.(next ? next[0] : null, next ? next[1] : null);
+  }
 
   return (
     <div>
@@ -37,12 +48,11 @@ export default function LocationPicker({
           <input
             type="number"
             step="any"
-            name="latitude"
             className="form-control form-control-sm"
             value={position ? position[0] : ""}
             onChange={(e) => {
               const lat = parseFloat(e.target.value);
-              setPosition((prev) => [Number.isFinite(lat) ? lat : (prev?.[0] ?? 0), prev?.[1] ?? 0]);
+              apply([Number.isFinite(lat) ? lat : (position?.[0] ?? 0), position?.[1] ?? 0]);
             }}
           />
         </div>
@@ -51,12 +61,11 @@ export default function LocationPicker({
           <input
             type="number"
             step="any"
-            name="longitude"
             className="form-control form-control-sm"
             value={position ? position[1] : ""}
             onChange={(e) => {
               const lng = parseFloat(e.target.value);
-              setPosition((prev) => [prev?.[0] ?? 0, Number.isFinite(lng) ? lng : (prev?.[1] ?? 0)]);
+              apply([position?.[0] ?? 0, Number.isFinite(lng) ? lng : (position?.[1] ?? 0)]);
             }}
           />
         </div>
@@ -82,7 +91,7 @@ export default function LocationPicker({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <ClickHandler onPick={(lat, lng) => setPosition([lat, lng])} />
+          <ClickHandler onPick={(lat, lng) => apply([lat, lng])} />
           {position && <Marker position={position} icon={defaultIcon} />}
         </MapContainer>
       </div>

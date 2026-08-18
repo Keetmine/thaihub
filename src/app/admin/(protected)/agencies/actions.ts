@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
+import { logAudit, diffRecords } from "@/lib/audit";
 
 function getIds(formData: FormData, key: string): string[] {
   return Array.from(new Set(formData.getAll(key).map(String).filter(Boolean)));
@@ -78,6 +79,13 @@ export async function createAgency(formData: FormData) {
     });
   }
 
+  await logAudit({
+    action: "CREATE",
+    entityType: "Agency",
+    entityId: agency.id,
+    entityLabel: agency.name,
+  });
+
   revalidatePath("/performers");
   revalidatePath("/dramas");
   redirect(`/admin/agencies/${agency.id}/edit`);
@@ -92,6 +100,8 @@ export async function updateAgency(id: string, formData: FormData) {
   const dramaIds = getIds(formData, "dramaIds");
 
   if (!name) throw new Error("Укажите название агентства");
+
+  const before = await prisma.agency.findUnique({ where: { id } });
 
   try {
     await prisma.$transaction([
@@ -134,6 +144,16 @@ export async function updateAgency(id: string, formData: FormData) {
     throw error;
   }
 
+  if (before) {
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Agency",
+      entityId: id,
+      entityLabel: name,
+      changes: diffRecords(before, { name, logoUrl, description }, ["name", "logoUrl", "description"]),
+    });
+  }
+
   revalidatePath("/admin/performers");
   revalidatePath(`/admin/agencies/${id}/edit`);
   revalidatePath("/performers");
@@ -144,7 +164,14 @@ export async function updateAgency(id: string, formData: FormData) {
 
 export async function deleteAgency(id: string) {
   await requireCatalogEditor();
+  const existing = await prisma.agency.findUnique({ where: { id }, select: { name: true } });
   await prisma.agency.delete({ where: { id } });
+  await logAudit({
+    action: "DELETE",
+    entityType: "Agency",
+    entityId: id,
+    entityLabel: existing?.name ?? id,
+  });
   revalidatePath("/admin/performers/new");
   revalidatePath("/admin/performers");
   revalidatePath("/dramas");
