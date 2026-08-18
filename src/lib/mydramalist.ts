@@ -151,6 +151,7 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
       .trim() || null;
   }
   if (!synopsis) synopsis = ld.description?.trim() || null;
+  synopsis = stripMdlSelfAttribution(synopsis);
 
   // Related Content: li.related-content с div.title (ссылка + подпись).
   const related: MdlRelatedEntry[] = [];
@@ -265,6 +266,20 @@ type JsonLdArticle = {
 const SOCIAL_EXCLUDE =
   /sharer|intent|My_Drama_List|MyDramaListdotcom|my\.drama\.list|@mydramalist|UCfnEmDUWC4m0k|mydramalist\.com/i;
 
+/** Убирает служебную приписку «(Source: MyDramaList)» из текста —
+ *  атрибуция самого MDL живёт у нас отдельной ссылкой в блоке
+ *  «Источники». Указания на ДРУГИЕ источники (Netflix, GMMTV,
+ *  Wikipedia…) остаются в тексте: это атрибуция чужих текстов. */
+export function stripMdlSelfAttribution(text: string | null): string | null {
+  if (!text) return text;
+  const cleaned = text
+    .replace(/\s*\(\s*Source:\s*MyDramaList\s*\)\s*/gi, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return cleaned || null;
+}
+
 export function parseMdlPersonPage(html: string, url: string): MdlPerson {
   let article: JsonLdArticle | null = null;
   for (const block of jsonLdBlocks(html)) {
@@ -283,7 +298,9 @@ export function parseMdlPersonPage(html: string, url: string): MdlPerson {
 
   const bornRaw = detailFrom(text, "Born");
   // Био: в Article JSON-LD лежит полный текст с переносами.
-  const bio = article?.description ? decodeEntities(article.description).trim() : null;
+  const bio = stripMdlSelfAttribution(
+    article?.description ? decodeEntities(article.description).trim() : null,
+  );
 
   // Персональные соцссылки (исключая share-кнопки и аккаунты самого MDL).
   const socialLinks: string[] = [];

@@ -704,7 +704,9 @@ export default async function PerformerPage({
         </div>
       )}
 
-      {(performer.sourceUrl || (Array.isArray(performer.references) && performer.references.length > 0)) && (
+      {(performer.sourceUrl ||
+        performer.mydramalistUrl ||
+        (Array.isArray(performer.references) && performer.references.length > 0)) && (
         <div className="mb-3 sources-block">
           <h2 className="section-heading mb-2" style={{ opacity: 0.55 }}>Источники</h2>
           <ol className="ps-3 mb-0 d-flex flex-column gap-1">
@@ -722,11 +724,20 @@ export default async function PerformerPage({
                 )}
               </li>
             ))}
-            {/* Страница-источник — обычным пунктом списка, следующим номером */}
+            {/* Страницы-источники — обычными пунктами списка, следующими
+                номерами. Приписку «(Source: MyDramaList)» из тела био
+                убрали — атрибуция живёт здесь. */}
             {performer.sourceUrl && (
               <li>
                 <a href={performer.sourceUrl} target="_blank" rel="noopener noreferrer">
                   tpop.fandom.com (CC BY-SA)
+                </a>
+              </li>
+            )}
+            {performer.mydramalistUrl && (
+              <li>
+                <a href={performer.mydramalistUrl} target="_blank" rel="noopener noreferrer">
+                  MyDramaList
                 </a>
               </li>
             )}
