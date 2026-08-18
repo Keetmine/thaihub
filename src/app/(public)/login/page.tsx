@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
 import { login } from "./actions";
 import { telegramBotUsername } from "@/lib/telegram";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
 import { pageMetadata } from "@/lib/seo";
+import { getCurrentUser } from "@/lib/userAuth";
 
 export const metadata = pageMetadata({
   title: "Вход",
@@ -20,6 +22,8 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  // Залогиненного форма входа только сбивает с толку — уводим в кабинет.
+  if (await getCurrentUser()) redirect("/account");
   // Виджет появляется только когда бот настроен (env задан) — читаем на
   // сервере в рантайме, поэтому NEXT_PUBLIC-переменная не нужна.
   const botUsername = telegramBotUsername();

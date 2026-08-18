@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
 import { signup } from "./actions";
 import { pageMetadata } from "@/lib/seo";
+import { getCurrentUser } from "@/lib/userAuth";
+import { telegramBotUsername } from "@/lib/telegram";
 
 export const metadata = pageMetadata({
   title: "Регистрация",
@@ -18,7 +22,10 @@ export default async function SignupPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  // Залогиненному регистрироваться незачем — форма только путала.
+  if (await getCurrentUser()) redirect("/account");
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
+  const botUsername = telegramBotUsername();
 
   return (
     <div
@@ -72,6 +79,12 @@ export default async function SignupPage({
             </svg>
             Продолжить с Google
           </a>
+        )}
+        {botUsername && (
+          <div className="text-center mb-3">
+            <p className="small text-secondary mb-2">или</p>
+            <TelegramLoginButton botUsername={botUsername} />
+          </div>
         )}
         <p className="small text-secondary text-center mb-0">
           Уже есть аккаунт?{" "}
