@@ -121,7 +121,10 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
 
   const tripDays = (t: (typeof trips)[number]) =>
     Math.round((t.endDate.getTime() - t.startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-  const pastOrCurrentTrips = trips.filter((t) => t.startDate <= now);
+  // «Дней в Таиланде» — только по ЗАВЕРШЁННЫМ поездкам: текущая
+  // засчитается целиком после возвращения, будущие не считаются вовсе
+  // (иначе метрика прожитого опыта показывала бы ещё не прожитые дни).
+  const completedTrips = trips.filter((t) => t.endDate < now);
 
   return {
     attendedEvents: attendedEventIds.size,
@@ -142,7 +145,7 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     anyStatusDramas,
     trips: trips.length,
     longestTripDays: trips.length ? Math.max(...trips.map(tripDays)) : 0,
-    daysInThailand: pastOrCurrentTrips.reduce((sum, t) => sum + tripDays(t), 0),
+    daysInThailand: completedTrips.reduce((sum, t) => sum + tripDays(t), 0),
     friends: friendships,
     eventsByYear: Array.from(byYear.entries())
       .map(([year, count]) => ({ year, count }))
