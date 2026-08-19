@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "@sentry/nextjs": "^10.70.0",
     "bootstrap": "^5.3.8",
     "cheerio": "^1.2.0",
     "leaflet": "^1.9.4",

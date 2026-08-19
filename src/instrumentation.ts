@@ -7,6 +7,13 @@
 const INTERVAL_MS = 30 * 60 * 1000;
 
 export async function register() {
+  // Sentry инициализируется первым: иначе ошибки старта не попадут в него.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("../sentry.server.config");
+  }
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("../sentry.edge.config");
+  }
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
 
@@ -38,11 +45,23 @@ export async function register() {
  *  route handlers, server actions) попадает в /admin/errors. */
 export async function onRequestError(
   err: unknown,
-  request: { path: string },
-  context: { routerKind: string },
+  // Сигнатуру держим как у Next: Sentry ждёт метод и заголовки, а не
+  // только путь.
+  request: { path: string; method: string; headers: { [key: string]: string | undefined } },
+  context: { routerKind: string; routePath: string; routeType: string },
 ) {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  void context;
+  // В Sentry — со стектрейсом и группировкой; в свой журнал
+  // (/admin/errors) — чтобы быстрый взгляд «что упало за сутки» не
+  // требовал внешнего сервиса.
+  if (process.env.SENTRY_DSN) {
+    const Sentry = await import("@sentry/nextjs");
+    Sentry.captureRequestError(
+      err,
+      request,
+      context as Parameters<typeof Sentry.captureRequestError>[2],
+    );
+  }
   const { logError } = await import("@/lib/errorLog");
   const digest =
     err && typeof err === "object" && "digest" in err ? String((err as { digest: unknown }).digest) : undefined;

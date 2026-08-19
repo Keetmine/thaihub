@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -21,4 +22,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Обёртка Sentry: загружает карты кода для читаемых стектрейсов.
+// Без SENTRY_AUTH_TOKEN загрузка пропускается — сборка не падает ни
+// локально, ни в CI, где токена нет.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: true,
+  // Карты кода не отдаём наружу: в них исходники приложения.
+  widenClientFileUpload: false,
+  disableLogger: true,
+});
