@@ -17,8 +17,8 @@ export default function LetterAvatar({
   const radius = rounded ? "50%" : "0.5rem";
   const h = height ?? size;
   if (photoUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         loading="lazy"
         decoding="async"

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import LocationMapLoader from "@/components/LocationMapLoader";
-import StatTile from "@/components/StatTile";
 import { performerHref } from "@/lib/performerSlug";
 import { artistListHref } from "@/lib/slugHelpers";
 import CreateArtistListButton from "@/app/(public)/artist-lists/CreateArtistListButton";

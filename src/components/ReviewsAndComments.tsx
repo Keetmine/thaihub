@@ -105,8 +105,8 @@ function ratingColor(r: number): string {
 
 function Avatar({ name, photoUrl }: { name: string | null; photoUrl: string | null }) {
   if (photoUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         loading="lazy"
         decoding="async"

@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { eventHref } from "@/lib/eventSlug";
 import { logout } from "../login/actions";
 import { formatShortDate } from "@/lib/dates";
-import { PinIcon } from "@/components/icons";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
 import ProfileOverview from "./ProfileOverview";
 import EventAgendaRow from "@/components/EventAgendaRow";

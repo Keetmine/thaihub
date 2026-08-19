@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatShortDate, formatTime } from "@/lib/dates";
+import { formatShortDate } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";

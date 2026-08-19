@@ -89,10 +89,19 @@ jobs:
             fi
             # Готовый образ только скачиваем — на сервере ничего не
             # собирается, сайт во время деплоя работает как обычно.
-            echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" \
-              | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             export APP_IMAGE="${{ needs.build.outputs.image }}"
             echo "APP_IMAGE=$APP_IMAGE" > .env.image
-            docker compose --env-file .env --env-file .env.image pull app
-            docker compose --env-file .env --env-file .env.image up -d --no-build
+
+            if echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" \
+                 | docker login ghcr.io -u "${{ github.actor }}" --password-stdin \
+               && docker compose --env-file .env --env-file .env.image pull app; then
+              docker compose --env-file .env --env-file .env.image up -d --no-build
+            else
+              # Реестр недоступен (нет доступа к пакету, сеть) — не
+              # оставляем сайт без обновления, собираем на месте, как
+              # раньше. Медленно, но деплой доходит.
+              echo "!! не удалось получить образ из ghcr, собираю на сервере"
+              rm -f .env.image
+              docker compose up -d --build
+            fi
             docker image prune -f
