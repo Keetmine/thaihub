@@ -24,6 +24,7 @@ import {
 } from "../TripPlacesControls";
 import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
+import TripHotels from "./TripHotels";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,9 @@ export default async function TripPage({
         include: { location: { select: { id: true, name: true } } },
       },
       user: { select: { id: true, name: true } },
+      // Брони жилья: показываются на вкладке плана рядом с событиями —
+      // в день заселения не приходится искать письмо в почте.
+      hotels: { orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }] },
       members: {
         include: { user: { select: { id: true, name: true } } },
         orderBy: { createdAt: "asc" },
@@ -357,6 +361,23 @@ export default async function TripPage({
           </Link>
         )}
       </div>
+
+      {/* Жильё — только участникам поездки: чужим бронь видеть незачем. */}
+      {!showTodos && !showPlaces && canContribute && (
+        <TripHotels
+          tripId={trip.id}
+          hotels={trip.hotels.map((h) => ({
+            id: h.id,
+            name: h.name,
+            address: h.address,
+            url: h.url,
+            fileUrl: h.fileUrl,
+            note: h.note,
+            checkIn: h.checkIn ? dateKey(h.checkIn) : null,
+            checkOut: h.checkOut ? dateKey(h.checkOut) : null,
+          }))}
+        />
+      )}
 
       {showTodos ? (
         <TripTodos

@@ -2829,3 +2829,9 @@ details.admin-section[open] > summary.admin-section-head::before {
   border: 0;
   color: #ff8a8a;
 }
+
+/* Активная иконка-переключатель (например, «видела вживую»). */
+.icon-btn.is-active {
+  color: var(--bs-primary-text-emphasis);
+  background: rgba(var(--accent-rgb), 0.14);
+}

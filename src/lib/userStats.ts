@@ -80,6 +80,19 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
+  // Ручные отметки «видела вживую»: концерты до регистрации на сайте,
+  // случайные встречи и события, которых нет в нашей афише. Считаем
+  // объединением с автоматическими — один и тот же артист, отмеченный
+  // и так и так, не должен удваивать счётчик.
+  const manuallySeen = await prisma.performerSeen.findMany({
+    where: { userId },
+    select: { performerId: true },
+  });
+  const seenPerformerIds = new Set([
+    ...performerCounts.keys(),
+    ...manuallySeen.map((m) => m.performerId),
+  ]);
+
   const byYear = new Map<number, number>();
   const attendedDays: string[] = [];
   for (const a of attended) {
@@ -130,7 +143,7 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     attendedEvents: attendedEventIds.size,
     upcomingEvents: upcoming,
     uniqueVenues: venues.size,
-    performersSeenLive: performerCounts.size,
+    performersSeenLive: seenPerformerIds.size,
     topPerformers,
     visitedLocations: visits.length,
     visitedLocationPins: visits

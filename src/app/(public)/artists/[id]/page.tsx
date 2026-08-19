@@ -31,6 +31,8 @@ import {
   UserIcon,
 } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
+import SeenLiveButton from "@/components/SeenLiveButton";
+import { toggleSeenLive } from "@/app/(public)/artists/seenActions";
 
 export const dynamic = "force-dynamic";
 
@@ -159,6 +161,13 @@ export default async function PerformerPage({
   const pastPairings = pairings.filter((p) => p.status === "PAST");
 
   const currentUser = await getCurrentUser();
+  // Отметка «видела вживую» — ручная, не зависит от событий афиши.
+  const seenLive = currentUser
+    ? !!(await prisma.performerSeen.findUnique({
+        where: { userId_performerId: { userId: currentUser.id, performerId: performer.id } },
+        select: { id: true },
+      }))
+    : false;
   // Списки пользователя для кнопки «+ в список» рядом с сердечком.
   const myLists = currentUser
     ? (
@@ -286,6 +295,15 @@ export default async function PerformerPage({
             isFavorited={isFavorited}
             variant="icon"
           />
+          {/* Ручная отметка «видела вживую»: автоматически считаются
+              только события из нашей афиши. */}
+          {currentUser && (
+            <SeenLiveButton
+              performerId={performer.id}
+              initialSeen={seenLive}
+              toggle={toggleSeenLive}
+            />
+          )}
           {/* Добавить в свой список прямо отсюда: раньше это делалось
               только со страницы самого списка. */}
           {currentUser && (

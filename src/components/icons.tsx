@@ -667,3 +667,24 @@ export function BellIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/** «Видела вживую»: глаз. filled — отметка стоит. */
+export function EyeIcon({ filled = false, className }: { filled?: boolean; className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="1.1em"
+      height="1.1em"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" fill={filled ? "var(--bs-body-bg, #160a1c)" : "none"} />
+    </svg>
+  );
+}

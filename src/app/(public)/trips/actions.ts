@@ -406,3 +406,49 @@ export async function deleteTripTodo(todoId: string): Promise<void> {
   await prisma.tripTodo.delete({ where: { id: todoId } });
   revalidatePath(`/trips/${todo.tripId}`);
 }
+
+/** Бронь жилья в поездке. Доступ как у дел и событий: владелец и
+ *  принятые участники — они едут вместе, и бронь нужна всем. */
+export async function saveTripHotel(tripId: string, formData: FormData): Promise<void> {
+  await requireTripAccess(tripId);
+  const id = String(formData.get("hotelId") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("Укажите название отеля");
+
+  const data = {
+    name,
+    address: String(formData.get("address") ?? "").trim() || null,
+    url: String(formData.get("url") ?? "").trim() || null,
+    fileUrl: String(formData.get("fileUrl") ?? "").trim() || null,
+    note: String(formData.get("note") ?? "").trim() || null,
+    checkIn: parseTripDate(formData.get("checkIn")),
+    checkOut: parseTripDate(formData.get("checkOut")),
+  };
+
+  if (id) {
+    // Проверяем принадлежность: id приходит из формы, и без этого можно
+    // было бы отредактировать бронь чужой поездки.
+    const existing = await prisma.tripHotel.findFirst({ where: { id, tripId } });
+    if (!existing) throw new Error("Бронь не найдена");
+    await prisma.tripHotel.update({ where: { id }, data });
+  } else {
+    await prisma.tripHotel.create({ data: { tripId, ...data } });
+  }
+  revalidatePath(`/trips/${tripId}`);
+}
+
+export async function deleteTripHotel(tripId: string, hotelId: string): Promise<void> {
+  await requireTripAccess(tripId);
+  await prisma.tripHotel.deleteMany({ where: { id: hotelId, tripId } });
+  revalidatePath(`/trips/${tripId}`);
+}
+
+/** «YYYY-MM-DD» из формы → дата в UTC-слоте, как остальные даты
+ *  проекта (см. lib/dates.ts). */
+function parseTripDate(value: FormDataEntryValue | null): Date | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const [y, m, d] = raw.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(Date.UTC(y, m - 1, d));
+}
