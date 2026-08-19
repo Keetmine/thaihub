@@ -109,7 +109,9 @@ export function AddPlaceBox({ listId }: { listId: string }) {
             >
               {l.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={l.photoUrl} alt="" className="performer-select-avatar" />
+                <img
+              loading="lazy"
+              decoding="async" src={l.photoUrl} alt="" className="performer-select-avatar" />
               ) : (
                 <span className="performer-select-avatar performer-select-avatar-placeholder">
                   {l.name.charAt(0).toUpperCase()}

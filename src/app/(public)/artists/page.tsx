@@ -117,6 +117,8 @@ async function AgenciesTab({ q }: { q: string }) {
             {a.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                loading="lazy"
+                decoding="async"
                 src={a.logoUrl}
                 alt=""
                 style={{
@@ -179,6 +181,8 @@ function PerformerRow({
         {performer.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            loading="lazy"
+            decoding="async"
             src={performer.photoUrl}
             alt=""
             style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}

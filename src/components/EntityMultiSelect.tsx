@@ -8,7 +8,9 @@ export type EntityOption = { id: string; name: string; photoUrl?: string | null 
 function Avatar({ option }: { option: EntityOption }) {
   if (option.photoUrl) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={option.photoUrl} alt="" className="performer-select-avatar" />;
+    return <img
+  loading="lazy"
+  decoding="async" src={option.photoUrl} alt="" className="performer-select-avatar" />;
   }
   return (
     <span className="performer-select-avatar performer-select-avatar-placeholder">

@@ -113,6 +113,8 @@ export default function EventNoteSection({
               {n.userPhotoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
+                  loading="lazy"
+                  decoding="async"
                   src={n.userPhotoUrl}
                   alt=""
                   className="rounded-circle flex-shrink-0"

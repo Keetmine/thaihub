@@ -108,6 +108,8 @@ function Avatar({ name, photoUrl }: { name: string | null; photoUrl: string | nu
     // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
+        loading="lazy"
+        decoding="async"
         src={photoUrl}
         alt=""
         className="rounded-circle flex-shrink-0"

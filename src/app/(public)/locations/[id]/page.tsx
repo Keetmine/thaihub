@@ -112,6 +112,8 @@ export default async function LocationDetailPage({
           <div className="col-12 col-sm-4 col-md-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              loading="lazy"
+              decoding="async"
               src={location.photoUrl}
               alt={location.name}
               className="surface"
@@ -156,6 +158,8 @@ export default async function LocationDetailPage({
                       {drama.posterUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
+                          loading="lazy"
+                          decoding="async"
                           src={drama.posterUrl}
                           alt=""
                           style={{

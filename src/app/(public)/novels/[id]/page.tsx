@@ -53,6 +53,8 @@ export default async function NovelPage({
           <div className="col-12 col-sm-4 col-md-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              loading="lazy"
+              decoding="async"
               src={novel.coverUrl}
               alt={novel.title}
               className="surface"

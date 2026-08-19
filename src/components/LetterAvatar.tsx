@@ -20,6 +20,8 @@ export default function LetterAvatar({
     // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
+        loading="lazy"
+        decoding="async"
         src={photoUrl}
         alt=""
         className="flex-shrink-0"

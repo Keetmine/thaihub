@@ -15,6 +15,11 @@ services:
       retries: 10
 
   app:
+    # Образ собирается в GitHub Actions и приезжает из ghcr.io: сборка
+    # Next на самом сервере (4 ГБ RAM) отъедала весь процессор и на
+    # 8-10 минут делала сайт неотзывчивым. APP_IMAGE задаётся при
+    # деплое; без него (локально) собирается из исходников.
+    image: ${APP_IMAGE:-myblhub-app:local}
     build: .
     restart: unless-stopped
     depends_on:

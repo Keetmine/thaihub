@@ -273,6 +273,8 @@ export default async function PerformerPage({
           <div className="flex-shrink-0 d-flex flex-column gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              loading="lazy"
+              decoding="async"
               src={performer.photoUrl}
               alt={performer.name}
               className="rounded-4"
@@ -614,6 +616,8 @@ export default async function PerformerPage({
                     {pd.drama.posterUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
+                        loading="lazy"
+                        decoding="async"
                         src={pd.drama.posterUrl}
                         alt=""
                         style={{
@@ -682,6 +686,8 @@ export default async function PerformerPage({
                   {album.coverUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
+                      loading="lazy"
+                      decoding="async"
                       src={album.coverUrl}
                       alt=""
                       style={{

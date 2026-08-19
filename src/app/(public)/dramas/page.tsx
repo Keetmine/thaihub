@@ -160,6 +160,8 @@ export default async function DramasPage({
                 {d.posterUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
+                    loading="lazy"
+                    decoding="async"
                     src={d.posterUrl}
                     alt=""
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}

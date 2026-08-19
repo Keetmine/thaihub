@@ -122,6 +122,8 @@ export default function AccountTabs({
             {user.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                loading="lazy"
+                decoding="async"
                 src={user.photoUrl}
                 alt=""
                 className="rounded-circle flex-shrink-0"

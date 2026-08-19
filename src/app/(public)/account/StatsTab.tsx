@@ -67,6 +67,8 @@ export default function StatsTab({
                 {p.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
+                    loading="lazy"
+                    decoding="async"
                     src={p.photoUrl}
                     alt=""
                     className="rounded-circle"
@@ -105,7 +107,9 @@ export default function StatsTab({
                     {l.items.slice(0, 4).map((p) =>
                       p.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={p.id} src={p.photoUrl} alt="" />
+                        <img
+                      loading="lazy"
+                      decoding="async" key={p.id} src={p.photoUrl} alt="" />
                       ) : (
                         <span key={p.id}>{p.name.charAt(0).toUpperCase()}</span>
                       ),

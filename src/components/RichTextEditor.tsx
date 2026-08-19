@@ -36,7 +36,10 @@ export default function RichTextEditor({
       const res = await fetch("/api/upload", { method: "POST", body });
       if (!res.ok) throw new Error("upload failed");
       const { url } = (await res.json()) as { url: string };
-      exec("insertHTML", `<img src="${url}" alt="" style="max-width:100%;border-radius:0.5rem" />`);
+      exec(
+        "insertHTML",
+        `<img src="${url}" alt="" loading="lazy" decoding="async" style="max-width:100%;border-radius:0.5rem" />`,
+      );
     } finally {
       setUploading(false);
     }

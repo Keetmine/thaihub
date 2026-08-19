@@ -37,7 +37,9 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
       >
         {user.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.photoUrl} alt="" className="profile-menu-avatar" />
+          <img
+        loading="lazy"
+        decoding="async" src={user.photoUrl} alt="" className="profile-menu-avatar" />
         ) : (
           <UserIcon />
         )}

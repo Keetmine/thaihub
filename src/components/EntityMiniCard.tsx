@@ -28,6 +28,8 @@ export default function EntityMiniCard({
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          loading="lazy"
+          decoding="async"
           src={photoUrl}
           alt=""
           style={{

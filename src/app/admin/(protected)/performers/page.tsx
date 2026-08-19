@@ -123,6 +123,8 @@ async function AdminAgenciesView({ q, page }: { q: string; page: number }) {
                     {a.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
+                        loading="lazy"
+                        decoding="async"
                         src={a.logoUrl}
                         alt=""
                         style={{

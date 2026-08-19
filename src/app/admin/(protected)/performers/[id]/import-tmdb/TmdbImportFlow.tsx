@@ -114,6 +114,8 @@ export default function TmdbImportFlow({
             {preview.photoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                loading="lazy"
+                decoding="async"
                 src={preview.photoUrl}
                 alt={preview.name}
                 style={{ width: "5rem", height: "5rem", borderRadius: "0.5rem", objectFit: "cover", flexShrink: 0 }}
@@ -161,6 +163,8 @@ export default function TmdbImportFlow({
                     {show.posterUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
+                        loading="lazy"
+                        decoding="async"
                         src={show.posterUrl}
                         alt=""
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}

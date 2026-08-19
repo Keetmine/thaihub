@@ -205,6 +205,8 @@ export default async function DramaDetailPage({
               {drama.posterUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
+                  loading="lazy"
+                  decoding="async"
                   src={drama.posterUrl}
                   alt={drama.title}
                   className="surface"
@@ -444,6 +446,8 @@ export default async function DramaDetailPage({
                         {location.photoUrl && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
+                            loading="lazy"
+                            decoding="async"
                             src={location.photoUrl}
                             alt=""
                             style={{

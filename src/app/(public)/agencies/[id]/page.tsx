@@ -109,6 +109,8 @@ export default async function AgencyDetailPage({
           {agency.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              loading="lazy"
+              decoding="async"
               src={agency.logoUrl}
               alt={agency.name}
               className="rounded-circle flex-shrink-0"
@@ -196,6 +198,8 @@ export default async function AgencyDetailPage({
                     {p.photoUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
+                        loading="lazy"
+                        decoding="async"
                         src={p.photoUrl}
                         alt=""
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -250,6 +254,8 @@ export default async function AgencyDetailPage({
                   {d.posterUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
+                      loading="lazy"
+                      decoding="async"
                       src={d.posterUrl}
                       alt=""
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}

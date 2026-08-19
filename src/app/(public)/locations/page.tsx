@@ -48,6 +48,8 @@ function LocationRow({
           {location.photoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              loading="lazy"
+              decoding="async"
               src={location.photoUrl}
               alt=""
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -448,6 +450,8 @@ async function MyPlaces({ q, userId }: { q: string; userId: string }) {
             {l.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
+                loading="lazy"
+                decoding="async"
                 src={l.photoUrl}
                 alt=""
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}

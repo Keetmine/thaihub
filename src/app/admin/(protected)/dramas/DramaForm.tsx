@@ -41,7 +41,9 @@ function TabButton({
 function Avatar({ name, photoUrl }: { name: string; photoUrl?: string | null }) {
   if (photoUrl) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={photoUrl} alt="" className="performer-select-avatar" />;
+    return <img
+  loading="lazy"
+  decoding="async" src={photoUrl} alt="" className="performer-select-avatar" />;
   }
   return (
     <span className="performer-select-avatar performer-select-avatar-placeholder">

@@ -64,7 +64,9 @@ export default function FileDropzone({
         {url ? (
           <div className="file-dropzone-preview">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" />
+            <img
+            loading="lazy"
+            decoding="async" src={url} alt="" />
             <button
               type="button"
               className="btn btn-outline-danger btn-sm mt-2"

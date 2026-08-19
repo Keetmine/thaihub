@@ -215,6 +215,8 @@ export default async function EventDetailPage({
           <div className="col-12 col-sm-4 col-md-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              loading="lazy"
+              decoding="async"
               src={event.posterUrl}
               alt={event.title}
               className="surface"

@@ -38,6 +38,8 @@ function UserRow({
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            loading="lazy"
+            decoding="async"
             src={photoUrl}
             alt=""
             style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", objectFit: "cover" }}

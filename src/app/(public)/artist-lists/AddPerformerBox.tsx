@@ -69,7 +69,9 @@ export default function AddPerformerBox({ listId }: { listId: string }) {
             >
               {p.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.photoUrl} alt="" className="performer-select-avatar" />
+                <img
+              loading="lazy"
+              decoding="async" src={p.photoUrl} alt="" className="performer-select-avatar" />
               ) : (
                 <span className="performer-select-avatar performer-select-avatar-placeholder">
                   {p.name.charAt(0).toUpperCase()}

@@ -207,7 +207,9 @@ export default async function SearchPage({
                   >
                     {d.posterUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={d.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img
+                    loading="lazy"
+                    decoding="async" src={d.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <div
                         className="d-flex align-items-center justify-content-center h-100 fw-semibold"

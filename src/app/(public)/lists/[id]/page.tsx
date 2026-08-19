@@ -133,6 +133,8 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
                 {i.location.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
+                    loading="lazy"
+                    decoding="async"
                     src={i.location.photoUrl}
                     alt=""
                     style={{ width: "3rem", height: "3rem", borderRadius: "0.6rem", objectFit: "cover", flexShrink: 0 }}
