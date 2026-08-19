@@ -104,4 +104,9 @@ jobs:
               rm -f .env.image
               docker compose up -d --build
             fi
-            docker image prune -f
+            # Чистим агрессивно: 2026-08-19 сервер встал колом с
+            # ENOSPC — кеш сборок дорос до 37 ГБ и занял диск целиком,
+            # приложение не могло даже применить миграции. Сборка теперь
+            # идёт в CI, так что локальный кеш на сервере не нужен вовсе.
+            docker image prune -af
+            docker builder prune -af
