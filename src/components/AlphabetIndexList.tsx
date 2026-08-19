@@ -18,17 +18,31 @@ function categoryOf(key: string): "digit" | "en" | "ru" {
 /** Groups items by first letter (digits collapse into "0-9") and renders a
  *  scrollable A-Z index on the right, matching the /performers list.
  *  `trailingSection` renders an extra, ungrouped section after the letter
- *  groups (e.g. "no drama") with its own short index-nav symbol. */
+ *  groups (e.g. "no drama") with its own short index-nav symbol.
+ *
+ *  `letterLinkHref` превращает индекс из якорей в ссылки: страница тогда
+ *  грузит из базы только выбранную букву. Без него список приходится
+ *  отдавать целиком — на /locations это был мегабайт разметки на 567
+ *  записей, потому что LazyList откладывает лишь отрисовку, а данные
+ *  всё равно едут все. Список доступных букв (`allLetters`) считается
+ *  отдельным дешёвым запросом, чтобы навигация не зависела от того,
+ *  что загружено сейчас. */
 export default function AlphabetIndexList<T extends NamedItem>({
   items,
   renderItem,
   emptyMessage,
   trailingSection,
+  letterLinkHref,
+  allLetters,
+  activeLetter,
 }: {
   items: T[];
   renderItem: (item: T) => React.ReactNode;
   emptyMessage: string;
   trailingSection?: { indexLabel: React.ReactNode; indexAriaLabel: string; content: React.ReactNode };
+  letterLinkHref?: (letter: string) => string;
+  allLetters?: string[];
+  activeLetter?: string | null;
 }) {
   if (items.length === 0 && !trailingSection) {
     return <p className="text-secondary">{emptyMessage}</p>;
@@ -48,6 +62,8 @@ export default function AlphabetIndexList<T extends NamedItem>({
   const sortedLetters = Array.from(groups.keys()).sort((a, b) =>
     a < b ? -1 : a > b ? 1 : 0
   );
+  // В навигации показываем все буквы каталога, а не только загруженные.
+  const indexLetters = allLetters?.length ? allLetters : sortedLetters;
 
   return (
     <div className="performers-layout scroll-list-lg thin-scroll">
@@ -77,8 +93,8 @@ export default function AlphabetIndexList<T extends NamedItem>({
       </div>
 
       <nav className="performers-index" aria-label="Быстрый переход по буквам">
-        {sortedLetters.map((letter, i) => {
-          const prevCategory = i > 0 ? categoryOf(sortedLetters[i - 1]) : null;
+        {indexLetters.map((letter, i) => {
+          const prevCategory = i > 0 ? categoryOf(indexLetters[i - 1]) : null;
           const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);
           return (
             <Fragment key={letter}>
@@ -87,7 +103,10 @@ export default function AlphabetIndexList<T extends NamedItem>({
                   •
                 </span>
               )}
-              <a href={`#letter-${letter}`} className="performers-index-link">
+              <a
+                href={letterLinkHref ? letterLinkHref(letter) : `#letter-${letter}`}
+                className={`performers-index-link ${activeLetter === letter ? "is-active" : ""}`}
+              >
                 {letter}
               </a>
             </Fragment>
@@ -95,7 +114,7 @@ export default function AlphabetIndexList<T extends NamedItem>({
         })}
         {trailingSection && (
           <>
-            {sortedLetters.length > 0 && (
+            {indexLetters.length > 0 && (
               <span className="performers-index-sep" aria-hidden="true">
                 •
               </span>

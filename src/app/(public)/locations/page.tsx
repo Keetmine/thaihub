@@ -16,7 +16,6 @@ export const metadata = pageMetadata({
   path: "/locations",
 });
 
-
 export const dynamic = "force-dynamic";
 
 function LocationRow({
@@ -55,9 +54,15 @@ function LocationRow({
             />
           )}
         </div>
-        <span className="font-display fw-medium text-white text-truncate">{location.name}</span>
+        <span className="font-display fw-medium text-white text-truncate">
+          {location.name}
+        </span>
       </Link>
-      <VisitedButton locationId={location.id} isVisited={isVisited} className="flex-shrink-0" />
+      <VisitedButton
+        locationId={location.id}
+        isVisited={isVisited}
+        className="flex-shrink-0"
+      />
     </div>
   );
 }
@@ -65,10 +70,11 @@ function LocationRow({
 export default async function LocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; group?: string }>;
+  searchParams: Promise<{ q?: string; group?: string; letter?: string }>;
 }) {
-  const { q: rawQ, group: rawGroup } = await searchParams;
+  const { q: rawQ, group: rawGroup, letter: rawLetter } = await searchParams;
   const q = (rawQ ?? "").trim();
+  const letter = (rawLetter ?? "").trim() || null;
   const groupByDrama = rawGroup === "drama";
   const showMine = rawGroup === "mine";
 
@@ -82,7 +88,10 @@ export default async function LocationsPage({
           Локации
         </h1>
         <div className="d-flex flex-wrap gap-2">
-          <Link href="/locations/map" className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2">
+          <Link
+            href="/locations/map"
+            className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+          >
             <PinIcon />
             На карте
           </Link>
@@ -122,65 +131,154 @@ export default async function LocationsPage({
           action="/locations"
           q={q}
           placeholder="Поиск по названию…"
-          hiddenFields={groupByDrama ? { group: "drama" } : showMine ? { group: "mine" } : undefined}
+          hiddenFields={
+            groupByDrama
+              ? { group: "drama" }
+              : showMine
+                ? { group: "mine" }
+                : undefined
+          }
           className=""
         />
       </div>
 
       {groupByDrama ? (
-        <LocationsByDrama q={q} currentUser={currentUser} />
+        <LocationsByDrama q={q} currentUser={currentUser} letter={letter} />
       ) : showMine && currentUser ? (
         <MyPlaces q={q} userId={currentUser.id} />
       ) : (
-        <LocationsAlphabetical q={q} currentUser={currentUser} />
+        <LocationsAlphabetical
+          q={q}
+          currentUser={currentUser}
+          letter={letter}
+        />
       )}
     </div>
   );
 }
 
+/** Сколько локаций показываем, пока буква не выбрана. Раньше страница
+ *  отдавала все 567 разом — мегабайт разметки и десятки секунд. */
+const FIRST_BATCH = 60;
+/** Сериалов на вкладке «по сериалам» до выбора буквы: у каждого своя
+ *  пачка локаций, поэтому порция меньше. */
+const FIRST_BATCH_DRAMAS = 20;
+
 async function LocationsAlphabetical({
   q,
   currentUser,
+  letter,
 }: {
   q: string;
   currentUser: { id: string } | null;
+  letter: string | null;
 }) {
+  const baseWhere = {
+    createdByUserId: null,
+    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+  };
+  // Буква из индекса: грузим только её. «0-9» — всё, что начинается с
+  // цифры, поэтому набор условий, а не один startsWith.
+  const letterWhere =
+    letter === "0-9"
+      ? { OR: "0123456789".split("").map((d) => ({ name: { startsWith: d } })) }
+      : letter
+        ? { name: { startsWith: letter, mode: "insensitive" as const } }
+        : {};
+
   // Только то, что рисует строка: description локаций — это длинные
   // тексты, из-за которых страница весила больше мегабайта.
-  const locations = await prisma.location.findMany({
-    where: {
-      createdByUserId: null,
-      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
-    },
-    select: { id: true, name: true, photoUrl: true, slug: true },
-    orderBy: { name: "asc" },
-  });
+  const [locations, total, letterRows] = await Promise.all([
+    prisma.location.findMany({
+      where: { ...baseWhere, ...letterWhere },
+      select: { id: true, name: true, photoUrl: true, slug: true },
+      orderBy: { name: "asc" },
+      ...(letter || q ? {} : { take: FIRST_BATCH }),
+    }),
+    prisma.location.count({ where: baseWhere }),
+    // Дешёвый запрос ради полного алфавита в навигации: имена без
+    // тяжёлых полей, буквы считаются на месте.
+    prisma.location.findMany({ where: baseWhere, select: { name: true } }),
+  ]);
 
-  const visitedIds = await getVisitedIds(currentUser, locations.map((l) => l.id));
+  const allLetters = Array.from(
+    new Set(
+      letterRows.map((r) => {
+        const ch = r.name.trim().charAt(0) || "#";
+        return /[0-9]/.test(ch) ? "0-9" : ch.toUpperCase();
+      }),
+    ),
+  ).sort();
+
+  const visitedIds = await getVisitedIds(
+    currentUser,
+    locations.map((l) => l.id),
+  );
+  const hiddenCount = !letter && !q ? total - locations.length : 0;
 
   return (
-    <AlphabetIndexList
-      items={locations.map((l) => ({ id: l.id, name: l.name, location: l }))}
-      emptyMessage="Пока нет локаций."
-      renderItem={({ location: l }) => (
-        <LocationRow location={l} isVisited={visitedIds.has(l.id)} />
+    <>
+      {hiddenCount > 0 && (
+        <p className="small text-secondary mb-3">
+          Показаны первые {locations.length} из {total}. Выберите букву справа
+          или воспользуйтесь поиском, чтобы найти нужную локацию.
+        </p>
       )}
-    />
+      <AlphabetIndexList
+        items={locations.map((l) => ({ id: l.id, name: l.name, location: l }))}
+        emptyMessage="Пока нет локаций."
+        allLetters={allLetters}
+        activeLetter={letter}
+        letterLinkHref={(l) =>
+          `/locations?letter=${encodeURIComponent(l)}${q ? `&q=${encodeURIComponent(q)}` : ""}`
+        }
+        renderItem={({ location: l }) => (
+          <LocationRow location={l} isVisited={visitedIds.has(l.id)} />
+        )}
+      />
+      {letter && (
+        <p className="small text-secondary mt-3">
+          <Link href={`/locations${q ? `?q=${encodeURIComponent(q)}` : ""}`}>
+            ← Ко всем локациям
+          </Link>
+        </p>
+      )}
+    </>
   );
 }
 
 async function LocationsByDrama({
   q,
   currentUser,
+  letter,
 }: {
   q: string;
   currentUser: { id: string } | null;
+  letter: string | null;
 }) {
-  const locationNameFilter = q ? { name: { contains: q, mode: "insensitive" as const } } : {};
+  const locationNameFilter = q
+    ? { name: { contains: q, mode: "insensitive" as const } }
+    : {};
 
-  const [dramas, locationsWithoutDrama] = await Promise.all([
+  // Группировка по сериалам — самый тяжёлый вид: каждая дорама тянет
+  // свои локации. Без выбранной буквы отдаём первые FIRST_BATCH_DRAMAS,
+  // остальное — по букве названия сериала (раньше уезжало 1.7 МБ).
+  const dramaLetterWhere =
+    letter === "0-9"
+      ? {
+          OR: "0123456789".split("").map((d) => ({ title: { startsWith: d } })),
+        }
+      : letter
+        ? { title: { startsWith: letter, mode: "insensitive" as const } }
+        : {};
+
+  const [dramas, locationsWithoutDrama, dramaTitles] = await Promise.all([
     prisma.drama.findMany({
-      where: { locations: { some: { location: locationNameFilter } } },
+      where: {
+        locations: { some: { location: locationNameFilter } },
+        ...dramaLetterWhere,
+      },
+      ...(letter || q ? {} : { take: FIRST_BATCH_DRAMAS }),
       select: {
         id: true,
         title: true,
@@ -189,7 +287,9 @@ async function LocationsByDrama({
           where: { location: locationNameFilter },
           select: {
             locationId: true,
-            location: { select: { id: true, name: true, photoUrl: true, slug: true } },
+            location: {
+              select: { id: true, name: true, photoUrl: true, slug: true },
+            },
           },
           orderBy: { location: { name: "asc" } },
         },
@@ -197,11 +297,29 @@ async function LocationsByDrama({
       orderBy: { title: "asc" },
     }),
     prisma.location.findMany({
-      where: { createdByUserId: null, ...locationNameFilter, dramas: { none: {} } },
+      where: {
+        createdByUserId: null,
+        ...locationNameFilter,
+        dramas: { none: {} },
+      },
       select: { id: true, name: true, photoUrl: true, slug: true },
       orderBy: { name: "asc" },
     }),
+    prisma.drama.findMany({
+      where: { locations: { some: { location: locationNameFilter } } },
+      select: { title: true },
+    }),
   ]);
+
+  const allLetters = Array.from(
+    new Set(
+      dramaTitles.map((d) => {
+        const ch = d.title.trim().charAt(0) || "#";
+        return /[0-9]/.test(ch) ? "0-9" : ch.toUpperCase();
+      }),
+    ),
+  ).sort();
+  const hiddenDramas = !letter && !q ? dramaTitles.length - dramas.length : 0;
 
   const allLocationIds = [
     ...dramas.flatMap((d) => d.locations.map((dl) => dl.locationId)),
@@ -214,40 +332,61 @@ async function LocationsByDrama({
   }
 
   return (
-    <AlphabetIndexList
-      items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
-      emptyMessage="Пока нет локаций."
-      renderItem={({ drama }) => (
-        <section>
-          <Link href={dramaHref(drama)} className="day-group-heading mb-2">
-            {drama.title}
-          </Link>
-          <div className="d-flex flex-column gap-2 mt-2">
-            {drama.locations.map(({ location: l }) => (
-              <LocationRow key={l.id} location={l} isVisited={visitedIds.has(l.id)} />
-            ))}
-          </div>
-        </section>
+    <>
+      {hiddenDramas > 0 && (
+        <p className="small text-secondary mb-3">
+          Показаны первые {dramas.length} из {dramaTitles.length} сериалов.
+          Выберите букву справа или воспользуйтесь поиском.
+        </p>
       )}
-      trailingSection={
-        locationsWithoutDrama.length > 0
-          ? {
-              indexLabel: "—",
-              indexAriaLabel: "К локациям без сериала",
-              content: (
-                <>
-                  <h2 className="day-group-heading mb-2">Без сериала</h2>
-                  <div className="d-flex flex-column gap-2 mt-2">
-                    {locationsWithoutDrama.map((l) => (
-                      <LocationRow key={l.id} location={l} isVisited={visitedIds.has(l.id)} />
-                    ))}
-                  </div>
-                </>
-              ),
-            }
-          : undefined
-      }
-    />
+      <AlphabetIndexList
+        items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
+        emptyMessage="Пока нет локаций."
+        allLetters={allLetters}
+        activeLetter={letter}
+        letterLinkHref={(l) =>
+          `/locations?group=drama&letter=${encodeURIComponent(l)}${q ? `&q=${encodeURIComponent(q)}` : ""}`
+        }
+        renderItem={({ drama }) => (
+          <section>
+            <Link href={dramaHref(drama)} className="day-group-heading mb-2">
+              {drama.title}
+            </Link>
+            <div className="d-flex flex-column gap-2 mt-2">
+              {drama.locations.map(({ location: l }) => (
+                <LocationRow
+                  key={l.id}
+                  location={l}
+                  isVisited={visitedIds.has(l.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+        trailingSection={
+          locationsWithoutDrama.length > 0
+            ? {
+                indexLabel: "—",
+                indexAriaLabel: "К локациям без сериала",
+                content: (
+                  <>
+                    <h2 className="day-group-heading mb-2">Без сериала</h2>
+                    <div className="d-flex flex-column gap-2 mt-2">
+                      {locationsWithoutDrama.map((l) => (
+                        <LocationRow
+                          key={l.id}
+                          location={l}
+                          isVisited={visitedIds.has(l.id)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ),
+              }
+            : undefined
+        }
+      />
+    </>
   );
 }
 
@@ -262,7 +401,6 @@ async function getVisitedIds(
   });
   return new Set(visits.map((v) => v.locationId));
 }
-
 
 async function MyPlaces({ q, userId }: { q: string; userId: string }) {
   // Собственные места пользователя (созданные из списков по ссылке
@@ -309,14 +447,20 @@ async function MyPlaces({ q, userId }: { q: string; userId: string }) {
           >
             {l.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={l.photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img
+                src={l.photoUrl}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             ) : (
               <span className="fw-semibold" style={{ opacity: 0.6 }}>
                 {l.name.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
-          <span className="font-display fw-medium text-white text-truncate">{l.name}</span>
+          <span className="font-display fw-medium text-white text-truncate">
+            {l.name}
+          </span>
         </Link>
       ))}
     </div>

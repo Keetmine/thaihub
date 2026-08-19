@@ -2752,3 +2752,11 @@ details.admin-section[open] > summary.admin-section-head::before {
   line-height: 1.35rem;
   text-align: center;
 }
+
+/* Активная буква в алфавитном индексе: список грузится по буквам, и
+   выбранная должна быть видна. */
+.performers-index-link.is-active {
+  color: var(--bs-primary-text-emphasis);
+  background: var(--bs-primary-bg-subtle);
+  border-radius: 0.35rem;
+}
