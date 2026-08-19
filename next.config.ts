@@ -31,5 +31,4 @@ export default withSentryConfig(nextConfig, {
   silent: true,
   // Карты кода не отдаём наружу: в них исходники приложения.
   widenClientFileUpload: false,
-  disableLogger: true,
 });
