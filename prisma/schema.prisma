@@ -120,6 +120,7 @@ model Performer {
   mascotOwners   MascotOwner[] @relation("MascotOwners")
   mascots        MascotOwner[] @relation("PerformerMascots")
   inUserLists    PerformerListItem[]
+  seenByUsers    PerformerSeen[]
   occurrenceLineups OccurrenceLineup[]
 
   // Музыкальная сторона: сценический псевдоним сольного музыканта
@@ -437,6 +438,21 @@ enum DramaStatus {
 // A real-world filming location (café, park, venue…) tied to one or more
 // dramas. Kept its own entity (not a free-text field) so it's browsable and
 // so users can track which ones they've actually visited.
+// Категория места. Список закрытый: по нему строятся фильтры и иконки,
+// а свободный текст в них превращается в кашу из синонимов.
+enum LocationCategory {
+  CAFE
+  RESTAURANT
+  SHOP
+  MALL
+  HOTEL
+  PHOTO_SPOT
+  LANDMARK
+  PARK
+  TRANSPORT
+  OTHER
+}
+
 model Location {
   id          String   @id @default(cuid())
   name        String
@@ -451,6 +467,13 @@ model Location {
   // атрибуция там обязательна; у мест, созданных пользователями
   // (createdByUserId), источника нет.
   sourceUrl   String?
+  // Что это за место: кафе, магазин, отель… Нужна для фильтров в
+  // списках мест и в «Что посетить» внутри поездки, и для иконок на
+  // карте. Правится в админке; у части каталожных локаций пустая.
+  category    LocationCategory?
+  // Инстаграм заведения, сайт, канал — фандом чаще всего находит места
+  // именно по инстаграму.
+  links       LocationLink[]
   photoUrl    String?
   latitude    Float?
   longitude   Float?
@@ -574,6 +597,7 @@ model User {
   isManager    Boolean  @default(false)
   auditLogs    AuditLog[]
   notifications      Notification[] @relation("UserNotifications")
+  performersSeen     PerformerSeen[]
   actedNotifications Notification[] @relation("NotificationActor")
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
   googleId     String?  @unique
@@ -661,6 +685,7 @@ model Trip {
   places     TripPlace[]
   todos      TripTodo[]
   members    TripMember[]
+  hotels     TripHotel[]
 
   @@index([userId])
 }
@@ -1271,4 +1296,56 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, readAt, createdAt])
+}
+
+// Ссылка у места: инстаграм заведения, сайт, канал в телеграме.
+// Отдельной моделью, а не полем: ссылок бывает несколько, и у каждой
+// своя подпись.
+model LocationLink {
+  id         String   @id @default(cuid())
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  label      String
+  url        String
+  createdAt  DateTime @default(now())
+
+  @@index([locationId])
+}
+
+// Бронь жилья внутри поездки: файл брони (как билеты у событий —
+// EventAttendance.ticketUrl), название и адрес, даты заезда и выезда.
+// Видимость наследуется от поездки: участники видят то же, что и
+// владелец (см. features/trips.md).
+model TripHotel {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name      String
+  address   String?
+  // Ссылка на саму бронь (Booking, письмо) и загруженный файл/скрин.
+  url       String?
+  fileUrl   String?
+  checkIn   DateTime?
+  checkOut  DateTime?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([tripId])
+}
+
+// «Видела вживую» вручную: концерты до регистрации на сайте, случайные
+// встречи и события, которых нет в нашей афише. Считается в статистике
+// наравне с отметками «я ходил(а)» — см. features/gamification.md.
+model PerformerSeen {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  performerId String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  seenAt      DateTime?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, performerId])
+  @@index([userId])
 }

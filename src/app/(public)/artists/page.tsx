@@ -10,9 +10,10 @@ import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref } from "@/lib/slugHelpers";
 import { performerNameWhere, performerRealNameParen } from "@/lib/searchWhere";
-import LazyList from "@/components/LazyList";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
 import { pageMetadata } from "@/lib/seo";
+import AlphabetDataList from "@/components/AlphabetDataList";
+import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
 
 export const metadata = pageMetadata({
   title: "Актёры и группы",
@@ -24,23 +25,36 @@ export const metadata = pageMetadata({
 
 export const dynamic = "force-dynamic";
 
-type PerformerWithCount = Performer & { _count: { events: number } };
+/** Поля, которые рисует строка списка. Полная запись Performer тянет
+ *  биографию, профильные списки и награды — в перечне они не нужны, а
+ *  весят больше всего остального вместе взятого. */
+const PERFORMER_ROW_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  realName: true,
+  musicAlias: true,
+  photoUrl: true,
+  type: true,
+  _count: { select: { events: true } },
+} as const;
 
-function firstLetterOf(name: string): string {
-  const trimmed = name.trim();
-  const ch = trimmed.charAt(0) || "#";
-  if (/[0-9]/.test(ch)) return "0-9";
-  return ch.toUpperCase();
-}
+type PerformerWithCount = {
+  id: string;
+  name: string;
+  slug: string | null;
+  realName: string | null;
+  musicAlias: string | null;
+  photoUrl: string | null;
+  type: Performer["type"];
+  _count: { events: number };
+};
+
 
 function typeOfView(view: View): "SOLO" | "BAND" | "MASCOT" {
   return view === "bands" ? "BAND" : view === "mascots" ? "MASCOT" : "SOLO";
 }
 
-function categoryOf(key: string): "digit" | "en" | "ru" {
-  if (key === "0-9") return "digit";
-  return /[A-Z]/.test(key) ? "en" : "ru";
-}
 
 type View = "performers" | "bands" | "mascots" | "agencies";
 
@@ -164,169 +178,76 @@ async function AgenciesTab({ q }: { q: string }) {
   );
 }
 
-function PerformerRow({
-  performer,
-  isFavorited,
-}: {
-  performer: PerformerWithCount;
-  isFavorited: boolean;
-}) {
-  return (
-    <div className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3">
-      <Link
-        href={performerHref(performer)}
-        className="text-decoration-none d-flex align-items-center gap-2"
-        style={{ minWidth: 0 }}
-      >
-        {performer.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            loading="lazy"
-            decoding="async"
-            src={performer.photoUrl}
-            alt=""
-            style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-          />
-        ) : (
-          <div
-            className="d-flex align-items-center justify-content-center small"
-            style={{
-              width: "2.25rem",
-              height: "2.25rem",
-              borderRadius: "50%",
-              background: "var(--bs-secondary-bg)",
-              flexShrink: 0,
-              color: "var(--bs-secondary-color)",
-              opacity: 0.7,
-              fontWeight: 600,
-            }}
-          >
-            {performer.name.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <span className="font-display fw-medium text-white text-truncate">
-          {performer.name}
-          {performerRealNameParen(performer) && (
-            <span className="text-secondary fw-normal"> ({performerRealNameParen(performer)})</span>
-          )}
-        </span>
-      </Link>
-      <div className="d-flex align-items-center gap-3 flex-shrink-0">
-        <span className="small text-secondary">{performer._count.events} событ.</span>
-        <FavoriteButton kind="performer" id={performer.id} isFavorited={isFavorited} variant="icon" />
-      </div>
-    </div>
-  );
-}
-
+/** Алфавитный список исполнителей. Строки собирает клиент из данных
+ *  (AlphabetDataList): сервер отдавал разметку всех записей целиком, и
+ *  каталог на тысячи имён весил сотни килобайт — при этом весь список
+ *  остаётся на странице, так что переход по букве работает скроллом. */
 function PerformerAlphabetList({
   performers,
   favoritedIds,
+  myLists,
   emptyMessage,
   pinFavorites = true,
 }: {
   performers: PerformerWithCount[];
   favoritedIds: Set<string>;
+  myLists: { id: string; title: string }[] | null;
   emptyMessage: string;
-  // Секция «Избранное» сверху (дефолт: список = избранные + событийные,
-  // избранных удобно видеть первыми).
+  // Избранные сверху (дефолт: список = избранные + событийные).
   pinFavorites?: boolean;
 }) {
   if (performers.length === 0) {
     return <p className="text-secondary">{emptyMessage}</p>;
   }
 
-  // Already alphabetically sorted (query orderBy name:asc) — filtering
-  // preserves that order, so the favorites section stays alphabetical too.
+  const toRow = (p: PerformerWithCount) => ({
+    id: p.id,
+    name: p.name,
+    href: performerHref(p),
+    photoUrl: p.photoUrl,
+    nameSuffix: performerRealNameParen(p),
+    meta: `${p._count.events} событ.`,
+    favorited: favoritedIds.has(p.id),
+  });
+
+  // Избранные первыми — отдельной пачкой перед алфавитом.
   const favorited = pinFavorites ? performers.filter((p) => favoritedIds.has(p.id)) : [];
+  const rest = pinFavorites ? performers.filter((p) => !favoritedIds.has(p.id)) : performers;
 
-  // Group by first letter. Cyrillic and Latin names naturally land in
-  // different groups since they start with different characters; digits
-  // all collapse into one "0-9" group/heading, matching common app index
-  // conventions (e.g. contacts/brand lists).
-  const groups = new Map<string, PerformerWithCount[]>();
-  for (const p of performers) {
-    const letter = firstLetterOf(p.name);
-    const bucket = groups.get(letter);
-    if (bucket) {
-      bucket.push(p);
-    } else {
-      groups.set(letter, [p]);
-    }
-  }
-
-  // Plain code-unit sort keeps "0-9" first, then Latin, then Cyrillic,
-  // without interleaving under a locale-specific collation.
-  const sortedLetters = Array.from(groups.keys()).sort((a, b) =>
-    a < b ? -1 : a > b ? 1 : 0
-  );
+  const addToList =
+    myLists && myLists.length > 0
+      ? {
+          lists: myLists,
+          add: async (listId: string, performerId: string) => {
+            "use server";
+            await addPerformerToList(listId, performerId);
+          },
+        }
+      : undefined;
 
   return (
-    <div className="performers-layout scroll-list-lg thin-scroll">
-      <div className="performers-list">
-        {favorited.length > 0 && (
-          <section id="favorites" className="performers-letter-section">
-            <h2 className="performers-letter-heading d-flex align-items-center gap-2">
-              <HeartIcon filled />
-              Избранное
-            </h2>
-            <div className="d-flex flex-column gap-2">
-              <LazyList batch={30}>
-                {favorited.map((p) => (
-                  <PerformerRow key={p.id} performer={p} isFavorited={true} />
-                ))}
-              </LazyList>
-            </div>
-          </section>
-        )}
-
-        {sortedLetters.map((letter) => (
-          <section
-            key={letter}
-            id={`letter-${letter}`}
-            className="performers-letter-section"
-          >
-            <h2 className="performers-letter-heading">{letter}</h2>
-            <div className="d-flex flex-column gap-2">
-              <LazyList batch={30}>
-                {groups.get(letter)!.map((p) => (
-                  <PerformerRow key={p.id} performer={p} isFavorited={favoritedIds.has(p.id)} />
-                ))}
-              </LazyList>
-            </div>
-          </section>
-        ))}
-      </div>
-
-      <nav className="performers-index" aria-label="Быстрый переход по буквам">
-        {favorited.length > 0 && (
-          <>
-            <a href="#favorites" className="performers-index-link performers-index-heart" aria-label="К избранному">
-              <HeartIcon filled />
-            </a>
-            <span className="performers-index-sep" aria-hidden="true">
-              •
-            </span>
-          </>
-        )}
-        {sortedLetters.map((letter, i) => {
-          const prevCategory = i > 0 ? categoryOf(sortedLetters[i - 1]) : null;
-          const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);
-          return (
-            <Fragment key={letter}>
-              {showSeparator && (
-                <span className="performers-index-sep" aria-hidden="true">
-                  •
-                </span>
-              )}
-              <a href={`#letter-${letter}`} className="performers-index-link">
-                {letter}
-              </a>
-            </Fragment>
-          );
-        })}
-      </nav>
-    </div>
+    <>
+      {favorited.length > 0 && (
+        <section className="performers-letter-section mb-3">
+          <h2 className="performers-letter-heading d-flex align-items-center gap-2">
+            <HeartIcon filled />
+            Избранное
+          </h2>
+          <AlphabetDataList
+            rows={favorited.map(toRow)}
+            emptyMessage={emptyMessage}
+            showFavoriteButton
+            addToList={addToList}
+          />
+        </section>
+      )}
+      <AlphabetDataList
+        rows={rest.map(toRow)}
+        emptyMessage={emptyMessage}
+        showFavoriteButton
+        addToList={addToList}
+      />
+    </>
   );
 }
 
@@ -356,7 +277,7 @@ export default async function PerformersPage({
       ? null
       : await prisma.performer.findMany({
           where: { type: typeOfView(view), ...performerNameWhere(q) },
-          include: { _count: { select: { events: true } } },
+          select: PERFORMER_ROW_SELECT,
           orderBy: { name: "asc" },
           take: SEARCH_RESULT_LIMIT + 1,
         });
@@ -373,7 +294,9 @@ export default async function PerformersPage({
         : showAllByDefault
           ? await prisma.performer.findMany({
               where: { type: typeOfView(view) },
-              include: { _count: { select: { events: true } } },
+              // Только поля строки: биографии и профильные списки в
+              // перечне не нужны, а весят они больше всего остального.
+              select: PERFORMER_ROW_SELECT,
               orderBy: { name: "asc" },
             })
           : // Без поиска: избранные юзера + все, у кого есть хотя бы
@@ -389,9 +312,17 @@ export default async function PerformersPage({
                     : []),
                 ],
               },
-              include: { _count: { select: { events: true } } },
+              select: PERFORMER_ROW_SELECT,
               orderBy: { name: "asc" },
             });
+  // Списки актёров пользователя — для кнопки «+ в список» в строках.
+  const myLists = currentUser
+    ? await prisma.performerList.findMany({
+        where: { userId: currentUser.id },
+        select: { id: true, title: true },
+        orderBy: { title: "asc" },
+      })
+    : null;
   const favoritedIds = new Set<string>();
   if (currentUser && performers.length > 0) {
     const favorites = await prisma.favoritePerformer.findMany({
@@ -445,6 +376,7 @@ export default async function PerformersPage({
           <PerformerAlphabetList
             performers={performers}
             favoritedIds={favoritedIds}
+            myLists={myLists}
             pinFavorites
             emptyMessage={
               q

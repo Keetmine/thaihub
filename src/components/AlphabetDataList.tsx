@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import VisitedButton from "@/components/VisitedButton";
+import FavoriteButton from "@/components/FavoriteButton";
+import AddToListButton from "@/components/AddToListButton";
 
 export type AlphabetRow = {
   id: string;
@@ -11,8 +13,14 @@ export type AlphabetRow = {
   photoUrl?: string | null;
   /** Мелкая подпись под названием (например, «3 сериала»). */
   subtitle?: string | null;
+  /** Приписка справа от названия серым — «(реальное имя)». */
+  nameSuffix?: string | null;
+  /** Текст в конце строки: «12 событ.». */
+  meta?: string | null;
   /** Локации: отметка «была здесь» — кнопка рисуется справа. */
   visited?: boolean;
+  /** Исполнители: в избранном ли. */
+  favorited?: boolean;
 };
 
 function firstLetterOf(name: string): string {
@@ -45,11 +53,22 @@ export default function AlphabetDataList({
   emptyMessage,
   batch = 40,
   showVisitedButton = false,
+  showFavoriteButton = false,
+  addToList,
 }: {
   rows: AlphabetRow[];
   emptyMessage: string;
   batch?: number;
   showVisitedButton?: boolean;
+  /** Исполнители: сердечко «в избранное» в конце строки. */
+  showFavoriteButton?: boolean;
+  /** Кнопка «+ в список»: списки пользователя и server action, который
+   *  кладёт в выбранный. Без неё кнопка не рисуется (гости, пустые
+   *  списки). */
+  addToList?: {
+    lists: { id: string; title: string }[];
+    add: (listId: string, itemId: string) => Promise<void>;
+  };
 }) {
   const [visible, setVisible] = useState(batch);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -130,19 +149,35 @@ export default function AlphabetDataList({
                 <span style={{ minWidth: 0 }}>
                   <span className="font-display fw-medium text-white d-block text-truncate">
                     {row.name}
+                    {row.nameSuffix && (
+                      <span className="text-secondary fw-normal"> ({row.nameSuffix})</span>
+                    )}
                   </span>
                   {row.subtitle && (
                     <span className="small text-secondary">{row.subtitle}</span>
                   )}
                 </span>
               </Link>
-              {showVisitedButton && (
-                <VisitedButton
-                  locationId={row.id}
-                  isVisited={!!row.visited}
-                  className="flex-shrink-0"
-                />
-              )}
+              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                {row.meta && <span className="small text-secondary me-1">{row.meta}</span>}
+                {showVisitedButton && (
+                  <VisitedButton locationId={row.id} isVisited={!!row.visited} />
+                )}
+                {showFavoriteButton && (
+                  <FavoriteButton
+                    kind="performer"
+                    id={row.id}
+                    isFavorited={!!row.favorited}
+                    variant="icon"
+                  />
+                )}
+                {addToList && addToList.lists.length > 0 && (
+                  <AddToListButton
+                    lists={addToList.lists.map((l) => ({ ...l, hasPerformer: false }))}
+                    onAdd={(listId) => addToList.add(listId, row.id)}
+                  />
+                )}
+              </div>
             </div>
           ))}
         </div>
