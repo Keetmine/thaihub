@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { notifyUser } from "@/lib/notifications";
 
 /** Отзывы и комментарии живут у трёх типов объектов — экшены общие,
  *  тип задаётся kind. path — страница для revalidate. */
@@ -75,12 +75,16 @@ export async function addComment(kind: ReviewKind, id: string, formData: FormDat
     data: { userId: user.id, ...targetWhere(kind, id), parentId, text },
   });
 
-  // Автору родителя — телеграм-уведомление (fire-and-forget).
-  if (parentAuthor && parentAuthor.id !== user.id && parentAuthor.telegramId) {
-    void sendTelegramMessage(
-      parentAuthor.telegramId,
-      `💬 ${user.name ?? "Кто-то"} ответил(а) на ваш комментарий:\n«${text.slice(0, 200)}»`,
-    ).catch(() => {});
+  // Автору родителя — уведомление на сайте (и в Telegram, если привязан).
+  if (parentAuthor) {
+    await notifyUser({
+      userId: parentAuthor.id,
+      actorId: user.id,
+      kind: "COMMENT_REPLY",
+      title: `${user.name ?? "Кто-то"} ответил(а) на ваш комментарий`,
+      body: text.slice(0, 200),
+      href: pagePath(kind, id),
+    });
   }
   revalidatePath(pagePath(kind, id));
 }
@@ -96,6 +100,21 @@ export async function toggleCommentLike(commentId: string): Promise<{ liked: boo
     await prisma.commentLike.delete({ where: { commentId_userId: { commentId, userId: user.id } } });
   } else {
     await prisma.commentLike.create({ data: { commentId, userId: user.id } });
+    // Автору — только на сайте: лайки идут потоком, в Telegram это был
+    // бы спам (см. TELEGRAM_KINDS в lib/notifications.ts).
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { userId: true, text: true, dramaId: true, novelId: true, eventId: true },
+    });
+    if (comment) {
+      await notifyUser({
+        userId: comment.userId,
+        actorId: user.id,
+        kind: "COMMENT_LIKE",
+        title: `${user.name ?? "Кто-то"} оценил(а) ваш комментарий`,
+        body: comment.text.slice(0, 120),
+      });
+    }
   }
   const count = await prisma.commentLike.count({ where: { commentId } });
   return { liked: !existing, count };

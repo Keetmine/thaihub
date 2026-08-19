@@ -5,11 +5,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
-import { sendTelegramMessage } from "@/lib/telegram";
 import { formatShortDate } from "@/lib/dates";
 import { combineDateTime } from "@/lib/dates";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { isPremiumActive } from "@/lib/premium";
+import { notifyUser } from "@/lib/notifications";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -148,17 +148,22 @@ function canTouchItem(
 
 /** Телеграм приглашённому о новом инвайте (fire-and-forget). */
 async function notifyTripInvite(tripId: string, inviteeId: string): Promise<void> {
-  const [trip, invitee] = await Promise.all([
-    prisma.trip.findUnique({ where: { id: tripId }, include: { user: { select: { name: true } } } }),
-    prisma.user.findUnique({ where: { id: inviteeId }, select: { telegramId: true } }),
-  ]);
-  if (!trip || !invitee?.telegramId) return;
-  void sendTelegramMessage(
-    invitee.telegramId,
-    `✈️ ${trip.user.name ?? "Друг"} приглашает вас в совместную поездку «${trip.title}» ` +
-      `(${formatShortDate(trip.startDate)} – ${formatShortDate(trip.endDate)}). ` +
-      `Принять или отклонить: https://myblhub.com/trips/${trip.slug ?? trip.id}`,
-  ).catch(() => {});
+  const trip = await prisma.trip.findUnique({
+    where: { id: tripId },
+    include: { user: { select: { id: true, name: true } } },
+  });
+  if (!trip) return;
+  // Через notifyUser: строка в колокольчике на сайте + Telegram, если
+  // он привязан. Раньше уведомление уходило только в Telegram, поэтому
+  // приглашённый без него не узнавал о поездке вовсе.
+  await notifyUser({
+    userId: inviteeId,
+    actorId: trip.user.id,
+    kind: "TRIP_INVITE",
+    title: `${trip.user.name ?? "Друг"} приглашает в поездку «${trip.title}»`,
+    body: `${formatShortDate(trip.startDate)} – ${formatShortDate(trip.endDate)}. Примите или отклоните приглашение.`,
+    href: `/trips/${trip.slug ?? trip.id}`,
+  });
 }
 
 export async function addTripMember(tripId: string, friendId: string): Promise<void> {
@@ -183,16 +188,16 @@ export async function acceptTripInvite(tripId: string): Promise<void> {
     data: { status: "ACCEPTED" },
   });
   if (updated.count > 0) {
-    // владельцу — что друг принял приглашение
-    const trip = await prisma.trip.findUnique({
-      where: { id: tripId },
-      include: { user: { select: { telegramId: true } } },
-    });
-    if (trip?.user.telegramId) {
-      void sendTelegramMessage(
-        trip.user.telegramId,
-        `✅ ${user.name ?? "Друг"} принял(а) приглашение в поездку «${trip.title}»`,
-      ).catch(() => {});
+    const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+    if (trip) {
+      await notifyUser({
+        userId: trip.userId,
+        actorId: user.id,
+        kind: "TRIP_INVITE_ACCEPTED",
+        title: `${user.name ?? "Друг"} принял(а) приглашение в поездку`,
+        body: trip.title,
+        href: `/trips/${trip.slug ?? trip.id}`,
+      });
     }
   }
   revalidatePath(`/trips/${tripId}`);

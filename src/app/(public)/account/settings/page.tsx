@@ -3,11 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
 import FileDropzone from "@/components/FileDropzone";
-import { updateProfile, updatePrivacy, getOrCreateIcsToken } from "../actions";
+import { updateProfile, updatePrivacy, getOrCreateIcsToken, unlinkTelegram } from "../actions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
 import SettingsTabs from "./SettingsTabs";
 import { pageMetadata } from "@/lib/seo";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
+import { telegramBotUsername } from "@/lib/telegram";
 
 export const metadata = pageMetadata({
   title: "Настройки",
@@ -34,10 +36,16 @@ const PRIVACY_TOGGLES = [
   { name: "hideVisitedPlaces", label: "Скрыть посещённые места", hint: null },
 ] as const;
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ telegram?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const icsToken = await getOrCreateIcsToken();
+  const { telegram: telegramStatus } = await searchParams;
+  const botUsername = telegramBotUsername();
 
   return (
     <div>
@@ -84,6 +92,50 @@ export default async function SettingsPage() {
                 </button>
               </div>
             </form>
+
+            {/* Привязка Telegram: без неё уведомления слать некуда, а
+                telegramId раньше появлялся только у тех, кто входил
+                через Telegram или платил в боте. */}
+            {botUsername && (
+              <div className="border-top pt-3 mt-4" style={{ borderColor: "var(--bs-border-color)" }}>
+                <p className="fw-medium text-white mb-1">Telegram</p>
+                {telegramStatus === "linked" && (
+                  <p className="small text-success mb-2">Telegram подключён.</p>
+                )}
+                {telegramStatus === "taken" && (
+                  <p className="small text-danger mb-2">
+                    Этот Telegram уже привязан к другому аккаунту.
+                  </p>
+                )}
+                {telegramStatus === "only-login" && (
+                  <p className="small text-danger mb-2">
+                    Это ваш единственный способ входа — сначала задайте пароль
+                    во вкладке «Безопасность».
+                  </p>
+                )}
+                {user.telegramId ? (
+                  <div className="d-flex flex-wrap align-items-center gap-3">
+                    <span className="small text-secondary">
+                      Подключён{user.telegramUsername ? ` — @${user.telegramUsername}` : ""}.
+                      Присылаем напоминания о событиях и новости друзей.
+                    </span>
+                    <form action={unlinkTelegram}>
+                      <button type="submit" className="btn btn-ghost btn-sm">
+                        Отвязать
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <>
+                    <p className="small text-secondary mb-2">
+                      Подключите, чтобы получать напоминания о событиях, старте
+                      продаж билетов и новостях друзей.
+                    </p>
+                    <TelegramLoginButton botUsername={botUsername} mode="link" />
+                  </>
+                )}
+              </div>
+            )}
           </div>
         }
         privacy={

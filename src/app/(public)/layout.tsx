@@ -10,6 +10,8 @@ import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
 import { getCurrentUser } from "@/lib/userAuth";
 import { GridIcon, HeartIcon } from "@/components/icons";
+import NotificationBell from "@/components/NotificationBell";
+import { unreadNotificationCount } from "@/lib/notifications";
 
 function SearchForm() {
   return (
@@ -33,6 +35,9 @@ function SearchForm() {
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const fullUser = await getCurrentUser();
   const isAdmin = !!fullUser?.isAdmin;
+  // Счётчик у колокольчика: приглашения в поездки и заявки в друзья
+  // приходили молча, пока не появилась лента (features/notifications.md).
+  const unreadNotifications = fullUser ? await unreadNotificationCount(fullUser.id) : 0;
   // Only pass the fields ProfileMenu actually needs into the client
   // component — the full record (incl. passwordHash) would otherwise be
   // serialized into the page's RSC payload.
@@ -97,6 +102,7 @@ export default async function PublicLayout({ children }: { children: React.React
                 <HeartIcon />
               </Link>
             )}
+            {user && <NotificationBell unread={unreadNotifications} />}
             {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
           </MobileMenu>
 

@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
+import AddToListButton from "@/components/AddToListButton";
+import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -157,6 +159,20 @@ export default async function PerformerPage({
   const pastPairings = pairings.filter((p) => p.status === "PAST");
 
   const currentUser = await getCurrentUser();
+  // Списки пользователя для кнопки «+ в список» рядом с сердечком.
+  const myLists = currentUser
+    ? (
+        await prisma.performerList.findMany({
+          where: { userId: currentUser.id },
+          select: {
+            id: true,
+            title: true,
+            items: { where: { performerId: performer.id }, select: { performerId: true }, take: 1 },
+          },
+          orderBy: { title: "asc" },
+        })
+      ).map((l) => ({ id: l.id, title: l.title, hasPerformer: l.items.length > 0 }))
+    : [];
   let isFavorited = false;
   if (currentUser) {
     const favorite = await prisma.favoritePerformer.findUnique({
@@ -266,6 +282,17 @@ export default async function PerformerPage({
           isFavorited={isFavorited}
           variant="icon"
         />
+        {/* Добавить в свой список прямо отсюда: раньше это делалось
+            только со страницы самого списка. */}
+        {currentUser && (
+          <AddToListButton
+            lists={myLists}
+            onAdd={async (listId: string) => {
+              "use server";
+              await addPerformerToList(listId, performer.id);
+            }}
+          />
+        )}
       </div>
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4">

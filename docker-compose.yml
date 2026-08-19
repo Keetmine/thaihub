@@ -32,6 +32,9 @@ services:
       # что видит аудитория, иначе вечерние отметки уезжали на сутки.
       TZ: Europe/Moscow
       DATABASE_URL: postgresql://thaitrack:${POSTGRES_PASSWORD:-thaitrack}@db:5432/thaitrack?schema=public
+      # Счётчик Яндекс.Метрики: без переменной он не рендерится вовсе,
+      # поэтому локальная разработка не попадает в статистику.
+      YANDEX_METRIKA_ID: ${YANDEX_METRIKA_ID:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       NODE_ENV: production

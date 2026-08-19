@@ -13,7 +13,15 @@ import { useEffect, useRef } from "react";
  * BotFather. После подтверждения Telegram редиректит на data-auth-url с
  * подписанным профилем (подпись проверяется в /api/auth/telegram).
  */
-export default function TelegramLoginButton({ botUsername }: { botUsername: string }) {
+export default function TelegramLoginButton({
+  botUsername,
+  /** «link» — привязка Telegram к текущему аккаунту из настроек,
+   *  иначе обычный вход. */
+  mode,
+}: {
+  botUsername: string;
+  mode?: "link";
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,10 +38,13 @@ export default function TelegramLoginButton({ botUsername }: { botUsername: stri
     // Абсолютный URL обязателен: с относительным путём виджет
     // подтверждает вход и никуда не переходит — с виду «кнопка не
     // работает».
-    script.setAttribute("data-auth-url", `${window.location.origin}/api/auth/telegram`);
+    script.setAttribute(
+      "data-auth-url",
+      `${window.location.origin}/api/auth/telegram${mode === "link" ? "?mode=link" : ""}`,
+    );
     script.setAttribute("data-request-access", "write");
     container.appendChild(script);
-  }, [botUsername]);
+  }, [botUsername, mode]);
 
   return <div ref={containerRef} className="d-flex justify-content-center" />;
 }

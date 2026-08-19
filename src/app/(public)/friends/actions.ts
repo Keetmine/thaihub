@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { notifyUser } from "@/lib/notifications";
 
 export async function sendFriendRequest(addresseeId: string) {
   const user = await getCurrentUser();
@@ -25,6 +26,14 @@ export async function sendFriendRequest(addresseeId: string) {
     data: { requesterId: user.id, addresseeId, status: "PENDING" },
   });
 
+  await notifyUser({
+    userId: addresseeId,
+    actorId: user.id,
+    kind: "FRIEND_REQUEST",
+    title: `${user.name ?? "Пользователь"} хочет добавить вас в друзья`,
+    href: "/friends",
+  });
+
   revalidatePath("/friends");
 }
 
@@ -32,10 +41,21 @@ export async function acceptFriendRequest(friendshipId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  await prisma.friendship.updateMany({
+  const friendship = await prisma.friendship.findUnique({ where: { id: friendshipId } });
+  const updated = await prisma.friendship.updateMany({
     where: { id: friendshipId, addresseeId: user.id, status: "PENDING" },
     data: { status: "ACCEPTED" },
   });
+
+  if (updated.count > 0 && friendship) {
+    await notifyUser({
+      userId: friendship.requesterId,
+      actorId: user.id,
+      kind: "FRIEND_ACCEPTED",
+      title: `${user.name ?? "Пользователь"} принял(а) заявку в друзья`,
+      href: "/friends",
+    });
+  }
 
   revalidatePath("/friends");
 }

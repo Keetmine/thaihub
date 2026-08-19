@@ -95,3 +95,22 @@ export async function regenerateIcsToken(): Promise<string> {
   revalidatePath("/account/settings");
   return token;
 }
+
+/** Отвязать Telegram от аккаунта. Уведомления после этого слать некуда,
+ *  поэтому предупреждаем прямо в настройках. Вход через Telegram у
+ *  аккаунта без пароля тоже перестанет работать — но пароль можно
+ *  задать там же, во вкладке «Безопасность». */
+export async function unlinkTelegram(): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  // Если Telegram — единственный способ войти, отвязка заперла бы
+  // человека снаружи: сначала пусть заведёт пароль или подключит Google.
+  if (!user.passwordHash && !user.googleId) {
+    redirect("/account/settings?telegram=only-login");
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { telegramId: null, telegramUsername: null },
+  });
+  revalidatePath("/account/settings");
+}

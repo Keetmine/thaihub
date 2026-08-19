@@ -573,6 +573,8 @@ model User {
   // пользователей, финансов, рассылок и настроек — это только админ.
   isManager    Boolean  @default(false)
   auditLogs    AuditLog[]
+  notifications      Notification[] @relation("UserNotifications")
+  actedNotifications Notification[] @relation("NotificationActor")
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
   googleId     String?  @unique
   name         String?
@@ -1231,4 +1233,42 @@ model AuditLog {
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
   @@index([userId, createdAt])
+}
+
+// Уведомление пользователю на сайте (колокольчик в шапке). Появилось
+// после того, как выяснилось: приглашение в поездку приходит молча —
+// человек узнаёт о нём, только если сам зайдёт в /trips. Так же тихо
+// проходили заявки в друзья, ответы на комментарии и лайки.
+// См. docs/features/notifications.md.
+enum NotificationKind {
+  TRIP_INVITE
+  TRIP_INVITE_ACCEPTED
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  COMMENT_REPLY
+  COMMENT_LIKE
+  FRIEND_GOING
+  PREMIUM_GRANTED
+  ACHIEVEMENT
+}
+
+model Notification {
+  id     String           @id @default(cuid())
+  userId String
+  user   User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  kind   NotificationKind
+  // Кто это сделал — для «Аня пригласила вас в поездку». null у
+  // системных (ачивки, выданная подписка).
+  actorId String?
+  actor   User?           @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  // Текст готовим при создании: сущность может быть удалена позже, а
+  // уведомление должно остаться читаемым.
+  title   String
+  body    String?
+  // Куда ведёт клик.
+  href    String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt, createdAt])
 }

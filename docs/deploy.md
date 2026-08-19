@@ -61,6 +61,7 @@ TELEGRAM_BOT_TOKEN=...
 TELEGRAM_BOT_USERNAME=myblhub_bot
 TELEGRAM_WEBHOOK_SECRET=<длинный случайный>
 TMDB_API_READ_ACCESS_TOKEN=...
+YANDEX_METRIKA_ID=...       # номер счётчика Метрики (без него не грузится)
 GOOGLE_CLIENT_ID=...        # + в консоли Google redirect URI
 GOOGLE_CLIENT_SECRET=...    #   https://myblhub.com/api/auth/google/callback
 ```
