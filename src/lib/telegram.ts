@@ -41,8 +41,20 @@ export function verifyTelegramAuth(params: URLSearchParams): TelegramAuthPayload
   if (!hash || !id || !Number.isFinite(authDate)) return null;
   if (Date.now() / 1000 - authDate > AUTH_MAX_AGE_SECONDS) return null;
 
+  // В строку проверки идут ТОЛЬКО поля, которые подписывает Telegram.
+  // Свои параметры (например ?mode=link для привязки из настроек)
+  // возвращаются вместе с ними и ломали подпись: она не сходилась, и
+  // привязка молча уводила на логин.
+  const TELEGRAM_FIELDS = new Set([
+    "id",
+    "first_name",
+    "last_name",
+    "username",
+    "photo_url",
+    "auth_date",
+  ]);
   const pairs = Array.from(params.entries())
-    .filter(([key]) => key !== "hash")
+    .filter(([key]) => TELEGRAM_FIELDS.has(key))
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `${key}=${value}`);
   const dataCheckString = pairs.join("\n");

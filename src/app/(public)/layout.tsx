@@ -140,6 +140,7 @@ export default async function PublicLayout({ children }: { children: React.React
                 <HeartIcon />
               </Link>
             )}
+            {user && <NotificationBell unread={unreadNotifications} />}
             {isAdmin && (
               <Link
                 href="/admin"
