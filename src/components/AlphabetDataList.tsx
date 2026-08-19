@@ -1,0 +1,193 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import VisitedButton from "@/components/VisitedButton";
+
+export type AlphabetRow = {
+  id: string;
+  name: string;
+  href: string;
+  photoUrl?: string | null;
+  /** Мелкая подпись под названием (например, «3 сериала»). */
+  subtitle?: string | null;
+  /** Локации: отметка «была здесь» — кнопка рисуется справа. */
+  visited?: boolean;
+};
+
+function firstLetterOf(name: string): string {
+  const ch = name.trim().charAt(0) || "#";
+  if (/[0-9]/.test(ch)) return "0-9";
+  return ch.toUpperCase();
+}
+
+function categoryOf(key: string): "digit" | "en" | "ru" {
+  if (key === "0-9") return "digit";
+  return /[A-Z]/.test(key) ? "en" : "ru";
+}
+
+/**
+ * Алфавитный список, который получает ДАННЫЕ, а не готовую разметку.
+ *
+ * Раньше строки рендерил сервер, и в браузер уезжала разметка всех
+ * записей целиком: /locations весила 1.27 МБ на 567 строк, потому что
+ * LazyList откладывал только монтирование, а RSC-поток нёс всё равно
+ * всё. Здесь сервер отдаёт компактный массив (имя, ссылка, фото), а
+ * строки строятся на клиенте — это десятки килобайт вместо мегабайта,
+ * и при этом весь список остаётся на странице, так что переход по букве
+ * работает обычным скроллом, без перезагрузки.
+ *
+ * Отрисовка порционная: первые `batch` строк сразу, дальше по мере
+ * приближения к концу списка.
+ */
+export default function AlphabetDataList({
+  rows,
+  emptyMessage,
+  batch = 40,
+  showVisitedButton = false,
+}: {
+  rows: AlphabetRow[];
+  emptyMessage: string;
+  batch?: number;
+  showVisitedButton?: boolean;
+}) {
+  const [visible, setVisible] = useState(batch);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || visible >= rows.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisible((v) => Math.min(v + batch, rows.length));
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visible, rows.length, batch]);
+
+  if (rows.length === 0) {
+    return <p className="text-secondary">{emptyMessage}</p>;
+  }
+
+  // Буквы считаем по всем строкам, а показываем — по отрисованным:
+  // навигация должна знать про весь список, иначе ссылки на ещё не
+  // отрисованные буквы вели бы в пустоту.
+  const groups = new Map<string, AlphabetRow[]>();
+  for (const row of rows) {
+    const letter = firstLetterOf(row.name);
+    const bucket = groups.get(letter);
+    if (bucket) bucket.push(row);
+    else groups.set(letter, [row]);
+  }
+  const letters = Array.from(groups.keys()).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+  let rendered = 0;
+  const sections: React.ReactNode[] = [];
+  for (const letter of letters) {
+    if (rendered >= visible) break;
+    const bucket = groups.get(letter)!;
+    const slice = bucket.slice(0, Math.max(0, visible - rendered));
+    rendered += slice.length;
+    sections.push(
+      <section key={letter} id={`letter-${letter}`} className="performers-letter-section">
+        <h2 className="performers-letter-heading">{letter}</h2>
+        <div className="d-flex flex-column gap-2">
+          {slice.map((row) => (
+            <div
+              key={row.id}
+              className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+            >
+              <Link
+                href={row.href}
+                className="text-decoration-none d-flex align-items-center gap-3"
+                style={{ minWidth: 0 }}
+              >
+                <div
+                  style={{
+                    width: "2.75rem",
+                    height: "2.75rem",
+                    borderRadius: "0.5rem",
+                    background: "var(--bs-secondary-bg)",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                  }}
+                >
+                  {row.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      loading="lazy"
+                      decoding="async"
+                      src={row.photoUrl}
+                      alt=""
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  )}
+                </div>
+                <span style={{ minWidth: 0 }}>
+                  <span className="font-display fw-medium text-white d-block text-truncate">
+                    {row.name}
+                  </span>
+                  {row.subtitle && (
+                    <span className="small text-secondary">{row.subtitle}</span>
+                  )}
+                </span>
+              </Link>
+              {showVisitedButton && (
+                <VisitedButton
+                  locationId={row.id}
+                  isVisited={!!row.visited}
+                  className="flex-shrink-0"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      </section>,
+    );
+  }
+
+  return (
+    <div className="performers-layout scroll-list-lg thin-scroll">
+      <div className="performers-list">
+        {sections}
+        {visible < rows.length && (
+          <div ref={sentinelRef} className="small text-secondary py-3 text-center">
+            Загружаем ещё…
+          </div>
+        )}
+      </div>
+
+      <nav className="performers-index" aria-label="Быстрый переход по буквам">
+        {letters.map((letter, i) => {
+          const prevCategory = i > 0 ? categoryOf(letters[i - 1]) : null;
+          const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);
+          return (
+            <span key={letter}>
+              {showSeparator && (
+                <span className="performers-index-sep" aria-hidden="true">
+                  •
+                </span>
+              )}
+              <a
+                href={`#letter-${letter}`}
+                className="performers-index-link"
+                onClick={() => {
+                  // Буква может быть ещё не отрисована — раскрываем список
+                  // до неё, иначе якорь никуда не ведёт.
+                  const upTo = letters.slice(0, i + 1).reduce((n, l) => n + groups.get(l)!.length, 0);
+                  if (upTo > visible) setVisible(upTo);
+                }}
+              >
+                {letter}
+              </a>
+            </span>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}

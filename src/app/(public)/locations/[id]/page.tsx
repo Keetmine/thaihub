@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { locationHref } from "@/lib/slugHelpers";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -67,6 +68,33 @@ export default async function LocationDetailPage({
 
   if (!location) notFound();
   const id = location.id;
+
+  // Другие места съёмок тех же сериалов: с одной локации логично уйти
+  // смотреть соседние — фанаты обходят их одной поездкой.
+  const dramaIds = location.dramas.map((dl) => dl.dramaId);
+  const relatedLocations =
+    dramaIds.length === 0
+      ? []
+      : await prisma.location.findMany({
+          where: {
+            id: { not: id },
+            createdByUserId: null,
+            dramas: { some: { dramaId: { in: dramaIds } } },
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            photoUrl: true,
+            dramas: {
+              where: { dramaId: { in: dramaIds } },
+              select: { drama: { select: { id: true, title: true, slug: true } } },
+              take: 1,
+            },
+          },
+          orderBy: { name: "asc" },
+          take: 12,
+        });
 
   const currentUser = await getCurrentUser();
   let isVisited = false;
@@ -218,6 +246,54 @@ export default async function LocationDetailPage({
                 ]}
                 height="16rem"
               />
+            </div>
+          )}
+
+          {relatedLocations.length > 0 && (
+            <div className="mt-4">
+              <h2 className="section-heading mb-2">Другие места этих съёмок</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {relatedLocations.map((rel) => (
+                  <Link
+                    key={rel.id}
+                    href={locationHref(rel)}
+                    className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
+                    style={{ width: "13rem" }}
+                  >
+                    <div
+                      style={{
+                        width: "2.5rem",
+                        height: "2.5rem",
+                        borderRadius: "0.5rem",
+                        background: "var(--bs-secondary-bg)",
+                        flexShrink: 0,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {rel.photoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          loading="lazy"
+                          decoding="async"
+                          src={rel.photoUrl}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </div>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="font-display fw-medium text-white d-block text-truncate">
+                        {rel.name}
+                      </span>
+                      {rel.dramas[0] && (
+                        <span className="small text-secondary d-block text-truncate">
+                          {rel.dramas[0].drama.title}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
 

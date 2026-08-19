@@ -19,30 +19,17 @@ function categoryOf(key: string): "digit" | "en" | "ru" {
  *  scrollable A-Z index on the right, matching the /performers list.
  *  `trailingSection` renders an extra, ungrouped section after the letter
  *  groups (e.g. "no drama") with its own short index-nav symbol.
- *
- *  `letterLinkHref` превращает индекс из якорей в ссылки: страница тогда
- *  грузит из базы только выбранную букву. Без него список приходится
- *  отдавать целиком — на /locations это был мегабайт разметки на 567
- *  записей, потому что LazyList откладывает лишь отрисовку, а данные
- *  всё равно едут все. Список доступных букв (`allLetters`) считается
- *  отдельным дешёвым запросом, чтобы навигация не зависела от того,
- *  что загружено сейчас. */
+ */
 export default function AlphabetIndexList<T extends NamedItem>({
   items,
   renderItem,
   emptyMessage,
   trailingSection,
-  letterLinkHref,
-  allLetters,
-  activeLetter,
 }: {
   items: T[];
   renderItem: (item: T) => React.ReactNode;
   emptyMessage: string;
   trailingSection?: { indexLabel: React.ReactNode; indexAriaLabel: string; content: React.ReactNode };
-  letterLinkHref?: (letter: string) => string;
-  allLetters?: string[];
-  activeLetter?: string | null;
 }) {
   if (items.length === 0 && !trailingSection) {
     return <p className="text-secondary">{emptyMessage}</p>;
@@ -62,8 +49,7 @@ export default function AlphabetIndexList<T extends NamedItem>({
   const sortedLetters = Array.from(groups.keys()).sort((a, b) =>
     a < b ? -1 : a > b ? 1 : 0
   );
-  // В навигации показываем все буквы каталога, а не только загруженные.
-  const indexLetters = allLetters?.length ? allLetters : sortedLetters;
+  const indexLetters = sortedLetters;
 
   return (
     <div className="performers-layout scroll-list-lg thin-scroll">
@@ -103,10 +89,7 @@ export default function AlphabetIndexList<T extends NamedItem>({
                   •
                 </span>
               )}
-              <a
-                href={letterLinkHref ? letterLinkHref(letter) : `#letter-${letter}`}
-                className={`performers-index-link ${activeLetter === letter ? "is-active" : ""}`}
-              >
+              <a href={`#letter-${letter}`} className="performers-index-link">
                 {letter}
               </a>
             </Fragment>
