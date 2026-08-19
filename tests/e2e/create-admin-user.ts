@@ -12,8 +12,15 @@ async function main() {
       passwordHash: hashPassword("admin-e2e-password"),
       name: "E2E Admin",
       isAdmin: true,
+      tourCompletedAt: new Date(),
     },
-    update: { isAdmin: true, passwordHash: hashPassword("admin-e2e-password") },
+    // tourCompletedAt: тур для новичков иначе перекрывает интерфейс и
+    // перехватывает клики в сценариях.
+    update: {
+      isAdmin: true,
+      passwordHash: hashPassword("admin-e2e-password"),
+      tourCompletedAt: new Date(),
+    },
   });
   console.log("ok");
 }

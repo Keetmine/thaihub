@@ -604,6 +604,9 @@ model User {
   tgNotifyFriends    Boolean @default(true)
   tgNotifyReplies    Boolean @default(true)
   tgNotifyEvents     Boolean @default(true)
+  // Тур по интерфейсу для новичков: показывается один раз после
+  // регистрации, перезапускается кнопкой в настройках.
+  tourCompletedAt    DateTime?
   actedNotifications Notification[] @relation("NotificationActor")
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
   googleId     String?  @unique

@@ -31,6 +31,7 @@ something changes, edit the doc in place rather than appending a note.
   - [wikipedia-agency-import.md](features/wikipedia-agency-import.md) — talent-agency importer (official MediaWiki API, not scraping)
   - [tpop-band-import.md](features/tpop-band-import.md) — idol-group importer from tpop.fandom.com (official MediaWiki API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator
+  - [onboarding.md](features/onboarding.md) — /welcome и интерактивный тур по интерфейсу
   - [gamification.md](features/gamification.md) — stats tab + achievements
   - [place-lists.md](features/place-lists.md) — пользовательские списки локаций + привязка к поездкам
   - [trips.md](features/trips.md) — user trips: a date range showing every event inside it

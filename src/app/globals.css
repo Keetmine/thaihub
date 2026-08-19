@@ -2835,3 +2835,39 @@ details.admin-section[open] > summary.admin-section-head::before {
   color: var(--bs-primary-text-emphasis);
   background: rgba(var(--accent-rgb), 0.14);
 }
+
+/* ---------- Тур по интерфейсу ---------- */
+/* Затемняем всё, кроме подсвеченного элемента: он остаётся видимым
+   через «дыру», которую делает огромная тень. */
+.tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1090;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.tour-highlight {
+  position: fixed;
+  z-index: 1091;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(var(--accent-rgb), 0.9);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.tour-tip {
+  position: fixed;
+  z-index: 1092;
+  width: min(20rem, calc(100vw - 1.5rem));
+  padding: 1rem;
+  border-radius: var(--bs-border-radius);
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg, #160a1c);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+
+.tour-tip-title {
+  font-weight: 600;
+  color: #fff;
+}

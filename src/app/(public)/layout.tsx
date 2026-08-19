@@ -13,6 +13,7 @@ import { GridIcon, HeartIcon } from "@/components/icons";
 import NotificationBell from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
 import MobileProfileSection from "@/components/MobileProfileSection";
+import ProductTour from "@/components/ProductTour";
 
 function SearchForm() {
   return (
@@ -39,6 +40,8 @@ export default async function PublicLayout({ children }: { children: React.React
   // Счётчик у колокольчика: приглашения в поездки и заявки в друзья
   // приходили молча, пока не появилась лента (features/notifications.md).
   const unreadNotifications = fullUser ? await unreadNotificationCount(fullUser.id) : 0;
+  // Тур запускается сам, пока человек его не прошёл и не закрыл.
+  const showTour = !!fullUser && !fullUser.tourCompletedAt;
   // Only pass the fields ProfileMenu actually needs into the client
   // component — the full record (incl. passwordHash) would otherwise be
   // serialized into the page's RSC payload.
@@ -66,7 +69,11 @@ export default async function PublicLayout({ children }: { children: React.React
               внутри меню: раньше иконки набивались в панель вперемешку с
               пунктами навигации и выглядели случайной россыпью. */}
           <div className="d-sm-none d-flex align-items-center gap-1 ms-auto order-1">
-            {user && <NotificationBell unread={unreadNotifications} />}
+            {user && (
+              <span data-tour="notifications">
+                <NotificationBell unread={unreadNotifications} />
+              </span>
+            )}
             {isAdmin && (
               <Link href="/admin" prefetch={false} className="icon-btn" aria-label="Админка">
                 <GridIcon />
@@ -76,22 +83,28 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <MobileMenu>
             <NavLink href="/">Все события</NavLink>
-            <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
-              Исполнители
-            </NavLink>
+            <span data-tour="artists">
+              <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
+                Исполнители
+              </NavLink>
+            </span>
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
               Сериалы
             </NavLink>
             <NavLink href="/novels" matchPrefixes={["/novels/"]}>
               Новеллы
             </NavLink>
-            <NavLink href="/locations" matchPrefixes={["/locations/"]}>
-              Локации
-            </NavLink>
-            {user && (
-              <NavLink href="/trips" matchPrefixes={["/trips/"]}>
-                Поездки
+            <span data-tour="locations">
+              <NavLink href="/locations" matchPrefixes={["/locations/"]}>
+                Локации
               </NavLink>
+            </span>
+            {user && (
+              <span data-tour="trips">
+                <NavLink href="/trips" matchPrefixes={["/trips/"]}>
+                  Поездки
+                </NavLink>
+              </span>
             )}
             <SearchForm />
             {user ? (
@@ -103,22 +116,28 @@ export default async function PublicLayout({ children }: { children: React.React
 
           <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
             <NavLink href="/">Все события</NavLink>
-            <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
-              Исполнители
-            </NavLink>
+            <span data-tour="artists">
+              <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
+                Исполнители
+              </NavLink>
+            </span>
             <NavLink href="/dramas" matchPrefixes={["/dramas/"]}>
               Сериалы
             </NavLink>
             <NavLink href="/novels" matchPrefixes={["/novels/"]}>
               Новеллы
             </NavLink>
-            <NavLink href="/locations" matchPrefixes={["/locations/"]}>
-              Локации
-            </NavLink>
-            {user && (
-              <NavLink href="/trips" matchPrefixes={["/trips/"]}>
-                Поездки
+            <span data-tour="locations">
+              <NavLink href="/locations" matchPrefixes={["/locations/"]}>
+                Локации
               </NavLink>
+            </span>
+            {user && (
+              <span data-tour="trips">
+                <NavLink href="/trips" matchPrefixes={["/trips/"]}>
+                  Поездки
+                </NavLink>
+              </span>
             )}
           </div>
 
@@ -147,7 +166,13 @@ export default async function PublicLayout({ children }: { children: React.React
                 <GridIcon />
               </Link>
             )}
-            {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
+            {user ? (
+              <span data-tour="profile">
+                <ProfileMenu user={user} />
+              </span>
+            ) : (
+              <NavLink href="/login">Войти</NavLink>
+            )}
           </div>
         </nav>
       </div>
@@ -156,6 +181,9 @@ export default async function PublicLayout({ children }: { children: React.React
       </main>
       <SiteFooter />
       <ScrollTopButton />
+      {/* Тур для новичков: показывается один раз после регистрации,
+          перезапускается кнопкой в настройках. */}
+      {user && <ProductTour autoStart={showTour} />}
     </div>
   );
 }

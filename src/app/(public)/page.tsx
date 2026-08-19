@@ -30,7 +30,9 @@ export default async function HomePage({
   if (!isPremiumActive(user)) {
     return (
       <div>
-        <div className="dot-grid pb-1">
+        {/* Метка тура и в этой ветке: без подписки здесь пейволл, но
+            первый шаг «что это за раздел» показать всё равно нужно. */}
+        <div className="dot-grid pb-1" data-tour="feed">
           <span className="eyebrow">Афиша событий</span>
           <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
             Все события
@@ -122,7 +124,10 @@ export default async function HomePage({
 
   return (
     <div>
-      <div className="dot-grid pb-1">
+      {/* Метка тура — на заголовке, а не на фильтрах: без подписки
+          вместо ленты стоит пейволл, а первый шаг должен показаться
+          всем. */}
+      <div className="dot-grid pb-1" data-tour="feed">
         <span className="eyebrow">Афиша событий</span>
         <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
           <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>

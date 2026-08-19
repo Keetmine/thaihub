@@ -10,6 +10,7 @@ import {
   unlinkTelegram,
   updateNotificationPrefs,
 } from "../actions";
+import { restartTour } from "../tourActions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
 import SettingsTabs from "./SettingsTabs";
@@ -105,6 +106,20 @@ export default async function SettingsPage({
                 </button>
               </div>
             </form>
+
+            {/* Тур по интерфейсу — пройти заново. Полезно и когда
+                появляются новые разделы. */}
+            <div className="border-top pt-3 mt-4" style={{ borderColor: "var(--bs-border-color)" }}>
+              <p className="fw-medium text-white mb-1">Тур по сайту</p>
+              <p className="small text-secondary mb-2">
+                Короткая проводка по разделам — где афиша, поездки и уведомления.
+              </p>
+              <form action={restartTour}>
+                <button type="submit" className="btn btn-ghost btn-sm">
+                  {user.tourCompletedAt ? "Пройти заново" : "Начать тур"}
+                </button>
+              </form>
+            </div>
 
             {/* Привязка Telegram: без неё уведомления слать некуда, а
                 telegramId раньше появлялся только у тех, кто входил

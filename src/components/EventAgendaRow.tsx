@@ -33,7 +33,9 @@ export default function EventAgendaRow({
   return (
     <div className="agenda-row">
       <div className="corner-actions corner-actions-row">
-        <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
+        <span data-tour="favorite">
+          <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
+        </span>
         <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>
       <div className="agenda-time">
