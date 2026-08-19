@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { runTpopAgencyImport, runTpopArtistImport } from "./actions";
+import { runTpopAgencyImport, runTpopArtistImport, markImportsReviewed } from "./actions";
 import RunningImportsWatcher from "./RunningImportsWatcher";
+import Pagination from "@/components/Pagination";
 
 export const metadata = { title: "Импорты" };
 
@@ -37,12 +38,27 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 // Журнал запусков импортов из админки (пишется logImportRun) + быстрые
 // ссылки на места, откуда они запускаются. Массовые прогоны из консоли
 // (scripts/*.ts) сюда не пишут — у них свои логи.
-export default async function AdminImportsPage() {
+const PAGE_SIZE = 30;
+
+export default async function AdminImportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const page = Math.max(1, Number(rawPage) || 1);
   const hasRunningPromise = prisma.importRun.findFirst({ where: { status: "RUNNING" } });
-  const [runs, recentItems] = await Promise.all([
-    prisma.importRun.findMany({ orderBy: { startedAt: "desc" }, take: 100 }),
+  const [runs, totalRuns, unreviewedFailed, recentItems] = await Promise.all([
+    prisma.importRun.findMany({
+      orderBy: { startedAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.importRun.count(),
+    prisma.importRun.count({ where: { status: "FAILED", reviewedAt: null } }),
     prisma.importedItem.findMany({ orderBy: { createdAt: "desc" }, take: 60 }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalRuns / PAGE_SIZE));
 
   const runningRun = await hasRunningPromise;
 
@@ -165,7 +181,18 @@ export default async function AdminImportsPage() {
         </div>
       )}
 
-      <h2 className="section-heading mb-2">Последние запуски</h2>
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
+        <h2 className="section-heading mb-0">Последние запуски</h2>
+        {/* Гасит бейдж упавших импортов в сайдбаре: он считает только
+            неразобранные записи. */}
+        {unreviewedFailed > 0 && (
+          <form action={markImportsReviewed}>
+            <button type="submit" className="btn btn-ghost btn-sm">
+              Пометить разобранными ({unreviewedFailed})
+            </button>
+          </form>
+        )}
+      </div>
       {runs.length === 0 ? (
         <p className="small text-secondary">
           Запусков ещё не было — здесь появится история всех импортов, запущенных из админки.
@@ -196,6 +223,11 @@ export default async function AdminImportsPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin/imports?page=${p}`}
+      />
     </div>
   );
 }

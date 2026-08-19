@@ -181,6 +181,21 @@ export default async function AdminModerationPage({
         })
       ).map((l) => [l.id, l]),
     );
+    // На кого жалуются: у Report только targetType/targetId без связи,
+    // поэтому профили догружаем пачкой. Без имени очередь была безликой —
+    // не видно ни адресата, ни повторных жалоб на одного человека.
+    const profileTargets = new Map(
+      (
+        await prisma.user.findMany({
+          where: { id: { in: reports.filter((r) => r.targetType === "profile").map((r) => r.targetId) } },
+          select: { id: true, name: true, email: true },
+        })
+      ).map((u) => [u.id, u]),
+    );
+    const reportsPerTarget = new Map<string, number>();
+    for (const r of reports) {
+      reportsPerTarget.set(r.targetId, (reportsPerTarget.get(r.targetId) ?? 0) + 1);
+    }
     body = reports.length === 0 ? (
       <p className="small text-secondary">Открытых жалоб нет.</p>
     ) : (
@@ -201,9 +216,22 @@ export default async function AdminModerationPage({
                 <span className="text-secondary">список удалён</span>
               )
             ) : r.targetType === "profile" ? (
-              <Link href={`/admin/users/${r.targetId}`} className="link-body-emphasis">
-                профиль пользователя
-              </Link>
+              profileTargets.has(r.targetId) ? (
+                <>
+                  <Link href={`/admin/users/${r.targetId}`} className="link-body-emphasis">
+                    {profileTargets.get(r.targetId)!.name ||
+                      profileTargets.get(r.targetId)!.email ||
+                      "профиль без имени"}
+                  </Link>
+                  {(reportsPerTarget.get(r.targetId) ?? 0) > 1 && (
+                    <span className="badge rounded-pill text-bg-danger ms-2">
+                      жалоб: {reportsPerTarget.get(r.targetId)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-secondary">аккаунт удалён</span>
+              )
             ) : (
               <span>
                 {r.targetType} {r.targetId}

@@ -2,7 +2,8 @@ import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
-import { clearErrorLog, deleteErrorEntry } from "./actions";
+import { clearErrorLog, deleteErrorEntry, markErrorsReviewed } from "./actions";
+import Pagination from "@/components/Pagination";
 
 export const metadata = { title: "Ошибки" };
 
@@ -10,12 +11,26 @@ export const dynamic = "force-dynamic";
 
 // Лог серверных ошибок: onRequestError (instrumentation.ts) пишет сюда
 // всё, что упало в страницах/экшенах/роутах.
-export default async function AdminErrorsPage() {
+const PAGE_SIZE = 50;
+
+export default async function AdminErrorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
-  const errors = await prisma.errorLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const { page: rawPage } = await searchParams;
+  const page = Math.max(1, Number(rawPage) || 1);
+  const [errors, total, unreviewed] = await Promise.all([
+    prisma.errorLog.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.errorLog.count(),
+    prisma.errorLog.count({ where: { reviewedAt: null } }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const fmt = (d: Date) =>
     d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -27,13 +42,22 @@ export default async function AdminErrorsPage() {
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Ошибки
         </h1>
-        {errors.length > 0 && (
-          <ConfirmForm action={clearErrorLog} confirmMessage="Очистить весь лог ошибок?">
-            <button type="button" className="btn btn-ghost btn-sm">
-              Очистить всё
-            </button>
-          </ConfirmForm>
-        )}
+        <span className="d-flex flex-wrap align-items-center gap-2">
+          {unreviewed > 0 && (
+            <form action={markErrorsReviewed}>
+              <button type="submit" className="btn btn-ghost btn-sm">
+                Пометить разобранными ({unreviewed})
+              </button>
+            </form>
+          )}
+          {errors.length > 0 && (
+            <ConfirmForm action={clearErrorLog} confirmMessage="Очистить весь лог ошибок?">
+              <button type="button" className="btn btn-ghost btn-sm">
+                Очистить всё
+              </button>
+            </ConfirmForm>
+          )}
+        </span>
       </div>
 
       {errors.length === 0 ? (
@@ -78,6 +102,11 @@ export default async function AdminErrorsPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin/errors?page=${p}`}
+      />
     </div>
   );
 }

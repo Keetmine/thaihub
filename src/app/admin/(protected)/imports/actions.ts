@@ -128,3 +128,14 @@ export async function runTpopArtistImport(formData: FormData): Promise<void> {
 
   revalidatePath("/admin/imports");
 }
+
+/** Пометить упавшие импорты разобранными — гасит бейдж в сайдбаре. */
+export async function markImportsReviewed(): Promise<void> {
+  await requireCatalogEditor();
+  await prisma.importRun.updateMany({
+    where: { status: "FAILED", reviewedAt: null },
+    data: { reviewedAt: new Date() },
+  });
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin");
+}

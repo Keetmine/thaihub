@@ -1152,6 +1152,9 @@ model ImportedItem {
 
 model ImportRun {
   id         String    @id @default(cuid())
+  // Отметка «разобрано»: бейдж упавших импортов в сайдбаре считает
+  // только непросмотренные, иначе гасить его было нечем.
+  reviewedAt DateTime?
   kind       String // "tmdb-dramas" | "tmdb-performers" | "gmmtv" | "mdl-drama" | "blscene"
   status     String    @default("RUNNING") // RUNNING | DONE | FAILED
   summary    String?
@@ -1172,6 +1175,9 @@ model SiteSetting {
 // catch'и) — выводится в /admin/errors.
 model ErrorLog {
   id        String   @id @default(cuid())
+  // Та же отметка, что у ImportRun: счётчик ошибок в сайдбаре считает
+  // только неразобранные.
+  reviewedAt DateTime?
   message   String
   stack     String?
   path      String?

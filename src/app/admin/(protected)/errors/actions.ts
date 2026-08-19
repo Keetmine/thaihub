@@ -15,3 +15,15 @@ export async function deleteErrorEntry(id: string): Promise<void> {
   await prisma.errorLog.delete({ where: { id } });
   revalidatePath("/admin/errors");
 }
+
+/** Пометить все текущие ошибки разобранными: бейдж в сайдбаре считает
+ *  только непросмотренные, иначе он горел бы вечно. */
+export async function markErrorsReviewed(): Promise<void> {
+  await requireAdmin();
+  await prisma.errorLog.updateMany({
+    where: { reviewedAt: null },
+    data: { reviewedAt: new Date() },
+  });
+  revalidatePath("/admin/errors");
+  revalidatePath("/admin");
+}

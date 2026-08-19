@@ -86,8 +86,10 @@ export async function adminBadgeCounts(): Promise<Record<string, number>> {
   const [feedback, reports, failedImports, errors] = await Promise.all([
     prisma.feedback.count({ where: { status: "NEW" } }),
     prisma.report.count({ where: { status: "NEW" } }),
-    prisma.importRun.count({ where: { status: "FAILED" } }),
-    prisma.errorLog.count({ where: { createdAt: { gte: dayAgo } } }),
+    // Только неразобранное: у записей есть отметка reviewedAt, иначе
+    // счётчик горел бы вечно и его переставали замечать.
+    prisma.importRun.count({ where: { status: "FAILED", reviewedAt: null } }),
+    prisma.errorLog.count({ where: { createdAt: { gte: dayAgo }, reviewedAt: null } }),
   ]);
   return {
     "/admin/feedback": feedback,
