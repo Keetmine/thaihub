@@ -3,6 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { performerHref, eventHref } from "@/lib/slugHelpers";
 
+export const metadata = { title: "Аналитика" };
+
 export const dynamic = "force-dynamic";
 
 // Аналитика продукта: регистрации по дням (30 дней, CSS-бары без

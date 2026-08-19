@@ -1,5 +1,14 @@
 const pad = (n: number) => n.toString().padStart(2, "0");
 
+// ВАЖНО про часовые пояса. Каждое событие MyBLHub — тайское, и в базе
+// лежит тайское НАСТЕННОЕ время без зоны (19:00 значит 19:00 в Бангкоке).
+// Prisma отдаёт такой timestamp как момент в UTC, поэтому единственный
+// способ прочитать его обратно одинаково везде — брать UTC-компоненты.
+// Локальные getHours()/getDate() давали разное на сервере (UTC) и в
+// браузере (МСК): время уезжало на 3 часа, а у вечерних событий дата —
+// на сутки вперёд, плюс React ругался на несовпадение разметки.
+const UTC = "UTC";
+
 // Thai (Buddhist Era) years run exactly 543 ahead of Gregorian. A native
 // <input type="date"> can hand back a BE year instead of the Gregorian
 // value it was given, under some browser/OS locale configurations (th-TH
@@ -17,32 +26,32 @@ function normalizeYear(year: number): number {
 export function combineDateTime(dateStr: string, time: string): Date {
   const [h, m] = time.split(":").map(Number);
   const [y, mo, d] = dateStr.split("-").map(Number);
-  return new Date(normalizeYear(y), mo - 1, d, h, m);
+  return new Date(Date.UTC(normalizeYear(y), mo - 1, d, h, m));
 }
 
 export function dateKey(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
 export function parseDateKey(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(Date.UTC(y, m - 1, d));
 }
 
 export function startOfDay(d: Date): Date {
   const r = new Date(d);
-  r.setHours(0, 0, 0, 0);
+  r.setUTCHours(0, 0, 0, 0);
   return r;
 }
 
 export function endOfDay(d: Date): Date {
   const r = new Date(d);
-  r.setHours(23, 59, 59, 999);
+  r.setUTCHours(23, 59, 59, 999);
   return r;
 }
 
 export function formatTime(d: Date): string {
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
 // Every event in MyBLHub is a Thailand event — stored/displayed times are
@@ -52,13 +61,13 @@ export function formatTime(d: Date): string {
 // from whatever formatTime() would already show.
 export function formatTimeWithMsk(d: Date): string {
   const msk = new Date(d);
-  msk.setHours(msk.getHours() - 4);
+  msk.setUTCHours(msk.getUTCHours() - 4);
   return `${formatTime(d)} (МСК ${formatTime(msk)})`;
 }
 
 export function toMskTime(d: Date): Date {
   const msk = new Date(d);
-  msk.setHours(msk.getHours() - 4);
+  msk.setUTCHours(msk.getUTCHours() - 4);
   return msk;
 }
 
@@ -86,7 +95,9 @@ export function formatTimeRangeWithZone(start: Date, end: Date | null, tz: strin
 // Compact "24 окт" form, for flat (non day-grouped) event lists where the
 // row itself has to carry the date since there's no day heading above it.
 export function formatShortDate(d: Date): string {
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(/\.$/, "");
+  return d
+    .toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: UTC })
+    .replace(/\.$/, "");
 }
 
 /** Combines several occurrence dates that share the same year+month into
@@ -102,7 +113,11 @@ export function formatCombinedDateList(dates: Date[]): string {
   for (const d of sorted) {
     const lastGroup = groups[groups.length - 1];
     const lastDate = lastGroup?.[lastGroup.length - 1];
-    if (lastDate && lastDate.getFullYear() === d.getFullYear() && lastDate.getMonth() === d.getMonth()) {
+    if (
+      lastDate &&
+      lastDate.getUTCFullYear() === d.getUTCFullYear() &&
+      lastDate.getUTCMonth() === d.getUTCMonth()
+    ) {
       lastGroup.push(d);
     } else {
       groups.push([d]);
@@ -112,9 +127,14 @@ export function formatCombinedDateList(dates: Date[]): string {
     .map((group) => {
       const lastDay = group[group.length - 1];
       const monthYear = lastDay
-        .toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+        .toLocaleDateString("ru-RU", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          timeZone: UTC,
+        })
         .replace(/\s?г\.$/, "");
-      const otherDays = group.slice(0, -1).map((d) => d.getDate());
+      const otherDays = group.slice(0, -1).map((d) => d.getUTCDate());
       return [...otherDays, monthYear].join(", ");
     })
     .join(", ");
@@ -126,18 +146,19 @@ export function formatHumanDate(d: Date): string {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: UTC,
   });
 }
 
 export function addDays(d: Date, days: number): Date {
   const r = new Date(d);
-  r.setDate(r.getDate() + days);
+  r.setUTCDate(r.getUTCDate() + days);
   return r;
 }
 
 export function addMonths(d: Date, months: number): Date {
   const r = new Date(d);
-  r.setMonth(r.getMonth() + months);
+  r.setUTCMonth(r.getUTCMonth() + months);
   return r;
 }
 
@@ -165,8 +186,8 @@ export { WEEKDAY_NAMES_RU };
 
 /** Returns a grid of Date objects (6 weeks x 7 days) covering the given month, Monday-first. */
 export function getMonthGrid(year: number, month: number): Date[] {
-  const firstOfMonth = new Date(year, month, 1);
-  const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Mon=0..Sun=6
+  const firstOfMonth = new Date(Date.UTC(year, month, 1));
+  const firstWeekday = (firstOfMonth.getUTCDay() + 6) % 7; // Mon=0..Sun=6
   const gridStart = addDays(firstOfMonth, -firstWeekday);
 
   const days: Date[] = [];

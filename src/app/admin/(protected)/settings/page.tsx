@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { SETTING_KEYS } from "@/lib/siteSettings";
 import { saveSettings } from "./actions";
 
+export const metadata = { title: "Настройки" };
+
 export const dynamic = "force-dynamic";
 
 // Настройки сайта без деплоя: значения хранятся в SiteSetting, пустое

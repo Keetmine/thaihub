@@ -6,6 +6,8 @@ import { getPremiumPriceStars } from "@/lib/siteSettings";
 import ConfirmForm from "@/components/ConfirmForm";
 import { refundPayment } from "./actions";
 
+export const metadata = { title: "Финансы" };
+
 export const dynamic = "force-dynamic";
 
 // Финансы: журнал оплат Stars (пишется вебхуком), активные подписки и

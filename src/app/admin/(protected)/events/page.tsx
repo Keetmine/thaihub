@@ -8,6 +8,8 @@ import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 
+export const metadata = { title: "События" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage({

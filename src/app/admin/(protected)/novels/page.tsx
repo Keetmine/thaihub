@@ -6,6 +6,8 @@ import { PencilIcon, TrashIcon } from "@/components/icons";
 import { deleteNovel } from "./actions";
 import FicbookImportButton from "./FicbookImportButton";
 
+export const metadata = { title: "Новеллы" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminNovelsPage({

@@ -6,6 +6,8 @@ import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
 import { setFeedbackStatus, deleteFeedback } from "./actions";
 
+export const metadata = { title: "Обращения" };
+
 export const dynamic = "force-dynamic";
 
 const KIND_LABELS: Record<string, string> = {

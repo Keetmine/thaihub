@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import QuickSearch from "@/components/admin/QuickSearch";
 import QuickSearchButton from "@/components/admin/QuickSearchButton";
@@ -94,6 +95,17 @@ const NAV_SECTIONS: {
     ],
   },
 ];
+
+// Заголовки вкладок админки: у всех страниц был один «MyBLHub», и пять
+// открытых вкладок выглядели одинаково. Шаблон дописывает раздел к
+// названию, страницы задают только свою часть.
+export const metadata: Metadata = {
+  title: {
+    default: "Админка — MyBLHub",
+    template: "%s · Админка — MyBLHub",
+  },
+  robots: { index: false, follow: false },
+};
 
 export default async function ProtectedAdminLayout({
   children,

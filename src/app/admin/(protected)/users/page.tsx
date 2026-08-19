@@ -9,6 +9,8 @@ import NameSearchBox from "@/components/NameSearchBox";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
 
+export const metadata = { title: "Пользователи" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage({

@@ -1,6 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins } from "@/lib/adminNotify";
 
+// Не ошибки приложения, а обрывы соединения: пользователь ушёл со
+// страницы, не дождавшись рендера. Их поток забивал /admin/errors, и
+// настоящие проблемы в нём терялись.
+const IGNORED_PATTERNS = [
+  "The destination stream closed early",
+  "aborted",
+  "ECONNRESET",
+];
+
 /** Пишет ошибку в /admin/errors; сам никогда не бросает. */
 export async function logError(
   error: unknown,
@@ -8,6 +17,7 @@ export async function logError(
 ): Promise<void> {
   try {
     const e = error instanceof Error ? error : new Error(String(error));
+    if (IGNORED_PATTERNS.some((p) => e.message.includes(p))) return;
     await prisma.errorLog.create({
       data: {
         message: e.message.slice(0, 1000),

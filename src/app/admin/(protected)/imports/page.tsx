@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { runTpopAgencyImport, runTpopArtistImport } from "./actions";
 import RunningImportsWatcher from "./RunningImportsWatcher";
 
+export const metadata = { title: "Импорты" };
+
 export const dynamic = "force-dynamic";
 
 const KIND_LABELS: Record<string, string> = {

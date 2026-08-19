@@ -16,6 +16,8 @@ import { performerNameWhere } from "@/lib/searchWhere";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete, bulkSetPerformerAgency } from "../bulkActions";
 
+export const metadata = { title: "Исполнители" };
+
 export const dynamic = "force-dynamic";
 
 function AdminPerformerRow({

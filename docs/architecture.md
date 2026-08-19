@@ -151,3 +151,20 @@ does and doesn't check.
   conventions, deprecations, and APIs have real differences from training
   data (e.g. `proxy.ts` replacing `middleware.ts`, `viewport`/`themeColor`
   living in a separate `viewport` export rather than `metadata`).
+
+## Часовые пояса
+
+Каждое событие MyBLHub — тайское, и в базе лежит тайское **настенное**
+время без зоны: `19:00` значит 19:00 в Бангкоке. Prisma отдаёт такой
+timestamp как момент в UTC, поэтому читать его нужно UTC-компонентами
+(`getUTCHours()` и т.д.) — этим занимается `src/lib/dates.ts`.
+
+Локальные `getHours()/getDate()` использовать нельзя: они дают разный
+результат на сервере и в браузере. До перехода на UTC-компоненты время
+уезжало на 3 часа, у вечерних событий дата — на сутки, конвертация в
+зону зрителя врала на 7 часов, а React ругался на несовпадение
+разметки (ошибка гидратации #418).
+
+Зона самого процесса задаётся `TZ=Europe/Moscow` (docker-compose) — на
+время событий она не влияет, но системные даты (`createdAt`,
+`premiumUntil`) показываются в зоне аудитории.

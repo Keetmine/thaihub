@@ -37,7 +37,16 @@ export function tzShortLabel(tz: string): string {
  *  компоненты даты минус 7 часов ICT. */
 function thaiWallClockToInstant(d: Date): Date {
   return new Date(
-    Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()) -
+    // UTC-компоненты, а не локальные: тайское настенное время лежит в
+    // UTC-слоте (см. комментарий в lib/dates.ts), иначе результат
+    // зависел бы от зоны сервера/браузера.
+    Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+    ) -
       7 * 3600_000,
   );
 }

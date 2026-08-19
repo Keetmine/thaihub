@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
 import StatTile from "@/components/StatTile";
 
+export const metadata = { title: "Дашборд" };
+
 export const dynamic = "force-dynamic";
 
 // Админ-дашборд (Г10): состояние продукта одним экраном — пользователи и

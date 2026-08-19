@@ -32,7 +32,9 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
         </div>
         <h2 className="h4 font-display mb-1">{feature} — по подписке</h2>
         <p className="text-secondary small mb-0">
-          {canPay ? `${price} Stars в месяц · продление в один клик` : "Подписка на месяц"}
+          {canPay
+            ? `${price} Stars в месяц · продление в один клик`
+            : `${price} Stars в месяц · оплата по договорённости`}
         </p>
       </div>
 

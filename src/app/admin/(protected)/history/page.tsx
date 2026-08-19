@@ -6,6 +6,8 @@ import { AuditEntry } from "@/components/admin/AuditTrail";
 import Pagination from "@/components/Pagination";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
+export const metadata = { title: "История правок" };
+
 export const dynamic = "force-dynamic";
 
 const ENTITY_TABS = ["Performer", "Drama", "Event", "Agency", "Location", "Novel"] as const;

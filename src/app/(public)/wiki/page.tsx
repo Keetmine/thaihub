@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Вики — MyBLHub",
-  description: "Гайды и полезные статьи для фанатов тайских BL-актёров.",
-};
+export const metadata = pageMetadata({
+  title: "Вики",
+  description: "Гайды и полезные статьи для фанатов тайских BL-актёров: билеты, поездки, фанмиты.",
+  path: "/wiki",
+});
 
 // Индекс вики: все опубликованные статьи. Доступен без логина (как и
 // сами статьи) — ссылка живёт в футере.

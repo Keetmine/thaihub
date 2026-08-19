@@ -9,6 +9,8 @@ import { PencilIcon, TrashIcon } from "@/components/icons";
 import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
+export const metadata = { title: "Локации" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminLocationsPage({

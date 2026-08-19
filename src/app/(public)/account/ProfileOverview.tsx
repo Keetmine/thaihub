@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { StatsForTab } from "./StatsTab";
+import { plural } from "@/lib/plural";
 
 /** Счётчики профиля, но с иерархией вместо двух одинаковых рядов плиток:
  *  сверху — крупные «герои» (то, чем фанат гордится: события, актёры
@@ -22,22 +23,56 @@ export default function ProfileOverview({
     trips: number;
   };
 }) {
+  // Подписи согласуются с числом (см. lib/plural.ts): «1 артист»,
+  // «2 артиста», «5 артистов» — раньше на любое число была одна форма.
   const heroes = [
-    { icon: "🎤", value: stats.attendedEvents, label: "событий вживую", hint: "посещено" },
-    { icon: "👀", value: stats.performersSeenLive, label: "артистов вживую", hint: "увидела лично" },
-    { icon: "🌴", value: stats.daysInThailand, label: "дней в Таиланде", hint: "по поездкам" },
-    { icon: "📺", value: stats.completedDramas, label: "дорам досмотрено", hint: "статус «просмотрено»" },
+    {
+      icon: "🎤",
+      value: stats.attendedEvents,
+      label: `${plural(stats.attendedEvents, ["событие", "события", "событий"])} вживую`,
+      hint: "посещено",
+    },
+    {
+      icon: "👀",
+      value: stats.performersSeenLive,
+      label: `${plural(stats.performersSeenLive, ["артист", "артиста", "артистов"])} вживую`,
+      hint: "увидела лично",
+    },
+    {
+      icon: "🌴",
+      value: stats.daysInThailand,
+      label: `${plural(stats.daysInThailand, ["день", "дня", "дней"])} в Таиланде`,
+      hint: "по поездкам",
+    },
+    {
+      icon: "📺",
+      value: stats.completedDramas,
+      label: `${plural(stats.completedDramas, ["дорама", "дорамы", "дорам"])} досмотрено`,
+      hint: "статус «просмотрено»",
+    },
   ];
 
   const chips: { label: string; value: number; href?: string }[] = [
     { label: "иду", value: nav.going, href: "/?filter=going" },
     { label: "в избранном", value: nav.favoriteEvents, href: "/?filter=favorited" },
-    { label: "любимых артистов", value: nav.favoritePerformers, href: "/artists" },
-    { label: "сериалов в списке", value: nav.dramas, href: "/dramas" },
-    { label: "друзей", value: nav.friends, href: "/friends" },
-    { label: "поездок", value: nav.trips, href: "/trips" },
-    { label: "площадок", value: stats.uniqueVenues },
-    { label: "локаций съёмок", value: stats.visitedLocations, href: "/locations" },
+    {
+      label: `${plural(nav.favoritePerformers, ["любимый артист", "любимых артиста", "любимых артистов"])}`,
+      value: nav.favoritePerformers,
+      href: "/artists",
+    },
+    {
+      label: `${plural(nav.dramas, ["сериал", "сериала", "сериалов"])} в списке`,
+      value: nav.dramas,
+      href: "/dramas",
+    },
+    { label: plural(nav.friends, ["друг", "друга", "друзей"]), value: nav.friends, href: "/friends" },
+    { label: plural(nav.trips, ["поездка", "поездки", "поездок"]), value: nav.trips, href: "/trips" },
+    { label: plural(stats.uniqueVenues, ["площадка", "площадки", "площадок"]), value: stats.uniqueVenues },
+    {
+      label: `${plural(stats.visitedLocations, ["локация", "локации", "локаций"])} съёмок`,
+      value: stats.visitedLocations,
+      href: "/locations",
+    },
   ];
 
   return (

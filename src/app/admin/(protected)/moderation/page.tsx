@@ -21,6 +21,8 @@ import {
   type ModContentType,
 } from "./actions";
 
+export const metadata = { title: "Модерация" };
+
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;

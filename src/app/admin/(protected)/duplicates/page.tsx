@@ -6,6 +6,8 @@ import MergeGroupCard from "./MergeGroupCard";
 import LetterAvatar from "@/components/LetterAvatar";
 import { performerHref } from "@/lib/performerSlug";
 
+export const metadata = { title: "Дубли" };
+
 export const dynamic = "force-dynamic";
 
 /** Из ссылки на публичную страницу (артист или сериал) — тип и слаг. */

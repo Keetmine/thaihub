@@ -6,6 +6,8 @@ import { PencilIcon, TrashIcon } from "@/components/icons";
 import { deleteWikiArticle } from "./actions";
 import { formatShortDate } from "@/lib/dates";
 
+export const metadata = { title: "Вики" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminWikiPage() {

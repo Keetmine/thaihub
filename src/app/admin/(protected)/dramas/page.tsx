@@ -17,6 +17,8 @@ import {
 } from "../bulkActions";
 import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 
+export const metadata = { title: "Сериалы" };
+
 export const dynamic = "force-dynamic";
 
 const AIR_TABS = [

@@ -4,6 +4,8 @@ import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
 import { clearErrorLog, deleteErrorEntry } from "./actions";
 
+export const metadata = { title: "Ошибки" };
+
 export const dynamic = "force-dynamic";
 
 // Лог серверных ошибок: onRequestError (instrumentation.ts) пишет сюда

@@ -7,6 +7,8 @@ import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
+export const metadata = { title: "Пейринги" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminPairingsPage({

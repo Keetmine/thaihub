@@ -21,6 +21,11 @@ services:
       db:
         condition: service_healthy
     environment:
+      # Зона процесса. Время событий от неё не зависит (тайское настенное
+      # читается UTC-компонентами, см. lib/dates.ts), а вот системные даты
+      # — «зарегистрирован 18 авг», «оплачено» — должны совпадать с тем,
+      # что видит аудитория, иначе вечерние отметки уезжали на сутки.
+      TZ: Europe/Moscow
       DATABASE_URL: postgresql://thaitrack:${POSTGRES_PASSWORD:-thaitrack}@db:5432/thaitrack?schema=public
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

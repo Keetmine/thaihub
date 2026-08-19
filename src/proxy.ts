@@ -63,7 +63,15 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!request.cookies.get(USER_COOKIE)?.value) {
+  // Гостя уводим на логин только с ЗАКРЫТЫХ разделов. Раньше сюда падал
+  // и любой несуществующий адрес — опечатка в ссылке приводила на форму
+  // входа вместо «страница не найдена», а поисковик вместо 404 получал
+  // редирект.
+  const isPrivateSection =
+    /^\/(account|trips|lists|artist-lists|friends|calendar|users|welcome|places)(\/.*)?$/.test(
+      pathname,
+    );
+  if (isPrivateSection && !request.cookies.get(USER_COOKIE)?.value) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
@@ -75,5 +83,7 @@ export const config = {
   // Everything except static assets, image optimization, and files served
   // straight out of /public (favicon, uploaded photos/posters/logos, PWA
   // icons — the OS/browser fetches these without our session cookie).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|uploads/|icons/).*)"],
+  // leaflet/ — иконки маркеров карты: без исключения гость получал на них
+  // редирект на логин, и карта рисовалась с 860 битыми картинками.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|uploads/|icons/|leaflet/|og-default).*)"],
 };

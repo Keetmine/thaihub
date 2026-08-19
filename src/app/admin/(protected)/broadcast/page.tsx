@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
 import BroadcastForm from "./BroadcastForm";
 
+export const metadata = { title: "Рассылки" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminBroadcastPage() {

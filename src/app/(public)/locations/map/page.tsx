@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import LocationMap from "@/components/LocationMapLoader";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Карта локаций",
+  description:
+    "Карта мест съёмок тайских BL-сериалов: где снимали, что рядом и как добраться.",
+  path: "/locations/map",
+});
+
 
 export const dynamic = "force-dynamic";
 
