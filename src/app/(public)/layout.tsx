@@ -12,6 +12,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { GridIcon, HeartIcon } from "@/components/icons";
 import NotificationBell from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
+import MobileProfileSection from "@/components/MobileProfileSection";
 
 function SearchForm() {
   return (
@@ -61,6 +62,18 @@ export default async function PublicLayout({ children }: { children: React.React
             <Logo />
           </Link>
 
+          {/* На мобильном частые действия живут рядом с бургером, а не
+              внутри меню: раньше иконки набивались в панель вперемешку с
+              пунктами навигации и выглядели случайной россыпью. */}
+          <div className="d-sm-none d-flex align-items-center gap-1 ms-auto order-1">
+            {user && <NotificationBell unread={unreadNotifications} />}
+            {isAdmin && (
+              <Link href="/admin" prefetch={false} className="icon-btn" aria-label="Админка">
+                <GridIcon />
+              </Link>
+            )}
+          </div>
+
           <MobileMenu>
             <NavLink href="/">Все события</NavLink>
             <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
@@ -81,29 +94,11 @@ export default async function PublicLayout({ children }: { children: React.React
               </NavLink>
             )}
             <SearchForm />
-            {isAdmin && (
-              <Link
-                href="/admin"
-                prefetch={false}
-                className="icon-btn"
-                aria-label="Админка"
-                data-tooltip="Админка"
-              >
-                <GridIcon />
-              </Link>
+            {user ? (
+              <MobileProfileSection user={user} />
+            ) : (
+              <NavLink href="/login">Войти</NavLink>
             )}
-            {user && (
-              <Link
-                href="/?filter=favorited"
-                prefetch={false}
-                className="icon-btn"
-                aria-label="Избранное"
-              >
-                <HeartIcon />
-              </Link>
-            )}
-            {user && <NotificationBell unread={unreadNotifications} />}
-            {user ? <ProfileMenu user={user} /> : <NavLink href="/login">Войти</NavLink>}
           </MobileMenu>
 
           <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">

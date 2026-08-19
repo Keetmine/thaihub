@@ -2788,3 +2788,44 @@ details.admin-section[open] > summary.admin-section-head::before {
   border-color: rgba(var(--accent-rgb), 0.45);
   background: rgba(var(--accent-rgb), 0.05);
 }
+
+/* ---------- Профиль в мобильном меню ---------- */
+/* Раздел со всеми пунктами сразу: вложенное выпадающее меню внутри
+   мобильного меню было неудобным, а иконки в общем ряду — россыпью. */
+.mobile-profile {
+  border-top: 1px solid var(--bs-border-color);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.mobile-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.85rem 0.75rem;
+}
+
+.mobile-profile-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mobile-profile-avatar-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--bs-primary-text-emphasis);
+  font-weight: 600;
+}
+
+.mobile-profile-logout {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: #ff8a8a;
+}

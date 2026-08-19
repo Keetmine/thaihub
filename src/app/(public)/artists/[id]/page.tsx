@@ -276,23 +276,28 @@ export default async function PerformerPage({
             </span>
           )}
         </h1>
-        <FavoriteButton
-          kind="performer"
-          id={performer.id}
-          isFavorited={isFavorited}
-          variant="icon"
-        />
-        {/* Добавить в свой список прямо отсюда: раньше это делалось
-            только со страницы самого списка. */}
-        {currentUser && (
-          <AddToListButton
-            lists={myLists}
-            onAdd={async (listId: string) => {
-              "use server";
-              await addPerformerToList(listId, performer.id);
-            }}
+        {/* Кнопки — одной группой: при justify-content-between три
+            прямых потомка разъезжались по всей ширине, и «плюс»
+            выглядел оторванным от сердечка. */}
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <FavoriteButton
+            kind="performer"
+            id={performer.id}
+            isFavorited={isFavorited}
+            variant="icon"
           />
-        )}
+          {/* Добавить в свой список прямо отсюда: раньше это делалось
+              только со страницы самого списка. */}
+          {currentUser && (
+            <AddToListButton
+              lists={myLists}
+              onAdd={async (listId: string) => {
+                "use server";
+                await addPerformerToList(listId, performer.id);
+              }}
+            />
+          )}
+        </div>
       </div>
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
