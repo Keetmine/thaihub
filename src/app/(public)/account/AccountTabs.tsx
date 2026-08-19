@@ -177,9 +177,14 @@ export default function AccountTabs({
           </div>
         </div>
 
-        <ProfileOverview stats={statsData} nav={stats} />
+        <ProfileOverview stats={statsData} nav={stats} isPremium={user.isPremium} />
 
-        <StatsTab stats={statsData} achievements={achievements} artistLists={artistLists} />
+        <StatsTab
+          stats={statsData}
+          achievements={achievements}
+          artistLists={artistLists}
+          isPremium={user.isPremium}
+        />
 
       </div>
 

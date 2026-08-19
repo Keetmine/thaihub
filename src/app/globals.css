@@ -2760,3 +2760,9 @@ details.admin-section[open] > summary.admin-section-head::before {
   background: var(--bs-primary-bg-subtle);
   border-radius: 0.35rem;
 }
+
+/* Заглушка платного блока в кабинете. */
+.premium-teaser {
+  border-style: dashed;
+  border-color: rgba(var(--accent-rgb), 0.35);
+}

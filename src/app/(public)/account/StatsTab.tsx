@@ -6,6 +6,7 @@ import StatTile from "@/components/StatTile";
 import { performerHref } from "@/lib/performerSlug";
 import { artistListHref } from "@/lib/slugHelpers";
 import CreateArtistListButton from "@/app/(public)/artist-lists/CreateArtistListButton";
+import PremiumTeaser from "@/components/PremiumTeaser";
 
 // Сериализуемые версии для клиентской вкладки (Д1/Д2).
 export type StatsForTab = {
@@ -37,9 +38,13 @@ export default function StatsTab({
   stats,
   achievements,
   artistLists,
+  isPremium,
 }: {
   stats: StatsForTab;
   achievements: AchievementForTab[];
+  /** Ачивки и создание списков актёров — платные (см. roadmap). Уже
+   *  созданные списки остаются доступными: отбирать сделанное нельзя. */
+  isPremium?: boolean;
   artistLists?: {
     id: string;
     slug: string | null;
@@ -92,12 +97,23 @@ export default function StatsTab({
             «Чаще всего видела вживую». */}
         <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
           <h2 className="section-heading mb-0">Мои списки актёров</h2>
-          <CreateArtistListButton small />
+          {/* Новые списки — по подписке, но уже созданные остаются
+              доступны: отбирать сделанное нельзя. */}
+          {isPremium && <CreateArtistListButton small />}
         </div>
         {(artistLists ?? []).length === 0 ? (
-          <p className="small text-secondary mb-4">
-            Создайте свой список — «видела вживую», «пил пиво»…
-          </p>
+          isPremium ? (
+            <p className="small text-secondary mb-4">
+              Создайте свой список — «видела вживую», «пил пиво»…
+            </p>
+          ) : (
+            <p className="small text-secondary mb-4">
+              Свои списки актёров — по подписке.{" "}
+              <Link href="/calendar" className="link-body-emphasis">
+                Оформить
+              </Link>
+            </p>
+          )
         ) : (
           <div className="row g-2 mb-4">
             {(artistLists ?? []).map((l) => (
@@ -107,9 +123,7 @@ export default function StatsTab({
                     {l.items.slice(0, 4).map((p) =>
                       p.photoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                      loading="lazy"
-                      decoding="async" key={p.id} src={p.photoUrl} alt="" />
+                        <img loading="lazy" decoding="async" key={p.id} src={p.photoUrl} alt="" />
                       ) : (
                         <span key={p.id}>{p.name.charAt(0).toUpperCase()}</span>
                       ),
@@ -170,7 +184,15 @@ export default function StatsTab({
       )}
 
       {/* Ачивки: полученные впереди и с акцентом, остальные — по
-          близости к цели (сначала те, до которых рукой подать). */}
+          близости к цели (сначала те, до которых рукой подать).
+          Раздел платный (см. roadmap). */}
+      {!isPremium ? (
+        <PremiumTeaser
+          title="Ачивки — по подписке"
+          description="22 достижения за концерты, поездки и просмотренные дорамы, с прогрессом до следующего."
+        />
+      ) : (
+      <>
       <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
         <h2 className="section-heading mb-0">Ачивки</h2>
         <span className="small text-secondary">
@@ -221,6 +243,8 @@ export default function StatsTab({
             );
           })}
       </div>
+      </>
+      )}
     </div>
   );
 }

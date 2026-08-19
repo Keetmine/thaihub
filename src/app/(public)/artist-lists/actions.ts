@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
 import { artistListHref } from "@/lib/slugHelpers";
 import type { TripVisibility } from "@/generated/prisma/client";
+import { isPremiumActive } from "@/lib/premium";
 
 // Кастомные списки актёров («пил пиво», «видела вживую»…) — публичный
 // (не админский) функционал: владелец распоряжается только своими
@@ -25,6 +26,10 @@ async function requireOwnList(listId: string) {
 export async function createPerformerList(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  // Новые списки — платные (кнопка скрыта в интерфейсе, но экшен
+  // вызывается напрямую). Уже созданные списки остаются доступны их
+  // владельцам независимо от подписки.
+  if (!isPremiumActive(user)) redirect("/calendar");
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("Укажите название списка");
   const description = String(formData.get("description") ?? "").trim();

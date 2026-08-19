@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { StatsForTab } from "./StatsTab";
 import { plural } from "@/lib/plural";
+import PremiumTeaser from "@/components/PremiumTeaser";
 
 /** Счётчики профиля, но с иерархией вместо двух одинаковых рядов плиток:
  *  сверху — крупные «герои» (то, чем фанат гордится: события, актёры
@@ -12,6 +13,7 @@ import { plural } from "@/lib/plural";
 export default function ProfileOverview({
   stats,
   nav,
+  isPremium,
 }: {
   stats: StatsForTab;
   nav: {
@@ -22,6 +24,10 @@ export default function ProfileOverview({
     friends: number;
     trips: number;
   };
+  /** Счётчики «вживую» и «дни в Таиланде» — часть платной статистики
+   *  (см. features/gamification.md): без подписки вместо цифр показываем,
+   *  что за ней. Навигационные чипы остаются всем. */
+  isPremium: boolean;
 }) {
   // Подписи согласуются с числом (см. lib/plural.ts): «1 артист»,
   // «2 артиста», «5 артистов» — раньше на любое число была одна форма.
@@ -74,6 +80,36 @@ export default function ProfileOverview({
       href: "/locations",
     },
   ];
+
+  if (!isPremium) {
+    return (
+      <div className="mb-4">
+        <PremiumTeaser
+          title="Личная статистика — по подписке"
+          description="Сколько событий и артистов вы застали вживую, дни в Таиланде, карта посещённого и ачивки."
+        />
+        <div className="d-flex flex-wrap gap-2">
+          {chips.map((c) => {
+            const inner = (
+              <>
+                <span className="nav-chip-value">{c.value}</span>
+                <span className="nav-chip-label">{c.label}</span>
+              </>
+            );
+            return c.href ? (
+              <Link key={c.label} href={c.href} className="nav-chip">
+                {inner}
+              </Link>
+            ) : (
+              <span key={c.label} className="nav-chip">
+                {inner}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-4">
