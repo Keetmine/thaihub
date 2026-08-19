@@ -15,6 +15,7 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
+import { categoryEmoji, categoryLabel } from "@/lib/locationCategories";
 
 export async function generateMetadata({
   params,
@@ -53,6 +54,7 @@ export default async function LocationDetailPage({
   const location = await prisma.location.findFirst({
     where: slugOrIdWhere(rawParam),
     include: {
+      links: { orderBy: { createdAt: "asc" } },
       dramas: {
         include: { drama: true },
         orderBy: { drama: { title: "asc" } },
@@ -157,8 +159,32 @@ export default async function LocationDetailPage({
         <div
           className={location.photoUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}
         >
+          {location.category && (
+            <p className="mb-2">
+              <span className="badge rounded-pill text-bg-secondary">
+                {categoryEmoji(location.category)} {categoryLabel(location.category)}
+              </span>
+            </p>
+          )}
           {location.description && (
             <p className="text-secondary mb-4">{location.description}</p>
+          )}
+
+          {/* Ссылки заведения: инстаграм, сайт, канал. */}
+          {location.links.length > 0 && (
+            <p className="d-flex flex-wrap gap-2 mb-4">
+              {location.links.map((l) => (
+                <a
+                  key={l.id}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost btn-sm"
+                >
+                  {l.label} ↗
+                </a>
+              ))}
+            </p>
           )}
 
           {/* Раздел без содержимого не рисуем вовсе. */}

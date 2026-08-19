@@ -16,7 +16,10 @@ export default async function EditLocationPage({
 }) {
   const { id } = await params;
 
-  const location = await prisma.location.findUnique({ where: { id } });
+  const location = await prisma.location.findUnique({
+    where: { id },
+    include: { links: { orderBy: { createdAt: "asc" } } },
+  });
   if (!location) notFound();
 
   const boundUpdate = updateLocation.bind(null, id);
@@ -50,6 +53,8 @@ export default async function EditLocationPage({
             photoUrl: location.photoUrl ?? "",
             latitude: location.latitude,
             longitude: location.longitude,
+            category: location.category,
+            links: location.links.map((l) => ({ label: l.label, url: l.url })),
           }}
         />
         <ConfirmForm

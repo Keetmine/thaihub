@@ -8,6 +8,8 @@ import { PinIcon } from "@/components/icons";
 import { dramaHref } from "@/lib/dramaSlug";
 import { locationHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
+import { LOCATION_CATEGORIES, categoryLabel, isLocationCategory } from "@/lib/locationCategories";
+import type { LocationCategory } from "@/generated/prisma/client";
 
 export const metadata = pageMetadata({
   title: "Локации съёмок",
@@ -21,10 +23,13 @@ export const dynamic = "force-dynamic";
 export default async function LocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; group?: string }>;
+  searchParams: Promise<{ q?: string; group?: string; cat?: string }>;
 }) {
-  const { q: rawQ, group: rawGroup } = await searchParams;
+  const { q: rawQ, group: rawGroup, cat: rawCat } = await searchParams;
   const q = (rawQ ?? "").trim();
+  // Фильтр по категории места: кафе, магазины, фотозоны…
+  const category =
+    rawCat && isLocationCategory(rawCat) ? (rawCat as LocationCategory) : null;
   const groupByDrama = rawGroup === "drama";
   const showMine = rawGroup === "mine";
 
@@ -92,12 +97,34 @@ export default async function LocationsPage({
         />
       </div>
 
+      {/* Фильтр по категории — только в алфавитном виде: в группировке по
+          сериалам он спорит с самой группировкой. */}
+      {!groupByDrama && !showMine && (
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          <Link
+            href={`/locations${q ? `?q=${encodeURIComponent(q)}` : ""}`}
+            className={`nav-chip ${!category ? "is-active" : ""}`}
+          >
+            Все
+          </Link>
+          {LOCATION_CATEGORIES.map((c) => (
+            <Link
+              key={c.value}
+              href={`/locations?cat=${c.value}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              className={`nav-chip ${category === c.value ? "is-active" : ""}`}
+            >
+              {c.emoji} {c.label}
+            </Link>
+          ))}
+        </div>
+      )}
+
       {groupByDrama ? (
         <LocationsByDrama q={q} currentUser={currentUser} />
       ) : showMine && currentUser ? (
         <MyPlaces q={q} userId={currentUser.id} />
       ) : (
-        <LocationsAlphabetical q={q} currentUser={currentUser} />
+        <LocationsAlphabetical q={q} currentUser={currentUser} category={category} />
       )}
     </div>
   );
@@ -106,9 +133,11 @@ export default async function LocationsPage({
 async function LocationsAlphabetical({
   q,
   currentUser,
+  category,
 }: {
   q: string;
   currentUser: { id: string } | null;
+  category: LocationCategory | null;
 }) {
   // Отдаём весь список, но данными, а не разметкой: строки собирает
   // клиент (AlphabetDataList). Так переход по букве остаётся обычным
@@ -117,8 +146,9 @@ async function LocationsAlphabetical({
     where: {
       createdByUserId: null,
       ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+      ...(category ? { category } : {}),
     },
-    select: { id: true, name: true, photoUrl: true, slug: true },
+    select: { id: true, name: true, photoUrl: true, slug: true, category: true },
     orderBy: { name: "asc" },
   });
 
@@ -133,6 +163,7 @@ async function LocationsAlphabetical({
         name: l.name,
         href: locationHref(l),
         photoUrl: l.photoUrl,
+        subtitle: categoryLabel(l.category),
         visited: visitedIds.has(l.id),
       }))}
     />

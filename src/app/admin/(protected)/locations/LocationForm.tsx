@@ -3,6 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import FileDropzone from "@/components/FileDropzone";
+import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
 
 // Leaflet touches the DOM on mount, so it can't be part of the server-
 // rendered HTML — load it client-only.
@@ -31,20 +32,46 @@ export default function LocationForm({
     photoUrl: string;
     latitude: number | null;
     longitude: number | null;
+    category: string | null;
+    links: { label: string; url: string }[];
   };
 }) {
   const v = defaultValues;
   // Координаты держим здесь и отправляем скрытыми полями: карта
   // подгружается клиентски, и сохранение до её монтажа раньше стирало
   // уже проставленные координаты (полей просто не было в форме).
+  const [links, setLinks] = useState<{ label: string; url: string }[]>(
+    v?.links?.length ? v.links : [],
+  );
+
+  function updateLink(index: number, field: "label" | "url", value: string) {
+    setLinks((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+  }
+
   const [lat, setLat] = useState<number | null>(v?.latitude ?? null);
   const [lng, setLng] = useState<number | null>(v?.longitude ?? null);
 
   return (
     <form action={action} className="surface d-flex flex-column gap-3 p-4">
-      <div>
-        <label className="form-label">Название *</label>
-        <input name="name" required defaultValue={v?.name} className="form-control" />
+      <div className="row g-3">
+        <div className="col-12 col-md-8">
+          <label className="form-label">Название *</label>
+          <input name="name" required defaultValue={v?.name} className="form-control" />
+        </div>
+        <div className="col-12 col-md-4">
+          <label className="form-label">Категория</label>
+          {/* По категории строятся фильтры в списках мест и значки на
+              карточках — свободный текст превратился бы в кашу из
+              синонимов, поэтому выбор из списка. */}
+          <select name="category" defaultValue={v?.category ?? ""} className="form-select">
+            <option value="">не указана</option>
+            {LOCATION_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.emoji} {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="row g-3">
@@ -74,6 +101,50 @@ export default function LocationForm({
             setLng(nextLng);
           }}
         />
+      </div>
+
+      {/* Ссылки: инстаграм заведения, сайт, канал — фандом чаще всего
+          находит места именно по инстаграму. */}
+      <div>
+        <label className="form-label d-block">Ссылки</label>
+        {links.map((link, i) => (
+          <div key={i} className="row g-2 mb-2">
+            <div className="col-12 col-md-4">
+              <input
+                name="linkLabel"
+                value={link.label}
+                onChange={(e) => updateLink(i, "label", e.target.value)}
+                placeholder="Instagram, сайт…"
+                className="form-control form-control-sm"
+              />
+            </div>
+            <div className="col-12 col-md-7">
+              <input
+                name="linkUrl"
+                value={link.url}
+                onChange={(e) => updateLink(i, "url", e.target.value)}
+                placeholder="https://"
+                className="form-control form-control-sm"
+              />
+            </div>
+            <div className="col-12 col-md-1">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm w-100"
+                onClick={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => setLinks((prev) => [...prev, { label: "", url: "" }])}
+        >
+          + Добавить ссылку
+        </button>
       </div>
 
       <div className="mt-2">

@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { refreshBlsceneLocations, type BlsceneLocationRefreshResult } from "@/lib/blsceneImport";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
+import { isLocationCategory } from "@/lib/locationCategories";
+import type { LocationCategory } from "@/generated/prisma/client";
 
 function getCoordinate(formData: FormData, key: string): number | null {
   const raw = String(formData.get(key) ?? "").trim();
@@ -92,6 +94,25 @@ export async function createLocation(formData: FormData) {
   redirect(`/admin/locations/${location.id}/edit`);
 }
 
+/** Ссылки места из формы: пары «подпись + адрес», пустые строки
+ *  отбрасываем. */
+function getLocationLinks(formData: FormData): { label: string; url: string }[] {
+  const labels = formData.getAll("linkLabel").map(String);
+  const urls = formData.getAll("linkUrl").map(String);
+  const links: { label: string; url: string }[] = [];
+  for (let i = 0; i < Math.max(labels.length, urls.length); i++) {
+    const url = (urls[i] ?? "").trim();
+    if (!url) continue;
+    links.push({ label: (labels[i] ?? "").trim() || url, url });
+  }
+  return links;
+}
+
+function getCategory(formData: FormData): LocationCategory | null {
+  const raw = String(formData.get("category") ?? "").trim();
+  return raw && isLocationCategory(raw) ? raw : null;
+}
+
 export async function updateLocation(id: string, formData: FormData) {
   await requireCatalogEditor();
   const name = String(formData.get("name") ?? "").trim();
@@ -99,21 +120,30 @@ export async function updateLocation(id: string, formData: FormData) {
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const latitude = getCoordinate(formData, "latitude");
   const longitude = getCoordinate(formData, "longitude");
+  const category = getCategory(formData);
+  const links = getLocationLinks(formData);
 
   if (!name) throw new Error("Укажите название локации");
 
   const before = await prisma.location.findUnique({ where: { id } });
 
-  await prisma.location.update({
-    where: { id },
-    data: {
-      name,
-      description: description || null,
-      photoUrl: photoUrl || null,
-      latitude,
-      longitude,
-    },
-  });
+  await prisma.$transaction([
+    // Ссылки задаются формой целиком: удаляем старые и создаём заново —
+    // так пропадают удалённые строки, а не только добавляются новые.
+    prisma.locationLink.deleteMany({ where: { locationId: id } }),
+    prisma.location.update({
+      where: { id },
+      data: {
+        name,
+        description: description || null,
+        photoUrl: photoUrl || null,
+        latitude,
+        longitude,
+        category,
+        links: { create: links },
+      },
+    }),
+  ]);
 
   if (before) {
     await logAudit({
