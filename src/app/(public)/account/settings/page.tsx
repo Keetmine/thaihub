@@ -3,7 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
 import FileDropzone from "@/components/FileDropzone";
-import { updateProfile, updatePrivacy, getOrCreateIcsToken, unlinkTelegram } from "../actions";
+import {
+  updateProfile,
+  updatePrivacy,
+  getOrCreateIcsToken,
+  unlinkTelegram,
+  updateNotificationPrefs,
+} from "../actions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
 import SettingsTabs from "./SettingsTabs";
@@ -20,6 +26,13 @@ export const metadata = pageMetadata({
 
 
 export const dynamic = "force-dynamic";
+
+const TELEGRAM_NOTIFY_TOGGLES = [
+  { name: "tgNotifyInvites" as const, label: "Приглашения в поездки и подписка" },
+  { name: "tgNotifyFriends" as const, label: "Заявки в друзья" },
+  { name: "tgNotifyReplies" as const, label: "Ответы на мои комментарии" },
+  { name: "tgNotifyEvents" as const, label: "Друзья идут на события" },
+];
 
 const PRIVACY_TOGGLES = [
   {
@@ -114,6 +127,7 @@ export default async function SettingsPage({
                   </p>
                 )}
                 {user.telegramId ? (
+                  <>
                   <div className="d-flex flex-wrap align-items-center gap-3">
                     <span className="small text-secondary">
                       Подключён{user.telegramUsername ? ` — @${user.telegramUsername}` : ""}.
@@ -125,6 +139,32 @@ export default async function SettingsPage({
                       </button>
                     </form>
                   </div>
+
+                  {/* Что слать в бота. На сайте уведомления приходят
+                      всегда — настройка только про Telegram. */}
+                  <form action={updateNotificationPrefs} className="mt-3">
+                    <p className="small text-secondary mb-2">Присылать в Telegram:</p>
+                    <div className="d-flex flex-column gap-1">
+                      {TELEGRAM_NOTIFY_TOGGLES.map((t) => (
+                        <div className="form-check" key={t.name}>
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            id={t.name}
+                            name={t.name}
+                            defaultChecked={Boolean(user[t.name])}
+                          />
+                          <label className="form-check-label small" htmlFor={t.name}>
+                            {t.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="submit" className="btn btn-ghost btn-sm mt-2">
+                      Сохранить
+                    </button>
+                  </form>
+                  </>
                 ) : (
                   <>
                     <p className="small text-secondary mb-2">

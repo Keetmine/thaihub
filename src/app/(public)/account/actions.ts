@@ -114,3 +114,21 @@ export async function unlinkTelegram(): Promise<void> {
   });
   revalidatePath("/account/settings");
 }
+
+/** Что дублировать в Telegram. Уведомления на сайте приходят всегда —
+ *  настройка управляет только тем, что уходит в бота. */
+export async function updateNotificationPrefs(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      tgNotifyInvites: String(formData.get("tgNotifyInvites") ?? "") === "on",
+      tgNotifyFriends: String(formData.get("tgNotifyFriends") ?? "") === "on",
+      tgNotifyReplies: String(formData.get("tgNotifyReplies") ?? "") === "on",
+      tgNotifyEvents: String(formData.get("tgNotifyEvents") ?? "") === "on",
+    },
+  });
+  revalidatePath("/account/settings");
+}

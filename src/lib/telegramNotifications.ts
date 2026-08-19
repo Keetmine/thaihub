@@ -4,6 +4,7 @@ import { formatHumanDate, formatTime } from "@/lib/dates";
 import { eventHref } from "@/lib/eventSlug";
 import { isPremiumActive } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
+import { notifyUser } from "@/lib/notifications";
 
 const LOOKAHEAD_HOURS = 24;
 
@@ -195,29 +196,27 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
   const event = occurrence.event;
   if (friendIds.length === 0) return;
 
+  // Кому это интересно: друзья, не заглушившие автора. Telegram есть не
+  // у всех — уведомление на сайте получают все, в Telegram только
+  // привязанные (этим занимается notifyUser).
   const friends = await prisma.user.findMany({
     where: {
       id: { in: friendIds },
-      telegramId: { not: null },
-      // не заглушившие этого друга
       friendMutes: { none: { mutedFriendId: userId } },
     },
   });
 
   const name = actor.name || "Ваш друг";
-  const when = ` (${formatHumanDate(occurrence.startsAt)})`;
-  const appUrl = process.env.APP_URL || "";
-  const link = appUrl ? `\n${appUrl}${eventHref(event)}` : "";
 
   for (const friend of friends) {
     if (!isPremiumActive(friend)) continue;
-    try {
-      await sendTelegramMessage(
-        friend.telegramId!,
-        `👥 ${escapeHtml(name)} идёт на <b>${escapeHtml(event.title)}</b>${when}${link}`,
-      );
-    } catch (err) {
-      console.warn(`friend-going notify failed (to ${friend.id}): ${err instanceof Error ? err.message : err}`);
-    }
+    await notifyUser({
+      userId: friend.id,
+      actorId: userId,
+      kind: "FRIEND_GOING",
+      title: `${name} идёт на «${event.title}»`,
+      body: formatHumanDate(occurrence.startsAt),
+      href: eventHref(event),
+    });
   }
 }

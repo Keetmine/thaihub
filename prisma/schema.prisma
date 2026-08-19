@@ -598,6 +598,12 @@ model User {
   auditLogs    AuditLog[]
   notifications      Notification[] @relation("UserNotifications")
   performersSeen     PerformerSeen[]
+  // Что дублировать в Telegram (уведомления на сайте приходят всегда).
+  // Раньше набор поводов был зашит в код и одинаков для всех.
+  tgNotifyInvites    Boolean @default(true)
+  tgNotifyFriends    Boolean @default(true)
+  tgNotifyReplies    Boolean @default(true)
+  tgNotifyEvents     Boolean @default(true)
   actedNotifications Notification[] @relation("NotificationActor")
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
   googleId     String?  @unique

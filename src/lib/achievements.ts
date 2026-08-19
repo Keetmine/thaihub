@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { computeUserStats, type UserStats } from "@/lib/userStats";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { notifyUser } from "@/lib/notifications";
 
 // Ачивки (Д2): условия считаются из UserStats на лету, разблокировка
 // фиксируется в UserAchievement (момент получения + поздравление в
@@ -88,15 +88,18 @@ export async function syncAchievements(userId: string, stats?: UserStats): Promi
   }
 
   // Поздравление — fire-and-forget, одна ошибка не мешает остальному.
-  if (newlyUnlocked.length > 0 && process.env.TELEGRAM_BOT_TOKEN) {
+  // Через notifyUser: строка в колокольчике достаётся всем, а Telegram
+  // только тем, у кого он привязан.
+  if (newlyUnlocked.length > 0) {
     void (async () => {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user?.telegramId) return;
       for (const def of newlyUnlocked) {
-        await sendTelegramMessage(
-          user.telegramId,
-          `🏅 Новая ачивка: ${def.emoji} <b>${def.title}</b>\n${def.description}`,
-        ).catch(() => {});
+        await notifyUser({
+          userId,
+          kind: "ACHIEVEMENT",
+          title: `Новая ачивка: ${def.emoji} ${def.title}`,
+          body: def.description,
+          href: "/account",
+        });
       }
     })();
   }

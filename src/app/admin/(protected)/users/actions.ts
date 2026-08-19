@@ -6,15 +6,26 @@ import { extendPremium } from "@/lib/premium";
 import { randomBytes } from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/userAuth";
+import { notifyUser } from "@/lib/notifications";
 
 /** Продлить подписку на месяц (от конца текущей, если ещё активна). */
 export async function grantPremiumMonth(userId: string) {
   await requireAdmin();
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return;
+  const until = extendPremium(user.premiumUntil);
   await prisma.user.update({
     where: { id: userId },
-    data: { premiumUntil: extendPremium(user.premiumUntil) },
+    data: { premiumUntil: until },
+  });
+  // Человек должен узнать, что подписка появилась, — иначе он видит
+  // только исчезнувший пейволл и гадает, что произошло.
+  await notifyUser({
+    userId,
+    kind: "PREMIUM_GRANTED",
+    title: "Подписка активна",
+    body: `Открыты афиша, календарь и поездки — до ${until.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}.`,
+    href: "/",
   });
   revalidatePath("/admin/users");
 }

@@ -10,14 +10,23 @@ import type { NotificationKind } from "@/generated/prisma/client";
 
 const APP_URL = process.env.APP_URL ?? "https://myblhub.com";
 
-/** Какие поводы дублируются в Telegram. Остальное живёт только на
- *  сайте, чтобы не превращать бота в спамера. */
-const TELEGRAM_KINDS: NotificationKind[] = [
-  "TRIP_INVITE",
-  "FRIEND_REQUEST",
-  "COMMENT_REPLY",
-  "PREMIUM_GRANTED",
-];
+/** Какие поводы вообще могут уходить в Telegram и каким переключателем
+ *  в настройках управляются. Лайки и «заявку приняли» не шлём никогда:
+ *  они частые, бот превратился бы в спамера. */
+const TELEGRAM_KINDS: Partial<Record<NotificationKind, keyof TelegramPrefs>> = {
+  TRIP_INVITE: "tgNotifyInvites",
+  FRIEND_REQUEST: "tgNotifyFriends",
+  COMMENT_REPLY: "tgNotifyReplies",
+  FRIEND_GOING: "tgNotifyEvents",
+  PREMIUM_GRANTED: "tgNotifyInvites",
+};
+
+type TelegramPrefs = {
+  tgNotifyInvites: boolean;
+  tgNotifyFriends: boolean;
+  tgNotifyReplies: boolean;
+  tgNotifyEvents: boolean;
+};
 
 export async function notifyUser(input: {
   userId: string;
@@ -43,12 +52,21 @@ export async function notifyUser(input: {
       },
     });
 
-    if (!TELEGRAM_KINDS.includes(input.kind)) return;
+    const prefKey = TELEGRAM_KINDS[input.kind];
+    if (!prefKey) return;
     const user = await prisma.user.findUnique({
       where: { id: input.userId },
-      select: { telegramId: true },
+      select: {
+        telegramId: true,
+        tgNotifyInvites: true,
+        tgNotifyFriends: true,
+        tgNotifyReplies: true,
+        tgNotifyEvents: true,
+      },
     });
-    if (!user?.telegramId) return;
+    // Нет привязанного Telegram или повод выключен в настройках —
+    // уведомление остаётся только на сайте.
+    if (!user?.telegramId || !user[prefKey]) return;
 
     const link = input.href ? `\n${APP_URL}${input.href}` : "";
     await sendTelegramMessage(
