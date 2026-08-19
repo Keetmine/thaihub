@@ -104,6 +104,28 @@ export default async function AccountPage({
     getGoingOccurrenceIds(allRows.map((e) => e.occurrenceId), user.id),
   ]);
 
+  // Билеты, загруженные к событиям: вкладка «Билеты» собирает их в одном
+  // месте — иначе файл виден только на странице своего события.
+  // У EventAttendance составной ключ (userId + occurrenceId), своего id
+  // нет — он и служит ключом строки.
+  const ticketRows = await prisma.eventAttendance.findMany({
+    where: { userId: user.id, ticketUrl: { not: null } },
+    select: {
+      occurrenceId: true,
+      ticketUrl: true,
+      event: { select: { id: true, slug: true, title: true, venue: true } },
+      occurrence: { select: { startsAt: true } },
+    },
+  });
+  const tickets = ticketRows
+    .map((t) => ({
+      id: t.occurrenceId,
+      ticketUrl: t.ticketUrl!,
+      event: t.event,
+      startsAt: t.occurrence?.startsAt ?? null,
+    }))
+    .sort((a, b) => (a.startsAt?.getTime() ?? 0) - (b.startsAt?.getTime() ?? 0));
+
   // Статистика и ачивки (Д1/Д2): считаются при открытии кабинета; новые
   // ачивки фиксируются и поздравляются ботом внутри syncAchievements.
   const fullStats = await computeUserStats(user.id);
@@ -159,6 +181,7 @@ export default async function AccountPage({
           friends: fullStats.friends,
           eventsByYear: fullStats.eventsByYear,
         }}
+        tickets={tickets}
         achievements={achievements.map((a) => ({
           key: a.key,
           emoji: a.emoji,

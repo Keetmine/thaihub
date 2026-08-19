@@ -8,8 +8,9 @@ import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
 import ProfileOverview from "./ProfileOverview";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import type { EventWithPerformers } from "@/lib/types";
+import TicketsTab, { type TicketRow } from "./TicketsTab";
 
-export type AccountTab = "profile" | "events";
+export type AccountTab = "profile" | "events" | "tickets";
 
 /** Одно событие кабинета целиком, со всеми его датами — многодневный
  *  концерт здесь одна строка, а не строка на дату. */
@@ -39,6 +40,7 @@ export default function AccountTabs({
   stats,
   statsData,
   achievements,
+  tickets,
   artistLists,
   upcomingAttendances,
   pastAttendances,
@@ -49,6 +51,7 @@ export default function AccountTabs({
 }: {
   statsData: StatsForTab;
   achievements: AchievementForTab[];
+  tickets: TicketRow[];
   initialTab: AccountTab;
   user: {
     name: string | null;
@@ -107,6 +110,13 @@ export default function AccountTabs({
           <TabButton active={activeTab === "events"} onClick={() => setActiveTab("events")}>
             События
           </TabButton>
+          {/* Билеты отдельной вкладкой: раньше файл был виден только на
+              странице своего события. */}
+          {tickets.length > 0 && (
+            <TabButton active={activeTab === "tickets"} onClick={() => setActiveTab("tickets")}>
+              Билеты ({tickets.length})
+            </TabButton>
+          )}
         </div>
       </div>
 
@@ -255,6 +265,10 @@ export default function AccountTabs({
               Пока пусто: отмечайте «иду» на событиях и добавляйте их в избранное — они появятся здесь.
             </p>
           )}
+      </div>
+
+      <div style={{ display: activeTab === "tickets" ? undefined : "none" }}>
+        <TicketsTab tickets={tickets} />
       </div>
     </div>
   );
