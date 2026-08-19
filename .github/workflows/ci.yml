@@ -16,6 +16,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      # LayoutProps/PageProps генерирует сам Next — без этого шага tsc
+      # падает на них, потому что типы маршрутов ещё не созданы.
+      - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npx eslint --max-warnings=0 .
       - run: npx next build
