@@ -15,13 +15,21 @@ import { isPremiumActive } from "@/lib/premium";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const location = await prisma.location.findFirst({
     where: slugOrIdWhere(id),
     select: { name: true, description: true, photoUrl: true, slug: true },
   });
-  if (!location) return pageMetadata({ title: "Локация", description: "Локация не найдена." });
+  if (!location)
+    return pageMetadata({
+      title: "Локация",
+      description: "Локация не найдена.",
+    });
   return pageMetadata({
     title: location.name,
     description:
@@ -31,7 +39,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     image: location.photoUrl,
   });
 }
-
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +52,10 @@ export default async function LocationDetailPage({
   const location = await prisma.location.findFirst({
     where: slugOrIdWhere(rawParam),
     include: {
-      dramas: { include: { drama: true }, orderBy: { drama: { title: "asc" } } },
+      dramas: {
+        include: { drama: true },
+        orderBy: { drama: { title: "asc" } },
+      },
       events: {
         include: {
           performers: { include: { performer: true } },
@@ -69,7 +79,9 @@ export default async function LocationDetailPage({
 
   const locationEventsRows = groupByEvent(
     location.events
-      .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
+      .flatMap((ev) =>
+        ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })),
+      )
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
   );
   const locationEvents = locationEventsRows.map((e) => e.row);
@@ -80,7 +92,10 @@ export default async function LocationDetailPage({
     getGoingOccurrenceIds(occIds, currentUser?.id),
     getFriendIds(currentUser?.id),
   ]);
-  const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
+  const friendsGoingByEvent = await getFriendsGoingByOccurrence(
+    occIds,
+    friendIds,
+  );
 
   return (
     <div>
@@ -100,97 +115,94 @@ export default async function LocationDetailPage({
               src={location.photoUrl}
               alt={location.name}
               className="surface"
-              style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover" }}
+              style={{
+                width: "100%",
+                aspectRatio: "1 / 1",
+                objectFit: "cover",
+              }}
             />
           </div>
         )}
 
-        <div className={location.photoUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}>
+        <div
+          className={location.photoUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}
+        >
           {location.description && (
             <p className="text-secondary mb-4">{location.description}</p>
           )}
 
-          <h2
-            className="section-heading mb-2"
-          >
-            Сериалы
-          </h2>
-          {location.dramas.length === 0 ? (
-            <p className="small text-secondary">Пока нет связанных сериалов.</p>
-          ) : (
-            <div className="d-flex flex-wrap gap-2">
-              {location.dramas.map(({ drama }) => (
-                <Link
-                  key={drama.id}
-                  href={dramaHref(drama)}
-                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
-                  style={{ width: "11rem" }}
-                >
-                  <div
-                    style={{
-                      width: "2.5rem",
-                      height: "3.4rem",
-                      borderRadius: "0.375rem",
-                      background: "var(--bs-secondary-bg)",
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
+          {/* Раздел без содержимого не рисуем вовсе. */}
+          {location.dramas.length > 0 && (
+            <>
+              <h2 className="section-heading mb-2">Сериалы</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {location.dramas.map(({ drama }) => (
+                  <Link
+                    key={drama.id}
+                    href={dramaHref(drama)}
+                    className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
+                    style={{ width: "11rem" }}
                   >
-                    {drama.posterUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={drama.posterUrl}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
-                  </div>
-                  <span className="font-display fw-medium text-white text-truncate">
-                    {drama.title}
-                  </span>
-                </Link>
-              ))}
-            </div>
+                    <div
+                      style={{
+                        width: "2.5rem",
+                        height: "3.4rem",
+                        borderRadius: "0.375rem",
+                        background: "var(--bs-secondary-bg)",
+                        flexShrink: 0,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {drama.posterUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={drama.posterUrl}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span className="font-display fw-medium text-white text-truncate">
+                      {drama.title}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </>
           )}
 
           {locationEvents.length > 0 && (
             <div className="mt-4">
-              <h2
-                className="section-heading mb-2"
-              >
-                События здесь
-              </h2>
+              <h2 className="section-heading mb-2">События здесь</h2>
               <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
-                {locationEventsRows.map(({ row, extraDates }) => (
+                {locationEventsRows.map(({ row, extraDates }) =>
                   isPremiumActive(currentUser) ? (
-
                     <EventAgendaRow
-                    key={row.id}
-                    event={row}
-                    isFavorited={favoritedIds.has(row.id)}
-                    isGoing={goingIds.has(row.occurrenceId)}
-                    friendsGoing={friendsGoingByEvent.get(row.occurrenceId) ?? []}
-                    showDate
-                    extraDates={extraDates}
-                  />
-
+                      key={row.id}
+                      event={row}
+                      isFavorited={favoritedIds.has(row.id)}
+                      isGoing={goingIds.has(row.occurrenceId)}
+                      friendsGoing={
+                        friendsGoingByEvent.get(row.occurrenceId) ?? []
+                      }
+                      showDate
+                      extraDates={extraDates}
+                    />
                   ) : (
-
                     <EventCardLocked key={row.id} startsAt={row.startsAt} />
-
-                  )
-                ))}
+                  ),
+                )}
               </div>
             </div>
           )}
 
           {location.latitude != null && location.longitude != null && (
             <div className="mt-4">
-              <h2
-                className="section-heading mb-2"
-              >
-                На карте
-              </h2>
+              <h2 className="section-heading mb-2">На карте</h2>
               <LocationMap
                 locations={[
                   {
@@ -202,6 +214,27 @@ export default async function LocationDetailPage({
                 ]}
                 height="16rem"
               />
+            </div>
+          )}
+
+          {/* Атрибуция: каталог локаций съёмок собран с blscene.com,
+              ссылка на первоисточник обязательна (см.
+              features/blscene-import.md). У мест, добавленных
+              пользователями, источника нет — блок не рисуется. */}
+          {location.sourceUrl && (
+            <div className="mt-4 sources-block">
+              <h2 className="section-heading mb-2" style={{ opacity: 0.55 }}>
+                Источники
+              </h2>
+              <p className="small mb-0">
+                <a
+                  href={location.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {new URL(location.sourceUrl).hostname.replace(/^www\./, "")}
+                </a>
+              </p>
             </div>
           )}
         </div>

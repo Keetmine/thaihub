@@ -144,8 +144,8 @@ export default function EntitySelect({
         setQuery("");
         setCreatePrefill(null);
       }
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Не удалось создать");
+    } catch {
+      setCreateError("Не удалось создать. Проверьте название и попробуйте ещё раз.");
     } finally {
       setIsCreating(false);
     }

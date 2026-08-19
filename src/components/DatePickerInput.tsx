@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dateKey, getMonthGrid, parseDateKey, WEEKDAY_NAMES_RU } from "@/lib/dates";
 
@@ -67,6 +67,8 @@ export default function DatePickerInput({
   const [dropdownPos, setDropdownPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Узел выпадашки: она в портале, вне дерева ref — см. onBlur ниже.
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const DROPDOWN_HEIGHT = 340; // примерная высота календаря для флипа вверх
 
@@ -94,6 +96,19 @@ export default function DatePickerInput({
     setViewYear(next.getFullYear());
     setViewMonth(next.getMonth());
   }
+
+  // Клик по пустому месту страницы закрывает пикер: onBlur ловит только
+  // уход фокуса, а мышь по неинтерактивному фону фокус не переносит.
+  useEffect(() => {
+    if (!isOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || dropdownRef.current?.contains(target)) return;
+      setIsOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [isOpen]);
 
   function pick(day: Date) {
     const key = dateKey(day);
@@ -133,13 +148,19 @@ export default function DatePickerInput({
           if (e.key === "Escape") setIsOpen(false);
         }}
         onBlur={(e) => {
-          // Закрываем только если фокус ушёл за пределы пикера целиком.
-          if (!ref.current?.contains(e.relatedTarget as Node)) setIsOpen(false);
+          // Выпадашка живёт в портале, поэтому «внутри пикера» — это
+          // либо само поле, либо узел портала. Без второй проверки клик
+          // по селекту месяца/года читался как уход фокуса наружу, и
+          // календарь закрывался, не дав ничего выбрать.
+          const next = e.relatedTarget as Node | null;
+          if (ref.current?.contains(next) || dropdownRef.current?.contains(next)) return;
+          setIsOpen(false);
         }}
       />
 
       {isOpen && dropdownPos && createPortal(
         <div
+          ref={dropdownRef}
           className="date-picker-dropdown"
           style={{
             position: "fixed",

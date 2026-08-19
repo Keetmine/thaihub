@@ -446,6 +446,11 @@ model Location {
   // (например, тайское название), ссылки откатываются на id.
   slug           String?  @unique
   description String?
+  // Откуда взята локация — блок «Источники» на её странице (см.
+  // features/locations.md). Каталожные локации пришли с blscene.com, и
+  // атрибуция там обязательна; у мест, созданных пользователями
+  // (createdByUserId), источника нет.
+  sourceUrl   String?
   photoUrl    String?
   latitude    Float?
   longitude   Float?

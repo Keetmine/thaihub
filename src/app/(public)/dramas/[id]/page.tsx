@@ -10,12 +10,28 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
-import { BuildingIcon, BookIcon, CalendarIcon, TagIcon, TvIcon, UserIcon, InfoIcon } from "@/components/icons";
+import {
+  BuildingIcon,
+  BookIcon,
+  CalendarIcon,
+  TagIcon,
+  TvIcon,
+  UserIcon,
+  InfoIcon,
+} from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
-import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
+import {
+  DRAMA_STATUS_LABELS,
+  DRAMA_STATUS_BADGE_CLASS,
+} from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
-import { agencyHref, locationHref, novelHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import {
+  agencyHref,
+  locationHref,
+  novelHref,
+  slugOrIdWhere,
+} from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
 import { dramaHref } from "@/lib/dramaSlug";
 
@@ -31,13 +47,18 @@ const WEEKDAYS_RU: Record<string, string> = {
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id: rawId } = await params;
   const drama = await prisma.drama.findFirst({
     where: slugOrIdWhere(rawId),
     select: { title: true, year: true, synopsis: true, posterUrl: true },
   });
-  if (!drama) return pageMetadata({ title: "Сериал", description: "Сериал не найден." });
+  if (!drama)
+    return pageMetadata({ title: "Сериал", description: "Сериал не найден." });
   return pageMetadata({
     title: `${drama.title}${drama.year ? ` (${drama.year})` : ""}`,
     description:
@@ -56,14 +77,16 @@ export default async function DramaDetailPage({
 }) {
   const { id: rawId } = await params;
 
-
   const drama = await prisma.drama.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
       performers: { include: { performer: true } },
       agency: true,
       agencies: { include: { agency: true } },
-      locations: { include: { location: true }, orderBy: { location: { name: "asc" } } },
+      locations: {
+        include: { location: true },
+        orderBy: { location: { name: "asc" } },
+      },
       novel: true,
       relatedFrom: { include: { related: true } },
       relatedTo: { include: { drama: true } },
@@ -91,7 +114,9 @@ export default async function DramaDetailPage({
   });
   const eventsRows = groupByEvent(
     dramaEvents
-      .flatMap((ev) => ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })))
+      .flatMap((ev) =>
+        ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })),
+      )
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
   );
   const events = eventsRows.map((e) => e.row);
@@ -115,14 +140,21 @@ export default async function DramaDetailPage({
 
   // Related Content с MDL: связь направленная, показываем обе стороны.
   const relatedItems = [
-    ...drama.relatedFrom.map((r) => ({ drama: r.related, relation: r.relation })),
+    ...drama.relatedFrom.map((r) => ({
+      drama: r.related,
+      relation: r.relation,
+    })),
     ...drama.relatedTo
       .filter((r) => !drama.relatedFrom.some((f) => f.relatedId === r.dramaId))
       .map((r) => ({ drama: r.drama, relation: r.relation })),
   ];
 
   const formatAired = (d: Date) =>
-    d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+    d.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
   const visitedLocationIds = new Set<string>();
   if (currentUser && drama.locations.length > 0) {
@@ -139,7 +171,10 @@ export default async function DramaDetailPage({
   return (
     <div>
       <BackLink fallbackHref="/dramas" fallbackLabel="← Все сериалы" />
-      <h1 className="display-1-tight mt-3 mb-3 d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "2.25rem" }}>
+      <h1
+        className="display-1-tight mt-3 mb-3 d-flex flex-wrap align-items-center gap-2"
+        style={{ fontSize: "2.25rem" }}
+      >
         {drama.title}{" "}
         {drama.year && (
           <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
@@ -153,7 +188,10 @@ export default async function DramaDetailPage({
         )}
       </h1>
       {(drama.nativeTitle || drama.alsoKnownAs) && (
-        <p className="small text-secondary mb-3" style={{ marginTop: "-0.5rem" }}>
+        <p
+          className="small text-secondary mb-3"
+          style={{ marginTop: "-0.5rem" }}
+        >
           {drama.nativeTitle}
           {drama.nativeTitle && drama.alsoKnownAs ? " · " : ""}
           {drama.alsoKnownAs}
@@ -164,21 +202,30 @@ export default async function DramaDetailPage({
         {(drama.posterUrl || currentUser) && (
           <div className="col-12 col-sm-4 col-md-3">
             <div className="position-sticky" style={{ top: "6.5rem" }}>
-            {drama.posterUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={drama.posterUrl}
-                alt={drama.title}
-                className="surface"
-                style={{ width: "100%", aspectRatio: "2 / 3", objectFit: "cover" }}
-              />
-            )}
-            {currentUser && (
-              <div className="mt-3">
-                <span className="small text-secondary d-block mb-1">Статус просмотра</span>
-                <WatchStatusSelect dramaId={drama.id} status={watchStatus?.status ?? null} />
-              </div>
-            )}
+              {drama.posterUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={drama.posterUrl}
+                  alt={drama.title}
+                  className="surface"
+                  style={{
+                    width: "100%",
+                    aspectRatio: "2 / 3",
+                    objectFit: "cover",
+                  }}
+                />
+              )}
+              {currentUser && (
+                <div className="mt-3">
+                  <span className="small text-secondary d-block mb-1">
+                    Статус просмотра
+                  </span>
+                  <WatchStatusSelect
+                    dramaId={drama.id}
+                    status={watchStatus?.status ?? null}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -215,7 +262,10 @@ export default async function DramaDetailPage({
             <p className="small text-secondary mb-2">
               <BookIcon className="icon-inline" />{" "}
               <span className="text-secondary">По новелле:</span>{" "}
-              <Link href={novelHref(drama.novel)} className="link-body-emphasis">
+              <Link
+                href={novelHref(drama.novel)}
+                className="link-body-emphasis"
+              >
                 {drama.novel.title}
               </Link>
               {drama.novel.author ? ` (${drama.novel.author})` : ""}
@@ -228,7 +278,9 @@ export default async function DramaDetailPage({
                 <TagIcon /> <span className="text-secondary">Жанры:</span>
               </span>
               {drama.genres.map((g) => (
-                <span key={g} className="tag-chip">{g}</span>
+                <span key={g} className="tag-chip">
+                  {g}
+                </span>
               ))}
             </p>
           )}
@@ -236,7 +288,8 @@ export default async function DramaDetailPage({
           <div className="d-flex flex-column gap-1 mb-3">
             {(drama.episodes || drama.duration) && (
               <p className="small text-secondary mb-0">
-                <TvIcon className="icon-inline" /> <span className="text-secondary">Эпизоды:</span>{" "}
+                <TvIcon className="icon-inline" />{" "}
+                <span className="text-secondary">Эпизоды:</span>{" "}
                 {drama.episodes ? `${drama.episodes}` : "?"}
                 {drama.duration ? ` × ${drama.duration}` : ""}
               </p>
@@ -245,27 +298,33 @@ export default async function DramaDetailPage({
               <p className="small text-secondary mb-0">
                 <CalendarIcon /> <span className="text-secondary">Эфир:</span>{" "}
                 {formatAired(drama.airedFrom)}
-                {drama.airedTo && drama.airedTo.getTime() !== drama.airedFrom.getTime()
+                {drama.airedTo &&
+                drama.airedTo.getTime() !== drama.airedFrom.getTime()
                   ? ` — ${formatAired(drama.airedTo)}`
                   : ""}
-                {drama.airedOn ? ` (${WEEKDAYS_RU[drama.airedOn] ?? drama.airedOn})` : ""}
+                {drama.airedOn
+                  ? ` (${WEEKDAYS_RU[drama.airedOn] ?? drama.airedOn})`
+                  : ""}
               </p>
             )}
             {drama.director && (
               <p className="small text-secondary mb-0">
-                <UserIcon className="icon-inline" /> <span className="text-secondary">Режиссёр:</span>{" "}
+                <UserIcon className="icon-inline" />{" "}
+                <span className="text-secondary">Режиссёр:</span>{" "}
                 {drama.director}
               </p>
             )}
             {drama.screenwriter && (
               <p className="small text-secondary mb-0">
-                <UserIcon className="icon-inline" /> <span className="text-secondary">Сценарий:</span>{" "}
+                <UserIcon className="icon-inline" />{" "}
+                <span className="text-secondary">Сценарий:</span>{" "}
                 {drama.screenwriter}
               </p>
             )}
             {drama.contentRating && (
               <p className="small text-secondary mb-0">
-                <InfoIcon /> <span className="text-secondary">Рейтинг:</span> {drama.contentRating}
+                <InfoIcon /> <span className="text-secondary">Рейтинг:</span>{" "}
+                {drama.contentRating}
               </p>
             )}
             {(drama.mdlScore != null || ourRating != null) && (
@@ -273,7 +332,16 @@ export default async function DramaDetailPage({
                 {ourRating != null && (
                   <>
                     <span className="text-secondary">Оценка MyBLHub:</span>{" "}
-                    <span style={{ color: ourRating >= 7 ? "#3bb33b" : ourRating >= 5 ? "inherit" : "#e5484d" }}>
+                    <span
+                      style={{
+                        color:
+                          ourRating >= 7
+                            ? "#3bb33b"
+                            : ourRating >= 5
+                              ? "inherit"
+                              : "#e5484d",
+                      }}
+                    >
                       ★ {ourRating.toFixed(1)}
                     </span>{" "}
                     <span className="text-secondary">({ourRatingCount})</span>
@@ -282,7 +350,8 @@ export default async function DramaDetailPage({
                 {ourRating != null && drama.mdlScore != null && " · "}
                 {drama.mdlScore != null && (
                   <>
-                    <span className="text-secondary">MDL:</span> ★ {drama.mdlScore.toFixed(1)}
+                    <span className="text-secondary">MDL:</span> ★{" "}
+                    {drama.mdlScore.toFixed(1)}
                   </>
                 )}
               </p>
@@ -306,33 +375,33 @@ export default async function DramaDetailPage({
             </p>
           )}
 
-          <h2
-            className="section-heading mb-2"
-          >
-            Актёрский состав
-          </h2>
-          {drama.performers.length === 0 ? (
-            <p className="small text-secondary">Состав пока не указан.</p>
-          ) : (
-            <div className="d-flex flex-wrap gap-2">
-              {drama.performers.map(({ performer, role }) => (
-                <EntityMiniCard
-                  key={performer.id}
-                  href={performerHref(performer)}
-                  photoUrl={performer.photoUrl}
-                  name={performer.name}
-                  subtitle={role}
-                  style={{ flex: "1 1 10rem", minWidth: "70px", maxWidth: "15rem" }}
-                />
-              ))}
-            </div>
+          {/* Пустой раздел не рисуем — ни заголовка, ни «состав не
+              указан»: у сериалов без каста это была строка ни о чём. */}
+          {drama.performers.length > 0 && (
+            <>
+              <h2 className="section-heading mb-2">Актёрский состав</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {drama.performers.map(({ performer, role }) => (
+                  <EntityMiniCard
+                    key={performer.id}
+                    href={performerHref(performer)}
+                    photoUrl={performer.photoUrl}
+                    name={performer.name}
+                    subtitle={role}
+                    style={{
+                      flex: "1 1 10rem",
+                      minWidth: "70px",
+                      maxWidth: "15rem",
+                    }}
+                  />
+                ))}
+              </div>
+            </>
           )}
 
           {relatedItems.length > 0 && (
             <>
-              <h2 className="section-heading mb-2 mt-4">
-                Связанные сериалы
-              </h2>
+              <h2 className="section-heading mb-2 mt-4">Связанные сериалы</h2>
               <div className="d-flex flex-wrap gap-2">
                 {relatedItems.map(({ drama: rel, relation }) => (
                   <EntityMiniCard
@@ -350,11 +419,7 @@ export default async function DramaDetailPage({
 
           {drama.locations.length > 0 && (
             <>
-              <h2
-                className="section-heading mb-2 mt-4"
-              >
-                Локации
-              </h2>
+              <h2 className="section-heading mb-2 mt-4">Локации</h2>
               <div className="d-flex flex-column gap-2">
                 {drama.locations.map(({ location }) => (
                   <div
@@ -381,7 +446,11 @@ export default async function DramaDetailPage({
                           <img
                             src={location.photoUrl}
                             alt=""
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
                           />
                         )}
                       </div>
@@ -404,30 +473,22 @@ export default async function DramaDetailPage({
 
       {events.length > 0 && (
         <div className="mt-4">
-          <h2
-            className="section-heading mb-2"
-          >
-            События
-          </h2>
+          <h2 className="section-heading mb-2">События</h2>
           <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
-            {eventsRows.map(({ row, extraDates }) => (
+            {eventsRows.map(({ row, extraDates }) =>
               isPremiumActive(currentUser) ? (
-
                 <EventAgendaRow
-                key={row.id}
-                event={row}
-                isFavorited={favoritedEventIds.has(row.id)}
-                isGoing={goingEventIds.has(row.occurrenceId)}
-                showDate
-                extraDates={extraDates}
-              />
-
+                  key={row.id}
+                  event={row}
+                  isFavorited={favoritedEventIds.has(row.id)}
+                  isGoing={goingEventIds.has(row.occurrenceId)}
+                  showDate
+                  extraDates={extraDates}
+                />
               ) : (
-
                 <EventCardLocked key={row.id} startsAt={row.startsAt} />
-
-              )
-            ))}
+              ),
+            )}
           </div>
         </div>
       )}

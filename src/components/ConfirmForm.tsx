@@ -9,7 +9,7 @@ export default function ConfirmForm({
   className,
   children,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => void | Promise<void | { error?: string } | undefined>;
   confirmMessage: string;
   className?: string;
   /** Кнопка-триггер. ОБЯЗАТЕЛЬНО с type="button" — обёртка перехватывает
@@ -24,10 +24,17 @@ export default function ConfirmForm({
     setIsSubmitting(true);
     setError(null);
     try {
-      await action(new FormData());
+      // Экшен может вернуть { error } — так серверные проверки
+      // доносят причину до пользователя: текст брошенного исключения
+      // Next в проде на клиент не передаёт (см. docs/architecture.md).
+      const result = await action(new FormData());
+      if (result && typeof result === "object" && "error" in result && result.error) {
+        setError(String(result.error));
+        return;
+      }
       setOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось выполнить действие");
+    } catch {
+      setError("Не удалось выполнить действие. Обновите страницу и попробуйте ещё раз.");
     } finally {
       setIsSubmitting(false);
     }

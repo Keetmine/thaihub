@@ -163,8 +163,8 @@ export default function EntityMultiSelect({
         add(created);
         setCreatePrefill(null);
       }
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Не удалось создать");
+    } catch {
+      setCreateError("Не удалось создать. Проверьте название и попробуйте ещё раз.");
     } finally {
       setIsCreating(false);
     }

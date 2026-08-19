@@ -26,8 +26,8 @@ export default function FriendActionButton({
     try {
       await action(id);
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось выполнить действие");
+    } catch {
+      setError("Не получилось. Обновите страницу и попробуйте ещё раз.");
     } finally {
       setIsSubmitting(false);
     }

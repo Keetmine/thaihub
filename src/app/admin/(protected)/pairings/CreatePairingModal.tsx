@@ -37,8 +37,8 @@ export default function CreatePairingModal({ performers }: { performers: EntityO
       await createPairing(formData);
       close();
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось создать пейринг");
+    } catch {
+      setError("Не удалось создать пейринг. Проверьте выбранных актёров.");
     } finally {
       setIsSubmitting(false);
     }

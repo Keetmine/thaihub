@@ -33,6 +33,9 @@ async function linkScrapedLocations(
   dramaId: string,
   locations: BlsceneDrama["locations"],
   browser: Browser,
+  /** Страница blscene, с которой пришли локации — идёт в sourceUrl для
+   *  атрибуции на странице локации (см. features/locations.md). */
+  sourceUrl?: string | null,
 ): Promise<{ linked: number; newLocations: number; withCoords: number }> {
   let linked = 0;
   let newLocations = 0;
@@ -51,6 +54,7 @@ async function linkScrapedLocations(
           photoUrl: loc.photoUrl,
           latitude: coords?.lat ?? null,
           longitude: coords?.lng ?? null,
+          sourceUrl: sourceUrl ?? "https://blscene.com",
         },
       });
       newLocations++;
@@ -88,7 +92,12 @@ export async function importScrapedDrama(
     },
   });
 
-  const { linked, withCoords } = await linkScrapedLocations(drama.id, scraped.locations, browser);
+  const { linked, withCoords } = await linkScrapedLocations(
+    drama.id,
+    scraped.locations,
+    browser,
+    scraped.sourceUrl,
+  );
   return { locationsImported: linked, locationsWithCoords: withCoords };
 }
 
@@ -115,7 +124,12 @@ async function refreshScrapedDrama(
     },
   });
 
-  const { newLocations } = await linkScrapedLocations(dramaId, scraped.locations, browser);
+  const { newLocations } = await linkScrapedLocations(
+    dramaId,
+    scraped.locations,
+    browser,
+    scraped.sourceUrl,
+  );
   return { newLocations };
 }
 

@@ -76,7 +76,9 @@ export default async function AdminFinancePage() {
                       <ConfirmForm
                         action={async () => {
                           "use server";
-                          await refundPayment(p.id);
+                          // Возврат отдаёт причину значением — ConfirmForm
+                          // покажет её пользователю.
+                          return await refundPayment(p.id);
                         }}
                         confirmMessage={`Вернуть ${p.amount} Stars? Подписка пользователя будет снята.`}
                       >

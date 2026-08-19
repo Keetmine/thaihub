@@ -11,18 +11,26 @@ import { logAudit } from "@/lib/audit";
  * снимаем подписку, которую та оплата дала, и помечаем платёж
  * возвращённым (в выручке он больше не считается).
  */
-export async function refundPayment(paymentId: string): Promise<void> {
+export async function refundPayment(paymentId: string): Promise<{ error?: string }> {
   await requireAdmin();
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: { user: { select: { id: true, name: true, email: true, telegramId: true } } },
   });
-  if (!payment) throw new Error("Оплата не найдена");
-  if (payment.refundedAt) throw new Error("Эта оплата уже возвращена");
-  if (!payment.telegramChargeId) throw new Error("У оплаты нет charge id — вернуть через API нельзя");
-  if (!payment.user?.telegramId) throw new Error("У пользователя не привязан Telegram");
+  // Причины возвращаем значением: текст исключения из server action Next
+  // в проде клиенту не отдаёт, и админ видел бы «Не удалось выполнить».
+  if (!payment) return { error: "Оплата не найдена" };
+  if (payment.refundedAt) return { error: "Эта оплата уже возвращена" };
+  if (!payment.telegramChargeId) {
+    return { error: "У оплаты нет charge id — вернуть через API нельзя" };
+  }
+  if (!payment.user?.telegramId) return { error: "У пользователя не привязан Telegram" };
 
-  await refundStarPayment(payment.user.telegramId, payment.telegramChargeId);
+  try {
+    await refundStarPayment(payment.user.telegramId, payment.telegramChargeId);
+  } catch (e) {
+    return { error: e instanceof Error ? `Telegram отказал: ${e.message}` : "Telegram отказал" };
+  }
 
   await prisma.$transaction([
     prisma.payment.update({ where: { id: paymentId }, data: { refundedAt: new Date() } }),
@@ -39,4 +47,5 @@ export async function refundPayment(paymentId: string): Promise<void> {
   });
 
   revalidatePath("/admin/finance");
+  return {};
 }

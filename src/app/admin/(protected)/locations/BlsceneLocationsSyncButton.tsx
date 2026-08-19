@@ -19,8 +19,8 @@ export default function BlsceneLocationsSyncButton() {
       const res = await syncBlsceneLocations();
       setResult(res);
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось выполнить проверку");
+    } catch {
+      setError("Проверка не запустилась — посмотрите /admin/errors.");
     } finally {
       setIsRunning(false);
     }
