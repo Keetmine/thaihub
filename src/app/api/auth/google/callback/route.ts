@@ -81,7 +81,8 @@ export async function GET(request: NextRequest) {
   }
 
   await createUserSession(user.id);
-  const res = NextResponse.redirect(new URL("/account", publicOrigin(request.nextUrl.origin)));
+  const next = user.username ? "/account" : "/welcome/profile";
+  const res = NextResponse.redirect(new URL(next, publicOrigin(request.nextUrl.origin)));
   res.cookies.delete("google_oauth_state");
   return res;
 }

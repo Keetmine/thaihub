@@ -10,6 +10,7 @@ export type ProfileMenuUser = {
   name: string | null;
   email: string | null;
   photoUrl: string | null;
+  username: string | null;
 };
 
 export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
@@ -47,12 +48,18 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
 
       {open && (
         <div className="profile-menu-panel">
+          {/* Публичная страница — ссылкой на неё делятся с друзьями
+              («добавь меня»), поэтому «Мой профиль» ведёт именно туда, а
+              настройки и статистика живут в кабинете. */}
           <Link
-            href="/account"
+            href={user.username ? `/users/${user.username}` : "/account"}
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
             Мой профиль
+          </Link>
+          <Link href="/account" className="profile-menu-item" onClick={() => setOpen(false)}>
+            Кабинет
           </Link>
           <Link
             href="/friends"

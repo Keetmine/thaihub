@@ -17,6 +17,8 @@ import SettingsTabs from "./SettingsTabs";
 import { pageMetadata } from "@/lib/seo";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
 import { telegramBotUsername } from "@/lib/telegram";
+import { COUNTRIES } from "@/lib/countries";
+import { dateKey } from "@/lib/dates";
 
 export const metadata = pageMetadata({
   title: "Настройки",
@@ -76,6 +78,22 @@ export default async function SettingsPage({
             <form action={updateProfile} className="row g-3">
               <div className="col-12 col-md-6 d-flex flex-column gap-3">
                 <div>
+                  <label className="form-label">Ник</label>
+                  {/* Он же адрес профиля — ссылкой делятся с друзьями. */}
+                  <div className="input-group">
+                    <span className="input-group-text small text-secondary">/users/</span>
+                    <input
+                      name="username"
+                      defaultValue={user.username ?? ""}
+                      className="form-control"
+                    />
+                  </div>
+                  <p className="small text-secondary mb-0 mt-1">
+                    Латиница, цифры, точка, дефис или подчёркивание. Занятый ник
+                    не сохранится — прежний останется.
+                  </p>
+                </div>
+                <div>
                   <label className="form-label">Имя</label>
                   <input name="name" defaultValue={user.name ?? ""} className="form-control" />
                 </div>
@@ -93,12 +111,53 @@ export default async function SettingsPage({
                     зоне.
                   </p>
                 </div>
+                <div>
+                  <label className="form-label">Страна</label>
+                  <select name="country" defaultValue={user.country ?? ""} className="form-select">
+                    <option value="">не указана</option>
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <p className="small text-secondary mb-0">
                   Имя видно друзьям и в публичном профиле.
                 </p>
               </div>
-              <div className="col-12 col-md-6">
+              <div className="col-12 col-md-6 d-flex flex-column gap-3">
                 <FileDropzone name="photoUrl" label="Фото" defaultValue={user.photoUrl ?? ""} />
+                <div className="row g-3">
+                  <div className="col-6">
+                    <label className="form-label">Пол</label>
+                    <select name="gender" defaultValue={user.gender ?? ""} className="form-select">
+                      <option value="">не указан</option>
+                      <option value="female">женский</option>
+                      <option value="male">мужской</option>
+                      <option value="other">другой</option>
+                    </select>
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label">Дата рождения</label>
+                    <input
+                      type="date"
+                      name="birthDate"
+                      defaultValue={user.birthDate ? dateKey(user.birthDate) : ""}
+                      className="form-control"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">О себе</label>
+                  <textarea
+                    name="bio"
+                    rows={3}
+                    defaultValue={user.bio ?? ""}
+                    placeholder="Любимые пейринги, на скольких концертах были"
+                    className="form-control"
+                  />
+                </div>
               </div>
               <div className="col-12">
                 <button type="submit" className="btn btn-primary btn-sm">

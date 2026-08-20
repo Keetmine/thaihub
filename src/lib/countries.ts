@@ -1,0 +1,83 @@
+// Страны для профиля. Список неполный по замыслу: сверху те, откуда
+// аудитория, дальше остальные по алфавиту внутри регионов. Если чьей-то
+// страны не хватает — добавляется сюда одной строкой.
+export const COUNTRIES: { code: string; label: string }[] = [
+  { code: "RU", label: "Россия" },
+  { code: "BY", label: "Беларусь" },
+  { code: "KZ", label: "Казахстан" },
+  { code: "UA", label: "Украина" },
+  { code: "TH", label: "Таиланд" },
+  { code: "AM", label: "Армения" },
+  { code: "GE", label: "Грузия" },
+  { code: "KG", label: "Киргизия" },
+  { code: "UZ", label: "Узбекистан" },
+  { code: "AZ", label: "Азербайджан" },
+  { code: "MD", label: "Молдова" },
+  { code: "LV", label: "Латвия" },
+  { code: "LT", label: "Литва" },
+  { code: "EE", label: "Эстония" },
+  { code: "PL", label: "Польша" },
+  { code: "DE", label: "Германия" },
+  { code: "FR", label: "Франция" },
+  { code: "IT", label: "Италия" },
+  { code: "ES", label: "Испания" },
+  { code: "PT", label: "Португалия" },
+  { code: "NL", label: "Нидерланды" },
+  { code: "BE", label: "Бельгия" },
+  { code: "AT", label: "Австрия" },
+  { code: "CH", label: "Швейцария" },
+  { code: "CZ", label: "Чехия" },
+  { code: "SK", label: "Словакия" },
+  { code: "HU", label: "Венгрия" },
+  { code: "RO", label: "Румыния" },
+  { code: "BG", label: "Болгария" },
+  { code: "RS", label: "Сербия" },
+  { code: "HR", label: "Хорватия" },
+  { code: "GR", label: "Греция" },
+  { code: "TR", label: "Турция" },
+  { code: "CY", label: "Кипр" },
+  { code: "IL", label: "Израиль" },
+  { code: "AE", label: "ОАЭ" },
+  { code: "GB", label: "Великобритания" },
+  { code: "IE", label: "Ирландия" },
+  { code: "SE", label: "Швеция" },
+  { code: "NO", label: "Норвегия" },
+  { code: "FI", label: "Финляндия" },
+  { code: "DK", label: "Дания" },
+  { code: "IS", label: "Исландия" },
+  { code: "US", label: "США" },
+  { code: "CA", label: "Канада" },
+  { code: "MX", label: "Мексика" },
+  { code: "BR", label: "Бразилия" },
+  { code: "AR", label: "Аргентина" },
+  { code: "CL", label: "Чили" },
+  { code: "JP", label: "Япония" },
+  { code: "KR", label: "Южная Корея" },
+  { code: "CN", label: "Китай" },
+  { code: "HK", label: "Гонконг" },
+  { code: "TW", label: "Тайвань" },
+  { code: "SG", label: "Сингапур" },
+  { code: "MY", label: "Малайзия" },
+  { code: "ID", label: "Индонезия" },
+  { code: "PH", label: "Филиппины" },
+  { code: "VN", label: "Вьетнам" },
+  { code: "IN", label: "Индия" },
+  { code: "AU", label: "Австралия" },
+  { code: "NZ", label: "Новая Зеландия" },
+  { code: "ZA", label: "ЮАР" },
+  { code: "EG", label: "Египет" },
+  { code: "MA", label: "Марокко" },
+  { code: "QA", label: "Катар" },
+  { code: "SA", label: "Саудовская Аравия" },
+  { code: "MN", label: "Монголия" },
+];
+
+const BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c.label]));
+
+export function countryLabel(code: string | null | undefined): string | null {
+  return code ? (BY_CODE.get(code) ?? null) : null;
+}
+
+export function isKnownCountry(code: string): boolean {
+  return BY_CODE.has(code);
+}

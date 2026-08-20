@@ -25,10 +25,16 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   if (!viewer) redirect("/login");
 
   const { id } = await params;
+  // Ник от id отличаем по формату: id — это cuid (начинается с "c" и
+  // длинный), ник короче и может быть любым допустимым словом.
+  const looksLikeId = /^c[a-z0-9]{20,}$/.test(id);
+  const username = looksLikeId ? null : id;
   if (id === viewer.id) redirect("/account");
 
   const user = await prisma.user.findUnique({
-    where: { id },
+    // Ник в адресе (/users/keetmine) — им делятся с друзьями; id
+    // остаётся рабочим для старых ссылок и аккаунтов без ника.
+    where: username ? { username } : { id },
     include: {
       favoritePerformers: { include: { performer: true }, orderBy: { createdAt: "desc" } },
       eventAttendances: {

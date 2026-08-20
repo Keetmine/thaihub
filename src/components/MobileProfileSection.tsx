@@ -5,7 +5,7 @@ import { logout } from "@/app/(public)/login/actions";
 import type { ProfileMenuUser } from "./ProfileMenu";
 
 const ITEMS = [
-  { href: "/account", label: "Мой профиль" },
+  { href: "/account", label: "Кабинет" },
   { href: "/notifications", label: "Уведомления" },
   { href: "/?filter=favorited", label: "Избранное" },
   { href: "/friends", label: "Друзья" },
@@ -48,6 +48,12 @@ export default function MobileProfileSection({ user }: { user: ProfileMenuUser }
         </span>
       </div>
 
+      {/* Публичный профиль — ссылка, которой делятся с друзьями. */}
+      {user.username && (
+        <Link href={`/users/${user.username}`} className="nav-link">
+          Мой профиль
+        </Link>
+      )}
       {ITEMS.map((item) => (
         <Link key={item.href} href={item.href} className="nav-link">
           {item.label}

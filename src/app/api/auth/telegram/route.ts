@@ -43,5 +43,8 @@ export async function GET(request: Request) {
       });
 
   await createUserSession(user.id);
-  return NextResponse.redirect(new URL("/", publicOrigin(url.origin)));
+  // Новичок без ника — сначала шаг профиля: ник нужен для ссылки на
+  // профиль, и просить его потом сложнее.
+  const next = user.username ? "/" : "/welcome/profile";
+  return NextResponse.redirect(new URL(next, publicOrigin(url.origin)));
 }

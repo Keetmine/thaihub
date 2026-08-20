@@ -11,6 +11,9 @@ export const dynamic = "force-dynamic";
 export default async function WelcomePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  // Ник — обязательная часть регистрации: без него профиль недоступен
+  // по ссылке, а просить его позже человек уже не станет.
+  if (!user.username) redirect("/welcome/profile");
 
   // Стартовые варианты — самые «событийные» артисты (у них точно есть
   // что показать), остальных доищут через поиск.

@@ -586,6 +586,11 @@ model User {
   // Both nullable because a Telegram-auth account has neither — an
   // email+password account always has both (enforced in the signup
   // action, not the schema).
+  // Ник: публичная часть ссылки (/users/keetmine), уникален и виден
+  // всем. Предзаполняется на шаге после регистрации из Telegram-username
+  // или части почты — так человек не застревает на форме, — но его
+  // можно изменить.
+  username     String?  @unique
   email        String?  @unique
   passwordHash String?
   // Роль админа: доступ к /admin без отдельного пароля — обычная
@@ -634,6 +639,12 @@ model User {
   icsToken     String?  @unique
   // Таймзона для «времени в скобках» рядом с тайским (дефолт — МСК).
   timezone     String   @default("Europe/Moscow")
+  // Профиль: заполняется по желанию на шаге после регистрации и в
+  // настройках.
+  country      String?
+  gender       String?
+  birthDate    DateTime?
+  bio          String?
   createdAt    DateTime @default(now())
 
   sessions            UserSession[]

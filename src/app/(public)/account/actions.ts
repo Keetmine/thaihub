@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isKnownTimezone } from "@/lib/timezones";
 import { getCurrentUser, hashPassword, verifyPassword } from "@/lib/userAuth";
+import { isValidUsername, RESERVED_USERNAMES } from "@/lib/userProfile";
+import { isKnownCountry } from "@/lib/countries";
 
 export async function updateProfile(formData: FormData) {
   const user = await getCurrentUser();
@@ -14,6 +16,24 @@ export async function updateProfile(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const timezone = String(formData.get("timezone") ?? "");
+  const country = String(formData.get("country") ?? "").trim();
+  const gender = String(formData.get("gender") ?? "").trim();
+  const bio = String(formData.get("bio") ?? "").trim();
+  const birthRaw = String(formData.get("birthDate") ?? "").trim();
+  const [by, bm, bd] = birthRaw.split("-").map(Number);
+
+  // Ник меняется здесь же: он уникален и служит адресом профиля,
+  // поэтому проверяем формат и занятость, а при ошибке молча оставляем
+  // прежний — форма настроек не показывает ошибки полей.
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  let nextUsername: string | undefined;
+  if (username && username !== user.username) {
+    const valid = isValidUsername(username) && !RESERVED_USERNAMES.has(username);
+    const taken = valid
+      ? await prisma.user.findFirst({ where: { username, id: { not: user.id } }, select: { id: true } })
+      : null;
+    if (valid && !taken) nextUsername = username;
+  }
 
   await prisma.user.update({
     where: { id: user.id },
@@ -22,6 +42,11 @@ export async function updateProfile(formData: FormData) {
       photoUrl: photoUrl || null,
       // Неизвестное значение молча не пишем — остаётся прежняя зона.
       ...(isKnownTimezone(timezone) ? { timezone } : {}),
+      ...(nextUsername ? { username: nextUsername } : {}),
+      country: country && isKnownCountry(country) ? country : null,
+      gender: gender || null,
+      bio: bio || null,
+      birthDate: by && bm && bd ? new Date(Date.UTC(by, bm - 1, bd)) : null,
     },
   });
 

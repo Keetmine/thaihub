@@ -51,6 +51,7 @@ export default async function PublicLayout({ children }: { children: React.React
         name: fullUser.name,
         email: fullUser.email,
         photoUrl: fullUser.photoUrl,
+        username: fullUser.username,
         timezone: fullUser.timezone,
       }
     : null;
