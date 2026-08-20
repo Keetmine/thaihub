@@ -149,6 +149,18 @@ export async function markImportsReviewed(): Promise<void> {
  * и «Jasper» для нас разные строки, а ошибка привяжет чужие альбомы.
  */
 export async function runYoutubeMusicImport(formData: FormData): Promise<void> {
+  await importYoutubeMusic(formData, false);
+}
+
+/** Та же кнопка, но артист заодно попадает в список проверяемых
+ *  ежедневной задачей: разовый импорт даёт дискографию на сегодня, а
+ *  дальше новые релизы нужно кем-то забирать — иначе про добавление в
+ *  расписание вспоминают через месяц, увидев пустое «Что нового». */
+export async function runYoutubeMusicImportAndSchedule(formData: FormData): Promise<void> {
+  await importYoutubeMusic(formData, true);
+}
+
+async function importYoutubeMusic(formData: FormData, schedule: boolean): Promise<void> {
   await requireCatalogEditor();
   const performerId = String(formData.get("performerId") ?? "").trim();
   const rawUrl = String(formData.get("channelUrl") ?? "").trim();
@@ -156,9 +168,25 @@ export async function runYoutubeMusicImport(formData: FormData): Promise<void> {
   const channelId = parseChannelId(rawUrl);
   if (!channelId) throw new Error("Не похоже на ссылку канала YouTube Music");
 
+  if (schedule) {
+    // Раньше импорта: если парсинг упадёт, артист всё равно останется в
+    // расписании и ночной прогон повторит попытку сам.
+    await prisma.scheduledJob.upsert({
+      where: { key: "youtube-music" },
+      create: { key: "youtube-music" },
+      update: {},
+    });
+    await prisma.scheduledJobTarget.upsert({
+      where: { jobKey_performerId: { jobKey: "youtube-music", performerId } },
+      create: { jobKey: "youtube-music", performerId },
+      update: {},
+    });
+    revalidatePath("/admin/schedule");
+  }
+
   await logImportRun(
     "youtube-music",
-    () => importYtmForPerformer(performerId, channelId),
+    (runId) => importYtmForPerformer(performerId, channelId, undefined, runId),
     (r) =>
       `${r.performerName}: релизов +${r.albumsCreated} (обновлено ${r.albumsUpdated}), ` +
       `песен +${r.songsCreated} (обновлено ${r.songsUpdated})` +

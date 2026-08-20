@@ -33,6 +33,7 @@ import {
 import { isPremiumActive } from "@/lib/premium";
 import SeenLiveButton from "@/components/SeenLiveButton";
 import { toggleSeenLive } from "@/app/(public)/artists/seenActions";
+import { performerPhoto } from "@/lib/performerPhoto";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +113,10 @@ export default async function PerformerPage({
   });
   if (!performer) notFound();
   const id = performer.id;
+  // Фото, а если его нет — обложка последнего релиза (см.
+  // lib/performerPhoto.ts). Альбомы уже загружены выше, отсортированы по
+  // году — доп. запрос не нужен.
+  const displayPhoto = performerPhoto(performer);
   const isBand = performer.type === "BAND";
   const isMascot = performer.type === "MASCOT";
 
@@ -319,13 +324,13 @@ export default async function PerformerPage({
       </div>
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
-        {performer.photoUrl && (
+        {displayPhoto && (
           <div className="flex-shrink-0 d-flex flex-column gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               loading="lazy"
               decoding="async"
-              src={performer.photoUrl}
+              src={displayPhoto}
               alt={performer.name}
               className="rounded-4"
               style={{ width: "16rem", height: "20rem", objectFit: "cover" }}
@@ -341,7 +346,7 @@ export default async function PerformerPage({
           className="d-flex flex-column gap-2"
           style={{ minWidth: 0, flex: 1 }}
         >
-          {!performer.photoUrl && <SocialLinkIcons items={socialItems} />}
+          {!displayPhoto && <SocialLinkIcons items={socialItems} />}
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
               <CakeIcon />{" "}

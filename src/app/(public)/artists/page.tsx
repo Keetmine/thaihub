@@ -14,6 +14,7 @@ import AlphabetIndexList from "@/components/AlphabetIndexList";
 import { pageMetadata } from "@/lib/seo";
 import AlphabetDataList from "@/components/AlphabetDataList";
 import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
+import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 
 export const metadata = pageMetadata({
   title: "Актёры и группы",
@@ -36,6 +37,10 @@ const PERFORMER_ROW_SELECT = {
   musicAlias: true,
   photoUrl: true,
   type: true,
+  // Обложка свежего релиза — вместо фото, если его нет (см.
+  // lib/performerPhoto.ts): у групп фото часто отсутствует, и в списке
+  // оставалась пустая буква.
+  albums: FALLBACK_COVER_SELECT,
   _count: { select: { events: true } },
 } as const;
 
@@ -47,6 +52,7 @@ type PerformerWithCount = {
   musicAlias: string | null;
   photoUrl: string | null;
   type: Performer["type"];
+  albums: { coverUrl: string | null; year: number | null }[];
   _count: { events: number };
 };
 
@@ -204,7 +210,7 @@ function PerformerAlphabetList({
     id: p.id,
     name: p.name,
     href: performerHref(p),
-    photoUrl: p.photoUrl,
+    photoUrl: performerPhoto(p),
     nameSuffix: performerRealNameParen(p),
     meta: `${p._count.events} событ.`,
     favorited: favoritedIds.has(p.id),

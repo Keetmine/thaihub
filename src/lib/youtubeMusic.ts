@@ -55,28 +55,59 @@ export function songUrl(videoId: string): string {
 }
 
 /**
- * Снимает экранирование встроенных данных. YouTube кодирует их как
- * `\xNN` — это БАЙТЫ UTF-8, а не символы: тайские названия занимают по
- * три байта каждый. Поэтому собираем массив байтов и декодируем целиком,
- * иначе на выходе кракозябры вместо «ถอด (TAKE IT OFF)».
+ * Снимает экранирование встроенных данных — то есть читает JS-строковый
+ * литерал, внутри которого лежит JSON.
+ *
+ * YouTube кодирует непечатное как `\xNN`, и это БАЙТЫ UTF-8, а не
+ * символы: тайские названия занимают по три байта каждый. Поэтому
+ * собираем массив байтов и декодируем целиком, иначе на выходе
+ * кракозябры вместо «ถอด (TAKE IT OFF)».
+ *
+ * Экранирование двухслойное, и слои легко перепутать. Кавычка внутри
+ * JSON-строки приезжает как `\\` + `\x22`: первое — экранированный
+ * бэкслеш JS-литерала, дающий один `\`, второе — сама кавычка. Вместе
+ * получается `\"` — корректный JSON. Пока `\\` не обрабатывался,
+ * оба бэкслеша доходили до выхода как есть, кавычка оставалась
+ * неэкранированной и обрывала строку: биография LYKN с названием
+ * сингла в кавычках роняла разбор всей страницы, а артисты без кавычек
+ * в описании импортировались нормально.
  */
 function decodeEmbedded(raw: string): string {
   const bytes: number[] = [];
+  const pushChar = (ch: string) => {
+    const code = ch.charCodeAt(0);
+    if (code < 128) bytes.push(code);
+    else bytes.push(...new TextEncoder().encode(ch));
+  };
+
   for (let i = 0; i < raw.length; i++) {
-    if (raw[i] === "\\" && raw[i + 1] === "x") {
+    if (raw[i] !== "\\") {
+      pushChar(raw[i]);
+      continue;
+    }
+    const next = raw[i + 1];
+    // Порядок важен: `\\` проверяется первым, иначе следующий за ним
+    // escape прочитается как продолжение этого бэкслеша.
+    if (next === "\\") {
+      bytes.push(0x5c);
+      i += 1;
+    } else if (next === "x") {
       bytes.push(parseInt(raw.slice(i + 2, i + 4), 16));
       i += 3;
-      continue;
-    }
-    if (raw[i] === "\\" && raw[i + 1] === "/") {
-      bytes.push(0x2f);
+    } else if (next === "u") {
+      pushChar(String.fromCharCode(parseInt(raw.slice(i + 2, i + 6), 16)));
+      i += 5;
+    } else if (next === "/" || next === "'" || next === '"') {
+      // Экранирование самого литерала: в JSON эти символы идут как есть.
+      pushChar(next);
       i += 1;
-      continue;
+    } else if (next === "n" || next === "r" || next === "t") {
+      // Внутри JSON-строки перевод строки обязан остаться экранированным.
+      bytes.push(0x5c, next.charCodeAt(0));
+      i += 1;
+    } else {
+      pushChar(raw[i]);
     }
-    // Обычные символы (ASCII в этом потоке) — как есть.
-    const code = raw.charCodeAt(i);
-    if (code < 128) bytes.push(code);
-    else bytes.push(...new TextEncoder().encode(raw[i]));
   }
   return new TextDecoder("utf-8").decode(new Uint8Array(bytes));
 }

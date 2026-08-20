@@ -5,6 +5,7 @@ import {
   runTpopArtistImport,
   markImportsReviewed,
   runYoutubeMusicImport,
+  runYoutubeMusicImportAndSchedule,
 } from "./actions";
 import RunningImportsWatcher from "./RunningImportsWatcher";
 import Pagination from "@/components/Pagination";
@@ -191,6 +192,15 @@ export default async function AdminImportsPage({
                   disabled={!!runningRun}
                 >
                   {runningRun ? "Импорт идёт…" : "Импортировать"}
+                </button>
+                <button
+                  type="submit"
+                  formAction={runYoutubeMusicImportAndSchedule}
+                  className="btn btn-ghost btn-sm flex-shrink-0"
+                  disabled={!!runningRun}
+                  title="Импортировать и добавить артиста в ежедневную проверку новинок"
+                >
+                  {runningRun ? "Импорт идёт…" : "Импортировать и в расписание"}
                 </button>
               </div>
             </form>

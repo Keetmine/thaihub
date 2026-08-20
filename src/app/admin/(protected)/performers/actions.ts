@@ -45,7 +45,9 @@ export async function syncGmmtv(): Promise<GmmtvSyncResult> {
  */
 export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
   await requireCatalogEditor();
-  const result = await logImportRun("tmdb-performers", syncAllPerformersFromTmdb, (r) =>
+  const result = await // Обёртка обязательна: logImportRun передаёт в колбэк runId, а
+  // первый аргумент этой функции — onProgress.
+  logImportRun("tmdb-performers", () => syncAllPerformersFromTmdb(), (r) =>
     `синхронизировано ${r.synced} из ${r.total}, не найдено ${r.notFound}`,
   );
   revalidatePath("/admin/performers");

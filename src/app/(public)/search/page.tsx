@@ -13,6 +13,7 @@ import { isPremiumActive } from "@/lib/premium";
 import { agencyHref, locationHref } from "@/lib/slugHelpers";
 import { dramaTitleWhere, performerNameWhere } from "@/lib/searchWhere";
 import { pageMetadata } from "@/lib/seo";
+import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 
 export const metadata = pageMetadata({
   title: "Поиск",
@@ -75,6 +76,9 @@ export default async function SearchPage({
               performerNameWhere(query),
             ],
           },
+          // Обложка релиза заменит фото, если его нет (см.
+          // lib/performerPhoto.ts) — у групп это частый случай.
+          include: { albums: FALLBACK_COVER_SELECT },
           orderBy: { name: "asc" },
           take: 24,
         }),
@@ -189,7 +193,7 @@ export default async function SearchPage({
                 <EntityMiniCard
                   key={p.id}
                   href={performerHref(p)}
-                  photoUrl={p.photoUrl}
+                  photoUrl={performerPhoto(p)}
                   name={p.name}
                 />
               ))}

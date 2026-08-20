@@ -33,11 +33,25 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     supportsTargets: true,
     run: async (targetIds) => {
       const { refreshAllYoutubeMusic } = await import("@/lib/youtubeMusicImport");
-      const r = await refreshAllYoutubeMusic({ performerIds: targetIds });
-      return (
+      const { logImportRun } = await import("@/lib/importRun");
+      // Через журнал импортов: ночной прогон раньше не оставлял следа в
+      // /admin/imports, и понять, что именно он нашёл, было негде —
+      // только итоговая строка в расписании.
+      const summarize = (r: {
+        checked: number;
+        updated: number;
+        failed: number;
+        newTitles: string[];
+      }) =>
         `проверено ${r.checked}, с новинками ${r.updated}, ошибок ${r.failed}` +
-        (r.newTitles.length ? `: ${r.newTitles.slice(0, 5).join(", ")}` : "")
+        (r.newTitles.length ? `: ${r.newTitles.slice(0, 5).join(", ")}` : "");
+
+      const result = await logImportRun(
+        "youtube-music",
+        (runId) => refreshAllYoutubeMusic({ performerIds: targetIds, runId }),
+        summarize,
       );
+      return summarize(result);
     },
   },
 ];

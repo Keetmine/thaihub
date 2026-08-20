@@ -313,7 +313,9 @@ export async function deleteDrama(id: string) {
  */
 export async function syncTmdbDramas(): Promise<DramaSyncSummary> {
   await requireCatalogEditor();
-  const result = await logImportRun("tmdb-dramas", syncAllDramasFromTmdb, (r) =>
+  // Обёртка обязательна: logImportRun передаёт в колбэк runId, а первый
+  // аргумент этой функции — onProgress.
+  const result = await logImportRun("tmdb-dramas", () => syncAllDramasFromTmdb(), (r) =>
     `создано ${r.created}, обновлено ${r.updated}, не найдено ${r.notFound}`,
   );
   revalidateDramaPaths();

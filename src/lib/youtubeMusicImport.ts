@@ -48,8 +48,23 @@ export async function importYtmForPerformer(
   performerId: string,
   channelId: string,
   fetched?: YtmArtist,
+  /** Запуск из журнала: с ним в историю импорта попадёт каждый альбом и
+   *  каждая песня отдельной строкой, а не только итоговая сводка. */
+  runId?: string,
 ): Promise<YtmImportSummary> {
   const artist = fetched ?? (await fetchYtmArtist(channelId));
+
+  const record = async (
+    entityType: "album" | "song",
+    entityId: string,
+    action: "created" | "updated",
+    label: string,
+  ) => {
+    if (!runId) return;
+    await prisma.importedItem.create({
+      data: { runId, entityType, entityId, action, label },
+    });
+  };
 
   const performer = await prisma.performer.findUnique({
     where: { id: performerId },
@@ -98,8 +113,9 @@ export async function importYtmForPerformer(
         },
       });
       summary.albumsUpdated += 1;
+      await record("album", existing.id, "updated", `${performer.name} — ${album.title}`);
     } else {
-      await prisma.album.create({
+      const created = await prisma.album.create({
         data: {
           performerId,
           title: album.title,
@@ -110,6 +126,7 @@ export async function importYtmForPerformer(
         },
       });
       summary.albumsCreated += 1;
+      await record("album", created.id, "created", `${performer.name} — ${album.title}`);
       summary.newTitles.push(album.title);
     }
   }
@@ -135,8 +152,9 @@ export async function importYtmForPerformer(
         },
       });
       summary.songsUpdated += 1;
+      await record("song", existing.id, "updated", `${performer.name} — ${song.title}`);
     } else {
-      await prisma.song.create({
+      const createdSong = await prisma.song.create({
         data: {
           performerId,
           title: song.title,
@@ -146,6 +164,7 @@ export async function importYtmForPerformer(
         },
       });
       summary.songsCreated += 1;
+      await record("song", createdSong.id, "created", `${performer.name} — ${song.title}`);
       // Одноимённый сингл уже попал в новинки как релиз — второй раз в
       // ленте он не нужен.
       if (!album) summary.newTitles.push(song.title);
@@ -179,6 +198,9 @@ export async function refreshAllYoutubeMusic(options?: {
   /** Проверять только этих артистов — список задаётся в расписании
    *  (/admin/schedule). null или пусто = всех со ссылкой на канал. */
   performerIds?: string[] | null;
+  /** Запуск из журнала импортов — тогда каждый найденный релиз попадёт
+   *  в историю отдельной строкой. */
+  runId?: string;
 }): Promise<{ checked: number; updated: number; failed: number; newTitles: string[] }> {
   const performers = await prisma.performer.findMany({
     where: {
@@ -197,7 +219,12 @@ export async function refreshAllYoutubeMusic(options?: {
     const channelId = channelIdFromLinks(performer.links);
     if (!channelId) continue;
     try {
-      const summary = await importYtmForPerformer(performer.id, channelId);
+      const summary = await importYtmForPerformer(
+        performer.id,
+        channelId,
+        undefined,
+        options?.runId,
+      );
       if (summary.albumsCreated > 0 || summary.songsCreated > 0) {
         updated += 1;
         newTitles.push(...summary.newTitles.map((t) => `${performer.name} — ${t}`));
