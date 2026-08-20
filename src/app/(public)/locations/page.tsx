@@ -10,6 +10,7 @@ import { locationHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { LOCATION_CATEGORIES, categoryLabel, isLocationCategory } from "@/lib/locationCategories";
 import type { LocationCategory } from "@/generated/prisma/client";
+import CreateOwnPlaceButton from "@/app/(public)/lists/[id]/CreateOwnPlaceButton";
 
 export const metadata = pageMetadata({
   title: "Локации съёмок",
@@ -23,9 +24,9 @@ export const dynamic = "force-dynamic";
 export default async function LocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; group?: string; cat?: string }>;
+  searchParams: Promise<{ q?: string; group?: string; cat?: string; list?: string }>;
 }) {
-  const { q: rawQ, group: rawGroup, cat: rawCat } = await searchParams;
+  const { q: rawQ, group: rawGroup, cat: rawCat, list: rawList } = await searchParams;
   const q = (rawQ ?? "").trim();
   // Фильтр по категории места: кафе, магазины, фотозоны…
   const category =
@@ -34,6 +35,43 @@ export default async function LocationsPage({
   const showMine = rawGroup === "mine";
 
   const currentUser = await getCurrentUser();
+  const activeListId = (rawList ?? "").trim() || null;
+  // Списки мест пользователя — вкладками, со счётчиком в подписи.
+  const myLists = currentUser
+    ? await prisma.placeList.findMany({
+        where: { userId: currentUser.id },
+        select: { id: true, title: true, _count: { select: { items: true } } },
+        orderBy: { title: "asc" },
+      })
+    : [];
+  const myPlacesCount = currentUser
+    ? await prisma.location.count({ where: { createdByUserId: currentUser.id } })
+    : 0;
+
+  // Какие категории вообще встречаются на текущей вкладке — пустые в
+  // фильтр не выводим.
+  const categoryScope = activeListId
+    ? { listItems: { some: { listId: activeListId } } }
+    : showMine && currentUser
+      ? { createdByUserId: currentUser.id }
+      : { createdByUserId: null };
+  const categoryRows = await prisma.location.findMany({
+    where: { ...categoryScope, category: { not: null } },
+    select: { category: true },
+    distinct: ["category"],
+  });
+  const presentCategories = new Set(categoryRows.map((r) => r.category));
+  const availableCategories = LOCATION_CATEGORIES.filter((c) => presentCategories.has(c.value));
+
+  const categoryHref = (value: string | null) => {
+    const params = new URLSearchParams();
+    if (activeListId) params.set("list", activeListId);
+    else if (showMine) params.set("group", "mine");
+    if (value) params.set("cat", value);
+    if (q) params.set("q", q);
+    const qs = params.toString();
+    return `/locations${qs ? `?${qs}` : ""}`;
+  };
 
   return (
     <div>
@@ -72,13 +110,27 @@ export default async function LocationsPage({
           >
             По сериалам
           </Link>
-          {currentUser && (
+          {/* Вкладки — конкретные списки пользователя: «мои места» одной
+              кучей ничего не говорят, а «Бангкок» или «Кафе из дорам» —
+              говорят. Плюс общая вкладка со всеми своими местами, если
+              что-то создано вне списков. */}
+          {myLists.map((l) => (
+            <Link
+              key={l.id}
+              href={`/locations?list=${l.id}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              prefetch={false}
+              className={`tab-bar-item ${activeListId === l.id ? "active" : ""}`}
+            >
+              {l.title} ({l._count.items})
+            </Link>
+          ))}
+          {currentUser && myPlacesCount > 0 && (
             <Link
               href={`/locations?group=mine${q ? `&q=${encodeURIComponent(q)}` : ""}`}
               prefetch={false}
               className={`tab-bar-item ${showMine ? "active" : ""}`}
             >
-              Мои места
+              Все мои места ({myPlacesCount})
             </Link>
           )}
         </div>
@@ -99,18 +151,19 @@ export default async function LocationsPage({
 
       {/* Фильтр по категории — только в алфавитном виде: в группировке по
           сериалам он спорит с самой группировкой. */}
-      {!groupByDrama && !showMine && (
+      {/* Фильтр по категории. Показываем только те категории, в которых
+          на этой вкладке что-то есть — пустые пункты в фильтре только
+          сбивают с толку. В группировке по сериалам фильтра нет: он
+          спорит с самой группировкой. */}
+      {!groupByDrama && availableCategories.length > 0 && (
         <div className="d-flex flex-wrap gap-2 mb-3">
-          <Link
-            href={`/locations${q ? `?q=${encodeURIComponent(q)}` : ""}`}
-            className={`nav-chip ${!category ? "is-active" : ""}`}
-          >
+          <Link href={categoryHref(null)} className={`nav-chip ${!category ? "is-active" : ""}`}>
             Все
           </Link>
-          {LOCATION_CATEGORIES.map((c) => (
+          {availableCategories.map((c) => (
             <Link
               key={c.value}
-              href={`/locations?cat=${c.value}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              href={categoryHref(c.value)}
               className={`nav-chip ${category === c.value ? "is-active" : ""}`}
             >
               {c.emoji} {c.label}
@@ -119,10 +172,17 @@ export default async function LocationsPage({
         </div>
       )}
 
-      {groupByDrama ? (
+      {activeListId && currentUser ? (
+        <UserPlaceList
+          listId={activeListId}
+          userId={currentUser.id}
+          q={q}
+          category={category}
+        />
+      ) : groupByDrama ? (
         <LocationsByDrama q={q} currentUser={currentUser} />
       ) : showMine && currentUser ? (
-        <MyPlaces q={q} userId={currentUser.id} />
+        <MyPlaces q={q} userId={currentUser.id} category={category} />
       ) : (
         <LocationsAlphabetical q={q} currentUser={currentUser} category={category} />
       )}
@@ -259,69 +319,116 @@ async function getVisitedIds(
   return new Set(visits.map((v) => v.locationId));
 }
 
-async function MyPlaces({ q, userId }: { q: string; userId: string }) {
+/** Вкладка одного списка мест: его содержимое, кнопка добавления и
+ *  фильтр по категориям. Раньше со страницы локаций добавить место было
+ *  нельзя — только зайдя в сам список. */
+async function UserPlaceList({
+  listId,
+  userId,
+  q,
+  category,
+}: {
+  listId: string;
+  userId: string;
+  q: string;
+  category: LocationCategory | null;
+}) {
+  const list = await prisma.placeList.findFirst({
+    where: { id: listId, userId },
+    select: { id: true, title: true },
+  });
+  if (!list) return <p className="text-secondary">Список не найден.</p>;
+
+  const items = await prisma.placeListItem.findMany({
+    where: {
+      listId,
+      location: {
+        ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+        ...(category ? { category } : {}),
+      },
+    },
+    select: {
+      location: {
+        select: { id: true, name: true, photoUrl: true, slug: true, category: true },
+      },
+    },
+    orderBy: { position: "asc" },
+  });
+
+  const visitedIds = await getVisitedIds({ id: userId }, items.map((i) => i.location.id));
+
+  return (
+    <>
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <CreateOwnPlaceButton listId={list.id} />
+        <Link href={`/lists/${list.id}`} className="small text-secondary">
+          Открыть список целиком →
+        </Link>
+      </div>
+      <AlphabetDataList
+        emptyMessage={
+          q || category ? "Ничего не найдено." : "В этом списке пока нет мест."
+        }
+        showVisitedButton
+        rows={items.map(({ location: l }) => ({
+          id: l.id,
+          name: l.name,
+          href: locationHref(l),
+          photoUrl: l.photoUrl,
+          subtitle: categoryLabel(l.category),
+          visited: visitedIds.has(l.id),
+        }))}
+      />
+    </>
+  );
+}
+
+async function MyPlaces({
+  q,
+  userId,
+  category,
+}: {
+  q: string;
+  userId: string;
+  category: LocationCategory | null;
+}) {
   // Собственные места пользователя (созданные из списков по ссылке
   // Google Maps) — каталог их не показывает, тут им отдельная вкладка.
   const places = await prisma.location.findMany({
     where: {
       createdByUserId: userId,
       ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+      ...(category ? { category } : {}),
     },
+    select: { id: true, name: true, photoUrl: true, slug: true, category: true },
     orderBy: { name: "asc" },
   });
 
-  if (places.length === 0) {
-    return (
-      <p className="text-secondary">
-        {q
-          ? "Ничего не найдено."
-          : "Своих мест пока нет — добавляйте их в списках мест по ссылке Google Maps."}{" "}
-        <Link href="/lists" className="link-body-emphasis">
-          Мои списки →
-        </Link>
-      </p>
-    );
-  }
+  const visitedIds = await getVisitedIds({ id: userId }, places.map((l) => l.id));
 
   return (
-    <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
-      {places.map((l) => (
-        <Link
-          key={l.id}
-          href={locationHref(l)}
-          className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
-        >
-          <div
-            className="d-flex align-items-center justify-content-center flex-shrink-0"
-            style={{
-              width: "2.5rem",
-              height: "2.5rem",
-              borderRadius: "0.5rem",
-              background: "var(--bs-secondary-bg)",
-              overflow: "hidden",
-              color: "var(--bs-secondary-color)",
-            }}
-          >
-            {l.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                loading="lazy"
-                decoding="async"
-                src={l.photoUrl}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <span className="fw-semibold" style={{ opacity: 0.6 }}>
-                {l.name.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </div>
-          <span className="font-display fw-medium text-white text-truncate">
-            {l.name}
-          </span>
+    <>
+      <p className="small text-secondary mb-3">
+        Места, которые вы добавили сами. Создавать их удобнее внутри списка —
+        выберите вкладку списка выше или{" "}
+        <Link href="/lists" className="link-body-emphasis">
+          откройте свои списки
         </Link>
-      ))}
-    </div>
+        .
+      </p>
+      <AlphabetDataList
+        emptyMessage={q || category ? "Ничего не найдено." : "Своих мест пока нет."}
+        showVisitedButton
+        rows={places.map((l) => ({
+          id: l.id,
+          name: l.name,
+          href: locationHref(l),
+          photoUrl: l.photoUrl,
+          subtitle: categoryLabel(l.category),
+          visited: visitedIds.has(l.id),
+        }))}
+      />
+    </>
   );
 }
+
