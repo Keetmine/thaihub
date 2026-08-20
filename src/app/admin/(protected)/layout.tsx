@@ -26,6 +26,7 @@ import {
   ImportIcon,
   SettingsIcon,
   HistoryIcon,
+  ClockIcon,
 } from "@/components/icons";
 
 // Пункты сайдбара — единый источник и для мобильного меню.
@@ -88,6 +89,7 @@ const NAV_SECTIONS: {
       { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
       { href: "/admin/finance", title: "Финансы", icon: StarIcon },
       { href: "/admin/imports", title: "Импорты", icon: ImportIcon, managerOk: true },
+      { href: "/admin/schedule", title: "Расписание", icon: ClockIcon },
       { href: "/admin/errors", title: "Ошибки", icon: FlagIcon },
       { href: "/admin/duplicates", title: "Дубли", icon: CopyIcon, managerOk: true },
       { href: "/admin/history", title: "История правок", icon: HistoryIcon, managerOk: true },

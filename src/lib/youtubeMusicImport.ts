@@ -176,9 +176,15 @@ export function channelIdFromLinks(links: { url: string }[]): string | null {
 export async function refreshAllYoutubeMusic(options?: {
   limit?: number;
   delayMs?: number;
+  /** Проверять только этих артистов — список задаётся в расписании
+   *  (/admin/schedule). null или пусто = всех со ссылкой на канал. */
+  performerIds?: string[] | null;
 }): Promise<{ checked: number; updated: number; failed: number; newTitles: string[] }> {
   const performers = await prisma.performer.findMany({
-    where: { links: { some: { url: { contains: "youtube.com/channel/" } } } },
+    where: {
+      links: { some: { url: { contains: "youtube.com/channel/" } } },
+      ...(options?.performerIds?.length ? { id: { in: options.performerIds } } : {}),
+    },
     select: { id: true, name: true, links: { select: { url: true } } },
     take: options?.limit ?? 200,
   });

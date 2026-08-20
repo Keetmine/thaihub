@@ -121,6 +121,7 @@ model Performer {
   mascots        MascotOwner[] @relation("PerformerMascots")
   inUserLists    PerformerListItem[]
   seenByUsers    PerformerSeen[]
+  scheduledJobs  ScheduledJobTarget[]
   occurrenceLineups OccurrenceLineup[]
 
   // Музыкальная сторона: сценический псевдоним сольного музыканта
@@ -1373,4 +1374,42 @@ model PerformerSeen {
 
   @@unique([userId, performerId])
   @@index([userId])
+}
+
+// Расписание фоновых задач: что запускается само, когда и по кому.
+// До этого интервалы были зашиты в код (см. src/instrumentation.ts) —
+// поменять час прогона можно было только деплоем, а список артистов для
+// проверки новинок не выбирался вовсе. Страница — /admin/schedule.
+model ScheduledJob {
+  // Ключ задачи в коде: "youtube-music", "tmdb-dramas"…
+  key         String   @id
+  enabled     Boolean  @default(true)
+  // Час запуска в зоне сайта (Europe/Moscow, см. TZ в docker-compose).
+  hour        Int      @default(4)
+  // Кого проверяем: всех подходящих или только выбранных вручную.
+  targetMode  ScheduleTargetMode @default(ALL)
+  targets     ScheduledJobTarget[]
+  lastRunAt   DateTime?
+  lastStatus  String?
+  lastSummary String?
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled])
+}
+
+enum ScheduleTargetMode {
+  ALL
+  SELECTED
+}
+
+// Артист, включённый в задачу вручную (targetMode = SELECTED).
+model ScheduledJobTarget {
+  id          String    @id @default(cuid())
+  jobKey      String
+  job         ScheduledJob @relation(fields: [jobKey], references: [key], onDelete: Cascade)
+  performerId String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@unique([jobKey, performerId])
+  @@index([jobKey])
 }

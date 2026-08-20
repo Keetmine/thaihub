@@ -5,9 +5,10 @@
 // (docker-compose с одним app-контейнером), поэтому таймер внутри
 // процесса — самое простое надёжное место.
 const INTERVAL_MS = 30 * 60 * 1000;
-// Раз в сутки обходим YouTube Music по всем артистам с привязанным
-// каналом: новые релизы подтягиваются сами и попадают в «Что нового».
-const YTM_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// Планировщик просыпается часто, а запускает лишь то, чему пришло время
+// по расписанию из БД (/admin/schedule): час прогона и список артистов
+// правятся без деплоя.
+const SCHEDULER_INTERVAL_MS = 10 * 60 * 1000;
 
 export async function register() {
   // Sentry инициализируется первым: иначе ошибки старта не попадут в него.
@@ -25,21 +26,13 @@ export async function register() {
   const { sendUpcomingEventReminders, sendPremiumExpiryReminders, sendPresaleReminders } =
     await import("@/lib/telegramNotifications");
 
-  const runYoutubeMusic = async () => {
+  const runScheduler = async () => {
     try {
-      const { refreshAllYoutubeMusic } = await import("@/lib/youtubeMusicImport");
-      const { logImportRun } = await import("@/lib/importRun");
-      await logImportRun(
-        "youtube-music-daily",
-        () => refreshAllYoutubeMusic(),
-        (r) =>
-          `проверено ${r.checked}, с новинками ${r.updated}, ошибок ${r.failed}` +
-          (r.newTitles.length ? `: ${r.newTitles.slice(0, 5).join(", ")}` : ""),
-      );
+      const { runDueJobs } = await import("@/lib/scheduledJobs");
+      const started = await runDueJobs();
+      if (started.length > 0) console.log(`scheduler: запущено ${started.join(", ")}`);
     } catch (err) {
-      console.warn(
-        `youtube music daily failed: ${err instanceof Error ? err.message : err}`,
-      );
+      console.warn(`scheduler failed: ${err instanceof Error ? err.message : err}`);
     }
   };
 
@@ -61,11 +54,10 @@ export async function register() {
   setTimeout(run, 60 * 1000);
   setInterval(run, INTERVAL_MS);
 
-  // YouTube Music — отдельным, более редким циклом. Первый прогон через
-  // 10 минут после старта: обход десятков каналов не должен совпадать с
-  // деплоем и разогревом приложения.
-  setTimeout(runYoutubeMusic, 10 * 60 * 1000);
-  setInterval(runYoutubeMusic, YTM_INTERVAL_MS);
+  // Планировщик: первый тик через 5 минут после старта, чтобы длинные
+  // прогоны не совпадали с деплоем и разогревом приложения.
+  setTimeout(runScheduler, 5 * 60 * 1000);
+  setInterval(runScheduler, SCHEDULER_INTERVAL_MS);
 }
 
 /** Хук Next.js: любая необработанная серверная ошибка (страницы,
