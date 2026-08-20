@@ -206,11 +206,13 @@ export async function updateOwnPlace(locationId: string, formData: FormData) {
     }
   }
 
+  const rawCategory = String(formData.get("category") ?? "").trim();
   await prisma.location.update({
     where: { id: locationId },
     data: {
       name,
       photoUrl: photoUrl || null,
+      category: rawCategory && isLocationCategory(rawCategory) ? rawCategory : null,
       ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
     },
   });

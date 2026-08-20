@@ -4,6 +4,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
 import { clearErrorLog, deleteErrorEntry, markErrorsReviewed } from "./actions";
 import Pagination from "@/components/Pagination";
+import Link from "next/link";
 
 export const metadata = { title: "Ошибки" };
 
@@ -16,18 +17,26 @@ const PAGE_SIZE = 50;
 export default async function AdminErrorsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; period?: string }>;
 }) {
   await requireAdminPage();
-  const { page: rawPage } = await searchParams;
+  const { page: rawPage, period } = await searchParams;
   const page = Math.max(1, Number(rawPage) || 1);
+  // ?period=day — переход с дашборда «ошибок за сутки»: там счётчик
+  // именно суточный, и список должен совпадать с ним.
+  // Границу суток считаем от new Date(), а не Date.now(): правило
+  // react-hooks запрещает Date.now() в рендере как нестабильный вызов.
+  const dayAgo = new Date();
+  dayAgo.setUTCHours(dayAgo.getUTCHours() - 24);
+  const errorsWhere = period === "day" ? { createdAt: { gte: dayAgo } } : {};
   const [errors, total, unreviewed] = await Promise.all([
     prisma.errorLog.findMany({
+      where: errorsWhere,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.errorLog.count(),
+    prisma.errorLog.count({ where: errorsWhere }),
     prisma.errorLog.count({ where: { reviewedAt: null } }),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -59,6 +68,15 @@ export default async function AdminErrorsPage({
           )}
         </span>
       </div>
+
+      {period === "day" && (
+        <p className="small text-secondary mb-3">
+          Показаны ошибки за последние сутки.{" "}
+          <Link href="/admin/errors" className="link-body-emphasis">
+            Показать все
+          </Link>
+        </p>
+      )}
 
       {errors.length === 0 ? (
         <p className="text-secondary">Ошибок нет — красота.</p>
@@ -105,7 +123,7 @@ export default async function AdminErrorsPage({
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/errors?page=${p}`}
+        buildHref={(p) => `/admin/errors?page=${p}${period === "day" ? "&period=day" : ""}`}
       />
     </div>
   );

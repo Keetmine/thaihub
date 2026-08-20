@@ -13,6 +13,7 @@ import {
 import Modal from "@/components/Modal";
 import FileDropzone from "@/components/FileDropzone";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
+import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
 
 /** Селектор видимости списка (владельцу). */
 export function ListVisibilitySelect({ listId, visibility }: { listId: string; visibility: string }) {
@@ -145,7 +146,7 @@ export function PlaceRowControls({
   note: string | null;
   /** true — место создано этим пользователем и его можно редактировать. */
   canEditPlace?: boolean;
-  place?: { name: string; photoUrl: string | null };
+  place?: { name: string; photoUrl: string | null; category: string | null };
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPlace, setIsEditingPlace] = useState(false);
@@ -227,6 +228,19 @@ export function PlaceRowControls({
             <div>
               <label className="form-label small text-secondary">Название</label>
               <input type="text" name="name" required defaultValue={place.name} className="form-control" />
+            </div>
+            <div>
+              <label className="form-label small text-secondary">Категория</label>
+              {/* По категории работает фильтр в списках мест — менять её
+                  нужно там же, где остальное. */}
+              <select name="category" defaultValue={place.category ?? ""} className="form-select">
+                <option value="">не указана</option>
+                {LOCATION_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.emoji} {c.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <FileDropzone name="photoUrl" label="Фото" defaultValue={place.photoUrl ?? ""} />
             <div>

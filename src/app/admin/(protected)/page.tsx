@@ -59,10 +59,23 @@ export default async function AdminStatsPage() {
   const attention = [
     { count: newFeedback, label: "новых обращений", href: "/admin/feedback", urgent: true },
     { count: openReports, label: "открытых жалоб", href: "/admin/moderation", urgent: true },
-    { count: failedImports, label: "упавших импортов", href: "/admin/imports", urgent: true },
-    { count: recentErrors, label: "ошибок за сутки", href: "/admin/errors", urgent: true },
-    { count: dramasWithoutPoster, label: "сериалов без постера", href: "/admin/dramas", urgent: false },
-    { count: eventsWithoutPerformers, label: "событий без состава", href: "/admin/events", urgent: false },
+    // Ссылки ведут не в раздел вообще, а сразу к проблемным записям —
+    // иначе из «12 сериалов без постера» приходилось искать эти двенадцать
+    // руками по всему каталогу.
+    { count: failedImports, label: "упавших импортов", href: "/admin/imports?status=FAILED", urgent: true },
+    { count: recentErrors, label: "ошибок за сутки", href: "/admin/errors?period=day", urgent: true },
+    {
+      count: dramasWithoutPoster,
+      label: "сериалов без постера",
+      href: "/admin/dramas?issue=no-poster",
+      urgent: false,
+    },
+    {
+      count: eventsWithoutPerformers,
+      label: "событий без состава",
+      href: "/admin/events?issue=no-lineup",
+      urgent: false,
+    },
   ].filter((a) => a.count > 0);
 
   return (
@@ -118,12 +131,18 @@ export default async function AdminStatsPage() {
           </h2>
           <div className="d-flex flex-column gap-2">
             {recentUsers.map((u) => (
-              <div key={u.id} className="surface d-flex justify-content-between gap-3 p-3">
-                <span className="text-truncate">{u.name || u.email || `tg:${u.telegramUsername}`}</span>
+              <Link
+                key={u.id}
+                href={`/admin/users/${u.id}`}
+                className="surface surface-hover text-decoration-none d-flex justify-content-between gap-3 p-3"
+              >
+                <span className="text-truncate text-white">
+                  {u.name || u.email || `tg:${u.telegramUsername}`}
+                </span>
                 <span className="small text-secondary flex-shrink-0">
                   {formatShortDate(u.createdAt)}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

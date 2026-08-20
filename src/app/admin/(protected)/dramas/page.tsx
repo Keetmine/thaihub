@@ -48,16 +48,24 @@ function airWhere(tab: AirTab, now: Date) {
 export default async function AdminDramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; tab?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; tab?: string; issue?: string }>;
 }) {
-  const { q: rawQ, page: rawPage, tab: rawTab } = await searchParams;
+  const { q: rawQ, page: rawPage, tab: rawTab, issue } = await searchParams;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
   const tab: AirTab = (AIR_TABS.find((t) => t.key === rawTab)?.key ??
     "all") as AirTab;
   const now = new Date();
 
-  const where = { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(tab, now) };
+  // «Требует внимания» на дашборде ведёт сюда с ?issue=... — сразу к
+  // проблемным записям, а не в общий список.
+  const issueWhere =
+    issue === "no-poster"
+      ? { posterUrl: null }
+      : issue === "no-cast"
+        ? { performers: { none: {} } }
+        : {};
+  const where = { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(tab, now), ...issueWhere };
   const [dramas, total, tabCounts, agencies] = await Promise.all([
     prisma.drama.findMany({
       where,
@@ -119,6 +127,16 @@ export default async function AdminDramasPage({
           className=""
         />
       </div>
+
+      {issue && (
+        <p className="small text-secondary mb-3">
+          Показаны только{" "}
+          {issue === "no-poster" ? "сериалы без постера" : "сериалы без актёрского состава"}.{" "}
+          <Link href="/admin/dramas" className="link-body-emphasis">
+            Показать все
+          </Link>
+        </p>
+      )}
 
       <div className="surface p-3 mb-4">
         <TmdbSyncButton />

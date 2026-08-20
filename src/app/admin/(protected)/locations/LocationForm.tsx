@@ -4,6 +4,8 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import FileDropzone from "@/components/FileDropzone";
 import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
+import EntityMultiSelect from "@/components/EntityMultiSelect";
+import { searchDramaOptions } from "../dramas/actions";
 
 // Leaflet touches the DOM on mount, so it can't be part of the server-
 // rendered HTML — load it client-only.
@@ -23,6 +25,7 @@ export default function LocationForm({
   action,
   submitLabel,
   defaultValues,
+  dramas,
 }: {
   action: (formData: FormData) => void;
   submitLabel: string;
@@ -34,7 +37,11 @@ export default function LocationForm({
     longitude: number | null;
     category: string | null;
     links: { label: string; url: string }[];
+    dramaIds: string[];
   };
+  /** Уже связанные сериалы — чтобы селект показал текущий выбор без
+   *  загрузки всего каталога (их тысячи, ищем по мере ввода). */
+  dramas?: { id: string; name: string; photoUrl?: string | null }[];
 }) {
   const v = defaultValues;
   // Координаты держим здесь и отправляем скрытыми полями: карта
@@ -100,6 +107,21 @@ export default function LocationForm({
             setLat(nextLat);
             setLng(nextLng);
           }}
+        />
+      </div>
+
+      {/* Сериалы, которые здесь снимали: без этой связи локация не
+          появляется ни на странице сериала, ни в группировке «по
+          сериалам» — раньше связать их можно было только из формы
+          сериала. */}
+      <div>
+        <label className="form-label d-block">Сериалы, снятые здесь</label>
+        <EntityMultiSelect
+          name="dramaIds"
+          options={dramas ?? []}
+          defaultSelectedIds={v?.dramaIds}
+          placeholder="Начните вводить название сериала…"
+          searchOptions={searchDramaOptions}
         />
       </div>
 

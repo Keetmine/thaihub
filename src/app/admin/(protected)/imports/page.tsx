@@ -43,18 +43,23 @@ const PAGE_SIZE = 30;
 export default async function AdminImportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; status?: string }>;
 }) {
-  const { page: rawPage } = await searchParams;
+  const { page: rawPage, status: rawStatus } = await searchParams;
   const page = Math.max(1, Number(rawPage) || 1);
+  // Фильтр по статусу: с дашборда «упавшие импорты» ведут сразу сюда,
+  // иначе пришлось бы искать их глазами в общем журнале.
+  const status = ["RUNNING", "DONE", "FAILED"].includes(rawStatus ?? "") ? rawStatus! : null;
+  const runsWhere = status ? { status } : {};
   const hasRunningPromise = prisma.importRun.findFirst({ where: { status: "RUNNING" } });
   const [runs, totalRuns, unreviewedFailed, recentItems] = await Promise.all([
     prisma.importRun.findMany({
+      where: runsWhere,
       orderBy: { startedAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.importRun.count(),
+    prisma.importRun.count({ where: runsWhere }),
     prisma.importRun.count({ where: { status: "FAILED", reviewedAt: null } }),
     prisma.importedItem.findMany({ orderBy: { createdAt: "desc" }, take: 60 }),
   ]);
@@ -183,6 +188,22 @@ export default async function AdminImportsPage({
 
       <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
         <h2 className="section-heading mb-0">Последние запуски</h2>
+        <span className="d-flex flex-wrap gap-2">
+          {[
+            { value: null, label: "Все" },
+            { value: "FAILED", label: "Упавшие" },
+            { value: "RUNNING", label: "Идут" },
+            { value: "DONE", label: "Успешные" },
+          ].map((f) => (
+            <Link
+              key={f.label}
+              href={`/admin/imports${f.value ? `?status=${f.value}` : ""}`}
+              className={`nav-chip ${status === f.value ? "is-active" : ""}`}
+            >
+              {f.label}
+            </Link>
+          ))}
+        </span>
         {/* Гасит бейдж упавших импортов в сайдбаре: он считает только
             неразобранные записи. */}
         {unreviewedFailed > 0 && (
@@ -226,7 +247,7 @@ export default async function AdminImportsPage({
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/imports?page=${p}`}
+        buildHref={(p) => `/admin/imports?page=${p}${status ? `&status=${status}` : ""}`}
       />
     </div>
   );

@@ -18,7 +18,10 @@ export default async function EditLocationPage({
 
   const location = await prisma.location.findUnique({
     where: { id },
-    include: { links: { orderBy: { createdAt: "asc" } } },
+    include: {
+      links: { orderBy: { createdAt: "asc" } },
+      dramas: { include: { drama: { select: { id: true, title: true, posterUrl: true } } } },
+    },
   });
   if (!location) notFound();
 
@@ -55,7 +58,13 @@ export default async function EditLocationPage({
             longitude: location.longitude,
             category: location.category,
             links: location.links.map((l) => ({ label: l.label, url: l.url })),
+            dramaIds: location.dramas.map((dl) => dl.dramaId),
           }}
+          dramas={location.dramas.map((dl) => ({
+            id: dl.drama.id,
+            name: dl.drama.title,
+            photoUrl: dl.drama.posterUrl,
+          }))}
         />
         <ConfirmForm
           action={boundDelete}

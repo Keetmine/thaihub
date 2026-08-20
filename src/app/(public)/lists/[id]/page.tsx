@@ -161,7 +161,11 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
                     locationId={i.locationId}
                     note={i.note}
                     canEditPlace={i.location.createdByUserId === user!.id}
-                    place={{ name: i.location.name, photoUrl: i.location.photoUrl }}
+                    place={{
+                      name: i.location.name,
+                      photoUrl: i.location.photoUrl,
+                      category: i.location.category,
+                    }}
                   />
                 )}
               </div>

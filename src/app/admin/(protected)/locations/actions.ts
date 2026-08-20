@@ -122,15 +122,18 @@ export async function updateLocation(id: string, formData: FormData) {
   const longitude = getCoordinate(formData, "longitude");
   const category = getCategory(formData);
   const links = getLocationLinks(formData);
+  const dramaIds = Array.from(new Set(formData.getAll("dramaIds").map(String).filter(Boolean)));
 
   if (!name) throw new Error("Укажите название локации");
 
   const before = await prisma.location.findUnique({ where: { id } });
 
   await prisma.$transaction([
-    // Ссылки задаются формой целиком: удаляем старые и создаём заново —
-    // так пропадают удалённые строки, а не только добавляются новые.
+    // Ссылки и связи с сериалами задаются формой целиком: удаляем старые
+    // и создаём заново — так пропадают снятые, а не только добавляются
+    // новые.
     prisma.locationLink.deleteMany({ where: { locationId: id } }),
+    prisma.dramaLocation.deleteMany({ where: { locationId: id } }),
     prisma.location.update({
       where: { id },
       data: {
@@ -141,6 +144,7 @@ export async function updateLocation(id: string, formData: FormData) {
         longitude,
         category,
         links: { create: links },
+        dramas: { create: dramaIds.map((dramaId) => ({ dramaId })) },
       },
     }),
   ]);

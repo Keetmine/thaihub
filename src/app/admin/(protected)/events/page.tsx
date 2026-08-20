@@ -15,17 +15,22 @@ export const dynamic = "force-dynamic";
 export default async function AdminEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; tab?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; tab?: string; sort?: string; issue?: string }>;
 }) {
-  const { q: rawQ, tab: rawTab, sort: rawSort } = await searchParams;
+  const { q: rawQ, tab: rawTab, sort: rawSort, issue } = await searchParams;
   const q = (rawQ ?? "").trim();
   // «Текущие» — события с будущими датами, «Архив» — целиком прошедшие.
   const isArchive = rawTab === "archive";
   // Сортировка: по дате события (дефолт) или по дате добавления записи.
   const sortByAdded = rawSort === "added";
 
+  // ?issue=no-lineup — переход с блока «требует внимания» на дашборде:
+  // сразу события без состава, а не весь список.
   const eventsRaw = await prisma.event.findMany({
-    where: q ? { title: { contains: q, mode: "insensitive" } } : undefined,
+    where: {
+      ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
+      ...(issue === "no-lineup" ? { performers: { none: {} } } : {}),
+    },
     include: {
       performers: { include: { performer: true } },
       occurrences: { orderBy: { startsAt: "asc" } },
