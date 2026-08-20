@@ -3,9 +3,17 @@
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import Link from "next/link";
-import { defaultIcon } from "@/lib/leafletIcon";
+import { defaultIcon, userPlaceIcon } from "@/lib/leafletIcon";
 
-export type MapLocation = { id: string; name: string; latitude: number; longitude: number };
+export type MapLocation = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  /** Место, добавленное пользователем: рисуется другим цветом, чтобы на
+   *  общей карте свои находки отличались от съёмочных площадок. */
+  isUserPlace?: boolean;
+};
 
 export default function LocationMap({
   locations,
@@ -38,7 +46,11 @@ export default function LocationMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {locations.map((l) => (
-          <Marker key={l.id} position={[l.latitude, l.longitude]} icon={defaultIcon}>
+          <Marker
+            key={l.id}
+            position={[l.latitude, l.longitude]}
+            icon={l.isUserPlace ? userPlaceIcon : defaultIcon}
+          >
             <Popup>
               <Link href={`/locations/${l.id}`}>{l.name}</Link>
             </Popup>

@@ -72,7 +72,7 @@ export default async function SettingsPage({
 
       <SettingsTabs
         profile={
-          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+          <div className="surface p-4">
             <form action={updateProfile} className="row g-3">
               <div className="col-12 col-md-6 d-flex flex-column gap-3">
                 <div>
@@ -194,7 +194,7 @@ export default async function SettingsPage({
           </div>
         }
         privacy={
-          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+          <div className="surface p-4">
             <p className="small text-secondary mb-3">
               Друзья видят всё всегда; настройки ниже — для остальных.
             </p>
@@ -223,12 +223,12 @@ export default async function SettingsPage({
           </div>
         }
         security={
-          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+          <div className="surface p-4">
             <ChangePasswordForm />
           </div>
         }
         calendar={
-          <div className="surface p-4" style={{ maxWidth: "44rem" }}>
+          <div className="surface p-4">
             <IcsFeedSection token={icsToken} />
           </div>
         }

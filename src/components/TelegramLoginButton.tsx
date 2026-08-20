@@ -37,10 +37,12 @@ export default function TelegramLoginButton({
     script.setAttribute("data-size", "large");
     // Абсолютный URL обязателен: с относительным путём виджет
     // подтверждает вход и никуда не переходит — с виду «кнопка не
-    // работает».
+    // работает». Режим — отдельным адресом, а не query: свой параметр
+    // виджет не сохраняет, из-за чего привязка уходила в обычный вход и
+    // создавала второй аккаунт.
     script.setAttribute(
       "data-auth-url",
-      `${window.location.origin}/api/auth/telegram${mode === "link" ? "?mode=link" : ""}`,
+      `${window.location.origin}/api/auth/telegram${mode === "link" ? "/link" : ""}`,
     );
     script.setAttribute("data-request-access", "write");
     container.appendChild(script);

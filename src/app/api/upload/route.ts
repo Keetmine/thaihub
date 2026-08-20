@@ -17,6 +17,9 @@ const ALLOWED_TYPES: Record<string, string> = {
   "image/png": ".png",
   "image/webp": ".webp",
   "image/gif": ".gif",
+  // Брони отелей и билеты чаще всего приходят PDF-файлом. В WebP их,
+  // разумеется, не конвертируем — сохраняем как есть.
+  "application/pdf": ".pdf",
 };
 
 export async function POST(request: Request) {
@@ -34,7 +37,7 @@ export async function POST(request: Request) {
   const ext = ALLOWED_TYPES[file.type];
   if (!ext) {
     return NextResponse.json(
-      { error: "Можно загружать только JPEG, PNG, WEBP или GIF" },
+      { error: "Можно загружать JPEG, PNG, WEBP, GIF или PDF" },
       { status: 400 }
     );
   }
@@ -44,6 +47,9 @@ export async function POST(request: Request) {
 
   const raw = Buffer.from(await file.arrayBuffer());
   let converted: { buffer: Buffer; ext: string };
+  if (file.type === "application/pdf") {
+    converted = { buffer: raw, ext: ".pdf" };
+  } else
   try {
     converted = await toWebp(raw, file.type);
   } catch {

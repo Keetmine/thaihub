@@ -37,7 +37,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       _count: { select: { favoriteEvents: true, dramaWatchStatuses: true } },
     },
   });
-  if (!user) notFound();
+  // Удалённый аккаунт публично не существует.
+  if (!user || user.deletedAt) notFound();
 
   const [ownerFriendIds, viewerFriendIds] = await Promise.all([
     getFriendIds(user.id),

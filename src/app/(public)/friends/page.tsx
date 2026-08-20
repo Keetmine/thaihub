@@ -91,7 +91,7 @@ export default async function FriendsPage({
   const excludedIds = new Set([user.id, ...friendships.map((f) => other(f).id)]);
   const searchResults = q
     ? await prisma.user.findMany({
-        where: {
+        where: { deletedAt: null,
           id: { notIn: Array.from(excludedIds) },
           OR: [
             { name: { contains: q, mode: "insensitive" } },

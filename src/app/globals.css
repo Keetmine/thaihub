@@ -2871,3 +2871,10 @@ details.admin-section[open] > summary.admin-section-head::before {
   font-weight: 600;
   color: #fff;
 }
+
+/* Маркеры карты рисуются как SVG (см. lib/leafletIcon.ts) — у divIcon по
+   умолчанию белый фон и рамка, их надо снять. */
+.map-pin {
+  background: none;
+  border: 0;
+}

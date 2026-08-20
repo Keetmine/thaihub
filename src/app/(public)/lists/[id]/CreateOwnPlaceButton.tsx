@@ -4,6 +4,7 @@ import { useState } from "react";
 import Modal from "@/components/Modal";
 import { createOwnPlace } from "../actions";
 import FileDropzone from "@/components/FileDropzone";
+import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
 
 /** Создание своего места (не из каталога) прямо в список: название +
  *  ссылка Google Maps (короткая или длинная) или координаты — точка
@@ -61,6 +62,19 @@ export default function CreateOwnPlaceButton({ listId }: { listId: string }) {
               подтянутся автоматически, и место появится на карте. Короткие
               ссылки распознаются чуть дольше (несколько секунд).
             </p>
+          </div>
+          <div>
+            <label className="form-label small text-secondary">Категория</label>
+            {/* По категории строится фильтр в списках мест — задать её
+                удобнее сразу, чем возвращаться потом. */}
+            <select name="category" defaultValue="" className="form-select">
+              <option value="">не указана</option>
+              {LOCATION_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.emoji} {c.label}
+                </option>
+              ))}
+            </select>
           </div>
           <FileDropzone name="photoUrl" label="Фото (необязательно)" defaultValue="" />
           <div>

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { resolveMapsCoords } from "@/lib/blscene";
+import { isLocationCategory } from "@/lib/locationCategories";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -145,6 +146,7 @@ export async function createOwnPlace(listId: string, formData: FormData) {
     }
   }
 
+  const rawCategory = String(formData.get("category") ?? "").trim();
   const location = await prisma.location.create({
     data: {
       name,
@@ -152,6 +154,7 @@ export async function createOwnPlace(listId: string, formData: FormData) {
       photoUrl: photoUrl || null,
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
+      category: rawCategory && isLocationCategory(rawCategory) ? rawCategory : null,
     },
   });
   await prisma.placeListItem.create({

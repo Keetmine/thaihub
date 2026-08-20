@@ -55,5 +55,7 @@ export async function getCurrentUser() {
   });
 
   if (!session || session.expiresAt < new Date()) return null;
+  // Удалённый аккаунт не должен «оживать» по старой сессии.
+  if (session.user.deletedAt) return null;
   return session.user;
 }
