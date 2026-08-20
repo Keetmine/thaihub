@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { runTpopAgencyImport, runTpopArtistImport, markImportsReviewed } from "./actions";
+import {
+  runTpopAgencyImport,
+  runTpopArtistImport,
+  markImportsReviewed,
+  runYoutubeMusicImport,
+} from "./actions";
 import RunningImportsWatcher from "./RunningImportsWatcher";
 import Pagination from "@/components/Pagination";
+import EntitySelect from "@/components/EntitySelect";
+import { searchPerformerOptions } from "../performers/actions";
 
 export const metadata = { title: "Импорты" };
 
@@ -153,6 +160,41 @@ export default async function AdminImportsPage({
             </button>
           </form>
         </div>
+        </div>
+        <div className="col-12 col-xl-6">
+          <div className="surface p-4 h-100">
+            <h2 className="section-heading mb-2">YouTube Music: дискография</h2>
+            <p className="small text-secondary mb-3">
+              Ссылка на канал артиста (music.youtube.com/channel/UC…) — заберём
+              релизы с обложками и годами, песни и ссылки на них. Исполнителя
+              выбираем руками: по имени сопоставлять нельзя, «JASP.ER» и
+              «Jasper» — разные строки, и ошибка привяжет чужие альбомы.
+            </p>
+            <form action={runYoutubeMusicImport} className="d-flex flex-column gap-2">
+              <EntitySelect
+                name="performerId"
+                options={[]}
+                placeholder="Исполнитель из каталога…"
+                searchOptions={searchPerformerOptions}
+              />
+              <div className="d-flex flex-wrap gap-2">
+                <input
+                  name="channelUrl"
+                  required
+                  placeholder="https://music.youtube.com/channel/UC…"
+                  className="form-control flex-grow-1"
+                  style={{ minWidth: "16rem" }}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm flex-shrink-0"
+                  disabled={!!runningRun}
+                >
+                  {runningRun ? "Импорт идёт…" : "Импортировать"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 

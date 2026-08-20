@@ -5,6 +5,9 @@
 // (docker-compose с одним app-контейнером), поэтому таймер внутри
 // процесса — самое простое надёжное место.
 const INTERVAL_MS = 30 * 60 * 1000;
+// Раз в сутки обходим YouTube Music по всем артистам с привязанным
+// каналом: новые релизы подтягиваются сами и попадают в «Что нового».
+const YTM_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export async function register() {
   // Sentry инициализируется первым: иначе ошибки старта не попадут в него.
@@ -21,6 +24,24 @@ export async function register() {
   // edge/build контексты, где register тоже вызывается.
   const { sendUpcomingEventReminders, sendPremiumExpiryReminders, sendPresaleReminders } =
     await import("@/lib/telegramNotifications");
+
+  const runYoutubeMusic = async () => {
+    try {
+      const { refreshAllYoutubeMusic } = await import("@/lib/youtubeMusicImport");
+      const { logImportRun } = await import("@/lib/importRun");
+      await logImportRun(
+        "youtube-music-daily",
+        () => refreshAllYoutubeMusic(),
+        (r) =>
+          `проверено ${r.checked}, с новинками ${r.updated}, ошибок ${r.failed}` +
+          (r.newTitles.length ? `: ${r.newTitles.slice(0, 5).join(", ")}` : ""),
+      );
+    } catch (err) {
+      console.warn(
+        `youtube music daily failed: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  };
 
   const run = async () => {
     try {
@@ -39,6 +60,12 @@ export async function register() {
   // устаканиться), дальше по интервалу.
   setTimeout(run, 60 * 1000);
   setInterval(run, INTERVAL_MS);
+
+  // YouTube Music — отдельным, более редким циклом. Первый прогон через
+  // 10 минут после старта: обход десятков каналов не должен совпадать с
+  // деплоем и разогревом приложения.
+  setTimeout(runYoutubeMusic, 10 * 60 * 1000);
+  setInterval(runYoutubeMusic, YTM_INTERVAL_MS);
 }
 
 /** Хук Next.js: любая необработанная серверная ошибка (страницы,

@@ -1,231 +1,197 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { dateKey, endOfDay, formatShortDate, parseDateKey, startOfDay } from "@/lib/dates";
-import InfiniteEventList from "@/components/InfiniteEventList";
-import NameSearchBox from "@/components/NameSearchBox";
-import DateRangeFilterButton from "@/components/DateRangeFilterButton";
-import { fetchEventListPage, type EventListFilters } from "@/lib/eventList";
 import { getCurrentUser } from "@/lib/userAuth";
-import { CalendarIcon } from "@/components/icons";
-import LandingPage from "./LandingPage";
-import PremiumUpsell from "@/components/PremiumUpsell";
 import { isPremiumActive } from "@/lib/premium";
+import { getMusicNews } from "@/lib/whatsNew";
+import { getFriendIds } from "@/lib/friends";
+import { performerHref } from "@/lib/performerSlug";
+import { eventHref } from "@/lib/eventSlug";
+import { formatShortDate } from "@/lib/dates";
+import { userDisplayName } from "@/lib/userProfile";
+import LetterAvatar from "@/components/LetterAvatar";
+import LandingPage from "./LandingPage";
 
 export const dynamic = "force-dynamic";
 
-type EventFilter = "all" | "going" | "favorited" | "artists";
-
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ filter?: string; from?: string; to?: string; q?: string; trip?: string }>;
-}) {
+// Главная для своих: сводка вместо сразу афиши. Сюда ведёт логотип, и
+// это первое, что человек видит после входа — новинки любимых артистов,
+// ближайшее из «иду», планы друзей. Сама афиша живёт на /events.
+export default async function HomePage() {
   const user = await getCurrentUser();
-  if (!user) {
-    return <LandingPage />;
-  }
+  if (!user) return <LandingPage />;
 
-  // Афиша — платная функция: без подписки вместо списка сразу заглушка
-  // (как на /trips). Никакие данные событий при этом не запрашиваются.
-  if (!isPremiumActive(user)) {
-    return (
-      <div>
-        {/* Метка тура и в этой ветке: без подписки здесь пейволл, но
-            первый шаг «что это за раздел» показать всё равно нужно. */}
-        <div className="dot-grid pb-1" data-tour="feed">
-          <span className="eyebrow">Афиша событий</span>
-          <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-            Все события
-          </h1>
-        </div>
-        <PremiumUpsell feature="Афиша событий" />
-      </div>
-    );
-  }
+  const premium = isPremiumActive(user);
+  const now = new Date();
 
-  const { filter: rawFilter, from: rawFrom, to: rawTo, q: rawQ, trip: rawTrip } = await searchParams;
-  const q = (rawQ ?? "").trim();
-
-  const isValidDateKey = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
-
-  // Табы-поездки: свои поездки, ещё не закончившиеся, + выбранная (даже
-  // прошедшая — по прямой ссылке). Выбранная поездка задаёт диапазон дат
-  // вместо ручного from/to.
-  // Поездки — платная функция, без подписки табов нет (а старые поездки,
-  // созданные при активной подписке, доступны со страницы /trips… которая
-  // тоже за подпиской — то есть только после её возврата).
-  const myTrips = await prisma.trip.findMany({
-    where: {
-      OR: [
-        { userId: user.id },
-        { members: { some: { userId: user.id, status: "ACCEPTED" } } },
-      ],
-      endDate: { gte: startOfDay(new Date()) },
-    },
-    orderBy: { startDate: "asc" },
-  });
-
-  const activeTrip = rawTrip
-    ? (myTrips.find((t) => t.id === rawTrip) ??
-      (await prisma.trip.findFirst({
-        where: {
-          id: rawTrip,
-          OR: [
-            { userId: user.id },
-            { members: { some: { userId: user.id, status: "ACCEPTED" } } },
-          ],
-        },
-      })))
-    : null;
-
-  // Таб поездки — самостоятельный режим, не фильтр: он показывает ВСЕ
-  // события своих дат, Все/Иду/Избранное при нём принудительно "all", а
-  // клик по любому фильтр-табу поездку сбрасывает (в rangeQuery ниже
-  // trip не попадает намеренно).
-  const filter: EventFilter = activeTrip
-    ? "all"
-    : rawFilter === "going"
-      ? "going"
-      : rawFilter === "favorited"
-        ? "favorited"
-        : rawFilter === "artists"
-          ? "artists"
-          : "all";
-
-  const from = activeTrip ? dateKey(activeTrip.startDate) : isValidDateKey(rawFrom) ? rawFrom! : "";
-  const to = activeTrip ? dateKey(activeTrip.endDate) : isValidDateKey(rawTo) ? rawTo! : "";
-  const hasDateRange = Boolean(from || to);
-  // Carried through onto the filter toggle links so switching Все/Иду/
-  // Избранное doesn't drop a manual date range or search term.
-  const rangeQuery = `${
-    activeTrip ? "" : `${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`
-  }${q ? `&q=${encodeURIComponent(q)}` : ""}`;
-
-  const filters: EventListFilters = { filter, from, to, q };
-  const initialPage = await fetchEventListPage(user.id, true, filters, "upcoming", 0);
-
-  // Общее число событий в явном диапазоне — одним count'ом (сам список
-  // при этом всё равно подгружается страницами).
-  const rangeTotal = hasDateRange
-    ? await prisma.eventOccurrence.count({
-        where: {
-          startsAt: {
-            gte: from ? startOfDay(parseDateKey(from)) : undefined,
-            lte: to ? endOfDay(parseDateKey(to)) : undefined,
+  const [news, myUpcoming, friendIds, favoritePerformers] = await Promise.all([
+    // Новинки любимых артистов; если избранного ещё нет — общие.
+    getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
+      own.length > 0 ? own : getMusicNews({ limit: 8 }),
+    ),
+    premium
+      ? prisma.eventAttendance.findMany({
+          where: { userId: user.id, occurrence: { startsAt: { gte: now } } },
+          select: {
+            occurrence: { select: { startsAt: true } },
+            event: { select: { id: true, slug: true, title: true, venue: true } },
           },
-          ...(filter === "going" ? { attendances: { some: { userId: user.id } } } : {}),
-          event: {
-            ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-            ...(filter === "favorited" ? { favoritedBy: { some: { userId: user.id } } } : {}),
+          orderBy: { occurrence: { startsAt: "asc" } },
+          take: 3,
+        })
+      : Promise.resolve([]),
+    getFriendIds(user.id),
+    prisma.favoritePerformer.count({ where: { userId: user.id } }),
+  ]);
+
+  const friendsGoing =
+    premium && friendIds.length > 0
+      ? await prisma.eventAttendance.findMany({
+          where: { userId: { in: friendIds }, occurrence: { startsAt: { gte: now } } },
+          select: {
+            user: { select: { id: true, name: true, username: true, photoUrl: true } },
+            occurrence: { select: { startsAt: true } },
+            event: { select: { id: true, slug: true, title: true } },
           },
-        },
-      })
-    : 0;
+          orderBy: { occurrence: { startsAt: "asc" } },
+          take: 5,
+        })
+      : [];
 
   return (
     <div>
-      {/* Метка тура — на заголовке, а не на фильтрах: без подписки
-          вместо ленты стоит пейволл, а первый шаг должен показаться
-          всем. */}
-      <div className="dot-grid pb-1" data-tour="feed">
-        <span className="eyebrow">Афиша событий</span>
-        <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
-          <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-            Все события
-          </h1>
-          <Link
-            href="/calendar"
-            className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
-          >
-            <CalendarIcon />
-            Посмотреть в календаре
-          </Link>
-        </div>
-      </div>
+      <span className="eyebrow">Главная</span>
+      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
+        Привет, {userDisplayName(user)}
+      </h1>
 
-      <div className="tab-bar-row">
-        <div className="tab-bar">
-          <Link
-            href={`/?filter=all${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "all" && !activeTrip ? "active" : ""}`}
-          >
-            Все события
-          </Link>
-          <Link
-            href={`/?filter=going${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "going" ? "active" : ""}`}
-          >
-            Я иду
-          </Link>
-          <Link
-            href={`/?filter=favorited${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "favorited" ? "active" : ""}`}
-          >
-            Избранное
-          </Link>
-          <Link
-            href={`/?filter=artists${rangeQuery}`}
-            prefetch={false}
-            className={`tab-bar-item ${filter === "artists" ? "active" : ""}`}
-          >
-            Мои артисты
-          </Link>
-          {myTrips.map((t) => (
-            <Link
-              key={t.id}
-              href={`/?trip=${t.id}`}
-              prefetch={false}
-              className={`tab-bar-item ${activeTrip?.id === t.id ? "active" : ""}`}
-              title={`${formatShortDate(t.startDate)} – ${formatShortDate(t.endDate)}`}
-            >
-              ✈ {t.title}
+      {/* Новинки — то, ради чего сюда заходят между концертами. */}
+      <section className="mb-5">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+          <h2 className="section-heading mb-0">Что нового</h2>
+          <span className="small text-secondary">
+            {favoritePerformers > 0 ? "релизы ваших артистов" : "свежее в каталоге"}
+          </span>
+        </div>
+
+        {news.length === 0 ? (
+          <p className="text-secondary">
+            Пока пусто. Добавьте артистов в избранное — здесь появятся их новые
+            релизы.
+          </p>
+        ) : (
+          <div className="row g-2">
+            {news.map((item) => (
+              <div key={`${item.kind}-${item.id}`} className="col-12 col-md-6 col-xl-4">
+                <div className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100">
+                  <LetterAvatar
+                    name={item.title}
+                    photoUrl={item.coverUrl ?? item.performer.photoUrl}
+                    size={3}
+                    rounded={false}
+                  />
+                  <div style={{ minWidth: 0 }} className="flex-grow-1">
+                    <span className="text-white d-block text-truncate">{item.title}</span>
+                    <Link
+                      href={performerHref(item.performer)}
+                      className="small text-secondary text-decoration-none d-block text-truncate"
+                    >
+                      {item.performer.name}
+                    </Link>
+                    <span className="small text-secondary">
+                      {[item.subtitle, item.year].filter(Boolean).join(" · ")}
+                    </span>
+                  </div>
+                  {item.url && (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-sm flex-shrink-0"
+                    >
+                      Слушать ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="row g-4">
+        <div className="col-12 col-lg-6">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h2 className="section-heading mb-0">Вы идёте</h2>
+            <Link href="/events?filter=going" className="small text-secondary">
+              все →
             </Link>
-          ))}
-        </div>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          {!activeTrip && (
-            <DateRangeFilterButton
-              action="/"
-              from={from}
-              to={to}
-              clearHref={`/?filter=${filter}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
-              hiddenFields={filter !== "all" ? { filter } : undefined}
-            />
+          </div>
+          {!premium ? (
+            <p className="small text-secondary">
+              Афиша и отметки «иду» — по подписке.{" "}
+              <Link href="/events" className="link-body-emphasis">
+                Подробнее
+              </Link>
+            </p>
+          ) : myUpcoming.length === 0 ? (
+            <p className="small text-secondary">
+              Ничего не запланировано.{" "}
+              <Link href="/events" className="link-body-emphasis">
+                Посмотреть афишу
+              </Link>
+            </p>
+          ) : (
+            <div className="d-flex flex-column gap-2">
+              {myUpcoming.map((a) => (
+                <Link
+                  key={`${a.event.id}-${+a.occurrence.startsAt}`}
+                  href={eventHref(a.event)}
+                  className="surface surface-hover text-decoration-none d-flex justify-content-between gap-3 p-3"
+                >
+                  <span className="text-white text-truncate">{a.event.title}</span>
+                  <span className="small text-secondary flex-shrink-0">
+                    {formatShortDate(a.occurrence.startsAt)}
+                  </span>
+                </Link>
+              ))}
+            </div>
           )}
-          <NameSearchBox
-            action="/"
-            q={q}
-            placeholder="Поиск по названию…"
-            hiddenFields={{
-              ...(filter !== "all" ? { filter } : {}),
-              ...(activeTrip
-                ? { trip: activeTrip.id }
-                : { ...(from ? { from } : {}), ...(to ? { to } : {}) }),
-            }}
-            className=""
-          />
+        </div>
+
+        <div className="col-12 col-lg-6">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h2 className="section-heading mb-0">Друзья идут</h2>
+            <Link href="/friends" className="small text-secondary">
+              друзья →
+            </Link>
+          </div>
+          {friendsGoing.length === 0 ? (
+            <p className="small text-secondary">
+              {friendIds.length === 0
+                ? "Добавьте друзей — увидите, на что идут они."
+                : "Друзья пока никуда не собираются."}
+            </p>
+          ) : (
+            <div className="d-flex flex-column gap-2">
+              {friendsGoing.map((a) => (
+                <Link
+                  key={`${a.user.id}-${a.event.id}`}
+                  href={eventHref(a.event)}
+                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
+                >
+                  <LetterAvatar name={a.user.name} photoUrl={a.user.photoUrl} size={2} />
+                  <span style={{ minWidth: 0 }} className="flex-grow-1">
+                    <span className="text-white d-block text-truncate">{a.event.title}</span>
+                    <span className="small text-secondary">
+                      {userDisplayName(a.user)} · {formatShortDate(a.occurrence.startsAt)}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {hasDateRange && (
-        <p className="small text-secondary mb-3">
-          {rangeTotal === 0
-            ? "В этом диапазоне дат событий нет."
-            : `Событий в диапазоне: ${rangeTotal}.`}
-        </p>
-      )}
-
-      <InfiniteEventList
-        key={`${filter}|${from}|${to}|${q}`}
-        filters={filters}
-        initialPage={initialPage}
-        emptyMessage={
-          hasDateRange ? "" : q ? "Ничего не найдено." : "Предстоящих событий пока нет."
-        }
-      />
     </div>
   );
 }

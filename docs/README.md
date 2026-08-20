@@ -29,6 +29,7 @@ something changes, edit the doc in place rather than appending a note.
   - [memindy-import.md](features/memindy-import.md) — Me Mind Y artist roster importer
   - [change2561-import.md](features/change2561-import.md) — CHANGE 2561 importer (own site + Wikipedia)
   - [wikipedia-agency-import.md](features/wikipedia-agency-import.md) — talent-agency importer (official MediaWiki API, not scraping)
+  - [youtube-music-import.md](features/youtube-music-import.md) — дискография с YouTube Music + суточное обновление
   - [tpop-band-import.md](features/tpop-band-import.md) — idol-group importer from tpop.fandom.com (official MediaWiki API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator
   - [onboarding.md](features/onboarding.md) — /welcome и интерактивный тур по интерфейсу

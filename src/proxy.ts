@@ -52,7 +52,7 @@ export function proxy(request: NextRequest) {
   // (getCurrentUser() → null), а действия («в избранное», «иду») сами
   // редиректят анонима на /login. Личное (аккаунт, поездки, списки,
   // друзья, календарь) остаётся за логином.
-  if (/^\/(artists|dramas|novels|locations|agencies|day|event|search)(\/.*)?$/.test(pathname)) {
+  if (/^\/(artists|dramas|novels|locations|agencies|day|event|events|search)(\/.*)?$/.test(pathname)) {
     return NextResponse.next();
   }
 

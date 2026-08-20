@@ -83,7 +83,7 @@ export default async function PublicLayout({ children }: { children: React.React
           </div>
 
           <MobileMenu>
-            <NavLink href="/">Все события</NavLink>
+            <NavLink href="/events" matchPrefixes={["/event/"]}>Все события</NavLink>
             <span data-tour="artists">
               <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
                 Исполнители
@@ -116,7 +116,7 @@ export default async function PublicLayout({ children }: { children: React.React
           </MobileMenu>
 
           <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
-            <NavLink href="/">Все события</NavLink>
+            <NavLink href="/events" matchPrefixes={["/event/"]}>Все события</NavLink>
             <span data-tour="artists">
               <NavLink href="/artists" matchPrefixes={["/artists/", "/agencies"]}>
                 Исполнители
@@ -146,7 +146,7 @@ export default async function PublicLayout({ children }: { children: React.React
             <SearchForm />
             {user && (
               <Link
-                href="/?filter=favorited"
+                href="/events?filter=favorited"
                 prefetch={false}
                 className="icon-btn"
                 aria-label="Избранное"

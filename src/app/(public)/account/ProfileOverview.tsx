@@ -59,8 +59,8 @@ export default function ProfileOverview({
   ];
 
   const chips: { label: string; value: number; href?: string }[] = [
-    { label: "иду", value: nav.going, href: "/?filter=going" },
-    { label: "в избранном", value: nav.favoriteEvents, href: "/?filter=favorited" },
+    { label: "иду", value: nav.going, href: "/events?filter=going" },
+    { label: "в избранном", value: nav.favoriteEvents, href: "/events?filter=favorited" },
     {
       label: `${plural(nav.favoritePerformers, ["любимый артист", "любимых артиста", "любимых артистов"])}`,
       value: nav.favoritePerformers,

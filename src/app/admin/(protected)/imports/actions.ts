@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopAgency, importTpopArtist } from "@/lib/tpopAgencyImport";
+import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
+import { logImportRun } from "@/lib/importRun";
+import { parseChannelId } from "@/lib/youtubeMusic";
 
 /** Импорт агентства с tpop.fandom.com из формы на /admin/imports.
  *  Долгий (минуты) — поэтому НЕ ждём завершения: создаём ImportRun со
@@ -138,4 +141,30 @@ export async function markImportsReviewed(): Promise<void> {
   });
   revalidatePath("/admin/imports");
   revalidatePath("/admin");
+}
+
+/**
+ * Импорт дискографии с YouTube Music. Ссылка на канал + исполнитель из
+ * нашего каталога: сопоставлять по имени автоматически нельзя — «JASP.ER»
+ * и «Jasper» для нас разные строки, а ошибка привяжет чужие альбомы.
+ */
+export async function runYoutubeMusicImport(formData: FormData): Promise<void> {
+  await requireCatalogEditor();
+  const performerId = String(formData.get("performerId") ?? "").trim();
+  const rawUrl = String(formData.get("channelUrl") ?? "").trim();
+  if (!performerId) throw new Error("Выберите исполнителя");
+  const channelId = parseChannelId(rawUrl);
+  if (!channelId) throw new Error("Не похоже на ссылку канала YouTube Music");
+
+  await logImportRun(
+    "youtube-music",
+    () => importYtmForPerformer(performerId, channelId),
+    (r) =>
+      `${r.performerName}: релизов +${r.albumsCreated} (обновлено ${r.albumsUpdated}), ` +
+      `песен +${r.songsCreated} (обновлено ${r.songsUpdated})` +
+      (r.linkAdded ? ", добавлена ссылка на канал" : ""),
+  );
+
+  revalidatePath("/admin/imports");
+  revalidatePath(`/admin/performers/${performerId}/edit`);
 }

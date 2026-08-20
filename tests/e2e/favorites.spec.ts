@@ -23,7 +23,9 @@ test("a new user can sign up and favorite an event", async ({ page }) => {
     // locked-карточки без ссылок, избранное недоступно.
     runDbScript("set-premium-test-user.ts", email);
 
-    await page.goto("/");
+    // Афиша переехала с главной на /events: на "/" теперь сводка
+    // («что нового», ближайшее), а список событий — здесь.
+    await page.goto("/events");
     const firstEventLink = page.locator('a[href^="/event/"]').first();
     test.skip((await firstEventLink.count()) === 0, "no events in the database to favorite");
     await Promise.all([page.waitForURL(/\/event\//), firstEventLink.click()]);

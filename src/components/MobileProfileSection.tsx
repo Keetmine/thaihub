@@ -7,7 +7,7 @@ import type { ProfileMenuUser } from "./ProfileMenu";
 const ITEMS = [
   { href: "/account", label: "Кабинет" },
   { href: "/notifications", label: "Уведомления" },
-  { href: "/?filter=favorited", label: "Избранное" },
+  { href: "/events?filter=favorited", label: "Избранное" },
   { href: "/friends", label: "Друзья" },
   { href: "/account?tab=events", label: "Мои события" },
   { href: "/trips", label: "Мои поездки" },
