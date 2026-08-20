@@ -17,11 +17,12 @@ bar).
   [tpop-band-import.md](tpop-band-import.md).
 - Real name, birth date, place of birth, bio, agency, photo, MyDramaList
   link are all optional profile fields, fillable manually or (for dramas)
-  picked up via the blscene importer's cast data where available. GMMTV's
-  roster is kept in sync separately — see
-  [gmmtv-import.md](gmmtv-import.md) — and a performer's place of birth,
-  birth date, social links, and known-for dramas (with full cast) can be
-  pulled from TMDB — see [tmdb-import.md](tmdb-import.md).
+  picked up via the blscene importer's cast data where available. Real
+  name, birth date, bio, photo, social links and filmography can be
+  pulled per person from MyDramaList — see
+  [mydramalist-import.md](mydramalist-import.md). Bulk TMDB/GMMTV sweeps
+  were removed; point imports from TMDB remain — see
+  [tmdb-import.md](tmdb-import.md).
 - **Public performer URLs**: `/artists/{slug}` (см. slugs.md; раздел
   переименован из /performers — старые ссылки редиректятся навсегда
   через next.config) — `performerHref()` in

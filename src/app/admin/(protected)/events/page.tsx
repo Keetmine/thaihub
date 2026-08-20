@@ -78,7 +78,7 @@ export default async function AdminEventsPage({
           </h1>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/admin/events/import-ttm" className="btn btn-ghost btn-sm">
+          <Link href="/admin/imports/ttm" className="btn btn-ghost btn-sm">
             Импортировать с ThaiTicketMajor
           </Link>
           <Link href="/admin/events/new" className="btn btn-primary btn-sm">

@@ -21,9 +21,8 @@ something changes, edit the doc in place rather than appending a note.
   - [catalog.md](features/catalog.md) — performers/bands, pairings, dramas, agencies
   - [locations.md](features/locations.md) — filming/venue locations, map, visited tracking
   - [blscene-import.md](features/blscene-import.md) — the blscene.com drama/location scraper
-  - [gmmtv-import.md](features/gmmtv-import.md) — the GMMTV roster scraper
   - [tmdb-import.md](features/tmdb-import.md) — TMDB actor/drama importer (official API, not scraping)
-  - [mydramalist-import.md](features/mydramalist-import.md) — точечный импорт сериала со страницы MyDramaList
+  - [mydramalist-import.md](features/mydramalist-import.md) — точечный импорт сериала и актёра со страницы MyDramaList
   - [tmdb-company-import.md](features/tmdb-company-import.md) — TMDB production-company importer (official API, not scraping)
   - [drama-fandom-agency-import.md](features/drama-fandom-agency-import.md) — talent-agency importer from drama.fandom.com (official MediaWiki API, not scraping)
   - [memindy-import.md](features/memindy-import.md) — Me Mind Y artist roster importer

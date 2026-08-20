@@ -6,7 +6,6 @@ import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
-import TmdbSyncButton from "./TmdbSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { dramaTitleWhere } from "@/lib/searchWhere";
 import BulkList from "@/components/admin/BulkList";
@@ -137,10 +136,6 @@ export default async function AdminDramasPage({
           </Link>
         </p>
       )}
-
-      <div className="surface p-3 mb-4">
-        <TmdbSyncButton />
-      </div>
 
       {dramas.length === 0 ? (
         <p className="text-secondary">

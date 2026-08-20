@@ -19,6 +19,12 @@ import TelegramLoginButton from "@/components/TelegramLoginButton";
 import { telegramBotUsername } from "@/lib/telegram";
 import { COUNTRIES } from "@/lib/countries";
 import { dateKey } from "@/lib/dates";
+import DatePickerInput from "@/components/DatePickerInput";
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
+import { verifyTelegramAuth } from "@/lib/telegram";
+import { TELEGRAM_RELINK_COOKIE } from "@/lib/telegramRelink";
+import TelegramRelinkDialog, { type RelinkInfo } from "./TelegramRelinkDialog";
 
 export const metadata = pageMetadata({
   title: "Настройки",
@@ -63,8 +69,49 @@ export default async function SettingsPage({
   const { telegram: telegramStatus } = await searchParams;
   const botUsername = telegramBotUsername();
 
+  // Telegram привязан к другому аккаунту и ждёт подтверждения переноса.
+  // Куку ставит /api/auth/telegram/link; данные для попапа собираем
+  // здесь, чтобы клиенту не уезжал подписанный payload.
+  let relinkInfo: RelinkInfo | null = null;
+  const relinkRaw = (await cookies()).get(TELEGRAM_RELINK_COOKIE)?.value;
+  if (relinkRaw) {
+    const payload = verifyTelegramAuth(new URLSearchParams(relinkRaw));
+    const other = payload
+      ? await prisma.user.findUnique({
+          where: { telegramId: payload.id },
+          select: {
+            id: true,
+            name: true,
+            _count: {
+              select: {
+                favoriteEvents: true,
+                favoritePerformers: true,
+                trips: true,
+                eventAttendances: true,
+              },
+            },
+          },
+        })
+      : null;
+    if (payload && other && other.id !== user.id) {
+      relinkInfo = {
+        telegramUsername: payload.username,
+        otherName: other.name,
+        losses: [
+          { n: other._count.favoritePerformers, label: "любимых артистов" },
+          { n: other._count.favoriteEvents, label: "событий в избранном" },
+          { n: other._count.eventAttendances, label: "отметок «иду»" },
+          { n: other._count.trips, label: "поездок" },
+        ]
+          .filter((c) => c.n > 0)
+          .map((c) => `${c.n} ${c.label}`),
+      };
+    }
+  }
+
   return (
     <div>
+      {relinkInfo && <TelegramRelinkDialog info={relinkInfo} />}
       <Link href="/account" className="eyebrow text-decoration-none">
         ← Профиль
       </Link>
@@ -140,11 +187,9 @@ export default async function SettingsPage({
                   </div>
                   <div className="col-6">
                     <label className="form-label">Дата рождения</label>
-                    <input
-                      type="date"
+                    <DatePickerInput
                       name="birthDate"
                       defaultValue={user.birthDate ? dateKey(user.birthDate) : ""}
-                      className="form-control"
                     />
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRIES } from "@/lib/countries";
 import { saveProfileSetup } from "./actions";
+import DatePickerInput from "@/components/DatePickerInput";
 
 /**
  * Первый шаг после регистрации: ник и, по желанию, остальное о себе.
@@ -92,7 +93,7 @@ export default function ProfileSetupForm({
         </div>
         <div className="col-12 col-md-6">
           <label className="form-label">Дата рождения</label>
-          <input type="date" name="birthDate" className="form-control" />
+          <DatePickerInput name="birthDate" />
         </div>
         <div className="col-12">
           <label className="form-label">О себе</label>

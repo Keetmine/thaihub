@@ -44,3 +44,10 @@ export async function confirmTelegramRelink(): Promise<void> {
   store.delete(TELEGRAM_RELINK_COOKIE);
   redirect("/account/settings?telegram=linked");
 }
+
+/** Отмена: убираем куку, иначе попап всплывал бы снова при каждом
+ *  обновлении настроек. */
+export async function cancelTelegramRelink(): Promise<void> {
+  const store = await cookies();
+  store.delete(TELEGRAM_RELINK_COOKIE);
+}

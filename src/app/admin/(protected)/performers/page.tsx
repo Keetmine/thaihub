@@ -8,8 +8,6 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
-import GmmtvSyncButton from "./GmmtvSyncButton";
-import TmdbSyncButton from "./TmdbSyncButton";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { performerNameWhere } from "@/lib/searchWhere";
@@ -349,13 +347,6 @@ export default async function AdminPerformersPage({
           className=""
         />
       </div>
-
-      {!isAgencies && (
-        <div className="surface p-3 mb-4 d-flex flex-wrap align-items-start gap-3">
-          <GmmtvSyncButton />
-          <TmdbSyncButton />
-        </div>
-      )}
 
       {isAgencies ? (
         <AdminAgenciesView q={q} page={page} />

@@ -326,53 +326,6 @@ export type DramaSyncSummary = {
   conflictTitles: string[];
 };
 
-/** Sweeps every Drama in the catalog through syncDramaFromTmdb. */
-export async function syncAllDramasFromTmdb(onProgress?: (message: string) => void): Promise<DramaSyncSummary> {
-  const log = onProgress ?? (() => {});
-  const dramas = await prisma.drama.findMany({
-    select: { id: true, title: true, year: true, tmdbId: true },
-    orderBy: { title: "asc" },
-  });
-
-  const summary: DramaSyncSummary = {
-    total: dramas.length,
-    created: 0,
-    updated: 0,
-    notFound: 0,
-    conflicts: 0,
-    errors: 0,
-    castCreated: 0,
-    notFoundTitles: [],
-    conflictTitles: [],
-  };
-
-  for (const [i, drama] of dramas.entries()) {
-    const outcome = await syncDramaFromTmdb(drama);
-    const progress = `[${i + 1}/${dramas.length}] ${drama.title}`;
-    if (outcome.status === "created") {
-      summary.created += 1;
-      summary.castCreated += outcome.castCreated;
-      log(`${progress} — создан, состав: ${outcome.castCreated} новых`);
-    } else if (outcome.status === "updated") {
-      summary.updated += 1;
-      summary.castCreated += outcome.castCreated;
-      log(`${progress} — обновлён, состав: ${outcome.castCreated} новых`);
-    } else if (outcome.status === "not_found") {
-      summary.notFound += 1;
-      summary.notFoundTitles.push(drama.title);
-      log(`${progress} — не найден на TMDB`);
-    } else if (outcome.status === "conflict") {
-      summary.conflicts += 1;
-      summary.conflictTitles.push(`${drama.title} (совпадает с «${outcome.claimedByTitle}»)`);
-      log(`${progress} — та же запись на TMDB, что и «${outcome.claimedByTitle}» — похоже на дубль в каталоге`);
-    } else {
-      summary.errors += 1;
-      log(`${progress} — ОШИБКА: ${outcome.message}`);
-    }
-  }
-
-  return summary;
-}
 
 export type PerformerSyncOutcome =
   | { status: "synced"; dramasCreated: number; dramasUpdated: number; castCreated: number; showsSkipped: number }
@@ -464,54 +417,6 @@ export type PerformerSyncSummary = {
   notFoundNames: string[];
 };
 
-/** Sweeps every solo Performer in the catalog through syncPerformerFromTmdb.
- *  Bands are skipped — they aren't people on TMDB. */
-export async function syncAllPerformersFromTmdb(
-  onProgress?: (message: string) => void,
-): Promise<PerformerSyncSummary> {
-  const log = onProgress ?? (() => {});
-  const performers = await prisma.performer.findMany({
-    where: { type: "SOLO" },
-    select: { id: true, name: true, realName: true, tmdbId: true },
-    orderBy: { name: "asc" },
-  });
-
-  const summary: PerformerSyncSummary = {
-    total: performers.length,
-    synced: 0,
-    notFound: 0,
-    errors: 0,
-    dramasCreated: 0,
-    dramasUpdated: 0,
-    castCreated: 0,
-    showsSkipped: 0,
-    notFoundNames: [],
-  };
-
-  for (const [i, performer] of performers.entries()) {
-    const outcome = await syncPerformerFromTmdb(performer);
-    const progress = `[${i + 1}/${performers.length}] ${performer.name}`;
-    if (outcome.status === "synced") {
-      summary.synced += 1;
-      summary.dramasCreated += outcome.dramasCreated;
-      summary.dramasUpdated += outcome.dramasUpdated;
-      summary.castCreated += outcome.castCreated;
-      summary.showsSkipped += outcome.showsSkipped;
-      log(
-        `${progress} — сериалов: +${outcome.dramasCreated} новых, ${outcome.dramasUpdated} обновлено${outcome.showsSkipped ? `, пропущено конфликтов: ${outcome.showsSkipped}` : ""}, состав: ${outcome.castCreated} новых`,
-      );
-    } else if (outcome.status === "not_found") {
-      summary.notFound += 1;
-      summary.notFoundNames.push(performer.name);
-      log(`${progress} — не найден на TMDB`);
-    } else {
-      summary.errors += 1;
-      log(`${progress} — ОШИБКА: ${outcome.message}`);
-    }
-  }
-
-  return summary;
-}
 
 export type TmdbCompanySyncSummary = {
   companyName: string;

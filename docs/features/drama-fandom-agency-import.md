@@ -12,14 +12,14 @@ reuses `mediawikiParse.ts`'s helpers — but unlike those two, the
 official `action=parse` API can't get past on this particular wiki (it
 answers with a real, non-Cloudflare `missingtitle` error — confirmed by
 its `cf-cache-status`/`cache-tag` response headers, not a challenge
-page), so this needs a real browser page, same as `gmmtv.ts`.
+page), so this needs a real browser page, same as `blscene.ts`.
 
 ## Files
 
 - **`src/lib/dramaFandomAgency.ts`** — pure fetch+parse, no DB access:
   `fetchDramaFandomAgencyPage(pageUrlOrTitle, page)` takes a Playwright
   `Page` (lifecycle managed by the caller, same convention as
-  `gmmtv.ts`) and returns the agency's name, productions, and
+  `blscene.ts`) and returns the agency's name, productions, and
   current/former artist rosters.
 - **`src/lib/dramaFandomAgencyImport.ts`** — DB orchestration:
   `importDramaFandomAgency(pageUrlOrTitle, page, onProgress?)`, built

@@ -15,6 +15,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
 import {
   resolveReport,
+  reopenReport,
   deleteReport,
   adminDeleteContent,
   adminUpdateContentText,
@@ -37,6 +38,13 @@ const TABS = [
   { key: "places", label: "Свои места" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
+
+const REPORT_STATES = [
+  { key: "open", label: "Открытые" },
+  { key: "resolved", label: "Разобранные" },
+  { key: "all", label: "Все" },
+] as const;
+type ReportState = (typeof REPORT_STATES)[number]["key"];
 
 function UserLink({ u }: { u: { id: string; name: string | null; email: string | null } | null }) {
   return u ? (
@@ -132,17 +140,24 @@ const targetInclude = {
 export default async function AdminModerationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string; state?: string }>;
 }) {
   await requireAdminPage();
-  const { tab: rawTab, page: rawPage } = await searchParams;
+  const { tab: rawTab, page: rawPage, state: rawState } = await searchParams;
   const tab: TabKey = (TABS.find((t) => t.key === rawTab)?.key ?? "reports") as TabKey;
+  // Состояние очереди жалоб. Раньше показывались только открытые, и
+  // разобранная жалоба исчезала навсегда: ни истории, ни возможности
+  // проверить, что именно закрыли.
+  const reportState: ReportState =
+    rawState === "resolved" || rawState === "all" ? rawState : "open";
+  const reportWhere =
+    reportState === "all" ? {} : { status: reportState === "open" ? ("NEW" as const) : ("RESOLVED" as const) };
   const page = Math.max(1, Number(rawPage) || 1);
   const skip = (page - 1) * PAGE_SIZE;
   const pageArgs = { skip, take: PAGE_SIZE };
 
   const [reportCount, counts] = await Promise.all([
-    prisma.report.count({ where: { status: "NEW" } }),
+    prisma.report.count({ where: reportWhere }),
     Promise.all([
       prisma.review.count(),
       prisma.comment.count(),
@@ -162,13 +177,14 @@ export default async function AdminModerationPage({
     places: counts[5],
   };
   const totalPages = Math.max(1, Math.ceil(countByTab[tab] / PAGE_SIZE));
-  const buildHref = (p: number) => `/admin/moderation?tab=${tab}&page=${p}`;
+  const buildHref = (p: number) =>
+    `/admin/moderation?tab=${tab}&page=${p}` + (tab === "reports" ? `&state=${reportState}` : "");
 
   let body: React.ReactNode;
 
   if (tab === "reports") {
     const reports = await prisma.report.findMany({
-      where: { status: "NEW" },
+      where: reportWhere,
       include: { reporter: userSelect },
       orderBy: { createdAt: "desc" },
       ...pageArgs,
@@ -196,10 +212,36 @@ export default async function AdminModerationPage({
     for (const r of reports) {
       reportsPerTarget.set(r.targetId, (reportsPerTarget.get(r.targetId) ?? 0) + 1);
     }
+    const stateSwitch = (
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+        {REPORT_STATES.map((st) => (
+          <Link
+            key={st.key}
+            href={`/admin/moderation?tab=reports&state=${st.key}`}
+            className={
+              st.key === reportState ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"
+            }
+          >
+            {st.label}
+          </Link>
+        ))}
+      </div>
+    );
+
     body = reports.length === 0 ? (
-      <p className="small text-secondary">Открытых жалоб нет.</p>
+      <>
+        {stateSwitch}
+        <p className="small text-secondary">
+          {reportState === "open"
+            ? "Открытых жалоб нет."
+            : reportState === "resolved"
+              ? "Разобранных жалоб пока нет."
+              : "Жалоб нет."}
+        </p>
+      </>
     ) : (
       <div className="d-flex flex-column gap-2">
+        {stateSwitch}
         {reports.map((r) => {
           const target =
             r.targetType === "placeList" ? (
@@ -245,13 +287,24 @@ export default async function AdminModerationPage({
                   <span className="text-secondary">
                     · от <UserLink u={r.reporter} /> · {formatShortDate(r.createdAt)}
                   </span>
+                  {r.status === "RESOLVED" && (
+                    <span className="badge rounded-pill text-bg-secondary ms-2">решено</span>
+                  )}
                 </p>
                 {r.reason && <p className="small text-secondary mb-0">{r.reason}</p>}
               </div>
               <div className="d-flex align-items-start gap-2 flex-shrink-0">
-                <form action={resolveReport.bind(null, r.id)}>
-                  <button type="submit" className="btn btn-ghost btn-sm">✓ Решено</button>
-                </form>
+                {r.status === "RESOLVED" ? (
+                  <form action={reopenReport.bind(null, r.id)}>
+                    <button type="submit" className="btn btn-ghost btn-sm">
+                      ↩ Вернуть в работу
+                    </button>
+                  </form>
+                ) : (
+                  <form action={resolveReport.bind(null, r.id)}>
+                    <button type="submit" className="btn btn-ghost btn-sm">✓ Решено</button>
+                  </form>
+                )}
                 <ConfirmForm
                   action={deleteReport.bind(null, r.id)}
                   confirmMessage="Скрыть жалобу? Запись удалится безвозвратно."

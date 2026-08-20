@@ -13,7 +13,7 @@ import {
   createEventFromTtmImport,
   type TtmImportPreview,
   type TtmImportArtist,
-} from "../importActions";
+} from "@/app/admin/(protected)/events/importActions";
 
 type ArtistRow = TtmImportArtist & { include: boolean };
 

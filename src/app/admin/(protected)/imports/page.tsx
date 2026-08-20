@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import {
-  runTpopAgencyImport,
+  runMdlPerformerImport,
   runTpopArtistImport,
   markImportsReviewed,
   runYoutubeMusicImport,
@@ -17,9 +17,7 @@ export const metadata = { title: "Импорты" };
 export const dynamic = "force-dynamic";
 
 const KIND_LABELS: Record<string, string> = {
-  "tmdb-dramas": "TMDB: сериалы",
-  "tmdb-performers": "TMDB: актёры",
-  gmmtv: "GMMTV: ростер",
+  "mdl-performer": "MyDramaList: актёр",
   "mdl-drama": "MyDramaList: сериал",
   blscene: "blscene: локации",
   "ttm-event": "ThaiTicketMajor: событие",
@@ -46,32 +44,56 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 // Журнал запусков импортов из админки (пишется logImportRun) + быстрые
 // ссылки на места, откуда они запускаются. Массовые прогоны из консоли
 // (scripts/*.ts) сюда не пишут — у них свои логи.
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 20;
+
+// Спарсенное и запуски — два независимых журнала, и раньше они шли
+// простынёй друг за другом: чтобы добраться до запусков, нужно было
+// пролистать все находки. Табы дают каждому свою страницу и свою
+// пагинацию (`page` относится к активной вкладке).
+const LOG_TABS = [
+  { key: "items", label: "Последнее спарсенное" },
+  { key: "runs", label: "Последние запуски" },
+] as const;
+type LogTab = (typeof LOG_TABS)[number]["key"];
 
 export default async function AdminImportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; log?: string }>;
 }) {
-  const { page: rawPage, status: rawStatus } = await searchParams;
+  const { page: rawPage, status: rawStatus, log: rawLog } = await searchParams;
   const page = Math.max(1, Number(rawPage) || 1);
   // Фильтр по статусу: с дашборда «упавшие импорты» ведут сразу сюда,
-  // иначе пришлось бы искать их глазами в общем журнале.
+  // иначе пришлось бы искать их глазами в общем журнале. Он же решает,
+  // какая вкладка открыта: со ссылки про упавшие ждут именно запуски.
   const status = ["RUNNING", "DONE", "FAILED"].includes(rawStatus ?? "") ? rawStatus! : null;
+  const logTab: LogTab =
+    LOG_TABS.find((t) => t.key === rawLog)?.key ?? (status ? "runs" : "items");
   const runsWhere = status ? { status } : {};
+  const skip = (page - 1) * PAGE_SIZE;
   const hasRunningPromise = prisma.importRun.findFirst({ where: { status: "RUNNING" } });
-  const [runs, totalRuns, unreviewedFailed, recentItems] = await Promise.all([
-    prisma.importRun.findMany({
-      where: runsWhere,
-      orderBy: { startedAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
+  const [runs, totalRuns, unreviewedFailed, recentItems, totalItems] = await Promise.all([
+    logTab === "runs"
+      ? prisma.importRun.findMany({
+          where: runsWhere,
+          orderBy: { startedAt: "desc" },
+          skip,
+          take: PAGE_SIZE,
+        })
+      : Promise.resolve([]),
     prisma.importRun.count({ where: runsWhere }),
     prisma.importRun.count({ where: { status: "FAILED", reviewedAt: null } }),
-    prisma.importedItem.findMany({ orderBy: { createdAt: "desc" }, take: 60 }),
+    logTab === "items"
+      ? prisma.importedItem.findMany({ orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE })
+      : Promise.resolve([]),
+    prisma.importedItem.count(),
   ]);
-  const totalPages = Math.max(1, Math.ceil(totalRuns / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil((logTab === "runs" ? totalRuns : totalItems) / PAGE_SIZE),
+  );
+  const logHref = (tab: LogTab, p = 1) =>
+    `/admin/imports?log=${tab}&page=${p}` + (tab === "runs" && status ? `&status=${status}` : "");
 
   const runningRun = await hasRunningPromise;
 
@@ -86,55 +108,49 @@ export default async function AdminImportsPage({
       </h1>
 
       <div className="d-flex flex-wrap gap-2 mb-4">
-        <Link href="/admin/dramas" className="btn btn-ghost btn-sm">TMDB-синк сериалов →</Link>
-        <Link href="/admin/performers" className="btn btn-ghost btn-sm">TMDB/GMMTV актёры →</Link>
         <Link href="/admin/locations" className="btn btn-ghost btn-sm">blscene-локации →</Link>
-        <Link href="/admin/events/import-ttm" className="btn btn-ghost btn-sm">Импорт события с TTM →</Link>
+        <Link href="/admin/imports/ttm" className="btn btn-ghost btn-sm">Импорт события с TTM →</Link>
       </div>
 
-      {/* Оба импорта рядом: это парные операции, и раздельные
-          широкие карточки заставляли скроллить между ними. */}
+      {/* Карточки импортов в ряд: раздельные широкие блоки заставляли
+          скроллить между ними. */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-xl-6">
-        <div className="surface p-4 h-100">
-          <h2 className="section-heading mb-2">tpop.fandom: импорт агентства</h2>
-          <p className="small text-secondary mb-3">
-            Страница агентства (например, https://tpop.fandom.com/wiki/RISER_MUSIC):
-            создаст/обновит агентство с лого и всех его артистов — группы, дуэты,
-            солистов и бывших — с полным профилем (занятия, инструменты,
-            рост/вес, дискография со ссылками, награды, факты, источники) и
-            сверит концерты с афишей, догрузив новые с ThaiTicketMajor. Может
-            занять несколько минут.
-          </p>
-          <form action={runTpopAgencyImport} className="d-flex gap-2">
-            <input
-              name="url"
-              required
-              placeholder="https://tpop.fandom.com/wiki/…"
-              className="form-control"
-            />
-            <button
-              type="submit"
-              className="btn btn-primary btn-sm flex-shrink-0"
-              disabled={!!runningRun}
-            >
-              {runningRun ? "Импорт идёт…" : "Импортировать"}
-            </button>
-          </form>
-          {runningRun && (
-            <div className="d-flex align-items-center gap-2 mt-3 small">
-              <span
-                className="spinner-border spinner-border-sm text-warning flex-shrink-0"
-                role="status"
-                aria-label="Импорт выполняется"
+          <div className="surface p-4 h-100">
+            <h2 className="section-heading mb-2">MyDramaList: импорт актёра</h2>
+            <p className="small text-secondary mb-3">
+              Ссылка на профиль человека (mydramalist.com/people/…) — заберём
+              настоящее имя, дату рождения, биографию, фото и соцсети.
+              Фильмография привяжется к тем сериалам, что уже есть в каталоге;
+              недостающие не заводим — сериал добавляется своим импортом.
+              Заполняются только пустые поля, занесённое руками не переписываем.
+              Исполнителя можно не выбирать — тогда карточка создастся новая.
+            </p>
+            <form action={runMdlPerformerImport} className="d-flex flex-column gap-2">
+              <EntitySelect
+                name="performerId"
+                options={[]}
+                placeholder="Исполнитель из каталога (необязательно)…"
+                searchOptions={searchPerformerOptions}
               />
-              <span className="text-secondary text-truncate">
-                {runningRun.summary || "Выполняется…"}
-              </span>
-            </div>
-          )}
-        </div>
-
+              <div className="d-flex flex-wrap gap-2">
+                <input
+                  name="mdlUrl"
+                  required
+                  placeholder="https://mydramalist.com/people/…"
+                  className="form-control flex-grow-1"
+                  style={{ minWidth: "16rem" }}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm flex-shrink-0"
+                  disabled={!!runningRun}
+                >
+                  {runningRun ? "Импорт идёт…" : "Импортировать"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
         <div className="col-12 col-xl-6">
         <div className="surface p-4 h-100">
@@ -210,8 +226,22 @@ export default async function AdminImportsPage({
 
       <RunningImportsWatcher hasRunning={!!runningRun} />
 
-      <h2 className="section-heading mb-2">Последнее спарсенное</h2>
-      {recentItems.length === 0 ? (
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+        {LOG_TABS.map((t) => (
+          <Link
+            key={t.key}
+            href={logHref(t.key)}
+            className={`nav-chip ${logTab === t.key ? "is-active" : ""}`}
+          >
+            {t.label}
+            <span className="text-secondary ms-1">
+              {t.key === "runs" ? totalRuns : totalItems}
+            </span>
+          </Link>
+        ))}
+      </div>
+
+      {logTab === "items" && (recentItems.length === 0 ? (
         <p className="small text-secondary mb-4">
           Пока пусто — сюда попадает всё, что импортёры создали или обновили
           автоматически (исполнители, события, альбомы…).
@@ -244,10 +274,11 @@ export default async function AdminImportsPage({
             </div>
           ))}
         </div>
-      )}
+      ))}
 
+      {logTab === "runs" && (
+      <>
       <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
-        <h2 className="section-heading mb-0">Последние запуски</h2>
         <span className="d-flex flex-wrap gap-2">
           {[
             { value: null, label: "Все" },
@@ -257,7 +288,7 @@ export default async function AdminImportsPage({
           ].map((f) => (
             <Link
               key={f.label}
-              href={`/admin/imports${f.value ? `?status=${f.value}` : ""}`}
+              href={`/admin/imports?log=runs${f.value ? `&status=${f.value}` : ""}`}
               className={`nav-chip ${status === f.value ? "is-active" : ""}`}
             >
               {f.label}
@@ -304,11 +335,10 @@ export default async function AdminImportsPage({
           ))}
         </div>
       )}
-      <Pagination
-        page={page}
-        totalPages={totalPages}
-        buildHref={(p) => `/admin/imports?page=${p}${status ? `&status=${status}` : ""}`}
-      />
+      </>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} buildHref={(p) => logHref(logTab, p)} />
     </div>
   );
 }

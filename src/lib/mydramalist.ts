@@ -348,6 +348,67 @@ export function parseMdlPersonPage(html: string, url: string): MdlPerson {
   };
 }
 
+const MDL_CHALLENGE = /Just a moment|challenges\.cloudflare\.com/i;
+
+/**
+ * Страница MyDramaList в обход Cloudflare.
+ *
+ * Обычный fetch на весь сайт отвечает 403 — челлендж решается только в
+ * настоящем браузере. Порядок как у ficbook: сначала дешёвый fetch (по
+ * cookies изредка проходит), затем chromium. Headless пробуем первым,
+ * на сервере он может не пройти проверку — тогда импорт запускают с
+ * локальной машины.
+ */
+async function fetchMdlHtml(url: string): Promise<string> {
+  const parsed = new URL(url);
+  if (parsed.hostname !== "mydramalist.com" && parsed.hostname !== "www.mydramalist.com") {
+    throw new Error("Ожидается ссылка на mydramalist.com");
+  }
+
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": MDL_UA },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) {
+      const html = await res.text();
+      if (!MDL_CHALLENGE.test(html.slice(0, 3000))) return html;
+    }
+  } catch {
+    // идём в браузер
+  }
+
+  const { chromium } = await import("playwright");
+  let lastError = "";
+  for (const headless of [true, false]) {
+    const browser = await chromium.launch({ headless }).catch(() => null);
+    if (!browser) continue;
+    try {
+      const page = await browser.newPage({ userAgent: MDL_UA });
+      await page.goto(url, { waitUntil: "commit", timeout: 45000 });
+      for (let i = 0; i < 15; i++) {
+        await page.waitForTimeout(2000);
+        const title = await page.title().catch(() => "");
+        if (!MDL_CHALLENGE.test(title)) break;
+      }
+      const html = await page.content();
+      if (!MDL_CHALLENGE.test(html.slice(0, 3000))) return html;
+      lastError = "Cloudflare-проверка не пройдена";
+    } catch (e) {
+      lastError = e instanceof Error ? e.message.split("\n")[0] : String(e);
+    } finally {
+      await browser.close();
+    }
+  }
+  throw new Error(
+    `MyDramaList не отдал страницу (${lastError || "Cloudflare"}) — попробуйте ещё раз`,
+  );
+}
+
+export async function fetchMdlPerson(url: string): Promise<MdlPerson> {
+  return parseMdlPersonPage(await fetchMdlHtml(url), url);
+}
+
 // ---------- поиск ----------
 
 export type MdlSearchTitle = { path: string; title: string; year: number | null };

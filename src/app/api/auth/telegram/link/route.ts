@@ -35,8 +35,10 @@ export async function GET(request: Request) {
       maxAge: 15 * 60,
       path: "/",
     });
+    // Подтверждение показывается попапом прямо в настройках — человек
+    // решает судьбу второго аккаунта, не теряя контекст страницы.
     return NextResponse.redirect(
-      new URL("/account/settings/telegram-relink", publicOrigin(url.origin)),
+      new URL("/account/settings?telegram=relink", publicOrigin(url.origin)),
     );
   }
 

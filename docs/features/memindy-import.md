@@ -8,7 +8,7 @@ exposed via the standard `wp-json/wp/v2` REST API (checked and
 confirmed absent from `/wp-json/wp/v2/types`), and the grid itself is
 rendered by an isotope script rather than present in the server
 response, so this needs a real browser page — same reasoning as
-`gmmtv.ts`.
+`blscene.ts`.
 
 ## Files
 

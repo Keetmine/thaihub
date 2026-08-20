@@ -2,58 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import { syncGmmtvArtists, type GmmtvSyncResult } from "@/lib/gmmtvImport";
-import { syncAllPerformersFromTmdb, type PerformerSyncSummary } from "@/lib/tmdbImport";
 import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 import { requireCatalogEditor } from "@/lib/auth";
-import { logImportRun } from "@/lib/importRun";
 import { logAudit, diffRecords } from "@/lib/audit";
 import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
 
-/**
- * Re-syncs the GMMTV roster: creates any new artists, updates existing
- * ones (matched by nickname) with the latest name/birth date/agency/
- * social links. Doesn't touch an existing performer's photo — that's
- * deliberately a one-off decision made for the initial bulk import (see
- * scripts/import-gmmtv.ts), not something a routine re-check should keep
- * clobbering if an admin has since picked a better photo by hand.
- */
-export async function syncGmmtv(): Promise<GmmtvSyncResult> {
-  await requireCatalogEditor();
-  const browser = await chromium.launch();
-  try {
-    const result = await logImportRun(
-      "gmmtv",
-      () => syncGmmtvArtists(browser, { replacePhotos: false }),
-      (r) => `создано ${r.created}, обновлено ${r.updated}`,
-    );
-    revalidatePath("/admin/performers");
-    revalidatePath("/performers");
-    return result;
-  } finally {
-    await browser.close();
-  }
-}
 
-/**
- * Sweeps every solo performer in the catalog through TMDB (see
- * `syncAllPerformersFromTmdb` for matching/dedup details) — the admin-UI
- * counterpart to `scripts/sync-performers-tmdb.ts`, same underlying sweep.
- */
-export async function syncTmdbPerformers(): Promise<PerformerSyncSummary> {
-  await requireCatalogEditor();
-  const result = await // Обёртка обязательна: logImportRun передаёт в колбэк runId, а
-  // первый аргумент этой функции — onProgress.
-  logImportRun("tmdb-performers", () => syncAllPerformersFromTmdb(), (r) =>
-    `синхронизировано ${r.synced} из ${r.total}, не найдено ${r.notFound}`,
-  );
-  revalidatePath("/admin/performers");
-  revalidatePath("/performers");
-  return result;
-}
 
 /** Live "похоже, уже есть" lookup for the create form's name field. */
 /**

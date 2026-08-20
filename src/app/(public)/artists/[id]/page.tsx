@@ -117,6 +117,16 @@ export default async function PerformerPage({
   // lib/performerPhoto.ts). Альбомы уже загружены выше, отсортированы по
   // году — доп. запрос не нужен.
   const displayPhoto = performerPhoto(performer);
+  // Дискографию спарсили с YouTube Music — значит площадка заслужила
+  // строку в источниках наравне с tpop и MyDramaList. Признак — ссылки
+  // на релизы: сама по себе ссылка на канал в профиле могла быть
+  // проставлена руками, без всякого парсинга.
+  const ytmSource =
+    performer.albums.some((a) => a.url?.includes("music.youtube.com")) ||
+    performer.songs.some((sg) => sg.url?.includes("music.youtube.com"))
+      ? (performer.links.find((l) => /youtube\.com\/channel\//i.test(l.url))?.url ??
+        "https://music.youtube.com/")
+      : null;
   const isBand = performer.type === "BAND";
   const isMascot = performer.type === "MASCOT";
 
@@ -726,8 +736,21 @@ export default async function PerformerPage({
             <MusicNoteIcon className="icon-inline" /> Альбомы
           </h2>
           <div className="poster-row thin-scroll">
-            {performer.albums.map((album) => (
-              <div key={album.id}>
+            {performer.albums.map((album) => {
+              // Обложка и название ведут на релиз, если импорт сохранил
+              // ссылку. Без неё карточка остаётся обычным блоком: пустой
+              // <a> выглядел бы кликабельным и никуда не вёл.
+              const Card = album.url ? "a" : "div";
+              const cardProps = album.url
+                ? {
+                    href: album.url,
+                    target: "_blank" as const,
+                    rel: "noopener noreferrer",
+                    className: "text-decoration-none d-block album-card",
+                  }
+                : {};
+              return (
+              <Card key={album.id} {...cardProps}>
                 <div
                   className="d-flex align-items-center justify-content-center"
                   style={{
@@ -766,9 +789,11 @@ export default async function PerformerPage({
                 <p className="small text-secondary mb-0">
                   {ALBUM_TYPE_LABELS[album.type]}
                   {album.year ? ` · ${album.year}` : ""}
+                  {album.url ? " ↗" : ""}
                 </p>
-              </div>
-            ))}
+              </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -879,6 +904,7 @@ export default async function PerformerPage({
 
       {(performer.sourceUrl ||
         performer.mydramalistUrl ||
+        ytmSource ||
         (Array.isArray(performer.references) &&
           performer.references.length > 0)) && (
         <div className="mb-3 sources-block">
@@ -925,6 +951,13 @@ export default async function PerformerPage({
                   rel="noopener noreferrer"
                 >
                   MyDramaList
+                </a>
+              </li>
+            )}
+            {ytmSource && (
+              <li>
+                <a href={ytmSource} target="_blank" rel="noopener noreferrer">
+                  music.youtube.com
                 </a>
               </li>
             )}

@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { syncAllDramasFromTmdb, type DramaSyncSummary } from "@/lib/tmdbImport";
 import { fetchMdlDrama } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireCatalogEditor } from "@/lib/auth";
@@ -306,21 +305,6 @@ export async function deleteDrama(id: string) {
   redirect("/admin/dramas");
 }
 
-/**
- * Sweeps every drama in the catalog through TMDB (see
- * `syncAllDramasFromTmdb` for matching/dedup details) — the admin-UI
- * counterpart to `scripts/sync-dramas-tmdb.ts`, same underlying sweep.
- */
-export async function syncTmdbDramas(): Promise<DramaSyncSummary> {
-  await requireCatalogEditor();
-  // Обёртка обязательна: logImportRun передаёт в колбэк runId, а первый
-  // аргумент этой функции — onProgress.
-  const result = await logImportRun("tmdb-dramas", () => syncAllDramasFromTmdb(), (r) =>
-    `создано ${r.created}, обновлено ${r.updated}, не найдено ${r.notFound}`,
-  );
-  revalidateDramaPaths();
-  return result;
-}
 
 export type MdlImportSummary = {
   filled: string[];

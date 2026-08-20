@@ -10,6 +10,14 @@ export async function resolveReport(id: string): Promise<void> {
   revalidatePath("/admin/moderation");
 }
 
+/** Возврат разобранной жалобы в очередь: пометить «решено» можно
+ *  случайно, а до появления истории жалоб отменить это было нечем. */
+export async function reopenReport(id: string): Promise<void> {
+  await requireAdmin();
+  await prisma.report.update({ where: { id }, data: { status: "NEW" } });
+  revalidatePath("/admin/moderation");
+}
+
 export async function deleteReport(id: string): Promise<void> {
   await requireAdmin();
   await prisma.report.delete({ where: { id } });

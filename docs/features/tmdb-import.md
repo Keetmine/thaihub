@@ -36,17 +36,24 @@ compliant path, not just a technical convenience. Requires
   TMDB, so this doesn't apply to them). `TmdbImportFlow.tsx` mirrors
   `TtmImportFlow.tsx`'s two-step shape: paste a person URL/id → review →
   confirm. Nothing is written until the confirm step.
-- **`scripts/sync-dramas-tmdb.ts`** / **`scripts/sync-performers-tmdb.ts`**
-  — one-off bulk sweeps over the *whole* catalog, no review screen (same
-  reasoning as the GMMTV/blscene bulk scripts: hundreds of items is too
-  many to review one by one, so this is dedup-and-report instead).
-  Run dramas first — see "Bulk sync" below for why the order matters.
-  The same sweep is also reachable from the admin UI: an "Импортировать
-  с TMDB" button on `/admin/dramas` (`TmdbSyncButton.tsx` +
-  `syncTmdbDramas` in that folder's `actions.ts`) and `/admin/performers`
-  (same component/action names, next to `GmmtvSyncButton`) — same
-  running/result-summary pattern as the GMMTV and blscene sync buttons,
-  since (like those) there's nothing to review per item.
+**Массовых прогонов больше нет.** Кнопки «Импортировать с TMDB» на
+`/admin/dramas` и `/admin/performers`, обе `syncAll*FromTmdb` и скрипты
+`sync-dramas-tmdb.ts` / `sync-performers-tmdb.ts` удалены 21.08.2026
+вместе с импортом ростера GMMTV.
+
+Причина — случайное нажатие: за четыре минуты обход по всем соло-
+исполнителям завёл 309 чужих персон и 26 сериалов (Bridgerton,
+Grantchester, французские детективы). Часть связей была не просто
+лишней, а ложной: `matchTmdbPerson` ищет по настоящему имени и берёт
+первого кандидата, поэтому тайским актёрам приписывалась чужая
+фильмография. Остановить прогон из интерфейса было нечем — помог только
+перезапуск контейнера, а запись в журнале осталась висеть в статусе
+RUNNING. Всё добавленное откатили сравнением со снимком базы.
+
+Точечный импорт TMDB остался: он адресный, человек сам указывает
+страницу. `importShow` по-прежнему используют импортёры агентств
+(`wikipediaAgencyImport`, `agencyTmdbMatching`). Замена массовому
+обходу — [импорт актёра с MyDramaList](mydramalist-import.md).
 
 ## "Known For" isn't a real API field
 
