@@ -25,18 +25,21 @@ export type RelinkInfo = {
  */
 export default function TelegramRelinkDialog({ info }: { info: RelinkInfo }) {
   const [open, setOpen] = useState(true);
+  const [closing, setClosing] = useState(false);
 
   async function cancel() {
-    setOpen(false);
-    // Куку надо убрать, иначе попап вернётся при любом обновлении
-    // страницы — отмена выглядела бы неработающей.
+    if (closing) return;
+    setClosing(true);
+    // Куку убираем ДО закрытия: иначе перезагрузка страницы в те доли
+    // секунды, пока запрос в пути, возвращает попап — отмена выглядит
+    // неработающей.
     await cancelTelegramRelink();
+    setOpen(false);
   }
 
   return (
+    // Заголовок рисует сам Modal — свой h2 здесь давал бы его дважды.
     <Modal open={open} onClose={cancel} title="Перенести Telegram на этот аккаунт?">
-      <h2 className="h5 mb-3">Перенести Telegram на этот аккаунт?</h2>
-
       <div className="d-flex flex-column gap-3">
         <p className="mb-0">
           Telegram{info.telegramUsername ? ` @${info.telegramUsername}` : ""} уже
@@ -63,8 +66,8 @@ export default function TelegramRelinkDialog({ info }: { info: RelinkInfo }) {
               Перенести и удалить старый
             </button>
           </form>
-          <button type="button" className="btn btn-ghost" onClick={cancel}>
-            Отмена
+          <button type="button" className="btn btn-ghost" onClick={cancel} disabled={closing}>
+            {closing ? "Закрываем…" : "Отмена"}
           </button>
         </div>
       </div>

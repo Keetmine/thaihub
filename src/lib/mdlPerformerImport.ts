@@ -59,9 +59,12 @@ export async function importMdlPerformer(
       });
 
   const filled: string[] = [];
+  // downloadRemoteImage не бросает: если скачать не удалось, вернёт
+  // исходный адрес — тогда в карточке останется внешняя ссылка на
+  // i.mydramalist.com. Так же ведут себя остальные импортёры.
   const photoUrl =
     !existing?.photoUrl && person.photoUrl
-      ? await downloadRemoteImage(person.photoUrl, "mdl").catch(() => null)
+      ? await downloadRemoteImage(person.photoUrl, "mdl")
       : null;
 
   // Настоящее имя MDL пишет по частям; в карточке оно одной строкой.
