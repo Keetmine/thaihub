@@ -20,6 +20,9 @@ export type JobDefinition = {
  * Все известные задачи. Список в коде, а не в БД: запускать можно только
  * то, для чего есть реализация — иначе строка в таблице обещала бы
  * работу, которой нет.
+ *
+ * Досинки TMDB сюда пока не заводим: они тяжёлые, а каталог меняется
+ * редко — их запускают руками с /admin/performers и /admin/dramas.
  */
 export const JOB_DEFINITIONS: JobDefinition[] = [
   {
@@ -35,28 +38,6 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
         `проверено ${r.checked}, с новинками ${r.updated}, ошибок ${r.failed}` +
         (r.newTitles.length ? `: ${r.newTitles.slice(0, 5).join(", ")}` : "")
       );
-    },
-  },
-  {
-    key: "tmdb-performers",
-    title: "TMDB: профили актёров",
-    description: "Досинк биографий, фото и дат рождения по каталогу актёров.",
-    supportsTargets: false,
-    run: async () => {
-      const { syncAllPerformersFromTmdb } = await import("@/lib/tmdbImport");
-      const r = await syncAllPerformersFromTmdb();
-      return `синхронизировано ${r.synced} из ${r.total}, не найдено ${r.notFound}`;
-    },
-  },
-  {
-    key: "tmdb-dramas",
-    title: "TMDB: сериалы",
-    description: "Досинк постеров, описаний и дат выхода по каталогу сериалов.",
-    supportsTargets: false,
-    run: async () => {
-      const { syncAllDramasFromTmdb } = await import("@/lib/tmdbImport");
-      const r = await syncAllDramasFromTmdb();
-      return `создано ${r.created}, обновлено ${r.updated}, не найдено ${r.notFound}`;
     },
   },
 ];
