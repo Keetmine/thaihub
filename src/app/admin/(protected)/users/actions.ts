@@ -7,6 +7,7 @@ import { randomBytes } from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
+import { softDeleteUser } from "@/lib/userDeletion";
 
 /** Продлить подписку на месяц (от конца текущей, если ещё активна). */
 export async function grantPremiumMonth(userId: string) {
@@ -39,10 +40,11 @@ export async function revokePremium(userId: string) {
 
 export async function deleteUser(userId: string) {
   await requireAdmin();
-  // Cascades take everything user-owned with it (sessions, favorites,
-  // attendance, friendships, trips) — see the onDelete: Cascade relations
-  // in schema.prisma.
-  await prisma.user.delete({ where: { id: userId } });
+  // Мягкое удаление: запись остаётся (иначе каскадом ушли бы
+  // комментарии, отзывы и участие в совместных поездках), но аккаунт
+  // нигде не показывается, войти нельзя, а почта и Telegram
+  // освобождаются — см. lib/userDeletion.ts.
+  await softDeleteUser(userId, "удалён администратором");
   revalidatePath("/admin/users");
 }
 

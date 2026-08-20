@@ -5,6 +5,10 @@ import NameSearchBox from "@/components/NameSearchBox";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { deleteNovel } from "./actions";
 import FicbookImportButton from "./FicbookImportButton";
+import Pagination from "@/components/Pagination";
+import BulkList from "@/components/admin/BulkList";
+import { bulkDelete } from "../bulkActions";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const metadata = { title: "Новеллы" };
 
@@ -13,23 +17,30 @@ export const dynamic = "force-dynamic";
 export default async function AdminNovelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, page: rawPage } = await searchParams;
   const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
 
-  const novels = await prisma.novel.findMany({
-    where: q
-      ? {
-          OR: [
-            { title: { contains: q, mode: "insensitive" } },
-            { author: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
-    include: { _count: { select: { dramas: true, links: true } } },
-    orderBy: { title: "asc" },
-  });
+  const where = q
+    ? {
+        OR: [
+          { title: { contains: q, mode: "insensitive" as const } },
+          { author: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+  const [novels, total] = await Promise.all([
+    prisma.novel.findMany({
+      where,
+      include: { _count: { select: { dramas: true, links: true } } },
+      orderBy: { title: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.novel.count({ where }),
+  ]);
 
   return (
     <div>
@@ -51,12 +62,11 @@ export default async function AdminNovelsPage({
       {novels.length === 0 ? (
         <p className="text-secondary">{q ? "Ничего не найдено." : "Пока нет новелл."}</p>
       ) : (
-        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
-          {novels.map((n) => (
-            <div
-              key={n.id}
-              className="surface d-flex align-items-center justify-content-between gap-3 p-3"
-            >
+        <BulkList
+          rows={novels.map((n) => ({
+            id: n.id,
+            node: (
+            <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
               <div style={{ minWidth: 0 }}>
                 <p className="font-display fw-medium text-white mb-0 text-truncate">{n.title}</p>
                 <p className="small text-secondary mb-0">
@@ -83,9 +93,26 @@ export default async function AdminNovelsPage({
                 </ConfirmForm>
               </div>
             </div>
-          ))}
-        </div>
+            ),
+          }))}
+          actions={[
+            {
+              kind: "delete",
+              label: "Удалить выбранные",
+              confirmTemplate: "Удалить {n} новелл? Действие необратимо.",
+              run: async (ids) => {
+                "use server";
+                await bulkDelete("novel", ids);
+              },
+            },
+          ]}
+        />
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPagesFor(total)}
+        buildHref={(p) => `/admin/novels?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+      />
     </div>
   );
 }

@@ -84,68 +84,76 @@ export default async function AdminImportsPage({
         <Link href="/admin/events/import-ttm" className="btn btn-ghost btn-sm">Импорт события с TTM →</Link>
       </div>
 
-      <div className="surface p-4 mb-4" style={{ maxWidth: "44rem" }}>
-        <h2 className="section-heading mb-2">tpop.fandom: импорт агентства</h2>
-        <p className="small text-secondary mb-3">
-          Страница агентства (например, https://tpop.fandom.com/wiki/RISER_MUSIC):
-          создаст/обновит агентство с лого и всех его артистов — группы, дуэты,
-          солистов и бывших — с полным профилем (занятия, инструменты,
-          рост/вес, дискография со ссылками, награды, факты, источники) и
-          сверит концерты с афишей, догрузив новые с ThaiTicketMajor. Может
-          занять несколько минут.
-        </p>
-        <form action={runTpopAgencyImport} className="d-flex gap-2">
-          <input
-            name="url"
-            required
-            placeholder="https://tpop.fandom.com/wiki/…"
-            className="form-control"
-          />
-          <button
-            type="submit"
-            className="btn btn-primary btn-sm flex-shrink-0"
-            disabled={!!runningRun}
-          >
-            {runningRun ? "Импорт идёт…" : "Импортировать"}
-          </button>
-        </form>
-        {runningRun && (
-          <div className="d-flex align-items-center gap-2 mt-3 small">
-            <span
-              className="spinner-border spinner-border-sm text-warning flex-shrink-0"
-              role="status"
-              aria-label="Импорт выполняется"
+      {/* Оба импорта рядом: это парные операции, и раздельные
+          широкие карточки заставляли скроллить между ними. */}
+      <div className="row g-3 mb-4">
+        <div className="col-12 col-xl-6">
+        <div className="surface p-4 h-100">
+          <h2 className="section-heading mb-2">tpop.fandom: импорт агентства</h2>
+          <p className="small text-secondary mb-3">
+            Страница агентства (например, https://tpop.fandom.com/wiki/RISER_MUSIC):
+            создаст/обновит агентство с лого и всех его артистов — группы, дуэты,
+            солистов и бывших — с полным профилем (занятия, инструменты,
+            рост/вес, дискография со ссылками, награды, факты, источники) и
+            сверит концерты с афишей, догрузив новые с ThaiTicketMajor. Может
+            занять несколько минут.
+          </p>
+          <form action={runTpopAgencyImport} className="d-flex gap-2">
+            <input
+              name="url"
+              required
+              placeholder="https://tpop.fandom.com/wiki/…"
+              className="form-control"
             />
-            <span className="text-secondary text-truncate">
-              {runningRun.summary || "Выполняется…"}
-            </span>
-          </div>
-        )}
-      </div>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm flex-shrink-0"
+              disabled={!!runningRun}
+            >
+              {runningRun ? "Импорт идёт…" : "Импортировать"}
+            </button>
+          </form>
+          {runningRun && (
+            <div className="d-flex align-items-center gap-2 mt-3 small">
+              <span
+                className="spinner-border spinner-border-sm text-warning flex-shrink-0"
+                role="status"
+                aria-label="Импорт выполняется"
+              />
+              <span className="text-secondary text-truncate">
+                {runningRun.summary || "Выполняется…"}
+              </span>
+            </div>
+          )}
+        </div>
 
-      <div className="surface p-4 mb-4" style={{ maxWidth: "44rem" }}>
-        <h2 className="section-heading mb-2">tpop.fandom: импорт артиста</h2>
-        <p className="small text-secondary mb-3">
-          Страница артиста или группы (например,
-          https://tpop.fandom.com/wiki/TYTAN): создаст/обновит с полным
-          профилем, дискографией и концертами; агентство возьмётся из поля
-          Agency его страницы.
-        </p>
-        <form action={runTpopArtistImport} className="d-flex gap-2">
-          <input
-            name="url"
-            required
-            placeholder="https://tpop.fandom.com/wiki/…"
-            className="form-control"
-          />
-          <button
-            type="submit"
-            className="btn btn-primary btn-sm flex-shrink-0"
-            disabled={!!runningRun}
-          >
-            {runningRun ? "Импорт идёт…" : "Импортировать"}
-          </button>
-        </form>
+        </div>
+        <div className="col-12 col-xl-6">
+        <div className="surface p-4 h-100">
+          <h2 className="section-heading mb-2">tpop.fandom: импорт артиста</h2>
+          <p className="small text-secondary mb-3">
+            Страница артиста или группы (например,
+            https://tpop.fandom.com/wiki/TYTAN): создаст/обновит с полным
+            профилем, дискографией и концертами; агентство возьмётся из поля
+            Agency его страницы.
+          </p>
+          <form action={runTpopArtistImport} className="d-flex gap-2">
+            <input
+              name="url"
+              required
+              placeholder="https://tpop.fandom.com/wiki/…"
+              className="form-control"
+            />
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm flex-shrink-0"
+              disabled={!!runningRun}
+            >
+              {runningRun ? "Импорт идёт…" : "Импортировать"}
+            </button>
+          </form>
+        </div>
+        </div>
       </div>
 
       <RunningImportsWatcher hasRunning={!!runningRun} />

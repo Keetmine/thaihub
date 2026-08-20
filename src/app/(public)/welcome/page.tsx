@@ -17,10 +17,13 @@ export default async function WelcomePage() {
 
   // Стартовые варианты — самые «событийные» артисты (у них точно есть
   // что показать), остальных доищут через поиск.
+  // Популярность меряем избранным: «много событий» — это про наш
+  // каталог, а не про то, кого любят. Новичку показываем тех, кого чаще
+  // всего добавляют себе.
   const popular = await prisma.performer.findMany({
-    where: { type: "SOLO", events: { some: {} }, photoUrl: { not: null } },
+    where: { type: "SOLO", photoUrl: { not: null } },
     select: { id: true, name: true, photoUrl: true },
-    orderBy: { events: { _count: "desc" } },
+    orderBy: [{ favoritedBy: { _count: "desc" } }, { events: { _count: "desc" } }],
     take: 18,
   });
 

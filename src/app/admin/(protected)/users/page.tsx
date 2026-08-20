@@ -8,6 +8,8 @@ import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
+import Pagination from "@/components/Pagination";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 
 export const metadata = { title: "Пользователи" };
 
@@ -16,29 +18,42 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   await requireAdminPage();
-  const { q: rawQ } = await searchParams;
+  const { q: rawQ, page: rawPage } = await searchParams;
   const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
 
-  const users = await prisma.user.findMany({
-    where: q
+  // Удалённые аккаунты в списке не показываем — они обезличены и войти
+  // в них нельзя (см. lib/userDeletion.ts).
+  const where = {
+    deletedAt: null,
+    ...(q
       ? {
           OR: [
-            { email: { contains: q, mode: "insensitive" } },
-            { name: { contains: q, mode: "insensitive" } },
-            { telegramUsername: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" as const } },
+            { name: { contains: q, mode: "insensitive" as const } },
+            { username: { contains: q, mode: "insensitive" as const } },
+            { telegramUsername: { contains: q, mode: "insensitive" as const } },
           ],
         }
-      : undefined,
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: {
-        select: { favoriteEvents: true, eventAttendances: true, dramaWatchStatuses: true },
+      : {}),
+  };
+  const [users, usersTotal] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: {
+        _count: {
+          select: { favoriteEvents: true, eventAttendances: true, dramaWatchStatuses: true },
+        },
       },
-    },
-  });
+    }),
+    prisma.user.count({ where }),
+  ]);
 
   const promos = await prisma.promoCode.findMany({
     orderBy: { createdAt: "desc" },
@@ -74,12 +89,22 @@ export default async function AdminUsersPage({
         ) : (
           <div className="d-flex flex-wrap gap-2">
             {freePromos.map((c) => (
-              <form key={c.code} action={deletePromoCode.bind(null, c.code)} className="d-inline">
-                <span className="event-chip font-monospace">{c.code}</span>{" "}
-                <button type="submit" className="btn btn-link btn-sm text-danger p-0" title="Удалить код">
-                  ×
-                </button>
-              </form>
+              <span key={c.code} className="d-inline-flex align-items-center gap-1">
+                <span className="event-chip font-monospace">{c.code}</span>
+                <ConfirmForm
+                  action={deletePromoCode.bind(null, c.code)}
+                  confirmMessage={`Удалить промокод ${c.code}? Он перестанет работать.`}
+                  className="d-inline"
+                >
+                  <button
+                    type="button"
+                    className="btn btn-link btn-sm text-danger p-0"
+                    title="Удалить код"
+                  >
+                    ×
+                  </button>
+                </ConfirmForm>
+              </span>
             ))}
           </div>
         )}
@@ -151,6 +176,11 @@ export default async function AdminUsersPage({
           })}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPagesFor(usersTotal)}
+        buildHref={(p) => `/admin/users?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+      />
     </div>
   );
 }

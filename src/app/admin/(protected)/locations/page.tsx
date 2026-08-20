@@ -8,6 +8,8 @@ import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import BulkList from "@/components/admin/BulkList";
+import { bulkDelete } from "../bulkActions";
 
 export const metadata = { title: "Локации" };
 
@@ -62,14 +64,13 @@ export default async function AdminLocationsPage({
           {q ? "Ничего не найдено." : "Пока нет локаций."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
-          {locations.map((l) => {
+        <BulkList
+          rows={locations.map((l) => {
             const boundDelete = deleteLocation.bind(null, l.id);
-            return (
-              <div
-                key={l.id}
-                className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
-              >
+            return {
+              id: l.id,
+              node: (
+              <div className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3">
                 <div className="d-flex align-items-center gap-3">
                   <LetterAvatar name={l.name} photoUrl={l.photoUrl} size={2.5} rounded={false} />
                   <div>
@@ -106,9 +107,21 @@ export default async function AdminLocationsPage({
                   </ConfirmForm>
                 </div>
               </div>
-            );
+              ),
+            };
           })}
-        </div>
+          actions={[
+            {
+              kind: "delete",
+              label: "Удалить выбранные",
+              confirmTemplate: "Удалить {n} локаций? Связи с сериалами и списками очистятся.",
+              run: async (ids) => {
+                "use server";
+                await bulkDelete("location", ids);
+              },
+            },
+          ]}
+        />
       )}
       <Pagination
         page={page}

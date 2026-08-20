@@ -252,9 +252,14 @@ export default async function AdminModerationPage({
                 <form action={resolveReport.bind(null, r.id)}>
                   <button type="submit" className="btn btn-ghost btn-sm">✓ Решено</button>
                 </form>
-                <form action={deleteReport.bind(null, r.id)}>
-                  <button type="submit" className="btn btn-link btn-sm text-secondary">Скрыть</button>
-                </form>
+                <ConfirmForm
+                  action={deleteReport.bind(null, r.id)}
+                  confirmMessage="Скрыть жалобу? Запись удалится безвозвратно."
+                >
+                  <button type="button" className="btn btn-link btn-sm text-secondary">
+                    Скрыть
+                  </button>
+                </ConfirmForm>
               </div>
             </div>
           );

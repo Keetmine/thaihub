@@ -38,7 +38,12 @@ export default function TicketsTab({ tickets }: { tickets: TicketRow[] }) {
           {t.event.title}
         </Link>
         <span className="small text-secondary">
-          {[t.startsAt ? formatShortDate(t.startsAt) : null, t.event.venue]
+          {/* С годом: билеты копятся годами, и «12 окт» без года ничего
+              не говорит — особенно в прошедших. */}
+          {[
+            t.startsAt ? `${formatShortDate(t.startsAt)} ${t.startsAt.getUTCFullYear()}` : null,
+            t.event.venue,
+          ]
             .filter(Boolean)
             .join(" · ")}
         </span>

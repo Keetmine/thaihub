@@ -5,19 +5,39 @@ import { PREMIUM_PRICE_STARS } from "@/lib/telegram";
 // деплоя). Известные ключи перечислены здесь же, чтобы страница
 // настроек и потребители не разъезжались.
 
+/** Разделы страницы настроек: одним списком они читались как свалка,
+ *  а по смыслу это две разные темы — деньги и оповещения. */
+export const SETTING_GROUPS = [
+  {
+    key: "subscription",
+    title: "Подписка и оплата",
+    hint: "Цена, способ оплаты и текст пейволла.",
+  },
+  {
+    key: "notifications",
+    title: "Уведомления администраторам",
+    hint: "О чём сообщать и куда.",
+  },
+] as const;
+
+export type SettingGroup = (typeof SETTING_GROUPS)[number]["key"];
+
 export const SETTING_KEYS = [
   {
     key: "premium_price_stars",
+    group: "subscription",
     label: "Цена подписки (Stars, за месяц)",
     hint: `По умолчанию ${PREMIUM_PRICE_STARS} (env PREMIUM_PRICE_STARS)`,
   },
   {
     key: "paywall_title",
+    group: "subscription",
     label: "Заголовок пейволла",
     hint: "По умолчанию «Афиша событий — по подписке»",
   },
   {
     key: "admin_notify_kinds",
+    group: "notifications",
     label: "Уведомления админам в Telegram",
     hint:
       "Через запятую: feedback, report, import, error, payment. " +
@@ -25,6 +45,7 @@ export const SETTING_KEYS = [
   },
   {
     key: "payment_mode",
+    group: "subscription",
     label: "Способ оплаты подписки",
     hint:
       "stars — кнопка оплаты через Telegram Stars; promo — оплата " +
@@ -33,11 +54,13 @@ export const SETTING_KEYS = [
   },
   {
     key: "subscription_contact",
+    group: "subscription",
     label: "Telegram для заявок на подписку",
     hint: "Ник без @ — на него ведёт кнопка «Написать в Telegram» на пейволле.",
   },
   {
     key: "admin_notify_email",
+    group: "notifications",
     label: "Почта для тех же уведомлений",
     hint: "Работает только когда настроен SMTP (SMTP_HOST/SMTP_FROM). Пусто — не слать.",
   },

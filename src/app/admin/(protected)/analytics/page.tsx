@@ -16,8 +16,16 @@ export default async function AdminAnalyticsPage() {
   from.setDate(from.getDate() - 29);
   from.setHours(0, 0, 0, 0);
 
-  const [users, premiumActive, usersTotal, topEvents, topPerformers, payments] =
-    await Promise.all([
+  const [
+    users,
+    premiumActive,
+    usersTotal,
+    topEvents,
+    topPerformers,
+    payments,
+    tripStats,
+    listStats,
+  ] = await Promise.all([
       prisma.user.findMany({
         where: { createdAt: { gte: from } },
         select: { createdAt: true },
@@ -38,7 +46,36 @@ export default async function AdminAnalyticsPage() {
         take: 10,
       }),
       prisma.payment.count(),
+      // Поездки — обезличенно. Читать чужие планы админу незачем (см.
+      // features/admin-panel.md), а понять, пользуются ли разделом,
+      // нужно: только счётчики, без названий и содержимого.
+      Promise.all([
+        prisma.trip.count(),
+        prisma.trip.count({ where: { endDate: { gte: now } } }),
+        prisma.trip.count({ where: { members: { some: {} } } }),
+        prisma.trip.findMany({ select: { startDate: true, endDate: true } }),
+        prisma.tripHotel.count(),
+      ]),
+      Promise.all([
+        prisma.placeList.count(),
+        prisma.performerList.count(),
+        prisma.location.count({ where: { createdByUserId: { not: null } } }),
+      ]),
     ]);
+
+  const [tripsTotal, tripsActive, tripsShared, tripRanges, hotelsTotal] = tripStats;
+  const [placeListsTotal, performerListsTotal, userPlacesTotal] = listStats;
+  // Средняя длительность — по завершённым и текущим одинаково: это
+  // характеристика планирования, а не прожитого.
+  const avgTripDays = tripRanges.length
+    ? Math.round(
+        tripRanges.reduce(
+          (sum, t) =>
+            sum + Math.max(1, Math.round((+t.endDate - +t.startDate) / 86400000) + 1),
+          0,
+        ) / tripRanges.length,
+      )
+    : 0;
 
   // регистрации по дням
   const days: { key: string; label: string; count: number }[] = [];
@@ -127,6 +164,35 @@ export default async function AdminAnalyticsPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Личное — только цифрами. Содержимое поездок, списков и заметок
+          админу не показывается: модерировать там нечего, а доверие к
+          сервису держится в том числе на этом (см. features/trips.md). */}
+      <h2 className="section-heading mb-2 mt-4">Личные разделы</h2>
+      <p className="small text-secondary mb-3">
+        Обезличенная статистика: сколько создано и насколько активно
+        пользуются. Содержимое поездок и приватных списков в админке не
+        открывается — только по жалобе, через модерацию.
+      </p>
+      <div className="row g-2">
+        {[
+          { value: tripsTotal, label: "поездок создано" },
+          { value: tripsActive, label: "активных сейчас" },
+          { value: tripsShared, label: "совместных" },
+          { value: avgTripDays, label: "дней в среднем" },
+          { value: hotelsTotal, label: "броней жилья" },
+          { value: placeListsTotal, label: "списков мест" },
+          { value: performerListsTotal, label: "списков актёров" },
+          { value: userPlacesTotal, label: "своих мест" },
+        ].map((s) => (
+          <div key={s.label} className="col-6 col-md-3">
+            <div className="hero-stat h-100">
+              <span className="hero-stat-value">{s.value}</span>
+              <span className="hero-stat-label">{s.label}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
