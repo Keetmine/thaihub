@@ -23,7 +23,16 @@ export type RelinkInfo = {
  * сервере нашлась кука ожидающего переноса, так что «закрыт» —
  * состояние после отмены, а не до открытия.
  */
-export default function TelegramRelinkDialog({ info }: { info: RelinkInfo }) {
+export default function TelegramRelinkDialog({
+  info,
+  onClose,
+}: {
+  info: RelinkInfo;
+  /** Попап, открытый клиентской привязкой, живёт в состоянии родителя —
+   *  ему нужно знать о закрытии. Серверный путь (кука) обходится без
+   *  этого. */
+  onClose?: () => void;
+}) {
   const [open, setOpen] = useState(true);
   const [closing, setClosing] = useState(false);
 
@@ -35,6 +44,7 @@ export default function TelegramRelinkDialog({ info }: { info: RelinkInfo }) {
     // неработающей.
     await cancelTelegramRelink();
     setOpen(false);
+    onClose?.();
   }
 
   return (

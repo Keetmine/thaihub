@@ -5,41 +5,79 @@ import { verifyTelegramAuth } from "@/lib/telegram";
 import { publicOrigin } from "@/lib/googleOauth";
 import { cookies } from "next/headers";
 import { TELEGRAM_RELINK_COOKIE } from "@/lib/telegramRelink";
+import { pluralized } from "@/lib/plural";
 
 // Привязка Telegram к УЖЕ залогиненному аккаунту — отдельным адресом, а
 // не параметром ?mode=link у общего колбэка: Telegram Login Widget
 // возвращает свой набор полей и не сохраняет наш query, поэтому режим
 // терялся, и попытка привязки создавала второй аккаунт вместо связывания.
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const settings = (suffix: string) =>
-    NextResponse.redirect(new URL(`/account/settings${suffix}`, publicOrigin(url.origin)));
-
+/**
+ * Привязка по данным виджета. Общая часть для GET (переход браузера) и
+ * POST (виджет в режиме data-onauth — привязка без ухода со страницы).
+ */
+async function linkTelegram(params: URLSearchParams, search: string) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.redirect(new URL("/login", publicOrigin(url.origin)));
+  if (!user) return { status: "unauthorized" as const };
 
-  const payload = verifyTelegramAuth(url.searchParams);
-  if (!payload) return settings("?telegram=failed");
+  const payload = verifyTelegramAuth(params);
+  if (!payload) return { status: "failed" as const };
 
-  const existing = await prisma.user.findUnique({ where: { telegramId: payload.id } });
+  const existing = await prisma.user.findUnique({
+    where: { telegramId: payload.id },
+    select: {
+      id: true,
+      name: true,
+      _count: {
+        select: {
+          favoriteEvents: true,
+          favoritePerformers: true,
+          trips: true,
+          eventAttendances: true,
+        },
+      },
+    },
+  });
+
   if (existing && existing.id !== user.id) {
     // Telegram занят другим аккаунтом. Молча перевесить нельзя — тот
     // аккаунт лишится входа, — поэтому сохраняем подписанные данные во
-    // временную куку и показываем экран подтверждения: человек увидит,
-    // что именно будет потеряно, и решит сам.
+    // временную куку и просим подтверждения: человек увидит, что
+    // именно будет потеряно, и решит сам.
     const store = await cookies();
-    store.set(TELEGRAM_RELINK_COOKIE, url.search, {
+    store.set(TELEGRAM_RELINK_COOKIE, search, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       maxAge: 15 * 60,
       path: "/",
     });
-    // Подтверждение показывается попапом прямо в настройках — человек
-    // решает судьбу второго аккаунта, не теряя контекст страницы.
-    return NextResponse.redirect(
-      new URL("/account/settings?telegram=relink", publicOrigin(url.origin)),
-    );
+    return {
+      status: "relink" as const,
+      info: {
+        telegramUsername: payload.username,
+        otherName: existing.name,
+        losses: [
+          {
+            n: existing._count.favoritePerformers,
+            forms: ["любимый артист", "любимых артиста", "любимых артистов"] as [string, string, string],
+          },
+          {
+            n: existing._count.favoriteEvents,
+            forms: ["событие в избранном", "события в избранном", "событий в избранном"] as [string, string, string],
+          },
+          {
+            n: existing._count.eventAttendances,
+            forms: ["отметка «иду»", "отметки «иду»", "отметок «иду»"] as [string, string, string],
+          },
+          {
+            n: existing._count.trips,
+            forms: ["поездка", "поездки", "поездок"] as [string, string, string],
+          },
+        ]
+          .filter((c) => c.n > 0)
+          .map((c) => pluralized(c.n, c.forms)),
+      },
+    };
   }
 
   await prisma.user.update({
@@ -50,5 +88,35 @@ export async function GET(request: Request) {
       ...(user.photoUrl ? {} : { photoUrl: payload.photoUrl }),
     },
   });
+  return { status: "linked" as const };
+}
+
+/**
+ * Виджет в режиме data-onauth шлёт данные сюда фоном — страница не
+ * перезагружается, подтверждение переноса показывается попапом на
+ * месте. Раньше кнопка уводила браузер на GET-колбэк и возвращала
+ * назад: моргание страницы ровно там, где человек ничего не менял.
+ */
+export async function POST(request: Request) {
+  const body = await request.text();
+  const params = new URLSearchParams(body);
+  const result = await linkTelegram(params, `?${params.toString()}`);
+  const httpStatus = result.status === "unauthorized" ? 401 : 200;
+  return NextResponse.json(result, { status: httpStatus });
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const settings = (suffix: string) =>
+    NextResponse.redirect(new URL(`/account/settings${suffix}`, publicOrigin(url.origin)));
+
+  // Запасной путь: браузеры, где data-onauth не отработал, приходят
+  // сюда обычным переходом.
+  const result = await linkTelegram(url.searchParams, url.search);
+  if (result.status === "unauthorized") {
+    return NextResponse.redirect(new URL("/login", publicOrigin(url.origin)));
+  }
+  if (result.status === "failed") return settings("?telegram=failed");
+  if (result.status === "relink") return settings("?telegram=relink");
   return settings("?telegram=linked");
 }

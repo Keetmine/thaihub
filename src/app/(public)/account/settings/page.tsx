@@ -15,13 +15,14 @@ import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
 import SettingsTabs from "./SettingsTabs";
 import { pageMetadata } from "@/lib/seo";
-import TelegramLoginButton from "@/components/TelegramLoginButton";
+import TelegramLinkButton from "./TelegramLinkButton";
 import { telegramBotUsername } from "@/lib/telegram";
 import { COUNTRIES } from "@/lib/countries";
 import { dateKey } from "@/lib/dates";
 import DatePickerInput from "@/components/DatePickerInput";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { pluralized } from "@/lib/plural";
 import { verifyTelegramAuth } from "@/lib/telegram";
 import { TELEGRAM_RELINK_COOKIE } from "@/lib/telegramRelink";
 import TelegramRelinkDialog, { type RelinkInfo } from "./TelegramRelinkDialog";
@@ -98,13 +99,25 @@ export default async function SettingsPage({
         telegramUsername: payload.username,
         otherName: other.name,
         losses: [
-          { n: other._count.favoritePerformers, label: "любимых артистов" },
-          { n: other._count.favoriteEvents, label: "событий в избранном" },
-          { n: other._count.eventAttendances, label: "отметок «иду»" },
-          { n: other._count.trips, label: "поездок" },
+          {
+            n: other._count.favoritePerformers,
+            forms: ["любимый артист", "любимых артиста", "любимых артистов"] as [string, string, string],
+          },
+          {
+            n: other._count.favoriteEvents,
+            forms: ["событие в избранном", "события в избранном", "событий в избранном"] as [string, string, string],
+          },
+          {
+            n: other._count.eventAttendances,
+            forms: ["отметка «иду»", "отметки «иду»", "отметок «иду»"] as [string, string, string],
+          },
+          {
+            n: other._count.trips,
+            forms: ["поездка", "поездки", "поездок"] as [string, string, string],
+          },
         ]
           .filter((c) => c.n > 0)
-          .map((c) => `${c.n} ${c.label}`),
+          .map((c) => pluralized(c.n, c.forms)),
       };
     }
   }
@@ -190,6 +203,8 @@ export default async function SettingsPage({
                     <DatePickerInput
                       name="birthDate"
                       defaultValue={user.birthDate ? dateKey(user.birthDate) : ""}
+                      yearsBack={100}
+                      yearsForward={0}
                     />
                   </div>
                 </div>
@@ -290,7 +305,7 @@ export default async function SettingsPage({
                       Подключите, чтобы получать напоминания о событиях, старте
                       продаж билетов и новостях друзей.
                     </p>
-                    <TelegramLoginButton botUsername={botUsername} mode="link" />
+                    <TelegramLinkButton botUsername={botUsername} />
                   </>
                 )}
               </div>

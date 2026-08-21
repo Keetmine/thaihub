@@ -93,7 +93,7 @@ export default function ProfileSetupForm({
         </div>
         <div className="col-12 col-md-6">
           <label className="form-label">Дата рождения</label>
-          <DatePickerInput name="birthDate" />
+          <DatePickerInput name="birthDate" yearsBack={100} yearsForward={0} />
         </div>
         <div className="col-12">
           <label className="form-label">О себе</label>

@@ -310,7 +310,7 @@ export default function PerformerForm({
           <div className="row g-3">
             <div className="col-12 col-sm-6">
               <label className="form-label">Дата рождения</label>
-              <DatePickerInput name="birthDate" defaultValue={v?.birthDate} />
+              <DatePickerInput name="birthDate" defaultValue={v?.birthDate} yearsBack={100} yearsForward={0} />
             </div>
             <div className="col-12 col-sm-6">
               <label className="form-label">Место рождения</label>
@@ -343,7 +343,7 @@ export default function PerformerForm({
           <div className="row g-3">
             <div className="col-12 col-sm-6">
               <label className="form-label">День рождения маскота</label>
-              <DatePickerInput name="birthDate" defaultValue={v?.birthDate} />
+              <DatePickerInput name="birthDate" defaultValue={v?.birthDate} yearsBack={100} yearsForward={0} />
             </div>
             <div className="col-12 col-sm-6">
               <label className="form-label d-block">Чей маскот — актёры</label>

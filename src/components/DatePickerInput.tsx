@@ -9,11 +9,22 @@ const PICKER_MONTHS = [
   "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
 ];
 
-function pickerYears(current: number): number[] {
+/**
+ * Года в выпадашке. Диапазон задаётся полем, а не один на всех: у
+ * событий и поездок это ближайшие годы, а дату рождения в них было не
+ * ввести — список начинался с «сейчас минус 3».
+ *
+ * Текущее значение добавляется всегда: дата, пришедшая из базы, может
+ * лежать вне диапазона (например, старая запись), и без этого выпадашка
+ * показывала бы не то, что выбрано.
+ */
+function pickerYears(current: number, back: number, forward: number): number[] {
   const nowYear = new Date().getFullYear();
   const years = new Set<number>([current]);
-  for (let y = nowYear - 3; y <= nowYear + 5; y++) years.add(y);
-  return Array.from(years).sort((a, b) => a - b);
+  for (let y = nowYear - back; y <= nowYear + forward; y++) years.add(y);
+  // Свежие годы сверху, когда список длинный: листать сотню лет вниз до
+  // нужного десятилетия неудобно.
+  return Array.from(years).sort((a, b) => (back > 20 ? b - a : a - b));
 }
 
 /** Отображаемый формат — ДД.ММ.ГГГГ; в форму (hidden input) уходит
@@ -38,6 +49,8 @@ export default function DatePickerInput({
   required = false,
   placeholder = "Выберите дату",
   onValueChange,
+  yearsBack = 3,
+  yearsForward = 5,
 }: {
   /** Без name компонент работает как чисто контролируемый виджет —
    *  значение в форму тогда кладёт сам родитель. */
@@ -51,6 +64,11 @@ export default function DatePickerInput({
   /** Для форм, которым нужно реагировать на выбор (например, подставить
    *  дату начала в поле конца поездки). */
   onValueChange?: (value: string) => void;
+  /** Насколько глубоко в прошлое уходит список годов. Для дат рождения
+   *  ставят 100, иначе нужный год просто отсутствует в выпадашке. */
+  yearsBack?: number;
+  /** Насколько далеко вперёд. Для дат рождения — 0. */
+  yearsForward?: number;
 }) {
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const isControlled = controlledValue !== undefined;
@@ -205,7 +223,7 @@ export default function DatePickerInput({
                 onMouseDown={(e) => e.stopPropagation()}
                 aria-label="Год"
               >
-                {pickerYears(viewYear).map((y) => (
+                {pickerYears(viewYear, yearsBack, yearsForward).map((y) => (
                   <option key={y} value={y}>
                     {y}
                   </option>
