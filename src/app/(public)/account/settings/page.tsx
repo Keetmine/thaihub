@@ -20,6 +20,7 @@ import { telegramBotUsername } from "@/lib/telegram";
 import { COUNTRIES } from "@/lib/countries";
 import { dateKey } from "@/lib/dates";
 import DatePickerInput from "@/components/DatePickerInput";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export const metadata = pageMetadata({
   title: "Настройки",
@@ -208,11 +209,19 @@ export default async function SettingsPage({
                       Подключён{user.telegramUsername ? ` — @${user.telegramUsername}` : ""}.
                       Присылаем напоминания о событиях и новости друзей.
                     </span>
-                    <form action={unlinkTelegram}>
-                      <button type="submit" className="btn btn-ghost btn-sm">
+                    {/* С подтверждением: отвязка обрывает напоминания и
+                        уведомления, а кнопка стоит вплотную к настройкам
+                        рассылки — промахнуться легко. */}
+                    <ConfirmForm
+                      action={unlinkTelegram}
+                      confirmMessage="Отвязать Telegram? Напоминания о событиях и новости друзей приходить перестанут. Подключить обратно можно в любой момент."
+                      confirmLabel="Отвязать"
+                      busyLabel="Отвязываем…"
+                    >
+                      <button type="button" className="btn btn-ghost btn-sm">
                         Отвязать
                       </button>
-                    </form>
+                    </ConfirmForm>
                   </div>
 
                   {/* Что слать в бота. На сайте уведомления приходят

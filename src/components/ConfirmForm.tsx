@@ -7,11 +7,18 @@ export default function ConfirmForm({
   action,
   confirmMessage,
   className,
+  confirmLabel = "Удалить",
+  busyLabel = "Удаление…",
   children,
 }: {
   action: (formData: FormData) => void | Promise<void | { error?: string } | undefined>;
   confirmMessage: string;
   className?: string;
+  /** Подпись кнопки. По умолчанию «Удалить» — обёртка родилась для
+   *  удалений, но годится любому необратимому действию (например
+   *  отвязке Telegram), где «Удалить» было бы неправдой. */
+  confirmLabel?: string;
+  busyLabel?: string;
   /** Кнопка-триггер. ОБЯЗАТЕЛЬНО с type="button" — обёртка перехватывает
    *  клик, но тип кнопки не переписывает (см. заметку ниже). */
   children: React.ReactNode;
@@ -82,7 +89,7 @@ export default function ConfirmForm({
             onClick={handleConfirm}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Удаление…" : "Удалить"}
+            {isSubmitting ? busyLabel : confirmLabel}
           </button>
         </div>
       </Modal>
