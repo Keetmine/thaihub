@@ -27,6 +27,92 @@ function pickerYears(current: number, back: number, forward: number): number[] {
   return Array.from(years).sort((a, b) => (back > 20 ? b - a : a - b));
 }
 
+/**
+ * Выпадающий список для месяца и года.
+ *
+ * Свой, а не <select>: высоту нативной выпадашки рисует браузер, и сотня
+ * годов растягивалась на весь экран — до нужного приходилось скроллить
+ * страницу целиком. Здесь список ограничен по высоте и прокручивается
+ * внутри себя, открываясь сразу на выбранном значении.
+ */
+function PickerSelect({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: number;
+  options: { value: number; label: string }[];
+  onChange: (value: number) => void;
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    // Открываем на выбранном: иначе длинный список каждый раз начинался
+    // бы сверху, за десятилетия от нужного года.
+    listRef.current
+      ?.querySelector('[data-selected="true"]')
+      ?.scrollIntoView({ block: "center" });
+
+    function onDocMouseDown(e: MouseEvent) {
+      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [open]);
+
+  const current = options.find((o) => o.value === value);
+
+  return (
+    <div className="picker-select" ref={boxRef}>
+      <button
+        type="button"
+        className="picker-select-toggle"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {current?.label ?? value}
+        <span aria-hidden="true" className="picker-select-caret">▾</span>
+      </button>
+      {open && (
+        <div className="picker-select-list thin-scroll" role="listbox" ref={listRef}>
+          {options.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={o.value === value}
+              data-selected={o.value === value}
+              className={`picker-select-option${o.value === value ? " is-active" : ""}`}
+              onClick={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Отображаемый формат — ДД.ММ.ГГГГ; в форму (hidden input) уходит
  *  каноничный YYYY-MM-DD, как отдавал бы нативный input type=date. */
 function formatDisplay(key: string): string {
@@ -203,32 +289,21 @@ export default function DatePickerInput({
             {/* Быстрый переход: месяц и год селектами вместо листания
                 по одному месяцу (поездки бывают через годы). */}
             <span className="d-flex gap-1">
-              <select
-                className="form-select form-select-sm w-auto"
+              <PickerSelect
+                label="Месяц"
                 value={viewMonth}
-                onChange={(e) => setViewMonth(Number(e.target.value))}
-                onMouseDown={(e) => e.stopPropagation()}
-                aria-label="Месяц"
-              >
-                {PICKER_MONTHS.map((m, i) => (
-                  <option key={m} value={i}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="form-select form-select-sm w-auto"
+                onChange={setViewMonth}
+                options={PICKER_MONTHS.map((m, i) => ({ value: i, label: m }))}
+              />
+              <PickerSelect
+                label="Год"
                 value={viewYear}
-                onChange={(e) => setViewYear(Number(e.target.value))}
-                onMouseDown={(e) => e.stopPropagation()}
-                aria-label="Год"
-              >
-                {pickerYears(viewYear, yearsBack, yearsForward).map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+                onChange={setViewYear}
+                options={pickerYears(viewYear, yearsBack, yearsForward).map((y) => ({
+                  value: y,
+                  label: String(y),
+                }))}
+              />
             </span>
             <button
               type="button"

@@ -1,30 +1,30 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { verifyTelegramAuth } from "@/lib/telegram";
-import { TELEGRAM_RELINK_COOKIE } from "@/lib/telegramRelink";
 import { softDeleteUser } from "@/lib/userDeletion";
 
 /**
  * Перенос Telegram на текущий аккаунт: старый удаляется (мягко), новый
- * получает привязку. Подпись проверяется здесь заново — кука сама по
- * себе ничего не разрешает.
+ * получает привязку.
+ *
+ * Подписанные данные приходят аргументом, а не куку. Куки тут не нужны:
+ * подпись всё равно проверяется заново, а из-за неё попап дёргал сервер
+ * при открытии и ждал удаления куки при закрытии — отсюда «Закрываем…»
+ * и задержка на кнопке отмены.
  */
-export async function confirmTelegramRelink(): Promise<void> {
+export async function confirmTelegramRelink(
+  authQuery: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) return { ok: false, error: "Сессия истекла — войдите заново." };
 
-  const store = await cookies();
-  const raw = store.get(TELEGRAM_RELINK_COOKIE)?.value;
-  if (!raw) redirect("/account/settings");
-
-  const payload = verifyTelegramAuth(new URLSearchParams(raw));
+  const payload = verifyTelegramAuth(new URLSearchParams(authQuery));
+  // Подпись живёт сутки: если попап провисел дольше, привязку нужно
+  // начинать заново.
   if (!payload) {
-    store.delete(TELEGRAM_RELINK_COOKIE);
-    redirect("/account/settings?telegram=failed");
+    return { ok: false, error: "Данные Telegram устарели — нажмите кнопку ещё раз." };
   }
 
   const other = await prisma.user.findUnique({ where: { telegramId: payload.id } });
@@ -41,13 +41,5 @@ export async function confirmTelegramRelink(): Promise<void> {
     },
   });
 
-  store.delete(TELEGRAM_RELINK_COOKIE);
-  redirect("/account/settings?telegram=linked");
-}
-
-/** Отмена: убираем куку, иначе попап всплывал бы снова при каждом
- *  обновлении настроек. */
-export async function cancelTelegramRelink(): Promise<void> {
-  const store = await cookies();
-  store.delete(TELEGRAM_RELINK_COOKIE);
+  return { ok: true };
 }

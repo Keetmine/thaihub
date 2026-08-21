@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { verifyTelegramAuth } from "@/lib/telegram";
 import { publicOrigin } from "@/lib/googleOauth";
-import { cookies } from "next/headers";
-import { TELEGRAM_RELINK_COOKIE } from "@/lib/telegramRelink";
 import { pluralized } from "@/lib/plural";
 
 // Привязка Telegram к УЖЕ залогиненному аккаунту — отдельным адресом, а
@@ -40,19 +38,14 @@ async function linkTelegram(params: URLSearchParams, search: string) {
 
   if (existing && existing.id !== user.id) {
     // Telegram занят другим аккаунтом. Молча перевесить нельзя — тот
-    // аккаунт лишится входа, — поэтому сохраняем подписанные данные во
-    // временную куку и просим подтверждения: человек увидит, что
-    // именно будет потеряно, и решит сам.
-    const store = await cookies();
-    store.set(TELEGRAM_RELINK_COOKIE, search, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 15 * 60,
-      path: "/",
-    });
+    // аккаунт лишится входа, — поэтому возвращаем подписанные данные
+    // обратно и просим подтверждения: человек увидит, что именно будет
+    // потеряно, и решит сам. Куки тут не нужны — подпись проверяется
+    // заново при подтверждении, а кука заставляла попап ходить на
+    // сервер при открытии и закрытии.
     return {
       status: "relink" as const,
+      auth: search.replace(/^\?/, ""),
       info: {
         telegramUsername: payload.username,
         otherName: existing.name,
@@ -117,6 +110,9 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/login", publicOrigin(url.origin)));
   }
   if (result.status === "failed") return settings("?telegram=failed");
-  if (result.status === "relink") return settings("?telegram=relink");
+  // Перенос делается попапом, а он живёт на клиенте — из серверного
+  // пути его не показать. Сообщаем, что Telegram занят: человек
+  // нажмёт кнопку в настройках и пройдёт перенос там.
+  if (result.status === "relink") return settings("?telegram=taken");
   return settings("?telegram=linked");
 }

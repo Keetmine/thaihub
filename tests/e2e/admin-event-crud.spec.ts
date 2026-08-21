@@ -14,13 +14,23 @@ test("admin can create and delete an event", async ({ page }) => {
   // СЛЕДУЮЩИЙ месяц (15-е текущего может быть уже в прошлом — событие
   // улетело бы во вкладку «Архив») и кликнуть 15-е.
   await page.locator(".date-picker .date-picker-toggle").first().click();
-  const monthSelect = page.locator(".date-picker-dropdown select").first();
   const next = new Date();
   next.setDate(1);
   next.setMonth(next.getMonth() + 1);
-  const yearSelect = page.locator(".date-picker-dropdown select").nth(1);
-  await yearSelect.selectOption(String(next.getFullYear()));
-  await monthSelect.selectOption(String(next.getMonth()));
+  // Месяц и год — свой выпадающий список, а не <select>: нативную
+  // выпадашку не ограничить по высоте, и сотня годов растягивалась на
+  // весь экран.
+  const pickFrom = async (label: string, text: string) => {
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await page
+      .locator(".picker-select-list .picker-select-option")
+      .filter({ hasText: new RegExp(`^${text}$`) })
+      .first()
+      .click();
+  };
+  await pickFrom("Год", String(next.getFullYear()));
+  const MONTHS = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+  await pickFrom("Месяц", MONTHS[next.getMonth()]);
   await page
     .locator(".date-picker-dropdown .date-picker-day:not(.is-outside)")
     .filter({ hasText: /^15$/ })

@@ -71,4 +71,19 @@ test.describe("страницы после перестройки импорто
     if (await profileTab.count()) await profileTab.first().click();
     await expect(page.locator('input[type="date"]')).toHaveCount(0);
   });
+
+  test("выпадашка года ограничена по высоте", async ({ page }) => {
+    // Форма исполнителя: дата рождения со столетним диапазоном.
+    await page.goto("/admin/performers/new");
+    await page.locator(".date-picker-toggle").first().click();
+    await page.getByRole("button", { name: "Год", exact: true }).click();
+
+    const list = page.locator(".picker-select-list");
+    await expect(list).toBeVisible();
+    // Ради этого всё и делалось: нативную выпадашку не ограничить, и
+    // сотня годов растягивалась на весь экран.
+    const height = (await list.boundingBox())!.height;
+    expect(height).toBeLessThan(260);
+    expect(await page.locator(".picker-select-option").count()).toBeGreaterThan(90);
+  });
 });

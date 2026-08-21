@@ -46,10 +46,28 @@ export default function TelegramLoginButton({
     onAuthRef.current = onAuth;
   });
 
+  // Имя привязано к боту, а не случайное: Math.random() запрещён в
+  // рендере, а двух таких кнопок на странице всё равно не бывает.
+  const callbackName = `onTelegramAuth_${botUsername.replace(/\W/g, "")}`;
+
+  // Регистрация колбэка — отдельным эффектом от вставки скрипта.
+  // Вместе они не уживались: в dev React монтирует эффекты дважды,
+  // очистка удаляла функцию, а повторный проход выходил раньше (скрипт
+  // уже вставлен) и не регистрировал её снова — виджет звал имя,
+  // которого больше нет.
+  useEffect(() => {
+    if (!onAuth) return;
+    (window as unknown as Record<string, unknown>)[callbackName] = (
+      user: TelegramAuthResult,
+    ) => onAuthRef.current?.(user);
+    return () => {
+      delete (window as unknown as Record<string, unknown>)[callbackName];
+    };
+  }, [callbackName, onAuth]);
+
   useEffect(() => {
     const container = containerRef.current;
-    // В dev React монтирует эффекты дважды — без этой проверки кнопок
-    // было бы две.
+    // Та же двойная сборка: без этой проверки кнопок было бы две.
     if (!container || container.childElementCount > 0) return;
 
     const script = document.createElement("script");
@@ -59,14 +77,7 @@ export default function TelegramLoginButton({
     script.setAttribute("data-size", "large");
     script.setAttribute("data-request-access", "write");
 
-    let callbackName: string | null = null;
     if (onAuthRef.current) {
-      // Имя привязано к боту, а не случайное: Math.random() запрещён в
-      // рендере, а двух таких кнопок на странице всё равно не бывает.
-      callbackName = `onTelegramAuth_${botUsername.replace(/\W/g, "")}`;
-      (window as unknown as Record<string, unknown>)[callbackName] = (
-        user: TelegramAuthResult,
-      ) => onAuthRef.current?.(user);
       script.setAttribute("data-onauth", `${callbackName}(user)`);
     } else {
       // Абсолютный URL обязателен: с относительным путём виджет
@@ -81,10 +92,7 @@ export default function TelegramLoginButton({
     }
 
     container.appendChild(script);
-    return () => {
-      if (callbackName) delete (window as unknown as Record<string, unknown>)[callbackName];
-    };
-  }, [botUsername, mode]);
+  }, [botUsername, mode, callbackName]);
 
   return <div ref={containerRef} className="d-flex justify-content-center" />;
 }
