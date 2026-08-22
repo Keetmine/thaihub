@@ -12,6 +12,7 @@ something changes, edit the doc in place rather than appending a note.
 ## Index
 
 - [architecture.md](architecture.md) — stack, route layout, conventions, known gotchas
+- [audit-2026-08.md](audit-2026-08.md) — полный аудит (админка, фронт, тексты, юридика, качество) и черновик плана доработок
 - [deploy.md](deploy.md) — деплой на сервер + автодеплой через GitHub Actions
 - [features/slugs.md](features/slugs.md) — публичные слаги всех сущностей
 - [data-model.md](data-model.md) — every Prisma model and what it's for
