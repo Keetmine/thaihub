@@ -70,7 +70,7 @@ export default async function AdminUsersPage({
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           Пользователи
         </h1>
-        <span className="text-secondary small">Всего: {users.length}</span>
+        <span className="text-secondary small">Всего: {usersTotal}</span>
       </div>
 
       <NameSearchBox action="/admin/users" q={q} placeholder="Поиск по имени, email, telegram…" />
