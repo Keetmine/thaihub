@@ -72,6 +72,7 @@ model EventOccurrence {
   attendances EventAttendance[]
 
   @@index([eventId])
+  @@index([startsAt])
 }
 
 model Performer {
@@ -156,6 +157,8 @@ model Performer {
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([name])
 }
 
 enum PerformerType {
@@ -221,6 +224,9 @@ model Song {
   // Ссылка на площадку/клип, если появится источник.
   url         String?
   createdAt   DateTime  @default(now())
+
+  @@index([performerId])
+  @@index([albumId])
 }
 
 // A talent/management agency. Performers optionally belong to one or more
@@ -260,6 +266,7 @@ model PerformerAgency {
   createdAt   DateTime  @default(now())
 
   @@id([performerId, agencyId])
+  @@index([agencyId])
 }
 
 // A member-actor of a band (e.g. an idol/actor who's also in a group).
@@ -271,6 +278,7 @@ model BandMember {
   performer   Performer @relation("MemberOfBands", fields: [performerId], references: [id], onDelete: Cascade)
 
   @@id([bandId, performerId])
+  @@index([performerId])
 }
 
 // Arbitrary "extra info" links per performer — personal brand, café,
@@ -282,6 +290,8 @@ model PerformerLink {
   label       String
   url         String
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@index([performerId])
 }
 
 // Лайнап конкретного дня фестиваля (см. EventOccurrence.lineup).
@@ -292,6 +302,7 @@ model OccurrenceLineup {
   performer    Performer       @relation(fields: [performerId], references: [id], onDelete: Cascade)
 
   @@id([occurrenceId, performerId])
+  @@index([performerId])
 }
 
 model EventPerformer {
@@ -301,6 +312,7 @@ model EventPerformer {
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
 
   @@id([eventId, performerId])
+  @@index([performerId])
 }
 
 // Новелла-первоисточник: многие лакорны — экранизации веб-новелл.
@@ -325,6 +337,8 @@ model Novel {
   updatedAt   DateTime    @updatedAt
   reviews    Review[]
   comments   Comment[]
+
+  @@index([title])
 }
 
 model NovelLink {
@@ -333,6 +347,8 @@ model NovelLink {
   label   String
   url     String
   novel   Novel  @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  @@index([novelId])
 }
 
 model Drama {
@@ -400,6 +416,8 @@ model Drama {
   updatedAt      DateTime @updatedAt
   reviews    Review[]
   comments   Comment[]
+
+  @@index([title])
 }
 
 // «Related Content» с MyDramaList: drama → related с подписью
@@ -412,6 +430,7 @@ model DramaAgency {
   agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@id([dramaId, agencyId])
+  @@index([agencyId])
 }
 
 model DramaRelation {
@@ -423,6 +442,7 @@ model DramaRelation {
   related   Drama   @relation("RelatedTo", fields: [relatedId], references: [id], onDelete: Cascade)
 
   @@unique([dramaId, relatedId])
+  @@index([relatedId])
 }
 
 // TMDB's own TV status vocabulary — whether a show has finished airing or
@@ -492,6 +512,8 @@ model Location {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([name])
 }
 
 model DramaLocation {
@@ -501,6 +523,7 @@ model DramaLocation {
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@id([dramaId, locationId])
+  @@index([locationId])
 }
 
 // A user marking a location as visited — analogous to EventAttendance but
@@ -513,6 +536,7 @@ model LocationVisit {
   createdAt  DateTime @default(now())
 
   @@id([userId, locationId])
+  @@index([locationId])
 }
 
 enum WatchStatus {
@@ -536,6 +560,7 @@ model DramaWatchStatus {
   updatedAt DateTime @updatedAt
 
   @@id([userId, dramaId])
+  @@index([dramaId])
 }
 
 model PerformerDrama {
@@ -546,6 +571,7 @@ model PerformerDrama {
   drama       Drama     @relation(fields: [dramaId], references: [id], onDelete: Cascade)
 
   @@id([performerId, dramaId])
+  @@index([dramaId])
 }
 
 // A named pairing ("ship") of two performers, selectable on events instead
@@ -564,6 +590,8 @@ model Pairing {
 
   @@unique([performerAId, performerBId])
   mascots      MascotOwner[]
+
+  @@index([performerBId])
 }
 
 enum PairingStatus {
@@ -578,6 +606,7 @@ model EventPairing {
   pairing   Pairing @relation(fields: [pairingId], references: [id], onDelete: Cascade)
 
   @@id([eventId, pairingId])
+  @@index([pairingId])
 }
 
 // ---------- User accounts (separate from the single admin password) ----------
@@ -745,6 +774,7 @@ model TripMember {
   createdAt DateTime @default(now())
 
   @@id([tripId, userId])
+  @@index([userId])
 }
 
 model TripPersonalEvent {
@@ -797,6 +827,7 @@ model PerformerListItem {
   performer   Performer     @relation(fields: [performerId], references: [id], onDelete: Cascade)
 
   @@id([listId, performerId])
+  @@index([performerId])
 }
 
 model PlaceList {
@@ -830,6 +861,7 @@ model PlaceListItem {
   createdAt  DateTime  @default(now())
 
   @@id([listId, locationId])
+  @@index([locationId])
 }
 
 // Прикрепление целого списка мест к поездке.
@@ -886,6 +918,7 @@ model TelegramPresaleNotification {
   sentAt  DateTime @default(now())
 
   @@id([userId, eventId])
+  @@index([eventId])
 }
 
 // «Отписка» от уведомлений о конкретном друге: по умолчанию уведомления
@@ -915,6 +948,7 @@ model EventNote {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, eventId])
+  @@index([eventId])
 }
 
 enum NoteVisibility {
@@ -947,6 +981,7 @@ model TelegramNotification {
   sentAt       DateTime        @default(now())
 
   @@id([userId, occurrenceId])
+  @@index([occurrenceId])
 }
 
 enum FriendshipStatus {
@@ -967,6 +1002,7 @@ model Friendship {
   createdAt   DateTime         @default(now())
 
   @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
 }
 
 model UserSession {
@@ -975,6 +1011,8 @@ model UserSession {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Промокод подписки: одноразовый, даёт months месяцев премиума при
@@ -997,6 +1035,7 @@ model FavoritePerformer {
   createdAt   DateTime  @default(now())
 
   @@id([userId, performerId])
+  @@index([performerId])
 }
 
 model FavoriteAgency {
@@ -1007,6 +1046,7 @@ model FavoriteAgency {
   createdAt DateTime @default(now())
 
   @@id([userId, agencyId])
+  @@index([agencyId])
 }
 
 model FavoriteEvent {
@@ -1017,6 +1057,7 @@ model FavoriteEvent {
   createdAt DateTime @default(now())
 
   @@id([userId, eventId])
+  @@index([eventId])
 }
 
 // «Я пойду» — теперь на КОНКРЕТНУЮ дату (occurrence), а не на событие
@@ -1037,6 +1078,7 @@ model EventAttendance {
 
   @@id([userId, occurrenceId])
   @@index([eventId])
+  @@index([occurrenceId])
 }
 
 // Отзыв (оценка 1–10 + текст) к сериалу/новелле/событию — ровно одна из
@@ -1176,6 +1218,8 @@ model Payment {
   // дважды и чтобы возвраты не считались в выручке.
   refundedAt       DateTime?
   createdAt        DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Журнал telegram-рассылок из /admin/broadcast.
@@ -1236,6 +1280,8 @@ model ErrorLog {
   path      String?
   digest    String?
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // Вики-статья («как купить билеты», «виза в Таиланд»…): HTML из

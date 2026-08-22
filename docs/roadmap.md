@@ -321,9 +321,12 @@ docs/design-direction.md. Решения владельца (2026-08-22): пор
 
 - [x] Э0.1 React.cache на getCurrentUser (2026-08-22) — один запрос
       сессии на HTTP-запрос вместо 2-3.
-- [ ] Э0.2 @@index на горячие поля: EventPerformer.performerId,
-      FK-связи, Performer.name и прочие сортировки; trigram/GIN под
-      ILIKE-поиск — по результатам EXPLAIN.
+- [x] Э0.2 @@index на горячие поля (2026-08-22): 35 индексов в 34
+      моделях — обратные стороны join-таблиц (EventPerformer.performerId
+      и т.п.), FK, поля сортировки (Performer.name, Drama.title,
+      EventOccurrence.startsAt), миграция add_hot_path_indexes.
+      Отложено: trigram/GIN под ILIKE-поиск — вернуться, если поиск
+      останется медленным после остальных фиксов.
 - [ ] Э0.3 loading.tsx на публичные разделы и админку (скелетоны в
       стиле design-direction).
 - [ ] Э0.4 error.tsx + global-error.tsx; server actions → контракт
