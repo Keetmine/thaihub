@@ -22,13 +22,13 @@ export const dynamic = "force-dynamic";
 function UserRow({
   userId,
   name,
-  email,
+  username,
   photoUrl,
   action,
 }: {
   userId: string;
   name: string | null;
-  email: string | null;
+  username: string | null;
   photoUrl: string | null;
   action: React.ReactNode;
 }) {
@@ -55,8 +55,10 @@ function UserRow({
           />
         )}
         <div>
-          <p className="font-display fw-medium text-white mb-0">{name || email}</p>
-          {name && <p className="small text-secondary mb-0">{email}</p>}
+          <p className="font-display fw-medium text-white mb-0">
+            {name || (username ? `@${username}` : "Без имени")}
+          </p>
+          {name && username && <p className="small text-secondary mb-0">@{username}</p>}
         </div>
       </Link>
       {action}
@@ -93,9 +95,13 @@ export default async function FriendsPage({
     ? await prisma.user.findMany({
         where: { deletedAt: null,
           id: { notIn: Array.from(excludedIds) },
+          // Почта — только ТОЧНЫМ совпадением: поиск по подстроке позволял
+          // перебирать чужие адреса, а в результатах email больше не
+          // показывается вовсе (Э1.9).
           OR: [
             { name: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
+            { username: { contains: q, mode: "insensitive" } },
+            { email: { equals: q, mode: "insensitive" } },
           ],
         },
         take: 20,
@@ -112,7 +118,7 @@ export default async function FriendsPage({
       <NameSearchBox
         action="/friends"
         q={q}
-        placeholder="Найти по имени или email…"
+        placeholder="Найти по имени, нику или email (точно)…"
       />
 
       {q && (
@@ -129,7 +135,7 @@ export default async function FriendsPage({
                   key={u.id}
                   userId={u.id}
                   name={u.name}
-                  email={u.email}
+                  username={u.username}
                   photoUrl={u.photoUrl}
                   action={
                     <FriendActionButton
@@ -157,7 +163,7 @@ export default async function FriendsPage({
                 key={f.id}
                 userId={other(f).id}
                 name={other(f).name}
-                email={other(f).email}
+                username={other(f).username}
                 photoUrl={other(f).photoUrl}
                 action={
                   <div className="d-flex align-items-center gap-2">
@@ -194,7 +200,7 @@ export default async function FriendsPage({
                 key={f.id}
                 userId={other(f).id}
                 name={other(f).name}
-                email={other(f).email}
+                username={other(f).username}
                 photoUrl={other(f).photoUrl}
                 action={
                   <ConfirmForm
@@ -224,12 +230,12 @@ export default async function FriendsPage({
               key={f.id}
               userId={other(f).id}
               name={other(f).name}
-              email={other(f).email}
+              username={other(f).username}
               photoUrl={other(f).photoUrl}
               action={
                 <ConfirmForm
                   action={removeFriendship.bind(null, f.id)}
-                  confirmMessage={`Удалить «${other(f).name || other(f).email}» из друзей?`}
+                  confirmMessage={`Удалить «${other(f).name || other(f).username || "без имени"}» из друзей?`}
                 >
                   <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить из друзей">
                     <TrashIcon />
