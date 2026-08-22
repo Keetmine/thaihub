@@ -66,7 +66,7 @@ export default async function SearchPage({
             ],
           },
           include: {
-            performers: { include: { performer: true } },
+            performers: { include: { performer: { select: { id: true, name: true, slug: true } } } },
             occurrences: { orderBy: { startsAt: "asc" } },
           },
         }),

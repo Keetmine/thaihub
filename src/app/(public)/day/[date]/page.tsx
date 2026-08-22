@@ -46,7 +46,7 @@ export default async function DayPage({
 
   const occurrences = await prisma.eventOccurrence.findMany({
     where: { startsAt: { gte: startOfDay(day), lte: endOfDay(day) } },
-    include: { event: { include: { performers: { include: { performer: true } } } } },
+    include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
     orderBy: { startsAt: "asc" },
   });
   const events = occurrences.map(flattenOccurrence);

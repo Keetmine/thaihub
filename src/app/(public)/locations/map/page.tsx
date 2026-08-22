@@ -14,9 +14,12 @@ export const metadata = pageMetadata({
 export const dynamic = "force-dynamic";
 
 export default async function LocationsMapPage() {
+  // select — только четыре поля для маркеров: полные строки (описание,
+  // адрес, источники) на карте не нужны и утяжеляли страницу.
   const locations = await prisma.location.findMany({
     where: {
       createdByUserId: null, latitude: { not: null }, longitude: { not: null } },
+    select: { id: true, name: true, latitude: true, longitude: true },
     orderBy: { name: "asc" },
   });
 

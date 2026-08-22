@@ -1,6 +1,7 @@
 import LetterAvatar from "@/components/LetterAvatar";
-import LazyList from "@/components/LazyList";
+import Pagination from "@/components/Pagination";
 import Link from "next/link";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./actions";
@@ -17,43 +18,65 @@ export default async function AdminEventsPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string; tab?: string; sort?: string; issue?: string }>;
 }) {
-  const { q: rawQ, tab: rawTab, sort: rawSort, issue } = await searchParams;
+  const { q: rawQ, tab: rawTab, sort: rawSort, issue, page: rawPage } = await searchParams;
   const q = (rawQ ?? "").trim();
   // «Текущие» — события с будущими датами, «Архив» — целиком прошедшие.
   const isArchive = rawTab === "archive";
   // Сортировка: по дате события (дефолт) или по дате добавления записи.
   const sortByAdded = rawSort === "added";
+  const page = parsePage(rawPage);
 
   // ?issue=no-lineup — переход с блока «требует внимания» на дашборде:
   // сразу события без состава, а не весь список.
-  const eventsRaw = await prisma.event.findMany({
+  //
+  // Два прохода вместо выборки всех событий с составами целиком.
+  // Сортировка по дате первого шоу в Prisma невозможна (orderBy по
+  // relation-агрегатам умеет только _count), поэтому первый проход —
+  // лёгкий (id, createdAt и только даты выступлений), фильтр по вкладке
+  // и сортировка в JS; второй — полные данные лишь для страницы из 30.
+  const eventsLight = await prisma.event.findMany({
     where: {
       ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
       ...(issue === "no-lineup" ? { performers: { none: {} } } : {}),
     },
-    include: {
-      performers: { include: { performer: true } },
-      occurrences: { orderBy: { startsAt: "asc" } },
+    select: {
+      id: true,
+      createdAt: true,
+      occurrences: { select: { startsAt: true }, orderBy: { startsAt: "asc" } },
     },
   });
   const now = new Date();
-  const withDates = eventsRaw.filter((ev) => ev.occurrences.length > 0);
+  const withDates = eventsLight.filter((ev) => ev.occurrences.length > 0);
   const tabEvents = withDates.filter((ev) => {
     const last = ev.occurrences[ev.occurrences.length - 1].startsAt;
     return isArchive ? last < now : last >= now;
   });
-  // Sorted after load: дата первого шоу есть только после выборки
-  // occurrences. Архив — свежепрошедшие сверху.
-  const sortedEvents = [...tabEvents].sort((a, b) =>
-    sortByAdded
-      ? b.createdAt.getTime() - a.createdAt.getTime()
-      : isArchive
-        ? b.occurrences[0].startsAt.getTime() - a.occurrences[0].startsAt.getTime()
-        : a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime(),
+  // Архив — свежепрошедшие сверху.
+  const sortedIds = [...tabEvents]
+    .sort((a, b) =>
+      sortByAdded
+        ? b.createdAt.getTime() - a.createdAt.getTime()
+        : isArchive
+          ? b.occurrences[0].startsAt.getTime() - a.occurrences[0].startsAt.getTime()
+          : a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime(),
+    )
+    .map((ev) => ev.id);
+  const totalPages = totalPagesFor(sortedIds.length);
+  const pageIds = sortedIds.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const pageEvents = await prisma.event.findMany({
+    where: { id: { in: pageIds } },
+    include: {
+      performers: {
+        include: { performer: { select: { id: true, name: true } } },
+      },
+      occurrences: { orderBy: { startsAt: "asc" } },
+    },
+  });
+  const orderIndex = new Map(pageIds.map((id, i) => [id, i]));
+  const events = [...pageEvents].sort(
+    (a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0),
   );
-  // Все события уже выбраны (сортировка по датам возможна только после
-  // загрузки occurrences) — отдаём их одним ленивым списком по 30.
-  const events = sortedEvents;
 
   const tabCounts = {
     current: isArchive ? withDates.length - tabEvents.length : tabEvents.length,
@@ -138,8 +161,7 @@ export default async function AdminEventsPage({
           {q ? "Ничего не найдено." : "Событий пока нет."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
-          <LazyList batch={30}>
+        <div className="d-flex flex-column gap-2">
           {events.map((ev) => {
             const boundDeleteEvent = deleteEvent.bind(null, ev.id);
             return (
@@ -203,9 +225,17 @@ export default async function AdminEventsPage({
               </div>
             );
           })}
-          </LazyList>
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) =>
+          `${baseQuery(isArchive ? "archive" : "current", rawSort ?? "")}${
+            issue ? `&issue=${encodeURIComponent(issue)}` : ""
+          }&page=${p}`
+        }
+      />
     </div>
   );
 }

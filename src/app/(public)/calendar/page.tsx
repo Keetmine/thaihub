@@ -94,7 +94,17 @@ export default async function CalendarPage({
         ? { attendances: { some: { userId: currentUser.id } } }
         : {}),
     },
-    include: { event: { include: { performers: { include: { performer: true } } } } },
+    // Слим-выборка исполнителей: сетке месяца нужны только id/name/slug,
+    // полные строки Performer (с био) раздували ответ на весь месяц.
+    include: {
+      event: {
+        include: {
+          performers: {
+            include: { performer: { select: { id: true, name: true, slug: true } } },
+          },
+        },
+      },
+    },
     orderBy: { startsAt: "asc" },
   });
   const events = occurrences.map(flattenOccurrence);

@@ -121,7 +121,7 @@ export default async function TripPage({
               },
             }),
       },
-      include: { event: { include: { performers: { include: { performer: true } } } } },
+      include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
       orderBy: { startsAt: "asc" },
     }),
     prisma.eventOccurrence.count({

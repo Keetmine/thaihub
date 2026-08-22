@@ -93,7 +93,7 @@ export async function fetchEventListPage(
 
   const occurrences = await prisma.eventOccurrence.findMany({
     where: { startsAt, event: eventWhere, ...occurrenceWhere },
-    include: { event: { include: { performers: { include: { performer: true } } } } },
+    include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
     orderBy: { startsAt: phase === "upcoming" ? "asc" : "desc" },
     skip: offset,
     take: EVENT_PAGE_SIZE + 1,

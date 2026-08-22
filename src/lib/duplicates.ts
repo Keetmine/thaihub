@@ -16,15 +16,12 @@ export type DuplicateGroup<T> = { key: string; rows: T[] };
 export async function findDuplicatePerformerGroups(): Promise<
   DuplicateGroup<{ id: string; name: string; realName: string | null; type: string; createdAt: Date; _count: { events: number; dramas: number } }>[]
 > {
+  // Первый проход — только имена. Счётчики связей для КАЖДОЙ строки
+  // каталога (двумя коррелированными подзапросами) были главной
+  // тяжестью страницы дублей — теперь они считаются вторым запросом и
+  // только для строк, попавших в группы (attachCounts ниже).
   const performers = await prisma.performer.findMany({
-    select: {
-      id: true,
-      name: true,
-      realName: true,
-      type: true,
-      createdAt: true,
-      _count: { select: { events: true, dramas: true } },
-    },
+    select: { id: true, name: true, realName: true, type: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
   const byNick = groupByNormName(performers, (p) => p.name).flatMap((g) =>
@@ -50,7 +47,19 @@ export async function findDuplicatePerformerGroups(): Promise<
     .map(([key, rows]) => ({ key: `real::${key}`, rows }))
     .filter((g) => !seenSets.has(g.rows.map((r) => r.id).sort().join("|")));
 
-  return [...byNick, ...realGroups];
+  const groups = [...byNick, ...realGroups];
+  const countRows = await prisma.performer.findMany({
+    where: { id: { in: groups.flatMap((g) => g.rows.map((r) => r.id)) } },
+    select: { id: true, _count: { select: { events: true, dramas: true } } },
+  });
+  const countById = new Map(countRows.map((c) => [c.id, c._count]));
+  return groups.map((g) => ({
+    key: g.key,
+    rows: g.rows.map((r) => ({
+      ...r,
+      _count: countById.get(r.id) ?? { events: 0, dramas: 0 },
+    })),
+  }));
 }
 
 /** Groups of Dramas sharing the exact same (normalized) title.
@@ -60,19 +69,30 @@ export async function findDuplicatePerformerGroups(): Promise<
 export async function findDuplicateDramaGroups(): Promise<
   DuplicateGroup<{ id: string; title: string; year: number | null; createdAt: Date; _count: { performers: number; locations: number; events: number } }>[]
 > {
+  // Та же двухпроходная схема, что у исполнителей: имена без счётчиков,
+  // затем счётчики только для попавших в группы.
   const dramas = await prisma.drama.findMany({
-    select: {
-      id: true,
-      title: true,
-      year: true,
-      createdAt: true,
-      _count: { select: { performers: true, locations: true, events: true } },
-    },
+    select: { id: true, title: true, year: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
-  return groupByNormName(dramas, (d) => d.title).flatMap((g) =>
+  const groups = groupByNormName(dramas, (d) => d.title).flatMap((g) =>
     splitByDiscriminator(g, (d) => (d.year != null ? String(d.year) : null)),
   );
+  const countRows = await prisma.drama.findMany({
+    where: { id: { in: groups.flatMap((g) => g.rows.map((r) => r.id)) } },
+    select: {
+      id: true,
+      _count: { select: { performers: true, locations: true, events: true } },
+    },
+  });
+  const countById = new Map(countRows.map((c) => [c.id, c._count]));
+  return groups.map((g) => ({
+    key: g.key,
+    rows: g.rows.map((r) => ({
+      ...r,
+      _count: countById.get(r.id) ?? { performers: 0, locations: 0, events: 0 },
+    })),
+  }));
 }
 
 /** Дробит группу «одинаковых» по дискриминатору (реальное имя / год):

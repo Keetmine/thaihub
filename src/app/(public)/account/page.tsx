@@ -52,9 +52,13 @@ export default async function AccountPage({
     orderBy: { createdAt: "desc" },
   });
 
+  // Слим-выборка исполнителей: строкам EventAgendaRow нужны только
+  // id/name/slug, полные строки Performer тянуть незачем.
   const eventWithOccurrences = {
     include: {
-      performers: { include: { performer: true } },
+      performers: {
+        include: { performer: { select: { id: true, name: true, slug: true } } },
+      },
       occurrences: { orderBy: { startsAt: "asc" as const } },
     },
   };
