@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -44,7 +45,9 @@ export async function destroyUserSession() {
   store.delete(USER_COOKIE);
 }
 
-export async function getCurrentUser() {
+// React.cache: один запрос сессии на HTTP-запрос, сколько бы раз
+// layout и страница ни спросили текущего пользователя.
+export const getCurrentUser = cache(async () => {
   const store = await cookies();
   const id = store.get(USER_COOKIE)?.value;
   if (!id) return null;
@@ -58,4 +61,4 @@ export async function getCurrentUser() {
   // Удалённый аккаунт не должен «оживать» по старой сессии.
   if (session.user.deletedAt) return null;
   return session.user;
-}
+});
