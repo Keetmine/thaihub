@@ -261,10 +261,17 @@ view, not a browsing surface.
 прикрепить купленный билет — PDF или фото (блок `TicketSection.tsx` с
 оранжевой рамкой сразу под шапкой события; по строке на каждую
 отмеченную дату). Файл грузится через `/api/upload-ticket` (PDF/JPEG/
-PNG/WEBP до 10MB, без пережатия, SVG запрещён) в
-`/public/uploads/tickets/`, привязывается экшеном
-`setAttendanceTicket` (принимает только пути из каталога билетов;
-требует существующую отметку «иду»). Открепление удаляет и файл.
+PNG/WEBP до 10MB, без пережатия, SVG запрещён) в приватное хранилище
+`private-uploads/tickets/` (вне `public/` — билет с ФИО нельзя отдавать
+статикой; см. `src/lib/privateUploads.ts`), URL вида
+`/files/tickets/…` раздаёт route handler `src/app/files/[...path]` —
+только владельцу билета. Привязка — экшеном `setAttendanceTicket`
+(принимает только пути `/files/tickets/`; требует существующую отметку
+«иду»). Открепление удаляет и файл. Файлы броней отелей аналогично
+живут в `private-uploads/hotels/` (`/api/upload-hotel`) и видны
+владельцу и принятым участникам поездки. Старые файлы переносит
+`scripts/migrate-private-uploads.ts`; публичный путь
+`/uploads/tickets/*` в Caddy отвечает 404.
 
 ## Участники групп в «Кто выступает»
 

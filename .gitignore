@@ -49,6 +49,7 @@ next-env.d.ts
 
 # user-uploaded files (runtime data, not source)
 /public/uploads/
+/private-uploads/
 
 # agent worktrees (transient)
 .claude/worktrees/

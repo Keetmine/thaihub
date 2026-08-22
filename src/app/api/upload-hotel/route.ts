@@ -7,10 +7,9 @@ import { privateUploadsDir } from "@/lib/privateUploads";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 
-// Билеты — чаще всего PDF; картинки тоже принимаем (скрин билета).
-// PDF сохраняется как есть (не исполняемый в статике), картинки — тоже
-// как есть: тут не витрина, пережимать в webp незачем. SVG запрещён
-// (может нести <script> и отдаётся из /public/uploads как есть).
+// Файлы броней отелей: PDF или скрин. Как и билеты, содержат ФИО и
+// номера броней, поэтому живут в приватном хранилище вне public/ и
+// раздаются только через /files/hotels/… с проверкой участия в поездке.
 const ALLOWED_TYPES: Record<string, string> = {
   "application/pdf": ".pdf",
   "image/jpeg": ".jpg",
@@ -37,12 +36,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Файл слишком большой (максимум 10MB)" }, { status: 400 });
   }
 
-  // Приватное хранилище вне public/ — билет с ФИО и местами не должен
-  // раздаваться статикой; см. src/lib/privateUploads.ts и /files/…
-  const dir = privateUploadsDir("tickets");
+  const dir = privateUploadsDir("hotels");
   await mkdir(dir, { recursive: true });
   const fileName = `${randomUUID()}${ext}`;
   await writeFile(path.join(dir, fileName), Buffer.from(await file.arrayBuffer()));
 
-  return NextResponse.json({ url: `/files/tickets/${fileName}` });
+  return NextResponse.json({ url: `/files/hotels/${fileName}` });
 }

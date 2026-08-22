@@ -6,13 +6,14 @@ import { unlink } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { privateUploadsDir } from "@/lib/privateUploads";
 
 /** Прикрепить/сменить билет к своему «иду» на конкретную дату. url —
  *  из /api/upload-ticket (принимаем только собственный каталог билетов). */
 export async function setAttendanceTicket(occurrenceId: string, url: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!url.startsWith("/uploads/tickets/")) throw new Error("Некорректный файл билета");
+  if (!url.startsWith("/files/tickets/")) throw new Error("Некорректный файл билета");
   const updated = await prisma.eventAttendance.updateMany({
     where: { userId: user.id, occurrenceId },
     data: { ticketUrl: url },
@@ -33,7 +34,13 @@ export async function removeAttendanceTicket(occurrenceId: string): Promise<void
     where: { userId_occurrenceId: { userId: user.id, occurrenceId } },
     data: { ticketUrl: null },
   });
-  if (attendance.ticketUrl.startsWith("/uploads/tickets/")) {
+  if (attendance.ticketUrl.startsWith("/files/tickets/")) {
+    await unlink(
+      privateUploadsDir("tickets", path.basename(attendance.ticketUrl)),
+    ).catch(() => {});
+  } else if (attendance.ticketUrl.startsWith("/uploads/tickets/")) {
+    // Билеты, загруженные до переезда в приватное хранилище
+    // (scripts/migrate-private-uploads.ts переносит и их).
     await unlink(path.join(process.cwd(), "public", attendance.ticketUrl)).catch(() => {});
   }
 }

@@ -8,11 +8,15 @@ export default function FileDropzone({
   label,
   defaultValue,
   accept = "image/*",
+  // Приватные файлы (брони отелей) грузятся через свой эндпоинт — в
+  // приватное хранилище вместо public/uploads.
+  endpoint = "/api/upload",
 }: {
   name: string;
   label: string;
   defaultValue?: string;
   accept?: string;
+  endpoint?: string;
 }) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [isDragging, setIsDragging] = useState(false);
@@ -26,7 +30,7 @@ export default function FileDropzone({
     try {
       const body = new FormData();
       body.set("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body });
+      const res = await fetch(endpoint, { method: "POST", body });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Не удалось загрузить файл");
       setUrl(data.url);

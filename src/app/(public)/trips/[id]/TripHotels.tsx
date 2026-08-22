@@ -91,6 +91,7 @@ export default function TripHotels({
             label="Файл брони"
             defaultValue={hotel?.fileUrl ?? ""}
             accept="image/*,application/pdf"
+            endpoint="/api/upload-hotel"
           />
         </div>
         <div className="col-12 col-md-6">

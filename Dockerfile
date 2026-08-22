@@ -54,6 +54,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh && chown nextjs:nodejs docker-entrypoint.sh
 
+# Приватные загрузки (билеты, брони — см. src/lib/privateUploads.ts).
+# Каталог создаём в образе с владельцем nextjs: первый маунт пустого
+# named volume копирует права отсюда — иначе volume пришёл бы root'ом и
+# приложение не смогло бы в него писать.
+RUN mkdir -p /app/private-uploads && chown nextjs:nodejs /app/private-uploads
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0

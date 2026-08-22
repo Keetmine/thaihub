@@ -64,6 +64,10 @@ services:
       # only in the container's writable layer and vanish on the next
       # `docker compose up --build`.
       - uploads_data:/app/public/uploads
+      # Приватные файлы (билеты, брони) — вне public/ и БЕЗ монтирования
+      # в Caddy: их раздаёт только /files/… с проверкой прав
+      # (src/lib/privateUploads.ts).
+      - private_uploads_data:/app/private-uploads
 
   # HTTPS-терминация: Caddy сам получает и продлевает сертификаты
   # Let's Encrypt для DOMAIN (myblhub.com). Локально (без DOMAIN) сервис
@@ -102,6 +106,7 @@ services:
     volumes:
       - ./backups:/backups
       - uploads_data:/uploads:ro
+      - private_uploads_data:/private-uploads:ro
     entrypoint: /bin/sh
     command:
       - -c
@@ -112,13 +117,17 @@ services:
             && echo "backup: db-$$ts.sql.gz"
           tar czf "/backups/uploads-$$ts.tar.gz" -C /uploads . \
             && echo "backup: uploads-$$ts.tar.gz"
+          tar czf "/backups/private-uploads-$$ts.tar.gz" -C /private-uploads . \
+            && echo "backup: private-uploads-$$ts.tar.gz"
           ls -1t /backups/db-*.sql.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
           ls -1t /backups/uploads-*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+          ls -1t /backups/private-uploads-*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
           sleep 86400
         done
 
 volumes:
   db_data:
   uploads_data:
+  private_uploads_data:
   caddy_data:
   caddy_config:
