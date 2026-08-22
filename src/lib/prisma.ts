@@ -46,23 +46,41 @@ async function uniqueCatalogSlug(
 ): Promise<string | null> {
   const baseSlug = slugify(name);
   if (!baseSlug) return null;
-  // findFirst по slug через «сырое» делегирование — модель динамическая.
-  const delegate = (base as unknown as Record<string, { findFirst: (q: object) => Promise<unknown> }>)[
-    model.charAt(0).toLowerCase() + model.slice(1)
-  ];
-  const taken = async (candidate: string) =>
-    !!(await delegate.findFirst({ where: { slug: candidate }, select: { slug: true } }));
+  // Запросы по slug через «сырое» делегирование — модель динамическая.
+  const delegate = (base as unknown as Record<
+    string,
+    {
+      findFirst: (q: object) => Promise<unknown>;
+      findMany: (q: object) => Promise<{ slug: string | null }[]>;
+    }
+  >)[model.charAt(0).toLowerCase() + model.slice(1)];
 
-  if (!(await taken(baseSlug))) return baseSlug;
+  // Все занятые варианты одним запросом (раньше кандидаты пробовались
+  // по одному findFirst — при импорте тёзок это давало до 50 запросов
+  // на КАЖДУЮ создаваемую запись).
+  const takenRows = await delegate.findMany({
+    where: { OR: [{ slug: baseSlug }, { slug: { startsWith: `${baseSlug}-` } }] },
+    select: { slug: true },
+  });
+  const takenSet = new Set(takenRows.map((r) => r.slug));
+
+  if (!takenSet.has(baseSlug)) return baseSlug;
 
   if (disambiguator) {
     const combined = slugify(`${name} ${disambiguator}`);
-    if (combined && combined !== baseSlug && !(await taken(combined))) return combined;
+    if (combined && combined !== baseSlug) {
+      // Обычно combined начинается с baseSlug- и уже покрыт выборкой;
+      // на экзотический случай другого префикса — одна точечная проверка.
+      const combinedTaken = combined.startsWith(`${baseSlug}-`)
+        ? takenSet.has(combined)
+        : !!(await delegate.findFirst({ where: { slug: combined }, select: { slug: true } }));
+      if (!combinedTaken) return combined;
+    }
   }
 
   for (let n = 1; n < 50; n++) {
     const candidate = `${baseSlug}-${n + 1}`;
-    if (!(await taken(candidate))) return candidate;
+    if (!takenSet.has(candidate)) return candidate;
   }
   return `${baseSlug}-${shortCode()}`;
 }
