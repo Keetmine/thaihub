@@ -32,7 +32,7 @@ export async function commitTmdbImport(input: {
   revalidatePath(`/admin/performers/${input.performerId}/edit`);
   revalidatePath("/admin/performers");
   revalidatePath("/admin/dramas");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   revalidatePath("/dramas");
   return result;
 }

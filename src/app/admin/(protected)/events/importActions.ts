@@ -157,7 +157,7 @@ export async function createEventFromTtmImport(
   revalidatePath("/");
   revalidatePath("/admin/events");
   revalidatePath("/admin/performers");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
 
   return { id: event.id };
 }

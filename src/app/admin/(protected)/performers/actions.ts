@@ -132,7 +132,7 @@ async function createPerformerRecord(name: string, type: string) {
   });
 
   revalidatePath("/admin/performers");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
 
   return performer;
 }
@@ -156,7 +156,7 @@ export async function deletePerformer(id: string) {
     entityLabel: existing?.name ?? id,
   });
   revalidatePath("/admin/performers");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   redirect("/admin/performers");
 }
 
@@ -344,7 +344,7 @@ export async function createPerformer(formData: FormData) {
 
   revalidatePath("/admin/performers");
   revalidatePath("/admin/pairings");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   revalidatePath("/");
   redirect(`/admin/performers/${performer.id}/edit`);
 }
@@ -459,7 +459,7 @@ export async function updatePerformer(id: string, formData: FormData) {
 
   revalidatePath("/admin/performers");
   revalidatePath(`/admin/performers/${id}/edit`);
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   revalidatePath(`/performers/${id}`);
   revalidatePath("/");
   redirect("/admin/performers");

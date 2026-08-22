@@ -74,5 +74,5 @@ export async function swapPairingOrder(id: string): Promise<void> {
     data: { performerAId: pairing.performerBId, performerBId: pairing.performerAId },
   });
   revalidatePath("/admin/pairings");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
 }

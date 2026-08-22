@@ -86,7 +86,7 @@ export async function createAgency(formData: FormData) {
     entityLabel: agency.name,
   });
 
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   revalidatePath("/dramas");
   redirect(`/admin/agencies/${agency.id}/edit`);
 }
@@ -156,7 +156,7 @@ export async function updateAgency(id: string, formData: FormData) {
 
   revalidatePath("/admin/performers");
   revalidatePath(`/admin/agencies/${id}/edit`);
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   revalidatePath("/dramas");
   revalidatePath(`/agencies/${id}`);
   redirect("/admin/performers?view=agencies");

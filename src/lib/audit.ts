@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { invalidateCatalogCache } from "@/lib/catalogCache";
 import type { AuditAction, Prisma } from "@/generated/prisma/client";
 
 /** Одно изменившееся поле. from/to уже приведены к строке — история
@@ -110,6 +111,9 @@ export async function logAudit(entry: {
     // Пустой UPDATE — это сохранение формы без единой правки; такие
     // строки только зашумляют историю.
     if (entry.action === "UPDATE" && entry.changes && entry.changes.length === 0) return;
+    // Каждая правка каталога проходит через аудит — удобная центральная
+    // точка, чтобы сбросить кэшированные каталожные выборки (sitemap).
+    invalidateCatalogCache();
     // Скрипты и импорты работают вне HTTP-контекста — там cookies()
     // бросает; такая правка честно записывается как «система».
     const user = await getCurrentUser().catch(() => null);

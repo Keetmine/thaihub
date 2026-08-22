@@ -117,7 +117,7 @@ export async function bulkSetPerformerAgency(ids: string[], agencyId: string): P
     note: `агентство → «${agency.name}»: ${summarize(labels)}`,
   });
   revalidatePath("/admin/performers");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
   revalidatePath(`/agencies/${agencyId}`);
 }
 

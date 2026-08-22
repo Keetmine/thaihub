@@ -17,5 +17,5 @@ export async function mergePerformersAction(keeperId: string, loserIds: string[]
   await mergePerformers(keeperId, loserIds);
   revalidatePath("/admin/duplicates");
   revalidatePath("/admin/performers");
-  revalidatePath("/performers");
+  revalidatePath("/artists");
 }
