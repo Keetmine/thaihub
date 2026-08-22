@@ -1292,6 +1292,24 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   height: 0.7rem;
 }
 
+/* Баннер согласия на куки (src/components/CookieConsent.tsx): плашка в
+   нижнем углу, поверх контента, но не на весь экран. */
+.cookie-consent {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  z-index: 1080;
+  max-width: 26rem;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 576px) {
+  .cookie-consent {
+    left: auto;
+  }
+}
+
 .event-card-locked-badge {
   position: absolute;
   top: 0.7rem;

@@ -21,6 +21,12 @@ export async function signup(formData: FormData) {
     redirect("/signup?error=1");
   }
 
+  // Чекбокс согласия с условиями и политикой обязателен (браузер
+  // проверяет required, здесь — на случай запроса мимо формы).
+  if (formData.get("acceptTerms") !== "on") {
+    redirect("/signup?error=1");
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     redirect("/signup?error=exists");

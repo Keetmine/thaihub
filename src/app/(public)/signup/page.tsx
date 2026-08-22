@@ -65,6 +65,25 @@ export default async function SignupPage({
         <input type="email" name="email" required className="form-control mb-3" />
         <label className="form-label">Пароль</label>
         <PasswordInput name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
+        <div className="form-check mb-3">
+          <input
+            type="checkbox"
+            name="acceptTerms"
+            id="accept-terms"
+            required
+            className="form-check-input"
+          />
+          <label htmlFor="accept-terms" className="form-check-label small text-secondary">
+            Принимаю{" "}
+            <Link href="/terms" className="link-body-emphasis" target="_blank">
+              условия
+            </Link>{" "}
+            и{" "}
+            <Link href="/privacy" className="link-body-emphasis" target="_blank">
+              политику конфиденциальности
+            </Link>
+          </label>
+        </div>
         <button type="submit" className="btn btn-primary w-100 mb-3">
           Зарегистрироваться
         </button>
@@ -85,6 +104,13 @@ export default async function SignupPage({
             <p className="small text-secondary mb-2">или</p>
             <TelegramLoginButton botUsername={botUsername} />
           </div>
+        )}
+        {(hasGoogle || botUsername) && (
+          <p className="small text-secondary text-center mb-3" style={{ opacity: 0.8 }}>
+            Входя через Google или Telegram, вы соглашаетесь с{" "}
+            <Link href="/terms" className="link-body-emphasis">условиями</Link> и{" "}
+            <Link href="/privacy" className="link-body-emphasis">политикой конфиденциальности</Link>.
+          </p>
         )}
         <p className="small text-secondary text-center mb-0">
           Уже есть аккаунт?{" "}

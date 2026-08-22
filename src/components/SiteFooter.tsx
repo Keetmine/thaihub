@@ -45,6 +45,7 @@ export default function SiteFooter() {
               <Link href="/wiki" className={link}>Вики</Link>
               <Link href="/about" className={link}>О нас</Link>
               <Link href="/terms" className={link}>Условия</Link>
+              <Link href="/privacy" className={link}>Конфиденциальность</Link>
             </div>
           </div>
         </div>

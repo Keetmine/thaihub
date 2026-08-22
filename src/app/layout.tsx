@@ -4,7 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
-import Analytics from "@/components/Analytics";
+import CookieConsent from "@/components/CookieConsent";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,7 +62,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#160a1c",
+  // Фактический фон сайта (--bs-body-bg) — старый #160a1c остался от
+  // фиолетовой темы и красил панель браузера в чужой цвет.
+  themeColor: "#0a0a0c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -75,7 +77,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="d-flex flex-column min-vh-100">
         <ServiceWorkerRegistrar />
         {children}
-        <Analytics />
+        {/* Баннер согласия + аналитика: Метрика грузится только после
+            «Принять все» (см. CookieConsent). */}
+        <CookieConsent metrikaId={process.env.YANDEX_METRIKA_ID ?? null} />
       </body>
     </html>
   );
