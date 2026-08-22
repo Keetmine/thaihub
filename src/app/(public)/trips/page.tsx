@@ -79,29 +79,56 @@ export default async function TripsPage() {
   ];
 
   // Для каждой поездки: сколько событий в плане (отметки «иду» всех
-  // участников) и сколько всего в её датах.
-  const counts = await Promise.all(
-    trips.map(async (t) => {
-      const range = { startsAt: { gte: t.startDate, lte: endOfDay(t.endDate) } };
-      const [plan, total] = await Promise.all([
-        prisma.eventOccurrence.count({
-          where: {
-            ...range,
-            attendances: {
-              some: {
-                OR: [
-                  { userId: t.userId },
-                  { user: { tripMemberships: { some: { tripId: t.id, status: "ACCEPTED" } } } },
-                ],
-              },
-            },
-          },
-        }),
-        prisma.eventOccurrence.count({ where: range }),
-      ]);
-      return { plan, total };
+  // участников) и сколько всего в её датах. Три batch-запроса на все
+  // поездки сразу (раньше было по два COUNT на каждую, второй — с
+  // трёхуровневым подзапросом; при OR: [] Prisma просто ничего не
+  // вернёт, отдельная ветка на «нет поездок» не нужна).
+  const [occurrences, memberRows] = await Promise.all([
+    prisma.eventOccurrence.findMany({
+      where: {
+        OR: trips.map((t) => ({
+          startsAt: { gte: t.startDate, lte: endOfDay(t.endDate) },
+        })),
+      },
+      select: { id: true, startsAt: true },
     }),
-  );
+    prisma.tripMember.findMany({
+      where: { tripId: { in: trips.map((t) => t.id) }, status: "ACCEPTED" },
+      select: { tripId: true, userId: true },
+    }),
+  ]);
+  const attendanceRows = await prisma.eventAttendance.findMany({
+    where: {
+      occurrenceId: { in: occurrences.map((o) => o.id) },
+      userId: {
+        in: [...new Set([...trips.map((t) => t.userId), ...memberRows.map((m) => m.userId)])],
+      },
+    },
+    select: { occurrenceId: true, userId: true },
+  });
+  const attendeesByOccurrence = new Map<string, string[]>();
+  for (const a of attendanceRows) {
+    const list = attendeesByOccurrence.get(a.occurrenceId);
+    if (list) list.push(a.userId);
+    else attendeesByOccurrence.set(a.occurrenceId, [a.userId]);
+  }
+  const counts = trips.map((t) => {
+    const from = t.startDate;
+    const to = endOfDay(t.endDate);
+    const tripUserIds = new Set([
+      t.userId,
+      ...memberRows.filter((m) => m.tripId === t.id).map((m) => m.userId),
+    ]);
+    let plan = 0;
+    let total = 0;
+    for (const o of occurrences) {
+      if (o.startsAt < from || o.startsAt > to) continue;
+      total += 1;
+      const attendees = attendeesByOccurrence.get(o.id);
+      if (attendees?.some((u) => tripUserIds.has(u))) plan += 1;
+    }
+    return { plan, total };
+  });
 
   const now = new Date();
 

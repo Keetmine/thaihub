@@ -331,7 +331,9 @@ docs/design-direction.md. Решения владельца (2026-08-22): пор
       стиле design-direction).
 - [ ] Э0.4 error.tsx + global-error.tsx; server actions → контракт
       { ok, error } вместо 96 throw с русским текстом.
-- [ ] Э0.5 N+1 в /trips: один groupBy вместо 2×COUNT на поездку.
+- [x] Э0.5 N+1 в /trips (2026-08-22): три batch-запроса на все поездки
+      вместо 2×COUNT на каждую; счётчики считаются в JS. e2e
+      shared-trips зелёные.
 - [ ] Э0.6 chromium.launch из server actions (короткие Maps-ссылки) →
       резолв HTTP-редиректом без браузера; mdlClient headless:false —
       проверить, как это живёт на сервере.
