@@ -341,9 +341,13 @@ docs/design-direction.md. Решения владельца (2026-08-22): пор
 - [x] Э0.5 N+1 в /trips (2026-08-22): три batch-запроса на все поездки
       вместо 2×COUNT на каждую; счётчики считаются в JS. e2e
       shared-trips зелёные.
-- [ ] Э0.6 chromium.launch из server actions (короткие Maps-ссылки) →
-      резолв HTTP-редиректом без браузера; mdlClient headless:false —
-      проверить, как это живёт на сервере.
+- [x] Э0.6 chromium в server actions (2026-08-22): короткие Maps-ссылки
+      сначала резолвятся HTTP-редиректами (resolveMapsCoordsViaHttp в
+      blscene.ts — координаты в URL достаются без браузера, проверено
+      на живой ссылке), браузер остался только как fallback для
+      ?q=&ftid=-формы и сериализован очередью — параллельные клики
+      больше не поднимают несколько Chromium. Отдельно: mdlClient
+      headless:false на сервере — проверить при следующем MDL-импорте.
 - [ ] Э0.7 Пагинация/облегчение тяжёлых страниц: /admin/events,
       /locations/map (select вместо полных строк), /admin/duplicates,
       календарь месяца, /account.

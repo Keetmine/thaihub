@@ -5,11 +5,35 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import type { TripVisibility } from "@/generated/prisma/client";
-import { resolveMapsCoords } from "@/lib/blscene";
+import { resolveMapsCoords, resolveMapsCoordsViaHttp } from "@/lib/blscene";
 import { isLocationCategory } from "@/lib/locationCategories";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
+}
+
+// Координаты из maps-ссылки пользователя. Сначала дешёвый HTTP-резолв
+// (редиректы коротких ссылок часто несут координаты прямо в URL);
+// браузер — только fallback для ссылок формата ?q=адрес&ftid=…, и
+// строго по одному: параллельные клики выстраиваются в очередь, чтобы
+// несколько Chromium (~250 МБ каждый) не уронили веб-процесс по памяти.
+let mapsBrowserQueue: Promise<unknown> = Promise.resolve();
+
+async function resolveUserMapsCoords(url: string) {
+  const viaHttp = await resolveMapsCoordsViaHttp(url);
+  if (viaHttp) return viaHttp;
+
+  const task = mapsBrowserQueue.then(async () => {
+    const { chromium } = await import("playwright");
+    const browser = await chromium.launch();
+    try {
+      return await resolveMapsCoords(url, browser);
+    } finally {
+      await browser.close();
+    }
+  });
+  mapsBrowserQueue = task.catch(() => {});
+  return task;
 }
 
 async function requireOwnList(listId: string) {
@@ -113,8 +137,8 @@ export async function searchLocationOptions(
  * Создание своего места (не из каталога дорам) сразу в список: название +
  * ссылка Google Maps ИЛИ голые координаты «13.75, 100.50». Длинные
  * maps-ссылки несут координаты в URL (regex), короткие maps.app.goo.gl
- * резолвятся реальным браузером (resolveMapsCoords — тот же механизм,
- * что у blscene-импортёра). Такое место помечено createdByUserId и в
+ * резолвятся через resolveUserMapsCoords (HTTP-редиректы, браузер — в
+ * крайнем случае и по одному). Такое место помечено createdByUserId и в
  * общий каталог локаций не попадает.
  */
 export async function createOwnPlace(listId: string, formData: FormData) {
@@ -133,16 +157,7 @@ export async function createOwnPlace(listId: string, formData: FormData) {
     if (raw) {
       coords = { lat: parseFloat(raw[1]), lng: parseFloat(raw[2]) };
     } else {
-      // Короткая ссылка требует браузера; длинная разберётся regex'ом
-      // внутри без его использования. Браузер поднимаем лениво и только
-      // если ссылка вообще есть.
-      const { chromium } = await import("playwright");
-      const browser = await chromium.launch();
-      try {
-        coords = await resolveMapsCoords(mapsInput, browser);
-      } finally {
-        await browser.close();
-      }
+      coords = await resolveUserMapsCoords(mapsInput);
     }
   }
 
@@ -195,15 +210,7 @@ export async function updateOwnPlace(locationId: string, formData: FormData) {
   if (mapsInput) {
     const raw = mapsInput.match(/^(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/);
     if (raw) coords = { lat: parseFloat(raw[1]), lng: parseFloat(raw[2]) };
-    else {
-      const { chromium } = await import("playwright");
-      const browser = await chromium.launch();
-      try {
-        coords = await resolveMapsCoords(mapsInput, browser);
-      } finally {
-        await browser.close();
-      }
-    }
+    else coords = await resolveUserMapsCoords(mapsInput);
   }
 
   const rawCategory = String(formData.get("category") ?? "").trim();

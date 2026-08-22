@@ -120,13 +120,61 @@ function extractCoordsFromText(text: string): { lat: number; lng: number } | nul
 }
 
 /**
+ * Дешёвый резолв без браузера: идём по HTTP-редиректам (maps.app.goo.gl
+ * отдаёт обычный 302) и ищем координаты в каждом следующем URL, включая
+ * consent-обёртку (?continue=...). Покрывает ссылки, чей конечный URL
+ * несёт @lat,lng или !3d!4d; ссылки формата ?q=адрес&ftid=… координат в
+ * URL не имеют — для них вернётся null, и вызывающий решает, звать ли
+ * браузер (проверено вживую 2026-08-22: тело той страницы рендерится JS,
+ * без браузера координаты не достать).
+ */
+export async function resolveMapsCoordsViaHttp(
+  url: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const direct = extractCoordsFromText(url);
+  if (direct) return direct;
+
+  let current = url;
+  for (let hop = 0; hop < 5; hop++) {
+    let res: Response;
+    try {
+      res = await fetch(current, {
+        redirect: "manual",
+        headers: { "user-agent": "Mozilla/5.0 (compatible; MyBLHubImporter/1.0)" },
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch {
+      return null;
+    }
+    void res.body?.cancel().catch(() => {});
+    const next = res.headers.get("location");
+    if (!next) return null;
+    const absolute = new URL(next, current).toString();
+    const found = extractCoordsFromText(absolute);
+    if (found) return found;
+    try {
+      const cont = new URL(absolute).searchParams.get("continue");
+      if (cont) {
+        const fromCont = extractCoordsFromText(cont);
+        if (fromCont) return fromCont;
+      }
+    } catch {
+      // not a well-formed URL — keep following hops
+    }
+    current = absolute;
+  }
+  return null;
+}
+
+/**
  * Resolve a Google Maps link to coordinates. Long-form
  * google.com/maps/place/... links already carry them in the URL (no browser
- * needed). Short maps.app.goo.gl links are Firebase Dynamic Links that only
- * reveal their destination via client-side JS, so those need a real browser
- * — we navigate there and pull coordinates out of wherever we land,
- * including Google's occasional cookie-consent interstitial, which embeds
- * the real destination (and its coordinates) in a `continue=` param.
+ * needed). Short maps.app.goo.gl links redirect server-side, but часть из
+ * них ведёт на ?q=адрес&ftid=…-форму без координат в URL — тогда нужен
+ * реальный браузер: навигируемся и вытаскиваем координаты из того, куда
+ * приземлились, включая Google's occasional cookie-consent interstitial,
+ * which embeds the real destination (and its coordinates) in a
+ * `continue=` param.
  */
 export async function resolveMapsCoords(
   url: string,
