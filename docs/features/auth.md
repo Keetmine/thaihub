@@ -228,3 +228,16 @@ Cloudflare Turnstile.
 артистов + мультиселект с поиском — выбранные уходят в избранное
 (`saveOnboardingFavorites`, skipDuplicates), «Пропустить» ведёт на
 главную. Логин ведёт на /account, как раньше.
+
+## Согласие и самоудаление
+
+Регистрация требует чекбокс согласия с /terms и /privacy
+(`acceptTerms`, проверяется и в server action); под кнопками
+Google/Telegram — текст «Входя через…, вы соглашаетесь…». См.
+[legal.md](legal.md).
+
+Удаление аккаунта самим пользователем: настройки → вкладка
+«Безопасность» → «Удалить аккаунт» (ConfirmForm) →
+`deleteOwnAccount` — тот же `softDeleteUser`, что у админа, плюс
+`destroyUserSession` и редирект на главную. Покрыто e2e
+`account-deletion.spec.ts`.

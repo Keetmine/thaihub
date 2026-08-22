@@ -22,7 +22,9 @@ export default function SettingsTabs({
   const tabs: { id: Tab; label: string }[] = [
     { id: "profile", label: "Профиль" },
     { id: "privacy", label: "Приватность" },
-    { id: "security", label: "Пароль" },
+    // «Безопасность», а не «Пароль»: тут же живёт удаление аккаунта, и
+    // подсказки на странице уже ссылались на вкладку по этому имени.
+    { id: "security", label: "Безопасность" },
     { id: "calendar", label: "Календарь" },
   ];
 

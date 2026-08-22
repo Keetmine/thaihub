@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isKnownTimezone } from "@/lib/timezones";
-import { getCurrentUser, hashPassword, verifyPassword } from "@/lib/userAuth";
+import {
+  destroyUserSession,
+  getCurrentUser,
+  hashPassword,
+  verifyPassword,
+} from "@/lib/userAuth";
+import { softDeleteUser } from "@/lib/userDeletion";
 import { isValidUsername, RESERVED_USERNAMES } from "@/lib/userProfile";
 import { isKnownCountry } from "@/lib/countries";
 
@@ -156,4 +162,15 @@ export async function updateNotificationPrefs(formData: FormData) {
     },
   });
   revalidatePath("/account/settings");
+}
+
+/** Самоудаление аккаунта (Э1.7): то же мягкое удаление, что и у
+ *  админа — почта/привязки освобождаются, контент обезличивается.
+ *  После — чистим куку и уводим на главную. */
+export async function deleteOwnAccount(): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  await softDeleteUser(user.id, "самоудаление из настроек");
+  await destroyUserSession();
+  redirect("/");
 }

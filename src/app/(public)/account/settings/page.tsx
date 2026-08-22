@@ -9,6 +9,7 @@ import {
   getOrCreateIcsToken,
   unlinkTelegram,
   updateNotificationPrefs,
+  deleteOwnAccount,
 } from "../actions";
 import { restartTour } from "../tourActions";
 import ChangePasswordForm from "./ChangePasswordForm";
@@ -292,9 +293,29 @@ export default async function SettingsPage({
           </div>
         }
         security={
-          <div className="surface p-4">
-            <ChangePasswordForm />
-          </div>
+          <>
+            <div className="surface p-4">
+              <ChangePasswordForm />
+            </div>
+            <div className="surface p-4 mt-3">
+              <h2 className="section-heading mb-2">Удаление аккаунта</h2>
+              <p className="small text-secondary mb-3">
+                Аккаунт будет удалён: почта и привязки освободятся, профиль
+                обезличится. Восстановить его нельзя. Комментарии и отзывы
+                останутся подписанными «Удалённый аккаунт».
+              </p>
+              <ConfirmForm
+                action={deleteOwnAccount}
+                confirmMessage="Удалить аккаунт навсегда? Это действие нельзя отменить."
+                confirmLabel="Удалить навсегда"
+                busyLabel="Удаляем…"
+              >
+                <button type="button" className="btn btn-outline-danger btn-sm">
+                  Удалить аккаунт
+                </button>
+              </ConfirmForm>
+            </div>
+          </>
         }
         calendar={
           <div className="surface p-4">
