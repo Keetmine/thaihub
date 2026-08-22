@@ -449,13 +449,15 @@ export async function importTmdbCompany(
   const log = onProgress ?? (() => {});
   const company = await fetchTmdbCompany(companyId);
   const logoUrl = await downloadRemoteImage(company.logoUrl, "tmdb");
+  const sourceUrl = `https://www.themoviedb.org/company/${companyId}`;
   const agency = await prisma.agency.upsert({
     where: { name: company.name },
     update: {
       ...(logoUrl ? { logoUrl } : {}),
       ...(company.description ? { description: company.description } : {}),
+      sourceUrl,
     },
-    create: { name: company.name, logoUrl, description: company.description },
+    create: { name: company.name, logoUrl, description: company.description, sourceUrl },
   });
   log(`Студия: ${company.name}`);
 

@@ -31,8 +31,8 @@ export async function importMemindyAgency(
   const log = onProgress ?? (() => {});
   const agency = await prisma.agency.upsert({
     where: { name: AGENCY_NAME },
-    update: {},
-    create: { name: AGENCY_NAME },
+    update: { sourceUrl: "https://www.memindy.com/en/artist/" },
+    create: { name: AGENCY_NAME, sourceUrl: "https://www.memindy.com/en/artist/" },
   });
   log(`Агентство: ${AGENCY_NAME}`);
 

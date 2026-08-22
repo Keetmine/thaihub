@@ -22,6 +22,9 @@ model Event {
   slug           String?  @unique
   venue       String
   description String?
+  // Откуда событие импортировано (ThaiTicketMajor) — блок «Источники»
+  // на странице; у добавленных руками null.
+  sourceUrl   String?
   presaleAt   DateTime?
   presaleUrl  String?
   // Free-text ticket price display string (e.g. "6,900 / 5,900 / 5,000
@@ -243,6 +246,9 @@ model Agency {
   slug           String?  @unique
   logoUrl     String?
   description String?
+  // Страница-источник (Wikipedia/fandom/сайт агентства/TMDB) — блок
+  // «Источники»; проставляется импортёрами, у созданных руками null.
+  sourceUrl   String?
   performers  PerformerAgency[]
   dramas      Drama[]
   dramaLinks  DramaAgency[]

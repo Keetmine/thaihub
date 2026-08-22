@@ -82,6 +82,8 @@ export type TtmImportSubmission = {
   presaleDate: string;
   presaleTime: string;
   presaleUrl: string;
+  /** Страница события на ThaiTicketMajor — в блок «Источники». */
+  sourceUrl: string;
   /** Artists the admin kept checked in the review screen. */
   artists: { fullName: string; nickname: string; performerId: string | null }[];
   /** Additional existing performers picked manually (not from the scrape). */
@@ -141,6 +143,7 @@ export async function createEventFromTtmImport(
         posterUrl: data.posterUrl.trim() || null,
         presaleAt,
         presaleUrl: data.presaleUrl.trim() || null,
+        sourceUrl: data.sourceUrl.trim() || null,
         occurrences: {
           create: dates.map((dateStr) => ({
             startsAt: combineDateTime(dateStr, data.startTime),

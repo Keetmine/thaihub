@@ -89,6 +89,7 @@ export default function TtmImportFlow({
         dramaId: String(formData.get("dramaId") ?? ""),
         ticketPrice: String(formData.get("ticketPrice") ?? ""),
         posterUrl: String(formData.get("posterUrl") ?? ""),
+        sourceUrl: preview.sourceUrl,
         extraDates: extraDates.filter(Boolean),
         presaleDate: presaleEnabled ? String(formData.get("presaleDate") ?? "") : "",
         presaleTime: presaleEnabled ? String(formData.get("presaleTime") ?? "") : "",

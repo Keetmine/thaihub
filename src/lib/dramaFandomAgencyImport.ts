@@ -27,10 +27,15 @@ export async function importDramaFandomAgency(
   const log = onProgress ?? (() => {});
   const data = await fetchDramaFandomAgencyPage(pageUrlOrTitle, page);
 
+  // Тот же канонический URL, что строит fetchDramaFandomAgencyPage, —
+  // в блок «Источники» на странице агентства.
+  const sourceUrl = pageUrlOrTitle.startsWith("http")
+    ? pageUrlOrTitle
+    : `https://drama.fandom.com/wiki/${encodeURIComponent(pageUrlOrTitle.replace(/ /g, "_"))}`;
   const agency = await prisma.agency.upsert({
     where: { name: data.name },
-    update: {},
-    create: { name: data.name },
+    update: { sourceUrl },
+    create: { name: data.name, sourceUrl },
   });
   log(`Агентство: ${data.name}`);
 

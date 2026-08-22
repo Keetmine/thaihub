@@ -1,4 +1,5 @@
 import ReviewsAndComments from "@/components/ReviewsAndComments";
+import SourcesBlock from "@/components/SourcesBlock";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -437,6 +438,8 @@ export default async function EventDetailPage({
           <p className="mb-0">{event.description}</p>
         </div>
       )}
+
+      <SourcesBlock links={[{ url: event.sourceUrl }]} />
 
       <ReviewsAndComments kind="event" id={event.id} />
     </div>

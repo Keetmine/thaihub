@@ -57,13 +57,17 @@ export async function importWikipediaAgency(
   const log = onProgress ?? (() => {});
   const data = await fetchWikipediaAgencyPage(pageUrlOrTitle);
 
+  const sourceUrl = pageUrlOrTitle.startsWith("http")
+    ? pageUrlOrTitle
+    : `https://en.wikipedia.org/wiki/${encodeURIComponent(pageUrlOrTitle.replace(/ /g, "_"))}`;
   const agency = await prisma.agency.upsert({
     where: { name: data.name },
     update: {
       ...(data.logoUrl ? { logoUrl: data.logoUrl } : {}),
       ...(data.description ? { description: data.description } : {}),
+      sourceUrl,
     },
-    create: { name: data.name, logoUrl: data.logoUrl, description: data.description },
+    create: { name: data.name, logoUrl: data.logoUrl, description: data.description, sourceUrl },
   });
   log(`Агентство: ${data.name}`);
 

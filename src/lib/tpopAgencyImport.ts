@@ -58,6 +58,9 @@ export async function enrichAgencyFromTpop(agencyId: string): Promise<boolean> {
     data.logoUrl = await downloadRemoteImage(page.photoUrl, "agencies");
   }
   if (!agency.description && page.description) data.description = page.description;
+  if (!agency.sourceUrl) {
+    data.sourceUrl = `https://tpop.fandom.com/wiki/${encodeURIComponent(agency.name.replace(/ /g, "_"))}`;
+  }
   if (Object.keys(data).length === 0) return false;
   await prisma.agency.update({ where: { id: agencyId }, data });
   return true;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SourcesBlock from "@/components/SourcesBlock";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -285,6 +286,10 @@ export default async function AgencyDetailPage({
           ))}
         </div>
       )}
+
+      {/* Атрибуция: состав/описание агентства пришли из открытых
+          источников (Wikipedia/fandom/сайт агентства) — см. /terms. */}
+      <SourcesBlock links={[{ url: agency.sourceUrl }]} />
     </div>
   );
 }

@@ -28,8 +28,8 @@ export async function importChange2561(onProgress?: (message: string) => void): 
   const log = onProgress ?? (() => {});
   const agency = await prisma.agency.upsert({
     where: { name: AGENCY_NAME },
-    update: {},
-    create: { name: AGENCY_NAME },
+    update: { sourceUrl: "https://www.change2561.com/changeartist" },
+    create: { name: AGENCY_NAME, sourceUrl: "https://www.change2561.com/changeartist" },
   });
   log(`Агентство: ${AGENCY_NAME}`);
 

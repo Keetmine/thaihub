@@ -1,5 +1,6 @@
 import { pageMetadata, JsonLd, tvSeriesJsonLd } from "@/lib/seo";
 import ReviewsAndComments from "@/components/ReviewsAndComments";
+import SourcesBlock from "@/components/SourcesBlock";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -496,6 +497,11 @@ export default async function DramaDetailPage({
           </div>
         </div>
       )}
+
+      {/* Атрибуция: постер/синопсис пришли с MDL и blscene (см. /terms). */}
+      <SourcesBlock
+        links={[{ url: drama.mydramalistUrl }, { url: drama.blsceneUrl }]}
+      />
 
       <div className="mt-4">
         <ReviewsAndComments kind="drama" id={drama.id} />
