@@ -21,6 +21,8 @@ export async function sendBroadcast(formData: FormData): Promise<BroadcastResult
   const users = await prisma.user.findMany({
     where: {
       telegramId: { not: null },
+      // Уважаем тумблер «Новости проекта» из настроек пользователя.
+      tgNotifyBroadcast: true,
       ...(audience === "premium" ? { premiumUntil: { gt: new Date() } } : {}),
     },
     select: { telegramId: true },

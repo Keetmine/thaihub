@@ -61,6 +61,11 @@ export async function submitReport(
   if (!user) throw new Error("Требуется вход");
   await assertRateLimit("signup");
 
+  // Только известные типы: targetType приходит с клиента, и произвольная
+  // строка засоряла бы очередь модерации нерезолвящимися записями.
+  const KNOWN_TARGETS = ["placeList", "profile", "eventNote", "comment", "review"];
+  if (!KNOWN_TARGETS.includes(targetType)) throw new Error("Неизвестный тип жалобы");
+
   await prisma.report.create({
     data: {
       reporterId: user.id,

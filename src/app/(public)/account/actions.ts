@@ -159,6 +159,7 @@ export async function updateNotificationPrefs(formData: FormData) {
       tgNotifyFriends: String(formData.get("tgNotifyFriends") ?? "") === "on",
       tgNotifyReplies: String(formData.get("tgNotifyReplies") ?? "") === "on",
       tgNotifyEvents: String(formData.get("tgNotifyEvents") ?? "") === "on",
+      tgNotifyBroadcast: String(formData.get("tgNotifyBroadcast") ?? "") === "on",
     },
   });
   revalidatePath("/account/settings");

@@ -38,6 +38,7 @@ const TELEGRAM_NOTIFY_TOGGLES = [
   { name: "tgNotifyFriends" as const, label: "Заявки в друзья" },
   { name: "tgNotifyReplies" as const, label: "Ответы на мои комментарии" },
   { name: "tgNotifyEvents" as const, label: "Друзья идут на события" },
+  { name: "tgNotifyBroadcast" as const, label: "Новости проекта" },
 ];
 
 const PRIVACY_TOGGLES = [

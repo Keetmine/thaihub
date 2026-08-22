@@ -54,6 +54,21 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
       return summarize(result);
     },
   },
+  {
+    key: "cleanup-expired",
+    title: "Чистка просроченного",
+    description:
+      "Удаляет из БД просроченные сессии и токены сброса пароля — они и так не работают (проверка срока в коде), но копились бессрочно.",
+    supportsTargets: false,
+    run: async () => {
+      const now = new Date();
+      const [sessions, tokens] = await Promise.all([
+        prisma.userSession.deleteMany({ where: { expiresAt: { lt: now } } }),
+        prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: now } } }),
+      ]);
+      return `сессий удалено ${sessions.count}, токенов сброса ${tokens.count}`;
+    },
+  },
 ];
 
 export function jobDefinition(key: string): JobDefinition | undefined {

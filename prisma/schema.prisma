@@ -645,6 +645,9 @@ model User {
   tgNotifyFriends    Boolean @default(true)
   tgNotifyReplies    Boolean @default(true)
   tgNotifyEvents     Boolean @default(true)
+  // Новости проекта из /admin/broadcast — раньше рассылка игнорировала
+  // настройки и уходила всем с привязанным Telegram.
+  tgNotifyBroadcast  Boolean @default(true)
   // Тур по интерфейсу для новичков: показывается один раз после
   // регистрации, перезапускается кнопкой в настройках.
   tourCompletedAt    DateTime?

@@ -11,7 +11,7 @@ export default function ReportButton({
   targetId,
   className,
 }: {
-  targetType: "placeList" | "profile" | "eventNote";
+  targetType: "placeList" | "profile" | "eventNote" | "comment" | "review";
   targetId: string;
   className?: string;
 }) {

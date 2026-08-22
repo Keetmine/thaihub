@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
 import CommentLikeButton from "@/components/CommentLikeButton";
+import ReportButton from "@/components/ReportButton";
 import { TrashIcon, StarIcon, ChatIcon } from "@/components/icons";
 import {
   saveReview,
@@ -78,6 +79,9 @@ function CommentRow({
                 </button>
               </form>
             </details>
+          )}
+          {currentUser && c.user.id !== currentUser.id && (
+            <ReportButton targetType="comment" targetId={c.id} />
           )}
         </div>
       </div>
@@ -263,9 +267,12 @@ export default async function ReviewsAndComments({
                     </span>
                     <span className="text-secondary"> · {fmtDate(r.createdAt)}</span>
                   </p>
-                  <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                  <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
                     {r.text}
                   </p>
+                  {currentUser && r.user.id !== currentUser.id && (
+                    <ReportButton targetType="review" targetId={r.id} />
+                  )}
                 </div>
               </div>
             ))}

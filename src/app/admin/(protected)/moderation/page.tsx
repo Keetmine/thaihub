@@ -208,6 +208,23 @@ export default async function AdminModerationPage({
         })
       ).map((u) => [u.id, u]),
     );
+    // Жалобы на комментарии и отзывы: показываем отрывок текста и автора.
+    const commentTargets = new Map(
+      (
+        await prisma.comment.findMany({
+          where: { id: { in: reports.filter((r) => r.targetType === "comment").map((r) => r.targetId) } },
+          select: { id: true, text: true, user: { select: { id: true, name: true, email: true } } },
+        })
+      ).map((c) => [c.id, c]),
+    );
+    const reviewTargets = new Map(
+      (
+        await prisma.review.findMany({
+          where: { id: { in: reports.filter((r) => r.targetType === "review").map((r) => r.targetId) } },
+          select: { id: true, text: true, user: { select: { id: true, name: true, email: true } } },
+        })
+      ).map((rv) => [rv.id, rv]),
+    );
     const reportsPerTarget = new Map<string, number>();
     for (const r of reports) {
       reportsPerTarget.set(r.targetId, (reportsPerTarget.get(r.targetId) ?? 0) + 1);
@@ -273,6 +290,38 @@ export default async function AdminModerationPage({
                 </>
               ) : (
                 <span className="text-secondary">аккаунт удалён</span>
+              )
+            ) : r.targetType === "comment" ? (
+              commentTargets.has(r.targetId) ? (
+                <>
+                  комментарий «{commentTargets.get(r.targetId)!.text.slice(0, 80)}» —{" "}
+                  <Link
+                    href={`/admin/users/${commentTargets.get(r.targetId)!.user.id}`}
+                    className="link-body-emphasis"
+                  >
+                    {commentTargets.get(r.targetId)!.user.name ||
+                      commentTargets.get(r.targetId)!.user.email ||
+                      "без имени"}
+                  </Link>
+                </>
+              ) : (
+                <span className="text-secondary">комментарий удалён</span>
+              )
+            ) : r.targetType === "review" ? (
+              reviewTargets.has(r.targetId) ? (
+                <>
+                  отзыв «{reviewTargets.get(r.targetId)!.text.slice(0, 80)}» —{" "}
+                  <Link
+                    href={`/admin/users/${reviewTargets.get(r.targetId)!.user.id}`}
+                    className="link-body-emphasis"
+                  >
+                    {reviewTargets.get(r.targetId)!.user.name ||
+                      reviewTargets.get(r.targetId)!.user.email ||
+                      "без имени"}
+                  </Link>
+                </>
+              ) : (
+                <span className="text-secondary">отзыв удалён</span>
               )
             ) : (
               <span>
