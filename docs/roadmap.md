@@ -327,10 +327,17 @@ docs/design-direction.md. Решения владельца (2026-08-22): пор
       EventOccurrence.startsAt), миграция add_hot_path_indexes.
       Отложено: trigram/GIN под ILIKE-поиск — вернуться, если поиск
       останется медленным после остальных фиксов.
-- [ ] Э0.3 loading.tsx на публичные разделы и админку (скелетоны в
-      стиле design-direction).
-- [ ] Э0.4 error.tsx + global-error.tsx; server actions → контракт
-      { ok, error } вместо 96 throw с русским текстом.
+- [x] Э0.3 loading.tsx (2026-08-22): PageSkeleton + .skeleton-* в
+      globals.css, по одному loading.tsx на (public) и admin/(protected)
+      — навигация сразу показывает шиммер. Тонкая настройка скелетов
+      под конкретные страницы — в Э2.5.
+- [x] Э0.4а error.tsx (2026-08-22): (public)/error.tsx,
+      admin/(protected)/error.tsx (показывает message и digest),
+      global-error.tsx + Sentry.captureException. Внимание: в этой
+      версии Next проп называется retry, а не reset.
+- [ ] Э0.4б server actions → контракт { ok, error } вместо 96 throw с
+      русским текстом (публичные — приоритет, админские можно позже:
+      их error.tsx теперь показывает текст).
 - [x] Э0.5 N+1 в /trips (2026-08-22): три batch-запроса на все поездки
       вместо 2×COUNT на каждую; счётчики считаются в JS. e2e
       shared-trips зелёные.
