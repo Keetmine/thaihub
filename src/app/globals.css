@@ -3810,9 +3810,6 @@ details.admin-section[open] > summary.admin-section-head::before {
   font-size: 1.45rem;
   color: #fff;
 }
-.trip-card-hero .trip-dates {
-  font-size: clamp(1.9rem, 5vw, 2.5rem);
-}
 .trip-card-past .trip-dates {
   font-size: 1rem;
 }

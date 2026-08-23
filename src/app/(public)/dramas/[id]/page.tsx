@@ -212,7 +212,7 @@ export default async function DramaDetailPage({
       <BackLink fallbackHref="/dramas" fallbackLabel="← Все сериалы" />
       {/* Классическая шапка (по просьбе владельца): постер слева,
           заголовок и статус сверху — без размытого hero. */}
-      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-2 mb-3">
+      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-2 mb-4">
         <div style={{ minWidth: 0 }}>
           <h1 className="display-1-tight mb-1" style={{ fontSize: "2.25rem" }}>
             {drama.title}
@@ -256,7 +256,7 @@ export default async function DramaDetailPage({
               src={drama.posterUrl}
               alt={drama.title}
               className="rounded-4"
-              style={{ width: "13rem", aspectRatio: "2 / 3", objectFit: "cover" }}
+              style={{ width: "15rem", aspectRatio: "2 / 3", objectFit: "cover" }}
             />
             {drama.mydramalistUrl && (
               <a
@@ -270,8 +270,10 @@ export default async function DramaDetailPage({
             )}
           </div>
         )}
+        {/* Без фона-карточки (фидбек владельца): факты и описание —
+            просто текст в правой колонке, как у артиста. */}
         {hasFacts && (
-        <div className="surface p-4 flex-fill" style={{ minWidth: 0 }}>
+        <div className="flex-fill d-flex flex-column gap-1" style={{ minWidth: 0 }}>
           {studios.length > 0 && (
             <p className="small text-secondary mb-2">
               <BuildingIcon />{" "}
@@ -408,7 +410,7 @@ export default async function DramaDetailPage({
         )}
       </div>
 
-      {/* События дорамы — после фактов: фан-митинги/премьеры. */}
+      {/* События сериала — после фактов: фан-митинги/премьеры. */}
       {events.length > 0 && (
         <div id="events" className="anchor-target mb-4">
           <h2 className="section-heading mb-2">События</h2>

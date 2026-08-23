@@ -1,7 +1,6 @@
 import { JsonLd, pageMetadata, personJsonLd } from "@/lib/seo";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
-import DetailHero from "@/components/DetailHero";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -286,71 +285,117 @@ export default async function PerformerPage({
     (l) => !detectSocialPlatform(l.url),
   );
 
+  // Все строки блока фактов условные — пустую панель не рисуем (как на
+  // странице сериала): у записи без анкетных данных шапка сразу
+  // переходит к событиям/сериалам.
+  const hasFacts =
+    (!isBand &&
+      !!(
+        performer.birthDate ||
+        performer.nationality ||
+        performer.alsoKnownAs ||
+        performer.musicAlias ||
+        performer.placeOfBirth
+      )) ||
+    performer.occupation.length > 0 ||
+    performer.instruments.length > 0 ||
+    !!performer.soloDebut ||
+    !!performer.height ||
+    !!performer.weight ||
+    performer.agencies.length > 0 ||
+    !!performer.bio ||
+    otherLinks.length > 0 ||
+    (isBand && performer.bandMembers.length > 0) ||
+    (isMascot && performer.mascotOwners.length > 0) ||
+    (!displayPhoto && socialItems.length > 0);
+
   return (
     <div>
       <BackLink
         fallbackHref={isMascot ? "/artists?view=mascots" : "/artists"}
         fallbackLabel={isMascot ? "← Все маскоты" : "← Все артисты"}
       />
-      {/* Иммерсивный hero (Э2): размытое фото артиста фоном вместо
-          прежней плоской шапки. */}
-      <div className="mt-3">
-        <DetailHero
-          photoUrl={displayPhoto}
-          photoAlt={performer.name}
-          title={performer.name}
-          subtitle={performer.realName}
-          chips={
-            <>
-              {isBand && <span className="date-chip">Группа</span>}
-              {isMascot && <span className="date-chip">Маскот</span>}
-              {performer.agencies[0] && (
-                <span className="date-chip">{performer.agencies[0].agency.name}</span>
-              )}
-              {sortedDramas.length > 0 && (
-                <span className="date-chip">сериалов: {sortedDramas.length}</span>
-              )}
-              {upcoming.length + past.length > 0 && (
-                <span className="date-chip">событий: {upcoming.length + past.length}</span>
-              )}
-            </>
-          }
-          footer={<SocialLinkIcons items={socialItems} className="mt-1" />}
-          actions={
-            <>
-              <FavoriteButton
-                kind="performer"
-                id={performer.id}
-                isFavorited={isFavorited}
-                variant="icon"
-              />
-              {/* Ручная отметка «видела вживую»: автоматически считаются
-                  только события из нашей афиши. */}
-              {currentUser && (
-                <SeenLiveButton
-                  performerId={performer.id}
-                  initialSeen={seenLive}
-                  toggle={toggleSeenLive}
-                />
-              )}
-              {/* Добавить в свой список прямо отсюда. */}
-              {currentUser && (
-                <AddToListButton
-                  lists={myLists}
-                  onAdd={async (listId: string) => {
-                    "use server";
-                    await addPerformerToList(listId, performer.id);
-                  }}
-                />
-              )}
-            </>
-          }
-        />
+      {/* Классическая шапка (фидбек владельца, как у сериалов): имя +
+          realName, кнопки справа — без размытого hero. Ряд чипов не
+          выводим: агентство и так в фактах («Студия»), а счётчики
+          только путают (в них попадают и прошедшие события). */}
+      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-2 mb-4">
+        <div style={{ minWidth: 0 }}>
+          <h1 className="display-1-tight mb-1" style={{ fontSize: "2.25rem" }}>
+            {performer.name}
+            {performer.realName && (
+              <>
+                {" "}
+                <span className="fs-5 fw-normal text-secondary">
+                  ({performer.realName})
+                </span>
+              </>
+            )}
+          </h1>
+        </div>
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <FavoriteButton
+            kind="performer"
+            id={performer.id}
+            isFavorited={isFavorited}
+            variant="icon"
+          />
+          {/* Ручная отметка «видела вживую»: автоматически считаются
+              только события из нашей афиши. */}
+          {currentUser && (
+            <SeenLiveButton
+              performerId={performer.id}
+              initialSeen={seenLive}
+              toggle={toggleSeenLive}
+            />
+          )}
+          {/* Добавить в свой список прямо отсюда. */}
+          {currentUser && (
+            <AddToListButton
+              lists={myLists}
+              onAdd={async (listId: string) => {
+                "use server";
+                await addPerformerToList(listId, performer.id);
+              }}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Факты — свой блок: фото и соцссылки переехали в hero. */}
-      <div className="surface p-4 mb-4">
-        <div className="d-flex flex-column gap-2" style={{ minWidth: 0 }}>
+      {/* Фото слева + факты справа — как на странице сериала. Блок фото
+          рисуем только при displayPhoto: без него факты занимают всю
+          ширину, а соцссылки живут внутри блока фактов. */}
+      {(displayPhoto || hasFacts) && (
+      <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
+        {displayPhoto && (
+          <div className="flex-shrink-0 d-flex flex-column gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              loading="eager"
+              decoding="async"
+              src={displayPhoto}
+              alt={performer.name}
+              className="rounded-4"
+              style={{
+                width: "15rem",
+                aspectRatio: "3 / 4",
+                objectFit: "cover",
+              }}
+            />
+            <SocialLinkIcons
+              items={socialItems}
+              className="justify-content-center"
+            />
+          </div>
+        )}
+        {/* Факты и био — просто текстом, без фона-карточки (фидбек
+            владельца). */}
+        {hasFacts && (
+        <div
+          className="d-flex flex-column gap-2 flex-fill"
+          style={{ minWidth: 0 }}
+        >
+          {!displayPhoto && <SocialLinkIcons items={socialItems} />}
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
               <CakeIcon />{" "}
@@ -449,14 +494,31 @@ export default async function PerformerPage({
               ))}
             </p>
           )}
-          {performer.bio && (
-            <p
-              className="small text-secondary mb-0"
-              style={{ whiteSpace: "pre-line" }}
-            >
-              {performer.bio}
-            </p>
-          )}
+          {/* Длинная биография свёрнута до ~4 строк, как синопсис у
+              сериала: текст в summary, details[open] снимает line-clamp,
+              кнопку «Читать дальше/Свернуть» рисует CSS. Короткая — как
+              раньше, обычным абзацем. */}
+          {performer.bio &&
+            (performer.bio.length > 300 ? (
+              <details className="synopsis-fold">
+                <summary>
+                  <span
+                    className="synopsis-text small text-secondary"
+                    style={{ whiteSpace: "pre-line" }}
+                  >
+                    {performer.bio}
+                  </span>
+                  <span className="synopsis-toggle" />
+                </summary>
+              </details>
+            ) : (
+              <p
+                className="small text-secondary mb-0"
+                style={{ whiteSpace: "pre-line" }}
+              >
+                {performer.bio}
+              </p>
+            ))}
 
           {otherLinks.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-1">
@@ -514,7 +576,9 @@ export default async function PerformerPage({
             </div>
           )}
         </div>
+        )}
       </div>
+      )}
 
       {(currentPairings.length > 0 ||
         pastPairings.length > 0 ||
@@ -631,7 +695,7 @@ export default async function PerformerPage({
             </p>
           ) : (
             <div
-              className={`d-flex flex-column gap-3 mb-4 scroll-list thin-scroll ${showPastEvents ? "opacity-50" : ""}`}
+              className={`d-flex flex-column gap-3 mb-4 ${showPastEvents ? "opacity-50" : ""}`}
             >
               {(showPastEvents ? past : upcoming).map(({ row, extraDates }) =>
                 isPremiumActive(currentUser) ? (
@@ -797,7 +861,7 @@ export default async function PerformerPage({
           <h2 className="section-heading mb-2">
             <MusicNoteIcon className="icon-inline" /> Песни и синглы
           </h2>
-          <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
+          <div className="d-flex flex-column gap-2">
             {performer.songs.map((song) => (
               <div
                 key={song.id}

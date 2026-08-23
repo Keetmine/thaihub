@@ -43,7 +43,7 @@ export default async function TripPage({
   const { view, mine } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
   // поездки; ?view=all — все события её дат; ?view=places — «что
-  // посетить»: локации съёмок дорам владельца. Для гостей план
+  // посетить»: локации съёмок сериалов владельца. Для гостей план
   // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
   const showPlaces = view === "places";
@@ -213,7 +213,7 @@ export default async function TripPage({
       .map((t) => ({ kind: "todo" as const, startsAt: new Date(t.date!), key: `todo-${t.id}`, todo: t })),
   ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
-  // «Что посетить» (Г4): локации съёмок дорам владельца + прикреплённые
+  // «Что посетить» (Г4): локации съёмок сериалов владельца + прикреплённые
   // списки мест + отдельные добавленные места.
   const [tripLists, tripPlaces, myLists] = showPlaces
     ? await Promise.all([

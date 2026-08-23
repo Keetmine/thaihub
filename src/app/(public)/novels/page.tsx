@@ -47,7 +47,7 @@ export default async function NovelsPage({
           {q ? "Ничего не найдено." : "Новеллы скоро появятся."}
         </p>
       ) : (
-        /* Постерная сетка — как в каталоге дорам (Э2.4). */
+        /* Постерная сетка — как в каталоге сериалов (Э2.4). */
         <div className="poster-grid mt-4">
           {novels.map((n) => (
             <Link key={n.id} href={novelHref(n)} className="text-decoration-none d-block">

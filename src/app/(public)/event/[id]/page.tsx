@@ -260,7 +260,7 @@ export default async function EventDetailPage({
       <BackLink fallbackHref="/" fallbackLabel="← Все события" />
       {/* Классическая шапка (по просьбе владельца): заголовок сверху,
           постер слева с кнопкой «Билеты», инфо-карта справа. */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-3">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {event.title}
         </h1>
@@ -279,7 +279,7 @@ export default async function EventDetailPage({
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-3">
         {event.posterUrl && (
-          <div className="flex-shrink-0 d-flex flex-column gap-2" style={{ width: "13rem" }}>
+          <div className="flex-shrink-0 d-flex flex-column gap-2" style={{ width: "15rem" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               loading="eager"

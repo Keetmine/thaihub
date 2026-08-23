@@ -12,9 +12,9 @@ manually re-entering a date filter every time.
   `.date-chip` (organizer's name shown on shared trips), the «N в
   плане · M всего» counter doubled by a mini progress bar
   (`.trip-progress`), visibility as small text. Ascending by start
-  date; the nearest upcoming trip is the brighter oversized hero card
-  (`.trip-card-hero`), past trips collapse into dimmed compact rows
-  (`.trip-card-past`) under a «Прошедшие» heading; creation lives behind a «+ Создать поездку»
+  date; все предстоящие карточки равнозначные и приглушённые (без
+  hero-варианта — фидбек владельца), past trips collapse into dimmed
+  compact rows (`.trip-card-past`) under a «Прошедшие» heading; creation lives behind a «+ Создать поездку»
   button opening a `Modal` popup (`CreateTripButton.tsx`) rather than an
   always-visible form; в форме есть мультиселект «С кем едете»
   (EntityMultiSelect по друзьям, с аватарками) — выбранные друзья сразу
@@ -23,6 +23,12 @@ manually re-entering a date filter every time.
   behind `User.isPremium` (see [auth.md](auth.md) for the exact gate
   matrix, including what happens to trips created before the flag was
   revoked).
+- **Блок на главной**: у залогиненного премиум-пользователя на главной
+  (`src/app/(public)/page.tsx`) между «Вы идёте» и «Что нового»
+  выводится секция «Ваши поездки» — до 3 ближайших незавершённых
+  поездок (свои + принятые совместные, `endDate >= now`, по
+  `startDate`), компактными строками «название + даты» со ссылкой
+  «все →» на `/trips`; при пустом списке блок скрыт целиком.
 - **`/trips/[id]`** — two tabs over the trip's date range:
   **«Мой план»** (default; «План» when the trip has members) shows the
   occurrences of events any *participant* (owner + members) marked «я

@@ -34,15 +34,15 @@ bar).
   bookmark never breaks. Falls back to a bare id link when there's
   nothing Latin-script to slugify (a Thai-only name with no romanized
   form).
-- Страница артиста `[id]` — классическая шапка, как у дорамы (по
+- Страница артиста `[id]` — классическая шапка, как у сериала (по
   фидбеку владельца, без `DetailHero`): имя с realName в скобках
   прямо в h1 (`fs-5 fw-normal text-secondary`), кнопки справа — без
   ряда чипов (агентство и так в фактах, а счётчики путают: в них
-  попадают прошедшие события); ниже фото 13rem слева
+  попадают прошедшие события); ниже фото 15rem слева
   (`performerPhoto`-фолбэк; без фото факты занимают всю ширину) с
   соцссылками под ним, справа факты и био просто текстом — без
   фона-карточки. Длинное био (>300 символов) свёрнуто в
-  `details.synopsis-fold` («Читать дальше»), как синопсис дорамы.
+  `details.synopsis-fold` («Читать дальше»), как синопсис сериала.
   Вертикальные списки (события, песни) раскрываются целиком — без
   внутреннего скролла.
 - `PerformerLink` is a free-form label+URL list per performer (social
@@ -248,16 +248,17 @@ the surviving row to `CURRENT` if either side of a merge collision was.
 (`DramaLocation`), and an optional tie-in `Event` (premiere screening —
 see [events.md](events.md)) all hang off a `Drama`.
 
-### Страница дорамы: порядок секций и каст-сетка (Э2ф)
+### Страница сериала: порядок секций и каст-сетка (Э2ф)
 
-Страница `/dramas/[id]` собрана «важное — выше»: hero → якорные
-чипы-ссылки (`.section-anchors` из `.chip-link`, только на реально
-существующие секции и минимум две: События · Состав · Локации ·
-Отзывы) → строка «Где посмотреть» (`Drama.network`; для выходящих —
-день новых серий) → события дорамы → актёрский состав → связанные
-дорамы → локации → факты+синопсис → источники → отзывы/комментарии.
-Якорные секции несут `class="anchor-target"` (scroll-margin под липкую
-навигацию). Длинный синопсис (>300 символов) свёрнут до ~4 строк:
+Страница `/dramas/[id]` — классическая компоновка (по фидбеку
+владельца, hero и якорные чипы убраны): шапка с h1 (под ним нативное
+название/AKA и чипы-факты: год, статус, серии, ★ оценка; справа
+`DramaStatusButton`) → постер 15rem слева (под ним кнопка
+MyDramaList) + факты и синопсис справа просто текстом, без
+фона-карточки → события сериала → актёрский состав → связанные
+сериалы → локации → источники → отзывы/комментарии. Строки «Где
+посмотреть» больше нет.
+Длинный синопсис (>300 символов) свёрнут до ~4 строк:
 `details.synopsis-fold`, текст живёт в `summary` (контент details вне
 summary в закрытом виде не рендерится), line-clamp снимается на
 `[open]`, подпись «Читать дальше/Свернуть» рисует CSS — без JS и без
@@ -297,7 +298,7 @@ comes from the Wikipedia agency importer, see
 agency on a `Drama` directly (independent of the cast's agencies). The
 public agency page header is a `DetailHero` without `photoUrl` (square
 logos crop badly in the 3/4 photo card) — warm-gradient hero with
-«артистов: N» / «дорам: N» chips and the favorite heart; the round logo
+«артистов: N» / «сериалов: N» chips and the favorite heart; the round logo
 sits in the content next to the description. The
 page shows its roster as a compact wrapped card grid
 (square photo, nickname, real name in parentheses, favorite heart
@@ -408,7 +409,7 @@ MDL) и в строках каталога /dramas — «★ N.N» серой п
 Блок «Источники» (общий компонент `src/components/SourcesBlock.tsx`)
 показывается на страницах: артиста (references + tpop/MDL/YT Music —
 своя разметка, исторически первая), локации (`Location.sourceUrl`),
-дорамы (`mydramalistUrl` + `blsceneUrl`), события (`Event.sourceUrl`,
+сериалы (`mydramalistUrl` + `blsceneUrl`), события (`Event.sourceUrl`,
 проставляется TTM-импортом) и агентства (`Agency.sourceUrl`,
 проставляется всеми импортёрами агентств; у созданных руками блока
 нет). Обещание «источники указаны на страницах записей» — в /terms.

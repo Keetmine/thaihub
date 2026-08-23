@@ -6,6 +6,7 @@ import { getMusicNews } from "@/lib/whatsNew";
 import { getFriendIds } from "@/lib/friends";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
+import { tripHref } from "@/lib/slugHelpers";
 import { formatShortDate } from "@/lib/dates";
 import { userDisplayName } from "@/lib/userProfile";
 import LetterAvatar from "@/components/LetterAvatar";
@@ -26,7 +27,7 @@ export default async function HomePage() {
   const premium = isPremiumActive(user);
   const now = new Date();
 
-  const [news, myUpcoming, friendIds, favoritePerformers] = await Promise.all([
+  const [news, myUpcoming, friendIds, favoritePerformers, upcomingTrips] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
     getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
       own.length > 0 ? own : getMusicNews({ limit: 8 }),
@@ -46,6 +47,28 @@ export default async function HomePage() {
       : Promise.resolve([]),
     getFriendIds(user.id),
     prisma.favoritePerformer.count({ where: { userId: user.id } }),
+    // Предстоящие поездки (свои + принятые совместные) — блок на главной.
+    premium
+      ? prisma.trip.findMany({
+          where: {
+            endDate: { gte: now },
+            OR: [
+              { userId: user.id },
+              { members: { some: { userId: user.id, status: "ACCEPTED" } } },
+            ],
+          },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            startDate: true,
+            endDate: true,
+            userId: true,
+          },
+          orderBy: { startDate: "asc" },
+          take: 3,
+        })
+      : Promise.resolve([]),
   ]);
 
   const friendsGoing =
@@ -135,6 +158,42 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+
+      {/* Предстоящие поездки — чтобы план был на виду (просьба
+          владельца). Пустое состояние не рисуем: раздел и так в чипах
+          сверху, а пейволл уже есть у «Вы идёте». */}
+      {upcomingTrips.length > 0 && (
+        <section className="mb-5">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="section-heading mb-0">Ваши поездки</h2>
+            <Link href="/trips" className="small text-secondary">
+              все →
+            </Link>
+          </div>
+          <div className="d-flex flex-column gap-2 stagger">
+            {upcomingTrips.map((t) => (
+              <Link
+                key={t.id}
+                href={tripHref(t)}
+                className="surface surface-hover text-decoration-none d-flex flex-wrap align-items-center justify-content-between gap-2 p-3"
+              >
+                <span style={{ minWidth: 0 }}>
+                  <span className="font-display fw-medium text-white d-block text-truncate">
+                    {t.title}
+                  </span>
+                  <span className="small text-secondary">
+                    {formatShortDate(t.startDate)} → {formatShortDate(t.endDate)}{" "}
+                    {t.endDate.getFullYear()}
+                  </span>
+                </span>
+                <span className="small text-secondary flex-shrink-0">
+                  {t.userId === user.id ? "" : "совместная"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Новинки — то, ради чего сюда заходят между концертами. */}
       <section className="mb-5">
