@@ -43,7 +43,7 @@ something changes, edit the doc in place rather than appending a note.
   - [audit-log.md](features/audit-log.md) — история правок каталога + массовые действия в списках
   - [admin-panel.md](features/admin-panel.md) — разделы админки: модерация, обращения, финансы, рассылки, импорты, настройки
   - [auth.md](features/auth.md) — admin password gate + real user accounts
-  - [pwa.md](features/pwa.md) — installable web-app manifest/icons
+  - [pwa.md](features/pwa.md) — installable web-app manifest/icons + offline cache (service worker)
 
 ## Running locally
 
