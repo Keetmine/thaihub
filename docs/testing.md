@@ -30,6 +30,20 @@ automatically.
   bug: typing an existing drama's title on the create form must show the
   "похоже, уже есть" hint (see
   [features/duplicates.md](features/duplicates.md)).
+- `premium-gates.spec.ts` — the money paths: a fresh non-premium user
+  sees the subscription paywall (and zero event links) on `/events`,
+  `/calendar` and `/trips`, and the gates open once `premiumUntil` is set
+  (via `set-premium-test-user.ts`); a promo code created by
+  `create-promo-code.ts` redeems on the paywall, opens the gate (checked
+  again after a full reload), and a second redeem of the same code fails
+  with "Код уже использован" (`delete-promo-code.ts` cleans the code up).
+- `telegram-webhook.spec.ts` — the Telegram webhook rejects requests
+  without/with a wrong secret token (403) and survives garbage JSON and
+  unknown update shapes with the real secret (200). Only these cases run
+  against the live dev server: updates carrying `message.text`,
+  `pre_checkout_query` or `successful_payment` would hit the real
+  Telegram Bot API (admin notifications, chat replies), so they are
+  deliberately not exercised — see the comment in the spec.
 
 ## Writing a new test: avoid the Prisma-in-Playwright trap
 
