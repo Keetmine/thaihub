@@ -27,6 +27,8 @@ export async function signupTestUser(page: Page, email: string, password: string
   await page.fill('input[name="name"]', "Smoke Test");
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
+  // Обязательное согласие с условиями и политикой (Э1.5).
+  await page.check('input[name="acceptTerms"]');
   await page.click('button[type="submit"]');
   // после регистрации — онбординг выбора любимых артистов
   await page.waitForURL(/\/welcome/);
