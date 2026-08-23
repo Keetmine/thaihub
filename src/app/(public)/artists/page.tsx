@@ -213,7 +213,8 @@ function PerformerAlphabetList({
     href: performerHref(p),
     photoUrl: performerPhoto(p),
     nameSuffix: performerRealNameParen(p),
-    meta: `${p._count.events} событ.`,
+    // Счётчик «N событ.» убран (фидбек владельца): в него попадали и
+    // прошедшие события, и это читалось как «предстоящих всего N».
     favorited: favoritedIds.has(p.id),
   });
 
