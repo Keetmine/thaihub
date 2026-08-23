@@ -244,6 +244,7 @@ function PerformerAlphabetList({
             emptyMessage={emptyMessage}
             showFavoriteButton
             addToList={addToList}
+            variant="cards"
           />
         </section>
       )}
@@ -252,6 +253,7 @@ function PerformerAlphabetList({
         emptyMessage={emptyMessage}
         showFavoriteButton
         addToList={addToList}
+        variant="cards"
       />
     </>
   );

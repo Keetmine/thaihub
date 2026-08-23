@@ -55,6 +55,7 @@ export default function AlphabetDataList({
   showVisitedButton = false,
   showFavoriteButton = false,
   addToList,
+  variant = "rows",
 }: {
   rows: AlphabetRow[];
   emptyMessage: string;
@@ -69,6 +70,8 @@ export default function AlphabetDataList({
     lists: { id: string; title: string }[];
     add: (listId: string, itemId: string) => Promise<void>;
   };
+  /** «cards» — фото-сетка .poster-grid (Э2.4) вместо строк-плашек. */
+  variant?: "rows" | "cards";
 }) {
   const [visible, setVisible] = useState(batch);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -111,6 +114,92 @@ export default function AlphabetDataList({
     const bucket = groups.get(letter)!;
     const slice = bucket.slice(0, Math.max(0, visible - rendered));
     rendered += slice.length;
+    const actionButtons = (row: AlphabetRow) => (
+      <>
+        {showVisitedButton && <VisitedButton locationId={row.id} isVisited={!!row.visited} />}
+        {showFavoriteButton && (
+          <FavoriteButton kind="performer" id={row.id} isFavorited={!!row.favorited} variant="icon" />
+        )}
+        {addToList && addToList.lists.length > 0 && (
+          <AddToListButton
+            lists={addToList.lists.map((l) => ({ ...l, hasPerformer: false }))}
+            onAdd={(listId) => addToList.add(listId, row.id)}
+          />
+        )}
+      </>
+    );
+
+    if (variant === "cards") {
+      sections.push(
+        <section key={letter} id={`letter-${letter}`} className="performers-letter-section">
+          <h2 className="performers-letter-heading">{letter}</h2>
+          <div className="poster-grid">
+            {slice.map((row) => (
+              <div key={row.id} className="position-relative">
+                <Link href={row.href} className="text-decoration-none d-block">
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      aspectRatio: "3 / 4",
+                      borderRadius: "0.9rem",
+                      background: "var(--bs-secondary-bg)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {row.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={row.photoUrl}
+                        alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <span
+                        className="d-flex align-items-center justify-content-center h-100 font-display fw-bold"
+                        style={{ fontSize: "2rem", color: "rgba(255,154,114,0.45)" }}
+                        aria-hidden
+                      >
+                        {row.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    {row.meta && (
+                      <span
+                        className="date-chip position-absolute"
+                        style={{ left: "0.5rem", bottom: "0.5rem" }}
+                      >
+                        {row.meta}
+                      </span>
+                    )}
+                  </div>
+                  <p
+                    className="small text-white mb-0 mt-2 text-truncate"
+                    style={{ lineHeight: 1.3 }}
+                  >
+                    {row.name}
+                  </p>
+                  {(row.nameSuffix || row.subtitle) && (
+                    <p className="small text-secondary mb-0 text-truncate">
+                      {row.nameSuffix ?? row.subtitle}
+                    </p>
+                  )}
+                </Link>
+                <div
+                  className="position-absolute d-flex align-items-center gap-1"
+                  style={{ top: "0.375rem", right: "0.375rem" }}
+                >
+                  {actionButtons(row)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>,
+      );
+      continue;
+    }
+
     sections.push(
       <section key={letter} id={`letter-${letter}`} className="performers-letter-section">
         <h2 className="performers-letter-heading">{letter}</h2>
