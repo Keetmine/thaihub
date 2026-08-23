@@ -57,8 +57,7 @@ export default function AlphabetDataList({
   addToList,
   variant = "rows",
   cardAspect = "3 / 4",
-  flat = false,
-  indexLeading,
+  pinned,
 }: {
   rows: AlphabetRow[];
   emptyMessage: string;
@@ -77,12 +76,15 @@ export default function AlphabetDataList({
   variant?: "rows" | "cards";
   /** Пропорции фото карточки: портрет для людей, альбом для мест. */
   cardAspect?: "3 / 4" | "4 / 3";
-  /** Плоский режим: одна секция без букв и без правой рейки —
-   *  например, «Избранное» перед основным алфавитом. */
-  flat?: boolean;
-  /** Дополнительный якорь НАД буквами в правой рейке (сердечко →
-   *  #favorites). */
-  indexLeading?: { href: string; label: React.ReactNode; ariaLabel: string };
+  /** Закреплённая секция ПЕРЕД алфавитом внутри того же списка
+   *  («Избранное»): без букв, с якорем над буквами в общей рейке. */
+  pinned?: {
+    id?: string;
+    heading: React.ReactNode;
+    rows: AlphabetRow[];
+    indexLabel: React.ReactNode;
+    indexAriaLabel: string;
+  };
 }) {
   const [visible, setVisible] = useState(batch);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -102,7 +104,8 @@ export default function AlphabetDataList({
     return () => observer.disconnect();
   }, [visible, rows.length, batch]);
 
-  if (rows.length === 0) {
+  const pinnedRows = pinned?.rows ?? [];
+  if (rows.length === 0 && pinnedRows.length === 0) {
     return <p className="text-secondary">{emptyMessage}</p>;
   }
 
@@ -227,16 +230,6 @@ export default function AlphabetDataList({
     </div>
   );
 
-  // Плоский режим («Избранное»): одна секция, без букв и без рейки.
-  // Такие списки короткие — рендерим целиком, без порционности.
-  if (flat) {
-    return variant === "cards" ? (
-      <div className="poster-grid">{rows.map(renderCardCell)}</div>
-    ) : (
-      <div className="d-flex flex-column gap-2">{rows.map(renderRowCell)}</div>
-    );
-  }
-
   // Буквы считаем по всем строкам, а показываем — по отрисованным:
   // навигация должна знать про весь список, иначе ссылки на ещё не
   // отрисованные буквы вели бы в пустоту.
@@ -271,6 +264,22 @@ export default function AlphabetDataList({
   return (
     <div className="performers-layout scroll-list-lg thin-scroll">
       <div className="performers-list">
+        {pinnedRows.length > 0 && (
+          <section
+            id={pinned!.id ?? "pinned"}
+            className="performers-letter-section"
+          >
+            <h2 className="performers-letter-heading d-flex align-items-center gap-2">
+              {pinned!.heading}
+            </h2>
+            {/* Закреплённое — короткое, рендерим целиком без порций. */}
+            {variant === "cards" ? (
+              <div className="poster-grid">{pinnedRows.map(renderCardCell)}</div>
+            ) : (
+              <div className="d-flex flex-column gap-2">{pinnedRows.map(renderRowCell)}</div>
+            )}
+          </section>
+        )}
         {sections}
         {visible < rows.length && (
           <div ref={sentinelRef} className="small text-secondary py-3 text-center">
@@ -280,15 +289,15 @@ export default function AlphabetDataList({
       </div>
 
       <nav className="performers-index" aria-label="Быстрый переход по буквам">
-        {indexLeading && (
+        {pinnedRows.length > 0 && (
           <>
             <a
-              href={indexLeading.href}
+              href={`#${pinned!.id ?? "pinned"}`}
               className="performers-index-link"
-              aria-label={indexLeading.ariaLabel}
-              title={indexLeading.ariaLabel}
+              aria-label={pinned!.indexAriaLabel}
+              title={pinned!.indexAriaLabel}
             >
-              {indexLeading.label}
+              {pinned!.indexLabel}
             </a>
             <span className="performers-index-sep" aria-hidden="true">
               •

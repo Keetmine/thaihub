@@ -233,33 +233,28 @@ function PerformerAlphabetList({
 
   return (
     <>
-      {favorited.length > 0 && (
-        /* Избранное — одна плоская секция без собственной буквенной
-           рейки; из общей рейки к ней ведёт сердечко-якорь. */
-        <section id="favorites" className="performers-letter-section mb-3">
-          <h2 className="performers-letter-heading d-flex align-items-center gap-2">
-            <HeartIcon filled />
-            Избранное
-          </h2>
-          <AlphabetDataList
-            rows={favorited.map(toRow)}
-            emptyMessage={emptyMessage}
-            showFavoriteButton
-            addToList={addToList}
-            variant="cards"
-            flat
-          />
-        </section>
-      )}
+      {/* Избранное и алфавит — ОДИН список с общей рейкой на всю
+          высоту: сверху сердечко-якорь, ниже буквы. */}
       <AlphabetDataList
         rows={rest.map(toRow)}
         emptyMessage={emptyMessage}
         showFavoriteButton
         addToList={addToList}
         variant="cards"
-        indexLeading={
+        pinned={
           favorited.length > 0
-            ? { href: "#favorites", label: <HeartIcon filled />, ariaLabel: "Избранное" }
+            ? {
+                id: "favorites",
+                heading: (
+                  <>
+                    <HeartIcon filled />
+                    Избранное
+                  </>
+                ),
+                rows: favorited.map(toRow),
+                indexLabel: <HeartIcon filled />,
+                indexAriaLabel: "Избранное",
+              }
             : undefined
         }
       />
