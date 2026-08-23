@@ -38,7 +38,7 @@ export default async function EditAgencyPage({
 
   return (
     <div>
-      <Link href="/admin/performers?view=agencies" className="eyebrow text-decoration-none">
+      <Link href="/admin/agencies" className="eyebrow text-decoration-none">
         ← К списку агентств
       </Link>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">

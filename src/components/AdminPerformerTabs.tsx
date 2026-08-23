@@ -36,7 +36,7 @@ export default function AdminPerformerTabs({
         Пейринги
       </Link>
       <Link
-        href="/admin/performers?view=agencies"
+        href="/admin/agencies"
         prefetch={false}
         className={`tab-bar-item ${active === "agencies" ? "active" : ""}`}
       >

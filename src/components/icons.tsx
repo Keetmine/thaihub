@@ -117,9 +117,16 @@ export function CheckIcon() {
   );
 }
 
-export function HeartIcon({ filled = false }: { filled?: boolean }) {
+export function HeartIcon({
+  filled = false,
+  className,
+}: {
+  filled?: boolean;
+  className?: string;
+}) {
   return (
     <svg
+      className={className}
       viewBox="0 0 24 24"
       width="1.05em"
       height="1.05em"
@@ -159,9 +166,10 @@ export function CakeIcon() {
   );
 }
 
-export function BuildingIcon() {
+export function BuildingIcon({ className }: { className?: string } = {}) {
   return (
     <svg
+      className={className}
       viewBox="0 0 24 24"
       width="0.95em"
       height="0.95em"

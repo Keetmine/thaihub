@@ -32,7 +32,7 @@ async function createAgencyRecord(name: string, logoUrl: string, description: st
     });
 
     revalidatePath("/admin/performers/new");
-    revalidatePath("/admin/performers");
+    revalidatePath("/admin/agencies");
 
     return agency;
   } catch (error) {
@@ -154,12 +154,12 @@ export async function updateAgency(id: string, formData: FormData) {
     });
   }
 
-  revalidatePath("/admin/performers");
+  revalidatePath("/admin/agencies");
   revalidatePath(`/admin/agencies/${id}/edit`);
   revalidatePath("/artists");
   revalidatePath("/dramas");
   revalidatePath(`/agencies/${id}`);
-  redirect("/admin/performers?view=agencies");
+  redirect("/admin/agencies");
 }
 
 export async function deleteAgency(id: string) {
@@ -173,6 +173,6 @@ export async function deleteAgency(id: string) {
     entityLabel: existing?.name ?? id,
   });
   revalidatePath("/admin/performers/new");
-  revalidatePath("/admin/performers");
+  revalidatePath("/admin/agencies");
   revalidatePath("/dramas");
 }
