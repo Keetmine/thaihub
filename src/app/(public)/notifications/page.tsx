@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -61,19 +62,20 @@ export default async function NotificationsPage({
 
   return (
     <div>
-      <span className="eyebrow">Личное</span>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
-        <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
-          Уведомления
-        </h1>
-        {unread > 0 && (
-          <form action={markAllNotificationsRead}>
-            <button type="submit" className="btn btn-ghost btn-sm">
-              Отметить прочитанными ({unread})
-            </button>
-          </form>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="Личное"
+        title="Уведомления"
+        className="mb-4"
+        action={
+          unread > 0 ? (
+            <form action={markAllNotificationsRead}>
+              <button type="submit" className="btn btn-ghost btn-sm">
+                Отметить прочитанными ({unread})
+              </button>
+            </form>
+          ) : undefined
+        }
+      />
 
       {items.length === 0 ? (
         <EmptyState

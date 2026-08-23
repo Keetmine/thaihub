@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -142,10 +143,7 @@ export default async function SearchPage({
 
   return (
     <div>
-      <span className="eyebrow">Поиск</span>
-      <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
-        {q || "Поиск"}
-      </h1>
+      <PageHeader eyebrow="Поиск" title={q || "Поиск"} className="mb-2" />
       {q && (
         <p className="text-secondary mb-5">
           Вы искали «{q}» — вот что нашлось по каталогу:

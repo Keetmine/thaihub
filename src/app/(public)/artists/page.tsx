@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import type { Performer } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -352,10 +353,7 @@ export default async function PerformersPage({
 
   return (
     <div>
-      <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-        {titles[view]}
-      </h1>
+      <PageHeader eyebrow="Каталог" title={titles[view]} size="lg" className="mb-5" />
 
       <div className="tab-bar-row">
         <Tabs active={view} />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetDataList from "@/components/AlphabetDataList";
@@ -75,24 +76,26 @@ export default async function LocationsPage({
 
   return (
     <div>
-      <span className="eyebrow">Каталог</span>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
-        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-          Локации
-        </h1>
-        <div className="d-flex flex-wrap gap-2">
-          <Link
-            href="/locations/map"
-            className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
-          >
-            <PinIcon />
-            На карте
-          </Link>
-          <Link href="/lists" className="btn btn-ghost btn-sm">
-            Мои места и списки →
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Каталог"
+        title="Локации"
+        size="lg"
+        className="mb-5"
+        action={
+          <>
+            <Link
+              href="/locations/map"
+              className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+            >
+              <PinIcon />
+              На карте
+            </Link>
+            <Link href="/lists" className="btn btn-ghost btn-sm">
+              Мои места и списки →
+            </Link>
+          </>
+        }
+      />
 
       <div className="tab-bar-row">
         <div className="tab-bar">
