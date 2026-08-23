@@ -35,7 +35,7 @@ export type BulkAction =
 export default function BulkList({
   rows,
   actions,
-  className = "d-flex flex-column gap-2 scroll-list-lg thin-scroll",
+  className = "d-flex flex-column gap-2",
 }: {
   rows: { id: string; node: React.ReactNode }[];
   actions: BulkAction[];

@@ -125,7 +125,7 @@ export default async function AdminUsersPage({
       {users.length === 0 ? (
         <p className="text-secondary">{q ? "Никого не найдено." : "Пока нет пользователей."}</p>
       ) : (
-        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
+        <div className="d-flex flex-column gap-2">
           {users.map((u) => {
             const boundDelete = deleteUser.bind(null, u.id);
             const displayName = u.name || u.email || `tg:${u.telegramUsername ?? u.telegramId}`;

@@ -113,7 +113,7 @@ export default function DramaLocationGroups({
   );
 
   return (
-    <div className="performers-layout scroll-list-lg thin-scroll">
+    <div className="performers-layout">
       <div className="performers-list">
         {groups.slice(0, visible).map((g) => (
           <section

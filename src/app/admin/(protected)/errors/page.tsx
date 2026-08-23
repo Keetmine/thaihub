@@ -108,7 +108,7 @@ export default async function AdminErrorsPage({
       {groups.length === 0 ? (
         <p className="text-secondary">Ошибок нет — красота.</p>
       ) : (
-        <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
+        <div className="d-flex flex-column gap-2">
           {groups.map((g, i) => {
             const example = examples[i];
             const count = g._count._all;

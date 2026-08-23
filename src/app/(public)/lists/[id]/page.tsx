@@ -127,7 +127,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
           compact
         />
       ) : (
-        <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
+        <div className="d-flex flex-column gap-2">
           {list.items.map((i) => (
             <div
               key={i.locationId}

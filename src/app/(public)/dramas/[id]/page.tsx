@@ -412,7 +412,7 @@ export default async function DramaDetailPage({
       {events.length > 0 && (
         <div id="events" className="anchor-target mb-4">
           <h2 className="section-heading mb-2">События</h2>
-          <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
+          <div className="d-flex flex-column gap-3">
             {eventsRows.map(({ row, extraDates }) =>
               isPremiumActive(currentUser) ? (
                 <EventAgendaRow

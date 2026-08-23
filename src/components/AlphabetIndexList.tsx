@@ -56,7 +56,7 @@ export default function AlphabetIndexList<T extends NamedItem>({
   const indexLetters = sortedLetters;
 
   return (
-    <div className="performers-layout scroll-list-lg thin-scroll">
+    <div className="performers-layout">
       <div className="performers-list">
         {sortedLetters.map((letter) => (
           <section

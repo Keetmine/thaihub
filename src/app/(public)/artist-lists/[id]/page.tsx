@@ -131,7 +131,7 @@ export default async function ArtistListPage({
           compact
         />
       ) : (
-        <div className="d-flex flex-wrap gap-2 scroll-list-lg thin-scroll">
+        <div className="d-flex flex-wrap gap-2">
           {list.items.map((i) => (
             <div key={i.performerId} className="position-relative">
               <EntityMiniCard

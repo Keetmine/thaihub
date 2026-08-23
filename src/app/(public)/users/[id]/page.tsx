@@ -292,7 +292,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           />
         </div>
       ) : (
-        <div className="d-flex flex-column gap-2 mb-4 scroll-list thin-scroll">
+        <div className="d-flex flex-column gap-2 mb-4">
           {upcomingGoing.map((event) => {
             const dates = event.occurrences.map((o) => o.startsAt);
             const first = event.occurrences[0];

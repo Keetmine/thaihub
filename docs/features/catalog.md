@@ -34,6 +34,17 @@ bar).
   bookmark never breaks. Falls back to a bare id link when there's
   nothing Latin-script to slugify (a Thai-only name with no romanized
   form).
+- Страница артиста `[id]` — классическая шапка, как у дорамы (по
+  фидбеку владельца, без `DetailHero`): имя с realName в скобках
+  прямо в h1 (`fs-5 fw-normal text-secondary`), кнопки справа — без
+  ряда чипов (агентство и так в фактах, а счётчики путают: в них
+  попадают прошедшие события); ниже фото 13rem слева
+  (`performerPhoto`-фолбэк; без фото факты занимают всю ширину) с
+  соцссылками под ним, справа факты и био просто текстом — без
+  фона-карточки. Длинное био (>300 символов) свёрнуто в
+  `details.synopsis-fold` («Читать дальше»), как синопсис дорамы.
+  Вертикальные списки (события, песни) раскрываются целиком — без
+  внутреннего скролла.
 - `PerformerLink` is a free-form label+URL list per performer (social
   media, personal café, whatever) — no schema change needed to add a new
   kind of link. `src/lib/socialLinks.ts`'s `detectSocialPlatform(url)`
@@ -53,7 +64,7 @@ bar).
 
 `src/components/AlphabetIndexList.tsx` groups any `{id, name}[]` list by
 first letter (digits collapse into one "0-9" group) and renders a
-scrollable letter rail pinned to the right (`.performers-layout` /
+letter rail pinned to the right (`.performers-layout` /
 `.performers-index` in `globals.css`) — used by the public and admin
 performers lists, `/dramas`, `/locations` (alphabetical view), and
 `/locations?group=drama` (grouping *dramas* alphabetically, each
@@ -61,6 +72,23 @@ performers lists, `/dramas`, `/locations` (alphabetical view), and
 `trailingSection` renders one extra, ungrouped section after the letter
 groups with its own short index-nav symbol — used by the locations
 drama-grouped view for "Без сериала" (locations with no linked drama).
+
+Списки скроллятся **целиком окном** — внутреннего скролл-контейнера
+(бывшие `.scroll-list-lg`/`.thin-scroll` на обёртке) больше нет, по
+фидбеку владельца. Чтобы рейка букв оставалась под рукой, она липнет к
+**центру вьюпорта**: `position: sticky; top: 50vh` +
+`transform: translateY(-50%)` (у верхней кромки буквы прятались под
+закреплённый навбар), со страховочными `max-height: 80vh; overflow-y:
+auto` для очень длинного алфавита. Якоря `#letter-X` скроллят окно;
+`.performers-letter-section` несёт `scroll-margin-top: 6rem`, чтобы
+заголовок буквы не нырял под навбар.
+
+`/dramas` рендерит записи **строками** (surface-плашка: миниатюра
+постера 2.75×3.75rem с фолбэк-буквой, название полностью с переносом,
+год и «★ рейтинг» серой подстрокой, справа `DramaStatusButton`) — не
+постерной сеткой: в каталоге много одиночных сериалов, карточки ели
+место, а длинные названия обрезались. Постерные сетки артистов и
+локаций (`AlphabetDataList variant="cards"`) остались как были.
 
 ## Catalog scale
 
@@ -109,7 +137,7 @@ and music-platform links. Platform links reuse the generic
 now also recognizes Spotify / Apple Music / YouTube by URL, each with a
 dedicated admin form field and an icon in the performer page's social
 row. Discography renders as «Альбомы» (cover row) + «Песни и синглы»
-(scroll list) sections. Data source so far: the tpop.fandom.com
+(plain row list) sections. Data source so far: the tpop.fandom.com
 discography importer — see
 [tpop-band-import.md](tpop-band-import.md#discography-import-albums--songs);
 no admin CRUD for albums/songs yet.
@@ -372,7 +400,8 @@ mode — `searchOptions` simply isn't passed there.
 телеграм-уведомление) и **лайки** (`CommentLike`, клиентский
 `CommentLikeButton` с оптимистичным тогглом). Средняя оценка из
 отзывов выводится в шапке страницы сериала («Оценка MyBLHub» рядом с
-MDL) и бейджем в строках каталога /dramas (7+ — зелёным).
+MDL) и в строках каталога /dramas — «★ N.N» серой подстрокой рядом с
+годом.
 
 ## Источники (атрибуция)
 

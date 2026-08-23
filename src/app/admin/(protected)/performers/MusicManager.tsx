@@ -193,7 +193,7 @@ export default function MusicManager({
         </form>
 
         {songs.length > 0 && (
-          <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
+          <div className="d-flex flex-column gap-2">
             {songs.map((s) =>
               editingSong === s.id ? (
                 <form key={s.id} action={submitSong} className="row g-2 align-items-end surface p-2">

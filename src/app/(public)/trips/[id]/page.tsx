@@ -432,7 +432,7 @@ export default async function TripPage({
                   </Link>
                   {canContribute && <DetachListButton tripId={trip.id} listId={tl.listId} />}
                 </div>
-                <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
+                <div className="d-flex flex-column gap-2">
                   {tl.list.items.map((i) => (
                     <Link
                       key={i.locationId}

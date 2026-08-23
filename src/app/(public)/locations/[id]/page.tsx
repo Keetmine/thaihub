@@ -258,7 +258,7 @@ export default async function LocationDetailPage({
           {locationEvents.length > 0 && (
             <div className="mt-4">
               <h2 className="section-heading mb-2">События здесь</h2>
-              <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
+              <div className="d-flex flex-column gap-3">
                 {locationEventsRows.map(({ row, extraDates }) =>
                   isPremiumActive(currentUser) ? (
                     <EventAgendaRow

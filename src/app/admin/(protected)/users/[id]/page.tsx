@@ -175,7 +175,7 @@ export default async function AdminUserPage({
           {user.eventNotes.length === 0 ? (
             <p className="small text-secondary">Нет заметок.</p>
           ) : (
-            <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
+            <div className="d-flex flex-column gap-2">
               {user.eventNotes.map((n) => (
                 <div key={n.id} className="surface d-flex justify-content-between gap-3 p-3">
                   <div style={{ minWidth: 0 }}>
@@ -317,7 +317,7 @@ export default async function AdminUserPage({
           {user.eventAttendances.length === 0 ? (
             <p className="small text-secondary">Нет отметок «иду».</p>
           ) : (
-            <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
+            <div className="d-flex flex-column gap-2">
               {user.eventAttendances.map((a) => (
                 <div key={`${a.occurrenceId}`} className="surface d-flex justify-content-between gap-3 p-3">
                   <Link

@@ -262,7 +262,7 @@ export default function AlphabetDataList({
   }
 
   return (
-    <div className="performers-layout scroll-list-lg thin-scroll">
+    <div className="performers-layout">
       <div className="performers-list">
         {pinnedRows.length > 0 && (
           <section

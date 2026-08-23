@@ -99,10 +99,12 @@ does and doesn't check.
   text-secondary text-uppercase" + inline letterSpacing в 40+ местах);
   опциональные `icon` и `action` (контрол справа). **`StatTile`**
   (`src/components/StatTile.tsx`) — общая плитка-счётчик (кабинет,
-  профиль, админ-дашборд). Утилиты `.thin-scroll` (тонкий кастомный
-  скроллбар для горизонтальных рядов и внутренних списков) и
-  `.scroll-list` (длинный список прокручивается внутри блока, max-height
-  26rem). `.nav-sticky` — закреплённая шапка с непрозрачной подложкой в
+  профиль, админ-дашборд). Утилита `.thin-scroll` — тонкий кастомный
+  скроллбар (горизонтальные ленты постеров, внутренний список
+  DatePickerInput). Классов `.scroll-list`/`.scroll-list-lg` больше нет:
+  вертикальные списки не прокручиваются внутри блока — страница
+  скроллится целиком окном (фидбек владельца).
+  `.nav-sticky` — закреплённая шапка с непрозрачной подложкой в
   обоих layout'ах. Иконки (`icons.tsx`) — единый stroke-стиль,
   currentColor (у PinIcon больше НЕТ зашитого красного).
 - **`.tab-bar-row`** (`globals.css`) is the standard layout for a list page
