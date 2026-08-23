@@ -11,6 +11,7 @@ import {
   novelHref,
 } from "@/lib/slugHelpers";
 import Pagination from "@/components/Pagination";
+import { DENSE_PAGE_SIZE } from "@/lib/pagination";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import { TrashIcon } from "@/components/icons";
@@ -26,8 +27,6 @@ import {
 export const metadata = { title: "Модерация" };
 
 export const dynamic = "force-dynamic";
-
-const PAGE_SIZE = 20;
 
 const TABS = [
   { key: "reports", label: "Жалобы" },
@@ -156,8 +155,8 @@ export default async function AdminModerationPage({
   const reportWhere =
     reportState === "all" ? {} : { status: reportState === "open" ? ("NEW" as const) : ("RESOLVED" as const) };
   const page = Math.max(1, Number(rawPage) || 1);
-  const skip = (page - 1) * PAGE_SIZE;
-  const pageArgs = { skip, take: PAGE_SIZE };
+  const skip = (page - 1) * DENSE_PAGE_SIZE;
+  const pageArgs = { skip, take: DENSE_PAGE_SIZE };
 
   const [reportCount, counts] = await Promise.all([
     prisma.report.count({ where: reportWhere }),
@@ -179,7 +178,7 @@ export default async function AdminModerationPage({
     artistLists: counts[4],
     places: counts[5],
   };
-  const totalPages = Math.max(1, Math.ceil(countByTab[tab] / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(countByTab[tab] / DENSE_PAGE_SIZE));
   const buildHref = (p: number) =>
     `/admin/moderation?tab=${tab}&page=${p}` + (tab === "reports" ? `&state=${reportState}` : "");
 

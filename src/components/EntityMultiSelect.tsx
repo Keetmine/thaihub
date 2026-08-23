@@ -33,17 +33,24 @@ export default function EntityMultiSelect({
   placeholder = "Начните вводить…",
   onCreateNew,
   createLabel = "Создать",
+  createNameLabel = "Название",
   emptyMessage,
   externalAdditions,
   searchOptions,
   selectedVariant = "chip",
+  onPick,
+  excludeIds,
+  inputClassName,
 }: {
-  name: string;
+  /** Имя hidden-инпутов выбранных значений; в режиме `onPick` не нужен. */
+  name?: string;
   options: EntityOption[];
   defaultSelectedIds?: string[];
   placeholder?: string;
   onCreateNew?: (query: string) => Promise<EntityOption | null>;
   createLabel?: string;
+  /** Подпись поля в модалке создания — «Имя» для людей. */
+  createNameLabel?: string;
   emptyMessage?: string;
   /** Options created via an external flow (e.g. a "new event" modal) —
    *  each new entry appended here is automatically selected. */
@@ -56,6 +63,17 @@ export default function EntityMultiSelect({
   /** «card» — выбранные показываются карточками с постером/фото (списки
    *  сериалов и событий: по чипам без картинок непонятно, что выбрано). */
   selectedVariant?: "chip" | "card";
+  /** Режим «только выбор»: компонент ничего не хранит и не рендерит ни
+   *  чипов, ни hidden-инпутов — каждый выбранный (в том числе созданный
+   *  через модалку) вариант отдаётся наверх, а состояние живёт у
+   *  родителя. Нужен, когда к выбранному прикреплены свои поля: состав
+   *  сериала с ролями, лайнап дня события. */
+  onPick?: (option: EntityOption) => void;
+  /** Какие id спрятать из выпадашки — в режиме `onPick` компонент сам не
+   *  знает, что уже выбрано родителем. */
+  excludeIds?: string[];
+  /** Доп. классы поля ввода (например, `form-control-sm`). */
+  inputClassName?: string;
 }) {
   const [createdOptions, setCreatedOptions] = useState<EntityOption[]>([]);
   const allOptions = useMemo(
@@ -106,16 +124,17 @@ export default function EntityMultiSelect({
   }
 
   const filtered = useMemo(() => {
+    const hidden = new Set([...selectedIds, ...(excludeIds ?? [])]);
     if (searchOptions) {
-      return searchResults.filter((o) => !selectedIds.includes(o.id));
+      return searchResults.filter((o) => !hidden.has(o.id));
     }
     const q = query.trim().toLowerCase();
     return allOptions.filter((o) => {
-      if (selectedIds.includes(o.id)) return false;
+      if (hidden.has(o.id)) return false;
       if (!q) return true;
       return o.name.toLowerCase().includes(q);
     });
-  }, [allOptions, selectedIds, query, searchOptions, searchResults]);
+  }, [allOptions, selectedIds, excludeIds, query, searchOptions, searchResults]);
 
   const trimmedQuery = query.trim();
   const hasExactMatch = [...allOptions, ...searchResults].some(
@@ -127,6 +146,14 @@ export default function EntityMultiSelect({
     !!onCreateNew && trimmedQuery.length > 0 && !hasExactMatch && !(searchOptions && isSearching);
 
   function add(option: EntityOption) {
+    // Режим `onPick`: состояние выбора живёт у родителя, себе ничего не
+    // запоминаем (результаты поиска остаются видны — удобно добавлять
+    // нескольких подряд).
+    if (onPick) {
+      onPick(option);
+      setQuery("");
+      return;
+    }
     // В async-режиме вариант живёт только в searchResults — сохраняем его
     // в createdOptions, иначе чип и hidden input не отрендерятся (баг
     // «второй актёр не добавляется»).
@@ -216,7 +243,7 @@ export default function EntityMultiSelect({
       <div className="performer-combobox" ref={ref}>
         <input
           type="text"
-          className="form-control"
+          className={inputClassName ? `form-control ${inputClassName}` : "form-control"}
           placeholder={placeholder}
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
@@ -273,7 +300,7 @@ export default function EntityMultiSelect({
       >
         <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
           <div>
-            <label className="form-label">Название *</label>
+            <label className="form-label">{createNameLabel} *</label>
             <input
               name="newName"
               required

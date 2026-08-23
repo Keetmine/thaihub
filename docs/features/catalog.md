@@ -84,9 +84,9 @@ they're solving different problems:
   everything that matched. No page-number pagination here — narrowing
   the search is the intended way to get to a specific entry.
 - **Admin list pages** (`/admin/performers`, `/admin/dramas`,
-  `/admin/locations`, `/admin/pairings`, the `/admin` events dashboard,
-  and the agencies tab inside `/admin/performers?view=agencies`): plain
-  `?page=` pagination, `PAGE_SIZE` (20, same `src/lib/pagination.ts`)
+  `/admin/locations`, `/admin/pairings`, `/admin/agencies`, the
+  `/admin` events dashboard): plain
+  `?page=` pagination, `PAGE_SIZE` (30, same `src/lib/pagination.ts`)
   rows per page via Prisma `skip`/`take`, with a `<Pagination>`
   (`src/components/Pagination.tsx`) prev/next + "Стр. X из Y" footer —
   a full numbered page list isn't practical once a catalog runs into
@@ -256,13 +256,13 @@ not every agency publishes both halves in an equally parseable place).
 All of these funnel through the same TMDB-matching/dedup rules
 (`src/lib/agencyTmdbMatching.ts`) regardless of source.
 
-**Admin management lives inside the Performers section, not as its own
-top-level nav item** — `/admin/performers?view=agencies` renders the
-agency list as a 4th tab (`AdminPerformerTabs.tsx`), mirroring the public
-site's `/performers?view=agencies` consolidation. The standalone
-`/admin/agencies` list page was removed; `/admin/agencies/new` and
-`/admin/agencies/[id]/edit` still exist as real routes, just linked from
-the embedded tab view instead of their own nav entry.
+**Admin management is its own section** — `/admin/agencies` (list with
+logo, performer count, search, pagination; `/admin/agencies/new` and
+`/admin/agencies/[id]/edit` for CRUD) with its own sidebar entry in the
+«Каталог» group. The old embedded view `/admin/performers?view=agencies`
+redirects there; the «Агентства» tab in `AdminPerformerTabs.tsx` is now
+a plain link to `/admin/agencies`. The public site still consolidates
+agencies under `/artists?view=agencies`.
 
 ### A performer can belong to more than one agency
 

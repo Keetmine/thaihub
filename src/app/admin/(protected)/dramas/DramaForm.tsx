@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import FormSection from "@/components/admin/FormSection";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
-import Modal from "@/components/Modal";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
@@ -101,59 +100,12 @@ export default function DramaForm({
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
   const [cast, setCast] = useState<CastEntry[]>(v?.cast ?? []);
-  const [query, setQuery] = useState("");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [createPrefill, setCreatePrefill] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const comboboxRef = useRef<HTMLDivElement>(null);
-
-  // Каталог актёров (~17 тыс.) больше не приходит пропсом целиком —
-  // ищем на сервере по мере ввода (searchPerformerOptions), с тем же
-  // дебаунсом/отбросом устаревших ответов, что в EntityMultiSelect.
-  const [searchResults, setSearchResults] = useState<PerformerOption[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchSeqRef = useRef(0);
-
-  function handleQueryChange(next: string) {
-    setQuery(next);
-    const q = next.trim();
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    if (q.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-    setIsSearching(true);
-    const seq = ++searchSeqRef.current;
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const results = await searchPerformerOptions(q);
-        if (seq === searchSeqRef.current) setSearchResults(results);
-      } finally {
-        if (seq === searchSeqRef.current) setIsSearching(false);
-      }
-    }, 300);
-  }
-
-  const filteredPerformers = useMemo(() => {
-    const castIds = new Set(cast.map((c) => c.id));
-    return searchResults.filter((p) => !castIds.has(p.id));
-  }, [searchResults, cast]);
-
-  const trimmedQuery = query.trim();
-  const hasExactMatch = searchResults.some(
-    (p) => p.name.toLowerCase() === trimmedQuery.toLowerCase(),
-  );
-  const showCreateOption = trimmedQuery.length > 0 && !hasExactMatch && !isSearching;
 
   function addCastMember(performer: PerformerOption) {
     setCast((prev) => {
       if (prev.some((c) => c.id === performer.id)) return prev;
       return [...prev, { id: performer.id, name: performer.name, photoUrl: performer.photoUrl, role: "" }];
     });
-    setQuery("");
   }
 
   function removeCastMember(id: string) {
@@ -162,25 +114,6 @@ export default function DramaForm({
 
   function updateCastRole(id: string, role: string) {
     setCast((prev) => prev.map((c) => (c.id === id ? { ...c, role } : c)));
-  }
-
-  async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (isCreating) return;
-    const newName = String(new FormData(e.currentTarget).get("newName") ?? "").trim();
-    if (!newName) return;
-
-    setIsCreating(true);
-    setCreateError(null);
-    try {
-      const created = await createPerformerAndReturn(newName);
-      addCastMember({ id: created.id, name: created.name, photoUrl: null });
-      setCreatePrefill(null);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Не удалось создать");
-    } finally {
-      setIsCreating(false);
-    }
   }
 
   return (
@@ -437,57 +370,22 @@ export default function DramaForm({
           </div>
         )}
 
-        <div className="performer-combobox" ref={comboboxRef}>
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Начните вводить имя исполнителя…"
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            onFocus={() => setIsDropdownOpen(true)}
-            onBlur={() => {
-              // allow click on dropdown options to register before closing
-              window.setTimeout(() => setIsDropdownOpen(false), 150);
-            }}
-          />
-
-          {isDropdownOpen && trimmedQuery.length > 0 && filteredPerformers.length === 0 && !showCreateOption && (
-            <div className="performer-combobox-dropdown">
-              <div className="performer-combobox-option text-secondary" aria-disabled>
-                {trimmedQuery.length < 2 ? "Введите минимум 2 символа" : isSearching ? "Поиск…" : "Никого не найдено"}
-              </div>
-            </div>
-          )}
-          {isDropdownOpen && (filteredPerformers.length > 0 || showCreateOption) && (
-            <div className="performer-combobox-dropdown">
-              {filteredPerformers.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="performer-combobox-option d-flex align-items-center gap-2"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addCastMember(p)}
-                >
-                  <Avatar name={p.name} photoUrl={p.photoUrl} />
-                  {p.name}
-                </button>
-              ))}
-              {showCreateOption && (
-                <button
-                  type="button"
-                  className="performer-combobox-option performer-combobox-create"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setCreatePrefill(trimmedQuery);
-                    setIsDropdownOpen(false);
-                  }}
-                >
-                  {`+ Создать «${trimmedQuery}»`}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Каталог актёров (~17 тыс.) не приходит пропсом целиком — общий
+            комбобокс ищет на сервере по мере ввода. Режим onPick: выбор
+            хранится здесь (у записи состава есть своё поле «роль»). */}
+        <EntityMultiSelect
+          options={[]}
+          searchOptions={searchPerformerOptions}
+          excludeIds={cast.map((c) => c.id)}
+          onPick={addCastMember}
+          placeholder="Начните вводить имя исполнителя…"
+          createLabel="Создать исполнителя"
+          createNameLabel="Имя"
+          onCreateNew={async (newName) => {
+            const created = await createPerformerAndReturn(newName);
+            return { id: created.id, name: created.name, photoUrl: null };
+          }}
+        />
 
       </div>
 
@@ -507,29 +405,6 @@ export default function DramaForm({
           }}
         />
       </div>
-
-      <Modal
-        open={createPrefill !== null}
-        onClose={() => setCreatePrefill(null)}
-        title="Создать исполнителя"
-      >
-        <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
-          <div>
-            <label className="form-label">Имя *</label>
-            <input
-              name="newName"
-              required
-              autoFocus
-              defaultValue={createPrefill ?? ""}
-              className="form-control"
-            />
-          </div>
-          {createError && <p className="small text-danger mb-0">{createError}</p>}
-          <button type="submit" className="btn btn-primary" disabled={isCreating}>
-            {isCreating ? "Создание…" : "Создать"}
-          </button>
-        </form>
-      </Modal>
 
       <div className="admin-form-actions">
         <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />

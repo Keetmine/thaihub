@@ -10,6 +10,7 @@ import {
 import RunningImportsWatcher from "./RunningImportsWatcher";
 import SubmitButton from "@/components/admin/SubmitButton";
 import Pagination from "@/components/Pagination";
+import { DENSE_PAGE_SIZE } from "@/lib/pagination";
 import EntitySelect from "@/components/EntitySelect";
 import { searchPerformerOptions } from "../performers/actions";
 
@@ -45,7 +46,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 // Журнал запусков импортов из админки (пишется logImportRun) + быстрые
 // ссылки на места, откуда они запускаются. Массовые прогоны из консоли
 // (scripts/*.ts) сюда не пишут — у них свои логи.
-const PAGE_SIZE = 20;
 
 // Спарсенное и запуски — два независимых журнала, и раньше они шли
 // простынёй друг за другом: чтобы добраться до запусков, нужно было
@@ -71,7 +71,7 @@ export default async function AdminImportsPage({
   const logTab: LogTab =
     LOG_TABS.find((t) => t.key === rawLog)?.key ?? (status ? "runs" : "items");
   const runsWhere = status ? { status } : {};
-  const skip = (page - 1) * PAGE_SIZE;
+  const skip = (page - 1) * DENSE_PAGE_SIZE;
   const hasRunningPromise = prisma.importRun.findFirst({ where: { status: "RUNNING" } });
   const [runs, totalRuns, unreviewedFailed, recentItems, totalItems] = await Promise.all([
     logTab === "runs"
@@ -79,19 +79,19 @@ export default async function AdminImportsPage({
           where: runsWhere,
           orderBy: { startedAt: "desc" },
           skip,
-          take: PAGE_SIZE,
+          take: DENSE_PAGE_SIZE,
         })
       : Promise.resolve([]),
     prisma.importRun.count({ where: runsWhere }),
     prisma.importRun.count({ where: { status: "FAILED", reviewedAt: null } }),
     logTab === "items"
-      ? prisma.importedItem.findMany({ orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE })
+      ? prisma.importedItem.findMany({ orderBy: { createdAt: "desc" }, skip, take: DENSE_PAGE_SIZE })
       : Promise.resolve([]),
     prisma.importedItem.count(),
   ]);
   const totalPages = Math.max(
     1,
-    Math.ceil((logTab === "runs" ? totalRuns : totalItems) / PAGE_SIZE),
+    Math.ceil((logTab === "runs" ? totalRuns : totalItems) / DENSE_PAGE_SIZE),
   );
   const logHref = (tab: LogTab, p = 1) =>
     `/admin/imports?log=${tab}&page=${p}` + (tab === "runs" && status ? `&status=${status}` : "");

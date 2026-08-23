@@ -34,9 +34,8 @@ One app, two route groups, both under the same Next.js project:
   role (no separate admin login — see [auth.md](features/auth.md)).
   The protected layout is an admin-panel shell: a
   left sidebar (`.admin-sidebar`, section-grouped links; burger menu on
-  mobile) next to the content. `/admin` itself is the dashboard
-  (`/admin/stats` redirects there), the events list lives at
-  `/admin/events`.
+  mobile) next to the content. `/admin` itself is the dashboard, the
+  events list lives at `/admin/events`.
 - `src/app/api/*` — route handlers for things that aren't page navigations:
   file upload, the per-event `.ics` download, the per-user `.ics`
   subscribe feed.
@@ -75,7 +74,12 @@ does and doesn't check.
   support inline "create new" via a callback. For catalogs too big to
   ship to the client, `EntityMultiSelect` has an async `searchOptions`
   mode — see "Async performer search" in
-  [features/catalog.md](features/catalog.md).
+  [features/catalog.md](features/catalog.md). It also has an `onPick`
+  picker mode (with `excludeIds`) where it stores no selection and
+  renders no chips/hidden inputs — each picked option goes to the
+  parent, for selections that carry extra per-entry fields (drama cast
+  with roles, per-day event lineups). There are no hand-rolled
+  comboboxes left in the admin forms.
 - **`DatePickerInput`** (`src/components/DatePickerInput.tsx`) is the
   standard date field — no native `<input type="date">` anywhere (native
   pickers look different per browser/OS, and Thai-locale ones round-trip

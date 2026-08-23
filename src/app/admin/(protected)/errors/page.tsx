@@ -5,6 +5,7 @@ import SubmitButton from "@/components/admin/SubmitButton";
 import { TrashIcon } from "@/components/icons";
 import { clearErrorLog, deleteErrorGroup, markErrorsReviewed } from "./actions";
 import Pagination from "@/components/Pagination";
+import { DENSE_PAGE_SIZE } from "@/lib/pagination";
 import Link from "next/link";
 
 export const metadata = { title: "Ошибки" };
@@ -17,7 +18,6 @@ export const dynamic = "force-dynamic";
 // одинаковых записей, и до второй ошибки было не долистать.
 // Ключ группы — digest (у ошибок без digest он null, тогда группирует
 // message; groupBy по паре полей это и даёт).
-const PAGE_SIZE = 20;
 
 export default async function AdminErrorsPage({
   searchParams,
@@ -43,8 +43,8 @@ export default async function AdminErrorsPage({
       _min: { createdAt: true },
       _max: { createdAt: true },
       orderBy: { _max: { createdAt: "desc" } },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * DENSE_PAGE_SIZE,
+      take: DENSE_PAGE_SIZE,
     }),
     // Общее число групп: groupBy не умеет отдавать свой count, а
     // считать distinct по паре полей Prisma тоже не может — берём
@@ -52,7 +52,7 @@ export default async function AdminErrorsPage({
     prisma.errorLog.groupBy({ by: ["digest", "message"], where: errorsWhere }),
     prisma.errorLog.count({ where: { reviewedAt: null } }),
   ]);
-  const totalPages = Math.max(1, Math.ceil(allGroupKeys.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(allGroupKeys.length / DENSE_PAGE_SIZE));
 
   // Последний пример каждой группы страницы — для стека и path.
   const examples = await Promise.all(

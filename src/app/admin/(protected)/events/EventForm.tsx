@@ -229,13 +229,23 @@ export default function EventForm({
                         ))}
                       </div>
                     )}
-                    <LineupPicker
-                      onPick={(picked) => {
-                        if (!o.lineup.some((x) => x.id === picked.id)) {
-                          updateOccurrence(i, { lineup: [...o.lineup, picked] });
-                        }
-                      }}
-                    />
+                    {/* Мини-поиск исполнителя для лайнапа дня: общий
+                        комбобокс в режиме onPick — состояние живёт в
+                        OccurrenceRow.lineup, а не в компоненте. */}
+                    <div style={{ maxWidth: "22rem" }}>
+                      <EntityMultiSelect
+                        options={[]}
+                        searchOptions={searchPerformerOptions}
+                        excludeIds={o.lineup.map((x) => x.id)}
+                        inputClassName="form-control-sm"
+                        placeholder="Добавить исполнителя в этот день…"
+                        onPick={(picked) => {
+                          if (!o.lineup.some((x) => x.id === picked.id)) {
+                            updateOccurrence(i, { lineup: [...o.lineup, picked] });
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 </details>
               </div>
@@ -361,72 +371,5 @@ export default function EventForm({
         )}
       </div>
     </form>
-  );
-}
-
-
-/** Мини-поиск исполнителя для лайнапа дня (фестивали) — результат сразу
- *  отдаётся наверх, состояние строки живёт в OccurrenceRow.lineup. */
-function LineupPicker({ onPick }: { onPick: (p: EntityOption) => void }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<EntityOption[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const seqRef = useRef(0);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function onChange(next: string) {
-    setQuery(next);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    const q = next.trim();
-    if (q.length < 2) {
-      setResults([]);
-      setIsSearching(false);
-      return;
-    }
-    setIsSearching(true);
-    const seq = ++seqRef.current;
-    timeoutRef.current = setTimeout(async () => {
-      try {
-        const rows = await searchPerformerOptions(q);
-        if (seq === seqRef.current) setResults(rows);
-      } finally {
-        if (seq === seqRef.current) setIsSearching(false);
-      }
-    }, 300);
-  }
-
-  return (
-    <div className="performer-combobox" style={{ maxWidth: "22rem" }}>
-      <input
-        type="text"
-        className="form-control form-control-sm"
-        placeholder="Добавить исполнителя в этот день…"
-        value={query}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      {query.trim().length >= 2 && (
-        <div className="performer-combobox-dropdown">
-          {isSearching && <div className="performer-combobox-option text-secondary">Поиск…</div>}
-          {!isSearching && results.length === 0 && (
-            <div className="performer-combobox-option text-secondary">Никого не найдено</div>
-          )}
-          {results.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="performer-combobox-option d-flex align-items-center gap-2"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                onPick(p);
-                setQuery("");
-                setResults([]);
-              }}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

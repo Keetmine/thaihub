@@ -3515,3 +3515,19 @@ details.admin-section[open] > summary.admin-section-head::before {
     width: 7.5rem;
   }
 }
+
+/* ---------- Э2: тёплый календарь ---------- */
+/* Дни с событиями видны с одного взгляда: тёплая подсветка ячейки
+   (:has поддержан всеми актуальными браузерами; без поддержки — просто
+   обычная ячейка). «Сегодня» — акцентное кольцо вокруг ячейки. */
+.calendar-cell:has(.event-chip) {
+  background:
+    radial-gradient(130% 110% at 50% 0%, rgba(var(--accent-rgb), 0.13), transparent 70%),
+    var(--bs-tertiary-bg);
+  border-color: rgba(var(--accent-rgb), 0.26);
+}
+
+.calendar-cell:has(.calendar-day-num.today) {
+  border-color: rgba(var(--accent-rgb), 0.65);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35), 0 0 1.4rem rgba(var(--accent-rgb), 0.18);
+}

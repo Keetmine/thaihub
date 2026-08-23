@@ -1,5 +1,11 @@
 export const PAGE_SIZE = 30;
 
+// Для «плотных» админских журналов (модерация, импорты, ошибки):
+// строка там тяжёлая — текст контента с формами действий, стектрейсы,
+// плюс у ошибок дозапрос-пример на каждую группу страницы, — поэтому
+// страница короче обычных каталожных 30.
+export const DENSE_PAGE_SIZE = 20;
+
 // A short/common search term (a single letter, say) can still match
 // thousands of rows in a large catalog — capping search results keeps
 // the public catalog pages from reproducing the exact "render everything
