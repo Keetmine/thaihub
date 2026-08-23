@@ -765,6 +765,13 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-radius: var(--bs-border-radius);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  box-shadow: 0 0.6rem 1.6rem rgba(0, 0, 0, 0.35);
 }
 
 .event-card-date {
@@ -798,9 +805,26 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .event-card-poster {
   display: block;
-  width: 3.6rem;
-  border-radius: 0.55rem;
+  width: 4.6rem;
+  border-radius: 0.7rem;
   overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Фолбэк без постера — та же геометрия, первая буква тёплым цветом:
+   карточки с постером и без выравниваются одинаково. */
+.event-card-poster-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3 / 4;
+  background:
+    radial-gradient(120% 120% at 20% 0%, rgba(255, 106, 61, 0.18), transparent 60%),
+    var(--bs-tertiary-bg);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: rgba(255, 154, 114, 0.5);
 }
 
 .event-card-poster img {

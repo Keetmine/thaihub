@@ -46,12 +46,18 @@ export default function EventCard({
         <span className="event-card-weekday">{WEEKDAYS_SHORT[d.getDay()]}</span>
       </div>
 
-      {event.posterUrl && (
-        <Link href={eventHref(event)} className="event-card-poster flex-shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={event.posterUrl} alt="" loading="lazy" />
-        </Link>
-      )}
+      <Link href={eventHref(event)} className="event-card-poster flex-shrink-0">
+        {event.posterUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={event.posterUrl} alt="" loading="lazy" decoding="async" />
+        ) : (
+          /* Без постера — та же геометрия с первой буквой: карточки не
+             прыгают по выравниванию. */
+          <span className="event-card-poster-fallback" aria-hidden>
+            {event.title.trim().charAt(0).toUpperCase()}
+          </span>
+        )}
+      </Link>
 
       <div className="event-card-body">
         <h3 className="h5 font-display mb-1">
