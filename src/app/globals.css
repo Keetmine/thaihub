@@ -3221,3 +3221,18 @@ details.admin-section[open] > summary.admin-section-head::before {
   color: #fff;
   transform: translateY(-1px);
 }
+
+/* Сетка постеров каталога: переносится по строкам (в отличие от
+   горизонтальной ленты .poster-row). */
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 575.98px) {
+  .poster-grid {
+    grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+    gap: 0.75rem;
+  }
+}

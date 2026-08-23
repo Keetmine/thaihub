@@ -25,11 +25,15 @@ export default function AlphabetIndexList<T extends NamedItem>({
   renderItem,
   emptyMessage,
   trailingSection,
+  // Контейнер элементов внутри буквы: по умолчанию колонка строк, для
+  // постерных каталогов — «poster-grid».
+  itemsWrapperClassName = "d-flex flex-column gap-2",
 }: {
   items: T[];
   renderItem: (item: T) => React.ReactNode;
   emptyMessage: string;
   trailingSection?: { indexLabel: React.ReactNode; indexAriaLabel: string; content: React.ReactNode };
+  itemsWrapperClassName?: string;
 }) {
   if (items.length === 0 && !trailingSection) {
     return <p className="text-secondary">{emptyMessage}</p>;
@@ -61,7 +65,7 @@ export default function AlphabetIndexList<T extends NamedItem>({
             className="performers-letter-section"
           >
             <h2 className="performers-letter-heading">{letter}</h2>
-            <div className="d-flex flex-column gap-2">
+            <div className={itemsWrapperClassName}>
               <LazyList batch={30}>
                 {groups.get(letter)!.map((item) => (
                   <Fragment key={item.id}>{renderItem(item)}</Fragment>

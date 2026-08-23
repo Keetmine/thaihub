@@ -132,32 +132,28 @@ export default async function DramasPage({
         </p>
       )}
 
+      {/* Постерная сетка вместо строк-плашек (Э2.4): постер — главный
+          визуал каталога дорам. */}
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
         emptyMessage={
           q ? "Ничего не найдено." : "Пока нет отмеченных сериалов. Используйте поиск, чтобы найти сериал."
         }
+        itemsWrapperClassName="poster-grid"
         renderItem={({ drama: d }) => (
-          <div
-            key={d.id}
-            className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
-          >
-            <Link
-              href={dramaHref(d)}
-              className="text-decoration-none d-flex align-items-center gap-3"
-              style={{ minWidth: 0 }}
-            >
+          <div key={d.id} className="position-relative">
+            <Link href={dramaHref(d)} className="text-decoration-none d-block">
               <div
                 style={{
-                  width: "2.75rem",
-                  height: "3.75rem",
-                  borderRadius: "0.5rem",
+                  position: "relative",
+                  width: "100%",
+                  aspectRatio: "2 / 3",
+                  borderRadius: "0.9rem",
                   background: "var(--bs-secondary-bg)",
-                  flexShrink: 0,
                   overflow: "hidden",
                 }}
               >
-                {d.posterUrl && (
+                {d.posterUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     loading="lazy"
@@ -166,26 +162,35 @@ export default async function DramasPage({
                     alt=""
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
+                ) : (
+                  <span
+                    className="d-flex align-items-center justify-content-center h-100 font-display fw-bold"
+                    style={{ fontSize: "2rem", color: "rgba(255,154,114,0.45)" }}
+                    aria-hidden
+                  >
+                    {d.title.trim().charAt(0).toUpperCase()}
+                  </span>
+                )}
+                {ratingByDramaId.has(d.id) && (
+                  <span
+                    className="date-chip position-absolute"
+                    style={{ left: "0.5rem", bottom: "0.5rem" }}
+                  >
+                    ★ {ratingByDramaId.get(d.id)!.toFixed(1)}
+                  </span>
                 )}
               </div>
-              <div style={{ minWidth: 0 }}>
-                <p className="font-display fw-medium text-white mb-0 text-truncate">{d.title}</p>
-                <p className="small text-secondary mb-0">
-                  {d.year}
-                  {d.year && ratingByDramaId.has(d.id) && " · "}
-                  {ratingByDramaId.has(d.id) && (
-                    <span style={{ color: ratingByDramaId.get(d.id)! >= 7 ? "#3bb33b" : undefined }}>
-                      ★ {ratingByDramaId.get(d.id)!.toFixed(1)}
-                    </span>
-                  )}
-                </p>
-              </div>
+              <p className="small text-white mb-0 mt-2 text-truncate" style={{ lineHeight: 1.3 }}>
+                {d.title}
+              </p>
+              {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
             </Link>
-            <DramaStatusButton
-              dramaId={d.id}
-              status={statusByDramaId.get(d.id) ?? null}
-              className="flex-shrink-0"
-            />
+            <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+              <DramaStatusButton
+                dramaId={d.id}
+                status={statusByDramaId.get(d.id) ?? null}
+              />
+            </div>
           </div>
         )}
       />
