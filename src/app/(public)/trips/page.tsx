@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -31,10 +32,7 @@ export default async function TripsPage() {
   if (!isPremiumActive(user)) {
     return (
       <div>
-        <span className="eyebrow">Планирование</span>
-        <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-          Мои поездки
-        </h1>
+        <PageHeader eyebrow="Планирование" title="Мои поездки" size="lg" className="mb-5" />
         <PremiumUpsell feature="Поездки" />
       </div>
     );
@@ -134,10 +132,7 @@ export default async function TripsPage() {
 
   return (
     <div>
-      <span className="eyebrow">Планирование</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-        Мои поездки
-      </h1>
+      <PageHeader eyebrow="Планирование" title="Мои поездки" size="lg" className="mb-5" />
 
       <div style={{ maxWidth: "44rem" }}>
         <p className="text-secondary mb-3">

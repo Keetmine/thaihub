@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { pageMetadata } from "@/lib/seo";
 
@@ -21,10 +22,7 @@ export default async function WikiIndexPage() {
 
   return (
     <div style={{ maxWidth: "44rem" }}>
-      <span className="eyebrow">Полезное</span>
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.5rem" }}>
-        Вики
-      </h1>
+      <PageHeader eyebrow="Полезное" title="Вики" size="lg" className="mb-5" />
       <p className="text-secondary mb-4">
         Гайды и статьи: как покупать билеты, куда лететь, что смотреть — всё,
         что пригодится фанату в одном месте.

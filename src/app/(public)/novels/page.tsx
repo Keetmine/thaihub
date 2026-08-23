@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import { novelHref } from "@/lib/slugHelpers";
@@ -37,10 +38,7 @@ export default async function NovelsPage({
 
   return (
     <div>
-      <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-        Новеллы
-      </h1>
+      <PageHeader eyebrow="Каталог" title="Новеллы" size="lg" className="mb-5" />
 
       <NameSearchBox action="/novels" q={q} placeholder="Поиск по названию или автору…" />
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
@@ -92,10 +93,7 @@ export default async function DramasPage({
 
   return (
     <div>
-      <span className="eyebrow">Каталог</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-        Сериалы
-      </h1>
+      <PageHeader eyebrow="Каталог" title="Сериалы" size="lg" className="mb-5" />
 
       <div className="tab-bar-row">
         <div className="tab-bar">

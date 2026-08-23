@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { dateKey, endOfDay, formatShortDate, parseDateKey, startOfDay } from "@/lib/dates";
 import InfiniteEventList from "@/components/InfiniteEventList";
@@ -43,10 +44,7 @@ export default async function HomePage({
         {/* Метка тура и в этой ветке: без подписки здесь пейволл, но
             первый шаг «что это за раздел» показать всё равно нужно. */}
         <div className="dot-grid pb-1" data-tour="feed">
-          <span className="eyebrow">Афиша событий</span>
-          <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-            Все события
-          </h1>
+          <PageHeader eyebrow="Афиша событий" title="Все события" size="lg" className="mb-5" />
         </div>
         <PremiumUpsell feature="Афиша событий" />
       </div>

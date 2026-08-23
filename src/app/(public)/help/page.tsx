@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import FeedbackForm from "@/components/FeedbackForm";
 import { getCurrentUser } from "@/lib/userAuth";
 import { pageMetadata } from "@/lib/seo";
@@ -22,10 +23,7 @@ export default async function HelpPage({
   const user = await getCurrentUser();
   return (
     <div>
-      <span className="eyebrow">Справка</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
-        Помощь
-      </h1>
+      <PageHeader eyebrow="Справка" title="Помощь" className="mb-5" />
 
       <div className="row g-4">
         <div className="col-12 col-lg-7 d-flex flex-column gap-3">

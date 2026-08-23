@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { getCurrentUser } from "@/lib/userAuth";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
@@ -110,10 +111,7 @@ export default async function FriendsPage({
 
   return (
     <div>
-      <span className="eyebrow">Профиль</span>
-      <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.25rem" }}>
-        Друзья
-      </h1>
+      <PageHeader eyebrow="Профиль" title="Друзья" className="mb-5" />
 
       <NameSearchBox
         action="/friends"
