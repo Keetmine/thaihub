@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import { SearchIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -144,6 +145,24 @@ export default async function SearchPage({
   return (
     <div>
       <PageHeader eyebrow="Поиск" title={q || "Поиск"} className="mb-2" />
+
+      {/* Своё поле, а не только то, что в шапке: ниже 1200px шапочное
+          скрыто (там бургер или иконка-ссылка сюда), и страница поиска
+          оставалась без единого поля ввода. */}
+      <form action="/search" method="GET" className="mb-4">
+        <div className="search-box search-page-box">
+          <SearchIcon />
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Событие, артист, сериал, локация…"
+            aria-label="Поисковый запрос"
+            className="pill-search"
+          />
+        </div>
+      </form>
+
       {q && (
         <p className="text-secondary mb-5">
           Вы искали «{q}» — вот что нашлось по каталогу:
@@ -152,7 +171,7 @@ export default async function SearchPage({
 
       {!query ? (
         <p className="text-secondary">
-          Введите название события, артиста, сериала, локации или агентства в поиске сверху.
+          Введите название события, артиста, сериала, локации или агентства.
         </p>
       ) : totalCount === 0 ? (
         <div>
