@@ -1,160 +1,125 @@
 import Link from "next/link";
-import Logo from "@/components/Logo";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
-import { CalendarIcon, HeartIcon, TvIcon, UsersIcon } from "@/components/icons";
+import { eventHref } from "@/lib/eventSlug";
+import PosterTile from "@/components/PosterTile";
+import { formatShortDate } from "@/lib/dates";
+import { CalendarIcon, HeartIcon, TvIcon } from "@/components/icons";
 
-const FEATURES = [
-  {
-    icon: <CalendarIcon />,
-    title: "Афиша событий",
-    body: "Календарь концертов и фан-встреч тайских актёров — по дням, с препродажами и билетами.",
-  },
-  {
-    icon: <HeartIcon />,
-    title: "Профили и избранное",
-    body: "Актёры, группы, пейринги и агентства — с полной инфой. Отмечайте любимых сердечком.",
-  },
-  {
-    icon: <TvIcon />,
-    title: "Статусы просмотра",
-    body: "Смотрю сейчас, посмотрено, в планах, отложено, заброшено — как в MyDramaList, но для своей коллекции.",
-  },
-  {
-    icon: <UsersIcon />,
-    title: "Друзья",
-    body: "Находите друзей, следите за тем, кто на какие события идёт, делитесь впечатлениями.",
-  },
-];
-
-const STEPS = [
-  {
-    n: "01",
-    title: "Зарегистрируйтесь",
-    body: "Один email и пароль — доступ ко всей афише, профилям и сохранённому.",
-  },
-  {
-    n: "02",
-    title: "Найдите своих",
-    body: "Актёры, группы, сериалы, пейринги, агентства — добавляйте в избранное одним кликом.",
-  },
-  {
-    n: "03",
-    title: "Следите за событиями",
-    body: "Отмечайте «Я пойду», получайте .ics в календарь, не пропускайте препродажи.",
-  },
-];
-
+// Лендинг (он же /about). Живые данные вместо выдуманных: постеры и
+// агенда — реальные ближайшие события, счётчики — реальный каталог.
 export default async function LandingPage() {
-  // Живые примеры вместо выдуманных: ближайшие события из афиши
-  // (многодневное событие показываем один раз — первой датой).
-  const upcomingRaw = await prisma.eventOccurrence.findMany({
-    where: { startsAt: { gte: new Date() } },
-    orderBy: { startsAt: "asc" },
-    take: 12,
-    include: {
-      event: {
-        include: { performers: { include: { performer: { select: { name: true } } }, take: 3 } },
-      },
-    },
-  });
-  // Авторизованному незачем показывать «Зарегистрироваться / Войти» —
-  // он уже внутри (страница /about открыта всем).
-  const currentUser = await getCurrentUser();
+  const now = new Date();
+  const [upcomingRaw, upcomingEventsCount, performersCount, dramasCount, currentUser] =
+    await Promise.all([
+      prisma.eventOccurrence.findMany({
+        where: { startsAt: { gte: now } },
+        orderBy: { startsAt: "asc" },
+        take: 12,
+        include: {
+          event: {
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              venue: true,
+              posterUrl: true,
+              performers: {
+                include: { performer: { select: { name: true } } },
+                take: 3,
+              },
+            },
+          },
+        },
+      }),
+      prisma.event.count({ where: { occurrences: { some: { startsAt: { gte: now } } } } }),
+      prisma.performer.count(),
+      prisma.drama.count(),
+      // Авторизованному незачем показывать «Зарегистрироваться / Войти» —
+      // он уже внутри (страница /about открыта всем).
+      getCurrentUser(),
+    ]);
+
+  // Многодневное событие показываем один раз — первой датой.
   const seenEvents = new Set<string>();
-  const upcoming = upcomingRaw
-    .filter((occ) => !seenEvents.has(occ.eventId) && seenEvents.add(occ.eventId))
-    .slice(0, 3);
+  const upcoming = upcomingRaw.filter(
+    (occ) => !seenEvents.has(occ.eventId) && seenEvents.add(occ.eventId),
+  );
+  // Стена постеров hero: сперва события с постерами, добираем без них.
+  const fanPool = [
+    ...upcoming.filter((o) => o.event.posterUrl),
+    ...upcoming.filter((o) => !o.event.posterUrl),
+  ].slice(0, 3);
+  const agenda = upcoming.slice(0, 3);
+
+  const authCta = currentUser ? (
+    <>
+      <Link href="/events" className="btn btn-primary">
+        Открыть афишу
+      </Link>
+      <Link href="/account" className="btn btn-ghost">
+        Мой профиль
+      </Link>
+    </>
+  ) : (
+    <>
+      <Link href="/signup" className="btn btn-primary">
+        Создать аккаунт
+      </Link>
+      <Link href="/login" className="btn btn-ghost">
+        Войти
+      </Link>
+    </>
+  );
 
   return (
     <div className="d-flex flex-column gap-5">
-      {/* ---------- Hero ---------- */}
-      <section className="dot-grid text-center py-4 py-md-5">
-        <div className="d-flex justify-content-center mb-4">
-          <Logo />
-        </div>
-        <span className="eyebrow d-inline-flex mb-3">Личный трекер тайских BL-событий</span>
-        <h1
-          className="display-1-tight mx-auto mb-3"
-          style={{ fontSize: "clamp(2.2rem, 5vw, 3.5rem)", maxWidth: "44rem" }}
-        >
-          Все концерты, актёры и сериалы — в одном месте
-        </h1>
-        <p className="text-secondary mx-auto mb-4" style={{ maxWidth: "34rem", fontSize: "1.05rem" }}>
-          MyBLHub собирает афишу фан-событий, профили исполнителей и дорам, избранное
-          и статусы просмотра — чтобы вы ничего не упустили.
-        </p>
-        <div className="d-flex flex-wrap justify-content-center gap-2">
-          {currentUser ? (
-            <>
-              <Link href="/" className="btn btn-primary">
-                К афише событий
-              </Link>
-              <Link href="/account" className="btn btn-ghost">
-                Мой профиль
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/signup" className="btn btn-primary">
-                Зарегистрироваться
-              </Link>
-              <Link href="/login" className="btn btn-ghost">
-                Войти
-              </Link>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* ---------- What is this ---------- */}
-      <section className="surface p-4 p-md-5">
-        <div className="row g-4 align-items-center">
+      {/* ---------- Hero: текст слева, стена постеров справа ---------- */}
+      <section className="py-3 py-md-4">
+        <div className="row g-4 g-lg-5 align-items-center">
           <div className="col-12 col-lg-7">
-            <span className="eyebrow mb-2 d-inline-flex">О проекте</span>
-            <h2 className="display-1-tight mb-3" style={{ fontSize: "1.9rem" }}>
-              Сделано фанатами — для фанатов
-            </h2>
-            <p className="text-secondary mb-0">
-              Тайская BL-индустрия огромна: концерты, фан-мит-апы, десятки актёров и
-              пейрингов, сотни дорам. MyBLHub — это личный трекер, который держит всё это
-              в одном удобном месте: от даты препродажи билетов до статуса «досмотрел
-              ли я этот сериал».
+            <span className="eyebrow d-inline-flex mb-3">
+              Фан-трекер тайских BL-событий
+            </span>
+            <h1
+              className="display-1-tight mb-3"
+              style={{ fontSize: "clamp(2.3rem, 5vw, 3.4rem)", maxWidth: "40rem" }}
+            >
+              Концерты, дорамы и артисты —{" "}
+              <span className="text-warm-gradient">в одном месте</span>
+            </h1>
+            <p
+              className="text-secondary mb-4"
+              style={{ maxWidth: "32rem", fontSize: "1.05rem" }}
+            >
+              MyBLHub собирает афишу фанмитов и концертов, каталог артистов и
+              дорам, ваши избранное и планы — чтобы ничего не пропустить.
+            </p>
+            <div className="d-flex flex-wrap gap-2 mb-4">{authCta}</div>
+            <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
+              {upcomingEventsCount} событий в афише · {performersCount} артистов ·{" "}
+              {dramasCount} дорам в каталоге
             </p>
           </div>
           <div className="col-12 col-lg-5">
-            <div className="d-flex flex-column gap-2">
-              {upcoming.map((occ) => (
-                <div key={occ.id} className="agenda-row">
-                  <div className="agenda-time">
-                    <span className="agenda-time-start">
-                      {occ.startsAt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(/\.$/, "")}
-                    </span>
-                  </div>
-                  <span className="agenda-dash">—</span>
-                  <div className="agenda-body">
-                    <p className="h6 font-display mb-1">{occ.event.title}</p>
-                    <p className="small text-secondary mb-0">
-                      {occ.event.venue}
-                      {occ.event.performers.length > 0 &&
-                        ` · ${occ.event.performers.map((ep) => ep.performer.name).join(", ")}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {upcoming.length === 0 && (
-                <div className="agenda-row">
-                  <div className="agenda-body">
-                    <p className="small text-secondary mb-0">Афиша пополняется каждую неделю.</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            {fanPool.length > 0 && (
+              <div className="poster-fan">
+                {fanPool.map((occ) => (
+                  <PosterTile
+                    key={occ.id}
+                    href={eventHref(occ.event)}
+                    posterUrl={occ.event.posterUrl}
+                    title={occ.event.title}
+                    chip={formatShortDate(occ.startsAt)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* ---------- Features ---------- */}
+      {/* ---------- Bento: что внутри ---------- */}
       <section>
         <div className="text-center mb-4">
           <span className="eyebrow d-inline-flex mb-2">Возможности</span>
@@ -162,31 +127,107 @@ export default async function LandingPage() {
             Что внутри
           </h2>
         </div>
-        <div className="row g-3">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="col-12 col-sm-6 col-lg-3">
-              <div className="surface surface-hover h-100 p-4">
-                <div
-                  className="d-inline-flex align-items-center justify-content-center mb-3"
-                  style={{
-                    width: "2.75rem",
-                    height: "2.75rem",
-                    borderRadius: "0.85rem",
-                    background: "var(--bs-primary-bg-subtle)",
-                    color: "var(--bs-primary-text-emphasis)",
-                  }}
-                >
-                  {f.icon}
-                </div>
-                <p className="font-display fw-medium text-white mb-2">{f.title}</p>
-                <p className="small text-secondary mb-0">{f.body}</p>
+        <div className="row g-3 stagger">
+          {/* Большая карточка афиши с живой агендой */}
+          <div className="col-12 col-lg-7">
+            <div className="glow-panel h-100 p-4 p-md-5 d-flex flex-column">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <CalendarIcon />
+                <p className="font-display fw-medium text-white mb-0">
+                  Афиша и препродажи
+                </p>
+                <span className="date-chip">по подписке</span>
+              </div>
+              <p className="small text-secondary mb-4" style={{ maxWidth: "28rem" }}>
+                Концерты и фанмиты по дням, со стартами продаж, билетами и
+                напоминаниями в Telegram — за час до открытия продаж.
+              </p>
+              <div className="d-flex flex-column gap-2 mt-auto">
+                {agenda.map((occ) => (
+                  <div key={occ.id} className="agenda-row">
+                    <div className="agenda-time">
+                      <span className="agenda-time-start">
+                        {formatShortDate(occ.startsAt)}
+                      </span>
+                    </div>
+                    <span className="agenda-dash">—</span>
+                    <div className="agenda-body">
+                      <p className="h6 font-display mb-1">{occ.event.title}</p>
+                      <p className="small text-secondary mb-0">
+                        {occ.event.venue}
+                        {occ.event.performers.length > 0 &&
+                          ` · ${occ.event.performers.map((ep) => ep.performer.name).join(", ")}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {agenda.length === 0 && (
+                  <p className="small text-secondary mb-0">
+                    Афиша пополняется каждую неделю.
+                  </p>
+                )}
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Стопка справа */}
+          <div className="col-12 col-lg-5 d-flex flex-column gap-3">
+            <div className="surface surface-hover p-4 flex-fill">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <HeartIcon />
+                <p className="font-display fw-medium text-white mb-0">
+                  Артисты и избранное
+                </p>
+              </div>
+              <p className="small text-secondary mb-0">
+                Профили актёров, групп и пейрингов с фильмографией и
+                дискографией. Сердечко — и их события и релизы попадают в вашу
+                ленту.
+              </p>
+            </div>
+            <div className="surface surface-hover p-4 flex-fill">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <TvIcon />
+                <p className="font-display fw-medium text-white mb-0">
+                  Дорамы и статусы
+                </p>
+              </div>
+              <p className="small text-secondary mb-0">
+                Смотрю, посмотрено, в планах — отмечайте дорамы, собирайте свою
+                коллекцию и находите места съёмок на карте.
+              </p>
+            </div>
+          </div>
+
+          {/* Кремовый ряд: друзья и поездки */}
+          <div className="col-12">
+            <div className="card-cream p-4 p-md-5">
+              <div className="row g-4 align-items-center">
+                <div className="col-12 col-lg-7">
+                  <p className="font-display fw-semibold mb-2" style={{ fontSize: "1.35rem" }}>
+                    Друзья и поездки — потому что вместе веселее
+                  </p>
+                  <p className="cream-muted small mb-0" style={{ maxWidth: "34rem" }}>
+                    Смотрите, кто из друзей идёт на событие, планируйте поездку в
+                    Таиланд на общие даты: события, отели, списки мест и «что
+                    посетить» рядом с датами — всё в одном плане.
+                  </p>
+                </div>
+                <div className="col-12 col-lg-5 text-lg-end">
+                  <Link
+                    href={currentUser ? "/trips" : "/signup"}
+                    className="btn btn-dark rounded-pill px-4"
+                  >
+                    {currentUser ? "Мои поездки" : "Попробовать"}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ---------- How it works ---------- */}
+      {/* ---------- Как это работает ---------- */}
       <section>
         <div className="text-center mb-4">
           <span className="eyebrow d-inline-flex mb-2">Как это работает</span>
@@ -194,16 +235,27 @@ export default async function LandingPage() {
             Три шага — и вы в курсе всего
           </h2>
         </div>
-        <div className="row g-3">
-          {STEPS.map((s) => (
+        <div className="row g-3 stagger">
+          {[
+            {
+              n: "01",
+              title: "Зарегистрируйтесь",
+              body: "Email и пароль — каталог, избранное и статусы просмотра доступны сразу.",
+            },
+            {
+              n: "02",
+              title: "Найдите своих",
+              body: "Актёры, группы, сериалы, пейринги — добавляйте в избранное одним кликом.",
+            },
+            {
+              n: "03",
+              title: "Следите за событиями",
+              body: "Отмечайте «Я пойду», получайте .ics в календарь, ловите препродажи с ботом.",
+            },
+          ].map((s) => (
             <div key={s.n} className="col-12 col-md-4">
               <div className="surface h-100 p-4">
-                <span
-                  className="font-display fw-bold d-block mb-2"
-                  style={{ fontSize: "1.5rem", color: "var(--bs-primary-text-emphasis)" }}
-                >
-                  {s.n}
-                </span>
+                <span className="ghost-number d-block mb-3">{s.n}</span>
                 <p className="font-display fw-medium text-white mb-2">{s.title}</p>
                 <p className="small text-secondary mb-0">{s.body}</p>
               </div>
@@ -213,7 +265,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------- Final CTA ---------- */}
-      <section className="surface dot-grid text-center p-4 p-md-5">
+      <section className="glow-panel text-center p-4 p-md-5">
         <h2 className="display-1-tight mb-3" style={{ fontSize: "1.9rem" }}>
           {currentUser ? "Рады видеть снова" : "Готовы начать?"}
         </h2>
@@ -222,22 +274,7 @@ export default async function LandingPage() {
             ? "Загляните в афишу — там всё, что скоро происходит."
             : "Регистрация занимает меньше минуты — email и пароль, без лишних вопросов."}
         </p>
-        <div className="d-flex flex-wrap justify-content-center gap-2">
-          {currentUser ? (
-            <Link href="/" className="btn btn-primary">
-              Открыть афишу
-            </Link>
-          ) : (
-            <>
-              <Link href="/signup" className="btn btn-primary">
-                Создать аккаунт
-              </Link>
-              <Link href="/login" className="btn btn-ghost">
-                У меня уже есть аккаунт
-              </Link>
-            </>
-          )}
-        </div>
+        <div className="d-flex flex-wrap justify-content-center gap-2">{authCta}</div>
       </section>
     </div>
   );

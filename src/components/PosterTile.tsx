@@ -1,0 +1,46 @@
+import Link from "next/link";
+
+/** Постерная карточка (.poster-tile в globals.css): изображение фоном,
+ *  текст поверх градиента, опциональный чип в углу. Без постера —
+ *  первая буква на тёплом градиенте. */
+export default function PosterTile({
+  href,
+  posterUrl,
+  title,
+  subtitle,
+  chip,
+}: {
+  href: string;
+  posterUrl: string | null;
+  title: string;
+  subtitle?: string | null;
+  chip?: string | null;
+}) {
+  return (
+    <Link href={href} className="poster-tile">
+      {posterUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={posterUrl} alt="" loading="lazy" decoding="async" />
+      ) : (
+        <span className="poster-tile-fallback" aria-hidden>
+          {title.trim().charAt(0).toUpperCase()}
+        </span>
+      )}
+      {chip && (
+        <span className="poster-tile-chip">
+          <span className="date-chip">{chip}</span>
+        </span>
+      )}
+      <span className="poster-tile-body">
+        <span className="font-display fw-medium text-white d-block text-truncate">
+          {title}
+        </span>
+        {subtitle && (
+          <span className="small d-block text-truncate" style={{ color: "rgba(255,255,255,0.72)" }}>
+            {subtitle}
+          </span>
+        )}
+      </span>
+    </Link>
+  );
+}
