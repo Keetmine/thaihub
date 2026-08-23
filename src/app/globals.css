@@ -1031,50 +1031,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   background: rgba(255, 255, 255, 0.28);
 }
 
-/* Длинный список внутри блока прокручивается сам, а не тянет страницу. */
-.scroll-list {
-  max-height: 26rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* капля воздуха, чтобы тень последней карточки не резалась */
-  padding-right: 0.25rem;
-}
-
-/* Высокая версия для главных каталогов (список прокручивается внутри
-   себя; высота с запасом, чтобы шапка страницы и пагинация под списком
-   оставались видны без прокрутки страницы). */
-.scroll-list-lg {
-  max-height: 42vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 0.25rem;
-}
-
-/* Нижняя кромка внутренних списков растворяется — обрезанная на
-   полуслове строка иначе читается как сломанная вёрстка. */
-.scroll-list,
-.scroll-list-lg {
-  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 2.5rem), transparent 100%);
-  mask-image: linear-gradient(180deg, #000 calc(100% - 2.5rem), transparent 100%);
-}
-
-.admin-content .scroll-list,
-.admin-content .scroll-list-lg {
-  -webkit-mask-image: none;
-  mask-image: none;
-}
-
-/* В админке внутренние скроллы спискам не нужны: список занимает всю
-   ширину контента и растёт вниз, страница скроллится сама. overflow-x
-   остаётся hidden, чтобы длинные строки не рождали горизонтальный
-   скролл. */
-.admin-content .scroll-list-lg,
-.admin-content .scroll-list {
-  max-height: none;
-  overflow-y: visible;
-  padding-right: 0;
-}
-
 /* ---------- Закреплённая шапка ---------- */
 /* top:0 + собственная подложка-градиент: с отступом сверху в зазоре
    просвечивал контент, а сквозь полупрозрачный pill-nav — заголовки. */
@@ -1518,7 +1474,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .performers-letter-section {
   min-width: 0;
-  scroll-margin-top: 1rem;
+  /* Список скроллится всей страницей; без запаса заголовок буквы нырял
+     бы под закреплённый навбар при переходе по якорю #letter-X. */
+  scroll-margin-top: 6rem;
 }
 
 .performers-letter-heading {
@@ -1534,10 +1492,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
    list — deliberately plain (no box/background), matching a native
    quick-scroll index (Contacts/Notes-style) rather than a boxed sidebar. */
 .performers-index {
+  /* Список скроллится окном (внутреннего скролл-контейнера больше нет),
+     так что липнем к вьюпорту — по его ЦЕНТРУ: у верхней кромки буквы
+     прятались под закреплённый навбар. top: 50vh + сдвиг на половину
+     собственной высоты держат рейку посередине экрана; max-height с
+     overflow — страховка для очень длинного алфавита. */
   position: sticky;
-  top: 1.5rem;
+  top: 50vh;
+  transform: translateY(-50%);
+  align-self: start;
   min-width: 0;
-  max-height: calc(100vh - 3rem);
+  max-height: 80vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -2419,12 +2384,6 @@ svg[aria-hidden="true"] {
 
 .surface .section-heading:first-child {
   margin-top: 0;
-}
-
-/* Внутренние списки: последняя строка не липнет к нижней кромке. */
-.scroll-list,
-.scroll-list-lg {
-  padding-bottom: 0.35rem;
 }
 
 /* ---------- Профиль: герои-метрики и чипы-навигация ---------- */
@@ -3543,27 +3502,6 @@ details.admin-section[open] > summary.admin-section-head::before {
 ::selection {
   background: rgba(var(--accent-rgb), 0.45);
   color: #fff;
-}
-
-/* Заголовки секций получают растущую тёплую линию — маленькая
-   фирменная деталь на каждой странице. */
-.section-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.section-heading::after {
-  content: "";
-  flex: 0 1 4.5rem;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.55), transparent);
-  transition: flex-basis 0.5s ease;
-}
-
-section:hover > .section-heading::after,
-div:hover > .section-heading::after {
-  flex-basis: 7.5rem;
 }
 
 /* Глобальный тонкий скроллбар в цвет темы. */
