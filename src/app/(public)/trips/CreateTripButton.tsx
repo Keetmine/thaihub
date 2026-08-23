@@ -9,6 +9,23 @@ import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSe
 
 export default function CreateTripButton({ friends = [] }: { friends?: EntityOption[] }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(formData: FormData) {
+    setIsSaving(true);
+    setError(null);
+    try {
+      // При успехе экшен уводит redirect'ом на страницу поездки — сюда
+      // возвращается только ошибка валидации/подписки.
+      const result = await createTrip(formData);
+      if (result) setError(result.error);
+    } catch {
+      setError("Не удалось создать поездку — попробуйте ещё раз");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <>
@@ -16,8 +33,15 @@ export default function CreateTripButton({ friends = [] }: { friends?: EntityOpt
         + Создать поездку
       </button>
 
-      <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Новая поездка">
-        <form action={createTrip} className="d-flex flex-column gap-3">
+      <Modal
+        open={isOpen}
+        onClose={() => {
+          setIsOpen(false);
+          setError(null);
+        }}
+        title="Новая поездка"
+      >
+        <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
             <label className="form-label small text-secondary">Название</label>
             <input
@@ -52,8 +76,9 @@ export default function CreateTripButton({ friends = [] }: { friends?: EntityOpt
             </div>
           )}
           <VisibilityRadios />
-          <button type="submit" className="btn btn-primary">
-            Создать
+          {error && <p className="small text-danger mb-0">{error}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isSaving}>
+            {isSaving ? "Создаём…" : "Создать"}
           </button>
         </form>
       </Modal>

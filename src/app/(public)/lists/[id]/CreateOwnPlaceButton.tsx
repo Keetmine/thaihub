@@ -19,7 +19,13 @@ export default function CreateOwnPlaceButton({ listId }: { listId: string }) {
     setIsSaving(true);
     setError(null);
     try {
-      await boundCreate(formData);
+      // Валидационные ошибки экшен возвращает значением; catch остаётся
+      // для настоящих сбоев (упавший резолвер координат, сеть).
+      const result = await boundCreate(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       setIsOpen(false);
     } catch {
       setError("Не удалось создать место — проверьте ссылку и попробуйте ещё раз");

@@ -53,7 +53,8 @@ export function VisibilitySelect({
         setCurrent(next);
         startTransition(async () => {
           try {
-            await setTripVisibility(tripId, next);
+            const result = await setTripVisibility(tripId, next);
+            if (!result.ok) setCurrent(current);
           } catch {
             setCurrent(current);
           }

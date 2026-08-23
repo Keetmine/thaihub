@@ -10,11 +10,25 @@ export default function EditListButton({
   list: { id: string; title: string; description: string | null };
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const boundUpdate = updatePlaceList.bind(null, list.id);
 
   async function handleSubmit(formData: FormData) {
-    await boundUpdate(formData);
-    setIsOpen(false);
+    setIsSaving(true);
+    setError(null);
+    try {
+      const result = await boundUpdate(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setIsOpen(false);
+    } catch {
+      setError("Не удалось сохранить — попробуйте ещё раз");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -22,7 +36,14 @@ export default function EditListButton({
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
         Редактировать
       </button>
-      <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Редактировать список">
+      <Modal
+        open={isOpen}
+        onClose={() => {
+          setIsOpen(false);
+          setError(null);
+        }}
+        title="Редактировать список"
+      >
         <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
             <label className="form-label small text-secondary">Название</label>
@@ -32,8 +53,9 @@ export default function EditListButton({
             <label className="form-label small text-secondary">Описание</label>
             <textarea name="description" rows={2} defaultValue={list.description ?? ""} className="form-control" />
           </div>
-          <button type="submit" className="btn btn-primary">
-            Сохранить
+          {error && <p className="small text-danger mb-0">{error}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isSaving}>
+            {isSaving ? "Сохранение…" : "Сохранить"}
           </button>
         </form>
       </Modal>

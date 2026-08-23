@@ -35,9 +35,15 @@ export default function TripHotels({
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(formData: FormData) {
-    await saveTripHotel(tripId, formData);
+    setError(null);
+    const result = await saveTripHotel(tripId, formData);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setEditing(null);
     setAdding(false);
     router.refresh();
@@ -105,6 +111,7 @@ export default function TripHotels({
           />
         </div>
       </div>
+      {error && <p className="small text-danger mb-0">{error}</p>}
       <div className="d-flex gap-2">
         <button type="submit" className="btn btn-primary btn-sm">
           Сохранить
@@ -115,6 +122,7 @@ export default function TripHotels({
           onClick={() => {
             setEditing(null);
             setAdding(false);
+            setError(null);
           }}
         >
           Отмена
@@ -183,7 +191,10 @@ export default function TripHotels({
                 </button>
                 <ConfirmForm
                   action={async () => {
-                    await deleteTripHotel(tripId, h.id);
+                    // Ошибку возвращаем ConfirmForm — она покажет её в
+                    // модалке подтверждения ({ error } из результата).
+                    const result = await deleteTripHotel(tripId, h.id);
+                    if (!result.ok) return result;
                     router.refresh();
                   }}
                   confirmMessage={`Удалить бронь «${h.name}»?`}

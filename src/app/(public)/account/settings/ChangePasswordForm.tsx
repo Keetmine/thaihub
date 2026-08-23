@@ -11,15 +11,23 @@ export default function ChangePasswordForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // currentTarget после await обнуляется — берём ссылку заранее.
+    const form = e.currentTarget;
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
     try {
-      await changePassword(new FormData(e.currentTarget));
+      // Ошибка приходит значением ({ ok: false, error }): текст
+      // брошенного исключения Next в проде на клиент не передаёт.
+      const result = await changePassword(new FormData(form));
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       setSuccess(true);
-      e.currentTarget.reset();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось изменить пароль");
+      form.reset();
+    } catch {
+      setError("Не удалось изменить пароль — попробуйте ещё раз");
     } finally {
       setIsSubmitting(false);
     }

@@ -78,7 +78,12 @@ export async function updatePrivacy(formData: FormData) {
   revalidatePath("/account/settings");
 }
 
-export async function changePassword(formData: FormData) {
+/** Ошибки валидации возвращаются значением, а не броском: в проде Next
+ *  минифицирует текст исключения из server action, и клиент видит
+ *  generic error boundary вместо причины (см. promoActions.ts). */
+export type ActionResult = { ok: true } | { ok: false; error: string };
+
+export async function changePassword(formData: FormData): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -87,22 +92,23 @@ export async function changePassword(formData: FormData) {
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
   if (!user.passwordHash) {
-    throw new Error("Аккаунт создан через Telegram — пароля у него нет");
+    return { ok: false, error: "Аккаунт создан через Telegram — пароля у него нет" };
   }
   if (!verifyPassword(currentPassword, user.passwordHash)) {
-    throw new Error("Неверный текущий пароль");
+    return { ok: false, error: "Неверный текущий пароль" };
   }
   if (newPassword.length < 6) {
-    throw new Error("Новый пароль должен быть не короче 6 символов");
+    return { ok: false, error: "Новый пароль должен быть не короче 6 символов" };
   }
   if (newPassword !== confirmPassword) {
-    throw new Error("Пароли не совпадают");
+    return { ok: false, error: "Пароли не совпадают" };
   }
 
   await prisma.user.update({
     where: { id: user.id },
     data: { passwordHash: hashPassword(newPassword) },
   });
+  return { ok: true };
 }
 
 /** Returns the user's ICS feed token, generating one on first use. */

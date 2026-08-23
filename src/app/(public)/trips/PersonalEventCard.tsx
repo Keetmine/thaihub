@@ -132,6 +132,8 @@ export default function PersonalEventCard({
   showShareToggle?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const d = event.startsAt;
   const monthShort = d.toLocaleDateString("ru-RU", { month: "short" }).replace(/\.$/, "");
   const hasTime = event.timeValue !== "00:00";
@@ -140,8 +142,20 @@ export default function PersonalEventCard({
   const boundDelete = deleteTripPersonalEvent.bind(null, tripId, event.id);
 
   async function handleUpdate(formData: FormData) {
-    await boundUpdate(formData);
-    setIsEditing(false);
+    setIsSaving(true);
+    setError(null);
+    try {
+      const result = await boundUpdate(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setIsEditing(false);
+    } catch {
+      setError("Не удалось сохранить — попробуйте ещё раз");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -157,7 +171,15 @@ export default function PersonalEventCard({
           >
             <PencilIcon />
           </button>
-          <ConfirmForm action={boundDelete} confirmMessage={`Удалить «${event.title}»?`}>
+          <ConfirmForm
+            // Ошибку возвращаем ConfirmForm — она покажет её в модалке
+            // подтверждения ({ error } из результата).
+            action={async () => {
+              const result = await boundDelete();
+              if (!result.ok) return result;
+            }}
+            confirmMessage={`Удалить «${event.title}»?`}
+          >
             <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить" title="Удалить">
               <TrashIcon />
             </button>
@@ -202,7 +224,14 @@ export default function PersonalEventCard({
         </p>
       </div>
 
-      <Modal open={isEditing} onClose={() => setIsEditing(false)} title="Редактировать событие">
+      <Modal
+        open={isEditing}
+        onClose={() => {
+          setIsEditing(false);
+          setError(null);
+        }}
+        title="Редактировать событие"
+      >
         <form action={handleUpdate} className="d-flex flex-column gap-3">
           <PersonalEventFields
             defaults={{
@@ -216,8 +245,9 @@ export default function PersonalEventCard({
             }}
             showShareToggle={showShareToggle}
           />
-          <button type="submit" className="btn btn-primary">
-            Сохранить
+          {error && <p className="small text-danger mb-0">{error}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isSaving}>
+            {isSaving ? "Сохранение…" : "Сохранить"}
           </button>
         </form>
       </Modal>

@@ -30,7 +30,8 @@ export function ListVisibilitySelect({ listId, visibility }: { listId: string; v
         setCurrent(next);
         startTransition(async () => {
           try {
-            await setPlaceListVisibility(listId, next);
+            const result = await setPlaceListVisibility(listId, next);
+            if (!result.ok) setCurrent(current);
           } catch {
             setCurrent(current);
           }
@@ -53,6 +54,7 @@ export function AddPlaceBox({ listId }: { listId: string }) {
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seqRef = useRef(0);
@@ -81,8 +83,10 @@ export function AddPlaceBox({ listId }: { listId: string }) {
   function pick(locationId: string) {
     setQuery("");
     setResults([]);
+    setError(null);
     startTransition(async () => {
-      await addPlaceToList(listId, locationId);
+      const result = await addPlaceToList(listId, locationId);
+      if (!result.ok) setError(result.error);
     });
   }
 
@@ -128,6 +132,7 @@ export function AddPlaceBox({ listId }: { listId: string }) {
           )}
         </div>
       )}
+      {error && <p className="small text-danger mt-1 mb-0">{error}</p>}
     </div>
   );
 }
@@ -150,22 +155,53 @@ export function PlaceRowControls({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPlace, setIsEditingPlace] = useState(false);
+  // Ошибки: rowError — у контролов строки (порядок/заметка/удаление),
+  // placeError — внутри модалки редактирования места.
+  const [rowError, setRowError] = useState<string | null>(null);
+  const [placeError, setPlaceError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const boundNote = setPlaceNote.bind(null, listId, locationId);
   const boundPlace = updateOwnPlace.bind(null, locationId);
 
   async function saveNote(formData: FormData) {
-    await boundNote(formData);
-    setIsEditing(false);
+    try {
+      const result = await boundNote(formData);
+      if (!result.ok) {
+        setRowError(result.error);
+        return;
+      }
+      setRowError(null);
+      setIsEditing(false);
+    } catch {
+      setRowError("Не удалось сохранить заметку");
+    }
   }
 
   async function savePlace(formData: FormData) {
-    await boundPlace(formData);
-    setIsEditingPlace(false);
+    try {
+      const result = await boundPlace(formData);
+      if (!result.ok) {
+        setPlaceError(result.error);
+        return;
+      }
+      setPlaceError(null);
+      setIsEditingPlace(false);
+    } catch {
+      setPlaceError("Не удалось сохранить — проверьте ссылку и попробуйте ещё раз");
+    }
+  }
+
+  function runRowAction(action: () => Promise<{ ok: true } | { ok: false; error: string }>) {
+    setRowError(null);
+    startTransition(async () => {
+      const result = await action();
+      if (!result.ok) setRowError(result.error);
+    });
   }
 
   return (
     <div className="d-flex align-items-center gap-2 flex-shrink-0">
+      {rowError && <span className="small text-danger">{rowError}</span>}
       <div className="d-flex flex-column">
         <button
           type="button"
@@ -173,7 +209,7 @@ export function PlaceRowControls({
           aria-label="Выше"
           title="Выше"
           disabled={isPending}
-          onClick={() => startTransition(async () => movePlaceInList(listId, locationId, "up"))}
+          onClick={() => runRowAction(() => movePlaceInList(listId, locationId, "up"))}
         >
           ▲
         </button>
@@ -183,7 +219,7 @@ export function PlaceRowControls({
           aria-label="Ниже"
           title="Ниже"
           disabled={isPending}
-          onClick={() => startTransition(async () => movePlaceInList(listId, locationId, "down"))}
+          onClick={() => runRowAction(() => movePlaceInList(listId, locationId, "down"))}
         >
           ▼
         </button>
@@ -217,13 +253,20 @@ export function PlaceRowControls({
         aria-label="Убрать из списка"
         title="Убрать из списка"
         disabled={isPending}
-        onClick={() => startTransition(async () => removePlaceFromList(listId, locationId))}
+        onClick={() => runRowAction(() => removePlaceFromList(listId, locationId))}
       >
         ×
       </button>
 
       {canEditPlace && place && (
-        <Modal open={isEditingPlace} onClose={() => setIsEditingPlace(false)} title="Редактировать место">
+        <Modal
+          open={isEditingPlace}
+          onClose={() => {
+            setIsEditingPlace(false);
+            setPlaceError(null);
+          }}
+          title="Редактировать место"
+        >
           <form action={savePlace} className="d-flex flex-column gap-3">
             <div>
               <label className="form-label small text-secondary">Название</label>
@@ -249,6 +292,7 @@ export function PlaceRowControls({
               </label>
               <input type="text" name="mapsUrl" placeholder="https://maps.app.goo.gl/…" className="form-control" />
             </div>
+            {placeError && <p className="small text-danger mb-0">{placeError}</p>}
             <button type="submit" className="btn btn-primary">
               Сохранить
             </button>

@@ -35,14 +35,22 @@ export default function TripMembersButton({
   const [open, setOpen] = useState(false);
   const [friendId, setFriendId] = useState("");
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleAdd() {
     if (!friendId || pending) return;
     setPending(true);
+    setError(null);
     try {
-      await addTripMember(tripId, friendId);
+      const result = await addTripMember(tripId, friendId);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       setFriendId("");
       router.refresh();
+    } catch {
+      setError("Не удалось добавить — попробуйте ещё раз");
     } finally {
       setPending(false);
     }
@@ -74,7 +82,10 @@ export default function TripMembersButton({
               {isOwner && (
                 <ConfirmForm
                   action={async () => {
-                    await removeTripMember(tripId, m.id);
+                    // Ошибку возвращаем ConfirmForm — она покажет её в
+                    // модалке подтверждения ({ error } из результата).
+                    const result = await removeTripMember(tripId, m.id);
+                    if (!result.ok) return result;
                     router.refresh();
                   }}
                   confirmMessage={
@@ -97,28 +108,31 @@ export default function TripMembersButton({
 
           {isOwner ? (
             availableFriends.length > 0 ? (
-              <div className="d-flex gap-2 mt-2">
-                <select
-                  className="form-select"
-                  value={friendId}
-                  onChange={(e) => setFriendId(e.target.value)}
-                >
-                  <option value="">Добавить друга…</option>
-                  {availableFriends.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name ?? "Без имени"}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-primary flex-shrink-0"
-                  disabled={!friendId || pending}
-                  onClick={handleAdd}
-                >
-                  Добавить
-                </button>
-              </div>
+              <>
+                <div className="d-flex gap-2 mt-2">
+                  <select
+                    className="form-select"
+                    value={friendId}
+                    onChange={(e) => setFriendId(e.target.value)}
+                  >
+                    <option value="">Добавить друга…</option>
+                    {availableFriends.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name ?? "Без имени"}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-primary flex-shrink-0"
+                    disabled={!friendId || pending}
+                    onClick={handleAdd}
+                  >
+                    Добавить
+                  </button>
+                </div>
+                {error && <p className="small text-danger mb-0">{error}</p>}
+              </>
             ) : (
               <p className="small text-secondary mt-2 mb-0">
                 Добавлять в поездку можно друзей — все друзья уже здесь или их

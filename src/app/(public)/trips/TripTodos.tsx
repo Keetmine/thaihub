@@ -50,13 +50,21 @@ export function TodoRow({
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  // Ошибки: rowError — у строки (чекбокс/удаление), editError — в модалке.
+  const [rowError, setRowError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const canEdit = todo.canEdit;
 
   async function toggle() {
     if (!canEdit || pending) return;
     setPending(true);
+    setRowError(null);
     try {
-      await toggleTripTodo(todo.id);
+      const result = await toggleTripTodo(todo.id);
+      if (!result.ok) {
+        setRowError(result.error);
+        return;
+      }
       router.refresh();
     } finally {
       setPending(false);
@@ -102,6 +110,7 @@ export function TodoRow({
           <span className="small text-secondary ms-2">{todo.author}</span>
         )}
       </span>
+      {rowError && <span className="small text-danger flex-shrink-0">{rowError}</span>}
       {timeLabel && <span className="small text-secondary flex-shrink-0">{timeLabel}</span>}
       {!showDate && todo.date && (
         <span className="small text-secondary flex-shrink-0">{fmtDate(todo.date)}</span>
@@ -118,7 +127,10 @@ export function TodoRow({
           </button>
           <ConfirmForm
             action={async () => {
-              await deleteTripTodo(todo.id);
+              // Ошибку возвращаем ConfirmForm — она покажет её в модалке
+              // подтверждения ({ error } из результата).
+              const result = await deleteTripTodo(todo.id);
+              if (!result.ok) return result;
               router.refresh();
             }}
             confirmMessage="Удалить дело?"
@@ -130,10 +142,22 @@ export function TodoRow({
         </div>
       )}
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Редактировать дело">
+      <Modal
+        open={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditError(null);
+        }}
+        title="Редактировать дело"
+      >
         <form
           action={async (fd) => {
-            await updateTripTodo(todo.id, fd);
+            setEditError(null);
+            const result = await updateTripTodo(todo.id, fd);
+            if (!result.ok) {
+              setEditError(result.error);
+              return;
+            }
             setEditOpen(false);
             router.refresh();
           }}
@@ -191,6 +215,7 @@ export function TodoRow({
               {todo.isPrivate && <input type="hidden" name="isPrivate" value="on" />}
             </>
           )}
+          {editError && <p className="small text-danger mb-0">{editError}</p>}
           <button type="submit" className="btn btn-primary">
             Сохранить
           </button>
@@ -217,6 +242,7 @@ export default function TripTodos({
   // Ключ формы: после добавления форму ремоунтим, иначе DatePickerInput
   // удерживает прошлую дату и следующее дело получает её молча.
   const [formKey, setFormKey] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const sorted = [...todos].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
@@ -232,7 +258,12 @@ export default function TripTodos({
         <form
           key={formKey}
           action={async (fd) => {
-            await createTripTodo(tripId, fd);
+            setError(null);
+            const result = await createTripTodo(tripId, fd);
+            if (!result.ok) {
+              setError(result.error);
+              return;
+            }
             setFormKey((k) => k + 1);
             router.refresh();
           }}
@@ -276,6 +307,7 @@ export default function TripTodos({
           <button type="submit" className="btn btn-primary">
             Добавить
           </button>
+          {error && <p className="small text-danger w-100 mb-0">{error}</p>}
         </form>
       )}
 

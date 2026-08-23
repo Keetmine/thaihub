@@ -18,59 +18,85 @@ export function AttachListSelect({
   tripId: string;
   availableLists: { id: string; title: string }[];
 }) {
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   if (availableLists.length === 0) return null;
   return (
-    <select
-      className="form-select form-select-sm w-auto"
-      disabled={isPending}
-      value=""
-      aria-label="Прикрепить список"
-      onChange={(e) => {
-        const listId = e.target.value;
-        if (!listId) return;
-        startTransition(async () => {
-          await attachListToTrip(tripId, listId);
-        });
-      }}
-    >
-      <option value="">+ Прикрепить список…</option>
-      {availableLists.map((l) => (
-        <option key={l.id} value={l.id}>
-          {l.title}
-        </option>
-      ))}
-    </select>
+    <>
+      <select
+        className="form-select form-select-sm w-auto"
+        disabled={isPending}
+        value=""
+        aria-label="Прикрепить список"
+        onChange={(e) => {
+          const listId = e.target.value;
+          if (!listId) return;
+          setError(null);
+          startTransition(async () => {
+            const result = await attachListToTrip(tripId, listId);
+            if (!result.ok) setError(result.error);
+          });
+        }}
+      >
+        <option value="">+ Прикрепить список…</option>
+        {availableLists.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.title}
+          </option>
+        ))}
+      </select>
+      {error && <span className="small text-danger">{error}</span>}
+    </>
   );
 }
 
 export function DetachListButton({ tripId, listId }: { tripId: string; listId: string }) {
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   return (
-    <button
-      type="button"
-      className="btn btn-ghost btn-sm text-danger"
-      disabled={isPending}
-      onClick={() => startTransition(async () => detachListFromTrip(tripId, listId))}
-    >
-      Открепить
-    </button>
+    <>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm text-danger"
+        disabled={isPending}
+        onClick={() => {
+          setError(null);
+          startTransition(async () => {
+            const result = await detachListFromTrip(tripId, listId);
+            if (!result.ok) setError(result.error);
+          });
+        }}
+      >
+        Открепить
+      </button>
+      {error && <span className="small text-danger">{error}</span>}
+    </>
   );
 }
 
 export function RemoveTripPlaceButton({ tripId, locationId }: { tripId: string; locationId: string }) {
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   return (
-    <button
-      type="button"
-      className="icon-btn icon-btn-danger flex-shrink-0"
-      aria-label="Убрать место"
-      title="Убрать место"
-      disabled={isPending}
-      onClick={() => startTransition(async () => removePlaceFromTrip(tripId, locationId))}
-    >
-      ×
-    </button>
+    <>
+      <button
+        type="button"
+        className="icon-btn icon-btn-danger flex-shrink-0"
+        aria-label="Убрать место"
+        title="Убрать место"
+        disabled={isPending}
+        onClick={() => {
+          setError(null);
+          startTransition(async () => {
+            const result = await removePlaceFromTrip(tripId, locationId);
+            if (!result.ok) setError(result.error);
+          });
+        }}
+      >
+        ×
+      </button>
+      {error && <span className="small text-danger">{error}</span>}
+    </>
   );
 }
 
@@ -79,6 +105,7 @@ export function AddTripPlaceBox({ tripId }: { tripId: string }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seqRef = useRef(0);
@@ -121,7 +148,11 @@ export function AddTripPlaceBox({ tripId }: { tripId: string }) {
               onClick={() => {
                 setQuery("");
                 setResults([]);
-                startTransition(async () => addPlaceToTrip(tripId, l.id));
+                setError(null);
+                startTransition(async () => {
+                  const result = await addPlaceToTrip(tripId, l.id);
+                  if (!result.ok) setError(result.error);
+                });
               }}
             >
               {l.name}
@@ -129,6 +160,7 @@ export function AddTripPlaceBox({ tripId }: { tripId: string }) {
           ))}
         </div>
       )}
+      {error && <p className="small text-danger mt-1 mb-0">{error}</p>}
     </div>
   );
 }

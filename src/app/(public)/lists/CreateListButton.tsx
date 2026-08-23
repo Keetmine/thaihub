@@ -7,6 +7,23 @@ import { VisibilityRadios } from "@/app/(public)/trips/TripVisibilityControls";
 
 export default function CreateListButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(formData: FormData) {
+    setIsSaving(true);
+    setError(null);
+    try {
+      // При успехе экшен уводит redirect'ом на страницу списка — сюда
+      // возвращается только ошибка валидации.
+      const result = await createPlaceList(formData);
+      if (result) setError(result.error);
+    } catch {
+      setError("Не удалось создать список — попробуйте ещё раз");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <>
@@ -14,8 +31,15 @@ export default function CreateListButton() {
         + Создать список
       </button>
 
-      <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Новый список мест">
-        <form action={createPlaceList} className="d-flex flex-column gap-3">
+      <Modal
+        open={isOpen}
+        onClose={() => {
+          setIsOpen(false);
+          setError(null);
+        }}
+        title="Новый список мест"
+      >
+        <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
             <label className="form-label small text-secondary">Название</label>
             <input
@@ -32,8 +56,9 @@ export default function CreateListButton() {
             <textarea name="description" rows={2} className="form-control" />
           </div>
           <VisibilityRadios />
-          <button type="submit" className="btn btn-primary">
-            Создать
+          {error && <p className="small text-danger mb-0">{error}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isSaving}>
+            {isSaving ? "Создаём…" : "Создать"}
           </button>
         </form>
       </Modal>

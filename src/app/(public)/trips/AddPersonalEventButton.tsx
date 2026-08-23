@@ -13,11 +13,25 @@ export default function AddPersonalEventButton({
   showShareToggle?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const boundCreate = createTripPersonalEvent.bind(null, tripId);
 
   async function handleCreate(formData: FormData) {
-    await boundCreate(formData);
-    setIsOpen(false);
+    setIsSaving(true);
+    setError(null);
+    try {
+      const result = await boundCreate(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setIsOpen(false);
+    } catch {
+      setError("Не удалось добавить событие — попробуйте ещё раз");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -26,11 +40,19 @@ export default function AddPersonalEventButton({
         + Личное событие
       </button>
 
-      <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Личное событие">
+      <Modal
+        open={isOpen}
+        onClose={() => {
+          setIsOpen(false);
+          setError(null);
+        }}
+        title="Личное событие"
+      >
         <form action={handleCreate} className="d-flex flex-column gap-3">
           <PersonalEventFields showShareToggle={showShareToggle} />
-          <button type="submit" className="btn btn-primary">
-            Добавить
+          {error && <p className="small text-danger mb-0">{error}</p>}
+          <button type="submit" className="btn btn-primary" disabled={isSaving}>
+            {isSaving ? "Добавляем…" : "Добавить"}
           </button>
         </form>
       </Modal>
