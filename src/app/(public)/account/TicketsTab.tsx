@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import { eventHref } from "@/lib/eventSlug";
 import { formatShortDate } from "@/lib/dates";
 
@@ -17,10 +18,12 @@ export type TicketRow = {
 export default function TicketsTab({ tickets }: { tickets: TicketRow[] }) {
   if (tickets.length === 0) {
     return (
-      <p className="text-secondary">
-        Загруженных билетов нет. Прикрепить файл можно на странице события —
-        там, где отмечаете «иду».
-      </p>
+      <EmptyState
+        emoji="🎫"
+        title="Загруженных билетов пока нет"
+        hint="Прикрепите файл на странице события — там же, где отмечаете «иду», — и он будет ждать вас здесь."
+        compact
+      />
     );
   }
 

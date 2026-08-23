@@ -6,6 +6,7 @@ import { logout } from "../login/actions";
 import { formatShortDate } from "@/lib/dates";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
 import ProfileOverview from "./ProfileOverview";
+import EmptyState from "@/components/EmptyState";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import type { EventWithPerformers } from "@/lib/types";
 import TicketsTab, { type TicketRow } from "./TicketsTab";
@@ -258,12 +259,17 @@ export default function AccountTabs({
           </>
         )}
 
-        {upcomingAttendances.length === 0 &&
+        {!eventsLocked &&
+          upcomingAttendances.length === 0 &&
           pastAttendances.length === 0 &&
           favoriteEvents.length === 0 && (
-            <p className="small text-secondary">
-              Пока пусто: отмечайте «иду» на событиях и добавляйте их в избранное — они появятся здесь.
-            </p>
+            <EmptyState
+              emoji="🎫"
+              title="Пока пусто"
+              hint="Отмечайте «иду» на событиях и добавляйте их в избранное — они появятся здесь."
+              cta={{ href: "/events", label: "Посмотреть афишу" }}
+              compact
+            />
           )}
       </div>
 

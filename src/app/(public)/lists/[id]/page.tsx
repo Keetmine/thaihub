@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import ReportButton from "@/components/ReportButton";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -115,9 +116,16 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
       )}
 
       {list.items.length === 0 ? (
-        <p className="text-secondary">
-          Список пуст — найдите локацию через поиск выше и добавьте её.
-        </p>
+        <EmptyState
+          emoji="📍"
+          title="В списке пока нет мест"
+          hint={
+            isOwner
+              ? "Найдите локацию через поиск выше и добавьте её — или создайте свою."
+              : "Владелец ещё не добавил сюда места."
+          }
+          compact
+        />
       ) : (
         <div className="d-flex flex-column gap-2 scroll-list thin-scroll">
           {list.items.map((i) => (

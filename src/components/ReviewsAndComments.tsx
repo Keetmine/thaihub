@@ -315,7 +315,9 @@ export default async function ReviewsAndComments({
         )}
 
         {comments.length === 0 ? (
-          <p className="small text-secondary mb-0">Пока нет комментариев.</p>
+          <p className="small text-secondary mb-0">
+            Пока нет комментариев — начните обсуждение.
+          </p>
         ) : (
           <div className="d-flex flex-column gap-3">
             {comments.map((c) => (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -119,9 +120,16 @@ export default async function ArtistListPage({
       )}
 
       {list.items.length === 0 ? (
-        <p className="text-secondary">
-          {isOwner ? "Добавьте первого актёра через поиск выше." : "Список пуст."}
-        </p>
+        <EmptyState
+          emoji="👥"
+          title="В списке пока никого"
+          hint={
+            isOwner
+              ? "Добавьте первого актёра через поиск выше."
+              : "Владелец ещё не добавил сюда актёров."
+          }
+          compact
+        />
       ) : (
         <div className="d-flex flex-wrap gap-2 scroll-list-lg thin-scroll">
           {list.items.map((i) => (

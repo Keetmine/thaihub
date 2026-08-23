@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import VisitedButton from "@/components/VisitedButton";
 
 export type DramaGroup = {
@@ -53,7 +54,14 @@ export default function DramaLocationGroups({
   }, [visible, groups.length, batch]);
 
   if (groups.length === 0 && !trailing?.length) {
-    return <p className="text-secondary">Пока нет локаций.</p>;
+    return (
+      <EmptyState
+        emoji="📍"
+        title="Локаций пока нет"
+        hint="Мы добавляем места съёмок постепенно — загляните позже."
+        compact
+      />
+    );
   }
 
   const letterOf = (title: string) => {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmForm from "@/components/ConfirmForm";
+import EmptyState from "@/components/EmptyState";
 import FileDropzone from "@/components/FileDropzone";
 import DatePickerInput from "@/components/DatePickerInput";
 import { PencilIcon, TrashIcon } from "@/components/icons";
@@ -197,9 +198,12 @@ export default function TripHotels({
         )}
 
         {hotels.length === 0 && !adding && (
-          <p className="small text-secondary mb-0">
-            Добавьте бронь — файл, адрес и даты будут под рукой в день заселения.
-          </p>
+          <EmptyState
+            emoji="🏨"
+            title="Брони пока нет"
+            hint="Добавьте бронь — файл, адрес и даты будут под рукой в день заселения."
+            compact
+          />
         )}
       </div>
     </section>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { pageMetadata } from "@/lib/seo";
@@ -29,7 +30,12 @@ export default async function WikiIndexPage() {
       </p>
 
       {articles.length === 0 ? (
-        <p className="text-secondary">Статьи скоро появятся.</p>
+        <EmptyState
+          emoji="📚"
+          title="Статьи скоро появятся"
+          hint="Мы готовим гайды про билеты, поездки и фанмиты — загляните чуть позже."
+          compact
+        />
       ) : (
         <div className="d-flex flex-column gap-2">
           {articles.map((a) => (

@@ -103,7 +103,9 @@ export default function EventNoteSection({
           </span>
         </p>
       ) : friendNotes.length === 0 ? (
-        <p className="small text-secondary mb-0">Пока нет заметок.</p>
+        <p className="small text-secondary mb-0">
+          Пока нет заметок — добавьте первую: что взять, где встречаемся.
+        </p>
       ) : null}
 
       {friendNotes.length > 0 && (

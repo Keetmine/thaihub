@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { pageMetadata } from "@/lib/seo";
+import EmptyState from "@/components/EmptyState";
 import LetterAvatar from "@/components/LetterAvatar";
 import Pagination from "@/components/Pagination";
 import { markAllNotificationsRead } from "./actions";
@@ -75,10 +76,12 @@ export default async function NotificationsPage({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-secondary">
-          Пока пусто. Здесь появятся приглашения в поездки, заявки в друзья и
-          ответы на ваши комментарии.
-        </p>
+        <EmptyState
+          emoji="🔔"
+          title="Пока пусто"
+          hint="Здесь появятся приглашения в поездки, заявки в друзья и ответы на ваши комментарии."
+          compact
+        />
       ) : (
         <div className="d-flex flex-column gap-2">
           {items.map((n) => {

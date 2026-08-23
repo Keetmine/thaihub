@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import EmptyState from "@/components/EmptyState";
 import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -279,9 +280,16 @@ export default function TripTodos({
       )}
 
       {sorted.length === 0 ? (
-        <p className="text-secondary">
-          {canAdd ? "Пока пусто — добавьте первое дело." : "Список дел пуст."}
-        </p>
+        <EmptyState
+          emoji="📝"
+          title="Дел пока нет"
+          hint={
+            canAdd
+              ? "Добавьте первое в форме выше — купить билеты, обменять деньги, собрать мерч."
+              : "Участники пока ничего не добавили."
+          }
+          compact
+        />
       ) : (
         <div className="d-flex flex-column gap-2">
           {sorted.map((t) => (

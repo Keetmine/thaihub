@@ -7,6 +7,7 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { deleteTrip } from "../actions";
+import EmptyState from "@/components/EmptyState";
 import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
@@ -400,7 +401,12 @@ export default async function TripPage({
           const isEmpty =
             tripLists.length === 0 && tripPlaces.length === 0;
           return isEmpty && !isParticipant ? (
-          <p className="text-secondary">Пока здесь пусто.</p>
+          <EmptyState
+            emoji="📍"
+            title="Пока здесь пусто"
+            hint="Участники ещё не добавили места в эту поездку."
+            compact
+          />
         ) : (
           <>
             {canContribute && (
@@ -463,23 +469,29 @@ export default async function TripPage({
             )}
 
             {isEmpty && isParticipant && (
-              <p className="text-secondary">
-                Прикрепите список мест, добавьте отдельные места или отметьте
-                статус просмотра на страницах дорам — здесь соберётся, что
-                посетить в поездке.
-              </p>
+              <EmptyState
+                emoji="📍"
+                title="Мест пока нет"
+                hint="Прикрепите список мест, добавьте отдельные места или отметьте статус просмотра на страницах дорам — здесь соберётся, что посетить в поездке."
+                compact
+              />
             )}
           </>
         );
         })()
       ) : timeline.length === 0 ? (
-        <p className="text-secondary">
-          {showAll
-            ? "В даты этой поездки не попадает ни одно событие."
-            : isParticipant
-              ? "В плане пока пусто: отметьте «я иду» на событиях (вкладка «Все события дат») или добавьте личное — перелёт, бронь, встречу."
-              : "В плане этой поездки пока пусто."}
-        </p>
+        <EmptyState
+          emoji="✈️"
+          title={showAll ? "В эти даты событий нет" : "В плане пока пусто"}
+          hint={
+            showAll
+              ? "В даты этой поездки не попадает ни одно событие из афиши."
+              : isParticipant
+                ? "Отметьте «я иду» на событиях (вкладка «Все события дат») или добавьте личное — перелёт, бронь, встречу."
+                : "Участники ещё ничего не добавили в план."
+          }
+          compact
+        />
       ) : (
         <div className="d-flex flex-column gap-3">
           {timeline.map((item) =>

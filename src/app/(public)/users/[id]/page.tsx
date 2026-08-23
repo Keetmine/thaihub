@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import ReportButton from "@/components/ReportButton";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -245,7 +246,14 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           доступны по подписке.
         </p>
       ) : upcomingGoing.length === 0 ? (
-        <p className="small text-secondary mb-4">Пока никуда не собирается.</p>
+        <div className="mb-4">
+          <EmptyState
+            emoji="🎫"
+            title="Пока никуда не собирается"
+            hint={`Когда ${displayName} отметит «иду», события появятся здесь.`}
+            compact
+          />
+        </div>
       ) : (
         <div className="d-flex flex-column gap-2 mb-4 scroll-list thin-scroll">
           {upcomingGoing.map((event) => {
