@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     );
     await sendTelegramMessage(
       String(chatId),
-      "Спасибо, передал(а) сообщение — вам ответят здесь же или на сайте. " +
+      "Спасибо! Сообщение у нас — ответим здесь же или на сайте. " +
         `Если вопрос про подписку, можно сразу написать напрямую: ${APP_URL}/help`,
     ).catch(() => {});
     return NextResponse.json({ ok: true });
