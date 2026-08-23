@@ -11,8 +11,35 @@ import { performerHref } from "@/lib/performerSlug";
 import AddPerformerBox from "../AddPerformerBox";
 import ArtistListControls from "./ArtistListControls";
 import { removePerformerFromList, deletePerformerList } from "../actions";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: rawId } = await params;
+  const list = await prisma.performerList.findFirst({
+    where: slugOrIdWhere(rawId),
+    select: { title: true, description: true },
+  });
+  if (!list)
+    return pageMetadata({
+      title: "Список актёров",
+      description: "Список не найден.",
+      noIndex: true,
+    });
+  return pageMetadata({
+    title: list.title,
+    description:
+      list.description?.slice(0, 160) ??
+      `«${list.title}» — пользовательский список актёров на MyBLHub.`,
+    path: `/artist-lists/${rawId}`,
+    noIndex: true,
+  });
+}
 
 export default async function ArtistListPage({
   params,
