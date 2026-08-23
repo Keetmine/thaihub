@@ -232,10 +232,47 @@ export default async function EventDetailPage({
       a.performer.name.localeCompare(b.performer.name),
   );
 
+  // Полный состав одним списком: артисты события + участники их групп
+  // (без дублей), по популярности — участники группы подписаны её именем.
+  const directIds = new Set(event.performers.map((ep) => ep.performer.id));
+  const seenBandMembers = new Set<string>();
+  const castCards = [
+    ...performersSorted.map(({ performer }) => ({
+      id: performer.id,
+      href: performerHref(performer),
+      photoUrl: performer.photoUrl,
+      name: performer.name,
+      subtitle: null as string | null,
+    })),
+    ...performersSorted.flatMap(({ performer }) =>
+      [...performer.bandMembers]
+        .sort(
+          (a, b) =>
+            b.performer._count.events - a.performer._count.events ||
+            a.performer.name.localeCompare(b.performer.name),
+        )
+        .filter((bm) => {
+          if (directIds.has(bm.performer.id) || seenBandMembers.has(bm.performer.id)) return false;
+          seenBandMembers.add(bm.performer.id);
+          return true;
+        })
+        .map((bm) => ({
+          id: bm.performer.id,
+          href: performerHref(bm.performer),
+          photoUrl: bm.performer.photoUrl,
+          name: bm.performer.name,
+          subtitle: performer.name as string | null,
+        })),
+    ),
+  ];
+  // Обычный концерт (до 12 человек) — состав капсулами прямо в карточке
+  // дат, как в первой версии страницы: всё важное в один экран. Большой
+  // фестивальный состав — отдельной секцией сеткой со свёрткой.
+  const castInCard = castCards.length > 0 && castCards.length <= 12;
+  const hasLineupSection = !castInCard && castCards.length > 0;
+
   // Э2ф: якорные чипы под hero — только на существующие секции и только
   // если их набралось хотя бы три (иначе ряд не помогает навигации).
-  const hasLineupSection =
-    event.performers.length > 0 || event.pairings.length > 0;
   const anchors = [
     ...(hasLineupSection ? [{ href: "#lineup", label: "Состав" }] : []),
     ...(event.description
@@ -374,6 +411,32 @@ export default async function EventDetailPage({
                 </Link>
               </p>
             )}
+            {castInCard && (
+              <div className="mt-3">
+                <p
+                  className="small text-secondary text-uppercase mb-2"
+                  style={{ letterSpacing: "0.08em" }}
+                >
+                  <UsersIcon className="icon-inline" /> Кто выступает
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  {castCards.map((c) => (
+                    <EntityMiniCard
+                      key={c.id}
+                      href={c.href}
+                      photoUrl={c.photoUrl}
+                      name={c.name}
+                      subtitle={c.subtitle ?? undefined}
+                    />
+                  ))}
+                  {event.pairings.map(({ pairing }) => (
+                    <span key={pairing.id} className="event-chip align-self-center">
+                      {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
       </div>
 
@@ -396,58 +459,25 @@ export default async function EventDetailPage({
         </div>
       )}
 
-      {/* Кто выступает — адаптивной каст-сеткой (Э2ф): раньше блок жил
-          внутри карточки дат и раздувал её; фестивальные составы в
-          15–30 имён складываются за «Показать всех». Пейринги остаются
-          чипами под сеткой. */}
+      {/* Большой (фестивальный) состав — отдельной секцией сеткой со
+          свёрткой; компактный живёт капсулами в карточке дат выше. */}
       {hasLineupSection && (
         <div id="lineup" className="anchor-target surface p-4 mb-3">
           <h2 className="section-heading mb-3">
             <UsersIcon className="icon-inline" /> Кто выступает
           </h2>
-          {event.performers.length > 0 && (
-            <CastGrid compact>
-              {performersSorted.map(({ performer }) => (
-                <EntityMiniCard
-                  key={performer.id}
-                  variant="grid"
-                  href={performerHref(performer)}
-                  photoUrl={performer.photoUrl}
-                  name={performer.name}
-                />
-              ))}
-              {(() => {
-                // Участники выступающих групп — сразу в общий список,
-                // без дублей с напрямую привязанными артистами; внутри
-                // группы — тоже по популярности.
-                const directIds = new Set(event.performers.map((ep) => ep.performer.id));
-                const seen = new Set<string>();
-                return performersSorted.flatMap(({ performer }) =>
-                  [...performer.bandMembers]
-                    .sort(
-                      (a, b) =>
-                        b.performer._count.events - a.performer._count.events ||
-                        a.performer.name.localeCompare(b.performer.name),
-                    )
-                    .filter((bm) => {
-                      if (directIds.has(bm.performer.id) || seen.has(bm.performer.id)) return false;
-                      seen.add(bm.performer.id);
-                      return true;
-                    })
-                    .map((bm) => (
-                      <EntityMiniCard
-                        key={`bm-${bm.performer.id}`}
-                        variant="grid"
-                        href={performerHref(bm.performer)}
-                        photoUrl={bm.performer.photoUrl}
-                        name={bm.performer.name}
-                        subtitle={performer.name}
-                      />
-                    )),
-                );
-              })()}
-            </CastGrid>
-          )}
+          <CastGrid compact>
+            {castCards.map((c) => (
+              <EntityMiniCard
+                key={c.id}
+                variant="grid"
+                href={c.href}
+                photoUrl={c.photoUrl}
+                name={c.name}
+                subtitle={c.subtitle ?? undefined}
+              />
+            ))}
+          </CastGrid>
           {event.pairings.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-3">
               {event.pairings.map(({ pairing }) => (
