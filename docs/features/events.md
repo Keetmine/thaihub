@@ -180,7 +180,10 @@ accepted friends is also going — see
 baht"`), not a structured number — sources like ThaiTicketMajor list
 several seating tiers as one string, and there's no need to model that as
 anything richer than what gets displayed. Editable in `EventForm.tsx`,
-shown on the public event page under the time/venue block when set.
+shown on the public event page under the time/venue block when set, and
+as a hero chip: short strings verbatim, long tier lists (>30 chars with
+2+ numbers) compacted to «от {min} {unit}» (full list stays in the info
+card).
 
 ## Poster
 
@@ -188,8 +191,14 @@ shown on the public event page under the time/venue block when set.
 `/api/upload`; a scraped source's own image URL is stored as-is, same
 convention as `Drama.posterUrl` for blscene imports). Editable via
 `FileDropzone` in `EventForm.tsx` (drag-and-drop upload, or it just keeps
-whatever URL it was pre-filled with if the admin never touches it), shown
-as a banner image at the top of the public event page when set.
+whatever URL it was pre-filled with if the admin never touches it). The
+public event page header is a `DetailHero` (see `docs/design-system.md`):
+the poster as photo card + blurred backdrop, venue as subtitle, chips for
+the nearest (or, for past events, first) date via `formatShortDate`,
+«дат: N» for multi-day events and the ticket price, with the favorite
+heart and the ICS calendar button as hero actions. The presale «Билеты»
+button, which used to live under the poster column, now always renders
+in the presale block of the info card.
 
 ## Thai time always has a Moscow equivalent available
 

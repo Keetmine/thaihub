@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SourcesBlock from "@/components/SourcesBlock";
 import BackLink from "@/components/BackLink";
+import DetailHero from "@/components/DetailHero";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -105,9 +106,32 @@ export default async function AgencyDetailPage({
     <div>
       <BackLink fallbackHref="/artists?view=agencies" fallbackLabel="← Все агентства" />
 
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
-        <div className="d-flex flex-wrap align-items-center gap-4">
-          {agency.logoUrl ? (
+      {/* Иммерсивный hero (Э2) вместо плоской шапки. Без photoUrl —
+          осознанно: квадратное лого в карточке 3/4 обрезается по бокам
+          (проверено на GMMTV: «GMM» превращается в «MM»), поэтому hero
+          рисует тёплый градиент, а лого остаётся кружком в контенте. */}
+      <div className="mt-3">
+        <DetailHero
+          title={agency.name}
+          chips={
+            <>
+              {allPerformers.length > 0 && (
+                <span className="date-chip">артистов: {allPerformers.length}</span>
+              )}
+              {agency.dramas.length > 0 && (
+                <span className="date-chip">дорам: {agency.dramas.length}</span>
+              )}
+            </>
+          }
+          actions={
+            <FavoriteButton kind="agency" id={agency.id} isFavorited={isFavorited} variant="icon" />
+          }
+        />
+      </div>
+
+      {(agency.logoUrl || agency.description) && (
+        <div className="d-flex align-items-start gap-4 mb-4">
+          {agency.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               loading="lazy"
@@ -115,33 +139,15 @@ export default async function AgencyDetailPage({
               src={agency.logoUrl}
               alt={agency.name}
               className="rounded-circle flex-shrink-0"
-              style={{ width: "6rem", height: "6rem", objectFit: "cover" }}
+              style={{ width: "5rem", height: "5rem", objectFit: "cover" }}
             />
-          ) : (
-            <div
-              className="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center fs-2 fw-semibold"
-              style={{
-                width: "6rem",
-                height: "6rem",
-                background: "var(--bs-secondary-bg)",
-                color: "var(--bs-secondary-color)",
-                opacity: 0.7,
-              }}
-            >
-              {agency.name.charAt(0).toUpperCase()}
-            </div>
           )}
-          <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-            {agency.name}
-          </h1>
+          {agency.description && (
+            <p className="text-secondary mb-0" style={{ maxWidth: "40rem" }}>
+              {agency.description}
+            </p>
+          )}
         </div>
-        <FavoriteButton kind="agency" id={agency.id} isFavorited={isFavorited} variant="icon" />
-      </div>
-
-      {agency.description && (
-        <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>
-          {agency.description}
-        </p>
       )}
 
       <div className="tab-bar-row">
@@ -151,14 +157,14 @@ export default async function AgencyDetailPage({
             prefetch={false}
             className={`tab-bar-item ${tab === "performers" ? "active" : ""}`}
           >
-            Исполнители ({allPerformers.length})
+            Артисты ({allPerformers.length})
           </Link>
           <Link
             href={`${href}?tab=dramas${q ? `&q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
             className={`tab-bar-item ${tab === "dramas" ? "active" : ""}`}
           >
-            Сериалы ({agency.dramas.length})
+            Дорамы ({agency.dramas.length})
           </Link>
         </div>
         <NameSearchBox
@@ -173,7 +179,7 @@ export default async function AgencyDetailPage({
       {tab === "performers" ? (
         performers.length === 0 ? (
           <p className="small text-secondary mb-4">
-            {q ? "Никого не нашлось." : "Пока нет исполнителей."}
+            {q ? "Никого не нашлось." : "Пока нет артистов."}
           </p>
         ) : (
           // Компактная сетка карточек (как постеры сериалов на странице

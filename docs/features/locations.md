@@ -44,6 +44,19 @@ heading (via a `where` on the `DramaLocation` `include`, not a separate
 query) and drops any drama left with zero matching locations, rather
 than showing an empty heading.
 
+## Detail page
+
+The `[id]` page header is a `DetailHero` (see
+`docs/design-system.md`): the location photo as card + blurred backdrop,
+chips for the category (emoji + label from `src/lib/locationCategories.ts`,
+when set) and «дорам снималось: N», with `description` as the subtitle —
+for catalog locations that field holds the district/city (≤100 chars),
+not prose. Hero actions: the visited button («была здесь») and, when the
+user has place lists, an `AddToListButton` wired to `addPlaceToList`
+(the button is hidden for users with zero lists — its empty state is
+worded for performer lists). Filming dramas render below under the
+«Дорамы» heading.
+
 ## What links to a Location
 
 - **`Drama`** via `DramaLocation` — many-to-many; the same real place is

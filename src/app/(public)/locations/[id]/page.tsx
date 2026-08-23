@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { locationHref } from "@/lib/slugHelpers";
 import BackLink from "@/components/BackLink";
+import DetailHero from "@/components/DetailHero";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import VisitedButton from "@/components/VisitedButton";
+import AddToListButton from "@/components/AddToListButton";
+import { addPlaceToList } from "@/app/(public)/lists/actions";
 import LocationMap from "@/components/LocationMapLoader";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -106,6 +109,22 @@ export default async function LocationDetailPage({
     });
     isVisited = !!visit;
   }
+  // Списки мест пользователя для «+ в список» рядом с «была здесь».
+  // Кнопку показываем только при наличии списков: пустое состояние
+  // AddToListButton написано про списки актёров.
+  const myPlaceLists = currentUser
+    ? (
+        await prisma.placeList.findMany({
+          where: { userId: currentUser.id },
+          select: {
+            id: true,
+            title: true,
+            items: { where: { locationId: id }, select: { locationId: true }, take: 1 },
+          },
+          orderBy: { title: "asc" },
+        })
+      ).map((l) => ({ id: l.id, title: l.title, hasPerformer: l.items.length > 0 }))
+    : [];
 
   const locationEventsRows = groupByEvent(
     location.events
@@ -130,46 +149,49 @@ export default async function LocationDetailPage({
   return (
     <div>
       <BackLink fallbackHref="/locations" fallbackLabel="← Все локации" />
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
-        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-          {location.name}
-        </h1>
-        <VisitedButton locationId={location.id} isVisited={isVisited} />
+      {/* Иммерсивный hero (Э2): фото места и чипы вместо плоской шапки с
+          фото-колонкой. Категория переехала из бейджа в чип; description
+          (у каталожных локаций это район/город, ≤100 символов) — из
+          абзаца в подзаголовок. */}
+      <div className="mt-3">
+        <DetailHero
+          photoUrl={location.photoUrl}
+          photoAlt={location.name}
+          title={location.name}
+          subtitle={location.description}
+          chips={
+            <>
+              {location.category && (
+                <span className="date-chip">
+                  {categoryEmoji(location.category)}{" "}
+                  {categoryLabel(location.category)}
+                </span>
+              )}
+              {location.dramas.length > 0 && (
+                <span className="date-chip">
+                  дорам снималось: {location.dramas.length}
+                </span>
+              )}
+            </>
+          }
+          actions={
+            <>
+              <VisitedButton locationId={location.id} isVisited={isVisited} />
+              {myPlaceLists.length > 0 && (
+                <AddToListButton
+                  lists={myPlaceLists}
+                  onAdd={async (listId: string) => {
+                    "use server";
+                    await addPlaceToList(listId, location.id);
+                  }}
+                />
+              )}
+            </>
+          }
+        />
       </div>
 
-      <div className="row g-4">
-        {location.photoUrl && (
-          <div className="col-12 col-sm-4 col-md-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              loading="lazy"
-              decoding="async"
-              src={location.photoUrl}
-              alt={location.name}
-              className="surface"
-              style={{
-                width: "100%",
-                aspectRatio: "1 / 1",
-                objectFit: "cover",
-              }}
-            />
-          </div>
-        )}
-
-        <div
-          className={location.photoUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}
-        >
-          {location.category && (
-            <p className="mb-2">
-              <span className="badge rounded-pill text-bg-secondary">
-                {categoryEmoji(location.category)} {categoryLabel(location.category)}
-              </span>
-            </p>
-          )}
-          {location.description && (
-            <p className="text-secondary mb-4">{location.description}</p>
-          )}
-
+      <div>
           {/* Ссылки заведения: инстаграм, сайт, канал. */}
           {location.links.length > 0 && (
             <p className="d-flex flex-wrap gap-2 mb-4">
@@ -190,7 +212,7 @@ export default async function LocationDetailPage({
           {/* Раздел без содержимого не рисуем вовсе. */}
           {location.dramas.length > 0 && (
             <>
-              <h2 className="section-heading mb-2">Сериалы</h2>
+              <h2 className="section-heading mb-2">Дорамы</h2>
               <div className="d-flex flex-wrap gap-2">
                 {location.dramas.map(({ drama }) => (
                   <Link
@@ -343,7 +365,6 @@ export default async function LocationDetailPage({
               </p>
             </div>
           )}
-        </div>
       </div>
     </div>
   );

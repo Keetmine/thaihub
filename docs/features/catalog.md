@@ -237,7 +237,11 @@ comes from the Wikipedia agency importer, see
 
 `Agency` has its own roster and can also be the production/distribution
 agency on a `Drama` directly (independent of the cast's agencies). The
-public agency page shows its roster as a compact wrapped card grid
+public agency page header is a `DetailHero` without `photoUrl` (square
+logos crop badly in the 3/4 photo card) — warm-gradient hero with
+«артистов: N» / «дорам: N» chips and the favorite heart; the round logo
+sits in the content next to the description. The
+page shows its roster as a compact wrapped card grid
 (square photo, nickname, real name in parentheses, favorite heart
 overlaid) rather than full-width rows — rosters run to dozens of
 performers. An
