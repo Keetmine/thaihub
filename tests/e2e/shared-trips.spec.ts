@@ -11,7 +11,18 @@ async function login(page: Page, email: string, password: string) {
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForURL((u) => !u.pathname.includes("/login"));
+  // Демо-набор есть только в дев-базе — в одноразовой БД CI этих
+  // пользователей нет. Неудачный вход возвращает на /login с ошибкой:
+  // ждём либо уход со страницы, либо текст ошибки (а не таймаут), и в
+  // первом случае корректно скипаем тест вместо падения.
+  await Promise.race([
+    page.waitForURL((u) => !u.pathname.includes("/login")),
+    page.getByText("Неверный email или пароль").waitFor(),
+  ]);
+  test.skip(
+    new URL(page.url()).pathname.includes("/login"),
+    `демо-пользователя ${email} нет в этой БД — сценарии совместных поездок требуют демо-данных`,
+  );
 }
 
 test("участник не может править чужое дело без галочки", async ({ page }) => {

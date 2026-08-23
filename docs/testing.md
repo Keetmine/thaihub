@@ -12,11 +12,53 @@ npm run test:e2e          # in another
 ```
 
 `playwright.config.ts` points at `http://localhost:3001` by default
-(override with `BASE_URL`). **Deliberately does not use Playwright's
-`webServer` option to auto-start the app** — this project's Postgres data
-is the developer's real local database, not a disposable test DB, so
-starting a second server instance against it isn't something to do
-automatically.
+(override with `BASE_URL`). **Deliberately does not auto-start the app
+by default** — this project's Postgres data is the developer's real
+local database, not a disposable test DB, so starting a second server
+instance against it isn't something to do automatically. A `webServer`
+block exists in the config but only activates when `PW_WEB_SERVER=1` is
+set (that's what CI does); without the flag local behaviour is exactly
+as described above.
+
+## CI
+
+`.github/workflows/e2e.yml` runs the whole suite on every push to `main`
+and on pull requests (separate from `ci.yml`'s typecheck/lint/build and
+`deploy.yml`'s auto-deploy). It needs no repository secrets. The job:
+
+1. starts a disposable `postgres:16` service container
+   (`e2e`/`e2e`/`myblhub_e2e`, health-checked with `pg_isready`);
+2. `npm ci`, `prisma generate`, `prisma migrate deploy`, `npm run
+   db:seed` — the seed's future events give `favorites.spec.ts` and
+   `premium-gates.spec.ts` something to open;
+3. creates the test admin via `tests/e2e/create-admin-user.ts` (creds
+   are hardcoded in `helpers.ts` — `admin-e2e@test.local` /
+   `admin-e2e-password` — so no secret is involved; `loginAsAdmin`
+   would create it on its own anyway, the explicit step just fails fast
+   if the tsx/Prisma scripts break);
+4. `playwright install --with-deps chromium`, then `playwright test`
+   with `PW_WEB_SERVER=1` — Playwright itself builds the app and runs
+   `next start -p 3001` (prod build, not dev; `output: "standalone"`
+   only makes `next start` print a warning). `DATABASE_URL`, `APP_URL`
+   and `BASE_URL` are set at the job level and inherited by the server;
+5. on failure uploads `playwright-report/` (the config adds an HTML
+   reporter when `CI` is set) plus `test-results/` traces as an
+   artifact.
+
+Expected skips in CI — these are not failures:
+
+- `duplicate-warning.spec.ts` — the seed creates no dramas, so there is
+  no existing title to collide with;
+- `shared-trips.spec.ts` (all 3 tests) — the Аня/Маша demo users and
+  their trip only exist in the dev database; `login()` skips when the
+  credentials don't match instead of timing out;
+- `telegram-webhook.spec.ts`, the two "with the real secret" cases —
+  `TELEGRAM_WEBHOOK_SECRET` isn't set in CI. The 403 cases still run:
+  with no secret configured the webhook rejects everything.
+
+Optional env (`TELEGRAM_*`, `SMTP_*`, `SENTRY_*`, `GOOGLE_*`) is left
+unset on purpose — the code guards all of it, and without tokens the
+tests can't accidentally reach real external services.
 
 ## What's covered
 
