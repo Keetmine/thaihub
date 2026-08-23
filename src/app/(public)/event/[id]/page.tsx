@@ -211,16 +211,18 @@ export default async function EventDetailPage({
   );
 
   // Полный состав одним списком: артисты события + участники их групп
-  // (без дублей), по популярности — участники группы подписаны её именем.
+  // (без дублей), ЕДИНОЙ сортировкой по популярности — самые известные
+  // лица первыми независимо от того, пришли они напрямую или из группы.
   const directIds = new Set(event.performers.map((ep) => ep.performer.id));
   const seenBandMembers = new Set<string>();
-  const castCards = [
+  const castPool = [
     ...performersSorted.map(({ performer }) => ({
       id: performer.id,
       href: performerHref(performer),
       photoUrl: performer.photoUrl,
       name: performer.name,
       subtitle: null as string | null,
+      eventsCount: performer._count.events,
     })),
     ...performersSorted.flatMap(({ performer }) =>
       [...performer.bandMembers]
@@ -240,9 +242,13 @@ export default async function EventDetailPage({
           photoUrl: bm.performer.photoUrl,
           name: bm.performer.name,
           subtitle: performer.name as string | null,
+          eventsCount: bm.performer._count.events,
         })),
     ),
   ];
+  const castCards = [...castPool].sort(
+    (a, b) => b.eventsCount - a.eventsCount || a.name.localeCompare(b.name),
+  );
   // Обычный концерт (до 12 человек) — состав капсулами прямо в карточке
   // дат, как в первой версии страницы: всё важное в один экран. Большой
   // фестивальный состав — отдельной секцией сеткой со свёрткой.
