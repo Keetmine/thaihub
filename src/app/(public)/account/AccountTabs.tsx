@@ -41,6 +41,7 @@ export default function AccountTabs({
   stats,
   statsData,
   achievements,
+  achievementsTotal,
   tickets,
   artistLists,
   upcomingAttendances,
@@ -51,7 +52,10 @@ export default function AccountTabs({
   eventsLocked = false,
 }: {
   statsData: StatsForTab;
+  /** Только ПОЛУЧЕННЫЕ ачивки — неполученные в кабинет не передаются
+   *  вовсе («остальные пока секрет»), наружу виден лишь общий счётчик. */
   achievements: AchievementForTab[];
+  achievementsTotal: number;
   tickets: TicketRow[];
   initialTab: AccountTab;
   user: {
@@ -191,6 +195,7 @@ export default function AccountTabs({
         <StatsTab
           stats={statsData}
           achievements={achievements}
+          achievementsTotal={achievementsTotal}
           artistLists={artistLists}
           isPremium={user.isPremium}
         />

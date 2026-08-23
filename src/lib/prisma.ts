@@ -34,7 +34,15 @@ const globalForPrisma = globalThis as unknown as {
   prismaBase: PrismaClient | undefined;
 };
 
-const base = globalForPrisma.prismaBase ?? makeBase();
+// instanceof-проверка: после `prisma generate` (новая модель в схеме)
+// HMR пересобирает модуль с НОВЫМ классом PrismaClient, а закешированный
+// на globalThis экземпляр остаётся старым — без делегатов новых моделей
+// (prisma.<новаяМодель> === undefined до перезапуска dev-сервера).
+// Несовпадение класса означает «клиент перегенерирован» — создаём свежий.
+const base =
+  globalForPrisma.prismaBase instanceof PrismaClient
+    ? globalForPrisma.prismaBase
+    : makeBase();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prismaBase = base;
 
 async function uniqueCatalogSlug(

@@ -132,8 +132,11 @@ export default async function AccountPage({
 
   // Статистика и ачивки (Д1/Д2): считаются при открытии кабинета; новые
   // ачивки фиксируются и поздравляются ботом внутри syncAchievements.
+  // В кабинет уходят ТОЛЬКО полученные — неполученные остаются сюрпризом,
+  // наружу передаётся лишь общий счётчик включённых ачивок.
   const fullStats = await computeUserStats(user.id);
   const achievements = await syncAchievements(user.id, fullStats);
+  const unlockedAchievements = achievements.filter((a) => a.unlocked);
 
   return (
     <div>
@@ -186,15 +189,14 @@ export default async function AccountPage({
           eventsByYear: fullStats.eventsByYear,
         }}
         tickets={tickets}
-        achievements={achievements.map((a) => ({
+        achievements={unlockedAchievements.map((a) => ({
           key: a.key,
           emoji: a.emoji,
           title: a.title,
-          description: a.description,
-          unlocked: a.unlocked,
-          value: a.value,
-          target: a.target,
+          hint: a.hint,
+          unlockedAt: a.unlockedAt,
         }))}
+        achievementsTotal={achievements.length}
         upcomingAttendances={isPremiumActive(user) ? upcomingAttendances : []}
         pastAttendances={isPremiumActive(user) ? pastAttendances : []}
         favoriteEvents={isPremiumActive(user) ? favoriteEvents : []}

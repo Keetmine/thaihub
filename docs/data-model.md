@@ -70,8 +70,22 @@ following the same shape:
 - **`DramaWatchStatus`** — MyDramaList-style status
   (`WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`).
 - **`LocationVisit`** — see above.
+- **`UserAchievement`** — `(userId, key)`, the fact + moment a user
+  unlocked an achievement. `key` references `Achievement.key` (below)
+  deliberately **without** an FK: deleting a definition in the admin just
+  stops the badge from rendering, the fact row stays.
 
 See [social.md](features/social.md) for how these surface in the UI.
+
+## Achievements
+
+- **`Achievement`** — an achievement definition, editable at
+  `/admin/achievements` (used to be hardcoded). `key` (unique), `emoji`,
+  `title`, `hint`, `metric`, `threshold`, `enabled`, `sort`. `metric` is a
+  key into the fixed code-side registry (`METRICS` in
+  `src/lib/achievements.ts`) — the DB says *which* metric and *what*
+  threshold, the code does the counting. Flag-style metrics keep
+  `threshold = 1`. See [gamification.md](features/gamification.md).
 
 ## Users & auth
 

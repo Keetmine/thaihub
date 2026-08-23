@@ -6,6 +6,7 @@ import { performerHref } from "@/lib/performerSlug";
 import { artistListHref } from "@/lib/slugHelpers";
 import CreateArtistListButton from "@/app/(public)/artist-lists/CreateArtistListButton";
 import PremiumTeaser from "@/components/PremiumTeaser";
+import AchievementBadge from "@/components/AchievementBadge";
 
 // Сериализуемые версии для клиентской вкладки (Д1/Д2).
 export type StatsForTab = {
@@ -23,24 +24,27 @@ export type StatsForTab = {
   eventsByYear: { year: number; count: number }[];
 };
 
+// Только полученные ачивки — неполученные в кабинет не приходят вовсе
+// («чтобы было сюрпризом»), поэтому нет ни value/target, ни прогресс-баров.
 export type AchievementForTab = {
   key: string;
   emoji: string;
   title: string;
-  description: string;
-  unlocked: boolean;
-  value: number;
-  target: number;
+  hint: string;
+  unlockedAt: Date | null;
 };
 
 export default function StatsTab({
   stats,
   achievements,
+  achievementsTotal,
   artistLists,
   isPremium,
 }: {
   stats: StatsForTab;
   achievements: AchievementForTab[];
+  /** Сколько всего ВКЛЮЧЁННЫХ ачивок существует — для «7 из 22». */
+  achievementsTotal: number;
   /** Ачивки и создание списков актёров — платные (см. roadmap). Уже
    *  созданные списки остаются доступными: отбирать сделанное нельзя. */
   isPremium?: boolean;
@@ -51,7 +55,6 @@ export default function StatsTab({
     items: { id: string; slug: string | null; name: string; photoUrl: string | null }[];
   }[];
 }) {
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
   const maxYear = Math.max(1, ...stats.eventsByYear.map((y) => y.count));
 
   return (
@@ -182,66 +185,42 @@ export default function StatsTab({
         </>
       )}
 
-      {/* Ачивки: полученные впереди и с акцентом, остальные — по
-          близости к цели (сначала те, до которых рукой подать).
+      {/* Ачивки (Э2ф): показываются ТОЛЬКО полученные — неполученные
+          остаются сюрпризом, о них говорит лишь счётчик «N из M».
           Раздел платный (см. roadmap). */}
       {!isPremium ? (
         <PremiumTeaser
           title="Ачивки — по подписке"
-          description="22 достижения за концерты, поездки и просмотренные дорамы, с прогрессом до следующего."
+          description={`Достижения за концерты, поездки и просмотренные дорамы (сейчас их ${achievementsTotal}) — какие именно, узнаёшь, получая их.`}
         />
       ) : (
       <>
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <div className="d-flex flex-wrap align-items-baseline gap-2 mb-2">
         <h2 className="section-heading mb-0">Ачивки</h2>
         <span className="small text-secondary">
-          {unlockedCount} из {achievements.length}
+          {achievements.length} из {achievementsTotal}
+          {achievements.length < achievementsTotal && " — остальные пока секрет 😉"}
         </span>
-        <div className="achv-bar flex-fill" style={{ maxWidth: "12rem" }}>
-          <span style={{ width: `${Math.round((unlockedCount / achievements.length) * 100)}%` }} />
+      </div>
+      {achievements.length === 0 ? (
+        <p className="small text-secondary mb-4">
+          Пока ни одной — первая ждёт на первом же событии.
+        </p>
+      ) : (
+        <div className="row g-2 mb-4">
+          {achievements.map((a) => (
+            <div key={a.key} className="col-6 col-md-4 col-lg-3">
+              <AchievementBadge
+                emoji={a.emoji}
+                title={a.title}
+                hint={a.hint}
+                unlocked
+                unlockedAt={a.unlockedAt}
+              />
+            </div>
+          ))}
         </div>
-      </div>
-      <div className="row g-2 mb-4">
-        {[...achievements]
-          .sort((a, b) => {
-            if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
-            return b.value / Math.max(b.target, 1) - a.value / Math.max(a.target, 1);
-          })
-          .map((a) => {
-            const pct = Math.min(100, Math.round((a.value / Math.max(a.target, 1)) * 100));
-            return (
-              <div key={a.key} className="col-6 col-md-4 col-lg-3">
-                <div
-                  className={`achv d-flex flex-column gap-2 ${a.unlocked ? "achv-unlocked" : "achv-locked"}`}
-                  title={a.description}
-                >
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="achv-badge">{a.emoji}</span>
-                    <span style={{ minWidth: 0 }}>
-                      <span className="achv-title d-block">{a.title}</span>
-                      {a.unlocked && (
-                        <span className="small" style={{ color: "var(--bs-primary-text-emphasis)", fontSize: "0.7rem" }}>
-                          ✓ получена
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <p className="achv-desc">{a.description}</p>
-                  {!a.unlocked && a.target > 1 && (
-                    <div className="mt-auto">
-                      <div className="achv-bar mb-1">
-                        <span style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="small text-secondary" style={{ fontSize: "0.7rem" }}>
-                        {a.value} / {a.target}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-      </div>
+      )}
       </>
       )}
     </div>

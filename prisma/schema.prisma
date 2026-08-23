@@ -967,9 +967,31 @@ enum NoteVisibility {
   TRIP
 }
 
+// Определения ачивок (Э2ф): раньше были зашиты в код, теперь редактируются
+// в /admin/achievements. `metric` — ключ из фиксированного набора способов
+// подсчёта (METRICS в src/lib/achievements.ts): само вычисление остаётся
+// кодом, БД задаёт только «какая метрика и какой порог». Флаговые метрики
+// («Дубль», «Марафон» и т.п.) держат threshold = 1.
+model Achievement {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  emoji     String
+  title     String
+  hint      String
+  metric    String
+  threshold Int
+  // enabled=false прячет ачивку отовсюду (кабинет, профиль, подсчёт
+  // прогресса), но уже выданные UserAchievement-строки не трогает.
+  enabled   Boolean  @default(true)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
 // Разблокированные ачивки (Д2): условия считаются из данных на лету
 // (src/lib/achievements.ts), строка фиксирует момент получения — для
 // «новых» поздравлений в Telegram и стабильного порядка в профиле.
+// `key` ссылается на Achievement.key НАМЕРЕННО без FK: удалённая из
+// админки ачивка просто перестаёт показываться, а строка-факт остаётся.
 model UserAchievement {
   userId     String
   key        String
