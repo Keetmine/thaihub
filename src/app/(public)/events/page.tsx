@@ -10,6 +10,14 @@ import { CalendarIcon } from "@/components/icons";
 import LandingPage from "../LandingPage";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { isPremiumActive } from "@/lib/premium";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Афиша",
+  description:
+    "Афиша концертов, фанмитов и других событий тайских BL-актёров: даты, площадки, составы.",
+  path: "/events",
+});
 
 export const dynamic = "force-dynamic";
 

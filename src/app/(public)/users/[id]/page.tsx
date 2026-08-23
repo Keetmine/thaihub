@@ -14,8 +14,38 @@ import { isPremiumActive } from "@/lib/premium";
 import FriendNotifyToggle from "./FriendNotifyToggle";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import { listHref, tripHref, locationHref, artistListHref } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  // Тот же разбор параметра, что в самой странице: cuid — это id, всё
+  // остальное — ник.
+  const looksLikeId = /^c[a-z0-9]{20,}$/.test(id);
+  const user = await prisma.user.findUnique({
+    where: looksLikeId ? { id } : { username: id },
+    select: { name: true, deletedAt: true },
+  });
+  if (!user || user.deletedAt)
+    return pageMetadata({
+      title: "Пользователь",
+      description: "Профиль не найден.",
+      noIndex: true,
+    });
+  return pageMetadata({
+    title: user.name ?? "Пользователь",
+    description: user.name
+      ? `Профиль пользователя ${user.name} на MyBLHub.`
+      : "Профиль пользователя на MyBLHub.",
+    path: `/users/${id}`,
+    noIndex: true,
+  });
+}
 
 // Публичный профиль пользователя: открыт любому залогиненному — имя,
 // фото, статистика, любимые актёры, видимые зрителю поездки и (для

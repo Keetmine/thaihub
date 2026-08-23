@@ -5,10 +5,12 @@ import {
   addDays,
   dateKey,
   endOfDay,
+  formatCombinedDateList,
   formatHumanDate,
   parseDateKey,
   startOfDay,
 } from "@/lib/dates";
+import { pageMetadata } from "@/lib/seo";
 import EventCard from "@/components/EventCard";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
@@ -16,6 +18,28 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { isPremiumActive } from "@/lib/premium";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ date: string }>;
+}) {
+  const { date } = await params;
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? parseDateKey(date) : null;
+  if (!day || Number.isNaN(day.getTime()))
+    return pageMetadata({
+      title: "События дня",
+      description: "Страница не найдена.",
+    });
+  // formatCombinedDateList для одной даты — «22 августа 2026»: без дня
+  // недели (как в formatHumanDate) заголовок читается естественнее.
+  const human = formatCombinedDateList([day]);
+  return pageMetadata({
+    title: `События ${human}`,
+    description: `Концерты и фанмиты тайских BL-актёров ${human}: расписание дня.`,
+    path: `/day/${date}`,
+  });
+}
 
 export default async function DayPage({
   params,

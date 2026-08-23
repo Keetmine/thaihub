@@ -1,57 +1,37 @@
-# ThaiHub
+# MyBLHub
 
-Личный трекер концертов и фан-событий (в первую очередь — тайских BL-актёров и их пар).
-Публичный календарь/лента событий + закрытая админка для внесения событий и исполнителей.
-
-## Функционал
-
-- Календарь по месяцам и лента «Все события» (сгруппирована по дням)
-- Просмотр одного дня линейным расписанием
-- Страница исполнителя со списком его предстоящих/прошедших событий
-- Поиск по названию события, площадке и исполнителю
-- Админка (защищена паролем) — CRUD для событий и исполнителей
+[myblhub.com](https://myblhub.com) — фан-трекер тайских BL-дорам, актёров и
+офлайн-событий (концерты, фанмиты). Открытый каталог сериалов, актёров и
+локаций съёмок; по подписке — афиша событий, календарь, поездки и
+напоминания в Telegram.
 
 ## Стек
 
-Next.js (App Router, TypeScript) · Prisma + PostgreSQL · Bootstrap 5 (тёмная тема, оранжевый акцент на сайте / фиолетовый в админке) · Docker
+Next.js (App Router, TypeScript) · Prisma + PostgreSQL. Одно приложение:
+публичный сайт — `src/app/(public)`, админка — `src/app/admin`.
 
 ## Локальный запуск
 
-Понадобится локально запущенный PostgreSQL.
+Нужен локальный Postgres, доступный по `DATABASE_URL` из `.env`
+(шаблон — `.env.example`).
 
 ```bash
 npm install
-cp .env.example .env
+cp .env.example .env        # заполнить DATABASE_URL и остальное
+npx prisma migrate deploy   # применить миграции
+npm run db:seed             # (опционально) тестовые данные
+npm run dev                 # dev-сервер: сам выбирает свободный порт (или передайте -p)
 ```
 
-В `.env` пропиши:
-- `DATABASE_URL` — строка подключения к своей Postgres-базе (например `postgresql://USER@localhost:5432/thaitrack?schema=public`)
-- `ADMIN_PASSWORD` — пароль для входа в `/admin`
-- `ADMIN_SESSION_SECRET` — любая длинная случайная строка (например `openssl rand -hex 24`)
+После правки `prisma/schema.prisma` — `npx prisma generate`.
+Playwright-смоук — `npm run test:e2e` (нужен запущенный dev-сервер).
 
-Дальше:
+Админка (`/admin`) открыта пользователям с ролью `User.isAdmin`
+(ставится в БД или скриптом), отдельного админ-пароля нет.
 
-```bash
-createdb thaitrack          # если базы ещё нет
-npx prisma migrate dev      # применить миграции
-npm run db:seed             # (опционально) наполнить тестовыми событиями
-npm run dev                 # http://localhost:3000
-```
+## Документация
 
-Админка — `/admin`, логиниться паролем из `ADMIN_PASSWORD`.
-
-## Запуск через Docker
-
-```bash
-cp .env.example .env   # заполнить ADMIN_PASSWORD и ADMIN_SESSION_SECRET
-docker compose up --build
-```
-
-Поднимет Postgres + само приложение (миграции применяются автоматически при старте контейнера), сайт — `http://localhost:3000`. База данных живёт в volume `db_data`, между рестартами не теряется.
-
-## Структура
-
-- `src/app/(public)/*` — публичный сайт (календарь, лента событий, день, исполнители, поиск)
-- `src/app/admin/*` — админка; `admin/login` — вход, `admin/(protected)/*` — закрытые страницы за middleware-проверкой сессии (`src/proxy.ts`)
-- `prisma/schema.prisma` — модель данных (Event ↔ Performer, многие-ко-многим)
-- `src/app/globals.css` — вся тема (CSS-переменные Bootstrap переопределены под тёмный дизайн; `.admin-shell` переключает акцент на фиолетовый)
+Как проект устроен на самом деле — архитектура, модель данных и по файлу
+на каждую фичу — в [`docs/`](docs/README.md). Деплой (docker compose на
+сервере + автодеплой из GitHub Actions) — в
+[`docs/deploy.md`](docs/deploy.md).
