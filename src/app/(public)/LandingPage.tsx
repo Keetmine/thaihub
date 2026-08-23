@@ -227,6 +227,45 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* ---------- Кто мы ---------- */}
+      <section className="surface p-4 p-md-5">
+        <div className="row g-4 align-items-center">
+          <div className="col-12 col-lg-7">
+            <span className="eyebrow mb-2 d-inline-flex">Кто мы</span>
+            <h2 className="display-1-tight mb-3" style={{ fontSize: "1.9rem" }}>
+              Сделано фанатами — для фанатов
+            </h2>
+            <p className="text-secondary mb-2">
+              MyBLHub вырос из личных табличек и заметок: когда пресейл, куда
+              лететь, что смотреть дальше. В какой-то момент таблички перестали
+              справляться — и мы собрали всё в один сервис: афишу, каталог и
+              планировщик поездок.
+            </p>
+            <p className="text-secondary mb-0">
+              Здесь нет алгоритмов и рекламы — только события, любимые артисты
+              и люди, с которыми вы на одной волне. Чего-то не хватает?{" "}
+              <Link href="/help" className="link-body-emphasis">
+                Напишите нам
+              </Link>
+              {" "}— мы читаем всё.
+            </p>
+          </div>
+          <div className="col-12 col-lg-5">
+            <div className="glow-panel p-4">
+              <p className="font-display fw-medium text-white mb-3">
+                Что уже внутри
+              </p>
+              <ul className="list-unstyled d-flex flex-column gap-2 small text-secondary mb-0">
+                <li>🎤 {upcomingEventsCount} событий в афише — с пресейлами и билетами</li>
+                <li>✨ {performersCount} артистов и групп с фильмографией и музыкой</li>
+                <li>📺 {dramasCount} дорам с местами съёмок на карте</li>
+                <li>🗺 Поездки, списки мест и вики для фанатов</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ---------- Как это работает ---------- */}
       <section>
         <div className="text-center mb-4">
