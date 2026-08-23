@@ -65,6 +65,9 @@ export const viewport: Viewport = {
   // Фактический фон сайта (--bs-body-bg) — старый #160a1c остался от
   // фиолетовой темы и красил панель браузера в чужой цвет.
   themeColor: "#0a0a0c",
+  // Без viewport-fit=cover env(safe-area-inset-bottom) на iOS всегда 0 —
+  // а на него опираются нижний таб-бар и шторка мобильной навигации.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
