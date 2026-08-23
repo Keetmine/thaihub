@@ -2,6 +2,7 @@ import ReviewsAndComments from "@/components/ReviewsAndComments";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BackLink from "@/components/BackLink";
+import DetailHero from "@/components/DetailHero";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -44,37 +45,41 @@ export default async function NovelPage({
   return (
     <div>
       <BackLink fallbackHref="/novels" fallbackLabel="← Все новеллы" />
-      <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
-        {novel.title}
-      </h1>
+      {/* Иммерсивный hero (Э2): обложка размытым фоном вместо прежней
+          колонки с обложкой; автор и число экранизаций — чипами. */}
+      <div className="mt-3">
+        <DetailHero
+          photoUrl={novel.coverUrl}
+          photoAlt={novel.title}
+          title={novel.title}
+          chips={
+            <>
+              {novel.author && (
+                <span className="date-chip">{novel.author}</span>
+              )}
+              {novel.dramas.length > 0 && (
+                <span className="date-chip">
+                  экранизаций: {novel.dramas.length}
+                </span>
+              )}
+            </>
+          }
+        />
+      </div>
 
-      <div className="row g-4">
-        {novel.coverUrl && (
-          <div className="col-12 col-sm-4 col-md-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              loading="lazy"
-              decoding="async"
-              src={novel.coverUrl}
-              alt={novel.title}
-              className="surface"
-              style={{ width: "100%", aspectRatio: "2 / 3", objectFit: "cover" }}
-            />
-          </div>
-        )}
-        <div className={novel.coverUrl ? "col-12 col-sm-8 col-md-9" : "col-12"}>
+      {/* Факты и описание — свой блок, как на странице артиста;
+          автор ушёл чипом в hero. */}
+      {(novel.tags.length > 0 ||
+        novel.originalAuthor ||
+        novel.size ||
+        novel.description) && (
+        <div className="surface p-4 mb-4">
           {novel.tags.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mb-3">
               {novel.tags.slice(0, 16).map((t) => (
                 <span key={t} className="event-chip">{t}</span>
               ))}
             </div>
-          )}
-          {novel.author && (
-            <p className="small text-secondary mb-2">
-              <UserIcon className="icon-inline" />{" "}
-              <span className="text-secondary">Автор:</span> {novel.author}
-            </p>
           )}
           {novel.originalAuthor && (
             <p className="small text-secondary mb-2">
@@ -88,49 +93,49 @@ export default async function NovelPage({
             </p>
           )}
           {novel.description && (
-            <p className="text-secondary mb-3" style={{ whiteSpace: "pre-line" }}>
+            <p className="text-secondary mb-0" style={{ whiteSpace: "pre-line" }}>
               {novel.description}
             </p>
           )}
-
-          {novel.links.length > 0 && (
-            <>
-              <h2 className="section-heading mb-2">Где почитать</h2>
-              <div className="d-flex flex-wrap gap-2 mb-4">
-                {novel.links.map((l) => (
-                  <a
-                    key={l.id}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-ghost btn-sm"
-                  >
-                    {l.label} ↗
-                  </a>
-                ))}
-              </div>
-            </>
-          )}
-
-          {novel.dramas.length > 0 && (
-            <>
-              <h2 className="section-heading mb-2">Экранизации</h2>
-              <div className="d-flex flex-wrap gap-2">
-                {novel.dramas.map((d) => (
-                  <EntityMiniCard
-                    key={d.id}
-                    href={dramaHref(d)}
-                    photoUrl={d.posterUrl}
-                    name={d.title}
-                    subtitle={d.year ? String(d.year) : undefined}
-                    round={false}
-                  />
-                ))}
-              </div>
-            </>
-          )}
         </div>
-      </div>
+      )}
+
+      {novel.links.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2">Где почитать</h2>
+          <div className="d-flex flex-wrap gap-2 mb-4">
+            {novel.links.map((l) => (
+              <a
+                key={l.id}
+                href={l.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-ghost btn-sm"
+              >
+                {l.label} ↗
+              </a>
+            ))}
+          </div>
+        </>
+      )}
+
+      {novel.dramas.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2">Экранизации</h2>
+          <div className="d-flex flex-wrap gap-2">
+            {novel.dramas.map((d) => (
+              <EntityMiniCard
+                key={d.id}
+                href={dramaHref(d)}
+                photoUrl={d.posterUrl}
+                name={d.title}
+                subtitle={d.year ? String(d.year) : undefined}
+                round={false}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="mt-4">
         <ReviewsAndComments kind="novel" id={novel.id} />

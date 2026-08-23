@@ -3,10 +3,11 @@ import ReviewsAndComments from "@/components/ReviewsAndComments";
 import SourcesBlock from "@/components/SourcesBlock";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
+import DetailHero from "@/components/DetailHero";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
-import WatchStatusSelect from "@/components/WatchStatusSelect";
+import DramaStatusButton from "@/components/DramaStatusButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -22,10 +23,7 @@ import {
 } from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
-import {
-  DRAMA_STATUS_LABELS,
-  DRAMA_STATUS_BADGE_CLASS,
-} from "@/lib/dramaStatus";
+import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import {
   agencyHref,
@@ -59,7 +57,7 @@ export async function generateMetadata({
     select: { title: true, year: true, synopsis: true, posterUrl: true },
   });
   if (!drama)
-    return pageMetadata({ title: "Сериал", description: "Сериал не найден." });
+    return pageMetadata({ title: "Дорама", description: "Дорама не найдена." });
   return pageMetadata({
     title: `${drama.title}${drama.year ? ` (${drama.year})` : ""}`,
     description:
@@ -169,98 +167,110 @@ export default async function DramaDetailPage({
     for (const v of visits) visitedLocationIds.add(v.locationId);
   }
 
+  // У сериала может быть несколько студий (DramaAgency); легаси-поле
+  // agency подставляется, если связей ещё нет.
+  const studios =
+    drama.agencies.length > 0
+      ? drama.agencies.map((a) => a.agency)
+      : drama.agency
+        ? [drama.agency]
+        : [];
+  // Все строки блока фактов условные — пустую панель не рисуем.
+  const hasFacts =
+    studios.length > 0 ||
+    !!drama.novel ||
+    drama.genres.length > 0 ||
+    !!drama.episodes ||
+    !!drama.duration ||
+    !!drama.airedFrom ||
+    !!drama.director ||
+    !!drama.screenwriter ||
+    !!drama.contentRating ||
+    drama.mdlScore != null ||
+    ourRating != null ||
+    !!drama.synopsis;
+
   return (
     <div>
-      <BackLink fallbackHref="/dramas" fallbackLabel="← Все сериалы" />
-      <h1
-        className="display-1-tight mt-3 mb-3 d-flex flex-wrap align-items-center gap-2"
-        style={{ fontSize: "2.25rem" }}
-      >
-        {drama.title}{" "}
-        {drama.year && (
-          <span className="fs-5 fw-normal text-secondary">({drama.year})</span>
-        )}
-        {drama.status && (
-          <span
-            className={`badge rounded-pill fs-6 fw-normal ${DRAMA_STATUS_BADGE_CLASS[drama.status]}`}
-          >
-            {DRAMA_STATUS_LABELS[drama.status]}
-          </span>
-        )}
-      </h1>
-      {(drama.nativeTitle || drama.alsoKnownAs) && (
-        <p
-          className="small text-secondary mb-3"
-          style={{ marginTop: "-0.5rem" }}
-        >
-          {drama.nativeTitle}
-          {drama.nativeTitle && drama.alsoKnownAs ? " · " : ""}
-          {drama.alsoKnownAs}
-        </p>
-      )}
-
-      <div className="row g-4">
-        {(drama.posterUrl || currentUser) && (
-          <div className="col-12 col-sm-4 col-md-3">
-            <div className="position-sticky" style={{ top: "6.5rem" }}>
-              {drama.posterUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  loading="lazy"
-                  decoding="async"
-                  src={drama.posterUrl}
-                  alt={drama.title}
-                  className="surface"
-                  style={{
-                    width: "100%",
-                    aspectRatio: "2 / 3",
-                    objectFit: "cover",
-                  }}
-                />
+      <BackLink fallbackHref="/dramas" fallbackLabel="← Все дорамы" />
+      {/* Иммерсивный hero (Э2): постер размытым фоном вместо прежней
+          плоской шапки; постер и статус просмотра переехали сюда из
+          левой колонки. */}
+      <div className="mt-3">
+        <DetailHero
+          photoUrl={drama.posterUrl}
+          photoAlt={drama.title}
+          title={drama.title}
+          subtitle={
+            drama.nativeTitle || drama.alsoKnownAs
+              ? [drama.nativeTitle, drama.alsoKnownAs]
+                  .filter(Boolean)
+                  .join(" · ")
+              : undefined
+          }
+          chips={
+            <>
+              {drama.year && <span className="date-chip">{drama.year}</span>}
+              {drama.status && (
+                <span className="date-chip">
+                  {DRAMA_STATUS_LABELS[drama.status]}
+                </span>
               )}
-              {currentUser && (
-                <div className="mt-3">
-                  <span className="small text-secondary d-block mb-1">
-                    Статус просмотра
-                  </span>
-                  <WatchStatusSelect
-                    dramaId={drama.id}
-                    status={watchStatus?.status ?? null}
-                  />
-                </div>
+              {drama.episodes != null && (
+                <span className="date-chip">серий: {drama.episodes}</span>
               )}
-            </div>
-          </div>
-        )}
-
-        <div className="col-12 col-sm-8 col-md-9">
-          {(() => {
-            // У сериала может быть несколько студий (DramaAgency);
-            // легаси-поле agency подставляется, если связей ещё нет.
-            const studios =
-              drama.agencies.length > 0
-                ? drama.agencies.map((a) => a.agency)
-                : drama.agency
-                  ? [drama.agency]
-                  : [];
-            if (studios.length === 0) return null;
-            return (
-              <p className="small text-secondary mb-2">
-                <BuildingIcon />{" "}
-                <span className="text-secondary">
-                  {studios.length > 1 ? "Студии:" : "Студия:"}
-                </span>{" "}
-                {studios.map((a, i) => (
-                  <span key={a.id}>
-                    {i > 0 && ", "}
-                    <Link href={agencyHref(a)} className="link-body-emphasis">
-                      {a.name}
-                    </Link>
-                  </span>
-                ))}
+              {ourRating != null && (
+                <span className="date-chip">★ {ourRating.toFixed(1)}</span>
+              )}
+            </>
+          }
+          actions={
+            /* Тот же статус-пикер, что на карточках дорам: его дропдаун
+               позиционируется fixed и не режется overflow-ом hero (у
+               WatchStatusSelect дропдаун absolute — здесь бы обрезался). */
+            currentUser ? (
+              <DramaStatusButton
+                dramaId={drama.id}
+                status={watchStatus?.status ?? null}
+              />
+            ) : undefined
+          }
+          footer={
+            drama.mydramalistUrl ? (
+              <p className="mb-0 mt-1">
+                <a
+                  href={drama.mydramalistUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost btn-sm"
+                >
+                  MyDramaList ↗
+                </a>
               </p>
-            );
-          })()}
+            ) : undefined
+          }
+        />
+      </div>
+
+      {/* Факты и синопсис — свой блок, как на странице артиста. */}
+      {hasFacts && (
+        <div className="surface p-4 mb-4">
+          {studios.length > 0 && (
+            <p className="small text-secondary mb-2">
+              <BuildingIcon />{" "}
+              <span className="text-secondary">
+                {studios.length > 1 ? "Студии:" : "Студия:"}
+              </span>{" "}
+              {studios.map((a, i) => (
+                <span key={a.id}>
+                  {i > 0 && ", "}
+                  <Link href={agencyHref(a)} className="link-body-emphasis">
+                    {a.name}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          )}
           {drama.novel && (
             <p className="small text-secondary mb-2">
               <BookIcon className="icon-inline" />{" "}
@@ -362,119 +372,106 @@ export default async function DramaDetailPage({
           </div>
 
           {drama.synopsis && (
-            <p className="text-secondary mb-3">{drama.synopsis}</p>
-          )}
-
-          {drama.mydramalistUrl && (
-            <p className="mb-4">
-              <a
-                href={drama.mydramalistUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-ghost btn-sm"
-              >
-                MyDramaList ↗
-              </a>
-            </p>
-          )}
-
-          {/* Пустой раздел не рисуем — ни заголовка, ни «состав не
-              указан»: у сериалов без каста это была строка ни о чём. */}
-          {drama.performers.length > 0 && (
-            <>
-              <h2 className="section-heading mb-2">Актёрский состав</h2>
-              <div className="d-flex flex-wrap gap-2">
-                {drama.performers.map(({ performer, role }) => (
-                  <EntityMiniCard
-                    key={performer.id}
-                    href={performerHref(performer)}
-                    photoUrl={performer.photoUrl}
-                    name={performer.name}
-                    subtitle={role}
-                    style={{
-                      flex: "1 1 10rem",
-                      minWidth: "70px",
-                      maxWidth: "15rem",
-                    }}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {relatedItems.length > 0 && (
-            <>
-              <h2 className="section-heading mb-2 mt-4">Связанные сериалы</h2>
-              <div className="d-flex flex-wrap gap-2">
-                {relatedItems.map(({ drama: rel, relation }) => (
-                  <EntityMiniCard
-                    key={rel.id}
-                    href={dramaHref(rel)}
-                    photoUrl={rel.posterUrl}
-                    name={rel.title}
-                    subtitle={relation}
-                    round={false}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {drama.locations.length > 0 && (
-            <>
-              <h2 className="section-heading mb-2 mt-4">Локации</h2>
-              <div className="d-flex flex-column gap-2">
-                {drama.locations.map(({ location }) => (
-                  <div
-                    key={location.id}
-                    className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
-                  >
-                    <Link
-                      href={locationHref(location)}
-                      className="text-decoration-none d-flex align-items-center gap-3"
-                      style={{ minWidth: 0 }}
-                    >
-                      <div
-                        style={{
-                          width: "2.5rem",
-                          height: "2.5rem",
-                          borderRadius: "0.5rem",
-                          background: "var(--bs-secondary-bg)",
-                          flexShrink: 0,
-                          overflow: "hidden",
-                        }}
-                      >
-                        {location.photoUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            loading="lazy"
-                            decoding="async"
-                            src={location.photoUrl}
-                            alt=""
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        )}
-                      </div>
-                      <span className="font-display fw-medium text-white text-truncate">
-                        {location.name}
-                      </span>
-                    </Link>
-                    <VisitedButton
-                      locationId={location.id}
-                      isVisited={visitedLocationIds.has(location.id)}
-                      className="flex-shrink-0"
-                    />
-                  </div>
-                ))}
-              </div>
-            </>
+            <p className="text-secondary mb-0">{drama.synopsis}</p>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Пустой раздел не рисуем — ни заголовка, ни «состав не
+          указан»: у дорам без каста это была строка ни о чём. */}
+      {drama.performers.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2">Актёрский состав</h2>
+          <div className="d-flex flex-wrap gap-2">
+            {drama.performers.map(({ performer, role }) => (
+              <EntityMiniCard
+                key={performer.id}
+                href={performerHref(performer)}
+                photoUrl={performer.photoUrl}
+                name={performer.name}
+                subtitle={role}
+                style={{
+                  flex: "1 1 10rem",
+                  minWidth: "70px",
+                  maxWidth: "15rem",
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {relatedItems.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2 mt-4">Связанные дорамы</h2>
+          <div className="d-flex flex-wrap gap-2">
+            {relatedItems.map(({ drama: rel, relation }) => (
+              <EntityMiniCard
+                key={rel.id}
+                href={dramaHref(rel)}
+                photoUrl={rel.posterUrl}
+                name={rel.title}
+                subtitle={relation}
+                round={false}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {drama.locations.length > 0 && (
+        <>
+          <h2 className="section-heading mb-2 mt-4">Локации</h2>
+          <div className="d-flex flex-column gap-2">
+            {drama.locations.map(({ location }) => (
+              <div
+                key={location.id}
+                className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+              >
+                <Link
+                  href={locationHref(location)}
+                  className="text-decoration-none d-flex align-items-center gap-3"
+                  style={{ minWidth: 0 }}
+                >
+                  <div
+                    style={{
+                      width: "2.5rem",
+                      height: "2.5rem",
+                      borderRadius: "0.5rem",
+                      background: "var(--bs-secondary-bg)",
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {location.photoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={location.photoUrl}
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    )}
+                  </div>
+                  <span className="font-display fw-medium text-white text-truncate">
+                    {location.name}
+                  </span>
+                </Link>
+                <VisitedButton
+                  locationId={location.id}
+                  isVisited={visitedLocationIds.has(location.id)}
+                  className="flex-shrink-0"
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {events.length > 0 && (
         <div className="mt-4">
