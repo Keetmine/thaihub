@@ -27,10 +27,19 @@ been a favorite. Two UIs:
 - **`DramaStatusButton`** — a compact icon-button version used everywhere
   a drama shows up as a row/card (the `/dramas` list, a performer's or
   agency's filmography): a "+" when nothing's set yet, a pencil once it
-  is, both opening the same small status-picker dropdown anchored to the
-  button (`.drama-status-dropdown` in `globals.css`, reusing
-  `.performer-select-option` row styling but positioned `right: 0` off a
-  small trigger instead of stretching full-width).
+  is, both opening the same small status-picker dropdown
+  (`.drama-status-dropdown` in `globals.css`, reusing
+  `.performer-select-option` row styling). The dropdown renders through
+  `createPortal(document.body)` with `position: fixed` coords taken from
+  the button: card ancestors carry transforms (`.stagger`, poster
+  hover), which turn `fixed` into ancestor-relative and used to fling
+  the menu to a random spot on the page; scrolling just closes it.
+
+У залогиненного пользователя со статусами `WATCHING` на главной
+(`src/app/(public)/page.tsx`) выводится секция «Смотрю сейчас» — до 4
+постеров (`PosterTile`, свежие по `updatedAt` первыми) со ссылкой
+«все →» на `/dramas`; при пустом списке блок скрыт. Не за подпиской,
+как и весь каталог.
 
 `getDramaWatchStatuses(dramaIds, userId)` in `src/lib/favorites.ts` batch-
 loads a `Map<dramaId, status>` for a page's rows (same shape as

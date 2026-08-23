@@ -6,7 +6,7 @@ import { getMusicNews } from "@/lib/whatsNew";
 import { getFriendIds } from "@/lib/friends";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
-import { tripHref } from "@/lib/slugHelpers";
+import { tripHref, dramaHref } from "@/lib/slugHelpers";
 import { formatShortDate } from "@/lib/dates";
 import { userDisplayName } from "@/lib/userProfile";
 import LetterAvatar from "@/components/LetterAvatar";
@@ -27,7 +27,8 @@ export default async function HomePage() {
   const premium = isPremiumActive(user);
   const now = new Date();
 
-  const [news, myUpcoming, friendIds, favoritePerformers, upcomingTrips] = await Promise.all([
+  const [news, myUpcoming, friendIds, favoritePerformers, upcomingTrips, watchingNow] =
+    await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
     getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
       own.length > 0 ? own : getMusicNews({ limit: 8 }),
@@ -69,6 +70,18 @@ export default async function HomePage() {
           take: 3,
         })
       : Promise.resolve([]),
+    // «Смотрю сейчас» — сериалы со статусом WATCHING; не за подпиской,
+    // как и весь каталог сериалов.
+    prisma.dramaWatchStatus.findMany({
+      where: { userId: user.id, status: "WATCHING" },
+      select: {
+        drama: {
+          select: { id: true, slug: true, title: true, posterUrl: true, year: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 4,
+    }),
   ]);
 
   const friendsGoing =
@@ -190,6 +203,31 @@ export default async function HomePage() {
                   {t.userId === user.id ? "" : "совместная"}
                 </span>
               </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Смотрю сейчас — постеры сериалов со статусом WATCHING; пустое
+          состояние не рисуем, блок просто скрыт. */}
+      {watchingNow.length > 0 && (
+        <section className="mb-5">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="section-heading mb-0">Смотрю сейчас</h2>
+            <Link href="/dramas" className="small text-secondary">
+              все →
+            </Link>
+          </div>
+          <div className="row g-3 stagger">
+            {watchingNow.map(({ drama }) => (
+              <div key={drama.id} className="col-6 col-md-4 col-xl-3">
+                <PosterTile
+                  href={dramaHref(drama)}
+                  posterUrl={drama.posterUrl}
+                  title={drama.title}
+                  subtitle={drama.year ? String(drama.year) : undefined}
+                />
+              </div>
             ))}
           </div>
         </section>

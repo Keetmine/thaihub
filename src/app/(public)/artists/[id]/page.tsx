@@ -4,6 +4,7 @@ import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import SynopsisFold from "@/components/SynopsisFold";
 import FavoriteButton from "@/components/FavoriteButton";
 import AddToListButton from "@/components/AddToListButton";
 import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
@@ -500,17 +501,11 @@ export default async function PerformerPage({
               раньше, обычным абзацем. */}
           {performer.bio &&
             (performer.bio.length > 300 ? (
-              <details className="synopsis-fold">
-                <summary>
-                  <span
-                    className="synopsis-text small text-secondary"
-                    style={{ whiteSpace: "pre-line" }}
-                  >
-                    {performer.bio}
-                  </span>
-                  <span className="synopsis-toggle" />
-                </summary>
-              </details>
+              <SynopsisFold
+                text={performer.bio}
+                textClassName="small text-secondary"
+                preLine
+              />
             ) : (
               <p
                 className="small text-secondary mb-0"

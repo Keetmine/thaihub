@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
+import SynopsisFold from "@/components/SynopsisFold";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
@@ -23,7 +24,7 @@ import {
 } from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
-import { DRAMA_STATUS_LABELS } from "@/lib/dramaStatus";
+import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import {
   agencyHref,
@@ -214,26 +215,33 @@ export default async function DramaDetailPage({
           заголовок и статус сверху — без размытого hero. */}
       <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-2 mb-4">
         <div style={{ minWidth: 0 }}>
+          {/* Год в скобках и цветной статус — в строке с названием
+              (просьба владельца); чип «серий» убран, число эпизодов и
+              так есть в фактах. */}
           <h1 className="display-1-tight mb-1" style={{ fontSize: "2.25rem" }}>
             {drama.title}
+            {drama.year && (
+              <span className="fs-5 fw-normal text-secondary"> ({drama.year})</span>
+            )}
+            {drama.status && (
+              <span
+                className={`badge rounded-pill fw-semibold ms-2 align-middle ${DRAMA_STATUS_BADGE_CLASS[drama.status]}`}
+                style={{ fontSize: "0.8rem" }}
+              >
+                {DRAMA_STATUS_LABELS[drama.status]}
+              </span>
+            )}
           </h1>
           {(drama.nativeTitle || drama.alsoKnownAs) && (
             <p className="small text-secondary mb-0">
               {[drama.nativeTitle, drama.alsoKnownAs].filter(Boolean).join(" · ")}
             </p>
           )}
-          <div className="d-flex flex-wrap gap-2 mt-2">
-            {drama.year && <span className="date-chip">{drama.year}</span>}
-            {drama.status && (
-              <span className="date-chip">{DRAMA_STATUS_LABELS[drama.status]}</span>
-            )}
-            {drama.episodes != null && (
-              <span className="date-chip">серий: {drama.episodes}</span>
-            )}
-            {ourRating != null && (
+          {ourRating != null && (
+            <div className="d-flex flex-wrap gap-2 mt-2">
               <span className="date-chip">★ {ourRating.toFixed(1)}</span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         {currentUser && (
           <DramaStatusButton dramaId={drama.id} status={watchStatus?.status ?? null} />
@@ -390,19 +398,13 @@ export default async function DramaDetailPage({
             )}
           </div>
 
-          {/* Длинный синопсис свёрнут до ~4 строк (Э2ф): текст живёт в
-              summary, details[open] снимает line-clamp — без JS и без
-              дублирования текста. Короткий рендерим как раньше. */}
+          {/* Длинный синопсис свёрнут до ~4 строк (Э2ф); SynopsisFold
+              меряет реальное переполнение и не показывает «Читать
+              дальше», когда текст влез целиком. Короткий рендерим
+              обычным абзацем без клиентского кода. */}
           {drama.synopsis &&
             (drama.synopsis.length > 300 ? (
-              <details className="synopsis-fold">
-                <summary>
-                  <span className="synopsis-text text-secondary">
-                    {drama.synopsis}
-                  </span>
-                  <span className="synopsis-toggle" />
-                </summary>
-              </details>
+              <SynopsisFold text={drama.synopsis} />
             ) : (
               <p className="text-secondary mb-0">{drama.synopsis}</p>
             ))}

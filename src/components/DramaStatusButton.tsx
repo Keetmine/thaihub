@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   setDramaWatchStatus,
@@ -28,10 +29,13 @@ export default function DramaStatusButton({
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+      if (ref.current?.contains(e.target as Node)) return;
+      if (menuRef.current?.contains(e.target as Node)) return;
+      setIsOpen(false);
     }
     // Скролл (в т.ч. внутренний скролл постер-ряда) уводит кнопку из-под
     // fixed-меню — просто закрываем его.
@@ -88,10 +92,22 @@ export default function DramaStatusButton({
         {status ? <PencilIcon /> : <PlusIcon />}
       </button>
 
-      {isOpen && coords && (
+      {/* Портал в body: у карточек-предков бывают transform'ы (stagger,
+          hover постеров) — они делают position:fixed относительным себя,
+          и меню улетало в случайное место страницы. */}
+      {isOpen &&
+        coords &&
+        createPortal(
         <div
+          ref={menuRef}
           className="performer-select-dropdown drama-status-dropdown"
-          style={{ position: "fixed", top: coords.top, left: coords.left, right: "auto" }}
+          style={{
+            position: "fixed",
+            top: coords.top,
+            left: coords.left,
+            right: "auto",
+            zIndex: 2000,
+          }}
         >
           <button type="button" className="performer-select-option" onClick={() => choose(null)}>
             <span className="flex-fill text-start">Не отмечено</span>
@@ -108,7 +124,8 @@ export default function DramaStatusButton({
               {status === s && <CheckIcon />}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
