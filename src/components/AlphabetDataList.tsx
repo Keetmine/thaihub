@@ -56,6 +56,7 @@ export default function AlphabetDataList({
   showFavoriteButton = false,
   addToList,
   variant = "rows",
+  cardAspect = "3 / 4",
 }: {
   rows: AlphabetRow[];
   emptyMessage: string;
@@ -72,6 +73,8 @@ export default function AlphabetDataList({
   };
   /** «cards» — фото-сетка .poster-grid (Э2.4) вместо строк-плашек. */
   variant?: "rows" | "cards";
+  /** Пропорции фото карточки: портрет для людей, альбом для мест. */
+  cardAspect?: "3 / 4" | "4 / 3";
 }) {
   const [visible, setVisible] = useState(batch);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -141,7 +144,7 @@ export default function AlphabetDataList({
                     style={{
                       position: "relative",
                       width: "100%",
-                      aspectRatio: "3 / 4",
+                      aspectRatio: cardAspect,
                       borderRadius: "0.9rem",
                       background: "var(--bs-secondary-bg)",
                       overflow: "hidden",

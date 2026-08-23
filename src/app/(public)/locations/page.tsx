@@ -218,6 +218,8 @@ async function LocationsAlphabetical({
     <AlphabetDataList
       emptyMessage="Пока нет локаций."
       showVisitedButton
+      variant="cards"
+      cardAspect="4 / 3"
       rows={locations.map((l) => ({
         id: l.id,
         name: l.name,
@@ -370,6 +372,8 @@ async function UserPlaceList({
           q || category ? "Ничего не найдено." : "В этом списке пока нет мест."
         }
         showVisitedButton
+        variant="cards"
+        cardAspect="4 / 3"
         rows={items.map(({ location: l }) => ({
           id: l.id,
           name: l.name,
@@ -419,6 +423,8 @@ async function MyPlaces({
       <AlphabetDataList
         emptyMessage={q || category ? "Ничего не найдено." : "Своих мест пока нет."}
         showVisitedButton
+        variant="cards"
+        cardAspect="4 / 3"
         rows={places.map((l) => ({
           id: l.id,
           name: l.name,
