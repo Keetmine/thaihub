@@ -2947,3 +2947,175 @@ details.admin-section[open] > summary.admin-section-head::before {
   background: none;
   border: 0;
 }
+
+/* ---------- Э2.6: мобильная навигация ---------- */
+/* Шторка-drawer публичной части (src/components/MobileNav.tsx): панель
+   на всю высоту справа вместо прежней выпадашки под навбаром. Админка
+   осталась на старом .mobile-menu-panel. */
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1044;
+  background: rgba(5, 5, 8, 0.55);
+  backdrop-filter: blur(2px);
+  animation: drawer-fade-in 0.25s ease both;
+}
+
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1045;
+  width: min(19.5rem, 84vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: calc(0.9rem + env(safe-area-inset-top)) 0.85rem
+    calc(1.25rem + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  background: rgba(16, 16, 20, 0.9);
+  border-left: 1px solid var(--bs-border-color);
+  backdrop-filter: blur(18px);
+  box-shadow: -28px 0 60px rgba(0, 0, 0, 0.45);
+  animation: drawer-slide-in 0.28s cubic-bezier(0.32, 0.72, 0.25, 1) both;
+}
+
+@keyframes drawer-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes drawer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-drawer,
+  .mobile-drawer-backdrop {
+    animation: none;
+  }
+}
+
+.mobile-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 0.5rem 0.85rem;
+}
+
+.mobile-drawer-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+/* Шторка живёт вне .pill-nav, так что пилюли-ссылки надо стилизовать
+   заново (в старой выпадашке их красил каскад от навбара). */
+.mobile-drawer .nav-link {
+  display: block;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.9rem;
+  color: var(--bs-secondary-color);
+}
+
+.mobile-drawer .nav-link:hover {
+  color: var(--bs-body-color);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mobile-drawer .nav-link.active {
+  color: var(--bs-primary-text-emphasis);
+  font-weight: 600;
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.mobile-drawer .search-box {
+  max-width: none;
+  margin: 0.4rem 0;
+}
+
+/* Нижний таб-бар (d-sm-none в разметке): стеклянная капсула над нижним
+   краем, с запасом под home-индикатор (env(safe-area-inset-bottom)
+   ненулевой благодаря viewport-fit=cover в корневом layout). */
+.mobile-tabbar {
+  position: fixed;
+  left: 0.65rem;
+  right: 0.65rem;
+  bottom: calc(0.6rem + env(safe-area-inset-bottom));
+  z-index: 1035;
+  display: flex;
+  align-items: stretch;
+  gap: 0.1rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  background: rgba(17, 17, 21, 0.85);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  padding: 0.42rem 0.25rem 0.35rem;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  color: var(--bs-secondary-color);
+  font-size: 0.6rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.mobile-tab svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.mobile-tab span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-tab.active {
+  color: var(--bs-primary-text-emphasis);
+  background: rgba(var(--accent-rgb), 0.14);
+}
+
+@media (max-width: 575.98px) {
+  /* Просвет под контентом и футером, чтобы таб-бар их не перекрывал.
+     !important вынужден: Bootstrap-утилиты py-4/pb-4 сами с !important,
+     а globals.css подключён позже — при равной специфичности он и
+     побеждает. */
+  .public-main {
+    padding-bottom: 3rem !important;
+  }
+
+  .public-footer {
+    padding-bottom: calc(4.4rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Кнопка «наверх» — над таб-баром, а не под ним. */
+  .scroll-top-btn {
+    bottom: calc(4.7rem + env(safe-area-inset-bottom));
+  }
+}

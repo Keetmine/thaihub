@@ -2,6 +2,11 @@
 
 Makes the site installable ("Add to Home Screen") on phones — no offline
 support, no service worker, just the manifest + icons + theme color.
+Since standalone mode strips the browser chrome, the public mobile layout
+also ships a fixed bottom tab bar (`src/components/MobileNav.tsx`,
+`.mobile-tabbar` in `globals.css`) padded for
+`env(safe-area-inset-bottom)`, which is only non-zero on iOS thanks to
+`viewportFit: "cover"` in the root layout's `viewport` export.
 
 - **`src/app/manifest.ts`** — Next's `MetadataRoute.Manifest` file
   convention, served at `/manifest.webmanifest`. Name, short description,

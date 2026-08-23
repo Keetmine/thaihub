@@ -63,6 +63,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#160a1c",
+  // Без viewport-fit=cover env(safe-area-inset-bottom) на iOS всегда 0 —
+  // а на него опираются нижний таб-бар и шторка мобильной навигации.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
