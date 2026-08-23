@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -171,7 +172,12 @@ export default async function TripsPage() {
         </div>
 
         {trips.length === 0 ? (
-          <p className="small text-secondary">Пока нет ни одной поездки.</p>
+          <EmptyState
+            emoji="✈️"
+            title="Пока нет ни одной поездки"
+            hint="Создайте поездку с датами — события, отели и списки мест соберутся в один план."
+            compact
+          />
         ) : (
           <div className="d-flex flex-column gap-2">
             {trips.map((t, i) => {

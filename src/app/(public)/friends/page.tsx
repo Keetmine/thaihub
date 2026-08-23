@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import { getCurrentUser } from "@/lib/userAuth";
 import { prisma } from "@/lib/prisma";
@@ -220,7 +221,12 @@ export default async function FriendsPage({
         Мои друзья
       </h2>
       {accepted.length === 0 ? (
-        <p className="small text-secondary">Пока нет друзей.</p>
+        <EmptyState
+          emoji="👥"
+          title="Пока нет друзей"
+          hint="Найдите знакомых по имени или нику в поиске выше — и увидите, на что идут они."
+          compact
+        />
       ) : (
         <div className="d-flex flex-column gap-2">
           {accepted.map((f) => (

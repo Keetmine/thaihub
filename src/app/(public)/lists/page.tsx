@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -43,7 +44,12 @@ export default async function ListsPage() {
         </div>
 
         {lists.length === 0 ? (
-          <p className="small text-secondary">Пока нет ни одного списка.</p>
+          <EmptyState
+            emoji="📍"
+            title="Пока нет ни одного списка"
+            hint="Собирайте кафе, места съёмок и магазины в списки — их можно привязать к поездке."
+            compact
+          />
         ) : (
           <div className="d-flex flex-column gap-2">
             {lists.map((l) => (
