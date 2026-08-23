@@ -3432,3 +3432,86 @@ details.admin-section[open] > summary.admin-section-head::before {
     bottom: calc(4.7rem + env(safe-area-inset-bottom));
   }
 }
+
+/* ---------- Э2: иммерсивный hero детальных страниц ---------- */
+/* Размытое фото самой записи как фон, карточка-фото и крупный титул
+   поверх (src/components/DetailHero.tsx). Даёт детальным страницам
+   собственное лицо вместо «ещё одной стопки surface-блоков». */
+.detail-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--bs-border-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 5rem 2rem 1.75rem;
+  margin-bottom: 2rem;
+  background:
+    radial-gradient(120% 140% at 80% 0%, rgba(255, 106, 61, 0.2), transparent 55%),
+    linear-gradient(165deg, #1a1412, #0e0c0b 65%);
+}
+
+.detail-hero-backdrop,
+.detail-hero-scrim {
+  position: absolute;
+  inset: 0;
+}
+
+.detail-hero-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(48px) saturate(1.35);
+  transform: scale(1.3);
+  opacity: 0.5;
+}
+
+.detail-hero-scrim {
+  background: linear-gradient(180deg, rgba(10, 10, 12, 0.05), rgba(10, 10, 12, 0.82) 80%);
+}
+
+.detail-hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.25rem 1.75rem;
+}
+
+.detail-hero-photo {
+  width: 10.5rem;
+  aspect-ratio: 3 / 4;
+  flex-shrink: 0;
+  border-radius: 1.1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.55);
+  background: var(--bs-tertiary-bg);
+}
+
+.detail-hero-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detail-hero-title {
+  font-size: clamp(2rem, 4.5vw, 3.1rem);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.detail-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+@media (max-width: 575.98px) {
+  .detail-hero {
+    padding: 3rem 1rem 1.25rem;
+  }
+
+  .detail-hero-photo {
+    width: 7.5rem;
+  }
+}

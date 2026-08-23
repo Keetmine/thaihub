@@ -1,6 +1,7 @@
 import { JsonLd, pageMetadata, personJsonLd } from "@/lib/seo";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
+import DetailHero from "@/components/DetailHero";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -289,74 +290,67 @@ export default async function PerformerPage({
     <div>
       <BackLink
         fallbackHref={isMascot ? "/artists?view=mascots" : "/artists"}
-        fallbackLabel={isMascot ? "← Все маскоты" : "← Все исполнители"}
+        fallbackLabel={isMascot ? "← Все маскоты" : "← Все артисты"}
       />
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
-        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-          {performer.name}{" "}
-          {performer.realName && (
-            <span className="fs-5 fw-normal text-secondary">
-              ({performer.realName})
-            </span>
-          )}
-        </h1>
-        {/* Кнопки — одной группой: при justify-content-between три
-            прямых потомка разъезжались по всей ширине, и «плюс»
-            выглядел оторванным от сердечка. */}
-        <div className="d-flex align-items-center gap-2 flex-shrink-0">
-          <FavoriteButton
-            kind="performer"
-            id={performer.id}
-            isFavorited={isFavorited}
-            variant="icon"
-          />
-          {/* Ручная отметка «видела вживую»: автоматически считаются
-              только события из нашей афиши. */}
-          {currentUser && (
-            <SeenLiveButton
-              performerId={performer.id}
-              initialSeen={seenLive}
-              toggle={toggleSeenLive}
-            />
-          )}
-          {/* Добавить в свой список прямо отсюда: раньше это делалось
-              только со страницы самого списка. */}
-          {currentUser && (
-            <AddToListButton
-              lists={myLists}
-              onAdd={async (listId: string) => {
-                "use server";
-                await addPerformerToList(listId, performer.id);
-              }}
-            />
-          )}
-        </div>
+      {/* Иммерсивный hero (Э2): размытое фото артиста фоном вместо
+          прежней плоской шапки. */}
+      <div className="mt-3">
+        <DetailHero
+          photoUrl={displayPhoto}
+          photoAlt={performer.name}
+          title={performer.name}
+          subtitle={performer.realName}
+          chips={
+            <>
+              {isBand && <span className="date-chip">Группа</span>}
+              {isMascot && <span className="date-chip">Маскот</span>}
+              {performer.agencies[0] && (
+                <span className="date-chip">{performer.agencies[0].agency.name}</span>
+              )}
+              {sortedDramas.length > 0 && (
+                <span className="date-chip">дорам: {sortedDramas.length}</span>
+              )}
+              {upcoming.length + past.length > 0 && (
+                <span className="date-chip">событий: {upcoming.length + past.length}</span>
+              )}
+            </>
+          }
+          footer={<SocialLinkIcons items={socialItems} className="mt-1" />}
+          actions={
+            <>
+              <FavoriteButton
+                kind="performer"
+                id={performer.id}
+                isFavorited={isFavorited}
+                variant="icon"
+              />
+              {/* Ручная отметка «видела вживую»: автоматически считаются
+                  только события из нашей афиши. */}
+              {currentUser && (
+                <SeenLiveButton
+                  performerId={performer.id}
+                  initialSeen={seenLive}
+                  toggle={toggleSeenLive}
+                />
+              )}
+              {/* Добавить в свой список прямо отсюда. */}
+              {currentUser && (
+                <AddToListButton
+                  lists={myLists}
+                  onAdd={async (listId: string) => {
+                    "use server";
+                    await addPerformerToList(listId, performer.id);
+                  }}
+                />
+              )}
+            </>
+          }
+        />
       </div>
 
-      <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
-        {displayPhoto && (
-          <div className="flex-shrink-0 d-flex flex-column gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              loading="lazy"
-              decoding="async"
-              src={displayPhoto}
-              alt={performer.name}
-              className="rounded-4"
-              style={{ width: "16rem", height: "20rem", objectFit: "cover" }}
-            />
-            <SocialLinkIcons
-              items={socialItems}
-              className="justify-content-center mt-2"
-            />
-          </div>
-        )}
-
-        <div
-          className="d-flex flex-column gap-2"
-          style={{ minWidth: 0, flex: 1 }}
-        >
-          {!displayPhoto && <SocialLinkIcons items={socialItems} />}
+      {/* Факты — свой блок: фото и соцссылки переехали в hero. */}
+      <div className="surface p-4 mb-4">
+        <div className="d-flex flex-column gap-2" style={{ minWidth: 0 }}>
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
               <CakeIcon />{" "}
@@ -660,7 +654,7 @@ export default async function PerformerPage({
 
       {!isBand && performer.dramas.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">Сериалы</h2>
+          <h2 className="section-heading mb-2">Дорамы</h2>
           <div className="poster-row thin-scroll">
             {sortedDramas.map((pd) => (
               <div key={pd.dramaId} style={{ position: "relative" }}>
