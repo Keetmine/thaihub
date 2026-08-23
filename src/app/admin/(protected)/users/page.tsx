@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createPromoCode, deletePromoCode, deleteUser } from "./actions";
 import PremiumToggle from "./PremiumToggle";
 import ConfirmForm from "@/components/ConfirmForm";
+import SubmitButton from "@/components/admin/SubmitButton";
 import NameSearchBox from "@/components/NameSearchBox";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
@@ -79,9 +80,11 @@ export default async function AdminUsersPage({
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
           <h2 className="h6 mb-0">Промокоды подписки (+1 месяц)</h2>
           <form action={createPromoCode}>
-            <button type="submit" className="btn btn-ghost btn-sm">
-              + Создать промокод
-            </button>
+            <SubmitButton
+              label="+ Создать промокод"
+              busyLabel="Создание…"
+              className="btn btn-ghost btn-sm"
+            />
           </form>
         </div>
         {freePromos.length === 0 ? (

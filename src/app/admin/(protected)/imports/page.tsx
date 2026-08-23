@@ -8,6 +8,7 @@ import {
   runYoutubeMusicImportAndSchedule,
 } from "./actions";
 import RunningImportsWatcher from "./RunningImportsWatcher";
+import SubmitButton from "@/components/admin/SubmitButton";
 import Pagination from "@/components/Pagination";
 import EntitySelect from "@/components/EntitySelect";
 import { searchPerformerOptions } from "../performers/actions";
@@ -141,13 +142,12 @@ export default async function AdminImportsPage({
                   className="form-control flex-grow-1"
                   style={{ minWidth: "16rem" }}
                 />
-                <button
-                  type="submit"
+                <SubmitButton
+                  label={runningRun ? "Импорт идёт…" : "Импортировать"}
+                  busyLabel="Запускаем…"
                   className="btn btn-primary btn-sm flex-shrink-0"
                   disabled={!!runningRun}
-                >
-                  {runningRun ? "Импорт идёт…" : "Импортировать"}
-                </button>
+                />
               </div>
             </form>
           </div>
@@ -168,13 +168,12 @@ export default async function AdminImportsPage({
               placeholder="https://tpop.fandom.com/wiki/…"
               className="form-control"
             />
-            <button
-              type="submit"
+            <SubmitButton
+              label={runningRun ? "Импорт идёт…" : "Импортировать"}
+              busyLabel="Запускаем…"
               className="btn btn-primary btn-sm flex-shrink-0"
               disabled={!!runningRun}
-            >
-              {runningRun ? "Импорт идёт…" : "Импортировать"}
-            </button>
+            />
           </form>
         </div>
         </div>
@@ -202,22 +201,20 @@ export default async function AdminImportsPage({
                   className="form-control flex-grow-1"
                   style={{ minWidth: "16rem" }}
                 />
-                <button
-                  type="submit"
+                <SubmitButton
+                  label={runningRun ? "Импорт идёт…" : "Импортировать"}
+                  busyLabel="Запускаем…"
                   className="btn btn-primary btn-sm flex-shrink-0"
                   disabled={!!runningRun}
-                >
-                  {runningRun ? "Импорт идёт…" : "Импортировать"}
-                </button>
-                <button
-                  type="submit"
-                  formAction={runYoutubeMusicImportAndSchedule}
+                />
+                <SubmitButton
+                  label={runningRun ? "Импорт идёт…" : "Импортировать и в расписание"}
+                  busyLabel="Запускаем…"
                   className="btn btn-ghost btn-sm flex-shrink-0"
                   disabled={!!runningRun}
+                  formAction={runYoutubeMusicImportAndSchedule}
                   title="Импортировать и добавить артиста в ежедневную проверку новинок"
-                >
-                  {runningRun ? "Импорт идёт…" : "Импортировать и в расписание"}
-                </button>
+                />
               </div>
             </form>
           </div>
@@ -299,9 +296,11 @@ export default async function AdminImportsPage({
             неразобранные записи. */}
         {unreviewedFailed > 0 && (
           <form action={markImportsReviewed}>
-            <button type="submit" className="btn btn-ghost btn-sm">
-              Пометить разобранными ({unreviewedFailed})
-            </button>
+            <SubmitButton
+              label={`Пометить разобранными (${unreviewedFailed})`}
+              busyLabel="Сохраняем…"
+              className="btn btn-ghost btn-sm"
+            />
           </form>
         )}
       </div>

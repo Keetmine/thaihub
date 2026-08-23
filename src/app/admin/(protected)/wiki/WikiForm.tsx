@@ -1,6 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import RichTextEditor from "@/components/RichTextEditor";
+import SubmitButton from "@/components/admin/SubmitButton";
+import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 
 export default function WikiForm({
   action,
@@ -12,8 +15,10 @@ export default function WikiForm({
   defaultValues?: { title: string; content: string; published: boolean };
 }) {
   const v = defaultValues;
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useUnsavedGuard(formRef);
   return (
-    <form action={action} className="surface d-flex flex-column gap-3 p-4">
+    <form ref={formRef} action={action} className="surface d-flex flex-column gap-3 p-4">
       <div>
         <label className="form-label">Заголовок *</label>
         <input name="title" required defaultValue={v?.title} className="form-control" />
@@ -34,10 +39,13 @@ export default function WikiForm({
           Опубликована (видна в футере и по ссылке)
         </label>
       </div>
-      <div>
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
-        </button>
+      <div className="admin-form-actions">
+        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
+        {dirty && (
+          <span className="small text-secondary">
+            ● Есть несохранённые изменения — они пропадут, если уйти со страницы.
+          </span>
+        )}
       </div>
     </form>
   );

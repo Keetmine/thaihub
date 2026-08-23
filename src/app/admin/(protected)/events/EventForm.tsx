@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import EntitySelect from "@/components/EntitySelect";
 import FormSection from "@/components/admin/FormSection";
+import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
@@ -352,9 +353,7 @@ export default function EventForm({
       </FormSection>
 
       <div className="admin-form-actions">
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
-        </button>
+        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
         {dirty && (
           <span className="small text-secondary">
             ● Есть несохранённые изменения — они пропадут, если уйти со страницы.

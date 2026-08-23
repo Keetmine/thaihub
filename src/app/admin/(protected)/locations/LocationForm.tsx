@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import FileDropzone from "@/components/FileDropzone";
+import FormSection from "@/components/admin/FormSection";
+import SubmitButton from "@/components/admin/SubmitButton";
+import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import { searchDramaOptions } from "../dramas/actions";
@@ -58,8 +61,12 @@ export default function LocationForm({
   const [lat, setLat] = useState<number | null>(v?.latitude ?? null);
   const [lng, setLng] = useState<number | null>(v?.longitude ?? null);
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useUnsavedGuard(formRef);
+
   return (
-    <form action={action} className="surface d-flex flex-column gap-3 p-4">
+    <form ref={formRef} action={action} className="surface d-flex flex-column gap-3 p-4">
+      <FormSection title="Основное" hint="название, категория, описание, фото">
       <div className="row g-3">
         <div className="col-12 col-md-8">
           <label className="form-label">Название *</label>
@@ -95,9 +102,9 @@ export default function LocationForm({
           <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} />
         </div>
       </div>
+      </FormSection>
 
-      <div>
-        <label className="form-label d-block">Координаты</label>
+      <FormSection title="Координаты" hint="точка на карте">
         <input type="hidden" name="latitude" value={lat ?? ""} />
         <input type="hidden" name="longitude" value={lng ?? ""} />
         <LocationPicker
@@ -108,14 +115,13 @@ export default function LocationForm({
             setLng(nextLng);
           }}
         />
-      </div>
+      </FormSection>
 
       {/* Сериалы, которые здесь снимали: без этой связи локация не
           появляется ни на странице сериала, ни в группировке «по
           сериалам» — раньше связать их можно было только из формы
           сериала. */}
-      <div>
-        <label className="form-label d-block">Сериалы, снятые здесь</label>
+      <FormSection title="Сериалы, снятые здесь" hint="связь с каталогом сериалов">
         <EntityMultiSelect
           name="dramaIds"
           options={dramas ?? []}
@@ -123,12 +129,12 @@ export default function LocationForm({
           placeholder="Начните вводить название сериала…"
           searchOptions={searchDramaOptions}
         />
-      </div>
+      </FormSection>
 
       {/* Ссылки: инстаграм заведения, сайт, канал — фандом чаще всего
           находит места именно по инстаграму. */}
-      <div>
-        <label className="form-label d-block">Ссылки</label>
+      <FormSection title="Ссылки" hint="инстаграм заведения, сайт, канал">
+        <div>
         {links.map((link, i) => (
           <div key={i} className="row g-2 mb-2">
             <div className="col-12 col-md-4">
@@ -167,12 +173,16 @@ export default function LocationForm({
         >
           + Добавить ссылку
         </button>
-      </div>
+        </div>
+      </FormSection>
 
-      <div className="mt-2">
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
-        </button>
+      <div className="admin-form-actions">
+        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
+        {dirty && (
+          <span className="small text-secondary">
+            ● Есть несохранённые изменения — они пропадут, если уйти со страницы.
+          </span>
+        )}
       </div>
     </form>
   );

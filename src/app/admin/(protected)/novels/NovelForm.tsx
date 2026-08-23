@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
+import FormSection from "@/components/admin/FormSection";
+import SubmitButton from "@/components/admin/SubmitButton";
+import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import { searchDramaOptions } from "../dramas/actions";
 
 export type NovelLinkInput = { label: string; url: string };
@@ -35,8 +38,12 @@ export default function NovelForm({
     v?.links && v.links.length > 0 ? v.links : [{ label: "", url: "" }],
   );
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useUnsavedGuard(formRef);
+
   return (
-    <form action={action} className="surface d-flex flex-column gap-3 p-4">
+    <form ref={formRef} action={action} className="surface d-flex flex-column gap-3 p-4">
+      <FormSection title="Основное" hint="название, авторы, размер, теги">
       <div className="row g-3">
         <div className="col-12 col-md-8">
           <label className="form-label">Название *</label>
@@ -69,7 +76,9 @@ export default function NovelForm({
           />
         </div>
       </div>
+      </FormSection>
 
+      <FormSection title="Описание и обложка">
       <div className="row g-3">
         <div className="col-12 col-md-8">
           <label className="form-label">Описание</label>
@@ -84,9 +93,10 @@ export default function NovelForm({
           <FileDropzone name="coverUrl" label="Обложка" defaultValue={v?.coverUrl} />
         </div>
       </div>
+      </FormSection>
 
+      <FormSection title="Где почитать / скачать" hint="ссылки на площадки">
       <div>
-        <label className="form-label d-block">Где почитать / скачать</label>
         <div className="d-flex flex-column gap-2">
           {links.map((link, i) => (
             <div key={i} className="row g-2 align-items-center">
@@ -138,9 +148,9 @@ export default function NovelForm({
           + Добавить ссылку
         </button>
       </div>
+      </FormSection>
 
-      <div>
-        <label className="form-label d-block">Экранизации (сериалы)</label>
+      <FormSection title="Экранизации" hint="сериалы по этой новелле">
         <EntityMultiSelect
           name="dramaIds"
           options={dramas}
@@ -148,12 +158,15 @@ export default function NovelForm({
           placeholder="Начните вводить название сериала…"
           searchOptions={searchDramaOptions}
         />
-      </div>
+      </FormSection>
 
-      <div className="mt-2">
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
-        </button>
+      <div className="admin-form-actions">
+        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
+        {dirty && (
+          <span className="small text-secondary">
+            ● Есть несохранённые изменения — они пропадут, если уйти со страницы.
+          </span>
+        )}
       </div>
     </form>
   );

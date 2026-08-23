@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { findDuplicateDramaGroups, findDuplicatePerformerGroups } from "@/lib/duplicates";
 import { mergeDramasAction, mergePerformersAction } from "./actions";
 import MergeGroupCard from "./MergeGroupCard";
+import SubmitButton from "@/components/admin/SubmitButton";
 import LetterAvatar from "@/components/LetterAvatar";
 import { performerHref } from "@/lib/performerSlug";
 
@@ -124,9 +125,11 @@ export default async function DuplicatesPage({
                       </p>
                       {d.mydramalistUrl && <p className="small text-secondary mb-0 text-truncate">MDL: {d.mydramalistUrl}</p>}
                       <form action={mergeDramasAction.bind(null, d.id, [other.id])} className="mt-auto">
-                        <button type="submit" className="btn btn-primary btn-sm w-100">
-                          Оставить эту запись (вторая вольётся)
-                        </button>
+                        <SubmitButton
+                          label="Оставить эту запись (вторая вольётся)"
+                          busyLabel="Слияние…"
+                          className="btn btn-primary btn-sm w-100"
+                        />
                       </form>
                     </div>
                   </div>
@@ -173,9 +176,11 @@ export default async function DuplicatesPage({
                         action={mergePerformersAction.bind(null, p.id, [other.id])}
                         className="mt-auto"
                       >
-                        <button type="submit" className="btn btn-primary btn-sm w-100">
-                          Оставить эту запись (вторая вольётся)
-                        </button>
+                        <SubmitButton
+                          label="Оставить эту запись (вторая вольётся)"
+                          busyLabel="Слияние…"
+                          className="btn btn-primary btn-sm w-100"
+                        />
                       </form>
                     </div>
                   </div>

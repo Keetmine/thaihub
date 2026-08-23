@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/auth";
 import { listJobs } from "@/lib/scheduledJobs";
 import ConfirmForm from "@/components/ConfirmForm";
+import SubmitButton from "@/components/admin/SubmitButton";
 import JobTargets from "./JobTargets";
 import { saveJobSchedule, runJobNow } from "./actions";
 
@@ -111,9 +112,7 @@ export default async function AdminSchedulePage() {
                 </div>
               )}
 
-              <button type="submit" className="btn btn-primary btn-sm">
-                Сохранить
-              </button>
+              <SubmitButton label="Сохранить" busyLabel="Сохранение…" />
 
               <ConfirmForm
                 action={runJobNow.bind(null, job.key)}

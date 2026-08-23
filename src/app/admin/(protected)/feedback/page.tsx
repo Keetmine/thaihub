@@ -2,6 +2,7 @@ import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
+import SubmitButton from "@/components/admin/SubmitButton";
 import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
@@ -102,11 +103,11 @@ export default async function AdminFeedbackPage({
                 )}
                 {f.status === "NEW" ? (
                   <form action={setFeedbackStatus.bind(null, f.id, "DONE")}>
-                    <button type="submit" className="btn btn-ghost btn-sm">✓ Обработано</button>
+                    <SubmitButton label="✓ Обработано" busyLabel="Сохраняем…" className="btn btn-ghost btn-sm" />
                   </form>
                 ) : (
                   <form action={setFeedbackStatus.bind(null, f.id, "NEW")}>
-                    <button type="submit" className="btn btn-link btn-sm text-secondary">Вернуть</button>
+                    <SubmitButton label="Вернуть" busyLabel="Возвращаем…" className="btn btn-link btn-sm text-secondary" />
                   </form>
                 )}
                 <ConfirmForm action={deleteFeedback.bind(null, f.id)} confirmMessage="Удалить обращение?">

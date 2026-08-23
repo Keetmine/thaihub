@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import FormSection from "@/components/admin/FormSection";
+import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
@@ -531,9 +532,7 @@ export default function DramaForm({
       </Modal>
 
       <div className="admin-form-actions">
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
-        </button>
+        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
         <span className="small text-secondary">
           {dirty
             ? "● Есть несохранённые изменения — они пропадут, если уйти со страницы."

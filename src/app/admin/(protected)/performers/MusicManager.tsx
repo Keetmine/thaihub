@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmForm from "@/components/ConfirmForm";
+import SubmitButton from "@/components/admin/SubmitButton";
 import LetterAvatar from "@/components/LetterAvatar";
 import FileDropzone from "@/components/FileDropzone";
 import { PencilIcon, TrashIcon } from "@/components/icons";
@@ -87,9 +88,7 @@ export default function MusicManager({
             <FileDropzone name="coverUrl" label="Обложка" />
           </div>
           <div className="col-12">
-            <button type="submit" className="btn btn-primary btn-sm">
-              + Добавить альбом
-            </button>
+            <SubmitButton label="+ Добавить альбом" busyLabel="Сохраняем…" />
           </div>
         </form>
 
@@ -118,7 +117,7 @@ export default function MusicManager({
                     <input name="url" defaultValue={a.url ?? ""} placeholder="Ссылка на площадку" className="form-control form-control-sm" />
                   </div>
                   <div className="col-12 col-md-1 d-flex gap-1">
-                    <button type="submit" className="btn btn-primary btn-sm">✓</button>
+                    <SubmitButton label="✓" />
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingAlbum(null)}>×</button>
                   </div>
                 </form>
@@ -189,9 +188,7 @@ export default function MusicManager({
             </select>
           </div>
           <div className="col-12">
-            <button type="submit" className="btn btn-primary btn-sm">
-              + Добавить песню
-            </button>
+            <SubmitButton label="+ Добавить песню" busyLabel="Сохраняем…" />
           </div>
         </form>
 
@@ -224,7 +221,7 @@ export default function MusicManager({
                     <input name="url" defaultValue={s.url ?? ""} placeholder="Ссылка" className="form-control form-control-sm" />
                   </div>
                   <div className="col-12 col-md-1 d-flex gap-1">
-                    <button type="submit" className="btn btn-primary btn-sm">✓</button>
+                    <SubmitButton label="✓" />
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingSong(null)}>×</button>
                   </div>
                 </form>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export type BulkOption = { id: string; name: string };
 
@@ -61,25 +62,38 @@ export default function BulkList({
     setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
   }
 
-  function perform(action: BulkAction) {
+  /** Удаление: подтверждение спрашивает общий ConfirmForm (модалка),
+   *  сюда попадаем уже после «Удалить» — ошибка возвращается в модалку. */
+  async function performDelete(
+    action: Extract<BulkAction, { kind: "delete" }>,
+  ): Promise<{ error?: string } | undefined> {
     const ids = [...selected];
     if (ids.length === 0) return;
-    if (
-      action.kind === "delete" &&
-      !window.confirm(action.confirmTemplate.replace("{n}", String(ids.length)))
-    ) {
-      return;
+    try {
+      await action.run(ids);
+    } catch (e) {
+      return {
+        error: e instanceof Error ? e.message : "Не получилось выполнить действие",
+      };
     }
-    const value = action.kind === "select" ? (values[action.label] ?? "") : "";
-    if (action.kind === "select" && !value) {
+    setError(null);
+    setSelected(new Set());
+    router.refresh();
+    return undefined;
+  }
+
+  function performSelect(action: Extract<BulkAction, { kind: "select" }>) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const value = values[action.label] ?? "";
+    if (!value) {
       setError(`Выберите значение для «${action.label}»`);
       return;
     }
     setError(null);
     startTransition(async () => {
       try {
-        if (action.kind === "delete") await action.run(ids);
-        else await action.run(ids, value);
+        await action.run(ids, value);
         setSelected(new Set());
         router.refresh();
       } catch (e) {
@@ -134,15 +148,25 @@ export default function BulkList({
           <span className="small text-white">Выбрано: {selected.size}</span>
           {actions.map((action) =>
             action.kind === "delete" ? (
-              <button
+              <ConfirmForm
                 key={action.label}
-                type="button"
-                className="btn btn-outline-danger btn-sm"
-                disabled={pending}
-                onClick={() => perform(action)}
+                action={() => performDelete(action)}
+                confirmMessage={action.confirmTemplate.replace(
+                  "{n}",
+                  String(selected.size),
+                )}
+                confirmLabel={action.label}
+                busyLabel="Удаляем…"
+                className="d-inline-flex"
               >
-                {action.label}
-              </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm"
+                  disabled={pending}
+                >
+                  {action.label}
+                </button>
+              </ConfirmForm>
             ) : (
               <span
                 key={action.label}
@@ -169,7 +193,7 @@ export default function BulkList({
                   type="button"
                   className="btn btn-ghost btn-sm"
                   disabled={pending}
-                  onClick={() => perform(action)}
+                  onClick={() => performSelect(action)}
                 >
                   {action.label}
                 </button>

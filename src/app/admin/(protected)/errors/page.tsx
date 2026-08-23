@@ -1,8 +1,9 @@
 import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
+import SubmitButton from "@/components/admin/SubmitButton";
 import { TrashIcon } from "@/components/icons";
-import { clearErrorLog, deleteErrorEntry, markErrorsReviewed } from "./actions";
+import { clearErrorLog, deleteErrorGroup, markErrorsReviewed } from "./actions";
 import Pagination from "@/components/Pagination";
 import Link from "next/link";
 
@@ -11,8 +12,12 @@ export const metadata = { title: "Ошибки" };
 export const dynamic = "force-dynamic";
 
 // Лог серверных ошибок: onRequestError (instrumentation.ts) пишет сюда
-// всё, что упало в страницах/экшенах/роутах.
-const PAGE_SIZE = 50;
+// всё, что упало в страницах/экшенах/роутах. Показываем не плоскую
+// ленту, а группы: одна упавшая страница за ночь набивает сотни
+// одинаковых записей, и до второй ошибки было не долистать.
+// Ключ группы — digest (у ошибок без digest он null, тогда группирует
+// message; groupBy по паре полей это и даёт).
+const PAGE_SIZE = 20;
 
 export default async function AdminErrorsPage({
   searchParams,
@@ -29,20 +34,40 @@ export default async function AdminErrorsPage({
   const dayAgo = new Date();
   dayAgo.setUTCHours(dayAgo.getUTCHours() - 24);
   const errorsWhere = period === "day" ? { createdAt: { gte: dayAgo } } : {};
-  const [errors, total, unreviewed] = await Promise.all([
-    prisma.errorLog.findMany({
+
+  const [groups, allGroupKeys, unreviewed] = await Promise.all([
+    prisma.errorLog.groupBy({
+      by: ["digest", "message"],
       where: errorsWhere,
-      orderBy: { createdAt: "desc" },
+      _count: { _all: true },
+      _min: { createdAt: true },
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: "desc" } },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.errorLog.count({ where: errorsWhere }),
+    // Общее число групп: groupBy не умеет отдавать свой count, а
+    // считать distinct по паре полей Prisma тоже не может — берём
+    // список ключей (по строке на группу; их немного, лог чистится).
+    prisma.errorLog.groupBy({ by: ["digest", "message"], where: errorsWhere }),
     prisma.errorLog.count({ where: { reviewedAt: null } }),
   ]);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(allGroupKeys.length / PAGE_SIZE));
 
-  const fmt = (d: Date) =>
-    d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  // Последний пример каждой группы страницы — для стека и path.
+  const examples = await Promise.all(
+    groups.map((g) =>
+      prisma.errorLog.findFirst({
+        where: { ...errorsWhere, digest: g.digest, message: g.message },
+        orderBy: { createdAt: "desc" },
+      }),
+    ),
+  );
+
+  const fmt = (d: Date | null) =>
+    d
+      ? d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+      : "?";
 
   return (
     <div>
@@ -54,12 +79,14 @@ export default async function AdminErrorsPage({
         <span className="d-flex flex-wrap align-items-center gap-2">
           {unreviewed > 0 && (
             <form action={markErrorsReviewed}>
-              <button type="submit" className="btn btn-ghost btn-sm">
-                Пометить разобранными ({unreviewed})
-              </button>
+              <SubmitButton
+                label={`Пометить разобранными (${unreviewed})`}
+                busyLabel="Сохраняем…"
+                className="btn btn-ghost btn-sm"
+              />
             </form>
           )}
-          {errors.length > 0 && (
+          {groups.length > 0 && (
             <ConfirmForm action={clearErrorLog} confirmMessage="Очистить весь лог ошибок?">
               <button type="button" className="btn btn-ghost btn-sm">
                 Очистить всё
@@ -78,46 +105,60 @@ export default async function AdminErrorsPage({
         </p>
       )}
 
-      {errors.length === 0 ? (
+      {groups.length === 0 ? (
         <p className="text-secondary">Ошибок нет — красота.</p>
       ) : (
         <div className="d-flex flex-column gap-2 scroll-list-lg thin-scroll">
-          {errors.map((e) => (
-            <div key={e.id} className="surface d-flex justify-content-between gap-3 p-3">
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <p className="small mb-1">
-                  <span className="text-danger">{e.message}</span>
-                </p>
-                <p className="small text-secondary mb-1">
-                  {fmt(e.createdAt)}
-                  {e.path ? ` · ${e.path}` : ""}
-                  {e.digest ? ` · digest ${e.digest}` : ""}
-                </p>
-                {e.stack && (
-                  <details>
-                    <summary className="small text-secondary" style={{ cursor: "pointer" }}>
-                      Стек
-                    </summary>
-                    <pre
-                      className="small text-secondary mb-0 mt-1"
-                      style={{ whiteSpace: "pre-wrap", maxHeight: "14rem", overflowY: "auto" }}
-                    >
-                      {e.stack}
-                    </pre>
-                  </details>
-                )}
-              </div>
-              <ConfirmForm
-                action={deleteErrorEntry.bind(null, e.id)}
-                confirmMessage="Удалить запись?"
-                className="flex-shrink-0"
+          {groups.map((g, i) => {
+            const example = examples[i];
+            const count = g._count._all;
+            return (
+              <div
+                key={`${g.digest ?? ""}|${g.message}`}
+                className="surface d-flex justify-content-between gap-3 p-3"
               >
-                <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить">
-                  <TrashIcon />
-                </button>
-              </ConfirmForm>
-            </div>
-          ))}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p className="small mb-1">
+                    <span className="text-danger">{g.message}</span>
+                    {count > 1 && (
+                      <span className="badge rounded-pill text-bg-secondary ms-2">×{count}</span>
+                    )}
+                  </p>
+                  <p className="small text-secondary mb-1">
+                    {count > 1
+                      ? `${fmt(g._min.createdAt)} — ${fmt(g._max.createdAt)}`
+                      : fmt(g._max.createdAt)}
+                    {example?.path ? ` · ${example.path}` : ""}
+                    {g.digest ? ` · digest ${g.digest}` : ""}
+                  </p>
+                  {example?.stack && (
+                    <details>
+                      <summary className="small text-secondary" style={{ cursor: "pointer" }}>
+                        Стек (последнее появление)
+                      </summary>
+                      <pre
+                        className="small text-secondary mb-0 mt-1"
+                        style={{ whiteSpace: "pre-wrap", maxHeight: "14rem", overflowY: "auto" }}
+                      >
+                        {example.stack}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+                <ConfirmForm
+                  action={deleteErrorGroup.bind(null, g.digest, g.message)}
+                  confirmMessage={
+                    count > 1 ? `Удалить все ${count} записей этой ошибки?` : "Удалить запись?"
+                  }
+                  className="flex-shrink-0"
+                >
+                  <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить">
+                    <TrashIcon />
+                  </button>
+                </ConfirmForm>
+              </div>
+            );
+          })}
         </div>
       )}
       <Pagination

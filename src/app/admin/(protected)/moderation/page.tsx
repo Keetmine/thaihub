@@ -12,6 +12,7 @@ import {
 } from "@/lib/slugHelpers";
 import Pagination from "@/components/Pagination";
 import ConfirmForm from "@/components/ConfirmForm";
+import SubmitButton from "@/components/admin/SubmitButton";
 import { TrashIcon } from "@/components/icons";
 import {
   resolveReport,
@@ -95,9 +96,11 @@ function ContentControls({
             className="d-flex flex-column gap-2 mt-2"
           >
             <textarea name="text" rows={3} defaultValue={text} className="form-control form-control-sm" />
-            <button type="submit" className="btn btn-primary btn-sm align-self-start">
-              Сохранить
-            </button>
+            <SubmitButton
+              label="Сохранить"
+              busyLabel="Сохранение…"
+              className="btn btn-primary btn-sm align-self-start"
+            />
           </form>
         </details>
       )}
@@ -345,13 +348,11 @@ export default async function AdminModerationPage({
               <div className="d-flex align-items-start gap-2 flex-shrink-0">
                 {r.status === "RESOLVED" ? (
                   <form action={reopenReport.bind(null, r.id)}>
-                    <button type="submit" className="btn btn-ghost btn-sm">
-                      ↩ Вернуть в работу
-                    </button>
+                    <SubmitButton label="↩ Вернуть в работу" busyLabel="Возвращаем…" className="btn btn-ghost btn-sm" />
                   </form>
                 ) : (
                   <form action={resolveReport.bind(null, r.id)}>
-                    <button type="submit" className="btn btn-ghost btn-sm">✓ Решено</button>
+                    <SubmitButton label="✓ Решено" busyLabel="Сохраняем…" className="btn btn-ghost btn-sm" />
                   </form>
                 )}
                 <ConfirmForm

@@ -10,6 +10,7 @@ import { searchEventOptions } from "../events/actions";
 import { searchSoloPerformerOptions } from "./actions";
 import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
 import FormSection from "@/components/admin/FormSection";
+import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
@@ -693,9 +694,7 @@ export default function PerformerForm({
       )}
 
       <div className="admin-form-actions">
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
-        </button>
+        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
         <span className="small text-secondary">
           {dirty
             ? "● Есть несохранённые изменения — они пропадут, если уйти со страницы."

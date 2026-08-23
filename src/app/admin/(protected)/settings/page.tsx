@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SETTING_KEYS, SETTING_GROUPS } from "@/lib/siteSettings";
+import SubmitButton from "@/components/admin/SubmitButton";
 import { saveSettings } from "./actions";
 
 export const metadata = { title: "Настройки" };
@@ -55,9 +56,7 @@ export default async function AdminSettingsPage() {
           })}
         </div>
         <div>
-          <button type="submit" className="btn btn-primary btn-sm">
-            Сохранить
-          </button>
+          <SubmitButton label="Сохранить" busyLabel="Сохранение…" />
         </div>
       </form>
     </div>

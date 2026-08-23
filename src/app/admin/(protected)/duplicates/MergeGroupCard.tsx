@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ConfirmForm from "@/components/ConfirmForm";
 
 export default function MergeGroupCard({
   title,
@@ -16,29 +17,21 @@ export default function MergeGroupCard({
 }) {
   const router = useRouter();
   const [keeperId, setKeeperId] = useState(rows[0].id);
-  const [isMerging, setIsMerging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleMerge() {
+  // Подтверждение и индикация «Слияние…» — у общего ConfirmForm (модалка);
+  // ошибка сервера тоже показывается в ней (вернуть { error }).
+  async function confirmedMerge(): Promise<{ error?: string } | undefined> {
     const loserIds = rows.map((r) => r.id).filter((id) => id !== keeperId);
-    if (
-      !confirm(
-        `Слить ${rows.length} записей «${title}» в одну? Остальные ${loserIds.length} будут удалены, их связи (события, избранное и т.п.) перенесутся на выбранную запись. Отменить нельзя.`,
-      )
-    ) {
-      return;
-    }
-    setIsMerging(true);
-    setError(null);
     try {
       await onMerge(keeperId, loserIds);
-      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось слить записи");
-    } finally {
-      setIsMerging(false);
+      return { error: err instanceof Error ? err.message : "Не удалось слить записи" };
     }
+    router.refresh();
+    return undefined;
   }
+
+  const loserCount = rows.length - 1;
 
   return (
     <div className="surface p-3">
@@ -62,15 +55,17 @@ export default function MergeGroupCard({
           </label>
         ))}
       </div>
-      {error && <p className="small text-danger mb-2">{error}</p>}
-      <button
-        type="button"
-        className="btn btn-outline-warning btn-sm"
-        onClick={handleMerge}
-        disabled={isMerging}
+      <ConfirmForm
+        action={confirmedMerge}
+        confirmMessage={`Слить ${rows.length} записей «${title}» в одну? Остальные ${loserCount} будут удалены, их связи (события, избранное и т.п.) перенесутся на выбранную запись. Отменить нельзя.`}
+        confirmLabel="Слить"
+        busyLabel="Слияние…"
+        className="d-inline"
       >
-        {isMerging ? "Слияние…" : "Слить, оставив выбранную"}
-      </button>
+        <button type="button" className="btn btn-outline-warning btn-sm">
+          Слить, оставив выбранную
+        </button>
+      </ConfirmForm>
     </div>
   );
 }

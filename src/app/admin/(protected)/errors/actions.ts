@@ -10,9 +10,15 @@ export async function clearErrorLog(): Promise<void> {
   revalidatePath("/admin/errors");
 }
 
-export async function deleteErrorEntry(id: string): Promise<void> {
+/** Удалить группу целиком: список показывает ошибки сгруппированными по
+ *  digest (fallback — по message), и чистить их по одной записи стало
+ *  бессмысленно. Ключ группы — пара digest+message, как в groupBy. */
+export async function deleteErrorGroup(
+  digest: string | null,
+  message: string,
+): Promise<void> {
   await requireAdmin();
-  await prisma.errorLog.delete({ where: { id } });
+  await prisma.errorLog.deleteMany({ where: { digest, message } });
   revalidatePath("/admin/errors");
 }
 

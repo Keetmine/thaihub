@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import FileDropzone from "@/components/FileDropzone";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
+import FormSection from "@/components/admin/FormSection";
+import SubmitButton from "@/components/admin/SubmitButton";
+import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { createDramaAndReturn, searchDramaOptions } from "../dramas/actions";
 
@@ -48,8 +51,11 @@ export default function AgencyForm({
   const v = defaultValues;
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useUnsavedGuard(formRef);
+
   return (
-    <form action={action} className="surface d-flex flex-column gap-3 p-4">
+    <form ref={formRef} action={action} className="surface d-flex flex-column gap-3 p-4">
       <div className="tab-bar mb-1">
         <TabButton active={activeTab === "general"} onClick={() => setActiveTab("general")}>
           Общая инфа
@@ -67,24 +73,28 @@ export default function AgencyForm({
           an inline display:none on the same element. */}
       <div style={{ display: activeTab === "general" ? undefined : "none" }}>
         <div className="d-flex flex-column gap-3">
-          <div>
-            <label className="form-label">Название *</label>
-            <input name="name" required defaultValue={v?.name} className="form-control" />
-          </div>
-          <div className="row g-3">
-            <div className="col-12 col-md-8">
-              <label className="form-label">Описание</label>
-              <textarea
-                name="description"
-                rows={5}
-                defaultValue={v?.description}
-                className="form-control"
-              />
+          <FormSection title="Основное" hint="название агентства или студии">
+            <div>
+              <label className="form-label">Название *</label>
+              <input name="name" required defaultValue={v?.name} className="form-control" />
             </div>
-            <div className="col-12 col-md-4">
-              <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} />
+          </FormSection>
+          <FormSection title="Описание и логотип">
+            <div className="row g-3">
+              <div className="col-12 col-md-8">
+                <label className="form-label">Описание</label>
+                <textarea
+                  name="description"
+                  rows={5}
+                  defaultValue={v?.description}
+                  className="form-control"
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} />
+              </div>
             </div>
-          </div>
+          </FormSection>
         </div>
       </div>
 
@@ -122,10 +132,13 @@ export default function AgencyForm({
         />
       </div>
 
-      <div className="mt-2">
-        <button type="submit" className="btn btn-primary">
-          {submitLabel}
-        </button>
+      <div className="admin-form-actions">
+        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
+        <span className="small text-secondary">
+          {dirty
+            ? "● Есть несохранённые изменения — они пропадут, если уйти со страницы."
+            : "Все вкладки сохраняются одной кнопкой."}
+        </span>
       </div>
     </form>
   );
