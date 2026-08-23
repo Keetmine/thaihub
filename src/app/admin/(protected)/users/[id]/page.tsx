@@ -127,20 +127,32 @@ export default async function AdminUserPage({
             </p>
           </div>
         </div>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
+      </div>
+
+      {/* Управление — подписанные группы вместо каши кнопок в шапке
+          (фидбек владельца: роль, подписка и удаление сливались в одну
+          нечитаемую строку). */}
+      <div className="surface p-3 mb-4 d-flex flex-wrap align-items-end column-gap-5 row-gap-3">
+        <div>
+          <p className="small text-secondary mb-1">Роль</p>
           <AdminRoleToggle
             userId={user.id}
             isAdmin={user.isAdmin}
             isManager={user.isManager}
             isSelf={me?.id === user.id}
           />
+        </div>
+        <div>
+          <p className="small text-secondary mb-1">Подписка</p>
           <PremiumToggle userId={user.id} premiumUntil={user.premiumUntil} />
+        </div>
+        <div className="ms-auto">
           <ConfirmForm
             action={boundDelete}
             confirmMessage={`Удалить пользователя «${displayName}» со всеми его данными?`}
           >
-            <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить" title="Удалить">
-              <TrashIcon />
+            <button type="button" className="btn btn-outline-danger btn-sm">
+              Удалить аккаунт
             </button>
           </ConfirmForm>
         </div>
