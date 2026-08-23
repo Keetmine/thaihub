@@ -58,7 +58,7 @@ export async function generateMetadata({
     select: { title: true, year: true, synopsis: true, posterUrl: true },
   });
   if (!drama)
-    return pageMetadata({ title: "Дорама", description: "Дорама не найдена." });
+    return pageMetadata({ title: "Сериал", description: "Сериал не найден." });
   return pageMetadata({
     title: `${drama.title}${drama.year ? ` (${drama.year})` : ""}`,
     description:
@@ -223,7 +223,7 @@ export default async function DramaDetailPage({
 
   return (
     <div>
-      <BackLink fallbackHref="/dramas" fallbackLabel="← Все дорамы" />
+      <BackLink fallbackHref="/dramas" fallbackLabel="← Все сериалы" />
       {/* Иммерсивный hero (Э2): постер размытым фоном вместо прежней
           плоской шапки; постер и статус просмотра переехали сюда из
           левой колонки. */}
@@ -362,7 +362,7 @@ export default async function DramaDetailPage({
 
       {relatedItems.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">Связанные дорамы</h2>
+          <h2 className="section-heading mb-2">Связанные сериалы</h2>
           <div className="d-flex flex-wrap gap-2">
             {relatedItems.map(({ drama: rel, relation }) => (
               <EntityMiniCard

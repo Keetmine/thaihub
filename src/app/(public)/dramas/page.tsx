@@ -14,9 +14,9 @@ import { dramaTitleWhere } from "@/lib/searchWhere";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Дорамы",
+  title: "Сериалы",
   description:
-    "Тайские BL-дорамы: описания, актёрский состав, годы выхода и места съёмок.",
+    "Тайские BL-сериалы: описания, актёрский состав, годы выхода и места съёмок.",
   path: "/dramas",
 });
 
@@ -93,7 +93,7 @@ export default async function DramasPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Каталог" title="Дорамы" size="lg" className="mb-5" />
+      <PageHeader eyebrow="Каталог" title="Сериалы" size="lg" className="mb-5" />
 
       <div className="tab-bar-row">
         <div className="tab-bar">
@@ -135,7 +135,7 @@ export default async function DramasPage({
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
         emptyMessage={
-          q ? "Ничего не найдено." : "Пока нет отмеченных дорам. Используйте поиск, чтобы найти дораму."
+          q ? "Ничего не найдено." : "Пока нет отмеченных сериалов. Используйте поиск, чтобы найти сериал."
         }
         itemsWrapperClassName="poster-grid"
         renderItem={({ drama: d }) => (

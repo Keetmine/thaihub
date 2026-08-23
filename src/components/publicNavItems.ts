@@ -20,7 +20,7 @@ export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
     matchPrefixes: ["/artists/", "/agencies"],
     tourId: "artists",
   },
-  { href: "/dramas", label: "Дорамы", matchPrefixes: ["/dramas/"] },
+  { href: "/dramas", label: "Сериалы", matchPrefixes: ["/dramas/"] },
   { href: "/novels", label: "Новеллы", matchPrefixes: ["/novels/"] },
   { href: "/locations", label: "Локации", matchPrefixes: ["/locations/"], tourId: "locations" },
   { href: "/trips", label: "Поездки", matchPrefixes: ["/trips/"], tourId: "trips", requiresUser: true },

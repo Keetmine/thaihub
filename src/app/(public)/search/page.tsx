@@ -152,7 +152,7 @@ export default async function SearchPage({
 
       {!query ? (
         <p className="text-secondary">
-          Введите название события, артиста, дорамы, локации или агентства в поиске сверху.
+          Введите название события, артиста, сериала, локации или агентства в поиске сверху.
         </p>
       ) : totalCount === 0 ? (
         <div>
@@ -198,7 +198,7 @@ export default async function SearchPage({
             </div>
           </Section>
 
-          <Section title="Дорамы" count={dramas.length}>
+          <Section title="Сериалы" count={dramas.length}>
             {/* Постер-карточки, как ряд сериалов на странице актёра. */}
             <div className="d-flex flex-wrap gap-3">
               {dramas.map((d) => (

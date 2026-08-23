@@ -53,7 +53,7 @@ export default function ProfileOverview({
     {
       icon: "📺",
       value: stats.completedDramas,
-      label: `${plural(stats.completedDramas, ["дорама", "дорамы", "дорам"])} досмотрено`,
+      label: `${plural(stats.completedDramas, ["сериал", "сериала", "сериалов"])} досмотрено`,
       hint: "статус «просмотрено»",
     },
   ];

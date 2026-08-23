@@ -85,7 +85,7 @@ export default async function LandingPage() {
               className="display-1-tight mb-3"
               style={{ fontSize: "clamp(2.3rem, 5vw, 3.4rem)", maxWidth: "40rem" }}
             >
-              Концерты, дорамы и артисты —{" "}
+              Концерты, сериалы и артисты —{" "}
               <span className="text-warm-gradient">в одном месте</span>
             </h1>
             <p
@@ -93,12 +93,12 @@ export default async function LandingPage() {
               style={{ maxWidth: "32rem", fontSize: "1.05rem" }}
             >
               MyBLHub собирает афишу фанмитов и концертов, каталог артистов и
-              дорам, ваши избранное и планы — чтобы ничего не пропустить.
+              сериалов, ваши избранное и планы — чтобы ничего не пропустить.
             </p>
             <div className="d-flex flex-wrap gap-2 mb-4">{authCta}</div>
             <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
               {upcomingEventsCount} событий в афише · {performersCount} артистов ·{" "}
-              {dramasCount} дорам в каталоге
+              {dramasCount} сериалов в каталоге
             </p>
           </div>
           <div className="col-12 col-lg-5">
@@ -189,11 +189,11 @@ export default async function LandingPage() {
               <div className="d-flex align-items-center gap-2 mb-2">
                 <TvIcon />
                 <p className="font-display fw-medium text-white mb-0">
-                  Дорамы и статусы
+                  Сериалы и статусы
                 </p>
               </div>
               <p className="small text-secondary mb-0">
-                Смотрю, посмотрено, в планах — отмечайте дорамы, собирайте свою
+                Смотрю, посмотрено, в планах — отмечайте сериалы, собирайте свою
                 коллекцию и находите места съёмок на карте.
               </p>
             </div>
@@ -258,7 +258,7 @@ export default async function LandingPage() {
               <ul className="list-unstyled d-flex flex-column gap-2 small text-secondary mb-0">
                 <li>🎤 {upcomingEventsCount} событий в афише — с пресейлами и билетами</li>
                 <li>✨ {performersCount} артистов и групп с фильмографией и музыкой</li>
-                <li>📺 {dramasCount} дорам с местами съёмок на карте</li>
+                <li>📺 {dramasCount} сериалов с местами съёмок на карте</li>
                 <li>🗺 Поездки, списки мест и вики для фанатов</li>
               </ul>
             </div>

@@ -191,7 +191,7 @@ export default function StatsTab({
       {!isPremium ? (
         <PremiumTeaser
           title="Ачивки — по подписке"
-          description={`Достижения за концерты, поездки и просмотренные дорамы (сейчас их ${achievementsTotal}) — какие именно, узнаёшь, получая их.`}
+          description={`Достижения за концерты, поездки и просмотренные сериалы (сейчас их ${achievementsTotal}) — какие именно, узнаёшь, получая их.`}
         />
       ) : (
       <>

@@ -169,7 +169,7 @@ export default async function LocationDetailPage({
               )}
               {location.dramas.length > 0 && (
                 <span className="date-chip">
-                  дорам снималось: {location.dramas.length}
+                  сериалов снималось: {location.dramas.length}
                 </span>
               )}
             </>
@@ -212,7 +212,7 @@ export default async function LocationDetailPage({
           {/* Раздел без содержимого не рисуем вовсе. */}
           {location.dramas.length > 0 && (
             <>
-              <h2 className="section-heading mb-2">Дорамы</h2>
+              <h2 className="section-heading mb-2">Сериалы</h2>
               <div className="d-flex flex-wrap gap-2">
                 {location.dramas.map(({ drama }) => (
                   <Link

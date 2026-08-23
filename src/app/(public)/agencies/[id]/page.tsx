@@ -119,7 +119,7 @@ export default async function AgencyDetailPage({
                 <span className="date-chip">артистов: {allPerformers.length}</span>
               )}
               {agency.dramas.length > 0 && (
-                <span className="date-chip">дорам: {agency.dramas.length}</span>
+                <span className="date-chip">сериалов: {agency.dramas.length}</span>
               )}
             </>
           }
@@ -164,7 +164,7 @@ export default async function AgencyDetailPage({
             prefetch={false}
             className={`tab-bar-item ${tab === "dramas" ? "active" : ""}`}
           >
-            Дорамы ({agency.dramas.length})
+            Сериалы ({agency.dramas.length})
           </Link>
         </div>
         <NameSearchBox

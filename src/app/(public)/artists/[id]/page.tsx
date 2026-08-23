@@ -308,7 +308,7 @@ export default async function PerformerPage({
                 <span className="date-chip">{performer.agencies[0].agency.name}</span>
               )}
               {sortedDramas.length > 0 && (
-                <span className="date-chip">дорам: {sortedDramas.length}</span>
+                <span className="date-chip">сериалов: {sortedDramas.length}</span>
               )}
               {upcoming.length + past.length > 0 && (
                 <span className="date-chip">событий: {upcoming.length + past.length}</span>
@@ -654,7 +654,7 @@ export default async function PerformerPage({
 
       {!isBand && performer.dramas.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">Дорамы</h2>
+          <h2 className="section-heading mb-2">Сериалы</h2>
           <div className="poster-row thin-scroll">
             {sortedDramas.map((pd) => (
               <div key={pd.dramaId} style={{ position: "relative" }}>
