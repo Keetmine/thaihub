@@ -485,11 +485,12 @@ docs/design-direction.md. Решения владельца (2026-08-22): пор
 
 ### Э4. Админка
 
-- [~] Э4.1 (2026-08-23, агент): SubmitButton во всех admin-формах с
-      action; голых window.confirm не осталось (broadcast, слияние
-      дублей и bulk-удаление — через ConfirmForm с ошибкой в модалке).
-      Осталось: единый комбобокс (копии в Drama/EventForm), общая
-      DataList-строка, PAGE_SIZE в feedback/errors/moderation ещё свои.
+- [x] Э4.1 (2026-08-23, агенты): SubmitButton во всех admin-формах;
+      голых window.confirm не осталось; рукописные комбобоксы
+      Drama/EventForm заменены общим EntityMultiSelect (режим onPick);
+      плотные журналы (модерация/импорты/ошибки) — DENSE_PAGE_SIZE=20
+      из lib/pagination. Общая DataList-строка админки — отложена
+      (не блокирует, вернуться при случае).
 - [~] Э4.2 (2026-08-23, агент): wiki — поиск+пагинация; feedback,
       finance (сводка отдельными агрегатами), broadcast — пагинация;
       pairings — поиск по имени участников. events сделан в Э0.7.
