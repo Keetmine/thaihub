@@ -3234,6 +3234,9 @@ details.admin-section[open] > summary.admin-section-head::before {
   .poster-grid {
     grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
     gap: 0.75rem;
+  }
+}
+
 /* ---------- Э2.6: мобильная навигация ---------- */
 /* Шторка-drawer публичной части (src/components/MobileNav.tsx): панель
    на всю высоту справа вместо прежней выпадашки под навбаром. Админка

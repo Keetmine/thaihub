@@ -65,6 +65,11 @@ export const viewport: Viewport = {
   // Фактический фон сайта (--bs-body-bg) — старый #160a1c остался от
   // фиолетовой темы и красил панель браузера в чужой цвет.
   themeColor: "#0a0a0c",
+  // width/initialScale задаём ЯВНО: кастомный viewport-export заменяет
+  // дефолтную мету целиком, и без них мобильные рендерили страницу в
+  // 1280px (проверено на 390px-вьюпорте).
+  width: "device-width",
+  initialScale: 1,
   // Без viewport-fit=cover env(safe-area-inset-bottom) на iOS всегда 0 —
   // а на него опираются нижний таб-бар и шторка мобильной навигации.
   viewportFit: "cover",
