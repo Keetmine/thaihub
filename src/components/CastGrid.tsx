@@ -11,9 +11,12 @@ import { Children, useState, type ReactNode } from "react";
 export default function CastGrid({
   children,
   limit = 14,
+  compact = false,
 }: {
   children: ReactNode;
   limit?: number;
+  /** Мельче карточки — для составов события. */
+  compact?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const items = Children.toArray(children);
@@ -21,7 +24,7 @@ export default function CastGrid({
   const collapsed = !expanded && items.length > limit + 2;
   return (
     <>
-      <div className="cast-grid">{collapsed ? items.slice(0, limit) : items}</div>
+      <div className={`cast-grid ${compact ? "cast-grid-sm" : ""}`}>{collapsed ? items.slice(0, limit) : items}</div>
       {collapsed && (
         <div className="mt-3">
           <button

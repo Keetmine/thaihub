@@ -156,7 +156,7 @@ export default async function PublicLayout({ children }: { children: React.React
             </div>
           </nav>
         </div>
-        <main className="flex-fill container py-4 py-md-5 public-main">
+        <main className="flex-fill container py-3 py-md-4 public-main">
           <TimezoneProvider timezone={user?.timezone ?? DEFAULT_TIMEZONE}>
             {children}
           </TimezoneProvider>

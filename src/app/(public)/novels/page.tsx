@@ -38,7 +38,7 @@ export default async function NovelsPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Каталог" title="Новеллы" size="lg" className="mb-5" />
+      <PageHeader eyebrow="Каталог" title="Новеллы" size="lg" className="mb-5" watermark="Novels" />
 
       <NameSearchBox action="/novels" q={q} placeholder="Поиск по названию или автору…" />
 

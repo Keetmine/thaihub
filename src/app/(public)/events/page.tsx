@@ -44,7 +44,7 @@ export default async function HomePage({
         {/* Метка тура и в этой ветке: без подписки здесь пейволл, но
             первый шаг «что это за раздел» показать всё равно нужно. */}
         <div className="dot-grid pb-1" data-tour="feed">
-          <PageHeader eyebrow="События" title="Афиша" size="lg" className="mb-5" />
+          <PageHeader eyebrow="События" title="Афиша" size="lg" className="mb-5" watermark="Events" />
         </div>
         <PremiumUpsell feature="Афиша событий" />
       </div>

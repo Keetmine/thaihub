@@ -33,7 +33,7 @@ export default async function TripsPage() {
   if (!isPremiumActive(user)) {
     return (
       <div>
-        <PageHeader eyebrow="Планирование" title="Мои поездки" size="lg" className="mb-5" />
+        <PageHeader eyebrow="Планирование" title="Мои поездки" size="lg" className="mb-5" watermark="Trips" />
         <PremiumUpsell feature="Поездки" />
       </div>
     );

@@ -353,7 +353,7 @@ export default async function PerformersPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Каталог" title={titles[view]} size="lg" className="mb-5" />
+      <PageHeader eyebrow="Каталог" title={titles[view]} size="lg" className="mb-5" watermark="Artists" />
 
       <div className="tab-bar-row">
         <Tabs active={view} />

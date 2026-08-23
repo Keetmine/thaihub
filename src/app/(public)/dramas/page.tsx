@@ -93,7 +93,7 @@ export default async function DramasPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Каталог" title="Сериалы" size="lg" className="mb-5" />
+      <PageHeader eyebrow="Каталог" title="Сериалы" size="lg" className="mb-5" watermark="Series" />
 
       <div className="tab-bar-row">
         <div className="tab-bar">

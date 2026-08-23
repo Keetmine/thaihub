@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { deletePerformer } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
-import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
@@ -180,10 +179,8 @@ export default async function AdminPerformersPage({
         </Link>
       </div>
 
-      <div className="tab-bar-row">
-        <AdminPerformerTabs
-          active={isMascots ? "mascots" : isBands ? "bands" : "performers"}
-        />
+      {/* Табы разделов убраны — группы/маскоты теперь пункты сайдбара. */}
+      <div className="tab-bar-row justify-content-end">
         <NameSearchBox
           action="/admin/performers"
           q={q}

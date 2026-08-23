@@ -2,7 +2,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteAgency } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
-import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
@@ -52,8 +51,7 @@ export default async function AdminAgenciesPage({
         </Link>
       </div>
 
-      <div className="tab-bar-row">
-        <AdminPerformerTabs active="agencies" />
+      <div className="tab-bar-row justify-content-end">
         <NameSearchBox
           action="/admin/agencies"
           q={q}

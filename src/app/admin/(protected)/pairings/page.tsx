@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { deletePairing, setPairingStatus, swapPairingOrder } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
-import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import CreatePairingModal from "./CreatePairingModal";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
@@ -60,8 +59,7 @@ export default async function AdminPairingsPage({
         <CreatePairingModal performers={[]} />
       </div>
 
-      <div className="tab-bar-row">
-        <AdminPerformerTabs active="pairings" />
+      <div className="tab-bar-row justify-content-end">
         <NameSearchBox
           action="/admin/pairings"
           q={q}

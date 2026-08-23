@@ -30,6 +30,7 @@ import {
   SettingsIcon,
   HistoryIcon,
   ClockIcon,
+  MusicNoteIcon,
 } from "@/components/icons";
 
 // Пункты сайдбара — единый источник и для мобильного меню.
@@ -40,6 +41,7 @@ const NAV_SECTIONS: {
     title: string;
     icon: React.ComponentType<{ className?: string }>;
     matchPrefixes?: string[];
+    matchQuery?: Record<string, string | null>;
     /** Раздел доступен менеджеру каталога (иначе — только админу). */
     managerOk?: boolean;
   }[];
@@ -61,9 +63,25 @@ const NAV_SECTIONS: {
       {
         href: "/admin/performers",
         managerOk: true,
-        title: "Исполнители",
+        title: "Актёры",
         icon: UsersIcon,
         matchPrefixes: ["/admin/performers/"],
+        // ?view=bands|mascots — свои пункты ниже, актёров не подсвечиваем.
+        matchQuery: { view: null },
+      },
+      {
+        href: "/admin/performers?view=bands",
+        managerOk: true,
+        title: "Группы",
+        icon: MusicNoteIcon,
+        matchQuery: { view: "bands" },
+      },
+      {
+        href: "/admin/performers?view=mascots",
+        managerOk: true,
+        title: "Маскоты",
+        icon: StarIcon,
+        matchQuery: { view: "mascots" },
       },
       {
         href: "/admin/pairings",
@@ -181,7 +199,7 @@ export default async function ProtectedAdminLayout({
                   const Icon = item.icon;
                   const badge = badges[item.href] ?? 0;
                   return (
-                    <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
+                    <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes} matchQuery={item.matchQuery}>
                       <Icon className="admin-sidebar-icon" /> {item.title}
                       {badge > 0 && <span className="admin-nav-badge">{badge > 99 ? "99+" : badge}</span>}
                     </NavLink>
@@ -214,7 +232,7 @@ export default async function ProtectedAdminLayout({
             <QuickSearchButton compact />
             <MobileMenu>
               {sections.flatMap((s) => s.items).map((item) => (
-                <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes}>
+                <NavLink key={item.href} href={item.href} matchPrefixes={item.matchPrefixes} matchQuery={item.matchQuery}>
                   {item.title}
                   {(badges[item.href] ?? 0) > 0 && (
                     <span className="admin-nav-badge">{badges[item.href]}</span>

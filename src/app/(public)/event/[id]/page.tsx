@@ -406,7 +406,7 @@ export default async function EventDetailPage({
             <UsersIcon className="icon-inline" /> Кто выступает
           </h2>
           {event.performers.length > 0 && (
-            <CastGrid>
+            <CastGrid compact>
               {performersSorted.map(({ performer }) => (
                 <EntityMiniCard
                   key={performer.id}

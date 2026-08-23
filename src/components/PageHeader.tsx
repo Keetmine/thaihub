@@ -11,6 +11,7 @@ export default function PageHeader({
   action,
   size = "md",
   className,
+  watermark,
 }: {
   eyebrow: string;
   backHref?: string;
@@ -19,12 +20,19 @@ export default function PageHeader({
   /** md — списки/кабинет (2.25rem), lg — витринные страницы (2.5rem). */
   size?: "md" | "lg";
   className?: string;
+  /** Гигантский контурный текст-подложка за шапкой (латиницей). */
+  watermark?: string;
 }) {
   const fontSize = size === "lg" ? "2.5rem" : "2.25rem";
   return (
     <div
-      className={`d-flex flex-wrap align-items-end justify-content-between gap-3 ${className ?? "mb-4"}`}
+      className={`page-header-wrap d-flex flex-wrap align-items-end justify-content-between gap-3 ${className ?? "mb-4"}`}
     >
+      {watermark && (
+        <span className="page-watermark" aria-hidden>
+          {watermark}
+        </span>
+      )}
       <div>
         {backHref ? (
           <Link href={backHref} className="eyebrow text-decoration-none">
@@ -33,7 +41,7 @@ export default function PageHeader({
         ) : (
           <span className="eyebrow">{eyebrow}</span>
         )}
-        <h1 className="display-1-tight mt-3 mb-0" style={{ fontSize }}>
+        <h1 className="display-1-tight mt-2 mb-0" style={{ fontSize }}>
           {title}
         </h1>
       </div>

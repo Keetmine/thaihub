@@ -80,6 +80,7 @@ export default async function LocationsPage({
         eyebrow="Каталог"
         title="Локации"
         size="lg"
+        watermark="Places"
         className="mb-5"
         action={
           <>
