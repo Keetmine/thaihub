@@ -12,11 +12,14 @@ export default function CastGrid({
   children,
   limit = 14,
   compact = false,
+  chips = false,
 }: {
   children: ReactNode;
   limit?: number;
   /** Мельче карточки — для составов события. */
   compact?: boolean;
+  /** Капсулы в ряд (EntityMiniCard row) вместо фото-сетки. */
+  chips?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const items = Children.toArray(children);
@@ -24,7 +27,9 @@ export default function CastGrid({
   const collapsed = !expanded && items.length > limit + 2;
   return (
     <>
-      <div className={`cast-grid ${compact ? "cast-grid-sm" : ""}`}>{collapsed ? items.slice(0, limit) : items}</div>
+      <div className={chips ? "d-flex flex-wrap gap-2" : `cast-grid ${compact ? "cast-grid-sm" : ""}`}>
+        {collapsed ? items.slice(0, limit) : items}
+      </div>
       {collapsed && (
         <div className="mt-3">
           <button

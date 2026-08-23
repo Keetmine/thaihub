@@ -207,19 +207,6 @@ export default async function DramaDetailPage({
       a.performer.name.localeCompare(b.performer.name),
   );
 
-  // Э2ф: якорные чипы под hero — только на реально существующие секции,
-  // в порядке их следования на странице. Отзывы есть всегда.
-  const anchors = [
-    ...(events.length > 0 ? [{ href: "#events", label: "События" }] : []),
-    ...(drama.performers.length > 0
-      ? [{ href: "#cast", label: "Состав" }]
-      : []),
-    ...(drama.locations.length > 0
-      ? [{ href: "#locations", label: "Локации" }]
-      : []),
-    { href: "#reviews", label: "Отзывы" },
-  ];
-
   return (
     <div>
       <BackLink fallbackHref="/dramas" fallbackLabel="← Все сериалы" />
@@ -256,15 +243,6 @@ export default async function DramaDetailPage({
       {/* Э2ф: страница длинная — якорные чипы к ключевым секциям, чтобы
           важное не требовало слепого скролла. Один чип «Отзывы» без
           компании смысла не имеет — ряд рисуем от двух. */}
-      {anchors.length >= 2 && (
-        <div className="section-anchors">
-          {anchors.map((a) => (
-            <a key={a.href} href={a.href} className="chip-link">
-              {a.label}
-            </a>
-          ))}
-        </div>
-      )}
 
       {/* Постер слева + факты и синопсис справа — самым верхом
           (требование владельца): то, что смотрят первым. */}
@@ -459,11 +437,12 @@ export default async function DramaDetailPage({
       {drama.performers.length > 0 && (
         <div id="cast" className="anchor-target mb-4">
           <h2 className="section-heading mb-3">Актёрский состав</h2>
-          <CastGrid>
+          {/* Капсулы вместо фото-сетки: сетка выходила гигантской
+              (фидбек владельца). Роль — подписью в капсуле. */}
+          <CastGrid chips limit={18}>
             {castSorted.map(({ performer, role }) => (
               <EntityMiniCard
                 key={performer.id}
-                variant="grid"
                 href={performerHref(performer)}
                 photoUrl={performer.photoUrl}
                 name={performer.name}

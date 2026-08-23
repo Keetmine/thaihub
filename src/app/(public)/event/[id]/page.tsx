@@ -2,7 +2,6 @@ import ReviewsAndComments from "@/components/ReviewsAndComments";
 import SourcesBlock from "@/components/SourcesBlock";
 import Link from "next/link";
 import BackLink from "@/components/BackLink";
-import DetailHero from "@/components/DetailHero";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatCombinedDateList, formatHumanDate, formatShortDate, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
@@ -202,27 +201,6 @@ export default async function EventDetailPage({
   }
   // --- end own block ---
 
-  // Чип даты в hero: ближайшая будущая дата, а для прошедших событий —
-  // первая (даты отсортированы по возрастанию при загрузке).
-  const heroOccurrence =
-    event.occurrences.find((o) => o.startsAt >= new Date()) ??
-    event.occurrences[0];
-  // Чип цены: короткую строку показываем как есть, а прайс-лист концерта
-  // («7,900 / … / 1,500 baht») сжимаем до «от 1,500 baht» — полный
-  // перечень остаётся строкой «Цена билетов» в карточке ниже.
-  const priceChip = (() => {
-    const p = event.ticketPrice?.trim();
-    if (!p) return null;
-    if (p.length <= 30) return p;
-    const tokens = p.match(/\d[\d,.]*/g);
-    if (!tokens || tokens.length < 2) return null;
-    const min = tokens.reduce((best, t) =>
-      Number(t.replace(/,/g, "")) < Number(best.replace(/,/g, "")) ? t : best,
-    );
-    const unit = p.match(/[^\d\s/,.]+\s*$/)?.[0].trim();
-    return `от ${min}${unit ? ` ${unit}` : ""}`;
-  })();
-
   // Э2ф: свой осмысленный порядок у состава события не хранится —
   // сортируем по популярности (числу событий у артиста), при равенстве
   // по имени; первые ~14 видимых в сетке — самые популярные.
@@ -271,66 +249,53 @@ export default async function EventDetailPage({
   const castInCard = castCards.length > 0 && castCards.length <= 12;
   const hasLineupSection = !castInCard && castCards.length > 0;
 
-  // Э2ф: якорные чипы под hero — только на существующие секции и только
-  // если их набралось хотя бы три (иначе ряд не помогает навигации).
-  const anchors = [
-    ...(hasLineupSection ? [{ href: "#lineup", label: "Состав" }] : []),
-    ...(event.description
-      ? [{ href: "#description", label: "Описание" }]
-      : []),
-    { href: "#reviews", label: "Отзывы" },
-  ];
-
   return (
     <div>
       <BackLink fallbackHref="/" fallbackLabel="← Все события" />
-      {/* Иммерсивный hero (Э2): постер и титул с чипами вместо плоской
-          шапки; постер из колонки слева переехал сюда. */}
-      <div className="mt-3">
-        <DetailHero
-          photoUrl={event.posterUrl}
-          photoAlt={event.title}
-          title={event.title}
-          subtitle={event.venue}
-          chips={
-            <>
-              {heroOccurrence && (
-                <span className="date-chip">
-                  {formatShortDate(heroOccurrence.startsAt)}
-                </span>
-              )}
-              {event.occurrences.length > 1 && (
-                <span className="date-chip">дат: {event.occurrences.length}</span>
-              )}
-              {priceChip && <span className="date-chip">{priceChip}</span>}
-            </>
-          }
-          actions={
-            <>
-              <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
-              <a
-                href={`/event/${event.id}/ics`}
-                className="round-icon-btn"
-                aria-label="Добавить в календарь"
-                data-tooltip="Добавить в календарь"
-              >
-                <CalendarIcon />
-              </a>
-            </>
-          }
-        />
-      </div>
-      {anchors.length >= 3 && (
-        <div className="section-anchors">
-          {anchors.map((a) => (
-            <a key={a.href} href={a.href} className="chip-link">
-              {a.label}
-            </a>
-          ))}
+      {/* Классическая шапка (по просьбе владельца): заголовок сверху,
+          постер слева с кнопкой «Билеты», инфо-карта справа. */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-3">
+        <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
+          {event.title}
+        </h1>
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
+          <a
+            href={`/event/${event.id}/ics`}
+            className="round-icon-btn"
+            aria-label="Добавить в календарь"
+            data-tooltip="Добавить в календарь"
+          >
+            <CalendarIcon />
+          </a>
         </div>
-      )}
-      <div className="mb-3">
-          <div className="surface p-4">
+      </div>
+
+      <div className="d-flex flex-column flex-sm-row gap-4 mb-3">
+        {event.posterUrl && (
+          <div className="flex-shrink-0 d-flex flex-column gap-2" style={{ width: "13rem" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              loading="eager"
+              decoding="async"
+              src={event.posterUrl}
+              alt={event.title}
+              className="rounded-4 w-100"
+              style={{ aspectRatio: "3 / 4", objectFit: "cover" }}
+            />
+            {event.presaleUrl && (
+              <a
+                href={event.presaleUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+              >
+                <TicketIcon className="icon-inline" /> Билеты
+              </a>
+            )}
+          </div>
+        )}
+        <div className="surface p-4 flex-fill" style={{ minWidth: 0 }}>
             <p className="mb-2">
               <PinIcon className="icon-inline" /> <span className="text-secondary">Локация:</span>{" "}
               {event.venue}
@@ -378,19 +343,8 @@ export default async function EventDetailPage({
                   )}
                 </p>
                 <div className="d-flex flex-wrap gap-2">
-                  {/* Постер переехал в hero, кнопка «Билеты» — сюда. */}
-                  {event.presaleUrl && (
-                    <a
-                      href={event.presaleUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-primary btn-sm"
-                    >
-                      Билеты
-                    </a>
-                  )}
-                  {/* Напоминание о препродаже имеет смысл только до её
-                      старта — для уже прошедшей кнопку не показываем. */}
+                  {/* Кнопка «Билеты» живёт под постером; здесь — только
+                      напоминание, и лишь до старта препродажи. */}
                   {event.presaleAt && event.presaleAt > new Date() && (
                     <a
                       href={`/event/${event.id}/ics?presale=1`}
