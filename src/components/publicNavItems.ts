@@ -13,14 +13,14 @@ export type PublicNavItem = {
 };
 
 export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
-  { href: "/events", label: "Все события", matchPrefixes: ["/event/"] },
+  { href: "/events", label: "Афиша", matchPrefixes: ["/event/"] },
   {
     href: "/artists",
-    label: "Исполнители",
+    label: "Артисты",
     matchPrefixes: ["/artists/", "/agencies"],
     tourId: "artists",
   },
-  { href: "/dramas", label: "Сериалы", matchPrefixes: ["/dramas/"] },
+  { href: "/dramas", label: "Дорамы", matchPrefixes: ["/dramas/"] },
   { href: "/novels", label: "Новеллы", matchPrefixes: ["/novels/"] },
   { href: "/locations", label: "Локации", matchPrefixes: ["/locations/"], tourId: "locations" },
   { href: "/trips", label: "Поездки", matchPrefixes: ["/trips/"], tourId: "trips", requiresUser: true },

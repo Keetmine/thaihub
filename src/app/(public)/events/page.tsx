@@ -44,7 +44,7 @@ export default async function HomePage({
         {/* Метка тура и в этой ветке: без подписки здесь пейволл, но
             первый шаг «что это за раздел» показать всё равно нужно. */}
         <div className="dot-grid pb-1" data-tour="feed">
-          <PageHeader eyebrow="Афиша событий" title="Все события" size="lg" className="mb-5" />
+          <PageHeader eyebrow="События" title="Афиша" size="lg" className="mb-5" />
         </div>
         <PremiumUpsell feature="Афиша событий" />
       </div>
@@ -136,10 +136,10 @@ export default async function HomePage({
           вместо ленты стоит пейволл, а первый шаг должен показаться
           всем. */}
       <div className="dot-grid pb-1" data-tour="feed">
-        <span className="eyebrow">Афиша событий</span>
+        <span className="eyebrow">События</span>
         <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
           <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-            Все события
+            Афиша
           </h1>
           <Link
             href="/calendar"
@@ -158,7 +158,7 @@ export default async function HomePage({
             prefetch={false}
             className={`tab-bar-item ${filter === "all" && !activeTrip ? "active" : ""}`}
           >
-            Все события
+            Все
           </Link>
           <Link
             href={`/events?filter=going${rangeQuery}`}

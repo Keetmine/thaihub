@@ -31,14 +31,14 @@ export default async function HelpPage({
           <h2 className="h6 fw-semibold mb-2">Что это за сайт?</h2>
           <p className="text-secondary mb-0">
             MyBLHub — трекер концертов и фан-событий тайских BL-актёров: расписание
-            событий, профили исполнителей и сериалов, избранное и статусы просмотра.
+            событий, профили артистов и дорам, избранное и статусы просмотра.
           </p>
         </div>
 
         <div className="surface p-4">
           <h2 className="h6 fw-semibold mb-2">Как добавить кого-то в избранное?</h2>
           <p className="text-secondary mb-0">
-            Нажмите на иконку сердечка рядом с исполнителем, сериалом или событием.
+            Нажмите на иконку сердечка рядом с артистом, дорамой или событием.
             Всё избранное собирается в вашем{" "}
             <Link href="/account" className="link-body-emphasis">
               профиле

@@ -154,7 +154,7 @@ export default async function SearchPage({
 
       {!query ? (
         <p className="text-secondary">
-          Введите название события, исполнителя, сериала, локации или агентства в поиске сверху.
+          Введите название события, артиста, дорамы, локации или агентства в поиске сверху.
         </p>
       ) : totalCount === 0 ? (
         <div>
@@ -187,7 +187,7 @@ export default async function SearchPage({
             </div>
           </Section>
 
-          <Section title="Исполнители" count={performers.length}>
+          <Section title="Артисты" count={performers.length}>
             <div className="d-flex flex-wrap gap-2">
               {performers.map((p) => (
                 <EntityMiniCard
@@ -200,7 +200,7 @@ export default async function SearchPage({
             </div>
           </Section>
 
-          <Section title="Сериалы" count={dramas.length}>
+          <Section title="Дорамы" count={dramas.length}>
             {/* Постер-карточки, как ряд сериалов на странице актёра. */}
             <div className="d-flex flex-wrap gap-3">
               {dramas.map((d) => (

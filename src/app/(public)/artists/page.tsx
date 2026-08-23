@@ -17,7 +17,7 @@ import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
 import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 
 export const metadata = pageMetadata({
-  title: "Актёры и группы",
+  title: "Артисты",
   description:
     "Каталог тайских BL-актёров и групп: профили, сериалы, концерты и фанмиты, дискография.",
   path: "/artists",
@@ -168,7 +168,7 @@ async function AgenciesTab({ q }: { q: string }) {
             )}
             <div style={{ minWidth: 0 }}>
               <p className="font-display fw-medium text-white mb-0 text-truncate">{a.name}</p>
-              <p className="small text-secondary mb-0">{a._count.performers} исполнит.</p>
+              <p className="small text-secondary mb-0">артистов: {a._count.performers}</p>
             </div>
           </Link>
           <FavoriteButton

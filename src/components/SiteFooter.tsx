@@ -20,9 +20,9 @@ export default function SiteFooter() {
           <div className="col-6 col-md-3">
             <p className="section-heading mb-2">Каталог</p>
             <div className={col}>
-              <Link href="/" className={link}>Все события</Link>
-              <Link href="/artists" className={link}>Исполнители</Link>
-              <Link href="/dramas" className={link}>Сериалы</Link>
+              <Link href="/events" className={link}>Афиша</Link>
+              <Link href="/artists" className={link}>Артисты</Link>
+              <Link href="/dramas" className={link}>Дорамы</Link>
               <Link href="/novels" className={link}>Новеллы</Link>
               <Link href="/locations" className={link}>Локации</Link>
               <Link href="/calendar" className={link}>Календарь</Link>
