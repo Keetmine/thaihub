@@ -8,6 +8,7 @@ export default function EntityMiniCard({
   round = true,
   className = "",
   style,
+  variant = "row",
 }: {
   href: string;
   photoUrl?: string | null;
@@ -18,7 +19,40 @@ export default function EntityMiniCard({
   className?: string;
   /** Переопределение размеров (по умолчанию фикс 11rem). */
   style?: React.CSSProperties;
+  /** "row" — горизонтальная плашка (как раньше); "grid" — вертикальная
+   *  карточка для каст-сетки (Э2ф): крупное фото, под ним имя и роль.
+   *  Классы .cast-card* — в globals.css, секция «Э2ф: каст-сетка». */
+  variant?: "row" | "grid";
 }) {
+  if (variant === "grid") {
+    return (
+      <Link
+        href={href}
+        className={`cast-card ${className}`}
+        style={style}
+        title={subtitle ? `${name} — ${subtitle}` : name}
+      >
+        <span
+          className="cast-card-photo"
+          style={round ? undefined : { borderRadius: "0.9rem" }}
+        >
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img loading="lazy" decoding="async" src={photoUrl} alt="" />
+          ) : (
+            <span className="cast-card-letter">
+              {name.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </span>
+        <span className="cast-card-name text-truncate">{name}</span>
+        {subtitle && (
+          <span className="cast-card-role text-truncate">{subtitle}</span>
+        )}
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={href}

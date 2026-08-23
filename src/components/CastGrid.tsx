@@ -1,0 +1,38 @@
+"use client";
+
+import { Children, useState, type ReactNode } from "react";
+
+/** Э2ф: адаптивная фото-сетка состава (.cast-grid) с кнопкой
+ *  «Показать всех (N)». Дети — готовые карточки (EntityMiniCard
+ *  variant="grid"), сетка показывает первые `limit`, остальное
+ *  раскрывается кнопкой. Клиентский компонент вместо details/summary:
+ *  details не умеет продолжать grid-раскладку соседа, а карточки за
+ *  ним выпадали бы из общей сетки. */
+export default function CastGrid({
+  children,
+  limit = 14,
+}: {
+  children: ReactNode;
+  limit?: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const items = Children.toArray(children);
+  // Прятать за кнопкой одну-две карточки глупо — тогда сразу все.
+  const collapsed = !expanded && items.length > limit + 2;
+  return (
+    <>
+      <div className="cast-grid">{collapsed ? items.slice(0, limit) : items}</div>
+      {collapsed && (
+        <div className="mt-3">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setExpanded(true)}
+          >
+            Показать всех ({items.length})
+          </button>
+        </div>
+      )}
+    </>
+  );
+}

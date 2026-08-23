@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
+import CastGrid from "@/components/CastGrid";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
@@ -79,7 +80,15 @@ export default async function DramaDetailPage({
   const drama = await prisma.drama.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
-      performers: { include: { performer: true } },
+      // _count.events — маркер популярности актёра для сортировки каста
+      // (EventPerformer.performerId проиндексирован, счётчик дёшев).
+      performers: {
+        include: {
+          performer: {
+            include: { _count: { select: { events: true } } },
+          },
+        },
+      },
       agency: true,
       agencies: { include: { agency: true } },
       locations: {
@@ -190,6 +199,28 @@ export default async function DramaDetailPage({
     ourRating != null ||
     !!drama.synopsis;
 
+  // Э2ф: каст сортируем по популярности — числу событий у актёра
+  // (чем больше фан-митингов/концертов, тем он заметнее), при равенстве
+  // по имени. Первые ~14 видимых в сетке — самые популярные.
+  const castSorted = [...drama.performers].sort(
+    (a, b) =>
+      b.performer._count.events - a.performer._count.events ||
+      a.performer.name.localeCompare(b.performer.name),
+  );
+
+  // Э2ф: якорные чипы под hero — только на реально существующие секции,
+  // в порядке их следования на странице. Отзывы есть всегда.
+  const anchors = [
+    ...(events.length > 0 ? [{ href: "#events", label: "События" }] : []),
+    ...(drama.performers.length > 0
+      ? [{ href: "#cast", label: "Состав" }]
+      : []),
+    ...(drama.locations.length > 0
+      ? [{ href: "#locations", label: "Локации" }]
+      : []),
+    { href: "#reviews", label: "Отзывы" },
+  ];
+
   return (
     <div>
       <BackLink fallbackHref="/dramas" fallbackLabel="← Все дорамы" />
@@ -252,7 +283,157 @@ export default async function DramaDetailPage({
         />
       </div>
 
-      {/* Факты и синопсис — свой блок, как на странице артиста. */}
+      {/* Э2ф: страница длинная — якорные чипы к ключевым секциям, чтобы
+          важное не требовало слепого скролла. Один чип «Отзывы» без
+          компании смысла не имеет — ряд рисуем от двух. */}
+      {anchors.length >= 2 && (
+        <div className="section-anchors">
+          {anchors.map((a) => (
+            <a key={a.href} href={a.href} className="chip-link">
+              {a.label}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* Где посмотреть — первым экраном: канал/платформа (network) и
+          день выхода новых серий, если сериал ещё выходит. */}
+      {drama.network && (
+        <div className="surface p-3 mb-4 d-flex align-items-center flex-wrap column-gap-2 row-gap-1">
+          <span>
+            <TvIcon className="icon-inline" />{" "}
+            <span className="text-secondary">Где посмотреть:</span>{" "}
+            <span className="fw-medium">{drama.network}</span>
+          </span>
+          {drama.status === "RETURNING_SERIES" &&
+            drama.airedOn &&
+            WEEKDAYS_RU[drama.airedOn] && (
+              <span className="small text-secondary">
+                новые серии {WEEKDAYS_RU[drama.airedOn]}
+              </span>
+            )}
+        </div>
+      )}
+
+      {/* События дорамы — сразу после hero: фан-митинги/премьеры и есть
+          то, ради чего сюда приходят, а лежали в самом низу. */}
+      {events.length > 0 && (
+        <div id="events" className="anchor-target mb-4">
+          <h2 className="section-heading mb-2">События</h2>
+          <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
+            {eventsRows.map(({ row, extraDates }) =>
+              isPremiumActive(currentUser) ? (
+                <EventAgendaRow
+                  key={row.id}
+                  event={row}
+                  isFavorited={favoritedEventIds.has(row.id)}
+                  isGoing={goingEventIds.has(row.occurrenceId)}
+                  showDate
+                  extraDates={extraDates}
+                />
+              ) : (
+                <EventCardLocked key={row.id} startsAt={row.startsAt} />
+              ),
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Каст — адаптивной фото-сеткой (Э2ф) вместо ряда одинаковых
+          плашек; первые ~14, остальные за «Показать всех». Пустой
+          раздел не рисуем — ни заголовка, ни «состав не указан». */}
+      {drama.performers.length > 0 && (
+        <div id="cast" className="anchor-target mb-4">
+          <h2 className="section-heading mb-3">Актёрский состав</h2>
+          <CastGrid>
+            {castSorted.map(({ performer, role }) => (
+              <EntityMiniCard
+                key={performer.id}
+                variant="grid"
+                href={performerHref(performer)}
+                photoUrl={performer.photoUrl}
+                name={performer.name}
+                subtitle={role}
+              />
+            ))}
+          </CastGrid>
+        </div>
+      )}
+
+      {relatedItems.length > 0 && (
+        <div className="mb-4">
+          <h2 className="section-heading mb-2">Связанные дорамы</h2>
+          <div className="d-flex flex-wrap gap-2">
+            {relatedItems.map(({ drama: rel, relation }) => (
+              <EntityMiniCard
+                key={rel.id}
+                href={dramaHref(rel)}
+                photoUrl={rel.posterUrl}
+                name={rel.title}
+                subtitle={relation}
+                round={false}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {drama.locations.length > 0 && (
+        <div id="locations" className="anchor-target mb-4">
+          <h2 className="section-heading mb-2">Локации</h2>
+          <div className="d-flex flex-column gap-2">
+            {drama.locations.map(({ location }) => (
+              <div
+                key={location.id}
+                className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+              >
+                <Link
+                  href={locationHref(location)}
+                  className="text-decoration-none d-flex align-items-center gap-3"
+                  style={{ minWidth: 0 }}
+                >
+                  <div
+                    style={{
+                      width: "2.5rem",
+                      height: "2.5rem",
+                      borderRadius: "0.5rem",
+                      background: "var(--bs-secondary-bg)",
+                      flexShrink: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {location.photoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={location.photoUrl}
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    )}
+                  </div>
+                  <span className="font-display fw-medium text-white text-truncate">
+                    {location.name}
+                  </span>
+                </Link>
+                <VisitedButton
+                  locationId={location.id}
+                  isVisited={visitedLocationIds.has(location.id)}
+                  className="flex-shrink-0"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Факты и синопсис — свой блок, как на странице артиста; после
+          перестановки (Э2ф) он ниже событий/каста/локаций. */}
       {hasFacts && (
         <div className="surface p-4 mb-4">
           {studios.length > 0 && (
@@ -371,127 +552,22 @@ export default async function DramaDetailPage({
             )}
           </div>
 
-          {drama.synopsis && (
-            <p className="text-secondary mb-0">{drama.synopsis}</p>
-          )}
-        </div>
-      )}
-
-      {/* Пустой раздел не рисуем — ни заголовка, ни «состав не
-          указан»: у дорам без каста это была строка ни о чём. */}
-      {drama.performers.length > 0 && (
-        <>
-          <h2 className="section-heading mb-2">Актёрский состав</h2>
-          <div className="d-flex flex-wrap gap-2">
-            {drama.performers.map(({ performer, role }) => (
-              <EntityMiniCard
-                key={performer.id}
-                href={performerHref(performer)}
-                photoUrl={performer.photoUrl}
-                name={performer.name}
-                subtitle={role}
-                style={{
-                  flex: "1 1 10rem",
-                  minWidth: "70px",
-                  maxWidth: "15rem",
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      {relatedItems.length > 0 && (
-        <>
-          <h2 className="section-heading mb-2 mt-4">Связанные дорамы</h2>
-          <div className="d-flex flex-wrap gap-2">
-            {relatedItems.map(({ drama: rel, relation }) => (
-              <EntityMiniCard
-                key={rel.id}
-                href={dramaHref(rel)}
-                photoUrl={rel.posterUrl}
-                name={rel.title}
-                subtitle={relation}
-                round={false}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      {drama.locations.length > 0 && (
-        <>
-          <h2 className="section-heading mb-2 mt-4">Локации</h2>
-          <div className="d-flex flex-column gap-2">
-            {drama.locations.map(({ location }) => (
-              <div
-                key={location.id}
-                className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <Link
-                  href={locationHref(location)}
-                  className="text-decoration-none d-flex align-items-center gap-3"
-                  style={{ minWidth: 0 }}
-                >
-                  <div
-                    style={{
-                      width: "2.5rem",
-                      height: "2.5rem",
-                      borderRadius: "0.5rem",
-                      background: "var(--bs-secondary-bg)",
-                      flexShrink: 0,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {location.photoUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        loading="lazy"
-                        decoding="async"
-                        src={location.photoUrl}
-                        alt=""
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    )}
-                  </div>
-                  <span className="font-display fw-medium text-white text-truncate">
-                    {location.name}
+          {/* Длинный синопсис свёрнут до ~4 строк (Э2ф): текст живёт в
+              summary, details[open] снимает line-clamp — без JS и без
+              дублирования текста. Короткий рендерим как раньше. */}
+          {drama.synopsis &&
+            (drama.synopsis.length > 300 ? (
+              <details className="synopsis-fold">
+                <summary>
+                  <span className="synopsis-text text-secondary">
+                    {drama.synopsis}
                   </span>
-                </Link>
-                <VisitedButton
-                  locationId={location.id}
-                  isVisited={visitedLocationIds.has(location.id)}
-                  className="flex-shrink-0"
-                />
-              </div>
+                  <span className="synopsis-toggle" />
+                </summary>
+              </details>
+            ) : (
+              <p className="text-secondary mb-0">{drama.synopsis}</p>
             ))}
-          </div>
-        </>
-      )}
-
-      {events.length > 0 && (
-        <div className="mt-4">
-          <h2 className="section-heading mb-2">События</h2>
-          <div className="d-flex flex-column gap-3 scroll-list thin-scroll">
-            {eventsRows.map(({ row, extraDates }) =>
-              isPremiumActive(currentUser) ? (
-                <EventAgendaRow
-                  key={row.id}
-                  event={row}
-                  isFavorited={favoritedEventIds.has(row.id)}
-                  isGoing={goingEventIds.has(row.occurrenceId)}
-                  showDate
-                  extraDates={extraDates}
-                />
-              ) : (
-                <EventCardLocked key={row.id} startsAt={row.startsAt} />
-              ),
-            )}
-          </div>
         </div>
       )}
 
@@ -500,7 +576,7 @@ export default async function DramaDetailPage({
         links={[{ url: drama.mydramalistUrl }, { url: drama.blsceneUrl }]}
       />
 
-      <div className="mt-4">
+      <div id="reviews" className="anchor-target mt-4">
         <ReviewsAndComments kind="drama" id={drama.id} />
       </div>
       <JsonLd data={tvSeriesJsonLd(drama)} />

@@ -220,6 +220,36 @@ the surviving row to `CURRENT` if either side of a merge collision was.
 (`DramaLocation`), and an optional tie-in `Event` (premiere screening —
 see [events.md](events.md)) all hang off a `Drama`.
 
+### Страница дорамы: порядок секций и каст-сетка (Э2ф)
+
+Страница `/dramas/[id]` собрана «важное — выше»: hero → якорные
+чипы-ссылки (`.section-anchors` из `.chip-link`, только на реально
+существующие секции и минимум две: События · Состав · Локации ·
+Отзывы) → строка «Где посмотреть» (`Drama.network`; для выходящих —
+день новых серий) → события дорамы → актёрский состав → связанные
+дорамы → локации → факты+синопсис → источники → отзывы/комментарии.
+Якорные секции несут `class="anchor-target"` (scroll-margin под липкую
+навигацию). Длинный синопсис (>300 символов) свёрнут до ~4 строк:
+`details.synopsis-fold`, текст живёт в `summary` (контент details вне
+summary в закрытом виде не рендерится), line-clamp снимается на
+`[open]`, подпись «Читать дальше/Свернуть» рисует CSS — без JS и без
+дублирования текста.
+
+**Каст-сетка**: состав выводится адаптивной фото-сеткой `.cast-grid`
+(`repeat(auto-fill, minmax(7.25rem, 1fr))`, на <576px —
+`minmax(4.6rem, 1fr)`: ~8 колонок на десктопе, 3–4 на мобильном) из
+вертикальных карточек `EntityMiniCard variant="grid"` — крупное
+круглое фото, под ним имя и роль (роль серым, обе строки
+text-truncate); прежний горизонтальный вид остался `variant="row"`
+(по умолчанию, другие вызывающие не тронуты). Первые ~14 карточек
+видны сразу, остальные — за кнопкой «Показать всех (N)» (лёгкий
+клиентский `src/components/CastGrid.tsx`; при ≤2 скрываемых
+раскрывается сразу). Порядок — по популярности актёра: числу его
+событий (`Performer._count.events`, `EventPerformer.performerId`
+проиндексирован), при равенстве по имени. Тот же подход — «Кто
+выступает» на странице события (см. [events.md](events.md)). CSS —
+секция «Э2ф: каст-сетка» в конце `globals.css`.
+
 Most of the catalog was bulk-imported from blscene.com rather than typed
 in by hand — see [blscene-import.md](blscene-import.md). `Drama.status`
 (TMDB's own airing-status vocabulary — Ended/Returning Series/etc., shown

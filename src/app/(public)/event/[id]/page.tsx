@@ -12,7 +12,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import LetterAvatar from "@/components/LetterAvatar";
+import CastGrid from "@/components/CastGrid";
 import { CalendarIcon, ClockIcon, InfoIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -86,7 +86,16 @@ export default async function EventDetailPage({
             include: {
               // Группа на событии → показываем и её участников (не
               // дублируя тех, кто привязан к событию отдельно).
-              bandMembers: { include: { performer: true } },
+              // _count.events (и у участников групп) — маркер
+              // популярности для сортировки каст-сетки (Э2ф).
+              bandMembers: {
+                include: {
+                  performer: {
+                    include: { _count: { select: { events: true } } },
+                  },
+                },
+              },
+              _count: { select: { events: true } },
             },
           },
         },
@@ -214,6 +223,27 @@ export default async function EventDetailPage({
     return `от ${min}${unit ? ` ${unit}` : ""}`;
   })();
 
+  // Э2ф: свой осмысленный порядок у состава события не хранится —
+  // сортируем по популярности (числу событий у артиста), при равенстве
+  // по имени; первые ~14 видимых в сетке — самые популярные.
+  const performersSorted = [...event.performers].sort(
+    (a, b) =>
+      b.performer._count.events - a.performer._count.events ||
+      a.performer.name.localeCompare(b.performer.name),
+  );
+
+  // Э2ф: якорные чипы под hero — только на существующие секции и только
+  // если их набралось хотя бы три (иначе ряд не помогает навигации).
+  const hasLineupSection =
+    event.performers.length > 0 || event.pairings.length > 0;
+  const anchors = [
+    ...(hasLineupSection ? [{ href: "#lineup", label: "Состав" }] : []),
+    ...(event.description
+      ? [{ href: "#description", label: "Описание" }]
+      : []),
+    { href: "#reviews", label: "Отзывы" },
+  ];
+
   return (
     <div>
       <BackLink fallbackHref="/" fallbackLabel="← Все события" />
@@ -253,6 +283,15 @@ export default async function EventDetailPage({
           }
         />
       </div>
+      {anchors.length >= 3 && (
+        <div className="section-anchors">
+          {anchors.map((a) => (
+            <a key={a.href} href={a.href} className="chip-link">
+              {a.label}
+            </a>
+          ))}
+        </div>
+      )}
       <div className="mb-3">
           <div className="surface p-4">
             <p className="mb-2">
@@ -327,96 +366,6 @@ export default async function EventDetailPage({
                 </div>
               </div>
             )}
-            {(event.performers.length > 0 || event.pairings.length > 0) && (
-              <div className={event.drama ? "mt-3 mb-3" : "mt-3 mb-0"}>
-                <p className="section-heading mb-2">
-                  <UsersIcon className="icon-inline" /> Кто выступает
-                </p>
-                <div className="d-flex flex-wrap gap-2">
-                  {/* До 8 артистов — крупные карточки; фестивальные
-                      составы в 15–30 имён — компактными пиллами, иначе
-                      блок раздувается на пол-экрана. */}
-                  {event.performers.length <= 8 ? (
-                    event.performers.map(({ performer }) => (
-                      <EntityMiniCard
-                        key={performer.id}
-                        href={performerHref(performer)}
-                        photoUrl={performer.photoUrl}
-                        name={performer.name}
-                      />
-                    ))
-                  ) : (
-                    event.performers.map(({ performer }) => (
-                      <Link
-                        key={performer.id}
-                        href={performerHref(performer)}
-                        className="surface surface-hover text-decoration-none d-inline-flex align-items-center gap-2 py-1 ps-1 pe-3"
-                        style={{ borderRadius: "2rem" }}
-                      >
-                        <LetterAvatar name={performer.name} photoUrl={performer.photoUrl} size={1.75} />
-                        <span className="small text-white">{performer.name}</span>
-                      </Link>
-                    ))
-                  )}
-                  {(() => {
-                    // Участники выступающих групп — сразу в общий список,
-                    // без дублей с напрямую привязанными артистами.
-                    const directIds = new Set(event.performers.map((ep) => ep.performer.id));
-                    const seen = new Set<string>();
-                    return event.performers.flatMap(({ performer }) =>
-                      performer.bandMembers
-                        .filter((bm) => {
-                          if (directIds.has(bm.performer.id) || seen.has(bm.performer.id)) return false;
-                          seen.add(bm.performer.id);
-                          return true;
-                        })
-                        .map((bm) => (
-                          <EntityMiniCard
-                            key={`bm-${bm.performer.id}`}
-                            href={performerHref(bm.performer)}
-                            photoUrl={bm.performer.photoUrl}
-                            name={bm.performer.name}
-                            subtitle={performer.name}
-                          />
-                        )),
-                    );
-                  })()}
-                  {event.pairings.map(({ pairing }) => (
-                    <span key={pairing.id} className="event-chip">
-                      {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {event.occurrences.some((o) => o.lineup.length > 0) && (
-              <div className="mt-3 mb-3">
-                <p className="section-heading mb-2">
-                  <CalendarIcon className="icon-inline" /> Лайнап по дням
-                </p>
-                <div className="d-flex flex-column gap-2">
-                  {event.occurrences
-                    .filter((o) => o.lineup.length > 0)
-                    .map((o) => (
-                      <div key={o.id}>
-                        <p className="small text-secondary mb-1 text-capitalize">
-                          {formatHumanDate(o.startsAt)}
-                        </p>
-                        <div className="d-flex flex-wrap gap-2">
-                          {o.lineup.map((l) => (
-                            <EntityMiniCard
-                              key={l.performer.id}
-                              href={performerHref(l.performer)}
-                              photoUrl={l.performer.photoUrl}
-                              name={l.performer.name}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
             {event.drama && (
               <p className="mb-0">
                 <TvIcon className="icon-inline" /> <span className="text-secondary">Сериал:</span>{" "}
@@ -427,6 +376,10 @@ export default async function EventDetailPage({
             )}
           </div>
       </div>
+
+      {/* Э2ф: билеты — сразу под датами, состав — фото-сеткой ниже,
+          описание и отзывы в конце. */}
+      <TicketSection rows={ticketRows} />
 
       {friendsGoing.length > 0 && (
         <div className="surface p-4 mb-3">
@@ -443,11 +396,104 @@ export default async function EventDetailPage({
         </div>
       )}
 
-      <TicketSection rows={ticketRows} />
+      {/* Кто выступает — адаптивной каст-сеткой (Э2ф): раньше блок жил
+          внутри карточки дат и раздувал её; фестивальные составы в
+          15–30 имён складываются за «Показать всех». Пейринги остаются
+          чипами под сеткой. */}
+      {hasLineupSection && (
+        <div id="lineup" className="anchor-target surface p-4 mb-3">
+          <h2 className="section-heading mb-3">
+            <UsersIcon className="icon-inline" /> Кто выступает
+          </h2>
+          {event.performers.length > 0 && (
+            <CastGrid>
+              {performersSorted.map(({ performer }) => (
+                <EntityMiniCard
+                  key={performer.id}
+                  variant="grid"
+                  href={performerHref(performer)}
+                  photoUrl={performer.photoUrl}
+                  name={performer.name}
+                />
+              ))}
+              {(() => {
+                // Участники выступающих групп — сразу в общий список,
+                // без дублей с напрямую привязанными артистами; внутри
+                // группы — тоже по популярности.
+                const directIds = new Set(event.performers.map((ep) => ep.performer.id));
+                const seen = new Set<string>();
+                return performersSorted.flatMap(({ performer }) =>
+                  [...performer.bandMembers]
+                    .sort(
+                      (a, b) =>
+                        b.performer._count.events - a.performer._count.events ||
+                        a.performer.name.localeCompare(b.performer.name),
+                    )
+                    .filter((bm) => {
+                      if (directIds.has(bm.performer.id) || seen.has(bm.performer.id)) return false;
+                      seen.add(bm.performer.id);
+                      return true;
+                    })
+                    .map((bm) => (
+                      <EntityMiniCard
+                        key={`bm-${bm.performer.id}`}
+                        variant="grid"
+                        href={performerHref(bm.performer)}
+                        photoUrl={bm.performer.photoUrl}
+                        name={bm.performer.name}
+                        subtitle={performer.name}
+                      />
+                    )),
+                );
+              })()}
+            </CastGrid>
+          )}
+          {event.pairings.length > 0 && (
+            <div className="d-flex flex-wrap gap-2 mt-3">
+              {event.pairings.map(({ pairing }) => (
+                <span key={pairing.id} className="event-chip">
+                  {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {event.occurrences.some((o) => o.lineup.length > 0) && (
+        <div className="surface p-4 mb-3">
+          <h2 className="section-heading mb-2">
+            <CalendarIcon className="icon-inline" /> Лайнап по дням
+          </h2>
+          <div className="d-flex flex-column gap-3">
+            {event.occurrences
+              .filter((o) => o.lineup.length > 0)
+              .map((o) => (
+                <div key={o.id}>
+                  <p className="small text-secondary mb-2 text-capitalize">
+                    {formatHumanDate(o.startsAt)}
+                  </p>
+                  <div className="cast-grid">
+                    {o.lineup.map((l) => (
+                      <EntityMiniCard
+                        key={l.performer.id}
+                        variant="grid"
+                        href={performerHref(l.performer)}
+                        photoUrl={l.performer.photoUrl}
+                        name={l.performer.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       <EventNoteSection eventId={event.id} ownNote={ownNote} friendNotes={friendNotes} />
 
       {event.description && (
-        <div className="surface p-4 mb-3">
+        <div id="description" className="anchor-target surface p-4 mb-3">
           <h2 className="section-heading mb-2">
             <InfoIcon className="icon-inline" /> Описание
           </h2>
@@ -457,7 +503,9 @@ export default async function EventDetailPage({
 
       <SourcesBlock links={[{ url: event.sourceUrl }]} />
 
-      <ReviewsAndComments kind="event" id={event.id} />
+      <div id="reviews" className="anchor-target">
+        <ReviewsAndComments kind="event" id={event.id} />
+      </div>
     </div>
   );
 }
