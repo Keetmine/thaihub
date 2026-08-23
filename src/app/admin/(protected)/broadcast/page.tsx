@@ -1,21 +1,36 @@
 import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
+import Pagination from "@/components/Pagination";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import BroadcastForm from "./BroadcastForm";
 
 export const metadata = { title: "Рассылки" };
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminBroadcastPage() {
+export default async function AdminBroadcastPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
-  const [withTelegram, premiumWithTelegram, history] = await Promise.all([
-    prisma.user.count({ where: { telegramId: { not: null } } }),
-    prisma.user.count({
-      where: { telegramId: { not: null }, premiumUntil: { gt: new Date() } },
-    }),
-    prisma.broadcast.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),
-  ]);
+  const { page: rawPage } = await searchParams;
+  const page = parsePage(rawPage);
+  const [withTelegram, premiumWithTelegram, history, historyTotal] =
+    await Promise.all([
+      prisma.user.count({ where: { telegramId: { not: null } } }),
+      prisma.user.count({
+        where: { telegramId: { not: null }, premiumUntil: { gt: new Date() } },
+      }),
+      prisma.broadcast.findMany({
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+      }),
+      prisma.broadcast.count(),
+    ]);
+  const totalPages = totalPagesFor(historyTotal);
 
   return (
     <div>
@@ -46,6 +61,11 @@ export default async function AdminBroadcastPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin/broadcast?page=${p}`}
+      />
     </div>
   );
 }
