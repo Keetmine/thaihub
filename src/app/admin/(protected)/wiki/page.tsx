@@ -2,7 +2,10 @@ import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
+import NameSearchBox from "@/components/NameSearchBox";
+import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { deleteWikiArticle } from "./actions";
 import { formatShortDate } from "@/lib/dates";
 
@@ -10,9 +13,28 @@ export const metadata = { title: "Вики" };
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminWikiPage() {
+export default async function AdminWikiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}) {
   await requireAdminPage();
-  const articles = await prisma.wikiArticle.findMany({ orderBy: { createdAt: "desc" } });
+  const { q: rawQ, page: rawPage } = await searchParams;
+  const q = (rawQ ?? "").trim();
+  const page = parsePage(rawPage);
+  const where = q
+    ? { title: { contains: q, mode: "insensitive" as const } }
+    : {};
+  const [articles, total] = await Promise.all([
+    prisma.wikiArticle.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.wikiArticle.count({ where }),
+  ]);
+  const totalPages = totalPagesFor(total);
 
   return (
     <div>
@@ -26,10 +48,13 @@ export default async function AdminWikiPage() {
         </Link>
       </div>
 
+      <NameSearchBox action="/admin/wiki" q={q} placeholder="Поиск по названию…" />
+
       {articles.length === 0 ? (
         <p className="text-secondary">
-          Пока нет статей. Идеи: как купить билеты на концерт, как искать дешёвые
-          перелёты, виза в Таиланд.
+          {q
+            ? "Ничего не найдено."
+            : "Пока нет статей. Идеи: как купить билеты на концерт, как искать дешёвые перелёты, виза в Таиланд."}
         </p>
       ) : (
         <div className="d-flex flex-column gap-2">
@@ -75,6 +100,13 @@ export default async function AdminWikiPage() {
           ))}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) =>
+          `/admin/wiki?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
+        }
+      />
     </div>
   );
 }

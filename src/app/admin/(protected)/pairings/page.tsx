@@ -3,6 +3,7 @@ import { deletePairing, setPairingStatus, swapPairingOrder } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AdminPerformerTabs from "@/components/AdminPerformerTabs";
 import CreatePairingModal from "./CreatePairingModal";
+import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
@@ -14,13 +15,25 @@ export const dynamic = "force-dynamic";
 export default async function AdminPairingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { page: rawPage } = await searchParams;
+  const { q: rawQ, page: rawPage } = await searchParams;
+  const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
+  // Поиск: по названию пейринга и по имени любого из участников.
+  const where = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" as const } },
+          { performerA: { name: { contains: q, mode: "insensitive" as const } } },
+          { performerB: { name: { contains: q, mode: "insensitive" as const } } },
+        ],
+      }
+    : {};
   const [pairings, total] = await Promise.all([
     prisma.pairing.findMany({
+      where,
       include: {
         performerA: true,
         performerB: true,
@@ -30,7 +43,7 @@ export default async function AdminPairingsPage({
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    prisma.pairing.count(),
+    prisma.pairing.count({ where }),
   ]);
   const totalPages = totalPagesFor(total);
 
@@ -46,10 +59,20 @@ export default async function AdminPairingsPage({
         <CreatePairingModal performers={[]} />
       </div>
 
-      <AdminPerformerTabs active="pairings" />
+      <div className="tab-bar-row">
+        <AdminPerformerTabs active="pairings" />
+        <NameSearchBox
+          action="/admin/pairings"
+          q={q}
+          placeholder="Поиск по имени…"
+          className=""
+        />
+      </div>
 
       {pairings.length === 0 ? (
-        <p className="text-secondary">Пока нет пейрингов.</p>
+        <p className="text-secondary">
+          {q ? "Ничего не найдено." : "Пока нет пейрингов."}
+        </p>
       ) : (
         <div className="d-flex flex-column gap-2">
           {pairings.map((pair) => {
@@ -114,7 +137,13 @@ export default async function AdminPairingsPage({
           })}
         </div>
       )}
-      <Pagination page={page} totalPages={totalPages} buildHref={(p) => `/admin/pairings?page=${p}`} />
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) =>
+          `/admin/pairings?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
+        }
+      />
     </div>
   );
 }

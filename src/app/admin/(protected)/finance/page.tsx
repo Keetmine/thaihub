@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { formatShortDate } from "@/lib/dates";
 import { getPremiumPriceStars } from "@/lib/siteSettings";
 import ConfirmForm from "@/components/ConfirmForm";
+import Pagination from "@/components/Pagination";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { refundPayment } from "./actions";
 
 export const metadata = { title: "Финансы" };
@@ -11,24 +13,36 @@ export const metadata = { title: "Финансы" };
 export const dynamic = "force-dynamic";
 
 // Финансы: журнал оплат Stars (пишется вебхуком), активные подписки и
-// грубая оценка MRR (активные подписчики × текущая цена).
-export default async function AdminFinancePage() {
+// грубая оценка MRR (активные подписчики × текущая цена). Сводные цифры
+// считаются отдельными запросами по всем данным (count/aggregate), а не из
+// отображаемой страницы журнала — перелистывание их не меняет.
+export default async function AdminFinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdminPage();
+  const { page: rawPage } = await searchParams;
+  const page = parsePage(rawPage);
   const now = new Date();
-  const [payments, activeSubs, price, starsTotal] = await Promise.all([
-    prisma.payment.findMany({
-      include: { user: { select: { id: true, name: true, email: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.user.findMany({
-      where: { premiumUntil: { gt: now } },
-      select: { id: true, name: true, email: true, premiumUntil: true },
-      orderBy: { premiumUntil: "asc" },
-    }),
-    getPremiumPriceStars(),
-    prisma.payment.aggregate({ _sum: { amount: true }, where: { refundedAt: null } }),
-  ]);
+  const [payments, paymentsTotal, activeSubs, price, starsTotal] =
+    await Promise.all([
+      prisma.payment.findMany({
+        include: { user: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+      }),
+      prisma.payment.count(),
+      prisma.user.findMany({
+        where: { premiumUntil: { gt: now } },
+        select: { id: true, name: true, email: true, premiumUntil: true },
+        orderBy: { premiumUntil: "asc" },
+      }),
+      getPremiumPriceStars(),
+      prisma.payment.aggregate({ _sum: { amount: true }, where: { refundedAt: null } }),
+    ]);
+  const totalPages = totalPagesFor(paymentsTotal);
 
   return (
     <div>
@@ -92,6 +106,11 @@ export default async function AdminFinancePage() {
               ))}
             </div>
           )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            buildHref={(p) => `/admin/finance?page=${p}`}
+          />
         </div>
         <div className="col-12 col-lg-6">
           <h2 className="section-heading mb-2">Активные подписки</h2>

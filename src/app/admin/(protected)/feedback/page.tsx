@@ -2,8 +2,10 @@ import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
+import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
+import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { setFeedbackStatus, deleteFeedback } from "./actions";
 
 export const metadata = { title: "Обращения" };
@@ -21,19 +23,26 @@ const KIND_LABELS: Record<string, string> = {
 export default async function AdminFeedbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ all?: string }>;
+  searchParams: Promise<{ all?: string; page?: string }>;
 }) {
   await requireAdminPage();
-  const { all } = await searchParams;
+  const { all, page: rawPage } = await searchParams;
   const showAll = all === "1";
+  const page = parsePage(rawPage);
 
-  const items = await prisma.feedback.findMany({
-    where: showAll ? undefined : { status: "NEW" },
-    include: { user: { select: { id: true, name: true, email: true } } },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-  const newCount = await prisma.feedback.count({ where: { status: "NEW" } });
+  const where = showAll ? undefined : { status: "NEW" as const };
+  const [items, total, newCount] = await Promise.all([
+    prisma.feedback.findMany({
+      where,
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.feedback.count({ where }),
+    prisma.feedback.count({ where: { status: "NEW" } }),
+  ]);
+  const totalPages = totalPagesFor(total);
 
   return (
     <div>
@@ -111,6 +120,11 @@ export default async function AdminFeedbackPage({
           })}
         </div>
       )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin/feedback?${showAll ? "all=1&" : ""}page=${p}`}
+      />
     </div>
   );
 }
