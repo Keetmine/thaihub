@@ -218,9 +218,11 @@ function PerformerAlphabetList({
     favorited: favoritedIds.has(p.id),
   });
 
-  // Избранные первыми — отдельной пачкой перед алфавитом.
+  // Избранные — отдельной пачкой перед алфавитом, но из самого алфавита
+  // НЕ вырезаются (фидбек владельца): пусть дублируются, иначе человека
+  // не найти на его букве.
   const favorited = pinFavorites ? performers.filter((p) => favoritedIds.has(p.id)) : [];
-  const rest = pinFavorites ? performers.filter((p) => !favoritedIds.has(p.id)) : performers;
+  const rest = performers;
 
   const addToList =
     myLists && myLists.length > 0
