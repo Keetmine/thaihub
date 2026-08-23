@@ -49,22 +49,18 @@ export default async function NovelsPage({
           {q ? "Ничего не найдено." : "Новеллы скоро появятся."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
+        /* Постерная сетка — как в каталоге дорам (Э2.4). */
+        <div className="poster-grid mt-4">
           {novels.map((n) => (
-            <Link
-              key={n.id}
-              href={novelHref(n)}
-              className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
-            >
+            <Link key={n.id} href={novelHref(n)} className="text-decoration-none d-block">
               <div
-                className="d-flex align-items-center justify-content-center flex-shrink-0"
                 style={{
-                  width: "2.75rem",
-                  height: "3.75rem",
-                  borderRadius: "0.5rem",
+                  position: "relative",
+                  width: "100%",
+                  aspectRatio: "2 / 3",
+                  borderRadius: "0.9rem",
                   background: "var(--bs-secondary-bg)",
                   overflow: "hidden",
-                  color: "var(--bs-secondary-color)",
                 }}
               >
                 {n.coverUrl ? (
@@ -77,19 +73,29 @@ export default async function NovelsPage({
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : (
-                  <span className="fw-semibold" style={{ opacity: 0.6 }}>
+                  <span
+                    className="d-flex align-items-center justify-content-center h-100 font-display fw-bold"
+                    style={{ fontSize: "2rem", color: "rgba(255,154,114,0.45)" }}
+                    aria-hidden
+                  >
                     {n.title.charAt(0).toUpperCase()}
                   </span>
                 )}
+                {n._count.dramas > 0 && (
+                  <span
+                    className="date-chip position-absolute"
+                    style={{ left: "0.5rem", bottom: "0.5rem" }}
+                  >
+                    📺 {n._count.dramas}
+                  </span>
+                )}
               </div>
-              <div style={{ minWidth: 0 }}>
-                <p className="font-display fw-medium text-white mb-0 text-truncate">{n.title}</p>
-                <p className="small text-secondary mb-0">
-                  {[n.author, n._count.dramas > 0 ? `экранизаций: ${n._count.dramas}` : null]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
+              <p className="small text-white mb-0 mt-2 text-truncate" style={{ lineHeight: 1.3 }}>
+                {n.title}
+              </p>
+              {n.author && (
+                <p className="small text-secondary mb-0 text-truncate">{n.author}</p>
+              )}
             </Link>
           ))}
         </div>
