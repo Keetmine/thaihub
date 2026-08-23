@@ -89,9 +89,9 @@ export function MobileDrawer({ children }: { children: React.ReactNode }) {
   const { open, setOpen } = useMobileNav();
   if (!open) return null;
   return (
-    // d-sm-none и на обёртке: fixed-потомки display:none-родителя не
+    // d-lg-none и на обёртке: fixed-потомки display:none-родителя не
     // рисуются, так что при растягивании окна шторка исчезает сама.
-    <div className="d-sm-none">
+    <div className="d-lg-none">
       <div className="mobile-drawer-backdrop" onClick={() => setOpen(false)} />
       <div className="mobile-drawer" role="dialog" aria-modal="true" aria-label="Меню">
         <div className="mobile-drawer-head">
@@ -126,12 +126,12 @@ const TABS: {
   { href: "/search", label: "Поиск", icon: SearchIcon },
 ];
 
-/** Нижний таб-бар — только на мобильных (d-sm-none). */
+/** Нижний таб-бар — на телефонах и планшетах (d-lg-none). */
 export function MobileTabBar() {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
   return (
-    <nav className="mobile-tabbar d-sm-none" aria-label="Быстрая навигация">
+    <nav className="mobile-tabbar d-lg-none" aria-label="Быстрая навигация">
       {TABS.map(({ href, label, icon: Icon, matchPrefixes, exact }) => {
         // Пока открыта шторка, подсвечен таб «Меню», а не текущая страница.
         const active =

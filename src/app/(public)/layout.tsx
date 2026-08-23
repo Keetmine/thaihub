@@ -16,7 +16,7 @@ import NavDepthTracker from "@/components/NavDepthTracker";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
 import { getCurrentUser } from "@/lib/userAuth";
-import { GridIcon, HeartIcon } from "@/components/icons";
+import { GridIcon, HeartIcon, SearchIcon } from "@/components/icons";
 import NotificationBell from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
 import MobileProfileSection from "@/components/MobileProfileSection";
@@ -100,7 +100,7 @@ export default async function PublicLayout({ children }: { children: React.React
             {/* На мобильном частые действия живут рядом с бургером, а не
                 внутри меню: раньше иконки набивались в панель вперемешку с
                 пунктами навигации и выглядели случайной россыпью. */}
-            <div className="d-sm-none d-flex align-items-center gap-1 ms-auto order-1">
+            <div className="d-lg-none d-flex align-items-center gap-1 ms-auto order-1">
               {user && (
                 <span data-tour="notifications">
                   <NotificationBell unread={unreadNotifications} />
@@ -113,16 +113,31 @@ export default async function PublicLayout({ children }: { children: React.React
               )}
             </div>
 
-            <div className="d-sm-none order-1">
+            <div className="d-lg-none order-1">
               <MobileMenuButton />
             </div>
 
-            <div className="d-none d-sm-flex flex-wrap gap-1 ms-3">
+            {/* Полный ряд ссылок — от lg: ниже он не помещался и
+                сваливался во вторую-третью строку (шапка на 600px
+                вырастала до 195px). Там теперь бургер-шторка. */}
+            <div className="d-none d-lg-flex flex-wrap gap-1 ms-2">
               <MainNavLinks loggedIn={!!user} />
             </div>
 
-            <div className="d-none d-sm-flex align-items-center gap-2 ms-auto">
+            <div className="d-none d-lg-flex align-items-center gap-2 ms-auto">
               <SearchForm />
+              {/* На узких ноутбуках (lg) поле поиска съедает ряд —
+                  вместо него иконка-ссылка на страницу поиска;
+                  переключение — .nav-search-icon в globals.css. */}
+              <Link
+                href="/search"
+                prefetch={false}
+                className="icon-btn nav-search-icon"
+                aria-label="Поиск"
+                data-tooltip="Поиск"
+              >
+                <SearchIcon />
+              </Link>
               {user && (
                 <Link
                   href="/events?filter=favorited"

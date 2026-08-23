@@ -1,18 +1,14 @@
 # PWA manifest & offline cache
 
-<<<<<<< HEAD
 Makes the site installable ("Add to Home Screen") on phones — manifest +
 icons + theme color, plus a small hand-written service worker for offline
-reading of recently visited pages.
-=======
-Makes the site installable ("Add to Home Screen") on phones — no offline
-support, no service worker, just the manifest + icons + theme color.
-Since standalone mode strips the browser chrome, the public mobile layout
-also ships a fixed bottom tab bar (`src/components/MobileNav.tsx`,
-`.mobile-tabbar` in `globals.css`) padded for
-`env(safe-area-inset-bottom)`, which is only non-zero on iOS thanks to
-`viewportFit: "cover"` in the root layout's `viewport` export.
->>>>>>> worktree-agent-ab19ae09cfa996b14
+reading of recently visited pages. Since standalone mode strips the
+browser chrome, the public layout also ships a fixed bottom tab bar
+(`src/components/MobileNav.tsx`, `.mobile-tabbar` in `globals.css`)
+padded for `env(safe-area-inset-bottom)`, which is only non-zero on iOS
+thanks to `viewportFit: "cover"` in the root layout's `viewport` export.
+The tab bar and the burger drawer show below `lg` (992px) — see
+"Навигация: брейкпоинты" in [../design-system.md](../design-system.md).
 
 - **`src/app/manifest.ts`** — Next's `MetadataRoute.Manifest` file
   convention, served at `/manifest.webmanifest`. Name, short description,

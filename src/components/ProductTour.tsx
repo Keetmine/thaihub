@@ -92,7 +92,11 @@ export default function ProductTour({ autoStart }: { autoStart: boolean }) {
 
     const locate = () => {
       const el = document.querySelector(current.target);
-      if (!el) {
+      // Нулевой размер = элемент скрыт (ссылки шапки живут и в
+      // десктопном ряду, и в мобильной шторке — на узких экранах
+      // первый совпавший невидим, и окно тура прилипало к 0,0).
+      const rect = el?.getBoundingClientRect();
+      if (!el || !rect || rect.width === 0) {
         // Элемента нет — идём дальше, не показывая пустое окно.
         if (!cancelled) setStep((s) => (s + 1 < STEPS.length ? s + 1 : -1));
         return;

@@ -202,6 +202,41 @@ body {
   }
 }
 
+/* Ноутбучный диапазон: шести ссылкам, поиску и иконкам не хватало
+   ширины контейнера (нужно ~1120px при доступных 1064), и правая
+   группа сваливалась во вторую строку. Поджимаем ссылки и поиск —
+   ряд снова один. Ниже lg ссылок в шапке нет вовсе (бургер). */
+@media (min-width: 992px) and (max-width: 1399.98px) {
+  .pill-nav .nav-link {
+    padding: 0.4rem 0.62rem;
+  }
+
+  .pill-nav .search-box {
+    max-width: 9rem;
+  }
+}
+
+/* На lg поле поиска не влезает даже поджатым — вместо него иконка.
+   Селектор с .pill-nav: .icon-btn объявлен ниже по файлу и при равной
+   специфичности перебивал бы display. */
+.pill-nav .nav-search-icon {
+  display: none;
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .pill-nav .nav-link {
+    font-size: 0.9rem;
+  }
+
+  .pill-nav .search-box {
+    display: none;
+  }
+
+  .pill-nav .nav-search-icon {
+    display: inline-flex;
+  }
+}
+
 .pill-nav .nav-link:hover {
   color: var(--bs-body-color);
   background: rgba(255, 255, 255, 0.06);
@@ -3377,7 +3412,7 @@ details.admin-section[open] > summary.admin-section-head::before {
   background: rgba(var(--accent-rgb), 0.14);
 }
 
-@media (max-width: 575.98px) {
+@media (max-width: 991.98px) {
   /* Просвет под контентом и футером, чтобы таб-бар их не перекрывал.
      !important вынужден: Bootstrap-утилиты py-4/pb-4 сами с !important,
      а globals.css подключён позже — при равной специфичности он и
