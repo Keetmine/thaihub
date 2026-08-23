@@ -184,7 +184,6 @@ export default async function TripsPage() {
               const isPast = t.endDate < now;
               // Будущие отсортированы по startDate, значит первая
               // не-прошедшая — ближайшая: она и есть карточка-герой.
-              const isHero = !isPast && t.id === trips.find((x) => x.endDate >= now)?.id;
               const shared = t._count.members > 0 || t.userId !== user.id;
               const { plan, total } = counts[i];
               const pct = total > 0 ? Math.round((plan / total) * 100) : 0;
@@ -226,7 +225,7 @@ export default async function TripsPage() {
                 <Link
                   key={t.id}
                   href={tripHref(t)}
-                  className={`trip-card${isHero ? " trip-card-hero" : ""}`}
+                  className="trip-card"
                 >
                   <div className="d-flex flex-wrap align-items-start justify-content-between gap-2">
                     {/* Даты крупно, как на билете: «20 авг → 27 авг». */}
