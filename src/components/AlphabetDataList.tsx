@@ -57,6 +57,8 @@ export default function AlphabetDataList({
   addToList,
   variant = "rows",
   cardAspect = "3 / 4",
+  flat = false,
+  indexLeading,
 }: {
   rows: AlphabetRow[];
   emptyMessage: string;
@@ -75,6 +77,12 @@ export default function AlphabetDataList({
   variant?: "rows" | "cards";
   /** Пропорции фото карточки: портрет для людей, альбом для мест. */
   cardAspect?: "3 / 4" | "4 / 3";
+  /** Плоский режим: одна секция без букв и без правой рейки —
+   *  например, «Избранное» перед основным алфавитом. */
+  flat?: boolean;
+  /** Дополнительный якорь НАД буквами в правой рейке (сердечко →
+   *  #favorites). */
+  indexLeading?: { href: string; label: React.ReactNode; ariaLabel: string };
 }) {
   const [visible, setVisible] = useState(batch);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -98,6 +106,137 @@ export default function AlphabetDataList({
     return <p className="text-secondary">{emptyMessage}</p>;
   }
 
+  const actionButtons = (row: AlphabetRow) => (
+    <>
+      {showVisitedButton && <VisitedButton locationId={row.id} isVisited={!!row.visited} />}
+      {showFavoriteButton && (
+        <FavoriteButton kind="performer" id={row.id} isFavorited={!!row.favorited} variant="icon" />
+      )}
+      {addToList && addToList.lists.length > 0 && (
+        <AddToListButton
+          lists={addToList.lists.map((l) => ({ ...l, hasPerformer: false }))}
+          onAdd={(listId) => addToList.add(listId, row.id)}
+        />
+      )}
+    </>
+  );
+
+  const renderCardCell = (row: AlphabetRow) => (
+    <div key={row.id} className="position-relative">
+      <Link href={row.href} className="text-decoration-none d-block">
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            aspectRatio: cardAspect,
+            borderRadius: "0.9rem",
+            background: "var(--bs-secondary-bg)",
+            overflow: "hidden",
+          }}
+        >
+          {row.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              loading="lazy"
+              decoding="async"
+              src={row.photoUrl}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <span
+              className="d-flex align-items-center justify-content-center h-100 font-display fw-bold"
+              style={{ fontSize: "2rem", color: "rgba(255,154,114,0.45)" }}
+              aria-hidden
+            >
+              {row.name.trim().charAt(0).toUpperCase()}
+            </span>
+          )}
+          {row.meta && (
+            <span
+              className="date-chip position-absolute"
+              style={{ left: "0.5rem", bottom: "0.5rem" }}
+            >
+              {row.meta}
+            </span>
+          )}
+        </div>
+        <p className="small text-white mb-0 mt-2 text-truncate" style={{ lineHeight: 1.3 }}>
+          {row.name}
+        </p>
+        {(row.nameSuffix || row.subtitle) && (
+          <p className="small text-secondary mb-0 text-truncate">
+            {row.nameSuffix ?? row.subtitle}
+          </p>
+        )}
+      </Link>
+      <div
+        className="position-absolute d-flex align-items-center gap-1"
+        style={{ top: "0.375rem", right: "0.375rem" }}
+      >
+        {actionButtons(row)}
+      </div>
+    </div>
+  );
+
+  const renderRowCell = (row: AlphabetRow) => (
+    <div
+      key={row.id}
+      className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+    >
+      <Link
+        href={row.href}
+        className="text-decoration-none d-flex align-items-center gap-3"
+        style={{ minWidth: 0 }}
+      >
+        <div
+          style={{
+            width: "2.75rem",
+            height: "2.75rem",
+            borderRadius: "0.5rem",
+            background: "var(--bs-secondary-bg)",
+            flexShrink: 0,
+            overflow: "hidden",
+          }}
+        >
+          {row.photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              loading="lazy"
+              decoding="async"
+              src={row.photoUrl}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )}
+        </div>
+        <span style={{ minWidth: 0 }}>
+          <span className="font-display fw-medium text-white d-block text-truncate">
+            {row.name}
+            {row.nameSuffix && (
+              <span className="text-secondary fw-normal"> ({row.nameSuffix})</span>
+            )}
+          </span>
+          {row.subtitle && <span className="small text-secondary">{row.subtitle}</span>}
+        </span>
+      </Link>
+      <div className="d-flex align-items-center gap-2 flex-shrink-0">
+        {row.meta && <span className="small text-secondary me-1">{row.meta}</span>}
+        {actionButtons(row)}
+      </div>
+    </div>
+  );
+
+  // Плоский режим («Избранное»): одна секция, без букв и без рейки.
+  // Такие списки короткие — рендерим целиком, без порционности.
+  if (flat) {
+    return variant === "cards" ? (
+      <div className="poster-grid">{rows.map(renderCardCell)}</div>
+    ) : (
+      <div className="d-flex flex-column gap-2">{rows.map(renderRowCell)}</div>
+    );
+  }
+
   // Буквы считаем по всем строкам, а показываем — по отрисованным:
   // навигация должна знать про весь список, иначе ссылки на ещё не
   // отрисованные буквы вели бы в пустоту.
@@ -117,162 +256,14 @@ export default function AlphabetDataList({
     const bucket = groups.get(letter)!;
     const slice = bucket.slice(0, Math.max(0, visible - rendered));
     rendered += slice.length;
-    const actionButtons = (row: AlphabetRow) => (
-      <>
-        {showVisitedButton && <VisitedButton locationId={row.id} isVisited={!!row.visited} />}
-        {showFavoriteButton && (
-          <FavoriteButton kind="performer" id={row.id} isFavorited={!!row.favorited} variant="icon" />
-        )}
-        {addToList && addToList.lists.length > 0 && (
-          <AddToListButton
-            lists={addToList.lists.map((l) => ({ ...l, hasPerformer: false }))}
-            onAdd={(listId) => addToList.add(listId, row.id)}
-          />
-        )}
-      </>
-    );
-
-    if (variant === "cards") {
-      sections.push(
-        <section key={letter} id={`letter-${letter}`} className="performers-letter-section">
-          <h2 className="performers-letter-heading">{letter}</h2>
-          <div className="poster-grid">
-            {slice.map((row) => (
-              <div key={row.id} className="position-relative">
-                <Link href={row.href} className="text-decoration-none d-block">
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      aspectRatio: cardAspect,
-                      borderRadius: "0.9rem",
-                      background: "var(--bs-secondary-bg)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {row.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        loading="lazy"
-                        decoding="async"
-                        src={row.photoUrl}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <span
-                        className="d-flex align-items-center justify-content-center h-100 font-display fw-bold"
-                        style={{ fontSize: "2rem", color: "rgba(255,154,114,0.45)" }}
-                        aria-hidden
-                      >
-                        {row.name.trim().charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                    {row.meta && (
-                      <span
-                        className="date-chip position-absolute"
-                        style={{ left: "0.5rem", bottom: "0.5rem" }}
-                      >
-                        {row.meta}
-                      </span>
-                    )}
-                  </div>
-                  <p
-                    className="small text-white mb-0 mt-2 text-truncate"
-                    style={{ lineHeight: 1.3 }}
-                  >
-                    {row.name}
-                  </p>
-                  {(row.nameSuffix || row.subtitle) && (
-                    <p className="small text-secondary mb-0 text-truncate">
-                      {row.nameSuffix ?? row.subtitle}
-                    </p>
-                  )}
-                </Link>
-                <div
-                  className="position-absolute d-flex align-items-center gap-1"
-                  style={{ top: "0.375rem", right: "0.375rem" }}
-                >
-                  {actionButtons(row)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>,
-      );
-      continue;
-    }
-
     sections.push(
       <section key={letter} id={`letter-${letter}`} className="performers-letter-section">
         <h2 className="performers-letter-heading">{letter}</h2>
-        <div className="d-flex flex-column gap-2">
-          {slice.map((row) => (
-            <div
-              key={row.id}
-              className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
-            >
-              <Link
-                href={row.href}
-                className="text-decoration-none d-flex align-items-center gap-3"
-                style={{ minWidth: 0 }}
-              >
-                <div
-                  style={{
-                    width: "2.75rem",
-                    height: "2.75rem",
-                    borderRadius: "0.5rem",
-                    background: "var(--bs-secondary-bg)",
-                    flexShrink: 0,
-                    overflow: "hidden",
-                  }}
-                >
-                  {row.photoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      loading="lazy"
-                      decoding="async"
-                      src={row.photoUrl}
-                      alt=""
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  )}
-                </div>
-                <span style={{ minWidth: 0 }}>
-                  <span className="font-display fw-medium text-white d-block text-truncate">
-                    {row.name}
-                    {row.nameSuffix && (
-                      <span className="text-secondary fw-normal"> ({row.nameSuffix})</span>
-                    )}
-                  </span>
-                  {row.subtitle && (
-                    <span className="small text-secondary">{row.subtitle}</span>
-                  )}
-                </span>
-              </Link>
-              <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                {row.meta && <span className="small text-secondary me-1">{row.meta}</span>}
-                {showVisitedButton && (
-                  <VisitedButton locationId={row.id} isVisited={!!row.visited} />
-                )}
-                {showFavoriteButton && (
-                  <FavoriteButton
-                    kind="performer"
-                    id={row.id}
-                    isFavorited={!!row.favorited}
-                    variant="icon"
-                  />
-                )}
-                {addToList && addToList.lists.length > 0 && (
-                  <AddToListButton
-                    lists={addToList.lists.map((l) => ({ ...l, hasPerformer: false }))}
-                    onAdd={(listId) => addToList.add(listId, row.id)}
-                  />
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        {variant === "cards" ? (
+          <div className="poster-grid">{slice.map(renderCardCell)}</div>
+        ) : (
+          <div className="d-flex flex-column gap-2">{slice.map(renderRowCell)}</div>
+        )}
       </section>,
     );
   }
@@ -289,6 +280,21 @@ export default function AlphabetDataList({
       </div>
 
       <nav className="performers-index" aria-label="Быстрый переход по буквам">
+        {indexLeading && (
+          <>
+            <a
+              href={indexLeading.href}
+              className="performers-index-link"
+              aria-label={indexLeading.ariaLabel}
+              title={indexLeading.ariaLabel}
+            >
+              {indexLeading.label}
+            </a>
+            <span className="performers-index-sep" aria-hidden="true">
+              •
+            </span>
+          </>
+        )}
         {letters.map((letter, i) => {
           const prevCategory = i > 0 ? categoryOf(letters[i - 1]) : null;
           const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);

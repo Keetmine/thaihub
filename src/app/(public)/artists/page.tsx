@@ -234,7 +234,9 @@ function PerformerAlphabetList({
   return (
     <>
       {favorited.length > 0 && (
-        <section className="performers-letter-section mb-3">
+        /* Избранное — одна плоская секция без собственной буквенной
+           рейки; из общей рейки к ней ведёт сердечко-якорь. */
+        <section id="favorites" className="performers-letter-section mb-3">
           <h2 className="performers-letter-heading d-flex align-items-center gap-2">
             <HeartIcon filled />
             Избранное
@@ -245,6 +247,7 @@ function PerformerAlphabetList({
             showFavoriteButton
             addToList={addToList}
             variant="cards"
+            flat
           />
         </section>
       )}
@@ -254,6 +257,11 @@ function PerformerAlphabetList({
         showFavoriteButton
         addToList={addToList}
         variant="cards"
+        indexLeading={
+          favorited.length > 0
+            ? { href: "#favorites", label: <HeartIcon filled />, ariaLabel: "Избранное" }
+            : undefined
+        }
       />
     </>
   );
