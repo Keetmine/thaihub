@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
@@ -9,7 +10,6 @@ import CreateTripButton from "./CreateTripButton";
 import { TripInviteActions } from "./TripMembersControls";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
-import { CalendarIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { tripHref } from "@/lib/slugHelpers";
@@ -179,46 +179,82 @@ export default async function TripsPage() {
             compact
           />
         ) : (
-          <div className="d-flex flex-column gap-2">
+          <div className="d-flex flex-column gap-3 stagger">
             {trips.map((t, i) => {
               const isPast = t.endDate < now;
+              // Будущие отсортированы по startDate, значит первая
+              // не-прошедшая — ближайшая: она и есть карточка-герой.
+              const isHero = !isPast && t.id === trips.find((x) => x.endDate >= now)?.id;
+              const shared = t._count.members > 0 || t.userId !== user.id;
+              const { plan, total } = counts[i];
+              const pct = total > 0 ? Math.round((plan / total) * 100) : 0;
+              const dates = (
+                <>
+                  {formatShortDate(t.startDate)} <span className="trip-dates-arrow">→</span>{" "}
+                  {formatShortDate(t.endDate)}
+                  <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
+                </>
+              );
+              // Прошедшие — приглушённой компактной строкой.
+              if (isPast) {
+                return (
+                  <Fragment key={t.id}>
+                    {trips.findIndex((x) => x.endDate < now) === i && (
+                      <h2 className="section-heading mb-0 mt-2">Прошедшие</h2>
+                    )}
+                    <Link
+                      href={tripHref(t)}
+                      className="trip-card trip-card-past d-flex flex-wrap align-items-center justify-content-between gap-2"
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <p className="trip-dates mb-0">{dates}</p>
+                        <p className="font-display fw-medium text-white small mb-0 text-truncate">
+                          {t.title}
+                          {shared && (
+                            <span className="text-secondary fw-normal"> · совместная</span>
+                          )}
+                        </p>
+                      </div>
+                      <span className="small text-secondary flex-shrink-0">
+                        {plan} в плане · {total} всего
+                      </span>
+                    </Link>
+                  </Fragment>
+                );
+              }
               return (
                 <Link
                   key={t.id}
                   href={tripHref(t)}
-                  className={`surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3 ${isPast ? "opacity-50" : ""}`}
+                  className={`trip-card${isHero ? " trip-card-hero" : ""}`}
                 >
-                  <div>
-                    <p className="font-display fw-medium text-white mb-0">
-                      {t.title}
-                      {(t._count.members > 0 || t.userId !== user.id) && (
-                        <span
-                          className="badge rounded-pill text-bg-secondary ms-2 align-middle"
-                          style={{ fontSize: "0.6rem" }}
-                        >
-                          совместная
+                  <div className="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                    {/* Даты крупно, как на билете: «20 авг → 27 авг». */}
+                    <p className="trip-dates mb-1">{dates}</p>
+                    {shared && <span className="date-chip">совместная</span>}
+                  </div>
+                  <p className="font-display fw-medium text-white mb-0">{t.title}</p>
+                  {t.userId !== user.id && (
+                    <p className="small text-secondary mb-0">
+                      Организатор: {t.user.name ?? "без имени"}
+                    </p>
+                  )}
+                  <div className="mt-3">
+                    <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-1">
+                      <span className="small text-secondary">
+                        {plan} в плане · {total} всего
+                      </span>
+                      {t.visibility !== "PRIVATE" && (
+                        <span className="text-secondary" style={{ fontSize: "0.7rem" }}>
+                          {VISIBILITY_LABELS[t.visibility]}
                         </span>
                       )}
-                    </p>
-                    {t.userId !== user.id && (
-                      <p className="small text-secondary mb-0">
-                        Организатор: {t.user.name ?? "без имени"}
-                      </p>
-                    )}
-                    <p className="small text-secondary mb-0">
-                      <CalendarIcon className="icon-inline" />{" "}
-                      {formatShortDate(t.startDate)} – {formatShortDate(t.endDate)}{" "}
-                      {t.endDate.getFullYear()}
-                    </p>
+                    </div>
+                    {/* Мини-прогресс: доля событий дат, уже взятых в план. */}
+                    <div className="trip-progress">
+                      <div className="trip-progress-fill" style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                  <span className="small text-secondary text-end flex-shrink-0">
-                    {counts[i].plan} в плане · {counts[i].total} всего
-                    {t.visibility !== "PRIVATE" && (
-                      <span className="d-block" style={{ fontSize: "0.7rem", opacity: 0.7 }}>
-                        {VISIBILITY_LABELS[t.visibility]}
-                      </span>
-                    )}
-                  </span>
                 </Link>
               );
             })}

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { BellIcon, BellOffIcon } from "@/components/icons";
 import { toggleFriendNotifications } from "./actions";
 
 /** Кнопка-колокольчик на профиле друга: получать ли в Telegram
- *  уведомления «идёт на событие» об этом человеке. */
+ *  уведомления «идёт на событие» об этом человеке. Капсула в стиле
+ *  .chip-link со stroke-иконкой (.chip-toggle в globals.css). */
 export default function FriendNotifyToggle({
   friendId,
   muted,
@@ -18,7 +20,7 @@ export default function FriendNotifyToggle({
   return (
     <button
       type="button"
-      className="btn btn-ghost btn-sm"
+      className={`chip-link chip-toggle${isMuted ? " is-muted" : ""}`}
       disabled={isPending}
       title={isMuted ? "Уведомления об этом друге выключены" : "Уведомления об этом друге включены"}
       onClick={() =>
@@ -28,7 +30,8 @@ export default function FriendNotifyToggle({
         })
       }
     >
-      {isMuted ? "🔕 Уведомления выкл." : "🔔 Уведомления вкл."}
+      {isMuted ? <BellOffIcon /> : <BellIcon />}
+      {isMuted ? "Уведомления выкл." : "Уведомления вкл."}
     </button>
   );
 }

@@ -5,9 +5,16 @@ A `Trip` is a user's named date range (`title`, `startDate`, `endDate`)
 manually re-entering a date filter every time.
 
 - **`/trips`** (`src/app/(public)/trips/page.tsx`) — the user's own
-  trips plus shared trips they were added to as a member (badge
-  «совместная», organizer's name shown; ascending by start date, past
-  ones dimmed, each with a count of events falling inside it); creation lives behind a «+ Создать поездку»
+  trips plus shared trips they were added to as a member, rendered as
+  ticket-style `.trip-card` cards (Э2ф in `globals.css`, a `.glow-panel`
+  variation): the date range large in the display font («20 авг →
+  27 авг», year small), the title under it, «совместная» as a
+  `.date-chip` (organizer's name shown on shared trips), the «N в
+  плане · M всего» counter doubled by a mini progress bar
+  (`.trip-progress`), visibility as small text. Ascending by start
+  date; the nearest upcoming trip is the brighter oversized hero card
+  (`.trip-card-hero`), past trips collapse into dimmed compact rows
+  (`.trip-card-past`) under a «Прошедшие» heading; creation lives behind a «+ Создать поездку»
   button opening a `Modal` popup (`CreateTripButton.tsx`) rather than an
   always-visible form; в форме есть мультиселект «С кем едете»
   (EntityMultiSelect по друзьям, с аватарками) — выбранные друзья сразу

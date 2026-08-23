@@ -3567,3 +3567,390 @@ div:hover > .section-heading::after {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }
+
+/* ---------- Э2ф: ачивки ---------- */
+/* Бейдж-«медаль» (components/AchievementBadge.tsx): эмодзи-«монета» в
+   круге с тёплым радиальным свечением, название display-шрифтом, у
+   полученных — мягкое кольцо-глоу и дата. Прогресс-баров нет: в кабинете
+   показываются только полученные ачивки. */
+.achv-medal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.45rem;
+  padding: 1.1rem 0.85rem 0.95rem;
+  border-radius: var(--bs-border-radius-lg, 1rem);
+  border: 1px solid var(--bs-border-color);
+  background:
+    radial-gradient(9rem 5.5rem at 50% -20%, rgba(var(--accent-rgb), 0.16), transparent 70%),
+    rgba(255, 255, 255, 0.03);
+}
+
+.achv-medal-coin {
+  width: 3.6rem;
+  height: 3.6rem;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.65rem;
+  line-height: 1;
+  background: radial-gradient(
+    circle at 50% 32%,
+    rgba(var(--accent-rgb), 0.4),
+    rgba(var(--accent-rgb), 0.14) 62%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+}
+
+.achv-medal-unlocked .achv-medal-coin {
+  /* Кольцо-глоу полученной медали. */
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.55),
+    0 0 0 5px rgba(var(--accent-rgb), 0.12),
+    0 0 1.6rem rgba(var(--accent-rgb), 0.4);
+}
+
+.achv-medal-locked {
+  opacity: 0.55;
+}
+
+.achv-medal-locked .achv-medal-coin {
+  filter: grayscale(0.7);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.achv-medal .achv-medal-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.15;
+  color: #fff;
+  margin-top: 0.2rem;
+}
+
+.achv-medal-hint {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--bs-secondary-color);
+}
+
+.achv-medal-date {
+  margin-top: auto;
+  padding-top: 0.15rem;
+  font-size: 0.68rem;
+  color: var(--bs-primary-text-emphasis);
+}
+
+/* Компактный вариант для рядов (публичный профиль): медаль поменьше +
+   название, подсказка живёт в title-атрибуте. */
+.achv-medal-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.8rem 0.3rem 0.35rem;
+  border-radius: 2rem;
+  border: 1px solid var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.achv-medal-compact .achv-medal-coin {
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 0.95rem;
+}
+
+.achv-medal-compact.achv-medal-unlocked .achv-medal-coin {
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.5),
+    0 0 0.7rem rgba(var(--accent-rgb), 0.35);
+}
+
+.achv-medal-compact .achv-medal-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ---------- Э2ф: каст-сетка ---------- */
+/* Адаптивная фото-сетка состава («Актёрский состав» дорамы, «Кто
+   выступает» события): вертикальная карточка «круглое фото → имя →
+   роль» вместо ряда одинаковых плашек. auto-fill сам подбирает число
+   колонок: ~8 на десктопе, 4 на мобильном. */
+.cast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.25rem, 1fr));
+  gap: 1rem 0.75rem;
+}
+
+.cast-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.cast-card-photo {
+  width: 100%;
+  max-width: 6.5rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bs-secondary-bg);
+  border: 1px solid var(--bs-border-color);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cast-card:hover .cast-card-photo {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 0.6rem 1.4rem rgba(0, 0, 0, 0.4);
+}
+
+.cast-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Заглушка-буква, когда фото нет (как в EntityMiniCard). */
+.cast-card-letter {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bs-secondary-color);
+  opacity: 0.7;
+  font-weight: 600;
+  font-size: 1.4rem;
+}
+
+.cast-card-name {
+  margin-top: 0.5rem;
+  max-width: 100%;
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+.cast-card-role {
+  max-width: 100%;
+  color: var(--bs-secondary-color);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 575.98px) {
+  /* 390px: 4 колонки компактно. */
+  .cast-grid {
+    grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+    gap: 0.8rem 0.5rem;
+  }
+
+  .cast-card-name {
+    font-size: 0.78rem;
+  }
+
+  .cast-card-role {
+    font-size: 0.68rem;
+  }
+}
+
+/* Ряд якорных чипов под hero (переиспользует .chip-link). Отрицательный
+   отступ подтягивает ряд ближе к hero (у того margin-bottom 2rem). */
+.section-anchors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: -0.75rem 0 1.5rem;
+}
+
+/* Якорные секции: прокрутка с поправкой на липкую навигацию. */
+.anchor-target {
+  scroll-margin-top: 5.5rem;
+}
+
+/* Свёрнутый синопсис: текст живёт в summary (контент details вне
+   summary в закрытом виде не рендерится вовсе), закрытый — клампится
+   на 4 строки, открытый — целиком. Подпись переключателя рисует CSS,
+   поэтому текст не дублируется и JS не нужен. */
+.synopsis-fold summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.synopsis-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.synopsis-fold .synopsis-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.synopsis-fold[open] .synopsis-text {
+  display: block;
+  overflow: visible;
+}
+
+.synopsis-toggle {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: rgba(var(--accent-rgb), 0.9);
+}
+
+.synopsis-toggle::after {
+  content: "Читать дальше";
+}
+
+.synopsis-fold[open] .synopsis-toggle::after {
+  content: "Свернуть";
+}
+
+.synopsis-fold summary:hover .synopsis-toggle {
+  color: rgb(var(--accent-rgb));
+}
+
+/* ============================================================
+   Э2ф: профиль и поездки
+   ============================================================ */
+
+/* Карточка поездки-«билет» (/trips): вариация .glow-panel — даты
+   крупно display-шрифтом, название под ними, мини-прогресс
+   «в плане / всего». Ближайшая будущая — .trip-card-hero (крупнее и
+   ярче), прошедшие — .trip-card-past (приглушённые компактные). */
+.trip-card {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--bs-border-radius-xl);
+  border: 1px solid rgba(255, 154, 114, 0.16);
+  padding: 1.1rem 1.35rem;
+  background:
+    radial-gradient(110% 130% at 88% 0%, rgba(255, 106, 61, 0.16), transparent 55%),
+    linear-gradient(160deg, #191310, #100d0c 60%, #0c0a0a);
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.trip-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 16px 38px -16px rgba(var(--accent-rgb), 0.5);
+}
+.trip-card-hero {
+  padding: 1.6rem 1.6rem 1.35rem;
+  border-color: rgba(255, 154, 114, 0.32);
+  background:
+    radial-gradient(120% 140% at 85% 0%, rgba(255, 106, 61, 0.3), transparent 58%),
+    radial-gradient(90% 120% at 8% 100%, rgba(200, 80, 190, 0.12), transparent 60%),
+    linear-gradient(160deg, #1b1410, #110d0c 60%, #0c0a0a);
+  box-shadow: 0 1rem 2.6rem rgba(255, 106, 61, 0.14);
+}
+.trip-card-past {
+  padding: 0.7rem 1.35rem;
+  border-color: var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  opacity: 0.55;
+}
+.trip-card-past:hover {
+  opacity: 0.85;
+  box-shadow: none;
+}
+
+/* Диапазон дат как на билете: «20 авг → 27 авг». */
+.trip-dates {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-size: 1.45rem;
+  color: #fff;
+}
+.trip-card-hero .trip-dates {
+  font-size: clamp(1.9rem, 5vw, 2.5rem);
+}
+.trip-card-past .trip-dates {
+  font-size: 1rem;
+}
+.trip-dates-arrow {
+  color: rgba(var(--accent-rgb), 0.9);
+  font-weight: 500;
+}
+.trip-dates-year {
+  font-size: 0.55em;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--bs-secondary-color);
+  margin-left: 0.5em;
+}
+
+/* Мини-прогресс «N в плане · M всего». */
+.trip-progress {
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+.trip-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff9a72, #ff6a3d);
+}
+
+/* Шапка публичного профиля: .detail-hero, но фото юзера — круглый
+   аватар вместо карточки 3/4 (аватарки квадратные, 3/4 их режет). */
+.profile-hero .detail-hero-photo {
+  width: 8.5rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+}
+/* Фолбэк без фото: первая буква тёплым цветом (правило дизайн-системы). */
+.profile-hero-fallback {
+  width: 8.5rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: rgba(255, 154, 114, 0.6);
+  background: var(--bs-secondary-bg);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+@media (max-width: 575.98px) {
+  .profile-hero .detail-hero-photo,
+  .profile-hero-fallback {
+    width: 6.5rem;
+  }
+  .profile-hero-fallback {
+    font-size: 2.2rem;
+  }
+}
+
+/* Кнопка-капсула вкл/выкл (уведомления о друге): вид .chip-link,
+   но <button>. Выключено — приглушённая пунктирная капсула. */
+.chip-toggle {
+  cursor: pointer;
+}
+.chip-toggle:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+.chip-toggle.is-muted {
+  color: var(--bs-secondary-color);
+  border-style: dashed;
+}

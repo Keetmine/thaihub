@@ -104,16 +104,30 @@ intentionally the closest existing destination rather than a dead link.
 ## Public user profiles
 
 `/users/[id]` (`(public)/users/[id]/page.tsx`) — any logged-in user can
-open anyone's profile (own id redirects to `/account`): avatar, name, a
-«Ваш друг» badge when applicable, member-since + counts, the trips this
-*viewer* is allowed to see (PUBLIC always, FRIENDS only for the owner's
-accepted friends — same rules as the trip page itself), favorite
-performers as `EntityMiniCard`s, and the upcoming events the person is
-going to — the latter only when the **viewer** has premium (events are
-subscription-gated; non-premium viewers see just the count). Linked from
-every `UserRow` on `/friends` (avatar+name are the link) and from the
-"Поездка пользователя X" note on a shared trip page. A friend's shared
-trips are shown *only* here — `/friends` itself no longer lists them.
+open anyone's profile (own id redirects to `/account`). The header is a
+DetailHero-style hero on the `.detail-hero` classes (Э2ф, `.profile-hero`
+in `globals.css`): the user's photo as a blurred backdrop plus a round
+avatar (letter fallback on the warm gradient when there's no photo), the
+name large, «На MyBLHub с …» as subtitle, and the friends/events/
+actors/series counts as a `.date-chip` row (hidden with the rest of the
+activity for private profiles). Actions sit on the right: for friends a
+«Ваш друг» chip plus the notification bell toggle
+(`FriendNotifyToggle` — a `.chip-link`-style capsule with the
+`BellIcon`/`BellOffIcon` SVGs); for everyone else a «В друзья» button
+(`FriendActionButton` → `sendFriendRequest`), which turns into a «Заявка
+отправлена» chip once a request is pending (an *incoming* pending
+request shows «Ответить на заявку» linking to `/friends`).
+«Пожаловаться» (`ReportButton`) deliberately lives as a small gray link
+at the very bottom of the page, not in the header. Below the hero:
+the trips this *viewer* is allowed to see (PUBLIC always, FRIENDS only
+for the owner's accepted friends — same rules as the trip page itself),
+favorite performers as `EntityMiniCard`s, and the upcoming events the
+person is going to — the latter only when the **viewer** has premium
+(events are subscription-gated; non-premium viewers see just the
+count). Linked from every `UserRow` on `/friends` (avatar+name are the
+link) and from the "Поездка пользователя X" note on a shared trip page.
+A friend's shared trips are shown *only* here — `/friends` itself no
+longer lists them.
 
 ## Account page event grouping
 

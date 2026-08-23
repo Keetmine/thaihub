@@ -9,9 +9,11 @@ import { formatCombinedDateList, formatHumanDate, formatShortDate, formatTime } 
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import { CalendarIcon, PinIcon } from "@/components/icons";
+import FriendActionButton from "@/components/FriendActionButton";
+import { CalendarIcon, CheckIcon, HeartIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
+import { sendFriendRequest } from "../../friends/actions";
 import FriendNotifyToggle from "./FriendNotifyToggle";
 import { ACHIEVEMENTS } from "@/lib/achievements";
 import { listHref, tripHref, locationHref, artistListHref } from "@/lib/slugHelpers";
@@ -87,6 +89,19 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
         where: { userId_mutedFriendId: { userId: viewer.id, mutedFriendId: user.id } },
       })
     : null;
+  // Не-друзьям в actions шапки нужна кнопка «В друзья» — а если заявка
+  // уже висит (в любую сторону), показываем её состояние вместо кнопки.
+  const pendingFriendship = isFriend
+    ? null
+    : await prisma.friendship.findFirst({
+        where: {
+          status: "PENDING",
+          OR: [
+            { requesterId: viewer.id, addresseeId: user.id },
+            { requesterId: user.id, addresseeId: viewer.id },
+          ],
+        },
+      });
 
   // Списки мест, видимые этому зрителю (та же модель, что у поездок).
   const placeLists = await prisma.placeList.findMany({
@@ -162,60 +177,80 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
   return (
     <div>
-      <Link href="/friends" className="eyebrow text-decoration-none">
+      <Link href="/friends" className="eyebrow text-decoration-none d-inline-block mb-3">
         ← Друзья
       </Link>
 
-      <div className="d-flex flex-wrap align-items-center gap-4 mt-3 mb-5">
-        {user.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            loading="lazy"
-            decoding="async"
-            src={user.photoUrl}
-            alt=""
-            className="rounded-circle flex-shrink-0"
-            style={{ width: "5.5rem", height: "5.5rem", objectFit: "cover" }}
-          />
-        ) : (
-          <div
-            className="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center font-display fw-bold"
-            style={{
-              width: "5.5rem",
-              height: "5.5rem",
-              fontSize: "2.2rem",
-              background: "var(--bs-primary-bg-subtle)",
-              color: "var(--bs-primary-text-emphasis)",
-            }}
-          >
-            {displayName.charAt(0).toUpperCase()}
+      {/* Шапка на языке DetailHero (свой вариант на .detail-hero: круглый
+          аватар вместо карточки 3/4, см. .profile-hero в globals.css). */}
+      <section className="detail-hero profile-hero">
+        {user.photoUrl && (
+          <div className="detail-hero-backdrop" aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={user.photoUrl} alt="" loading="eager" decoding="async" />
           </div>
         )}
-        <div>
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
-              {displayName}
-            </h1>
-            {isFriend && (
-              <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.65rem" }}>
-                Ваш друг
-              </span>
-            )}
-            {isFriend && <FriendNotifyToggle friendId={user.id} muted={!!muteRow} />}
-            <ReportButton targetType="profile" targetId={user.id} />
-          </div>
-          <p className="text-secondary small mb-0">
-            На MyBLHub с {formatShortDate(user.createdAt)} {user.createdAt.getFullYear()}
+        <div className="detail-hero-scrim" aria-hidden />
+        <div className="detail-hero-content">
+          {user.photoUrl ? (
+            <div className="detail-hero-photo">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={user.photoUrl} alt={displayName} loading="eager" decoding="async" />
+            </div>
+          ) : (
+            <div className="profile-hero-fallback" aria-hidden>
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
             {showActivity && (
-              <>
-                {" "}· {ownerFriendIds.length} друзей · {user.eventAttendances.length} событий ·{" "}
-                {user.favoritePerformers.length} любимых актёров · {user._count.dramaWatchStatuses}{" "}
-                сериалов
-              </>
+              <div className="detail-hero-chips mb-2">
+                <span className="date-chip">
+                  <UsersIcon className="icon-inline" /> друзей: {ownerFriendIds.length}
+                </span>
+                <span className="date-chip">
+                  <TicketIcon className="icon-inline" /> событий: {user.eventAttendances.length}
+                </span>
+                <span className="date-chip">
+                  <HeartIcon className="icon-inline" /> актёров: {user.favoritePerformers.length}
+                </span>
+                <span className="date-chip">
+                  <TvIcon className="icon-inline" /> сериалов: {user._count.dramaWatchStatuses}
+                </span>
+              </div>
             )}
-          </p>
+            <h1 className="display-1-tight detail-hero-title mb-1">{displayName}</h1>
+            <p className="text-secondary mb-0">
+              На MyBLHub с {formatShortDate(user.createdAt)} {user.createdAt.getFullYear()}
+            </p>
+          </div>
+          <div className="d-flex flex-wrap align-items-center gap-2 flex-shrink-0 mb-1">
+            {isFriend ? (
+              <>
+                <span className="date-chip">
+                  <CheckIcon /> Ваш друг
+                </span>
+                <FriendNotifyToggle friendId={user.id} muted={!!muteRow} />
+              </>
+            ) : pendingFriendship ? (
+              pendingFriendship.requesterId === viewer.id ? (
+                <span className="date-chip">Заявка отправлена</span>
+              ) : (
+                <Link href="/friends" className="btn btn-primary btn-sm">
+                  Ответить на заявку
+                </Link>
+              )
+            ) : (
+              <FriendActionButton
+                action={sendFriendRequest}
+                id={user.id}
+                label="В друзья"
+                pendingLabel="Отправка…"
+              />
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
       {!showActivity && (
         <p className="small text-secondary">Этот профиль скрывает свою активность.</p>
@@ -393,6 +428,12 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       )}
       </>
       )}
+
+      {/* «Пожаловаться» — намеренно неприметная серая ссылка в самом
+          низу страницы (из шапки убрана по фидбеку владельца). */}
+      <p className="mt-5 mb-0">
+        <ReportButton targetType="profile" targetId={user.id} />
+      </p>
     </div>
   );
 }
