@@ -98,18 +98,6 @@ export const ACHIEVEMENT_SEED: AchievementSeed[] = [
   { key: "squad", emoji: "👯", title: "Компанией веселее", hint: "Событие, куда шли вчетвером+", metric: "squad", threshold: 1, sort: 220 },
 ];
 
-/**
- * @deprecated Совместимость для мест, ещё читающих статический список
- * (users/[id] мигрирует на БД отдельным потоком). Это СТАРТОВЫЙ набор:
- * правки из /admin/achievements здесь не видны.
- */
-export const ACHIEVEMENTS = ACHIEVEMENT_SEED.map(({ key, emoji, title, hint }) => ({
-  key,
-  emoji,
-  title,
-  description: hint,
-}));
-
 export type AchievementState = {
   key: string;
   emoji: string;

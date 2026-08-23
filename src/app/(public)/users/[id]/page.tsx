@@ -15,7 +15,8 @@ import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import { sendFriendRequest } from "../../friends/actions";
 import FriendNotifyToggle from "./FriendNotifyToggle";
-import { ACHIEVEMENTS } from "@/lib/achievements";
+import { getUnlockedAchievements } from "@/lib/achievements";
+import AchievementBadge from "@/components/AchievementBadge";
 import { listHref, tripHref, locationHref, artistListHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 
@@ -158,9 +159,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
   // Бейджи-ачивки (Д2): только уже зафиксированные — пересчёт делает сам
   // владелец при заходе в кабинет.
-  const unlockedRows = showAchievements
-    ? await prisma.userAchievement.findMany({ where: { userId: user.id }, orderBy: { unlockedAt: "asc" } })
-    : [];
+  const badges = showAchievements ? await getUnlockedAchievements(user.id) : [];
 
   // Посещённые места — с собственным приватность-переключателем.
   const visitedPlaces = showVisited
@@ -171,9 +170,6 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
         take: 24,
       })
     : [];
-  const badges = unlockedRows
-    .map((r) => ACHIEVEMENTS.find((a) => a.key === r.key))
-    .filter((a): a is (typeof ACHIEVEMENTS)[number] => !!a);
 
   return (
     <div>
@@ -263,11 +259,17 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           <h2 className="section-heading mb-2">
             Ачивки
           </h2>
+          {/* Медали вместо чипов (Э2ф): тот же AchievementBadge, что в
+              кабинете, компактным вариантом. */}
           <div className="d-flex flex-wrap gap-2 mb-4">
             {badges.map((b) => (
-              <span key={b.key} className="event-chip" title={b.description}>
-                {b.emoji} {b.title}
-              </span>
+              <AchievementBadge
+                key={b.key}
+                emoji={b.emoji}
+                title={b.title}
+                hint={b.hint}
+                compact
+              />
             ))}
           </div>
         </>
