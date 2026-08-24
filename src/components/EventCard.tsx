@@ -60,14 +60,21 @@ export default function EventCard({
       </Link>
 
       <div className="event-card-body">
-        {/* Иерархия строки: белое название + чип времени рядом с ним,
-            ниже серая площадка, ещё тише — состав. */}
+        {/* Иерархия строки: белое название сверху, ниже серой строкой
+            время и площадка, ещё тише — состав. Время стоит рядом с
+            адресом (просьба владельца): в шапке чип перетягивал
+            внимание с названия. */}
         <div className="event-row-head">
           <h3 className="h5 font-display mb-0">
             <Link href={eventHref(event)} className="text-reset text-decoration-none">
               {event.title}
             </Link>
           </h3>
+        </div>
+        {/* Площадка — обычный span, не flex-строка: в flex длинное
+            название площадки сжималось в столбик по одному слову на
+            узких экранах. */}
+        <p className="event-row-venue mb-0">
           {event.hasTime !== false && (
             <span className="date-chip event-row-time">
               {formatTime(event.startsAt)}
@@ -75,11 +82,6 @@ export default function EventCard({
               <MskTimeInfo startsAt={event.startsAt} endsAt={event.endsAt} />
             </span>
           )}
-        </div>
-        {/* Площадка — обычный span, не flex-строка: в flex длинное
-            название площадки сжималось в столбик по одному слову на
-            узких экранах. */}
-        <p className="event-row-venue mb-0">
           <span>
             <PinIcon /> {event.venue}
           </span>

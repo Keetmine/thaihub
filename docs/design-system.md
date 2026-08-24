@@ -49,8 +49,9 @@ Bootstrap в `src/app/globals.css`; тема тёмная, акцент `#ff6a3d
   «по подписке»).
 - `.event-row-head` / `.event-row-time` (+ `-quiet`) / `.event-row-venue`
   / `.event-row-cast` (+ `-more`) — иерархия строки события (общая для
-  `EventCard` и `EventAgendaRow`): белое название с чипом времени рядом,
-  серая площадка, приглушённый состав из трёх имён и «+N». Подробности —
+  `EventCard` и `EventAgendaRow`): белое название, ниже серая строка со
+  временем и площадкой, ещё тише — состав из трёх имён и «+N».
+  Подробности —
   [features/events.md](features/events.md#the-two-list-row-components).
 - `.chip-link` — капсульная быстрая ссылка (ряд под приветствием).
 - `.stagger` — каскадное появление детей (до 8, дальше без задержки);
