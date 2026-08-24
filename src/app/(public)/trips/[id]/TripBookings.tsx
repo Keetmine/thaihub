@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmForm from "@/components/ConfirmForm";
+import Modal from "@/components/Modal";
 import FileDropzone from "@/components/FileDropzone";
 import DatePickerInput from "@/components/DatePickerInput";
 import { BuildingIcon, PlaneIcon, PencilIcon, TrashIcon } from "@/components/icons";
@@ -33,7 +34,8 @@ export type TripBookingRow = {
  * файл брони, маршрут и даты лежат там же, где остальной план. Раньше
  * это был блок только под жильё, и он занимал пол-экрана даже пустым —
  * поэтому строки здесь однострочные, а пустого состояния нет вовсе:
- * когда броней нет, от блока остаётся заголовок с двумя кнопками.
+ * когда броней нет, от блока остаётся только ряд кнопок. Форма
+ * добавления и правки открывается в модалке — как у личного события.
  */
 export default function TripBookings({
   tripId,
@@ -75,7 +77,7 @@ export default function TripBookings({
   const form = (kind: "HOTEL" | "FLIGHT", booking?: TripBookingRow) => {
     const isFlight = kind === "FLIGHT";
     return (
-      <form action={submit} className="surface p-3 d-flex flex-column gap-2">
+      <form action={submit} className="d-flex flex-column gap-3">
         {booking && <input type="hidden" name="bookingId" value={booking.id} />}
         <input type="hidden" name="kind" value={kind} />
         <div className="row g-2">
@@ -112,12 +114,12 @@ export default function TripBookings({
                   className="form-control form-control-sm"
                 />
               </div>
-              <div className="col-6 col-md-3">
+              <div className="col-7 col-md-4">
                 <label className="form-label small text-secondary">Вылет</label>
                 <DatePickerInput name="startAt" defaultValue={booking?.startDate ?? ""} />
               </div>
-              <div className="col-6 col-md-3">
-                <label className="form-label small text-secondary">Время вылета</label>
+              <div className="col-5 col-md-2">
+                <label className="form-label small text-secondary">Время</label>
                 <input
                   type="time"
                   name="startTime"
@@ -126,12 +128,12 @@ export default function TripBookings({
                   className="form-control form-control-sm"
                 />
               </div>
-              <div className="col-6 col-md-3">
+              <div className="col-7 col-md-4">
                 <label className="form-label small text-secondary">Прилёт</label>
                 <DatePickerInput name="endAt" defaultValue={booking?.endDate ?? ""} />
               </div>
-              <div className="col-6 col-md-3">
-                <label className="form-label small text-secondary">Время прилёта</label>
+              <div className="col-5 col-md-2">
+                <label className="form-label small text-secondary">Время</label>
                 <input
                   type="time"
                   name="endTime"
@@ -218,127 +220,132 @@ export default function TripBookings({
     return [route, b.whenLabel, b.note].filter(Boolean).join(" · ");
   };
 
+  // Модалка одна на весь блок: либо добавляем бронь выбранного вида,
+  // либо правим существующую — вид тогда берём у неё.
+  const editingBooking = editing ? (bookings.find((b) => b.id === editing) ?? null) : null;
+  const modalKind = adding ?? editingBooking?.kind ?? null;
+
   return (
     <section className="mb-4">
       {/* Ряд добавления: событие первым и акцентом (его добавляют
-          чаще), за ним бронь отеля и перелёт. */}
+          чаще), за ним бронь отеля и перелёт. Ряд виден всегда —
+          форма открывается поверх, в модалке. */}
       {canEdit && (
         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
           {leadingAction}
-          {!adding && (
-            <>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  setEditing(null);
-                  setAdding("HOTEL");
-                }}
-              >
-                + Отель
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  setEditing(null);
-                  setAdding("FLIGHT");
-                }}
-              >
-                + Перелёт
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setError(null);
+              setEditing(null);
+              setAdding("HOTEL");
+            }}
+          >
+            + Отель
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setError(null);
+              setEditing(null);
+              setAdding("FLIGHT");
+            }}
+          >
+            + Перелёт
+          </button>
         </div>
       )}
 
       {/* Заголовок нужен только когда под ним что-то есть: пустой блок
           должен занимать минимум места. */}
-      {(adding || bookings.length > 0) && (
-        <h2 className="section-heading mb-2">Жильё и перелёты</h2>
-      )}
+      {bookings.length > 0 && <h2 className="section-heading mb-2">Жильё и перелёты</h2>}
 
-      {(adding || bookings.length > 0) && (
+      {bookings.length > 0 && (
         <div className="d-flex flex-column gap-2">
-          {adding && form(adding)}
-
-          {bookings.map((b) =>
-            editing === b.id ? (
-              <div key={b.id}>{form(b.kind, b)}</div>
-            ) : (
-              <div
-                key={b.id}
-                className="surface booking-row d-flex align-items-center gap-2 px-3 py-2"
-              >
-                <span className="text-secondary flex-shrink-0" aria-hidden>
-                  {b.kind === "FLIGHT" ? <PlaneIcon /> : <BuildingIcon />}
-                </span>
-                <span className="d-flex flex-wrap align-items-baseline gap-2" style={{ minWidth: 0 }}>
-                  <span className="text-white text-truncate">{b.name}</span>
-                  <span className="small text-secondary text-truncate">{subline(b)}</span>
-                </span>
-                <span className="d-flex align-items-center gap-1 flex-shrink-0 ms-auto">
-                  {b.fileUrl && (
-                    <a
-                      href={b.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-ghost btn-sm"
+          {bookings.map((b) => (
+            <div
+              key={b.id}
+              className="surface booking-row d-flex align-items-center gap-2 px-3 py-2"
+            >
+              <span className="text-secondary flex-shrink-0" aria-hidden>
+                {b.kind === "FLIGHT" ? <PlaneIcon /> : <BuildingIcon />}
+              </span>
+              <span className="d-flex flex-wrap align-items-baseline gap-2" style={{ minWidth: 0 }}>
+                <span className="text-white text-truncate">{b.name}</span>
+                <span className="small text-secondary text-truncate">{subline(b)}</span>
+              </span>
+              <span className="d-flex align-items-center gap-1 flex-shrink-0 ms-auto">
+                {b.fileUrl && (
+                  <a
+                    href={b.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-ghost btn-sm"
+                  >
+                    {b.kind === "FLIGHT" ? "Билет ↗" : "Бронь ↗"}
+                  </a>
+                )}
+                {b.url && (
+                  <a
+                    href={b.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-ghost btn-sm"
+                  >
+                    Ссылка ↗
+                  </a>
+                )}
+                {canEdit && (
+                  <>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label={
+                        b.kind === "FLIGHT" ? "Редактировать перелёт" : "Редактировать бронь"
+                      }
+                      onClick={() => {
+                        setError(null);
+                        setAdding(null);
+                        setEditing(b.id);
+                      }}
                     >
-                      {b.kind === "FLIGHT" ? "Билет ↗" : "Бронь ↗"}
-                    </a>
-                  )}
-                  {b.url && (
-                    <a
-                      href={b.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-ghost btn-sm"
+                      <PencilIcon />
+                    </button>
+                    <ConfirmForm
+                      action={async () => {
+                        // Ошибку возвращаем ConfirmForm — она покажет её в
+                        // модалке подтверждения ({ error } из результата).
+                        const result = await deleteTripBooking(tripId, b.id);
+                        if (!result.ok) return result;
+                        router.refresh();
+                      }}
+                      confirmMessage={`Удалить «${b.name}»?`}
                     >
-                      Ссылка ↗
-                    </a>
-                  )}
-                  {canEdit && (
-                    <>
                       <button
                         type="button"
-                        className="icon-btn"
-                        aria-label={
-                          b.kind === "FLIGHT" ? "Редактировать перелёт" : "Редактировать бронь"
-                        }
-                        onClick={() => {
-                          setAdding(null);
-                          setEditing(b.id);
-                        }}
+                        className="icon-btn icon-btn-danger"
+                        aria-label={b.kind === "FLIGHT" ? "Удалить перелёт" : "Удалить бронь"}
                       >
-                        <PencilIcon />
+                        <TrashIcon />
                       </button>
-                      <ConfirmForm
-                        action={async () => {
-                          // Ошибку возвращаем ConfirmForm — она покажет её в
-                          // модалке подтверждения ({ error } из результата).
-                          const result = await deleteTripBooking(tripId, b.id);
-                          if (!result.ok) return result;
-                          router.refresh();
-                        }}
-                        confirmMessage={`Удалить «${b.name}»?`}
-                      >
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn-danger"
-                          aria-label={b.kind === "FLIGHT" ? "Удалить перелёт" : "Удалить бронь"}
-                        >
-                          <TrashIcon />
-                        </button>
-                      </ConfirmForm>
-                    </>
-                  )}
-                </span>
-              </div>
-            ),
-          )}
+                    </ConfirmForm>
+                  </>
+                )}
+              </span>
+            </div>
+          ))}
         </div>
       )}
+
+      <Modal
+        open={modalKind !== null}
+        onClose={close}
+        title={modalKind === "FLIGHT" ? "Перелёт" : "Бронь отеля"}
+      >
+        {modalKind && form(modalKind, editingBooking ?? undefined)}
+      </Modal>
     </section>
   );
 }
