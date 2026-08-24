@@ -221,7 +221,13 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             </p>
           </div>
           <div className="d-flex flex-wrap align-items-center gap-2 flex-shrink-0 mb-1">
-            {isFriend ? (
+            {/* На своём профиле дружеских действий нет — иначе можно
+                было отправить заявку самому себе (Ж7). */}
+            {viewer.id === user.id ? (
+              <Link href="/account" className="btn btn-ghost btn-sm">
+                Это вы · в кабинет
+              </Link>
+            ) : isFriend ? (
               <>
                 <span className="date-chip">
                   <CheckIcon /> Ваш друг

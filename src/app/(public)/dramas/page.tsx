@@ -30,9 +30,14 @@ export default async function DramasPage({
 }) {
   const { q: rawQ, status: rawStatus } = await searchParams;
   const q = (rawQ ?? "").trim();
-  const status = WATCH_STATUS_ORDER.includes(rawStatus as DramaWatchStatusValue)
-    ? (rawStatus as DramaWatchStatusValue)
-    : null;
+  // Ж5: поисковый запрос всегда ищет по всему каталогу — вкладка
+  // статуса на время поиска сбрасывается на «Все». Раньше запрос и
+  // вкладка комбинировались, и поиск «внутри вкладки» выглядел как
+  // сломанный (нашлось 0, хотя сериал в каталоге есть).
+  const status =
+    !q && WATCH_STATUS_ORDER.includes(rawStatus as DramaWatchStatusValue)
+      ? (rawStatus as DramaWatchStatusValue)
+      : null;
 
   const currentUser = await getCurrentUser();
 
@@ -43,12 +48,7 @@ export default async function DramasPage({
   // of one giant always-rendered list.
   const searchResults = q
     ? await prisma.drama.findMany({
-        where: {
-          ...dramaTitleWhere(q),
-          ...(status && currentUser
-            ? { watchStatuses: { some: { userId: currentUser.id, status } } }
-            : {}),
-        },
+        where: dramaTitleWhere(q),
         orderBy: { title: "asc" },
         take: SEARCH_RESULT_LIMIT + 1,
       })
@@ -89,7 +89,6 @@ export default async function DramasPage({
     ratings.filter((r) => r.dramaId).map((r) => [r.dramaId as string, r._avg.rating as number]),
   );
 
-  const statusQuery = q ? `&q=${encodeURIComponent(q)}` : "";
 
   return (
     <div>
@@ -107,7 +106,7 @@ export default async function DramasPage({
           {currentUser && WATCH_STATUS_ORDER.map((s) => (
             <Link
               key={s}
-              href={`/dramas?status=${s}${statusQuery}`}
+              href={`/dramas?status=${s}`}
               prefetch={false}
               className={`tab-bar-item ${status === s ? "active" : ""}`}
             >
@@ -119,10 +118,15 @@ export default async function DramasPage({
           action="/dramas"
           q={q}
           placeholder="Поиск по названию…"
-          hiddenFields={status ? { status } : undefined}
           className=""
         />
       </div>
+
+      {q && (
+        <p className="small text-secondary mb-3">
+          Поиск идёт по всему каталогу, независимо от вкладок.
+        </p>
+      )}
 
       {searchTruncated && (
         <p className="small text-secondary mb-3">

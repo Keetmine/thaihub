@@ -176,6 +176,7 @@ export default async function TripPage({
       author: authorLabel(p.createdById),
       editableByOthers: p.editableByOthers,
       isPrivate: p.isPrivate,
+      showOnHome: p.showOnHome,
       canEdit: canTouch(p),
     }));
   // Дела поездки — планирование участников, чужим не показываем.

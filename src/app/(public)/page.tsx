@@ -27,8 +27,15 @@ export default async function HomePage() {
   const premium = isPremiumActive(user);
   const now = new Date();
 
-  const [news, myUpcoming, friendIds, favoritePerformers, upcomingTrips, watchingNow] =
-    await Promise.all([
+  const [
+    news,
+    myUpcoming,
+    friendIds,
+    favoritePerformers,
+    upcomingTrips,
+    watchingNow,
+    myPersonalEvents,
+  ] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
     getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
       own.length > 0 ? own : getMusicNews({ limit: 8 }),
@@ -82,7 +89,54 @@ export default async function HomePage() {
       orderBy: { updatedAt: "desc" },
       take: 4,
     }),
+    // Ж11: личные события поездок с галочкой «показывать на главной» —
+    // встали в общий блок «Вы идёте» рядом с событиями афиши. Только
+    // свои записи (в совместных поездках чужое личное сюда не тянем).
+    premium
+      ? prisma.tripPersonalEvent.findMany({
+          where: {
+            showOnHome: true,
+            startsAt: { gte: now },
+            OR: [
+              { trip: { userId: user.id } },
+              { createdById: user.id },
+            ],
+          },
+          select: {
+            id: true,
+            title: true,
+            startsAt: true,
+            trip: { select: { id: true, slug: true, title: true } },
+          },
+          orderBy: { startsAt: "asc" },
+          take: 4,
+        })
+      : Promise.resolve([]),
   ]);
+
+  // Ж11: события афиши и отмеченные личные события — один список,
+  // отсортированный по дате: на главной человеку важно «что ближайшее»,
+  // а не из какого раздела запись.
+  const goingCards = [
+    ...myUpcoming.map((a) => ({
+      key: `event-${a.event.id}-${+a.occurrence.startsAt}`,
+      href: eventHref(a.event),
+      posterUrl: a.event.posterUrl,
+      title: a.event.title,
+      subtitle: a.event.venue as string | null,
+      startsAt: a.occurrence.startsAt,
+    })),
+    ...myPersonalEvents.map((p) => ({
+      key: `personal-${p.id}`,
+      href: tripHref(p.trip),
+      posterUrl: null,
+      title: p.title,
+      subtitle: p.trip.title as string | null,
+      startsAt: p.startsAt,
+    })),
+  ]
+    .sort((a, b) => +a.startsAt - +b.startsAt)
+    .slice(0, 4);
 
   const friendsGoing =
     premium && friendIds.length > 0
@@ -144,7 +198,7 @@ export default async function HomePage() {
               Подробнее
             </Link>
           </div>
-        ) : myUpcoming.length === 0 ? (
+        ) : goingCards.length === 0 ? (
           <EmptyState
             emoji="🎫"
             title="Пока ничего не запланировано"
@@ -154,17 +208,14 @@ export default async function HomePage() {
           />
         ) : (
           <div className="row g-3 stagger">
-            {myUpcoming.map((a) => (
-              <div
-                key={`${a.event.id}-${+a.occurrence.startsAt}`}
-                className="col-6 col-md-4 col-xl-3"
-              >
+            {goingCards.map((card) => (
+              <div key={card.key} className="col-6 col-md-4 col-xl-3">
                 <PosterTile
-                  href={eventHref(a.event)}
-                  posterUrl={a.event.posterUrl}
-                  title={a.event.title}
-                  subtitle={a.event.venue}
-                  chip={formatShortDate(a.occurrence.startsAt)}
+                  href={card.href}
+                  posterUrl={card.posterUrl}
+                  title={card.title}
+                  subtitle={card.subtitle}
+                  chip={formatShortDate(card.startsAt)}
                 />
               </div>
             ))}

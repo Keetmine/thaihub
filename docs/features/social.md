@@ -49,11 +49,20 @@ components (`AccountTabs`, `WatchStatusSelect`, `DramaStatusButton`) pull
 `WATCH_STATUS_LABELS`/`WATCH_STATUS_ORDER` from it.
 
 `/dramas` filters by this status via a `.tab-bar-row` — "Все" plus one
-tab per `WATCH_STATUS_ORDER` entry, combined with the existing title
-search in the same row. `?status=` filters `Drama.findMany` by
+tab per `WATCH_STATUS_ORDER` entry, with the title search in the same
+row. `?status=` filters `Drama.findMany` by
 `watchStatuses: { some: { userId, status } }` for the signed-in user;
 logged-out visitors just see everything regardless of which status tab
 is selected, since there's no per-user status to filter by.
+
+**Поиск и вкладки не пересекаются** (Ж5): при непустом `q` статус
+игнорируется, запрос идёт по всему каталогу, вкладка показывается как
+«Все» и под строкой поиска выводится пояснение «Поиск идёт по всему
+каталогу, независимо от вкладок». Раньше они комбинировались в одном
+`where`, и поиск внутри вкладки выглядел сломанным: сериал в каталоге
+есть, а «ничего не найдено», потому что он не отмечен нужным статусом.
+Ссылки самих вкладок запрос не тащат — переход на вкладку сбрасывает
+поиск.
 
 ## Going ("Я иду") — per occurrence
 
@@ -113,7 +122,13 @@ intentionally the closest existing destination rather than a dead link.
 ## Public user profiles
 
 `/users/[id]` (`(public)/users/[id]/page.tsx`) — any logged-in user can
-open anyone's profile (own id redirects to `/account`). The header is a
+open anyone's profile. Свой профиль по **id** редиректит на `/account`,
+а по **нику** открывается как есть — именно так ведёт пункт «Мой
+профиль» в меню, это предпросмотр своей публичной страницы. В этом
+случае вместо дружеских действий показывается ссылка «Это вы · в
+кабинет» (Ж7: раньше на своей же странице висела кнопка «В друзья», и
+заявку можно было отправить самому себе — сервер её отбивал, но кнопка
+сбивала с толку). The header is a
 DetailHero-style hero on the `.detail-hero` classes (Э2ф, `.profile-hero`
 in `globals.css`): the user's photo as a blurred backdrop plus a round
 avatar (letter fallback on the warm gradient when there's no photo), the

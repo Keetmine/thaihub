@@ -6,7 +6,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import EmptyState from "@/components/EmptyState";
 import FileDropzone from "@/components/FileDropzone";
 import DatePickerInput from "@/components/DatePickerInput";
-import { PencilIcon, TrashIcon } from "@/components/icons";
+import { BuildingIcon, PencilIcon, TrashIcon } from "@/components/icons";
 import { saveTripHotel, deleteTripHotel } from "../actions";
 
 export type TripHotelRow = {
@@ -133,11 +133,18 @@ export default function TripHotels({
 
   return (
     <section className="mb-4">
+      {/* Ж2: кнопка брони стояла голым «+ Добавить бронь» прямо над
+          списком событий и читалась как «добавить событие» — владелец
+          сама раз за разом промахивалась. Теперь: иконка отеля в
+          заголовке, у кнопки — слово «отель», а в пустом состоянии
+          вместо кнопки-сироты приглушённая строка-подсказка. */}
       <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
-        <h2 className="section-heading mb-0">Жильё</h2>
+        <h2 className="section-heading mb-0 d-inline-flex align-items-center gap-2">
+          <BuildingIcon /> Жильё
+        </h2>
         {!adding && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAdding(true)}>
-            + Добавить бронь
+            + Бронь отеля
           </button>
         )}
       </div>
@@ -212,7 +219,7 @@ export default function TripHotels({
           <EmptyState
             emoji="🏨"
             title="Брони пока нет"
-            hint="Добавьте бронь — файл, адрес и даты будут под рукой в день заселения."
+            hint="Кнопка «+ Бронь отеля» вверху — сохраните название, даты и файл подтверждения, чтобы всё было под рукой в день заселения."
             compact
           />
         )}

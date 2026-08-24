@@ -26,6 +26,8 @@ export type PersonalEventData = {
   author: string | null;
   editableByOthers: boolean;
   isPrivate: boolean;
+  // Ж11: показывать запись в блоке «Вы идёте» на главной.
+  showOnHome: boolean;
   canEdit: boolean;
 };
 
@@ -44,6 +46,7 @@ export function PersonalEventFields({
     location?: { id: string; name: string } | null;
     editableByOthers?: boolean;
     isPrivate?: boolean;
+    showOnHome?: boolean;
   };
   showShareToggle?: boolean;
 }) {
@@ -81,6 +84,17 @@ export function PersonalEventFields({
         <label className="form-label small text-secondary">Заметка</label>
         <textarea name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
       </div>
+      {/* Ж11: галочка есть и в соло-, и в совместной поездке — это про
+          мою главную, а не про доступ участников. */}
+      <label className="form-check d-flex align-items-center gap-2 mb-0">
+        <input
+          type="checkbox"
+          name="showOnHome"
+          defaultChecked={defaults?.showOnHome ?? false}
+          className="form-check-input m-0"
+        />
+        <span className="form-check-label small">Показывать на главной</span>
+      </label>
       {showShareToggle ? (
         <>
           <label className="form-check d-flex align-items-center gap-2 mb-0">
@@ -242,6 +256,7 @@ export default function PersonalEventCard({
               location: event.location,
               editableByOthers: event.editableByOthers,
               isPrivate: event.isPrivate,
+              showOnHome: event.showOnHome,
             }}
             showShareToggle={showShareToggle}
           />

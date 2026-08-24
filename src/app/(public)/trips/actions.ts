@@ -252,7 +252,7 @@ export async function leaveTrip(tripId: string): Promise<void> {
 
 /** null — не заполнены обязательные поля (название/дата); вызывающий
  *  экшен возвращает клиенту `{ ok: false, error: "Заполните…" }`. */
-function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null; editableByOthers: boolean; isPrivate: boolean } | null {
+function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null; editableByOthers: boolean; isPrivate: boolean; showOnHome: boolean } | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
   const date = String(formData.get("date") ?? "");
@@ -268,6 +268,7 @@ function parsePersonalEventForm(formData: FormData): { title: string; note: stri
     locationId: locationId || null,
     editableByOthers: formData.get("editableByOthers") === "on",
     isPrivate: formData.get("isPrivate") === "on",
+    showOnHome: formData.get("showOnHome") === "on",
   };
 }
 

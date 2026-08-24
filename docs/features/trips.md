@@ -50,6 +50,12 @@ manually re-entering a date filter every time.
   buttons instead of favorite/going; editing opens a prefilled modal).
   A personal event without a time is stored at 00:00, sorting before
   that day's public events, and the card hides the meaningless "00:00".
+  Галочка «Показывать на главной» (`showOnHome`, Ж11) поднимает запись
+  в блок «Вы идёте» на главной: там события афиши и отмеченные личные
+  события сортируются одним списком по дате (см.
+  `src/app/(public)/page.tsx`). Галочка есть и в соло-, и в совместной
+  поездке — это про свою главную, а не про доступ участников; в
+  совместной поездке на главную попадают только собственные записи.
   All three actions (`createTripPersonalEvent`/`update…`/`delete…` in
   `trips/actions.ts`) go through `requireTripAccess` (owner OR member),
   scope the row by `tripId`, and update/delete additionally enforce

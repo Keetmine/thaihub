@@ -803,6 +803,9 @@ model TripPersonalEvent {
   editableByOthers Boolean @default(false)
   // Приватная запись — видна только автору, даже другим участникам.
   isPrivate Boolean @default(false)
+  // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
+  // перелёты и брони на главной не нужны, а встреча с друзьями — да.
+  showOnHome Boolean @default(false)
   createdAt DateTime  @default(now())
 
   @@index([tripId])
