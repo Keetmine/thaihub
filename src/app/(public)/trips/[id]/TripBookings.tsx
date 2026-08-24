@@ -39,10 +39,15 @@ export default function TripBookings({
   tripId,
   bookings,
   canEdit = true,
+  leadingAction,
 }: {
   tripId: string;
   bookings: TripBookingRow[];
   canEdit?: boolean;
+  /** Кнопка «+ Событие» — она главнее брони, поэтому идёт первой в
+   *  том же ряду. Приходит готовым элементом со страницы: у неё своя
+   *  модалка и своё состояние. */
+  leadingAction?: React.ReactNode;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
@@ -215,33 +220,43 @@ export default function TripBookings({
 
   return (
     <section className="mb-4">
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-        <h2 className="section-heading mb-0">Жильё и перелёты</h2>
-        {canEdit && !adding && (
-          <>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                setEditing(null);
-                setAdding("HOTEL");
-              }}
-            >
-              + Отель
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                setEditing(null);
-                setAdding("FLIGHT");
-              }}
-            >
-              + Перелёт
-            </button>
-          </>
-        )}
-      </div>
+      {/* Ряд добавления: событие первым и акцентом (его добавляют
+          чаще), за ним бронь отеля и перелёт. */}
+      {canEdit && (
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          {leadingAction}
+          {!adding && (
+            <>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setEditing(null);
+                  setAdding("HOTEL");
+                }}
+              >
+                + Отель
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setEditing(null);
+                  setAdding("FLIGHT");
+                }}
+              >
+                + Перелёт
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Заголовок нужен только когда под ним что-то есть: пустой блок
+          должен занимать минимум места. */}
+      {(adding || bookings.length > 0) && (
+        <h2 className="section-heading mb-2">Жильё и перелёты</h2>
+      )}
 
       {(adding || bookings.length > 0) && (
         <div className="d-flex flex-column gap-2">

@@ -8,9 +8,15 @@ import { PersonalEventFields } from "./PersonalEventCard";
 export default function AddPersonalEventButton({
   tripId,
   showShareToggle = false,
+  // На странице поездки кнопка стоит первой в ряду «Событие / Отель /
+  // Перелёт» и выделена акцентом: своё событие добавляют чаще всего.
+  accent = false,
+  label = "+ Личное событие",
 }: {
   tripId: string;
   showShareToggle?: boolean;
+  accent?: boolean;
+  label?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,8 +42,12 @@ export default function AddPersonalEventButton({
 
   return (
     <>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
-        + Личное событие
+      <button
+        type="button"
+        className={`btn btn-sm ${accent ? "btn-primary" : "btn-ghost"}`}
+        onClick={() => setIsOpen(true)}
+      >
+        {label}
       </button>
 
       <Modal

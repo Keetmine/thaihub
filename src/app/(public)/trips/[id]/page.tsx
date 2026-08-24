@@ -308,9 +308,6 @@ export default async function TripPage({
                 />
               </>
             )}
-            {canContribute && (
-              <AddPersonalEventButton tripId={trip.id} showShareToggle={isShared} />
-            )}
             <TripMembersButton
               tripId={trip.id}
               isOwner={isOwner}
@@ -397,6 +394,14 @@ export default async function TripPage({
       {!showTodos && !showPlaces && canContribute && (
         <TripBookings
           tripId={trip.id}
+          leadingAction={
+            <AddPersonalEventButton
+              tripId={trip.id}
+              showShareToggle={isShared}
+              label="+ Событие"
+              accent
+            />
+          }
           bookings={trip.bookings.map((b) => ({
             id: b.id,
             kind: b.kind,
