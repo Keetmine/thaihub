@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Analytics from "@/components/Analytics";
 
@@ -20,24 +20,36 @@ export function readConsentCookie(): "all" | "necessary" | null {
  * год в куке cookie_consent; «Только необходимые» оставляет лишь
  * сессию и сам выбор. Пока выбор не сделан, аналитика не грузится.
  */
-export default function CookieConsent({ metrikaId }: { metrikaId: string | null }) {
-  // null до маунта — на сервере куки не читаем, баннер не мигает.
-  const [choice, setChoice] = useState<"all" | "necessary" | "pending" | null>(null);
+// Кука доступна только в браузере, поэтому читаем её через
+// useSyncExternalStore: на сервере снимок — null (баннер не рендерится
+// и не мигает при гидратации), на клиенте — фактический выбор. Раньше
+// это делал useEffect с setState, что ловил линтер (каскадный рендер).
+// Подписка пустая: кука меняется только из decide() ниже.
+const noopSubscribe = () => () => {};
+const clientSnapshot = (): "all" | "necessary" | "pending" =>
+  readConsentCookie() ?? "pending";
+const serverSnapshot = () => null;
 
-  useEffect(() => {
-    setChoice(readConsentCookie() ?? "pending");
-  }, []);
+export default function CookieConsent({ metrikaId }: { metrikaId: string | null }) {
+  const stored = useSyncExternalStore(noopSubscribe, clientSnapshot, serverSnapshot);
+  // Выбор, сделанный прямо сейчас, — приоритетнее снимка куки.
+  const [decided, setDecided] = useState<"all" | "necessary" | null>(null);
+  const choice = decided ?? stored;
 
   function decide(value: "all" | "necessary") {
     document.cookie = `${CONSENT_COOKIE}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
-    setChoice(value);
+    setDecided(value);
   }
 
   return (
     <>
       {choice === "all" && metrikaId && <Analytics id={metrikaId} />}
       {choice === "pending" && (
-        <div className="cookie-consent surface p-3" role="dialog" aria-label="Куки">
+        <div
+          className="cookie-consent surface p-3"
+          role="dialog"
+          aria-label="Мы используем куки"
+        >
           <p className="small mb-2">
             Мы используем куки: необходимые — для входа и работы сайта, и
             аналитические (Яндекс.Метрика) — чтобы понимать, чем

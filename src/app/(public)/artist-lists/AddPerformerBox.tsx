@@ -48,6 +48,7 @@ export default function AddPerformerBox({ listId }: { listId: string }) {
         type="text"
         className="form-control"
         placeholder="Начните вводить имя актёра…"
+        aria-label="Добавить актёра в список"
         value={query}
         onChange={(e) => onChange(e.target.value)}
       />

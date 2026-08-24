@@ -33,7 +33,8 @@ function SearchForm() {
         <input
           type="search"
           name="q"
-          placeholder="Поиск..."
+          placeholder="Поиск…"
+          aria-label="Поиск по сайту"
           className="pill-search"
         />
       </div>

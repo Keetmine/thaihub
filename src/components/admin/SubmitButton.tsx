@@ -14,6 +14,7 @@ export default function SubmitButton({
   disabled = false,
   formAction,
   title,
+  ariaLabel,
 }: {
   label: string;
   busyLabel?: string;
@@ -23,6 +24,9 @@ export default function SubmitButton({
   /** Для форм с несколькими submit-кнопками (formAction переопределяет action). */
   formAction?: (formData: FormData) => void | Promise<void>;
   title?: string;
+  /** Когда label — значок («✓»), скринридеру он ничего не говорит:
+   *  здесь лежит человеческая подпись кнопки. */
+  ariaLabel?: string;
 }) {
   const { pending } = useFormStatus();
 
@@ -32,7 +36,8 @@ export default function SubmitButton({
       className={className}
       disabled={pending || disabled}
       formAction={formAction}
-      title={title}
+      title={title ?? ariaLabel}
+      aria-label={ariaLabel}
     >
       {pending ? (
         busyLabel ?? (

@@ -50,6 +50,7 @@ export default function EventNoteSection({
             rows={3}
             defaultValue={ownNote?.text ?? ""}
             placeholder="Например: берём мерч на входе, встречаемся у гейта 3…"
+            aria-label="Заметка к событию"
             className="form-control"
             autoFocus
           />

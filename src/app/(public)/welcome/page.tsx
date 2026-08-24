@@ -2,7 +2,16 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { pageMetadata } from "@/lib/seo";
 import WelcomePicker from "./WelcomePicker";
+
+export const metadata = pageMetadata({
+  title: "Кого вы любите?",
+  description:
+    "Второй шаг онбординга: отмечаем любимых артистов, чтобы вкладка «Мои артисты» и избранное заработали с первого дня.",
+  path: "/welcome",
+  noIndex: true,
+});
 
 export const dynamic = "force-dynamic";
 

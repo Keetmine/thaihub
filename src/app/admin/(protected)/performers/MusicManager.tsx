@@ -102,23 +102,23 @@ export default function MusicManager({
                     <FileDropzone name="coverUrl" label="Обложка" defaultValue={a.coverUrl ?? ""} />
                   </div>
                   <div className="col-12 col-md-3">
-                    <input name="title" required defaultValue={a.title} className="form-control form-control-sm" />
+                    <input name="title" required defaultValue={a.title} placeholder="Название" aria-label="Название альбома" className="form-control form-control-sm" />
                   </div>
                   <div className="col-6 col-md-2">
-                    <select name="type" defaultValue={a.type} className="form-select form-select-sm">
+                    <select name="type" defaultValue={a.type} aria-label="Тип релиза" className="form-select form-select-sm">
                       <option value="ALBUM">Альбом</option>
                       <option value="EP">EP</option>
                     </select>
                   </div>
                   <div className="col-6 col-md-2">
-                    <input name="year" type="number" defaultValue={a.year ?? ""} className="form-control form-control-sm" />
+                    <input name="year" type="number" defaultValue={a.year ?? ""} placeholder="Год" aria-label="Год выхода" className="form-control form-control-sm" />
                   </div>
                   <div className="col-12 col-md-3">
-                    <input name="url" defaultValue={a.url ?? ""} placeholder="Ссылка на площадку" className="form-control form-control-sm" />
+                    <input name="url" defaultValue={a.url ?? ""} placeholder="Ссылка на площадку" aria-label="Ссылка на площадку" className="form-control form-control-sm" />
                   </div>
                   <div className="col-12 col-md-1 d-flex gap-1">
-                    <SubmitButton label="✓" />
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingAlbum(null)}>×</button>
+                    <SubmitButton label="✓" ariaLabel="Сохранить" />
+                    <button type="button" className="btn btn-ghost btn-sm" aria-label="Отменить правку" title="Отменить правку" onClick={() => setEditingAlbum(null)}>×</button>
                   </div>
                 </form>
               ) : (
@@ -199,16 +199,16 @@ export default function MusicManager({
                 <form key={s.id} action={submitSong} className="row g-2 align-items-end surface p-2">
                   <input type="hidden" name="songId" value={s.id} />
                   <div className="col-12 col-md-3">
-                    <input name="title" required defaultValue={s.title} className="form-control form-control-sm" />
+                    <input name="title" required defaultValue={s.title} placeholder="Название" aria-label="Название песни" className="form-control form-control-sm" />
                   </div>
                   <div className="col-12 col-md-3">
-                    <input name="note" defaultValue={s.note ?? ""} placeholder="Пояснение" className="form-control form-control-sm" />
+                    <input name="note" defaultValue={s.note ?? ""} placeholder="Пояснение" aria-label="Пояснение к песне" className="form-control form-control-sm" />
                   </div>
                   <div className="col-4 col-md-1">
-                    <input name="year" type="number" defaultValue={s.year ?? ""} className="form-control form-control-sm" />
+                    <input name="year" type="number" defaultValue={s.year ?? ""} placeholder="Год" aria-label="Год выхода" className="form-control form-control-sm" />
                   </div>
                   <div className="col-8 col-md-2">
-                    <select name="albumId" defaultValue={s.albumId ?? ""} className="form-select form-select-sm">
+                    <select name="albumId" defaultValue={s.albumId ?? ""} aria-label="В каком альбоме" className="form-select form-select-sm">
                       <option value="">Сингл</option>
                       {albums.map((a) => (
                         <option key={a.id} value={a.id}>
@@ -218,11 +218,11 @@ export default function MusicManager({
                     </select>
                   </div>
                   <div className="col-12 col-md-2">
-                    <input name="url" defaultValue={s.url ?? ""} placeholder="Ссылка" className="form-control form-control-sm" />
+                    <input name="url" defaultValue={s.url ?? ""} placeholder="Ссылка" aria-label="Ссылка на песню" className="form-control form-control-sm" />
                   </div>
                   <div className="col-12 col-md-1 d-flex gap-1">
-                    <SubmitButton label="✓" />
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingSong(null)}>×</button>
+                    <SubmitButton label="✓" ariaLabel="Сохранить" />
+                    <button type="button" className="btn btn-ghost btn-sm" aria-label="Отменить правку" title="Отменить правку" onClick={() => setEditingSong(null)}>×</button>
                   </div>
                 </form>
               ) : (

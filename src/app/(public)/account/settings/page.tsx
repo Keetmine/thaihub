@@ -25,7 +25,8 @@ import ConfirmForm from "@/components/ConfirmForm";
 
 export const metadata = pageMetadata({
   title: "Настройки",
-  description: "Настройки аккаунта и приватности.",
+  description:
+    "Ник и фото, часовой пояс, кто видит профиль, уведомления в Telegram, подписка на календарь и удаление аккаунта.",
   path: "/account/settings",
   noIndex: true,
 });

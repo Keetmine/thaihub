@@ -10,7 +10,8 @@ import { getCurrentUser } from "@/lib/userAuth";
 
 export const metadata = pageMetadata({
   title: "Вход",
-  description: "Вход в MyBLHub.",
+  description:
+    "Вход в аккаунт: избранные артисты, отметки «иду», календарь и поездки — всё на месте.",
   path: "/login",
   noIndex: true,
 });

@@ -10,7 +10,8 @@ import { telegramBotUsername } from "@/lib/telegram";
 
 export const metadata = pageMetadata({
   title: "Регистрация",
-  description: "Регистрация в MyBLHub.",
+  description:
+    "Заводим аккаунт: пара полей — и можно отмечать события в афише, вести статусы просмотра и планировать поездки.",
   path: "/signup",
   noIndex: true,
 });

@@ -245,6 +245,7 @@ export default function EntityMultiSelect({
           type="text"
           className={inputClassName ? `form-control ${inputClassName}` : "form-control"}
           placeholder={placeholder}
+          aria-label={placeholder}
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={() => setIsOpen(true)}

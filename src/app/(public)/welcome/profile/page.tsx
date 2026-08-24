@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata = pageMetadata({
   title: "Немного о себе",
-  description: "Первый шаг после регистрации: ник и профиль.",
+  description:
+    "Первый шаг после регистрации: выбираем ник — он же адрес профиля — и по желанию рассказываем о себе. Поменять можно когда угодно.",
   path: "/welcome/profile",
   noIndex: true,
 });

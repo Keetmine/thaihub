@@ -2,7 +2,15 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import PasswordInput from "@/components/PasswordInput";
 import { prisma } from "@/lib/prisma";
+import { pageMetadata } from "@/lib/seo";
 import { resetPassword } from "../actions";
+
+export const metadata = pageMetadata({
+  title: "Новый пароль",
+  description:
+    "Ссылка из письма действует ограниченное время: задайте новый пароль — и сразу вернётесь в аккаунт.",
+  noIndex: true,
+});
 
 export const dynamic = "force-dynamic";
 

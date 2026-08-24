@@ -15,7 +15,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const text = article.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   return pageMetadata({
     title: article.title,
-    description: text.slice(0, 160) || `${article.title} — гид MyBLHub.`,
+    description:
+      text.slice(0, 160) ||
+      `${article.title}: пошаговый гайд для фанатов тайских BL-актёров.`,
     path: `/wiki/${article.slug ?? slug}`,
     type: "article",
   });

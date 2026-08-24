@@ -27,6 +27,7 @@ export default function ArtistListControls({
     <>
       <select
         className="form-select form-select-sm w-auto"
+        aria-label="Кто видит список"
         defaultValue={list.visibility}
         onChange={async (e) => {
           await setPerformerListVisibility(list.id, e.target.value as TripVisibility);

@@ -38,7 +38,13 @@ export default function IcsFeedSection({ token }: { token: string }) {
         сами.
       </p>
       <div className="d-flex flex-wrap gap-2">
-        <input readOnly value={url} className="form-control" style={{ flex: "1 1 20rem" }} />
+        <input
+          readOnly
+          value={url}
+          aria-label="Ссылка на календарь"
+          className="form-control"
+          style={{ flex: "1 1 20rem" }}
+        />
         <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleCopy}>
           {copied ? "Скопировано" : "Копировать"}
         </button>

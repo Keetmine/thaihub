@@ -72,6 +72,7 @@ function CommentRow({
                   required
                   maxLength={3000}
                   placeholder={`Ответ для ${c.user.name ?? "автора"}…`}
+                  aria-label={`Ответ для ${c.user.name ?? "автора"}`}
                   className="form-control form-control-sm"
                 />
                 <button type="submit" className="btn btn-primary btn-sm flex-shrink-0">
@@ -227,6 +228,7 @@ export default async function ReviewsAndComments({
                 required
                 defaultValue={ownReview?.text}
                 placeholder="Чем зацепило, что не понравилось, кому советуете…"
+                aria-label="Текст отзыва"
                 className="form-control"
               />
               <div className="d-flex gap-2">
@@ -299,6 +301,7 @@ export default async function ReviewsAndComments({
               required
               maxLength={3000}
               placeholder="Ваш комментарий…"
+              aria-label="Ваш комментарий"
               className="form-control"
             />
             <button type="submit" className="btn btn-primary btn-sm align-self-start">

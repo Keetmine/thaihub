@@ -70,7 +70,7 @@ export default function ConfirmForm({
           setOpen(false);
           setError(null);
         }}
-        title="Подтверждение"
+        title="Точно?"
       >
         <p className="mb-3">{confirmMessage}</p>
         {error && <p className="text-danger small mb-3">{error}</p>}

@@ -101,6 +101,7 @@ export default function QuickSearch() {
         <input
           ref={inputRef}
           value={query}
+          aria-label="Поиск по каталогу"
           onChange={(e) => handleQueryChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {

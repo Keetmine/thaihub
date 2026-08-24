@@ -41,6 +41,13 @@ to one record.
   normalized-name match only, no fuzzy matching. A typo'd duplicate
   ("Beside The Sky" vs "Beside the sky ") would still be caught (case +
   whitespace insensitive); a genuinely different spelling would not.
+- **Paging**: групп бывает несколько сотен, а каждая — карточка с
+  формой слияния, поэтому страница режет общий список (сначала
+  сериалы, потом исполнители) на страницы по `DENSE_PAGE_SIZE` (20) из
+  `src/lib/pagination`. Заголовок раздела показывает полное число
+  групп этого типа, под ним — только попавшие на текущую страницу;
+  раздел без своих групп на странице не рисуется. `?a=`/`?b=` формы
+  ручного сравнения переносятся в ссылки пагинации.
 - **UI**: `MergeGroupCard.tsx` — radio-select which row to keep, shows
   each candidate's relation counts (events/dramas for performers;
   cast/locations/events for dramas) so the admin can judge which one has

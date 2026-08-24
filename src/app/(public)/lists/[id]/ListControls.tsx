@@ -96,6 +96,7 @@ export function AddPlaceBox({ listId }: { listId: string }) {
         type="text"
         className="form-control"
         placeholder="Добавить место — начните вводить название…"
+        aria-label="Добавить место в список"
         value={query}
         disabled={isPending}
         onChange={(e) => handleChange(e.target.value)}
@@ -226,7 +227,14 @@ export function PlaceRowControls({
       </div>
       {isEditing ? (
         <form action={saveNote} className="d-flex align-items-center gap-2">
-          <input name="note" defaultValue={note ?? ""} className="form-control form-control-sm" autoFocus />
+          <input
+            name="note"
+            defaultValue={note ?? ""}
+            aria-label="Заметка к месту"
+            placeholder="Чем это место запомнилось"
+            className="form-control form-control-sm"
+            autoFocus
+          />
           <button type="submit" className="btn btn-primary btn-sm">
             ОК
           </button>

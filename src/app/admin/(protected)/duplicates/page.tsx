@@ -4,7 +4,9 @@ import { findDuplicateDramaGroups, findDuplicatePerformerGroups } from "@/lib/du
 import { mergeDramasAction, mergePerformersAction } from "./actions";
 import MergeGroupCard from "./MergeGroupCard";
 import SubmitButton from "@/components/admin/SubmitButton";
+import Pagination from "@/components/Pagination";
 import LetterAvatar from "@/components/LetterAvatar";
+import { DENSE_PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { performerHref } from "@/lib/performerSlug";
 
 export const metadata = { title: "Дубли" };
@@ -43,9 +45,9 @@ async function compareDrama(slug: string) {
 export default async function DuplicatesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ a?: string; b?: string }>;
+  searchParams: Promise<{ a?: string; b?: string; page?: string }>;
 }) {
-  const { a: rawA, b: rawB } = await searchParams;
+  const { a: rawA, b: rawB, page: rawPage } = await searchParams;
   const inputA = rawA ? parseCompareInput(rawA) : null;
   const inputB = rawB ? parseCompareInput(rawB) : null;
   // Сериалы, если хотя бы одна ссылка /dramas/ — иначе артисты.
@@ -64,7 +66,23 @@ export default async function DuplicatesPage({
     findDuplicatePerformerGroups(),
   ]);
 
+  // Групп бывает несколько сотен, и каждая — карточка с формой слияния:
+  // страница отдавала их разом и заметно тормозила. Режем общий список
+  // (сериалы, потом исполнители) на страницы DENSE_PAGE_SIZE — заголовок
+  // раздела показывает полное число групп, под ним только те, что попали
+  // на текущую страницу.
   const totalGroups = dramaGroups.length + performerGroups.length;
+  const page = parsePage(rawPage);
+  const totalPages = totalPagesFor(totalGroups, DENSE_PAGE_SIZE);
+  const from = (page - 1) * DENSE_PAGE_SIZE;
+  const pageDramaGroups = dramaGroups.slice(from, from + DENSE_PAGE_SIZE);
+  const pagePerformerGroups = performerGroups.slice(
+    Math.max(0, from - dramaGroups.length),
+    Math.max(0, from + DENSE_PAGE_SIZE - dramaGroups.length),
+  );
+  const compareParams =
+    (rawA ? `a=${encodeURIComponent(rawA)}&` : "") +
+    (rawB ? `b=${encodeURIComponent(rawB)}&` : "");
 
   return (
     <div>
@@ -89,8 +107,8 @@ export default async function DuplicatesPage({
           — покажем их рядом и дадим слить в одну запись.
         </p>
         <form action="/admin/duplicates" className="d-flex flex-wrap gap-2">
-          <input name="a" required defaultValue={rawA ?? ""} placeholder="/artists/… или слаг" className="form-control" style={{ minWidth: "16rem", flex: 1 }} />
-          <input name="b" required defaultValue={rawB ?? ""} placeholder="/artists/… или слаг" className="form-control" style={{ minWidth: "16rem", flex: 1 }} />
+          <input name="a" required defaultValue={rawA ?? ""} placeholder="/artists/… или слаг" aria-label="Первая запись" className="form-control" style={{ minWidth: "16rem", flex: 1 }} />
+          <input name="b" required defaultValue={rawB ?? ""} placeholder="/artists/… или слаг" aria-label="Вторая запись" className="form-control" style={{ minWidth: "16rem", flex: 1 }} />
           <button type="submit" className="btn btn-primary btn-sm flex-shrink-0">Сравнить</button>
         </form>
       </div>
@@ -195,7 +213,7 @@ export default async function DuplicatesPage({
         <p className="text-secondary">Дублей не найдено.</p>
       ) : (
         <div className="d-flex flex-column gap-4">
-          {dramaGroups.length > 0 && (
+          {pageDramaGroups.length > 0 && (
             <div>
               <h2
                 className="section-heading mb-2"
@@ -203,7 +221,7 @@ export default async function DuplicatesPage({
                 Сериалы ({dramaGroups.length})
               </h2>
               <div className="d-flex flex-column gap-2">
-                {dramaGroups.map((group) => (
+                {pageDramaGroups.map((group) => (
                   <MergeGroupCard
                     key={group.key}
                     title={group.rows[0].title}
@@ -220,7 +238,7 @@ export default async function DuplicatesPage({
             </div>
           )}
 
-          {performerGroups.length > 0 && (
+          {pagePerformerGroups.length > 0 && (
             <div>
               <h2
                 className="section-heading mb-2"
@@ -228,7 +246,7 @@ export default async function DuplicatesPage({
                 Исполнители ({performerGroups.length})
               </h2>
               <div className="d-flex flex-column gap-2">
-                {performerGroups.map((group) => (
+                {pagePerformerGroups.map((group) => (
                   <MergeGroupCard
                     key={group.key}
                     title={group.rows[0].name}
@@ -246,6 +264,12 @@ export default async function DuplicatesPage({
           )}
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        buildHref={(p) => `/admin/duplicates?${compareParams}page=${p}`}
+      />
     </div>
   );
 }

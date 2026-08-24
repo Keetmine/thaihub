@@ -4,7 +4,7 @@ import Link from "next/link";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatCombinedDateList, formatHumanDate, formatShortDate, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
+import { formatCombinedDateList, formatHumanDate, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";

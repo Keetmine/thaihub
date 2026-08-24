@@ -43,6 +43,7 @@ export default function PromoCodeRedeem() {
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Промокод"
+          aria-label="Промокод"
           className="form-control form-control-sm"
           style={{ maxWidth: "12rem" }}
         />

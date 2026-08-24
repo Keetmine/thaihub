@@ -4019,3 +4019,71 @@ body::after {
 .cast-grid-sm .cast-card-role {
   font-size: 0.68rem;
 }
+
+/* ============================================================
+   Э2.5: движение — появление страницы и недостающие hover-переходы.
+   Всё сдержанно (150–250 мс) и целиком снимается при
+   prefers-reduced-motion: reduce (блок в конце секции).
+   ============================================================ */
+
+/* Обёртка из src/app/(public)/template.tsx: при смене раздела она
+   перемонтируется, и анимация проигрывается заново. Только opacity —
+   transform на обёртке сломал бы position: sticky/fixed внутри страниц. */
+.page-fade {
+  animation: page-fade-in 0.2s ease-out both;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ниже — элементы, у которых :hover менял цвет/фон/рамку рывком: сам
+   transition в базовом правиле отсутствовал. Значения совпадают с уже
+   принятыми в файле (0.15–0.18 с ease). */
+.attention-card,
+.nav-chip-link,
+.profile-menu-item,
+.audit-link .surface {
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.agenda-performer-link,
+.performers-index-link,
+.sources-block a,
+.footer-link {
+  transition: color 0.15s ease;
+}
+
+.agenda-time-info,
+.day-group-heading,
+.performer-chip-remove {
+  transition: opacity 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-fade {
+    animation: none;
+  }
+
+  .attention-card,
+  .nav-chip-link,
+  .profile-menu-item,
+  .audit-link .surface,
+  .agenda-performer-link,
+  .performers-index-link,
+  .sources-block a,
+  .footer-link,
+  .agenda-time-info,
+  .day-group-heading,
+  .performer-chip-remove {
+    transition: none;
+  }
+}

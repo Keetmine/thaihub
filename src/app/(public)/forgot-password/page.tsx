@@ -1,6 +1,15 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import { pageMetadata } from "@/lib/seo";
 import ForgotForm from "./ForgotForm";
+
+export const metadata = pageMetadata({
+  title: "Восстановление пароля",
+  description:
+    "Забыли пароль? Укажите почту аккаунта — пришлём ссылку, по которой можно задать новый.",
+  path: "/forgot-password",
+  noIndex: true,
+});
 
 export default function ForgotPasswordPage() {
   return (

@@ -236,6 +236,7 @@ export default function DatePickerInput({
         className="form-control date-picker-toggle"
         value={value ? formatDisplay(value) : ""}
         placeholder={placeholder}
+        aria-label={placeholder}
         required={required}
         onChange={() => {}}
         onMouseDown={(e) => {

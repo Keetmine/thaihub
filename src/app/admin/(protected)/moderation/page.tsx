@@ -11,7 +11,8 @@ import {
   novelHref,
 } from "@/lib/slugHelpers";
 import Pagination from "@/components/Pagination";
-import { DENSE_PAGE_SIZE } from "@/lib/pagination";
+import NameSearchBox from "@/components/NameSearchBox";
+import { DENSE_PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import { TrashIcon } from "@/components/icons";
@@ -94,7 +95,13 @@ function ContentControls({
             action={adminUpdateContentText.bind(null, type, id)}
             className="d-flex flex-column gap-2 mt-2"
           >
-            <textarea name="text" rows={3} defaultValue={text} className="form-control form-control-sm" />
+            <textarea
+              name="text"
+              rows={3}
+              defaultValue={text}
+              aria-label="Текст записи"
+              className="form-control form-control-sm"
+            />
             <SubmitButton
               label="Сохранить"
               busyLabel="Сохранение…"
@@ -142,31 +149,49 @@ const targetInclude = {
 export default async function AdminModerationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string; state?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string; state?: string; q?: string }>;
 }) {
   await requireAdminPage();
-  const { tab: rawTab, page: rawPage, state: rawState } = await searchParams;
+  const { tab: rawTab, page: rawPage, state: rawState, q: rawQ } = await searchParams;
   const tab: TabKey = (TABS.find((t) => t.key === rawTab)?.key ?? "reports") as TabKey;
   // Состояние очереди жалоб. Раньше показывались только открытые, и
   // разобранная жалоба исчезала навсегда: ни истории, ни возможности
   // проверить, что именно закрыли.
   const reportState: ReportState =
     rawState === "resolved" || rawState === "all" ? rawState : "open";
-  const reportWhere =
+  const stateWhere =
     reportState === "all" ? {} : { status: reportState === "open" ? ("NEW" as const) : ("RESOLVED" as const) };
-  const page = Math.max(1, Number(rawPage) || 1);
+  const page = parsePage(rawPage);
   const skip = (page - 1) * DENSE_PAGE_SIZE;
   const pageArgs = { skip, take: DENSE_PAGE_SIZE };
+
+  // Поиск по очереди: текст (жалоба, отзыв, комментарий, заметка,
+  // название списка/места) плюс автор — имя или почта. Счётчики на табах
+  // тоже считаются с фильтром, чтобы сразу было видно, в каком разделе
+  // нашлось.
+  const q = (rawQ ?? "").trim();
+  const like = { contains: q, mode: "insensitive" as const };
+  const byAuthor = { OR: [{ name: like }, { email: like }] };
+  const textOrAuthor = q ? { OR: [{ text: like }, { user: byAuthor }] } : {};
+  const titleOrAuthor = q ? { OR: [{ title: like }, { user: byAuthor }] } : {};
+  const reportWhere = {
+    ...stateWhere,
+    ...(q ? { OR: [{ reason: like }, { reporter: byAuthor }] } : {}),
+  };
+  const placesWhere = {
+    createdByUserId: { not: null },
+    ...(q ? { OR: [{ name: like }, { createdBy: byAuthor }] } : {}),
+  };
 
   const [reportCount, counts] = await Promise.all([
     prisma.report.count({ where: reportWhere }),
     Promise.all([
-      prisma.review.count(),
-      prisma.comment.count(),
-      prisma.eventNote.count(),
-      prisma.placeList.count(),
-      prisma.performerList.count(),
-      prisma.location.count({ where: { createdByUserId: { not: null } } }),
+      prisma.review.count({ where: textOrAuthor }),
+      prisma.comment.count({ where: textOrAuthor }),
+      prisma.eventNote.count({ where: textOrAuthor }),
+      prisma.placeList.count({ where: titleOrAuthor }),
+      prisma.performerList.count({ where: titleOrAuthor }),
+      prisma.location.count({ where: placesWhere }),
     ]),
   ]);
   const countByTab: Record<TabKey, number> = {
@@ -178,9 +203,13 @@ export default async function AdminModerationPage({
     artistLists: counts[4],
     places: counts[5],
   };
-  const totalPages = Math.max(1, Math.ceil(countByTab[tab] / DENSE_PAGE_SIZE));
+  const totalPages = totalPagesFor(countByTab[tab], DENSE_PAGE_SIZE);
+  const qParam = q ? `&q=${encodeURIComponent(q)}` : "";
   const buildHref = (p: number) =>
-    `/admin/moderation?tab=${tab}&page=${p}` + (tab === "reports" ? `&state=${reportState}` : "");
+    `/admin/moderation?tab=${tab}&page=${p}` +
+    (tab === "reports" ? `&state=${reportState}` : "") +
+    qParam;
+  const nothingFound = q ? "Ничего не нашлось." : null;
 
   let body: React.ReactNode;
 
@@ -236,7 +265,7 @@ export default async function AdminModerationPage({
         {REPORT_STATES.map((st) => (
           <Link
             key={st.key}
-            href={`/admin/moderation?tab=reports&state=${st.key}`}
+            href={`/admin/moderation?tab=reports&state=${st.key}${qParam}`}
             className={
               st.key === reportState ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"
             }
@@ -251,11 +280,12 @@ export default async function AdminModerationPage({
       <>
         {stateSwitch}
         <p className="small text-secondary">
-          {reportState === "open"
-            ? "Открытых жалоб нет."
-            : reportState === "resolved"
-              ? "Разобранных жалоб пока нет."
-              : "Жалоб нет."}
+          {nothingFound ??
+            (reportState === "open"
+              ? "Открытых жалоб нет."
+              : reportState === "resolved"
+                ? "Разобранных жалоб пока нет."
+                : "Жалоб нет.")}
         </p>
       </>
     ) : (
@@ -372,17 +402,19 @@ export default async function AdminModerationPage({
     const isReview = tab === "reviews";
     const items = isReview
       ? await prisma.review.findMany({
+          where: textOrAuthor,
           include: { user: userSelect, ...targetInclude },
           orderBy: { createdAt: "desc" },
           ...pageArgs,
         })
       : await prisma.comment.findMany({
+          where: textOrAuthor,
           include: { user: userSelect, ...targetInclude },
           orderBy: { createdAt: "desc" },
           ...pageArgs,
         });
     body = items.length === 0 ? (
-      <p className="small text-secondary">Пока пусто.</p>
+      <p className="small text-secondary">{nothingFound ?? "Пока пусто."}</p>
     ) : (
       <div className="d-flex flex-column gap-2">
         {items.map((item) => {
@@ -413,6 +445,7 @@ export default async function AdminModerationPage({
     );
   } else if (tab === "notes") {
     const notes = await prisma.eventNote.findMany({
+      where: textOrAuthor,
       include: {
         user: userSelect,
         event: { select: { id: true, slug: true, title: true } },
@@ -421,7 +454,7 @@ export default async function AdminModerationPage({
       ...pageArgs,
     });
     body = notes.length === 0 ? (
-      <p className="small text-secondary">Нет заметок.</p>
+      <p className="small text-secondary">{nothingFound ?? "Нет заметок."}</p>
     ) : (
       <div className="d-flex flex-column gap-2">
         {notes.map((n) => (
@@ -446,17 +479,19 @@ export default async function AdminModerationPage({
     const isPlaces = tab === "placeLists";
     const lists = isPlaces
       ? await prisma.placeList.findMany({
+          where: titleOrAuthor,
           include: { user: userSelect, _count: { select: { items: true } } },
           orderBy: { createdAt: "desc" },
           ...pageArgs,
         })
       : await prisma.performerList.findMany({
+          where: titleOrAuthor,
           include: { user: userSelect, _count: { select: { items: true } } },
           orderBy: { createdAt: "desc" },
           ...pageArgs,
         });
     body = lists.length === 0 ? (
-      <p className="small text-secondary">Нет списков.</p>
+      <p className="small text-secondary">{nothingFound ?? "Нет списков."}</p>
     ) : (
       <div className="d-flex flex-column gap-2">
         {lists.map((l) => (
@@ -477,13 +512,13 @@ export default async function AdminModerationPage({
     );
   } else {
     const places = await prisma.location.findMany({
-      where: { createdByUserId: { not: null } },
+      where: placesWhere,
       include: { createdBy: userSelect },
       orderBy: { createdAt: "desc" },
       ...pageArgs,
     });
     body = places.length === 0 ? (
-      <p className="small text-secondary">Нет мест.</p>
+      <p className="small text-secondary">{nothingFound ?? "Нет мест."}</p>
     ) : (
       <div className="d-flex flex-column gap-2">
         {places.map((loc) => (
@@ -511,11 +546,11 @@ export default async function AdminModerationPage({
         Модерация
       </h1>
 
-      <div className="tab-bar mb-4 flex-wrap">
+      <div className="tab-bar mb-3 flex-wrap">
         {TABS.map((t) => (
           <Link
             key={t.key}
-            href={`/admin/moderation?tab=${t.key}`}
+            href={`/admin/moderation?tab=${t.key}${qParam}`}
             prefetch={false}
             className={`tab-bar-item ${tab === t.key ? "active" : ""}`}
           >
@@ -523,6 +558,15 @@ export default async function AdminModerationPage({
           </Link>
         ))}
       </div>
+
+      <NameSearchBox
+        action="/admin/moderation"
+        q={q}
+        hiddenFields={
+          tab === "reports" ? { tab, state: reportState } : { tab }
+        }
+        placeholder="Поиск по тексту или автору…"
+      />
 
       {body}
 

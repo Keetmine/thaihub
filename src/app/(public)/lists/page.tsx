@@ -11,7 +11,8 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Списки мест",
-  description: "Ваши списки мест в Таиланде.",
+  description:
+    "Подборки мест в Таиланде: кафе и точки съёмок из сериалов, куда хочется дойти. Список можно открыть друзьям и взять с собой в поездку.",
   path: "/lists",
   noIndex: true,
 });

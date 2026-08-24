@@ -12,7 +12,8 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Профиль",
-  description: "Ваш профиль на MyBLHub.",
+  description:
+    "Личный кабинет: избранные артисты, ближайшие события, статусы просмотра, ачивки и подписка.",
   path: "/account",
   noIndex: true,
 });

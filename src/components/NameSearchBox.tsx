@@ -84,6 +84,7 @@ export default function NameSearchBox({
           value={value}
           onChange={handleChange}
           placeholder={placeholder}
+          aria-label={placeholder}
           className="pill-search"
         />
       </div>

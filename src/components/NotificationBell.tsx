@@ -18,11 +18,17 @@ const POLL_MS = 60_000;
  *  узнать без перезагрузки страницы (Ж8). */
 export default function NotificationBell({ unread: initial }: { unread: number }) {
   const [unread, setUnread] = useState(initial);
+  const [prevInitial, setPrevInitial] = useState(initial);
   const pathname = usePathname();
 
   // Серверное число обновилось (например, после router.refresh) —
-  // доверяем ему как более свежему.
-  useEffect(() => setUnread(initial), [initial]);
+  // доверяем ему как более свежему. Правим состояние прямо в рендере,
+  // а не в эффекте: так React отбрасывает текущий рендер и не делает
+  // лишний проход с устаревшим числом (тот же приём — в MobileMenu).
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
+    setUnread(initial);
+  }
 
   useEffect(() => {
     let cancelled = false;

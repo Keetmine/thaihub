@@ -63,6 +63,7 @@ export default function ReportButton({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Что не так с этим контентом? (необязательно)"
+              aria-label="Что не так с этим контентом"
               className="form-control"
             />
             {error && <p className="small text-danger mb-0">{error}</p>}

@@ -179,6 +179,7 @@ export default function EntitySelect({
               type="text"
               className="form-control form-control-sm mb-2"
               placeholder="Поиск…"
+              aria-label="Поиск по списку"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               autoFocus

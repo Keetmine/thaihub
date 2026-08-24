@@ -20,7 +20,7 @@ import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 export const metadata = pageMetadata({
   title: "Поиск",
   description:
-    "Поиск по актёрам, сериалам, новеллам, событиям и локациям MyBLHub.",
+    "Одно поле на весь каталог: артисты и группы, сериалы, новеллы, события афиши и места съёмок — ищем сразу везде.",
   path: "/search",
 });
 
