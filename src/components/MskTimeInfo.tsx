@@ -1,6 +1,7 @@
 "use client";
 
 import { formatTimeInZone, tzShortLabel } from "@/lib/timezones";
+import { formatTime } from "@/lib/dates";
 import { useViewerTimezone } from "./TimezoneProvider";
 import { InfoIcon } from "@/components/icons";
 
@@ -52,8 +53,11 @@ export function TzTimeText({
   const label = end
     ? `Тайское время. ${short}: ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
     : `Тайское время. ${short}: ${formatTimeInZone(start, tz)}`;
-  const fmt = (d: Date) =>
-    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  // Строго formatTime (UTC-часы): по соглашению проекта в базе лежит
+  // тайское «настенное» время, и все остальные подписи читают его так
+  // же. Раньше здесь стояло d.getHours() — время браузера, и зритель из
+  // Москвы видел 17:00 там, где афиша показывала 14:00, хотя подсказка
+  // обещала тайское.
 
   return (
     <span
@@ -62,8 +66,8 @@ export function TzTimeText({
       tabIndex={0}
       style={{ textDecoration: "underline dotted", textUnderlineOffset: "3px", cursor: "help" }}
     >
-      {fmt(start)}
-      {end && `–${fmt(end)}`}
+      {formatTime(start)}
+      {end && `–${formatTime(end)}`}
     </span>
   );
 }

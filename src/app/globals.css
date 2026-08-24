@@ -716,14 +716,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   text-align: right;
 }
 
-.agenda-date {
-  display: block;
-  font-size: 0.65rem;
-  line-height: 1.2;
-  color: var(--bs-secondary-color);
-  text-transform: capitalize;
-}
-
 .agenda-time-start {
   display: block;
   font-family: var(--font-display), var(--font-geist-sans), sans-serif;
@@ -3879,20 +3871,6 @@ details.admin-section[open] > summary.admin-section-head::before {
   margin-left: 0.5em;
 }
 
-/* Мини-прогресс «N в плане · M всего». */
-.trip-progress {
-  height: 0.2rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-.trip-progress-fill {
-  height: 100%;
-  border-radius: 999px;
-  /* Мягче: сплошная яркая полоса перетягивала карточку на себя. */
-  background: rgba(var(--accent-rgb), 0.55);
-}
-
 /* Шапка публичного профиля: .detail-hero, но фото юзера — круглый
    аватар вместо карточки 3/4 (аватарки квадратные, 3/4 их режет). */
 .profile-hero .detail-hero-photo {
@@ -4084,6 +4062,121 @@ body::after {
   .agenda-time-info,
   .day-group-heading,
   .performer-chip-remove {
+    transition: none;
+  }
+}
+
+/* ---------- Иерархия строки события (название → время → площадка → состав) ---------- */
+/* Одна и та же строка живёт в двух компонентах: EventCard (афиша, день,
+   поездка) и EventAgendaRow (локация, сериал, артист, поиск, кабинет).
+   Раньше время, площадка и состав шли одним кеглем и цветом
+   (small text-secondary) и читались серой простынёй. Ступеней теперь
+   три: белое название с чипом времени рядом, серая площадка,
+   приглушённый состав. */
+
+.event-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+/* Чип времени — тот же .date-chip, но компактнее: в списке он
+   повторяется на каждой строке и в полном размере спорил с названием. */
+.event-row-time {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+/* Второй чип строки («+2 даты») — тише первого: это уточнение, а не само
+   время события. */
+.event-row-time-quiet {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--bs-secondary-color);
+}
+
+/* Площадка (плюс билет и «друзья идут») — серая строка под названием. */
+.event-row-venue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--bs-secondary-color);
+}
+
+/* Состав — самая тихая ступень: тот же серый, приглушённый
+   прозрачностью (она гасит и ссылки внутри, у которых свой цвет). На
+   наведение строка проясняется — имена кликабельные. */
+.event-row-cast {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--bs-secondary-color);
+  /* Ниже 0.65 контраст к фону карточки падает заметно ниже 4:1 — тише
+     этого состав уже не читается, а не «приглушён». */
+  opacity: 0.68;
+  transition: opacity 0.15s ease;
+}
+
+.event-row-cast:hover {
+  opacity: 0.9;
+}
+
+/* «+5» после трёх имён — не переносим отдельно от последнего имени. */
+.event-row-cast-more {
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  /* На узком экране чип уезжает под название — прижимаем плотнее. */
+  .event-row-head {
+    gap: 0.3rem 0.4rem;
+  }
+
+  .event-row-venue,
+  .event-row-cast {
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-row-cast {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   Ж10: вложение к личному событию поездки
+   ============================================================ */
+/* Миниатюра приложенной картинки в карточке: маленькая, чтобы запись
+   осталась строкой плана, а не превратилась в галерею. */
+.personal-event-thumb img {
+  width: 5rem;
+  height: 5rem;
+  object-fit: cover;
+  border-radius: 0.6rem;
+  border: 1px solid var(--bs-border-color);
+  transition: border-color 0.15s ease;
+}
+
+.personal-event-thumb:hover img {
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+/* Строка брони (жильё и перелёты): одна строка, длинное — многоточием. */
+.booking-row > span:nth-child(2) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .personal-event-thumb img {
     transition: none;
   }
 }

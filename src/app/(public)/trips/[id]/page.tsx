@@ -25,9 +25,28 @@ import {
 } from "../TripPlacesControls";
 import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
-import TripHotels from "./TripHotels";
+import TripBookings from "./TripBookings";
 
 export const dynamic = "force-dynamic";
+
+/** Подпись брони: у отеля «29 авг → 5 сент», у перелёта то же со
+ *  временем, а если вылет и прилёт в один день — время без повтора
+ *  даты («29 авг 14:20 → 18:05»). */
+function bookingWhenLabel(b: {
+  kind: "HOTEL" | "FLIGHT";
+  startAt: Date | null;
+  endAt: Date | null;
+}): string | null {
+  const withTime = b.kind === "FLIGHT";
+  const one = (d: Date) =>
+    withTime ? `${formatShortDate(d)} ${formatTime(d)}` : formatShortDate(d);
+  if (!b.startAt && !b.endAt) return null;
+  if (!b.startAt) return one(b.endAt!);
+  if (!b.endAt) return one(b.startAt);
+  const sameDay = dateKey(b.startAt) === dateKey(b.endAt);
+  const end = withTime && sameDay ? formatTime(b.endAt) : one(b.endAt);
+  return `${one(b.startAt)} → ${end}`;
+}
 
 export default async function TripPage({
   params,
@@ -42,7 +61,8 @@ export default async function TripPage({
   const { id: rawParam } = await params;
   const { view, mine } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
-  // поездки; ?view=all — все события её дат; ?view=places — «что
+  // поездки; ?view=all — вкладка «Афиша», все события этих дат из
+  // афиши (без личных записей и дел); ?view=places — «что
   // посетить»: локации съёмок сериалов владельца. Для гостей план
   // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
@@ -58,7 +78,7 @@ export default async function TripPage({
       user: { select: { id: true, name: true } },
       // Брони жилья: показываются на вкладке плана рядом с событиями —
       // в день заселения не приходится искать письмо в почте.
-      hotels: { orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }] },
+      bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
       members: {
         include: { user: { select: { id: true, name: true } } },
         orderBy: { createdAt: "asc" },
@@ -177,6 +197,7 @@ export default async function TripPage({
       editableByOthers: p.editableByOthers,
       isPrivate: p.isPrivate,
       showOnHome: p.showOnHome,
+      imageUrl: p.imageUrl,
       canEdit: canTouch(p),
     }));
   // Дела поездки — планирование участников, чужим не показываем.
@@ -207,11 +228,17 @@ export default async function TripPage({
     | { kind: "todo"; startsAt: Date; key: string; todo: (typeof todoData)[number] }
   )[] = [
     ...events.map((ev) => ({ kind: "public" as const, startsAt: ev.startsAt, key: `pub-${ev.occurrenceId}`, event: ev })),
-    ...personal.map((p) => ({ kind: "personal" as const, startsAt: p.startsAt, key: `own-${p.id}`, personalEvent: p })),
+    // Вкладка «Афиша» — только события афиши: личные записи и дела там
+    // мешали (просьба владельца). Они живут в «Плане».
+    ...(showAll
+      ? []
+      : personal.map((p) => ({ kind: "personal" as const, startsAt: p.startsAt, key: `own-${p.id}`, personalEvent: p }))),
     // Датированные дела попадают в хронологию плана.
-    ...todoData
-      .filter((t) => t.date)
-      .map((t) => ({ kind: "todo" as const, startsAt: new Date(t.date!), key: `todo-${t.id}`, todo: t })),
+    ...(showAll
+      ? []
+      : todoData
+          .filter((t) => t.date)
+          .map((t) => ({ kind: "todo" as const, startsAt: new Date(t.date!), key: `todo-${t.id}`, todo: t }))),
   ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   // «Что посетить» (Г4): локации съёмок сериалов владельца + прикреплённые
@@ -334,7 +361,7 @@ export default async function TripPage({
             prefetch={false}
             className={`tab-bar-item ${showAll ? "active" : ""}`}
           >
-            Все события дат ({totalCount})
+            Афиша ({totalCount})
           </Link>
           {isParticipant && (
             <Link
@@ -364,19 +391,27 @@ export default async function TripPage({
         )}
       </div>
 
-      {/* Жильё — только участникам поездки: чужим бронь видеть незачем. */}
+      {/* Жильё и перелёты — только участникам: чужим бронь видеть
+          незачем. Блок компактный: пустой — это одна строка заголовка,
+          поэтому его видно и на вкладке афиши, и в плане. */}
       {!showTodos && !showPlaces && canContribute && (
-        <TripHotels
+        <TripBookings
           tripId={trip.id}
-          hotels={trip.hotels.map((h) => ({
-            id: h.id,
-            name: h.name,
-            address: h.address,
-            url: h.url,
-            fileUrl: h.fileUrl,
-            note: h.note,
-            checkIn: h.checkIn ? dateKey(h.checkIn) : null,
-            checkOut: h.checkOut ? dateKey(h.checkOut) : null,
+          bookings={trip.bookings.map((b) => ({
+            id: b.id,
+            kind: b.kind,
+            name: b.name,
+            address: b.address,
+            fromPlace: b.fromPlace,
+            toPlace: b.toPlace,
+            url: b.url,
+            fileUrl: b.fileUrl,
+            note: b.note,
+            startDate: b.startAt ? dateKey(b.startAt) : null,
+            endDate: b.endAt ? dateKey(b.endAt) : null,
+            startTime: b.kind === "FLIGHT" && b.startAt ? formatTime(b.startAt) : null,
+            endTime: b.kind === "FLIGHT" && b.endAt ? formatTime(b.endAt) : null,
+            whenLabel: bookingWhenLabel(b),
           }))}
         />
       )}
@@ -488,7 +523,7 @@ export default async function TripPage({
             showAll
               ? "В даты этой поездки не попадает ни одно событие из афиши."
               : isParticipant
-                ? "Отметьте «я иду» на событиях (вкладка «Все события дат») или добавьте личное — перелёт, бронь, встречу."
+                ? "Отметьте «я иду» на событиях (вкладка «Афиша») или добавьте личное — перелёт, бронь, встречу."
                 : "Участники ещё ничего не добавили в план."
           }
           compact

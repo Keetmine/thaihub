@@ -47,6 +47,11 @@ Bootstrap в `src/app/globals.css`; тема тёмная, акцент `#ff6a3d
 - `.ghost-number` — контурные номера шагов 01/02/03.
 - `.date-chip` — капсула-чип на постере или в строке (дата, рейтинг,
   «по подписке»).
+- `.event-row-head` / `.event-row-time` (+ `-quiet`) / `.event-row-venue`
+  / `.event-row-cast` (+ `-more`) — иерархия строки события (общая для
+  `EventCard` и `EventAgendaRow`): белое название с чипом времени рядом,
+  серая площадка, приглушённый состав из трёх имён и «+N». Подробности —
+  [features/events.md](features/events.md#the-two-list-row-components).
 - `.chip-link` — капсульная быстрая ссылка (ряд под приветствием).
 - `.stagger` — каскадное появление детей (до 8, дальше без задержки);
   уважает prefers-reduced-motion.

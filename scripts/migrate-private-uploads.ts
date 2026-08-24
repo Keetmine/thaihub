@@ -52,7 +52,7 @@ async function main() {
     movedTickets += 1;
   }
 
-  const hotels = await prisma.tripHotel.findMany({
+  const hotels = await prisma.tripBooking.findMany({
     where: { fileUrl: { startsWith: "/uploads/" } },
     select: { id: true, fileUrl: true },
   });
@@ -64,7 +64,7 @@ async function main() {
       privateUploadsDir("hotels", name),
     );
     if (!moved) console.warn(`hotel file missing on disk: ${h.fileUrl}`);
-    await prisma.tripHotel.update({
+    await prisma.tripBooking.update({
       where: { id: h.id },
       data: { fileUrl: `/files/hotels/${name}` },
     });

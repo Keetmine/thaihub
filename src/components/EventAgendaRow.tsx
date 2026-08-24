@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { formatShortDate } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
-import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
-import { PinIcon, UserIcon, UsersIcon } from "@/components/icons";
+import { PinIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
 import LetterAvatar from "@/components/LetterAvatar";
 import GoingButton from "@/components/GoingButton";
+import EventRowCast from "@/components/EventRowCast";
 import { TzTimeText } from "@/components/MskTimeInfo";
 
 export default function EventAgendaRow({
@@ -30,6 +30,8 @@ export default function EventAgendaRow({
    *  списков, где событие выводится одной строкой (избранное). */
   extraDates?: number;
 }) {
+  const hasTime = event.hasTime !== false;
+
   return (
     <div className="agenda-row">
       <div className="corner-actions corner-actions-row">
@@ -38,52 +40,36 @@ export default function EventAgendaRow({
         </span>
         <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>
-      <div className="agenda-time">
-        {showDate && (
-          <span className="agenda-date">{formatShortDate(event.startsAt)}</span>
-        )}
-        {event.hasTime !== false && (
-          <TzTimeText
-            startsAt={event.startsAt}
-            endsAt={event.endsAt}
-            className="agenda-time-start"
-          />
-        )}
-        {extraDates > 0 && (
-          <span className="agenda-date small text-secondary">
-            +{extraDates} {extraDates === 1 ? "дата" : extraDates < 5 ? "даты" : "дат"}
-          </span>
-        )}
-      </div>
-      <span className="agenda-dash">—</span>
       <Link href={eventHref(event)} className="flex-shrink-0 d-none d-sm-block" tabIndex={-1}>
         <LetterAvatar name={event.title} photoUrl={event.posterUrl} size={3.25} rounded={false} />
       </Link>
       <div className="agenda-body">
-        <h3 className="h6 font-display mb-1">
-          <Link href={eventHref(event)} className="text-reset text-decoration-none">
-            {event.title}
-          </Link>
-        </h3>
-        <p className="small text-secondary mb-0 d-flex flex-wrap align-items-center gap-2">
-          {event.performers.length > 0 && (
-            // Инлайн-текст, не flex: gap отрывал запятые от имён.
-            <span>
-              <UserIcon className="icon-inline" />{" "}
-              {event.performers.slice(0, 6).map(({ performer }, i) => (
-                <span key={performer.id}>
-                  {i > 0 && ", "}
-                  <Link href={performerHref(performer)} className="agenda-performer-link">
-                    {performer.name}
-                  </Link>
-                </span>
-              ))}
-              {event.performers.length > 6 && (
-                <span className="text-secondary"> и ещё {event.performers.length - 6}…</span>
+        {/* Иерархия строки: белое название + чип даты/времени рядом с
+            ним, ниже серая площадка, ещё тише — состав. Отдельной узкой
+            колонки времени слева больше нет: она держала время такой же
+            заметной, как название, и резала ширину под текст. */}
+        <div className="event-row-head">
+          <h3 className="h6 font-display mb-0">
+            <Link href={eventHref(event)} className="text-reset text-decoration-none">
+              {event.title}
+            </Link>
+          </h3>
+          {(showDate || hasTime) && (
+            <span className="date-chip event-row-time">
+              {showDate && formatShortDate(event.startsAt)}
+              {hasTime && (
+                <TzTimeText startsAt={event.startsAt} endsAt={event.endsAt} />
               )}
             </span>
           )}
-          <span className="d-inline-flex align-items-center gap-1">
+          {extraDates > 0 && (
+            <span className="date-chip event-row-time event-row-time-quiet">
+              +{extraDates} {extraDates === 1 ? "дата" : extraDates < 5 ? "даты" : "дат"}
+            </span>
+          )}
+        </div>
+        <p className="event-row-venue mb-0">
+          <span>
             <PinIcon /> {event.venue}
           </span>
           {friendsGoing.length > 0 && (
@@ -98,6 +84,7 @@ export default function EventAgendaRow({
             </span>
           )}
         </p>
+        <EventRowCast performers={event.performers} />
       </div>
     </div>
   );

@@ -34,13 +34,18 @@ manually re-entering a date filter every time.
   occurrences of events any *participant* (owner + members) marked «я
   иду» (filtered in SQL via `attendees some userId in participantIds`),
   merged with the participants' personal events — for a guest viewer
-  the plan of the participants is the point of sharing; **«Все события
-  дат» (`?view=all`)** shows everything in the range, so picking new
-  events into the plan is one «иду» click away. Both tab labels carry
-  live counts, and the trips list page shows «N в плане · M всего» per
-  trip. Rendered with the same `EventCard` rows as the home page
-  (favorite/going buttons and friends-going indicator included), plus a
-  delete button.
+  the plan of the participants is the point of sharing; **«Афиша»
+  (`?view=all`)** shows every event of the range from the public
+  calendar, so picking new events into the plan is one «иду» click
+  away. На «Афише» — ТОЛЬКО события афиши: личные записи и дела там
+  мешали (просьба владельца), они живут в «Плане». Both tab labels
+  carry live counts. Rendered with the same `EventCard` rows as the
+  home page (favorite/going buttons and friends-going indicator
+  included), plus a delete button.
+  Счётчика «N в плане · M всего» на странице списка поездок больше
+  нет: он сравнивал план со всей афишей этих дат и читался как
+  «недобрал». Вместе с ним удалены три запроса, которые считались
+  только ради него.
 - **Personal events** (`TripPersonalEvent`: title, optional note, one
   `startsAt`; cascade-deleted with the trip): the owner's own private
   entries — flights, reservations, meetups — created via the «+ Личное
@@ -50,6 +55,13 @@ manually re-entering a date filter every time.
   buttons instead of favorite/going; editing opens a prefilled modal).
   A personal event without a time is stored at 00:00, sorting before
   that day's public events, and the card hides the meaningless "00:00".
+  К записи можно приложить картинку или PDF (`imageUrl`, Ж10) — скан
+  билета, скрин брони, афишу: в карточке она показывается миниатюрой
+  5rem, по клику открывается в новой вкладке, а если файл не
+  открылся — вместо битой картинки рисуется ссылка «Файл ↗». Файл
+  приватный, как и сама запись: `/api/upload-personal` кладёт его в
+  private-uploads/personal, а `/files/personal/…` отдаёт участникам
+  поездки — и только автору, если запись помечена приватной.
   Галочка «Показывать на главной» (`showOnHome`, Ж11) поднимает запись
   в блок «Вы идёте» на главной: там события афиши и отмеченные личные
   события сортируются одним списком по дате (см.
@@ -60,6 +72,22 @@ manually re-entering a date filter every time.
   `trips/actions.ts`) go through `requireTripAccess` (owner OR member),
   scope the row by `tripId`, and update/delete additionally enforce
   per-item permissions via `canTouchItem` (see «Совместные поездки»).
+- **Бронирования** (`TripBooking`, enum `TripBookingKind`: `HOTEL` |
+  `FLIGHT`) — жильё и перелёты одной моделью: у них совпадает почти
+  всё (название, даты, ссылка, файл подтверждения, заметка), различие
+  только в маршруте (`fromPlace`/`toPlace` у перелёта, `address` у
+  отеля) и в том, что у перелёта важно время вылета/прилёта, а отелю
+  хватает даты (`startAt`/`endAt` в обоих случаях). Раньше это был
+  `TripHotel` только под жильё; миграция
+  `trip_bookings_and_personal_image` сделана переименованием таблицы,
+  а не DROP/CREATE, чтобы не потерять строки.
+  Блок на странице поездки (`TripBookings.tsx`) намеренно компактный:
+  строки однострочные, а пустого состояния нет вовсе — когда броней
+  нет, от блока остаётся заголовок с кнопками «+ Отель» и
+  «+ Перелёт» (36px против прежних ~230px). Причина: информация не
+  обязательная, а места занимала пол-экрана. Файлы броней лежат в
+  приватном хранилище; папка исторически называется `hotels` и
+  переименованию не подлежит — на неё ссылаются уже загруженные файлы.
 - Actions (`trips/actions.ts`): `createTrip` (validates dates via
   `combineDateTime`, so Buddhist-era years from Thai-locale date inputs
   get normalized like everywhere else), `updateTrip` (название/даты, модалка «Редактировать»), `deleteTrip` (scoped
@@ -148,7 +176,7 @@ TripTodo и TripPersonalEvent): запись не показывается ни�
 
 ## Дела поездки (TripTodo)
 
-Вкладка «Дела» (участникам, между «Все события дат» и «Что посетить»):
+Вкладка «Дела» (участникам, между «Афишей» и «Что посетить»):
 обычный туду — добавить пункт (текст + необязательная дата), чекбокс
 выполнения, правка/удаление по правам выше. Датированные дела попадают
 в хронологию «Мой план» той же строкой (TodoRow).

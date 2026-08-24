@@ -7,11 +7,9 @@ import { privateUploadsDir } from "@/lib/privateUploads";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 
-// Файлы броней — отелей и перелётов: PDF или скрин. Как и билеты,
-// содержат ФИО и номера броней, поэтому живут в приватном хранилище вне
-// public/ и раздаются только через /files/hotels/… с проверкой участия
-// в поездке. Папка исторически называется hotels — переименовывать её
-// нельзя, на неё ссылаются уже загруженные файлы.
+// Картинки к личным событиям поездки (скан билета, скрин брони,
+// афиша). Запись приватная — файл тоже: лежит вне public/ и раздаётся
+// через /files/personal/… с проверкой участия в поездке.
 const ALLOWED_TYPES: Record<string, string> = {
   "application/pdf": ".pdf",
   "image/jpeg": ".jpg",
@@ -38,10 +36,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Файл слишком большой (максимум 10MB)" }, { status: 400 });
   }
 
-  const dir = privateUploadsDir("hotels");
+  const dir = privateUploadsDir("personal");
   await mkdir(dir, { recursive: true });
   const fileName = `${randomUUID()}${ext}`;
   await writeFile(path.join(dir, fileName), Buffer.from(await file.arrayBuffer()));
 
-  return NextResponse.json({ url: `/files/hotels/${fileName}` });
+  return NextResponse.json({ url: `/files/personal/${fileName}` });
 }

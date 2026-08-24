@@ -252,7 +252,7 @@ export async function leaveTrip(tripId: string): Promise<void> {
 
 /** null — не заполнены обязательные поля (название/дата); вызывающий
  *  экшен возвращает клиенту `{ ok: false, error: "Заполните…" }`. */
-function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null; editableByOthers: boolean; isPrivate: boolean; showOnHome: boolean } | null {
+function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null; editableByOthers: boolean; isPrivate: boolean; showOnHome: boolean; imageUrl: string | null } | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
   const date = String(formData.get("date") ?? "");
@@ -269,6 +269,7 @@ function parsePersonalEventForm(formData: FormData): { title: string; note: stri
     editableByOthers: formData.get("editableByOthers") === "on",
     isPrivate: formData.get("isPrivate") === "on",
     showOnHome: formData.get("showOnHome") === "on",
+    imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
   };
 }
 
@@ -470,44 +471,76 @@ export async function deleteTripTodo(todoId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-/** Бронь жилья в поездке. Доступ как у дел и событий: владелец и
- *  принятые участники — они едут вместе, и бронь нужна всем. */
-export async function saveTripHotel(tripId: string, formData: FormData): Promise<ActionResult> {
+/** Бронь в поездке — отель или перелёт. Доступ как у дел и событий:
+ *  владелец и принятые участники — они едут вместе, и бронь нужна
+ *  всем. Тип решает, какие поля осмысленны: у отеля адрес и заезд/
+ *  выезд, у перелёта маршрут и время вылета/прилёта. */
+export async function saveTripBooking(tripId: string, formData: FormData): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
-  const id = String(formData.get("hotelId") ?? "").trim();
+  const id = String(formData.get("bookingId") ?? "").trim();
+  const kind = formData.get("kind") === "FLIGHT" ? "FLIGHT" : "HOTEL";
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { ok: false, error: "Укажите название отеля" };
+  if (!name) {
+    return {
+      ok: false,
+      error: kind === "FLIGHT" ? "Укажите рейс или авиакомпанию" : "Укажите название отеля",
+    };
+  }
 
+  const isFlight = kind === "FLIGHT";
   const data = {
+    kind: kind as "HOTEL" | "FLIGHT",
     name,
-    address: String(formData.get("address") ?? "").trim() || null,
+    address: isFlight ? null : String(formData.get("address") ?? "").trim() || null,
+    fromPlace: isFlight ? String(formData.get("fromPlace") ?? "").trim() || null : null,
+    toPlace: isFlight ? String(formData.get("toPlace") ?? "").trim() || null : null,
     url: String(formData.get("url") ?? "").trim() || null,
     fileUrl: String(formData.get("fileUrl") ?? "").trim() || null,
     note: String(formData.get("note") ?? "").trim() || null,
-    checkIn: parseTripDate(formData.get("checkIn")),
-    checkOut: parseTripDate(formData.get("checkOut")),
+    // У перелёта важно время, у отеля хватает даты — поэтому вылет и
+    // прилёт разбираем вместе со временем, если оно указано.
+    startAt: isFlight
+      ? parseTripDateTime(formData.get("startAt"), formData.get("startTime"))
+      : parseTripDate(formData.get("startAt")),
+    endAt: isFlight
+      ? parseTripDateTime(formData.get("endAt"), formData.get("endTime"))
+      : parseTripDate(formData.get("endAt")),
   };
 
   if (id) {
     // Проверяем принадлежность: id приходит из формы, и без этого можно
     // было бы отредактировать бронь чужой поездки.
-    const existing = await prisma.tripHotel.findFirst({ where: { id, tripId } });
+    const existing = await prisma.tripBooking.findFirst({ where: { id, tripId } });
     if (!existing) return { ok: false, error: "Бронь не найдена" };
-    await prisma.tripHotel.update({ where: { id }, data });
+    await prisma.tripBooking.update({ where: { id }, data });
   } else {
-    await prisma.tripHotel.create({ data: { tripId, ...data } });
+    await prisma.tripBooking.create({ data: { tripId, ...data } });
   }
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }
 
-export async function deleteTripHotel(tripId: string, hotelId: string): Promise<ActionResult> {
+export async function deleteTripBooking(tripId: string, bookingId: string): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
-  await prisma.tripHotel.deleteMany({ where: { id: hotelId, tripId } });
+  await prisma.tripBooking.deleteMany({ where: { id: bookingId, tripId } });
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
+}
+
+/** «YYYY-MM-DD» + «HH:mm» → дата со временем (вылет/прилёт). Без
+ *  времени ведёт себя как parseTripDate. */
+function parseTripDateTime(
+  dateValue: FormDataEntryValue | null,
+  timeValue: FormDataEntryValue | null,
+): Date | null {
+  const date = parseTripDate(dateValue);
+  if (!date) return null;
+  const raw = String(timeValue ?? "").trim();
+  const [h, min] = raw.split(":").map(Number);
+  if (!raw || Number.isNaN(h) || Number.isNaN(min)) return date;
+  return new Date(date.getTime() + h * 3600_000 + min * 60_000);
 }
 
 /** «YYYY-MM-DD» из формы → дата в UTC-слоте, как остальные даты

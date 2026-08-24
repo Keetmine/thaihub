@@ -9,9 +9,10 @@ import {
   privateUploadsDir,
 } from "@/lib/privateUploads";
 
-// Раздача приватных загрузок (билеты, брони отелей) с проверкой прав:
-// билет видит только его владелец, бронь — владелец и принятые
-// участники поездки. Статика так не умеет — поэтому файлы лежат вне
+// Раздача приватных загрузок (билеты, брони, картинки личных событий)
+// с проверкой прав: билет видит только его владелец, бронь — владелец
+// и принятые участники поездки, картинку личной записи — участники, а
+// приватной записи — только автор. Статика так не умеет — поэтому файлы лежат вне
 // public/ (см. src/lib/privateUploads.ts).
 export async function GET(
   _request: Request,
@@ -35,7 +36,9 @@ export async function GET(
       select: { userId: true },
     }));
   } else if (folder === "hotels") {
-    allowed = !!(await prisma.tripHotel.findFirst({
+    // Папка исторически «hotels», но лежат там файлы всех броней —
+    // и отелей, и перелётов (модель TripBooking).
+    allowed = !!(await prisma.tripBooking.findFirst({
       where: {
         fileUrl: url,
         trip: {
@@ -47,6 +50,23 @@ export async function GET(
       },
       select: { id: true },
     }));
+  } else if (folder === "personal") {
+    // Картинка личного события: доступна участникам поездки, а если
+    // запись помечена приватной — только её автору (владелец поездки
+    // для легаси-записей без createdById).
+    const item = await prisma.tripPersonalEvent.findFirst({
+      where: {
+        imageUrl: url,
+        trip: {
+          OR: [
+            { userId: user.id },
+            { members: { some: { userId: user.id, status: "ACCEPTED" } } },
+          ],
+        },
+      },
+      select: { isPrivate: true, createdById: true, trip: { select: { userId: true } } },
+    });
+    allowed = !!item && (!item.isPrivate || (item.createdById ?? item.trip.userId) === user.id);
   }
   if (!allowed) return new NextResponse("Не найдено", { status: 404 });
 

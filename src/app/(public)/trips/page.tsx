@@ -5,7 +5,7 @@ import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
-import { endOfDay, formatShortDate } from "@/lib/dates";
+import { formatShortDate } from "@/lib/dates";
 import CreateTripButton from "./CreateTripButton";
 import { TripInviteActions } from "./TripMembersControls";
 import PremiumUpsell from "@/components/PremiumUpsell";
@@ -77,57 +77,10 @@ export default async function TripsPage() {
     ...tripsRaw.filter((t) => t.endDate < todayRef).reverse(),
   ];
 
-  // Для каждой поездки: сколько событий в плане (отметки «иду» всех
-  // участников) и сколько всего в её датах. Три batch-запроса на все
-  // поездки сразу (раньше было по два COUNT на каждую, второй — с
-  // трёхуровневым подзапросом; при OR: [] Prisma просто ничего не
-  // вернёт, отдельная ветка на «нет поездок» не нужна).
-  const [occurrences, memberRows] = await Promise.all([
-    prisma.eventOccurrence.findMany({
-      where: {
-        OR: trips.map((t) => ({
-          startsAt: { gte: t.startDate, lte: endOfDay(t.endDate) },
-        })),
-      },
-      select: { id: true, startsAt: true },
-    }),
-    prisma.tripMember.findMany({
-      where: { tripId: { in: trips.map((t) => t.id) }, status: "ACCEPTED" },
-      select: { tripId: true, userId: true },
-    }),
-  ]);
-  const attendanceRows = await prisma.eventAttendance.findMany({
-    where: {
-      occurrenceId: { in: occurrences.map((o) => o.id) },
-      userId: {
-        in: [...new Set([...trips.map((t) => t.userId), ...memberRows.map((m) => m.userId)])],
-      },
-    },
-    select: { occurrenceId: true, userId: true },
-  });
-  const attendeesByOccurrence = new Map<string, string[]>();
-  for (const a of attendanceRows) {
-    const list = attendeesByOccurrence.get(a.occurrenceId);
-    if (list) list.push(a.userId);
-    else attendeesByOccurrence.set(a.occurrenceId, [a.userId]);
-  }
-  const counts = trips.map((t) => {
-    const from = t.startDate;
-    const to = endOfDay(t.endDate);
-    const tripUserIds = new Set([
-      t.userId,
-      ...memberRows.filter((m) => m.tripId === t.id).map((m) => m.userId),
-    ]);
-    let plan = 0;
-    let total = 0;
-    for (const o of occurrences) {
-      if (o.startsAt < from || o.startsAt > to) continue;
-      total += 1;
-      const attendees = attendeesByOccurrence.get(o.id);
-      if (attendees?.some((u) => tripUserIds.has(u))) plan += 1;
-    }
-    return { plan, total };
-  });
+  // Счётчик «N в плане · M всего» убран по просьбе владельца: он
+  // сравнивал план со всей афишей этих дат и читался как «недобрал».
+  // Вместе с ним ушли три запроса, которые считались только ради него
+  // (occurrences + members + attendances).
 
   const now = new Date();
 
@@ -185,8 +138,6 @@ export default async function TripsPage() {
               // Будущие отсортированы по startDate, значит первая
               // не-прошедшая — ближайшая: она и есть карточка-герой.
               const shared = t._count.members > 0 || t.userId !== user.id;
-              const { plan, total } = counts[i];
-              const pct = total > 0 ? Math.round((plan / total) * 100) : 0;
               const dates = (
                 <>
                   {formatShortDate(t.startDate)} <span className="trip-dates-arrow">→</span>{" "}
@@ -214,9 +165,6 @@ export default async function TripsPage() {
                           )}
                         </p>
                       </div>
-                      <span className="small text-secondary flex-shrink-0">
-                        {plan} в плане · {total} всего
-                      </span>
                     </Link>
                   </Fragment>
                 );
@@ -238,22 +186,11 @@ export default async function TripsPage() {
                       Организатор: {t.user.name ?? "без имени"}
                     </p>
                   )}
-                  <div className="mt-3">
-                    <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-1">
-                      <span className="small text-secondary">
-                        {plan} в плане · {total} всего
-                      </span>
-                      {t.visibility !== "PRIVATE" && (
-                        <span className="text-secondary" style={{ fontSize: "0.7rem" }}>
-                          {VISIBILITY_LABELS[t.visibility]}
-                        </span>
-                      )}
-                    </div>
-                    {/* Мини-прогресс: доля событий дат, уже взятых в план. */}
-                    <div className="trip-progress">
-                      <div className="trip-progress-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
+                  {t.visibility !== "PRIVATE" && (
+                    <p className="text-secondary mt-2 mb-0" style={{ fontSize: "0.7rem" }}>
+                      {VISIBILITY_LABELS[t.visibility]}
+                    </p>
+                  )}
                 </Link>
               );
             })}

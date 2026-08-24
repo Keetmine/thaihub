@@ -749,7 +749,7 @@ model Trip {
   places     TripPlace[]
   todos      TripTodo[]
   members    TripMember[]
-  hotels     TripHotel[]
+  bookings   TripBooking[]
 
   @@index([userId])
 }
@@ -806,6 +806,10 @@ model TripPersonalEvent {
   // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
   // перелёты и брони на главной не нужны, а встреча с друзьями — да.
   showOnHome Boolean @default(false)
+  // Картинка к записи (скан билета, скрин брони, афиша) — приватная,
+  // как и сама запись: лежит в private-uploads/, раздаётся через
+  // /files/personal/… с проверкой участия в поездке.
+  imageUrl  String?
   createdAt DateTime  @default(now())
 
   @@index([tripId])
@@ -1422,17 +1426,33 @@ model LocationLink {
 // EventAttendance.ticketUrl), название и адрес, даты заезда и выезда.
 // Видимость наследуется от поездки: участники видят то же, что и
 // владелец (см. features/trips.md).
-model TripHotel {
+// Бронирования поездки — отели и перелёты в одной модели: поля у них
+// почти совпадают (название, даты, ссылка, файл подтверждения,
+// заметка), а различаются только маршрутом. Раньше это был TripHotel
+// только под жильё.
+enum TripBookingKind {
+  HOTEL
+  FLIGHT
+}
+
+model TripBooking {
   id        String   @id @default(cuid())
   tripId    String
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  kind      TripBookingKind @default(HOTEL)
+  // Отель: название; перелёт: рейс или авиакомпания («TG 975»).
   name      String
+  // Отель: адрес. У перелёта не используется.
   address   String?
+  // Перелёт: откуда и куда (город или аэропорт).
+  fromPlace String?
+  toPlace   String?
   // Ссылка на саму бронь (Booking, письмо) и загруженный файл/скрин.
   url       String?
   fileUrl   String?
-  checkIn   DateTime?
-  checkOut  DateTime?
+  // Отель: заезд/выезд; перелёт: вылет/прилёт.
+  startAt   DateTime?
+  endAt     DateTime?
   note      String?
   createdAt DateTime @default(now())
 

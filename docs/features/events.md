@@ -276,9 +276,12 @@ PNG/WEBP до 10MB, без пережатия, SVG запрещён) в прив
 `/files/tickets/…` раздаёт route handler `src/app/files/[...path]` —
 только владельцу билета. Привязка — экшеном `setAttendanceTicket`
 (принимает только пути `/files/tickets/`; требует существующую отметку
-«иду»). Открепление удаляет и файл. Файлы броней отелей аналогично
-живут в `private-uploads/hotels/` (`/api/upload-hotel`) и видны
-владельцу и принятым участникам поездки. Старые файлы переносит
+«иду»). Открепление удаляет и файл. Файлы броней — отелей и
+перелётов — аналогично живут в `private-uploads/hotels/`
+(`/api/upload-hotel`; папка названа так исторически, модель теперь
+`TripBooking`) и видны владельцу и принятым участникам поездки. Там же
+третья папка — `personal/` (`/api/upload-personal`): картинки к личным
+событиям поездки, см. [trips.md](trips.md). Старые файлы переносит
 `scripts/migrate-private-uploads.ts`; публичный путь
 `/uploads/tickets/*` в Caddy отвечает 404.
 
@@ -316,6 +319,20 @@ devtools).
 
 ## The two list row components
 
+Обе строки держат одну иерархию (иначе время, площадка и состав шли
+одним кеглем `small text-secondary` и читались серой простынёй):
+
+1. **название** — белым, самый крупный элемент строки;
+2. **время** — капсулой `.date-chip .event-row-time` сразу за названием
+   (в `EventAgendaRow` в тот же чип попадает и дата при `showDate`,
+   вторым тихим чипом — «+N дат»);
+3. **площадка** — серой строкой ниже (`.event-row-venue`), туда же
+   уходят 🎫-билет и «друзья идут»;
+4. **состав** — отдельной, самой приглушённой строкой
+   (`.event-row-cast`, opacity): максимум 3 имени-ссылки, дальше «+N» с
+   полным списком в `title`. Общий компонент обеих строк —
+   `src/components/EventRowCast.tsx`.
+
 - **`EventCard`** (`src/components/EventCard.tsx`) — the main browsing
   row: a date block (big day number + month + weekday), the event's
   poster thumbnail when it has one, title/time/venue/performers, and the
@@ -348,11 +365,14 @@ the Все/Иду/Избранное tabs (a soft navigation that only changes p
 left the client component's accumulated state in place and the list
 never visually changed (a real bug, not hypothetical).
 - **`EventAgendaRow`** (`src/components/EventAgendaRow.tsx`) — the
-  compact text row for embedded lists on performer/drama/location pages
-  and search results, where a poster-and-date-block card per event would
-  crowd the page. Normally shows only a time; those flat-sequence pages
-  pass `showDate`, which stacks a small `formatShortDate` ("24 окт")
-  line above the time in the same narrow column.
+  compact text row for embedded lists on performer/drama/location pages,
+  search results and the account tabs, where a poster-and-date-block card
+  per event would crowd the page. Normally shows only a time; those
+  flat-sequence pages pass `showDate`, и тогда в чип перед временем
+  встаёт `formatShortDate` («24 окт»). Отдельной узкой колонки времени
+  слева больше нет: она держала время таким же заметным, как название,
+  и резала ширину под текст (эта разметка осталась только у витринной
+  строки лендинга, `.agenda-time` / `.agenda-dash`).
 
 ## Importing an event from ThaiTicketMajor
 

@@ -592,6 +592,25 @@ export function MusicNoteIcon({ className }: { className?: string } = {}) {
   );
 }
 
+export function PlaneIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.95em"
+      height="0.95em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M17.8 19.2 16 11l3.5-3.5a2.12 2.12 0 0 0-3-3L13 8 4.8 6.2a.5.5 0 0 0-.5.8l3.4 3.9-2 2-2.2-.6a.5.5 0 0 0-.5.8L5 15l1.7 2 .7-2.2a.5.5 0 0 0-.6-.6l2-2 3.9 3.4a.5.5 0 0 0 .8-.5z" />
+    </svg>
+  );
+}
+
 export function TicketIcon({ className }: { className?: string } = {}) {
   return (
     <svg

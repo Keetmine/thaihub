@@ -54,7 +54,7 @@ export default async function AdminAnalyticsPage() {
         prisma.trip.count({ where: { endDate: { gte: now } } }),
         prisma.trip.count({ where: { members: { some: {} } } }),
         prisma.trip.findMany({ select: { startDate: true, endDate: true } }),
-        prisma.tripHotel.count(),
+        prisma.tripBooking.count(),
       ]),
       Promise.all([
         prisma.placeList.count(),
@@ -63,7 +63,7 @@ export default async function AdminAnalyticsPage() {
       ]),
     ]);
 
-  const [tripsTotal, tripsActive, tripsShared, tripRanges, hotelsTotal] = tripStats;
+  const [tripsTotal, tripsActive, tripsShared, tripRanges, bookingsTotal] = tripStats;
   const [placeListsTotal, performerListsTotal, userPlacesTotal] = listStats;
   // Средняя длительность — по завершённым и текущим одинаково: это
   // характеристика планирования, а не прожитого.
@@ -181,7 +181,7 @@ export default async function AdminAnalyticsPage() {
           { value: tripsActive, label: "активных сейчас" },
           { value: tripsShared, label: "совместных" },
           { value: avgTripDays, label: "дней в среднем" },
-          { value: hotelsTotal, label: "броней жилья" },
+          { value: bookingsTotal, label: "броней и перелётов" },
           { value: placeListsTotal, label: "списков мест" },
           { value: performerListsTotal, label: "списков актёров" },
           { value: userPlacesTotal, label: "своих мест" },

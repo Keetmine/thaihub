@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
+import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { updateTripPersonalEvent, deleteTripPersonalEvent } from "./actions";
@@ -28,6 +29,8 @@ export type PersonalEventData = {
   isPrivate: boolean;
   // Ж11: показывать запись в блоке «Вы идёте» на главной.
   showOnHome: boolean;
+  // Ж10: картинка к записи — скан билета, скрин брони, афиша.
+  imageUrl: string | null;
   canEdit: boolean;
 };
 
@@ -47,6 +50,7 @@ export function PersonalEventFields({
     editableByOthers?: boolean;
     isPrivate?: boolean;
     showOnHome?: boolean;
+    imageUrl?: string | null;
   };
   showShareToggle?: boolean;
 }) {
@@ -84,6 +88,16 @@ export function PersonalEventFields({
         <label className="form-label small text-secondary">Заметка</label>
         <textarea name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
       </div>
+      {/* Ж10: картинка к записи. Личные события приватные, поэтому файл
+          уходит в приватное хранилище (/files/personal/…), а не в
+          public/uploads. */}
+      <FileDropzone
+        name="imageUrl"
+        label="Картинка"
+        defaultValue={defaults?.imageUrl ?? ""}
+        accept="image/*,application/pdf"
+        endpoint="/api/upload-personal"
+      />
       {/* Ж11: галочка есть и в соло-, и в совместной поездке — это про
           мою главную, а не про доступ участников. */}
       <label className="form-check d-flex align-items-center gap-2 mb-0">
@@ -146,6 +160,9 @@ export default function PersonalEventCard({
   showShareToggle?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  // Файл мог не открыться (удалён, нет прав) — тогда вместо битой
+  // картинки показываем ссылку.
+  const [thumbFailed, setThumbFailed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const d = event.startsAt;
@@ -236,6 +253,33 @@ export default function PersonalEventCard({
           {event.location && event.note && " · "}
           {event.note}
         </p>
+        {/* Ж10: миниатюра приложенной картинки — открывается по клику
+            в новой вкладке (PDF тоже). Файл приватный, раздаётся через
+            /files/personal/… с проверкой прав. */}
+        {event.imageUrl && (
+          <a
+            href={event.imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="personal-event-thumb mt-2 d-inline-block"
+            aria-label={`Вложение к записи «${event.title}»`}
+          >
+            {event.imageUrl.endsWith(".pdf") || thumbFailed ? (
+              // PDF миниатюрой не показать, а битая ссылка иначе
+              // нарисовала бы иконку сломанной картинки.
+              <span className="btn btn-ghost btn-sm">Файл ↗</span>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={event.imageUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onError={() => setThumbFailed(true)}
+              />
+            )}
+          </a>
+        )}
       </div>
 
       <Modal
@@ -257,6 +301,7 @@ export default function PersonalEventCard({
               editableByOthers: event.editableByOthers,
               isPrivate: event.isPrivate,
               showOnHome: event.showOnHome,
+              imageUrl: event.imageUrl,
             }}
             showShareToggle={showShareToggle}
           />
