@@ -285,8 +285,18 @@ export default async function TripPage({
       </Link>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
         <div>
-          <h1 className="display-1-tight mb-1" style={{ fontSize: "2.5rem" }}>
+          <h1 className="display-1-tight mb-1 d-flex align-items-center gap-2" style={{ fontSize: "2.5rem" }}>
             {trip.title}
+            {canManage && (
+              <EditTripButton
+                trip={{
+                  id: trip.id,
+                  title: trip.title,
+                  startKey: dateKey(trip.startDate),
+                  endKey: dateKey(trip.endDate),
+                }}
+              />
+            )}
           </h1>
           <p className="text-secondary mb-0">
             {formatShortDate(trip.startDate)} – {formatShortDate(trip.endDate)}{" "}
@@ -296,17 +306,7 @@ export default async function TripPage({
         {isParticipant ? (
           <div className="d-flex align-items-center gap-2 flex-wrap">
             {canManage && (
-              <>
-                <VisibilitySelect tripId={trip.id} visibility={trip.visibility} />
-                <EditTripButton
-                  trip={{
-                    id: trip.id,
-                    title: trip.title,
-                    startKey: dateKey(trip.startDate),
-                    endKey: dateKey(trip.endDate),
-                  }}
-                />
-              </>
+              <VisibilitySelect tripId={trip.id} visibility={trip.visibility} />
             )}
             <TripMembersButton
               tripId={trip.id}
@@ -319,13 +319,6 @@ export default async function TripPage({
               }))}
               availableFriends={availableFriends}
             />
-            {isOwner && (
-              <ConfirmForm action={boundDelete} confirmMessage={`Удалить поездку «${trip.title}»?`}>
-                <button type="button" className="btn btn-outline-secondary btn-sm">
-                  Удалить поездку
-                </button>
-              </ConfirmForm>
-            )}
           </div>
         ) : (
           <Link href={`/users/${trip.user.id}`} className="small text-secondary text-decoration-none">
@@ -557,6 +550,19 @@ export default async function TripPage({
               <TodoRow key={item.key} todo={item.todo} showDate showShareToggle={isShared} />
             ),
           )}
+        </div>
+      )}
+
+      {/* Удаление — в самом низу страницы (просьба владельца): в шапке
+          оно стояло рядом с обычными действиями и нажималось случайно,
+          а операция необратимая. */}
+      {isOwner && (
+        <div className="mt-5 pt-4 border-top d-flex justify-content-end">
+          <ConfirmForm action={boundDelete} confirmMessage={`Удалить поездку «${trip.title}»?`}>
+            <button type="button" className="btn btn-outline-secondary btn-sm">
+              Удалить поездку
+            </button>
+          </ConfirmForm>
         </div>
       )}
     </div>

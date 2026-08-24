@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
+import { PencilIcon } from "@/components/icons";
 import { updateTrip } from "./actions";
 
 export default function EditTripButton({
@@ -34,8 +35,19 @@ export default function EditTripButton({
 
   return (
     <>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
-        Редактировать
+      {/* Карандаш у названия (просьба владельца): раньше это была
+          подписанная кнопка в общем ряду действий над поездкой. */}
+      <button
+        type="button"
+        className="icon-btn"
+        // Кнопка живёт внутри h1: без явного размера иконка (0.95em)
+        // унаследовала бы 2.5rem заголовка и вылезла из кружка.
+        style={{ fontSize: "1rem" }}
+        aria-label="Редактировать поездку"
+        data-tooltip="Редактировать"
+        onClick={() => setIsOpen(true)}
+      >
+        <PencilIcon />
       </button>
       <Modal
         open={isOpen}
