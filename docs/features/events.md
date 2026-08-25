@@ -1,16 +1,23 @@
 # Events
 
-Public list/detail: `src/app/(public)/page.tsx` (all events, with an
-Все/Иду/Избранное filter and a `?from=YYYY-MM-DD&to=YYYY-MM-DD` date-range
-filter — see below), `src/app/(public)/day/[date]/page.tsx`,
+Public list/detail: `src/app/(public)/events/page.tsx` — the feed
+("Афиша"), with an Все/Иду/Избранное/Мои артисты filter, a name search
+box and a `?from=YYYY-MM-DD&to=YYYY-MM-DD` date-range filter (see below).
+**The feed lives at `/events`, not at `/`** — `/` is the logged-in
+summary page and takes no search params at all. Every control on the feed
+(search box `action`, `DateRangeFilterButton` `action`, the trip tabs)
+must therefore point at `/events`; pointing one at `/` throws the visitor
+onto the summary page (and, on `/ru`, into a 404 — `NameSearchBox` adds
+the locale prefix itself, so it must be handed an unprefixed path).
+Also: `src/app/(public)/day/[date]/page.tsx`,
 `src/app/(public)/event/[id]/page.tsx`, `src/app/(public)/calendar/page.tsx`
 (month grid, defaults to showing **all** events — `?view=mine` narrows to
 just the ones the current user is going to).
 
-## Date-range filter (home page)
+## Date-range filter (the feed)
 
-`/?from=2026-08-20&to=2026-08-25` — either bound is optional. When a
-range is active, the home page drops its usual upcoming/archive split
+`/events?from=2026-08-20&to=2026-08-25` — either bound is optional. When a
+range is active, the feed drops its usual upcoming/archive split
 (both stop being meaningful once you've picked an explicit window — e.g.
 revisiting a past trip) and shows every matching occurrence as one
 ascending list, still day-grouped the same way. The `filter`
@@ -21,12 +28,20 @@ range, mark which of its events you actually attended) — if that gets
 built, it should stay a thin wrapper over this same query rather than a
 heavier new concept.
 
+Above the feed, an active range adds a "N событий в диапазоне" line. Its
+count comes from `countEventListRange` (`src/lib/eventList.ts`), which
+shares one `occurrenceFilterWhere` helper with `fetchEventListPage` — the
+counter must not build its own copy of the conditions. It did once, and
+drifted: the copy never grew the "Мои артисты" branch, so that tab with a
+date range reported the unfiltered total (73 instead of 59 on the owner's
+account) while the list below showed the filtered one.
+
 The from/to inputs live behind `DateRangeFilterButton` (a calendar-icon
 button, filled/`is-accent` when a range is active) rather than as
 always-visible fields — clicking it opens a small popover
 (`.date-range-filter-dropdown`) with the same two `<input type="date">`s,
 a "Показать" submit, and a "Сбросить" link when a range is set. It sits
-inside the home page's `.tab-bar-row`, to the left of the search box (see
+inside the feed's `.tab-bar-row`, to the left of the search box (see
 [architecture.md](../architecture.md#conventions)) — a reusable pattern
 for "a filter that needs real inputs but shouldn't clutter a tab row",
 distinct from `DramaStatusButton`'s dropdown (a fixed list of options
@@ -464,6 +479,29 @@ database until that confirm step** — the scrape itself is read-only.
   `$transaction`: any artist without a match gets a new `Performer`
   (`type: SOLO`), then the `Event` is created linking every included
   artist plus any extra performers picked manually in the review screen.
+- **The poster is downloaded before the write, never stored as a
+  thaiticketmajor.com link** — `downloadRemoteImage(url, "posters")`
+  (`src/lib/localImage.ts`, the same helper every other importer uses;
+  see "Local image storage" in [tmdb-import.md](tmdb-import.md)) is
+  called just outside the transaction, so a slow fetch can't hold it
+  open. Rationale is the same as everywhere else — a foreign CDN URL
+  baked into the DB is a standing external dependency — plus a concrete
+  one here: TTM serves ~1000px-wide JPEG/PNG originals (200+ KB each)
+  into a 74px-wide `.event-card-poster`, and the feed sat with an empty
+  poster column for seconds while nine of them loaded from Bangkok.
+  Downloading re-encodes to WebP and drops that ~5×. Failure is not
+  fatal: `downloadRemoteImage` returns the original remote URL and logs
+  a warning, so the event is still created (with an external poster, to
+  be retried later). A poster the admin replaced with their own upload
+  is already a `/uploads/...` path and comes back from the helper
+  untouched.
+- **`scripts/localize-event-posters.ts`** — one-off catch-up for events
+  imported before that: sweeps every `Event.posterUrl` still starting
+  with `http`, downloads each through the same helper and repoints the
+  row. Prints what it would do and changes nothing without `--apply`; an
+  image that won't download is skipped and listed by name rather than
+  failing the run. Safe to re-run (already-local rows are excluded by
+  the query itself). One run moved 14 events, 2.0 MB → 395 KB.
 - **Multi-day detection**: the page's date line (e.g. `"Saturday 24 -
   Sunday 25 October 2026"`, or a 3-night `"Friday 21, Saturday 22 and
   Sunday 23 August 2026"`) is parsed by `parseDateRangeDays` into every

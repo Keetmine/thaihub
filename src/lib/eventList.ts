@@ -38,19 +38,17 @@ export type EventListPage = {
   locked: boolean;
 };
 
-export async function fetchEventListPage(
-  userId: string | null,
-  isPremium: boolean,
-  filters: EventListFilters,
-  phase: EventListPhase,
-  offset: number,
-): Promise<EventListPage> {
-  const { filter, from, to, q } = filters;
-  const hasDateRange = Boolean(from || to);
-  const today = startOfDay(new Date());
-
-  // Фильтры Иду/Избранное применяются прямо в SQL — при offset-пагинации
-  // пост-фильтрация в JS ломала бы нумерацию страниц.
+/**
+ * Условия выборки афиши без дат — общие для ленты и для счётчика «N
+ * событий в диапазоне» над ней. Одна функция на двоих намеренно:
+ * счётчик когда-то повторял эти условия своей копией и отстал от ленты
+ * (забыл «Моих артистов»), показывая одно число при другом списке.
+ *
+ * Фильтры применяются прямо в SQL — при offset-пагинации пост-фильтрация
+ * в JS ломала бы нумерацию страниц.
+ */
+function occurrenceFilterWhere(userId: string | null, filters: EventListFilters) {
+  const { filter, q } = filters;
   const eventWhere = {
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
     ...(filter === "favorited" && userId ? { favoritedBy: { some: { userId } } } : {}),
@@ -77,22 +75,57 @@ export async function fetchEventListPage(
         }
       : {}),
   };
-  // «Иду» — отметка на конкретной дате, поэтому фильтр на occurrence,
-  // а не на событии: показываются только выбранные дни.
-  const occurrenceWhere =
-    filter === "going" && userId ? { attendances: { some: { userId } } } : {};
+  return {
+    event: eventWhere,
+    // «Иду» — отметка на конкретной дате, поэтому фильтр на occurrence,
+    // а не на событии: показываются только выбранные дни.
+    ...(filter === "going" && userId ? { attendances: { some: { userId } } } : {}),
+  };
+}
+
+/** Границы явного диапазона дат из фильтров (обе необязательны). */
+function rangeStartsAt(from: string, to: string) {
+  return {
+    gte: from ? startOfDay(parseDateKey(from)) : undefined,
+    lte: to ? endOfDay(parseDateKey(to)) : undefined,
+  };
+}
+
+/**
+ * Сколько всего дат событий попадает в выбранный диапазон — строка
+ * «N событий в диапазоне» над лентой. Без диапазона строки нет, поэтому
+ * и считать нечего.
+ */
+export async function countEventListRange(
+  userId: string | null,
+  filters: EventListFilters,
+): Promise<number> {
+  const { from, to } = filters;
+  if (!from && !to) return 0;
+  return prisma.eventOccurrence.count({
+    where: { startsAt: rangeStartsAt(from, to), ...occurrenceFilterWhere(userId, filters) },
+  });
+}
+
+export async function fetchEventListPage(
+  userId: string | null,
+  isPremium: boolean,
+  filters: EventListFilters,
+  phase: EventListPhase,
+  offset: number,
+): Promise<EventListPage> {
+  const { from, to } = filters;
+  const hasDateRange = Boolean(from || to);
+  const today = startOfDay(new Date());
 
   const startsAt = hasDateRange
-    ? {
-        gte: from ? startOfDay(parseDateKey(from)) : undefined,
-        lte: to ? endOfDay(parseDateKey(to)) : undefined,
-      }
+    ? rangeStartsAt(from, to)
     : phase === "upcoming"
       ? { gte: today }
       : { lt: today };
 
   const occurrences = await prisma.eventOccurrence.findMany({
-    where: { startsAt, event: eventWhere, ...occurrenceWhere },
+    where: { startsAt, ...occurrenceFilterWhere(userId, filters) },
     include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
     orderBy: { startsAt: phase === "upcoming" ? "asc" : "desc" },
     skip: offset,

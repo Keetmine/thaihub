@@ -1,12 +1,12 @@
 import AppLink from "@/components/AppLink";
-import PageHeader from "@/components/PageHeader";
+import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
-import { dateKey, endOfDay, formatShortDate, parseDateKey, startOfDay } from "@/lib/dates";
+import { dateKey, formatShortDate, startOfDay } from "@/lib/dates";
 import { getT, localeHref } from "@/lib/i18n";
 import InfiniteEventList from "@/components/InfiniteEventList";
 import NameSearchBox from "@/components/NameSearchBox";
 import DateRangeFilterButton from "@/components/DateRangeFilterButton";
-import { fetchEventListPage, type EventListFilters } from "@/lib/eventList";
+import { countEventListRange, fetchEventListPage, type EventListFilters } from "@/lib/eventList";
 import { getCurrentUser } from "@/lib/userAuth";
 import { CalendarIcon } from "@/components/icons";
 import LandingPage from "../LandingPage";
@@ -72,27 +72,41 @@ export default async function HomePage({
   // Поездки — платная функция, без подписки табов нет (а старые поездки,
   // созданные при активной подписке, доступны со страницы /trips… которая
   // тоже за подпиской — то есть только после её возврата).
-  const myTrips = await prisma.trip.findMany({
-    where: {
-      OR: [
-        { userId: user.id },
-        { members: { some: { userId: user.id, status: "ACCEPTED" } } },
-      ],
-      endDate: { gte: startOfDay(new Date()) },
-    },
-    orderBy: { startDate: "asc" },
-  });
+  const tripSelect = { id: true, title: true, startDate: true, endDate: true } as const;
+  const tripAccess = {
+    OR: [
+      { userId: user.id },
+      { members: { some: { userId: user.id, status: "ACCEPTED" as const } } },
+    ],
+  };
+
+  // Поездки и названия-подложка не зависят ни от фильтров, ни друг от
+  // друга — один заход в базу вместо двух подряд.
+  const [myTrips, watermarkNames] = await Promise.all([
+    prisma.trip.findMany({
+      where: { ...tripAccess, endDate: { gte: startOfDay(new Date()) } },
+      select: tripSelect,
+      orderBy: { startDate: "asc" },
+    }),
+    // Названия за шапкой — события, на которые идёт больше всего народу.
+    prisma.event
+      .findMany({
+        select: { title: true },
+        orderBy: [
+          { attendees: { _count: "desc" } },
+          { favoritedBy: { _count: "desc" } },
+          { createdAt: "desc" },
+        ],
+        take: WATERMARK_NAME_LIMIT,
+      })
+      .then((rows) => rows.map((e) => e.title)),
+  ]);
 
   const activeTrip = rawTrip
     ? (myTrips.find((t) => t.id === rawTrip) ??
       (await prisma.trip.findFirst({
-        where: {
-          id: rawTrip,
-          OR: [
-            { userId: user.id },
-            { members: { some: { userId: user.id, status: "ACCEPTED" } } },
-          ],
-        },
+        where: { id: rawTrip, ...tripAccess },
+        select: tripSelect,
       })))
     : null;
 
@@ -120,25 +134,16 @@ export default async function HomePage({
   }${q ? `&q=${encodeURIComponent(q)}` : ""}`;
 
   const filters: EventListFilters = { filter, from, to, q };
-  const initialPage = await fetchEventListPage(user.id, true, filters, "upcoming", 0);
 
-  // Общее число событий в явном диапазоне — одним count'ом (сам список
-  // при этом всё равно подгружается страницами).
-  const rangeTotal = hasDateRange
-    ? await prisma.eventOccurrence.count({
-        where: {
-          startsAt: {
-            gte: from ? startOfDay(parseDateKey(from)) : undefined,
-            lte: to ? endOfDay(parseDateKey(to)) : undefined,
-          },
-          ...(filter === "going" ? { attendances: { some: { userId: user.id } } } : {}),
-          event: {
-            ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-            ...(filter === "favorited" ? { favoritedBy: { some: { userId: user.id } } } : {}),
-          },
-        },
-      })
-    : 0;
+  // Первая страница и счётчик по диапазону — параллельно: счётчик не
+  // зависит от того, что вернул список.
+  const [initialPage, rangeTotal] = await Promise.all([
+    fetchEventListPage(user.id, true, filters, "upcoming", 0),
+    // Общее число событий в явном диапазоне — одним count'ом (сам список
+    // при этом всё равно подгружается страницами). Условия берём из той
+    // же функции, что и лента, иначе счётчик расходится с показанным.
+    countEventListRange(user.id, filters),
+  ]);
 
   return (
     <div>
@@ -146,19 +151,23 @@ export default async function HomePage({
           вместо ленты стоит пейволл, а первый шаг должен показаться
           всем. */}
       <div className="dot-grid pb-1" data-tour="feed">
-        <span className="eyebrow">{t.events.list.eyebrow}</span>
-        <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
-          <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-            {t.events.list.title}
-          </h1>
-          <AppLink
-            href="/calendar"
-            className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
-          >
-            <CalendarIcon />
-            {t.events.list.openCalendar}
-          </AppLink>
-        </div>
+        <PageHeader
+          eyebrow={t.events.list.eyebrow}
+          title={t.events.list.title}
+          size="lg"
+          className="mb-5"
+          watermark="Events"
+          watermarkNames={watermarkNames}
+          action={
+            <AppLink
+              href="/calendar"
+              className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+            >
+              <CalendarIcon />
+              {t.events.list.openCalendar}
+            </AppLink>
+          }
+        />
       </div>
 
       <div className="tab-bar-row">
@@ -194,7 +203,7 @@ export default async function HomePage({
           {myTrips.map((trip) => (
             <AppLink
               key={trip.id}
-              href={`/?trip=${trip.id}`}
+              href={`/events?trip=${trip.id}`}
               prefetch={false}
               className={`tab-bar-item ${activeTrip?.id === trip.id ? "active" : ""}`}
               title={`${formatShortDate(trip.startDate, locale)} – ${formatShortDate(trip.endDate, locale)}`}
@@ -206,7 +215,10 @@ export default async function HomePage({
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {!activeTrip && (
             <DateRangeFilterButton
-              action={localeHref("/", locale)}
+              // Форма подставляет action в <form action> как есть, поэтому
+              // префикс языка добавляем здесь; NameSearchBox ниже, наоборот,
+              // зовёт localeHref сам — ему нужен путь без префикса.
+              action={localeHref("/events", locale)}
               from={from}
               to={to}
               clearHref={localeHref(
@@ -217,7 +229,7 @@ export default async function HomePage({
             />
           )}
           <NameSearchBox
-            action={localeHref("/", locale)}
+            action="/events"
             q={q}
             placeholder={t.events.list.searchPlaceholder}
             hiddenFields={{
