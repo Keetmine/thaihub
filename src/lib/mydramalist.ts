@@ -95,6 +95,7 @@ export type MdlDrama = {
   status: DramaStatus | null;
   rating: number | null;
   related: MdlRelatedEntry[];
+  cast: MdlCastMember[];
 };
 
 type JsonLdTvSeries = {
@@ -210,6 +211,7 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
     status: deriveStatus(airedFrom, airedTo),
     rating: ld.aggregateRating?.ratingValue ?? null,
     related,
+    cast: parseMdlDramaCast(html),
   };
 }
 
@@ -219,6 +221,65 @@ export async function fetchMdlDrama(url: string): Promise<MdlDrama> {
   // ловил от Cloudflare 403, и импорт сериала падал там, где импорт
   // актёра проходил. Проверку хоста делает сам fetchMdlHtml.
   return parseMdlDramaPage(await fetchMdlHtml(url), url);
+}
+
+// ---------- каст со страницы сериала ----------
+
+export type MdlCastMember = {
+  /** «/people/12345-name» — тот же вид пути, что в фильмографии. */
+  mdlPath: string;
+  name: string;
+  /** Имя персонажа, если указано. */
+  role: string | null;
+  /** «Main Role» / «Support Role» / «Guest Role». */
+  roleType: string | null;
+};
+
+/**
+ * Каст со страницы сериала. Разбор намеренно «по якорям», а не по
+ * классам блоков: вёрстка карточек актёров у MDL меняется, а вот сама
+ * ссылка на `/people/<id>-<slug>` и подпись роли («Main Role») —
+ * стабильны годами. Берём каждую ссылку на человека и смотрим на
+ * ближайшие ~600 символов после неё: там лежат имя персонажа и тип
+ * роли.
+ *
+ * Область поиска сужаем до блока каста — иначе в список попали бы
+ * режиссёр и сценарист, которые на странице тоже ссылки на /people/.
+ */
+export function parseMdlDramaCast(html: string): MdlCastMember[] {
+  const castStart = html.search(/id="cast"|>\s*Cast\s*&|>\s*Cast\s*</i);
+  const region = castStart >= 0 ? html.slice(castStart) : html;
+
+  const out: MdlCastMember[] = [];
+  const seen = new Set<string>();
+  // Хвост берём просмотром вперёд (?=…), а не захватом: иначе матч
+  // съедал бы 600 символов вместе со следующими актёрами, и в списке
+  // оставался только каждый второй-третий.
+  for (const m of region.matchAll(
+    /<a[^>]+href="(\/people\/\d+[^"#?]*)"[^>]*>([^<]*)<\/a>(?=([\s\S]{0,600}))/g,
+  )) {
+    const mdlPath = m[1];
+    const name = decodeEntities(m[2]).trim();
+    // Ссылка-картинка: текста нет, имя придёт со следующей ссылкой.
+    if (!name) continue;
+    if (seen.has(mdlPath)) continue;
+    seen.add(mdlPath);
+
+    const tail = m[3];
+    const roleType = tail.match(/(Main Role|Support Role|Guest Role)/)?.[1] ?? null;
+    // Имя персонажа — первый <small> до подписи роли; у MDL оно там
+    // и лежит, но если вёрстка другая, роль просто останется пустой.
+    const roleRaw = tail.match(/<small[^>]*>([\s\S]*?)<\/small>/)?.[1];
+    const role = roleRaw ? stripTags(decodeEntities(roleRaw)).trim() || null : null;
+
+    out.push({
+      mdlPath,
+      name,
+      role: role && !/Role$/.test(role) ? role : null,
+      roleType,
+    });
+  }
+  return out;
 }
 
 // ---------- человек ----------

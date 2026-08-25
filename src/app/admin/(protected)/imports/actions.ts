@@ -8,7 +8,7 @@ import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
 import { logImportRun, isImportCancelledError } from "@/lib/importRun";
 import { parseChannelId } from "@/lib/youtubeMusic";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
-import { fetchMdlDrama, mdlIdFromUrl } from "@/lib/mydramalist";
+import { fetchMdlDrama, mdlIdFromUrl, absMdlUrl, type MdlCastMember } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
 
 
@@ -172,6 +172,66 @@ export async function runMdlPerformerImport(formData: FormData): Promise<void> {
 }
 
 /**
+ * Привязка каста со страницы сериала. Актёра ищем сначала по ссылке на
+ * MDL (точное совпадение), потом по имени; если не нашли — заводим
+ * карточку-заготовку с именем и ссылкой. Заготовку потом дозаполнит
+ * обычный импорт актёра — а так каст сериала оставался бы пустым, ради
+ * чего всё и затевалось. Роли не перезаписываем: связь уже есть —
+ * пропускаем.
+ */
+async function linkMdlCast(
+  dramaId: string,
+  cast: MdlCastMember[],
+  runId: string,
+): Promise<{ linked: number; createdPerformers: number }> {
+  let linked = 0;
+  let createdPerformers = 0;
+
+  for (const member of cast) {
+    const mdlUrl = absMdlUrl(member.mdlPath);
+    let performer = await prisma.performer.findFirst({
+      where: {
+        OR: [
+          { mydramalistUrl: mdlUrl },
+          { name: { equals: member.name, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!performer) {
+      performer = await prisma.performer.create({
+        data: { name: member.name, mydramalistUrl: mdlUrl },
+        select: { id: true },
+      });
+      createdPerformers += 1;
+      await prisma.importedItem.create({
+        data: {
+          runId,
+          entityType: "performer",
+          entityId: performer.id,
+          action: "created",
+          label: member.name,
+        },
+      });
+    }
+
+    const already = await prisma.performerDrama.findUnique({
+      where: { performerId_dramaId: { performerId: performer.id, dramaId } },
+      select: { dramaId: true },
+    });
+    if (already) continue;
+
+    await prisma.performerDrama.create({
+      data: { performerId: performer.id, dramaId, role: member.role },
+    });
+    linked += 1;
+  }
+
+  return { linked, createdPerformers };
+}
+
+/**
  * Импорт ОДНОГО сериала со страницы MyDramaList по ссылке. В отличие от
  * кнопки на карточке сериала (она только дозаполняет уже существующую
  * запись), здесь сериала в каталоге может ещё не быть — тогда он
@@ -189,7 +249,7 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
 
   await logImportRun(
     "mdl-drama",
-    async () => {
+    async (runId) => {
       const mdl = await fetchMdlDrama(url);
       const existing = await prisma.drama.findFirst({
         where: { OR: [{ mydramalistUrl: url }, { title: mdl.title }] },
@@ -222,7 +282,14 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
         const created = await prisma.drama.create({
           data: { title: mdl.title, ...base },
         });
-        return { title: created.title, id: created.id, created: true, filled: [] as string[] };
+        const cast = await linkMdlCast(created.id, mdl.cast, runId);
+        return {
+          title: created.title,
+          id: created.id,
+          created: true,
+          filled: [] as string[],
+          ...cast,
+        };
       }
 
       // Пустые поля дозаполняем, занятые оставляем как есть.
@@ -264,14 +331,18 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
       }
 
       const updated = await prisma.drama.update({ where: { id: existing.id }, data });
-      return { title: updated.title, id: updated.id, created: false, filled };
+      const cast = await linkMdlCast(updated.id, mdl.cast, runId);
+      return { title: updated.title, id: updated.id, created: false, filled, ...cast };
     },
     (r) =>
-      r.created
+      (r.created
         ? `${r.title}: создан`
-        : `${r.title}: ${r.filled.length ? `заполнено — ${r.filled.join(", ")}` : "новых полей нет"}`,
+        : `${r.title}: ${r.filled.length ? `заполнено — ${r.filled.join(", ")}` : "новых полей нет"}`) +
+      (r.linked ? `, каст +${r.linked}` : ", новых связей каста нет") +
+      (r.createdPerformers ? ` (заведено актёров ${r.createdPerformers})` : ""),
   );
 
   revalidatePath("/admin/imports");
   revalidatePath("/admin/dramas");
+  revalidatePath("/admin/performers");
 }
