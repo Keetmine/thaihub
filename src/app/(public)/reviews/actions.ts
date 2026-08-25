@@ -81,7 +81,7 @@ export async function addComment(kind: ReviewKind, id: string, formData: FormDat
       userId: parentAuthor.id,
       actorId: user.id,
       kind: "COMMENT_REPLY",
-      title: `${user.name ?? "Кто-то"} ответил(а) на ваш комментарий`,
+      actorName: user.name,
       body: text.slice(0, 200),
       href: pagePath(kind, id),
     });
@@ -111,7 +111,7 @@ export async function toggleCommentLike(commentId: string): Promise<{ liked: boo
         userId: comment.userId,
         actorId: user.id,
         kind: "COMMENT_LIKE",
-        title: `${user.name ?? "Кто-то"} оценил(а) ваш комментарий`,
+        actorName: user.name,
         body: comment.text.slice(0, 120),
       });
     }

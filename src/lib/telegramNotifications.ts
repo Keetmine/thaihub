@@ -206,7 +206,7 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
     },
   });
 
-  const name = actor.name || "Ваш друг";
+  const name = actor.name || null;
 
   for (const friend of friends) {
     if (!isPremiumActive(friend)) continue;
@@ -214,8 +214,9 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
       userId: friend.id,
       actorId: userId,
       kind: "FRIEND_GOING",
-      title: `${name} идёт на «${event.title}»`,
-      body: formatHumanDate(occurrence.startsAt),
+      actorName: name,
+      subject: event.title,
+      body: formatHumanDate(occurrence.startsAt, "en"),
       href: eventHref(event),
     });
   }

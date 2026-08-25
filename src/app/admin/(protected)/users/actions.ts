@@ -7,6 +7,8 @@ import { randomBytes } from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
+import { getDict, DEFAULT_LOCALE } from "@/lib/i18n";
+import { formatHumanDate } from "@/lib/dates";
 import { softDeleteUser } from "@/lib/userDeletion";
 
 /** Продлить подписку на месяц (от конца текущей, если ещё активна). */
@@ -24,8 +26,9 @@ export async function grantPremiumMonth(userId: string) {
   await notifyUser({
     userId,
     kind: "PREMIUM_GRANTED",
-    title: "Подписка активна",
-    body: `Открыты афиша, календарь и поездки — до ${until.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}.`,
+    // Подпись собирается при чтении, на языке получателя; сюда идёт
+    // только дата — язык человека мы в этот момент не знаем.
+    body: getDict(DEFAULT_LOCALE).notifications.premiumBody(formatHumanDate(until, "en")),
     href: "/",
   });
   revalidatePath("/admin/users");

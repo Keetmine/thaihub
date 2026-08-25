@@ -188,8 +188,11 @@ async function notifyTripInvite(tripId: string, inviteeId: string): Promise<void
     userId: inviteeId,
     actorId: trip.user.id,
     kind: "TRIP_INVITE",
-    title: `${trip.user.name ?? "Друг"} приглашает в поездку «${trip.title}»`,
-    body: `${formatShortDate(trip.startDate)} – ${formatShortDate(trip.endDate)}. Примите или отклоните приглашение.`,
+    actorName: trip.user.name,
+    subject: trip.title,
+    // Даты — данные, а не фраза: язык получателя тут неизвестен,
+    // поэтому формат берём тот же, что у сайта по умолчанию.
+    body: `${formatShortDate(trip.startDate, "en")} – ${formatShortDate(trip.endDate, "en")}`,
     href: `/trips/${trip.slug ?? trip.id}`,
   });
 }
@@ -227,7 +230,8 @@ export async function acceptTripInvite(tripId: string): Promise<void> {
         userId: trip.userId,
         actorId: user.id,
         kind: "TRIP_INVITE_ACCEPTED",
-        title: `${user.name ?? "Друг"} принял(а) приглашение в поездку`,
+        actorName: user.name,
+        subject: trip.title,
         body: trip.title,
         href: `/trips/${trip.slug ?? trip.id}`,
       });

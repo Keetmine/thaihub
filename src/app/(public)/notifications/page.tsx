@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import { notificationTitle } from "@/lib/notificationText";
 import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -105,7 +106,7 @@ export default async function NotificationsPage({
                   <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={2} />
                 )}
                 <div style={{ minWidth: 0 }} className="flex-grow-1">
-                  <span className="text-white d-block">{n.title}</span>
+                  <span className="text-white d-block">{notificationTitle(n, t)}</span>
                   {n.body && <span className="small text-secondary d-block">{n.body}</span>}
                   <span className="small text-secondary">{fmt(n.createdAt)}</span>
                 </div>

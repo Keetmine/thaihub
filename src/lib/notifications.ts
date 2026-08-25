@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import type { NotificationKind } from "@/generated/prisma/client";
+import { notificationTitle } from "@/lib/notificationText";
+import { getDict, DEFAULT_LOCALE } from "@/lib/i18n";
 
 // Уведомления пользователю: строка в колокольчике на сайте и, если у
 // человека привязан Telegram, сообщение туда же. До этого приглашения в
@@ -28,10 +30,23 @@ type TelegramPrefs = {
   tgNotifyEvents: boolean;
 };
 
+/**
+ * Создать уведомление.
+ *
+ * Фразу сюда НЕ передают: язык получателя в момент события неизвестен,
+ * поэтому вызывающий отдаёт только переменные части (имя того, кто
+ * вызвал событие, и название поездки/события/ачивки), а фраза
+ * складывается при чтении — см. lib/notificationText.ts.
+ *
+ * В `title` при этом кладётся английский вариант: он уходит в Telegram
+ * (там языка получателя мы тоже не знаем) и служит запасным вариантом
+ * для строк, созданных до этого разделения.
+ */
 export async function notifyUser(input: {
   userId: string;
   kind: NotificationKind;
-  title: string;
+  actorName?: string | null;
+  subject?: string | null;
   body?: string | null;
   href?: string | null;
   actorId?: string | null;
@@ -41,11 +56,23 @@ export async function notifyUser(input: {
     // совершил и так.
     if (input.actorId && input.actorId === input.userId) return;
 
+    // Повод без действующего лица (ачивка, выданная подписка) хранит
+    // NULL, повод с ним — имя или пустую строку, если имени у человека
+    // нет. Различие читает actorLabel в lib/notificationText.ts.
+    const actorName = "actorName" in input ? (input.actorName ?? "") : null;
+    const subject = input.subject ?? null;
+    const title = notificationTitle(
+      { kind: input.kind, actorName, subject, title: "" },
+      getDict(DEFAULT_LOCALE),
+    );
+
     await prisma.notification.create({
       data: {
         userId: input.userId,
         kind: input.kind,
-        title: input.title,
+        actorName,
+        subject,
+        title,
         body: input.body ?? null,
         href: input.href ?? null,
         actorId: input.actorId ?? null,
@@ -71,7 +98,7 @@ export async function notifyUser(input: {
     const link = input.href ? `\n${APP_URL}${input.href}` : "";
     await sendTelegramMessage(
       user.telegramId,
-      `<b>${escapeHtml(input.title)}</b>${input.body ? `\n${escapeHtml(input.body)}` : ""}${link}`,
+      `<b>${escapeHtml(title)}</b>${input.body ? `\n${escapeHtml(input.body)}` : ""}${link}`,
     ).catch(() => false);
   } catch (error) {
     // Уведомление не должно ронять действие, которое его вызвало:

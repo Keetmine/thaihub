@@ -30,7 +30,7 @@ export async function sendFriendRequest(addresseeId: string) {
     userId: addresseeId,
     actorId: user.id,
     kind: "FRIEND_REQUEST",
-    title: `${user.name ?? "Пользователь"} хочет добавить вас в друзья`,
+    actorName: user.name,
     href: "/friends",
   });
 
@@ -52,7 +52,7 @@ export async function acceptFriendRequest(friendshipId: string) {
       userId: friendship.requesterId,
       actorId: user.id,
       kind: "FRIEND_ACCEPTED",
-      title: `${user.name ?? "Пользователь"} принял(а) заявку в друзья`,
+      actorName: user.name,
       href: "/friends",
     });
   }

@@ -9,6 +9,7 @@ import { landing } from "./landing";
 import { legal } from "./legal";
 import { lists } from "./lists";
 import { nav } from "./nav";
+import { notifications } from "./notifications";
 import { social } from "./social";
 import { trips } from "./trips";
 import { ui } from "./ui";
@@ -22,6 +23,6 @@ import { widgets } from "./widgets";
  * по файлам, чтобы над переводом можно было работать
  * параллельно, не сталкиваясь в одном файле.
  */
-export const en = { widgets, reviews, account, auth, catalog, common, events, footer, home, landing, legal, lists, nav, social, trips, ui, wiki };
+export const en = { widgets, reviews, account, auth, catalog, common, events, footer, home, landing, legal, lists, nav, notifications, social, trips, ui, wiki };
 
 export type Dict = typeof en;

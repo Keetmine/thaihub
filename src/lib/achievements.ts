@@ -171,7 +171,8 @@ export async function syncAchievements(userId: string, stats?: UserStats): Promi
         await notifyUser({
           userId,
           kind: "ACHIEVEMENT",
-          title: `Новая ачивка: ${def.emoji} ${def.title}`,
+          // Название ачивки — содержимое базы, его не переводим.
+          subject: `${def.emoji} ${def.title}`,
           body: def.hint,
           href: "/account",
         });
