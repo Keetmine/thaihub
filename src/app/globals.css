@@ -3142,6 +3142,7 @@ details.admin-section[open] > summary.admin-section-head::before {
 /* Полоса. Одна и та же и в карточке, и на странице сериала — тонкая,
    чтобы в карточке не спорить с названием поверх постера. */
 .episode-progress-bar {
+  display: block;
   height: 3px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
@@ -3164,6 +3165,10 @@ details.admin-section[open] > summary.admin-section-head::before {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  /* По содержимому, а не во всю ширину: иначе полоса убегает далеко
+     правее кнопок и выглядит как чужой элемент под ними. */
+  width: max-content;
+  max-width: 100%;
 }
 .episode-progress-controls {
   display: inline-flex;
@@ -3198,6 +3203,35 @@ details.admin-section[open] > summary.admin-section-head::before {
   font-variant-numeric: tabular-nums;
   font-size: 0.9rem;
 }
+
+/* Вариант для строки каталога: стоит справа, у кнопки статуса, поэтому
+   ужимаем всё, что можно — цифры мельче, кнопки меньше. Ширина по
+   содержимому, чтобы название сериала слева не сжималось зря. */
+.episode-progress.is-inline {
+  gap: 0.25rem;
+}
+.episode-progress.is-inline .episode-progress-step {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1rem;
+}
+.episode-progress.is-inline .episode-progress-count {
+  min-width: 3.2rem;
+  font-size: 0.8rem;
+}
+
+/* Вариант для постерной карточки: без подписи «Серии» и без своей
+   полосы, поэтому счётчик тянется на всю ширину карточки — иначе он
+   болтался бы слева от пустоты. */
+.episode-progress.is-card {
+  margin-top: 0.4rem;
+  width: 100%;
+}
+.episode-progress.is-card .episode-progress-controls {
+  width: 100%;
+  justify-content: space-between;
+}
+
 /* Фолбэк без постера: крупная первая буква на тёплом градиенте. */
 .poster-tile-fallback {
   position: absolute;

@@ -300,7 +300,7 @@ export default async function AgencyDetailPage({
               <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
                 <DramaStatusButton
                   dramaId={d.id}
-                  status={statusByDramaId.get(d.id) ?? null}
+                  status={statusByDramaId.get(d.id)?.status ?? null}
                 />
               </div>
             </div>

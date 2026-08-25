@@ -244,18 +244,6 @@ export default async function DramaDetailPage({
         )}
       </div>
 
-      {/* Ж6: счётчик серий появляется, только когда сериал уже отмечен —
-          у того, что человек не смотрит, прогресс ничего не значит. */}
-      {currentUser && watchStatus && (
-        <div className="mb-4" style={{ maxWidth: "22rem" }}>
-          <EpisodeProgress
-            dramaId={drama.id}
-            total={drama.episodes}
-            watched={watchStatus.episodesWatched}
-          />
-        </div>
-      )}
-
       {/* Э2ф: страница длинная — якорные чипы к ключевым секциям, чтобы
           важное не требовало слепого скролла. Один чип «Отзывы» без
           компании смысла не имеет — ряд рисуем от двух. */}
@@ -407,6 +395,20 @@ export default async function DramaDetailPage({
               </p>
             )}
           </div>
+
+          {/* Ж6: счётчик серий — прямо над описанием, где человек и
+              так задерживается. Появляется, только когда сериал уже
+              отмечен: у того, что человек не смотрит, прогресс ничего
+              не значит. */}
+          {currentUser && watchStatus && (
+            <div className="mb-3">
+              <EpisodeProgress
+                dramaId={drama.id}
+                total={drama.episodes}
+                watched={watchStatus.episodesWatched}
+              />
+            </div>
+          )}
 
           {/* Длинный синопсис свёрнут до ~4 строк (Э2ф); SynopsisFold
               меряет реальное переполнение и не показывает «Читать

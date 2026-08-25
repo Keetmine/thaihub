@@ -1,19 +1,27 @@
 import { prisma } from "@/lib/prisma";
 import type { DramaWatchStatusValue } from "@/app/(public)/favorites/actions";
 
-/** Map of dramaId -> the signed-in user's watch status, restricted to `dramaIds`. */
+/** Что пользователь отметил у каждого из `dramaIds`: статус и, если
+ *  отмечал, на какой серии остановился. */
+export type DramaWatchEntry = {
+  status: DramaWatchStatusValue;
+  episodesWatched: number | null;
+};
+
 export async function getDramaWatchStatuses(
   dramaIds: string[],
   userId: string | null | undefined,
-): Promise<Map<string, DramaWatchStatusValue>> {
+): Promise<Map<string, DramaWatchEntry>> {
   if (dramaIds.length === 0 || !userId) return new Map();
 
   const statuses = await prisma.dramaWatchStatus.findMany({
     where: { userId, dramaId: { in: dramaIds } },
-    select: { dramaId: true, status: true },
+    select: { dramaId: true, status: true, episodesWatched: true },
   });
 
-  return new Map(statuses.map((s) => [s.dramaId, s.status]));
+  return new Map(
+    statuses.map((s) => [s.dramaId, { status: s.status, episodesWatched: s.episodesWatched }]),
+  );
 }
 
 /** Set of event ids `userId` has favorited, restricted to `eventIds`. */

@@ -377,7 +377,7 @@ export default async function HomePage() {
             </div>
             <div className="row g-3 stagger">
               {watchingNow.map(({ drama, episodesWatched }) => (
-                <div key={drama.id} className="col-4 col-lg-6">
+                <div key={drama.id} className="col-6">
                   <PosterTile
                     href={dramaHref(drama)}
                     posterUrl={drama.posterUrl}
@@ -393,13 +393,17 @@ export default async function HomePage() {
                         : null
                     }
                   />
-                  {/* Отметить серию — отсюда, без захода на страницу:
-                      ровно это человек и делает, досмотрев серию. */}
+                  {/* Править серии — отсюда, без захода на страницу:
+                      ровно это человек и делает, досмотрев серию. Полоса
+                      рисуется внутри постера, поэтому у счётчика своей
+                      нет. Карточка здесь рабочая, а не витринная, — этим
+                      она и отличается от постеров в каталоге, где
+                      прогресса нет вовсе. */}
                   <EpisodeProgress
                     dramaId={drama.id}
                     total={drama.episodes}
                     watched={episodesWatched}
-                    compact
+                    variant="card"
                   />
                 </div>
               ))}

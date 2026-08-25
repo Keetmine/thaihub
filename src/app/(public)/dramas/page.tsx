@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
 import DramaStatusButton from "@/components/DramaStatusButton";
+import EpisodeProgress from "@/components/EpisodeProgress";
+import { episodeProgress } from "@/lib/watchStatus";
 import { getCurrentUser } from "@/lib/userAuth";
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { getDramaWatchStatuses } from "@/lib/favorites";
@@ -151,18 +153,20 @@ export default async function DramasPage({
         emptyMessage={q ? t.common.nothingFound : t.catalog.dramas.empty}
         renderItem={({ drama: d }) => {
           const rating = ratingByDramaId.get(d.id);
+          const entry = statusByDramaId.get(d.id) ?? null;
+          const progress = episodeProgress(entry, d.episodes);
           const subline = [d.year, rating != null ? `★ ${rating.toFixed(1)}` : null]
             .filter(Boolean)
             .join(" · ");
           return (
             <div
               key={d.id}
-              className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
+              className="surface surface-hover d-flex flex-wrap align-items-center justify-content-between gap-2 gap-sm-3 p-3"
             >
               <AppLink
                 href={dramaHref(d)}
-                className="text-decoration-none d-flex align-items-center gap-3"
-                style={{ minWidth: 0 }}
+                className="text-decoration-none d-flex align-items-center gap-3 flex-fill"
+                style={{ minWidth: "10rem" }}
               >
                 <div
                   style={{
@@ -193,16 +197,30 @@ export default async function DramasPage({
                     </span>
                   )}
                 </div>
-                <span style={{ minWidth: 0 }}>
-                  <span className="font-display fw-medium text-white d-block">{d.title}</span>
+                <span className="flex-fill" style={{ minWidth: 0 }}>
+                  {/* Обрезаем, а не переносим: справа теперь счётчик
+                      серий, и на телефоне длинное название иначе рвётся
+                      на три строки и раздувает всю строку каталога. */}
+                  <span className="font-display fw-medium text-white d-block text-truncate">
+                    {d.title}
+                  </span>
                   {subline && <span className="small text-secondary">{subline}</span>}
                 </span>
               </AppLink>
-              <div className="flex-shrink-0">
-                <DramaStatusButton
-                  dramaId={d.id}
-                  status={statusByDramaId.get(d.id) ?? null}
-                />
+              <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                {/* Ж6: править серии хочется прямо отсюда, не заходя на
+                    страницу сериала. Компактный вариант и справа, у
+                    кнопки статуса: отдельной строкой под названием он
+                    делал каждую строку каталога вдвое выше. */}
+                {entry && (
+                  <EpisodeProgress
+                    dramaId={d.id}
+                    total={d.episodes}
+                    watched={progress ? progress.watched : null}
+                    variant="inline"
+                  />
+                )}
+                <DramaStatusButton dramaId={d.id} status={entry?.status ?? null} />
               </div>
             </div>
           );

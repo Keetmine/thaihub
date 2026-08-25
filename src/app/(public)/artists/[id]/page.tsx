@@ -704,7 +704,8 @@ export default async function PerformerPage({
         <div className="mb-4">
           <h2 className="section-heading mb-2">{t.catalog.artist.series}</h2>
           <div className="poster-row thin-scroll">
-            {sortedDramas.map((pd) => (
+            {sortedDramas.map((pd) => {
+              return (
               <div key={pd.dramaId} style={{ position: "relative" }}>
                 <AppLink
                   href={dramaHref(pd.drama)}
@@ -764,11 +765,12 @@ export default async function PerformerPage({
                 >
                   <DramaStatusButton
                     dramaId={pd.dramaId}
-                    status={statusByDramaId.get(pd.dramaId) ?? null}
+                    status={statusByDramaId.get(pd.dramaId)?.status ?? null}
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

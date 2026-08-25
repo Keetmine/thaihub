@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import type { DramaStatus } from "@/generated/prisma/client";
 
 export async function toggleFavoritePerformer(performerId: string) {
   const user = await getCurrentUser();
@@ -105,6 +106,21 @@ export async function setDramaWatchStatus(dramaId: string, status: DramaWatchSta
 const MAX_EPISODES = 9999;
 
 /**
+ * Вышел ли сериал целиком.
+ *
+ * От этого зависит, закрывать ли его автоматически: у выходящего
+ * «последняя серия» — это последняя из ВЫШЕДШИХ, дальше будут новые, и
+ * переносить такое в «Просмотрено» нельзя. Неизвестный статус считаем
+ * вышедшим: у половины импортированного сериала статуса нет вовсе, и
+ * иначе автоматика там не работала бы никогда. Придерживаем только то,
+ * про что точно знаем, что продолжение впереди.
+ */
+function hasFinishedAiring(status: DramaStatus | null): boolean {
+  if (status === null) return true;
+  return !["RETURNING_SERIES", "PLANNED", "IN_PRODUCTION"].includes(status);
+}
+
+/**
  * Отметить, на какой серии человек остановился.
  *
  * Заодно двигает статус, потому что иначе список «Смотрю сейчас» врёт:
@@ -122,7 +138,10 @@ export async function setDramaEpisodesWatched(
   if (!Number.isFinite(episodes)) throw new Error("Некорректное число серий");
 
   const [drama, current] = await Promise.all([
-    prisma.drama.findUnique({ where: { id: dramaId }, select: { episodes: true } }),
+    prisma.drama.findUnique({
+      where: { id: dramaId },
+      select: { episodes: true, status: true },
+    }),
     prisma.dramaWatchStatus.findUnique({
       where: { userId_dramaId: { userId: user.id, dramaId } },
       select: { status: true },
@@ -132,10 +151,11 @@ export async function setDramaEpisodesWatched(
 
   const total = drama.episodes ?? null;
   const watched = Math.max(0, Math.min(Math.floor(episodes), total ?? MAX_EPISODES));
+  const finishedAll = total !== null && watched >= total;
 
   let status: DramaWatchStatusValue = current?.status ?? "WATCHING";
-  if (total !== null && watched >= total) status = "COMPLETED";
-  else if (status === "COMPLETED") status = "WATCHING";
+  if (finishedAll && hasFinishedAiring(drama.status)) status = "COMPLETED";
+  else if (status === "COMPLETED" && !finishedAll) status = "WATCHING";
   else if (watched > 0 && status === "PLAN_TO_WATCH") status = "WATCHING";
 
   await prisma.dramaWatchStatus.upsert({

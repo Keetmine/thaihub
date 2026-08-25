@@ -28,8 +28,6 @@ export const catalog: Dict["catalog"] = {
         of: (watched: number, total: number) => `${watched} из ${total}`,
         plus: "Ещё одна серия",
         minus: "На серию назад",
-        plusOne: "+1 серия",
-        watchedOne: "Отметить ещё одну просмотренную серию",
     },
     watchStatusSet: "Добавить статус просмотра",
     watchStatusIs: (label: string) => `Статус: ${label}`,
