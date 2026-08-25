@@ -9,7 +9,7 @@ import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { searchDramaOptions } from "../dramas/actions";
-import { searchLocationOptions } from "../locations/actions";
+import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
 import DatePickerInput from "@/components/DatePickerInput";
 
 type PairingOption = {
@@ -126,13 +126,20 @@ export default function EventForm({
         </div>
       </div>
 
+      {/* Локацию можно завести прямо здесь: раньше приходилось уходить
+          в /admin/locations и терять заполненную форму события. */}
       <EntitySelect
         name="locationId"
         label="Локация из каталога (необязательно)"
         options={locations}
         defaultValue={v?.locationId}
         placeholder="Не выбрано"
+        createLabel="Создать локацию"
         searchOptions={searchLocationOptions}
+        onCreateNew={async (name) => {
+          const created = await createLocationAndReturn(name);
+          return { id: created.id, name: created.name, photoUrl: created.photoUrl };
+        }}
       />
 
       <div>
