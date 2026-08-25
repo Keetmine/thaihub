@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TicketIcon, TrashIcon } from "@/components/icons";
 import { useT } from "@/components/LocaleProvider";
+import { uploadErrorMessage } from "@/lib/uploadErrors";
 import { setAttendanceTicket, removeAttendanceTicket } from "./ticketActions";
 
 export type TicketRow = {
@@ -31,11 +32,15 @@ export default function TicketSection({ rows }: { rows: TicketRow[] }) {
       fd.append("file", file);
       const res = await fetch("/api/upload-ticket", { method: "POST", body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? t.events.tickets.uploadFailed);
+      // Ручка отдаёт код ошибки, а не фразу — язык страницы ей недоступен.
+      if (!res.ok) {
+        setError(uploadErrorMessage(t, data, t.events.tickets.uploadFailed));
+        return;
+      }
       await setAttendanceTicket(occurrenceId, data.url);
       router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t.events.tickets.uploadFailedLong);
+    } catch {
+      setError(t.events.tickets.uploadFailedLong);
     } finally {
       setBusyId(null);
     }

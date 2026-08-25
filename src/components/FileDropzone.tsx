@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { UploadIcon } from "@/components/icons";
 import { useT } from "@/components/LocaleProvider";
+import { uploadErrorMessage } from "@/lib/uploadErrors";
 
 export default function FileDropzone({
   name,
@@ -34,10 +35,14 @@ export default function FileDropzone({
       body.set("file", file);
       const res = await fetch(endpoint, { method: "POST", body });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? t.widgets.file.failed);
+      // Ручка отдаёт код ошибки, а не фразу — язык страницы ей недоступен.
+      if (!res.ok) {
+        setError(uploadErrorMessage(t, data, t.widgets.file.failed));
+        return;
+      }
       setUrl(data.url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.widgets.file.failed);
+    } catch {
+      setError(t.widgets.file.failed);
     } finally {
       setIsUploading(false);
     }
@@ -81,7 +86,7 @@ export default function FileDropzone({
                 setUrl("");
               }}
             >
-              Убрать
+              {t.widgets.file.remove}
             </button>
           </div>
         ) : (
