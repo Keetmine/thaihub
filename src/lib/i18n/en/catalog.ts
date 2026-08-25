@@ -82,6 +82,11 @@ export const catalog = {
             "Thai BL series: what they are about, who stars in them, when they aired and where they were filmed.",
         title: "Series",
         empty: "Nothing marked yet. Use the search to find a series.",
+        // Подпись справа от заголовка идёт тремя строками, и переносы
+        // прибиты разметкой (макет владельца): три ключа, три абзаца.
+        heroLead1: "Only the series you",
+        heroLead2: "have marked are here.",
+        heroCta: "Not on the list — search by title.",
     },
 
     drama: {

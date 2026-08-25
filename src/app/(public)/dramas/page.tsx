@@ -117,9 +117,23 @@ export default async function DramasPage({
         eyebrow={t.catalog.eyebrow}
         title={t.catalog.dramas.title}
         size="lg"
-        className="mb-5"
+        gapOnTitle
         watermark="Series"
         watermarkNames={watermarkNames}
+        action={
+          // Подпись про наполнение списка — как на актёрах, и на тех же
+          // условиях: только без поискового запроса (в результатах поиска
+          // виден весь каталог, и утверждение было бы неправдой).
+          !q ? (
+            <div className="hero-note">
+              {/* Три абзаца, а не два: перенос первой реплики прибит
+                  разметкой — так в макете владельца. */}
+              <p className="hero-note-lead">{t.catalog.dramas.heroLead1}</p>
+              <p className="hero-note-lead">{t.catalog.dramas.heroLead2}</p>
+              <p className="hero-note-cta">{t.catalog.dramas.heroCta}</p>
+            </div>
+          ) : undefined
+        }
       />
 
       <div className="tab-bar-row">
