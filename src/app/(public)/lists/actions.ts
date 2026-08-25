@@ -209,6 +209,36 @@ export async function createOwnLocation(
   return { ok: true, locationId: location.id, note: note || null };
 }
 
+/** Своё место без всякой привязки — со страницы «Мои места». Список
+ *  теперь необязателен: он просто способ сгруппировать места. */
+export async function createStandalonePlace(formData: FormData): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Войдите, чтобы добавлять места" };
+  const created = await createOwnLocation(formData, user.id);
+  if (!created.ok) return created;
+  revalidatePath("/lists");
+  return { ok: true };
+}
+
+/** То же, но возвращает созданное место — чтобы форма, из которой его
+ *  завели (например выбор места в модалке события), сразу подставила
+ *  его выбранным и не пришлось уходить в другой раздел. */
+export async function createOwnPlaceAndReturn(
+  formData: FormData,
+): Promise<{ ok: true; location: { id: string; name: string } } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Войдите, чтобы добавлять места" };
+  const created = await createOwnLocation(formData, user.id);
+  if (!created.ok) return created;
+  const location = await prisma.location.findUnique({
+    where: { id: created.locationId },
+    select: { id: true, name: true },
+  });
+  if (!location) return { ok: false, error: "Не удалось создать место" };
+  revalidatePath("/lists");
+  return { ok: true, location };
+}
+
 export async function createOwnPlace(listId: string, formData: FormData): Promise<ActionResult> {
   const own = await requireOwnList(listId);
   if (!own) return { ok: false, error: "Список не найден" };
