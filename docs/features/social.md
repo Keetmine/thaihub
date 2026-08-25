@@ -19,12 +19,9 @@ covers "how do I feel about this drama", and having both was redundant.
 Per-drama, MyDramaList-style status (`DramaWatchStatus`, one of
 `WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`) — the one
 per-user "how do I feel about this drama" signal, replacing what would've
-been a favorite. Two UIs:
+been a favorite. One UI:
 
-- **`WatchStatusSelect`** — a full dropdown matching the app's
-  `.performer-select` styling, used on a drama's own detail page where
-  there's room for a labeled control.
-- **`DramaStatusButton`** — a compact icon-button version used everywhere
+- **`DramaStatusButton`** — a compact icon-button used everywhere
   a drama shows up as a row/card (the `/dramas` list, a performer's or
   agency's filmography): a "+" when nothing's set yet, a pencil once it
   is, both opening the same small status-picker dropdown
@@ -41,13 +38,47 @@ been a favorite. Two UIs:
 «все →» на `/dramas`; при пустом списке блок скрыт. Не за подпиской,
 как и весь каталог.
 
+### Прогресс по сериям (Ж6)
+
+`DramaWatchStatus.episodesWatched` — на какой серии человек
+остановился. `null` значит «не отмечал» и отличается от `0` («начал и
+не посмотрел ни одной»): в первом случае полоса не рисуется вовсе.
+Общее число берётся из `Drama.episodes` и тоже бывает неизвестным —
+тогда счётчик работает без верхней границы.
+
+**Счётчик двигает статус**, и это главное в фиче: досмотрел последнюю
+серию — сериал уходит в `COMPLETED`, убавил обратно — возвращается в
+`WATCHING`; отметил серию у того, что лежало в `PLAN_TO_WATCH`, —
+значит уже смотрит. И наоборот: поставил `COMPLETED` руками — счётчик
+догоняет до конца, досчитывать серии после этого человек не должен.
+Без этой связки список «Смотрю сейчас» врёт, а на глаз это не заметно —
+счётчик-то показывает правильное число. Автоматика только предугадывает
+очевидное: поменять статус руками после неё по-прежнему можно.
+
+Показывается в двух местах (`EpisodeProgress`):
+
+- **страница сериала** — счётчик «− 5 из 22 +» с полосой, только когда
+  статус уже стоит: у сериала, который человек не смотрит, прогресс
+  ничего не значит;
+- **карточка в «Смотрю сейчас»** — тонкая полоса внутри `PosterTile`
+  плюс кнопка «+1 серия» под ней. Полоса именно внутри карточки, а
+  кнопка снаружи: вся карточка это ссылка, кнопку внутрь `<a>` класть
+  нельзя. Досмотрел всё — кнопка исчезает вместе с самим сериалом из
+  этого списка.
+
+Число рисуется оптимистично, до ответа сервера — нажал плюс, увидел
+сразу; `router.refresh()` следом подтягивает остальное. Поэтому
+компонент подравнивает своё состояние под пришедший prop прямо в
+рендере: значение могло измениться и не отсюда (например, статус
+переставили на «Просмотрено», и сервер досчитал серии до конца).
+
 `getDramaWatchStatuses(dramaIds, userId)` in `src/lib/favorites.ts` batch-
 loads a `Map<dramaId, status>` for a page's rows (same shape as
 `getFavoritedEventIds`) — deliberately *not* in `src/lib/watchStatus.ts`,
-which stays free of any server-only import (Prisma) since client
-components (`WatchStatusSelect`, `DramaStatusButton`) pull
-`WATCH_STATUS_ORDER` from it. The labels themselves live in the
-dictionary (`t.catalog.watchStatus`), not in that module.
+which stays free of any server-only import (Prisma) since the client
+component `DramaStatusButton` pulls `WATCH_STATUS_ORDER` from it. The
+labels themselves live in the dictionary (`t.catalog.watchStatus`), not
+in that module.
 
 `/dramas` filters by this status via a `.tab-bar-row` — "Все" plus one
 tab per `WATCH_STATUS_ORDER` entry, with the title search in the same

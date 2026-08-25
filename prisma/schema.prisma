@@ -561,6 +561,12 @@ model DramaWatchStatus {
   userId    String
   dramaId   String
   status    WatchStatus
+  // На какой серии человек остановился. null — не отмечал: это не то же
+  // самое, что 0 («начал и не посмотрел ни одной»), и прогресс-бар в
+  // первом случае не рисуется вовсе. Общее число серий берётся из
+  // Drama.episodes и тоже бывает неизвестным — тогда счётчик работает
+  // без верхней границы.
+  episodesWatched Int?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   drama     Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
   updatedAt DateTime @updatedAt

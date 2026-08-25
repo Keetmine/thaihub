@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import { EpisodeProgressBar } from "@/components/EpisodeProgress";
 
 /** Постерная карточка (.poster-tile в globals.css): изображение фоном,
  *  текст поверх градиента, опциональный чип в углу. Без постера —
@@ -9,12 +10,16 @@ export default function PosterTile({
   title,
   subtitle,
   chip,
+  progress,
 }: {
   href: string;
   posterUrl: string | null;
   title: string;
   subtitle?: string | null;
   chip?: string | null;
+  /** Прогресс по сериям — тонкая полоса над подписью. Только показ:
+   *  вся карточка это ссылка, кнопку внутрь неё класть нельзя. */
+  progress?: { watched: number; total: number; label: string } | null;
 }) {
   return (
     <AppLink href={href} className="poster-tile">
@@ -32,6 +37,13 @@ export default function PosterTile({
         </span>
       )}
       <span className="poster-tile-body">
+        {progress && (
+          <EpisodeProgressBar
+            watched={progress.watched}
+            total={progress.total}
+            label={progress.label}
+          />
+        )}
         <span className="font-display fw-medium text-white d-block text-truncate">
           {title}
         </span>

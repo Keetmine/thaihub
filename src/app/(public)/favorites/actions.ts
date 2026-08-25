@@ -80,14 +80,74 @@ export async function setDramaWatchStatus(dramaId: string, status: DramaWatchSta
   if (!user) redirect("/login");
   if (!WATCH_STATUSES.includes(status)) throw new Error("Некорректный статус");
 
+  // «Просмотрено» вручную — значит просмотрено всё: досчитывать серии
+  // после этого человек не должен. Если число серий неизвестно, оставляем
+  // счётчик как есть — врать нечем.
+  const total =
+    status === "COMPLETED"
+      ? (await prisma.drama.findUnique({ where: { id: dramaId }, select: { episodes: true } }))
+          ?.episodes ?? null
+      : null;
+
   await prisma.dramaWatchStatus.upsert({
     where: { userId_dramaId: { userId: user.id, dramaId } },
-    update: { status },
-    create: { userId: user.id, dramaId, status },
+    update: { status, ...(total ? { episodesWatched: total } : {}) },
+    create: { userId: user.id, dramaId, status, episodesWatched: total },
   });
 
+  revalidatePath("/");
   revalidatePath("/account");
   revalidatePath(`/dramas/${dramaId}`);
+}
+
+/** Верхняя граница, когда число серий у сериала неизвестно: счётчик всё
+ *  равно должен быть конечным, иначе форма примет любое число. */
+const MAX_EPISODES = 9999;
+
+/**
+ * Отметить, на какой серии человек остановился.
+ *
+ * Заодно двигает статус, потому что иначе список «Смотрю сейчас» врёт:
+ * досмотрел последнюю — сериал уходит в «Просмотрено», убавил обратно —
+ * возвращается в «Смотрю сейчас». Отметил серию у того, что лежало в
+ * планах, — значит уже смотрит. Руками статус после этого поменять
+ * по-прежнему можно: автоматика только предугадывает очевидное.
+ */
+export async function setDramaEpisodesWatched(
+  dramaId: string,
+  episodes: number,
+): Promise<{ watched: number; status: DramaWatchStatusValue }> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!Number.isFinite(episodes)) throw new Error("Некорректное число серий");
+
+  const [drama, current] = await Promise.all([
+    prisma.drama.findUnique({ where: { id: dramaId }, select: { episodes: true } }),
+    prisma.dramaWatchStatus.findUnique({
+      where: { userId_dramaId: { userId: user.id, dramaId } },
+      select: { status: true },
+    }),
+  ]);
+  if (!drama) throw new Error("Сериал не найден");
+
+  const total = drama.episodes ?? null;
+  const watched = Math.max(0, Math.min(Math.floor(episodes), total ?? MAX_EPISODES));
+
+  let status: DramaWatchStatusValue = current?.status ?? "WATCHING";
+  if (total !== null && watched >= total) status = "COMPLETED";
+  else if (status === "COMPLETED") status = "WATCHING";
+  else if (watched > 0 && status === "PLAN_TO_WATCH") status = "WATCHING";
+
+  await prisma.dramaWatchStatus.upsert({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    update: { episodesWatched: watched, status },
+    create: { userId: user.id, dramaId, status, episodesWatched: watched },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/account");
+  revalidatePath(`/dramas/${dramaId}`);
+  return { watched, status };
 }
 
 export async function clearDramaWatchStatus(dramaId: string) {

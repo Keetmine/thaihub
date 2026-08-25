@@ -25,6 +25,16 @@ export const catalog = {
         DROPPED: "Dropped",
     },
     watchStatusNone: "Not marked",
+
+    /** Ж6: на какой серии человек остановился. */
+    episodes: {
+        label: "Episodes",
+        of: (watched: number, total: number) => `${watched} / ${total}`,
+        plus: "One more episode",
+        minus: "One episode back",
+        plusOne: "+1 episode",
+        watchedOne: "Mark one more episode as watched",
+    },
     watchStatusSet: "Set a watch status",
     watchStatusIs: (label: string) => `Status: ${label}`,
 

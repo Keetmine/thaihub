@@ -13,6 +13,7 @@ import { userDisplayName } from "@/lib/userProfile";
 import LetterAvatar from "@/components/LetterAvatar";
 import PageHeader from "@/components/PageHeader";
 import PosterTile from "@/components/PosterTile";
+import EpisodeProgress from "@/components/EpisodeProgress";
 import EmptyState from "@/components/EmptyState";
 import LandingPage from "./LandingPage";
 
@@ -102,8 +103,16 @@ export default async function HomePage() {
     prisma.dramaWatchStatus.findMany({
       where: { userId: user.id, status: "WATCHING" },
       select: {
+        episodesWatched: true,
         drama: {
-          select: { id: true, slug: true, title: true, posterUrl: true, year: true },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            posterUrl: true,
+            year: true,
+            episodes: true,
+          },
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -367,13 +376,30 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="row g-3 stagger">
-              {watchingNow.map(({ drama }) => (
+              {watchingNow.map(({ drama, episodesWatched }) => (
                 <div key={drama.id} className="col-4 col-lg-6">
                   <PosterTile
                     href={dramaHref(drama)}
                     posterUrl={drama.posterUrl}
                     title={drama.title}
                     subtitle={drama.year ? String(drama.year) : undefined}
+                    progress={
+                      drama.episodes && episodesWatched != null
+                        ? {
+                            watched: episodesWatched,
+                            total: drama.episodes,
+                            label: dict.catalog.episodes.of(episodesWatched, drama.episodes),
+                          }
+                        : null
+                    }
+                  />
+                  {/* Отметить серию — отсюда, без захода на страницу:
+                      ровно это человек и делает, досмотрев серию. */}
+                  <EpisodeProgress
+                    dramaId={drama.id}
+                    total={drama.episodes}
+                    watched={episodesWatched}
+                    compact
                   />
                 </div>
               ))}

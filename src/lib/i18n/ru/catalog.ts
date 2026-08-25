@@ -21,6 +21,16 @@ export const catalog: Dict["catalog"] = {
         DROPPED: "Заброшено",
     },
     watchStatusNone: "Не отмечено",
+
+    /** Ж6: на какой серии человек остановился. */
+    episodes: {
+        label: "Серии",
+        of: (watched: number, total: number) => `${watched} из ${total}`,
+        plus: "Ещё одна серия",
+        minus: "На серию назад",
+        plusOne: "+1 серия",
+        watchedOne: "Отметить ещё одну просмотренную серию",
+    },
     watchStatusSet: "Добавить статус просмотра",
     watchStatusIs: (label: string) => `Статус: ${label}`,
 

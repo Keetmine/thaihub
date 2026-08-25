@@ -3134,6 +3134,70 @@ details.admin-section[open] > summary.admin-section-head::before {
   left: 0.7rem;
   z-index: 1;
 }
+
+/* ============================================================
+   Ж6: прогресс по сериям
+   ============================================================ */
+
+/* Полоса. Одна и та же и в карточке, и на странице сериала — тонкая,
+   чтобы в карточке не спорить с названием поверх постера. */
+.episode-progress-bar {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.episode-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgb(var(--accent-rgb));
+  transition: width 0.25s ease;
+}
+
+/* В карточке полоса лежит над подписью, внутри градиента. */
+.poster-tile-body .episode-progress-bar {
+  margin-bottom: 0.4rem;
+}
+
+.episode-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.episode-progress-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--bs-secondary-bg);
+  border-radius: 999px;
+  padding: 0.15rem;
+}
+.episode-progress-step {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bs-body-color);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.episode-progress-step:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.18);
+  color: rgb(var(--accent-rgb));
+}
+.episode-progress-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.episode-progress-count {
+  min-width: 4.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
 /* Фолбэк без постера: крупная первая буква на тёплом градиенте. */
 .poster-tile-fallback {
   position: absolute;

@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
+import EpisodeProgress from "@/components/EpisodeProgress";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
 import SynopsisFold from "@/components/SynopsisFold";
@@ -242,6 +243,18 @@ export default async function DramaDetailPage({
           <DramaStatusButton dramaId={drama.id} status={watchStatus?.status ?? null} />
         )}
       </div>
+
+      {/* Ж6: счётчик серий появляется, только когда сериал уже отмечен —
+          у того, что человек не смотрит, прогресс ничего не значит. */}
+      {currentUser && watchStatus && (
+        <div className="mb-4" style={{ maxWidth: "22rem" }}>
+          <EpisodeProgress
+            dramaId={drama.id}
+            total={drama.episodes}
+            watched={watchStatus.episodesWatched}
+          />
+        </div>
+      )}
 
       {/* Э2ф: страница длинная — якорные чипы к ключевым секциям, чтобы
           важное не требовало слепого скролла. Один чип «Отзывы» без
