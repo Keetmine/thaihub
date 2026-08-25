@@ -1539,20 +1539,23 @@ input[type="time"]::-webkit-calendar-picker-indicator {
    quick-scroll index (Contacts/Notes-style) rather than a boxed sidebar. */
 .performers-index {
   /* Список скроллится окном (внутреннего скролл-контейнера больше нет),
-     так что липнем к вьюпорту — по его ЦЕНТРУ: у верхней кромки буквы
-     прятались под закреплённый навбар. top: 50vh + сдвиг на половину
-     собственной высоты держат рейку посередине экрана; max-height с
-     overflow — страховка для очень длинного алфавита. */
+     так что липнем к вьюпорту. Буквы стоят по ЦЕНТРУ экрана, но
+     центрирование сделано ВНУТРИ колонки — сама колонка занимает высоту
+     вьюпорта под шапкой, а буквы центрируются в ней justify-content.
+     Раньше тут было top: 50vh + transform: translateY(-50%): трансформа
+     не ограничена контейнером и поднимала рейку на пол-высоты ВЫШЕ её
+     колонки — на /locations буквы ложились поверх кнопок шапки и поля
+     поиска. */
   position: sticky;
-  top: 50vh;
-  transform: translateY(-50%);
+  top: 6rem;
   align-self: start;
   min-width: 0;
-  max-height: 80vh;
+  height: calc(100vh - 8rem);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.15rem;
   scrollbar-width: none;
 }
