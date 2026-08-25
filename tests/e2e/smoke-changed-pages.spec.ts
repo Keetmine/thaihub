@@ -38,12 +38,22 @@ test.describe("страницы после перестройки импорто
     await expect(page).toHaveURL(/log=runs.*status=FAILED/);
   });
 
-  test("импорт с ThaiTicketMajor открывается по новому адресу", async ({ page }) => {
-    await page.goto("/admin/imports/ttm");
+  test("импорт с ThaiTicketMajor живёт на странице импортов", async ({ page }) => {
+    // Раньше это была отдельная страница /admin/imports/ttm; форму
+    // встроили в общий список, разложенный по темам.
+    await page.goto("/admin/imports");
     await expect(
-      page.getByRole("heading", { name: "Импорт с ThaiTicketMajor" }),
+      page.getByRole("heading", { name: "ThaiTicketMajor: импорт события" }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /Импорты/ }).first()).toBeVisible();
+    await expect(
+      page.getByPlaceholder("https://www.thaiticketmajor.com/concert/..."),
+    ).toBeVisible();
+    // Заголовки-группы: импорты разложены по тому, что они заводят.
+    for (const group of ["Актёры и артисты", "Сериалы", "События", "Локации"]) {
+      // exact: заголовок группы «События» иначе совпадает и с
+      // «ThaiTicketMajor: импорт события».
+      await expect(page.getByRole("heading", { name: group, exact: true })).toBeVisible();
+    }
   });
 
   test("модерация: жалобы фильтруются по состоянию", async ({ page }) => {

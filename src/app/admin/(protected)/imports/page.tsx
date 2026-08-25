@@ -10,6 +10,7 @@ import { runMdlDramaImport,
 import RunningImportsWatcher from "./RunningImportsWatcher";
 import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import StopImportButton from "./StopImportButton";
+import TtmImportFlow from "./ttm/TtmImportFlow";
 import SubmitButton from "@/components/admin/SubmitButton";
 import Pagination from "@/components/Pagination";
 import { DENSE_PAGE_SIZE } from "@/lib/pagination";
@@ -120,12 +121,11 @@ export default async function AdminImportsPage({
         Импорты
       </h1>
 
-      <div className="d-flex flex-wrap gap-2 mb-4">
-        <Link href="/admin/imports/ttm" className="btn btn-ghost btn-sm">Импорт события с TTM →</Link>
-      </div>
-
-      {/* Карточки импортов в ряд: раздельные широкие блоки заставляли
-          скроллить между ними. */}
+      {/* Карточки разложены по темам: раньше это была ровная стопка, и
+          глазами приходилось искать нужный импорт по названию
+          источника, а не по тому, что он заводит. */}
+      <h2 className="eyebrow mt-4 mb-2">Актёры и артисты</h2>
+      <p className="small text-secondary mb-3">Карточка человека: профиль, соцсети, дискография.</p>
       <div className="row g-3 mb-4">
         <div className="col-12 col-xl-6">
           <div className="surface p-4 h-100">
@@ -248,7 +248,11 @@ export default async function AdminImportsPage({
             </form>
           </div>
         </div>
+      </div>
 
+      <h2 className="eyebrow mt-4 mb-2">Сериалы</h2>
+      <p className="small text-secondary mb-3">Карточка сериала и его состав.</p>
+      <div className="row g-3 mb-4">
         <div className="col-12 col-xl-6">
           <div className="surface p-4 h-100">
             <h2 className="section-heading mb-2">MyDramaList: импорт сериала</h2>
@@ -278,7 +282,29 @@ export default async function AdminImportsPage({
             </form>
           </div>
         </div>
+      </div>
 
+      <h2 className="eyebrow mt-4 mb-2">События</h2>
+      <p className="small text-secondary mb-3">Афиша: концерты и фан-миты.</p>
+      <div className="row g-3 mb-4">
+        <div className="col-12">
+          <div className="surface p-4 h-100">
+            <h2 className="section-heading mb-2">ThaiTicketMajor: импорт события</h2>
+            <p className="small text-secondary mb-3">
+              Ссылка на страницу события — подтянем название, место, дату, цену
+              и список артистов. Исполнителей с уже существующим ником просто
+              привяжем к событию, остальных создадим как новых после вашего
+              подтверждения. Раньше это была отдельная страница: импорт, до
+              которого надо идти по ссылке, легко не заметить.
+            </p>
+            <TtmImportFlow performers={[]} dramas={[]} />
+          </div>
+        </div>
+      </div>
+
+      <h2 className="eyebrow mt-4 mb-2">Локации</h2>
+      <p className="small text-secondary mb-3">Места съёмок.</p>
+      <div className="row g-3 mb-4">
         <div className="col-12 col-xl-6">
           <div className="surface p-4 h-100">
             <h2 className="section-heading mb-2">blscene: новые локации съёмок</h2>
@@ -295,6 +321,7 @@ export default async function AdminImportsPage({
           </div>
         </div>
       </div>
+
 
       <RunningImportsWatcher hasRunning={!!runningRun} />
 

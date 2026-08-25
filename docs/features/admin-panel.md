@@ -58,13 +58,19 @@
   цифры (активные подписки, MRR, «получено всего») считаются отдельными
   запросами по всем данным (count/aggregate), а не из показанной
   страницы журнала — от перелистывания не меняются.
-- **Импорты** (`/admin/imports`) — точка входа во все импорты: карточки
-  «MyDramaList: актёр» (см. [mydramalist-import.md](mydramalist-import.md)),
-  «tpop.fandom: артист» ([tpop-agency-import.md](tpop-agency-import.md)),
-  «YouTube Music: дискография»
-  ([youtube-music-import.md](youtube-music-import.md)) и импорт события
-  с ThaiTicketMajor (`/admin/imports/ttm` — переехал из `/admin/events`,
-  чтобы все импорты жили в одном разделе).
+- **Импорты** (`/admin/imports`) — точка входа во все импорты. Карточки разложены по тому,
+  **что они заводят**, а не по источнику: «Актёры и артисты»
+  (MyDramaList — см. [mydramalist-import.md](mydramalist-import.md),
+  tpop.fandom — [tpop-agency-import.md](tpop-agency-import.md),
+  YouTube Music — [youtube-music-import.md](youtube-music-import.md)),
+  «Сериалы» (MyDramaList), «События» (ThaiTicketMajor), «Локации»
+  (blscene — [blscene-import.md](blscene-import.md)). Раньше это была
+  ровная стопка карточек, и нужный импорт приходилось искать глазами по
+  названию источника.
+
+  Мастер ThaiTicketMajor (`TtmImportFlow`) **встроен прямо в страницу**;
+  отдельного адреса `/admin/imports/ttm` больше нет — импорт, до
+  которого надо идти по ссылке, легко не заметить.
 
   Ниже — два журнала **отдельными вкладками**, у каждой своя пагинация
   по 20: «Последнее спарсенное» (`ImportedItem` — что именно импортёры

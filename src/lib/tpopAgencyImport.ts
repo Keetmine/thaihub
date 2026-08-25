@@ -263,7 +263,8 @@ async function guessTtmEvent(title: string): Promise<TtmEvent | null> {
 }
 
 /** Создаёт событие из спарсенных TTM-данных (та же логика полей, что и
- *  ручной импорт /admin/imports/ttm, но без ревью-экрана). */
+ *  ручной импорт с ThaiTicketMajor в /admin/imports, но без
+ *  ревью-экрана). */
 async function createEventFromTtm(
   ctx: Ctx,
   performerId: string,

@@ -85,9 +85,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="d-flex flex-column min-vh-100">
         <ServiceWorkerRegistrar />
         {children}
-        {/* Баннер согласия + аналитика: Метрика грузится только после
-            «Принять все» (см. CookieConsent). */}
-        <CookieConsent metrikaId={process.env.YANDEX_METRIKA_ID ?? null} />
+        {/* Баннер согласия + аналитика: Метрика и Google Tag Manager
+            грузятся только после «Принять все» (см. CookieConsent). */}
+        <CookieConsent
+          metrikaId={process.env.YANDEX_METRIKA_ID ?? null}
+          gtmId={process.env.GTM_ID ?? null}
+        />
       </body>
     </html>
   );
