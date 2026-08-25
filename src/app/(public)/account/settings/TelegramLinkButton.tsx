@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
 import TelegramLoginButton, { type TelegramAuthResult } from "@/components/TelegramLoginButton";
 import TelegramRelinkDialog, { type RelinkInfo } from "./TelegramRelinkDialog";
 
@@ -18,6 +19,7 @@ import TelegramRelinkDialog, { type RelinkInfo } from "./TelegramRelinkDialog";
  * ли его.
  */
 export default function TelegramLinkButton({ botUsername }: { botUsername: string }) {
+  const t = useT();
   const router = useRouter();
   const [relink, setRelink] = useState<{ auth: string; info: RelinkInfo } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +39,12 @@ export default function TelegramLinkButton({ botUsername }: { botUsername: strin
       } else if (data.status === "relink") {
         setRelink({ auth: data.auth, info: data.info });
       } else if (data.status === "unauthorized") {
-        setError("Сессия истекла — войдите заново.");
+        setError(t.account.settings.telegramSessionExpired);
       } else {
-        setError("Telegram не подтвердил вход. Попробуйте ещё раз.");
+        setError(t.account.settings.telegramNotConfirmed);
       }
     } catch {
-      setError("Не удалось связаться с сервером. Попробуйте ещё раз.");
+      setError(t.account.settings.telegramServerError);
     } finally {
       setBusy(false);
     }
@@ -51,7 +53,9 @@ export default function TelegramLinkButton({ botUsername }: { botUsername: strin
   return (
     <>
       <TelegramLoginButton botUsername={botUsername} mode="link" onAuth={handleAuth} />
-      {busy && <p className="small text-secondary mt-2 mb-0">Привязываем…</p>}
+      {busy && (
+        <p className="small text-secondary mt-2 mb-0">{t.account.settings.telegramLinking}</p>
+      )}
       {error && <p className="small text-danger mt-2 mb-0">{error}</p>}
       {relink && (
         <TelegramRelinkDialog

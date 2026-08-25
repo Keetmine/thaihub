@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
@@ -9,16 +9,19 @@ import { PinIcon } from "@/components/icons";
 import { dramaHref } from "@/lib/dramaSlug";
 import { locationHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
-import { LOCATION_CATEGORIES, categoryLabel, isLocationCategory } from "@/lib/locationCategories";
+import { LOCATION_CATEGORIES, isLocationCategory } from "@/lib/locationCategories";
+import { getT } from "@/lib/i18n";
 import type { LocationCategory } from "@/generated/prisma/client";
 import CreateOwnPlaceButton from "@/app/(public)/lists/[id]/CreateOwnPlaceButton";
 
-export const metadata = pageMetadata({
-  title: "Локации съёмок",
-  description:
-    "Места съёмок тайских BL-сериалов: адреса, карта и сериалы, которые там снимали.",
-  path: "/locations",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.catalog.locations.metaTitle,
+    description: t.catalog.locations.metaDescription,
+    path: "/locations",
+  });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,7 @@ export default async function LocationsPage({
 }: {
   searchParams: Promise<{ q?: string; group?: string; cat?: string; list?: string }>;
 }) {
+  const { t } = await getT();
   const { q: rawQ, group: rawGroup, cat: rawCat, list: rawList } = await searchParams;
   const q = (rawQ ?? "").trim();
   // Фильтр по категории места: кафе, магазины, фотозоны…
@@ -77,71 +81,71 @@ export default async function LocationsPage({
   return (
     <div>
       <PageHeader
-        eyebrow="Каталог"
-        title="Локации"
+        eyebrow={t.catalog.eyebrow}
+        title={t.catalog.locations.title}
         size="lg"
         watermark="Places"
         className="mb-5"
         action={
           <>
-            <Link
+            <AppLink
               href="/locations/map"
               className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
             >
               <PinIcon />
-              На карте
-            </Link>
-            <Link href="/lists" className="btn btn-ghost btn-sm">
-              Мои места и списки →
-            </Link>
+              {t.catalog.locations.onMap}
+            </AppLink>
+            <AppLink href="/lists" className="btn btn-ghost btn-sm">
+              {t.catalog.locations.myPlacesLink}
+            </AppLink>
           </>
         }
       />
 
       <div className="tab-bar-row">
         <div className="tab-bar">
-          <Link
+          <AppLink
             href={`/locations?${q ? `q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
             className={`tab-bar-item ${!groupByDrama && !showMine ? "active" : ""}`}
           >
-            По алфавиту
-          </Link>
-          <Link
+            {t.catalog.locations.tabAlphabet}
+          </AppLink>
+          <AppLink
             href={`/locations?group=drama${q ? `&q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
             className={`tab-bar-item ${groupByDrama ? "active" : ""}`}
           >
-            По сериалам
-          </Link>
+            {t.catalog.locations.tabByDrama}
+          </AppLink>
           {/* Вкладки — конкретные списки пользователя: «мои места» одной
               кучей ничего не говорят, а «Бангкок» или «Кафе из сериалов» —
               говорят. Плюс общая вкладка со всеми своими местами, если
               что-то создано вне списков. */}
           {myLists.map((l) => (
-            <Link
+            <AppLink
               key={l.id}
               href={`/locations?list=${l.id}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
               prefetch={false}
               className={`tab-bar-item ${activeListId === l.id ? "active" : ""}`}
             >
               {l.title} ({l._count.items})
-            </Link>
+            </AppLink>
           ))}
           {currentUser && myPlacesCount > 0 && (
-            <Link
+            <AppLink
               href={`/locations?group=mine${q ? `&q=${encodeURIComponent(q)}` : ""}`}
               prefetch={false}
               className={`tab-bar-item ${showMine ? "active" : ""}`}
             >
-              Все мои места ({myPlacesCount})
-            </Link>
+              {t.catalog.locations.tabAllMine(myPlacesCount)}
+            </AppLink>
           )}
         </div>
         <NameSearchBox
           action="/locations"
           q={q}
-          placeholder="Поиск по названию…"
+          placeholder={t.catalog.searchByTitle}
           hiddenFields={
             groupByDrama
               ? { group: "drama" }
@@ -161,17 +165,20 @@ export default async function LocationsPage({
           спорит с самой группировкой. */}
       {!groupByDrama && availableCategories.length > 0 && (
         <div className="d-flex flex-wrap gap-2 mb-3">
-          <Link href={categoryHref(null)} className={`nav-chip ${!category ? "is-active" : ""}`}>
-            Все
-          </Link>
+          <AppLink
+            href={categoryHref(null)}
+            className={`nav-chip ${!category ? "is-active" : ""}`}
+          >
+            {t.catalog.all}
+          </AppLink>
           {availableCategories.map((c) => (
-            <Link
+            <AppLink
               key={c.value}
               href={categoryHref(c.value)}
               className={`nav-chip ${category === c.value ? "is-active" : ""}`}
             >
-              {c.emoji} {c.label}
-            </Link>
+              {c.emoji} {t.catalog.locationCategory[c.value]}
+            </AppLink>
           ))}
         </div>
       )}
@@ -203,6 +210,7 @@ async function LocationsAlphabetical({
   currentUser: { id: string } | null;
   category: LocationCategory | null;
 }) {
+  const { t } = await getT();
   // Отдаём весь список, но данными, а не разметкой: строки собирает
   // клиент (AlphabetDataList). Так переход по букве остаётся обычным
   // скроллом, а страница весит десятки килобайт вместо мегабайта.
@@ -220,7 +228,7 @@ async function LocationsAlphabetical({
 
   return (
     <AlphabetDataList
-      emptyMessage="Пока нет локаций."
+      emptyMessage={t.catalog.locations.empty}
       showVisitedButton
       variant="cards"
       cardAspect="4 / 3"
@@ -229,7 +237,7 @@ async function LocationsAlphabetical({
         name: l.name,
         href: locationHref(l),
         photoUrl: l.photoUrl,
-        subtitle: categoryLabel(l.category),
+        subtitle: l.category ? t.catalog.locationCategory[l.category] : null,
         visited: visitedIds.has(l.id),
       }))}
     />
@@ -243,6 +251,7 @@ async function LocationsByDrama({
   q: string;
   currentUser: { id: string } | null;
 }) {
+  const { t } = await getT();
   const locationNameFilter = q
     ? { name: { contains: q, mode: "insensitive" as const } }
     : {};
@@ -285,7 +294,7 @@ async function LocationsByDrama({
   const visitedIds = await getVisitedIds(currentUser, allLocationIds);
 
   if (dramas.length === 0 && locationsWithoutDrama.length === 0) {
-    return <p className="text-secondary">Пока нет локаций.</p>;
+    return <p className="text-secondary">{t.catalog.locations.empty}</p>;
   }
 
   return (
@@ -339,11 +348,12 @@ async function UserPlaceList({
   q: string;
   category: LocationCategory | null;
 }) {
+  const { t } = await getT();
   const list = await prisma.placeList.findFirst({
     where: { id: listId, userId },
     select: { id: true, title: true },
   });
-  if (!list) return <p className="text-secondary">Список не найден.</p>;
+  if (!list) return <p className="text-secondary">{t.catalog.locations.listNotFound}</p>;
 
   const items = await prisma.placeListItem.findMany({
     where: {
@@ -367,13 +377,13 @@ async function UserPlaceList({
     <>
       <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
         <CreateOwnPlaceButton listId={list.id} />
-        <Link href={`/lists/${list.id}`} className="small text-secondary">
-          Открыть список целиком →
-        </Link>
+        <AppLink href={`/lists/${list.id}`} className="small text-secondary">
+          {t.catalog.locations.openWholeList}
+        </AppLink>
       </div>
       <AlphabetDataList
         emptyMessage={
-          q || category ? "Ничего не найдено." : "В этом списке пока нет мест."
+          q || category ? t.common.nothingFound : t.catalog.locations.emptyList
         }
         showVisitedButton
         variant="cards"
@@ -383,7 +393,7 @@ async function UserPlaceList({
           name: l.name,
           href: locationHref(l),
           photoUrl: l.photoUrl,
-          subtitle: categoryLabel(l.category),
+          subtitle: l.category ? t.catalog.locationCategory[l.category] : null,
           visited: visitedIds.has(l.id),
         }))}
       />
@@ -400,6 +410,7 @@ async function MyPlaces({
   userId: string;
   category: LocationCategory | null;
 }) {
+  const { t } = await getT();
   // Собственные места пользователя (созданные из списков по ссылке
   // Google Maps) — каталог их не показывает, тут им отдельная вкладка.
   const places = await prisma.location.findMany({
@@ -417,14 +428,16 @@ async function MyPlaces({
   return (
     <>
       <p className="small text-secondary mb-3">
-        Места, которые вы добавили сами. Новое место заводится в разделе{" "}
-        <Link href="/lists" className="link-body-emphasis">
-          «Мои места»
-        </Link>{" "}
-        — список для этого не нужен.
+        {t.catalog.locations.myPlacesHintBefore}
+        <AppLink href="/lists" className="link-body-emphasis">
+          {t.catalog.locations.myPlacesHintLink}
+        </AppLink>
+        {t.catalog.locations.myPlacesHintAfter}
       </p>
       <AlphabetDataList
-        emptyMessage={q || category ? "Ничего не найдено." : "Своих мест пока нет."}
+        emptyMessage={
+          q || category ? t.common.nothingFound : t.catalog.locations.emptyMine
+        }
         showVisitedButton
         variant="cards"
         cardAspect="4 / 3"
@@ -433,7 +446,7 @@ async function MyPlaces({
           name: l.name,
           href: locationHref(l),
           photoUrl: l.photoUrl,
-          subtitle: categoryLabel(l.category),
+          subtitle: l.category ? t.catalog.locationCategory[l.category] : null,
           visited: visitedIds.has(l.id),
         }))}
       />

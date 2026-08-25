@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import SourcesBlock from "@/components/SourcesBlock";
 import BackLink from "@/components/BackLink";
 import DetailHero from "@/components/DetailHero";
@@ -9,24 +9,29 @@ import FavoriteButton from "@/components/FavoriteButton";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import NameSearchBox from "@/components/NameSearchBox";
 import { getDramaWatchStatuses } from "@/lib/favorites";
-import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
+import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const { t } = await getT();
   const agency = await prisma.agency.findFirst({
     where: slugOrIdWhere(id),
     select: { name: true, description: true, logoUrl: true, slug: true },
   });
-  if (!agency) return pageMetadata({ title: "Агентство", description: "Агентство не найдено." });
+  if (!agency)
+    return pageMetadata({
+      title: t.catalog.agency.metaTitle,
+      description: t.catalog.agency.metaNotFound,
+    });
   return pageMetadata({
     title: agency.name,
     description:
-      agency.description?.slice(0, 160) ??
-      `${agency.name}: артисты агентства, их сериалы и события на MyBLHub.`,
+      agency.description?.slice(0, 160) ?? t.catalog.agency.metaDescription(agency.name),
     path: `/agencies/${agency.slug ?? id}`,
     image: agency.logoUrl,
   });
@@ -42,6 +47,7 @@ export default async function AgencyDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tab?: string; q?: string }>;
 }) {
+  const { t } = await getT();
   const [{ id: rawParam }, { tab: rawTab, q: rawQ }] = await Promise.all([
     params,
     searchParams,
@@ -104,7 +110,10 @@ export default async function AgencyDetailPage({
 
   return (
     <div>
-      <BackLink fallbackHref="/artists?view=agencies" fallbackLabel="← Все агентства" />
+      <BackLink
+        fallbackHref="/artists?view=agencies"
+        fallbackLabel={t.catalog.agency.back}
+      />
 
       {/* Иммерсивный hero (Э2) вместо плоской шапки. Без photoUrl —
           осознанно: квадратное лого в карточке 3/4 обрезается по бокам
@@ -116,10 +125,14 @@ export default async function AgencyDetailPage({
           chips={
             <>
               {allPerformers.length > 0 && (
-                <span className="date-chip">артистов: {allPerformers.length}</span>
+                <span className="date-chip">
+                  {t.catalog.agency.artistCount(allPerformers.length)}
+                </span>
               )}
               {agency.dramas.length > 0 && (
-                <span className="date-chip">сериалов: {agency.dramas.length}</span>
+                <span className="date-chip">
+                  {t.catalog.agency.seriesCount(agency.dramas.length)}
+                </span>
               )}
             </>
           }
@@ -152,26 +165,28 @@ export default async function AgencyDetailPage({
 
       <div className="tab-bar-row">
         <div className="tab-bar">
-          <Link
+          <AppLink
             href={q ? `${href}?q=${encodeURIComponent(q)}` : href}
             prefetch={false}
             className={`tab-bar-item ${tab === "performers" ? "active" : ""}`}
           >
-            Артисты ({allPerformers.length})
-          </Link>
-          <Link
+            {t.catalog.agency.tabArtists(allPerformers.length)}
+          </AppLink>
+          <AppLink
             href={`${href}?tab=dramas${q ? `&q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
             className={`tab-bar-item ${tab === "dramas" ? "active" : ""}`}
           >
-            Сериалы ({agency.dramas.length})
-          </Link>
+            {t.catalog.agency.tabSeries(agency.dramas.length)}
+          </AppLink>
         </div>
         <NameSearchBox
           action={href}
           q={q}
           hiddenFields={tab === "dramas" ? { tab } : undefined}
-          placeholder={tab === "dramas" ? "Поиск по названию…" : "Поиск по имени…"}
+          placeholder={
+            tab === "dramas" ? t.catalog.searchByTitle : t.catalog.searchByName
+          }
           className=""
         />
       </div>
@@ -179,7 +194,7 @@ export default async function AgencyDetailPage({
       {tab === "performers" ? (
         performers.length === 0 ? (
           <p className="small text-secondary mb-4">
-            {q ? "Никого не нашлось." : "Пока нет артистов."}
+            {q ? t.catalog.agency.noArtistsFound : t.catalog.agency.emptyArtists}
           </p>
         ) : (
           // Компактная сетка карточек (как постеры сериалов на странице
@@ -192,7 +207,7 @@ export default async function AgencyDetailPage({
                 className="flex-shrink-0"
                 style={{ width: "8.5rem", position: "relative" }}
               >
-                <Link href={performerHref(p)} className="text-decoration-none d-block">
+                <AppLink href={performerHref(p)} className="text-decoration-none d-block">
                   <div
                     style={{
                       width: "100%",
@@ -221,7 +236,7 @@ export default async function AgencyDetailPage({
                       ({p.realName})
                     </p>
                   )}
-                </Link>
+                </AppLink>
                 <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
                   <FavoriteButton
                     kind="performer"
@@ -236,7 +251,7 @@ export default async function AgencyDetailPage({
         )
       ) : dramas.length === 0 ? (
         <p className="small text-secondary">
-          {q ? "Ничего не нашлось." : "Пока нет сериалов."}
+          {q ? t.common.nothingFound : t.catalog.agency.emptySeries}
         </p>
       ) : (
         // Тот же формат постер-карточек, что и в фильмографии актёра.
@@ -247,7 +262,7 @@ export default async function AgencyDetailPage({
               className="flex-shrink-0"
               style={{ width: "8.5rem", position: "relative" }}
             >
-              <Link href={dramaHref(d)} className="text-decoration-none d-block">
+              <AppLink href={dramaHref(d)} className="text-decoration-none d-block">
                 <div
                   style={{
                     position: "relative",
@@ -273,7 +288,7 @@ export default async function AgencyDetailPage({
                       className={`badge rounded-pill ${DRAMA_STATUS_BADGE_CLASS.RETURNING_SERIES}`}
                       style={{ position: "absolute", top: "0.375rem", left: "0.375rem", fontSize: "0.6rem" }}
                     >
-                      {DRAMA_STATUS_LABELS.RETURNING_SERIES}
+                      {t.catalog.dramaStatus.RETURNING_SERIES}
                     </span>
                   )}
                 </div>
@@ -281,7 +296,7 @@ export default async function AgencyDetailPage({
                   {d.title}
                 </p>
                 {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
-              </Link>
+              </AppLink>
               <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
                 <DramaStatusButton
                   dramaId={d.id}

@@ -6,8 +6,10 @@ import { createTrip } from "./actions";
 import { VisibilityRadios } from "./TripVisibilityControls";
 import DatePickerInput from "@/components/DatePickerInput";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
+import { useT } from "@/components/LocaleProvider";
 
 export default function CreateTripButton({ friends = [] }: { friends?: EntityOption[] }) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export default function CreateTripButton({ friends = [] }: { friends?: EntityOpt
       const result = await createTrip(formData);
       if (result) setError(result.error);
     } catch {
-      setError("Не удалось создать поездку — попробуйте ещё раз");
+      setError(t.trips.form.createFailed);
     } finally {
       setIsSaving(false);
     }
@@ -30,7 +32,7 @@ export default function CreateTripButton({ friends = [] }: { friends?: EntityOpt
   return (
     <>
       <button type="button" className="btn btn-primary" onClick={() => setIsOpen(true)}>
-        + Создать поездку
+        {t.trips.form.open}
       </button>
 
       <Modal
@@ -39,46 +41,44 @@ export default function CreateTripButton({ friends = [] }: { friends?: EntityOpt
           setIsOpen(false);
           setError(null);
         }}
-        title="Новая поездка"
+        title={t.trips.form.createTitle}
       >
         <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
-            <label className="form-label small text-secondary">Название</label>
+            <label className="form-label small text-secondary">{t.trips.form.title}</label>
             <input
               type="text"
               name="title"
               required
               autoFocus
-              placeholder="Бангкок, октябрь"
+              placeholder={t.trips.form.titlePlaceholder}
               className="form-control"
             />
           </div>
           <div className="row g-2">
             <div className="col">
-              <label className="form-label small text-secondary">С даты</label>
+              <label className="form-label small text-secondary">{t.trips.form.from}</label>
               <DatePickerInput name="startDate" required />
             </div>
             <div className="col">
-              <label className="form-label small text-secondary">По дату</label>
+              <label className="form-label small text-secondary">{t.trips.form.to}</label>
               <DatePickerInput name="endDate" required />
             </div>
           </div>
           {friends.length > 0 && (
             <div>
-              <label className="form-label small text-secondary">
-                С кем едете (участники видят план и могут добавлять свои события)
-              </label>
+              <label className="form-label small text-secondary">{t.trips.form.members}</label>
               <EntityMultiSelect
                 name="memberIds"
                 options={friends}
-                placeholder="Выберите друзей…"
+                placeholder={t.trips.form.membersPlaceholder}
               />
             </div>
           )}
           <VisibilityRadios />
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
-            {isSaving ? "Создаём…" : "Создать"}
+            {isSaving ? t.trips.form.creating : t.trips.form.submitCreate}
           </button>
         </form>
       </Modal>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +13,7 @@ import AddPerformerBox from "../AddPerformerBox";
 import ArtistListControls from "./ArtistListControls";
 import { removePerformerFromList, deletePerformerList } from "../actions";
 import { pageMetadata } from "@/lib/seo";
+import { getT, localeHref } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -22,21 +23,21 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
+  const { t } = await getT();
   const list = await prisma.performerList.findFirst({
     where: slugOrIdWhere(rawId),
     select: { title: true, description: true },
   });
   if (!list)
     return pageMetadata({
-      title: "Список актёров",
-      description: "Список не найден.",
+      title: t.lists.artists.metaTitle,
+      description: t.lists.artists.metaNotFound,
       noIndex: true,
     });
   return pageMetadata({
     title: list.title,
     description:
-      list.description?.slice(0, 160) ??
-      `«${list.title}» — пользовательский список актёров на MyBLHub.`,
+      list.description?.slice(0, 160) ?? t.lists.artists.metaDescription(list.title),
     path: `/artist-lists/${rawId}`,
     noIndex: true,
   });
@@ -48,6 +49,7 @@ export default async function ArtistListPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
 
   const list = await prisma.performerList.findFirst({
@@ -67,7 +69,7 @@ export default async function ArtistListPage({
   if (!isOwner) {
     if (list.visibility === "PRIVATE") notFound();
     if (list.visibility === "FRIENDS") {
-      if (!user) redirect("/login");
+      if (!user) redirect(localeHref("/login", locale));
       const ownerFriendIds = await getFriendIds(list.userId);
       if (!ownerFriendIds.includes(user.id)) notFound();
     }
@@ -75,7 +77,7 @@ export default async function ArtistListPage({
 
   return (
     <div>
-      <BackLink fallbackHref="/lists" fallbackLabel="← Мои списки" />
+      <BackLink fallbackHref="/lists" fallbackLabel={t.lists.artists.back} />
 
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-4">
         <div>
@@ -96,20 +98,20 @@ export default async function ArtistListPage({
             />
             <ConfirmForm
               action={deletePerformerList.bind(null, list.id)}
-              confirmMessage={`Удалить список «${list.title}»?`}
+              confirmMessage={t.lists.artists.deleteConfirm(list.title)}
             >
               <button type="button" className="btn btn-outline-secondary btn-sm">
-                Удалить список
+                {t.lists.artists.deleteList}
               </button>
             </ConfirmForm>
           </div>
         ) : (
-          <Link
+          <AppLink
             href={`/users/${list.user.id}`}
             className="small text-secondary text-decoration-none"
           >
-            Список {list.user.name ? `пользователя ${list.user.name}` : "друга"} →
-          </Link>
+            {list.user.name ? t.lists.artists.ofUser(list.user.name) : t.lists.artists.ofFriend}
+          </AppLink>
         )}
       </div>
 
@@ -122,12 +124,8 @@ export default async function ArtistListPage({
       {list.items.length === 0 ? (
         <EmptyState
           emoji="👥"
-          title="В списке пока никого"
-          hint={
-            isOwner
-              ? "Добавьте первого актёра через поиск выше."
-              : "Владелец ещё не добавил сюда актёров."
-          }
+          title={t.lists.artists.emptyTitle}
+          hint={isOwner ? t.lists.artists.emptyHintOwn : t.lists.artists.emptyHintGuest}
           compact
         />
       ) : (
@@ -150,7 +148,7 @@ export default async function ArtistListPage({
                     type="submit"
                     className="icon-btn"
                     style={{ width: "1.5rem", height: "1.5rem", fontSize: "0.7rem" }}
-                    aria-label={`Убрать ${i.performer.name}`}
+                    aria-label={t.lists.artists.removeAria(i.performer.name)}
                   >
                     ×
                   </button>

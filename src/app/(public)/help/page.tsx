@@ -1,15 +1,19 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import FeedbackForm from "@/components/FeedbackForm";
 import { getCurrentUser } from "@/lib/userAuth";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Помощь",
-  description:
-    "Как пользоваться MyBLHub и как написать нам, если чего-то не хватает.",
-  path: "/help",
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.legal.help.metaTitle,
+    description: t.legal.help.metaDescription,
+    path: "/help",
+    locale,
+  });
+}
 
 
 export default async function HelpPage({
@@ -20,63 +24,54 @@ export default async function HelpPage({
   // ?fb=<запрос> — переход из пустого поиска: подставляем контекст и
   // сразу выбираем «добавьте сериал/актёра».
   const { fb } = await searchParams;
+  const { t } = await getT();
   const user = await getCurrentUser();
   return (
     <div>
-      <PageHeader eyebrow="Справка" title="Помощь" className="mb-5" />
+      <PageHeader eyebrow={t.legal.help.eyebrow} title={t.legal.help.title} className="mb-5" />
 
       <div className="row g-4">
         <div className="col-12 col-lg-7 d-flex flex-column gap-3">
         <div className="surface p-4">
-          <h2 className="h6 fw-semibold mb-2">Что это за сайт?</h2>
-          <p className="text-secondary mb-0">
-            MyBLHub — трекер концертов и фан-событий тайских BL-актёров: расписание
-            событий, профили артистов и сериалов, избранное и статусы просмотра.
-          </p>
+          <h2 className="h6 fw-semibold mb-2">{t.legal.help.whatTitle}</h2>
+          <p className="text-secondary mb-0">{t.legal.help.whatText}</p>
         </div>
 
         <div className="surface p-4">
-          <h2 className="h6 fw-semibold mb-2">Как добавить кого-то в избранное?</h2>
+          <h2 className="h6 fw-semibold mb-2">{t.legal.help.favouritesTitle}</h2>
           <p className="text-secondary mb-0">
-            Нажмите на иконку сердечка рядом с артистом, сериалом или событием.
-            Всё избранное собирается в вашем{" "}
-            <Link href="/account" className="link-body-emphasis">
-              профиле
-            </Link>
+            {t.legal.help.favouritesText}{" "}
+            <AppLink href="/account" className="link-body-emphasis">
+              {t.legal.help.favouritesLink}
+            </AppLink>
             .
           </p>
         </div>
 
         <div className="surface p-4">
-          <h2 className="h6 fw-semibold mb-2">Как отметить, что я иду на событие?</h2>
-          <p className="text-secondary mb-0">
-            На странице события нажмите «Я пойду» — событие появится в разделе
-            «Мои события» в профиле.
-          </p>
+          <h2 className="h6 fw-semibold mb-2">{t.legal.help.goingTitle}</h2>
+          <p className="text-secondary mb-0">{t.legal.help.goingText}</p>
         </div>
 
         <div className="surface p-4">
-          <h2 className="h6 fw-semibold mb-2">Друзья</h2>
+          <h2 className="h6 fw-semibold mb-2">{t.legal.help.friendsTitle}</h2>
           <p className="text-secondary mb-0">
-            В разделе{" "}
-            <Link href="/friends" className="link-body-emphasis">
-              «Друзья»
-            </Link>{" "}
-            можно найти других пользователей по имени или email и отправить заявку в друзья.
+            {t.legal.help.friendsBefore}{" "}
+            <AppLink href="/friends" className="link-body-emphasis">
+              {t.legal.help.friendsLink}
+            </AppLink>{" "}
+            {t.legal.help.friendsAfter}
           </p>
         </div>
 
         </div>
         <div className="col-12 col-lg-5">
           <div className="surface p-4 position-sticky" id="feedback" style={{ top: "6.5rem" }}>
-          <h2 className="h6 fw-semibold mb-2">Написать нам</h2>
-          <p className="text-secondary small mb-3">
-            Вопрос, идея или не хватает какого-то сериала/актёра — напишите, мы
-            читаем все обращения.
-          </p>
+          <h2 className="h6 fw-semibold mb-2">{t.legal.help.feedbackTitle}</h2>
+          <p className="text-secondary small mb-3">{t.legal.help.feedbackHint}</p>
           <FeedbackForm
             defaultKind={fb ? "CONTENT_REQUEST" : "QUESTION"}
-            context={fb ? `Поиск: «${fb}»` : ""}
+            context={fb ? t.legal.help.searchContext(fb) : ""}
             defaultEmail={user?.email ?? ""}
             emailRequired={!user}
           />

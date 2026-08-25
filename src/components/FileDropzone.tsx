@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { UploadIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 export default function FileDropzone({
   name,
@@ -18,6 +19,7 @@ export default function FileDropzone({
   accept?: string;
   endpoint?: string;
 }) {
+  const t = useT();
   const [url, setUrl] = useState(defaultValue ?? "");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -32,10 +34,10 @@ export default function FileDropzone({
       body.set("file", file);
       const res = await fetch(endpoint, { method: "POST", body });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Не удалось загрузить файл");
+      if (!res.ok) throw new Error(data.error ?? t.widgets.file.failed);
       setUrl(data.url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось загрузить файл");
+      setError(err instanceof Error ? err.message : t.widgets.file.failed);
     } finally {
       setIsUploading(false);
     }
@@ -86,9 +88,9 @@ export default function FileDropzone({
           <>
             <UploadIcon />
             <p className="fw-semibold mb-0 mt-2">
-              {isUploading ? "Загрузка…" : "Перетащите файл сюда или выберите"}
+              {isUploading ? t.widgets.file.uploading : t.widgets.file.drop}
             </p>
-            <p className="small text-secondary mb-0">Изображение, до 8MB</p>
+            <p className="small text-secondary mb-0">{t.widgets.file.hintImage}</p>
           </>
         )}
         <input

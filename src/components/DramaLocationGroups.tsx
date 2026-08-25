@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
+import { useT } from "@/components/LocaleProvider";
 import EmptyState from "@/components/EmptyState";
 import VisitedButton from "@/components/VisitedButton";
 
@@ -35,6 +36,7 @@ export default function DramaLocationGroups({
   trailing?: DramaGroup["locations"];
   batch?: number;
 }) {
+  const t = useT();
   const [visible, setVisible] = useState(batch);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -57,8 +59,8 @@ export default function DramaLocationGroups({
     return (
       <EmptyState
         emoji="📍"
-        title="Локаций пока нет"
-        hint="Мы добавляем места съёмок постепенно — загляните позже."
+        title={t.catalog.locations.emptyTitle}
+        hint={t.catalog.locations.emptyHint}
         compact
       />
     );
@@ -80,7 +82,7 @@ export default function DramaLocationGroups({
       key={loc.id}
       className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
     >
-      <Link
+      <AppLink
         href={loc.href}
         className="text-decoration-none d-flex align-items-center gap-3"
         style={{ minWidth: 0 }}
@@ -107,7 +109,7 @@ export default function DramaLocationGroups({
           )}
         </div>
         <span className="font-display fw-medium text-white text-truncate">{loc.name}</span>
-      </Link>
+      </AppLink>
       <VisitedButton locationId={loc.id} isVisited={loc.visited} className="flex-shrink-0" />
     </div>
   );
@@ -121,28 +123,28 @@ export default function DramaLocationGroups({
             id={`letter-${letterOf(g.title)}`}
             className="performers-letter-section"
           >
-            <Link href={g.href} className="day-group-heading mb-2">
+            <AppLink href={g.href} className="day-group-heading mb-2">
               {g.title}
-            </Link>
+            </AppLink>
             <div className="d-flex flex-column gap-2 mt-2">{g.locations.map(row)}</div>
           </section>
         ))}
 
         {visible < groups.length && (
           <div ref={sentinelRef} className="small text-secondary py-3 text-center">
-            Загружаем ещё…
+            {t.catalog.loadingMore}
           </div>
         )}
 
         {trailing && trailing.length > 0 && visible >= groups.length && (
           <section id="trailing-section" className="performers-letter-section">
-            <h2 className="day-group-heading mb-2">Без сериала</h2>
+            <h2 className="day-group-heading mb-2">{t.catalog.locations.noSeries}</h2>
             <div className="d-flex flex-column gap-2 mt-2">{trailing.map(row)}</div>
           </section>
         )}
       </div>
 
-      <nav className="performers-index" aria-label="Быстрый переход по буквам">
+      <nav className="performers-index" aria-label={t.catalog.letterIndex}>
         {letters.map((letter) => (
           <a
             key={letter}

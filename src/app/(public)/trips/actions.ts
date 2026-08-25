@@ -11,6 +11,7 @@ import { combineDateTime } from "@/lib/dates";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { isPremiumActive } from "@/lib/premium";
 import { notifyUser } from "@/lib/notifications";
+import { getLocale, getT, localeHref } from "@/lib/i18n";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -25,21 +26,22 @@ export type ActionError = { ok: false; error: string };
 export type ActionResult = { ok: true } | ActionError;
 
 export async function createTrip(formData: FormData): Promise<ActionError | void> {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (!isPremiumActive(user)) return { ok: false, error: "Поездки доступны по подписке" };
+  if (!user) redirect(localeHref("/login", locale));
+  if (!isPremiumActive(user)) return { ok: false, error: t.trips.errors.premium };
 
   const title = String(formData.get("title") ?? "").trim();
   const startDate = String(formData.get("startDate") ?? "");
   const endDate = String(formData.get("endDate") ?? "");
 
   if (!title || !startDate || !endDate) {
-    return { ok: false, error: "Заполните название и обе даты" };
+    return { ok: false, error: t.trips.errors.fillTitleAndDates };
   }
   const start = combineDateTime(startDate, "00:00");
   const end = combineDateTime(endDate, "00:00");
   if (end < start) {
-    return { ok: false, error: "Дата окончания раньше даты начала" };
+    return { ok: false, error: t.trips.errors.endBeforeStart };
   }
 
   // Совместная поездка сразу из формы: выбранным друзьям уходит
@@ -61,24 +63,25 @@ export async function createTrip(formData: FormData): Promise<ActionError | void
   for (const memberId of memberIds) void notifyTripInvite(trip.id, memberId);
 
   revalidatePath("/trips");
-  redirect(`/trips/${trip.id}`);
+  redirect(localeHref(`/trips/${trip.id}`, locale));
 }
 
 /** Редактирование названия/дат/видимости поездки. */
 export async function updateTrip(tripId: string, formData: FormData): Promise<ActionResult> {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (!isPremiumActive(user)) return { ok: false, error: "Поездки доступны по подписке" };
+  if (!user) redirect(localeHref("/login", locale));
+  if (!isPremiumActive(user)) return { ok: false, error: t.trips.errors.premium };
 
   const title = String(formData.get("title") ?? "").trim();
   const startDate = String(formData.get("startDate") ?? "");
   const endDate = String(formData.get("endDate") ?? "");
   if (!title || !startDate || !endDate) {
-    return { ok: false, error: "Заполните название и обе даты" };
+    return { ok: false, error: t.trips.errors.fillTitleAndDates };
   }
   const start = combineDateTime(startDate, "00:00");
   const end = combineDateTime(endDate, "00:00");
-  if (end < start) return { ok: false, error: "Дата окончания раньше даты начала" };
+  if (end < start) return { ok: false, error: t.trips.errors.endBeforeStart };
 
   await prisma.trip.updateMany({
     where: { id: tripId, userId: user.id },
@@ -90,19 +93,21 @@ export async function updateTrip(tripId: string, formData: FormData): Promise<Ac
 }
 
 export async function deleteTrip(tripId: string) {
+  const locale = await getLocale();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
 
   // where включает userId — чужую поездку удалить нельзя.
   await prisma.trip.deleteMany({ where: { id: tripId, userId: user.id } });
   revalidatePath("/trips");
-  redirect("/trips");
+  redirect(localeHref("/trips", locale));
 }
 
 export async function setTripVisibility(tripId: string, visibility: string): Promise<ActionResult> {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (!isPremiumActive(user)) return { ok: false, error: "Поездки доступны по подписке" };
+  if (!user) redirect(localeHref("/login", locale));
+  if (!isPremiumActive(user)) return { ok: false, error: t.trips.errors.premium };
   await prisma.trip.updateMany({
     where: { id: tripId, userId: user.id },
     data: { visibility: parseVisibility(visibility) },
@@ -120,23 +125,27 @@ export async function setTripVisibility(tripId: string, visibility: string): Pro
  *  приходит значением `{ ok: false, error }` — вызывающий экшен отдаёт
  *  его клиенту как есть. */
 async function requireOwnTrip(tripId: string) {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
   if (!isPremiumActive(user)) {
-    return { ok: false as const, error: "Поездки доступны по подписке" };
+    return { ok: false as const, error: t.trips.errors.premium };
   }
   const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip || trip.userId !== user.id) return { ok: false as const, error: "Поездка не найдена" };
+  if (!trip || trip.userId !== user.id) {
+    return { ok: false as const, error: t.trips.errors.tripNotFound };
+  }
   return { ok: true as const, trip };
 }
 
 /** Доступ владельца ИЛИ со-путешественника (совместные поездки) —
  *  оба могут вносить события/дела; премиум обязателен, как и владельцу. */
 async function requireTripAccess(tripId: string) {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
   if (!isPremiumActive(user)) {
-    return { ok: false as const, error: "Поездки доступны по подписке" };
+    return { ok: false as const, error: t.trips.errors.premium };
   }
   const trip = await prisma.trip.findFirst({
     where: {
@@ -147,7 +156,7 @@ async function requireTripAccess(tripId: string) {
       ],
     },
   });
-  if (!trip) return { ok: false as const, error: "Поездка не найдена" };
+  if (!trip) return { ok: false as const, error: t.trips.errors.tripNotFound };
   return { ok: true as const, user, trip, isOwner: trip.userId === user.id };
 }
 
@@ -188,7 +197,10 @@ async function notifyTripInvite(tripId: string, inviteeId: string): Promise<void
 export async function addTripMember(tripId: string, friendId: string): Promise<ActionResult> {
   const own = await requireOwnTrip(tripId);
   if (!own.ok) return { ok: false, error: own.error };
-  if (friendId === own.trip.userId) return { ok: false, error: "Владелец уже в поездке" };
+  if (friendId === own.trip.userId) {
+    const { t } = await getT();
+    return { ok: false, error: t.trips.errors.ownerAlreadyIn };
+  }
   // Добавление — это приглашение: участником друг станет, когда примет.
   await prisma.tripMember.upsert({
     where: { tripId_userId: { tripId, userId: friendId } },
@@ -203,7 +215,7 @@ export async function addTripMember(tripId: string, friendId: string): Promise<A
 /** Принять приглашение в поездку (есть PENDING-строка на меня). */
 export async function acceptTripInvite(tripId: string): Promise<void> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", await getLocale()));
   const updated = await prisma.tripMember.updateMany({
     where: { tripId, userId: user.id, status: "PENDING" },
     data: { status: "ACCEPTED" },
@@ -228,7 +240,7 @@ export async function acceptTripInvite(tripId: string): Promise<void> {
 /** Отклонить приглашение — строка удаляется, владелец может позвать снова. */
 export async function declineTripInvite(tripId: string): Promise<void> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", await getLocale()));
   await prisma.tripMember.deleteMany({
     where: { tripId, userId: user.id, status: "PENDING" },
   });
@@ -244,11 +256,12 @@ export async function removeTripMember(tripId: string, userId: string): Promise<
 }
 
 export async function leaveTrip(tripId: string): Promise<void> {
+  const locale = await getLocale();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
   await prisma.tripMember.deleteMany({ where: { tripId, userId: user.id } });
   revalidatePath("/trips");
-  redirect("/trips");
+  redirect(localeHref("/trips", locale));
 }
 
 /** null — не заполнены обязательные поля (название/дата); вызывающий
@@ -281,7 +294,7 @@ export async function createTripPersonalEvent(
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
   const data = parsePersonalEventForm(formData);
-  if (!data) return { ok: false, error: "Заполните название и дату" };
+  if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
   await prisma.tripPersonalEvent.create({
     data: { tripId: access.trip.id, createdById: access.user.id, ...data },
   });
@@ -302,10 +315,10 @@ export async function updateTripPersonalEvent(
     where: { id: personalEventId, tripId: trip.id },
   });
   if (!item || !canTouchItem(item, user.id, trip.userId)) {
-    return { ok: false, error: "Нельзя редактировать чужую запись" };
+    return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
   }
   const data = parsePersonalEventForm(formData);
-  if (!data) return { ok: false, error: "Заполните название и дату" };
+  if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
     data,
@@ -325,7 +338,7 @@ export async function deleteTripPersonalEvent(
     where: { id: personalEventId, tripId: trip.id },
   });
   if (!item || !canTouchItem(item, user.id, trip.userId)) {
-    return { ok: false, error: "Нельзя удалить чужую запись" };
+    return { ok: false, error: (await getT()).t.trips.errors.cannotDeleteOthers };
   }
   await prisma.tripPersonalEvent.delete({ where: { id: personalEventId } });
   revalidatePath(`/trips/${trip.id}`);
@@ -339,7 +352,9 @@ export async function attachListToTrip(tripId: string, listId: string): Promise<
   if (!access.ok) return { ok: false, error: access.error };
   // Прикрепить можно только свой список.
   const list = await prisma.placeList.findUnique({ where: { id: listId } });
-  if (!list || list.userId !== access.user.id) return { ok: false, error: "Список не найден" };
+  if (!list || list.userId !== access.user.id) {
+    return { ok: false, error: (await getT()).t.trips.errors.listNotFound };
+  }
   await prisma.tripPlaceList.upsert({
     where: { tripId_listId: { tripId: access.trip.id, listId } },
     update: {},
@@ -417,7 +432,7 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
   const text = String(formData.get("text") ?? "").trim();
-  if (!text) return { ok: false, error: "Введите текст дела" };
+  if (!text) return { ok: false, error: (await getT()).t.trips.errors.todoTextRequired };
   const { date, hasTime } = parseTodoDate(formData);
   await prisma.tripTodo.create({
     data: {
@@ -438,8 +453,9 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
  *  (автор / владелец поездки / участник при editableByOthers). Отказ —
  *  значением `{ ok: false, error }`, как у requireOwnTrip. */
 async function requireOwnTodo(todoId: string) {
+  const { t } = await getT();
   const user = await getCurrentUser();
-  if (!user) return { ok: false as const, error: "Требуется вход" };
+  if (!user) return { ok: false as const, error: t.trips.errors.signInRequired };
   const todo = await prisma.tripTodo.findFirst({
     where: {
       id: todoId,
@@ -453,7 +469,7 @@ async function requireOwnTodo(todoId: string) {
     include: { trip: { select: { userId: true } } },
   });
   if (!todo || !canTouchItem(todo, user.id, todo.trip.userId)) {
-    return { ok: false as const, error: "Нельзя менять чужое дело" };
+    return { ok: false as const, error: t.trips.errors.cannotEditOthersTodo };
   }
   return { ok: true as const, todo };
 }
@@ -470,7 +486,7 @@ export async function updateTripTodo(todoId: string, formData: FormData): Promis
   const own = await requireOwnTodo(todoId);
   if (!own.ok) return { ok: false, error: own.error };
   const text = String(formData.get("text") ?? "").trim();
-  if (!text) return { ok: false, error: "Введите текст дела" };
+  if (!text) return { ok: false, error: (await getT()).t.trips.errors.todoTextRequired };
   const { date, hasTime } = parseTodoDate(formData);
   await prisma.tripTodo.update({
     where: { id: todoId },
@@ -505,9 +521,13 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
   const kind = formData.get("kind") === "FLIGHT" ? "FLIGHT" : "HOTEL";
   const name = String(formData.get("name") ?? "").trim();
   if (!name) {
+    const { t } = await getT();
     return {
       ok: false,
-      error: kind === "FLIGHT" ? "Укажите рейс или авиакомпанию" : "Укажите название отеля",
+      error:
+        kind === "FLIGHT"
+          ? t.trips.errors.flightNameRequired
+          : t.trips.errors.hotelNameRequired,
     };
   }
 
@@ -535,7 +555,7 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
     // Проверяем принадлежность: id приходит из формы, и без этого можно
     // было бы отредактировать бронь чужой поездки.
     const existing = await prisma.tripBooking.findFirst({ where: { id, tripId } });
-    if (!existing) return { ok: false, error: "Бронь не найдена" };
+    if (!existing) return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
     await prisma.tripBooking.update({ where: { id }, data });
   } else {
     await prisma.tripBooking.create({ data: { tripId, ...data } });

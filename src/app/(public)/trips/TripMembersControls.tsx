@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 import {
   addTripMember,
   removeTripMember,
@@ -31,6 +32,7 @@ export default function TripMembersButton({
   /** Друзья владельца, которых ещё нет в поездке (не-владельцу пусто). */
   availableFriends: TripMemberData[];
 }) {
+  const t = useT();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [friendId, setFriendId] = useState("");
@@ -50,7 +52,7 @@ export default function TripMembersButton({
       setFriendId("");
       router.refresh();
     } catch {
-      setError("Не удалось добавить — попробуйте ещё раз");
+      setError(t.trips.members.addFailed);
     } finally {
       setPending(false);
     }
@@ -59,14 +61,14 @@ export default function TripMembersButton({
   return (
     <>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(true)}>
-        Участники ({members.filter((m) => !m.pending).length + 1})
+        {t.trips.members.button(members.filter((m) => !m.pending).length + 1)}
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Участники поездки">
+      <Modal open={open} onClose={() => setOpen(false)} title={t.trips.members.title}>
         <div className="d-flex flex-column gap-2">
           <div className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3">
-            <span>{owner.name ?? "Без имени"}</span>
-            <span className="small text-secondary flex-shrink-0">организатор</span>
+            <span>{owner.name ?? t.trips.members.noName}</span>
+            <span className="small text-secondary flex-shrink-0">{t.trips.members.owner}</span>
           </div>
           {members.map((m) => (
             <div
@@ -74,9 +76,9 @@ export default function TripMembersButton({
               className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3"
             >
               <span>
-                {m.name ?? "Без имени"}
+                {m.name ?? t.trips.members.noName}
                 {m.pending && (
-                  <span className="small text-secondary ms-2">приглашение отправлено</span>
+                  <span className="small text-secondary ms-2">{t.trips.members.pending}</span>
                 )}
               </span>
               {isOwner && (
@@ -90,14 +92,16 @@ export default function TripMembersButton({
                   }}
                   confirmMessage={
                     m.pending
-                      ? `Отменить приглашение для ${m.name ?? "друга"}?`
-                      : `Убрать ${m.name ?? "участника"} из поездки?`
+                      ? t.trips.members.cancelInviteConfirm(
+                          m.name ?? t.trips.members.someFriend,
+                        )
+                      : t.trips.members.removeConfirm(m.name ?? t.trips.members.someMember)
                   }
                 >
                   <button
                     type="button"
                     className="icon-btn icon-btn-danger flex-shrink-0"
-                    aria-label="Убрать из поездки"
+                    aria-label={t.trips.members.removeAria}
                   >
                     <TrashIcon />
                   </button>
@@ -115,10 +119,10 @@ export default function TripMembersButton({
                     value={friendId}
                     onChange={(e) => setFriendId(e.target.value)}
                   >
-                    <option value="">Добавить друга…</option>
+                    <option value="">{t.trips.members.addFriend}</option>
                     {availableFriends.map((f) => (
                       <option key={f.id} value={f.id}>
-                        {f.name ?? "Без имени"}
+                        {f.name ?? t.trips.members.noName}
                       </option>
                     ))}
                   </select>
@@ -128,16 +132,13 @@ export default function TripMembersButton({
                     disabled={!friendId || pending}
                     onClick={handleAdd}
                   >
-                    Добавить
+                    {t.common.add}
                   </button>
                 </div>
                 {error && <p className="small text-danger mb-0">{error}</p>}
               </>
             ) : (
-              <p className="small text-secondary mt-2 mb-0">
-                Добавлять в поездку можно друзей — все друзья уже здесь или их
-                пока нет.
-              </p>
+              <p className="small text-secondary mt-2 mb-0">{t.trips.members.noFriendsLeft}</p>
             )
           ) : (
             <div className="mt-2">
@@ -145,22 +146,15 @@ export default function TripMembersButton({
                 action={async () => {
                   await leaveTrip(tripId);
                 }}
-                confirmMessage="Выйти из поездки?"
+                confirmMessage={t.trips.members.leaveConfirm}
               >
                 <button type="button" className="btn btn-outline-secondary btn-sm">
-                  Покинуть поездку
+                  {t.trips.members.leave}
                 </button>
               </ConfirmForm>
             </div>
           )}
-          {isOwner && (
-            <p className="small text-secondary mb-0">
-              Друг получит приглашение и станет участником, когда примет его.
-              Участники видят план, дела и личные события поездки и могут
-              добавлять свои. Чужие записи можно менять, только если автор
-              разрешил это галочкой.
-            </p>
-          )}
+          {isOwner && <p className="small text-secondary mb-0">{t.trips.members.hint}</p>}
         </div>
       </Modal>
     </>
@@ -169,6 +163,7 @@ export default function TripMembersButton({
 
 /** Кнопки баннера-приглашения на странице поездки (и в списке поездок). */
 export function TripInviteActions({ tripId }: { tripId: string }) {
+  const t = useT();
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -191,7 +186,7 @@ export function TripInviteActions({ tripId }: { tripId: string }) {
         disabled={pending}
         onClick={() => run(acceptTripInvite)}
       >
-        Принять
+        {t.trips.members.accept}
       </button>
       <button
         type="button"
@@ -199,7 +194,7 @@ export function TripInviteActions({ tripId }: { tripId: string }) {
         disabled={pending}
         onClick={() => run(declineTripInvite)}
       >
-        Отклонить
+        {t.trips.members.decline}
       </button>
     </div>
   );

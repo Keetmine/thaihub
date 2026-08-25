@@ -3,12 +3,14 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { updatePlaceList } from "../actions";
+import { useT } from "@/components/LocaleProvider";
 
 export default function EditListButton({
   list,
 }: {
   list: { id: string; title: string; description: string | null };
 }) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export default function EditListButton({
       }
       setIsOpen(false);
     } catch {
-      setError("Не удалось сохранить — попробуйте ещё раз");
+      setError(t.lists.form.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -34,7 +36,7 @@ export default function EditListButton({
   return (
     <>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
-        Редактировать
+        {t.common.edit}
       </button>
       <Modal
         open={isOpen}
@@ -42,20 +44,20 @@ export default function EditListButton({
           setIsOpen(false);
           setError(null);
         }}
-        title="Редактировать список"
+        title={t.lists.form.editTitle}
       >
         <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
-            <label className="form-label small text-secondary">Название</label>
+            <label className="form-label small text-secondary">{t.lists.form.title}</label>
             <input type="text" name="title" required defaultValue={list.title} className="form-control" />
           </div>
           <div>
-            <label className="form-label small text-secondary">Описание</label>
+            <label className="form-label small text-secondary">{t.lists.form.description}</label>
             <textarea name="description" rows={2} defaultValue={list.description ?? ""} className="form-control" />
           </div>
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
-            {isSaving ? "Сохранение…" : "Сохранить"}
+            {isSaving ? t.lists.form.saving : t.common.save}
           </button>
         </form>
       </Modal>

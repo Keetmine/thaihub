@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/Modal";
+import { useT } from "@/components/LocaleProvider";
 import { submitReport } from "@/app/(public)/feedbackActions";
 
 // «Пожаловаться» на пользовательский контент (список мест, профиль…) —
@@ -15,6 +16,7 @@ export default function ReportButton({
   targetId: string;
   className?: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
@@ -28,7 +30,7 @@ export default function ReportButton({
       await submitReport(targetType, targetId, reason);
       setDone(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось отправить");
+      setError(e instanceof Error ? e.message : t.ui.reportFailed);
     } finally {
       setPending(false);
     }
@@ -41,7 +43,7 @@ export default function ReportButton({
         className={`btn btn-link btn-sm text-secondary p-0 ${className ?? ""}`}
         onClick={() => setOpen(true)}
       >
-        Пожаловаться
+        {t.ui.report}
       </button>
       <Modal
         open={open}
@@ -50,20 +52,18 @@ export default function ReportButton({
           setDone(false);
           setReason("");
         }}
-        title="Пожаловаться"
+        title={t.ui.report}
       >
         {done ? (
-          <p className="small text-success mb-0">
-            ✓ Жалоба отправлена — модераторы посмотрят.
-          </p>
+          <p className="small text-success mb-0">✓ {t.ui.reportSent}</p>
         ) : (
           <div className="d-flex flex-column gap-3">
             <textarea
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Что не так с этим контентом? (необязательно)"
-              aria-label="Что не так с этим контентом"
+              placeholder={t.ui.reportPlaceholder}
+              aria-label={t.ui.reportLabel}
               className="form-control"
             />
             {error && <p className="small text-danger mb-0">{error}</p>}
@@ -73,7 +73,7 @@ export default function ReportButton({
               onClick={send}
               disabled={pending}
             >
-              {pending ? "Отправка…" : "Отправить жалобу"}
+              {pending ? t.ui.reportSending : t.ui.reportSubmit}
             </button>
           </div>
         )}

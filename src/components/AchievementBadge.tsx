@@ -1,4 +1,5 @@
 import { formatShortDate } from "@/lib/dates";
+import { useLocale } from "@/components/LocaleProvider";
 
 // Бейдж-«медаль» ачивки (Э2ф) — единый вид для кабинета и публичного
 // профиля. Серверный компонент без состояния: крупное эмодзи в круге с
@@ -28,6 +29,7 @@ export default function AchievementBadge({
   unlockedAt = null,
   compact = false,
 }: AchievementBadgeProps) {
+  const locale = useLocale();
   const stateClass = unlocked ? "achv-medal-unlocked" : "achv-medal-locked";
 
   if (compact) {
@@ -50,7 +52,7 @@ export default function AchievementBadge({
       {hint && <span className="achv-medal-hint">{hint}</span>}
       {unlocked && unlockedAt && (
         <span className="achv-medal-date">
-          {formatShortDate(unlockedAt)} {unlockedAt.getFullYear()}
+          {formatShortDate(unlockedAt, locale)} {unlockedAt.getFullYear()}
         </span>
       )}
     </div>

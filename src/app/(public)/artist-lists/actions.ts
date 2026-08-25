@@ -8,43 +8,46 @@ import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
 import { artistListHref } from "@/lib/slugHelpers";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { isPremiumActive } from "@/lib/premium";
+import { getLocale, getT, localeHref } from "@/lib/i18n";
 
 // Кастомные списки актёров («пил пиво», «видела вживую»…) — публичный
 // (не админский) функционал: владелец распоряжается только своими
 // списками, каждая мутация перепроверяет userId.
 
 async function requireOwnList(listId: string) {
+  const { t } = await getT();
   const user = await getCurrentUser();
-  if (!user) throw new Error("Требуется вход");
+  if (!user) throw new Error(t.lists.errors.signInRequired);
   const list = await prisma.performerList.findFirst({
     where: { id: listId, userId: user.id },
   });
-  if (!list) throw new Error("Список не найден");
+  if (!list) throw new Error(t.lists.errors.listNotFound);
   return { user, list };
 }
 
 export async function createPerformerList(formData: FormData) {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
   // Новые списки — платные (кнопка скрыта в интерфейсе, но экшен
   // вызывается напрямую). Уже созданные списки остаются доступны их
   // владельцам независимо от подписки.
-  if (!isPremiumActive(user)) redirect("/calendar");
+  if (!isPremiumActive(user)) redirect(localeHref("/calendar", locale));
   const title = String(formData.get("title") ?? "").trim();
-  if (!title) throw new Error("Укажите название списка");
+  if (!title) throw new Error(t.lists.errors.listTitleRequired);
   const description = String(formData.get("description") ?? "").trim();
 
   const list = await prisma.performerList.create({
     data: { userId: user.id, title, description: description || null },
   });
   revalidatePath("/lists");
-  redirect(artistListHref(list));
+  redirect(localeHref(artistListHref(list), locale));
 }
 
 export async function updatePerformerList(listId: string, formData: FormData) {
   await requireOwnList(listId);
   const title = String(formData.get("title") ?? "").trim();
-  if (!title) throw new Error("Укажите название списка");
+  if (!title) throw new Error((await getT()).t.lists.errors.listTitleRequired);
   const description = String(formData.get("description") ?? "").trim();
   await prisma.performerList.update({
     where: { id: listId },
@@ -57,7 +60,7 @@ export async function deletePerformerList(listId: string) {
   await requireOwnList(listId);
   await prisma.performerList.delete({ where: { id: listId } });
   revalidatePath("/lists");
-  redirect("/lists");
+  redirect(localeHref("/lists", await getLocale()));
 }
 
 export async function setPerformerListVisibility(
@@ -94,7 +97,7 @@ export async function searchPerformersForList(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Требуется вход");
+  if (!user) throw new Error((await getT()).t.lists.errors.signInRequired);
   const q = query.trim();
   if (q.length < 2) return [];
   const rows = await prisma.performer.findMany({

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -7,16 +7,22 @@ import { pageMetadata } from "@/lib/seo";
 import EmptyState from "@/components/EmptyState";
 import LetterAvatar from "@/components/LetterAvatar";
 import Pagination from "@/components/Pagination";
+import { formatShortDate, formatTime } from "@/lib/dates";
+import { getT, localeHref } from "@/lib/i18n";
 import { markAllNotificationsRead } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = pageMetadata({
-  title: "Уведомления",
-  description: "Приглашения в поездки, заявки в друзья и ответы на комментарии.",
-  path: "/notifications",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.account.notifications.metaTitle,
+    description: t.account.notifications.metaDescription,
+    path: "/notifications",
+    noIndex: true,
+    locale,
+  });
+}
 
 const PAGE_SIZE = 30;
 
@@ -40,8 +46,9 @@ export default async function NotificationsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
   const { page: rawPage } = await searchParams;
   const page = Math.max(1, Number(rawPage) || 1);
 
@@ -57,20 +64,20 @@ export default async function NotificationsPage({
     prisma.notification.count({ where: { userId: user.id, readAt: null } }),
   ]);
 
-  const fmt = (d: Date) =>
-    d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  // Дата + время — теми же форматтерами, что и всюду на сайте.
+  const fmt = (d: Date) => `${formatShortDate(d, locale)}, ${formatTime(d)}`;
 
   return (
     <div>
       <PageHeader
-        eyebrow="Личное"
-        title="Уведомления"
+        eyebrow={t.account.notifications.eyebrow}
+        title={t.account.notifications.title}
         className="mb-4"
         action={
           unread > 0 ? (
             <form action={markAllNotificationsRead}>
               <button type="submit" className="btn btn-ghost btn-sm">
-                Отметить прочитанными ({unread})
+                {t.account.notifications.markAllRead(unread)}
               </button>
             </form>
           ) : undefined
@@ -80,8 +87,8 @@ export default async function NotificationsPage({
       {items.length === 0 ? (
         <EmptyState
           emoji="🔔"
-          title="Пока пусто"
-          hint="Здесь появятся приглашения в поездки, заявки в друзья и ответы на ваши комментарии."
+          title={t.account.notifications.emptyTitle}
+          hint={t.account.notifications.emptyHint}
           compact
         />
       ) : (
@@ -105,9 +112,9 @@ export default async function NotificationsPage({
               </div>
             );
             return n.href ? (
-              <Link key={n.id} href={n.href} className="text-decoration-none">
+              <AppLink key={n.id} href={n.href} className="text-decoration-none">
                 {inner}
-              </Link>
+              </AppLink>
             ) : (
               <div key={n.id}>{inner}</div>
             );

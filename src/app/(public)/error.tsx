@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { useT } from "@/components/LocaleProvider";
 
 // Error boundary публичной части: вместо пустого минифицированного
 // экрана React — объяснение и кнопка повтора. В этой версии Next проп
@@ -15,19 +16,19 @@ export default function Error({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  const t = useT();
   useEffect(() => {
     Sentry.captureException(error);
   }, [error]);
 
   return (
     <div className="text-center py-5 mx-auto" style={{ maxWidth: "28rem" }}>
-      <span className="eyebrow">Ошибка</span>
+      <span className="eyebrow">{t.widgets.errors.errorEyebrow}</span>
       <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2rem" }}>
-        Что-то пошло не так
+        {t.widgets.errors.errorTitle}
       </h1>
       <p className="text-secondary mb-4">
-        Отчёт об ошибке уже у нас. Попробуйте ещё раз — чаще всего этого
-        достаточно, а если не помогло, напишите нам через страницу помощи.
+        {t.widgets.errors.errorHint}
       </p>
       <button
         type="button"

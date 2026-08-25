@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { saveEventNote } from "./noteActions";
 import { PencilIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 export type FriendNote = {
   id: string;
@@ -22,6 +23,7 @@ export default function EventNoteSection({
   ownNote: { text: string; visibility: string } | null;
   friendNotes: FriendNote[];
 }) {
+  const t = useT();
   const [isEditing, setIsEditing] = useState(false);
   const boundSave = saveEventNote.bind(null, eventId);
 
@@ -34,11 +36,11 @@ export default function EventNoteSection({
     <div className="surface p-4 mb-3">
       <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
         <h2 className="section-heading mb-0">
-          <PencilIcon /> Заметки
+          <PencilIcon /> {t.events.notes.heading}
         </h2>
         {!isEditing && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsEditing(true)}>
-            {ownNote ? "Редактировать" : "+ Добавить заметку"}
+            {ownNote ? t.common.edit : t.events.notes.add}
           </button>
         )}
       </div>
@@ -49,8 +51,8 @@ export default function EventNoteSection({
             name="text"
             rows={3}
             defaultValue={ownNote?.text ?? ""}
-            placeholder="Например: берём мерч на входе, встречаемся у гейта 3…"
-            aria-label="Заметка к событию"
+            placeholder={t.events.notes.placeholder}
+            aria-label={t.events.notes.ariaLabel}
             className="form-control"
             autoFocus
           />
@@ -63,7 +65,7 @@ export default function EventNoteSection({
                 defaultChecked={(ownNote?.visibility ?? "PERSONAL") === "PERSONAL"}
                 className="form-check-input"
               />{" "}
-              Личная
+              {t.events.notes.visPersonal}
             </label>
             <label className="form-check mb-0 small">
               <input
@@ -73,7 +75,7 @@ export default function EventNoteSection({
                 defaultChecked={ownNote?.visibility === "FRIENDS"}
                 className="form-check-input"
               />{" "}
-              Видна друзьям
+              {t.events.notes.visFriends}
             </label>
             <label className="form-check mb-0 small">
               <input
@@ -83,13 +85,13 @@ export default function EventNoteSection({
                 defaultChecked={ownNote?.visibility === "TRIP"}
                 className="form-check-input"
               />{" "}
-              Участникам моих поездок
+              {t.events.notes.visTrip}
             </label>
             <button type="submit" className="btn btn-primary btn-sm ms-auto">
-              Сохранить
+              {t.common.save}
             </button>
           </div>
-          <p className="small text-secondary mb-0">Пустой текст удаляет заметку.</p>
+          <p className="small text-secondary mb-0">{t.events.notes.emptyDeletes}</p>
         </form>
       ) : ownNote ? (
         <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
@@ -97,16 +99,14 @@ export default function EventNoteSection({
           <span className="small text-secondary">
             ·{" "}
             {ownNote.visibility === "FRIENDS"
-              ? "видна друзьям"
+              ? t.events.notes.markFriends
               : ownNote.visibility === "TRIP"
-                ? "видна участникам поездок"
-                : "личная"}
+                ? t.events.notes.markTrip
+                : t.events.notes.markPersonal}
           </span>
         </p>
       ) : friendNotes.length === 0 ? (
-        <p className="small text-secondary mb-0">
-          Пока нет заметок — добавьте первую: что взять, где встречаемся.
-        </p>
+        <p className="small text-secondary mb-0">{t.events.notes.empty}</p>
       ) : null}
 
       {friendNotes.length > 0 && (
@@ -130,7 +130,8 @@ export default function EventNoteSection({
                 />
               )}
               <p className="small mb-0" style={{ whiteSpace: "pre-wrap" }}>
-                <span className="text-secondary">{n.userName || "Друг"}:</span> {n.text}
+                <span className="text-secondary">{n.userName || t.events.notes.friend}:</span>{" "}
+                {n.text}
               </p>
             </div>
           ))}

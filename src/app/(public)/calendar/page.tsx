@@ -1,12 +1,13 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { prisma } from "@/lib/prisma";
 import {
   addMonths,
   dateKey,
   getMonthGrid,
   monthLabel,
-  WEEKDAY_NAMES_RU,
+  weekdayNames,
 } from "@/lib/dates";
+import { getT } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
@@ -17,19 +18,26 @@ import LetterAvatar from "@/components/LetterAvatar";
 import { performerHref } from "@/lib/performerSlug";
 import { pageMetadata } from "@/lib/seo";
 
-export const metadata = pageMetadata({
-  title: "Календарь событий",
-  description:
-    "Календарь концертов и фанмитов тайских BL-актёров, включая дни рождения.",
-  path: "/calendar",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.events.calendar.metaTitle,
+    description: t.events.calendar.metaDescription,
+    path: "/calendar",
+  });
+}
 
+
+// Страница читает язык из заголовка запроса (getT), поэтому кэшировать
+// её на сборке нельзя — рендерим на каждый запрос.
+export const dynamic = "force-dynamic";
 
 export default async function CalendarPage({
   searchParams,
 }: {
   searchParams: Promise<{ year?: string; month?: string; view?: string }>;
 }) {
+  const { locale, t } = await getT();
   const params = await searchParams;
   const now = new Date();
 
@@ -38,13 +46,13 @@ export default async function CalendarPage({
   if (!isPremiumActive(gateUser)) {
     return (
       <div>
-        <Link href="/" className="eyebrow text-decoration-none">
-          ← Все события
-        </Link>
+        <AppLink href="/" className="eyebrow text-decoration-none">
+          {t.events.calendar.backToEvents}
+        </AppLink>
         <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-          Календарь
+          {t.events.calendar.title}
         </h1>
-        <PremiumUpsell feature="Календарь" />
+        <PremiumUpsell feature={t.events.calendar.paywallFeature} />
       </div>
     );
   }
@@ -132,64 +140,64 @@ export default async function CalendarPage({
     <div>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
         <div>
-          <Link href="/" className="eyebrow text-decoration-none">
-            ← Все события
-          </Link>
+          <AppLink href="/" className="eyebrow text-decoration-none">
+            {t.events.calendar.backToEvents}
+          </AppLink>
           <h1 className="display-1-tight text-capitalize mt-3 mb-0" style={{ fontSize: "2.75rem" }}>
-            {monthLabel(year, month)}
+            {monthLabel(year, month, locale)}
           </h1>
         </div>
         <div className="d-flex flex-wrap align-items-center gap-2">
           <MonthYearJump year={year} month={month} viewQuery={viewQuery} />
-          <Link
+          <AppLink
             href={`/calendar?year=${prev.getFullYear()}&month=${prev.getMonth() + 1}${viewQuery}`}
             className="btn btn-ghost btn-sm"
           >
-            ← Пред.
-          </Link>
-          <Link
+            {t.events.calendar.prev}
+          </AppLink>
+          <AppLink
             href={`/calendar${viewQuery ? `?${viewQuery.slice(1)}` : ""}`}
             className="btn btn-ghost btn-sm"
           >
-            Сегодня
-          </Link>
-          <Link
+            {t.events.calendar.today}
+          </AppLink>
+          <AppLink
             href={`/calendar?year=${next.getFullYear()}&month=${next.getMonth() + 1}${viewQuery}`}
             className="btn btn-ghost btn-sm"
           >
-            След. →
-          </Link>
+            {t.events.calendar.next}
+          </AppLink>
         </div>
       </div>
 
       <div className="mb-4">
         <div className="mode-toggle">
-          <Link
+          <AppLink
             href={`/calendar?year=${year}&month=${month + 1}`}
             prefetch={false}
             className={`mode-toggle-option ${showAll ? "active" : ""}`}
           >
-            Все события
-          </Link>
-          <Link
+            {t.events.calendar.viewAll}
+          </AppLink>
+          <AppLink
             href={`/calendar?year=${year}&month=${month + 1}&view=mine`}
             prefetch={false}
             className={`mode-toggle-option ${!showAll && !showBirthdays ? "active" : ""}`}
           >
-            Мои события
-          </Link>
-          <Link
+            {t.events.calendar.viewMine}
+          </AppLink>
+          <AppLink
             href={`/calendar?year=${year}&month=${month + 1}&view=birthdays`}
             prefetch={false}
             className={`mode-toggle-option ${showBirthdays ? "active" : ""}`}
           >
-            Дни рождения
-          </Link>
+            {t.events.calendar.viewBirthdays}
+          </AppLink>
         </div>
       </div>
 
       <div className="d-none d-sm-grid calendar-grid mb-2" style={{ gap: "0.5rem" }}>
-        {WEEKDAY_NAMES_RU.map((d) => (
+        {weekdayNames(locale).map((d) => (
           <div key={d} className="calendar-weekday">
             {d}
           </div>
@@ -212,19 +220,22 @@ export default async function CalendarPage({
                 </span>
                 <div className="d-flex flex-column gap-1">
                   {celebrants.slice(0, 3).map((p) => (
-                    <Link
+                    <AppLink
                       key={p.id}
                       href={performerHref(p)}
                       className="event-chip d-inline-flex align-items-center gap-1 text-decoration-none"
-                      title={`${p.name} — ${day.getFullYear() - p.birthDate.getFullYear()} лет`}
+                      title={t.events.calendar.birthdayTitle(
+                        p.name,
+                        day.getFullYear() - p.birthDate.getFullYear(),
+                      )}
                     >
                       <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.1} />
                       <span className="text-truncate">{p.name}</span>
-                    </Link>
+                    </AppLink>
                   ))}
                   {celebrants.length > 3 && (
                     <span className="small text-secondary d-none d-sm-inline">
-                      +{celebrants.length - 3} ещё
+                      {t.events.calendar.more(celebrants.length - 3)}
                     </span>
                   )}
                 </div>
@@ -234,7 +245,7 @@ export default async function CalendarPage({
 
           const dayEvents = eventsByDay.get(key) ?? [];
           return (
-            <Link
+            <AppLink
               href={`/day/${key}`}
               key={key}
               className={`calendar-cell ${inMonth ? "" : "outside-month"}`}
@@ -254,14 +265,15 @@ export default async function CalendarPage({
                 ))}
                 {dayEvents.length > 3 && (
                   <span className="small text-secondary d-none d-sm-inline">
-                    +{dayEvents.length - 3} ещё
+                    {t.events.calendar.more(dayEvents.length - 3)}
                   </span>
                 )}
               </div>
-            </Link>
+            </AppLink>
           );
         })}
       </div>
     </div>
   );
 }
+

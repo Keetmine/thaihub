@@ -1,8 +1,9 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { dateKey, endOfDay, formatShortDate, formatTime } from "@/lib/dates";
+import { getT, localeHref, type Locale } from "@/lib/i18n";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
@@ -34,14 +35,17 @@ export const dynamic = "force-dynamic";
 /** Подпись брони: у отеля «29 авг → 5 сент», у перелёта то же со
  *  временем, а если вылет и прилёт в один день — время без повтора
  *  даты («29 авг 14:20 → 18:05»). */
-function bookingWhenLabel(b: {
-  kind: "HOTEL" | "FLIGHT";
-  startAt: Date | null;
-  endAt: Date | null;
-}): string | null {
+function bookingWhenLabel(
+  b: {
+    kind: "HOTEL" | "FLIGHT";
+    startAt: Date | null;
+    endAt: Date | null;
+  },
+  locale: Locale,
+): string | null {
   const withTime = b.kind === "FLIGHT";
   const one = (d: Date) =>
-    withTime ? `${formatShortDate(d)} ${formatTime(d)}` : formatShortDate(d);
+    withTime ? `${formatShortDate(d, locale)} ${formatTime(d)}` : formatShortDate(d, locale);
   if (!b.startAt && !b.endAt) return null;
   if (!b.startAt) return one(b.endAt!);
   if (!b.endAt) return one(b.startAt);
@@ -57,8 +61,9 @@ export default async function TripPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ view?: string; mine?: string }>;
 }) {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
 
   const { id: rawParam } = await params;
   const { view, mine } = await searchParams;
@@ -282,9 +287,9 @@ export default async function TripPage({
 
   return (
     <div>
-      <Link href="/trips" className="eyebrow text-decoration-none">
-        ← Все поездки
-      </Link>
+      <AppLink href="/trips" className="eyebrow text-decoration-none">
+        {t.trips.detail.back}
+      </AppLink>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
         <div>
           <h1 className="display-1-tight mb-1 d-flex align-items-center gap-2" style={{ fontSize: "2.5rem" }}>
@@ -301,7 +306,7 @@ export default async function TripPage({
             )}
           </h1>
           <p className="text-secondary mb-0">
-            {formatShortDate(trip.startDate)} – {formatShortDate(trip.endDate)}{" "}
+            {formatShortDate(trip.startDate, locale)} – {formatShortDate(trip.endDate, locale)}{" "}
             {trip.endDate.getFullYear()}
           </p>
         </div>
@@ -323,17 +328,21 @@ export default async function TripPage({
             />
           </div>
         ) : (
-          <Link href={`/users/${trip.user.id}`} className="small text-secondary text-decoration-none">
-            Поездка {trip.user.name ? `пользователя ${trip.user.name}` : "друга"} →
-          </Link>
+          <AppLink
+            href={`/users/${trip.user.id}`}
+            className="small text-secondary text-decoration-none"
+          >
+            {trip.user.name
+              ? t.trips.detail.ofUser(trip.user.name)
+              : t.trips.detail.ofFriend}
+          </AppLink>
         )}
       </div>
 
       {isInvited && (
         <div className="surface d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 mb-4">
           <span>
-            {trip.user.name ?? "Пользователь"} приглашает вас в эту поездку —
-            вы будете видеть общий план и сможете добавлять свои события и дела.
+            {t.trips.detail.inviteBanner(trip.user.name ?? t.trips.detail.someone)}
           </span>
           <TripInviteActions tripId={trip.id} />
         </div>
@@ -341,45 +350,47 @@ export default async function TripPage({
 
       <div className="tab-bar-row">
         <div className="tab-bar">
-          <Link
+          <AppLink
             href={tripHref(trip)}
             prefetch={false}
             className={`tab-bar-item ${!showAll && !showPlaces && !showTodos ? "active" : ""}`}
           >
-            {isShared ? "План" : isOwner ? "Мой план" : "План"} ({planCount})
-          </Link>
-          <Link
+            {!isShared && isOwner
+              ? t.trips.detail.tabMyPlan(planCount)
+              : t.trips.detail.tabPlan(planCount)}
+          </AppLink>
+          <AppLink
             href={`${tripHref(trip)}?view=all`}
             prefetch={false}
             className={`tab-bar-item ${showAll ? "active" : ""}`}
           >
-            Афиша ({totalCount})
-          </Link>
+            {t.trips.detail.tabEvents(totalCount)}
+          </AppLink>
           {isParticipant && (
-            <Link
+            <AppLink
               href={`${tripHref(trip)}?view=todos`}
               prefetch={false}
               className={`tab-bar-item ${showTodos ? "active" : ""}`}
             >
-              Дела ({todoData.length})
-            </Link>
+              {t.trips.detail.tabTodos(todoData.length)}
+            </AppLink>
           )}
-          <Link
+          <AppLink
             href={`${tripHref(trip)}?view=places`}
             prefetch={false}
             className={`tab-bar-item ${showPlaces ? "active" : ""}`}
           >
-            Что посетить
-          </Link>
+            {t.trips.detail.tabPlaces}
+          </AppLink>
         </div>
         {isShared && isParticipant && !showAll && !showPlaces && (
-          <Link
+          <AppLink
             href={`${tripHref(trip)}${showTodos ? "?view=todos" : ""}${onlyMine ? "" : showTodos ? "&mine=1" : "?mine=1"}`}
             prefetch={false}
             className={`btn btn-sm ${onlyMine ? "btn-primary" : "btn-ghost"}`}
           >
-            Только моё
-          </Link>
+            {t.trips.detail.onlyMine}
+          </AppLink>
         )}
       </div>
 
@@ -393,7 +404,7 @@ export default async function TripPage({
             <AddPersonalEventButton
               tripId={trip.id}
               showShareToggle={isShared}
-              label="+ Событие"
+              label={t.trips.personal.addShort}
               accent
             />
           }
@@ -411,7 +422,7 @@ export default async function TripPage({
             endDate: b.endAt ? dateKey(b.endAt) : null,
             startTime: b.kind === "FLIGHT" && b.startAt ? formatTime(b.startAt) : null,
             endTime: b.kind === "FLIGHT" && b.endAt ? formatTime(b.endAt) : null,
-            whenLabel: bookingWhenLabel(b),
+            whenLabel: bookingWhenLabel(b, locale),
           }))}
         />
       )}
@@ -439,8 +450,8 @@ export default async function TripPage({
           return isEmpty && !isParticipant ? (
           <EmptyState
             emoji="📍"
-            title="Пока здесь пусто"
-            hint="Участники ещё не добавили места в эту поездку."
+            title={t.trips.places.emptyGuestTitle}
+            hint={t.trips.places.emptyGuestHint}
             compact
           />
         ) : (
@@ -452,8 +463,8 @@ export default async function TripPage({
                     нужно было сперва завести список. */}
                 <CreateOwnPlaceButton
                   action={createTripOwnPlace.bind(null, trip.id)}
-                  label="+ Своё место"
-                  submitLabel="Создать и добавить в поездку"
+                  label={t.trips.places.ownPlace}
+                  submitLabel={t.trips.places.ownPlaceSubmit}
                 />
                 <AttachListSelect tripId={trip.id} availableLists={availableLists} />
               </div>
@@ -467,24 +478,24 @@ export default async function TripPage({
             {tripLists.map((tl) => (
               <div key={tl.listId} className="mb-4">
                 <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-                  <Link
+                  <AppLink
                     href={listHref(tl.list)}
                     className="section-heading text-decoration-none"
                   >
                     📋 {tl.list.title} ({tl.list.items.length})
-                  </Link>
+                  </AppLink>
                   {canContribute && <DetachListButton tripId={trip.id} listId={tl.listId} />}
                 </div>
                 <div className="d-flex flex-column gap-2">
                   {tl.list.items.map((i) => (
-                    <Link
+                    <AppLink
                       key={i.locationId}
                       href={locationHref(i.location)}
                       className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-2 px-3"
                     >
                       <span className="text-white">{i.location.name}</span>
                       {i.note && <span className="small text-secondary text-truncate">— {i.note}</span>}
-                    </Link>
+                    </AppLink>
                   ))}
                 </div>
               </div>
@@ -492,18 +503,19 @@ export default async function TripPage({
 
             {tripPlaces.length > 0 && (
               <div className="mb-4">
-                <h2 className="section-heading mb-2">
-                  Отдельные места
-                </h2>
+                <h2 className="section-heading mb-2">{t.trips.places.standalone}</h2>
                 <div className="d-flex flex-column gap-2">
                   {tripPlaces.map((tp) => (
                     <div
                       key={tp.locationId}
                       className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3"
                     >
-                      <Link href={locationHref(tp.location)} className="text-decoration-none text-white">
+                      <AppLink
+                        href={locationHref(tp.location)}
+                        className="text-decoration-none text-white"
+                      >
                         {tp.location.name}
-                      </Link>
+                      </AppLink>
                       {canContribute && <RemoveTripPlaceButton tripId={trip.id} locationId={tp.locationId} />}
                     </div>
                   ))}
@@ -514,8 +526,8 @@ export default async function TripPage({
             {isEmpty && isParticipant && (
               <EmptyState
                 emoji="📍"
-                title="Мест пока нет"
-                hint="Создайте своё место по ссылке Google Maps, найдите готовое или прикрепите список — здесь соберётся, что посетить в поездке."
+                title={t.trips.places.emptyTitle}
+                hint={t.trips.places.emptyHint}
                 compact
               />
             )}
@@ -525,13 +537,13 @@ export default async function TripPage({
       ) : timeline.length === 0 ? (
         <EmptyState
           emoji="✈️"
-          title={showAll ? "В эти даты событий нет" : "В плане пока пусто"}
+          title={showAll ? t.trips.detail.emptyEventsTitle : t.trips.detail.emptyPlanTitle}
           hint={
             showAll
-              ? "В даты этой поездки не попадает ни одно событие из афиши."
+              ? t.trips.detail.emptyEventsHint
               : isParticipant
-                ? "Отметьте «я иду» на событиях (вкладка «Афиша») или добавьте личное — перелёт, бронь, встречу."
-                : "Участники ещё ничего не добавили в план."
+                ? t.trips.detail.emptyPlanHintOwn
+                : t.trips.detail.emptyPlanHintGuest
           }
           compact
         />
@@ -567,9 +579,9 @@ export default async function TripPage({
           а операция необратимая. */}
       {isOwner && (
         <div className="mt-5 pt-4 border-top d-flex justify-content-end">
-          <ConfirmForm action={boundDelete} confirmMessage={`Удалить поездку «${trip.title}»?`}>
+          <ConfirmForm action={boundDelete} confirmMessage={t.trips.detail.deleteConfirm(trip.title)}>
             <button type="button" className="btn btn-outline-secondary btn-sm">
-              Удалить поездку
+              {t.trips.detail.deleteTrip}
             </button>
           </ConfirmForm>
         </div>

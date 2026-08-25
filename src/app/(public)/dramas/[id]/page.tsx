@@ -1,7 +1,7 @@
 import { pageMetadata, JsonLd, tvSeriesJsonLd } from "@/lib/seo";
 import ReviewsAndComments from "@/components/ReviewsAndComments";
 import SourcesBlock from "@/components/SourcesBlock";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -24,7 +24,7 @@ import {
 } from "@/components/icons";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
-import { DRAMA_STATUS_LABELS, DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
+import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import {
   agencyHref,
@@ -34,16 +34,7 @@ import {
 } from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
 import { dramaHref } from "@/lib/dramaSlug";
-
-const WEEKDAYS_RU: Record<string, string> = {
-  Monday: "по понедельникам",
-  Tuesday: "по вторникам",
-  Wednesday: "по средам",
-  Thursday: "по четвергам",
-  Friday: "по пятницам",
-  Saturday: "по субботам",
-  Sunday: "по воскресеньям",
-};
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -53,17 +44,20 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
+  const { t } = await getT();
   const drama = await prisma.drama.findFirst({
     where: slugOrIdWhere(rawId),
     select: { title: true, year: true, synopsis: true, posterUrl: true },
   });
   if (!drama)
-    return pageMetadata({ title: "Сериал", description: "Сериал не найден." });
+    return pageMetadata({
+      title: t.catalog.drama.metaTitle,
+      description: t.catalog.drama.metaNotFound,
+    });
   return pageMetadata({
     title: `${drama.title}${drama.year ? ` (${drama.year})` : ""}`,
     description:
-      drama.synopsis?.slice(0, 160) ??
-      `${drama.title}: актёрский состав, локации съёмок, события и отзывы на MyBLHub.`,
+      drama.synopsis?.slice(0, 160) ?? t.catalog.drama.metaDescription(drama.title),
     path: `/dramas/${rawId}`,
     image: drama.posterUrl,
     type: "article",
@@ -76,6 +70,7 @@ export default async function DramaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
+  const { locale, t } = await getT();
 
   const drama = await prisma.drama.findFirst({
     where: slugOrIdWhere(rawId),
@@ -158,7 +153,7 @@ export default async function DramaDetailPage({
   ];
 
   const formatAired = (d: Date) =>
-    d.toLocaleDateString("ru-RU", {
+    d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -210,7 +205,7 @@ export default async function DramaDetailPage({
 
   return (
     <div>
-      <BackLink fallbackHref="/dramas" fallbackLabel="← Все сериалы" />
+      <BackLink fallbackHref="/dramas" fallbackLabel={t.catalog.drama.back} />
       {/* Классическая шапка (по просьбе владельца): постер слева,
           заголовок и статус сверху — без размытого hero. */}
       <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-2 mb-4">
@@ -228,7 +223,7 @@ export default async function DramaDetailPage({
                 className={`badge rounded-pill fw-semibold ms-2 align-middle ${DRAMA_STATUS_BADGE_CLASS[drama.status]}`}
                 style={{ fontSize: "0.8rem" }}
               >
-                {DRAMA_STATUS_LABELS[drama.status]}
+                {t.catalog.dramaStatus[drama.status]}
               </span>
             )}
           </h1>
@@ -286,14 +281,14 @@ export default async function DramaDetailPage({
             <p className="small text-secondary mb-2">
               <BuildingIcon />{" "}
               <span className="text-secondary">
-                {studios.length > 1 ? "Студии:" : "Студия:"}
+                {studios.length > 1 ? t.catalog.drama.studios : t.catalog.drama.studio}
               </span>{" "}
               {studios.map((a, i) => (
                 <span key={a.id}>
                   {i > 0 && ", "}
-                  <Link href={agencyHref(a)} className="link-body-emphasis">
+                  <AppLink href={agencyHref(a)} className="link-body-emphasis">
                     {a.name}
-                  </Link>
+                  </AppLink>
                 </span>
               ))}
             </p>
@@ -301,13 +296,13 @@ export default async function DramaDetailPage({
           {drama.novel && (
             <p className="small text-secondary mb-2">
               <BookIcon className="icon-inline" />{" "}
-              <span className="text-secondary">По новелле:</span>{" "}
-              <Link
+              <span className="text-secondary">{t.catalog.drama.basedOn}</span>{" "}
+              <AppLink
                 href={novelHref(drama.novel)}
                 className="link-body-emphasis"
               >
                 {drama.novel.title}
-              </Link>
+              </AppLink>
               {drama.novel.author ? ` (${drama.novel.author})` : ""}
             </p>
           )}
@@ -315,7 +310,7 @@ export default async function DramaDetailPage({
           {drama.genres.length > 0 && (
             <p className="small text-secondary mb-2 d-flex flex-wrap align-items-center gap-2">
               <span className="d-inline-flex align-items-center gap-1">
-                <TagIcon /> <span className="text-secondary">Жанры:</span>
+                <TagIcon /> <span className="text-secondary">{t.catalog.drama.genres}</span>
               </span>
               {drama.genres.map((g) => (
                 <span key={g} className="tag-chip">
@@ -329,41 +324,43 @@ export default async function DramaDetailPage({
             {(drama.episodes || drama.duration) && (
               <p className="small text-secondary mb-0">
                 <TvIcon className="icon-inline" />{" "}
-                <span className="text-secondary">Эпизоды:</span>{" "}
+                <span className="text-secondary">{t.catalog.drama.episodes}</span>{" "}
                 {drama.episodes ? `${drama.episodes}` : "?"}
                 {drama.duration ? ` × ${drama.duration}` : ""}
               </p>
             )}
             {drama.airedFrom && (
               <p className="small text-secondary mb-0">
-                <CalendarIcon /> <span className="text-secondary">Эфир:</span>{" "}
+                <CalendarIcon />{" "}
+                <span className="text-secondary">{t.catalog.drama.aired}</span>{" "}
                 {formatAired(drama.airedFrom)}
                 {drama.airedTo &&
                 drama.airedTo.getTime() !== drama.airedFrom.getTime()
                   ? ` — ${formatAired(drama.airedTo)}`
                   : ""}
                 {drama.airedOn
-                  ? ` (${WEEKDAYS_RU[drama.airedOn] ?? drama.airedOn})`
+                  ? ` (${t.catalog.airedOn[drama.airedOn as keyof typeof t.catalog.airedOn] ?? drama.airedOn})`
                   : ""}
               </p>
             )}
             {drama.director && (
               <p className="small text-secondary mb-0">
                 <UserIcon className="icon-inline" />{" "}
-                <span className="text-secondary">Режиссёр:</span>{" "}
+                <span className="text-secondary">{t.catalog.drama.director}</span>{" "}
                 {drama.director}
               </p>
             )}
             {drama.screenwriter && (
               <p className="small text-secondary mb-0">
                 <UserIcon className="icon-inline" />{" "}
-                <span className="text-secondary">Сценарий:</span>{" "}
+                <span className="text-secondary">{t.catalog.drama.screenwriter}</span>{" "}
                 {drama.screenwriter}
               </p>
             )}
             {drama.contentRating && (
               <p className="small text-secondary mb-0">
-                <InfoIcon /> <span className="text-secondary">Рейтинг:</span>{" "}
+                <InfoIcon />{" "}
+                <span className="text-secondary">{t.catalog.drama.contentRating}</span>{" "}
                 {drama.contentRating}
               </p>
             )}
@@ -371,7 +368,7 @@ export default async function DramaDetailPage({
               <p className="small text-secondary mb-0">
                 {ourRating != null && (
                   <>
-                    <span className="text-secondary">Оценка MyBLHub:</span>{" "}
+                    <span className="text-secondary">{t.catalog.drama.ourScore}</span>{" "}
                     <span
                       style={{
                         color:
@@ -415,7 +412,7 @@ export default async function DramaDetailPage({
       {/* События сериала — после фактов: фан-митинги/премьеры. */}
       {events.length > 0 && (
         <div id="events" className="anchor-target mb-4">
-          <h2 className="section-heading mb-2">События</h2>
+          <h2 className="section-heading mb-2">{t.catalog.drama.events}</h2>
           <div className="d-flex flex-column gap-3">
             {eventsRows.map(({ row, extraDates }) =>
               isPremiumActive(currentUser) ? (
@@ -440,7 +437,7 @@ export default async function DramaDetailPage({
           раздел не рисуем — ни заголовка, ни «состав не указан». */}
       {drama.performers.length > 0 && (
         <div id="cast" className="anchor-target mb-4">
-          <h2 className="section-heading mb-3">Актёрский состав</h2>
+          <h2 className="section-heading mb-3">{t.catalog.drama.cast}</h2>
           {/* Капсулы вместо фото-сетки: сетка выходила гигантской
               (фидбек владельца). Роль — подписью в капсуле. */}
           <CastGrid chips limit={18}>
@@ -459,7 +456,7 @@ export default async function DramaDetailPage({
 
       {relatedItems.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">Связанные сериалы</h2>
+          <h2 className="section-heading mb-2">{t.catalog.drama.related}</h2>
           <div className="d-flex flex-wrap gap-2">
             {relatedItems.map(({ drama: rel, relation }) => (
               <EntityMiniCard
@@ -477,14 +474,14 @@ export default async function DramaDetailPage({
 
       {drama.locations.length > 0 && (
         <div id="locations" className="anchor-target mb-4">
-          <h2 className="section-heading mb-2">Локации</h2>
+          <h2 className="section-heading mb-2">{t.catalog.drama.locations}</h2>
           <div className="d-flex flex-column gap-2">
             {drama.locations.map(({ location }) => (
               <div
                 key={location.id}
                 className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
               >
-                <Link
+                <AppLink
                   href={locationHref(location)}
                   className="text-decoration-none d-flex align-items-center gap-3"
                   style={{ minWidth: 0 }}
@@ -517,7 +514,7 @@ export default async function DramaDetailPage({
                   <span className="font-display fw-medium text-white text-truncate">
                     {location.name}
                   </span>
-                </Link>
+                </AppLink>
                 <VisitedButton
                   locationId={location.id}
                   isVisited={visitedLocationIds.has(location.id)}

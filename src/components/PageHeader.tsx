@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 
 /** Единая шапка страницы: eyebrow + заголовок (+ действия справа).
  *  Заменяет 17+ рукописных копий «eyebrow + display-1-tight с инлайновым

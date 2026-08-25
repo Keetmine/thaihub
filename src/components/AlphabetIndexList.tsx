@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { getT } from "@/lib/i18n";
 import LazyList from "./LazyList";
 
 type NamedItem = { id: string; name: string };
@@ -20,7 +21,7 @@ function categoryOf(key: string): "digit" | "en" | "ru" {
  *  `trailingSection` renders an extra, ungrouped section after the letter
  *  groups (e.g. "no drama") with its own short index-nav symbol.
  */
-export default function AlphabetIndexList<T extends NamedItem>({
+export default async function AlphabetIndexList<T extends NamedItem>({
   items,
   renderItem,
   emptyMessage,
@@ -35,6 +36,7 @@ export default function AlphabetIndexList<T extends NamedItem>({
   trailingSection?: { indexLabel: React.ReactNode; indexAriaLabel: string; content: React.ReactNode };
   itemsWrapperClassName?: string;
 }) {
+  const { t } = await getT();
   if (items.length === 0 && !trailingSection) {
     return <p className="text-secondary">{emptyMessage}</p>;
   }
@@ -82,7 +84,7 @@ export default function AlphabetIndexList<T extends NamedItem>({
         )}
       </div>
 
-      <nav className="performers-index" aria-label="Быстрый переход по буквам">
+      <nav className="performers-index" aria-label={t.catalog.letterIndex}>
         {indexLetters.map((letter, i) => {
           const prevCategory = i > 0 ? categoryOf(indexLetters[i - 1]) : null;
           const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);

@@ -1,19 +1,23 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { prisma } from "@/lib/prisma";
 import LocationMap from "@/components/LocationMapLoader";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Карта локаций",
-  description:
-    "Карта мест съёмок тайских BL-сериалов: где снимали, что рядом и как добраться.",
-  path: "/locations/map",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.catalog.map.metaTitle,
+    description: t.catalog.map.metaDescription,
+    path: "/locations/map",
+  });
+}
 
 
 export const dynamic = "force-dynamic";
 
 export default async function LocationsMapPage() {
+  const { t } = await getT();
   // select — только четыре поля для маркеров: полные строки (описание,
   // адрес, источники) на карте не нужны и утяжеляли страницу.
   const locations = await prisma.location.findMany({
@@ -25,11 +29,11 @@ export default async function LocationsMapPage() {
 
   return (
     <div>
-      <Link href="/locations" className="eyebrow text-decoration-none">
-        ← Все локации
-      </Link>
+      <AppLink href="/locations" className="eyebrow text-decoration-none">
+        {t.catalog.map.back}
+      </AppLink>
       <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
-        Карта локаций
+        {t.catalog.map.title}
       </h1>
 
       <LocationMap

@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
+import { useT } from "@/components/LocaleProvider";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import { performerHref } from "@/lib/performerSlug";
 import { artistListHref } from "@/lib/slugHelpers";
@@ -55,18 +56,18 @@ export default function StatsTab({
     items: { id: string; slug: string | null; name: string; photoUrl: string | null }[];
   }[];
 }) {
+  const t = useT();
+  const s = t.account.stats;
   const maxYear = Math.max(1, ...stats.eventsByYear.map((y) => y.count));
 
   return (
     <div>
       {stats.topPerformers.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Чаще всего видела вживую
-          </h2>
+          <h2 className="section-heading mb-2">{s.topPerformers}</h2>
           <div className="d-flex flex-wrap gap-2 mb-4">
             {stats.topPerformers.map((p) => (
-              <Link
+              <AppLink
                 key={p.id}
                 href={performerHref(p)}
                 className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 pe-3"
@@ -89,7 +90,7 @@ export default function StatsTab({
                 )}
                 <span className="small text-white">{p.name}</span>
                 <span className="small text-secondary">×{p.count}</span>
-              </Link>
+              </AppLink>
             ))}
           </div>
         </>
@@ -98,29 +99,27 @@ export default function StatsTab({
         {/* Кастомные списки актёров — в том же чип-формате, что
             «Чаще всего видела вживую». */}
         <div className="d-flex flex-wrap align-items-center gap-3 mb-2">
-          <h2 className="section-heading mb-0">Мои списки актёров</h2>
+          <h2 className="section-heading mb-0">{s.artistLists}</h2>
           {/* Новые списки — по подписке, но уже созданные остаются
               доступны: отбирать сделанное нельзя. */}
           {isPremium && <CreateArtistListButton small />}
         </div>
         {(artistLists ?? []).length === 0 ? (
           isPremium ? (
-            <p className="small text-secondary mb-4">
-              Создайте свой список — «видела вживую», «пил пиво»…
-            </p>
+            <p className="small text-secondary mb-4">{s.artistListsHint}</p>
           ) : (
             <p className="small text-secondary mb-4">
-              Свои списки актёров — по подписке.{" "}
-              <Link href="/calendar" className="link-body-emphasis">
-                Оформить
-              </Link>
+              {s.artistListsLocked}{" "}
+              <AppLink href="/calendar" className="link-body-emphasis">
+                {s.artistListsLockedCta}
+              </AppLink>
             </p>
           )
         ) : (
           <div className="row g-2 mb-4">
             {(artistLists ?? []).map((l) => (
               <div key={l.id} className="col-12 col-md-6">
-                <Link href={artistListHref(l)} className="list-card text-decoration-none">
+                <AppLink href={artistListHref(l)} className="list-card text-decoration-none">
                   <span className="facepile">
                     {l.items.slice(0, 4).map((p) =>
                       p.photoUrl ? (
@@ -135,14 +134,12 @@ export default function StatsTab({
                   <span style={{ minWidth: 0 }}>
                     <span className="d-block text-white fw-medium text-truncate">{l.title}</span>
                     <span className="small text-secondary">
-                      {l.items.length === 0
-                        ? "пока пусто"
-                        : `${l.items.length} ${l.items.length === 1 ? "артист" : l.items.length < 5 ? "артиста" : "артистов"}`}
+                      {l.items.length === 0 ? s.listEmpty : s.listCount(l.items.length)}
                       {l.items.length > 4 && ` · ${l.items.slice(0, 2).map((p) => p.name).join(", ")}…`}
                     </span>
                   </span>
                   <span className="ms-auto text-secondary flex-shrink-0">→</span>
-                </Link>
+                </AppLink>
               </div>
             ))}
           </div>
@@ -150,9 +147,7 @@ export default function StatsTab({
 
       {stats.eventsByYear.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            События по годам
-          </h2>
+          <h2 className="section-heading mb-2">{s.byYear}</h2>
           <div className="d-flex align-items-end gap-3 mb-4" style={{ height: "6rem" }}>
             {stats.eventsByYear.map((y) => (
               <div key={y.year} className="text-center d-flex flex-column justify-content-end" style={{ height: "100%" }}>
@@ -176,9 +171,7 @@ export default function StatsTab({
 
       {stats.visitedLocationPins.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Карта посещённого
-          </h2>
+          <h2 className="section-heading mb-2">{s.visitedMap}</h2>
           <div className="mb-4">
             <LocationMapLoader locations={stats.visitedLocationPins} height="20rem" />
           </div>
@@ -190,22 +183,20 @@ export default function StatsTab({
           Раздел платный (см. roadmap). */}
       {!isPremium ? (
         <PremiumTeaser
-          title="Ачивки — по подписке"
-          description={`Достижения за концерты, поездки и просмотренные сериалы (сейчас их ${achievementsTotal}) — какие именно, узнаёшь, получая их.`}
+          title={s.achievementsLockedTitle}
+          description={s.achievementsLockedDescription(achievementsTotal)}
         />
       ) : (
       <>
       <div className="d-flex flex-wrap align-items-baseline gap-2 mb-2">
-        <h2 className="section-heading mb-0">Ачивки</h2>
+        <h2 className="section-heading mb-0">{s.achievements}</h2>
         <span className="small text-secondary">
-          {achievements.length} из {achievementsTotal}
-          {achievements.length < achievementsTotal && " — остальные пока секрет 😉"}
+          {s.achievementsProgress(achievements.length, achievementsTotal)}
+          {achievements.length < achievementsTotal && s.achievementsSecret}
         </span>
       </div>
       {achievements.length === 0 ? (
-        <p className="small text-secondary mb-4">
-          Пока ни одной — первая ждёт на первом же событии.
-        </p>
+        <p className="small text-secondary mb-4">{s.achievementsEmpty}</p>
       ) : (
         <div className="row g-2 mb-4">
           {achievements.map((a) => (

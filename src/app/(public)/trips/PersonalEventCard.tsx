@@ -8,9 +8,9 @@ import ConfirmForm from "@/components/ConfirmForm";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { updateTripPersonalEvent, deleteTripPersonalEvent } from "./actions";
 import LocationPickerField from "./LocationPickerField";
-import Link from "next/link";
-
-const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+import AppLink from "@/components/AppLink";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { shortMonthName, shortWeekdayName } from "@/lib/dates";
 
 export type PersonalEventData = {
   id: string;
@@ -54,27 +54,28 @@ export function PersonalEventFields({
   };
   showShareToggle?: boolean;
 }) {
+  const t = useT();
   return (
     <>
       <div>
-        <label className="form-label small text-secondary">Название</label>
+        <label className="form-label small text-secondary">{t.trips.personal.title}</label>
         <input
           type="text"
           name="title"
           required
           autoFocus
           defaultValue={defaults?.title}
-          placeholder="Ужин с друзьями"
+          placeholder={t.trips.personal.titlePlaceholder}
           className="form-control"
         />
       </div>
       <div className="row g-2">
         <div className="col-7">
-          <label className="form-label small text-secondary">Дата</label>
+          <label className="form-label small text-secondary">{t.trips.personal.date}</label>
           <DatePickerInput name="date" required defaultValue={defaults?.dateKey} />
         </div>
         <div className="col-5">
-          <label className="form-label small text-secondary">Время</label>
+          <label className="form-label small text-secondary">{t.trips.personal.time}</label>
           <input
             type="time"
             name="time"
@@ -85,7 +86,7 @@ export function PersonalEventFields({
       </div>
       <LocationPickerField defaultLocation={defaults?.location} />
       <div>
-        <label className="form-label small text-secondary">Заметка</label>
+        <label className="form-label small text-secondary">{t.trips.personal.note}</label>
         <textarea name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
       </div>
       {/* Ж10: картинка к записи. Личные события приватные, поэтому файл
@@ -93,7 +94,7 @@ export function PersonalEventFields({
           public/uploads. */}
       <FileDropzone
         name="imageUrl"
-        label="Картинка"
+        label={t.trips.personal.image}
         defaultValue={defaults?.imageUrl ?? ""}
         accept="image/*,application/pdf"
         endpoint="/api/upload-personal"
@@ -107,7 +108,7 @@ export function PersonalEventFields({
           defaultChecked={defaults?.showOnHome ?? false}
           className="form-check-input m-0"
         />
-        <span className="form-check-label small">Показывать на главной</span>
+        <span className="form-check-label small">{t.trips.personal.showOnHome}</span>
       </label>
       {showShareToggle ? (
         <>
@@ -119,7 +120,7 @@ export function PersonalEventFields({
               className="form-check-input m-0"
             />
             <span className="form-check-label small">
-              Участники поездки могут редактировать и удалять
+              {t.trips.personal.editableByOthers}
             </span>
           </label>
           <label className="form-check d-flex align-items-center gap-2 mb-0">
@@ -129,7 +130,7 @@ export function PersonalEventFields({
               defaultChecked={defaults?.isPrivate ?? false}
               className="form-check-input m-0"
             />
-            <span className="form-check-label small">Приватное — видно только мне</span>
+            <span className="form-check-label small">{t.trips.personal.isPrivate}</span>
           </label>
         </>
       ) : (
@@ -159,6 +160,8 @@ export default function PersonalEventCard({
   canEdit?: boolean;
   showShareToggle?: boolean;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [isEditing, setIsEditing] = useState(false);
   // Файл мог не открыться (удалён, нет прав) — тогда вместо битой
   // картинки показываем ссылку.
@@ -166,7 +169,6 @@ export default function PersonalEventCard({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const d = event.startsAt;
-  const monthShort = d.toLocaleDateString("ru-RU", { month: "short" }).replace(/\.$/, "");
   const hasTime = event.timeValue !== "00:00";
 
   const boundUpdate = updateTripPersonalEvent.bind(null, tripId, event.id);
@@ -183,7 +185,7 @@ export default function PersonalEventCard({
       }
       setIsEditing(false);
     } catch {
-      setError("Не удалось сохранить — попробуйте ещё раз");
+      setError(t.trips.personal.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -196,8 +198,8 @@ export default function PersonalEventCard({
           <button
             type="button"
             className="icon-btn"
-            aria-label="Редактировать"
-            title="Редактировать"
+            aria-label={t.common.edit}
+            title={t.common.edit}
             onClick={() => setIsEditing(true)}
           >
             <PencilIcon />
@@ -209,9 +211,14 @@ export default function PersonalEventCard({
               const result = await boundDelete();
               if (!result.ok) return result;
             }}
-            confirmMessage={`Удалить «${event.title}»?`}
+            confirmMessage={t.trips.personal.deleteConfirm(event.title)}
           >
-            <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить" title="Удалить">
+            <button
+              type="button"
+              className="icon-btn icon-btn-danger"
+              aria-label={t.common.delete}
+              title={t.common.delete}
+            >
               <TrashIcon />
             </button>
           </ConfirmForm>
@@ -220,19 +227,19 @@ export default function PersonalEventCard({
 
       <div className="event-card-date">
         <span className="event-card-day">{d.getDate()}</span>
-        <span className="event-card-month">{monthShort}</span>
-        <span className="event-card-weekday">{WEEKDAYS_SHORT[d.getDay()]}</span>
+        <span className="event-card-month">{shortMonthName(d, locale)}</span>
+        <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
       </div>
 
       <div className="event-card-body">
         <h3 className="h5 font-display mb-1 d-flex align-items-center gap-2">
           {event.title}
           <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
-            личное
+            {t.trips.personal.badge}
           </span>
           {event.isPrivate && (
             <span className="badge rounded-pill text-bg-dark border" style={{ fontSize: "0.6rem" }}>
-              приватное
+              {t.trips.personal.badgePrivate}
             </span>
           )}
           {event.author && (
@@ -243,12 +250,12 @@ export default function PersonalEventCard({
           {hasTime && event.timeValue}
           {hasTime && (event.note || event.location) && " · "}
           {event.location && (
-            <Link
+            <AppLink
               href={`/locations/${event.location.id}`}
               className="agenda-performer-link"
             >
               📍 {event.location.name}
-            </Link>
+            </AppLink>
           )}
           {event.location && event.note && " · "}
           {event.note}
@@ -262,12 +269,12 @@ export default function PersonalEventCard({
             target="_blank"
             rel="noopener noreferrer"
             className="personal-event-thumb mt-2 d-inline-block"
-            aria-label={`Вложение к записи «${event.title}»`}
+            aria-label={t.trips.personal.attachmentOf(event.title)}
           >
             {event.imageUrl.endsWith(".pdf") || thumbFailed ? (
               // PDF миниатюрой не показать, а битая ссылка иначе
               // нарисовала бы иконку сломанной картинки.
-              <span className="btn btn-ghost btn-sm">Файл ↗</span>
+              <span className="btn btn-ghost btn-sm">{t.trips.personal.file}</span>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -288,7 +295,7 @@ export default function PersonalEventCard({
           setIsEditing(false);
           setError(null);
         }}
-        title="Редактировать событие"
+        title={t.trips.personal.editTitle}
       >
         <form action={handleUpdate} className="d-flex flex-column gap-3">
           <PersonalEventFields
@@ -307,7 +314,7 @@ export default function PersonalEventCard({
           />
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
-            {isSaving ? "Сохранение…" : "Сохранить"}
+            {isSaving ? t.trips.form.saving : t.common.save}
           </button>
         </form>
       </Modal>

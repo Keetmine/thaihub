@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { locationHref } from "@/lib/slugHelpers";
 import BackLink from "@/components/BackLink";
 import DetailHero from "@/components/DetailHero";
@@ -18,7 +18,8 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
-import { categoryEmoji, categoryLabel } from "@/lib/locationCategories";
+import { categoryEmoji } from "@/lib/locationCategories";
+import { getT } from "@/lib/i18n";
 
 export async function generateMetadata({
   params,
@@ -26,20 +27,21 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { t } = await getT();
   const location = await prisma.location.findFirst({
     where: slugOrIdWhere(id),
     select: { name: true, description: true, photoUrl: true, slug: true },
   });
   if (!location)
     return pageMetadata({
-      title: "Локация",
-      description: "Локация не найдена.",
+      title: t.catalog.location.metaTitle,
+      description: t.catalog.location.metaNotFound,
     });
   return pageMetadata({
     title: location.name,
     description:
       location.description?.slice(0, 160) ??
-      `${location.name}: место съёмок тайских BL-сериалов — как добраться и что здесь снимали.`,
+      t.catalog.location.metaDescription(location.name),
     path: `/locations/${location.slug ?? id}`,
     image: location.photoUrl,
   });
@@ -53,6 +55,7 @@ export default async function LocationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawParam } = await params;
+  const { t } = await getT();
 
   const location = await prisma.location.findFirst({
     where: slugOrIdWhere(rawParam),
@@ -148,7 +151,7 @@ export default async function LocationDetailPage({
 
   return (
     <div>
-      <BackLink fallbackHref="/locations" fallbackLabel="← Все локации" />
+      <BackLink fallbackHref="/locations" fallbackLabel={t.catalog.location.back} />
       {/* Иммерсивный hero (Э2): фото места и чипы вместо плоской шапки с
           фото-колонкой. Категория переехала из бейджа в чип; description
           (у каталожных локаций это район/город, ≤100 символов) — из
@@ -164,12 +167,12 @@ export default async function LocationDetailPage({
               {location.category && (
                 <span className="date-chip">
                   {categoryEmoji(location.category)}{" "}
-                  {categoryLabel(location.category)}
+                  {t.catalog.locationCategory[location.category]}
                 </span>
               )}
               {location.dramas.length > 0 && (
                 <span className="date-chip">
-                  сериалов снималось: {location.dramas.length}
+                  {t.catalog.location.filmedHere(location.dramas.length)}
                 </span>
               )}
             </>
@@ -212,10 +215,10 @@ export default async function LocationDetailPage({
           {/* Раздел без содержимого не рисуем вовсе. */}
           {location.dramas.length > 0 && (
             <>
-              <h2 className="section-heading mb-2">Сериалы</h2>
+              <h2 className="section-heading mb-2">{t.catalog.location.series}</h2>
               <div className="d-flex flex-wrap gap-2">
                 {location.dramas.map(({ drama }) => (
-                  <Link
+                  <AppLink
                     key={drama.id}
                     href={dramaHref(drama)}
                     className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
@@ -249,7 +252,7 @@ export default async function LocationDetailPage({
                     <span className="font-display fw-medium text-white text-truncate">
                       {drama.title}
                     </span>
-                  </Link>
+                  </AppLink>
                 ))}
               </div>
             </>
@@ -257,7 +260,7 @@ export default async function LocationDetailPage({
 
           {locationEvents.length > 0 && (
             <div className="mt-4">
-              <h2 className="section-heading mb-2">События здесь</h2>
+              <h2 className="section-heading mb-2">{t.catalog.location.eventsHere}</h2>
               <div className="d-flex flex-column gap-3">
                 {locationEventsRows.map(({ row, extraDates }) =>
                   isPremiumActive(currentUser) ? (
@@ -282,7 +285,7 @@ export default async function LocationDetailPage({
 
           {location.latitude != null && location.longitude != null && (
             <div className="mt-4">
-              <h2 className="section-heading mb-2">На карте</h2>
+              <h2 className="section-heading mb-2">{t.catalog.location.onMap}</h2>
               <LocationMap
                 locations={[
                   {
@@ -299,10 +302,10 @@ export default async function LocationDetailPage({
 
           {relatedLocations.length > 0 && (
             <div className="mt-4">
-              <h2 className="section-heading mb-2">Другие места этих съёмок</h2>
+              <h2 className="section-heading mb-2">{t.catalog.location.nearby}</h2>
               <div className="d-flex flex-wrap gap-2">
                 {relatedLocations.map((rel) => (
-                  <Link
+                  <AppLink
                     key={rel.id}
                     href={locationHref(rel)}
                     className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
@@ -339,7 +342,7 @@ export default async function LocationDetailPage({
                         </span>
                       )}
                     </span>
-                  </Link>
+                  </AppLink>
                 ))}
               </div>
             </div>
@@ -352,7 +355,7 @@ export default async function LocationDetailPage({
           {location.sourceUrl && (
             <div className="mt-4 sources-block">
               <h2 className="section-heading mb-2" style={{ opacity: 0.55 }}>
-                Источники
+                {t.catalog.sources}
               </h2>
               <p className="small mb-0">
                 <a

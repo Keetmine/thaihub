@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 
 export default function EntityMiniCard({
   href,
@@ -26,7 +26,7 @@ export default function EntityMiniCard({
 }) {
   if (variant === "grid") {
     return (
-      <Link
+      <AppLink
         href={href}
         className={`cast-card ${className}`}
         style={style}
@@ -49,12 +49,12 @@ export default function EntityMiniCard({
         {subtitle && (
           <span className="cast-card-role text-truncate">{subtitle}</span>
         )}
-      </Link>
+      </AppLink>
     );
   }
 
   return (
-    <Link
+    <AppLink
       href={href}
       className={`surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 ${className}`}
       style={style ?? { width: "11rem" }}
@@ -95,6 +95,6 @@ export default function EntityMiniCard({
         <span className="d-block font-display fw-medium text-white text-truncate">{name}</span>
         {subtitle && <span className="d-block small text-secondary text-truncate">{subtitle}</span>}
       </span>
-    </Link>
+    </AppLink>
   );
 }

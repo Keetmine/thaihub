@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import ReportButton from "@/components/ReportButton";
 import { notFound, redirect } from "next/navigation";
@@ -11,7 +11,6 @@ import { eventHref } from "@/lib/eventSlug";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import FriendActionButton from "@/components/FriendActionButton";
 import { CalendarIcon, CheckIcon, HeartIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
-import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import { sendFriendRequest } from "../../friends/actions";
 import FriendNotifyToggle from "./FriendNotifyToggle";
@@ -19,8 +18,10 @@ import { getUnlockedAchievements } from "@/lib/achievements";
 import AchievementBadge from "@/components/AchievementBadge";
 import { listHref, tripHref, locationHref, artistListHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
+import { getT, localeHref } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
+
 
 export async function generateMetadata({
   params,
@@ -28,6 +29,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { locale, t } = await getT();
   // Тот же разбор параметра, что в самой странице: cuid — это id, всё
   // остальное — ник.
   const looksLikeId = /^c[a-z0-9]{20,}$/.test(id);
@@ -37,17 +39,19 @@ export async function generateMetadata({
   });
   if (!user || user.deletedAt)
     return pageMetadata({
-      title: "Пользователь",
-      description: "Профиль не найден.",
+      title: t.social.profile.metaTitle,
+      description: t.social.profile.metaNotFound,
       noIndex: true,
+      locale,
     });
   return pageMetadata({
-    title: user.name ?? "Пользователь",
+    title: user.name ?? t.social.profile.metaTitle,
     description: user.name
-      ? `Профиль пользователя ${user.name} на MyBLHub.`
-      : "Профиль пользователя на MyBLHub.",
+      ? t.social.profile.metaDescription(user.name)
+      : t.social.profile.metaDescriptionAnonymous,
     path: `/users/${id}`,
     noIndex: true,
+    locale,
   });
 }
 
@@ -55,15 +59,17 @@ export async function generateMetadata({
 // фото, статистика, любимые актёры, видимые зрителю поездки и (для
 // зрителей с подпиской) предстоящие события, на которые человек идёт.
 export default async function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { locale, t } = await getT();
+  const p = t.social.profile;
   const viewer = await getCurrentUser();
-  if (!viewer) redirect("/login");
+  if (!viewer) redirect(localeHref("/login", locale));
 
   const { id } = await params;
   // Ник от id отличаем по формату: id — это cuid (начинается с "c" и
   // длинный), ник короче и может быть любым допустимым словом.
   const looksLikeId = /^c[a-z0-9]{20,}$/.test(id);
   const username = looksLikeId ? null : id;
-  if (id === viewer.id) redirect("/account");
+  if (id === viewer.id) redirect(localeHref("/account", locale));
 
   const user = await prisma.user.findUnique({
     // Ник в адресе (/users/keetmine) — им делятся с друзьями; id
@@ -150,7 +156,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
         (a.occurrences[0]?.startsAt.getTime() ?? 0) - (b.occurrences[0]?.startsAt.getTime() ?? 0),
     );
 
-  const displayName = user.name || "Пользователь";
+  const displayName = user.name || p.fallbackName;
   // Приватный профиль: не-друзьям показываем только имя/фото (Г8).
   const showActivity = isFriend || !user.hideProfileActivity;
   const showAchievements = showActivity && (isFriend || !user.hideAchievements);
@@ -173,9 +179,9 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
   return (
     <div>
-      <Link href="/friends" className="eyebrow text-decoration-none d-inline-block mb-3">
-        ← Друзья
-      </Link>
+      <AppLink href="/friends" className="eyebrow text-decoration-none d-inline-block mb-3">
+        {p.back}
+      </AppLink>
 
       {/* Шапка на языке DetailHero (свой вариант на .detail-hero: круглый
           аватар вместо карточки 3/4, см. .profile-hero в globals.css). */}
@@ -202,69 +208,68 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             {showActivity && (
               <div className="detail-hero-chips mb-2">
                 <span className="date-chip">
-                  <UsersIcon className="icon-inline" /> друзей: {ownerFriendIds.length}
+                  <UsersIcon className="icon-inline" /> {p.chipFriends(ownerFriendIds.length)}
                 </span>
                 <span className="date-chip">
-                  <TicketIcon className="icon-inline" /> событий: {user.eventAttendances.length}
+                  <TicketIcon className="icon-inline" /> {p.chipEvents(user.eventAttendances.length)}
                 </span>
                 <span className="date-chip">
-                  <HeartIcon className="icon-inline" /> актёров: {user.favoritePerformers.length}
+                  <HeartIcon className="icon-inline" />{" "}
+                  {p.chipPerformers(user.favoritePerformers.length)}
                 </span>
                 <span className="date-chip">
-                  <TvIcon className="icon-inline" /> сериалов: {user._count.dramaWatchStatuses}
+                  <TvIcon className="icon-inline" /> {p.chipDramas(user._count.dramaWatchStatuses)}
                 </span>
               </div>
             )}
             <h1 className="display-1-tight detail-hero-title mb-1">{displayName}</h1>
             <p className="text-secondary mb-0">
-              На MyBLHub с {formatShortDate(user.createdAt)} {user.createdAt.getFullYear()}
+              {p.memberSince(
+                `${formatShortDate(user.createdAt, locale)} ${user.createdAt.getFullYear()}`,
+              )}
             </p>
           </div>
           <div className="d-flex flex-wrap align-items-center gap-2 flex-shrink-0 mb-1">
             {/* На своём профиле дружеских действий нет — иначе можно
                 было отправить заявку самому себе (Ж7). */}
             {viewer.id === user.id ? (
-              <Link href="/account" className="btn btn-ghost btn-sm">
-                Это вы · в кабинет
-              </Link>
+              <AppLink href="/account" className="btn btn-ghost btn-sm">
+                {p.itsYou}
+              </AppLink>
             ) : isFriend ? (
               <>
                 <span className="date-chip">
-                  <CheckIcon /> Ваш друг
+                  <CheckIcon /> {p.yourFriend}
                 </span>
                 <FriendNotifyToggle friendId={user.id} muted={!!muteRow} />
               </>
             ) : pendingFriendship ? (
               pendingFriendship.requesterId === viewer.id ? (
-                <span className="date-chip">Заявка отправлена</span>
+                <span className="date-chip">{p.requestSent}</span>
               ) : (
-                <Link href="/friends" className="btn btn-primary btn-sm">
-                  Ответить на заявку
-                </Link>
+                <AppLink href="/friends" className="btn btn-primary btn-sm">
+                  {p.answerRequest}
+                </AppLink>
               )
             ) : (
               <FriendActionButton
                 action={sendFriendRequest}
                 id={user.id}
-                label="В друзья"
-                pendingLabel="Отправка…"
+                label={p.addFriend}
+                pendingLabel={p.adding}
               />
             )}
           </div>
         </div>
       </section>
 
-      {!showActivity && (
-        <p className="small text-secondary">Этот профиль скрывает свою активность.</p>
-      )}
+      {!showActivity && <p className="small text-secondary">{p.hidden}</p>}
 
       {showActivity && (
       <>
       {badges.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Ачивки
-          </h2>
+          <h2 className="section-heading mb-2">{p.achievements}</h2>
           {/* Медали вместо чипов (Э2ф): тот же AchievementBadge, что в
               кабинете, компактным вариантом. */}
           <div className="d-flex flex-wrap gap-2 mb-4">
@@ -280,20 +285,19 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           </div>
         </>
       )}
-      <h2 className="section-heading mb-2">
-        Идёт на события
-      </h2>
+      <h2 className="section-heading mb-2">{p.going}</h2>
       {!isPremiumActive(viewer) ? (
         <p className="small text-secondary mb-4">
-          🔒 {upcomingGoing.length > 0 ? `Событий: ${upcomingGoing.length} — с` : "С"}писки событий
-          доступны по подписке.
+          {upcomingGoing.length > 0
+            ? p.goingLockedWithCount(upcomingGoing.length)
+            : p.goingLocked}
         </p>
       ) : upcomingGoing.length === 0 ? (
         <div className="mb-4">
           <EmptyState
             emoji="🎫"
-            title="Пока никуда не собирается"
-            hint={`Когда ${displayName} отметит «иду», события появятся здесь.`}
+            title={p.goingEmptyTitle}
+            hint={p.goingEmptyHint(displayName)}
             compact
           />
         </div>
@@ -303,7 +307,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             const dates = event.occurrences.map((o) => o.startsAt);
             const first = event.occurrences[0];
             return (
-              <Link
+              <AppLink
                 key={event.id}
                 href={eventHref(event)}
                 className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3"
@@ -315,10 +319,12 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                   </p>
                 </div>
                 <span className="small text-secondary text-end flex-shrink-0 text-capitalize">
-                  {dates.length === 1 ? formatHumanDate(dates[0]) : formatCombinedDateList(dates)}
+                  {dates.length === 1
+                    ? formatHumanDate(dates[0], locale)
+                    : formatCombinedDateList(dates, locale)}
                   {first && ` · ${formatTime(first.startsAt)}`}
                 </span>
-              </Link>
+              </AppLink>
             );
           })}
         </div>
@@ -326,27 +332,26 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {trips.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Поездки
-          </h2>
+          <h2 className="section-heading mb-2">{p.trips}</h2>
           <div className="d-flex flex-column gap-2 mb-4">
-            {trips.map((t) => (
-              <Link
-                key={t.id}
-                href={tripHref(t)}
+            {trips.map((trip) => (
+              <AppLink
+                key={trip.id}
+                href={tripHref(trip)}
                 className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
               >
                 <div>
-                  <p className="font-display fw-medium text-white mb-0">{t.title}</p>
+                  <p className="font-display fw-medium text-white mb-0">{trip.title}</p>
                   <p className="small text-secondary mb-0">
-                    <CalendarIcon className="icon-inline" /> {formatShortDate(t.startDate)} –{" "}
-                    {formatShortDate(t.endDate)} {t.endDate.getFullYear()}
+                    <CalendarIcon className="icon-inline" />{" "}
+                    {formatShortDate(trip.startDate, locale)} –{" "}
+                    {formatShortDate(trip.endDate, locale)} {trip.endDate.getFullYear()}
                   </p>
                 </div>
                 <span className="small text-secondary flex-shrink-0">
-                  {VISIBILITY_LABELS[t.visibility]}
+                  {p.visibility[trip.visibility]}
                 </span>
-              </Link>
+              </AppLink>
             ))}
           </div>
         </>
@@ -354,12 +359,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {placeLists.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Списки мест
-          </h2>
+          <h2 className="section-heading mb-2">{p.placeLists}</h2>
           <div className="d-flex flex-column gap-2 mb-4">
             {placeLists.map((l) => (
-              <Link
+              <AppLink
                 key={l.id}
                 href={listHref(l)}
                 className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
@@ -370,8 +373,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                     <p className="small text-secondary mb-0 text-truncate">{l.description}</p>
                   )}
                 </div>
-                <span className="small text-secondary flex-shrink-0">{l._count.items} мест</span>
-              </Link>
+                <span className="small text-secondary flex-shrink-0">
+                  {p.placeCount(l._count.items)}
+                </span>
+              </AppLink>
             ))}
           </div>
         </>
@@ -379,10 +384,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {artistLists.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">Списки актёров</h2>
+          <h2 className="section-heading mb-2">{p.artistLists}</h2>
           <div className="d-flex flex-column gap-2 mb-4">
             {artistLists.map((l) => (
-              <Link
+              <AppLink
                 key={l.id}
                 href={artistListHref(l)}
                 className="surface surface-hover text-decoration-none d-flex align-items-center justify-content-between gap-3 p-3"
@@ -393,8 +398,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                     <p className="small text-secondary mb-0 text-truncate">{l.description}</p>
                   )}
                 </div>
-                <span className="small text-secondary flex-shrink-0">{l._count.items} актёров</span>
-              </Link>
+                <span className="small text-secondary flex-shrink-0">
+                  {p.artistCount(l._count.items)}
+                </span>
+              </AppLink>
             ))}
           </div>
         </>
@@ -402,16 +409,16 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {visitedPlaces.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">Посещённые места</h2>
+          <h2 className="section-heading mb-2">{p.visitedPlaces}</h2>
           <div className="d-flex flex-wrap gap-2 mb-4">
             {visitedPlaces.map((v) => (
-              <Link
+              <AppLink
                 key={v.locationId}
                 href={locationHref(v.location)}
                 className="event-chip text-decoration-none"
               >
                 📍 {v.location.name}
-              </Link>
+              </AppLink>
             ))}
           </div>
         </>
@@ -419,9 +426,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
 
       {showFavorites && user.favoritePerformers.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Любимые актёры
-          </h2>
+          <h2 className="section-heading mb-2">{p.favoritePerformers}</h2>
           <div className="d-flex flex-wrap gap-2 mb-4">
             {user.favoritePerformers.map((f) => (
               <EntityMiniCard

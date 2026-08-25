@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { searchLocationOptions, createOwnPlaceAndReturn } from "@/app/(public)/lists/actions";
+import { useT } from "@/components/LocaleProvider";
 
 /** Поле «Место» для формы личного события: асинхронный поиск локаций,
  *  выбранная кладётся в hidden input name=locationId. Если нужного
@@ -14,6 +15,7 @@ export default function LocationPickerField({
 }: {
   defaultLocation?: { id: string; name: string } | null;
 }) {
+  const t = useT();
   const [selected, setSelected] = useState(defaultLocation ?? null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
@@ -47,7 +49,7 @@ export default function LocationPickerField({
   async function createPlace() {
     const name = nameRef.current?.value.trim() ?? "";
     if (!name) {
-      setError("Укажите название места");
+      setError(t.trips.placePicker.nameRequired);
       return;
     }
     setIsSaving(true);
@@ -66,7 +68,7 @@ export default function LocationPickerField({
       setQuery("");
       setResults([]);
     } catch {
-      setError("Не удалось создать место — проверьте ссылку и попробуйте ещё раз");
+      setError(t.trips.placePicker.createFailed);
     } finally {
       setIsSaving(false);
     }
@@ -74,7 +76,7 @@ export default function LocationPickerField({
 
   return (
     <div>
-      <label className="form-label small text-secondary">Место (необязательно)</label>
+      <label className="form-label small text-secondary">{t.trips.placePicker.label}</label>
       <input type="hidden" name="locationId" value={selected?.id ?? ""} />
       {selected ? (
         <p className="mb-0 d-flex align-items-center gap-2">
@@ -84,7 +86,7 @@ export default function LocationPickerField({
             className="btn btn-link btn-sm text-danger p-0"
             onClick={() => setSelected(null)}
           >
-            убрать
+            {t.trips.placePicker.remove}
           </button>
         </p>
       ) : isCreating ? (
@@ -94,15 +96,15 @@ export default function LocationPickerField({
             type="text"
             autoFocus
             defaultValue={query}
-            placeholder="Название места"
-            aria-label="Название нового места"
+            placeholder={t.trips.placePicker.namePlaceholder}
+            aria-label={t.trips.placePicker.nameAria}
             className="form-control form-control-sm"
           />
           <input
             ref={mapsRef}
             type="text"
-            placeholder="Ссылка Google Maps или «13.75, 100.50»"
-            aria-label="Ссылка Google Maps или координаты"
+            placeholder={t.trips.placePicker.mapsPlaceholder}
+            aria-label={t.trips.placePicker.mapsAria}
             className="form-control form-control-sm"
           />
           {error && <p className="small text-danger mb-0">{error}</p>}
@@ -113,7 +115,7 @@ export default function LocationPickerField({
               disabled={isSaving}
               onClick={createPlace}
             >
-              {isSaving ? "Создаём…" : "Создать и выбрать"}
+              {isSaving ? t.trips.placePicker.creating : t.trips.placePicker.createAndPick}
             </button>
             <button
               type="button"
@@ -123,7 +125,7 @@ export default function LocationPickerField({
                 setError(null);
               }}
             >
-              Отмена
+              {t.common.cancel}
             </button>
           </div>
         </div>
@@ -133,7 +135,7 @@ export default function LocationPickerField({
             <input
               type="text"
               className="form-control"
-              placeholder="Начните вводить название локации…"
+              placeholder={t.trips.placePicker.searchPlaceholder}
               value={query}
               onChange={(e) => handleChange(e.target.value)}
               onFocus={() => setIsOpen(true)}
@@ -167,7 +169,7 @@ export default function LocationPickerField({
               setError(null);
             }}
           >
-            + Своё место
+            {t.trips.placePicker.ownPlace}
           </button>
         </>
       )}

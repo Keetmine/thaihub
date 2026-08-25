@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
+import { useT } from "@/components/LocaleProvider";
 import VisitedButton from "@/components/VisitedButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import AddToListButton from "@/components/AddToListButton";
@@ -86,6 +87,7 @@ export default function AlphabetDataList({
     indexAriaLabel: string;
   };
 }) {
+  const t = useT();
   const [visible, setVisible] = useState(batch);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +128,7 @@ export default function AlphabetDataList({
 
   const renderCardCell = (row: AlphabetRow) => (
     <div key={row.id} className="position-relative">
-      <Link href={row.href} className="text-decoration-none d-block">
+      <AppLink href={row.href} className="text-decoration-none d-block">
         <div
           style={{
             position: "relative",
@@ -172,7 +174,7 @@ export default function AlphabetDataList({
             {row.nameSuffix ?? row.subtitle}
           </p>
         )}
-      </Link>
+      </AppLink>
       <div
         className="position-absolute d-flex align-items-center gap-1"
         style={{ top: "0.375rem", right: "0.375rem" }}
@@ -187,7 +189,7 @@ export default function AlphabetDataList({
       key={row.id}
       className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
     >
-      <Link
+      <AppLink
         href={row.href}
         className="text-decoration-none d-flex align-items-center gap-3"
         style={{ minWidth: 0 }}
@@ -222,7 +224,7 @@ export default function AlphabetDataList({
           </span>
           {row.subtitle && <span className="small text-secondary">{row.subtitle}</span>}
         </span>
-      </Link>
+      </AppLink>
       <div className="d-flex align-items-center gap-2 flex-shrink-0">
         {row.meta && <span className="small text-secondary me-1">{row.meta}</span>}
         {actionButtons(row)}
@@ -283,12 +285,12 @@ export default function AlphabetDataList({
         {sections}
         {visible < rows.length && (
           <div ref={sentinelRef} className="small text-secondary py-3 text-center">
-            Загружаем ещё…
+            {t.catalog.loadingMore}
           </div>
         )}
       </div>
 
-      <nav className="performers-index" aria-label="Быстрый переход по буквам">
+      <nav className="performers-index" aria-label={t.catalog.letterIndex}>
         {pinnedRows.length > 0 && (
           <>
             <a

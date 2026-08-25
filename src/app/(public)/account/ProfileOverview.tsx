@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import type { StatsForTab } from "./StatsTab";
-import { plural } from "@/lib/plural";
+import { useT } from "@/components/LocaleProvider";
 import PremiumTeaser from "@/components/PremiumTeaser";
 
 /** Счётчики профиля, но с иерархией вместо двух одинаковых рядов плиток:
@@ -29,53 +29,56 @@ export default function ProfileOverview({
    *  что за ней. Навигационные чипы остаются всем. */
   isPremium: boolean;
 }) {
+  const t = useT();
+  const o = t.account.overview;
+
   // Подписи согласуются с числом (см. lib/plural.ts): «1 артист»,
   // «2 артиста», «5 артистов» — раньше на любое число была одна форма.
   const heroes = [
     {
       icon: "🎤",
       value: stats.attendedEvents,
-      label: `${plural(stats.attendedEvents, ["событие", "события", "событий"])} вживую`,
-      hint: "посещено",
+      label: o.heroEvents(stats.attendedEvents),
+      hint: o.heroEventsHint,
     },
     {
       icon: "👀",
       value: stats.performersSeenLive,
-      label: `${plural(stats.performersSeenLive, ["артист", "артиста", "артистов"])} вживую`,
-      hint: "увидела лично",
+      label: o.heroArtists(stats.performersSeenLive),
+      hint: o.heroArtistsHint,
     },
     {
       icon: "🌴",
       value: stats.daysInThailand,
-      label: `${plural(stats.daysInThailand, ["день", "дня", "дней"])} в Таиланде`,
-      hint: "по поездкам",
+      label: o.heroDays(stats.daysInThailand),
+      hint: o.heroDaysHint,
     },
     {
       icon: "📺",
       value: stats.completedDramas,
-      label: `${plural(stats.completedDramas, ["сериал", "сериала", "сериалов"])} досмотрено`,
-      hint: "статус «просмотрено»",
+      label: o.heroDramas(stats.completedDramas),
+      hint: o.heroDramasHint,
     },
   ];
 
   const chips: { label: string; value: number; href?: string }[] = [
-    { label: "иду", value: nav.going, href: "/events?filter=going" },
-    { label: "в избранном", value: nav.favoriteEvents, href: "/events?filter=favorited" },
+    { label: o.chipGoing, value: nav.going, href: "/events?filter=going" },
+    { label: o.chipFavoriteEvents, value: nav.favoriteEvents, href: "/events?filter=favorited" },
     {
-      label: `${plural(nav.favoritePerformers, ["любимый артист", "любимых артиста", "любимых артистов"])}`,
+      label: o.chipPerformers(nav.favoritePerformers),
       value: nav.favoritePerformers,
       href: "/artists",
     },
     {
-      label: `${plural(nav.dramas, ["сериал", "сериала", "сериалов"])} в списке`,
+      label: o.chipDramas(nav.dramas),
       value: nav.dramas,
       href: "/dramas",
     },
-    { label: plural(nav.friends, ["друг", "друга", "друзей"]), value: nav.friends, href: "/friends" },
-    { label: plural(nav.trips, ["поездка", "поездки", "поездок"]), value: nav.trips, href: "/trips" },
-    { label: plural(stats.uniqueVenues, ["площадка", "площадки", "площадок"]), value: stats.uniqueVenues },
+    { label: o.chipFriends(nav.friends), value: nav.friends, href: "/friends" },
+    { label: o.chipTrips(nav.trips), value: nav.trips, href: "/trips" },
+    { label: o.chipVenues(stats.uniqueVenues), value: stats.uniqueVenues },
     {
-      label: `${plural(stats.visitedLocations, ["локация", "локации", "локаций"])} съёмок`,
+      label: o.chipLocations(stats.visitedLocations),
       value: stats.visitedLocations,
       href: "/locations",
     },
@@ -84,10 +87,7 @@ export default function ProfileOverview({
   if (!isPremium) {
     return (
       <div className="mb-4">
-        <PremiumTeaser
-          title="Личная статистика — по подписке"
-          description="Сколько событий и артистов вы застали вживую, дни в Таиланде, карта посещённого и ачивки."
-        />
+        <PremiumTeaser title={o.lockedTitle} description={o.lockedDescription} />
         <div className="d-flex flex-wrap gap-2">
           {chips.map((c) => {
             const inner = (
@@ -97,9 +97,9 @@ export default function ProfileOverview({
               </>
             );
             return c.href ? (
-              <Link key={c.label} href={c.href} className="nav-chip">
+              <AppLink key={c.label} href={c.href} className="nav-chip">
                 {inner}
-              </Link>
+              </AppLink>
             ) : (
               <span key={c.label} className="nav-chip">
                 {inner}
@@ -136,9 +136,13 @@ export default function ProfileOverview({
             </>
           );
           return c.href ? (
-            <Link key={c.label} href={c.href} className="nav-chip nav-chip-link text-decoration-none">
+            <AppLink
+              key={c.label}
+              href={c.href}
+              className="nav-chip nav-chip-link text-decoration-none"
+            >
               {inner}
-            </Link>
+            </AppLink>
           ) : (
             <span key={c.label} className="nav-chip">
               {inner}

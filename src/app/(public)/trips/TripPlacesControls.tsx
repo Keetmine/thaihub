@@ -8,6 +8,7 @@ import {
   removePlaceFromTrip,
 } from "./actions";
 import { searchLocationOptions } from "@/app/(public)/lists/actions";
+import { useT } from "@/components/LocaleProvider";
 import { useRef } from "react";
 
 /** Прикрепление своего списка к поездке. */
@@ -18,6 +19,7 @@ export function AttachListSelect({
   tripId: string;
   availableLists: { id: string; title: string }[];
 }) {
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   if (availableLists.length === 0) return null;
@@ -27,7 +29,7 @@ export function AttachListSelect({
         className="form-select form-select-sm w-auto"
         disabled={isPending}
         value=""
-        aria-label="Прикрепить список"
+        aria-label={t.trips.places.attachAria}
         onChange={(e) => {
           const listId = e.target.value;
           if (!listId) return;
@@ -38,7 +40,7 @@ export function AttachListSelect({
           });
         }}
       >
-        <option value="">+ Прикрепить список…</option>
+        <option value="">{t.trips.places.attachOption}</option>
         {availableLists.map((l) => (
           <option key={l.id} value={l.id}>
             {l.title}
@@ -51,6 +53,7 @@ export function AttachListSelect({
 }
 
 export function DetachListButton({ tripId, listId }: { tripId: string; listId: string }) {
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   return (
@@ -67,7 +70,7 @@ export function DetachListButton({ tripId, listId }: { tripId: string; listId: s
           });
         }}
       >
-        Открепить
+        {t.trips.places.detach}
       </button>
       {error && <span className="small text-danger">{error}</span>}
     </>
@@ -75,6 +78,7 @@ export function DetachListButton({ tripId, listId }: { tripId: string; listId: s
 }
 
 export function RemoveTripPlaceButton({ tripId, locationId }: { tripId: string; locationId: string }) {
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   return (
@@ -82,8 +86,8 @@ export function RemoveTripPlaceButton({ tripId, locationId }: { tripId: string; 
       <button
         type="button"
         className="icon-btn icon-btn-danger flex-shrink-0"
-        aria-label="Убрать место"
-        title="Убрать место"
+        aria-label={t.trips.places.removeAria}
+        title={t.trips.places.removeAria}
         disabled={isPending}
         onClick={() => {
           setError(null);
@@ -102,6 +106,7 @@ export function RemoveTripPlaceButton({ tripId, locationId }: { tripId: string; 
 
 /** Комбобокс «добавить отдельное место в поездку». */
 export function AddTripPlaceBox({ tripId }: { tripId: string }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -130,7 +135,7 @@ export function AddTripPlaceBox({ tripId }: { tripId: string }) {
       <input
         type="text"
         className="form-control form-control-sm"
-        placeholder="+ Добавить место…"
+        placeholder={t.trips.places.addPlaceholder}
         value={query}
         disabled={isPending}
         onChange={(e) => handleChange(e.target.value)}

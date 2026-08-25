@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
 
 // Контекстный «назад» для страниц сущностей: если пользователь пришёл
 // внутри сайта (глубина внутренней навигации > 1, считает
@@ -20,6 +21,7 @@ export default function BackLink({
   fallbackHref: string;
   fallbackLabel: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const [canGoBack] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -42,7 +44,7 @@ export default function BackLink({
         }
       }}
     >
-      <span suppressHydrationWarning>{canGoBack ? "← Назад" : fallbackLabel}</span>
+      <span suppressHydrationWarning>{canGoBack ? t.widgets.back : fallbackLabel}</span>
     </Link>
   );
 }

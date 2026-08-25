@@ -1,28 +1,33 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { pageMetadata } from "@/lib/seo";
+import { getT, localeHref } from "@/lib/i18n";
 import WelcomePicker from "./WelcomePicker";
 
-export const metadata = pageMetadata({
-  title: "Кого вы любите?",
-  description:
-    "Второй шаг онбординга: отмечаем любимых артистов, чтобы вкладка «Мои артисты» и избранное заработали с первого дня.",
-  path: "/welcome",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.auth.welcome.metaTitle,
+    description: t.auth.welcome.metaDescription,
+    path: "/welcome",
+    noIndex: true,
+    locale,
+  });
+}
 
 export const dynamic = "force-dynamic";
 
 // Онбординг после регистрации: сразу выбрать любимых артистов, чтобы
 // «Мои артисты», уведомления и избранное заработали с первого дня.
 export default async function WelcomePage() {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
   // Ник — обязательная часть регистрации: без него профиль недоступен
   // по ссылке, а просить его позже человек уже не станет.
-  if (!user.username) redirect("/welcome/profile");
+  if (!user.username) redirect(localeHref("/welcome/profile", locale));
 
   // Стартовые варианты — самые «событийные» артисты (у них точно есть
   // что показать), остальных доищут через поиск.
@@ -38,20 +43,16 @@ export default async function WelcomePage() {
 
   return (
     <div style={{ maxWidth: "44rem" }} className="mx-auto">
-      <span className="eyebrow">Добро пожаловать</span>
+      <span className="eyebrow">{t.auth.welcome.eyebrow}</span>
       <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
-        Кого вы любите?
+        {t.auth.welcome.title}
       </h1>
-      <p className="text-secondary mb-4">
-        Выберите любимых артистов — их события появятся во вкладке «Мои
-        артисты», а избранное соберётся с первого дня. Это можно поменять в
-        любой момент.
-      </p>
+      <p className="text-secondary mb-4">{t.auth.welcome.lead}</p>
       <WelcomePicker popular={popular} />
       <p className="small text-secondary mt-3">
-        <Link href="/" className="link-body-emphasis">
-          Пропустить и перейти к афише →
-        </Link>
+        <AppLink href="/" className="link-body-emphasis">
+          {t.auth.welcome.skip}
+        </AppLink>
       </p>
     </div>
   );

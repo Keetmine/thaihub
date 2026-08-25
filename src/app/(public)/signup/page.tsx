@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import AppLink from "@/components/AppLink";
 import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
@@ -7,14 +7,18 @@ import { signup } from "./actions";
 import { pageMetadata } from "@/lib/seo";
 import { getCurrentUser } from "@/lib/userAuth";
 import { telegramBotUsername } from "@/lib/telegram";
+import { getT, localeHref } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Регистрация",
-  description:
-    "Заводим аккаунт: пара полей — и можно отмечать события в афише, вести статусы просмотра и планировать поездки.",
-  path: "/signup",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.auth.signup.metaTitle,
+    description: t.auth.signup.metaDescription,
+    path: "/signup",
+    noIndex: true,
+    locale,
+  });
+}
 
 
 export default async function SignupPage({
@@ -23,8 +27,9 @@ export default async function SignupPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const { locale, t } = await getT();
   // Залогиненному регистрироваться незачем — форма только путала.
-  if (await getCurrentUser()) redirect("/account");
+  if (await getCurrentUser()) redirect(localeHref("/account", locale));
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
   const botUsername = telegramBotUsername();
 
@@ -42,13 +47,13 @@ export default async function SignupPage({
           <Logo />
         </div>
         <h1 className="h6 text-center text-secondary text-uppercase mb-4" style={{ letterSpacing: "0.08em" }}>
-          Регистрация
+          {t.auth.signup.title}
         </h1>
         {error === "exists" && (
-          <p className="small text-danger text-center mb-3">Такой email уже зарегистрирован</p>
+          <p className="small text-danger text-center mb-3">{t.auth.signup.emailTaken}</p>
         )}
         {error === "1" && (
-          <p className="small text-danger text-center mb-3">Проверьте email и пароль (мин. 6 символов)</p>
+          <p className="small text-danger text-center mb-3">{t.auth.signup.invalid}</p>
         )}
         {/* Ханипот против ботов: поле скрыто от людей, автозаполнялки
             ботов его заполняют — такие регистрации молча отбрасываются. */}
@@ -60,11 +65,11 @@ export default async function SignupPage({
           aria-hidden="true"
           style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", opacity: 0 }}
         />
-        <label className="form-label">Имя</label>
+        <label className="form-label">{t.auth.signup.name}</label>
         <input name="name" className="form-control mb-3" />
-        <label className="form-label">Email</label>
+        <label className="form-label">{t.auth.signup.email}</label>
         <input type="email" name="email" required className="form-control mb-3" />
-        <label className="form-label">Пароль</label>
+        <label className="form-label">{t.auth.signup.password}</label>
         <PasswordInput name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
         <div className="form-check mb-3">
           <input
@@ -75,18 +80,18 @@ export default async function SignupPage({
             className="form-check-input"
           />
           <label htmlFor="accept-terms" className="form-check-label small text-secondary">
-            Принимаю{" "}
-            <Link href="/terms" className="link-body-emphasis" target="_blank">
-              условия
-            </Link>{" "}
-            и{" "}
-            <Link href="/privacy" className="link-body-emphasis" target="_blank">
-              политику конфиденциальности
-            </Link>
+            {t.auth.signup.accept}{" "}
+            <AppLink href="/terms" className="link-body-emphasis" target="_blank">
+              {t.auth.signup.terms}
+            </AppLink>{" "}
+            {t.auth.signup.and}{" "}
+            <AppLink href="/privacy" className="link-body-emphasis" target="_blank">
+              {t.auth.signup.privacy}
+            </AppLink>
           </label>
         </div>
         <button type="submit" className="btn btn-primary w-100 mb-3">
-          Зарегистрироваться
+          {t.auth.signup.submit}
         </button>
         {hasGoogle && (
           // eslint-disable-next-line @next/next/no-html-link-for-pages -- API-роут OAuth, не страница
@@ -97,27 +102,28 @@ export default async function SignupPage({
               <path fill="#FBBC05" d="M5.27 14.27A7.2 7.2 0 0 1 4.9 12c0-.79.14-1.55.37-2.27v-3.1H1.29a12 12 0 0 0 0 10.74l3.98-3.1z"/>
               <path fill="#EA4335" d="M12 4.77c1.77 0 3.35.61 4.6 1.8l3.44-3.44A11.97 11.97 0 0 0 12 0 12 12 0 0 0 1.29 6.63l3.98 3.1C6.22 6.88 8.87 4.77 12 4.77z"/>
             </svg>
-            Продолжить с Google
+            {t.auth.signup.google}
           </a>
         )}
         {botUsername && (
           <div className="text-center mb-3">
-            <p className="small text-secondary mb-2">или</p>
+            <p className="small text-secondary mb-2">{t.auth.signup.or}</p>
             <TelegramLoginButton botUsername={botUsername} />
           </div>
         )}
         {(hasGoogle || botUsername) && (
           <p className="small text-secondary text-center mb-3" style={{ opacity: 0.8 }}>
-            Входя через Google или Telegram, вы соглашаетесь с{" "}
-            <Link href="/terms" className="link-body-emphasis">условиями</Link> и{" "}
-            <Link href="/privacy" className="link-body-emphasis">политикой конфиденциальности</Link>.
+            {t.auth.signup.oauthNotice}{" "}
+            <AppLink href="/terms" className="link-body-emphasis">{t.auth.signup.termsWith}</AppLink>{" "}
+            {t.auth.signup.and}{" "}
+            <AppLink href="/privacy" className="link-body-emphasis">{t.auth.signup.privacyWith}</AppLink>.
           </p>
         )}
         <p className="small text-secondary text-center mb-0">
-          Уже есть аккаунт?{" "}
-          <Link href="/login" className="link-body-emphasis">
-            Войти
-          </Link>
+          {t.auth.signup.haveAccount}{" "}
+          <AppLink href="/login" className="link-body-emphasis">
+            {t.auth.signup.loginLink}
+          </AppLink>
         </p>
       </form>
     </div>

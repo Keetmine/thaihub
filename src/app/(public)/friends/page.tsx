@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -10,13 +10,18 @@ import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
 import { sendFriendRequest, acceptFriendRequest, removeFriendship } from "./actions";
 import { pageMetadata } from "@/lib/seo";
+import { getT, localeHref } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Друзья",
-  description: "Ваши друзья на MyBLHub.",
-  path: "/friends",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.social.friends.metaTitle,
+    description: t.social.friends.metaDescription,
+    path: "/friends",
+    noIndex: true,
+    locale,
+  });
+}
 
 
 export const dynamic = "force-dynamic";
@@ -26,17 +31,19 @@ function UserRow({
   name,
   username,
   photoUrl,
+  noName,
   action,
 }: {
   userId: string;
   name: string | null;
   username: string | null;
   photoUrl: string | null;
+  noName: string;
   action: React.ReactNode;
 }) {
   return (
     <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
-      <Link href={`/users/${userId}`} className="text-decoration-none d-flex align-items-center gap-3">
+      <AppLink href={`/users/${userId}`} className="text-decoration-none d-flex align-items-center gap-3">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -58,11 +65,11 @@ function UserRow({
         )}
         <div>
           <p className="font-display fw-medium text-white mb-0">
-            {name || (username ? `@${username}` : "Без имени")}
+            {name || (username ? `@${username}` : noName)}
           </p>
           {name && username && <p className="small text-secondary mb-0">@{username}</p>}
         </div>
-      </Link>
+      </AppLink>
       {action}
     </div>
   );
@@ -73,8 +80,10 @@ export default async function FriendsPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  const { locale, t } = await getT();
+  const f = t.social.friends;
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
 
   const { q: rawQ } = await searchParams;
   const q = (rawQ ?? "").trim();
@@ -112,21 +121,15 @@ export default async function FriendsPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Профиль" title="Друзья" className="mb-5" />
+      <PageHeader eyebrow={f.eyebrow} title={f.title} className="mb-5" />
 
-      <NameSearchBox
-        action="/friends"
-        q={q}
-        placeholder="Найти по имени, нику или email (точно)…"
-      />
+      <NameSearchBox action="/friends" q={q} placeholder={f.searchPlaceholder} />
 
       {q && (
         <>
-          <h2 className="section-heading mb-2">
-            Результаты поиска
-          </h2>
+          <h2 className="section-heading mb-2">{f.searchResults}</h2>
           {searchResults.length === 0 ? (
-            <p className="small text-secondary mb-4">Никого не найдено.</p>
+            <p className="small text-secondary mb-4">{f.noneFound}</p>
           ) : (
             <div className="d-flex flex-column gap-2 mb-4">
               {searchResults.map((u) => (
@@ -136,12 +139,13 @@ export default async function FriendsPage({
                   name={u.name}
                   username={u.username}
                   photoUrl={u.photoUrl}
+                  noName={f.noName}
                   action={
                     <FriendActionButton
                       action={sendFriendRequest}
                       id={u.id}
-                      label="Добавить в друзья"
-                      pendingLabel="Отправка…"
+                      label={f.add}
+                      pendingLabel={f.adding}
                     />
                   }
                 />
@@ -153,30 +157,33 @@ export default async function FriendsPage({
 
       {incoming.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Заявки в друзья
-          </h2>
+          <h2 className="section-heading mb-2">{f.incoming}</h2>
           <div className="d-flex flex-column gap-2 mb-4">
-            {incoming.map((f) => (
+            {incoming.map((request) => (
               <UserRow
-                key={f.id}
-                userId={other(f).id}
-                name={other(f).name}
-                username={other(f).username}
-                photoUrl={other(f).photoUrl}
+                key={request.id}
+                userId={other(request).id}
+                name={other(request).name}
+                username={other(request).username}
+                photoUrl={other(request).photoUrl}
+                noName={f.noName}
                 action={
                   <div className="d-flex align-items-center gap-2">
                     <FriendActionButton
                       action={acceptFriendRequest}
-                      id={f.id}
-                      label="Принять"
+                      id={request.id}
+                      label={f.accept}
                       pendingLabel="…"
                     />
                     <ConfirmForm
-                      action={removeFriendship.bind(null, f.id)}
-                      confirmMessage="Отклонить заявку в друзья?"
+                      action={removeFriendship.bind(null, request.id)}
+                      confirmMessage={f.declineConfirm}
                     >
-                      <button type="button" className="icon-btn icon-btn-danger" aria-label="Отклонить">
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        aria-label={f.decline}
+                      >
                         <TrashIcon />
                       </button>
                     </ConfirmForm>
@@ -190,24 +197,23 @@ export default async function FriendsPage({
 
       {outgoing.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">
-            Отправленные заявки
-          </h2>
+          <h2 className="section-heading mb-2">{f.outgoing}</h2>
           <div className="d-flex flex-column gap-2 mb-4">
-            {outgoing.map((f) => (
+            {outgoing.map((request) => (
               <UserRow
-                key={f.id}
-                userId={other(f).id}
-                name={other(f).name}
-                username={other(f).username}
-                photoUrl={other(f).photoUrl}
+                key={request.id}
+                userId={other(request).id}
+                name={other(request).name}
+                username={other(request).username}
+                photoUrl={other(request).photoUrl}
+                noName={f.noName}
                 action={
                   <ConfirmForm
-                    action={removeFriendship.bind(null, f.id)}
-                    confirmMessage="Отменить заявку в друзья?"
+                    action={removeFriendship.bind(null, request.id)}
+                    confirmMessage={f.cancelConfirm}
                   >
                     <button type="button" className="btn btn-outline-secondary btn-sm">
-                      Отменить
+                      {f.cancel}
                     </button>
                   </ConfirmForm>
                 }
@@ -217,31 +223,27 @@ export default async function FriendsPage({
         </>
       )}
 
-      <h2 className="section-heading mb-2">
-        Мои друзья
-      </h2>
+      <h2 className="section-heading mb-2">{f.mine}</h2>
       {accepted.length === 0 ? (
-        <EmptyState
-          emoji="👥"
-          title="Пока нет друзей"
-          hint="Найдите знакомых по имени или нику в поиске выше — и увидите, на что идут они."
-          compact
-        />
+        <EmptyState emoji="👥" title={f.emptyTitle} hint={f.emptyHint} compact />
       ) : (
         <div className="d-flex flex-column gap-2">
-          {accepted.map((f) => (
+          {accepted.map((friendship) => (
             <UserRow
-              key={f.id}
-              userId={other(f).id}
-              name={other(f).name}
-              username={other(f).username}
-              photoUrl={other(f).photoUrl}
+              key={friendship.id}
+              userId={other(friendship).id}
+              name={other(friendship).name}
+              username={other(friendship).username}
+              photoUrl={other(friendship).photoUrl}
+              noName={f.noName}
               action={
                 <ConfirmForm
-                  action={removeFriendship.bind(null, f.id)}
-                  confirmMessage={`Удалить «${other(f).name || other(f).username || "без имени"}» из друзей?`}
+                  action={removeFriendship.bind(null, friendship.id)}
+                  confirmMessage={f.removeConfirm(
+                    other(friendship).name || other(friendship).username || f.noNameInline,
+                  )}
                 >
-                  <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить из друзей">
+                  <button type="button" className="icon-btn icon-btn-danger" aria-label={f.remove}>
                     <TrashIcon />
                   </button>
                 </ConfirmForm>
@@ -252,9 +254,9 @@ export default async function FriendsPage({
       )}
 
       <p className="small text-secondary mt-4">
-        <Link href="/account" className="link-body-emphasis">
-          ← Назад к профилю
-        </Link>
+        <AppLink href="/account" className="link-body-emphasis">
+          {f.backToProfile}
+        </AppLink>
       </p>
     </div>
   );

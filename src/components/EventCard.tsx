@@ -1,5 +1,7 @@
-import Link from "next/link";
-import { formatTime } from "@/lib/dates";
+"use client";
+
+import AppLink from "@/components/AppLink";
+import { formatTime, shortMonthName, shortWeekdayName } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { eventHref } from "@/lib/eventSlug";
 import { PinIcon, UsersIcon } from "@/components/icons";
@@ -7,8 +9,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
 import MskTimeInfo from "@/components/MskTimeInfo";
 import EventRowCast from "@/components/EventRowCast";
-
-const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+import { useLocale, useT } from "@/components/LocaleProvider";
 
 /** Card row for event listings (home, trips, day view): a date block,
  *  the event's poster when it has one, and the details — replaces the
@@ -28,10 +29,9 @@ export default function EventCard({
   isGoing?: boolean;
   friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
 }) {
+  const t = useT();
+  const locale = useLocale();
   const d = event.startsAt;
-  const monthShort = d
-    .toLocaleDateString("ru-RU", { month: "short" })
-    .replace(/\.$/, "");
 
   return (
     <div className="event-card">
@@ -42,11 +42,11 @@ export default function EventCard({
 
       <div className="event-card-date">
         <span className="event-card-day">{d.getDate()}</span>
-        <span className="event-card-month">{monthShort}</span>
-        <span className="event-card-weekday">{WEEKDAYS_SHORT[d.getDay()]}</span>
+        <span className="event-card-month">{shortMonthName(d, locale)}</span>
+        <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
       </div>
 
-      <Link href={eventHref(event)} className="event-card-poster flex-shrink-0">
+      <AppLink href={eventHref(event)} className="event-card-poster flex-shrink-0">
         {event.posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={event.posterUrl} alt="" loading="lazy" decoding="async" />
@@ -57,7 +57,7 @@ export default function EventCard({
             {event.title.trim().charAt(0).toUpperCase()}
           </span>
         )}
-      </Link>
+      </AppLink>
 
       <div className="event-card-body">
         {/* Иерархия строки: белое название сверху, ниже серой строкой
@@ -66,9 +66,9 @@ export default function EventCard({
             внимание с названия. */}
         <div className="event-row-head">
           <h3 className="h5 font-display mb-0">
-            <Link href={eventHref(event)} className="text-reset text-decoration-none">
+            <AppLink href={eventHref(event)} className="text-reset text-decoration-none">
               {event.title}
-            </Link>
+            </AppLink>
           </h3>
         </div>
         {/* Площадка — обычный span, не flex-строка: в flex длинное
@@ -93,18 +93,18 @@ export default function EventCard({
               className="d-inline-flex align-items-center gap-1 text-decoration-none"
               style={{ color: "var(--bs-primary-text-emphasis)" }}
             >
-              🎫 Мой билет
+              🎫 {t.events.card.myTicket}
             </a>
           )}
           {friendsGoing.length > 0 && (
             <span
               className="d-inline-flex align-items-center gap-1"
-              title={friendsGoing.map((f) => f.name || "Друг").join(", ")}
+              title={friendsGoing.map((f) => f.name || t.events.card.friend).join(", ")}
             >
               <UsersIcon className="icon-inline" />
               {friendsGoing.length === 1
-                ? `${friendsGoing[0].name || "Друг"} идёт`
-                : `${friendsGoing.length} друзей идут`}
+                ? t.events.card.oneFriendGoing(friendsGoing[0].name || t.events.card.friend)
+                : t.events.card.manyFriendsGoing(friendsGoing.length)}
             </span>
           )}
         </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 
 /** Глаз в иконочном стиле остальных иконок (stroke, currentColor). */
 function EyeIcon({ off }: { off: boolean }) {
@@ -38,7 +39,9 @@ export default function PasswordInput({
   autoComplete?: string;
   className?: string;
 }) {
+  const t = useT();
   const [visible, setVisible] = useState(false);
+  const toggleLabel = visible ? t.auth.password.hide : t.auth.password.show;
 
   return (
     <div className={`position-relative ${className}`}>
@@ -54,8 +57,8 @@ export default function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
-        title={visible ? "Скрыть пароль" : "Показать пароль"}
+        aria-label={toggleLabel}
+        title={toggleLabel}
         className="btn p-0 border-0 position-absolute top-50 translate-middle-y text-secondary d-inline-flex align-items-center"
         style={{ right: "0.85rem", background: "none" }}
       >

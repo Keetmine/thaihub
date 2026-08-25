@@ -2,16 +2,24 @@
 
 import { useState, useTransition } from "react";
 import { setTripVisibility } from "./actions";
-import { VISIBILITY_LABELS, VISIBILITY_HINTS } from "@/lib/tripVisibility";
+import { useT } from "@/components/LocaleProvider";
+
+// Порядок вариантов видимости: от закрытого к открытому. Подписи живут
+// в словаре (у поездки и у списка мест они разные), а порядок — общий,
+// поэтому его держим здесь и переиспользуем в контролах списка.
+export const VISIBILITY_ORDER = ["PRIVATE", "FRIENDS", "PUBLIC"] as const;
 
 /** Радио-выбор видимости для формы создания поездки. */
 export function VisibilityRadios({ defaultValue = "PRIVATE" }: { defaultValue?: string }) {
+  const t = useT();
   const [selected, setSelected] = useState(defaultValue);
   return (
     <div>
-      <label className="form-label small text-secondary d-block">Кто видит поездку</label>
+      <label className="form-label small text-secondary d-block">
+        {t.trips.visibility.label}
+      </label>
       <div className="d-flex flex-column gap-1">
-        {Object.entries(VISIBILITY_LABELS).map(([value, label]) => (
+        {VISIBILITY_ORDER.map((value) => (
           <label key={value} className="form-check mb-0">
             <input
               type="radio"
@@ -22,7 +30,8 @@ export function VisibilityRadios({ defaultValue = "PRIVATE" }: { defaultValue?: 
               className="form-check-input"
             />
             <span className="form-check-label small">
-              {label} <span className="text-secondary">— {VISIBILITY_HINTS[value]}</span>
+              {t.trips.visibility.options[value]}{" "}
+              <span className="text-secondary">— {t.trips.visibility.hints[value]}</span>
             </span>
           </label>
         ))}
@@ -39,6 +48,7 @@ export function VisibilitySelect({
   tripId: string;
   visibility: string;
 }) {
+  const t = useT();
   const [current, setCurrent] = useState(visibility);
   const [isPending, startTransition] = useTransition();
 
@@ -47,7 +57,7 @@ export function VisibilitySelect({
       className="form-select form-select-sm w-auto"
       value={current}
       disabled={isPending}
-      aria-label="Видимость поездки"
+      aria-label={t.trips.visibility.aria}
       onChange={(e) => {
         const next = e.target.value;
         setCurrent(next);
@@ -61,9 +71,9 @@ export function VisibilitySelect({
         });
       }}
     >
-      {Object.entries(VISIBILITY_LABELS).map(([value, label]) => (
+      {VISIBILITY_ORDER.map((value) => (
         <option key={value} value={value}>
-          {label}
+          {t.trips.visibility.options[value]}
         </option>
       ))}
     </select>

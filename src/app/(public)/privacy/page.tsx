@@ -1,144 +1,99 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Политика конфиденциальности",
-  description:
-    "Какие данные MyBLHub собирает, зачем, какие сервисы используются и как удалить свои данные.",
-  path: "/privacy",
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.legal.privacy.metaTitle,
+    description: t.legal.privacy.metaDescription,
+    path: "/privacy",
+    locale,
+  });
+}
 
 // Политика обработки персональных данных. Написана под закон РБ № 99-З
 // (владелец — самозанятая в Беларуси) с оглядкой на 152-ФЗ (аудитория в
 // основном в РФ). NB: блок «Оператор» ждёт реквизиты от владельца —
 // см. roadmap Э1.2.
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const { t } = await getT();
   return (
     <div className="container-narrow py-4">
-      <span className="eyebrow">Документы</span>
+      <span className="eyebrow">{t.legal.eyebrow}</span>
       <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
-        Политика конфиденциальности
+        {t.legal.privacy.title}
       </h1>
 
       <div className="surface p-4 d-flex flex-column gap-4">
         <section>
-          <h2 className="section-heading mb-2">Кто обрабатывает данные</h2>
+          <h2 className="section-heading mb-2">{t.legal.privacy.operatorTitle}</h2>
           <p className="mb-0 text-secondary">
-            Оператор сервиса MyBLHub (myblhub.com) — самозанятое физическое
-            лицо, Республика Беларусь. Связаться с нами можно через{" "}
-            <Link href="/help" className="link-body-emphasis">
-              форму обращения
-            </Link>{" "}
-            или командой <code>/support</code> в Telegram-боте — по вопросам
-            данных отвечаем так же, как по остальным.
+            {t.legal.privacy.operatorText}{" "}
+            <AppLink href="/help" className="link-body-emphasis">
+              {t.legal.privacy.operatorLink}
+            </AppLink>{" "}
+            {t.legal.privacy.operatorOr} <code>/support</code>{" "}
+            {t.legal.privacy.operatorBot}
           </p>
         </section>
 
         <section>
-          <h2 className="section-heading mb-2">Какие данные мы собираем</h2>
+          <h2 className="section-heading mb-2">{t.legal.privacy.collectTitle}</h2>
           <ul className="text-secondary mb-0 d-flex flex-column gap-2">
-            <li>
-              Аккаунт: email и пароль (хранится только его хэш) — или
-              идентификатор Google либо Telegram, если вы входите через них;
-              имя, ник, фото профиля.
-            </li>
-            <li>
-              Необязательный профиль: страна, пол, дата рождения, «о себе» —
-              вы заполняете их по желанию и можете не заполнять.
-            </li>
-            <li>
-              То, что вы делаете на сайте: избранное, отметки «иду» и
-              «посмотрено», заметки, комментарии и отзывы, поездки, списки,
-              загруженные файлы билетов и броней.
-            </li>
-            <li>
-              Технические данные: куки сессии для входа; IP-адрес
-              используется только в момент запроса для защиты от перебора
-              паролей и в базе не сохраняется.
-            </li>
+            <li>{t.legal.privacy.collectAccount}</li>
+            <li>{t.legal.privacy.collectProfile}</li>
+            <li>{t.legal.privacy.collectActivity}</li>
+            <li>{t.legal.privacy.collectTechnical}</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="section-heading mb-2">Зачем</h2>
-          <p className="mb-0 text-secondary">
-            Чтобы сервис работал: вход в аккаунт, ваши сохранённые события и
-            поездки, напоминания в Telegram, ответы на обращения. Обезличенную
-            статистику посещений мы используем, чтобы понимать, какими
-            разделами пользуются. Данные не продаются и не передаются кому-либо
-            для рекламы.
-          </p>
+          <h2 className="section-heading mb-2">{t.legal.privacy.whyTitle}</h2>
+          <p className="mb-0 text-secondary">{t.legal.privacy.whyText}</p>
         </section>
 
         <section>
-          <h2 className="section-heading mb-2">Куки</h2>
+          <h2 className="section-heading mb-2">{t.legal.privacy.cookiesTitle}</h2>
           <ul className="text-secondary mb-0 d-flex flex-column gap-2">
-            <li>
-              Необходимые: кука сессии (вход в аккаунт) и сама запись о вашем
-              выборе в баннере куки. Без них сайт не работает.
-            </li>
-            <li>
-              Аналитические (Яндекс.Метрика): ставятся только после того, как
-              вы нажали «Принять все» в баннере. Выбор можно поменять, удалив
-              куки сайта в браузере — баннер появится снова.
-            </li>
+            <li>{t.legal.privacy.cookiesNecessary}</li>
+            <li>{t.legal.privacy.cookiesAnalytics}</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="section-heading mb-2">Какие сервисы получают данные</h2>
+          <h2 className="section-heading mb-2">{t.legal.privacy.servicesTitle}</h2>
           <ul className="text-secondary mb-0 d-flex flex-column gap-2">
-            <li>
-              Яндекс.Метрика (Россия) — обезличенная статистика посещений и
-              запись действий на странице (вебвизор). Только с вашего согласия
-              в баннере куки.
-            </li>
-            <li>
-              Sentry (серверы за пределами РБ и РФ) — автоматические отчёты об
-              ошибках сайта, чтобы мы их чинили. Запись экрана при ошибке —
-              только с согласия на аналитику.
-            </li>
-            <li>
-              Telegram — если вы привязали аккаунт: бот присылает вам
-              уведомления по вашему id.
-            </li>
-            <li>Google — только если вы входите через Google-аккаунт.</li>
+            <li>{t.legal.privacy.servicesMetrica}</li>
+            <li>{t.legal.privacy.servicesSentry}</li>
+            <li>{t.legal.privacy.servicesTelegram}</li>
+            <li>{t.legal.privacy.servicesGoogle}</li>
           </ul>
           <p className="mb-0 mt-2 text-secondary">
-            Часть этих сервисов работает за пределами Беларуси и России — то
-            есть происходит трансграничная передача данных, необходимая для
-            работы сайта.
+            {t.legal.privacy.servicesCrossBorder}
           </p>
         </section>
 
         <section>
-          <h2 className="section-heading mb-2">Сколько храним и как удалить</h2>
+          <h2 className="section-heading mb-2">{t.legal.privacy.retentionTitle}</h2>
           <p className="mb-0 text-secondary">
-            Данные хранятся, пока у вас есть аккаунт. Удалить аккаунт можно
-            самостоятельно в настройках (вкладка «Безопасность») — почта и
-            привязки освободятся, профиль обезличится. По запросу через{" "}
-            <Link href="/help" className="link-body-emphasis">
-              форму обращения
-            </Link>{" "}
-            расскажем, какие данные о вас храним, или поправим неточные.
+            {t.legal.privacy.retentionText}{" "}
+            <AppLink href="/help" className="link-body-emphasis">
+              {t.legal.privacy.retentionLink}
+            </AppLink>{" "}
+            {t.legal.privacy.retentionAfter}
           </p>
         </section>
 
         <section>
-          <h2 className="section-heading mb-2">Данные публичных лиц</h2>
-          <p className="mb-0 text-secondary">
-            Каталог актёров и групп составлен из открытых источников (они
-            указаны в блоке «Источники» на страницах записей). Если вы — сам
-            актёр или его представитель и хотите что-то убрать или поправить,
-            напишите нам.
-          </p>
+          <h2 className="section-heading mb-2">{t.legal.privacy.publicFiguresTitle}</h2>
+          <p className="mb-0 text-secondary">{t.legal.privacy.publicFiguresText}</p>
         </section>
 
         <section>
-          <h2 className="section-heading mb-2">Изменения</h2>
+          <h2 className="section-heading mb-2">{t.legal.privacy.changesTitle}</h2>
           <p className="mb-0 text-secondary">
-            Если политика поменяется по существу, мы отметим это здесь.
-            Текущая редакция — от 22 августа 2026 года.
+            {t.legal.privacy.changesText} {t.legal.privacy.changesDate}.
           </p>
         </section>
       </div>

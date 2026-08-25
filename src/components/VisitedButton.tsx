@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toggleLocationVisit } from "@/app/(public)/locations/actions";
 import { CheckIcon, PlusIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 export default function VisitedButton({
   locationId,
@@ -13,6 +14,7 @@ export default function VisitedButton({
   isVisited: boolean;
   className?: string;
 }) {
+  const t = useT();
   const [isPending, startTransition] = useTransition();
 
   // Оптимистично, как FavoriteButton/GoingButton.
@@ -37,7 +39,7 @@ export default function VisitedButton({
     });
   }
 
-  const label = active ? "Убрать из посещённых" : "Отметить как посещённое";
+  const label = active ? t.widgets.visited.unmark : t.widgets.visited.mark;
 
   return (
     <button

@@ -7,6 +7,7 @@ import {
   toggleFavoritePerformer,
 } from "@/app/(public)/favorites/actions";
 import { HeartIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 export type FavoriteKind = "performer" | "event" | "agency";
 
@@ -35,6 +36,7 @@ export default function FavoriteButton({
   variant?: "pill" | "corner" | "icon";
   className?: string;
 }) {
+  const t = useT();
   const [isPending, startTransition] = useTransition();
 
   // Оптимистичное локальное состояние: сердечко закрашивается сразу по
@@ -71,8 +73,8 @@ export default function FavoriteButton({
         className={`favorite-corner ${active ? "is-favorited" : ""} ${className ?? ""}`}
         disabled={isPending}
         aria-pressed={active}
-        aria-label={active ? "Убрать из избранного" : "В избранное"}
-        title={active ? "Убрать из избранного" : "В избранное"}
+        aria-label={active ? t.widgets.favorite.remove : t.widgets.favorite.add}
+        title={active ? t.widgets.favorite.remove : t.widgets.favorite.add}
         onClick={handleClick}
       >
         <HeartIcon filled={active} />
@@ -81,7 +83,7 @@ export default function FavoriteButton({
   }
 
   if (variant === "icon") {
-    const label = active ? "Убрать из избранного" : "В избранное";
+    const label = active ? t.widgets.favorite.remove : t.widgets.favorite.add;
     return (
       <button
         type="button"
@@ -106,7 +108,7 @@ export default function FavoriteButton({
       onClick={handleClick}
     >
       <HeartIcon filled={active} />
-      {active ? "В избранном" : "В избранное"}
+      {active ? "В избранном" : t.widgets.favorite.add}
     </button>
   );
 }

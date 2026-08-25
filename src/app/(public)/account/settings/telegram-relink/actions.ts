@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { verifyTelegramAuth } from "@/lib/telegram";
 import { softDeleteUser } from "@/lib/userDeletion";
+import { getT } from "@/lib/i18n";
 
 /**
  * Перенос Telegram на текущий аккаунт: старый удаляется (мягко), новый
@@ -17,14 +18,16 @@ import { softDeleteUser } from "@/lib/userDeletion";
 export async function confirmTelegramRelink(
   authQuery: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Ошибки уходят на клиент значением, поэтому берём язык страницы.
+  const { t } = await getT();
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Сессия истекла — войдите заново." };
+  if (!user) return { ok: false, error: t.account.settings.telegramSessionExpired };
 
   const payload = verifyTelegramAuth(new URLSearchParams(authQuery));
   // Подпись живёт сутки: если попап провисел дольше, привязку нужно
   // начинать заново.
   if (!payload) {
-    return { ok: false, error: "Данные Telegram устарели — нажмите кнопку ещё раз." };
+    return { ok: false, error: t.account.settings.relinkExpired };
   }
 
   const other = await prisma.user.findUnique({ where: { telegramId: payload.id } });

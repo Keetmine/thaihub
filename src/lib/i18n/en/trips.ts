@@ -1,0 +1,252 @@
+/**
+ * Поездки: список поездок, страница поездки (план, афиша, дела, что
+ * посетить), личные события, брони и участники.
+ */
+export const trips = {
+    eyebrow: "Planning",
+    paywallFeature: "Trips",
+
+    /** Список поездок: /trips */
+    list: {
+        metaTitle: "Trips",
+        metaDescription: "Your trips and the plans you share with friends.",
+        title: "My trips",
+        intro:
+            "A trip is the dates you are in Thailand: its page gathers every event that falls inside them.",
+        invites: "Invitations",
+        invitedBy: (name: string) => `invited by ${name}`,
+        someFriend: "a friend",
+        emptyTitle: "No trips yet",
+        emptyHint:
+            "Start one with your dates — events, hotels and place lists come together into a single plan.",
+        pastHeading: "Past",
+        shared: "shared",
+        sharedSuffix: " · shared",
+        organiser: (name: string) => `Organised by ${name}`,
+        noName: "no name",
+    },
+
+    /** Страница поездки: /trips/[id] */
+    detail: {
+        back: "← All trips",
+        ofUser: (name: string) => `${name}'s trip →`,
+        ofFriend: "A friend's trip →",
+        inviteBanner: (name: string) =>
+            `${name} is inviting you on this trip — you will see the shared plan and can add your own events and to-dos.`,
+        someone: "Someone",
+        tabPlan: (n: number) => `Plan (${n})`,
+        tabMyPlan: (n: number) => `My plan (${n})`,
+        tabEvents: (n: number) => `What's on (${n})`,
+        tabTodos: (n: number) => `To-do (${n})`,
+        tabPlaces: "Places to go",
+        onlyMine: "Only mine",
+        deleteTrip: "Delete trip",
+        deleteConfirm: (title: string) => `Delete the trip "${title}"?`,
+
+        emptyPlanTitle: "Your plan is empty",
+        emptyPlanHintOwn:
+            "Mark yourself as going on the What's on tab, or add something of your own — a flight, a booking, a meet-up.",
+        emptyPlanHintGuest: "No one has added anything to the plan yet.",
+        emptyEventsTitle: "Nothing on these dates",
+        emptyEventsHint: "No event in the listings falls inside this trip's dates.",
+    },
+
+    /** Форма создания и редактирования поездки. */
+    form: {
+        open: "+ New trip",
+        createTitle: "New trip",
+        editTitle: "Edit trip",
+        editAria: "Edit trip",
+        title: "Title",
+        titlePlaceholder: "Bangkok, October",
+        from: "From",
+        to: "To",
+        members: "Who is coming (they see the plan and can add their own events)",
+        membersPlaceholder: "Pick friends…",
+        creating: "Creating…",
+        submitCreate: "Create",
+        saving: "Saving…",
+        createFailed: "Couldn't create the trip — try again",
+        saveFailed: "Couldn't save — try again",
+    },
+
+    /** Кто видит поездку. */
+    visibility: {
+        label: "Who can see the trip",
+        aria: "Trip visibility",
+        options: {
+            PRIVATE: "Private",
+            FRIENDS: "Friends only",
+            PUBLIC: "Public",
+        },
+        hints: {
+            PRIVATE: "only you can see it",
+            FRIENDS: "your friends can see it",
+            PUBLIC: "anyone with the link can see it",
+        },
+    },
+
+    /** Личные события внутри поездки. */
+    personal: {
+        addLabel: "+ Personal event",
+        addShort: "+ Event",
+        addTitle: "Personal event",
+        editTitle: "Edit event",
+        adding: "Adding…",
+        addFailed: "Couldn't add the event — try again",
+        saveFailed: "Couldn't save — try again",
+        badge: "personal",
+        badgePrivate: "private",
+        deleteConfirm: (title: string) => `Delete "${title}"?`,
+        attachmentOf: (title: string) => `Attachment on "${title}"`,
+        file: "File ↗",
+
+        title: "Title",
+        titlePlaceholder: "Dinner with friends",
+        date: "Date",
+        time: "Time",
+        note: "Note",
+        image: "Image",
+        showOnHome: "Show on the home page",
+        editableByOthers: "Trip members can edit and delete this",
+        isPrivate: "Private — only I can see it",
+    },
+
+    /** Поле выбора места в форме личного события. */
+    placePicker: {
+        label: "Place (optional)",
+        remove: "remove",
+        namePlaceholder: "Place name",
+        nameAria: "Name of the new place",
+        mapsPlaceholder: "Google Maps link or \"13.75, 100.50\"",
+        mapsAria: "Google Maps link or coordinates",
+        creating: "Creating…",
+        createAndPick: "Create and select",
+        searchPlaceholder: "Start typing a location name…",
+        ownPlace: "+ Own place",
+        nameRequired: "Give the place a name",
+        createFailed: "Couldn't create the place — check the link and try again",
+    },
+
+    /** Участники совместной поездки. */
+    members: {
+        button: (n: number) => `Members (${n})`,
+        title: "Trip members",
+        noName: "No name",
+        owner: "organiser",
+        pending: "invite sent",
+        cancelInviteConfirm: (name: string) => `Cancel the invite for ${name}?`,
+        removeConfirm: (name: string) => `Remove ${name} from the trip?`,
+        someFriend: "your friend",
+        someMember: "this member",
+        removeAria: "Remove from trip",
+        addFriend: "Add a friend…",
+        addFailed: "Couldn't add them — try again",
+        noFriendsLeft:
+            "You can only invite friends — everyone on your list is already here, or you have not added anyone yet.",
+        leaveConfirm: "Leave this trip?",
+        leave: "Leave trip",
+        hint:
+            "Your friend gets an invite and joins once they accept it. Members see the plan, the to-dos and the personal entries, and can add their own. Someone else's entry can only be changed if its author ticked the box allowing it.",
+        accept: "Accept",
+        decline: "Decline",
+    },
+
+    /** Вкладка «Что посетить». */
+    places: {
+        attachAria: "Attach a list",
+        attachOption: "+ Attach a list…",
+        detach: "Detach",
+        removeAria: "Remove place",
+        addPlaceholder: "+ Add a place…",
+        ownPlace: "+ Own place",
+        ownPlaceSubmit: "Create and add to the trip",
+        standalone: "Individual places",
+        emptyGuestTitle: "Nothing here yet",
+        emptyGuestHint: "No one has added places to this trip yet.",
+        emptyTitle: "No places yet",
+        emptyHint:
+            "Add your own from a Google Maps link, find one in the catalogue or attach a list — this is where the trip's shortlist lives.",
+    },
+
+    /** Дела поездки. */
+    todos: {
+        markUndone: "Mark as not done",
+        markDone: "Mark as done",
+        badgePrivate: "private",
+        editAria: "Edit to-do",
+        deleteAria: "Delete to-do",
+        deleteConfirm: "Delete this to-do?",
+        editTitle: "Edit to-do",
+        text: "What to do",
+        newText: "New to-do",
+        newPlaceholder: "Buy a SIM, change money…",
+        dateOptional: "Date (optional)",
+        time: "Time",
+        editableByOthers: "Trip members can edit and delete this",
+        editableByOthersShort: "Members can edit and delete this",
+        isPrivate: "Private — only I can see it",
+        emptyTitle: "No to-dos yet",
+        emptyHintOwn: "Add the first one above — buy tickets, change money, pick up merch.",
+        emptyHintGuest: "No one has added anything yet.",
+    },
+
+    /** Жильё и перелёты. */
+    bookings: {
+        heading: "Stays and flights",
+        addHotel: "+ Hotel",
+        addFlight: "+ Flight",
+        hotelTitle: "Hotel booking",
+        flightTitle: "Flight",
+        hotelName: "Hotel *",
+        flightName: "Flight or airline *",
+        namePlaceholder: "Name",
+        from: "From",
+        fromPlaceholder: "Moscow",
+        to: "To",
+        toPlaceholder: "Bangkok",
+        departure: "Departure",
+        departureTimeAria: "Departure time",
+        arrival: "Arrival",
+        arrivalTimeAria: "Arrival time",
+        time: "Time",
+        address: "Address",
+        addressPlaceholder: "Street, district",
+        checkIn: "Check-in",
+        checkOut: "Check-out",
+        ticketUrl: "Ticket link",
+        bookingUrl: "Booking link",
+        ticketFile: "Ticket file",
+        bookingFile: "Booking file",
+        note: "Note",
+        flightNotePlaceholder: "Seat, baggage, booking reference",
+        hotelNotePlaceholder: "Booking code, floor, check-in time",
+        ticketLink: "Ticket ↗",
+        bookingLink: "Booking ↗",
+        link: "Link ↗",
+        editFlight: "Edit flight",
+        editBooking: "Edit booking",
+        deleteFlight: "Delete flight",
+        deleteBooking: "Delete booking",
+        deleteConfirm: (name: string) => `Delete "${name}"?`,
+    },
+
+    /** Ответы серверных экшенов — их показывают формы поездки. */
+    errors: {
+        premium: "Trips are part of the subscription",
+        fillTitleAndDates: "Fill in the title and both dates",
+        endBeforeStart: "The end date is before the start date",
+        tripNotFound: "Trip not found",
+        ownerAlreadyIn: "The owner is already on the trip",
+        fillTitleAndDate: "Fill in the title and the date",
+        cannotEditOthers: "You can't edit someone else's entry",
+        cannotDeleteOthers: "You can't delete someone else's entry",
+        listNotFound: "List not found",
+        todoTextRequired: "Type what needs doing",
+        signInRequired: "You need to sign in",
+        cannotEditOthersTodo: "You can't change someone else's to-do",
+        flightNameRequired: "Enter the flight or airline",
+        hotelNameRequired: "Enter the hotel name",
+        bookingNotFound: "Booking not found",
+    },
+};

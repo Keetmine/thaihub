@@ -76,11 +76,11 @@ export const legal = {
       collectActivity:
         "What you do on the site: favourites, «going» and «watched» marks, notes, comments and reviews, trips, lists, uploaded files of tickets and bookings.",
       collectTechnical:
-        "Technical data: the session cookie for signing in; the IP address is used only at the moment of the request, to protect against password guessing, and is not saved in the database.",
+        "Technical data: the session cookie for signing in; the IP address is used only at the moment of the request, to protect against brute-forcing passwords, and is not saved in the database.",
 
       whyTitle: "What for",
       whyText:
-        "So that the service works: signing in to the account, your saved events and trips, reminders in Telegram, replies to your messages. We use anonymised visit statistics to understand which sections people use. Data is not sold and is not passed to anyone for advertising.",
+        "So that the service works: signing in to the account, your saved events and trips, reminders in Telegram, replies to your messages. We use depersonalised visit statistics to understand which sections people use. Data is not sold and is not passed to anyone for advertising.",
 
       cookiesTitle: "Cookies",
       cookiesNecessary:
@@ -90,7 +90,7 @@ export const legal = {
 
       servicesTitle: "Which services receive data",
       servicesMetrica:
-        "Yandex.Metrica (Russia) — anonymised visit statistics and a recording of what happens on the page (Webvisor). Only with your consent in the cookie banner.",
+        "Yandex.Metrica (Russia) — depersonalised visit statistics and a recording of what happens on the page (Webvisor). Only with your consent in the cookie banner.",
       servicesSentry:
         "Sentry (servers outside Belarus and Russia) — automatic reports about site errors, so that we can fix them. Screen recording at the moment of an error — only with consent to analytics.",
       servicesTelegram:
@@ -101,7 +101,7 @@ export const legal = {
 
       retentionTitle: "How long we keep data and how to delete it",
       retentionText:
-        "Data is kept for as long as you have an account. You can delete the account yourself in settings (the «Security» tab) — the email and the linked logins are released, and the profile is anonymised. On request through the",
+        "Data is kept for as long as you have an account. You can delete the account yourself in settings (the «Security» tab) — the email and the linked logins are released, and the profile is depersonalised. On request through the",
       retentionLink: "contact form",
       retentionAfter:
         "we will tell you what data about you we keep, or correct anything inaccurate.",

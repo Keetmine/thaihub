@@ -14,6 +14,7 @@ import {
 import { softDeleteUser } from "@/lib/userDeletion";
 import { isValidUsername, RESERVED_USERNAMES } from "@/lib/userProfile";
 import { isKnownCountry } from "@/lib/countries";
+import { getT, localeHref } from "@/lib/i18n";
 
 export async function updateProfile(formData: FormData) {
   const user = await getCurrentUser();
@@ -87,21 +88,24 @@ export async function changePassword(formData: FormData): Promise<ActionResult> 
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  // Текст ошибки уходит на клиент как значение, поэтому язык берём из
+  // того же заголовка, что и страницы: экшен летит на текущий адрес.
+  const { t } = await getT();
   const currentPassword = String(formData.get("currentPassword") ?? "");
   const newPassword = String(formData.get("newPassword") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
   if (!user.passwordHash) {
-    return { ok: false, error: "Аккаунт создан через Telegram — пароля у него нет" };
+    return { ok: false, error: t.account.settings.passwordNoAccount };
   }
   if (!verifyPassword(currentPassword, user.passwordHash)) {
-    return { ok: false, error: "Неверный текущий пароль" };
+    return { ok: false, error: t.account.settings.passwordWrongCurrent };
   }
   if (newPassword.length < 6) {
-    return { ok: false, error: "Новый пароль должен быть не короче 6 символов" };
+    return { ok: false, error: t.account.settings.passwordTooShort };
   }
   if (newPassword !== confirmPassword) {
-    return { ok: false, error: "Пароли не совпадают" };
+    return { ok: false, error: t.account.settings.passwordMismatch };
   }
 
   await prisma.user.update({
@@ -143,7 +147,8 @@ export async function unlinkTelegram(): Promise<void> {
   // Если Telegram — единственный способ войти, отвязка заперла бы
   // человека снаружи: сначала пусть заведёт пароль или подключит Google.
   if (!user.passwordHash && !user.googleId) {
-    redirect("/account/settings?telegram=only-login");
+    const { locale } = await getT();
+    redirect(localeHref("/account/settings?telegram=only-login", locale));
   }
   await prisma.user.update({
     where: { id: user.id },

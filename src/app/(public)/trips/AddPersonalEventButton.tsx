@@ -4,6 +4,7 @@ import { useState } from "react";
 import Modal from "@/components/Modal";
 import { createTripPersonalEvent } from "./actions";
 import { PersonalEventFields } from "./PersonalEventCard";
+import { useT } from "@/components/LocaleProvider";
 
 export default function AddPersonalEventButton({
   tripId,
@@ -11,13 +12,14 @@ export default function AddPersonalEventButton({
   // На странице поездки кнопка стоит первой в ряду «Событие / Отель /
   // Перелёт» и выделена акцентом: своё событие добавляют чаще всего.
   accent = false,
-  label = "+ Личное событие",
+  label,
 }: {
   tripId: string;
   showShareToggle?: boolean;
   accent?: boolean;
   label?: string;
 }) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function AddPersonalEventButton({
       }
       setIsOpen(false);
     } catch {
-      setError("Не удалось добавить событие — попробуйте ещё раз");
+      setError(t.trips.personal.addFailed);
     } finally {
       setIsSaving(false);
     }
@@ -47,7 +49,7 @@ export default function AddPersonalEventButton({
         className={`btn btn-sm ${accent ? "btn-primary" : "btn-ghost"}`}
         onClick={() => setIsOpen(true)}
       >
-        {label}
+        {label ?? t.trips.personal.addLabel}
       </button>
 
       <Modal
@@ -56,13 +58,13 @@ export default function AddPersonalEventButton({
           setIsOpen(false);
           setError(null);
         }}
-        title="Личное событие"
+        title={t.trips.personal.addTitle}
       >
         <form action={handleCreate} className="d-flex flex-column gap-3">
           <PersonalEventFields showShareToggle={showShareToggle} />
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
-            {isSaving ? "Добавляем…" : "Добавить"}
+            {isSaving ? t.trips.personal.adding : t.common.add}
           </button>
         </form>
       </Modal>

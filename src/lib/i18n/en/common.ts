@@ -8,7 +8,8 @@ export const common = {
     edit: "Edit",
     add: "Add",
     nothingFound: "Nothing found.",
-    loading: "Loading…",
+    searchByName: "Search by name…",
+  loading: "Loading…",
   // Счётчик живёт здесь, а не в nav: подписи навигации типизированы
   // как простые строки (labelKey в меню), функция ломала бы этот тип.
   notificationsUnread: (n: number) => `Notifications: ${n} new`,

@@ -1,5 +1,5 @@
 import { TIMEZONES } from "@/lib/timezones";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
 import FileDropzone from "@/components/FileDropzone";
@@ -22,59 +22,68 @@ import { COUNTRIES } from "@/lib/countries";
 import { dateKey } from "@/lib/dates";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
+import { getT, localeHref, type Dict } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Настройки",
-  description:
-    "Ник и фото, часовой пояс, кто видит профиль, уведомления в Telegram, подписка на календарь и удаление аккаунта.",
-  path: "/account/settings",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.account.settings.metaTitle,
+    description: t.account.settings.metaDescription,
+    path: "/account/settings",
+    noIndex: true,
+    locale,
+  });
+}
 
 
 export const dynamic = "force-dynamic";
 
-const TELEGRAM_NOTIFY_TOGGLES = [
-  { name: "tgNotifyInvites" as const, label: "Приглашения в поездки и подписка" },
-  { name: "tgNotifyFriends" as const, label: "Заявки в друзья" },
-  { name: "tgNotifyReplies" as const, label: "Ответы на мои комментарии" },
-  { name: "tgNotifyEvents" as const, label: "Друзья идут на события" },
-  { name: "tgNotifyBroadcast" as const, label: "Новости проекта" },
+// Подписи переключателей приходят из словаря, поэтому списки собираются
+// функцией: сами наборы полей от языка не зависят.
+const telegramNotifyToggles = (s: Dict["account"]["settings"]) => [
+  { name: "tgNotifyInvites" as const, label: s.telegramNotifyInvites },
+  { name: "tgNotifyFriends" as const, label: s.telegramNotifyFriends },
+  { name: "tgNotifyReplies" as const, label: s.telegramNotifyReplies },
+  { name: "tgNotifyEvents" as const, label: s.telegramNotifyEvents },
+  { name: "tgNotifyBroadcast" as const, label: s.telegramNotifyBroadcast },
 ];
 
-const PRIVACY_TOGGLES = [
-  {
-    name: "hideProfileActivity",
-    label: "Скрыть всю активность",
-    hint: "Не-друзья увидят только имя и фото.",
-  },
-  { name: "hideAchievements", label: "Скрыть ачивки", hint: null },
-  {
-    name: "hideFavoritePerformers",
-    label: "Скрыть фан-профиль (любимых актёров)",
-    hint: null,
-  },
-  { name: "hideVisitedPlaces", label: "Скрыть посещённые места", hint: null },
-] as const;
+const privacyToggles = (s: Dict["account"]["settings"]) =>
+  [
+    {
+      name: "hideProfileActivity",
+      label: s.privacyHideActivity,
+      hint: s.privacyHideActivityHint,
+    },
+    { name: "hideAchievements", label: s.privacyHideAchievements, hint: null },
+    {
+      name: "hideFavoritePerformers",
+      label: s.privacyHideFavorites,
+      hint: null,
+    },
+    { name: "hideVisitedPlaces", label: s.privacyHideVisited, hint: null },
+  ] as const;
 
 export default async function SettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ telegram?: string }>;
 }) {
+  const { locale, t } = await getT();
+  const s = t.account.settings;
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
   const icsToken = await getOrCreateIcsToken();
   const { telegram: telegramStatus } = await searchParams;
   const botUsername = telegramBotUsername();
 
   return (
     <div>
-      <Link href="/account" className="eyebrow text-decoration-none">
-        ← Профиль
-      </Link>
+      <AppLink href="/account" className="eyebrow text-decoration-none">
+        {s.back}
+      </AppLink>
       <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2rem" }}>
-        Настройки
+        {s.title}
       </h1>
 
       <SettingsTabs
@@ -83,7 +92,7 @@ export default async function SettingsPage({
             <form action={updateProfile} className="row g-3">
               <div className="col-12 col-md-6 d-flex flex-column gap-3">
                 <div>
-                  <label className="form-label">Ник</label>
+                  <label className="form-label">{s.username}</label>
                   {/* Он же адрес профиля — ссылкой делятся с друзьями. */}
                   <div className="input-group">
                     <span className="input-group-text small text-secondary">/users/</span>
@@ -93,33 +102,27 @@ export default async function SettingsPage({
                       className="form-control"
                     />
                   </div>
-                  <p className="small text-secondary mb-0 mt-1">
-                    Латиница, цифры, точка, дефис или подчёркивание. Занятый ник
-                    не сохранится — прежний останется.
-                  </p>
+                  <p className="small text-secondary mb-0 mt-1">{s.usernameHint}</p>
                 </div>
                 <div>
-                  <label className="form-label">Имя</label>
+                  <label className="form-label">{s.name}</label>
                   <input name="name" defaultValue={user.name ?? ""} className="form-control" />
                 </div>
                 <div>
-                  <label className="form-label">Таймзона</label>
+                  <label className="form-label">{s.timezone}</label>
                   <select name="timezone" defaultValue={user.timezone} className="form-select">
-                    {TIMEZONES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
+                    {TIMEZONES.map((zone) => (
+                      <option key={zone.value} value={zone.value}>
+                        {zone.label[locale]}
                       </option>
                     ))}
                   </select>
-                  <p className="small text-secondary mb-0 mt-1">
-                    Время событий показывается тайское, а в скобках — в этой
-                    зоне.
-                  </p>
+                  <p className="small text-secondary mb-0 mt-1">{s.timezoneHint}</p>
                 </div>
                 <div>
-                  <label className="form-label">Страна</label>
+                  <label className="form-label">{s.country}</label>
                   <select name="country" defaultValue={user.country ?? ""} className="form-select">
-                    <option value="">не указана</option>
+                    <option value="">{s.countryEmpty}</option>
                     {COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.label}
@@ -127,24 +130,22 @@ export default async function SettingsPage({
                     ))}
                   </select>
                 </div>
-                <p className="small text-secondary mb-0">
-                  Имя видно друзьям и в публичном профиле.
-                </p>
+                <p className="small text-secondary mb-0">{s.nameVisible}</p>
               </div>
               <div className="col-12 col-md-6 d-flex flex-column gap-3">
-                <FileDropzone name="photoUrl" label="Фото" defaultValue={user.photoUrl ?? ""} />
+                <FileDropzone name="photoUrl" label={s.photo} defaultValue={user.photoUrl ?? ""} />
                 <div className="row g-3">
                   <div className="col-6">
-                    <label className="form-label">Пол</label>
+                    <label className="form-label">{s.gender}</label>
                     <select name="gender" defaultValue={user.gender ?? ""} className="form-select">
-                      <option value="">не указан</option>
-                      <option value="female">женский</option>
-                      <option value="male">мужской</option>
-                      <option value="other">другой</option>
+                      <option value="">{s.genderEmpty}</option>
+                      <option value="female">{s.genderFemale}</option>
+                      <option value="male">{s.genderMale}</option>
+                      <option value="other">{s.genderOther}</option>
                     </select>
                   </div>
                   <div className="col-6">
-                    <label className="form-label">Дата рождения</label>
+                    <label className="form-label">{s.birthDate}</label>
                     <DatePickerInput
                       name="birthDate"
                       defaultValue={user.birthDate ? dateKey(user.birthDate) : ""}
@@ -154,19 +155,19 @@ export default async function SettingsPage({
                   </div>
                 </div>
                 <div>
-                  <label className="form-label">О себе</label>
+                  <label className="form-label">{s.bio}</label>
                   <textarea
                     name="bio"
                     rows={3}
                     defaultValue={user.bio ?? ""}
-                    placeholder="Любимые пейринги, на скольких концертах были"
+                    placeholder={s.bioPlaceholder}
                     className="form-control"
                   />
                 </div>
               </div>
               <div className="col-12">
                 <button type="submit" className="btn btn-primary btn-sm">
-                  Сохранить
+                  {s.save}
                 </button>
               </div>
             </form>
@@ -174,13 +175,11 @@ export default async function SettingsPage({
             {/* Тур по интерфейсу — пройти заново. Полезно и когда
                 появляются новые разделы. */}
             <div className="border-top pt-3 mt-4" style={{ borderColor: "var(--bs-border-color)" }}>
-              <p className="fw-medium text-white mb-1">Тур по сайту</p>
-              <p className="small text-secondary mb-2">
-                Короткая проводка по разделам — где афиша, поездки и уведомления.
-              </p>
+              <p className="fw-medium text-white mb-1">{s.tourTitle}</p>
+              <p className="small text-secondary mb-2">{s.tourHint}</p>
               <form action={restartTour}>
                 <button type="submit" className="btn btn-ghost btn-sm">
-                  {user.tourCompletedAt ? "Пройти заново" : "Начать тур"}
+                  {user.tourCompletedAt ? s.tourRestart : s.tourStart}
                 </button>
               </form>
             </div>
@@ -190,39 +189,33 @@ export default async function SettingsPage({
                 через Telegram или платил в боте. */}
             {botUsername && (
               <div className="border-top pt-3 mt-4" style={{ borderColor: "var(--bs-border-color)" }}>
-                <p className="fw-medium text-white mb-1">Telegram</p>
+                <p className="fw-medium text-white mb-1">{s.telegram}</p>
                 {telegramStatus === "linked" && (
-                  <p className="small text-success mb-2">Telegram подключён.</p>
+                  <p className="small text-success mb-2">{s.telegramLinked}</p>
                 )}
                 {telegramStatus === "taken" && (
-                  <p className="small text-danger mb-2">
-                    Этот Telegram уже привязан к другому аккаунту.
-                  </p>
+                  <p className="small text-danger mb-2">{s.telegramTaken}</p>
                 )}
                 {telegramStatus === "only-login" && (
-                  <p className="small text-danger mb-2">
-                    Это ваш единственный способ входа — сначала задайте пароль
-                    во вкладке «Безопасность».
-                  </p>
+                  <p className="small text-danger mb-2">{s.telegramOnlyLogin}</p>
                 )}
                 {user.telegramId ? (
                   <>
                   <div className="d-flex flex-wrap align-items-center gap-3">
                     <span className="small text-secondary">
-                      Подключён{user.telegramUsername ? ` — @${user.telegramUsername}` : ""}.
-                      Присылаем напоминания о событиях и новости друзей.
+                      {s.telegramConnected(user.telegramUsername ?? "")}
                     </span>
                     {/* С подтверждением: отвязка обрывает напоминания и
                         уведомления, а кнопка стоит вплотную к настройкам
                         рассылки — промахнуться легко. */}
                     <ConfirmForm
                       action={unlinkTelegram}
-                      confirmMessage="Отвязать Telegram? Напоминания о событиях и новости друзей приходить перестанут. Подключить обратно можно в любой момент."
-                      confirmLabel="Отвязать"
-                      busyLabel="Отвязываем…"
+                      confirmMessage={s.telegramUnlinkConfirm}
+                      confirmLabel={s.telegramUnlink}
+                      busyLabel={s.telegramUnlinking}
                     >
                       <button type="button" className="btn btn-ghost btn-sm">
-                        Отвязать
+                        {s.telegramUnlink}
                       </button>
                     </ConfirmForm>
                   </div>
@@ -230,34 +223,31 @@ export default async function SettingsPage({
                   {/* Что слать в бота. На сайте уведомления приходят
                       всегда — настройка только про Telegram. */}
                   <form action={updateNotificationPrefs} className="mt-3">
-                    <p className="small text-secondary mb-2">Присылать в Telegram:</p>
+                    <p className="small text-secondary mb-2">{s.telegramSendTitle}</p>
                     <div className="d-flex flex-column gap-1">
-                      {TELEGRAM_NOTIFY_TOGGLES.map((t) => (
-                        <div className="form-check" key={t.name}>
+                      {telegramNotifyToggles(s).map((toggle) => (
+                        <div className="form-check" key={toggle.name}>
                           <input
                             type="checkbox"
                             className="form-check-input"
-                            id={t.name}
-                            name={t.name}
-                            defaultChecked={Boolean(user[t.name])}
+                            id={toggle.name}
+                            name={toggle.name}
+                            defaultChecked={Boolean(user[toggle.name])}
                           />
-                          <label className="form-check-label small" htmlFor={t.name}>
-                            {t.label}
+                          <label className="form-check-label small" htmlFor={toggle.name}>
+                            {toggle.label}
                           </label>
                         </div>
                       ))}
                     </div>
                     <button type="submit" className="btn btn-ghost btn-sm mt-2">
-                      Сохранить
+                      {s.save}
                     </button>
                   </form>
                   </>
                 ) : (
                   <>
-                    <p className="small text-secondary mb-2">
-                      Подключите, чтобы получать напоминания о событиях, старте
-                      продаж билетов и новостях друзей.
-                    </p>
+                    <p className="small text-secondary mb-2">{s.telegramConnectHint}</p>
                     <TelegramLinkButton botUsername={botUsername} />
                   </>
                 )}
@@ -267,28 +257,26 @@ export default async function SettingsPage({
         }
         privacy={
           <div className="surface p-4">
-            <p className="small text-secondary mb-3">
-              Друзья видят всё всегда; настройки ниже — для остальных.
-            </p>
+            <p className="small text-secondary mb-3">{s.privacyIntro}</p>
             <form action={updatePrivacy} className="d-flex flex-column gap-2">
-              {PRIVACY_TOGGLES.map((t) => (
-                <div className="form-check" key={t.name}>
+              {privacyToggles(s).map((toggle) => (
+                <div className="form-check" key={toggle.name}>
                   <input
                     type="checkbox"
                     className="form-check-input"
-                    id={t.name}
-                    name={t.name}
-                    defaultChecked={Boolean(user[t.name])}
+                    id={toggle.name}
+                    name={toggle.name}
+                    defaultChecked={Boolean(user[toggle.name])}
                   />
-                  <label className="form-check-label small" htmlFor={t.name}>
-                    {t.label}
-                    {t.hint && <span className="text-secondary d-block">{t.hint}</span>}
+                  <label className="form-check-label small" htmlFor={toggle.name}>
+                    {toggle.label}
+                    {toggle.hint && <span className="text-secondary d-block">{toggle.hint}</span>}
                   </label>
                 </div>
               ))}
               <div className="mt-2">
                 <button type="submit" className="btn btn-primary btn-sm">
-                  Сохранить
+                  {s.save}
                 </button>
               </div>
             </form>
@@ -300,20 +288,16 @@ export default async function SettingsPage({
               <ChangePasswordForm />
             </div>
             <div className="surface p-4 mt-3">
-              <h2 className="section-heading mb-2">Удаление аккаунта</h2>
-              <p className="small text-secondary mb-3">
-                Аккаунт будет удалён: почта и привязки освободятся, профиль
-                обезличится. Восстановить его нельзя. Комментарии и отзывы
-                останутся подписанными «Удалённый аккаунт».
-              </p>
+              <h2 className="section-heading mb-2">{s.deleteTitle}</h2>
+              <p className="small text-secondary mb-3">{s.deleteText}</p>
               <ConfirmForm
                 action={deleteOwnAccount}
-                confirmMessage="Удалить аккаунт навсегда? Это действие нельзя отменить."
-                confirmLabel="Удалить навсегда"
-                busyLabel="Удаляем…"
+                confirmMessage={s.deleteConfirm}
+                confirmLabel={s.deleteLabel}
+                busyLabel={s.deleteBusy}
               >
                 <button type="button" className="btn btn-outline-danger btn-sm">
-                  Удалить аккаунт
+                  {s.deleteButton}
                 </button>
               </ConfirmForm>
             </div>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import ReportButton from "@/components/ReportButton";
 import { notFound, redirect } from "next/navigation";
@@ -13,10 +13,12 @@ import CreateOwnPlaceButton from "./CreateOwnPlaceButton";
 import EditListButton from "./EditListButton";
 import VisitedButton from "@/components/VisitedButton";
 import { locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { getT, localeHref } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlaceListPage({ params }: { params: Promise<{ id: string }> }) {
+  const { locale, t } = await getT();
   // Гость (без логина) может открыть ПУБЛИЧНЫЙ список по прямой ссылке —
   // proxy.ts пропускает /lists/[id] без куки, а гейт видимости ниже
   // решает по самому списку.
@@ -40,7 +42,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
   if (!isOwner) {
     if (list.visibility === "PRIVATE") notFound();
     if (list.visibility === "FRIENDS") {
-      if (!user) redirect("/login");
+      if (!user) redirect(localeHref("/login", locale));
       const ownerFriendIds = await getFriendIds(list.userId);
       if (!ownerFriendIds.includes(user.id)) notFound();
     }
@@ -72,9 +74,9 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
 
   return (
     <div>
-      <Link href="/lists" className="eyebrow text-decoration-none">
-        ← Мои места
-      </Link>
+      <AppLink href="/lists" className="eyebrow text-decoration-none">
+        {t.lists.detail.back}
+      </AppLink>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
         <div>
           <h1 className="display-1-tight mb-1" style={{ fontSize: "2.5rem" }}>
@@ -86,17 +88,20 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <ListVisibilitySelect listId={list.id} visibility={list.visibility} />
             <EditListButton list={{ id: list.id, title: list.title, description: list.description }} />
-            <ConfirmForm action={boundDelete} confirmMessage={`Удалить список «${list.title}»?`}>
+            <ConfirmForm action={boundDelete} confirmMessage={t.lists.detail.deleteConfirm(list.title)}>
               <button type="button" className="btn btn-outline-secondary btn-sm">
-                Удалить список
+                {t.lists.detail.deleteList}
               </button>
             </ConfirmForm>
           </div>
         ) : (
           <div className="d-flex flex-column align-items-end gap-1">
-            <Link href={`/users/${list.user.id}`} className="small text-secondary text-decoration-none">
-              Список {list.user.name ? `пользователя ${list.user.name}` : "друга"} →
-            </Link>
+            <AppLink
+              href={`/users/${list.user.id}`}
+              className="small text-secondary text-decoration-none"
+            >
+              {list.user.name ? t.lists.detail.ofUser(list.user.name) : t.lists.detail.ofFriend}
+            </AppLink>
             {!!user && <ReportButton targetType="placeList" targetId={list.id} />}
           </div>
         )}
@@ -118,12 +123,8 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
       {list.items.length === 0 ? (
         <EmptyState
           emoji="📍"
-          title="В списке пока нет мест"
-          hint={
-            isOwner
-              ? "Найдите локацию через поиск выше и добавьте её — или создайте свою."
-              : "Владелец ещё не добавил сюда места."
-          }
+          title={t.lists.detail.emptyTitle}
+          hint={isOwner ? t.lists.detail.emptyHintOwn : t.lists.detail.emptyHintGuest}
           compact
         />
       ) : (
@@ -133,7 +134,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
               key={i.locationId}
               className="surface d-flex align-items-center justify-content-between gap-3 p-3"
             >
-              <Link
+              <AppLink
                 href={locationHref(i.location)}
                 className="text-decoration-none d-flex align-items-center gap-3"
                 style={{ minWidth: 0 }}
@@ -158,7 +159,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
                   </p>
                   {i.note && <p className="small text-secondary mb-0 text-truncate">{i.note}</p>}
                 </div>
-              </Link>
+              </AppLink>
               <div className="d-flex align-items-center gap-2 flex-shrink-0">
                 {user && (
                   <VisitedButton locationId={i.locationId} isVisited={visitedIds.has(i.locationId)} />

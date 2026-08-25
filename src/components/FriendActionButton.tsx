@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
 
 export default function FriendActionButton({
   action,
@@ -16,6 +17,7 @@ export default function FriendActionButton({
   pendingLabel?: string;
   className?: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function FriendActionButton({
       await action(id);
       router.refresh();
     } catch {
-      setError("Не получилось. Обновите страницу и попробуйте ещё раз.");
+      setError(t.ui.actionFailed);
     } finally {
       setIsSubmitting(false);
     }

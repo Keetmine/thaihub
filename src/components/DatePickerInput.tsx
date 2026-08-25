@@ -2,12 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { dateKey, getMonthGrid, parseDateKey, WEEKDAY_NAMES_RU } from "@/lib/dates";
+import { dateKey, getMonthGrid, parseDateKey, shortMonthNames, weekdayNames } from "@/lib/dates";
+import { useT } from "@/components/LocaleProvider";
+import { useLocale } from "@/components/LocaleProvider";
 
-const PICKER_MONTHS = [
-  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
-  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
-];
 
 /**
  * Года в выпадашке. Диапазон задаётся полем, а не один на всех: у
@@ -133,7 +131,7 @@ export default function DatePickerInput({
   value: controlledValue,
   defaultValue = "",
   required = false,
-  placeholder = "Выберите дату",
+  placeholder,
   onValueChange,
   yearsBack = 3,
   yearsForward = 5,
@@ -156,6 +154,11 @@ export default function DatePickerInput({
   /** Насколько далеко вперёд. Для дат рождения — 0. */
   yearsForward?: number;
 }) {
+  const t = useT();
+  // Подпись по умолчанию берём здесь, а не в параметрах: там словаря
+  // ещё нет (хук вызывается ниже).
+  const placeholderText = placeholder ?? t.widgets.datePicker.placeholder;
+  const locale = useLocale();
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : uncontrolledValue;
@@ -235,7 +238,7 @@ export default function DatePickerInput({
         type="text"
         className="form-control date-picker-toggle"
         value={value ? formatDisplay(value) : ""}
-        placeholder={placeholder}
+        placeholder={placeholderText}
         aria-label={placeholder}
         required={required}
         onChange={() => {}}
@@ -282,7 +285,7 @@ export default function DatePickerInput({
             <button
               type="button"
               className="icon-btn"
-              aria-label="Предыдущий месяц"
+              aria-label={t.widgets.datePicker.prevMonth}
               onClick={() => shiftMonth(-1)}
             >
               ←
@@ -291,13 +294,13 @@ export default function DatePickerInput({
                 по одному месяцу (поездки бывают через годы). */}
             <span className="d-flex gap-1">
               <PickerSelect
-                label="Месяц"
+                label={t.widgets.datePicker.month}
                 value={viewMonth}
                 onChange={setViewMonth}
-                options={PICKER_MONTHS.map((m, i) => ({ value: i, label: m }))}
+                options={shortMonthNames(locale).map((m, i) => ({ value: i, label: m }))}
               />
               <PickerSelect
-                label="Год"
+                label={t.widgets.datePicker.year}
                 value={viewYear}
                 onChange={setViewYear}
                 options={pickerYears(viewYear, yearsBack, yearsForward).map((y) => ({
@@ -309,7 +312,7 @@ export default function DatePickerInput({
             <button
               type="button"
               className="icon-btn"
-              aria-label="Следующий месяц"
+              aria-label={t.widgets.datePicker.nextMonth}
               onClick={() => shiftMonth(1)}
             >
               →
@@ -317,7 +320,7 @@ export default function DatePickerInput({
           </div>
 
           <div className="date-picker-grid date-picker-weekdays">
-            {WEEKDAY_NAMES_RU.map((wd) => (
+            {weekdayNames(locale).map((wd) => (
               <span key={wd}>{wd}</span>
             ))}
           </div>

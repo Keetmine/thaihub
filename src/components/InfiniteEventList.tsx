@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import EventCard from "@/components/EventCard";
 import EventCardLocked from "@/components/EventCardLocked";
 import { monthLabel } from "@/lib/dates";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import type { Locale } from "@/lib/i18n/config";
 import type { EventWithPerformers } from "@/lib/types";
 import type { EventListFilters, EventListPage, FriendGoing } from "@/lib/eventList";
 import { loadEventListPage } from "@/app/(public)/eventListActions";
@@ -22,9 +24,9 @@ function groupByMonth(events: EventWithPerformers[]) {
   return groups;
 }
 
-function monthHeading(key: string): string {
+function monthHeading(key: string, locale: Locale): string {
   const [year, month] = key.split("-").map(Number);
-  return monthLabel(year, month);
+  return monthLabel(year, month, locale);
 }
 
 function MonthSections({
@@ -40,11 +42,12 @@ function MonthSections({
   friendsGoing: Map<string, FriendGoing[]>;
   locked: boolean;
 }) {
+  const locale = useLocale();
   return (
     <div className="d-flex flex-column gap-4">
       {groupByMonth(events).map((group) => (
         <section key={group.key}>
-          <h2 className="month-group-heading mb-2">{monthHeading(group.key)}</h2>
+          <h2 className="month-group-heading mb-2">{monthHeading(group.key, locale)}</h2>
           <div className="d-flex flex-column gap-3 mt-2">
             {group.events.map((ev) =>
               locked ? (
@@ -79,6 +82,7 @@ export default function InfiniteEventList({
   initialPage: EventListPage;
   emptyMessage: string;
 }) {
+  const t = useT();
   // Первая страница всегда из фазы «предстоящие» (page.tsx грузит
   // phase=upcoming offset=0).
   const [upcoming, setUpcoming] = useState<EventWithPerformers[]>(initialPage.events);
@@ -150,7 +154,7 @@ export default function InfiniteEventList({
           <h2
             className="section-heading mb-3"
           >
-            Архив событий
+            {t.events.list.archiveHeading}
           </h2>
           <div className="opacity-75">
             <MonthSections
@@ -166,7 +170,7 @@ export default function InfiniteEventList({
 
       {next && (
         <div ref={sentinelRef} className="py-4 text-center">
-          <span className="small text-secondary">{isLoading ? "Загрузка…" : ""}</span>
+          <span className="small text-secondary">{isLoading ? t.common.loading : ""}</span>
         </div>
       )}
     </div>

@@ -8,6 +8,7 @@ import FileDropzone from "@/components/FileDropzone";
 import DatePickerInput from "@/components/DatePickerInput";
 import { BuildingIcon, PlaneIcon, PencilIcon, TrashIcon } from "@/components/icons";
 import { saveTripBooking, deleteTripBooking } from "../actions";
+import { useT } from "@/components/LocaleProvider";
 
 export type TripBookingRow = {
   id: string;
@@ -51,6 +52,7 @@ export default function TripBookings({
    *  модалка и своё состояние. */
   leadingAction?: React.ReactNode;
 }) {
+  const t = useT();
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState<"HOTEL" | "FLIGHT" | null>(null);
@@ -83,13 +85,13 @@ export default function TripBookings({
         <div className="row g-2">
           <div className="col-12 col-md-6">
             <label className="form-label small text-secondary">
-              {isFlight ? "Рейс или авиакомпания *" : "Отель *"}
+              {isFlight ? t.trips.bookings.flightName : t.trips.bookings.hotelName}
             </label>
             <input
               name="name"
               required
               defaultValue={booking?.name}
-              placeholder={isFlight ? "TG 975" : "Название"}
+              placeholder={isFlight ? "TG 975" : t.trips.bookings.namePlaceholder}
               className="form-control form-control-sm"
             />
           </div>
@@ -97,48 +99,48 @@ export default function TripBookings({
           {isFlight ? (
             <>
               <div className="col-6 col-md-3">
-                <label className="form-label small text-secondary">Откуда</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.from}</label>
                 <input
                   name="fromPlace"
                   defaultValue={booking?.fromPlace ?? ""}
-                  placeholder="Москва"
+                  placeholder={t.trips.bookings.fromPlaceholder}
                   className="form-control form-control-sm"
                 />
               </div>
               <div className="col-6 col-md-3">
-                <label className="form-label small text-secondary">Куда</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.to}</label>
                 <input
                   name="toPlace"
                   defaultValue={booking?.toPlace ?? ""}
-                  placeholder="Бангкок"
+                  placeholder={t.trips.bookings.toPlaceholder}
                   className="form-control form-control-sm"
                 />
               </div>
               <div className="col-7 col-md-4">
-                <label className="form-label small text-secondary">Вылет</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.departure}</label>
                 <DatePickerInput name="startAt" defaultValue={booking?.startDate ?? ""} />
               </div>
               <div className="col-5 col-md-2">
-                <label className="form-label small text-secondary">Время</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.time}</label>
                 <input
                   type="time"
                   name="startTime"
                   defaultValue={booking?.startTime ?? ""}
-                  aria-label="Время вылета"
+                  aria-label={t.trips.bookings.departureTimeAria}
                   className="form-control form-control-sm"
                 />
               </div>
               <div className="col-7 col-md-4">
-                <label className="form-label small text-secondary">Прилёт</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.arrival}</label>
                 <DatePickerInput name="endAt" defaultValue={booking?.endDate ?? ""} />
               </div>
               <div className="col-5 col-md-2">
-                <label className="form-label small text-secondary">Время</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.time}</label>
                 <input
                   type="time"
                   name="endTime"
                   defaultValue={booking?.endTime ?? ""}
-                  aria-label="Время прилёта"
+                  aria-label={t.trips.bookings.arrivalTimeAria}
                   className="form-control form-control-sm"
                 />
               </div>
@@ -146,20 +148,20 @@ export default function TripBookings({
           ) : (
             <>
               <div className="col-12 col-md-6">
-                <label className="form-label small text-secondary">Адрес</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.address}</label>
                 <input
                   name="address"
                   defaultValue={booking?.address ?? ""}
-                  placeholder="Улица, район"
+                  placeholder={t.trips.bookings.addressPlaceholder}
                   className="form-control form-control-sm"
                 />
               </div>
               <div className="col-6 col-md-3">
-                <label className="form-label small text-secondary">Заезд</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.checkIn}</label>
                 <DatePickerInput name="startAt" defaultValue={booking?.startDate ?? ""} />
               </div>
               <div className="col-6 col-md-3">
-                <label className="form-label small text-secondary">Выезд</label>
+                <label className="form-label small text-secondary">{t.trips.bookings.checkOut}</label>
                 <DatePickerInput name="endAt" defaultValue={booking?.endDate ?? ""} />
               </div>
             </>
@@ -167,7 +169,7 @@ export default function TripBookings({
 
           <div className="col-12 col-md-6">
             <label className="form-label small text-secondary">
-              {isFlight ? "Ссылка на билет" : "Ссылка на бронь"}
+              {isFlight ? t.trips.bookings.ticketUrl : t.trips.bookings.bookingUrl}
             </label>
             <input
               name="url"
@@ -179,19 +181,21 @@ export default function TripBookings({
           <div className="col-12 col-md-6">
             <FileDropzone
               name="fileUrl"
-              label={isFlight ? "Файл билета" : "Файл брони"}
+              label={isFlight ? t.trips.bookings.ticketFile : t.trips.bookings.bookingFile}
               defaultValue={booking?.fileUrl ?? ""}
               accept="image/*,application/pdf"
               endpoint="/api/upload-hotel"
             />
           </div>
           <div className="col-12">
-            <label className="form-label small text-secondary">Заметка</label>
+            <label className="form-label small text-secondary">{t.trips.bookings.note}</label>
             <input
               name="note"
               defaultValue={booking?.note ?? ""}
               placeholder={
-                isFlight ? "Место, багаж, номер брони" : "Код брони, этаж, во сколько заселение"
+                isFlight
+                  ? t.trips.bookings.flightNotePlaceholder
+                  : t.trips.bookings.hotelNotePlaceholder
               }
               className="form-control form-control-sm"
             />
@@ -200,10 +204,10 @@ export default function TripBookings({
         {error && <p className="small text-danger mb-0">{error}</p>}
         <div className="d-flex gap-2">
           <button type="submit" className="btn btn-primary btn-sm">
-            Сохранить
+            {t.common.save}
           </button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={close}>
-            Отмена
+            {t.common.cancel}
           </button>
         </div>
       </form>
@@ -242,7 +246,7 @@ export default function TripBookings({
               setAdding("HOTEL");
             }}
           >
-            + Отель
+            {t.trips.bookings.addHotel}
           </button>
           <button
             type="button"
@@ -253,14 +257,16 @@ export default function TripBookings({
               setAdding("FLIGHT");
             }}
           >
-            + Перелёт
+            {t.trips.bookings.addFlight}
           </button>
         </div>
       )}
 
       {/* Заголовок нужен только когда под ним что-то есть: пустой блок
           должен занимать минимум места. */}
-      {bookings.length > 0 && <h2 className="section-heading mb-2">Жильё и перелёты</h2>}
+      {bookings.length > 0 && (
+        <h2 className="section-heading mb-2">{t.trips.bookings.heading}</h2>
+      )}
 
       {bookings.length > 0 && (
         <div className="d-flex flex-column gap-2">
@@ -284,7 +290,7 @@ export default function TripBookings({
                     rel="noopener noreferrer"
                     className="btn btn-ghost btn-sm"
                   >
-                    {b.kind === "FLIGHT" ? "Билет ↗" : "Бронь ↗"}
+                    {b.kind === "FLIGHT" ? t.trips.bookings.ticketLink : t.trips.bookings.bookingLink}
                   </a>
                 )}
                 {b.url && (
@@ -294,7 +300,7 @@ export default function TripBookings({
                     rel="noopener noreferrer"
                     className="btn btn-ghost btn-sm"
                   >
-                    Ссылка ↗
+                    {t.trips.bookings.link}
                   </a>
                 )}
                 {canEdit && (
@@ -303,7 +309,9 @@ export default function TripBookings({
                       type="button"
                       className="icon-btn"
                       aria-label={
-                        b.kind === "FLIGHT" ? "Редактировать перелёт" : "Редактировать бронь"
+                        b.kind === "FLIGHT"
+                          ? t.trips.bookings.editFlight
+                          : t.trips.bookings.editBooking
                       }
                       onClick={() => {
                         setError(null);
@@ -321,12 +329,16 @@ export default function TripBookings({
                         if (!result.ok) return result;
                         router.refresh();
                       }}
-                      confirmMessage={`Удалить «${b.name}»?`}
+                      confirmMessage={t.trips.bookings.deleteConfirm(b.name)}
                     >
                       <button
                         type="button"
                         className="icon-btn icon-btn-danger"
-                        aria-label={b.kind === "FLIGHT" ? "Удалить перелёт" : "Удалить бронь"}
+                        aria-label={
+                          b.kind === "FLIGHT"
+                            ? t.trips.bookings.deleteFlight
+                            : t.trips.bookings.deleteBooking
+                        }
                       >
                         <TrashIcon />
                       </button>
@@ -342,7 +354,7 @@ export default function TripBookings({
       <Modal
         open={modalKind !== null}
         onClose={close}
-        title={modalKind === "FLIGHT" ? "Перелёт" : "Бронь отеля"}
+        title={modalKind === "FLIGHT" ? t.trips.bookings.flightTitle : t.trips.bookings.hotelTitle}
       >
         {modalKind && form(modalKind, editingBooking ?? undefined)}
       </Modal>

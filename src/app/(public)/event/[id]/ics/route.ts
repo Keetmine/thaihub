@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { buildEventICS, buildPresaleICS } from "@/lib/ics";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
+import { getT } from "@/lib/i18n";
 
 export async function GET(
   request: Request,
@@ -11,9 +12,10 @@ export async function GET(
   // События за подпиской — экспорт в календарь тоже (скачивается кнопкой
   // из браузера, кука сессии при этом есть; маршрут остаётся вне
   // login-гейта proxy.ts, но проверяет доступ сам).
+  const { t } = await getT();
   const user = await getCurrentUser();
   if (!isPremiumActive(user)) {
-    return new NextResponse("Доступно по подписке", { status: 403 });
+    return new NextResponse(t.events.ics.subscriptionOnly, { status: 403 });
   }
 
   const { id } = await params;
@@ -23,12 +25,12 @@ export async function GET(
   });
 
   if (!event) {
-    return new NextResponse("Событие не найдено", { status: 404 });
+    return new NextResponse(t.events.ics.notFound, { status: 404 });
   }
 
   const isPresale = new URL(request.url).searchParams.get("presale") === "1";
   if (isPresale && !event.presaleAt) {
-    return new NextResponse("Препродажа не указана", { status: 404 });
+    return new NextResponse(t.events.ics.noPresale, { status: 404 });
   }
 
   const ics = isPresale

@@ -7,6 +7,8 @@ import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon, PencilIcon } from "@/components/icons";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { shortMonthName, shortWeekdayName } from "@/lib/dates";
 import {
   createTripTodo,
   toggleTripTodo,
@@ -29,12 +31,6 @@ export type TodoData = {
   isPrivate: boolean;
 };
 
-const WEEKDAYS_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-}
-
 /** Строка дела: чекбокс + текст + дата + правка/удаление. Используется
  *  и во вкладке «Дела», и в хронологии «Мой план» (датированные,
  *  showDate — та же дата-колонка, что у событий). */
@@ -47,6 +43,8 @@ export function TodoRow({
   showDate?: boolean;
   showShareToggle?: boolean;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -72,9 +70,11 @@ export function TodoRow({
   }
 
   const d = todo.date ? new Date(todo.date) : null;
+  // Fixed 24-hour tag on purpose, not a language choice: the same string
+  // is the defaultValue of <input type="time">, which only accepts "HH:mm".
   const timeLabel =
     d && todo.hasTime
-      ? d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+      ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
       : null;
 
   return (
@@ -82,10 +82,8 @@ export function TodoRow({
       {showDate && d && (
         <div className="event-card-date flex-shrink-0">
           <span className="event-card-day">{d.getDate()}</span>
-          <span className="event-card-month">
-            {d.toLocaleDateString("ru-RU", { month: "short" }).replace(/\.$/, "")}
-          </span>
-          <span className="event-card-weekday">{WEEKDAYS_SHORT[d.getDay()]}</span>
+          <span className="event-card-month">{shortMonthName(d, locale)}</span>
+          <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
         </div>
       )}
       <input
@@ -94,7 +92,7 @@ export function TodoRow({
         checked={todo.done}
         onChange={toggle}
         disabled={!canEdit || pending}
-        aria-label={todo.done ? "Отметить невыполненным" : "Отметить выполненным"}
+        aria-label={todo.done ? t.trips.todos.markUndone : t.trips.todos.markDone}
       />
       <span
         className={`flex-fill ${todo.done ? "text-secondary text-decoration-line-through" : ""}`}
@@ -103,7 +101,7 @@ export function TodoRow({
         {todo.text}
         {todo.isPrivate && (
           <span className="badge rounded-pill text-bg-dark border ms-2" style={{ fontSize: "0.6rem" }}>
-            приватное
+            {t.trips.todos.badgePrivate}
           </span>
         )}
         {todo.author && (
@@ -112,15 +110,17 @@ export function TodoRow({
       </span>
       {rowError && <span className="small text-danger flex-shrink-0">{rowError}</span>}
       {timeLabel && <span className="small text-secondary flex-shrink-0">{timeLabel}</span>}
-      {!showDate && todo.date && (
-        <span className="small text-secondary flex-shrink-0">{fmtDate(todo.date)}</span>
+      {!showDate && d && (
+        <span className="small text-secondary flex-shrink-0">
+          {d.getDate()} {shortMonthName(d, locale)}
+        </span>
       )}
       {canEdit && (
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <button
             type="button"
             className="icon-btn"
-            aria-label="Редактировать дело"
+            aria-label={t.trips.todos.editAria}
             onClick={() => setEditOpen(true)}
           >
             <PencilIcon />
@@ -133,9 +133,9 @@ export function TodoRow({
               if (!result.ok) return result;
               router.refresh();
             }}
-            confirmMessage="Удалить дело?"
+            confirmMessage={t.trips.todos.deleteConfirm}
           >
-            <button type="button" className="icon-btn icon-btn-danger" aria-label="Удалить дело">
+            <button type="button" className="icon-btn icon-btn-danger" aria-label={t.trips.todos.deleteAria}>
               <TrashIcon />
             </button>
           </ConfirmForm>
@@ -148,7 +148,7 @@ export function TodoRow({
           setEditOpen(false);
           setEditError(null);
         }}
-        title="Редактировать дело"
+        title={t.trips.todos.editTitle}
       >
         <form
           action={async (fd) => {
@@ -164,19 +164,21 @@ export function TodoRow({
           className="d-flex flex-column gap-3"
         >
           <div>
-            <label className="form-label small text-secondary">Что сделать</label>
+            <label className="form-label small text-secondary">{t.trips.todos.text}</label>
             <input name="text" required defaultValue={todo.text} className="form-control" />
           </div>
           <div className="row g-2">
             <div className="col-7">
-              <label className="form-label small text-secondary">Дата (необязательно)</label>
+              <label className="form-label small text-secondary">
+                {t.trips.todos.dateOptional}
+              </label>
               <DatePickerInput
                 name="date"
                 defaultValue={todo.date ? todo.date.slice(0, 10) : ""}
               />
             </div>
             <div className="col-5">
-              <label className="form-label small text-secondary">Время</label>
+              <label className="form-label small text-secondary">{t.trips.todos.time}</label>
               <input
                 type="time"
                 name="time"
@@ -195,7 +197,7 @@ export function TodoRow({
                   className="form-check-input m-0"
                 />
                 <span className="form-check-label small">
-                  Участники поездки могут редактировать и удалять
+                  {t.trips.todos.editableByOthers}
                 </span>
               </label>
               <label className="form-check d-flex align-items-center gap-2 mb-0">
@@ -205,7 +207,7 @@ export function TodoRow({
                   defaultChecked={todo.isPrivate}
                   className="form-check-input m-0"
                 />
-                <span className="form-check-label small">Приватное — видно только мне</span>
+                <span className="form-check-label small">{t.trips.todos.isPrivate}</span>
               </label>
             </>
           ) : (
@@ -217,7 +219,7 @@ export function TodoRow({
           )}
           {editError && <p className="small text-danger mb-0">{editError}</p>}
           <button type="submit" className="btn btn-primary">
-            Сохранить
+            {t.common.save}
           </button>
         </form>
       </Modal>
@@ -238,6 +240,7 @@ export default function TripTodos({
   canAdd: boolean;
   showShareToggle?: boolean;
 }) {
+  const t = useT();
   const router = useRouter();
   // Ключ формы: после добавления форму ремоунтим, иначе DatePickerInput
   // удерживает прошлую дату и следующее дело получает её молча.
@@ -270,20 +273,20 @@ export default function TripTodos({
           className="d-flex flex-wrap align-items-end gap-2 mb-4"
         >
           <div className="flex-fill" style={{ minWidth: "14rem" }}>
-            <label className="form-label small text-secondary">Новое дело</label>
+            <label className="form-label small text-secondary">{t.trips.todos.newText}</label>
             <input
               name="text"
               required
-              placeholder="Купить симку, обменять деньги…"
+              placeholder={t.trips.todos.newPlaceholder}
               className="form-control"
             />
           </div>
           <div>
-            <label className="form-label small text-secondary">Дата (необязательно)</label>
+            <label className="form-label small text-secondary">{t.trips.todos.dateOptional}</label>
             <DatePickerInput name="date" />
           </div>
           <div>
-            <label className="form-label small text-secondary">Время</label>
+            <label className="form-label small text-secondary">{t.trips.todos.time}</label>
             <input type="time" name="time" className="form-control" style={{ width: "7rem" }} />
           </div>
           {showShareToggle && (
@@ -295,17 +298,17 @@ export default function TripTodos({
                   className="form-check-input m-0"
                 />
                 <span className="form-check-label small">
-                  Участники могут редактировать и удалять
+                  {t.trips.todos.editableByOthersShort}
                 </span>
               </label>
               <label className="form-check d-flex align-items-center gap-2 mb-0">
                 <input type="checkbox" name="isPrivate" className="form-check-input m-0" />
-                <span className="form-check-label small">Приватное — видно только мне</span>
+                <span className="form-check-label small">{t.trips.todos.isPrivate}</span>
               </label>
             </div>
           )}
           <button type="submit" className="btn btn-primary">
-            Добавить
+            {t.common.add}
           </button>
           {error && <p className="small text-danger w-100 mb-0">{error}</p>}
         </form>
@@ -314,12 +317,8 @@ export default function TripTodos({
       {sorted.length === 0 ? (
         <EmptyState
           emoji="📝"
-          title="Дел пока нет"
-          hint={
-            canAdd
-              ? "Добавьте первое в форме выше — купить билеты, обменять деньги, собрать мерч."
-              : "Участники пока ничего не добавили."
-          }
+          title={t.trips.todos.emptyTitle}
+          hint={canAdd ? t.trips.todos.emptyHintOwn : t.trips.todos.emptyHintGuest}
           compact
         />
       ) : (

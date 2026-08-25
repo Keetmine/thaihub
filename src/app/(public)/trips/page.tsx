@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
@@ -9,32 +9,42 @@ import { formatShortDate } from "@/lib/dates";
 import CreateTripButton from "./CreateTripButton";
 import { TripInviteActions } from "./TripMembersControls";
 import PremiumUpsell from "@/components/PremiumUpsell";
-import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { tripHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
+import { getT, localeHref } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Поездки",
-  description: "Ваши поездки и совместные планы.",
-  path: "/trips",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.trips.list.metaTitle,
+    description: t.trips.list.metaDescription,
+    path: "/trips",
+    noIndex: true,
+  });
+}
 
 
 export const dynamic = "force-dynamic";
 
 export default async function TripsPage() {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
 
   // Поездки целиком — платная функция (см. PremiumUpsell / /admin/users).
   if (!isPremiumActive(user)) {
     return (
       <div>
-        <PageHeader eyebrow="Планирование" title="Мои поездки" size="lg" className="mb-5" watermark="Trips" />
-        <PremiumUpsell feature="Поездки" />
+        <PageHeader
+          eyebrow={t.trips.eyebrow}
+          title={t.trips.list.title}
+          size="lg"
+          className="mb-5"
+          watermark="Trips"
+        />
+        <PremiumUpsell feature={t.trips.paywallFeature} />
       </div>
     );
   }
@@ -86,16 +96,13 @@ export default async function TripsPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Планирование" title="Мои поездки" size="lg" className="mb-5" />
+      <PageHeader eyebrow={t.trips.eyebrow} title={t.trips.list.title} size="lg" className="mb-5" />
 
       <div style={{ maxWidth: "44rem" }}>
-        <p className="text-secondary mb-3">
-          Поездка — это даты, когда вы в Таиланде: на её странице собраны все
-          события, попадающие в этот период.
-        </p>
+        <p className="text-secondary mb-3">{t.trips.list.intro}</p>
         {invites.length > 0 && (
           <div className="mb-4 d-flex flex-column gap-2">
-            <h2 className="section-heading mb-0">Приглашения</h2>
+            <h2 className="section-heading mb-0">{t.trips.list.invites}</h2>
             {invites.map((inv) => (
               <div
                 key={inv.tripId}
@@ -103,13 +110,15 @@ export default async function TripsPage() {
               >
                 <div>
                   <p className="font-display fw-medium text-white mb-0">
-                    <Link href={tripHref(inv.trip)} className="text-white text-decoration-none">
+                    <AppLink href={tripHref(inv.trip)} className="text-white text-decoration-none">
                       {inv.trip.title}
-                    </Link>
+                    </AppLink>
                   </p>
                   <p className="small text-secondary mb-0">
-                    {formatShortDate(inv.trip.startDate)} – {formatShortDate(inv.trip.endDate)}{" "}
-                    {inv.trip.endDate.getFullYear()} · приглашает {inv.trip.user.name ?? "друг"}
+                    {formatShortDate(inv.trip.startDate, locale)} –{" "}
+                    {formatShortDate(inv.trip.endDate, locale)}{" "}
+                    {inv.trip.endDate.getFullYear()} ·{" "}
+                    {t.trips.list.invitedBy(inv.trip.user.name ?? t.trips.list.someFriend)}
                   </p>
                 </div>
                 <TripInviteActions tripId={inv.tripId} />
@@ -120,78 +129,85 @@ export default async function TripsPage() {
 
         <div className="mb-4">
           <CreateTripButton
-            friends={friends.map((f) => ({ id: f.id, name: f.name ?? "Без имени", photoUrl: f.photoUrl }))}
+            friends={friends.map((f) => ({
+              id: f.id,
+              name: f.name ?? t.trips.members.noName,
+              photoUrl: f.photoUrl,
+            }))}
           />
         </div>
 
         {trips.length === 0 ? (
           <EmptyState
             emoji="✈️"
-            title="Пока нет ни одной поездки"
-            hint="Создайте поездку с датами — события, отели и списки мест соберутся в один план."
+            title={t.trips.list.emptyTitle}
+            hint={t.trips.list.emptyHint}
             compact
           />
         ) : (
           <div className="d-flex flex-column gap-3 stagger">
-            {trips.map((t, i) => {
-              const isPast = t.endDate < now;
+            {trips.map((trip, i) => {
+              const isPast = trip.endDate < now;
               // Будущие отсортированы по startDate, значит первая
               // не-прошедшая — ближайшая: она и есть карточка-герой.
-              const shared = t._count.members > 0 || t.userId !== user.id;
+              const shared = trip._count.members > 0 || trip.userId !== user.id;
               const dates = (
                 <>
-                  {formatShortDate(t.startDate)} <span className="trip-dates-arrow">→</span>{" "}
-                  {formatShortDate(t.endDate)}
-                  <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
+                  {formatShortDate(trip.startDate, locale)}{" "}
+                  <span className="trip-dates-arrow">→</span>{" "}
+                  {formatShortDate(trip.endDate, locale)}
+                  <span className="trip-dates-year">{trip.endDate.getFullYear()}</span>
                 </>
               );
               // Прошедшие — приглушённой компактной строкой.
               if (isPast) {
                 return (
-                  <Fragment key={t.id}>
+                  <Fragment key={trip.id}>
                     {trips.findIndex((x) => x.endDate < now) === i && (
-                      <h2 className="section-heading mb-0 mt-2">Прошедшие</h2>
+                      <h2 className="section-heading mb-0 mt-2">{t.trips.list.pastHeading}</h2>
                     )}
-                    <Link
-                      href={tripHref(t)}
+                    <AppLink
+                      href={tripHref(trip)}
                       className="trip-card trip-card-past d-flex flex-wrap align-items-center justify-content-between gap-2"
                     >
                       <div style={{ minWidth: 0 }}>
                         <p className="trip-dates mb-0">{dates}</p>
                         <p className="font-display fw-medium text-white small mb-0 text-truncate">
-                          {t.title}
+                          {trip.title}
                           {shared && (
-                            <span className="text-secondary fw-normal"> · совместная</span>
+                            <span className="text-secondary fw-normal">
+                              {t.trips.list.sharedSuffix}
+                            </span>
                           )}
                         </p>
                       </div>
-                    </Link>
+                    </AppLink>
                   </Fragment>
                 );
               }
               return (
-                <Link
-                  key={t.id}
-                  href={tripHref(t)}
+                <AppLink
+                  key={trip.id}
+                  href={tripHref(trip)}
                   className="trip-card"
                 >
                   <div className="d-flex flex-wrap align-items-start justify-content-between gap-2">
                     {/* Даты крупно, как на билете: «20 авг → 27 авг». */}
                     <p className="trip-dates mb-1">{dates}</p>
-                    {shared && <span className="date-chip">совместная</span>}
+                    {shared && <span className="date-chip">{t.trips.list.shared}</span>}
                   </div>
-                  <p className="font-display fw-medium text-white mb-0">{t.title}</p>
-                  {t.userId !== user.id && (
+                  <p className="font-display fw-medium text-white mb-0">{trip.title}</p>
+                  {trip.userId !== user.id && (
                     <p className="small text-secondary mb-0">
-                      Организатор: {t.user.name ?? "без имени"}
+                      {t.trips.list.organiser(trip.user.name ?? t.trips.list.noName)}
                     </p>
                   )}
-                  {t.visibility !== "PRIVATE" && (
+                  {trip.visibility !== "PRIVATE" && (
                     <p className="text-secondary mt-2 mb-0" style={{ fontSize: "0.7rem" }}>
-                      {VISIBILITY_LABELS[t.visibility]}
+                      {t.trips.visibility.options[trip.visibility]}
                     </p>
                   )}
-                </Link>
+                </AppLink>
               );
             })}
           </div>

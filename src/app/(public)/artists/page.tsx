@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import type { Performer } from "@/generated/prisma/client";
@@ -13,16 +13,19 @@ import { agencyHref } from "@/lib/slugHelpers";
 import { performerNameWhere, performerRealNameParen } from "@/lib/searchWhere";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
 import { pageMetadata } from "@/lib/seo";
+import { getT, type Dict } from "@/lib/i18n";
 import AlphabetDataList from "@/components/AlphabetDataList";
 import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
 import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 
-export const metadata = pageMetadata({
-  title: "Артисты",
-  description:
-    "Каталог тайских BL-актёров и групп: профили, сериалы, концерты и фанмиты, дискография.",
-  path: "/artists",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.catalog.artists.metaTitle,
+    description: t.catalog.artists.metaDescription,
+    path: "/artists",
+  });
+}
 
 
 export const dynamic = "force-dynamic";
@@ -65,42 +68,43 @@ function typeOfView(view: View): "SOLO" | "BAND" | "MASCOT" {
 
 type View = "performers" | "bands" | "mascots" | "agencies";
 
-function Tabs({ active }: { active: View }) {
+function Tabs({ active, t }: { active: View; t: Dict }) {
   return (
     <div className="tab-bar">
-      <Link
+      <AppLink
         href="/artists"
         prefetch={false}
         className={`tab-bar-item ${active === "performers" ? "active" : ""}`}
       >
-        Актёры
-      </Link>
-      <Link
+        {t.catalog.artists.tabPerformers}
+      </AppLink>
+      <AppLink
         href="/artists?view=bands"
         prefetch={false}
         className={`tab-bar-item ${active === "bands" ? "active" : ""}`}
       >
-        Музыкальные группы
-      </Link>
-      <Link
+        {t.catalog.artists.tabBands}
+      </AppLink>
+      <AppLink
         href="/artists?view=mascots"
         prefetch={false}
         className={`tab-bar-item ${active === "mascots" ? "active" : ""}`}
       >
-        Маскоты
-      </Link>
-      <Link
+        {t.catalog.artists.tabMascots}
+      </AppLink>
+      <AppLink
         href="/artists?view=agencies"
         prefetch={false}
         className={`tab-bar-item ${active === "agencies" ? "active" : ""}`}
       >
-        Агентства
-      </Link>
+        {t.catalog.artists.tabAgencies}
+      </AppLink>
     </div>
   );
 }
 
 async function AgenciesTab({ q }: { q: string }) {
+  const { t } = await getT();
   const agencies = await prisma.agency.findMany({
     where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
     include: { _count: { select: { performers: true } } },
@@ -118,19 +122,19 @@ async function AgenciesTab({ q }: { q: string }) {
   }
 
   if (agencies.length === 0) {
-    return <p className="text-secondary">Пока нет агентств.</p>;
+    return <p className="text-secondary">{t.catalog.artists.emptyAgencies}</p>;
   }
 
   return (
     <AlphabetIndexList
       items={agencies.map((a) => ({ id: a.id, name: a.name, agency: a }))}
-      emptyMessage="Пока нет агентств."
+      emptyMessage={t.catalog.artists.emptyAgencies}
       renderItem={({ agency: a }) => (
         <div
           key={a.id}
           className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
         >
-          <Link
+          <AppLink
             href={agencyHref(a)}
             className="text-decoration-none d-flex align-items-center gap-3"
             style={{ minWidth: 0 }}
@@ -169,9 +173,11 @@ async function AgenciesTab({ q }: { q: string }) {
             )}
             <div style={{ minWidth: 0 }}>
               <p className="font-display fw-medium text-white mb-0 text-truncate">{a.name}</p>
-              <p className="small text-secondary mb-0">артистов: {a._count.performers}</p>
+              <p className="small text-secondary mb-0">
+                {t.catalog.artists.artistCount(a._count.performers)}
+              </p>
             </div>
-          </Link>
+          </AppLink>
           <FavoriteButton
             kind="agency"
             id={a.id}
@@ -194,12 +200,15 @@ function PerformerAlphabetList({
   favoritedIds,
   myLists,
   emptyMessage,
+  favoritesLabel,
   pinFavorites = true,
 }: {
   performers: PerformerWithCount[];
   favoritedIds: Set<string>;
   myLists: { id: string; title: string }[] | null;
   emptyMessage: string;
+  /** Подпись закреплённой секции с избранными. */
+  favoritesLabel: string;
   // Избранные сверху (дефолт: список = избранные + событийные).
   pinFavorites?: boolean;
 }) {
@@ -252,12 +261,12 @@ function PerformerAlphabetList({
                 heading: (
                   <>
                     <HeartIcon filled />
-                    Избранное
+                    {favoritesLabel}
                   </>
                 ),
                 rows: favorited.map(toRow),
                 indexLabel: <HeartIcon filled />,
-                indexAriaLabel: "Избранное",
+                indexAriaLabel: favoritesLabel,
               }
             : undefined
         }
@@ -271,6 +280,7 @@ export default async function PerformersPage({
 }: {
   searchParams: Promise<{ view?: string; q?: string }>;
 }) {
+  const { t } = await getT();
   const { view: rawView, q: rawQ } = await searchParams;
   const view: View =
     rawView === "bands"
@@ -348,31 +358,37 @@ export default async function PerformersPage({
   }
 
   const titles: Record<View, string> = {
-    performers: "Актёры",
-    bands: "Музыкальные группы",
-    mascots: "Маскоты",
-    agencies: "Агентства",
+    performers: t.catalog.artists.titlePerformers,
+    bands: t.catalog.artists.titleBands,
+    mascots: t.catalog.artists.titleMascots,
+    agencies: t.catalog.artists.titleAgencies,
   };
 
   return (
     <div>
-      <PageHeader eyebrow="Каталог" title={titles[view]} size="lg" className="mb-5" watermark="Artists" />
+      <PageHeader
+        eyebrow={t.catalog.eyebrow}
+        title={titles[view]}
+        size="lg"
+        className="mb-5"
+        watermark="Artists"
+      />
 
       <div className="tab-bar-row">
-        <Tabs active={view} />
+        <Tabs active={view} t={t} />
         <NameSearchBox
           action="/artists"
           q={q}
           hiddenFields={view !== "performers" ? { view } : undefined}
-          placeholder={view === "agencies" ? "Поиск по названию…" : "Поиск по имени…"}
+          placeholder={
+            view === "agencies" ? t.catalog.searchByTitle : t.catalog.searchByName
+          }
           className=""
         />
       </div>
       {view === "performers" && !q && (
         <p className="small text-secondary mb-3" style={{ maxWidth: "44rem" }}>
-          Здесь показаны избранные и актёры с событиями в афише — а всего в
-          каталоге тысячи актёров. Если кого-то нет в списке, наберите имя в
-          поиске справа.
+          {t.catalog.artists.hint}
         </p>
       )}
 
@@ -382,7 +398,7 @@ export default async function PerformersPage({
         <>
           {searchTruncated && (
             <p className="small text-secondary mb-3">
-              Показаны первые {SEARCH_RESULT_LIMIT} результатов — уточните запрос, чтобы увидеть более точные совпадения.
+              {t.catalog.showingFirst(SEARCH_RESULT_LIMIT)}
             </p>
           )}
           <PerformerAlphabetList
@@ -390,14 +406,15 @@ export default async function PerformersPage({
             favoritedIds={favoritedIds}
             myLists={myLists}
             pinFavorites
+            favoritesLabel={t.catalog.artists.favorites}
             emptyMessage={
               q
-                ? "Ничего не найдено."
+                ? t.common.nothingFound
                 : view === "bands"
-                  ? "Пока нет групп."
+                  ? t.catalog.artists.emptyBands
                   : view === "mascots"
-                    ? "Пока нет маскотов."
-                    : "Пока никого нет в избранном. Используйте поиск, чтобы найти актёра."
+                    ? t.catalog.artists.emptyMascots
+                    : t.catalog.artists.emptyFavorites
             }
           />
         </>

@@ -1,5 +1,8 @@
-import Link from "next/link";
+"use client";
+
+import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
+import { useLocale, useT } from "@/components/LocaleProvider";
 import { eventHref } from "@/lib/eventSlug";
 import { formatShortDate } from "@/lib/dates";
 
@@ -16,48 +19,53 @@ export type TicketRow = {
  * поездкой, надо было вспомнить, на какое событие он был.
  */
 export default function TicketsTab({ tickets }: { tickets: TicketRow[] }) {
+  const t = useT();
+  const locale = useLocale();
+
   if (tickets.length === 0) {
     return (
       <EmptyState
         emoji="🎫"
-        title="Загруженных билетов пока нет"
-        hint="Прикрепите файл на странице события — там же, где отмечаете «иду», — и он будет ждать вас здесь."
+        title={t.account.tickets.emptyTitle}
+        hint={t.account.tickets.emptyHint}
         compact
       />
     );
   }
 
   const now = new Date();
-  const upcoming = tickets.filter((t) => !t.startsAt || t.startsAt >= now);
-  const past = tickets.filter((t) => t.startsAt && t.startsAt < now);
+  const upcoming = tickets.filter((ticket) => !ticket.startsAt || ticket.startsAt >= now);
+  const past = tickets.filter((ticket) => ticket.startsAt && ticket.startsAt < now);
 
-  const row = (t: TicketRow, dimmed = false) => (
+  const row = (ticket: TicketRow, dimmed = false) => (
     <div
-      key={t.id}
+      key={ticket.id}
       className={`surface d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 ${dimmed ? "opacity-75" : ""}`}
     >
       <div style={{ minWidth: 0 }}>
-        <Link href={eventHref(t.event)} className="text-white text-decoration-none d-block">
-          {t.event.title}
-        </Link>
+        <AppLink href={eventHref(ticket.event)} className="text-white text-decoration-none d-block">
+          {ticket.event.title}
+        </AppLink>
         <span className="small text-secondary">
           {/* С годом: билеты копятся годами, и «12 окт» без года ничего
               не говорит — особенно в прошедших. */}
           {[
-            t.startsAt ? `${formatShortDate(t.startsAt)} ${t.startsAt.getUTCFullYear()}` : null,
-            t.event.venue,
+            ticket.startsAt
+              ? `${formatShortDate(ticket.startsAt, locale)} ${ticket.startsAt.getUTCFullYear()}`
+              : null,
+            ticket.event.venue,
           ]
             .filter(Boolean)
             .join(" · ")}
         </span>
       </div>
       <a
-        href={t.ticketUrl}
+        href={ticket.ticketUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="btn btn-ghost btn-sm flex-shrink-0"
       >
-        Открыть билет ↗
+        {t.account.tickets.open}
       </a>
     </div>
   );
@@ -66,14 +74,14 @@ export default function TicketsTab({ tickets }: { tickets: TicketRow[] }) {
     <div className="d-flex flex-column gap-4">
       {upcoming.length > 0 && (
         <section>
-          <h2 className="section-heading mb-2">Ближайшие</h2>
-          <div className="d-flex flex-column gap-2">{upcoming.map((t) => row(t))}</div>
+          <h2 className="section-heading mb-2">{t.account.tickets.upcoming}</h2>
+          <div className="d-flex flex-column gap-2">{upcoming.map((ticket) => row(ticket))}</div>
         </section>
       )}
       {past.length > 0 && (
         <section>
-          <h2 className="section-heading mb-2">Прошедшие</h2>
-          <div className="d-flex flex-column gap-2">{past.map((t) => row(t, true))}</div>
+          <h2 className="section-heading mb-2">{t.account.tickets.past}</h2>
+          <div className="d-flex flex-column gap-2">{past.map((ticket) => row(ticket, true))}</div>
         </section>
       )}
     </div>

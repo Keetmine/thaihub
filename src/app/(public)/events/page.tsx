@@ -1,7 +1,8 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { dateKey, endOfDay, formatShortDate, parseDateKey, startOfDay } from "@/lib/dates";
+import { getT, localeHref } from "@/lib/i18n";
 import InfiniteEventList from "@/components/InfiniteEventList";
 import NameSearchBox from "@/components/NameSearchBox";
 import DateRangeFilterButton from "@/components/DateRangeFilterButton";
@@ -13,12 +14,14 @@ import PremiumUpsell from "@/components/PremiumUpsell";
 import { isPremiumActive } from "@/lib/premium";
 import { pageMetadata } from "@/lib/seo";
 
-export const metadata = pageMetadata({
-  title: "Афиша",
-  description:
-    "Афиша концертов, фанмитов и других событий тайских BL-актёров: даты, площадки, составы.",
-  path: "/events",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.events.list.metaTitle,
+    description: t.events.list.metaDescription,
+    path: "/events",
+  });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +32,7 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ filter?: string; from?: string; to?: string; q?: string; trip?: string }>;
 }) {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
   // Аноним попадает сюда по прямой ссылке — показываем лендинг, как и на
   // главной: каталог открыт, а афиша за подпиской.
@@ -44,9 +48,15 @@ export default async function HomePage({
         {/* Метка тура и в этой ветке: без подписки здесь пейволл, но
             первый шаг «что это за раздел» показать всё равно нужно. */}
         <div className="dot-grid pb-1" data-tour="feed">
-          <PageHeader eyebrow="События" title="Афиша" size="lg" className="mb-5" watermark="Events" />
+          <PageHeader
+            eyebrow={t.events.list.eyebrow}
+            title={t.events.list.title}
+            size="lg"
+            className="mb-5"
+            watermark="Events"
+          />
         </div>
-        <PremiumUpsell feature="Афиша событий" />
+        <PremiumUpsell feature={t.events.list.paywallFeature} />
       </div>
     );
   }
@@ -136,77 +146,80 @@ export default async function HomePage({
           вместо ленты стоит пейволл, а первый шаг должен показаться
           всем. */}
       <div className="dot-grid pb-1" data-tour="feed">
-        <span className="eyebrow">События</span>
+        <span className="eyebrow">{t.events.list.eyebrow}</span>
         <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
           <h1 className="display-1-tight mb-0" style={{ fontSize: "2.5rem" }}>
-            Афиша
+            {t.events.list.title}
           </h1>
-          <Link
+          <AppLink
             href="/calendar"
             className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
           >
             <CalendarIcon />
-            Посмотреть в календаре
-          </Link>
+            {t.events.list.openCalendar}
+          </AppLink>
         </div>
       </div>
 
       <div className="tab-bar-row">
         <div className="tab-bar">
-          <Link
+          <AppLink
             href={`/events?filter=all${rangeQuery}`}
             prefetch={false}
             className={`tab-bar-item ${filter === "all" && !activeTrip ? "active" : ""}`}
           >
-            Все
-          </Link>
-          <Link
+            {t.events.list.tabAll}
+          </AppLink>
+          <AppLink
             href={`/events?filter=going${rangeQuery}`}
             prefetch={false}
             className={`tab-bar-item ${filter === "going" ? "active" : ""}`}
           >
-            Я иду
-          </Link>
-          <Link
+            {t.events.list.tabGoing}
+          </AppLink>
+          <AppLink
             href={`/events?filter=favorited${rangeQuery}`}
             prefetch={false}
             className={`tab-bar-item ${filter === "favorited" ? "active" : ""}`}
           >
-            Избранное
-          </Link>
-          <Link
+            {t.events.list.tabFavorites}
+          </AppLink>
+          <AppLink
             href={`/events?filter=artists${rangeQuery}`}
             prefetch={false}
             className={`tab-bar-item ${filter === "artists" ? "active" : ""}`}
           >
-            Мои артисты
-          </Link>
-          {myTrips.map((t) => (
-            <Link
-              key={t.id}
-              href={`/?trip=${t.id}`}
+            {t.events.list.tabArtists}
+          </AppLink>
+          {myTrips.map((trip) => (
+            <AppLink
+              key={trip.id}
+              href={`/?trip=${trip.id}`}
               prefetch={false}
-              className={`tab-bar-item ${activeTrip?.id === t.id ? "active" : ""}`}
-              title={`${formatShortDate(t.startDate)} – ${formatShortDate(t.endDate)}`}
+              className={`tab-bar-item ${activeTrip?.id === trip.id ? "active" : ""}`}
+              title={`${formatShortDate(trip.startDate, locale)} – ${formatShortDate(trip.endDate, locale)}`}
             >
-              ✈ {t.title}
-            </Link>
+              ✈ {trip.title}
+            </AppLink>
           ))}
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {!activeTrip && (
             <DateRangeFilterButton
-              action="/"
+              action={localeHref("/", locale)}
               from={from}
               to={to}
-              clearHref={`/events?filter=${filter}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              clearHref={localeHref(
+                `/events?filter=${filter}${q ? `&q=${encodeURIComponent(q)}` : ""}`,
+                locale,
+              )}
               hiddenFields={filter !== "all" ? { filter } : undefined}
             />
           )}
           <NameSearchBox
-            action="/"
+            action={localeHref("/", locale)}
             q={q}
-            placeholder="Поиск по названию…"
+            placeholder={t.events.list.searchPlaceholder}
             hiddenFields={{
               ...(filter !== "all" ? { filter } : {}),
               ...(activeTrip
@@ -221,8 +234,8 @@ export default async function HomePage({
       {hasDateRange && (
         <p className="small text-secondary mb-3">
           {rangeTotal === 0
-            ? "В этом диапазоне дат событий нет."
-            : `Событий в диапазоне: ${rangeTotal}.`}
+            ? t.events.list.rangeEmpty
+            : t.events.list.rangeCount(rangeTotal)}
         </p>
       )}
 
@@ -231,7 +244,7 @@ export default async function HomePage({
         filters={filters}
         initialPage={initialPage}
         emptyMessage={
-          hasDateRange ? "" : q ? "Ничего не найдено." : "Предстоящих событий пока нет."
+          hasDateRange ? "" : q ? t.common.nothingFound : t.events.list.emptyUpcoming
         }
       />
     </div>

@@ -91,14 +91,17 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             таймзона. Значение приходит из заголовка, который ставит
             proxy (из пути его не прочитать: русские страницы —
             рерайт). */}
-        <LocaleProvider locale={locale}>{children}</LocaleProvider>
-        {/* Баннер согласия + аналитика: Метрика и Google Tag Manager
-            грузятся только после «Принять все» (см. CookieConsent). */}
-        <CookieConsent
-          metrikaId={process.env.YANDEX_METRIKA_ID ?? null}
-          gtmId={process.env.GTM_ID ?? null}
-          gaId={process.env.GA_MEASUREMENT_ID ?? null}
-        />
+        <LocaleProvider locale={locale}>
+          {children}
+          {/* Баннер согласия + аналитика: Метрика и Google Tag Manager
+              грузятся только после «Принять все» (см. CookieConsent).
+              Внутри провайдера — баннеру нужен язык зрителя. */}
+          <CookieConsent
+            metrikaId={process.env.YANDEX_METRIKA_ID ?? null}
+            gtmId={process.env.GTM_ID ?? null}
+            gaId={process.env.GA_MEASUREMENT_ID ?? null}
+          />
+        </LocaleProvider>
       </body>
     </html>
   );

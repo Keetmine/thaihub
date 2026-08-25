@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isValidUsername, RESERVED_USERNAMES } from "@/lib/userProfile";
 import { isKnownCountry } from "@/lib/countries";
+import { getT, localeHref } from "@/lib/i18n";
 
 export type ProfileSetupResult = { ok: true } | { ok: false; error: string };
 
@@ -17,26 +18,24 @@ export type ProfileSetupResult = { ok: true } | { ok: false; error: string };
  * в проде до клиента не доходит (см. docs/architecture.md).
  */
 export async function saveProfileSetup(formData: FormData): Promise<ProfileSetupResult> {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
 
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
-  if (!username) return { ok: false, error: "Придумайте ник" };
+  if (!username) return { ok: false, error: t.auth.profileSetup.usernameRequired };
   if (!isValidUsername(username)) {
-    return {
-      ok: false,
-      error: "Ник: 2–24 символа, латиница, цифры, точка, дефис или подчёркивание",
-    };
+    return { ok: false, error: t.auth.profileSetup.usernameInvalid };
   }
   if (RESERVED_USERNAMES.has(username)) {
-    return { ok: false, error: "Этот ник занят системой, выберите другой" };
+    return { ok: false, error: t.auth.profileSetup.usernameReserved };
   }
 
   const taken = await prisma.user.findFirst({
     where: { username, id: { not: user.id } },
     select: { id: true },
   });
-  if (taken) return { ok: false, error: "Такой ник уже занят" };
+  if (taken) return { ok: false, error: t.auth.profileSetup.usernameTaken };
 
   const name = String(formData.get("name") ?? "").trim();
   const country = String(formData.get("country") ?? "").trim();

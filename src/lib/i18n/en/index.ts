@@ -14,6 +14,7 @@ import { trips } from "./trips";
 import { ui } from "./ui";
 import { wiki } from "./wiki";
 import { reviews } from "./reviews";
+import { widgets } from "./widgets";
 
 /**
  * Английский словарь — эталон структуры: русский обязан её
@@ -21,6 +22,6 @@ import { reviews } from "./reviews";
  * по файлам, чтобы над переводом можно было работать
  * параллельно, не сталкиваясь в одном файле.
  */
-export const en = { reviews, account, auth, catalog, common, events, footer, home, landing, legal, lists, nav, social, trips, ui, wiki };
+export const en = { widgets, reviews, account, auth, catalog, common, events, footer, home, landing, legal, lists, nav, social, trips, ui, wiki };
 
 export type Dict = typeof en;

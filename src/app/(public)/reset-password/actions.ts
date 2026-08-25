@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/userAuth";
+import { getLocale, localeHref } from "@/lib/i18n";
 
 export async function resetPassword(token: string, formData: FormData): Promise<void> {
   const password = String(formData.get("password") ?? "");
@@ -23,5 +24,5 @@ export async function resetPassword(token: string, formData: FormData): Promise<
       data: { usedAt: new Date() },
     }),
   ]);
-  redirect("/login?reset=1");
+  redirect(localeHref("/login?reset=1", await getLocale()));
 }

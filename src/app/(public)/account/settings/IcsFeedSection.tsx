@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { regenerateIcsToken } from "../actions";
 
 export default function IcsFeedSection({ token }: { token: string }) {
+  const t = useT();
   const [currentToken, setCurrentToken] = useState(token);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -20,7 +22,7 @@ export default function IcsFeedSection({ token }: { token: string }) {
   }
 
   async function handleRegenerate() {
-    if (!confirm("Старая ссылка перестанет работать. Обновить?")) return;
+    if (!confirm(t.account.settings.icsRegenerateConfirm)) return;
     setIsRegenerating(true);
     try {
       const next = await regenerateIcsToken();
@@ -32,21 +34,17 @@ export default function IcsFeedSection({ token }: { token: string }) {
 
   return (
     <div className="d-flex flex-column gap-2">
-      <p className="small text-secondary mb-0">
-        Подпишитесь на эту ссылку в календаре телефона (Google Calendar, Apple
-        Calendar) — события, на которые вы отметили «Иду», будут появляться там
-        сами.
-      </p>
+      <p className="small text-secondary mb-0">{t.account.settings.icsHint}</p>
       <div className="d-flex flex-wrap gap-2">
         <input
           readOnly
           value={url}
-          aria-label="Ссылка на календарь"
+          aria-label={t.account.settings.icsAria}
           className="form-control"
           style={{ flex: "1 1 20rem" }}
         />
         <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleCopy}>
-          {copied ? "Скопировано" : "Копировать"}
+          {copied ? t.account.settings.icsCopied : t.account.settings.icsCopy}
         </button>
       </div>
       <div>
@@ -56,7 +54,9 @@ export default function IcsFeedSection({ token }: { token: string }) {
           onClick={handleRegenerate}
           disabled={isRegenerating}
         >
-          {isRegenerating ? "Обновление…" : "Обновить ссылку"}
+          {isRegenerating
+            ? t.account.settings.icsRegenerating
+            : t.account.settings.icsRegenerate}
         </button>
       </div>
     </div>

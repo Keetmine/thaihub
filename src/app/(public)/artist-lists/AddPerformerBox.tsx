@@ -3,10 +3,12 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addPerformerToList, searchPerformersForList } from "./actions";
+import { useT } from "@/components/LocaleProvider";
 
 // Поиск-добавлялка актёров в свой список: тот же паттерн, что async
 // EntityMultiSelect, но результат сразу пишется на сервер.
 export default function AddPerformerBox({ listId }: { listId: string }) {
+  const t = useT();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
@@ -47,18 +49,22 @@ export default function AddPerformerBox({ listId }: { listId: string }) {
       <input
         type="text"
         className="form-control"
-        placeholder="Начните вводить имя актёра…"
-        aria-label="Добавить актёра в список"
+        placeholder={t.lists.artists.addPlaceholder}
+        aria-label={t.lists.artists.addAria}
         value={query}
         onChange={(e) => onChange(e.target.value)}
       />
       {query.trim().length >= 2 && (
         <div className="performer-combobox-dropdown">
           {isSearching && (
-            <div className="performer-combobox-option text-secondary">Поиск…</div>
+            <div className="performer-combobox-option text-secondary">
+              {t.lists.artists.searching}
+            </div>
           )}
           {!isSearching && results.length === 0 && (
-            <div className="performer-combobox-option text-secondary">Никого не найдено</div>
+            <div className="performer-combobox-option text-secondary">
+              {t.lists.artists.nobodyFound}
+            </div>
           )}
           {results.map((p) => (
             <button

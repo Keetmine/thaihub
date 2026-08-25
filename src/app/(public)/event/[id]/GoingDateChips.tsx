@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toggleGoing } from "@/app/(public)/favorites/actions";
 import { formatShortDate } from "@/lib/dates";
 import { CheckIcon, PlusIcon } from "@/components/icons";
+import { useLocale, useT } from "@/components/LocaleProvider";
 
 /** Переключатели «иду» по датам события: у многодневного концерта можно
  *  выбрать только свои дни — в списки/календарь/план поездки попадают
@@ -15,6 +16,8 @@ export default function GoingDateChips({
   occurrences: { id: string; startsAt: Date }[];
   goingIds: string[];
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [going, setGoing] = useState(() => new Set(goingIds));
   const [isPending, startTransition] = useTransition();
 
@@ -43,9 +46,7 @@ export default function GoingDateChips({
   return (
     <div className="mb-0">
       <p className="small text-secondary mb-1">
-        {allPast
-          ? "Были на этом событии? Отметьте даты — они попадут в вашу статистику:"
-          : "Пойдёте? Отметьте свои даты — они попадут в календарь и план поездки:"}
+        {allPast ? t.events.going.promptPast : t.events.going.promptFuture}
       </p>
       <p className="mb-0 d-flex flex-wrap align-items-center gap-2">
         {occurrences.map((occ) => {
@@ -64,15 +65,15 @@ export default function GoingDateChips({
               title={
                 active
                   ? isPast
-                    ? "Убрать отметку о посещении"
-                    : "Убрать из моего плана"
+                    ? t.events.going.removePast
+                    : t.events.going.removeFuture
                   : isPast
-                    ? "Отметить, что были в этот день"
-                    : "Пойду в этот день"
+                    ? t.events.going.addPast
+                    : t.events.going.addFuture
               }
             >
               {active ? <CheckIcon /> : <PlusIcon />}
-              {formatShortDate(occ.startsAt)}
+              {formatShortDate(occ.startsAt, locale)}
             </button>
           );
         })}

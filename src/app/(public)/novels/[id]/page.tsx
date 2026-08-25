@@ -8,19 +8,27 @@ import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { UserIcon } from "@/components/icons";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const { t } = await getT();
   const novel = await prisma.novel.findFirst({
     where: slugOrIdWhere(id),
     select: { title: true, description: true, coverUrl: true, author: true, slug: true },
   });
-  if (!novel) return pageMetadata({ title: "Новелла", description: "Новелла не найдена." });
+  if (!novel)
+    return pageMetadata({
+      title: t.catalog.novel.metaTitle,
+      description: t.catalog.novel.metaNotFound,
+    });
   return pageMetadata({
     title: novel.title,
     description:
       novel.description?.slice(0, 160) ??
-      `${novel.title}${novel.author ? ` — ${novel.author}` : ""}: описание новеллы и её экранизации.`,
+      t.catalog.novel.metaDescription(
+        `${novel.title}${novel.author ? ` — ${novel.author}` : ""}`,
+      ),
     path: `/novels/${novel.slug ?? id}`,
     image: novel.coverUrl,
     type: "article",
@@ -36,6 +44,7 @@ export default async function NovelPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
+  const { t } = await getT();
   const novel = await prisma.novel.findFirst({
     where: slugOrIdWhere(rawId),
     include: { links: true, dramas: true },
@@ -44,7 +53,7 @@ export default async function NovelPage({
 
   return (
     <div>
-      <BackLink fallbackHref="/novels" fallbackLabel="← Все новеллы" />
+      <BackLink fallbackHref="/novels" fallbackLabel={t.catalog.novel.back} />
       {/* Иммерсивный hero (Э2): обложка размытым фоном вместо прежней
           колонки с обложкой; автор и число экранизаций — чипами. */}
       <div className="mt-3">
@@ -59,7 +68,7 @@ export default async function NovelPage({
               )}
               {novel.dramas.length > 0 && (
                 <span className="date-chip">
-                  экранизаций: {novel.dramas.length}
+                  {t.catalog.novel.adaptationCount(novel.dramas.length)}
                 </span>
               )}
             </>
@@ -84,12 +93,13 @@ export default async function NovelPage({
           {novel.originalAuthor && (
             <p className="small text-secondary mb-2">
               <UserIcon className="icon-inline" />{" "}
-              <span className="text-secondary">Автор оригинала:</span> {novel.originalAuthor}
+              <span className="text-secondary">{t.catalog.novel.originalAuthor}</span>{" "}
+              {novel.originalAuthor}
             </p>
           )}
           {novel.size && (
             <p className="small text-secondary mb-2">
-              <span className="text-secondary">Размер:</span> {novel.size}
+              <span className="text-secondary">{t.catalog.novel.size}</span> {novel.size}
             </p>
           )}
           {novel.description && (
@@ -102,7 +112,7 @@ export default async function NovelPage({
 
       {novel.links.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">Где почитать</h2>
+          <h2 className="section-heading mb-2">{t.catalog.novel.whereToRead}</h2>
           <div className="d-flex flex-wrap gap-2 mb-4">
             {novel.links.map((l) => (
               <a
@@ -121,7 +131,7 @@ export default async function NovelPage({
 
       {novel.dramas.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">Экранизации</h2>
+          <h2 className="section-heading mb-2">{t.catalog.novel.adaptations}</h2>
           <div className="d-flex flex-wrap gap-2">
             {novel.dramas.map((d) => (
               <EntityMiniCard

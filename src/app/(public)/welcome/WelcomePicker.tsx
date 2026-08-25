@@ -3,6 +3,7 @@
 import { useState } from "react";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import LetterAvatar from "@/components/LetterAvatar";
+import { useT } from "@/components/LocaleProvider";
 import { searchPerformersForList } from "@/app/(public)/artist-lists/actions";
 import { saveOnboardingFavorites } from "./actions";
 
@@ -12,6 +13,7 @@ export default function WelcomePicker({
 }: {
   popular: { id: string; name: string; photoUrl: string | null }[];
 }) {
+  const t = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   function toggle(id: string) {
@@ -57,18 +59,18 @@ export default function WelcomePicker({
 
       <div>
         <label className="form-label small text-secondary">
-          Не нашли своих? Поищите по имени:
+          {t.auth.welcome.searchLabel}
         </label>
         <EntityMultiSelect
           name="performerIds"
           options={[]}
-          placeholder="Начните вводить имя…"
+          placeholder={t.auth.welcome.searchPlaceholder}
           searchOptions={searchPerformersForList}
         />
       </div>
 
       <button type="submit" className="btn btn-primary align-self-start">
-        Сохранить и перейти к афише
+        {t.auth.welcome.submit}
       </button>
     </form>
   );

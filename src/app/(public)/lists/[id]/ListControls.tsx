@@ -12,11 +12,13 @@ import {
 } from "../actions";
 import Modal from "@/components/Modal";
 import FileDropzone from "@/components/FileDropzone";
-import { VISIBILITY_LABELS } from "@/lib/tripVisibility";
 import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
+import { useT } from "@/components/LocaleProvider";
+import { VISIBILITY_ORDER } from "@/app/(public)/trips/TripVisibilityControls";
 
 /** Селектор видимости списка (владельцу). */
 export function ListVisibilitySelect({ listId, visibility }: { listId: string; visibility: string }) {
+  const t = useT();
   const [current, setCurrent] = useState(visibility);
   const [isPending, startTransition] = useTransition();
   return (
@@ -24,7 +26,7 @@ export function ListVisibilitySelect({ listId, visibility }: { listId: string; v
       className="form-select form-select-sm w-auto"
       value={current}
       disabled={isPending}
-      aria-label="Видимость списка"
+      aria-label={t.lists.detail.visibilityAria}
       onChange={(e) => {
         const next = e.target.value;
         setCurrent(next);
@@ -38,9 +40,9 @@ export function ListVisibilitySelect({ listId, visibility }: { listId: string; v
         });
       }}
     >
-      {Object.entries(VISIBILITY_LABELS).map(([value, label]) => (
+      {VISIBILITY_ORDER.map((value) => (
         <option key={value} value={value}>
-          {label}
+          {t.lists.visibility[value]}
         </option>
       ))}
     </select>
@@ -50,6 +52,7 @@ export function ListVisibilitySelect({ listId, visibility }: { listId: string; v
 /** Комбобокс «добавить место»: асинхронный поиск локаций, выбор — сразу
  *  добавление в список. */
 export function AddPlaceBox({ listId }: { listId: string }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -95,8 +98,8 @@ export function AddPlaceBox({ listId }: { listId: string }) {
       <input
         type="text"
         className="form-control"
-        placeholder="Добавить место — начните вводить название…"
-        aria-label="Добавить место в список"
+        placeholder={t.lists.detail.addPlaceholder}
+        aria-label={t.lists.detail.addAria}
         value={query}
         disabled={isPending}
         onChange={(e) => handleChange(e.target.value)}
@@ -128,7 +131,7 @@ export function AddPlaceBox({ listId }: { listId: string }) {
           ))}
           {results.length === 0 && (
             <div className="performer-combobox-option text-secondary" aria-disabled>
-              {isSearching ? "Поиск…" : "Ничего не найдено"}
+              {isSearching ? t.lists.detail.searching : t.common.nothingFound}
             </div>
           )}
         </div>
@@ -154,6 +157,7 @@ export function PlaceRowControls({
   canEditPlace?: boolean;
   place?: { name: string; photoUrl: string | null; category: string | null };
 }) {
+  const t = useT();
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPlace, setIsEditingPlace] = useState(false);
   // Ошибки: rowError — у контролов строки (порядок/заметка/удаление),
@@ -174,7 +178,7 @@ export function PlaceRowControls({
       setRowError(null);
       setIsEditing(false);
     } catch {
-      setRowError("Не удалось сохранить заметку");
+      setRowError(t.lists.detail.noteSaveFailed);
     }
   }
 
@@ -188,7 +192,7 @@ export function PlaceRowControls({
       setPlaceError(null);
       setIsEditingPlace(false);
     } catch {
-      setPlaceError("Не удалось сохранить — проверьте ссылку и попробуйте ещё раз");
+      setPlaceError(t.lists.placeForm.saveFailed);
     }
   }
 
@@ -207,8 +211,8 @@ export function PlaceRowControls({
         <button
           type="button"
           className="btn btn-link btn-sm p-0 text-secondary"
-          aria-label="Выше"
-          title="Выше"
+          aria-label={t.lists.detail.moveUp}
+          title={t.lists.detail.moveUp}
           disabled={isPending}
           onClick={() => runRowAction(() => movePlaceInList(listId, locationId, "up"))}
         >
@@ -217,8 +221,8 @@ export function PlaceRowControls({
         <button
           type="button"
           className="btn btn-link btn-sm p-0 text-secondary"
-          aria-label="Ниже"
-          title="Ниже"
+          aria-label={t.lists.detail.moveDown}
+          title={t.lists.detail.moveDown}
           disabled={isPending}
           onClick={() => runRowAction(() => movePlaceInList(listId, locationId, "down"))}
         >
@@ -230,26 +234,26 @@ export function PlaceRowControls({
           <input
             name="note"
             defaultValue={note ?? ""}
-            aria-label="Заметка к месту"
-            placeholder="Чем это место запомнилось"
+            aria-label={t.lists.detail.noteAria}
+            placeholder={t.lists.detail.notePlaceholder}
             className="form-control form-control-sm"
             autoFocus
           />
           <button type="submit" className="btn btn-primary btn-sm">
-            ОК
+            {t.lists.detail.noteOk}
           </button>
         </form>
       ) : (
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsEditing(true)}>
-          {note ? "✎" : "+ заметка"}
+          {note ? "✎" : t.lists.detail.addNote}
         </button>
       )}
       {canEditPlace && place && (
         <button
           type="button"
           className="icon-btn"
-          aria-label="Редактировать место"
-          title="Редактировать место"
+          aria-label={t.lists.detail.editPlaceAria}
+          title={t.lists.detail.editPlaceAria}
           onClick={() => setIsEditingPlace(true)}
         >
           ✎
@@ -258,8 +262,8 @@ export function PlaceRowControls({
       <button
         type="button"
         className="icon-btn icon-btn-danger"
-        aria-label="Убрать из списка"
-        title="Убрать из списка"
+        aria-label={t.lists.detail.removeFromList}
+        title={t.lists.detail.removeFromList}
         disabled={isPending}
         onClick={() => runRowAction(() => removePlaceFromList(listId, locationId))}
       >
@@ -273,36 +277,40 @@ export function PlaceRowControls({
             setIsEditingPlace(false);
             setPlaceError(null);
           }}
-          title="Редактировать место"
+          title={t.lists.placeForm.editTitle}
         >
           <form action={savePlace} className="d-flex flex-column gap-3">
             <div>
-              <label className="form-label small text-secondary">Название</label>
+              <label className="form-label small text-secondary">{t.lists.placeForm.name}</label>
               <input type="text" name="name" required defaultValue={place.name} className="form-control" />
             </div>
             <div>
-              <label className="form-label small text-secondary">Категория</label>
+              <label className="form-label small text-secondary">{t.lists.placeForm.category}</label>
               {/* По категории работает фильтр в списках мест — менять её
                   нужно там же, где остальное. */}
               <select name="category" defaultValue={place.category ?? ""} className="form-select">
-                <option value="">не указана</option>
+                <option value="">{t.lists.placeForm.categoryNone}</option>
                 {LOCATION_CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
-                    {c.emoji} {c.label}
+                    {c.emoji} {t.catalog.locationCategory[c.value]}
                   </option>
                 ))}
               </select>
             </div>
-            <FileDropzone name="photoUrl" label="Фото" defaultValue={place.photoUrl ?? ""} />
+            <FileDropzone
+              name="photoUrl"
+              label={t.lists.placeForm.photo}
+              defaultValue={place.photoUrl ?? ""}
+            />
             <div>
               <label className="form-label small text-secondary">
-                Ссылка Google Maps или координаты (если нужно обновить точку)
+                {t.lists.placeForm.mapsUpdate}
               </label>
               <input type="text" name="mapsUrl" placeholder="https://maps.app.goo.gl/…" className="form-control" />
             </div>
             {placeError && <p className="small text-danger mb-0">{placeError}</p>}
             <button type="submit" className="btn btn-primary">
-              Сохранить
+              {t.common.save}
             </button>
           </form>
         </Modal>

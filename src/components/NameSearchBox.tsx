@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
+import { useLocale } from "@/components/LocaleProvider";
+import { localeHref } from "@/lib/i18n/config";
 
 const DEBOUNCE_MS = 400;
 
@@ -9,7 +12,7 @@ export default function NameSearchBox({
   action,
   q,
   hiddenFields,
-  placeholder = "Поиск по названию…",
+  placeholder,
   className = "mb-4",
 }: {
   action: string;
@@ -20,6 +23,9 @@ export default function NameSearchBox({
    *  .tab-bar-row alongside tabs, which spaces itself. */
   className?: string;
 }) {
+  const t = useT();
+  const locale = useLocale();
+  const placeholderText = placeholder ?? t.common.searchByName;
   const router = useRouter();
   const [value, setValue] = useState(q);
   const [prevQ, setPrevQ] = useState(q);
@@ -43,7 +49,8 @@ export default function NameSearchBox({
     const params = new URLSearchParams(hiddenFields);
     if (nextValue) params.set("q", nextValue);
     const qs = params.toString();
-    router.replace(`${action}${qs ? `?${qs}` : ""}`, { scroll: false });
+    // Без префикса поиск на /ru уводил на английскую версию.
+    router.replace(localeHref(`${action}${qs ? `?${qs}` : ""}`, locale), { scroll: false });
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -83,7 +90,7 @@ export default function NameSearchBox({
           name="q"
           value={value}
           onChange={handleChange}
-          placeholder={placeholder}
+          placeholder={placeholderText}
           aria-label={placeholder}
           className="pill-search"
         />

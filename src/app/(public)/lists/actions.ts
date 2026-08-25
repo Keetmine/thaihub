@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { resolveMapsCoords, resolveMapsCoordsViaHttp } from "@/lib/blscene";
 import { isLocationCategory } from "@/lib/locationCategories";
+import { getLocale, getT, localeHref } from "@/lib/i18n";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -48,19 +49,20 @@ async function resolveUserMapsCoords(url: string) {
  *  превращает null в `{ ok: false, error: "Список не найден" }`. */
 async function requireOwnList(listId: string) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", await getLocale()));
   const list = await prisma.placeList.findUnique({ where: { id: listId } });
   if (!list || list.userId !== user.id) return null;
   return { user, list };
 }
 
 export async function createPlaceList(formData: FormData): Promise<ActionError | void> {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  if (!title) return { ok: false, error: "Укажите название списка" };
+  if (!title) return { ok: false, error: t.lists.errors.listTitleRequired };
 
   const list = await prisma.placeList.create({
     data: {
@@ -71,15 +73,16 @@ export async function createPlaceList(formData: FormData): Promise<ActionError |
     },
   });
   revalidatePath("/lists");
-  redirect(`/lists/${list.id}`);
+  redirect(localeHref(`/lists/${list.id}`, locale));
 }
 
 export async function deletePlaceList(listId: string): Promise<ActionError | void> {
+  const { locale, t } = await getT();
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: t.lists.errors.listNotFound };
   await prisma.placeList.delete({ where: { id: listId } });
   revalidatePath("/lists");
-  redirect("/lists");
+  redirect(localeHref("/lists", locale));
 }
 
 export async function setPlaceListVisibility(
@@ -87,7 +90,7 @@ export async function setPlaceListVisibility(
   visibility: string,
 ): Promise<ActionResult> {
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   await prisma.placeList.update({
     where: { id: own.list.id },
     data: { visibility: parseVisibility(visibility) },
@@ -99,7 +102,7 @@ export async function setPlaceListVisibility(
 
 export async function addPlaceToList(listId: string, locationId: string): Promise<ActionResult> {
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   await prisma.placeListItem.upsert({
     where: { listId_locationId: { listId: own.list.id, locationId } },
     update: {},
@@ -114,7 +117,7 @@ export async function removePlaceFromList(
   locationId: string,
 ): Promise<ActionResult> {
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   await prisma.placeListItem.deleteMany({ where: { listId: own.list.id, locationId } });
   revalidatePath(`/lists/${listId}`);
   return { ok: true };
@@ -126,7 +129,7 @@ export async function setPlaceNote(
   formData: FormData,
 ): Promise<ActionResult> {
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   const note = String(formData.get("note") ?? "").trim();
   await prisma.placeListItem.updateMany({
     where: { listId: own.list.id, locationId },
@@ -182,7 +185,7 @@ export async function createOwnLocation(
   const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
-  if (!name) return { ok: false, error: "Укажите название места" };
+  if (!name) return { ok: false, error: (await getT()).t.lists.errors.placeNameRequired };
 
   let coords: { lat: number; lng: number } | null = null;
   if (mapsInput) {
@@ -213,7 +216,7 @@ export async function createOwnLocation(
  *  теперь необязателен: он просто способ сгруппировать места. */
 export async function createStandalonePlace(formData: FormData): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Войдите, чтобы добавлять места" };
+  if (!user) return { ok: false, error: (await getT()).t.lists.errors.signInToAddPlaces };
   const created = await createOwnLocation(formData, user.id);
   if (!created.ok) return created;
   revalidatePath("/lists");
@@ -227,21 +230,21 @@ export async function createOwnPlaceAndReturn(
   formData: FormData,
 ): Promise<{ ok: true; location: { id: string; name: string } } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Войдите, чтобы добавлять места" };
+  if (!user) return { ok: false, error: (await getT()).t.lists.errors.signInToAddPlaces };
   const created = await createOwnLocation(formData, user.id);
   if (!created.ok) return created;
   const location = await prisma.location.findUnique({
     where: { id: created.locationId },
     select: { id: true, name: true },
   });
-  if (!location) return { ok: false, error: "Не удалось создать место" };
+  if (!location) return { ok: false, error: (await getT()).t.lists.errors.placeCreateFailed };
   revalidatePath("/lists");
   return { ok: true, location };
 }
 
 export async function createOwnPlace(listId: string, formData: FormData): Promise<ActionResult> {
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   const { user, list } = own;
 
   const created = await createOwnLocation(formData, user.id);
@@ -256,11 +259,12 @@ export async function createOwnPlace(listId: string, formData: FormData): Promis
 
 /** Редактирование названия/описания списка. */
 export async function updatePlaceList(listId: string, formData: FormData): Promise<ActionResult> {
+  const { t } = await getT();
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: t.lists.errors.listNotFound };
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  if (!title) return { ok: false, error: "Укажите название списка" };
+  if (!title) return { ok: false, error: t.lists.errors.listTitleRequired };
   await prisma.placeList.update({
     where: { id: own.list.id },
     data: { title, description: description || null },
@@ -273,18 +277,19 @@ export async function updatePlaceList(listId: string, formData: FormData): Promi
 /** Редактирование СВОЕГО места (созданного пользователем): название,
  *  фото, ссылка/координаты. Каталожные локации отсюда не редактируются. */
 export async function updateOwnPlace(locationId: string, formData: FormData): Promise<ActionResult> {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(localeHref("/login", locale));
 
   const location = await prisma.location.findUnique({ where: { id: locationId } });
   if (!location || location.createdByUserId !== user.id) {
-    return { ok: false, error: "Место не найдено" };
+    return { ok: false, error: t.lists.errors.placeNotFound };
   }
 
   const name = String(formData.get("name") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
-  if (!name) return { ok: false, error: "Укажите название места" };
+  if (!name) return { ok: false, error: t.lists.errors.placeNameRequired };
 
   let coords: { lat: number; lng: number } | null = null;
   if (mapsInput) {
@@ -316,7 +321,7 @@ export async function movePlaceInList(
   direction: "up" | "down",
 ): Promise<ActionResult> {
   const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
+  if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   const items = await prisma.placeListItem.findMany({
     where: { listId: own.list.id },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],

@@ -1,4 +1,17 @@
+import type { Locale } from "./i18n/config";
+
 const pad = (n: number) => n.toString().padStart(2, "0");
+
+// Подписи дат зависят от языка страницы, поэтому форматтеры принимают
+// его отдельным аргументом. Параметр необязательный и по умолчанию
+// русский: админка одноязычная, и её вызовы (как и вызовы из ещё не
+// переведённых разделов) должны давать ровно то же, что и раньше.
+// Публичные страницы передают язык зрителя явно.
+//
+// Английский берём в британской раскладке «день месяц год»: тот же
+// порядок, что и в русской, — чипы и колонки дат не меняют ширину при
+// переключении языка, а форма привычна международной аудитории.
+const INTL_TAG: Record<Locale, string> = { en: "en-GB", ru: "ru-RU" };
 
 // ВАЖНО про часовые пояса. Каждое событие MyBLHub — тайское, и в базе
 // лежит тайское НАСТЕННОЕ время без зоны (19:00 значит 19:00 в Бангкоке).
@@ -92,22 +105,40 @@ export function formatTimeRangeWithZone(start: Date, end: Date | null, tz: strin
   return `${formatTime(start)}–${formatTime(end)} (${tzShortLabel(tz)} ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)})`;
 }
 
-// Compact "24 окт" form, for flat (non day-grouped) event lists where the
-// row itself has to carry the date since there's no day heading above it.
-export function formatShortDate(d: Date): string {
+// Compact "24 окт" / "24 Oct" form, for flat (non day-grouped) event lists
+// where the row itself has to carry the date since there's no day heading
+// above it.
+export function formatShortDate(d: Date, locale: Locale = "ru"): string {
   return d
-    .toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: UTC })
+    .toLocaleDateString(INTL_TAG[locale], { day: "numeric", month: "short", timeZone: UTC })
     .replace(/\.$/, "");
 }
 
+/** Короткий месяц («окт» / «Oct») и день недели («пн» / «Mon») для
+ *  дата-блока карточки события. Считаются по локальным компонентам даты
+ *  — ровно как раньше делали сами карточки, логика не менялась. */
+export function shortMonthName(d: Date, locale: Locale = "ru"): string {
+  return d.toLocaleDateString(INTL_TAG[locale], { month: "short" }).replace(/\.$/, "");
+}
+
+const WEEKDAYS_SHORT_SUNDAY_FIRST: Record<Locale, string[]> = {
+  ru: ["вс", "пн", "вт", "ср", "чт", "пт", "сб"],
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+};
+
+export function shortWeekdayName(d: Date, locale: Locale = "ru"): string {
+  return WEEKDAYS_SHORT_SUNDAY_FIRST[locale][d.getDay()];
+}
+
 /** Combines several occurrence dates that share the same year+month into
- *  one compact list — "21, 22, 23 августа 2026" — with the month/year
- *  stated once, trailing the last day, matching natural Russian phrasing.
- *  Dates spanning more than one month become several such groups (each
- *  still just day-numbers + its own trailing "month year") joined by ", ".
- *  Used on the event page to combine same-time multi-date occurrences
- *  into a single line instead of one full date per line. */
-export function formatCombinedDateList(dates: Date[]): string {
+ *  one compact list — "21, 22, 23 августа 2026" / "21, 22, 23 August
+ *  2026" — with the month/year stated once, trailing the last day, which
+ *  reads naturally in both languages. Dates spanning more than one month
+ *  become several such groups (each still just day-numbers + its own
+ *  trailing "month year") joined by ", ". Used on the event page to
+ *  combine same-time multi-date occurrences into a single line instead of
+ *  one full date per line. */
+export function formatCombinedDateList(dates: Date[], locale: Locale = "ru"): string {
   const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime());
   const groups: Date[][] = [];
   for (const d of sorted) {
@@ -127,7 +158,7 @@ export function formatCombinedDateList(dates: Date[]): string {
     .map((group) => {
       const lastDay = group[group.length - 1];
       const monthYear = lastDay
-        .toLocaleDateString("ru-RU", {
+        .toLocaleDateString(INTL_TAG[locale], {
           day: "numeric",
           month: "long",
           year: "numeric",
@@ -140,8 +171,8 @@ export function formatCombinedDateList(dates: Date[]): string {
     .join(", ");
 }
 
-export function formatHumanDate(d: Date): string {
-  return d.toLocaleDateString("ru-RU", {
+export function formatHumanDate(d: Date, locale: Locale = "ru"): string {
+  return d.toLocaleDateString(INTL_TAG[locale], {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -177,12 +208,49 @@ const MONTH_NAMES_RU = [
   "Декабрь",
 ];
 
-export function monthLabel(year: number, month: number): string {
-  return `${MONTH_NAMES_RU[month]} ${year}`;
+const MONTH_NAMES_EN = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const MONTH_NAMES: Record<Locale, string[]> = { ru: MONTH_NAMES_RU, en: MONTH_NAMES_EN };
+
+/** Названия месяцев в именительном падеже — для выпадающих списков. */
+export function monthNames(locale: Locale = "ru"): string[] {
+  return MONTH_NAMES[locale];
+}
+
+export function monthLabel(year: number, month: number, locale: Locale = "ru"): string {
+  return `${MONTH_NAMES[locale][month]} ${year}`;
 }
 
 const WEEKDAY_NAMES_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 export { WEEKDAY_NAMES_RU };
+
+const WEEKDAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const SHORT_MONTHS_RU = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+const SHORT_MONTHS_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/** Короткие названия месяцев — выпадашка выбора месяца в календаре. */
+export function shortMonthNames(locale: Locale = "ru"): string[] {
+  return locale === "en" ? SHORT_MONTHS_EN : SHORT_MONTHS_RU;
+}
+
+/** Шапка сетки месяца, с понедельника — как её строит getMonthGrid. */
+export function weekdayNames(locale: Locale = "ru"): string[] {
+  return locale === "en" ? WEEKDAY_NAMES_EN : WEEKDAY_NAMES_RU;
+}
 
 /** Returns a grid of Date objects (6 weeks x 7 days) covering the given month, Monday-first. */
 export function getMonthGrid(year: number, month: number): Date[] {

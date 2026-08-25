@@ -9,14 +9,18 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { isPremiumActive } from "@/lib/premium";
 import { pageMetadata } from "@/lib/seo";
+import { getT, localeHref } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Профиль",
-  description:
-    "Личный кабинет: избранные артисты, ближайшие события, статусы просмотра, ачивки и подписка.",
-  path: "/account",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.account.metaTitle,
+    description: t.account.metaDescription,
+    path: "/account",
+    noIndex: true,
+    locale,
+  });
+}
 
 
 export const dynamic = "force-dynamic";
@@ -31,9 +35,10 @@ export default async function AccountPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
+  const { locale, t } = await getT();
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login");
+    redirect(localeHref("/login", locale));
   }
 
   const { tab } = await searchParams;
@@ -141,7 +146,7 @@ export default async function AccountPage({
 
   return (
     <div>
-      <span className="eyebrow">Аккаунт</span>
+      <span className="eyebrow">{t.account.eyebrow}</span>
       <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2.5rem" }}>
         {user.name || user.email}
       </h1>

@@ -1,4 +1,6 @@
-import Link from "next/link";
+// Ссылки — через AppLink: со страницы /ru/search обычный next/link увёл
+// бы на английскую версию каталога.
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { SearchIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
@@ -15,14 +17,17 @@ import { isPremiumActive } from "@/lib/premium";
 import { agencyHref, locationHref } from "@/lib/slugHelpers";
 import { dramaTitleWhere, performerNameWhere } from "@/lib/searchWhere";
 import { pageMetadata } from "@/lib/seo";
+import { getT, localeHref, type Dict } from "@/lib/i18n";
 import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 
-export const metadata = pageMetadata({
-  title: "Поиск",
-  description:
-    "Одно поле на весь каталог: артисты и группы, сериалы, новеллы, события афиши и места съёмок — ищем сразу везде.",
-  path: "/search",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.events.search.metaTitle,
+    description: t.events.search.metaDescription,
+    path: "/search",
+  });
+}
 
 
 export const dynamic = "force-dynamic";
@@ -54,6 +59,7 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  const { locale, t } = await getT();
   const { q = "" } = await searchParams;
   const query = q.trim();
 
@@ -144,43 +150,43 @@ export default async function SearchPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Поиск" title={q || "Поиск"} className="mb-2" />
+      <PageHeader
+        eyebrow={t.events.search.eyebrow}
+        title={q || t.events.search.title}
+        className="mb-2"
+      />
 
       {/* Своё поле, а не только то, что в шапке: ниже 1200px шапочное
           скрыто (там бургер или иконка-ссылка сюда), и страница поиска
           оставалась без единого поля ввода. */}
-      <form action="/search" method="GET" className="mb-4">
+      <form action={localeHref("/search", locale)} method="GET" className="mb-4">
         <div className="search-box search-page-box">
           <SearchIcon />
           <input
             type="search"
             name="q"
             defaultValue={q}
-            placeholder="Событие, артист, сериал, локация…"
-            aria-label="Поисковый запрос"
+            placeholder={t.events.search.placeholder}
+            aria-label={t.events.search.ariaLabel}
             className="pill-search"
           />
         </div>
       </form>
 
       {q && (
-        <p className="text-secondary mb-5">
-          Вы искали «{q}» — вот что нашлось по каталогу:
-        </p>
+        <p className="text-secondary mb-5">{t.events.search.youSearched(q)}</p>
       )}
 
       {!query ? (
-        <p className="text-secondary">
-          Введите название события, артиста, сериала, локации или агентства.
-        </p>
+        <p className="text-secondary">{t.events.search.hint}</p>
       ) : totalCount === 0 ? (
         <div>
-          <p className="text-secondary">Ничего не найдено по запросу «{q}».</p>
-          <SearchFeedbackCta q={q} />
+          <p className="text-secondary">{t.events.search.nothingFound(q)}</p>
+          <SearchFeedbackCta q={q} t={t} />
         </div>
       ) : (
         <>
-          <Section title="События" count={events.length}>
+          <Section title={t.events.search.sectionEvents} count={events.length}>
             <div className="d-flex flex-column gap-3">
               {eventRows.map(({ row, extraDates }) => (
                 isPremiumActive(currentUser) ? (
@@ -204,7 +210,7 @@ export default async function SearchPage({
             </div>
           </Section>
 
-          <Section title="Артисты" count={performers.length}>
+          <Section title={t.events.search.sectionArtists} count={performers.length}>
             <div className="d-flex flex-wrap gap-2">
               {performers.map((p) => (
                 <EntityMiniCard
@@ -217,11 +223,11 @@ export default async function SearchPage({
             </div>
           </Section>
 
-          <Section title="Сериалы" count={dramas.length}>
+          <Section title={t.events.search.sectionSeries} count={dramas.length}>
             {/* Постер-карточки, как ряд сериалов на странице актёра. */}
             <div className="d-flex flex-wrap gap-3">
               {dramas.map((d) => (
-                <Link key={d.id} href={dramaHref(d)} className="text-decoration-none" style={{ width: "8.5rem" }}>
+                <AppLink key={d.id} href={dramaHref(d)} className="text-decoration-none" style={{ width: "8.5rem" }}>
                   <div
                     className="surface"
                     style={{ width: "100%", aspectRatio: "2 / 3", borderRadius: "0.5rem", overflow: "hidden" }}
@@ -242,12 +248,12 @@ export default async function SearchPage({
                   </div>
                   <span className="d-block small text-white mt-1 text-truncate">{d.title}</span>
                   {d.year && <span className="d-block small text-secondary">{d.year}</span>}
-                </Link>
+                </AppLink>
               ))}
             </div>
           </Section>
 
-          <Section title="Локации" count={locations.length}>
+          <Section title={t.events.search.sectionLocations} count={locations.length}>
             <div className="d-flex flex-wrap gap-2">
               {locations.map((l) => (
                 <EntityMiniCard
@@ -261,7 +267,7 @@ export default async function SearchPage({
             </div>
           </Section>
 
-          <Section title="Агентства" count={agencies.length}>
+          <Section title={t.events.search.sectionAgencies} count={agencies.length}>
             <div className="d-flex flex-wrap gap-2">
               {agencies.map((a) => (
                 <EntityMiniCard
@@ -273,7 +279,7 @@ export default async function SearchPage({
               ))}
             </div>
           </Section>
-          <SearchFeedbackCta q={q} />
+          <SearchFeedbackCta q={q} t={t} />
         </>
       )}
     </div>
@@ -282,18 +288,16 @@ export default async function SearchPage({
 
 /** «Не нашли — напишите нам»: ведёт на форму обращений с контекстом
  *  поискового запроса (см. /help#feedback). */
-function SearchFeedbackCta({ q }: { q: string }) {
+function SearchFeedbackCta({ q, t }: { q: string; t: Dict }) {
   return (
     <div className="surface p-4 mt-4" style={{ maxWidth: "34rem" }}>
-      <p className="small text-secondary mb-2">
-        Не нашли сериал или актёра, которого искали? Напишите нам — добавим.
-      </p>
-      <Link
+      <p className="small text-secondary mb-2">{t.events.search.missingSomething}</p>
+      <AppLink
         href={`/help?fb=${encodeURIComponent(q)}#feedback`}
         className="btn btn-ghost btn-sm"
       >
-        Написать нам
-      </Link>
+        {t.events.search.writeToUs}
+      </AppLink>
     </div>
   );
 }

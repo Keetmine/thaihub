@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRIES } from "@/lib/countries";
+import { useLocaleHref, useT } from "@/components/LocaleProvider";
 import { saveProfileSetup } from "./actions";
 import DatePickerInput from "@/components/DatePickerInput";
 
@@ -19,6 +20,8 @@ export default function ProfileSetupForm({
   defaultName: string;
 }) {
   const router = useRouter();
+  const t = useT();
+  const localeHref = useLocaleHref();
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [username, setUsername] = useState(suggestedUsername);
@@ -32,9 +35,9 @@ export default function ProfileSetupForm({
         setError(result.error);
         return;
       }
-      router.push("/welcome");
+      router.push(localeHref("/welcome"));
     } catch {
-      setError("Не удалось сохранить — попробуйте ещё раз");
+      setError(t.auth.profileSetup.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -43,7 +46,7 @@ export default function ProfileSetupForm({
   return (
     <form action={handleSubmit} className="surface p-4 d-flex flex-column gap-3">
       <div>
-        <label className="form-label">Ник *</label>
+        <label className="form-label">{t.auth.profileSetup.usernameLabel}</label>
         <div className="input-group">
           <span className="input-group-text small text-secondary">myblhub.com/users/</span>
           <input
@@ -55,26 +58,23 @@ export default function ProfileSetupForm({
             autoFocus
           />
         </div>
-        <p className="small text-secondary mt-1 mb-0">
-          По этой ссылке вас найдут друзья. Латиница, цифры, точка, дефис или
-          подчёркивание.
-        </p>
+        <p className="small text-secondary mt-1 mb-0">{t.auth.profileSetup.usernameHint}</p>
       </div>
 
       <div className="row g-3">
         <div className="col-12 col-md-6">
-          <label className="form-label">Имя</label>
+          <label className="form-label">{t.auth.profileSetup.nameLabel}</label>
           <input
             name="name"
             defaultValue={defaultName}
-            placeholder="Как показывать вас на сайте"
+            placeholder={t.auth.profileSetup.namePlaceholder}
             className="form-control"
           />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Страна</label>
+          <label className="form-label">{t.auth.profileSetup.countryLabel}</label>
           <select name="country" defaultValue="" className="form-select">
-            <option value="">не указана</option>
+            <option value="">{t.auth.profileSetup.countryEmpty}</option>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.label}
@@ -83,24 +83,24 @@ export default function ProfileSetupForm({
           </select>
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Пол</label>
+          <label className="form-label">{t.auth.profileSetup.genderLabel}</label>
           <select name="gender" defaultValue="" className="form-select">
-            <option value="">не указан</option>
-            <option value="female">женский</option>
-            <option value="male">мужской</option>
-            <option value="other">другой</option>
+            <option value="">{t.auth.profileSetup.genderEmpty}</option>
+            <option value="female">{t.auth.profileSetup.genderFemale}</option>
+            <option value="male">{t.auth.profileSetup.genderMale}</option>
+            <option value="other">{t.auth.profileSetup.genderOther}</option>
           </select>
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Дата рождения</label>
+          <label className="form-label">{t.auth.profileSetup.birthLabel}</label>
           <DatePickerInput name="birthDate" yearsBack={100} yearsForward={0} />
         </div>
         <div className="col-12">
-          <label className="form-label">О себе</label>
+          <label className="form-label">{t.auth.profileSetup.bioLabel}</label>
           <textarea
             name="bio"
             rows={3}
-            placeholder="Любимые пейринги, на скольких концертах были, что ищете здесь"
+            placeholder={t.auth.profileSetup.bioPlaceholder}
             className="form-control"
           />
         </div>
@@ -110,11 +110,9 @@ export default function ProfileSetupForm({
 
       <div className="d-flex flex-wrap align-items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={isSaving}>
-          {isSaving ? "Сохраняем…" : "Продолжить"}
+          {isSaving ? t.auth.profileSetup.saving : t.auth.profileSetup.submit}
         </button>
-        <span className="small text-secondary">
-          Кроме ника всё можно заполнить позже в настройках.
-        </span>
+        <span className="small text-secondary">{t.auth.profileSetup.laterHint}</span>
       </div>
     </form>
   );

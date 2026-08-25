@@ -1,10 +1,11 @@
 import ReviewsAndComments from "@/components/ReviewsAndComments";
 import SourcesBlock from "@/components/SourcesBlock";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatCombinedDateList, formatHumanDate, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
+import { getT } from "@/lib/i18n";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -25,6 +26,7 @@ import { isPremiumActive } from "@/lib/premium";
 import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { locale, t } = await getT();
   const { id } = await params;
   const event = await prisma.event.findFirst({
     where: slugOrIdWhere(id),
@@ -37,14 +39,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       occurrences: { orderBy: { startsAt: "asc" }, take: 1, select: { startsAt: true } },
     },
   });
-  if (!event) return pageMetadata({ title: "Событие", description: "Событие не найдено." });
+  if (!event)
+    return pageMetadata({
+      title: t.events.detail.metaTitleUnknown,
+      description: t.events.detail.metaDescriptionUnknown,
+    });
   const date = event.occurrences[0]?.startsAt;
-  const when = date ? formatHumanDate(date) : null;
+  const when = date ? formatHumanDate(date, locale) : null;
   return pageMetadata({
     title: event.title,
     description:
       event.description?.slice(0, 160) ??
-      `${event.title}${when ? `, ${when}` : ""} — ${event.venue}. Билеты, состав и детали события.`,
+      t.events.detail.metaDescription(event.title, when, event.venue),
     path: `/event/${event.slug ?? id}`,
     image: event.posterUrl,
     type: "article",
@@ -75,6 +81,7 @@ export default async function EventDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { locale, t } = await getT();
   const { id: rawId } = await params;
   const event = await prisma.event.findFirst({
     where: slugOrIdWhere(rawId),
@@ -122,14 +129,14 @@ export default async function EventDetailPage({
   if (!isPremiumActive(currentUser)) {
     return (
       <div>
-        <BackLink fallbackHref="/" fallbackLabel="← Все события" />
+        <BackLink fallbackHref="/" fallbackLabel={t.events.detail.backToEvents} />
         <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
-          Событие
+          {t.events.detail.lockedTitle}
         </h1>
         <p className="text-secondary mb-4">
-          {event.occurrences.map((o) => formatHumanDate(o.startsAt)).join(", ")}
+          {event.occurrences.map((o) => formatHumanDate(o.startsAt, locale)).join(", ")}
         </p>
-        <PremiumUpsell feature="Страницы событий" />
+        <PremiumUpsell feature={t.events.detail.paywallFeature} />
       </div>
     );
   }
@@ -160,7 +167,7 @@ export default async function EventDetailPage({
         return occ
           ? {
               occurrenceId: a.occurrenceId,
-              dateLabel: formatHumanDate(occ.startsAt),
+              dateLabel: formatHumanDate(occ.startsAt, locale),
               ticketUrl: a.ticketUrl,
             }
           : null;
@@ -257,7 +264,7 @@ export default async function EventDetailPage({
 
   return (
     <div>
-      <BackLink fallbackHref="/" fallbackLabel="← Все события" />
+      <BackLink fallbackHref="/" fallbackLabel={t.events.detail.backToEvents} />
       {/* Классическая шапка (по просьбе владельца): заголовок сверху,
           постер слева с кнопкой «Билеты», инфо-карта справа. */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-4">
@@ -269,8 +276,8 @@ export default async function EventDetailPage({
           <a
             href={`/event/${event.id}/ics`}
             className="round-icon-btn"
-            aria-label="Добавить в календарь"
-            data-tooltip="Добавить в календарь"
+            aria-label={t.events.detail.addToCalendar}
+            data-tooltip={t.events.detail.addToCalendar}
           >
             <CalendarIcon />
           </a>
@@ -296,25 +303,31 @@ export default async function EventDetailPage({
                 rel="noopener noreferrer"
                 className="btn btn-primary"
               >
-                <TicketIcon className="icon-inline" /> Билеты
+                <TicketIcon className="icon-inline" /> {t.events.detail.tickets}
               </a>
             )}
           </div>
         )}
         <div className="surface p-4 flex-fill" style={{ minWidth: 0 }}>
             <p className="mb-2">
-              <PinIcon className="icon-inline" /> <span className="text-secondary">Локация:</span>{" "}
-              {event.venue}
+              <PinIcon className="icon-inline" />{" "}
+              <span className="text-secondary">{t.events.detail.venue}</span> {event.venue}
             </p>
             {groupOccurrencesByTime(event.occurrences).map((group) => {
               const first = group[0];
               return (
                 <p key={group.map((o) => o.id).join("-")} className="mb-2">
-                  <CalendarIcon /> <span className="text-secondary">Дата и время:</span>{" "}
+                  <CalendarIcon />{" "}
+                  <span className="text-secondary">{t.events.detail.dateAndTime}</span>{" "}
                   {group.length === 1 ? (
-                    <span className="text-capitalize">{formatHumanDate(first.startsAt)}</span>
+                    <span className="text-capitalize">
+                      {formatHumanDate(first.startsAt, locale)}
+                    </span>
                   ) : (
-                    formatCombinedDateList(group.map((o) => o.startsAt))
+                    formatCombinedDateList(
+                      group.map((o) => o.startsAt),
+                      locale,
+                    )
                   )}
                   {first.hasTime && <> · {formatTimeRangeWithZone(first.startsAt, first.endsAt, viewerTz)}</>}
                 </p>
@@ -331,21 +344,24 @@ export default async function EventDetailPage({
             {event.ticketPrice && (
               <p className="mb-0">
                 <TicketIcon className="icon-inline" />{" "}
-                <span className="text-secondary">Цена билетов:</span> {event.ticketPrice}
+                <span className="text-secondary">{t.events.detail.ticketPrice}</span>{" "}
+                {event.ticketPrice}
               </p>
             )}
             {(event.presaleAt || event.presaleUrl) && (
               <div className={event.drama ? "mt-3 mb-2" : "mt-3 mb-0"}>
                 <p className="mb-2">
                   <ClockIcon className="icon-inline" />{" "}
-                  <span className="text-secondary">Препродажа билетов:</span>{" "}
+                  <span className="text-secondary">{t.events.detail.presale}</span>{" "}
                   {event.presaleAt ? (
                     <>
-                      <span className="text-capitalize">{formatHumanDate(event.presaleAt)}</span>{" "}
+                      <span className="text-capitalize">
+                        {formatHumanDate(event.presaleAt, locale)}
+                      </span>{" "}
                       · {formatTimeWithZone(event.presaleAt, viewerTz)}
                     </>
                   ) : (
-                    "уточняется"
+                    t.events.detail.presaleTba
                   )}
                 </p>
                 <div className="d-flex flex-wrap gap-2">
@@ -357,7 +373,7 @@ export default async function EventDetailPage({
                       className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
                     >
                       <CalendarIcon className="icon-inline" />
-                      Добавить в календарь
+                      {t.events.detail.addToCalendar}
                     </a>
                   )}
                 </div>
@@ -365,10 +381,11 @@ export default async function EventDetailPage({
             )}
             {event.drama && (
               <p className="mb-0">
-                <TvIcon className="icon-inline" /> <span className="text-secondary">Сериал:</span>{" "}
-                <Link href={dramaHref(event.drama)} className="link-body-emphasis">
+                <TvIcon className="icon-inline" />{" "}
+                <span className="text-secondary">{t.events.detail.series}</span>{" "}
+                <AppLink href={dramaHref(event.drama)} className="link-body-emphasis">
                   {event.drama.title}
-                </Link>
+                </AppLink>
               </p>
             )}
             {castInCard && (
@@ -377,7 +394,7 @@ export default async function EventDetailPage({
                   className="small text-secondary text-uppercase mb-2"
                   style={{ letterSpacing: "0.08em" }}
                 >
-                  <UsersIcon className="icon-inline" /> Кто выступает
+                  <UsersIcon className="icon-inline" /> {t.events.detail.lineup}
                 </p>
                 <div className="d-flex flex-wrap gap-2">
                   {castCards.map((c) => (
@@ -409,11 +426,19 @@ export default async function EventDetailPage({
           <h2
             className="section-heading mb-2 d-flex align-items-center gap-2"
           >
-            <UsersIcon /> {friendsGoing.length === 1 ? "Друг идёт" : "Друзья идут"}
+            <UsersIcon />{" "}
+            {friendsGoing.length === 1
+              ? t.events.detail.friendGoing
+              : t.events.detail.friendsGoing}
           </h2>
           <div className="d-flex flex-wrap gap-2">
             {friendsGoing.map((f) => (
-              <EntityMiniCard key={f.id} href="/friends" photoUrl={f.photoUrl} name={f.name || "Без имени"} />
+              <EntityMiniCard
+                key={f.id}
+                href="/friends"
+                photoUrl={f.photoUrl}
+                name={f.name || t.events.detail.unnamedFriend}
+              />
             ))}
           </div>
         </div>
@@ -424,7 +449,7 @@ export default async function EventDetailPage({
       {hasLineupSection && (
         <div id="lineup" className="anchor-target surface p-4 mb-3">
           <h2 className="section-heading mb-3">
-            <UsersIcon className="icon-inline" /> Кто выступает
+            <UsersIcon className="icon-inline" /> {t.events.detail.lineup}
           </h2>
           <CastGrid compact>
             {castCards.map((c) => (
@@ -453,7 +478,7 @@ export default async function EventDetailPage({
       {event.occurrences.some((o) => o.lineup.length > 0) && (
         <div className="surface p-4 mb-3">
           <h2 className="section-heading mb-2">
-            <CalendarIcon className="icon-inline" /> Лайнап по дням
+            <CalendarIcon className="icon-inline" /> {t.events.detail.lineupByDay}
           </h2>
           <div className="d-flex flex-column gap-3">
             {event.occurrences
@@ -461,7 +486,7 @@ export default async function EventDetailPage({
               .map((o) => (
                 <div key={o.id}>
                   <p className="small text-secondary mb-2 text-capitalize">
-                    {formatHumanDate(o.startsAt)}
+                    {formatHumanDate(o.startsAt, locale)}
                   </p>
                   <div className="cast-grid">
                     {o.lineup.map((l) => (
@@ -485,7 +510,7 @@ export default async function EventDetailPage({
       {event.description && (
         <div id="description" className="anchor-target surface p-4 mb-3">
           <h2 className="section-heading mb-2">
-            <InfoIcon className="icon-inline" /> Описание
+            <InfoIcon className="icon-inline" /> {t.events.detail.description}
           </h2>
           <p className="mb-0">{event.description}</p>
         </div>

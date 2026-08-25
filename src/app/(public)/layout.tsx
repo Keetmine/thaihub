@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import Logo from "@/components/Logo";
 import NavLink from "@/components/NavLink";
 import { PUBLIC_NAV_ITEMS } from "@/components/publicNavItems";
@@ -21,10 +21,13 @@ import NotificationBell from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
 import MobileProfileSection from "@/components/MobileProfileSection";
 import ProductTour from "@/components/ProductTour";
+import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
 
-function SearchForm() {
+// Форма ведёт на /search обычным GET, поэтому адрес приходится
+// локализовать руками — AppLink тут не при делах.
+function SearchForm({ t, locale }: { t: Dict; locale: Locale }) {
   return (
-    <form action="/search" method="GET">
+    <form action={localeHref("/search", locale)} method="GET">
       <div className="search-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="7" />
@@ -33,8 +36,8 @@ function SearchForm() {
         <input
           type="search"
           name="q"
-          placeholder="Поиск…"
-          aria-label="Поиск по сайту"
+          placeholder={t.nav.searchPlaceholder}
+          aria-label={t.nav.searchAria}
           className="pill-search"
         />
       </div>
@@ -42,15 +45,27 @@ function SearchForm() {
   );
 }
 
+// Подписи пунктов навигации живут в словаре: publicNavItems описывает
+// маршруты и подсветку, а не текст на кнопке.
+const NAV_LABEL_KEYS: Record<string, keyof Dict["nav"]> = {
+  "/events": "events",
+  "/artists": "artists",
+  "/dramas": "series",
+  "/novels": "novels",
+  "/locations": "locations",
+  "/trips": "trips",
+};
+
 // Общий список ссылок для десктопного ряда и мобильной шторки —
 // источник один (publicNavItems), рендер в двух местах.
-function MainNavLinks({ loggedIn }: { loggedIn: boolean }) {
+function MainNavLinks({ loggedIn, t }: { loggedIn: boolean; t: Dict }) {
   return (
     <>
       {PUBLIC_NAV_ITEMS.filter((item) => !item.requiresUser || loggedIn).map((item) => {
+        const labelKey = NAV_LABEL_KEYS[item.href];
         const link = (
           <NavLink href={item.href} matchPrefixes={item.matchPrefixes}>
-            {item.label}
+            {labelKey ? t.nav[labelKey] : item.label}
           </NavLink>
         );
         return item.tourId ? (
@@ -66,6 +81,7 @@ function MainNavLinks({ loggedIn }: { loggedIn: boolean }) {
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
+  const { t, locale } = await getT();
   const fullUser = await getCurrentUser();
   const isAdmin = !!fullUser?.isAdmin;
   // Счётчик у колокольчика: приглашения в поездки и заявки в друзья
@@ -108,7 +124,7 @@ export default async function PublicLayout({ children }: { children: React.React
                 </span>
               )}
               {isAdmin && (
-                <Link href="/admin" prefetch={false} className="icon-btn" aria-label="Админка">
+                <Link href="/admin" prefetch={false} className="icon-btn" aria-label={t.nav.admin}>
                   <GridIcon />
                 </Link>
               )}
@@ -122,11 +138,11 @@ export default async function PublicLayout({ children }: { children: React.React
                 сваливался во вторую-третью строку (шапка на 600px
                 вырастала до 195px). Там теперь бургер-шторка. */}
             <div className="d-none d-lg-flex flex-wrap gap-1 ms-2">
-              <MainNavLinks loggedIn={!!user} />
+              <MainNavLinks loggedIn={!!user} t={t} />
             </div>
 
             <div className="d-none d-lg-flex align-items-center gap-2 ms-auto">
-              <SearchForm />
+              <SearchForm t={t} locale={locale} />
               {/* На узких ноутбуках (lg) поле поиска съедает ряд —
                   вместо него иконка-ссылка на страницу поиска;
                   переключение — .nav-search-icon в globals.css. */}
@@ -134,8 +150,8 @@ export default async function PublicLayout({ children }: { children: React.React
                 href="/search"
                 prefetch={false}
                 className="icon-btn nav-search-icon"
-                aria-label="Поиск"
-                data-tooltip="Поиск"
+                aria-label={t.nav.search}
+                data-tooltip={t.nav.search}
               >
                 <SearchIcon />
               </Link>
@@ -144,8 +160,8 @@ export default async function PublicLayout({ children }: { children: React.React
                   href="/events?filter=favorited"
                   prefetch={false}
                   className="icon-btn"
-                  aria-label="Избранное"
-                  data-tooltip="Избранное"
+                  aria-label={t.nav.favorites}
+                  data-tooltip={t.nav.favorites}
                 >
                   <HeartIcon />
                 </Link>
@@ -156,8 +172,8 @@ export default async function PublicLayout({ children }: { children: React.React
                   href="/admin"
                   prefetch={false}
                   className="icon-btn"
-                  aria-label="Админка"
-                  data-tooltip="Админка"
+                  aria-label={t.nav.admin}
+                  data-tooltip={t.nav.admin}
                 >
                   <GridIcon />
                 </Link>
@@ -167,7 +183,7 @@ export default async function PublicLayout({ children }: { children: React.React
                   <ProfileMenu user={user} />
                 </span>
               ) : (
-                <NavLink href="/login">Войти</NavLink>
+                <NavLink href="/login">{t.nav.signIn}</NavLink>
               )}
             </div>
           </nav>
@@ -182,12 +198,12 @@ export default async function PublicLayout({ children }: { children: React.React
         {/* Мобильная шторка и таб-бар — вне .pill-nav: его backdrop-filter
             сделал бы position:fixed панелей относительным навбара. */}
         <MobileDrawer>
-          <MainNavLinks loggedIn={!!user} />
-          <SearchForm />
+          <MainNavLinks loggedIn={!!user} t={t} />
+          <SearchForm t={t} locale={locale} />
           {user ? (
             <MobileProfileSection user={user} />
           ) : (
-            <NavLink href="/login">Войти</NavLink>
+            <NavLink href="/login">{t.nav.signIn}</NavLink>
           )}
         </MobileDrawer>
         <MobileTabBar />

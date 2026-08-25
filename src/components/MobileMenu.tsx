@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
 
 export default function MobileMenu({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const pathname = usePathname();
   const [prevPathname, setPrevPathname] = useState(pathname);
 
@@ -21,7 +23,7 @@ export default function MobileMenu({ children }: { children: React.ReactNode }) 
       <button
         type="button"
         className="burger-btn"
-        aria-label={open ? "Закрыть меню" : "Открыть меню"}
+        aria-label={open ? t.nav.closeMenu : t.nav.openMenu}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >

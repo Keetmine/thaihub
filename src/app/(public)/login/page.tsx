@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import AppLink from "@/components/AppLink";
 import PasswordInput from "@/components/PasswordInput";
 import Logo from "@/components/Logo";
 import { login } from "./actions";
@@ -7,14 +7,18 @@ import { telegramBotUsername } from "@/lib/telegram";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
 import { pageMetadata } from "@/lib/seo";
 import { getCurrentUser } from "@/lib/userAuth";
+import { getT, localeHref } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Вход",
-  description:
-    "Вход в аккаунт: избранные артисты, отметки «иду», календарь и поездки — всё на месте.",
-  path: "/login",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.auth.login.metaTitle,
+    description: t.auth.login.metaDescription,
+    path: "/login",
+    noIndex: true,
+    locale,
+  });
+}
 
 
 export default async function LoginPage({
@@ -23,8 +27,9 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const { locale, t } = await getT();
   // Залогиненного форма входа только сбивает с толку — уводим в кабинет.
-  if (await getCurrentUser()) redirect("/account");
+  if (await getCurrentUser()) redirect(localeHref("/account", locale));
   // Виджет появляется только когда бот настроен (env задан) — читаем на
   // сервере в рантайме, поэтому NEXT_PUBLIC-переменная не нужна.
   const botUsername = telegramBotUsername();
@@ -45,30 +50,30 @@ export default async function LoginPage({
           <Logo />
         </div>
         <h1 className="h6 text-center text-secondary text-uppercase mb-4" style={{ letterSpacing: "0.08em" }}>
-          Вход
+          {t.auth.login.title}
         </h1>
         {error === "telegram" ? (
           <p className="small text-danger text-center mb-3">
-            Не удалось войти через Telegram — попробуйте ещё раз
+            {t.auth.login.telegramError}
           </p>
         ) : error === "google" ? (
           <p className="small text-danger text-center mb-3">
-            Не удалось войти через Google — попробуйте ещё раз
+            {t.auth.login.googleError}
           </p>
         ) : error ? (
-          <p className="small text-danger text-center mb-3">Неверный email или пароль</p>
+          <p className="small text-danger text-center mb-3">{t.auth.login.wrongCredentials}</p>
         ) : null}
-        <label className="form-label">Email</label>
+        <label className="form-label">{t.auth.login.email}</label>
         <input type="email" name="email" required autoFocus className="form-control mb-3" />
-        <label className="form-label">Пароль</label>
+        <label className="form-label">{t.auth.login.password}</label>
         <PasswordInput name="password" required autoComplete="current-password" className="mb-1" />
         <p className="small text-end mb-3">
-          <Link href="/forgot-password" className="text-secondary text-decoration-none">
-            Забыли пароль?
-          </Link>
+          <AppLink href="/forgot-password" className="text-secondary text-decoration-none">
+            {t.auth.login.forgot}
+          </AppLink>
         </p>
         <button type="submit" className="btn btn-primary w-100 mb-3">
-          Войти
+          {t.auth.login.submit}
         </button>
         {hasGoogle && (
           // eslint-disable-next-line @next/next/no-html-link-for-pages -- API-роут OAuth, не страница
@@ -79,20 +84,20 @@ export default async function LoginPage({
               <path fill="#FBBC05" d="M5.27 14.27A7.2 7.2 0 0 1 4.9 12c0-.79.14-1.55.37-2.27v-3.1H1.29a12 12 0 0 0 0 10.74l3.98-3.1z"/>
               <path fill="#EA4335" d="M12 4.77c1.77 0 3.35.61 4.6 1.8l3.44-3.44A11.97 11.97 0 0 0 12 0 12 12 0 0 0 1.29 6.63l3.98 3.1C6.22 6.88 8.87 4.77 12 4.77z"/>
             </svg>
-            Войти через Google
+            {t.auth.login.google}
           </a>
         )}
         {botUsername && (
           <div className="text-center mb-3">
-            <p className="small text-secondary mb-2">или</p>
+            <p className="small text-secondary mb-2">{t.auth.login.or}</p>
             <TelegramLoginButton botUsername={botUsername} />
           </div>
         )}
         <p className="small text-secondary text-center mb-0">
-          Нет аккаунта?{" "}
-          <Link href="/signup" className="link-body-emphasis">
-            Зарегистрироваться
-          </Link>
+          {t.auth.login.noAccount}{" "}
+          <AppLink href="/signup" className="link-body-emphasis">
+            {t.auth.login.signupLink}
+          </AppLink>
         </p>
       </form>
     </div>

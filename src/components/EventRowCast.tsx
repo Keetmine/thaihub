@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import { performerHref } from "@/lib/performerSlug";
 import { UserIcon } from "@/components/icons";
 import type { EventWithPerformers } from "@/lib/types";
@@ -28,9 +28,9 @@ export default function EventRowCast({
       {shown.map(({ performer }, i) => (
         <span key={performer.id}>
           {i > 0 && ", "}
-          <Link href={performerHref(performer)} className="agenda-performer-link">
+          <AppLink href={performerHref(performer)} className="agenda-performer-link">
             {performer.name}
-          </Link>
+          </AppLink>
         </span>
       ))}
       {rest.length > 0 && (

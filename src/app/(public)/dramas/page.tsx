@@ -1,24 +1,27 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import { getCurrentUser } from "@/lib/userAuth";
-import { WATCH_STATUS_LABELS, WATCH_STATUS_ORDER } from "@/lib/watchStatus";
+import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import type { DramaWatchStatusValue } from "../favorites/actions";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleWhere } from "@/lib/searchWhere";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Сериалы",
-  description:
-    "Тайские BL-сериалы: описания, актёрский состав, годы выхода и места съёмок.",
-  path: "/dramas",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.catalog.dramas.metaTitle,
+    description: t.catalog.dramas.metaDescription,
+    path: "/dramas",
+  });
+}
 
 
 export const dynamic = "force-dynamic";
@@ -39,6 +42,7 @@ export default async function DramasPage({
       ? (rawStatus as DramaWatchStatusValue)
       : null;
 
+  const { t } = await getT();
   const currentUser = await getCurrentUser();
 
   // The catalog has grown into the thousands of dramas — loading and
@@ -92,45 +96,49 @@ export default async function DramasPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Каталог" title="Сериалы" size="lg" className="mb-5" watermark="Series" />
+      <PageHeader
+        eyebrow={t.catalog.eyebrow}
+        title={t.catalog.dramas.title}
+        size="lg"
+        className="mb-5"
+        watermark="Series"
+      />
 
       <div className="tab-bar-row">
         <div className="tab-bar">
-          <Link
+          <AppLink
             href={`/dramas?${q ? `q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
             className={`tab-bar-item ${!status ? "active" : ""}`}
           >
-            Все
-          </Link>
+            {t.catalog.all}
+          </AppLink>
           {currentUser && WATCH_STATUS_ORDER.map((s) => (
-            <Link
+            <AppLink
               key={s}
               href={`/dramas?status=${s}`}
               prefetch={false}
               className={`tab-bar-item ${status === s ? "active" : ""}`}
             >
-              {WATCH_STATUS_LABELS[s]}
-            </Link>
+              {t.catalog.watchStatus[s]}
+            </AppLink>
           ))}
         </div>
         <NameSearchBox
           action="/dramas"
           q={q}
-          placeholder="Поиск по названию…"
+          placeholder={t.catalog.searchByTitle}
           className=""
         />
       </div>
 
       {q && (
-        <p className="small text-secondary mb-3">
-          Поиск идёт по всему каталогу, независимо от вкладок.
-        </p>
+        <p className="small text-secondary mb-3">{t.catalog.dramas.searchIsGlobal}</p>
       )}
 
       {searchTruncated && (
         <p className="small text-secondary mb-3">
-          Показаны первые {SEARCH_RESULT_LIMIT} результатов — уточните запрос, чтобы увидеть более точные совпадения.
+          {t.catalog.showingFirst(SEARCH_RESULT_LIMIT)}
         </p>
       )}
 
@@ -140,9 +148,7 @@ export default async function DramasPage({
           (с переносом), год и рейтинг в подстроке. */}
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
-        emptyMessage={
-          q ? "Ничего не найдено." : "Пока нет отмеченных сериалов. Используйте поиск, чтобы найти сериал."
-        }
+        emptyMessage={q ? t.common.nothingFound : t.catalog.dramas.empty}
         renderItem={({ drama: d }) => {
           const rating = ratingByDramaId.get(d.id);
           const subline = [d.year, rating != null ? `★ ${rating.toFixed(1)}` : null]
@@ -153,7 +159,7 @@ export default async function DramasPage({
               key={d.id}
               className="surface surface-hover d-flex align-items-center justify-content-between gap-3 p-3"
             >
-              <Link
+              <AppLink
                 href={dramaHref(d)}
                 className="text-decoration-none d-flex align-items-center gap-3"
                 style={{ minWidth: 0 }}
@@ -191,7 +197,7 @@ export default async function DramasPage({
                   <span className="font-display fw-medium text-white d-block">{d.title}</span>
                   {subline && <span className="small text-secondary">{subline}</span>}
                 </span>
-              </Link>
+              </AppLink>
               <div className="flex-shrink-0">
                 <DramaStatusButton
                   dramaId={d.id}

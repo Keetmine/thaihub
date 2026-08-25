@@ -1,14 +1,16 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { eventHref } from "@/lib/eventSlug";
 import PosterTile from "@/components/PosterTile";
 import { formatShortDate } from "@/lib/dates";
+import { getT } from "@/lib/i18n";
 import { CalendarIcon, HeartIcon, TvIcon } from "@/components/icons";
 
 // Лендинг (он же /about). Живые данные вместо выдуманных: постеры и
 // агенда — реальные ближайшие события, счётчики — реальный каталог.
 export default async function LandingPage() {
+  const { t } = await getT();
   const now = new Date();
   const [upcomingRaw, upcomingEventsCount, performersCount, dramasCount, currentUser] =
     await Promise.all([
@@ -55,19 +57,19 @@ export default async function LandingPage() {
   const authCta = currentUser ? (
     <>
       <Link href="/events" className="btn btn-primary">
-        Открыть афишу
+        {t.landing.ctaEvents}
       </Link>
       <Link href="/account" className="btn btn-ghost">
-        Мой профиль
+        {t.nav.myProfile}
       </Link>
     </>
   ) : (
     <>
       <Link href="/signup" className="btn btn-primary">
-        Создать аккаунт
+        {t.landing.ctaSignup}
       </Link>
       <Link href="/login" className="btn btn-ghost">
-        Войти
+        {t.nav.signIn}
       </Link>
     </>
   );
@@ -78,27 +80,23 @@ export default async function LandingPage() {
       <section className="py-3 py-md-4">
         <div className="row g-4 g-lg-5 align-items-center">
           <div className="col-12 col-lg-7">
-            <span className="eyebrow d-inline-flex mb-3">
-              Фан-трекер тайских BL-событий
-            </span>
+            <span className="eyebrow d-inline-flex mb-3">{t.landing.heroEyebrow}</span>
             <h1
               className="display-1-tight mb-3"
               style={{ fontSize: "clamp(2.3rem, 5vw, 3.4rem)", maxWidth: "40rem" }}
             >
-              Концерты, сериалы и артисты —{" "}
-              <span className="text-warm-gradient">в одном месте</span>
+              {t.landing.heroTitle}{" "}
+              <span className="text-warm-gradient">{t.landing.heroTitleAccent}</span>
             </h1>
             <p
               className="text-secondary mb-4"
               style={{ maxWidth: "32rem", fontSize: "1.05rem" }}
             >
-              MyBLHub собирает афишу фанмитов и концертов, каталог артистов и
-              сериалов, ваши избранное и планы — чтобы ничего не пропустить.
+              {t.landing.heroLead}
             </p>
             <div className="d-flex flex-wrap gap-2 mb-4">{authCta}</div>
             <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
-              {upcomingEventsCount} событий в афише · {performersCount} артистов ·{" "}
-              {dramasCount} сериалов в каталоге
+              {t.landing.stats(upcomingEventsCount, performersCount, dramasCount)}
             </p>
           </div>
           <div className="col-12 col-lg-5">
@@ -122,9 +120,9 @@ export default async function LandingPage() {
       {/* ---------- Bento: что внутри ---------- */}
       <section>
         <div className="text-center mb-4">
-          <span className="eyebrow d-inline-flex mb-2">Возможности</span>
+          <span className="eyebrow d-inline-flex mb-2">{t.landing.featuresEyebrow}</span>
           <h2 className="display-1-tight" style={{ fontSize: "1.9rem" }}>
-            Что внутри
+            {t.landing.featuresTitle}
           </h2>
         </div>
         <div className="row g-3 stagger">
@@ -134,13 +132,12 @@ export default async function LandingPage() {
               <div className="d-flex align-items-center gap-2 mb-2">
                 <CalendarIcon />
                 <p className="font-display fw-medium text-white mb-0">
-                  Афиша и препродажи
+                  {t.landing.eventsTitle}
                 </p>
-                <span className="date-chip">по подписке</span>
+                <span className="date-chip">{t.landing.eventsChip}</span>
               </div>
               <p className="small text-secondary mb-4" style={{ maxWidth: "28rem" }}>
-                Концерты и фанмиты по дням, со стартами продаж, билетами и
-                напоминаниями в Telegram — за час до открытия продаж.
+                {t.landing.eventsBody}
               </p>
               <div className="d-flex flex-column gap-2 mt-auto">
                 {agenda.map((occ) => (
@@ -162,9 +159,7 @@ export default async function LandingPage() {
                   </div>
                 ))}
                 {agenda.length === 0 && (
-                  <p className="small text-secondary mb-0">
-                    Афиша пополняется каждую неделю.
-                  </p>
+                  <p className="small text-secondary mb-0">{t.landing.agendaEmpty}</p>
                 )}
               </div>
             </div>
@@ -176,26 +171,19 @@ export default async function LandingPage() {
               <div className="d-flex align-items-center gap-2 mb-2">
                 <HeartIcon />
                 <p className="font-display fw-medium text-white mb-0">
-                  Артисты и избранное
+                  {t.landing.artistsTitle}
                 </p>
               </div>
-              <p className="small text-secondary mb-0">
-                Профили актёров, групп и пейрингов с фильмографией и
-                дискографией. Сердечко — и их события и релизы попадают в вашу
-                ленту.
-              </p>
+              <p className="small text-secondary mb-0">{t.landing.artistsBody}</p>
             </div>
             <div className="surface surface-hover p-4 flex-fill">
               <div className="d-flex align-items-center gap-2 mb-2">
                 <TvIcon />
                 <p className="font-display fw-medium text-white mb-0">
-                  Сериалы и статусы
+                  {t.landing.seriesTitle}
                 </p>
               </div>
-              <p className="small text-secondary mb-0">
-                Смотрю, посмотрено, в планах — отмечайте сериалы, собирайте свою
-                коллекцию и находите места съёмок на карте.
-              </p>
+              <p className="small text-secondary mb-0">{t.landing.seriesBody}</p>
             </div>
           </div>
 
@@ -205,12 +193,10 @@ export default async function LandingPage() {
               <div className="row g-4 align-items-center">
                 <div className="col-12 col-lg-7">
                   <p className="font-display fw-semibold mb-2" style={{ fontSize: "1.35rem" }}>
-                    Друзья и поездки — потому что вместе веселее
+                    {t.landing.friendsTitle}
                   </p>
                   <p className="cream-muted small mb-0" style={{ maxWidth: "34rem" }}>
-                    Смотрите, кто из друзей идёт на событие, планируйте поездку в
-                    Таиланд на общие даты: события, отели, списки мест и «что
-                    посетить» рядом с датами — всё в одном плане.
+                    {t.landing.friendsBody}
                   </p>
                 </div>
                 <div className="col-12 col-lg-5 text-lg-end">
@@ -218,7 +204,7 @@ export default async function LandingPage() {
                     href={currentUser ? "/trips" : "/signup"}
                     className="btn btn-dark rounded-pill px-4"
                   >
-                    {currentUser ? "Мои поездки" : "Попробовать"}
+                    {currentUser ? t.nav.myTrips : t.landing.friendsCta}
                   </Link>
                 </div>
               </div>
@@ -231,35 +217,30 @@ export default async function LandingPage() {
       <section className="surface p-4 p-md-5">
         <div className="row g-4 align-items-center">
           <div className="col-12 col-lg-7">
-            <span className="eyebrow mb-2 d-inline-flex">Кто мы</span>
+            <span className="eyebrow mb-2 d-inline-flex">{t.landing.aboutEyebrow}</span>
             <h2 className="display-1-tight mb-3" style={{ fontSize: "1.9rem" }}>
-              Сделано фанатами — для фанатов
+              {t.landing.aboutTitle}
             </h2>
-            <p className="text-secondary mb-2">
-              MyBLHub вырос из личных табличек и заметок: когда пресейл, куда
-              лететь, что смотреть дальше. В какой-то момент таблички перестали
-              справляться — и мы собрали всё в один сервис: афишу, каталог и
-              планировщик поездок.
-            </p>
+            <p className="text-secondary mb-2">{t.landing.aboutStory}</p>
             <p className="text-secondary mb-0">
-              Здесь нет алгоритмов и рекламы — только события, любимые артисты
-              и люди, с которыми вы на одной волне. Чего-то не хватает?{" "}
+              {t.landing.aboutNoAds}{" "}
               <Link href="/help" className="link-body-emphasis">
-                Напишите нам
+                {t.landing.aboutContactLink}
               </Link>
-              {" "}— мы читаем всё.
+              {" "}
+              {t.landing.aboutContactEnd}
             </p>
           </div>
           <div className="col-12 col-lg-5">
             <div className="glow-panel p-4">
               <p className="font-display fw-medium text-white mb-3">
-                Что уже внутри
+                {t.landing.insideTitle}
               </p>
               <ul className="list-unstyled d-flex flex-column gap-2 small text-secondary mb-0">
-                <li>🎤 {upcomingEventsCount} событий в афише — с пресейлами и билетами</li>
-                <li>✨ {performersCount} артистов и групп с фильмографией и музыкой</li>
-                <li>📺 {dramasCount} сериалов с местами съёмок на карте</li>
-                <li>🗺 Поездки, списки мест и вики для фанатов</li>
+                <li>🎤 {t.landing.insideEvents(upcomingEventsCount)}</li>
+                <li>✨ {t.landing.insideArtists(performersCount)}</li>
+                <li>📺 {t.landing.insideSeries(dramasCount)}</li>
+                <li>🗺 {t.landing.insideExtras}</li>
               </ul>
             </div>
           </div>
@@ -269,28 +250,16 @@ export default async function LandingPage() {
       {/* ---------- Как это работает ---------- */}
       <section>
         <div className="text-center mb-4">
-          <span className="eyebrow d-inline-flex mb-2">Как это работает</span>
+          <span className="eyebrow d-inline-flex mb-2">{t.landing.howEyebrow}</span>
           <h2 className="display-1-tight" style={{ fontSize: "1.9rem" }}>
-            Три шага — и вы в курсе всего
+            {t.landing.howTitle}
           </h2>
         </div>
         <div className="row g-3 stagger">
           {[
-            {
-              n: "01",
-              title: "Зарегистрируйтесь",
-              body: "Email и пароль — каталог, избранное и статусы просмотра доступны сразу.",
-            },
-            {
-              n: "02",
-              title: "Найдите своих",
-              body: "Актёры, группы, сериалы, пейринги — добавляйте в избранное одним кликом.",
-            },
-            {
-              n: "03",
-              title: "Следите за событиями",
-              body: "Отмечайте «Я пойду», получайте .ics в календарь, ловите препродажи с ботом.",
-            },
+            { n: "01", title: t.landing.step1Title, body: t.landing.step1Body },
+            { n: "02", title: t.landing.step2Title, body: t.landing.step2Body },
+            { n: "03", title: t.landing.step3Title, body: t.landing.step3Body },
           ].map((s) => (
             <div key={s.n} className="col-12 col-md-4">
               <div className="surface h-100 p-4">
@@ -306,12 +275,10 @@ export default async function LandingPage() {
       {/* ---------- Final CTA ---------- */}
       <section className="glow-panel text-center p-4 p-md-5">
         <h2 className="display-1-tight mb-3" style={{ fontSize: "1.9rem" }}>
-          {currentUser ? "Рады видеть снова" : "Готовы начать?"}
+          {currentUser ? t.landing.finalTitleUser : t.landing.finalTitleGuest}
         </h2>
         <p className="text-secondary mx-auto mb-4" style={{ maxWidth: "28rem" }}>
-          {currentUser
-            ? "Загляните в афишу — там всё, что скоро происходит."
-            : "Регистрация занимает меньше минуты — email и пароль, без лишних вопросов."}
+          {currentUser ? t.landing.finalBodyUser : t.landing.finalBodyGuest}
         </p>
         <div className="d-flex flex-wrap justify-content-center gap-2">{authCta}</div>
       </section>

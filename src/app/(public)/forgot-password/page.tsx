@@ -1,29 +1,34 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import Logo from "@/components/Logo";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 import ForgotForm from "./ForgotForm";
 
-export const metadata = pageMetadata({
-  title: "Восстановление пароля",
-  description:
-    "Забыли пароль? Укажите почту аккаунта — пришлём ссылку, по которой можно задать новый.",
-  path: "/forgot-password",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.auth.forgot.metaTitle,
+    description: t.auth.forgot.metaDescription,
+    path: "/forgot-password",
+    noIndex: true,
+    locale,
+  });
+}
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  const { t } = await getT();
   return (
     <div className="mx-auto" style={{ maxWidth: "24rem" }}>
       <div className="text-center mb-4">
         <Logo />
       </div>
-      <h1 className="h4 font-display text-center mb-3">Забыли пароль?</h1>
-      <p className="small text-secondary text-center mb-4">
-        Укажите почту аккаунта — пришлём ссылку для сброса.
-      </p>
+      <h1 className="h4 font-display text-center mb-3">{t.auth.forgot.title}</h1>
+      <p className="small text-secondary text-center mb-4">{t.auth.forgot.lead}</p>
       <ForgotForm />
       <p className="small text-secondary text-center mt-3 mb-0">
-        <Link href="/login" className="link-body-emphasis">← Вернуться ко входу</Link>
+        <AppLink href="/login" className="link-body-emphasis">
+          {t.auth.forgot.backToLogin}
+        </AppLink>
       </p>
     </div>
   );

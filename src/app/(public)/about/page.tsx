@@ -1,14 +1,18 @@
 import LandingPage from "../LandingPage";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = pageMetadata({
-  title: "О нас",
-  description:
-    "MyBLHub — трекер концертов и фан-событий тайских BL-актёров: афиша, профили артистов и сериалов, избранное и статусы просмотра.",
-  path: "/about",
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.legal.about.metaTitle,
+    description: t.legal.about.metaDescription,
+    path: "/about",
+    locale,
+  });
+}
 
 // «О нас» — тот же лендинг, что видят незалогиненные на главной, но по
 // постоянному адресу (ссылка в футере работает и для залогиненных, у

@@ -5,12 +5,14 @@ import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import { PencilIcon } from "@/components/icons";
 import { updateTrip } from "./actions";
+import { useT } from "@/components/LocaleProvider";
 
 export default function EditTripButton({
   trip,
 }: {
   trip: { id: string; title: string; startKey: string; endKey: string };
 }) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function EditTripButton({
       }
       setIsOpen(false);
     } catch {
-      setError("Не удалось сохранить — попробуйте ещё раз");
+      setError(t.trips.form.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -43,8 +45,8 @@ export default function EditTripButton({
         // Кнопка живёт внутри h1: без явного размера иконка (0.95em)
         // унаследовала бы 2.5rem заголовка и вылезла из кружка.
         style={{ fontSize: "1rem" }}
-        aria-label="Редактировать поездку"
-        data-tooltip="Редактировать"
+        aria-label={t.trips.form.editAria}
+        data-tooltip={t.common.edit}
         onClick={() => setIsOpen(true)}
       >
         <PencilIcon />
@@ -55,26 +57,26 @@ export default function EditTripButton({
           setIsOpen(false);
           setError(null);
         }}
-        title="Редактировать поездку"
+        title={t.trips.form.editTitle}
       >
         <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
-            <label className="form-label small text-secondary">Название</label>
+            <label className="form-label small text-secondary">{t.trips.form.title}</label>
             <input type="text" name="title" required defaultValue={trip.title} className="form-control" />
           </div>
           <div className="row g-2">
             <div className="col">
-              <label className="form-label small text-secondary">С даты</label>
+              <label className="form-label small text-secondary">{t.trips.form.from}</label>
               <DatePickerInput name="startDate" required defaultValue={trip.startKey} />
             </div>
             <div className="col">
-              <label className="form-label small text-secondary">По дату</label>
+              <label className="form-label small text-secondary">{t.trips.form.to}</label>
               <DatePickerInput name="endDate" required defaultValue={trip.endKey} />
             </div>
           </div>
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
-            {isSaving ? "Сохранение…" : "Сохранить"}
+            {isSaving ? t.trips.form.saving : t.common.save}
           </button>
         </form>
       </Modal>

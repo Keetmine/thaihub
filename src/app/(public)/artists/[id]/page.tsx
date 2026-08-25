@@ -1,5 +1,5 @@
 import { JsonLd, pageMetadata, personJsonLd } from "@/lib/seo";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -17,10 +17,8 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
-import {
-  DRAMA_STATUS_LABELS,
-  DRAMA_STATUS_BADGE_CLASS,
-} from "@/lib/dramaStatus";
+import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
+import { getT } from "@/lib/i18n";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -38,32 +36,26 @@ import { performerPhoto } from "@/lib/performerPhoto";
 
 export const dynamic = "force-dynamic";
 
-const ALBUM_TYPE_LABELS = {
-  ALBUM: "Альбом",
-  EP: "EP",
-  SINGLE: "Сингл",
-} as const;
-
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
+  const { t } = await getT();
   const performer = await prisma.performer.findFirst({
     where: slugOrIdWhere(rawId),
     select: { name: true, realName: true, bio: true, photoUrl: true },
   });
   if (!performer)
     return pageMetadata({
-      title: "Исполнитель",
-      description: "Профиль не найден.",
+      title: t.catalog.artist.metaTitle,
+      description: t.catalog.artist.metaNotFound,
     });
   return pageMetadata({
     title: `${performer.name}${performer.realName ? ` (${performer.realName})` : ""}`,
     description:
-      performer.bio?.slice(0, 160) ??
-      `${performer.name}: профиль, сериалы, события и дискография на MyBLHub.`,
+      performer.bio?.slice(0, 160) ?? t.catalog.artist.metaDescription(performer.name),
     path: `/artists/${rawId}`,
     image: performer.photoUrl,
     type: "article",
@@ -78,6 +70,7 @@ export default async function PerformerPage({
   searchParams: Promise<{ events?: string }>;
 }) {
   const { id: rawId } = await params;
+  const { locale, t } = await getT();
   const { events: eventsTab } = await searchParams;
   const showPastEvents = eventsTab === "past";
   const performer = await prisma.performer.findFirst({
@@ -243,7 +236,7 @@ export default async function PerformerPage({
   });
 
   const formatBirthDate = (d: Date) =>
-    d.toLocaleDateString("ru-RU", {
+    d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -257,15 +250,7 @@ export default async function PerformerPage({
     ) {
       age -= 1;
     }
-    const mod10 = age % 10;
-    const mod100 = age % 100;
-    const word =
-      mod10 === 1 && mod100 !== 11
-        ? "год"
-        : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
-          ? "года"
-          : "лет";
-    return `${age} ${word}`;
+    return t.catalog.artist.age(age);
   };
 
   const recognizedLinks = performer.links
@@ -314,7 +299,9 @@ export default async function PerformerPage({
     <div>
       <BackLink
         fallbackHref={isMascot ? "/artists?view=mascots" : "/artists"}
-        fallbackLabel={isMascot ? "← Все маскоты" : "← Все артисты"}
+        fallbackLabel={
+          isMascot ? t.catalog.artist.backMascots : t.catalog.artist.back
+        }
       />
       {/* Классическая шапка (фидбек владельца, как у сериалов): имя +
           realName, кнопки справа — без размытого hero. Ряд чипов не
@@ -400,7 +387,7 @@ export default async function PerformerPage({
           {!isBand && performer.birthDate && (
             <p className="small text-secondary mb-0">
               <CakeIcon />{" "}
-              <span className="text-secondary">Дата рождения:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.birthDate}</span>{" "}
               {formatBirthDate(performer.birthDate)} (
               {currentAge(performer.birthDate)})
             </p>
@@ -408,34 +395,34 @@ export default async function PerformerPage({
           {!isBand && performer.nationality && (
             <p className="small text-secondary mb-0">
               <PinIcon className="icon-inline" />{" "}
-              <span className="text-secondary">Национальность:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.nationality}</span>{" "}
               {performer.nationality}
             </p>
           )}
           {!isBand && performer.alsoKnownAs && (
             <p className="small text-secondary mb-0">
               <UserIcon className="icon-inline" />{" "}
-              <span className="text-secondary">Также известен как:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.alsoKnownAs}</span>{" "}
               {performer.alsoKnownAs}
             </p>
           )}
           {!isBand && performer.musicAlias && (
             <p className="small text-secondary mb-0">
               <MusicNoteIcon />{" "}
-              <span className="text-secondary">Выступает как:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.performsAs}</span>{" "}
               {performer.musicAlias}
             </p>
           )}
           {!isBand && performer.placeOfBirth && (
             <p className="small text-secondary mb-0">
               <PinIcon className="icon-inline" />{" "}
-              <span className="text-secondary">Место рождения:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.placeOfBirth}</span>{" "}
               {performer.placeOfBirth}
             </p>
           )}
           {performer.occupation.length > 0 && (
             <p className="small text-secondary mb-0">
-              <span className="text-secondary">Занятия:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.occupation}</span>{" "}
               <span className="text-body">
                 {performer.occupation.join(", ")}
               </span>
@@ -443,7 +430,7 @@ export default async function PerformerPage({
           )}
           {performer.instruments.length > 0 && (
             <p className="small text-secondary mb-0">
-              <span className="text-secondary">Инструменты:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.instruments}</span>{" "}
               <span className="text-body">
                 {performer.instruments.join(", ")}
               </span>
@@ -451,7 +438,7 @@ export default async function PerformerPage({
           )}
           {performer.soloDebut && (
             <p className="small text-secondary mb-0">
-              <span className="text-secondary">Сольный дебют:</span>{" "}
+              <span className="text-secondary">{t.catalog.artist.soloDebut}</span>{" "}
               <span className="text-body">{performer.soloDebut}</span>
             </p>
           )}
@@ -459,7 +446,7 @@ export default async function PerformerPage({
             <p className="small text-secondary mb-0">
               {performer.height && (
                 <>
-                  <span className="text-secondary">Рост:</span>{" "}
+                  <span className="text-secondary">{t.catalog.artist.height}</span>{" "}
                   <span className="text-body">
                     {performer.height.replace(/\s*\(.*?\)/g, "").trim()}
                   </span>
@@ -468,7 +455,7 @@ export default async function PerformerPage({
               {performer.height && performer.weight && " · "}
               {performer.weight && (
                 <>
-                  <span className="text-secondary">Вес:</span>{" "}
+                  <span className="text-secondary">{t.catalog.artist.weight}</span>{" "}
                   <span className="text-body">
                     {performer.weight.replace(/\s*\(.*?\)/g, "").trim()}
                   </span>
@@ -480,16 +467,18 @@ export default async function PerformerPage({
             <p className="small text-secondary mb-0">
               <BuildingIcon />{" "}
               <span className="text-secondary">
-                {performer.agencies.length > 1 ? "Студии:" : "Студия:"}
+                {performer.agencies.length > 1
+                  ? t.catalog.artist.agencies
+                  : t.catalog.artist.agency}
               </span>{" "}
               {performer.agencies.map((pa, i) => (
                 <span key={pa.agencyId}>
-                  <Link
+                  <AppLink
                     href={agencyHref(pa.agency)}
                     className="link-body-emphasis"
                   >
                     {pa.agency.name}
-                  </Link>
+                  </AppLink>
                   {i < performer.agencies.length - 1 ? ", " : ""}
                 </span>
               ))}
@@ -497,8 +486,8 @@ export default async function PerformerPage({
           )}
           {/* Длинная биография свёрнута до ~4 строк, как синопсис у
               сериала: текст в summary, details[open] снимает line-clamp,
-              кнопку «Читать дальше/Свернуть» рисует CSS. Короткая — как
-              раньше, обычным абзацем. */}
+              подпись «Читать дальше/Свернуть» рисует сам SynopsisFold.
+              Короткая — как раньше, обычным абзацем. */}
           {performer.bio &&
             (performer.bio.length > 300 ? (
               <SynopsisFold
@@ -533,7 +522,7 @@ export default async function PerformerPage({
 
           {isBand && performer.bandMembers.length > 0 && (
             <div className="mt-2">
-              <h2 className="section-heading mb-2">Участники</h2>
+              <h2 className="section-heading mb-2">{t.catalog.artist.members}</h2>
               <div className="d-flex flex-wrap gap-2">
                 {performer.bandMembers.map((m) => (
                   <EntityMiniCard
@@ -550,7 +539,7 @@ export default async function PerformerPage({
 
           {isMascot && performer.mascotOwners.length > 0 && (
             <div className="mt-2">
-              <h2 className="section-heading mb-2">Чей маскот</h2>
+              <h2 className="section-heading mb-2">{t.catalog.artist.mascotOf}</h2>
               <div className="d-flex flex-wrap gap-2">
                 {performer.mascotOwners.map((o) =>
                   o.performer ? (
@@ -582,7 +571,7 @@ export default async function PerformerPage({
         <div className="d-flex flex-wrap gap-5 mb-4">
           {currentPairings.length > 0 && (
             <div>
-              <h2 className="section-heading mb-2">В паре с</h2>
+              <h2 className="section-heading mb-2">{t.catalog.artist.pairedWith}</h2>
               <div className="d-flex flex-wrap gap-2">
                 {currentPairings.map((pair) => {
                   const other =
@@ -605,7 +594,7 @@ export default async function PerformerPage({
 
           {pastPairings.length > 0 && (
             <div>
-              <h2 className="section-heading mb-2">Бывшие пары</h2>
+              <h2 className="section-heading mb-2">{t.catalog.artist.pastPairings}</h2>
               <div className="d-flex flex-wrap gap-2 opacity-50">
                 {pastPairings.map((pair) => {
                   const other =
@@ -627,7 +616,7 @@ export default async function PerformerPage({
           )}
           {mascotCards.size > 0 && (
             <div>
-              <h2 className="section-heading mb-2">Маскоты</h2>
+              <h2 className="section-heading mb-2">{t.catalog.artist.mascots}</h2>
               <div className="d-flex flex-wrap gap-2">
                 {Array.from(mascotCards.values()).map((m) => (
                   <EntityMiniCard
@@ -642,7 +631,7 @@ export default async function PerformerPage({
           )}
           {!isBand && performer.memberOfBands.length > 0 && (
             <div>
-              <h2 className="section-heading mb-2">Группа</h2>
+              <h2 className="section-heading mb-2">{t.catalog.artist.band}</h2>
               <div className="d-flex flex-wrap gap-2">
                 {performer.memberOfBands.map((m) => (
                   <EntityMiniCard
@@ -663,30 +652,30 @@ export default async function PerformerPage({
           Прошедшие (0)». */}
       {upcoming.length + past.length > 0 && (
         <>
-          <h2 className="section-heading mb-2">События</h2>
+          <h2 className="section-heading mb-2">{t.catalog.artist.events}</h2>
           <div className="tab-bar mb-3">
-            <Link
+            <AppLink
               href={performerHref(performer)}
               prefetch={false}
               scroll={false}
               className={`tab-bar-item ${!showPastEvents ? "active" : ""}`}
             >
-              Предстоящие ({upcoming.length})
-            </Link>
-            <Link
+              {t.catalog.artist.upcoming(upcoming.length)}
+            </AppLink>
+            <AppLink
               href={`${performerHref(performer)}?events=past`}
               prefetch={false}
               scroll={false}
               className={`tab-bar-item ${showPastEvents ? "active" : ""}`}
             >
-              Прошедшие ({past.length})
-            </Link>
+              {t.catalog.artist.past(past.length)}
+            </AppLink>
           </div>
           {(showPastEvents ? past : upcoming).length === 0 ? (
             <p className="small text-secondary mb-4">
               {showPastEvents
-                ? "Прошедших событий нет."
-                : "Нет предстоящих событий."}
+                ? t.catalog.artist.noPast
+                : t.catalog.artist.noUpcoming}
             </p>
           ) : (
             <div
@@ -713,11 +702,11 @@ export default async function PerformerPage({
 
       {!isBand && performer.dramas.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">Сериалы</h2>
+          <h2 className="section-heading mb-2">{t.catalog.artist.series}</h2>
           <div className="poster-row thin-scroll">
             {sortedDramas.map((pd) => (
               <div key={pd.dramaId} style={{ position: "relative" }}>
-                <Link
+                <AppLink
                   href={dramaHref(pd.drama)}
                   className="text-decoration-none d-block"
                 >
@@ -755,7 +744,7 @@ export default async function PerformerPage({
                           fontSize: "0.6rem",
                         }}
                       >
-                        {DRAMA_STATUS_LABELS.RETURNING_SERIES}
+                        {t.catalog.dramaStatus.RETURNING_SERIES}
                       </span>
                     )}
                   </div>
@@ -768,7 +757,7 @@ export default async function PerformerPage({
                   {pd.drama.year && (
                     <p className="small text-secondary mb-0">{pd.drama.year}</p>
                   )}
-                </Link>
+                </AppLink>
                 <div
                   className="position-absolute"
                   style={{ top: "0.375rem", right: "0.375rem" }}
@@ -786,7 +775,7 @@ export default async function PerformerPage({
       {performer.albums.length > 0 && (
         <div className="mb-4">
           <h2 className="section-heading mb-2">
-            <MusicNoteIcon className="icon-inline" /> Альбомы
+            <MusicNoteIcon className="icon-inline" /> {t.catalog.artist.albums}
           </h2>
           <div className="poster-row thin-scroll">
             {performer.albums.map((album) => {
@@ -840,7 +829,7 @@ export default async function PerformerPage({
                   {album.title}
                 </p>
                 <p className="small text-secondary mb-0">
-                  {ALBUM_TYPE_LABELS[album.type]}
+                  {t.catalog.albumType[album.type]}
                   {album.year ? ` · ${album.year}` : ""}
                   {album.url ? " ↗" : ""}
                 </p>
@@ -854,7 +843,7 @@ export default async function PerformerPage({
       {performer.songs.length > 0 && (
         <div className="mb-4">
           <h2 className="section-heading mb-2">
-            <MusicNoteIcon className="icon-inline" /> Песни и синглы
+            <MusicNoteIcon className="icon-inline" /> {t.catalog.artist.songs}
           </h2>
           <div className="d-flex flex-column gap-2">
             {performer.songs.map((song) => (
@@ -894,7 +883,7 @@ export default async function PerformerPage({
 
       {performer.mvAppearances.length > 0 && (
         <div className="surface p-4 mb-3">
-          <h2 className="section-heading mb-2">Появления в клипах</h2>
+          <h2 className="section-heading mb-2">{t.catalog.artist.mvAppearances}</h2>
           <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
             {performer.mvAppearances.map((mv, i) => (
               <li key={i}>{mv}</li>
@@ -905,7 +894,7 @@ export default async function PerformerPage({
 
       {Array.isArray(performer.awards) && performer.awards.length > 0 && (
         <div className="surface p-4 mb-3">
-          <h2 className="section-heading mb-3">Награды и номинации</h2>
+          <h2 className="section-heading mb-3">{t.catalog.artist.awards}</h2>
           {/* Не таблица: строки-карточки в общем стиле сайта — год слева,
               премия/категория в центре, результат чипом справа. */}
           <div className="d-flex flex-column gap-2">
@@ -946,7 +935,7 @@ export default async function PerformerPage({
 
       {performer.trivia.length > 0 && (
         <div className="surface p-4 mb-3">
-          <h2 className="section-heading mb-2">Факты</h2>
+          <h2 className="section-heading mb-2">{t.catalog.artist.trivia}</h2>
           <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
             {performer.trivia.map((t, i) => (
               <li key={i}>{t}</li>
@@ -962,7 +951,7 @@ export default async function PerformerPage({
           performer.references.length > 0)) && (
         <div className="mb-3 sources-block">
           <h2 className="section-heading mb-2" style={{ opacity: 0.55 }}>
-            Источники
+            {t.catalog.sources}
           </h2>
           <ol className="ps-3 mb-0 d-flex flex-column gap-1">
             {(Array.isArray(performer.references)

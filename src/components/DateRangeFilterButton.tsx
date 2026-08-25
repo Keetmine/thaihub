@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarIcon } from "@/components/icons";
 import DatePickerInput from "@/components/DatePickerInput";
+import { useT } from "@/components/LocaleProvider";
 
 /** Compact calendar-icon button that opens a small popover with the
  *  from/to date inputs — keeps a date-range filter out of the tab-bar-row
@@ -21,6 +22,7 @@ export default function DateRangeFilterButton({
   clearHref: string;
   hiddenFields?: Record<string, string>;
 }) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const hasRange = Boolean(from || to);
@@ -33,7 +35,9 @@ export default function DateRangeFilterButton({
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const label = hasRange ? `Диапазон: ${from || "…"} – ${to || "…"}` : "Фильтр по датам";
+  const label = hasRange
+    ? t.events.filter.range(from || "…", to || "…")
+    : t.events.filter.button;
 
   return (
     <div className="date-range-filter" ref={ref}>
@@ -54,21 +58,21 @@ export default function DateRangeFilterButton({
             Object.entries(hiddenFields).map(([name, value]) => (
               <input key={name} type="hidden" name={name} value={value} />
             ))}
-          <label className="form-label small text-secondary mb-1">С даты</label>
+          <label className="form-label small text-secondary mb-1">{t.events.filter.from}</label>
           <div className="mb-2">
             <DatePickerInput name="from" defaultValue={from} />
           </div>
-          <label className="form-label small text-secondary mb-1">По дату</label>
+          <label className="form-label small text-secondary mb-1">{t.events.filter.to}</label>
           <div className="mb-2">
             <DatePickerInput name="to" defaultValue={to} />
           </div>
           <div className="d-flex gap-2">
             <button type="submit" className="btn btn-outline-secondary btn-sm flex-fill">
-              Показать
+              {t.events.filter.apply}
             </button>
             {hasRange && (
               <a href={clearHref} className="btn btn-ghost btn-sm">
-                Сбросить
+                {t.events.filter.reset}
               </a>
             )}
           </div>

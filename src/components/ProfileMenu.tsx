@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { logout } from "@/app/(public)/login/actions";
+import { useT } from "@/components/LocaleProvider";
 import { UserIcon } from "./icons";
 
 export type ProfileMenuUser = {
@@ -15,6 +16,7 @@ export type ProfileMenuUser = {
 
 export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
       <button
         type="button"
         className="icon-btn profile-menu-trigger"
-        aria-label={user.name || "Профиль"}
+        aria-label={user.name || t.nav.profile}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
@@ -56,45 +58,45 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            Мой профиль
+            {t.nav.myProfile}
           </Link>
           <Link href="/account" className="profile-menu-item" onClick={() => setOpen(false)}>
-            Кабинет
+            {t.nav.account}
           </Link>
           <Link
             href="/friends"
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            Друзья
+            {t.nav.friends}
           </Link>
           <Link
             href="/account?tab=events"
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            Мои события
+            {t.nav.myEvents}
           </Link>
           <Link
             href="/trips"
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            Мои поездки
+            {t.nav.myTrips}
           </Link>
           <Link
             href="/lists"
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            Мои места
+            {t.nav.myPlaces}
           </Link>
           <Link
             href="/account/settings"
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            Настройки
+            {t.nav.settings}
           </Link>
           <div className="profile-menu-divider" />
           <Link
@@ -102,11 +104,11 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            Помощь
+            {t.nav.help}
           </Link>
           <form action={logout}>
             <button type="submit" className="profile-menu-item profile-menu-logout">
-              Выйти
+              {t.nav.signOut}
             </button>
           </form>
         </div>

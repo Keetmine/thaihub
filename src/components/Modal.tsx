@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useT } from "@/components/LocaleProvider";
 
 export default function Modal({
   open,
@@ -14,6 +15,7 @@ export default function Modal({
   title: string;
   children: React.ReactNode;
 }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -45,7 +47,7 @@ export default function Modal({
           <button
             type="button"
             className="icon-btn"
-            aria-label="Закрыть"
+            aria-label={t.ui.close}
             onClick={onClose}
           >
             ✕

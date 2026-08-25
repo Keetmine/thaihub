@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 
 /** Постерная карточка (.poster-tile в globals.css): изображение фоном,
  *  текст поверх градиента, опциональный чип в углу. Без постера —
@@ -17,7 +17,7 @@ export default function PosterTile({
   chip?: string | null;
 }) {
   return (
-    <Link href={href} className="poster-tile">
+    <AppLink href={href} className="poster-tile">
       {posterUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={posterUrl} alt="" loading="lazy" decoding="async" />
@@ -41,6 +41,6 @@ export default function PosterTile({
           </span>
         )}
       </span>
-    </Link>
+    </AppLink>
   );
 }

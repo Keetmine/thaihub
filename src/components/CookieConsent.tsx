@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
+import { useT } from "@/components/LocaleProvider";
 import Analytics from "@/components/Analytics";
 import GoogleTagManager from "@/components/GoogleTagManager";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
@@ -41,6 +42,7 @@ export default function CookieConsent({
   gtmId: string | null;
   gaId: string | null;
 }) {
+  const t = useT();
   const stored = useSyncExternalStore(noopSubscribe, clientSnapshot, serverSnapshot);
   // Выбор, сделанный прямо сейчас, — приоритетнее снимка куки.
   const [decided, setDecided] = useState<"all" | "necessary" | null>(null);
@@ -60,15 +62,13 @@ export default function CookieConsent({
         <div
           className="cookie-consent surface p-3"
           role="dialog"
-          aria-label="Мы используем куки"
+          aria-label={t.legal.cookies.ariaLabel}
         >
           <p className="small mb-2">
-            Мы используем куки: необходимые — для входа и работы сайта, и
-            аналитические (Яндекс.Метрика) — чтобы понимать, чем
-            пользуются. Подробнее —{" "}
-            <Link href="/privacy" className="link-body-emphasis">
-              в политике конфиденциальности
-            </Link>
+            {t.legal.cookies.text}{" "}
+            <AppLink href="/privacy" className="link-body-emphasis">
+              {t.legal.cookies.link}
+            </AppLink>
             .
           </p>
           <div className="d-flex gap-2">
@@ -77,14 +77,14 @@ export default function CookieConsent({
               className="btn btn-primary btn-sm"
               onClick={() => decide("all")}
             >
-              Принять все
+              {t.legal.cookies.acceptAll}
             </button>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
               onClick={() => decide("necessary")}
             >
-              Только необходимые
+              {t.legal.cookies.necessaryOnly}
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 
 // Вкладки настроек: контент шире не нужен, но пустой правой половины
 // больше нет — вкладки + две колонки внутри разделов, где уместно.
@@ -17,15 +18,16 @@ export default function SettingsTabs({
   security: React.ReactNode;
   calendar: React.ReactNode;
 }) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>("profile");
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "profile", label: "Профиль" },
-    { id: "privacy", label: "Приватность" },
+    { id: "profile", label: t.account.settings.tabProfile },
+    { id: "privacy", label: t.account.settings.tabPrivacy },
     // «Безопасность», а не «Пароль»: тут же живёт удаление аккаунта, и
     // подсказки на странице уже ссылались на вкладку по этому имени.
-    { id: "security", label: "Безопасность" },
-    { id: "calendar", label: "Календарь" },
+    { id: "security", label: t.account.settings.tabSecurity },
+    { id: "calendar", label: t.account.settings.tabCalendar },
   ];
 
   return (

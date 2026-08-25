@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/Modal";
+import { useT } from "@/components/LocaleProvider";
 import { confirmTelegramRelink } from "./telegram-relink/actions";
 
 export type RelinkInfo = {
@@ -35,6 +36,8 @@ export default function TelegramRelinkDialog({
   onClose: () => void;
   onLinked: () => void;
 }) {
+  const t = useT();
+  const s = t.account.settings;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,33 +51,29 @@ export default function TelegramRelinkDialog({
   }
 
   return (
-    <Modal open onClose={onClose} title="Перенести Telegram на этот аккаунт?">
+    <Modal open onClose={onClose} title={s.relinkTitle}>
       <div className="d-flex flex-column gap-3">
-        <p className="mb-0">
-          Telegram{info.telegramUsername ? ` @${info.telegramUsername}` : ""} уже привязан к другому
-          аккаунту{info.otherName ? ` — «${info.otherName}»` : ""}. Один Telegram может принадлежать
-          только одному аккаунту.
-        </p>
+        <p className="mb-0">{s.relinkIntro(info.telegramUsername ?? "", info.otherName ?? "")}</p>
 
         <div>
-          <p className="fw-medium text-white mb-1">Что произойдёт</p>
+          <p className="fw-medium text-white mb-1">{s.relinkWhat}</p>
           <ul className="text-secondary mb-0 d-flex flex-column gap-1">
-            <li>Telegram привяжется к аккаунту, в котором вы сейчас.</li>
-            <li>Старый аккаунт будет удалён — войти в него больше не получится.</li>
+            <li>{s.relinkLinks}</li>
+            <li>{s.relinkDeletes}</li>
             {info.losses.length > 0 ? (
-              <li>Вместе с ним пропадут: {info.losses.join(", ")}.</li>
+              <li>{s.relinkLosses(info.losses.join(", "))}</li>
             ) : (
-              <li>Данных в нём нет — терять нечего.</li>
+              <li>{s.relinkNoLosses}</li>
             )}
           </ul>
         </div>
 
         <div className="d-flex flex-wrap gap-2">
           <button type="button" className="btn btn-primary" onClick={confirm} disabled={busy}>
-            {busy ? "Переносим…" : "Перенести и удалить старый"}
+            {busy ? s.relinkBusy : s.relinkConfirm}
           </button>
           <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-            Отмена
+            {t.common.cancel}
           </button>
         </div>
 

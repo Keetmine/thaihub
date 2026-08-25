@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import Modal from "./Modal";
 
 export default function ConfirmForm({
   action,
   confirmMessage,
   className,
-  confirmLabel = "Удалить",
-  busyLabel = "Удаление…",
+  confirmLabel,
+  busyLabel,
   children,
 }: {
   action: (formData: FormData) => void | Promise<void | { error?: string } | undefined>;
@@ -23,6 +24,7 @@ export default function ConfirmForm({
    *  клик, но тип кнопки не переписывает (см. заметку ниже). */
   children: React.ReactNode;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function ConfirmForm({
       }
       setOpen(false);
     } catch {
-      setError("Не удалось выполнить действие. Обновите страницу и попробуйте ещё раз.");
+      setError(t.ui.actionFailed);
     } finally {
       setIsSubmitting(false);
     }
@@ -70,7 +72,7 @@ export default function ConfirmForm({
           setOpen(false);
           setError(null);
         }}
-        title="Точно?"
+        title={t.ui.confirmTitle}
       >
         <p className="mb-3">{confirmMessage}</p>
         {error && <p className="text-danger small mb-3">{error}</p>}
@@ -81,7 +83,7 @@ export default function ConfirmForm({
             onClick={() => setOpen(false)}
             disabled={isSubmitting}
           >
-            Отмена
+            {t.common.cancel}
           </button>
           <button
             type="button"
@@ -89,7 +91,9 @@ export default function ConfirmForm({
             onClick={handleConfirm}
             disabled={isSubmitting}
           >
-            {isSubmitting ? busyLabel : confirmLabel}
+            {isSubmitting
+              ? (busyLabel ?? t.ui.deleting)
+              : (confirmLabel ?? t.common.delete)}
           </button>
         </div>
       </Modal>

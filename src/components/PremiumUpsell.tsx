@@ -1,17 +1,12 @@
 import BuyPremiumButton from "@/components/BuyPremiumButton";
 import PromoCodeRedeem from "@/components/PromoCodeRedeem";
-import Link from "next/link";
+import Link from "@/components/AppLink";
+import { getT } from "@/lib/i18n";
 import { getPaymentMode, getPremiumPriceStars, getSubscriptionContact } from "@/lib/siteSettings";
 import { TelegramIcon } from "@/components/icons";
 
 // Буллеты — про пользу, а не перечень разделов (Э3.3): человек должен
 // понять, что изменится в его жизни, а не какие таблицы откроются.
-const FEATURES = [
-  "Пресейлы под контролем: напоминание в Telegram за час до старта продаж — билеты не уплывут",
-  "Полная афиша и календарь: все концерты и фанмиты с датами, площадками и составами",
-  "Поездка без табличек: события, отели и «что посетить» в одном плане на ваши даты",
-  "Календарь в телефоне: подписка ICS — события сами появляются в вашем календаре",
-];
 
 /** Продающая заглушка платной функции. Кнопка оплаты появляется, когда
  *  настроен бот И режим оплаты — stars (переключается в /admin/settings:
@@ -25,6 +20,8 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
     getSubscriptionContact(),
   ]);
   const canPay = !!process.env.TELEGRAM_BOT_TOKEN && mode === "stars";
+  const { t } = await getT();
+  const features = [t.widgets.premium.presales, t.widgets.premium.feed, t.widgets.premium.trips, t.widgets.premium.ics];
 
   return (
     <div className="surface p-5" style={{ maxWidth: "34rem", margin: "0 auto" }}>
@@ -32,16 +29,16 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
         <div className="mb-2" style={{ fontSize: "2rem" }}>
           ✨
         </div>
-        <h2 className="h4 font-display mb-1">{feature} — по подписке</h2>
+        <h2 className="h4 font-display mb-1">{t.widgets.premium.heading(feature)}</h2>
         <p className="text-secondary small mb-0">
           {canPay
-            ? `${price} Stars в месяц · продление в один клик`
-            : `${price} Stars в месяц · оплата по договорённости`}
+            ? t.widgets.premium.priceOneClick(price)
+            : t.widgets.premium.priceByAgreement(price)}
         </p>
       </div>
 
       <ul className="list-unstyled d-flex flex-column gap-2 mb-4">
-        {FEATURES.map((f) => (
+        {features.map((f) => (
           <li key={f} className="d-flex gap-2 small">
             <span style={{ color: "var(--bs-success)" }}>✓</span>
             <span>{f}</span>
@@ -62,14 +59,13 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
                 className="btn btn-primary d-inline-flex align-items-center gap-2"
               >
                 <TelegramIcon />
-                Написать в Telegram
+                {t.widgets.premium.writeTelegram}
               </a>
             )}
             <p className="text-secondary small mb-0">
-              Напишите — подключим подписку к вашему аккаунту и подскажем, как
-              оплатить.{" "}
+              {t.widgets.premium.writeHint}{" "}
               <Link href="/help#feedback" className="link-body-emphasis">
-                Или через форму на сайте
+                {t.widgets.premium.orForm}
               </Link>
               .
             </p>

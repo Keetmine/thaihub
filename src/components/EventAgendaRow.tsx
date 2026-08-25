@@ -1,4 +1,6 @@
-import Link from "next/link";
+"use client";
+
+import AppLink from "@/components/AppLink";
 import { formatShortDate } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { eventHref } from "@/lib/eventSlug";
@@ -8,6 +10,7 @@ import LetterAvatar from "@/components/LetterAvatar";
 import GoingButton from "@/components/GoingButton";
 import EventRowCast from "@/components/EventRowCast";
 import { TzTimeText } from "@/components/MskTimeInfo";
+import { useLocale, useT } from "@/components/LocaleProvider";
 
 export default function EventAgendaRow({
   event,
@@ -30,6 +33,8 @@ export default function EventAgendaRow({
    *  списков, где событие выводится одной строкой (избранное). */
   extraDates?: number;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const hasTime = event.hasTime !== false;
 
   return (
@@ -40,9 +45,9 @@ export default function EventAgendaRow({
         </span>
         <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>
-      <Link href={eventHref(event)} className="flex-shrink-0 d-none d-sm-block" tabIndex={-1}>
+      <AppLink href={eventHref(event)} className="flex-shrink-0 d-none d-sm-block" tabIndex={-1}>
         <LetterAvatar name={event.title} photoUrl={event.posterUrl} size={3.25} rounded={false} />
-      </Link>
+      </AppLink>
       <div className="agenda-body">
         {/* Иерархия строки: белое название + чип даты/времени рядом с
             ним, ниже серая площадка, ещё тише — состав. Отдельной узкой
@@ -50,13 +55,13 @@ export default function EventAgendaRow({
             заметной, как название, и резала ширину под текст. */}
         <div className="event-row-head">
           <h3 className="h6 font-display mb-0">
-            <Link href={eventHref(event)} className="text-reset text-decoration-none">
+            <AppLink href={eventHref(event)} className="text-reset text-decoration-none">
               {event.title}
-            </Link>
+            </AppLink>
           </h3>
           {(showDate || hasTime) && (
             <span className="date-chip event-row-time">
-              {showDate && formatShortDate(event.startsAt)}
+              {showDate && formatShortDate(event.startsAt, locale)}
               {hasTime && (
                 <TzTimeText startsAt={event.startsAt} endsAt={event.endsAt} />
               )}
@@ -64,7 +69,7 @@ export default function EventAgendaRow({
           )}
           {extraDates > 0 && (
             <span className="date-chip event-row-time event-row-time-quiet">
-              +{extraDates} {extraDates === 1 ? "дата" : extraDates < 5 ? "даты" : "дат"}
+              {t.events.card.extraDates(extraDates)}
             </span>
           )}
         </div>
@@ -75,12 +80,12 @@ export default function EventAgendaRow({
           {friendsGoing.length > 0 && (
             <span
               className="d-inline-flex align-items-center gap-1"
-              title={friendsGoing.map((f) => f.name || "Друг").join(", ")}
+              title={friendsGoing.map((f) => f.name || t.events.card.friend).join(", ")}
             >
               <UsersIcon className="icon-inline" />
               {friendsGoing.length === 1
-                ? `${friendsGoing[0].name || "Друг"} идёт`
-                : `${friendsGoing.length} друзей идут`}
+                ? t.events.card.oneFriendGoing(friendsGoing[0].name || t.events.card.friend)
+                : t.events.card.manyFriendsGoing(friendsGoing.length)}
             </span>
           )}
         </p>

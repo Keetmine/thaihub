@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 
 /** Пустое состояние с подсказкой и следующим шагом — вместо голого
  *  серого «Пока пусто.» (см. design-direction). */
@@ -26,9 +26,9 @@ export default function EmptyState({
       <p className="font-display fw-medium text-white mb-1">{title}</p>
       {hint && <p className="small text-secondary mb-0">{hint}</p>}
       {cta && (
-        <Link href={cta.href} className="btn btn-primary btn-sm mt-3">
+        <AppLink href={cta.href} className="btn btn-primary btn-sm mt-3">
           {cta.label}
-        </Link>
+        </AppLink>
       )}
     </div>
   );

@@ -1,16 +1,19 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import { novelHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 
-export const metadata = pageMetadata({
-  title: "Новеллы",
-  description:
-    "Новеллы, по которым сняты тайские BL-сериалы: авторы, описания и экранизации.",
-  path: "/novels",
-});
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.catalog.novels.metaTitle,
+    description: t.catalog.novels.metaDescription,
+    path: "/novels",
+  });
+}
 
 
 export const dynamic = "force-dynamic";
@@ -20,6 +23,7 @@ export default async function NovelsPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  const { t } = await getT();
   const { q: rawQ } = await searchParams;
   const q = (rawQ ?? "").trim();
 
@@ -38,19 +42,25 @@ export default async function NovelsPage({
 
   return (
     <div>
-      <PageHeader eyebrow="Каталог" title="Новеллы" size="lg" className="mb-5" watermark="Novels" />
+      <PageHeader
+        eyebrow={t.catalog.eyebrow}
+        title={t.catalog.novels.title}
+        size="lg"
+        className="mb-5"
+        watermark="Novels"
+      />
 
-      <NameSearchBox action="/novels" q={q} placeholder="Поиск по названию или автору…" />
+      <NameSearchBox action="/novels" q={q} placeholder={t.catalog.novels.search} />
 
       {novels.length === 0 ? (
         <p className="text-secondary">
-          {q ? "Ничего не найдено." : "Новеллы скоро появятся."}
+          {q ? t.common.nothingFound : t.catalog.novels.empty}
         </p>
       ) : (
         /* Постерная сетка — как в каталоге сериалов (Э2.4). */
         <div className="poster-grid mt-4">
           {novels.map((n) => (
-            <Link key={n.id} href={novelHref(n)} className="text-decoration-none d-block">
+            <AppLink key={n.id} href={novelHref(n)} className="text-decoration-none d-block">
               <div
                 style={{
                   position: "relative",
@@ -94,7 +104,7 @@ export default async function NovelsPage({
               {n.author && (
                 <p className="small text-secondary mb-0 text-truncate">{n.author}</p>
               )}
-            </Link>
+            </AppLink>
           ))}
         </div>
       )}

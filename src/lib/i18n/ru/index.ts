@@ -15,6 +15,7 @@ import { ui } from "./ui";
 import { wiki } from "./wiki";
 import { reviews } from "./reviews";
 import type { Dict } from "../en";
+import { widgets } from "./widgets";
 
 /** Русский словарь; структура проверяется типом Dict. */
-export const ru: Dict = { reviews, account, auth, catalog, common, events, footer, home, landing, legal, lists, nav, social, trips, ui, wiki };
+export const ru: Dict = { widgets, reviews, account, auth, catalog, common, events, footer, home, landing, legal, lists, nav, social, trips, ui, wiki };

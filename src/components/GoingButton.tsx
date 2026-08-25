@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toggleGoing } from "@/app/(public)/favorites/actions";
 import { CheckIcon, PlusIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 export default function GoingButton({
   occurrenceId,
@@ -23,6 +24,7 @@ export default function GoingButton({
   variant?: "pill" | "icon";
   className?: string;
 }) {
+  const t = useT();
   const [isPending, startTransition] = useTransition();
 
   // Оптимистично: галочка меняется сразу по клику (см. FavoriteButton —
@@ -52,11 +54,11 @@ export default function GoingButton({
   if (variant === "icon") {
     const label = isPast
       ? active
-        ? "Убрать отметку «я ходил(а)»"
-        : "Я ходил(а)"
+        ? t.widgets.going.unwent
+        : t.widgets.going.went
       : active
-        ? "Я не пойду"
-        : "Я пойду";
+        ? t.widgets.going.notGoing
+        : t.widgets.going.going;
     return (
       <button
         type="button"
@@ -81,7 +83,7 @@ export default function GoingButton({
       onClick={handleClick}
     >
       <CheckIcon />
-      {isPast ? "Я ходил(а)" : "Я пойду"}
+      {isPast ? t.widgets.going.went : t.widgets.going.going}
     </button>
   );
 }

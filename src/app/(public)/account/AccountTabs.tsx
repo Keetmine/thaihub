@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
+import { useLocale, useT } from "@/components/LocaleProvider";
 import { logout } from "../login/actions";
 import { formatShortDate } from "@/lib/dates";
 import StatsTab, { type AchievementForTab, type StatsForTab } from "./StatsTab";
@@ -89,6 +90,8 @@ export default function AccountTabs({
    *  массивы (данные до клиента не доходят), вкладка объясняет почему. */
   eventsLocked?: boolean;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [activeTab, setActiveTab] = useState<AccountTab>(initialTab);
   const favoritedSet = new Set(favoritedEventIds);
   const goingSet = new Set(goingOccurrenceIds);
@@ -103,23 +106,23 @@ export default function AccountTabs({
     setActiveTab(initialTab);
   }
 
-  const memberSince = `${formatShortDate(user.createdAt)} ${user.createdAt.getFullYear()}`;
+  const memberSince = `${formatShortDate(user.createdAt, locale)} ${user.createdAt.getFullYear()}`;
 
   return (
     <div>
       <div className="tab-bar-row">
         <div className="tab-bar">
           <TabButton active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
-            Профиль
+            {t.account.tabProfile}
           </TabButton>
           <TabButton active={activeTab === "events"} onClick={() => setActiveTab("events")}>
-            События
+            {t.account.tabEvents}
           </TabButton>
           {/* Билеты отдельной вкладкой: раньше файл был виден только на
               странице своего события. */}
           {tickets.length > 0 && (
             <TabButton active={activeTab === "tickets"} onClick={() => setActiveTab("tickets")}>
-              Билеты ({tickets.length})
+              {t.account.tabTickets(tickets.length)}
             </TabButton>
           )}
         </div>
@@ -163,28 +166,30 @@ export default function AccountTabs({
                 </h2>
                 {user.isPremium ? (
                   <span className="badge rounded-pill text-bg-warning" style={{ fontSize: "0.65rem" }}>
-                    Подписка
+                    {t.account.planPremium}
                   </span>
                 ) : (
                   <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.65rem" }}>
-                    Базовый
+                    {t.account.planFree}
                   </span>
                 )}
               </div>
               <p className="text-secondary small mb-0">
                 {user.email ||
-                  (user.telegramUsername ? `Telegram: @${user.telegramUsername}` : "Вход через Telegram")}
-                {" "}· На MyBLHub с {memberSince}
+                  (user.telegramUsername
+                    ? `Telegram: @${user.telegramUsername}`
+                    : t.account.telegramSignIn)}
+                {" "}· {t.account.memberSince(memberSince)}
               </p>
             </div>
           </div>
           <div className="d-flex flex-wrap gap-2">
-            <Link href="/account/settings" className="btn btn-ghost btn-sm">
-              Настройки
-            </Link>
+            <AppLink href="/account/settings" className="btn btn-ghost btn-sm">
+              {t.account.settingsLink}
+            </AppLink>
             <form action={logout}>
               <button type="submit" className="btn btn-outline-secondary btn-sm">
-                Выйти
+                {t.account.logout}
               </button>
             </form>
           </div>
@@ -204,13 +209,11 @@ export default function AccountTabs({
 
       <div style={{ display: activeTab === "events" ? undefined : "none" }}>
         {eventsLocked && (
-          <p className="small text-secondary mb-3">
-            🔒 Списки событий доступны по подписке.
-          </p>
+          <p className="small text-secondary mb-3">{t.account.events.locked}</p>
         )}
         {upcomingAttendances.length > 0 && (
           <>
-          <h2 className="section-heading mb-2">Мои события — предстоящие</h2>
+          <h2 className="section-heading mb-2">{t.account.events.upcoming}</h2>
           <div className="d-flex flex-column gap-3 mb-5">
             {upcomingAttendances.map((ev) => (
               <EventAgendaRow
@@ -227,11 +230,7 @@ export default function AccountTabs({
 
         {pastAttendances.length > 0 && (
           <>
-            <h2
-              className="section-heading mb-2"
-            >
-              Мои события — прошедшие
-            </h2>
+            <h2 className="section-heading mb-2">{t.account.events.past}</h2>
             <div className="d-flex flex-column gap-3 opacity-50 mb-5">
               {pastAttendances.map((ev) => (
                 <EventAgendaRow
@@ -248,7 +247,7 @@ export default function AccountTabs({
 
         {favoriteEvents.length > 0 && (
           <>
-          <h2 className="section-heading mb-2 mt-4">Избранные события</h2>
+          <h2 className="section-heading mb-2 mt-4">{t.account.events.favorites}</h2>
           <div className="d-flex flex-column gap-3 mb-5">
             {favoriteEvents.map(({ row, extraDates }) => (
               <EventAgendaRow
@@ -270,9 +269,9 @@ export default function AccountTabs({
           favoriteEvents.length === 0 && (
             <EmptyState
               emoji="🎫"
-              title="Пока пусто"
-              hint="Отмечайте «иду» на событиях и добавляйте их в избранное — они появятся здесь."
-              cta={{ href: "/events", label: "Посмотреть афишу" }}
+              title={t.account.events.emptyTitle}
+              hint={t.account.events.emptyHint}
+              cta={{ href: "/events", label: t.account.events.emptyCta }}
               compact
             />
           )}

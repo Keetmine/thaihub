@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
+import type { Dict } from "@/lib/i18n/en";
 import {
   CalendarIcon,
   CloseIcon,
@@ -65,11 +67,12 @@ export function MobileNavProvider({ children }: { children: React.ReactNode }) {
 /** Бургер в мобильной шапке. */
 export function MobileMenuButton() {
   const { open, setOpen } = useMobileNav();
+  const t = useT();
   return (
     <button
       type="button"
       className="burger-btn"
-      aria-label={open ? "Закрыть меню" : "Открыть меню"}
+      aria-label={open ? t.nav.closeMenu : t.nav.openMenu}
       aria-expanded={open}
       onClick={() => setOpen(!open)}
     >
@@ -87,19 +90,20 @@ export function MobileMenuButton() {
  */
 export function MobileDrawer({ children }: { children: React.ReactNode }) {
   const { open, setOpen } = useMobileNav();
+  const t = useT();
   if (!open) return null;
   return (
     // d-lg-none и на обёртке: fixed-потомки display:none-родителя не
     // рисуются, так что при растягивании окна шторка исчезает сама.
     <div className="d-lg-none">
       <div className="mobile-drawer-backdrop" onClick={() => setOpen(false)} />
-      <div className="mobile-drawer" role="dialog" aria-modal="true" aria-label="Меню">
+      <div className="mobile-drawer" role="dialog" aria-modal="true" aria-label={t.nav.menu}>
         <div className="mobile-drawer-head">
-          <span className="mobile-drawer-title font-display">Меню</span>
+          <span className="mobile-drawer-title font-display">{t.nav.menu}</span>
           <button
             type="button"
             className="icon-btn"
-            aria-label="Закрыть меню"
+            aria-label={t.nav.closeMenu}
             onClick={() => setOpen(false)}
           >
             <CloseIcon />
@@ -115,24 +119,26 @@ export function MobileDrawer({ children }: { children: React.ReactNode }) {
 // гостя) уже лежит в шторке, а отдельный таб «Профиль» гостю бесполезен.
 const TABS: {
   href: string;
-  label: string;
+  /** Подпись берётся из словаря по ключу — язык решается при рендере. */
+  labelKey: keyof Dict["nav"];
   icon: (props: { className?: string }) => React.ReactNode;
   matchPrefixes?: string[];
   exact?: boolean;
 }[] = [
-  { href: "/", label: "Главная", icon: HomeIcon, exact: true },
-  { href: "/events", label: "Афиша", icon: TicketIcon, matchPrefixes: ["/event/"] },
-  { href: "/calendar", label: "Календарь", icon: CalendarIcon, matchPrefixes: ["/day/"] },
-  { href: "/search", label: "Поиск", icon: SearchIcon },
+  { href: "/", labelKey: "home", icon: HomeIcon, exact: true },
+  { href: "/events", labelKey: "events", icon: TicketIcon, matchPrefixes: ["/event/"] },
+  { href: "/calendar", labelKey: "calendar", icon: CalendarIcon, matchPrefixes: ["/day/"] },
+  { href: "/search", labelKey: "search", icon: SearchIcon },
 ];
 
 /** Нижний таб-бар — на телефонах и планшетах (d-lg-none). */
 export function MobileTabBar() {
   const { open, setOpen } = useMobileNav();
   const pathname = usePathname();
+  const t = useT();
   return (
-    <nav className="mobile-tabbar d-lg-none" aria-label="Быстрая навигация">
-      {TABS.map(({ href, label, icon: Icon, matchPrefixes, exact }) => {
+    <nav className="mobile-tabbar d-lg-none" aria-label={t.nav.quickNav}>
+      {TABS.map(({ href, labelKey, icon: Icon, matchPrefixes, exact }) => {
         // Пока открыта шторка, подсвечен таб «Меню», а не текущая страница.
         const active =
           !open &&
@@ -148,7 +154,7 @@ export function MobileTabBar() {
             className={`mobile-tab ${active ? "active" : ""}`}
           >
             <Icon />
-            <span>{label}</span>
+            <span>{t.nav[labelKey]}</span>
           </Link>
         );
       })}
@@ -156,11 +162,11 @@ export function MobileTabBar() {
         type="button"
         className={`mobile-tab ${open ? "active" : ""}`}
         aria-expanded={open}
-        aria-label={open ? "Закрыть меню" : "Открыть меню"}
+        aria-label={open ? t.nav.closeMenu : t.nav.openMenu}
         onClick={() => setOpen(!open)}
       >
         <MenuIcon />
-        <span>Меню</span>
+        <span>{t.nav.menu}</span>
       </button>
     </nav>
   );

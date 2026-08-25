@@ -1,16 +1,20 @@
-import Link from "next/link";
+import AppLink from "@/components/AppLink";
 import Logo from "@/components/Logo";
 import PasswordInput from "@/components/PasswordInput";
 import { prisma } from "@/lib/prisma";
 import { pageMetadata } from "@/lib/seo";
+import { getT } from "@/lib/i18n";
 import { resetPassword } from "../actions";
 
-export const metadata = pageMetadata({
-  title: "Новый пароль",
-  description:
-    "Ссылка из письма действует ограниченное время: задайте новый пароль — и сразу вернётесь в аккаунт.",
-  noIndex: true,
-});
+export async function generateMetadata() {
+  const { locale, t } = await getT();
+  return pageMetadata({
+    title: t.auth.reset.metaTitle,
+    description: t.auth.reset.metaDescription,
+    noIndex: true,
+    locale,
+  });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +24,7 @@ export default async function ResetPasswordPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  const { t } = await getT();
   const row = await prisma.passwordResetToken.findUnique({ where: { token } });
   const valid = !!row && !row.usedAt && row.expiresAt > new Date();
 
@@ -28,18 +33,21 @@ export default async function ResetPasswordPage({
       <div className="text-center mb-4">
         <Logo />
       </div>
-      <h1 className="h4 font-display text-center mb-3">Новый пароль</h1>
+      <h1 className="h4 font-display text-center mb-3">{t.auth.reset.title}</h1>
       {!valid ? (
         <p className="small text-warning text-center mb-0">
-          Ссылка недействительна или устарела —{" "}
-          <Link href="/forgot-password" className="link-body-emphasis">запросите сброс ещё раз</Link>.
+          {t.auth.reset.invalidLink}{" "}
+          <AppLink href="/forgot-password" className="link-body-emphasis">
+            {t.auth.reset.invalidLinkCta}
+          </AppLink>
+          .
         </p>
       ) : (
         <form action={resetPassword.bind(null, token)}>
-          <label className="form-label">Придумайте пароль</label>
+          <label className="form-label">{t.auth.reset.passwordLabel}</label>
           <PasswordInput name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
           <button type="submit" className="btn btn-primary w-100">
-            Сохранить и войти
+            {t.auth.reset.submit}
           </button>
         </form>
       )}
