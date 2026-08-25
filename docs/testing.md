@@ -20,6 +20,74 @@ block exists in the config but only activates when `PW_WEB_SERVER=1` is
 set (that's what CI does); without the flag local behaviour is exactly
 as described above.
 
+## Signing in: once per run, not once per spec
+
+The suite signs the admin in **exactly once per run**. A `setup` project
+(`tests/e2e/auth.setup.ts`) logs in, then saves the browser state to
+`playwright/.auth/admin.json`; every admin spec picks that state up with
+
+```ts
+import { ADMIN_STORAGE_STATE } from "./auth-state";
+
+test.use({ storageState: ADMIN_STORAGE_STATE });
+```
+
+and simply navigates to the page it wants — no `loginAsAdmin` call. The
+`e2e` project declares `dependencies: ["setup"]`, so the state file always
+exists before the specs run.
+
+Why it matters: the login form is rate-limited to 30 attempts per 10
+minutes per IP (`src/lib/rateLimit.ts`, protection against brute force —
+not something to raise for tests). Every spec used to call
+`loginAsAdmin`, which put a full run at ~14 attempts: two runs in a row
+passed, the third collapsed into `page.waitForURL` timeouts that looked
+exactly like an application bug. Each call also spawned a `tsx` process to
+upsert the admin, which is where most of the wall clock went — the local
+run went from ~4m35s to ~55s.
+
+The saved state carries both cookies that matter: `user_session` and
+`locale=en`. The English one is deliberate — tests assert English labels,
+and without it a spec that left Russian in the admin's profile would make
+its neighbours fail on "missing" buttons.
+
+**The state is never committed** (`playwright/.auth/` is in
+`.gitignore`) — it's a live session.
+
+Specs that sign in for real, on purpose:
+
+- `admin-auth.spec.ts` — it tests the login itself, so it takes no stored
+  state and calls `loginAsAdmin`;
+- `user-locale.spec.ts` — it checks that the language is restored from the
+  profile at login, which the stored `locale` cookie would paper over.
+
+Everything else that is *not* about the admin (`favorites`,
+`premium-gates`, `shared-trips`, `account-deletion`, most of `i18n`) stays
+anonymous or makes its own user. That's why the stored state lives in
+per-spec `test.use` rather than the config's global `use`: a project-wide
+`storageState` also leaks into `browser.newContext()` calls inside tests,
+which silently broke the "first visit, no cookies" locale tests. The one
+admin test inside `i18n.spec.ts` therefore builds its own context with
+`browser.newContext({ storageState: ADMIN_STORAGE_STATE })` instead of
+switching the whole file over.
+
+### If tests suddenly fail at login
+
+- **Timeouts on `page.waitForURL(/\/account/)` in the setup project** —
+  that's the rate limit, not a bug. Wait 10 minutes for the window to
+  reset (the limiter is in-memory, so restarting the dev server also
+  clears it). Don't raise `MAX_ATTEMPTS`.
+- **A spec redirects to `/account` instead of showing the login form** —
+  it inherited a session it didn't expect. Either it shouldn't have
+  `test.use({ storageState })`, or it's creating a context that inherits
+  from the config.
+- **`Error: ENOENT ... playwright/.auth/admin.json`** — the setup project
+  didn't run. It runs automatically for a full `npx playwright test`, but
+  filtering by file (`npx playwright test tests/e2e/i18n.spec.ts`) filters
+  the setup out too and reuses whatever state is on disk. Run the suite
+  once, or `npx playwright test --project=setup`, to refresh it.
+- **Stale session after wiping the database** — delete
+  `playwright/.auth/` and run again.
+
 ## CI
 
 `.github/workflows/e2e.yml` runs the whole suite on every push to `main`
@@ -33,11 +101,14 @@ and on pull requests (separate from `ci.yml`'s typecheck/lint/build and
    `premium-gates.spec.ts` something to open;
 3. creates the test admin via `tests/e2e/create-admin-user.ts` (creds
    are hardcoded in `helpers.ts` — `admin-e2e@test.local` /
-   `admin-e2e-password` — so no secret is involved; `loginAsAdmin`
-   would create it on its own anyway, the explicit step just fails fast
-   if the tsx/Prisma scripts break);
+   `admin-e2e-password` — so no secret is involved; the `setup` project
+   creates it on its own anyway, the explicit step just fails fast if the
+   tsx/Prisma scripts break, before `webServer` spends minutes building);
 4. `playwright install --with-deps chromium`, then `playwright test`
-   with `PW_WEB_SERVER=1` — Playwright itself builds the app and runs
+   with `PW_WEB_SERVER=1` — the `setup` project signs in against the
+   server Playwright started and writes `playwright/.auth/admin.json` into
+   the workspace (gitignored, thrown away with the runner). Playwright
+   itself builds the app and runs
    `next start -p 3001` (prod build, not dev; `output: "standalone"`
    only makes `next start` print a warning). `DATABASE_URL`, `APP_URL`
    and `BASE_URL` are set at the job level and inherited by the server;
@@ -62,7 +133,8 @@ tests can't accidentally reach real external services.
 
 ## What's covered
 
-- `admin-auth.spec.ts` — admin password login reaches the dashboard.
+- `admin-auth.spec.ts` — admin password login reaches the dashboard (the
+  one admin spec that signs in for real; see "Signing in" above).
 - `admin-event-crud.spec.ts` — create an event through the admin form,
   confirm it appears, delete it through the UI (doubles as cleanup).
 - `favorites.spec.ts` — sign up a real (throwaway) user, favorite an

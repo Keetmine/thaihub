@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAsAdmin } from "./helpers";
+import { ADMIN_STORAGE_STATE } from "./auth-state";
 
 /**
  * Двуязычность: английский на адресах без префикса, русский под /ru.
@@ -115,10 +115,17 @@ test("ссылки внутри русской версии остаются в 
   expect(stray, "ссылки без префикса на русской странице").toEqual([]);
 });
 
-test("админка остаётся русской, хотя живёт без префикса", async ({ page }) => {
+test("админка остаётся русской, хотя живёт без префикса", async ({ browser }) => {
   // Адресов с префиксом у админки нет, значит по общему правилу она
   // получила бы английский — и общие с публичной частью виджеты
   // заговорили бы там вперемешку с русскими подписями самой админки.
-  await loginAsAdmin(page);
+  //
+  // Сессия — из setup-проекта: вход на прогон один. Своим контекстом,
+  // а не через test.use, чтобы соседние тесты файла остались
+  // анонимными: они как раз про первый заход без кук.
+  const ctx = await browser.newContext({ storageState: ADMIN_STORAGE_STATE });
+  const page = await ctx.newPage();
+  await page.goto("/admin");
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+  await ctx.close();
 });

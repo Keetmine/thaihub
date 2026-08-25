@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { loginAsAdmin } from "./helpers";
+import { ADMIN_STORAGE_STATE } from "./auth-state";
+
+// Сессия админа из setup-проекта (tests/e2e/auth.setup.ts): вход на весь
+// прогон один, у формы входа лимит попыток.
+test.use({ storageState: ADMIN_STORAGE_STATE });
 
 /**
  * Ручки загрузки отдают машинный код ошибки, а подпись подбирает клиент.
@@ -11,7 +15,9 @@ import { loginAsAdmin } from "./helpers";
  * заметить это глазами будет непросто.
  */
 test("ручка загрузки отдаёт код ошибки, а не фразу", async ({ page }) => {
-  await loginAsAdmin(page);
+  // Страницу открываем ради origin: fetch ниже идёт из контекста
+  // страницы, а сессия приходит из сохранённого состояния прогона.
+  await page.goto("/admin");
 
   const badType = await page.evaluate(async () => {
     const data = new FormData();

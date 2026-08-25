@@ -1,10 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { loginAsAdmin } from "./helpers";
+import { ADMIN_STORAGE_STATE } from "./auth-state";
+
+// Сессия админа из setup-проекта (tests/e2e/auth.setup.ts): вход на весь
+// прогон один, у формы входа лимит попыток.
+test.use({ storageState: ADMIN_STORAGE_STATE });
 
 test("admin can create and delete an event", async ({ page }) => {
   const title = `Smoke Test Event ${Date.now()}`;
 
-  await loginAsAdmin(page);
   await page.goto("/admin/events/new");
 
   await page.fill('input[name="title"]', title);

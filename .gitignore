@@ -16,6 +16,8 @@
 /playwright-report
 /blob-report
 /playwright/.cache
+# сохранённая сессия админа для e2e — живая сессия, коммитить нельзя
+/playwright/.auth/
 
 # next.js
 /.next/

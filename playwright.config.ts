@@ -21,6 +21,22 @@ export default defineConfig({
     baseURL: process.env.BASE_URL ?? "http://localhost:3001",
     trace: "retain-on-failure",
   },
+  // Вход админом один на весь прогон: setup логинится и складывает
+  // состояние в файл, админские спеки поднимают его через
+  // test.use({ storageState: ADMIN_STORAGE_STATE }). Раньше вход звала
+  // почти каждая спека — выходило ~14 попыток за прогон при лимите 30 за
+  // 10 минут (src/lib/rateLimit.ts), и третий прогон подряд рассыпался
+  // таймаутами на waitForURL.
+  //
+  // Состояние намеренно НЕ лежит в общем use: половина набора про
+  // анонимного или своего свежего пользователя (favorites, premium-gates,
+  // shared-trips, i18n), и админская сессия им всё ломает. Заодно
+  // browser.newContext() внутри теста наследует опции из use — то есть
+  // общее состояние протекло бы и туда.
+  projects: [
+    { name: "setup", testMatch: /auth\.setup\.ts$/ },
+    { name: "e2e", dependencies: ["setup"] },
+  ],
   webServer:
     process.env.PW_WEB_SERVER === "1"
       ? {

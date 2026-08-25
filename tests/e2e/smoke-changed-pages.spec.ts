@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { loginAsAdmin } from "./helpers";
+import { ADMIN_STORAGE_STATE } from "./auth-state";
+
+// Сессия админа из setup-проекта (tests/e2e/auth.setup.ts): вход на весь
+// прогон один, у формы входа лимит попыток.
+test.use({ storageState: ADMIN_STORAGE_STATE });
 
 /**
  * Проверка страниц, затронутых перестройкой импортов и модерации.
@@ -10,10 +14,6 @@ import { loginAsAdmin } from "./helpers";
  * ругаются, а страница ломается уже у человека.
  */
 test.describe("страницы после перестройки импортов", () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAsAdmin(page);
-  });
-
   test("импорты: вкладки журналов переключаются", async ({ page }) => {
     await page.goto("/admin/imports");
     await expect(page.getByRole("heading", { name: "Импорты" })).toBeVisible();
