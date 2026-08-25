@@ -197,37 +197,6 @@ export default async function HomePage() {
   );
   const hasBirthdays = birthdayPerformers.length > 0 || birthdayFriends.length > 0;
 
-  const friendsGoing =
-    premium && friendIds.length > 0
-      ? await prisma.eventAttendance.findMany({
-          where: { userId: { in: friendIds }, occurrence: { startsAt: { gte: now } } },
-          select: {
-            user: { select: { id: true, name: true, username: true, photoUrl: true } },
-            occurrence: { select: { startsAt: true } },
-            event: { select: { id: true, slug: true, title: true } },
-          },
-          orderBy: { occurrence: { startsAt: "asc" } },
-          take: 5,
-        })
-      : [];
-
-  // Одно событие — одна строка со всеми друзьями: раньше на каждого
-  // шла своя карточка, и три друга на один концерт давали три почти
-  // одинаковых блока.
-  const friendsByEvent = [
-    ...friendsGoing
-      .reduce((acc, a) => {
-        const key = a.event.id;
-        const row = acc.get(key);
-        if (row) {
-          if (!row.friends.some((f) => f.id === a.user.id)) row.friends.push(a.user);
-        } else {
-          acc.set(key, { event: a.event, startsAt: a.occurrence.startsAt, friends: [a.user] });
-        }
-        return acc;
-      }, new Map<string, { event: (typeof friendsGoing)[number]["event"]; startsAt: Date; friends: (typeof friendsGoing)[number]["user"][] }>())
-      .values(),
-  ];
 
   return (
     <div>
@@ -360,7 +329,7 @@ export default async function HomePage() {
           владельца). Пустое состояние не рисуем: раздел и так в чипах
           сверху, а пейволл уже есть у «Вы идёте». */}
       {upcomingTrips.length > 0 && (
-        <div className={watchingNow.length > 0 ? "col-12 col-lg-7 order-lg-2" : "col-12"}>
+        <div className={watchingNow.length > 0 ? "col-12 col-lg-5" : "col-12"}>
         <section>
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">Ваши поездки</h2>
@@ -374,19 +343,17 @@ export default async function HomePage() {
           <div className="d-flex flex-column gap-2 stagger">
             {upcomingTrips.map((t) => (
               <Link key={t.id} href={tripHref(t)} className="trip-card">
-                <div className="d-flex flex-wrap align-items-start justify-content-between gap-2">
-                  <p className="trip-dates mb-1">
-                    {formatShortDate(t.startDate)}{" "}
-                    <span className="trip-dates-arrow">→</span>{" "}
-                    {formatShortDate(t.endDate)}
-                    <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
-                  </p>
-                  <span className="d-flex flex-wrap gap-2">
-                    {t.userId !== user.id && <span className="date-chip">совместная</span>}
-                    <span className="date-chip">{countdown(t.startDate)}</span>
-                  </span>
-                </div>
-                <p className="font-display fw-medium text-white mb-0">{t.title}</p>
+                <p className="trip-dates mb-1">
+                  {formatShortDate(t.startDate)}{" "}
+                  <span className="trip-dates-arrow">→</span>{" "}
+                  {formatShortDate(t.endDate)}
+                  <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
+                </p>
+                <p className="font-display fw-medium text-white mb-2">{t.title}</p>
+                <span className="d-flex flex-wrap gap-2">
+                  <span className="date-chip">{countdown(t.startDate)}</span>
+                  {t.userId !== user.id && <span className="date-chip">совместная</span>}
+                </span>
               </Link>
             ))}
           </div>
@@ -397,7 +364,7 @@ export default async function HomePage() {
       {/* Смотрю сейчас — постеры сериалов со статусом WATCHING; пустое
           состояние не рисуем, блок просто скрыт. */}
       {watchingNow.length > 0 && (
-        <div className={upcomingTrips.length > 0 ? "col-12 col-lg-5 order-lg-1" : "col-12"}>
+        <div className={upcomingTrips.length > 0 ? "col-12 col-lg-7" : "col-12"}>
         <section>
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">Смотрю сейчас</h2>
@@ -405,9 +372,9 @@ export default async function HomePage() {
               все →
             </Link>
           </div>
-          <div className="row g-2 stagger">
+          <div className="row g-3 stagger">
             {watchingNow.map(({ drama }) => (
-              <div key={drama.id} className="col-4 col-lg-6 col-xl-4">
+              <div key={drama.id} className="col-4 col-lg-3">
                 <PosterTile
                   href={dramaHref(drama)}
                   posterUrl={drama.posterUrl}
@@ -474,56 +441,6 @@ export default async function HomePage() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <h2 className="section-heading mb-0">Друзья идут</h2>
-          <Link href="/friends" className="small text-secondary">
-            друзья →
-          </Link>
-        </div>
-        {friendsGoing.length === 0 ? (
-          <EmptyState
-            emoji="👥"
-            title={
-              friendIds.length === 0
-                ? "У вас пока нет друзей на MyBLHub"
-                : "Друзья пока никуда не собираются"
-            }
-            hint={
-              friendIds.length === 0
-                ? "Найдите знакомых по нику — и увидите, на что идут они."
-                : "Как только кто-то отметит «иду», это появится здесь."
-            }
-            cta={friendIds.length === 0 ? { href: "/friends", label: "Найти друзей" } : undefined}
-            compact
-          />
-        ) : (
-          <div className="d-flex flex-column gap-2 stagger">
-            {friendsByEvent.map((row) => (
-              <Link
-                key={row.event.id}
-                href={eventHref(row.event)}
-                className="surface surface-hover text-decoration-none d-flex flex-wrap align-items-center gap-3 p-3"
-              >
-                <span className="facepile">
-                  {row.friends.slice(0, 4).map((f) => (
-                    <LetterAvatar key={f.id} name={f.name} photoUrl={f.photoUrl} size={2.1} />
-                  ))}
-                </span>
-                <span style={{ minWidth: 0 }} className="flex-grow-1">
-                  <span className="text-white d-block text-truncate">{row.event.title}</span>
-                  <span className="small text-secondary">
-                    {row.friends.map((f) => userDisplayName(f)).join(", ")}
-                    {row.friends.length > 1 ? " идут" : " идёт"}
-                  </span>
-                </span>
-                <span className="date-chip flex-shrink-0">{formatShortDate(row.startsAt)}</span>
-              </Link>
             ))}
           </div>
         )}
