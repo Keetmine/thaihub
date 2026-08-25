@@ -20,6 +20,18 @@ export const dynamic = "force-dynamic";
 // Главная для своих: сводка вместо сразу афиши. Сюда ведёт логотип, и
 // это первое, что человек видит после входа — ближайшее из «иду»
 // постерами, новинки любимых артистов, планы друзей. Афиша — на /events.
+/** «через 3 дня» / «завтра» / «уже идёт» — обратный отсчёт до поездки:
+ *  сухие даты сами по себе не отвечают на вопрос «а скоро ли». */
+function countdown(start: Date): string {
+  const days = Math.ceil((start.getTime() - Date.now()) / 86_400_000);
+  if (days <= 0) return "уже идёт";
+  if (days === 1) return "завтра";
+  if (days < 5) return `через ${days} дня`;
+  if (days < 31) return `через ${days} дней`;
+  const months = Math.round(days / 30);
+  return months <= 1 ? "через месяц" : `через ${months} мес.`;
+}
+
 export default async function HomePage() {
   const user = await getCurrentUser();
   if (!user) return <LandingPage />;
@@ -138,6 +150,53 @@ export default async function HomePage() {
     .sort((a, b) => +a.startsAt - +b.startsAt)
     .slice(0, 4);
 
+  // Дни рождения «сегодня»: у артистов месяц/день сравниваем в SQL —
+  // каталог на тысячи строк, целиком его тянуть нельзя. Друзей мало,
+  // поэтому их отбираем в памяти.
+  const todayMonth = now.getUTCMonth() + 1;
+  const todayDay = now.getUTCDate();
+  const [birthdayPerformersRaw, friendBirthdayRows, favoriteIds] = await Promise.all([
+    prisma.$queryRaw<
+      { id: string; name: string; slug: string | null; photoUrl: string | null; birthDate: Date }[]
+    >`
+      SELECT p.id, p.name, p.slug, p."photoUrl", p."birthDate"
+      FROM "Performer" p
+      WHERE p."birthDate" IS NOT NULL
+        AND EXTRACT(MONTH FROM p."birthDate") = ${todayMonth}
+        AND EXTRACT(DAY FROM p."birthDate") = ${todayDay}
+      LIMIT 24
+    `,
+    friendIds.length > 0
+      ? prisma.user.findMany({
+          where: { id: { in: friendIds }, birthDate: { not: null } },
+          select: { id: true, name: true, username: true, photoUrl: true, birthDate: true },
+        })
+      : Promise.resolve([]),
+    prisma.favoritePerformer.findMany({
+      where: { userId: user.id },
+      select: { performerId: true },
+    }),
+  ]);
+
+  const favoriteSet = new Set(favoriteIds.map((f) => f.performerId));
+  const turns = (birthDate: Date) => now.getUTCFullYear() - birthDate.getUTCFullYear();
+  // Свои артисты вперёд: «сегодня др у того, кого я слежу» важнее, чем
+  // у случайного человека из каталога.
+  const birthdayPerformers = [...birthdayPerformersRaw]
+    .sort(
+      (a, b) =>
+        Number(favoriteSet.has(b.id)) - Number(favoriteSet.has(a.id)) ||
+        a.name.localeCompare(b.name),
+    )
+    .slice(0, 5);
+  const birthdayFriends = friendBirthdayRows.filter(
+    (f) =>
+      f.birthDate &&
+      f.birthDate.getUTCMonth() + 1 === todayMonth &&
+      f.birthDate.getUTCDate() === todayDay,
+  );
+  const hasBirthdays = birthdayPerformers.length > 0 || birthdayFriends.length > 0;
+
   const friendsGoing =
     premium && friendIds.length > 0
       ? await prisma.eventAttendance.findMany({
@@ -151,6 +210,24 @@ export default async function HomePage() {
           take: 5,
         })
       : [];
+
+  // Одно событие — одна строка со всеми друзьями: раньше на каждого
+  // шла своя карточка, и три друга на один концерт давали три почти
+  // одинаковых блока.
+  const friendsByEvent = [
+    ...friendsGoing
+      .reduce((acc, a) => {
+        const key = a.event.id;
+        const row = acc.get(key);
+        if (row) {
+          if (!row.friends.some((f) => f.id === a.user.id)) row.friends.push(a.user);
+        } else {
+          acc.set(key, { event: a.event, startsAt: a.occurrence.startsAt, friends: [a.user] });
+        }
+        return acc;
+      }, new Map<string, { event: (typeof friendsGoing)[number]["event"]; startsAt: Date; friends: (typeof friendsGoing)[number]["user"][] }>())
+      .values(),
+  ];
 
   return (
     <div>
@@ -172,9 +249,14 @@ export default async function HomePage() {
         }
       />
 
+      {/* Страница собрана асимметричными парами (8/4, затем 5/7): раньше
+          это была стопка одинаковых блоков во всю ширину, и глазу не за
+          что было зацепиться. */}
+      <div className="row g-4 mb-5">
+      <div className={hasBirthdays ? "col-12 col-lg-8" : "col-12"}>
       {/* Ближайшее из «иду» — постеры, а не строки: это то, чего человек
           ждёт, пусть выглядит как афиша на стене. */}
-      <section className="mb-5">
+      <section>
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <h2 className="section-heading mb-0">Вы идёте</h2>
           {premium && (
@@ -209,7 +291,7 @@ export default async function HomePage() {
         ) : (
           <div className="row g-3 stagger">
             {goingCards.map((card) => (
-              <div key={card.key} className="col-6 col-md-4 col-xl-3">
+              <div key={card.key} className="col-4 col-md-3">
                 <PosterTile
                   href={card.href}
                   posterUrl={card.posterUrl}
@@ -222,56 +304,110 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+      </div>
+
+      {/* Дни рождения — тёплый акцентный блок рядом с афишей: он же
+          разбивает ряд по ширине. Показываем и артистов, и друзей. */}
+      {hasBirthdays && (
+        <div className="col-12 col-lg-4">
+          <section className="glow-panel p-4 h-100">
+            <h2 className="section-heading mb-3">🎂 Сегодня день рождения</h2>
+            <div className="d-flex flex-column gap-3">
+              {birthdayFriends.map((f) => (
+                <Link
+                  key={f.id}
+                  href={`/users/${f.username ?? f.id}`}
+                  className="d-flex align-items-center gap-3 text-decoration-none"
+                >
+                  <LetterAvatar name={f.name} photoUrl={f.photoUrl} size={2.6} />
+                  <span style={{ minWidth: 0 }}>
+                    <span className="text-white d-block text-truncate">
+                      {userDisplayName(f)}
+                    </span>
+                    <span className="small text-secondary">
+                      {f.birthDate ? `${turns(f.birthDate)} — ваш друг` : "ваш друг"}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+              {birthdayPerformers.map((p) => (
+                <Link
+                  key={p.id}
+                  href={performerHref(p)}
+                  className="d-flex align-items-center gap-3 text-decoration-none"
+                >
+                  <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={2.6} />
+                  <span style={{ minWidth: 0 }}>
+                    <span className="text-white d-block text-truncate">{p.name}</span>
+                    <span className="small text-secondary">
+                      исполняется {turns(p.birthDate)}
+                      {favoriteSet.has(p.id) ? " · в избранном" : ""}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+      </div>
+
+      {/* Ряд 2 с обратным ритмом (5/7): «смотрю» узкой колонкой,
+          поездки — широкой, чтобы даты читались крупно. */}
+      <div className="row g-4 mb-5">
 
       {/* Предстоящие поездки — чтобы план был на виду (просьба
           владельца). Пустое состояние не рисуем: раздел и так в чипах
           сверху, а пейволл уже есть у «Вы идёте». */}
       {upcomingTrips.length > 0 && (
-        <section className="mb-5">
+        <div className={watchingNow.length > 0 ? "col-12 col-lg-7 order-lg-2" : "col-12"}>
+        <section>
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">Ваши поездки</h2>
             <Link href="/trips" className="small text-secondary">
               все →
             </Link>
           </div>
+          {/* Карточки-«билеты» те же, что на /trips: крупные даты вместо
+              строки текста плюс обратный отсчёт — раньше блок читался
+              как обычный список и терялся. */}
           <div className="d-flex flex-column gap-2 stagger">
             {upcomingTrips.map((t) => (
-              <Link
-                key={t.id}
-                href={tripHref(t)}
-                className="surface surface-hover text-decoration-none d-flex flex-wrap align-items-center justify-content-between gap-2 p-3"
-              >
-                <span style={{ minWidth: 0 }}>
-                  <span className="font-display fw-medium text-white d-block text-truncate">
-                    {t.title}
+              <Link key={t.id} href={tripHref(t)} className="trip-card">
+                <div className="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                  <p className="trip-dates mb-1">
+                    {formatShortDate(t.startDate)}{" "}
+                    <span className="trip-dates-arrow">→</span>{" "}
+                    {formatShortDate(t.endDate)}
+                    <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
+                  </p>
+                  <span className="d-flex flex-wrap gap-2">
+                    {t.userId !== user.id && <span className="date-chip">совместная</span>}
+                    <span className="date-chip">{countdown(t.startDate)}</span>
                   </span>
-                  <span className="small text-secondary">
-                    {formatShortDate(t.startDate)} → {formatShortDate(t.endDate)}{" "}
-                    {t.endDate.getFullYear()}
-                  </span>
-                </span>
-                <span className="small text-secondary flex-shrink-0">
-                  {t.userId === user.id ? "" : "совместная"}
-                </span>
+                </div>
+                <p className="font-display fw-medium text-white mb-0">{t.title}</p>
               </Link>
             ))}
           </div>
         </section>
+        </div>
       )}
 
       {/* Смотрю сейчас — постеры сериалов со статусом WATCHING; пустое
           состояние не рисуем, блок просто скрыт. */}
       {watchingNow.length > 0 && (
-        <section className="mb-5">
+        <div className={upcomingTrips.length > 0 ? "col-12 col-lg-5 order-lg-1" : "col-12"}>
+        <section>
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">Смотрю сейчас</h2>
             <Link href="/dramas" className="small text-secondary">
               все →
             </Link>
           </div>
-          <div className="row g-3 stagger">
+          <div className="row g-2 stagger">
             {watchingNow.map(({ drama }) => (
-              <div key={drama.id} className="col-6 col-md-4 col-xl-3">
+              <div key={drama.id} className="col-4 col-lg-6 col-xl-4">
                 <PosterTile
                   href={dramaHref(drama)}
                   posterUrl={drama.posterUrl}
@@ -282,7 +418,9 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
+        </div>
       )}
+      </div>
 
       {/* Новинки — то, ради чего сюда заходят между концертами. */}
       <section className="mb-5">
@@ -365,22 +503,27 @@ export default async function HomePage() {
             compact
           />
         ) : (
-          <div className="row g-2 stagger">
-            {friendsGoing.map((a) => (
-              <div key={`${a.user.id}-${a.event.id}`} className="col-12 col-lg-6">
-                <Link
-                  href={eventHref(a.event)}
-                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3 h-100"
-                >
-                  <LetterAvatar name={a.user.name} photoUrl={a.user.photoUrl} size={2} />
-                  <span style={{ minWidth: 0 }} className="flex-grow-1">
-                    <span className="text-white d-block text-truncate">{a.event.title}</span>
-                    <span className="small text-secondary">
-                      {userDisplayName(a.user)} · {formatShortDate(a.occurrence.startsAt)}
-                    </span>
+          <div className="d-flex flex-column gap-2 stagger">
+            {friendsByEvent.map((row) => (
+              <Link
+                key={row.event.id}
+                href={eventHref(row.event)}
+                className="surface surface-hover text-decoration-none d-flex flex-wrap align-items-center gap-3 p-3"
+              >
+                <span className="facepile">
+                  {row.friends.slice(0, 4).map((f) => (
+                    <LetterAvatar key={f.id} name={f.name} photoUrl={f.photoUrl} size={2.1} />
+                  ))}
+                </span>
+                <span style={{ minWidth: 0 }} className="flex-grow-1">
+                  <span className="text-white d-block text-truncate">{row.event.title}</span>
+                  <span className="small text-secondary">
+                    {row.friends.map((f) => userDisplayName(f)).join(", ")}
+                    {row.friends.length > 1 ? " идут" : " идёт"}
                   </span>
-                </Link>
-              </div>
+                </span>
+                <span className="date-chip flex-shrink-0">{formatShortDate(row.startsAt)}</span>
+              </Link>
             ))}
           </div>
         )}
