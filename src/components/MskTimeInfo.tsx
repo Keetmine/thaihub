@@ -3,6 +3,7 @@
 import { formatTimeInZone, tzShortLabel } from "@/lib/timezones";
 import { formatTime } from "@/lib/dates";
 import { useViewerTimezone } from "./TimezoneProvider";
+import { useT, useLocale } from "@/components/LocaleProvider";
 import { InfoIcon } from "@/components/icons";
 
 /** Small hover-only "i" icon explaining that a shown time is Thai time,
@@ -19,13 +20,18 @@ export default function MskTimeInfo({
   endsAt?: Date | string | null;
   className?: string;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const tz = useViewerTimezone();
   const start = new Date(startsAt);
   const end = endsAt ? new Date(endsAt) : null;
-  const short = tzShortLabel(tz);
-  const label = end
-    ? `Тайское время. ${short}: ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
-    : `Тайское время. ${short}: ${formatTimeInZone(start, tz)}`;
+  const short = tzShortLabel(tz, locale);
+  const label = t.events.card.thaiTime(
+    short,
+    end
+      ? `${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
+      : formatTimeInZone(start, tz),
+  );
 
   return (
     <span className={`agenda-time-info ${className ?? ""}`} data-tooltip={label} tabIndex={0}>
@@ -46,13 +52,18 @@ export function TzTimeText({
   endsAt?: Date | string | null;
   className?: string;
 }) {
+  const t = useT();
+  const locale = useLocale();
   const tz = useViewerTimezone();
   const start = new Date(startsAt);
   const end = endsAt ? new Date(endsAt) : null;
-  const short = tzShortLabel(tz);
-  const label = end
-    ? `Тайское время. ${short}: ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
-    : `Тайское время. ${short}: ${formatTimeInZone(start, tz)}`;
+  const short = tzShortLabel(tz, locale);
+  const label = t.events.card.thaiTime(
+    short,
+    end
+      ? `${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
+      : formatTimeInZone(start, tz),
+  );
   // Строго formatTime (UTC-часы): по соглашению проекта в базе лежит
   // тайское «настенное» время, и все остальные подписи читают его так
   // же. Раньше здесь стояло d.getHours() — время браузера, и зритель из

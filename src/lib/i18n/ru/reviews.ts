@@ -1,0 +1,25 @@
+import type { Dict } from "../en";
+
+export const reviews: Dict["reviews"] = {
+  reviewsHeading: "Отзывы",
+  commentsHeading: "Комментарии",
+  noName: "Без имени",
+  writeReview: "+ Написать отзыв",
+  editReview: "Редактировать мой отзыв",
+  reviewPlaceholder: "Чем зацепило, что не понравилось, кому советуете…",
+  reviewAria: "Текст отзыва",
+  publish: "Опубликовать",
+  save: "Сохранить",
+  deleteReviewConfirm: "Удалить ваш отзыв?",
+  noReviews: "Пока нет отзывов — будьте первыми.",
+  commentPlaceholder: "Ваш комментарий…",
+  commentAria: "Ваш комментарий",
+  noComments: "Пока нет комментариев — начните обсуждение.",
+  deleteComment: "Удалить комментарий",
+  deleteCommentConfirm: "Удалить комментарий?",
+  signIn: "Войдите",
+  toReview: ", чтобы оставить отзыв.",
+  toComment: ", чтобы комментировать.",
+  send: "Отправить",
+  author: "автора",
+};

@@ -1,3 +1,5 @@
+import type { Locale } from "@/lib/i18n/config";
+
 // Таймзоны для «времени в скобках» рядом с тайским. Все события — в
 // Таиланде (ICT, UTC+7, без перехода на летнее время), в базе лежит
 // тайское настенное время; конвертация в зону зрителя — через Intl
@@ -5,32 +7,53 @@
 
 export const DEFAULT_TIMEZONE = "Europe/Moscow";
 
-/** value — IANA-зона (хранится в User.timezone), short — подпись в
- *  скобках («МСК 14:00»), label — название в настройках. */
-export const TIMEZONES: { value: string; short: string; label: string }[] = [
-  { value: "Europe/Moscow", short: "МСК", label: "Москва (UTC+3)" },
-  { value: "Europe/Kyiv", short: "Киев", label: "Киев (UTC+2/+3)" },
-  { value: "Europe/Minsk", short: "Минск", label: "Минск (UTC+3)" },
-  { value: "Asia/Yekaterinburg", short: "ЕКБ", label: "Екатеринбург (UTC+5)" },
-  { value: "Asia/Novosibirsk", short: "НСК", label: "Новосибирск (UTC+7)" },
-  { value: "Asia/Vladivostok", short: "ВЛД", label: "Владивосток (UTC+10)" },
-  { value: "Asia/Almaty", short: "Алматы", label: "Алматы (UTC+5)" },
-  { value: "Asia/Tbilisi", short: "Тбилиси", label: "Тбилиси (UTC+4)" },
-  { value: "Asia/Yerevan", short: "Ереван", label: "Ереван (UTC+4)" },
-  { value: "Europe/Berlin", short: "Берлин", label: "Берлин (UTC+1/+2)" },
-  { value: "Europe/Warsaw", short: "Варшава", label: "Варшава (UTC+1/+2)" },
-  { value: "Europe/London", short: "Лондон", label: "Лондон (UTC+0/+1)" },
-  { value: "Asia/Bangkok", short: "БКК", label: "Бангкок (UTC+7, тайское)" },
-  { value: "America/New_York", short: "Нью-Йорк", label: "Нью-Йорк (UTC-5/-4)" },
-  { value: "America/Los_Angeles", short: "ЛА", label: "Лос-Анджелес (UTC-8/-7)" },
+/**
+ * value — IANA-зона (хранится в User.timezone), short — подпись в
+ * скобках («МСК 14:00» / «MSK 14:00»), label — название в настройках.
+ *
+ * Подписи двуязычные: время в скобках стоит рядом с тайским на каждой
+ * карточке события, и «МСК» посреди английской страницы читается как
+ * опечатка.
+ */
+type TzEntry = {
+  value: string;
+  short: Record<Locale, string>;
+  label: Record<Locale, string>;
+};
+
+export const TIMEZONES: TzEntry[] = [
+  tz("Europe/Moscow", ["МСК", "MSK"], ["Москва (UTC+3)", "Moscow (UTC+3)"]),
+  tz("Europe/Kyiv", ["Киев", "Kyiv"], ["Киев (UTC+2/+3)", "Kyiv (UTC+2/+3)"]),
+  tz("Europe/Minsk", ["Минск", "Minsk"], ["Минск (UTC+3)", "Minsk (UTC+3)"]),
+  tz("Asia/Yekaterinburg", ["ЕКБ", "YEK"], ["Екатеринбург (UTC+5)", "Yekaterinburg (UTC+5)"]),
+  tz("Asia/Novosibirsk", ["НСК", "NSK"], ["Новосибирск (UTC+7)", "Novosibirsk (UTC+7)"]),
+  tz("Asia/Vladivostok", ["ВЛД", "VLA"], ["Владивосток (UTC+10)", "Vladivostok (UTC+10)"]),
+  tz("Asia/Almaty", ["Алматы", "Almaty"], ["Алматы (UTC+5)", "Almaty (UTC+5)"]),
+  tz("Asia/Tbilisi", ["Тбилиси", "Tbilisi"], ["Тбилиси (UTC+4)", "Tbilisi (UTC+4)"]),
+  tz("Asia/Yerevan", ["Ереван", "Yerevan"], ["Ереван (UTC+4)", "Yerevan (UTC+4)"]),
+  tz("Europe/Berlin", ["Берлин", "Berlin"], ["Берлин (UTC+1/+2)", "Berlin (UTC+1/+2)"]),
+  tz("Europe/Warsaw", ["Варшава", "Warsaw"], ["Варшава (UTC+1/+2)", "Warsaw (UTC+1/+2)"]),
+  tz("Europe/London", ["Лондон", "London"], ["Лондон (UTC+0/+1)", "London (UTC+0/+1)"]),
+  tz("Asia/Bangkok", ["БКК", "BKK"], ["Бангкок (UTC+7, тайское)", "Bangkok (UTC+7, Thai time)"]),
+  tz("America/New_York", ["Нью-Йорк", "New York"], ["Нью-Йорк (UTC-5/-4)", "New York (UTC-5/-4)"]),
+  tz("America/Los_Angeles", ["ЛА", "LA"], ["Лос-Анджелес (UTC-8/-7)", "Los Angeles (UTC-8/-7)"]),
 ];
+
+function tz(value: string, short: [string, string], label: [string, string]): TzEntry {
+  return {
+    value,
+    short: { ru: short[0], en: short[1] },
+    label: { ru: label[0], en: label[1] },
+  };
+}
 
 export function isKnownTimezone(tz: string): boolean {
   return TIMEZONES.some((t) => t.value === tz);
 }
 
-export function tzShortLabel(tz: string): string {
-  return TIMEZONES.find((t) => t.value === tz)?.short ?? "МСК";
+export function tzShortLabel(tz: string, locale: Locale = "ru"): string {
+  const entry = TIMEZONES.find((t) => t.value === tz);
+  return entry ? entry.short[locale] : locale === "ru" ? "МСК" : "MSK";
 }
 
 /** Тайское настенное время (как лежит в базе) → реальный момент:

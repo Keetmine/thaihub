@@ -1,4 +1,5 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
+import { getT } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -22,7 +23,7 @@ type CommentWithMeta = {
   replies?: CommentWithMeta[];
 };
 
-function CommentRow({
+async function CommentRow({
   comment: c,
   currentUser,
   kind,
@@ -38,13 +39,14 @@ function CommentRow({
   /** Для ответов на ответы форма цепляется к корню треда. */
   replyToId?: string;
 }) {
+  const { t } = await getT();
   const boundAdd = addComment.bind(null, kind, targetId);
   return (
     <div className="d-flex align-items-start gap-2">
       <Avatar name={c.user.name} photoUrl={c.user.photoUrl} />
       <div className="flex-fill" style={{ minWidth: 0 }}>
         <p className="small mb-1">
-          <span className="text-white fw-medium">{c.user.name ?? "Без имени"}</span>
+          <span className="text-white fw-medium">{c.user.name ?? t.reviews.noName}</span>
           <span className="text-secondary"> · {fmtDate(c.createdAt)}</span>
         </p>
         <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
@@ -71,12 +73,12 @@ function CommentRow({
                   name="text"
                   required
                   maxLength={3000}
-                  placeholder={`Ответ для ${c.user.name ?? "автора"}…`}
-                  aria-label={`Ответ для ${c.user.name ?? "автора"}`}
+                  placeholder={`Ответ для ${c.user.name ?? t.reviews.author}…`}
+                  aria-label={`Ответ для ${c.user.name ?? t.reviews.author}`}
                   className="form-control form-control-sm"
                 />
                 <button type="submit" className="btn btn-primary btn-sm flex-shrink-0">
-                  Отправить
+                  {t.reviews.send}
                 </button>
               </form>
             </details>
@@ -87,11 +89,11 @@ function CommentRow({
         </div>
       </div>
       {currentUser && (c.user.id === currentUser.id || currentUser.isAdmin) && (
-        <ConfirmForm action={deleteComment.bind(null, c.id)} confirmMessage="Удалить комментарий?">
+        <ConfirmForm action={deleteComment.bind(null, c.id)} confirmMessage={t.reviews.deleteCommentConfirm}>
           <button
             type="button"
             className="icon-btn icon-btn-danger flex-shrink-0"
-            aria-label="Удалить комментарий"
+            aria-label={t.reviews.deleteComment}
           >
             <TrashIcon />
           </button>
@@ -146,6 +148,7 @@ export default async function ReviewsAndComments({
   kind: ReviewKind;
   id: string;
 }) {
+  const { t } = await getT();
   const where =
     kind === "drama" ? { dramaId: id } : kind === "novel" ? { novelId: id } : { eventId: id };
   const currentUser = await getCurrentUser();
@@ -189,7 +192,7 @@ export default async function ReviewsAndComments({
       <section className="surface p-4 mb-3">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <h2 className="section-heading mb-0 d-flex align-items-center gap-2">
-            <StarIcon /> Отзывы
+            <StarIcon /> {t.reviews.reviewsHeading}
             {avg !== null && (
               <span className="fw-semibold" style={{ color: ratingColor(avg) }}>
                 {avg}
@@ -204,7 +207,7 @@ export default async function ReviewsAndComments({
         {currentUser ? (
           <details className="mb-3">
             <summary className="btn btn-ghost btn-sm d-inline-flex">
-              {ownReview ? "Редактировать мой отзыв" : "+ Написать отзыв"}
+              {ownReview ? t.reviews.editReview : t.reviews.writeReview}
             </summary>
             <form action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
               <div className="d-flex align-items-center gap-2">
@@ -227,16 +230,16 @@ export default async function ReviewsAndComments({
                 rows={4}
                 required
                 defaultValue={ownReview?.text}
-                placeholder="Чем зацепило, что не понравилось, кому советуете…"
-                aria-label="Текст отзыва"
+                placeholder={t.reviews.reviewPlaceholder}
+                aria-label={t.reviews.reviewAria}
                 className="form-control"
               />
               <div className="d-flex gap-2">
                 <button type="submit" className="btn btn-primary btn-sm">
-                  {ownReview ? "Сохранить" : "Опубликовать"}
+                  {ownReview ? t.reviews.save : t.reviews.publish}
                 </button>
                 {ownReview && (
-                  <ConfirmForm action={boundDeleteReview} confirmMessage="Удалить ваш отзыв?">
+                  <ConfirmForm action={boundDeleteReview} confirmMessage={t.reviews.deleteReviewConfirm}>
                     <button type="button" className="btn btn-outline-secondary btn-sm">
                       Удалить отзыв
                     </button>
@@ -248,14 +251,14 @@ export default async function ReviewsAndComments({
         ) : (
           <p className="small text-secondary">
             <Link href="/login" className="link-body-emphasis">
-              Войдите
+              {t.reviews.signIn}
             </Link>
-            , чтобы оставить отзыв.
+            {t.reviews.toReview}
           </p>
         )}
 
         {reviews.length === 0 ? (
-          <p className="small text-secondary mb-0">Пока нет отзывов — будьте первыми.</p>
+          <p className="small text-secondary mb-0">{t.reviews.noReviews}</p>
         ) : (
           <div className="d-flex flex-column gap-3">
             {reviews.map((r) => (
@@ -263,7 +266,7 @@ export default async function ReviewsAndComments({
                 <Avatar name={r.user.name} photoUrl={r.user.photoUrl} />
                 <div style={{ minWidth: 0 }}>
                   <p className="small mb-1">
-                    <span className="text-white fw-medium">{r.user.name ?? "Без имени"}</span>{" "}
+                    <span className="text-white fw-medium">{r.user.name ?? t.reviews.noName}</span>{" "}
                     <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
                       {r.rating}
                     </span>
@@ -285,7 +288,7 @@ export default async function ReviewsAndComments({
       {/* ---------- Комментарии ---------- */}
       <section className="surface p-4 mb-3">
         <h2 className="section-heading mb-3 d-flex align-items-center gap-2">
-          <ChatIcon /> Комментарии
+          <ChatIcon /> {t.reviews.commentsHeading}
           {comments.length > 0 && (
             <span className="small text-secondary fw-normal">
               ({comments.reduce((sum, c) => sum + 1 + c.replies.length, 0)})
@@ -300,26 +303,26 @@ export default async function ReviewsAndComments({
               rows={2}
               required
               maxLength={3000}
-              placeholder="Ваш комментарий…"
-              aria-label="Ваш комментарий"
+              placeholder={t.reviews.commentPlaceholder}
+              aria-label={t.reviews.commentAria}
               className="form-control"
             />
             <button type="submit" className="btn btn-primary btn-sm align-self-start">
-              Отправить
+              {t.reviews.send}
             </button>
           </form>
         ) : (
           <p className="small text-secondary">
             <Link href="/login" className="link-body-emphasis">
-              Войдите
+              {t.reviews.signIn}
             </Link>
-            , чтобы комментировать.
+            {t.reviews.toComment}
           </p>
         )}
 
         {comments.length === 0 ? (
           <p className="small text-secondary mb-0">
-            Пока нет комментариев — начните обсуждение.
+            {t.reviews.noComments}
           </p>
         ) : (
           <div className="d-flex flex-column gap-3">
