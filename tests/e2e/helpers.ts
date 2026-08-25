@@ -9,7 +9,10 @@ import type { Page } from "@playwright/test";
 export const ADMIN_EMAIL = "admin-e2e@test.local";
 export const ADMIN_TEST_PASSWORD = "admin-e2e-password";
 
-export async function loginAsAdmin(page: Page) {
+/** Вход тестовым админом БЕЗ закрепления языка: язык поднимается из
+ *  профиля, как у живого человека. Нужен user-locale.spec.ts — он как раз
+ *  про эту связку; всем остальным нужен loginAsAdmin ниже. */
+export async function loginAsAdminKeepingProfileLocale(page: Page) {
   // Отдельного админ-логина больше нет — админ это роль пользователя.
   // Тестовый админ создаётся/обновляется отдельным tsx-процессом
   // (Prisma ESM-only, из spec-файла её не импортировать).
@@ -21,6 +24,25 @@ export async function loginAsAdmin(page: Page) {
   await page.fill('input[name="password"]', ADMIN_TEST_PASSWORD);
   await page.click('button[type="submit"]');
   await page.waitForURL(/\/account/);
+}
+
+export async function loginAsAdmin(page: Page) {
+  await loginAsAdminKeepingProfileLocale(page);
+
+  // Закрепляем английский. Тесты проверяют английские подписи (сайт по
+  // умолчанию английский), а вход поднимает язык из профиля — и если
+  // соседняя спека оставила там русский, соседи начинают падать на
+  // ненайденных кнопках. Ставим после входа: до него куку перезапишет
+  // createUserSession.
+  //
+  // url — именно origin, без пути: путь куки Playwright берёт из адреса, а
+  // после входа с русским профилем адрес был бы /ru/account — и кука
+  // досталась бы только страницам под /ru, то есть закрепила бы ровно не
+  // то, ради чего ставится.
+  await page.context().addCookies([
+    { name: "locale", value: "en", url: new URL(page.url()).origin },
+  ]);
+
   await page.goto("/admin");
   await page.waitForURL(/\/admin$/);
 }

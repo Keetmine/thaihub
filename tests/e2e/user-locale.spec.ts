@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { ADMIN_EMAIL, ADMIN_TEST_PASSWORD, loginAsAdmin } from "./helpers";
+import { ADMIN_EMAIL, ADMIN_TEST_PASSWORD, loginAsAdminKeepingProfileLocale } from "./helpers";
 
 /**
  * Язык, выбранный в профиле.
@@ -9,6 +9,11 @@ import { ADMIN_EMAIL, ADMIN_TEST_PASSWORD, loginAsAdmin } from "./helpers";
  * ещё и в `User.locale`, а кука из него восстанавливается при входе.
  * Именно эта связка и ломается молча: язык на странице выглядит
  * правильным, а письма продолжают приходить на другом.
+ *
+ * Вход здесь свой, без `loginAsAdmin`: тот закрепляет куку `locale=en`,
+ * чтобы соседние спеки видели английские подписи независимо от того,
+ * какой язык остался в профиле. Для этой спеки такая кука — подмена
+ * предмета проверки: она как раз про то, что язык приходит из профиля.
  */
 
 async function setLanguage(page: import("@playwright/test").Page, value: "en" | "ru") {
@@ -17,8 +22,20 @@ async function setLanguage(page: import("@playwright/test").Page, value: "en" | 
   await page.locator('form:has(select[name="locale"]) button[type="submit"]').first().click();
 }
 
+/** Адрес без языкового префикса: `/\/account\/settings$/` совпал бы и с
+ *  `/ru/account/settings`, то есть не отличал бы английскую версию. */
+const pathIs = (expected: string) => (url: URL) => url.pathname === expected;
+
 test("выбор языка в настройках сразу переводит страницу", async ({ page }) => {
-  await loginAsAdmin(page);
+  await loginAsAdminKeepingProfileLocale(page);
+
+  // Отправная точка: в профиле мог остаться русский с прошлого прогона, а
+  // «переключение» в тот же язык не проверяет ничего — страница и так на
+  // нём, и действие в настройках никуда не редиректит (оно сравнивает
+  // выбранный язык с тем, что лежит в профиле).
+  await setLanguage(page, "en");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+
   await setLanguage(page, "ru");
   // Не просто «кука поставилась»: заголовок с языком для этого запроса
   // proxy посчитал до того, как кука появилась, поэтому без перехода
@@ -28,12 +45,12 @@ test("выбор языка в настройках сразу переводи�
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
 
   await setLanguage(page, "en");
-  await page.waitForURL(/localhost[^/]*\/account\/settings|\/account\/settings$/);
+  await page.waitForURL(pathIs("/account/settings"));
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });
 
 test("вход на новом устройстве поднимает язык из профиля", async ({ browser, page }) => {
-  await loginAsAdmin(page);
+  await loginAsAdminKeepingProfileLocale(page);
   await setLanguage(page, "ru");
   await page.waitForURL(/\/ru\//);
 
@@ -51,5 +68,9 @@ test("вход на новом устройстве поднимает язык 
   expect(new URL(fresh.url()).pathname).toBe("/ru/events");
   await ctx.close();
 
+  // Возвращаем профилю английский и ДОЖИДАЕМСЯ перехода: тесты идут по
+  // одному аккаунту, и незавершённая запись оставила бы следующим спекам
+  // русский профиль.
   await setLanguage(page, "en");
+  await page.waitForURL(pathIs("/account/settings"));
 });
