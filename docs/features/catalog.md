@@ -45,6 +45,17 @@ bar).
   `details.synopsis-fold` («Читать дальше»), как синопсис сериала.
   Вертикальные списки (события, песни) раскрываются целиком — без
   внутреннего скролла.
+- **Дубли соцссылок.** Один профиль приходит в разной форме:
+  `instagram.com/x` из одного источника и `www.instagram.com/x/` из
+  другого. И импорт с MDL, и форма в админке сравнивали адреса
+  буквально, поэтому заводили две записи, и на странице артиста
+  иконка сети показывалась дважды. Оба места теперь сравнивают по
+  `socialLinkKey` (`src/lib/socialLinks.ts`): гасятся схема, `www.`,
+  хвостовой слеш, query и регистр, а `twitter.com` и `x.com` считаются
+  одним аккаунтом. Уже накопленное чистит разовый
+  `scripts/dedupe-performer-links.ts` (по умолчанию — черновой прогон,
+  `--apply` удаляет; из группы остаётся запись с протоколом и
+  осмысленной подписью).
 - `PerformerLink` is a free-form label+URL list per performer (social
   media, personal café, whatever) — no schema change needed to add a new
   kind of link. `src/lib/socialLinks.ts`'s `detectSocialPlatform(url)`

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import { SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
+import { socialLinkKey, SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
 import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
@@ -191,7 +191,15 @@ function getLinks(formData: FormData): LinkInput[] {
     if (!url) continue; // skip empty rows / rows missing a url
     links.push({ label: label || url, url });
   }
-  return links;
+  // Один и тот же профиль мог прийти и из отдельного поля Instagram, и
+  // из общего списка ссылок — храним по одной записи на адрес.
+  const seen = new Set<string>();
+  return links.filter((l) => {
+    const key = socialLinkKey(l.url);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function parseBirthDate(value: string): Date | null {

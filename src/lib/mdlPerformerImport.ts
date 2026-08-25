@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { fetchMdlPerson, absMdlUrl, type MdlPerson } from "@/lib/mydramalist";
+import { socialLinkKey } from "@/lib/socialLinks";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled } from "@/lib/importRun";
 
@@ -115,15 +116,19 @@ export async function importMdlPerformer(
     filled.push("карточка целиком");
   }
 
-  // Соцссылки — только недостающие: сравниваем по адресу, чтобы
-  // повторный импорт не плодил одинаковые строки.
-  const haveUrls = new Set((existing?.links ?? []).map((l) => l.url));
+  // Соцссылки — только недостающие. Сравниваем по нормализованному
+  // ключу (socialLinkKey), а не по строке: у MDL один и тот же профиль
+  // встречается и как instagram.com/x, и как www.instagram.com/x/, и
+  // такие «разные» адреса копились дублями в карточке.
+  const haveUrls = new Set((existing?.links ?? []).map((l) => socialLinkKey(l.url)));
   let linksAdded = 0;
   for (const link of person.socialLinks) {
     // Остановка по кнопке: карточка уже заведена и остаётся такой, как
     // получилось, — повторный импорт того же адреса её дозаполнит.
     await checkImportCancelled(runId ?? null);
-    if (haveUrls.has(link)) continue;
+    const key = socialLinkKey(link);
+    if (haveUrls.has(key)) continue;
+    haveUrls.add(key);
     await prisma.performerLink.create({
       data: { performerId: performer.id, label: labelFor(link), url: link },
     });
