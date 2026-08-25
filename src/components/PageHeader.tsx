@@ -36,7 +36,7 @@ function shortenName(raw: string): string {
 
 /** Раскладывает имена по рядам: самые популярные — в первые ряды, они
  *  ярче всего. Ряд набирается до «бюджета» символов и заведомо не
- *  влезает в колонку — лишнее срезает контейнер.
+ *  влезает в колонку — хвост срезает контейнер и растворяет маска.
  *
  *  Имён может не хватить на все ряды (маскоты, новеллы) — тогда список
  *  идёт по кругу, а не откатывается на одно контурное слово. Начало
@@ -66,8 +66,10 @@ function buildNameRows(names: string[]): string[] {
     // Пропускаем имена, с которых уже начинался какой-то ряд. Ограничение
     // по длине списка — на случай, когда имён меньше, чем рядов: там
     // одинаковых стартов не избежать, ряды разводит сдвиг в CSS.
-    for (let skipped = 0; skipped < items.length && usedStarts.has(cursor % items.length); skipped++) {
+    let skipped = 0;
+    while (skipped < items.length && usedStarts.has(cursor % items.length)) {
       cursor++;
+      skipped++;
     }
     usedStarts.add(cursor % items.length);
     let row = at(cursor++);
