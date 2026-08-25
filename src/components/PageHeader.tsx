@@ -4,7 +4,7 @@ import Link from "@/components/AppLink";
 const NAME_SEPARATOR = " · ";
 
 /** Рядов ровно три, и все три видны целиком — так в макете владельца. */
-const NAME_ROW_COUNT = 3;
+const NAME_ROW_COUNT = 4;
 
 /** Условная «ёмкость» ряда в символах. Ряд намеренно длиннее колонки
  *  контента: оба края срезает overflow контейнера (ровный вертикальный
