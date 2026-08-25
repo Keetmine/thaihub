@@ -172,6 +172,8 @@ export default async function ProtectedAdminLayout({
   })).filter((section) => section.items.length > 0);
 
   return (
+    // Язык админки (всегда русский) ставит proxy заголовком — и
+    // серверным компонентам, и провайдеру в корневом layout.
     <div className="d-flex align-items-stretch flex-fill">
       {/* Сайдбар во всю высоту окна, вплотную к левому краю (как в
           admin-dashboard-референсах): логотип сверху, разделы с

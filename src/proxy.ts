@@ -29,7 +29,12 @@ export function proxy(request: NextRequest) {
   // проиндексированы), русский — под `/ru`. Русские страницы отдаём
   // рерайтом на те же маршруты, чтобы не заводить второе дерево
   // файлов; язык кладём в заголовок — из пути его уже не прочитать.
-  const { locale, path: pathname } = stripLocale(rawPathname);
+  const stripped = stripLocale(rawPathname);
+  const pathname = stripped.path;
+  // Админка одноязычная — русская. Она живёт на адресах без префикса,
+  // поэтому по умолчанию получила бы английский, и общие виджеты
+  // (пагинация, подтверждения, модалки) заговорили бы там по-английски.
+  const locale = pathname.startsWith("/admin") ? "ru" : stripped.locale;
   const isAppRoute =
     !pathname.startsWith("/api") &&
     !pathname.startsWith("/files") &&
