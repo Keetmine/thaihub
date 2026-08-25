@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 
 // Плавающая кнопка «наверх»: появляется после прокрутки на ~2 экрана.
 export default function ScrollTopButton() {
+  const t = useT();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function ScrollTopButton() {
   return (
     <button
       type="button"
-      aria-label="Наверх"
+      aria-label={t.widgets.scrollTop}
       className="scroll-top-btn"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
     >

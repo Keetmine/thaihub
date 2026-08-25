@@ -7,7 +7,8 @@ import {
   clearDramaWatchStatus,
   type DramaWatchStatusValue,
 } from "@/app/(public)/favorites/actions";
-import { WATCH_STATUS_LABELS, WATCH_STATUS_ORDER } from "@/lib/watchStatus";
+import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
+import { useT } from "@/components/LocaleProvider";
 import { CheckIcon, ChevronDownIcon } from "@/components/icons";
 
 export default function WatchStatusSelect({
@@ -17,6 +18,7 @@ export default function WatchStatusSelect({
   dramaId: string;
   status: DramaWatchStatusValue | null;
 }) {
+  const t = useT();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +57,7 @@ export default function WatchStatusSelect({
         onClick={() => setIsOpen((v) => !v)}
       >
         <span className={status ? "" : "text-secondary"}>
-          {status ? WATCH_STATUS_LABELS[status] : "Не отмечено"}
+          {status ? t.catalog.watchStatus[status] : t.catalog.watchStatusNone}
         </span>
         <ChevronDownIcon />
       </button>
@@ -63,7 +65,7 @@ export default function WatchStatusSelect({
       {isOpen && (
         <div className="performer-select-dropdown">
           <button type="button" className="performer-select-option" onClick={() => choose(null)}>
-            <span className="flex-fill text-start">Не отмечено</span>
+            <span className="flex-fill text-start">{t.catalog.watchStatusNone}</span>
             {!status && <CheckIcon />}
           </button>
           {WATCH_STATUS_ORDER.map((s) => (
@@ -73,7 +75,7 @@ export default function WatchStatusSelect({
               className="performer-select-option"
               onClick={() => choose(s)}
             >
-              <span className="flex-fill text-start">{WATCH_STATUS_LABELS[s]}</span>
+              <span className="flex-fill text-start">{t.catalog.watchStatus[s]}</span>
               {status === s && <CheckIcon />}
             </button>
           ))}

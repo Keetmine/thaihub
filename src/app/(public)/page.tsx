@@ -3,7 +3,7 @@ import { getT, type Dict } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
-import { getMusicNews } from "@/lib/whatsNew";
+import { getMusicNews, type NewsItem } from "@/lib/whatsNew";
 import { getFriendIds } from "@/lib/friends";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
@@ -32,11 +32,18 @@ function countdown(start: Date, t: Dict): string {
   return months <= 1 ? t.home.countdownMonth : t.home.countdownMonths(months);
 }
 
+/** «Сингл · 2025» под названием новинки: тип релиза (у отдельной песни —
+ *  просто «песня») и год, если он известен. */
+function newsSubtitle(item: NewsItem, t: Dict): string {
+  const kind = item.albumType ? t.catalog.albumType[item.albumType] : t.catalog.songType;
+  return [kind, item.year].filter(Boolean).join(" · ");
+}
+
 export default async function HomePage() {
   const user = await getCurrentUser();
   if (!user) return <LandingPage />;
 
-  const { t: dict } = await getT();
+  const { t: dict, locale } = await getT();
   const premium = isPremiumActive(user);
   const now = new Date();
 
@@ -203,17 +210,17 @@ export default async function HomePage() {
     <div>
       <PageHeader
         eyebrow={dict.home.eyebrow}
-        title={dict.home.greeting(userDisplayName(user))}
+        title={dict.home.greeting(userDisplayName(user, locale))}
         action={
           <>
             <Link href="/events" className="chip-link">
-              Афиша
+              {dict.nav.events}
             </Link>
             <Link href="/calendar" className="chip-link">
-              Календарь
+              {dict.nav.calendar}
             </Link>
             <Link href="/trips" className="chip-link">
-              Поездки
+              {dict.nav.trips}
             </Link>
           </>
         }
@@ -317,7 +324,7 @@ export default async function HomePage() {
                   <LetterAvatar name={f.name} photoUrl={f.photoUrl} size={2.6} />
                   <span style={{ minWidth: 0 }}>
                     <span className="text-white d-block text-truncate">
-                      {userDisplayName(f)}
+                      {userDisplayName(f, locale)}
                     </span>
                     <span className="small text-secondary">
                       {f.birthDate ? `${turns(f.birthDate)} — ${dict.home.yourFriend}` : dict.home.yourFriend}
@@ -412,9 +419,7 @@ export default async function HomePage() {
                     >
                       {item.performer.name}
                     </Link>
-                    <span className="small text-secondary">
-                      {[item.subtitle, item.year].filter(Boolean).join(" · ")}
-                    </span>
+                    <span className="small text-secondary">{newsSubtitle(item, dict)}</span>
                   </div>
                   {item.url && (
                     <a
@@ -423,7 +428,7 @@ export default async function HomePage() {
                       rel="noopener noreferrer"
                       className="btn btn-ghost btn-sm flex-shrink-0"
                     >
-                      Слушать ↗
+                      {dict.home.listen}
                     </a>
                   )}
                 </div>

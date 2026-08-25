@@ -1,4 +1,4 @@
-import { plural } from "@/lib/plural";
+import { plural, pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
 export const account: Dict["account"] = {
@@ -155,6 +155,13 @@ export const account: Dict["account"] = {
     relinkLinks: "Telegram привяжется к аккаунту, в котором вы сейчас.",
     relinkDeletes: "Старый аккаунт будет удалён — войти в него больше не получится.",
     relinkLosses: (losses: string) => `Вместе с ним пропадут: ${losses}.`,
+    relinkLostPerformers: (n: number) =>
+      pluralized(n, ["любимый артист", "любимых артиста", "любимых артистов"]),
+    relinkLostEvents: (n: number) =>
+      pluralized(n, ["событие в избранном", "события в избранном", "событий в избранном"]),
+    relinkLostAttendances: (n: number) =>
+      pluralized(n, ["отметка «иду»", "отметки «иду»", "отметок «иду»"]),
+    relinkLostTrips: (n: number) => pluralized(n, ["поездка", "поездки", "поездок"]),
     relinkNoLosses: "Данных в нём нет — терять нечего.",
     relinkConfirm: "Перенести и удалить старый",
     relinkBusy: "Переносим…",

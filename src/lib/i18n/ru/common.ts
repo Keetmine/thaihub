@@ -13,6 +13,8 @@ export const common: Dict["common"] = {
     searchByName: "Поиск по названию…",
   loading: "Загружаем…",
   notificationsUnread: (n: number) => `Уведомления: ${n} новых`,
+  userFallback: "Пользователь",
+  deletedAccount: "Удалённый аккаунт",
     year: "год",
     language: "Язык",
     switchToRussian: "Русский",

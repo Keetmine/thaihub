@@ -1,17 +1,10 @@
 import type { DramaWatchStatusValue } from "@/app/(public)/favorites/actions";
 
-// Kept free of any server-only import (Prisma, etc.) — this module is
-// pulled into client components (AccountTabs, WatchStatusSelect,
-// DramaStatusButton) for the labels/order alone. The server-side lookup
-// lives in src/lib/favorites.ts instead.
-
-export const WATCH_STATUS_LABELS: Record<DramaWatchStatusValue, string> = {
-  WATCHING: "Смотрю сейчас",
-  COMPLETED: "Просмотрено",
-  ON_HOLD: "Отложено",
-  PLAN_TO_WATCH: "Буду смотреть",
-  DROPPED: "Заброшено",
-};
+// Без единого серверного импорта (Prisma и прочего) — модуль тянут в
+// клиентские компоненты (WatchStatusSelect, DramaStatusButton) ради
+// одного порядка статусов. Серверная выборка живёт в src/lib/favorites.ts.
+// Подписи здесь не лежат: статусы видит посетитель, поэтому они берутся
+// из словаря (t.catalog.watchStatus) на месте отрисовки.
 
 export const WATCH_STATUS_ORDER: DramaWatchStatusValue[] = [
   "WATCHING",

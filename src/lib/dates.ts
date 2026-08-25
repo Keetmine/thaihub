@@ -114,6 +114,21 @@ export function formatShortDate(d: Date, locale: Locale = "ru"): string {
     .replace(/\.$/, "");
 }
 
+/** «24 окт 2025» / «24 Oct 2025» — для подписей, где важен год.
+ *  Отзывы и комментарии живут годами, и «24 окт» там врёт: непонятно,
+ *  этого года или позапрошлого. Считается в UTC, как остальные даты в
+ *  этом модуле. */
+export function formatDateWithYear(d: Date, locale: Locale = "ru"): string {
+  return d
+    .toLocaleDateString(INTL_TAG[locale], {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: UTC,
+    })
+    .replace(/\.$/, "");
+}
+
 /** Короткий месяц («окт» / «Oct») и день недели («пн» / «Mon») для
  *  дата-блока карточки события. Считаются по локальным компонентам даты
  *  — ровно как раньше делали сами карточки, логика не менялась. */

@@ -99,11 +99,15 @@ export const events = {
         uploadFailedLong: "We couldn't upload the ticket",
     },
 
-    /** Ответы выгрузки в календарь: /event/[id]/ics */
+    /** Выгрузка в календарь: ответы маршрута /event/[id]/ics и
+     *  подписи внутри самого файла — их человек видит уже в своём
+     *  календаре. */
     ics: {
         subscriptionOnly: "Subscribers only",
         notFound: "Event not found",
         noPresale: "No presale date for this event",
+        calendarName: "MyBLHub — my events",
+        presale: (title: string) => `Presale: ${title}`,
     },
 
     /** Заметки к событию */

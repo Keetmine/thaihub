@@ -14,6 +14,7 @@ import { getFriendIds } from "@/lib/friends";
 import { tripHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { getT, localeHref } from "@/lib/i18n";
+import { userDisplayName } from "@/lib/userProfile";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -53,7 +54,7 @@ export default async function TripsPage() {
   const friendIds = await getFriendIds(user.id);
   const friends = await prisma.user.findMany({
     where: { id: { in: friendIds } },
-    select: { id: true, name: true, photoUrl: true },
+    select: { id: true, name: true, photoUrl: true, deletedAt: true },
     orderBy: { name: "asc" },
   });
 
@@ -68,14 +69,14 @@ export default async function TripsPage() {
         ],
       },
       include: {
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, deletedAt: true } },
         _count: { select: { members: { where: { status: "ACCEPTED" } } } },
       },
       orderBy: { startDate: "asc" },
     }),
     prisma.tripMember.findMany({
       where: { userId: user.id, status: "PENDING" },
-      include: { trip: { include: { user: { select: { name: true } } } } },
+      include: { trip: { include: { user: { select: { name: true, deletedAt: true } } } } },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -118,7 +119,11 @@ export default async function TripsPage() {
                     {formatShortDate(inv.trip.startDate, locale)} –{" "}
                     {formatShortDate(inv.trip.endDate, locale)}{" "}
                     {inv.trip.endDate.getFullYear()} ·{" "}
-                    {t.trips.list.invitedBy(inv.trip.user.name ?? t.trips.list.someFriend)}
+                    {t.trips.list.invitedBy(
+                      inv.trip.user.name
+                        ? userDisplayName(inv.trip.user, locale)
+                        : t.trips.list.someFriend,
+                    )}
                   </p>
                 </div>
                 <TripInviteActions tripId={inv.tripId} />
@@ -131,7 +136,9 @@ export default async function TripsPage() {
           <CreateTripButton
             friends={friends.map((f) => ({
               id: f.id,
-              name: f.name ?? t.trips.members.noName,
+              // Утилита переведёт подпись удалённого аккаунта на язык
+              // зрителя; безымянный живой аккаунт остаётся «без имени».
+              name: f.name ? userDisplayName(f, locale) : t.trips.members.noName,
               photoUrl: f.photoUrl,
             }))}
           />
@@ -199,7 +206,11 @@ export default async function TripsPage() {
                   <p className="font-display fw-medium text-white mb-0">{trip.title}</p>
                   {trip.userId !== user.id && (
                     <p className="small text-secondary mb-0">
-                      {t.trips.list.organiser(trip.user.name ?? t.trips.list.noName)}
+                      {t.trips.list.organiser(
+                        trip.user.name
+                          ? userDisplayName(trip.user, locale)
+                          : t.trips.list.noName,
+                      )}
                     </p>
                   )}
                   {trip.visibility !== "PRIVATE" && (

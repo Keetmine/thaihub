@@ -28,6 +28,7 @@ import {
 } from "../TripPlacesControls";
 import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
+import { userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
 
 export const dynamic = "force-dynamic";
@@ -82,12 +83,12 @@ export default async function TripPage({
         orderBy: { startsAt: "asc" },
         include: { location: { select: { id: true, name: true } } },
       },
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, deletedAt: true } },
       // Брони жилья: показываются на вкладке плана рядом с событиями —
       // в день заселения не приходится искать письмо в почте.
       bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
       members: {
-        include: { user: { select: { id: true, name: true } } },
+        include: { user: { select: { id: true, name: true, deletedAt: true } } },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -122,9 +123,9 @@ export default async function TripPage({
   }
 
   const participantIds = [trip.userId, ...acceptedMembers.map((m) => m.userId)];
-  const nameById = new Map<string, string | null>([
-    [trip.userId, trip.user.name],
-    ...acceptedMembers.map((m) => [m.userId, m.user.name] as [string, string | null]),
+  const nameById = new Map<string, string>([
+    [trip.userId, userDisplayName(trip.user, locale)],
+    ...acceptedMembers.map((m) => [m.userId, userDisplayName(m.user, locale)] as [string, string]),
   ]);
   // Фильтр «Только моё» (совместные поездки): в плане остаются лишь мои
   // отметки «иду», мои личные события и мои дела.
@@ -278,7 +279,7 @@ export default async function TripPage({
   const availableFriends = isOwner
     ? await prisma.user.findMany({
         where: { id: { in: friendIds.filter((id) => !memberIdSet.has(id)) } },
-        select: { id: true, name: true },
+        select: { id: true, name: true, deletedAt: true },
         orderBy: { name: "asc" },
       })
     : [];
@@ -318,10 +319,11 @@ export default async function TripPage({
             <TripMembersButton
               tripId={trip.id}
               isOwner={isOwner}
-              owner={{ id: trip.userId, name: trip.user.name }}
+              owner={{ id: trip.userId, name: trip.user.name, deletedAt: trip.user.deletedAt }}
               members={trip.members.map((m) => ({
                 id: m.userId,
                 name: m.user.name,
+                deletedAt: m.user.deletedAt,
                 pending: m.status === "PENDING",
               }))}
               availableFriends={availableFriends}
@@ -333,7 +335,7 @@ export default async function TripPage({
             className="small text-secondary text-decoration-none"
           >
             {trip.user.name
-              ? t.trips.detail.ofUser(trip.user.name)
+              ? t.trips.detail.ofUser(userDisplayName(trip.user, locale))
               : t.trips.detail.ofFriend}
           </AppLink>
         )}
@@ -342,7 +344,11 @@ export default async function TripPage({
       {isInvited && (
         <div className="surface d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 mb-4">
           <span>
-            {t.trips.detail.inviteBanner(trip.user.name ?? t.trips.detail.someone)}
+            {t.trips.detail.inviteBanner(
+              trip.user.name
+                ? userDisplayName(trip.user, locale)
+                : t.trips.detail.someone,
+            )}
           </span>
           <TripInviteActions tripId={trip.id} />
         </div>

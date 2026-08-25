@@ -6,6 +6,7 @@ export const home = {
     whatsNew: "What's new",
     newsFromFavourites: "releases by your artists",
     newsFromCatalogue: "fresh in the catalogue",
+    listen: "Listen ↗",
     birthdays: "Birthdays today",
     turns: (age: number) => `turns ${age}`,
     yourFriend: "your friend",

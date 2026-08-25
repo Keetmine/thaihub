@@ -13,6 +13,12 @@ export const common = {
   // Счётчик живёт здесь, а не в nav: подписи навигации типизированы
   // как простые строки (labelKey в меню), функция ломала бы этот тип.
   notificationsUnread: (n: number) => `Notifications: ${n} new`,
+  // Подпись человека без имени и ника — общая на весь сайт
+  // (см. userDisplayName в src/lib/userProfile.ts).
+  userFallback: "User",
+  // Подпись удалённого аккаунта. В базе её нет: она подставляется на
+  // чтении по признаку удаления, на языке зрителя.
+  deletedAccount: "Deleted account",
     year: "year",
     language: "Language",
     switchToRussian: "Русский",

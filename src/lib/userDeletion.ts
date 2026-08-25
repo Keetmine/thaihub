@@ -34,6 +34,11 @@ export async function softDeleteUser(
         telegramUsername: null,
         googleId: null,
         passwordHash: null,
+        // Подпись НЕ переводится на язык удаляющего: она ложится в базу
+        // и остаётся там годами, а читают её другие люди и на своём
+        // языке. На чтении удалённый аккаунт узнаётся по `deletedAt`, и
+        // userDisplayName подставляет подпись из словаря; это значение —
+        // запасное, для мест, которые читают `name` напрямую.
         name: "Удалённый аккаунт",
         photoUrl: null,
       },

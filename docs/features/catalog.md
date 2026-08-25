@@ -453,9 +453,10 @@ MDL) и в строках каталога /dramas — «★ N.N» серой п
 по-прежнему `WATCH_STATUS_ORDER`), статус производства
 (`t.catalog.dramaStatus`), типы релизов (`t.catalog.albumType`),
 категории мест (`t.catalog.locationCategory`) и день эфира
-(`t.catalog.airedOn`). Русские подписи в `src/lib/watchStatus.ts`,
-`dramaStatus.ts` и `locationCategories.ts` остаются — ими пользуется
-одноязычная админка.
+(`t.catalog.airedOn`). Русские подписи в `dramaStatus.ts` и
+`locationCategories.ts` остаются — ими пользуется одноязычная админка.
+В `watchStatus.ts` подписей больше нет: ими пользовалась только
+публичная часть, и они уехали в словарь целиком.
 
 Контент из базы не переводится: названия сериалов, синопсисы, имена и
 роли приходят с MDL/blscene и уже английские. Даты форматируются по

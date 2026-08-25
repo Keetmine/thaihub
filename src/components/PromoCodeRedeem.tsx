@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { redeemPromoCode } from "@/app/(public)/promoActions";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { formatCombinedDateList } from "@/lib/dates";
 
 /** Поле «У меня есть промокод» на пейволле. */
 export default function PromoCodeRedeem() {
   const t = useT();
+  const locale = useLocale();
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -22,8 +24,10 @@ export default function PromoCodeRedeem() {
         return;
       }
       setStatus("done");
+      // Дата — на языке страницы; формат «25 августа 2026» / «25 August
+      // 2026», без дня недели: он бы не согласовался с «до».
       setMessage(
-        `Подписка активна до ${new Date(result.until).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })} — обновите страницу!`,
+        t.widgets.promo.activated(formatCombinedDateList([new Date(result.until)], locale)),
       );
     } catch {
       // Сеть/сервер недоступны — текст исключения из server action в

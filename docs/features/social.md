@@ -45,8 +45,9 @@ been a favorite. Two UIs:
 loads a `Map<dramaId, status>` for a page's rows (same shape as
 `getFavoritedEventIds`) — deliberately *not* in `src/lib/watchStatus.ts`,
 which stays free of any server-only import (Prisma) since client
-components (`AccountTabs`, `WatchStatusSelect`, `DramaStatusButton`) pull
-`WATCH_STATUS_LABELS`/`WATCH_STATUS_ORDER` from it.
+components (`WatchStatusSelect`, `DramaStatusButton`) pull
+`WATCH_STATUS_ORDER` from it. The labels themselves live in the
+dictionary (`t.catalog.watchStatus`), not in that module.
 
 `/dramas` filters by this status via a `.tab-bar-row` — "Все" plus one
 tab per `WATCH_STATUS_ORDER` entry, with the title search in the same

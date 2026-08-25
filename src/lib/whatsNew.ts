@@ -1,3 +1,4 @@
+import type { AlbumType } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 // «Что нового» — свежие релизы и песни, появившиеся в каталоге.
@@ -9,19 +10,14 @@ export type NewsItem = {
   id: string;
   kind: "album" | "song";
   title: string;
-  /** Тип релиза: сингл, EP, альбом — у песен пусто. */
-  subtitle: string | null;
+  /** Тип релиза: сингл, EP, альбом — у песен пусто. Наружу идёт код, а
+   *  не подпись: язык знает страница, модуль остаётся про данные. */
+  albumType: AlbumType | null;
   year: number | null;
   coverUrl: string | null;
   url: string | null;
   addedAt: Date;
   performer: { id: string; name: string; slug: string | null; photoUrl: string | null };
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  ALBUM: "Альбом",
-  EP: "EP",
-  SINGLE: "Сингл",
 };
 
 /**
@@ -82,7 +78,7 @@ export async function getMusicNews(options?: {
       id: a.id,
       kind: "album" as const,
       title: a.title,
-      subtitle: TYPE_LABELS[a.type] ?? null,
+      albumType: a.type,
       year: a.year,
       coverUrl: a.coverUrl,
       url: a.url,
@@ -93,7 +89,7 @@ export async function getMusicNews(options?: {
       id: s.id,
       kind: "song" as const,
       title: s.title,
-      subtitle: "Песня",
+      albumType: null,
       year: s.year,
       coverUrl: null,
       url: s.url,

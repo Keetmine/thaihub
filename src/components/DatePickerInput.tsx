@@ -360,7 +360,7 @@ export default function DatePickerInput({
                 onValueChange?.("");
               }}
             >
-              Сбросить
+              {t.widgets.datePicker.clear}
             </button>
           )}
         </div>,

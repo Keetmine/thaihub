@@ -3,6 +3,7 @@
 export const widgets = {
   favorite: {
     add: "Add to favourites",
+    added: "In favourites",
     remove: "Remove from favourites",
     short: "Favourite",
   },
@@ -29,6 +30,16 @@ export const widgets = {
     failed: "Could not upload the file",
     hintImage: "Image, up to 8MB",
     remove: "Remove",
+  },
+  /** Подписи к машинным кодам ошибок из /api/upload* — см.
+   *  src/lib/uploadErrors.ts. Предел размера и список форматов у ручек
+   *  разные, поэтому приезжают в ответе и подставляются здесь. */
+  upload: {
+    notAuthorized: "You need to sign in to upload a file",
+    noFile: "The file didn't reach us, please try again",
+    badType: (formats: string) => `Allowed formats: ${formats}`,
+    tooLarge: (maxMb: number) => `The file is too large — ${maxMb}MB maximum`,
+    badImage: "We couldn't process this image, try another file",
   },
   datePicker: {
     placeholder: "Pick a date",
@@ -76,6 +87,11 @@ export const widgets = {
     label: "Promo code",
     redeem: "Redeem",
     failed: "Couldn't reach the server, please try again",
+    signInRequired: "You need to sign in",
+    enterCode: "Enter a code",
+    noSuchCode: "No such code",
+    alreadyUsed: "This code has already been used",
+    activated: (until: string) => `Subscription active until ${until} — reload the page!`,
   },
   feedback: {
     optional: " (optional)",
@@ -90,17 +106,32 @@ export const widgets = {
     kindContent: "Please add a series or an actor",
     email: "Email for a reply",
     message: "Message",
+    errorEmpty: "Please write your message",
+    errorTooLong: "The message is too long",
+    errorEmail: "Leave an email so we can reply",
   },
   addToList: {
     button: "Add to a list",
     already: "already in the list",
     add: "add",
+    empty:
+      "You don't have any artist lists yet. You can create one in your profile — «seen live» or «want to go to a concert», for example.",
   },
   seenLive: {
     mark: "Mark: seen live",
     unmark: "Seen live — remove the mark",
     short: "Seen live",
   },
+  commentLike: {
+    like: "Like",
+    unlike: "Remove the like",
+  },
+  map: {
+    loading: "Loading the map…",
+    empty: "No locations with coordinates.",
+  },
+  scrollTop: "Back to top",
+  loading: "Loading",
   back: "← Back",
   premium: {
     title: "This is part of the subscription",
@@ -117,5 +148,8 @@ export const widgets = {
     writeHint: "Drop us a line — we'll add the subscription to your account and explain how to pay.",
     orForm: "Or use the form on the site",
     subscribe: "Get the subscription",
+    pay: "Pay in Telegram",
+    paying: "Creating the invoice…",
+    payFailed: "We couldn't create the invoice — please try again later",
   },
 };

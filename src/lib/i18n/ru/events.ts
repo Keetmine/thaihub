@@ -94,10 +94,14 @@ export const events: Dict["events"] = {
         uploadFailedLong: "Не удалось загрузить билет",
     },
 
+    // Ошибки маршрута и подписи внутри самого файла .ics —
+    // человек видит их уже в своём календаре.
     ics: {
         subscriptionOnly: "Доступно по подписке",
         notFound: "Событие не найдено",
         noPresale: "Препродажа не указана",
+        calendarName: "MyBLHub — мои события",
+        presale: (title: string) => `Препродажа: ${title}`,
     },
 
     notes: {

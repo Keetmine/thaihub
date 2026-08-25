@@ -108,7 +108,7 @@ export default function FavoriteButton({
       onClick={handleClick}
     >
       <HeartIcon filled={active} />
-      {active ? "В избранном" : t.widgets.favorite.add}
+      {active ? t.widgets.favorite.added : t.widgets.favorite.add}
     </button>
   );
 }

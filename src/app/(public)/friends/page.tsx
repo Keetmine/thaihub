@@ -10,7 +10,8 @@ import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
 import { sendFriendRequest, acceptFriendRequest, removeFriendship } from "./actions";
 import { pageMetadata } from "@/lib/seo";
-import { getT, localeHref } from "@/lib/i18n";
+import { getT, localeHref, type Locale } from "@/lib/i18n";
+import { userDisplayName } from "@/lib/userProfile";
 
 export async function generateMetadata() {
   const { locale, t } = await getT();
@@ -26,21 +27,32 @@ export async function generateMetadata() {
 
 export const dynamic = "force-dynamic";
 
-function UserRow({
-  userId,
-  name,
-  username,
-  photoUrl,
-  noName,
-  action,
-}: {
-  userId: string;
+type RowPerson = {
+  id: string;
   name: string | null;
   username: string | null;
   photoUrl: string | null;
+  deletedAt: Date | null;
+};
+
+function UserRow({
+  person,
+  locale,
+  noName,
+  action,
+}: {
+  person: RowPerson;
+  locale: Locale;
   noName: string;
   action: React.ReactNode;
 }) {
+  const { id: userId, name, username, photoUrl } = person;
+  // У удалённого аккаунта в базе лежит подпись со дня удаления — её
+  // переводит userDisplayName. Ник при этом не показываем: аккаунт
+  // обезличен, и его профиль всё равно недоступен.
+  const displayName = person.deletedAt
+    ? userDisplayName(person, locale)
+    : name || (username ? `@${username}` : noName);
   return (
     <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
       <AppLink href={`/users/${userId}`} className="text-decoration-none d-flex align-items-center gap-3">
@@ -64,10 +76,10 @@ function UserRow({
           />
         )}
         <div>
-          <p className="font-display fw-medium text-white mb-0">
-            {name || (username ? `@${username}` : noName)}
-          </p>
-          {name && username && <p className="small text-secondary mb-0">@{username}</p>}
+          <p className="font-display fw-medium text-white mb-0">{displayName}</p>
+          {!person.deletedAt && name && username && (
+            <p className="small text-secondary mb-0">@{username}</p>
+          )}
         </div>
       </AppLink>
       {action}
@@ -135,10 +147,8 @@ export default async function FriendsPage({
               {searchResults.map((u) => (
                 <UserRow
                   key={u.id}
-                  userId={u.id}
-                  name={u.name}
-                  username={u.username}
-                  photoUrl={u.photoUrl}
+                  person={u}
+                  locale={locale}
                   noName={f.noName}
                   action={
                     <FriendActionButton
@@ -162,10 +172,8 @@ export default async function FriendsPage({
             {incoming.map((request) => (
               <UserRow
                 key={request.id}
-                userId={other(request).id}
-                name={other(request).name}
-                username={other(request).username}
-                photoUrl={other(request).photoUrl}
+                person={other(request)}
+                locale={locale}
                 noName={f.noName}
                 action={
                   <div className="d-flex align-items-center gap-2">
@@ -202,10 +210,8 @@ export default async function FriendsPage({
             {outgoing.map((request) => (
               <UserRow
                 key={request.id}
-                userId={other(request).id}
-                name={other(request).name}
-                username={other(request).username}
-                photoUrl={other(request).photoUrl}
+                person={other(request)}
+                locale={locale}
                 noName={f.noName}
                 action={
                   <ConfirmForm
@@ -228,28 +234,31 @@ export default async function FriendsPage({
         <EmptyState emoji="👥" title={f.emptyTitle} hint={f.emptyHint} compact />
       ) : (
         <div className="d-flex flex-column gap-2">
-          {accepted.map((friendship) => (
-            <UserRow
-              key={friendship.id}
-              userId={other(friendship).id}
-              name={other(friendship).name}
-              username={other(friendship).username}
-              photoUrl={other(friendship).photoUrl}
-              noName={f.noName}
-              action={
-                <ConfirmForm
-                  action={removeFriendship.bind(null, friendship.id)}
-                  confirmMessage={f.removeConfirm(
-                    other(friendship).name || other(friendship).username || f.noNameInline,
-                  )}
-                >
-                  <button type="button" className="icon-btn icon-btn-danger" aria-label={f.remove}>
-                    <TrashIcon />
-                  </button>
-                </ConfirmForm>
-              }
-            />
-          ))}
+          {accepted.map((friendship) => {
+            const friend = other(friendship);
+            return (
+              <UserRow
+                key={friendship.id}
+                person={friend}
+                locale={locale}
+                noName={f.noName}
+                action={
+                  <ConfirmForm
+                    action={removeFriendship.bind(null, friendship.id)}
+                    confirmMessage={f.removeConfirm(
+                      friend.name || friend.username
+                        ? userDisplayName(friend, locale)
+                        : f.noNameInline,
+                    )}
+                  >
+                    <button type="button" className="icon-btn icon-btn-danger" aria-label={f.remove}>
+                      <TrashIcon />
+                    </button>
+                  </ConfirmForm>
+                }
+              />
+            );
+          })}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import Link from "next/link";
 import { defaultIcon, userPlaceIcon } from "@/lib/leafletIcon";
+import { useT } from "@/components/LocaleProvider";
 
 export type MapLocation = {
   id: string;
@@ -22,8 +23,9 @@ export default function LocationMap({
   locations: MapLocation[];
   height?: string;
 }) {
+  const t = useT();
   if (locations.length === 0) {
-    return <p className="small text-secondary">Нет локаций с указанными координатами.</p>;
+    return <p className="small text-secondary">{t.widgets.map.empty}</p>;
   }
 
   const center: [number, number] = [

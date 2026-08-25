@@ -8,6 +8,7 @@ export const home: Dict["home"] = {
     whatsNew: "Что нового",
     newsFromFavourites: "релизы ваших артистов",
     newsFromCatalogue: "свежее в каталоге",
+    listen: "Слушать ↗",
     birthdays: "Сегодня день рождения",
     turns: (age: number) => `исполняется ${age}`,
     yourFriend: "ваш друг",

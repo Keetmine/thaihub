@@ -38,6 +38,7 @@ export const catalog: Dict["catalog"] = {
         EP: "EP",
         SINGLE: "Сингл",
     },
+    songType: "Песня",
 
     locationCategory: {
         CAFE: "Кафе",

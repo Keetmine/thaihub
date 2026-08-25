@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toggleCommentLike } from "@/app/(public)/reviews/actions";
 import { HeartIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 /** Лайк комментария: оптимистичный тоггл, число рядом с сердечком. */
 export default function CommentLikeButton({
@@ -17,6 +18,7 @@ export default function CommentLikeButton({
   /** Аноним: показываем счётчик без интерактива. */
   disabled?: boolean;
 }) {
+  const t = useT();
   const [liked, setLiked] = useState(initiallyLiked);
   const [count, setCount] = useState(initialCount);
   const [pending, setPending] = useState(false);
@@ -49,7 +51,7 @@ export default function CommentLikeButton({
         liked ? "text-danger" : "text-secondary"
       }`}
       aria-pressed={liked}
-      aria-label={liked ? "Убрать лайк" : "Нравится"}
+      aria-label={liked ? t.widgets.commentLike.unlike : t.widgets.commentLike.like}
       style={{ fontSize: "0.8rem" }}
     >
       <HeartIcon filled={liked} />

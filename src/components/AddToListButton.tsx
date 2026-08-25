@@ -47,10 +47,7 @@ export default function AddToListButton({
 
       <Modal open={open} title={t.widgets.addToList.button} onClose={() => setOpen(false)}>
           {lists.length === 0 ? (
-            <p className="small text-secondary mb-0">
-              У вас пока нет списков актёров. Создать можно в профиле — например,
-              «видела вживую» или «хочу на концерт».
-            </p>
+            <p className="small text-secondary mb-0">{t.widgets.addToList.empty}</p>
           ) : (
             <div className="d-flex flex-column gap-2">
               {lists.map((l) => {

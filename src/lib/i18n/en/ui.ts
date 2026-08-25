@@ -1,6 +1,8 @@
 // Строки общих виджетов (модалка, подтверждение, пагинация, жалоба) —
 // они не принадлежат ни одной странице, поэтому лежат отдельным
-// разделом, а не в словаре какого-то одного раздела сайта.
+// разделом, а не в словаре какого-то одного раздела сайта. Сюда же
+// попало то, что живёт над всеми страницами сразу: описание сайта для
+// поиска и превью, корневой 404 и подписи в файлах календаря.
 export const ui = {
     close: "Close",
     confirmTitle: "Are you sure?",
@@ -19,4 +21,13 @@ export const ui = {
     reportSubmit: "Send report",
     reportSending: "Sending…",
     reportFailed: "Couldn't send it",
+
+    // Описание сайта по умолчанию: его берёт корневой layout, поэтому
+    // оно достаётся каждой странице, которая не собирает метаданные
+    // через pageMetadata — то есть уходит и в выдачу поиска, и в превью
+    // ссылки в мессенджере.
+    siteDescription:
+        "Track concerts, fan meets and series with Thai BL actors: event schedules, artist profiles and filming locations.",
+
+
 };

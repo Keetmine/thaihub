@@ -1,5 +1,6 @@
 import Link from "@/components/AppLink";
 import { getT } from "@/lib/i18n";
+import { formatDateWithYear } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -18,7 +19,7 @@ type CommentWithMeta = {
   id: string;
   text: string;
   createdAt: Date;
-  user: { id: string; name: string | null; photoUrl: string | null };
+  user: { id: string; name: string | null; photoUrl: string | null; deletedAt: Date | null };
   likes: { userId: string }[];
   replies?: CommentWithMeta[];
 };
@@ -39,15 +40,18 @@ async function CommentRow({
   /** Для ответов на ответы форма цепляется к корню треда. */
   replyToId?: string;
 }) {
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const boundAdd = addComment.bind(null, kind, targetId);
+  // Удалённый аккаунт подписываем на языке зрителя: в базе у него лежит
+  // имя, записанное в момент удаления (см. src/lib/userDeletion.ts).
+  const authorName = c.user.deletedAt ? t.common.deletedAccount : c.user.name;
   return (
     <div className="d-flex align-items-start gap-2">
-      <Avatar name={c.user.name} photoUrl={c.user.photoUrl} />
+      <Avatar name={authorName} photoUrl={c.user.photoUrl} />
       <div className="flex-fill" style={{ minWidth: 0 }}>
         <p className="small mb-1">
-          <span className="text-white fw-medium">{c.user.name ?? t.reviews.noName}</span>
-          <span className="text-secondary"> · {fmtDate(c.createdAt)}</span>
+          <span className="text-white fw-medium">{authorName ?? t.reviews.noName}</span>
+          <span className="text-secondary"> · {formatDateWithYear(c.createdAt, locale)}</span>
         </p>
         <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
           {c.text}
@@ -65,7 +69,7 @@ async function CommentRow({
                 className="small text-secondary"
                 style={{ cursor: "pointer", listStyle: "none" }}
               >
-                Ответить
+                {t.reviews.reply}
               </summary>
               <form action={boundAdd} className="d-flex gap-2 mt-2">
                 <input type="hidden" name="parentId" value={replyToId ?? c.id} />
@@ -73,8 +77,8 @@ async function CommentRow({
                   name="text"
                   required
                   maxLength={3000}
-                  placeholder={`Ответ для ${c.user.name ?? t.reviews.author}…`}
-                  aria-label={`Ответ для ${c.user.name ?? t.reviews.author}`}
+                  placeholder={t.reviews.replyPlaceholder(authorName ?? t.reviews.author)}
+                  aria-label={t.reviews.replyAria(authorName ?? t.reviews.author)}
                   className="form-control form-control-sm"
                 />
                 <button type="submit" className="btn btn-primary btn-sm flex-shrink-0">
@@ -134,10 +138,6 @@ function Avatar({ name, photoUrl }: { name: string | null; photoUrl: string | nu
   );
 }
 
-function fmtDate(d: Date): string {
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
-}
-
 /** Отзывы (оценка 1–10 + текст, один на юзера) и комментарии — общий блок
  *  для сериалов, новелл и событий. Server component: сам делает выборки.
  *  Анониму (открытый каталог) всё видно, формы заменяются CTA «войдите». */
@@ -148,7 +148,7 @@ export default async function ReviewsAndComments({
   kind: ReviewKind;
   id: string;
 }) {
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const where =
     kind === "drama" ? { dramaId: id } : kind === "novel" ? { novelId: id } : { eventId: id };
   const currentUser = await getCurrentUser();
@@ -156,17 +156,17 @@ export default async function ReviewsAndComments({
   const [reviews, comments] = await Promise.all([
     prisma.review.findMany({
       where,
-      include: { user: { select: { id: true, name: true, photoUrl: true } } },
+      include: { user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.comment.findMany({
       where: { ...where, parentId: null },
       include: {
-        user: { select: { id: true, name: true, photoUrl: true } },
+        user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
         likes: { select: { userId: true } },
         replies: {
           include: {
-            user: { select: { id: true, name: true, photoUrl: true } },
+            user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
             likes: { select: { userId: true } },
           },
           orderBy: { createdAt: "asc" },
@@ -211,7 +211,7 @@ export default async function ReviewsAndComments({
             </summary>
             <form action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
               <div className="d-flex align-items-center gap-2">
-                <label className="form-label small text-secondary mb-0">Оценка</label>
+                <label className="form-label small text-secondary mb-0">{t.reviews.ratingLabel}</label>
                 <select
                   name="rating"
                   defaultValue={ownReview?.rating ?? 8}
@@ -223,7 +223,7 @@ export default async function ReviewsAndComments({
                     </option>
                   ))}
                 </select>
-                <span className="small text-secondary">из 10</span>
+                <span className="small text-secondary">{t.reviews.outOf10}</span>
               </div>
               <textarea
                 name="text"
@@ -241,7 +241,7 @@ export default async function ReviewsAndComments({
                 {ownReview && (
                   <ConfirmForm action={boundDeleteReview} confirmMessage={t.reviews.deleteReviewConfirm}>
                     <button type="button" className="btn btn-outline-secondary btn-sm">
-                      Удалить отзыв
+                      {t.reviews.deleteReview}
                     </button>
                   </ConfirmForm>
                 )}
@@ -261,26 +261,29 @@ export default async function ReviewsAndComments({
           <p className="small text-secondary mb-0">{t.reviews.noReviews}</p>
         ) : (
           <div className="d-flex flex-column gap-3">
-            {reviews.map((r) => (
-              <div key={r.id} className="d-flex align-items-start gap-2">
-                <Avatar name={r.user.name} photoUrl={r.user.photoUrl} />
-                <div style={{ minWidth: 0 }}>
-                  <p className="small mb-1">
-                    <span className="text-white fw-medium">{r.user.name ?? t.reviews.noName}</span>{" "}
-                    <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
-                      {r.rating}
-                    </span>
-                    <span className="text-secondary"> · {fmtDate(r.createdAt)}</span>
-                  </p>
-                  <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
-                    {r.text}
-                  </p>
-                  {currentUser && r.user.id !== currentUser.id && (
-                    <ReportButton targetType="review" targetId={r.id} />
-                  )}
+            {reviews.map((r) => {
+              const authorName = r.user.deletedAt ? t.common.deletedAccount : r.user.name;
+              return (
+                <div key={r.id} className="d-flex align-items-start gap-2">
+                  <Avatar name={authorName} photoUrl={r.user.photoUrl} />
+                  <div style={{ minWidth: 0 }}>
+                    <p className="small mb-1">
+                      <span className="text-white fw-medium">{authorName ?? t.reviews.noName}</span>{" "}
+                      <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
+                        {r.rating}
+                      </span>
+                      <span className="text-secondary"> · {formatDateWithYear(r.createdAt, locale)}</span>
+                    </p>
+                    <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
+                      {r.text}
+                    </p>
+                    {currentUser && r.user.id !== currentUser.id && (
+                      <ReportButton targetType="review" targetId={r.id} />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

@@ -14,6 +14,7 @@ import ArtistListControls from "./ArtistListControls";
 import { removePerformerFromList, deletePerformerList } from "../actions";
 import { pageMetadata } from "@/lib/seo";
 import { getT, localeHref } from "@/lib/i18n";
+import { userDisplayName } from "@/lib/userProfile";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function ArtistListPage({
   const list = await prisma.performerList.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
-      user: { select: { id: true, name: true } },
+      user: { select: { id: true, name: true, deletedAt: true } },
       items: {
         include: { performer: true },
         orderBy: { position: "asc" },
@@ -110,7 +111,11 @@ export default async function ArtistListPage({
             href={`/users/${list.user.id}`}
             className="small text-secondary text-decoration-none"
           >
-            {list.user.name ? t.lists.artists.ofUser(list.user.name) : t.lists.artists.ofFriend}
+            {list.user.name
+              ? list.user.deletedAt
+                ? t.lists.artists.ofDeleted
+                : t.lists.artists.ofUser(userDisplayName(list.user, locale))
+              : t.lists.artists.ofFriend}
           </AppLink>
         )}
       </div>

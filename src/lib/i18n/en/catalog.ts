@@ -43,6 +43,8 @@ export const catalog = {
         EP: "EP",
         SINGLE: "Single",
     },
+    // Песня без альбома — стоит в ленте новинок там же, где тип релиза.
+    songType: "Song",
 
     locationCategory: {
         CAFE: "Café",

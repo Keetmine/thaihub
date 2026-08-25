@@ -9,8 +9,8 @@ import { useT } from "@/components/LocaleProvider";
  *  переполнение не видит, поэтому после монтирования меряем его.
  *
  *  Подпись переключателя рисуем текстом, а не через content в CSS:
- *  строка должна приходить из словаря языка. Поэтому и класс свой —
- *  .synopsis-toggle в globals.css дописывает русский текст ::after. */
+ *  строка должна приходить из словаря языка. Оформление — в
+ *  .synopsis-toggle-label в globals.css. */
 export default function SynopsisFold({
   text,
   textClassName = "text-secondary",
@@ -58,17 +58,7 @@ export default function SynopsisFold({
         <span ref={spanRef} className={`synopsis-text ${textClassName}`} style={style}>
           {text}
         </span>
-        <span
-          className="synopsis-toggle-label"
-          style={{
-            display: "inline-block",
-            marginTop: "0.35rem",
-            fontSize: "0.85rem",
-            color: "rgba(var(--accent-rgb), 0.9)",
-          }}
-        >
-          {open ? t.common.less : t.common.more}
-        </span>
+        <span className="synopsis-toggle-label">{open ? t.common.less : t.common.more}</span>
       </summary>
     </details>
   );

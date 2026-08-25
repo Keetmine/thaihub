@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { assertRateLimit } from "@/lib/rateLimit";
 import { notifyAdmins } from "@/lib/adminNotify";
+import { getT } from "@/lib/i18n";
 import type { FeedbackKind } from "@/generated/prisma/client";
 
 const KINDS = new Set(["QUESTION", "SUGGESTION", "CONTENT_REQUEST"]);
@@ -21,6 +22,7 @@ export async function submitFeedback(formData: FormData): Promise<FeedbackResult
   // Форма открыта и анонимам (страница /help публичная) — тогда ответ
   // возможен только на оставленную почту.
   const user = await getCurrentUser();
+  const { t } = await getT();
   await assertRateLimit("signup"); // тот же лимит 10/10мин против спама
 
   const text = String(formData.get("text") ?? "").trim();
@@ -29,9 +31,9 @@ export async function submitFeedback(formData: FormData): Promise<FeedbackResult
   const email = String(formData.get("email") ?? "").trim().slice(0, 320) || null;
   // Ошибки возвращаем значением: текст исключения из server action до
   // клиента в проде не доезжает (см. promoActions.ts).
-  if (!text) return { ok: false, error: "Напишите текст обращения" };
-  if (text.length > 4000) return { ok: false, error: "Слишком длинный текст" };
-  if (!user && !email) return { ok: false, error: "Оставьте почту, чтобы мы могли ответить" };
+  if (!text) return { ok: false, error: t.widgets.feedback.errorEmpty };
+  if (text.length > 4000) return { ok: false, error: t.widgets.feedback.errorTooLong };
+  if (!user && !email) return { ok: false, error: t.widgets.feedback.errorEmail };
 
   await prisma.feedback.create({
     data: {

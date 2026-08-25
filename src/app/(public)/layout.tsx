@@ -45,27 +45,15 @@ function SearchForm({ t, locale }: { t: Dict; locale: Locale }) {
   );
 }
 
-// Подписи пунктов навигации живут в словаре: publicNavItems описывает
-// маршруты и подсветку, а не текст на кнопке.
-const NAV_LABEL_KEYS: Record<string, keyof Dict["nav"]> = {
-  "/events": "events",
-  "/artists": "artists",
-  "/dramas": "series",
-  "/novels": "novels",
-  "/locations": "locations",
-  "/trips": "trips",
-};
-
 // Общий список ссылок для десктопного ряда и мобильной шторки —
 // источник один (publicNavItems), рендер в двух местах.
 function MainNavLinks({ loggedIn, t }: { loggedIn: boolean; t: Dict }) {
   return (
     <>
       {PUBLIC_NAV_ITEMS.filter((item) => !item.requiresUser || loggedIn).map((item) => {
-        const labelKey = NAV_LABEL_KEYS[item.href];
         const link = (
           <NavLink href={item.href} matchPrefixes={item.matchPrefixes}>
-            {labelKey ? t.nav[labelKey] : item.label}
+            {t.nav[item.labelKey]}
           </NavLink>
         );
         return item.tourId ? (

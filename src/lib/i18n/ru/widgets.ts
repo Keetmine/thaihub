@@ -3,6 +3,7 @@ import type { Dict } from "../en";
 export const widgets: Dict["widgets"] = {
   favorite: {
     add: "В избранное",
+    added: "В избранном",
     remove: "Убрать из избранного",
     short: "Избранное",
   },
@@ -30,6 +31,13 @@ export const widgets: Dict["widgets"] = {
     hintImage: "Изображение, до 8MB",
     remove: "Убрать",
   },
+  upload: {
+    notAuthorized: "Чтобы загрузить файл, нужно войти",
+    noFile: "Файл не дошёл до нас, попробуйте ещё раз",
+    badType: (formats: string) => `Можно загружать: ${formats}`,
+    tooLarge: (maxMb: number) => `Файл слишком большой — максимум ${maxMb}MB`,
+    badImage: "Не удалось обработать изображение, попробуйте другой файл",
+  },
   datePicker: {
     placeholder: "Выберите дату",
     aria: "Выберите дату",
@@ -38,7 +46,7 @@ export const widgets: Dict["widgets"] = {
     today: "Сегодня",
     month: "Месяц",
     year: "Год",
-    clear: "Очистить",
+    clear: "Сбросить",
   },
   errors: {
     notFoundTitle: "Страница не найдена",
@@ -76,6 +84,11 @@ export const widgets: Dict["widgets"] = {
     label: "Промокод",
     redeem: "Активировать",
     failed: "Не удалось связаться с сервером, попробуйте ещё раз",
+    signInRequired: "Требуется вход",
+    enterCode: "Введите код",
+    noSuchCode: "Такого кода нет",
+    alreadyUsed: "Код уже использован",
+    activated: (until: string) => `Подписка активна до ${until} — обновите страницу!`,
   },
   feedback: {
     optional: " (необязательно)",
@@ -90,17 +103,32 @@ export const widgets: Dict["widgets"] = {
     kindContent: "Добавьте сериал или актёра",
     email: "Почта для ответа",
     message: "Сообщение",
+    errorEmpty: "Напишите текст обращения",
+    errorTooLong: "Слишком длинный текст",
+    errorEmail: "Оставьте почту, чтобы мы могли ответить",
   },
   addToList: {
     button: "Добавить в список",
     already: "уже в списке",
     add: "добавить",
+    empty:
+      "У вас пока нет списков актёров. Создать можно в профиле — например, «видела вживую» или «хочу на концерт».",
   },
   seenLive: {
     mark: "Отметить: видела вживую",
     unmark: "Видела вживую — убрать отметку",
     short: "Видела вживую",
   },
+  commentLike: {
+    like: "Нравится",
+    unlike: "Убрать лайк",
+  },
+  map: {
+    loading: "Загрузка карты…",
+    empty: "Нет локаций с указанными координатами.",
+  },
+  scrollTop: "Наверх",
+  loading: "Загрузка",
   back: "← Назад",
   premium: {
     title: "Это часть подписки",
@@ -117,5 +145,8 @@ export const widgets: Dict["widgets"] = {
     writeHint: "Напишите — подключим подписку к вашему аккаунту и подскажем, как оплатить.",
     orForm: "Или через форму на сайте",
     subscribe: "Оформить подписку",
+    pay: "Оплатить в Telegram",
+    paying: "Создаём счёт…",
+    payFailed: "Не удалось создать счёт — попробуйте позже",
   },
 };

@@ -280,6 +280,7 @@ just go down) for something that's cheap to own outright once fetched.
   show's own real-world airing status, not per-user.
 - `Drama.tmdbId` (`String? @unique`).
 
-`src/lib/dramaStatus.ts` mirrors `src/lib/watchStatus.ts`'s
-client-safety split — no server-only imports, since it's pulled into
-whatever renders the status badge.
+`src/lib/dramaStatus.ts` has the same client-safety split as
+`src/lib/watchStatus.ts` — no server-only imports, since it's pulled
+into whatever renders the status badge. It still carries Russian labels
+for the admin panel, which `watchStatus.ts` no longer does.
