@@ -211,6 +211,14 @@ and `importShow` (`Drama.posterUrl`) in `tmdbImport.ts`,
 is a standing external dependency (TMDB could re-path, rate-limit, or
 just go down) for something that's cheap to own outright once fetched.
 
+The helper isn't TMDB-specific and this section is where the rule is
+written down for everyone: **every importer that persists an image runs
+it through `downloadRemoteImage` first** — MyDramaList (`mdlDramaImport`,
+`mdlPerformerImport`), the T-Pop agency/discography importers, YouTube
+Music, and the ThaiTicketMajor event importer (see
+[events.md](events.md#importing-an-event-from-thaiticketmajor)) — each
+with its own folder under `public/uploads/`.
+
 - **Filename = the remote URL's own last path segment** (TMDB's image
   paths are already unique, content-addressed-looking ids like
   `kL8HP4KyRl0AmSg0MMhcnJhpX78.jpg`), so re-syncing the same person/show

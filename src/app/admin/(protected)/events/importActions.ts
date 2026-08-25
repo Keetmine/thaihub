@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { scrapeTtmEvent } from "@/lib/thaiticketmajor";
 import { combineDateTime } from "@/lib/dates";
+import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
 
 export type TtmImportArtist = {
@@ -113,6 +114,15 @@ export async function createEventFromTtmImport(
       ? combineDateTime(data.presaleDate, data.presaleTime)
       : null;
 
+  // Постер забираем к себе ДО записи — в базе не должно оставаться
+  // ссылок на thaiticketmajor.com (см. «Local image storage» в
+  // docs/features/tmdb-import.md). Качаем вне транзакции: сетевой поход
+  // не должен держать её открытой. Уже локальный адрес (админ заменил
+  // постер своим файлом) downloadRemoteImage вернёт как есть, а если
+  // чужой хост не ответил — вернёт исходную ссылку, и событие всё равно
+  // создастся.
+  const posterUrl = await downloadRemoteImage(data.posterUrl.trim() || null, "posters");
+
   const event = await prisma.$transaction(async (tx) => {
     const performerIds: string[] = [...data.extraPerformerIds];
 
@@ -140,7 +150,7 @@ export async function createEventFromTtmImport(
         description: data.description.trim() || null,
         dramaId: data.dramaId || null,
         ticketPrice: data.ticketPrice.trim() || null,
-        posterUrl: data.posterUrl.trim() || null,
+        posterUrl,
         presaleAt,
         presaleUrl: data.presaleUrl.trim() || null,
         sourceUrl: data.sourceUrl.trim() || null,
