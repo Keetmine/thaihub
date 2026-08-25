@@ -42,6 +42,44 @@ export function parseChannelId(input: string): string | null {
   return /^UC[\w-]{20,}$/.test(input.trim()) ? input.trim() : null;
 }
 
+/** Хендл канала из ссылки вида music.youtube.com/@FREEZEDROP или просто
+ *  «@FREEZEDROP». Хендл — не id: чтобы импортировать, его надо сперва
+ *  разменять на UC-идентификатор (см. resolveChannelHandle). */
+export function parseChannelHandle(input: string): string | null {
+  const raw = input.trim();
+  const m = raw.match(/(?:youtube\.com\/|^)@([A-Za-z0-9._-]{2,})/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * Хендл → id канала. У YouTube нет отдельного «дешёвого» эндпоинта, но
+ * сама страница канала несёт id в разметке — забираем первый
+ * «channelId»/«externalId» из неё. Запрашиваем youtube.com, а не
+ * music.youtube.com: музыкальная версия отдаёт SPA-оболочку, в которой
+ * идентификатора может не оказаться.
+ */
+export async function resolveChannelHandle(handle: string): Promise<string | null> {
+  const clean = handle.replace(/^@/, "");
+  const res = await fetch(`https://www.youtube.com/@${encodeURIComponent(clean)}`, {
+    headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
+  });
+  if (!res.ok) return null;
+  const html = await res.text();
+  const m =
+    html.match(/"(?:channelId|externalId)":"(UC[\w-]{20,})"/) ??
+    html.match(/channel\/(UC[\w-]{20,})/);
+  return m ? m[1] : null;
+}
+
+/** Ссылка на канал в любом виде → id. Хендл требует сетевого запроса,
+ *  поэтому функция асинхронная; для готового id запрос не делается. */
+export async function resolveChannelInput(input: string): Promise<string | null> {
+  const direct = parseChannelId(input);
+  if (direct) return direct;
+  const handle = parseChannelHandle(input);
+  return handle ? resolveChannelHandle(handle) : null;
+}
+
 export function channelUrl(channelId: string): string {
   return `https://music.youtube.com/channel/${channelId}`;
 }

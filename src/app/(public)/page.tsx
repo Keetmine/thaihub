@@ -218,68 +218,94 @@ export default async function HomePage() {
         }
       />
 
-      {/* Страница собрана асимметричными парами (8/4, затем 5/7): раньше
-          это была стопка одинаковых блоков во всю ширину, и глазу не за
-          что было зацепиться. */}
+      {/* «Что впереди» — план и поездки одной панелью: и то и другое
+          отвечает на вопрос «что у меня скоро», а раздельными блоками
+          в разных рядах это читалось как список одинаковых секций.
+          Поездка сверху задаёт рамку периода, под ней — события. */}
       <div className="row g-4 mb-5">
       <div className={hasBirthdays ? "col-12 col-lg-8" : "col-12"}>
-      {/* Ближайшее из «иду» — постеры, а не строки: это то, чего человек
-          ждёт, пусть выглядит как афиша на стене. */}
-      <section>
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <h2 className="section-heading mb-0">Вы идёте</h2>
-          {premium && (
-            <Link href="/events?filter=going" className="small text-secondary">
-              все →
-            </Link>
-          )}
-        </div>
-        {!premium ? (
-          <div className="glow-panel p-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-              <p className="font-display fw-medium text-white mb-1">
-                Афиша и отметки «иду» — по подписке
-              </p>
-              <p className="small text-secondary mb-0" style={{ maxWidth: "30rem" }}>
-                Полная афиша с датами и препродажами, календарь и напоминания в
-                Telegram.
-              </p>
+        <section className="glow-panel p-4 h-100">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="section-heading mb-0">Что впереди</h2>
+            {premium && (
+              <Link href="/events?filter=going" className="small text-secondary">
+                все →
+              </Link>
+            )}
+          </div>
+
+          {upcomingTrips.length > 0 && (
+            <div className="d-flex flex-column gap-2 mb-3">
+              {upcomingTrips.map((t) => (
+                <Link
+                  key={t.id}
+                  href={tripHref(t)}
+                  className="home-trip-strip d-flex flex-wrap align-items-center gap-3"
+                >
+                  <span className="trip-dates mb-0">
+                    {formatShortDate(t.startDate)}{" "}
+                    <span className="trip-dates-arrow">→</span>{" "}
+                    {formatShortDate(t.endDate)}
+                    <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
+                  </span>
+                  <span className="font-display fw-medium text-white flex-grow-1 text-truncate">
+                    {t.title}
+                  </span>
+                  <span className="d-flex flex-wrap gap-2 flex-shrink-0">
+                    {t.userId !== user.id && <span className="date-chip">совместная</span>}
+                    <span className="date-chip">{countdown(t.startDate)}</span>
+                  </span>
+                </Link>
+              ))}
             </div>
-            <Link href="/events" className="btn btn-primary flex-shrink-0">
-              Подробнее
-            </Link>
-          </div>
-        ) : goingCards.length === 0 ? (
-          <EmptyState
-            emoji="🎫"
-            title="Пока ничего не запланировано"
-            hint="Найдите событие в афише и отметьте «Я пойду» — оно появится здесь постером."
-            cta={{ href: "/events", label: "Посмотреть афишу" }}
-            compact
-          />
-        ) : (
-          <div className="row g-3 stagger">
-            {goingCards.map((card) => (
-              <div key={card.key} className="col-4 col-md-3">
-                <PosterTile
-                  href={card.href}
-                  posterUrl={card.posterUrl}
-                  title={card.title}
-                  subtitle={card.subtitle}
-                  chip={formatShortDate(card.startsAt)}
-                />
+          )}
+
+          {!premium ? (
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+              <div>
+                <p className="font-display fw-medium text-white mb-1">
+                  Афиша и отметки «иду» — по подписке
+                </p>
+                <p className="small text-secondary mb-0" style={{ maxWidth: "30rem" }}>
+                  Полная афиша с датами и препродажами, календарь и напоминания в
+                  Telegram.
+                </p>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+              <Link href="/events" className="btn btn-primary flex-shrink-0">
+                Подробнее
+              </Link>
+            </div>
+          ) : goingCards.length === 0 ? (
+            <EmptyState
+              emoji="🎫"
+              title="Пока ничего не запланировано"
+              hint="Найдите событие в афише и отметьте «Я пойду» — оно появится здесь постером."
+              cta={{ href: "/events", label: "Посмотреть афишу" }}
+              compact
+            />
+          ) : (
+            <div className="row g-3 stagger">
+              {goingCards.map((card) => (
+                <div key={card.key} className="col-4 col-md-3">
+                  <PosterTile
+                    href={card.href}
+                    posterUrl={card.posterUrl}
+                    title={card.title}
+                    subtitle={card.subtitle}
+                    chip={formatShortDate(card.startsAt)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* Дни рождения — тёплый акцентный блок рядом с афишей: он же
-          разбивает ряд по ширине. Показываем и артистов, и друзей. */}
+      {/* Дни рождения — тёплый акцентный блок рядом: он же держит
+          асимметрию ряда. Показываем и артистов, и друзей. */}
       {hasBirthdays && (
         <div className="col-12 col-lg-4">
-          <section className="glow-panel p-4 h-100">
+          <section className="surface p-4 h-100">
             <h2 className="section-heading mb-3">🎂 Сегодня день рождения</h2>
             <div className="d-flex flex-column gap-3">
               {birthdayFriends.map((f) => (
@@ -321,76 +347,37 @@ export default async function HomePage() {
       )}
       </div>
 
-      {/* Ряд 2 с обратным ритмом (5/7): «смотрю» узкой колонкой,
-          поездки — широкой, чтобы даты читались крупно. */}
-      <div className="row g-4 mb-5">
-
-      {/* Предстоящие поездки — чтобы план был на виду (просьба
-          владельца). Пустое состояние не рисуем: раздел и так в чипах
-          сверху, а пейволл уже есть у «Вы идёте». */}
-      {upcomingTrips.length > 0 && (
-        <div className={watchingNow.length > 0 ? "col-12 col-lg-5" : "col-12"}>
-        <section>
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="section-heading mb-0">Ваши поездки</h2>
-            <Link href="/trips" className="small text-secondary">
-              все →
-            </Link>
-          </div>
-          {/* Карточки-«билеты» те же, что на /trips: крупные даты вместо
-              строки текста плюс обратный отсчёт — раньше блок читался
-              как обычный список и терялся. */}
-          <div className="d-flex flex-column gap-2 stagger">
-            {upcomingTrips.map((t) => (
-              <Link key={t.id} href={tripHref(t)} className="trip-card">
-                <p className="trip-dates mb-1">
-                  {formatShortDate(t.startDate)}{" "}
-                  <span className="trip-dates-arrow">→</span>{" "}
-                  {formatShortDate(t.endDate)}
-                  <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
-                </p>
-                <p className="font-display fw-medium text-white mb-2">{t.title}</p>
-                <span className="d-flex flex-wrap gap-2">
-                  <span className="date-chip">{countdown(t.startDate)}</span>
-                  {t.userId !== user.id && <span className="date-chip">совместная</span>}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-        </div>
-      )}
-
-      {/* Смотрю сейчас — постеры сериалов со статусом WATCHING; пустое
-          состояние не рисуем, блок просто скрыт. */}
+      {/* Ряд 2 с обратной пропорцией: узкое «смотрю» и широкие
+          новинки. */}
+      <div className="row g-4">
       {watchingNow.length > 0 && (
-        <div className={upcomingTrips.length > 0 ? "col-12 col-lg-7" : "col-12"}>
-        <section>
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="section-heading mb-0">Смотрю сейчас</h2>
-            <Link href="/dramas" className="small text-secondary">
-              все →
-            </Link>
-          </div>
-          <div className="row g-3 stagger">
-            {watchingNow.map(({ drama }) => (
-              <div key={drama.id} className="col-4 col-lg-3">
-                <PosterTile
-                  href={dramaHref(drama)}
-                  posterUrl={drama.posterUrl}
-                  title={drama.title}
-                  subtitle={drama.year ? String(drama.year) : undefined}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+        <div className="col-12 col-lg-5">
+          <section>
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <h2 className="section-heading mb-0">Смотрю сейчас</h2>
+              <Link href="/dramas" className="small text-secondary">
+                все →
+              </Link>
+            </div>
+            <div className="row g-3 stagger">
+              {watchingNow.map(({ drama }) => (
+                <div key={drama.id} className="col-4 col-lg-6">
+                  <PosterTile
+                    href={dramaHref(drama)}
+                    posterUrl={drama.posterUrl}
+                    title={drama.title}
+                    subtitle={drama.year ? String(drama.year) : undefined}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       )}
-      </div>
 
       {/* Новинки — то, ради чего сюда заходят между концертами. */}
-      <section className="mb-5">
+      <div className={watchingNow.length > 0 ? "col-12 col-lg-7" : "col-12"}>
+      <section>
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <h2 className="section-heading mb-0">Что нового</h2>
           <span className="small text-secondary">
@@ -409,7 +396,7 @@ export default async function HomePage() {
         ) : (
           <div className="row g-2 stagger">
             {news.map((item) => (
-              <div key={`${item.kind}-${item.id}`} className="col-12 col-md-6 col-xl-4">
+              <div key={`${item.kind}-${item.id}`} className="col-12 col-md-6 col-xl-6">
                 <div className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100">
                   <LetterAvatar
                     name={item.title}
@@ -445,6 +432,8 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+      </div>
+      </div>
     </div>
   );
 }

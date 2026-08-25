@@ -4183,3 +4183,36 @@ body::after {
     transition: none;
   }
 }
+
+/* ============================================================
+   Главная: полоса поездки внутри блока «Что впереди»
+   ============================================================ */
+/* Поездка и события «иду» живут в одной панели, поэтому поездке нужна
+   не карточка (панель уже есть), а полоса: тёплая подложка отделяет её
+   от постеров под ней, не превращаясь во вложенную карточку. */
+.home-trip-strip {
+  padding: 0.7rem 1rem;
+  border-radius: var(--bs-border-radius-lg);
+  border: 1px solid rgba(255, 154, 114, 0.14);
+  background: linear-gradient(
+    100deg,
+    rgba(255, 106, 61, 0.1),
+    rgba(255, 106, 61, 0.02) 60%
+  );
+  text-decoration: none;
+  transition: border-color 0.18s ease;
+}
+
+.home-trip-strip:hover {
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
+.home-trip-strip .trip-dates {
+  font-size: 1.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-trip-strip {
+    transition: none;
+  }
+}

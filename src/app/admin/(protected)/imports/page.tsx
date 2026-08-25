@@ -101,6 +101,14 @@ export default async function AdminImportsPage({
     `/admin/imports?log=${tab}&page=${p}` + (tab === "runs" && status ? `&status=${status}` : "");
 
   const runningRun = await hasRunningPromise;
+  // Ключ для форм с выбором исполнителя: поле ссылки сбрасывается само
+  // при перерисовке, а выбранный артист живёт в состоянии EntitySelect
+  // и оставался после импорта. Появился новый прогон — ключ сменился,
+  // компонент перемонтировался, поле пустое.
+  const lastRun = await prisma.importRun.findFirst({
+    orderBy: { startedAt: "desc" },
+    select: { id: true },
+  });
 
   const fmt = (d: Date) =>
     d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -132,6 +140,7 @@ export default async function AdminImportsPage({
             </p>
             <form action={runMdlPerformerImport} className="d-flex flex-column gap-2">
               <EntitySelect
+                key={`mdl-${lastRun?.id ?? "none"}`}
                 name="performerId"
                 options={[]}
                 placeholder="Исполнитель из каталога (необязательно)…"
@@ -184,13 +193,16 @@ export default async function AdminImportsPage({
           <div className="surface p-4 h-100">
             <h2 className="section-heading mb-2">YouTube Music: дискография</h2>
             <p className="small text-secondary mb-3">
-              Ссылка на канал артиста (music.youtube.com/channel/UC…) — заберём
+              Ссылка на канал артиста — и /channel/UC…, и с хендлом
+              (music.youtube.com/@FREEZEDROP): по хендлу сами найдём id
+              канала. Заберём
               релизы с обложками и годами, песни и ссылки на них. Исполнителя
               выбираем руками: по имени сопоставлять нельзя, «JASP.ER» и
               «Jasper» — разные строки, и ошибка привяжет чужие альбомы.
             </p>
             <form action={runYoutubeMusicImport} className="d-flex flex-column gap-2">
               <EntitySelect
+                key={`ytm-${lastRun?.id ?? "none"}`}
                 name="performerId"
                 options={[]}
                 placeholder="Исполнитель из каталога…"

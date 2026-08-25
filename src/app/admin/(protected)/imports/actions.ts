@@ -6,7 +6,7 @@ import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopArtist } from "@/lib/tpopAgencyImport";
 import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
 import { logImportRun, isImportCancelledError } from "@/lib/importRun";
-import { parseChannelId } from "@/lib/youtubeMusic";
+import { resolveChannelInput, parseChannelHandle } from "@/lib/youtubeMusic";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
 import { fetchMdlDrama, mdlIdFromUrl, absMdlUrl, type MdlCastMember } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
@@ -110,8 +110,17 @@ async function importYoutubeMusic(formData: FormData, schedule: boolean): Promis
   const performerId = String(formData.get("performerId") ?? "").trim();
   const rawUrl = String(formData.get("channelUrl") ?? "").trim();
   if (!performerId) throw new Error("Выберите исполнителя");
-  const channelId = parseChannelId(rawUrl);
-  if (!channelId) throw new Error("Не похоже на ссылку канала YouTube Music");
+  // Ссылка бывает и с хендлом (music.youtube.com/@FREEZEDROP) — id
+  // канала в ней не записан, его приходится доставать со страницы
+  // канала; раньше такие ссылки просто отбивались ошибкой.
+  const channelId = await resolveChannelInput(rawUrl);
+  if (!channelId) {
+    throw new Error(
+      parseChannelHandle(rawUrl)
+        ? "Не удалось определить канал по этой ссылке — попробуйте адрес вида /channel/UC…"
+        : "Не похоже на ссылку канала YouTube Music",
+    );
+  }
 
   if (schedule) {
     // Раньше импорта: если парсинг упадёт, артист всё равно останется в
