@@ -44,6 +44,11 @@ export function localeHref(href: string, locale: Locale): string {
   if (locale === DEFAULT_LOCALE) return href;
   if (!href.startsWith("/")) return href;
   if (href.startsWith("//")) return href;
+  // Одноязычные и служебные разделы префикса не получают: админка
+  // переводиться не будет, а API/файлы/фиды — не страницы вовсе.
+  if (/^\/(admin|api|files|sitemap\.xml|robots\.txt|manifest\.webmanifest)(\/|$)/.test(href)) {
+    return href;
+  }
   return `/${locale}${href === "/" ? "" : href}`;
 }
 

@@ -11,6 +11,7 @@ export const common: Dict["common"] = {
     add: "Добавить",
     nothingFound: "Ничего не найдено.",
     loading: "Загружаем…",
+  notificationsUnread: (n: number) => `Уведомления: ${n} новых`,
     year: "год",
     language: "Язык",
     switchToRussian: "Русский",

@@ -9,6 +9,9 @@ export const common = {
     add: "Add",
     nothingFound: "Nothing found.",
     loading: "Loading…",
+  // Счётчик живёт здесь, а не в nav: подписи навигации типизированы
+  // как простые строки (labelKey в меню), функция ломала бы этот тип.
+  notificationsUnread: (n: number) => `Notifications: ${n} new`,
     year: "year",
     language: "Language",
     switchToRussian: "Русский",

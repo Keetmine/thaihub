@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BellIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 // Раз в столько миллисекунд перепрашиваем счётчик. Минуты достаточно:
 // уведомления не чат, а частый опрос — лишняя нагрузка с каждой
@@ -17,6 +18,7 @@ const POLL_MS = 60_000;
  *  вкладку и при смене маршрута — иначе о новом уведомлении было не
  *  узнать без перезагрузки страницы (Ж8). */
 export default function NotificationBell({ unread: initial }: { unread: number }) {
+  const t = useT();
   const [unread, setUnread] = useState(initial);
   const [prevInitial, setPrevInitial] = useState(initial);
   const pathname = usePathname();
@@ -73,7 +75,7 @@ export default function NotificationBell({ unread: initial }: { unread: number }
       href="/notifications"
       prefetch={false}
       className="icon-btn position-relative"
-      aria-label={unread > 0 ? `Уведомления: ${unread} новых` : "Уведомления"}
+      aria-label={unread > 0 ? t.common.notificationsUnread(unread) : t.nav.notifications}
     >
       <BellIcon />
       {unread > 0 && (
