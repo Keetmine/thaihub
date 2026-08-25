@@ -1,5 +1,5 @@
 import AppLink from "@/components/AppLink";
-import PageHeader from "@/components/PageHeader";
+import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import { novelHref } from "@/lib/slugHelpers";
@@ -40,6 +40,17 @@ export default async function NovelsPage({
     orderBy: { title: "asc" },
   });
 
+  // Названия за шапкой. Внятной метрики популярности у новелл нет
+  // (ни избранного, ни статусов — только отзывы, которых почти нет),
+  // поэтому берём свежие добавленные.
+  const watermarkNames = (
+    await prisma.novel.findMany({
+      select: { title: true },
+      orderBy: { createdAt: "desc" },
+      take: WATERMARK_NAME_LIMIT,
+    })
+  ).map((n) => n.title);
+
   return (
     <div>
       <PageHeader
@@ -48,6 +59,7 @@ export default async function NovelsPage({
         size="lg"
         className="mb-5"
         watermark="Novels"
+        watermarkNames={watermarkNames}
       />
 
       <NameSearchBox action="/novels" q={q} placeholder={t.catalog.novels.search} />

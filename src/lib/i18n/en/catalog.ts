@@ -9,8 +9,6 @@ export const catalog = {
     all: "All",
     searchByTitle: "Search by title…",
     searchByName: "Search by name…",
-    showingFirst: (n: number) =>
-        `Showing the first ${n} matches — narrow the search to get closer ones.`,
     loadingMore: "Loading more…",
     letterIndex: "Jump to a letter",
     showAll: (n: number) => `Show all (${n})`,
@@ -83,7 +81,6 @@ export const catalog = {
         metaDescription:
             "Thai BL series: what they are about, who stars in them, when they aired and where they were filmed.",
         title: "Series",
-        searchIsGlobal: "Search covers the whole catalogue, whichever tab is open.",
         empty: "Nothing marked yet. Use the search to find a series.",
     },
 
@@ -122,8 +119,11 @@ export const catalog = {
         titleMascots: "Mascots",
         titleAgencies: "Agencies",
         favorites: "Favourites",
-        hint:
-            "This list holds your favourites and the actors with events in the feed — the catalogue itself has thousands more. If someone is missing, type the name into the search on the right.",
+        // Подпись справа от заголовка идёт тремя строками, и переносы
+        // прибиты разметкой (макет владельца): три ключа, три абзаца.
+        heroLead1: "Favourites and artists",
+        heroLead2: "with events in the feed.",
+        heroCta: "Not on the list — search by name.",
         artistCount: (n: number) => `${n} ${n === 1 ? "artist" : "artists"}`,
         emptyAgencies: "No agencies yet.",
         emptyBands: "No bands yet.",

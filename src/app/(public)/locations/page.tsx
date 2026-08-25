@@ -1,5 +1,5 @@
 import AppLink from "@/components/AppLink";
-import PageHeader from "@/components/PageHeader";
+import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetDataList from "@/components/AlphabetDataList";
@@ -78,6 +78,23 @@ export default async function LocationsPage({
     return `/locations${qs ? `?${qs}` : ""}`;
   };
 
+  // Названия за шапкой — самые «посещаемые» места каталога по числу
+  // отметок «была здесь». Места, созданные пользователями, в каталог не
+  // входят и в подложку тоже.
+  const watermarkNames = (
+    await prisma.location.findMany({
+      where: { createdByUserId: null },
+      select: { name: true },
+      orderBy: [
+        { visitedBy: { _count: "desc" } },
+        // Место, засветившееся в нескольких сериалах, известнее прочих.
+        { dramas: { _count: "desc" } },
+        { name: "asc" },
+      ],
+      take: WATERMARK_NAME_LIMIT,
+    })
+  ).map((l) => l.name);
+
   return (
     <div>
       <PageHeader
@@ -85,6 +102,7 @@ export default async function LocationsPage({
         title={t.catalog.locations.title}
         size="lg"
         watermark="Places"
+        watermarkNames={watermarkNames}
         className="mb-5"
         action={
           <>

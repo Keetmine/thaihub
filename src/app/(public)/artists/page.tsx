@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import AppLink from "@/components/AppLink";
-import PageHeader from "@/components/PageHeader";
+import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import type { Performer } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -304,9 +304,8 @@ export default async function PerformersPage({
           where: { type: typeOfView(view), ...performerNameWhere(q) },
           select: PERFORMER_ROW_SELECT,
           orderBy: { name: "asc" },
-          take: SEARCH_RESULT_LIMIT + 1,
+          take: SEARCH_RESULT_LIMIT,
         });
-  const searchTruncated = !!searchResults && searchResults.length > SEARCH_RESULT_LIMIT;
 
   // Группы и маскоты — короткие списки, показываем целиком; актёров без
   // поиска — только избранных (каталог в тысячи строк).
@@ -357,6 +356,30 @@ export default async function PerformersPage({
     for (const f of favorites) favoritedIds.add(f.performerId);
   }
 
+  // Имена за шапкой — самые популярные записи текущей вкладки по числу
+  // добавлений в избранное. Только имена и take: сортировка по счётчику
+  // связи — один агрегат, на пустой базе просто вернёт пусто.
+  const watermarkNames = (
+    view === "agencies"
+      ? await prisma.agency.findMany({
+          select: { name: true },
+          orderBy: [{ favoritedBy: { _count: "desc" } }, { name: "asc" }],
+          take: WATERMARK_NAME_LIMIT,
+        })
+      : await prisma.performer.findMany({
+          where: { type: typeOfView(view) },
+          select: { name: true },
+          // Вторым ключом — число событий: иначе хвост подложки
+          // заполняется алфавитом со случайными записями каталога.
+          orderBy: [
+            { favoritedBy: { _count: "desc" } },
+            { events: { _count: "desc" } },
+            { name: "asc" },
+          ],
+          take: WATERMARK_NAME_LIMIT,
+        })
+  ).map((r) => r.name);
+
   const titles: Record<View, string> = {
     performers: t.catalog.artists.titlePerformers,
     bands: t.catalog.artists.titleBands,
@@ -370,8 +393,22 @@ export default async function PerformersPage({
         eyebrow={t.catalog.eyebrow}
         title={titles[view]}
         size="lg"
-        className="mb-5"
+        gapOnTitle
         watermark="Artists"
+        watermarkNames={watermarkNames}
+        action={
+          // Подпись про наполнение списка стоит только на вкладке актёров
+          // без поиска: на группах и агентствах она была бы неправдой.
+          view === "performers" && !q ? (
+            <div className="hero-note">
+              {/* Три абзаца, а не два: перенос первой реплики прибит
+                  разметкой — так в макете владельца. */}
+              <p className="hero-note-lead">{t.catalog.artists.heroLead1}</p>
+              <p className="hero-note-lead">{t.catalog.artists.heroLead2}</p>
+              <p className="hero-note-cta">{t.catalog.artists.heroCta}</p>
+            </div>
+          ) : undefined
+        }
       />
 
       <div className="tab-bar-row">
@@ -386,21 +423,10 @@ export default async function PerformersPage({
           className=""
         />
       </div>
-      {view === "performers" && !q && (
-        <p className="small text-secondary mb-3" style={{ maxWidth: "44rem" }}>
-          {t.catalog.artists.hint}
-        </p>
-      )}
-
       {view === "agencies" ? (
         <AgenciesTab q={q} />
       ) : (
         <>
-          {searchTruncated && (
-            <p className="small text-secondary mb-3">
-              {t.catalog.showingFirst(SEARCH_RESULT_LIMIT)}
-            </p>
-          )}
           <PerformerAlphabetList
             performers={performers}
             favoritedIds={favoritedIds}

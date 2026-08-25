@@ -124,10 +124,12 @@ they're solving different problems:
   nothing with no explanation. Typing a search term switches to a real
   catalog-wide query, capped at `SEARCH_RESULT_LIMIT` (100,
   `src/lib/pagination.ts`) — a short/common query (a single letter)
-  can still match thousands of rows in a catalog this size, so results
-  are capped with a "уточните запрос" note rather than rendering
-  everything that matched. No page-number pagination here — narrowing
-  the search is the intended way to get to a specific entry.
+  can still match thousands of rows in a catalog this size. The cap is
+  silent by design: it used to be announced ("showing the first 100…",
+  "search covers the whole catalogue"), and both notices were removed —
+  a visitor who typed one letter does not need telling that a hundred
+  results is a lot. No page-number pagination here — narrowing the
+  search is the intended way to get to a specific entry.
 - **Admin list pages** (`/admin/performers`, `/admin/dramas`,
   `/admin/locations`, `/admin/pairings`, `/admin/agencies`, the
   `/admin` events dashboard): plain
@@ -141,6 +143,42 @@ they're solving different problems:
   `EventOccurrence` rows are loaded, so it fetches everything, sorts in
   JS, then slices — fine given the event count is nowhere near
   performer/drama scale.
+
+## Имена за шапкой раздела
+
+За заголовком каждого витринного раздела лежат ряды реальных имён
+раздела (компонент `PageHeader`, проп `watermarkNames`, оформление —
+[design-system.md](../design-system.md)). Страница отдаёт плоский список
+**в порядке убывания популярности**, максимум `WATERMARK_NAME_LIMIT`
+имён; раскладку по рядам и обрезку длинных названий делает сам
+компонент. Метрика популярности у каждого раздела своя:
+
+| Страница | Что показываем | Метрика |
+| --- | --- | --- |
+| `/artists` | исполнители текущей вкладки (актёры/группы/маскоты), на вкладке агентств — агентства | число `FavoritePerformer` / `FavoriteAgency`, вторым ключом — число событий |
+| `/dramas` | сериалы | число `DramaWatchStatus` (сердечка у сериала нет), вторым ключом — свежесть эфира |
+| `/events` | события | число `EventAttendance` («иду»), вторым ключом — `FavoriteEvent` |
+| `/locations` | места каталога (без созданных пользователями) | число `LocationVisit` («была здесь»), вторым ключом — в скольких сериалах засветилось |
+| `/novels` | новеллы | внятной метрики нет (ни избранного, ни статусов) — берём свежедобавленные |
+| `/trips` | — | кабинетный раздел, имён нет: остаётся контурное слово `watermark` |
+
+Выборка везде — один `findMany` на «только имя» с `take`, поэтому
+сортировка по счётчику связи стоит один агрегат и не зависит от размера
+каталога. На пустой базе запрос вернёт пусто, и шапка честно откатится
+на контурное слово — проверка «меньше четырёх имён → подложки нет»
+живёт в `PageHeader`.
+
+## Подпись справа от заголовка (актёры)
+
+Правее заголовка на `/artists` стоит `.hero-note` — три строки, по
+абзацу на каждую: серые `catalog.artists.heroLead1` + `heroLead2`
+(«избранные и артисты» / «с событиями в афише.») и акцентная
+`catalog.artists.heroCta` («нет в списке — ищите по имени.»). Перенос
+первой реплики прибит разметкой, поэтому ключей три, а не два — в
+обоих языках. Она заменила прежний серый абзац-подсказку под вкладками и
+показывается на тех же условиях: только вкладка актёров и только без
+поискового запроса — на группах, маскотах и агентствах это утверждение
+было бы неправдой.
 
 ## Music
 

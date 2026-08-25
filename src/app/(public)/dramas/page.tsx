@@ -1,5 +1,5 @@
 import AppLink from "@/components/AppLink";
-import PageHeader from "@/components/PageHeader";
+import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
@@ -56,10 +56,9 @@ export default async function DramasPage({
     ? await prisma.drama.findMany({
         where: dramaTitleWhere(q),
         orderBy: { title: "asc" },
-        take: SEARCH_RESULT_LIMIT + 1,
+        take: SEARCH_RESULT_LIMIT,
       })
     : null;
-  const searchTruncated = !!searchResults && searchResults.length > SEARCH_RESULT_LIMIT;
 
   const dramas = searchResults
     ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
@@ -95,6 +94,22 @@ export default async function DramasPage({
     ratings.filter((r) => r.dramaId).map((r) => [r.dramaId as string, r._avg.rating as number]),
   );
 
+  // Названия за шапкой — самые популярные сериалы по числу отметок
+  // статуса просмотра (единственный «мой» сигнал у сериала, сердечка у
+  // него нет). На пустой базе выборка вернёт пусто — подложки не будет.
+  const watermarkNames = (
+    await prisma.drama.findMany({
+      select: { title: true },
+      // Вторым ключом — свежесть эфира: хвост подложки лучше набрать
+      // недавними сериалами, чем алфавитом с начала каталога.
+      orderBy: [
+        { watchStatuses: { _count: "desc" } },
+        { airedFrom: { sort: "desc", nulls: "last" } },
+      ],
+      take: WATERMARK_NAME_LIMIT,
+    })
+  ).map((d) => d.title);
+
 
   return (
     <div>
@@ -104,6 +119,7 @@ export default async function DramasPage({
         size="lg"
         className="mb-5"
         watermark="Series"
+        watermarkNames={watermarkNames}
       />
 
       <div className="tab-bar-row">
@@ -133,16 +149,6 @@ export default async function DramasPage({
           className=""
         />
       </div>
-
-      {q && (
-        <p className="small text-secondary mb-3">{t.catalog.dramas.searchIsGlobal}</p>
-      )}
-
-      {searchTruncated && (
-        <p className="small text-secondary mb-3">
-          {t.catalog.showingFirst(SEARCH_RESULT_LIMIT)}
-        </p>
-      )}
 
       {/* Список строками, а не постерная сетка: сериалов много одиночных,
           карточки съедали место, а длинные названия обрезались. Строка как
