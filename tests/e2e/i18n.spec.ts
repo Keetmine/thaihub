@@ -53,6 +53,29 @@ test("переключатель уводит на ту же страницу в
   expect(new URL(page.url()).pathname).toBe("/ru/events");
 });
 
+test("выбранный английский сильнее русского браузера", async ({ browser, baseURL }) => {
+  // Иначе человек с русской системой, выбравший английский, получал бы
+  // редирект на /ru при каждом заходе — то есть выбор бы не работал.
+  const ctx = await browser.newContext({ locale: "ru-RU" });
+  await ctx.addCookies([
+    { name: "locale", value: "en", url: baseURL! },
+  ]);
+  const page = await ctx.newPage();
+  await page.goto("/events");
+  expect(new URL(page.url()).pathname).toBe("/events");
+  await ctx.close();
+});
+
+test("редирект на русскую версию не теряет параметры адреса", async ({ browser }) => {
+  const ctx = await browser.newContext({ locale: "ru-RU" });
+  const page = await ctx.newPage();
+  await page.goto("/search?q=love");
+  const url = new URL(page.url());
+  expect(url.pathname).toBe("/ru/search");
+  expect(url.searchParams.get("q")).toBe("love");
+  await ctx.close();
+});
+
 test("canonical и hreflang у каждой версии свои", async ({ page }) => {
   for (const [path, canonical] of [
     ["/events", "/events"],
