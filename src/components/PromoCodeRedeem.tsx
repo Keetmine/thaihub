@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { redeemPromoCode } from "@/app/(public)/promoActions";
 import { useLocale, useT } from "@/components/LocaleProvider";
-import { formatCombinedDateList } from "@/lib/dates";
+import { formatDateWithYear } from "@/lib/dates";
 
 /** Поле «У меня есть промокод» на пейволле. */
 export default function PromoCodeRedeem() {
@@ -27,7 +27,7 @@ export default function PromoCodeRedeem() {
       // Дата — на языке страницы; формат «25 августа 2026» / «25 August
       // 2026», без дня недели: он бы не согласовался с «до».
       setMessage(
-        t.widgets.promo.activated(formatCombinedDateList([new Date(result.until)], locale)),
+        t.widgets.promo.activated(formatDateWithYear(new Date(result.until), locale)),
       );
     } catch {
       // Сеть/сервер недоступны — текст исключения из server action в
