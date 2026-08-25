@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { userDisplayName } from "@/lib/userProfile";
 import {
   addTripMember,
   removeTripMember,
@@ -14,7 +15,14 @@ import {
   declineTripInvite,
 } from "./actions";
 
-export type TripMemberData = { id: string; name: string | null; pending?: boolean };
+export type TripMemberData = {
+  id: string;
+  name: string | null;
+  /** Признак удалённого аккаунта: подпись ему даёт userDisplayName на
+   *  языке зрителя, в базе лежит русская строка со дня удаления. */
+  deletedAt: Date | null;
+  pending?: boolean;
+};
 
 /** «Участники (N)» — модалка совместной поездки: владелец добавляет
  *  друзей и убирает участников, участник может выйти сам. */
@@ -33,11 +41,17 @@ export default function TripMembersButton({
   availableFriends: TripMemberData[];
 }) {
   const t = useT();
+  const locale = useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [friendId, setFriendId] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Имя участника: у живого — как он себя назвал, у удалённого —
+  // подпись на языке зрителя.
+  const label = (person: TripMemberData) =>
+    person.name ? userDisplayName(person, locale) : t.trips.members.noName;
 
   async function handleAdd() {
     if (!friendId || pending) return;
@@ -67,7 +81,7 @@ export default function TripMembersButton({
       <Modal open={open} onClose={() => setOpen(false)} title={t.trips.members.title}>
         <div className="d-flex flex-column gap-2">
           <div className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3">
-            <span>{owner.name ?? t.trips.members.noName}</span>
+            <span>{label(owner)}</span>
             <span className="small text-secondary flex-shrink-0">{t.trips.members.owner}</span>
           </div>
           {members.map((m) => (
@@ -76,7 +90,7 @@ export default function TripMembersButton({
               className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3"
             >
               <span>
-                {m.name ?? t.trips.members.noName}
+                {label(m)}
                 {m.pending && (
                   <span className="small text-secondary ms-2">{t.trips.members.pending}</span>
                 )}
@@ -93,9 +107,11 @@ export default function TripMembersButton({
                   confirmMessage={
                     m.pending
                       ? t.trips.members.cancelInviteConfirm(
-                          m.name ?? t.trips.members.someFriend,
+                          m.name ? userDisplayName(m, locale) : t.trips.members.someFriend,
                         )
-                      : t.trips.members.removeConfirm(m.name ?? t.trips.members.someMember)
+                      : t.trips.members.removeConfirm(
+                          m.name ? userDisplayName(m, locale) : t.trips.members.someMember,
+                        )
                   }
                 >
                   <button
@@ -122,7 +138,7 @@ export default function TripMembersButton({
                     <option value="">{t.trips.members.addFriend}</option>
                     {availableFriends.map((f) => (
                       <option key={f.id} value={f.id}>
-                        {f.name ?? t.trips.members.noName}
+                        {label(f)}
                       </option>
                     ))}
                   </select>

@@ -3793,22 +3793,16 @@ details.admin-section[open] > summary.admin-section-head::before {
   overflow: visible;
 }
 
-.synopsis-toggle {
+/* Подпись переключателя рисует сам SynopsisFold: строка приходит из
+   словаря языка, поэтому content в CSS тут не годится. */
+.synopsis-toggle-label {
   display: inline-block;
   margin-top: 0.35rem;
   font-size: 0.85rem;
   color: rgba(var(--accent-rgb), 0.9);
 }
 
-.synopsis-toggle::after {
-  content: "Читать дальше";
-}
-
-.synopsis-fold[open] .synopsis-toggle::after {
-  content: "Свернуть";
-}
-
-.synopsis-fold summary:hover .synopsis-toggle {
+.synopsis-fold summary:hover .synopsis-toggle-label {
   color: rgb(var(--accent-rgb));
 }
 

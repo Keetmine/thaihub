@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { verifyTelegramAuth } from "@/lib/telegram";
 import { publicOrigin } from "@/lib/googleOauth";
-import { pluralized } from "@/lib/plural";
 
 // Привязка Telegram к УЖЕ залогиненному аккаунту — отдельным адресом, а
 // не параметром ?mode=link у общего колбэка: Telegram Login Widget
@@ -49,26 +48,14 @@ async function linkTelegram(params: URLSearchParams, search: string) {
       info: {
         telegramUsername: payload.username,
         otherName: existing.name,
-        losses: [
-          {
-            n: existing._count.favoritePerformers,
-            forms: ["любимый артист", "любимых артиста", "любимых артистов"] as [string, string, string],
-          },
-          {
-            n: existing._count.favoriteEvents,
-            forms: ["событие в избранном", "события в избранном", "событий в избранном"] as [string, string, string],
-          },
-          {
-            n: existing._count.eventAttendances,
-            forms: ["отметка «иду»", "отметки «иду»", "отметок «иду»"] as [string, string, string],
-          },
-          {
-            n: existing._count.trips,
-            forms: ["поездка", "поездки", "поездок"] as [string, string, string],
-          },
-        ]
-          .filter((c) => c.n > 0)
-          .map((c) => pluralized(c.n, c.forms)),
+        // Отдаём числа, а не готовые фразы: подписи зависят от языка
+        // страницы, а он известен попапу, а не этой ручке.
+        losses: {
+          performers: existing._count.favoritePerformers,
+          events: existing._count.favoriteEvents,
+          attendances: existing._count.eventAttendances,
+          trips: existing._count.trips,
+        },
       },
     };
   }

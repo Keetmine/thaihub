@@ -1,83 +1,117 @@
+import type { Locale } from "@/lib/i18n/config";
+
 // Страны для профиля. Список неполный по замыслу: сверху те, откуда
-// аудитория, дальше остальные по алфавиту внутри регионов. Если чьей-то
-// страны не хватает — добавляется сюда одной строкой.
-export const COUNTRIES: { code: string; label: string }[] = [
-  { code: "RU", label: "Россия" },
-  { code: "BY", label: "Беларусь" },
-  { code: "KZ", label: "Казахстан" },
-  { code: "UA", label: "Украина" },
-  { code: "TH", label: "Таиланд" },
-  { code: "AM", label: "Армения" },
-  { code: "GE", label: "Грузия" },
-  { code: "KG", label: "Киргизия" },
-  { code: "UZ", label: "Узбекистан" },
-  { code: "AZ", label: "Азербайджан" },
-  { code: "MD", label: "Молдова" },
-  { code: "LV", label: "Латвия" },
-  { code: "LT", label: "Литва" },
-  { code: "EE", label: "Эстония" },
-  { code: "PL", label: "Польша" },
-  { code: "DE", label: "Германия" },
-  { code: "FR", label: "Франция" },
-  { code: "IT", label: "Италия" },
-  { code: "ES", label: "Испания" },
-  { code: "PT", label: "Португалия" },
-  { code: "NL", label: "Нидерланды" },
-  { code: "BE", label: "Бельгия" },
-  { code: "AT", label: "Австрия" },
-  { code: "CH", label: "Швейцария" },
-  { code: "CZ", label: "Чехия" },
-  { code: "SK", label: "Словакия" },
-  { code: "HU", label: "Венгрия" },
-  { code: "RO", label: "Румыния" },
-  { code: "BG", label: "Болгария" },
-  { code: "RS", label: "Сербия" },
-  { code: "HR", label: "Хорватия" },
-  { code: "GR", label: "Греция" },
-  { code: "TR", label: "Турция" },
-  { code: "CY", label: "Кипр" },
-  { code: "IL", label: "Израиль" },
-  { code: "AE", label: "ОАЭ" },
-  { code: "GB", label: "Великобритания" },
-  { code: "IE", label: "Ирландия" },
-  { code: "SE", label: "Швеция" },
-  { code: "NO", label: "Норвегия" },
-  { code: "FI", label: "Финляндия" },
-  { code: "DK", label: "Дания" },
-  { code: "IS", label: "Исландия" },
-  { code: "US", label: "США" },
-  { code: "CA", label: "Канада" },
-  { code: "MX", label: "Мексика" },
-  { code: "BR", label: "Бразилия" },
-  { code: "AR", label: "Аргентина" },
-  { code: "CL", label: "Чили" },
-  { code: "JP", label: "Япония" },
-  { code: "KR", label: "Южная Корея" },
-  { code: "CN", label: "Китай" },
-  { code: "HK", label: "Гонконг" },
-  { code: "TW", label: "Тайвань" },
-  { code: "SG", label: "Сингапур" },
-  { code: "MY", label: "Малайзия" },
-  { code: "ID", label: "Индонезия" },
-  { code: "PH", label: "Филиппины" },
-  { code: "VN", label: "Вьетнам" },
-  { code: "IN", label: "Индия" },
-  { code: "AU", label: "Австралия" },
-  { code: "NZ", label: "Новая Зеландия" },
-  { code: "ZA", label: "ЮАР" },
-  { code: "EG", label: "Египет" },
-  { code: "MA", label: "Марокко" },
-  { code: "QA", label: "Катар" },
-  { code: "SA", label: "Саудовская Аравия" },
-  { code: "MN", label: "Монголия" },
+// аудитория, дальше остальные по регионам. Если чьей-то страны не
+// хватает — добавляется сюда одной строкой.
+//
+// Подписи не храним: их даёт Intl.DisplayNames на языке страницы, иначе
+// список пришлось бы держать переведённым в каждом словаре и следить,
+// чтобы переводы не разъезжались.
+export const COUNTRY_CODES = [
+  "RU",
+  "BY",
+  "KZ",
+  "UA",
+  "TH",
+  "AM",
+  "GE",
+  "KG",
+  "UZ",
+  "AZ",
+  "MD",
+  "LV",
+  "LT",
+  "EE",
+  "PL",
+  "DE",
+  "FR",
+  "IT",
+  "ES",
+  "PT",
+  "NL",
+  "BE",
+  "AT",
+  "CH",
+  "CZ",
+  "SK",
+  "HU",
+  "RO",
+  "BG",
+  "RS",
+  "HR",
+  "GR",
+  "TR",
+  "CY",
+  "IL",
+  "AE",
+  "GB",
+  "IE",
+  "SE",
+  "NO",
+  "FI",
+  "DK",
+  "IS",
+  "US",
+  "CA",
+  "MX",
+  "BR",
+  "AR",
+  "CL",
+  "JP",
+  "KR",
+  "CN",
+  "HK",
+  "TW",
+  "SG",
+  "MY",
+  "ID",
+  "PH",
+  "VN",
+  "IN",
+  "AU",
+  "NZ",
+  "ZA",
+  "EG",
+  "MA",
+  "QA",
+  "SA",
+  "MN",
 ];
 
-const BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c.label]));
+const KNOWN = new Set(COUNTRY_CODES);
 
-export function countryLabel(code: string | null | undefined): string | null {
-  return code ? (BY_CODE.get(code) ?? null) : null;
+// По одному экземпляру на язык: конструктор Intl заметно дороже вызова.
+const displayNames = new Map<Locale, Intl.DisplayNames>();
+
+function names(locale: Locale): Intl.DisplayNames {
+  let dn = displayNames.get(locale);
+  if (!dn) {
+    dn = new Intl.DisplayNames([locale], { type: "region" });
+    displayNames.set(locale, dn);
+  }
+  return dn;
+}
+
+export function countryLabel(
+  code: string | null | undefined,
+  locale: Locale = "en",
+): string | null {
+  if (!code || !KNOWN.has(code)) return null;
+  return names(locale).of(code) ?? code;
+}
+
+/** Список для <select>, отсортированный по подписи на языке страницы —
+ *  кроме первых пяти: они стоят вперёд, потому что оттуда аудитория. */
+export function countryOptions(locale: Locale): { code: string; label: string }[] {
+  const dn = names(locale);
+  const label = (code: string) => dn.of(code) ?? code;
+  const pinned = COUNTRY_CODES.slice(0, 5);
+  const rest = COUNTRY_CODES.slice(5)
+    .map((code) => ({ code, label: label(code) }))
+    .sort((a, b) => a.label.localeCompare(b.label, locale));
+  return [...pinned.map((code) => ({ code, label: label(code) })), ...rest];
 }
 
 export function isKnownCountry(code: string): boolean {
-  return BY_CODE.has(code);
+  return KNOWN.has(code);
 }

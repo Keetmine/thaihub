@@ -4,7 +4,7 @@
 группировка.** Своё место (`Location.createdByUserId`) живёт само по
 себе; `PlaceList` — подборка таких мест и каталожных локаций («где
 вкусная еда», «кафе из сериалов») с той же моделью видимости, что у
-поездок (PRIVATE/FRIENDS/PUBLIC, `src/lib/tripVisibility.ts`).
+поездок (PRIVATE/FRIENDS/PUBLIC).
 
 - **`/lists`** — раздел «Мои места» (адрес не менялся). Сверху кнопка
   «+ Добавить место» (`CreateOwnPlaceButton` с готовым экшеном

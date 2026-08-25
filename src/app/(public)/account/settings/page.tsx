@@ -18,7 +18,7 @@ import SettingsTabs from "./SettingsTabs";
 import { pageMetadata } from "@/lib/seo";
 import TelegramLinkButton from "./TelegramLinkButton";
 import { telegramBotUsername } from "@/lib/telegram";
-import { COUNTRIES } from "@/lib/countries";
+import { countryOptions } from "@/lib/countries";
 import { dateKey } from "@/lib/dates";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -123,7 +123,7 @@ export default async function SettingsPage({
                   <label className="form-label">{s.country}</label>
                   <select name="country" defaultValue={user.country ?? ""} className="form-select">
                     <option value="">{s.countryEmpty}</option>
-                    {COUNTRIES.map((c) => (
+                    {countryOptions(locale).map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.label}
                       </option>

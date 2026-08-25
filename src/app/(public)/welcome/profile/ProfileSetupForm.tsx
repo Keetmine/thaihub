@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { COUNTRIES } from "@/lib/countries";
-import { useLocaleHref, useT } from "@/components/LocaleProvider";
+import { countryOptions } from "@/lib/countries";
+import { useLocale, useLocaleHref, useT } from "@/components/LocaleProvider";
 import { saveProfileSetup } from "./actions";
 import DatePickerInput from "@/components/DatePickerInput";
 
@@ -21,6 +21,7 @@ export default function ProfileSetupForm({
 }) {
   const router = useRouter();
   const t = useT();
+  const locale = useLocale();
   const localeHref = useLocaleHref();
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,7 +76,7 @@ export default function ProfileSetupForm({
           <label className="form-label">{t.auth.profileSetup.countryLabel}</label>
           <select name="country" defaultValue="" className="form-select">
             <option value="">{t.auth.profileSetup.countryEmpty}</option>
-            {COUNTRIES.map((c) => (
+            {countryOptions(locale).map((c) => (
               <option key={c.code} value={c.code}>
                 {c.label}
               </option>

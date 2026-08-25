@@ -9,14 +9,22 @@ import { useT } from "@/components/LocaleProvider";
 // поэтому его держим здесь и переиспользуем в контролах списка.
 export const VISIBILITY_ORDER = ["PRIVATE", "FRIENDS", "PUBLIC"] as const;
 
-/** Радио-выбор видимости для формы создания поездки. */
-export function VisibilityRadios({ defaultValue = "PRIVATE" }: { defaultValue?: string }) {
+/** Радио-выбор видимости. Используется и формой поездки, и формой
+ *  списка мест, поэтому подпись передаётся снаружи: сами варианты у них
+ *  общие, а вопрос — «кто видит поездку» или «кто видит список» — нет. */
+export function VisibilityRadios({
+  defaultValue = "PRIVATE",
+  label,
+}: {
+  defaultValue?: string;
+  label?: string;
+}) {
   const t = useT();
   const [selected, setSelected] = useState(defaultValue);
   return (
     <div>
       <label className="form-label small text-secondary d-block">
-        {t.trips.visibility.label}
+        {label ?? t.trips.visibility.label}
       </label>
       <div className="d-flex flex-column gap-1">
         {VISIBILITY_ORDER.map((value) => (

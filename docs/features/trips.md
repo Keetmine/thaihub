@@ -137,9 +137,8 @@ manually re-entering a date filter every time.
 Chosen at creation (radio group in the create modal,
 `TripVisibilityControls.tsx`) and changeable later from the trip page's
 owner toolbar (`VisibilitySelect` → `setTripVisibility`, scoped
-`updateMany` by owner). Labels live in `src/lib/tripVisibility.ts` — a
-client-safe module importable from server pages too (same split as
-`dramaStatus.ts`). **Personal events and todos stay participant-only at
+`updateMany` by owner). Labels come from the dictionary
+(`t.trips.visibility.*`, see [i18n.md](i18n.md)). **Personal events and todos stay participant-only at
 every visibility level** — reservations/meetups aren't shown to guests
 even on a public trip; guests see only the public events of the date
 range. Trip members see the trip regardless of its visibility.

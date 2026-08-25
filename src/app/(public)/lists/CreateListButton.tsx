@@ -59,7 +59,7 @@ export default function CreateListButton() {
             <label className="form-label small text-secondary">{t.lists.form.description}</label>
             <textarea name="description" rows={2} className="form-control" />
           </div>
-          <VisibilityRadios />
+          <VisibilityRadios label={t.lists.form.visibility} />
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
             {isSaving ? t.lists.form.creating : t.lists.form.submitCreate}

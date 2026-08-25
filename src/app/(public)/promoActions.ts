@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { extendPremium } from "@/lib/premium";
 import { assertRateLimit } from "@/lib/rateLimit";
+import { getT } from "@/lib/i18n";
 
 /** Результат активации. Ошибка возвращается значением, а не броском:
  *  в проде Next не отдаёт клиенту текст исключения из server action —
@@ -15,16 +16,17 @@ export type RedeemResult = { ok: true; until: Date } | { ok: false; error: strin
  *  текущему сроку (extendPremium × months). Код помечается использованным
  *  той же транзакцией — параллельная активация не пройдёт. */
 export async function redeemPromoCode(code: string): Promise<RedeemResult> {
+  const { t } = await getT();
   await assertRateLimit("login");
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Требуется вход" };
+  if (!user) return { ok: false, error: t.widgets.promo.signInRequired };
 
   const trimmed = code.trim().toUpperCase();
-  if (!trimmed) return { ok: false, error: "Введите код" };
+  if (!trimmed) return { ok: false, error: t.widgets.promo.enterCode };
 
   const promo = await prisma.promoCode.findUnique({ where: { code: trimmed } });
-  if (!promo) return { ok: false, error: "Такого кода нет" };
-  if (promo.usedAt) return { ok: false, error: "Код уже использован" };
+  if (!promo) return { ok: false, error: t.widgets.promo.noSuchCode };
+  if (promo.usedAt) return { ok: false, error: t.widgets.promo.alreadyUsed };
 
   const until = await prisma.$transaction(async (tx) => {
     const claimed = await tx.promoCode.updateMany({
@@ -42,7 +44,7 @@ export async function redeemPromoCode(code: string): Promise<RedeemResult> {
     return next!;
   });
 
-  if (!until) return { ok: false, error: "Код уже использован" };
+  if (!until) return { ok: false, error: t.widgets.promo.alreadyUsed };
 
   revalidatePath("/");
   return { ok: true, until };

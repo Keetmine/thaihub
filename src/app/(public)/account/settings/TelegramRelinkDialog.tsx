@@ -8,8 +8,14 @@ import { confirmTelegramRelink } from "./telegram-relink/actions";
 export type RelinkInfo = {
   telegramUsername: string | null;
   otherName: string | null;
-  /** «3 любимых артиста», «2 поездки» — только непустое. */
-  losses: string[];
+  /** Счётчики того, что исчезнет вместе со старым аккаунтом; подписи
+   *  собирает сам попап — они зависят от языка страницы. */
+  losses: {
+    performers: number;
+    events: number;
+    attendances: number;
+    trips: number;
+  };
 };
 
 /**
@@ -41,6 +47,17 @@ export default function TelegramRelinkDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const lost = (
+    [
+      [info.losses.performers, s.relinkLostPerformers],
+      [info.losses.events, s.relinkLostEvents],
+      [info.losses.attendances, s.relinkLostAttendances],
+      [info.losses.trips, s.relinkLostTrips],
+    ] as const
+  )
+    .filter(([n]) => n > 0)
+    .map(([n, label]) => label(n));
+
   async function confirm() {
     setBusy(true);
     setError(null);
@@ -60,8 +77,8 @@ export default function TelegramRelinkDialog({
           <ul className="text-secondary mb-0 d-flex flex-column gap-1">
             <li>{s.relinkLinks}</li>
             <li>{s.relinkDeletes}</li>
-            {info.losses.length > 0 ? (
-              <li>{s.relinkLosses(info.losses.join(", "))}</li>
+            {lost.length > 0 ? (
+              <li>{s.relinkLosses(lost.join(", "))}</li>
             ) : (
               <li>{s.relinkNoLosses}</li>
             )}
