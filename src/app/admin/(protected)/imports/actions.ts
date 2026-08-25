@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopArtist } from "@/lib/tpopAgencyImport";
 import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
-import { logImportRun, isImportCancelledError } from "@/lib/importRun";
+import { logImportRun, isImportCancelledError, checkImportCancelled } from "@/lib/importRun";
 import { resolveChannelInput, parseChannelHandle } from "@/lib/youtubeMusic";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
 import { fetchMdlDrama, mdlIdFromUrl, absMdlUrl, type MdlCastMember } from "@/lib/mydramalist";
@@ -192,11 +192,27 @@ async function linkMdlCast(
   dramaId: string,
   cast: MdlCastMember[],
   runId: string,
-): Promise<{ linked: number; createdPerformers: number }> {
+): Promise<{
+  linked: number;
+  createdPerformers: number;
+  enriched: number;
+  enrichFailed: number;
+}> {
   let linked = 0;
   let createdPerformers = 0;
+  let enriched = 0;
+  let enrichFailed = 0;
+  // Страховка от очень длинных кастов: каждая карточка — это отдельная
+  // страница MDL, а она может открываться через браузер и занимать
+  // десятки секунд.
+  const ENRICH_LIMIT = 20;
+  const staleBefore = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   for (const member of cast) {
+    // Между актёрами даём остановить прогон: каст большой, ждать конца
+    // ради отмены неразумно.
+    await checkImportCancelled(runId);
+
     const mdlUrl = absMdlUrl(member.mdlPath);
     let performer = await prisma.performer.findFirst({
       where: {
@@ -205,24 +221,70 @@ async function linkMdlCast(
           { name: { equals: member.name, mode: "insensitive" } },
         ],
       },
-      select: { id: true },
+      select: {
+        id: true,
+        photoUrl: true,
+        bio: true,
+        realName: true,
+        birthDate: true,
+        mdlSyncedAt: true,
+        _count: { select: { links: true } },
+      },
     });
+    let isNew = false;
 
     if (!performer) {
-      performer = await prisma.performer.create({
+      const created = await prisma.performer.create({
         data: { name: member.name, mydramalistUrl: mdlUrl },
         select: { id: true },
       });
+      performer = {
+        id: created.id,
+        photoUrl: null,
+        bio: null,
+        realName: null,
+        birthDate: null,
+        mdlSyncedAt: null,
+        _count: { links: 0 },
+      };
+      isNew = true;
       createdPerformers += 1;
       await prisma.importedItem.create({
         data: {
           runId,
           entityType: "performer",
-          entityId: performer.id,
+          entityId: created.id,
           action: "created",
           label: member.name,
         },
       });
+    }
+
+    // Дозаполняем карточку со страницы актёра — и заведённую только что,
+    // и давнюю, если в ней чего-то не хватает. Полную и недавно
+    // синхронизированную не трогаем: импорт всё равно пишет только в
+    // пустые поля, а страница грузится долго.
+    const incomplete =
+      !performer.photoUrl ||
+      !performer.bio ||
+      !performer.realName ||
+      !performer.birthDate ||
+      performer._count.links === 0;
+    const stale = !performer.mdlSyncedAt || performer.mdlSyncedAt < staleBefore;
+    if ((isNew || (incomplete && stale)) && enriched + enrichFailed < ENRICH_LIMIT) {
+      try {
+        await importMdlPerformer(mdlUrl, performer.id, runId);
+        await prisma.performer.update({
+          where: { id: performer.id },
+          data: { mdlSyncedAt: new Date() },
+        });
+        enriched += 1;
+      } catch (e) {
+        // Отмену пробрасываем, всё остальное — не повод ронять импорт
+        // сериала: связь с актёром уже есть, карточку дозаполним позже.
+        if (isImportCancelledError(e)) throw e;
+        enrichFailed += 1;
+      }
     }
 
     const already = await prisma.performerDrama.findUnique({
@@ -237,7 +299,7 @@ async function linkMdlCast(
     linked += 1;
   }
 
-  return { linked, createdPerformers };
+  return { linked, createdPerformers, enriched, enrichFailed };
 }
 
 /**
@@ -256,9 +318,14 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
     throw new Error("Не похоже на ссылку сериала MyDramaList");
   }
 
-  await logImportRun(
-    "mdl-drama",
-    async (runId) => {
+  // В фоне, как импорт с tpop: теперь прогон дозаполняет ещё и карточки
+  // актёров, а это отдельная страница MDL на каждого — форма не должна
+  // висеть всё это время. Ход виден в журнале, там же кнопка
+  // «Остановить».
+  void (async () => {
+    await logImportRun(
+      "mdl-drama",
+      async (runId) => {
       const mdl = await fetchMdlDrama(url);
       const existing = await prisma.drama.findFirst({
         where: { OR: [{ mydramalistUrl: url }, { title: mdl.title }] },
@@ -353,22 +420,27 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
         peopleLinks: mdl.peopleLinks,
       };
     },
-    (r) =>
-      (r.created
-        ? `${r.title}: создан`
-        : `${r.title}: ${r.filled.length ? `заполнено — ${r.filled.join(", ")}` : "новых полей нет"}`) +
-      (r.linked ? `, каст +${r.linked}` : ", новых связей каста нет") +
-      (r.createdPerformers ? ` (заведено актёров ${r.createdPerformers})` : "") +
-      // Диагностика на случай «каст не подтянулся»: видно, нашли ли мы
-      // актёров на странице вообще и есть ли там ссылки на людей.
-      (r.castFound === 0
-        ? r.peopleLinks === 0
-          ? " · на странице MDL каста не оказалось"
-          : ` · на странице ${r.peopleLinks} ссылок на людей, но карточек актёров не распознали`
-        : r.castFound === r.linked
-          ? ""
-          : ` (на странице ${r.castFound})`),
-  );
+      (r) =>
+        (r.created
+          ? `${r.title}: создан`
+          : `${r.title}: ${r.filled.length ? `заполнено — ${r.filled.join(", ")}` : "новых полей нет"}`) +
+        (r.linked ? `, каст +${r.linked}` : ", новых связей каста нет") +
+        (r.createdPerformers ? ` (заведено актёров ${r.createdPerformers})` : "") +
+        (r.enriched ? `, дозаполнено карточек ${r.enriched}` : "") +
+        (r.enrichFailed ? `, не открылось ${r.enrichFailed}` : "") +
+        // Диагностика на случай «каст не подтянулся»: видно, нашли ли мы
+        // актёров на странице вообще и есть ли там ссылки на людей.
+        (r.castFound === 0
+          ? r.peopleLinks === 0
+            ? " · на странице MDL каста не оказалось"
+            : ` · на странице ${r.peopleLinks} ссылок на людей, но карточек актёров не распознали`
+          : r.castFound === r.linked
+            ? ""
+            : ` (на странице ${r.castFound})`),
+    ).catch(() => {
+      // Падение уже записано в журнал самим logImportRun.
+    });
+  })();
 
   revalidatePath("/admin/imports");
   revalidatePath("/admin/dramas");
