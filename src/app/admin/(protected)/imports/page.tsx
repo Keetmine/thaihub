@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import {
+import { runMdlDramaImport,
   runMdlPerformerImport,
   runTpopArtistImport,
   markImportsReviewed,
@@ -8,6 +8,8 @@ import {
   runYoutubeMusicImportAndSchedule,
 } from "./actions";
 import RunningImportsWatcher from "./RunningImportsWatcher";
+import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
+import StopImportButton from "./StopImportButton";
 import SubmitButton from "@/components/admin/SubmitButton";
 import Pagination from "@/components/Pagination";
 import { DENSE_PAGE_SIZE } from "@/lib/pagination";
@@ -67,7 +69,9 @@ export default async function AdminImportsPage({
   // Фильтр по статусу: с дашборда «упавшие импорты» ведут сразу сюда,
   // иначе пришлось бы искать их глазами в общем журнале. Он же решает,
   // какая вкладка открыта: со ссылки про упавшие ждут именно запуски.
-  const status = ["RUNNING", "DONE", "FAILED"].includes(rawStatus ?? "") ? rawStatus! : null;
+  const status = ["RUNNING", "DONE", "FAILED", "CANCELLED"].includes(rawStatus ?? "")
+    ? rawStatus!
+    : null;
   const logTab: LogTab =
     LOG_TABS.find((t) => t.key === rawLog)?.key ?? (status ? "runs" : "items");
   const runsWhere = status ? { status } : {};
@@ -109,7 +113,6 @@ export default async function AdminImportsPage({
       </h1>
 
       <div className="d-flex flex-wrap gap-2 mb-4">
-        <Link href="/admin/locations" className="btn btn-ghost btn-sm">blscene-локации →</Link>
         <Link href="/admin/imports/ttm" className="btn btn-ghost btn-sm">Импорт события с TTM →</Link>
       </div>
 
@@ -219,6 +222,52 @@ export default async function AdminImportsPage({
             </form>
           </div>
         </div>
+
+        <div className="col-12 col-xl-6">
+          <div className="surface p-4 h-100">
+            <h2 className="section-heading mb-2">MyDramaList: импорт сериала</h2>
+            <p className="small text-secondary mb-3">
+              Ссылка на страницу сериала (mydramalist.com/12345-title) — заберём
+              оригинальное название, описание, постер, жанры, режиссёра и
+              сценариста, канал, число серий, даты эфира, возрастной рейтинг и
+              оценку MDL. Если сериала в каталоге ещё нет, он создастся; если
+              есть — дозаполним только пустые поля, занесённое руками не
+              переписываем. Статус («Выходит», «Завершён») выводится из дат
+              эфира и обновляется всегда.
+            </p>
+            <form action={runMdlDramaImport} className="d-flex flex-wrap gap-2">
+              <input
+                name="mdlUrl"
+                required
+                placeholder="https://mydramalist.com/…"
+                className="form-control flex-grow-1"
+                style={{ minWidth: "16rem" }}
+              />
+              <SubmitButton
+                label={runningRun ? "Импорт идёт…" : "Импортировать"}
+                busyLabel="Запускаем…"
+                className="btn btn-primary btn-sm flex-shrink-0"
+                disabled={!!runningRun}
+              />
+            </form>
+          </div>
+        </div>
+
+        <div className="col-12 col-xl-6">
+          <div className="surface p-4 h-100">
+            <h2 className="section-heading mb-2">blscene: новые локации съёмок</h2>
+            <p className="small text-secondary mb-3">
+              Разовая проверка «не появилось ли новых мест». Обходим на blscene
+              страницы тех сериалов, что УЖЕ есть в каталоге, и добавляем
+              локации, которых у нас ещё нет. Новые сериалы этой кнопкой не
+              заводятся, существующие локации не перезаписываются — операция
+              только добавляет. Занимает несколько минут: страницы открываются
+              по очереди в браузере. Раньше кнопка жила в разделе локаций, где
+              её не было видно.
+            </p>
+            <BlsceneLocationsSyncButton />
+          </div>
+        </div>
       </div>
 
       <RunningImportsWatcher hasRunning={!!runningRun} />
@@ -321,15 +370,28 @@ export default async function AdminImportsPage({
                         ? "text-success"
                         : r.status === "FAILED"
                           ? "text-danger"
-                          : "text-warning"
+                          : r.status === "CANCELLED"
+                            ? "text-secondary"
+                            : "text-warning"
                     }
                   >
-                    · {r.status === "DONE" ? "готово" : r.status === "FAILED" ? "ошибка" : "выполняется"}
+                    ·{" "}
+                    {r.status === "DONE"
+                      ? "готово"
+                      : r.status === "FAILED"
+                        ? "ошибка"
+                        : r.status === "CANCELLED"
+                          ? "остановлено"
+                          : "выполняется"}
                   </span>
                 </p>
                 {r.summary && <p className="small text-secondary mb-0">{r.summary}</p>}
               </div>
-              <span className="small text-secondary flex-shrink-0">{fmt(r.startedAt)}</span>
+              <span className="d-flex align-items-center gap-2 flex-shrink-0">
+                {/* Остановить можно только то, что ещё идёт. */}
+                {r.status === "RUNNING" && <StopImportButton runId={r.id} />}
+                <span className="small text-secondary">{fmt(r.startedAt)}</span>
+              </span>
             </div>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { downloadRemoteImage } from "@/lib/localImage";
+import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import {
   fetchYtmArtist,
   albumUrl,
@@ -93,6 +94,9 @@ export async function importYtmForPerformer(
   }
 
   for (const album of artist.albums) {
+    // Остановка по кнопке: записанные релизы остаются в карточке,
+    // повторный импорт просто доберёт остальное.
+    await checkImportCancelled(runId);
     const existing = performer.albums.find(
       (a) => a.title.trim().toLowerCase() === album.title.trim().toLowerCase(),
     );
@@ -132,6 +136,7 @@ export async function importYtmForPerformer(
   }
 
   for (const song of artist.songs) {
+    await checkImportCancelled(runId);
     const existing = performer.songs.find(
       (s) => s.title.trim().toLowerCase() === song.title.trim().toLowerCase(),
     );
@@ -216,6 +221,9 @@ export async function refreshAllYoutubeMusic(options?: {
   const newTitles: string[] = [];
 
   for (const performer of performers) {
+    // Обход всех артистов — самый долгий из прогонов: проверяем
+    // остановку перед каждым, чтобы не ждать конца списка.
+    await checkImportCancelled(options?.runId ?? null);
     const channelId = channelIdFromLinks(performer.links);
     if (!channelId) continue;
     try {
@@ -230,6 +238,9 @@ export async function refreshAllYoutubeMusic(options?: {
         newTitles.push(...summary.newTitles.map((t) => `${performer.name} — ${t}`));
       }
     } catch (err) {
+      // Остановка — не ошибка артиста: не считаем её падением и не
+      // глушим, иначе прогон дожил бы до конца списка.
+      if (isImportCancelledError(err)) throw err;
       failed += 1;
       console.warn(
         `youtube-music refresh failed for ${performer.name}: ${err instanceof Error ? err.message : err}`,

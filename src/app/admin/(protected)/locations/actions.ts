@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { logImportRun } from "@/lib/importRun";
 import { redirect } from "next/navigation";
 import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
@@ -191,14 +192,30 @@ export async function deleteLocation(id: string) {
  * standalone backfill script instead — this only ever adds locations to
  * dramas we already have.
  */
-export async function syncBlsceneLocations(): Promise<BlsceneLocationRefreshResult> {
+export async function syncBlsceneLocations(): Promise<BlsceneLocationRefreshResult | null> {
   await requireCatalogEditor();
   const browser = await chromium.launch();
   try {
-    const result = await refreshBlsceneLocations(browser);
+    // Через журнал импортов: прогон видно в /admin/imports, и там же
+    // его можно остановить кнопкой (runId нужен, чтобы обход замечал
+    // флаг отмены между сериалами). null — как раз остановка.
+    const result = await logImportRun(
+      "blscene",
+      (runId) => refreshBlsceneLocations(browser, undefined, runId),
+      (r) =>
+        `проверено ${r.checked}` +
+        (r.refreshed.length
+          ? `, новые локации у ${r.refreshed.length}: ${r.refreshed
+              .slice(0, 5)
+              .map((d) => `${d.title} +${d.newLocations}`)
+              .join(", ")}`
+          : ", новых локаций нет") +
+        (r.errors.length ? `, ошибок ${r.errors.length}` : ""),
+    );
     revalidatePath("/admin/locations");
     revalidatePath("/locations");
     revalidatePath("/locations/map");
+    revalidatePath("/admin/imports");
     return result;
   } finally {
     await browser.close();

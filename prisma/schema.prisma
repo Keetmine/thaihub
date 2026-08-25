@@ -1291,8 +1291,13 @@ model ImportRun {
   // только непросмотренные, иначе гасить его было нечем.
   reviewedAt DateTime?
   kind       String // "tmdb-dramas" | "tmdb-performers" | "gmmtv" | "mdl-drama" | "blscene"
-  status     String    @default("RUNNING") // RUNNING | DONE | FAILED
+  status     String    @default("RUNNING") // RUNNING | DONE | FAILED | CANCELLED
   summary    String?
+  // Кнопка «Остановить» в /admin/imports: экшен ставит флаг, а сам
+  // импорт проверяет его между элементами и выходит сам
+  // (checkImportCancelled в src/lib/importRun.ts). Убивать процесс на
+  // полуслове нельзя — уже импортированное должно остаться.
+  cancelRequested Boolean @default(false)
   items      ImportedItem[]
   startedAt  DateTime  @default(now())
   finishedAt DateTime?

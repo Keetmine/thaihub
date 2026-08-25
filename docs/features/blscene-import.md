@@ -22,16 +22,28 @@ scrapable with a normal `fetch` + `cheerio`, no headless browser needed
   `refreshBlsceneLocations` (the refresh-only half of the same sweep, no
   new-drama import — used by the admin button below). The script and the
   admin button intentionally call different functions now (see "Admin
-  button" below for why).
+  button" below for why). Both sweeps take an optional `runId`: when the
+  caller wraps them in an `ImportRun`, they call `checkImportCancelled`
+  before each show, so the admin's «Остановить» button stops the sweep
+  after the current drama — already imported dramas and their locations
+  stay (see [admin-panel.md](admin-panel.md), «Импорты»). Without a
+  `runId` (the standalone script) the check is a no-op.
 - **`scripts/import-blscene.ts`** — one-off backfill
   (`npx tsx scripts/import-blscene.ts`), used for the initial bulk import
   of the whole index and for catching up on new shows blscene adds later
   — `syncNewDramasFromBlscene`'s import+refresh sweep, same as before.
-- **Admin button** — "Проверить актуальный список (blscene)" on
-  `/admin/locations` (`BlsceneLocationsSyncButton.tsx` →
-  `syncBlsceneLocations` server action in
-  `src/app/admin/(protected)/locations/actions.ts`), for catching newly
-  added filming locations on already-imported dramas' pages. Deliberately
+- **Admin button** — «Проверить актуальный список» в карточке
+  «blscene: новые локации съёмок» на **`/admin/imports`**
+  (`imports/BlsceneLocationsSyncButton.tsx` → `syncBlsceneLocations`
+  server action in `src/app/admin/(protected)/locations/actions.ts`),
+  for catching newly added filming locations on already-imported
+  dramas' pages. Кнопка переехала со страницы локаций: там она стояла
+  без объяснений над списком и терялась, а по смыслу это импорт —
+  теперь рядом с остальными и с подробным описанием того, что именно
+  она делает. Прогон пишется в журнал импортов (`logImportRun`, kind
+  `blscene`) — поэтому его видно в списке запусков и **можно
+  остановить** кнопкой «Остановить»: обход замечает флаг между
+  сериалами и выходит, уже найденные локации остаются. Deliberately
   scoped to locations only — new-drama importing from blscene stays a
   script-only operation (`scripts/import-blscene.ts`), so this button
   can't be used to bulk-create dramas by accident.

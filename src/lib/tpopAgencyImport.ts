@@ -17,6 +17,7 @@ import {
 import { downloadRemoteImage } from "@/lib/localImage";
 import { addPerformerAgency } from "@/lib/performerAgency";
 import { scrapeTtmEvent, type TtmEvent } from "@/lib/thaiticketmajor";
+import { checkImportCancelled } from "@/lib/importRun";
 
 // Импорт агентства целиком с tpop.fandom.com (см. tpop-agency-import.md):
 // агентство с лого, все Groups/Duos/Soloists/Former artists (создание или
@@ -113,6 +114,9 @@ async function importDiscography(ctx: Ctx, performerId: string, page: string): P
   }
 
   for (const album of disco.albums) {
+    // Остановка по кнопке: записанные релизы остаются, откатывать
+    // сделанное нельзя — повторный прогон доберёт остальное.
+    await checkImportCancelled(ctx.runId);
     let coverUrl: string | null = null;
     let url: string | null = null;
     if (album.pageTitle) {
@@ -149,6 +153,7 @@ async function importDiscography(ctx: Ctx, performerId: string, page: string): P
   });
   const byKey = new Map(existingSongs.map((s) => [`${s.title}|${s.note ?? ""}`, s]));
   for (const song of disco.songs) {
+    await checkImportCancelled(ctx.runId);
     const key = `${song.title}|${song.note ?? ""}`;
     const url = song.pageTitle ? await fetchTpopPageStreamingLink(song.pageTitle) : null;
     const existing = byKey.get(key);
@@ -333,6 +338,9 @@ async function importConcerts(
   const normed = allEvents.map((e) => ({ id: e.id, norm: normTitle(e.title) }));
 
   for (const concert of concerts) {
+    // Проверка снаружи try: иначе остановку съел бы catch, который
+    // пишет концерт в «не нашлось».
+    await checkImportCancelled(ctx.runId);
     const cNorm = normTitle(concert.title);
     if (cNorm.length < 6) continue;
     const match = normed.find(
@@ -602,6 +610,9 @@ export async function importTpopAgency(
 
   const groupFilter = options?.onlyGroups?.map((n) => n.trim().toLowerCase());
   for (const group of [...pageData.groups, ...pageData.duos]) {
+    // Артист целиком — минимальная единица остановки: разобранные до
+    // нажатия группы и солисты остаются в каталоге.
+    await checkImportCancelled(ctx.runId);
     if (groupFilter && !groupFilter.includes(group.name.trim().toLowerCase())) {
       ctx.log(`— ${group.name} (пропущена фильтром)`);
       continue;
@@ -609,12 +620,14 @@ export async function importTpopAgency(
     await importArtist(ctx, group, agency.id, true);
   }
   for (const solo of pageData.soloists) {
+    await checkImportCancelled(ctx.runId);
     await importArtist(ctx, solo, agency.id, true);
   }
   // Бывшие артисты: страницы импортируем/обогащаем, но текущим агентством
   // не привязываем; skipFormer — не трогаем вовсе.
   if (!options?.skipFormer) {
     for (const former of pageData.former) {
+      await checkImportCancelled(ctx.runId);
       await importArtist(ctx, former, agency.id, false);
     }
   }

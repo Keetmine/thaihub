@@ -51,7 +51,8 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
         (runId) => refreshAllYoutubeMusic({ performerIds: targetIds, runId }),
         summarize,
       );
-      return summarize(result);
+      // null — прогон остановили кнопкой в /admin/imports.
+      return result ? summarize(result) : "остановлено вручную";
     },
   },
   {

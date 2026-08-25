@@ -6,6 +6,7 @@ import {
   resolveMapsCoords,
   type BlsceneDrama,
 } from "@/lib/blscene";
+import { checkImportCancelled } from "@/lib/importRun";
 
 export type BlsceneSyncResult = {
   checked: number;
@@ -141,6 +142,9 @@ async function refreshScrapedDrama(
 export async function syncNewDramasFromBlscene(
   browser: Browser,
   onProgress?: (message: string) => void,
+  /** Запуск из журнала импортов — тогда прогон можно остановить кнопкой
+   *  «Остановить» на /admin/imports (проверка между сериалами). */
+  runId?: string | null,
 ): Promise<BlsceneSyncResult> {
   const log = onProgress ?? (() => {});
 
@@ -170,6 +174,9 @@ export async function syncNewDramasFromBlscene(
   const result: BlsceneSyncResult = { checked: index.length, imported: [], refreshed: [], errors: [] };
 
   for (const [i, entry] of toImport.entries()) {
+    // Остановка по кнопке: уже импортированные сериалы и их локации
+    // остаются, просто не берём следующий.
+    await checkImportCancelled(runId);
     log(`[${i + 1}/${toImport.length}] ${entry.title}`);
     try {
       const scraped = await scrapeBlsceneDrama(entry.url);
@@ -183,6 +190,7 @@ export async function syncNewDramasFromBlscene(
   }
 
   for (const [i, entry] of toRefresh.entries()) {
+    await checkImportCancelled(runId);
     const existing = byUrl.get(entry.url)!;
     log(`[refresh ${i + 1}/${toRefresh.length}] ${entry.title}`);
     try {
@@ -211,6 +219,8 @@ export async function syncNewDramasFromBlscene(
 export async function refreshBlsceneLocations(
   browser: Browser,
   onProgress?: (message: string) => void,
+  /** Запуск из журнала импортов — см. syncNewDramasFromBlscene. */
+  runId?: string | null,
 ): Promise<BlsceneLocationRefreshResult> {
   const log = onProgress ?? (() => {});
 
@@ -225,6 +235,9 @@ export async function refreshBlsceneLocations(
   const result: BlsceneLocationRefreshResult = { checked: toRefresh.length, refreshed: [], errors: [] };
 
   for (const [i, entry] of toRefresh.entries()) {
+    // Найденные локации уже связаны с сериалами — остановка их не
+    // трогает, просто дальше не идём.
+    await checkImportCancelled(runId);
     const existing = byUrl.get(entry.url)!;
     log(`[${i + 1}/${toRefresh.length}] ${entry.title}`);
     try {

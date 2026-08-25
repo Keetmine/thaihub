@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { fetchMdlPerson, absMdlUrl, type MdlPerson } from "@/lib/mydramalist";
 import { downloadRemoteImage } from "@/lib/localImage";
+import { checkImportCancelled } from "@/lib/importRun";
 
 export type MdlPerformerSummary = {
   performerId: string;
@@ -119,6 +120,9 @@ export async function importMdlPerformer(
   const haveUrls = new Set((existing?.links ?? []).map((l) => l.url));
   let linksAdded = 0;
   for (const link of person.socialLinks) {
+    // Остановка по кнопке: карточка уже заведена и остаётся такой, как
+    // получилось, — повторный импорт того же адреса её дозаполнит.
+    await checkImportCancelled(runId ?? null);
     if (haveUrls.has(link)) continue;
     await prisma.performerLink.create({
       data: { performerId: performer.id, label: labelFor(link), url: link },
@@ -132,6 +136,7 @@ export async function importMdlPerformer(
   let dramasLinked = 0;
   let dramasSkipped = 0;
   for (const row of person.filmography) {
+    await checkImportCancelled(runId ?? null);
     const mdlUrl = absMdlUrl(row.mdlPath);
     const drama = await prisma.drama.findFirst({
       where: {

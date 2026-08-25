@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopArtist } from "@/lib/tpopAgencyImport";
 import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
-import { logImportRun } from "@/lib/importRun";
+import { logImportRun, isImportCancelledError } from "@/lib/importRun";
 import { parseChannelId } from "@/lib/youtubeMusic";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
+import { fetchMdlDrama, mdlIdFromUrl } from "@/lib/mydramalist";
+import { downloadRemoteImage } from "@/lib/localImage";
 
 
 /** Одиночный импорт артиста/группы с tpop.fandom (та же фоновая схема
@@ -53,13 +55,19 @@ export async function runTpopArtistImport(formData: FormData): Promise<void> {
         },
       });
     } catch (e) {
+      // Этот импорт ведёт журнал сам, мимо logImportRun, — значит и
+      // отмену должен отличать от падения сам, иначе остановленный
+      // вручную прогон висел бы как «ошибка».
+      const cancelled = isImportCancelledError(e);
       await prisma.importRun
         .update({
           where: { id: run.id },
           data: {
-            status: "FAILED",
+            status: cancelled ? "CANCELLED" : "FAILED",
             finishedAt: new Date(),
-            summary: `${lastMessage ? `${lastMessage} → ` : ""}${e instanceof Error ? e.message : "Неизвестная ошибка"}`.slice(0, 500),
+            summary: cancelled
+              ? `${lastMessage ? `${lastMessage} → ` : ""}Остановлено вручную`.slice(0, 500)
+              : `${lastMessage ? `${lastMessage} → ` : ""}${e instanceof Error ? e.message : "Неизвестная ошибка"}`.slice(0, 500),
           },
         })
         .catch(() => {});
@@ -158,5 +166,112 @@ export async function runMdlPerformerImport(formData: FormData): Promise<void> {
   );
 
   revalidatePath("/admin/imports");
-  revalidatePath(`/admin/performers/${result.performerId}/edit`);
+  // null — импорт остановили кнопкой; страницу артиста ревалидировать
+  // тогда нечего.
+  if (result) revalidatePath(`/admin/performers/${result.performerId}/edit`);
+}
+
+/**
+ * Импорт ОДНОГО сериала со страницы MyDramaList по ссылке. В отличие от
+ * кнопки на карточке сериала (она только дозаполняет уже существующую
+ * запись), здесь сериала в каталоге может ещё не быть — тогда он
+ * создаётся. Если сериал с такой же ссылкой уже есть, заполняем только
+ * пустые поля: занесённое руками не переписываем. Статус — исключение,
+ * он выводится из дат эфира и всегда освежается.
+ */
+export async function runMdlDramaImport(formData: FormData): Promise<void> {
+  await requireCatalogEditor();
+  const url = String(formData.get("mdlUrl") ?? "").trim();
+  if (!url) throw new Error("Вставьте ссылку на сериал MyDramaList");
+  if (!mdlIdFromUrl(url)) {
+    throw new Error("Не похоже на ссылку сериала MyDramaList");
+  }
+
+  await logImportRun(
+    "mdl-drama",
+    async () => {
+      const mdl = await fetchMdlDrama(url);
+      const existing = await prisma.drama.findFirst({
+        where: { OR: [{ mydramalistUrl: url }, { title: mdl.title }] },
+      });
+
+      const poster = mdl.posterUrl ? await downloadRemoteImage(mdl.posterUrl, "mdl") : null;
+      const base = {
+        mydramalistUrl: url,
+        nativeTitle: mdl.nativeTitle,
+        alsoKnownAs: mdl.alsoKnownAs,
+        synopsis: mdl.synopsis,
+        posterUrl: poster,
+        genres: mdl.genres,
+        director: mdl.director,
+        screenwriter: mdl.screenwriter,
+        network: mdl.network,
+        episodes: mdl.episodes,
+        airedFrom: mdl.airedFrom,
+        airedTo: mdl.airedTo,
+        airedOn: mdl.airedOn,
+        duration: mdl.duration,
+        contentRating: mdl.contentRating,
+        year: mdl.year,
+        status: mdl.status,
+        mdlScore: mdl.rating,
+        mdlSyncedAt: new Date(),
+      };
+
+      if (!existing) {
+        const created = await prisma.drama.create({
+          data: { title: mdl.title, ...base },
+        });
+        return { title: created.title, id: created.id, created: true, filled: [] as string[] };
+      }
+
+      // Пустые поля дозаполняем, занятые оставляем как есть.
+      const data: Record<string, unknown> = {
+        mydramalistUrl: url,
+        mdlScore: mdl.rating,
+        mdlSyncedAt: new Date(),
+      };
+      const filled: string[] = [];
+      const fill = (key: keyof typeof base, label: string) => {
+        const current = (existing as unknown as Record<string, unknown>)[key];
+        const next = base[key];
+        const isEmpty =
+          current === null || current === undefined || (Array.isArray(current) && current.length === 0);
+        if (isEmpty && next !== null && next !== undefined) {
+          data[key] = next;
+          filled.push(label);
+        }
+      };
+      fill("nativeTitle", "оригинальное название");
+      fill("alsoKnownAs", "другие названия");
+      fill("synopsis", "описание");
+      fill("posterUrl", "постер");
+      fill("genres", "жанры");
+      fill("director", "режиссёр");
+      fill("screenwriter", "сценарист");
+      fill("network", "канал");
+      fill("episodes", "серии");
+      fill("airedFrom", "начало эфира");
+      fill("airedTo", "конец эфира");
+      fill("airedOn", "день выхода");
+      fill("duration", "длительность");
+      fill("contentRating", "возрастной рейтинг");
+      fill("year", "год");
+      // Статус выводится из дат эфира — освежаем всегда.
+      if (mdl.status && mdl.status !== existing.status) {
+        data.status = mdl.status;
+        filled.push("статус");
+      }
+
+      const updated = await prisma.drama.update({ where: { id: existing.id }, data });
+      return { title: updated.title, id: updated.id, created: false, filled };
+    },
+    (r) =>
+      r.created
+        ? `${r.title}: создан`
+        : `${r.title}: ${r.filled.length ? `заполнено — ${r.filled.join(", ")}` : "новых полей нет"}`,
+  );
+
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin/dramas");
 }

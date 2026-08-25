@@ -161,6 +161,8 @@ export async function importNovelFromFicbook(url: string): Promise<{ id: string 
     async () => parseFicbookPage(await fetchFicbookHtml(trimmed), trimmed),
     (f) => f.title,
   );
+  // null — прогон остановили из админки (см. logImportRun).
+  if (!fic) throw new Error("Импорт остановлен");
 
   let coverUrl: string | null = null;
   if (fic.originalUrl) {

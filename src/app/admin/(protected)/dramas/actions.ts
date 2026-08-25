@@ -326,7 +326,10 @@ export async function importFromMydramalist(id: string, url: string): Promise<Md
   const drama = await prisma.drama.findUnique({ where: { id } });
   if (!drama) throw new Error("Сериал не найден");
 
+  // null — прогон остановили из админки (см. logImportRun); для этого
+  // одиночного запроса такое почти невозможно, но тип обязывает.
   const mdl = await logImportRun("mdl-drama", () => fetchMdlDrama(trimmed), (m) => m.title);
+  if (!mdl) throw new Error("Импорт остановлен");
 
   const filled: string[] = [];
   const skipped: string[] = [];

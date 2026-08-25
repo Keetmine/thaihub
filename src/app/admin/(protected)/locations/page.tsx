@@ -6,7 +6,6 @@ import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
-import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
@@ -54,10 +53,6 @@ export default async function AdminLocationsPage({
       </div>
 
       <NameSearchBox action="/admin/locations" q={q} placeholder="Поиск по названию…" />
-
-      <div className="surface p-3 mb-4">
-        <BlsceneLocationsSyncButton />
-      </div>
 
       {locations.length === 0 ? (
         <p className="text-secondary">

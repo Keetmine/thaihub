@@ -215,15 +215,10 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
 
 /** Простой фетч страницы тайтла (без Cloudflare) — для админ-кнопки. */
 export async function fetchMdlDrama(url: string): Promise<MdlDrama> {
-  const parsed = new URL(url);
-  if (parsed.hostname !== "mydramalist.com" && parsed.hostname !== "www.mydramalist.com") {
-    throw new Error("Ожидается ссылка на mydramalist.com");
-  }
-  const res = await fetch(url, { headers: { "User-Agent": MDL_UA } });
-  if (!res.ok) {
-    throw new Error(`MyDramaList ответил ${res.status}`);
-  }
-  return parseMdlDramaPage(await res.text(), url);
+  // Через общий fetchMdlHtml, как и страницы людей: голый fetch тут
+  // ловил от Cloudflare 403, и импорт сериала падал там, где импорт
+  // актёра проходил. Проверку хоста делает сам fetchMdlHtml.
+  return parseMdlDramaPage(await fetchMdlHtml(url), url);
 }
 
 // ---------- человек ----------
