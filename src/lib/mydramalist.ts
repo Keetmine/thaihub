@@ -49,8 +49,20 @@ function detailFrom(text: string, label: string): string | null {
 }
 
 function parseMdlDate(s: string): Date | null {
-  const d = new Date(s.trim());
-  return Number.isNaN(d.getTime()) ? null : d;
+  const raw = s.trim();
+  // У анонсов дата часто известна только с точностью до года («2026»)
+  // или месяца («Nov 2026») — new Date("2026") разобрал бы это как
+  // 1 января по UTC, но «?» и прочий мусор надо отсечь.
+  if (/^\d{4}$/.test(raw)) return new Date(Date.UTC(Number(raw), 0, 1));
+  if (/^[?\s-–]*$/.test(raw)) return null;
+  // Разбираем как UTC, а не в поясе сервера: «Nov 21, 2025» без этого
+  // становится локальной полуночью, и на машине восточнее Гринвича
+  // дата съезжала на день назад (в базе проекта время — «настенное»,
+  // то есть UTC).
+  const d = new Date(`${raw} UTC`);
+  if (!Number.isNaN(d.getTime())) return d;
+  const fallback = new Date(raw);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
 
 function jsonLdBlocks(html: string): unknown[] {
@@ -179,7 +191,9 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
     : [];
 
   const episodesRaw = detailFrom(text, "Episodes")?.match(/\d+/)?.[0];
-  const airedRaw = detailFrom(text, "(?:Aired|Release Date)");
+  // Подпись строки с датами у MDL плавает: у вышедших «Aired», у
+  // анонсов встречаются «Airs», «Air Date», «Release Date».
+  const airedRaw = detailFrom(text, "(?:Aired|Airs|Air Date|Release Date)");
   let airedFrom: Date | null = null;
   let airedTo: Date | null = null;
   if (airedRaw) {
