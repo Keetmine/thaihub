@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { fetchMdlPerson, absMdlUrl, type MdlPerson } from "@/lib/mydramalist";
 import { socialLinkKey } from "@/lib/socialLinks";
+import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { downloadRemoteImage } from "@/lib/localImage";
-import { checkImportCancelled } from "@/lib/importRun";
+import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 
 export type MdlPerformerSummary = {
   performerId: string;
@@ -12,8 +13,14 @@ export type MdlPerformerSummary = {
   filled: string[];
   linksAdded: number;
   dramasLinked: number;
-  /** Сериалы из фильмографии, которых нет в каталоге: их не заводим. */
+  /** Сериалы из фильмографии, которых нет в каталоге: без галочки
+   *  «парсить фильмографию» их не заводим. */
   dramasSkipped: number;
+  /** Заведено и дозаполнено сериалов (только с галочкой). */
+  dramasCreated: number;
+  dramasEnriched: number;
+  /** Страница сериала не открылась. */
+  dramasFailed: number;
 };
 
 const SOCIAL_LABELS: [RegExp, string][] = [
@@ -45,7 +52,13 @@ export async function importMdlPerformer(
   /** Куда писать. Без него исполнитель заводится новый. */
   performerId?: string,
   runId?: string,
+  options?: {
+    /** Галочка «парсить фильмографию»: заводить недостающие сериалы и
+     *  дозаполнять существующие (только карточка, без каста). */
+    withFilmography?: boolean;
+  },
 ): Promise<MdlPerformerSummary> {
+  const withFilmography = options?.withFilmography ?? false;
   const person: MdlPerson = await fetchMdlPerson(url.trim());
 
   const existing = performerId
@@ -135,23 +148,59 @@ export async function importMdlPerformer(
     linksAdded += 1;
   }
 
-  // Фильмография: связываем только с тем, что уже есть в каталоге.
-  // Заводить сериалы пачкой — как раз то, чем массовый синк засорял
-  // базу; сериал добавляется своим импортом, осознанно.
+  // Фильмография. По умолчанию связываем только с тем, что уже есть в
+  // каталоге: заводить сериалы пачкой — как раз то, чем массовый синк
+  // засорял базу. С галочкой «парсить фильмографию» недостающие
+  // заводятся, а у существующих дозаполняются пустые поля — но только
+  // карточка сериала: каст оттуда НЕ разбираем, иначе получилась бы
+  // цепочка актёр → сериалы → их актёры → их сериалы.
   let dramasLinked = 0;
   let dramasSkipped = 0;
+  let dramasCreated = 0;
+  let dramasEnriched = 0;
+  let dramasFailed = 0;
+  // Потолок: у заметного актёра фильмография — это десятки страниц, а
+  // каждая может открываться через браузер.
+  const DRAMA_LIMIT = 25;
+  const dramaStaleBefore = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
   for (const row of person.filmography) {
     await checkImportCancelled(runId ?? null);
     const mdlUrl = absMdlUrl(row.mdlPath);
-    const drama = await prisma.drama.findFirst({
+    let drama = await prisma.drama.findFirst({
       where: {
         OR: [
           { mydramalistUrl: mdlUrl },
           { title: { equals: row.title, mode: "insensitive" } },
         ],
       },
-      select: { id: true },
+      select: { id: true, synopsis: true, posterUrl: true, year: true, mdlSyncedAt: true },
     });
+
+    if (withFilmography && dramasCreated + dramasEnriched + dramasFailed < DRAMA_LIMIT) {
+      const incomplete = !drama || !drama.synopsis || !drama.posterUrl || !drama.year;
+      const stale = !drama?.mdlSyncedAt || drama.mdlSyncedAt < dramaStaleBefore;
+      if (incomplete && stale) {
+        try {
+          const res = await upsertDramaFromMdl(mdlUrl);
+          drama = {
+            id: res.id,
+            synopsis: null,
+            posterUrl: null,
+            year: null,
+            mdlSyncedAt: new Date(),
+          };
+          if (res.created) dramasCreated += 1;
+          else if (res.filled.length > 0) dramasEnriched += 1;
+        } catch (e) {
+          // Отмену пробрасываем, остальное — не повод ронять импорт
+          // актёра: связь с уже существующими сериалами важнее.
+          if (isImportCancelledError(e)) throw e;
+          dramasFailed += 1;
+        }
+      }
+    }
+
     if (!drama) {
       dramasSkipped += 1;
       continue;
@@ -190,5 +239,8 @@ export async function importMdlPerformer(
     linksAdded,
     dramasLinked,
     dramasSkipped,
+    dramasCreated,
+    dramasEnriched,
+    dramasFailed,
   };
 }

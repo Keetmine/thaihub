@@ -133,10 +133,10 @@ export default async function AdminImportsPage({
             <p className="small text-secondary mb-3">
               Ссылка на профиль человека (mydramalist.com/people/…) — заберём
               настоящее имя, дату рождения, биографию, фото и соцсети.
-              Фильмография привяжется к тем сериалам, что уже есть в каталоге;
-              недостающие не заводим — сериал добавляется своим импортом.
-              Заполняются только пустые поля, занесённое руками не переписываем.
-              Исполнителя можно не выбирать — тогда карточка создастся новая.
+              Фильмография привяжется к тем сериалам, что уже есть в каталоге
+              (недостающие — только с галочкой ниже). Заполняются лишь пустые
+              поля, занесённое руками не переписываем. Исполнителя можно не
+              выбирать — тогда карточка создастся новая.
             </p>
             <form action={runMdlPerformerImport} className="d-flex flex-column gap-2">
               <EntitySelect
@@ -161,6 +161,20 @@ export default async function AdminImportsPage({
                   disabled={!!runningRun}
                 />
               </div>
+              <label className="form-check d-flex align-items-center gap-2 mb-0">
+                <input
+                  type="checkbox"
+                  name="withFilmography"
+                  className="form-check-input m-0"
+                />
+                <span className="form-check-label small text-secondary">
+                  <b className="text-white">Разобрать фильмографию.</b> Заведёт
+                  сериалы, которых нет в каталоге, и дозаполнит те, где чего-то
+                  не хватает — но только карточку: состав по ним не парсится,
+                  иначе импорт ушёл бы по цепочке через актёров. До 25 сериалов
+                  за прогон, и он станет заметно дольше.
+                </span>
+              </label>
             </form>
           </div>
         </div>
