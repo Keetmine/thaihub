@@ -73,7 +73,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
   return (
     <div>
       <Link href="/lists" className="eyebrow text-decoration-none">
-        ← Все списки
+        ← Мои места
       </Link>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
         <div>

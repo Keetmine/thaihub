@@ -453,6 +453,7 @@ export default async function TripPage({
                 <CreateOwnPlaceButton
                   action={createTripOwnPlace.bind(null, trip.id)}
                   label="+ Своё место"
+                  submitLabel="Создать и добавить в поездку"
                 />
                 <AttachListSelect tripId={trip.id} availableLists={availableLists} />
               </div>

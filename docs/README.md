@@ -35,7 +35,7 @@ something changes, edit the doc in place rather than appending a note.
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator
   - [onboarding.md](features/onboarding.md) — /welcome и интерактивный тур по интерфейсу
   - [gamification.md](features/gamification.md) — stats tab + achievements
-  - [place-lists.md](features/place-lists.md) — пользовательские списки локаций + привязка к поездкам
+  - [place-lists.md](features/place-lists.md) — раздел «Мои места»: свои места, списки-подборки, привязка к поездкам
   - [trips.md](features/trips.md) — user trips: a date range showing every event inside it
   - [telegram-notifications.md](features/telegram-notifications.md) — bot reminders for upcoming events
   - [seo.md](features/seo.md) — заголовки, превью ссылок в мессенджерах, robots и sitemap

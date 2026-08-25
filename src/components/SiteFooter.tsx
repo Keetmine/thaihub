@@ -33,7 +33,7 @@ export default function SiteFooter() {
             <div className={col}>
               <Link href="/account" className={link}>Профиль</Link>
               <Link href="/trips" className={link}>Поездки</Link>
-              <Link href="/lists" className={link}>Списки мест</Link>
+              <Link href="/lists" className={link}>Мои места</Link>
               <Link href="/friends" className={link}>Друзья</Link>
             </div>
           </div>

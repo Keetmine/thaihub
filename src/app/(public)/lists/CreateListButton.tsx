@@ -27,7 +27,9 @@ export default function CreateListButton() {
 
   return (
     <>
-      <button type="button" className="btn btn-primary" onClick={() => setIsOpen(true)}>
+      {/* Секционное действие: список теперь не главное на странице —
+          главное «+ Добавить место», поэтому кнопка тихая. */}
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
         + Создать список
       </button>
 

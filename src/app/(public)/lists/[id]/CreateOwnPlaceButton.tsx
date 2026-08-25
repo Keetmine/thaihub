@@ -15,12 +15,16 @@ export default function CreateOwnPlaceButton({
   listId,
   action,
   label = "+ Создать своё место",
+  // Куда именно попадёт место, зависит от вызывающего — подпись кнопки
+  // тоже: «в список» верно только на странице списка.
+  submitLabel = listId ? "Создать и добавить в список" : "Создать место",
 }: {
   /** Список, в который добавляем. Не нужен, если передан action. */
   listId?: string;
   /** Уже связанный экшен — для поездки и любых других мест сохранения. */
   action?: (formData: FormData) => Promise<{ ok: true } | { ok: false; error: string }>;
   label?: string;
+  submitLabel?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -101,7 +105,7 @@ export default function CreateOwnPlaceButton({
           </div>
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
-            {isSaving ? "Создаём…" : "Создать и добавить в список"}
+            {isSaving ? "Создаём…" : submitLabel}
           </button>
         </form>
       </Modal>

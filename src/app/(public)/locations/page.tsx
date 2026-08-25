@@ -417,12 +417,11 @@ async function MyPlaces({
   return (
     <>
       <p className="small text-secondary mb-3">
-        Места, которые вы добавили сами. Создавать их удобнее внутри списка —
-        выберите вкладку списка выше или{" "}
+        Места, которые вы добавили сами. Новое место заводится в разделе{" "}
         <Link href="/lists" className="link-body-emphasis">
-          откройте свои списки
-        </Link>
-        .
+          «Мои места»
+        </Link>{" "}
+        — список для этого не нужен.
       </p>
       <AlphabetDataList
         emptyMessage={q || category ? "Ничего не найдено." : "Своих мест пока нет."}

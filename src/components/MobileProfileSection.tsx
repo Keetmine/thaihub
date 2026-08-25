@@ -11,7 +11,7 @@ const ITEMS = [
   { href: "/friends", label: "Друзья" },
   { href: "/account?tab=events", label: "Мои события" },
   { href: "/trips", label: "Мои поездки" },
-  { href: "/lists", label: "Мои списки мест" },
+  { href: "/lists", label: "Мои места" },
   { href: "/account/settings", label: "Настройки" },
   { href: "/help", label: "Помощь" },
 ];
