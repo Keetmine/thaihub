@@ -151,6 +151,17 @@ tests can't accidentally reach real external services.
   `create-promo-code.ts` redeems on the paywall, opens the gate (checked
   again after a full reload), and a second redeem of the same code fails
   with "Код уже использован" (`delete-promo-code.ts` cleans the code up).
+- `trip-booking-privacy.spec.ts` — bookings (hotel address, confirmation
+  number, uploaded scans) are visible only to the trip's owner and
+  accepted members. Creates a PUBLIC trip with one hotel booking via
+  `create-test-trip-booking.ts`, checks the owner's own page source
+  *contains* the hotel name, address, note and the feed's booking markup
+  (`booking-leg`, `in-stay`, `stay-open`, `stay-close`), then signs a
+  throwaway second user up in its own context and checks the same
+  strings are absent from `page.content()` on the same URL. It asserts
+  the **source**, not element visibility: anything hidden by CSS still
+  ships in the HTML, and that would be the leak. `delete-test-trip.ts`
+  (by id) and `cleanup-test-user.ts` clean up.
 - `telegram-webhook.spec.ts` — the Telegram webhook rejects requests
   without/with a wrong secret token (403) and survives garbage JSON and
   unknown update shapes with the real secret (200). Only these cases run
