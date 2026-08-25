@@ -35,7 +35,7 @@ export default function Error({
         className="btn btn-primary rounded-pill px-4"
         onClick={() => retry()}
       >
-        Попробовать снова
+        {t.widgets.errors.tryAgain}
       </button>
     </div>
   );

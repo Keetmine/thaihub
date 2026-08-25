@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { redeemPromoCode } from "@/app/(public)/promoActions";
+import { useT } from "@/components/LocaleProvider";
 
 /** Поле «У меня есть промокод» на пейволле. */
 export default function PromoCodeRedeem() {
+  const t = useT();
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -27,7 +29,7 @@ export default function PromoCodeRedeem() {
       // Сеть/сервер недоступны — текст исключения из server action в
       // проде всё равно не доезжает, поэтому пишем своё.
       setStatus("error");
-      setMessage("Не удалось связаться с сервером, попробуйте ещё раз");
+      setMessage(t.widgets.promo.failed);
     }
   }
 
@@ -42,13 +44,13 @@ export default function PromoCodeRedeem() {
           type="text"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="Промокод"
-          aria-label="Промокод"
+          placeholder={t.widgets.promo.label}
+          aria-label={t.widgets.promo.label}
           className="form-control form-control-sm"
           style={{ maxWidth: "12rem" }}
         />
         <button type="submit" className="btn btn-ghost btn-sm" disabled={status === "busy" || !code.trim()}>
-          {status === "busy" ? "…" : "Активировать"}
+          {status === "busy" ? "…" : t.widgets.promo.redeem}
         </button>
       </div>
       {status === "error" && <p className="small text-danger mb-0">{message}</p>}

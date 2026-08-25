@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Modal from "./Modal";
 import { PlusIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 export type ListOption = { id: string; title: string; hasPerformer: boolean };
 
@@ -20,6 +21,7 @@ export default function AddToListButton({
   /** Server action: кладёт актёра в выбранный список. */
   onAdd: (listId: string) => Promise<void>;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -36,14 +38,14 @@ export default function AddToListButton({
       <button
         type="button"
         className="icon-btn"
-        aria-label="Добавить в список"
-        title="Добавить в список"
+        aria-label={t.widgets.addToList.button}
+        title={t.widgets.addToList.button}
         onClick={() => setOpen(true)}
       >
         <PlusIcon />
       </button>
 
-      <Modal open={open} title="Добавить в список" onClose={() => setOpen(false)}>
+      <Modal open={open} title={t.widgets.addToList.button} onClose={() => setOpen(false)}>
           {lists.length === 0 ? (
             <p className="small text-secondary mb-0">
               У вас пока нет списков актёров. Создать можно в профиле — например,
@@ -63,7 +65,7 @@ export default function AddToListButton({
                   >
                     <span className="text-white">{l.title}</span>
                     <span className="small text-secondary">
-                      {added ? "уже в списке" : "добавить"}
+                      {added ? t.widgets.addToList.already : t.widgets.addToList.add}
                     </span>
                   </button>
                 );

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { EyeIcon } from "@/components/icons";
+import { useT } from "@/components/LocaleProvider";
 
 /**
  * «Видела вживую» — ручная отметка на странице исполнителя. Считается в
@@ -18,6 +19,7 @@ export default function SeenLiveButton({
   initialSeen: boolean;
   toggle: (performerId: string) => Promise<{ seen: boolean }>;
 }) {
+  const t = useT();
   const [seen, setSeen] = useState(initialSeen);
   const [isPending, startTransition] = useTransition();
 
@@ -25,8 +27,8 @@ export default function SeenLiveButton({
     <button
       type="button"
       className={`icon-btn ${seen ? "is-active" : ""}`}
-      aria-label={seen ? "Видела вживую — убрать отметку" : "Отметить: видела вживую"}
-      title={seen ? "Видела вживую" : "Отметить: видела вживую"}
+      aria-label={seen ? t.widgets.seenLive.unmark : t.widgets.seenLive.mark}
+      title={seen ? t.widgets.seenLive.short : t.widgets.seenLive.mark}
       aria-pressed={seen}
       disabled={isPending}
       onClick={() =>

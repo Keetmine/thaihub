@@ -3,58 +3,52 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { completeTour } from "@/app/(public)/account/tourActions";
+import { useT } from "@/components/LocaleProvider";
 
 type Step = {
   /** Что подсветить: селектор элемента. Если элемента нет (другая
    *  страница, гость), шаг пропускается. */
   target: string;
-  title: string;
-  text: string;
   /** Перейти на этот адрес перед показом шага. */
   href?: string;
+  /** Ключ в словаре: тексты тура живут там, а не в массиве. */
+  key: "events" | "fav" | "artists" | "locations" | "trips" | "notifications" | "profile";
 };
 
 const STEPS: Step[] = [
   {
+    key: "events" as const,
     target: "[data-tour='feed']",
     href: "/",
-    title: "Афиша",
-    text: "Здесь все концерты и фанмиты — по датам, с составом и площадкой. Фильтры сверху покажут только избранное или то, куда вы идёте.",
   },
   {
     // Есть только в ленте: без подписки на её месте пейволл, и шаг
     // пропустится сам.
+    key: "fav" as const,
     target: "[data-tour='favorite']",
-    title: "Избранное и «иду»",
-    text: "Сердечко сохраняет событие, а «иду» отмечает, что вы там будете, — тогда придёт напоминание, и друзья увидят, что вы собираетесь.",
   },
   {
+    key: "artists" as const,
     target: "[data-tour='artists']",
     href: "/artists",
-    title: "Актёры и группы",
-    text: "Профили, сериалы и концерты каждого. Отсюда можно добавить актёра в избранное, в свой список или отметить, что видели его вживую.",
   },
   {
+    key: "locations" as const,
     target: "[data-tour='locations']",
     href: "/locations",
-    title: "Места съёмок",
-    text: "Кафе, отели и площадки из сериалов — с картой и категориями, чтобы собрать маршрут по местам любимого сериала.",
   },
   {
+    key: "trips" as const,
     target: "[data-tour='trips']",
     href: "/trips",
-    title: "Поездки",
-    text: "План на даты поездки: события, брони жилья, места к посещению и общий доступ для тех, с кем едете.",
   },
   {
+    key: "notifications" as const,
     target: "[data-tour='notifications']",
-    title: "Уведомления",
-    text: "Приглашения в поездки, заявки в друзья и ответы на комментарии приходят сюда. В настройках можно подключить Telegram, чтобы получать их в мессенджере.",
   },
   {
+    key: "profile" as const,
     target: "[data-tour='profile']",
-    title: "Профиль",
-    text: "Статистика, ачивки, ваши списки и билеты. Загляните сюда после первого концерта — счётчики начнут заполняться.",
   },
 ];
 
@@ -68,6 +62,7 @@ const STEPS: Step[] = [
  * меняется, и тур не должен упираться в подсветку пустоты.
  */
 export default function ProductTour({ autoStart }: { autoStart: boolean }) {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   // Сам запускается только с главной: человек приходит сюда после
@@ -164,15 +159,15 @@ export default function ProductTour({ autoStart }: { autoStart: boolean }) {
           left: Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - 340)),
         }}
       >
-        <p className="tour-tip-title mb-1">{current.title}</p>
-        <p className="small text-secondary mb-3">{current.text}</p>
+        <p className="tour-tip-title mb-1">{t.widgets.tour[`${current.key}Title`]}</p>
+        <p className="small text-secondary mb-3">{t.widgets.tour[`${current.key}Text`]}</p>
         <div className="d-flex align-items-center justify-content-between gap-2">
           <span className="small text-secondary">
-            {step + 1} из {STEPS.length}
+            {t.widgets.tour.stepOf(step + 1, STEPS.length)}
           </span>
           <span className="d-flex gap-2">
             <button type="button" className="btn btn-ghost btn-sm" onClick={finish}>
-              {isLast ? "Закрыть" : "Пропустить"}
+              {isLast ? t.widgets.tour.close : t.widgets.tour.skip}
             </button>
             {!isLast && (
               <button
@@ -180,7 +175,7 @@ export default function ProductTour({ autoStart }: { autoStart: boolean }) {
                 className="btn btn-primary btn-sm"
                 onClick={() => setStep((s) => s + 1)}
               >
-                Далее
+                {t.widgets.tour.next}
               </button>
             )}
           </span>
