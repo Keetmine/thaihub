@@ -3,6 +3,7 @@
 // берут общий формат.
 
 import type { Metadata } from "next";
+import { DEFAULT_LOCALE, LOCALES, localeHref, type Locale } from "@/lib/i18n/config";
 
 export const SITE_URL = process.env.SITE_URL ?? "https://myblhub.com";
 export const SITE_NAME = "MyBLHub";
@@ -32,26 +33,43 @@ export function pageMetadata(input: {
   type?: "website" | "article";
   /** Личные страницы: в поиске им делать нечего. */
   noIndex?: boolean;
+  /**
+   * Язык страницы. Влияет на canonical (у русской версии он свой, с
+   * префиксом /ru), на hreflang-пару и на og:locale. Без этого
+   * поисковик считал бы две языковые версии дублями и выбирал бы одну
+   * сам.
+   */
+  locale?: Locale;
 }): Metadata {
+  const locale = input.locale ?? DEFAULT_LOCALE;
   // В metadata.title кладём ТОЛЬКО свою часть: суффикс « — MyBLHub»
   // дописывает title.template из корневого layout, иначе он попадал в
   // заголовок дважды. А вот в OpenGraph шаблон не применяется — там
   // нужно полное название.
   const fullTitle = pageTitle(input.title);
-  const url = `${SITE_URL}${input.path ?? ""}`;
+  const path = input.path && input.path !== "" ? input.path : "/";
+  const url = `${SITE_URL}${localeHref(path, locale)}`;
+  // hreflang показывает поисковику обе версии и их языки; x-default —
+  // куда вести тех, чей язык не совпал ни с одним (у нас английский).
+  const languages = Object.fromEntries(
+    LOCALES.map((l) => [l, `${SITE_URL}${localeHref(path, l)}`]),
+  );
   const image = absoluteImage(input.image) ?? `${SITE_URL}/og-default.png`;
 
   return {
     ...(input.title ? { title: input.title } : {}),
     description: input.description,
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+      languages: { ...languages, "x-default": `${SITE_URL}${path}` },
+    },
     ...(input.noIndex ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       title: fullTitle,
       description: input.description,
       url,
       siteName: SITE_NAME,
-      locale: "ru_RU",
+      locale: locale === "ru" ? "ru_RU" : "en_US",
       type: input.type ?? "website",
       images: [{ url: image, width: 1200, height: 630, alt: fullTitle }],
     },

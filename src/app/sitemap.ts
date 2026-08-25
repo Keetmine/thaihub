@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { SITE_URL } from "@/lib/seo";
+import { LOCALES, localeHref } from "@/lib/i18n/config";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 
 // Считается на запрос, а не на сборке: внутри `docker build` базы нет,
@@ -32,24 +33,34 @@ const getCatalogSlugs = unstable_cache(
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [dramas, performers, novels, locations, agencies, wiki] = await getCatalogSlugs();
 
-  const entry = (path: string, lastModified?: Date): MetadataRoute.Sitemap[number] => ({
-    url: `${SITE_URL}${path}`,
-    ...(lastModified ? { lastModified } : {}),
-  });
+  // Каждая страница попадает в карту ДВАЖДЫ — по разу на язык, и у
+  // каждой записи проставлены alternates: так поисковик видит, что это
+  // две версии одной страницы, а не дубли. Английский живёт на путях
+  // без префикса, русский — под /ru (см. docs/features/i18n.md).
+  const entry = (path: string, lastModified?: Date): MetadataRoute.Sitemap => {
+    const languages = Object.fromEntries(
+      LOCALES.map((l) => [l, `${SITE_URL}${localeHref(path, l)}`]),
+    );
+    return LOCALES.map((l) => ({
+      url: `${SITE_URL}${localeHref(path, l)}`,
+      ...(lastModified ? { lastModified } : {}),
+      alternates: { languages },
+    }));
+  };
 
   return [
-    entry("/"),
-    entry("/about"),
-    entry("/dramas"),
-    entry("/artists"),
-    entry("/novels"),
-    entry("/locations"),
-    entry("/wiki"),
-    ...dramas.map((d) => entry(`/dramas/${d.slug}`, d.updatedAt)),
-    ...performers.map((p) => entry(`/artists/${p.slug}`, p.updatedAt)),
-    ...novels.map((n) => entry(`/novels/${n.slug}`, n.updatedAt)),
-    ...locations.map((l) => entry(`/locations/${l.slug}`)),
-    ...agencies.map((a) => entry(`/agencies/${a.slug}`, a.updatedAt)),
-    ...wiki.map((w) => entry(`/wiki/${w.slug ?? w.id}`, w.updatedAt)),
+    ...entry("/"),
+    ...entry("/about"),
+    ...entry("/dramas"),
+    ...entry("/artists"),
+    ...entry("/novels"),
+    ...entry("/locations"),
+    ...entry("/wiki"),
+    ...dramas.flatMap((d) => entry(`/dramas/${d.slug}`, d.updatedAt)),
+    ...performers.flatMap((p) => entry(`/artists/${p.slug}`, p.updatedAt)),
+    ...novels.flatMap((n) => entry(`/novels/${n.slug}`, n.updatedAt)),
+    ...locations.flatMap((l) => entry(`/locations/${l.slug}`)),
+    ...agencies.flatMap((a) => entry(`/agencies/${a.slug}`, a.updatedAt)),
+    ...wiki.flatMap((w) => entry(`/wiki/${w.slug ?? w.id}`, w.updatedAt)),
   ];
 }
