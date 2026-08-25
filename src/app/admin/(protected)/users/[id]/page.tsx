@@ -9,6 +9,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import StatTile from "@/components/StatTile";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
+import { isOnlineNow, lastSeenExact, lastSeenLabel } from "../lastSeenLabel";
 import { eventHref, tripHref, listHref, performerHref, locationHref } from "@/lib/slugHelpers";
 import {
   deleteUser,
@@ -124,6 +125,14 @@ export default async function AdminUserPage({
               ]
                 .filter(Boolean)
                 .join(" · ")}
+            </p>
+            <p className="small mb-0">
+              <span className="text-secondary opacity-75">последний заход: </span>
+              <span className={isOnlineNow(user.lastSeenAt) ? "text-success" : "text-secondary"}>
+                {user.lastSeenAt
+                  ? `${lastSeenExact(user.lastSeenAt)} (${lastSeenLabel(user.lastSeenAt)})`
+                  : "ни разу"}
+              </span>
             </p>
           </div>
         </div>

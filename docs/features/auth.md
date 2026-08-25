@@ -157,8 +157,35 @@ Non-premium users see `PremiumUpsell`
 ## Admin user management
 
 `/admin/users` — list (name/email/telegram, registration date, activity
-counts), search, per-user premium toggle (`PremiumToggle.tsx` →
-`setUserPremium`), and delete (cascades to all user-owned rows).
+counts, последний заход), search, sort, per-user premium toggle
+(`PremiumToggle.tsx` → `setUserPremium`), and delete (cascades to all
+user-owned rows). Подробнее про раздел —
+[admin-panel.md](admin-panel.md).
+
+## Отметка активности
+
+`User.lastSeenAt` — когда человек последний раз что-то делал на сайте;
+нужна одному потребителю, админке (`/admin/users`), чтобы понимать,
+живой аккаунт или заброшенный.
+
+Пишется в `getCurrentUser()` — это единственная точка, где известно
+«сессия валидна, аккаунт не удалён, человек прямо сейчас делает
+запрос», и она уже обёрнута в `React.cache`, так что на один HTTP-запрос
+приходится одна проверка. Сама запись — в `touchLastSeen()`
+(`src/lib/lastSeen.ts`) и с двумя оговорками:
+
+- **дросселирование**: обновляем, только если с прошлой отметки прошло
+  больше `LAST_SEEN_THROTTLE_MS` (10 минут). Иначе каждый переход по
+  сайту (плюс опрос уведомлений и раздача файлов, которые тоже зовут
+  `getCurrentUser()`) стоил бы UPDATE ради поля, которое смотрят раз в
+  неделю;
+- **не блокирует ответ**: UPDATE уходит в `after()` из `next/server`,
+  то есть после отдачи страницы, и его ошибки глушатся — упавшая
+  отметка активности не должна ронять страницу. Вне запроса (скрипты,
+  крон) `after()` недоступен, там отметка просто пропускается.
+
+`ONLINE_WINDOW_MS` (15 минут, чуть шире порога записи) — окно, в котором
+админка показывает «сейчас на сайте».
 
 ## `src/proxy.ts` — what it does and doesn't check
 

@@ -7,10 +7,12 @@ import PremiumToggle from "./PremiumToggle";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import NameSearchBox from "@/components/NameSearchBox";
+import StatTile from "@/components/StatTile";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
 import Pagination from "@/components/Pagination";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { isOnlineNow, lastSeenExact, lastSeenLabel } from "./lastSeenLabel";
 
 export const metadata = { title: "Пользователи" };
 
@@ -19,12 +21,13 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string }>;
 }) {
   await requireAdminPage();
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const { q: rawQ, page: rawPage, sort: rawSort } = await searchParams;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const sortBySeen = rawSort === "seen";
 
   // Удалённые аккаунты в списке не показываем — они обезличены и войти
   // в них нельзя (см. lib/userDeletion.ts).
@@ -41,10 +44,17 @@ export default async function AdminUsersPage({
         }
       : {}),
   };
-  const [users, usersTotal] = await Promise.all([
+  const now = new Date();
+  const activeSince = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+  const [users, usersTotal, activeWeek, activeMonth, neverSeen] = await Promise.all([
     prisma.user.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      // nulls: "last" — те, кто ни разу не заходил, не должны занимать
+      // верх списка «кто был недавно».
+      orderBy: sortBySeen
+        ? { lastSeenAt: { sort: "desc", nulls: "last" } }
+        : { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
@@ -54,6 +64,12 @@ export default async function AdminUsersPage({
       },
     }),
     prisma.user.count({ where }),
+    // Сводка по активности считается по всем живым аккаунтам отдельными
+    // запросами, а не по показанной странице: иначе цифры прыгали бы от
+    // поиска и перелистывания.
+    prisma.user.count({ where: { deletedAt: null, lastSeenAt: { gte: activeSince(7) } } }),
+    prisma.user.count({ where: { deletedAt: null, lastSeenAt: { gte: activeSince(30) } } }),
+    prisma.user.count({ where: { deletedAt: null, lastSeenAt: null } }),
   ]);
 
   const promos = await prisma.promoCode.findMany({
@@ -63,6 +79,18 @@ export default async function AdminUsersPage({
   });
   const freePromos = promos.filter((p) => !p.usedAt);
 
+  // Поиск, сортировка и страница живут в одном адресе — переключение
+  // любого из них не должно терять остальные.
+  const listHref = (sort: string, targetPage?: number) => {
+    const qs = [
+      q ? `q=${encodeURIComponent(q)}` : "",
+      sort === "seen" ? "sort=seen" : "",
+      targetPage ? `page=${targetPage}` : "",
+    ]
+      .filter(Boolean)
+      .join("&");
+    return `/admin/users${qs ? `?${qs}` : ""}`;
+  };
 
   return (
     <div>
@@ -74,7 +102,40 @@ export default async function AdminUsersPage({
         <span className="text-secondary small">Всего: {usersTotal}</span>
       </div>
 
-      <NameSearchBox action="/admin/users" q={q} placeholder="Поиск по имени, email, telegram…" />
+      <div className="d-flex flex-wrap gap-2 mb-2">
+        <StatTile value={activeWeek} label="заходили за 7 дней" />
+        <StatTile value={activeMonth} label="за 30 дней" />
+        <StatTile value={neverSeen} label="ни разу не заходили" />
+      </div>
+      <p className="small text-secondary mb-4">
+        По всем аккаунтам, независимо от поиска и страницы. У тех, кто не заходил с тех пор, как
+        появились отметки, поле пустое — это ещё не значит, что человек ушёл.
+      </p>
+
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
+        <span className="small text-secondary">Сортировка:</span>
+        <Link
+          href={listHref("")}
+          prefetch={false}
+          className={`btn btn-sm ${!sortBySeen ? "btn-primary" : "btn-ghost"}`}
+        >
+          по регистрации
+        </Link>
+        <Link
+          href={listHref("seen")}
+          prefetch={false}
+          className={`btn btn-sm ${sortBySeen ? "btn-primary" : "btn-ghost"}`}
+        >
+          по последнему заходу
+        </Link>
+      </div>
+
+      <NameSearchBox
+        action="/admin/users"
+        q={q}
+        placeholder="Поиск по имени, email, telegram…"
+        hiddenFields={sortBySeen ? { sort: "seen" } : undefined}
+      />
 
       <div className="surface p-3 mb-4">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
@@ -156,6 +217,19 @@ export default async function AdminUsersPage({
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
+                    {/* Отдельной строкой, а не в общем перечислении:
+                        глазами по списку ищут именно её. */}
+                    <p
+                      className="small mb-0"
+                      title={u.lastSeenAt ? lastSeenExact(u.lastSeenAt) : undefined}
+                    >
+                      <span className="text-secondary opacity-75">последний заход: </span>
+                      <span
+                        className={isOnlineNow(u.lastSeenAt) ? "text-success" : "text-secondary"}
+                      >
+                        {lastSeenLabel(u.lastSeenAt)}
+                      </span>
+                    </p>
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-shrink-0">
@@ -182,7 +256,7 @@ export default async function AdminUsersPage({
       <Pagination
         page={page}
         totalPages={totalPagesFor(usersTotal)}
-        buildHref={(p) => `/admin/users?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+        buildHref={(p) => listHref(sortBySeen ? "seen" : "", p)}
       />
     </div>
   );

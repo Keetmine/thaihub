@@ -2,6 +2,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { touchLastSeen } from "@/lib/lastSeen";
 import { LOCALE_COOKIE, isLocale } from "@/lib/i18n/config";
 
 export const USER_COOKIE = "user_session";
@@ -75,5 +76,12 @@ export const getCurrentUser = cache(async () => {
   if (!session || session.expiresAt < new Date()) return null;
   // Удалённый аккаунт не должен «оживать» по старой сессии.
   if (session.user.deletedAt) return null;
+
+  // Единственная точка, где известно «это живой залогиненный человек, и
+  // он прямо сейчас что-то делает», — отсюда и отмечаем активность для
+  // админки. Запись дросселируется по времени и уходит после ответа,
+  // так что на отрисовку страницы не влияет (см. lib/lastSeen.ts).
+  touchLastSeen(session.user.id, session.user.lastSeenAt);
+
   return session.user;
 });
