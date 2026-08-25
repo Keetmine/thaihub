@@ -62,9 +62,10 @@ jobs:
       - run: npm run db:seed
       # Тестовый админ для admin-* тестов. Креды захардкожены в
       # tests/e2e/helpers.ts (admin-e2e@test.local / admin-e2e-password),
-      # env не нужен. loginAsAdmin создаёт его и сам перед каждым логином —
-      # отдельный шаг здесь ловит поломку tsx/Prisma-скриптов до того, как
-      # webServer потратит минуты на сборку.
+      # env не нужен. Setup-проект (tests/e2e/auth.setup.ts) создаёт его и
+      # сам перед единственным за прогон входом — отдельный шаг здесь ловит
+      # поломку tsx/Prisma-скриптов до того, как webServer потратит минуты
+      # на сборку.
       - run: npx tsx tests/e2e/create-admin-user.ts
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
