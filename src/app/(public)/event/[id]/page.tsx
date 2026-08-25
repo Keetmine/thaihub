@@ -5,7 +5,7 @@ import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatCombinedDateList, formatHumanDate, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
-import { getT } from "@/lib/i18n";
+import { getT, localeHref } from "@/lib/i18n";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -274,7 +274,7 @@ export default async function EventDetailPage({
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
           <a
-            href={`/event/${event.id}/ics`}
+            href={localeHref(`/event/${event.id}/ics`, locale)}
             className="round-icon-btn"
             aria-label={t.events.detail.addToCalendar}
             data-tooltip={t.events.detail.addToCalendar}
@@ -369,7 +369,7 @@ export default async function EventDetailPage({
                       напоминание, и лишь до старта препродажи. */}
                   {event.presaleAt && event.presaleAt > new Date() && (
                     <a
-                      href={`/event/${event.id}/ics?presale=1`}
+                      href={localeHref(`/event/${event.id}/ics?presale=1`, locale)}
                       className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
                     >
                       <CalendarIcon className="icon-inline" />

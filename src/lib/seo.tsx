@@ -3,10 +3,18 @@
 // берут общий формат.
 
 import type { Metadata } from "next";
-import { DEFAULT_LOCALE, LOCALES, localeHref, type Locale } from "@/lib/i18n/config";
+import { LOCALES, localeHref, type Locale } from "@/lib/i18n/config";
+import { getLocale } from "@/lib/i18n";
 
 export const SITE_URL = process.env.SITE_URL ?? "https://myblhub.com";
 export const SITE_NAME = "MyBLHub";
+
+/** Язык страницы в формате OpenGraph. Отдельной функцией, потому что
+ *  нужен и здесь, и в корневом layout: разъехавшиеся написания
+ *  («ru» вместо «ru_RU») соцсети молча игнорируют. */
+export function ogLocale(locale: Locale): string {
+  return locale === "ru" ? "ru_RU" : "en_US";
+}
 
 /** Заголовок вкладки и выдачи: «Что за страница — MyBLHub». Название
  *  сайта в конце, потому что в узкой вкладке и в поиске первым читается
@@ -24,7 +32,7 @@ export function pageTitle(title?: string): string {
  * `image` принимает путь вида /uploads/… — он разворачивается в
  * абсолютный, иначе Telegram картинку не подтянет.
  */
-export function pageMetadata(input: {
+export async function pageMetadata(input: {
   title?: string;
   description: string;
   path?: string;
@@ -40,8 +48,12 @@ export function pageMetadata(input: {
    * сам.
    */
   locale?: Locale;
-}): Metadata {
-  const locale = input.locale ?? DEFAULT_LOCALE;
+}): Promise<Metadata> {
+  // Язык берём сами: все вызовы живут в асинхронных generateMetadata, и
+  // прокидывать его из каждой страницы значило бы забыть в половине —
+  // а забытый язык это canonical русской страницы, указывающий на
+  // английскую, то есть выпадение из индекса.
+  const locale = input.locale ?? (await getLocale());
   // В metadata.title кладём ТОЛЬКО свою часть: суффикс « — MyBLHub»
   // дописывает title.template из корневого layout, иначе он попадал в
   // заголовок дважды. А вот в OpenGraph шаблон не применяется — там
@@ -69,7 +81,7 @@ export function pageMetadata(input: {
       description: input.description,
       url,
       siteName: SITE_NAME,
-      locale: locale === "ru" ? "ru_RU" : "en_US",
+      locale: ogLocale(locale),
       type: input.type ?? "website",
       images: [{ url: image, width: 1200, height: 630, alt: fullTitle }],
     },

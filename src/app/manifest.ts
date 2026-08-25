@@ -1,10 +1,20 @@
 import type { MetadataRoute } from "next";
 
+// Манифест одноязычный, английский — и это осознанно.
+//
+// Он один на весь сайт и живёт по адресу /manifest.webmanifest без
+// языкового префикса (localeHref его не вешает, и браузер запрашивает
+// файл сам). Значит, proxy кладёт этому запросу язык по умолчанию —
+// английский — и переключать здесь нечего: язык зрителя до манифеста
+// просто не доезжает. Плюс имя и описание браузер запоминает в момент
+// установки приложения, и подмешивать сюда куку значило бы, что ярлык
+// на телефоне подписан тем языком, который был выбран в тот день.
+// Поэтому берём язык сайта по умолчанию.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MyBLHub — трекер тайских BL-событий",
+    name: "MyBLHub — Thai BL events tracker",
     short_name: "MyBLHub",
-    description: "Расписание концертов и фан-событий тайских BL-актёров",
+    description: "Concerts and fan events with Thai BL actors, all on one schedule",
     start_url: "/",
     display: "standalone",
     // Фактический фон сайта — старый фиолетовый #160a1c красил

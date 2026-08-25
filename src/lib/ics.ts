@@ -1,3 +1,12 @@
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
+import { events as enEvents } from "@/lib/i18n/en/events";
+import { events as ruEvents } from "@/lib/i18n/ru/events";
+
+// Словари берём напрямую, а не через getDict: тот тянет next/headers, а
+// файл календаря собирается и там, где запроса под рукой нет
+// (см. userProfile.ts — тот же приём).
+const EVENTS: Record<Locale, typeof enEvents> = { en: enEvents, ru: ruEvents };
+
 function escapeICSText(text: string): string {
   return text
     .replace(/\\/g, "\\\\")
@@ -41,7 +50,7 @@ export function buildEventICS(event: IcsEvent): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//MyBLHub//Event//RU",
+    "PRODID:-//MyBLHub//Event//EN",
     "CALSCALE:GREGORIAN",
     ...buildVEvents(event),
     "END:VCALENDAR",
@@ -55,14 +64,20 @@ export function buildEventICS(event: IcsEvent): string {
  * in one VCALENDAR — used for the per-user "subscribe to my calendar" ICS
  * feed (all events the user is going to), as opposed to buildEventICS's
  * one-off single-event download.
+ *
+ * Язык — необязательный последний аргумент (как у форматтеров в
+ * src/lib/dates.ts), по умолчанию английский: это язык сайта по
+ * умолчанию. Фид опрашивает календарное приложение по токен-ссылке,
+ * своей сессии и своего языка у него нет, а в профиле выбранный язык не
+ * хранится — так что на деле имя календаря сейчас всегда английское.
  */
-export function buildFeedICS(events: IcsEvent[]): string {
+export function buildFeedICS(events: IcsEvent[], locale: Locale = DEFAULT_LOCALE): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//MyBLHub//Feed//RU",
+    "PRODID:-//MyBLHub//Feed//EN",
     "CALSCALE:GREGORIAN",
-    "X-WR-CALNAME:MyBLHub — мои события",
+    `X-WR-CALNAME:${escapeICSText(EVENTS[locale].ics.calendarName)}`,
     "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
     ...events.flatMap(buildVEvents),
     "END:VCALENDAR",
@@ -71,27 +86,37 @@ export function buildFeedICS(events: IcsEvent[]): string {
   return lines.join("\r\n");
 }
 
-/** Reminder for a ticket presale window, as its own (short) calendar entry. */
-export function buildPresaleICS(event: {
-  id: string;
-  title: string;
-  venue: string;
-  presaleAt: Date;
-  presaleUrl: string | null;
-}): string {
+/**
+ * Reminder for a ticket presale window, as its own (short) calendar entry.
+ *
+ * Язык — необязательный последний аргумент, по умолчанию английский:
+ * заголовок «Presale: …» человек читает уже в своём календаре. Файл
+ * скачивается кнопкой со страницы события, так что язык зрителя там
+ * известен — маршрут /event/[id]/ics передаёт его явно.
+ */
+export function buildPresaleICS(
+  event: {
+    id: string;
+    title: string;
+    venue: string;
+    presaleAt: Date;
+    presaleUrl: string | null;
+  },
+  locale: Locale = DEFAULT_LOCALE,
+): string {
   const end = new Date(event.presaleAt.getTime() + 60 * 60 * 1000);
 
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//MyBLHub//Presale//RU",
+    "PRODID:-//MyBLHub//Presale//EN",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${event.id}-presale@thaitrack`,
     `DTSTAMP:${toICSDate(new Date())}`,
     `DTSTART:${toICSDate(event.presaleAt)}`,
     `DTEND:${toICSDate(end)}`,
-    `SUMMARY:${escapeICSText(`Препродажа: ${event.title}`)}`,
+    `SUMMARY:${escapeICSText(EVENTS[locale].ics.presale(event.title))}`,
     `LOCATION:${escapeICSText(event.venue)}`,
     ...(event.presaleUrl ? [`DESCRIPTION:${escapeICSText(event.presaleUrl)}`] : []),
     "END:VEVENT",

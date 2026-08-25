@@ -13,15 +13,22 @@ The tab bar and the burger drawer show below `lg` (992px) — see
 - **`src/app/manifest.ts`** — Next's `MetadataRoute.Manifest` file
   convention, served at `/manifest.webmanifest`. Name, short description,
   standalone display mode, dark background/theme color matching the app's
-  own dark theme, and two icon sizes.
+  own dark theme, and two icon sizes. **Single-language, English** — the
+  site's default. There is one manifest for the whole site and it lives
+  at a URL with no language prefix (`localeHref` doesn't add one, and the
+  browser fetches the file on its own), so `proxy` hands that request the
+  default language and there is nothing here to switch. On top of that
+  the browser remembers the name at install time: reading the locale
+  cookie here would mean the home-screen shortcut is labelled in whatever
+  language happened to be selected that day.
 - **`public/icons/icon-192.png`** / **`icon-512.png`** — generated once
   by rendering the app's existing brand mark (the pin+dot from
   `src/components/Logo.tsx`) to HTML and screenshotting it with
   Playwright at each size (no image-editing tool involved — see git
   history around when this was added if you need to regenerate them at a
   different size).
-- **`src/app/layout.tsx`** — `metadata.icons` (favicon + apple-touch-icon,
-  both pointing at the 192px icon) and a separate `viewport` export for
+- **`src/app/layout.tsx`** — `icons` in `generateMetadata()` (favicon +
+  apple-touch-icon, both pointing at the 192px icon) and a separate `viewport` export for
   `themeColor` (this Next.js version deprecated `metadata.themeColor` in
   favor of a dedicated `viewport` export — see
   [architecture.md](../architecture.md)).

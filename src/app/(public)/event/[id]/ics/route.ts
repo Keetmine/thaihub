@@ -12,7 +12,7 @@ export async function GET(
   // События за подпиской — экспорт в календарь тоже (скачивается кнопкой
   // из браузера, кука сессии при этом есть; маршрут остаётся вне
   // login-гейта proxy.ts, но проверяет доступ сам).
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const user = await getCurrentUser();
   if (!isPremiumActive(user)) {
     return new NextResponse(t.events.ics.subscriptionOnly, { status: 403 });
@@ -34,7 +34,7 @@ export async function GET(
   }
 
   const ics = isPresale
-    ? buildPresaleICS({ ...event, presaleAt: event.presaleAt! })
+    ? buildPresaleICS({ ...event, presaleAt: event.presaleAt! }, locale)
     : buildEventICS(event);
 
   return new NextResponse(ics, {

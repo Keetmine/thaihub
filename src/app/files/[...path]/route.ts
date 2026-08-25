@@ -14,18 +14,22 @@ import {
 // и принятые участники поездки, картинку личной записи — участники, а
 // приватной записи — только автор. Статика так не умеет — поэтому файлы лежат вне
 // public/ (см. src/lib/privateUploads.ts).
+//
+// Тела ответов английские и языком не управляются: /files языкового
+// префикса не получает (см. localeHref), файл открывают прямой ссылкой,
+// и это служебные строки, а не интерфейс.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   const user = await getCurrentUser();
-  if (!user) return new NextResponse("Не авторизовано", { status: 401 });
+  if (!user) return new NextResponse("Not authorised", { status: 401 });
 
   const { path: segments } = await params;
-  if (segments.length !== 2) return new NextResponse("Не найдено", { status: 404 });
+  if (segments.length !== 2) return new NextResponse("Not found", { status: 404 });
   const [folder, name] = segments;
   if (!PRIVATE_FILE_NAME.test(name)) {
-    return new NextResponse("Не найдено", { status: 404 });
+    return new NextResponse("Not found", { status: 404 });
   }
 
   const url = `/files/${folder}/${name}`;
@@ -68,13 +72,13 @@ export async function GET(
     });
     allowed = !!item && (!item.isPrivate || (item.createdById ?? item.trip.userId) === user.id);
   }
-  if (!allowed) return new NextResponse("Не найдено", { status: 404 });
+  if (!allowed) return new NextResponse("Not found", { status: 404 });
 
   let data: Buffer;
   try {
     data = await readFile(privateUploadsDir(folder, name));
   } catch {
-    return new NextResponse("Не найдено", { status: 404 });
+    return new NextResponse("Not found", { status: 404 });
   }
   return new NextResponse(new Uint8Array(data), {
     headers: {
