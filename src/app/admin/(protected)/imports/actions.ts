@@ -289,6 +289,8 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
           created: true,
           filled: [] as string[],
           ...cast,
+          castFound: mdl.cast.length,
+          peopleLinks: mdl.peopleLinks,
         };
       }
 
@@ -332,14 +334,31 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
 
       const updated = await prisma.drama.update({ where: { id: existing.id }, data });
       const cast = await linkMdlCast(updated.id, mdl.cast, runId);
-      return { title: updated.title, id: updated.id, created: false, filled, ...cast };
+      return {
+        title: updated.title,
+        id: updated.id,
+        created: false,
+        filled,
+        ...cast,
+        castFound: mdl.cast.length,
+        peopleLinks: mdl.peopleLinks,
+      };
     },
     (r) =>
       (r.created
         ? `${r.title}: создан`
         : `${r.title}: ${r.filled.length ? `заполнено — ${r.filled.join(", ")}` : "новых полей нет"}`) +
       (r.linked ? `, каст +${r.linked}` : ", новых связей каста нет") +
-      (r.createdPerformers ? ` (заведено актёров ${r.createdPerformers})` : ""),
+      (r.createdPerformers ? ` (заведено актёров ${r.createdPerformers})` : "") +
+      // Диагностика на случай «каст не подтянулся»: видно, нашли ли мы
+      // актёров на странице вообще и есть ли там ссылки на людей.
+      (r.castFound === 0
+        ? r.peopleLinks === 0
+          ? " · на странице MDL каста не оказалось"
+          : ` · на странице ${r.peopleLinks} ссылок на людей, но карточек актёров не распознали`
+        : r.castFound === r.linked
+          ? ""
+          : ` (на странице ${r.castFound})`),
   );
 
   revalidatePath("/admin/imports");

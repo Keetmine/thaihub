@@ -108,6 +108,9 @@ export type MdlDrama = {
   rating: number | null;
   related: MdlRelatedEntry[];
   cast: MdlCastMember[];
+  /** Сколько на странице ссылок на людей вообще — чтобы в журнале
+   *  импорта отличать «вёрстка не совпала» от «каста в HTML нет». */
+  peopleLinks: number;
 };
 
 type JsonLdTvSeries = {
@@ -190,7 +193,9 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
         .filter((t) => !/vote or add tags/i.test(t))
     : [];
 
+  // «Episodes: 0» у анонсов означает «пока неизвестно», а не ноль.
   const episodesRaw = detailFrom(text, "Episodes")?.match(/\d+/)?.[0];
+  const episodes = episodesRaw && Number(episodesRaw) > 0 ? Number(episodesRaw) : null;
   // Подпись строки с датами у MDL плавает: у вышедших «Aired», у
   // анонсов встречаются «Airs», «Air Date», «Release Date».
   const airedRaw = detailFrom(text, "(?:Aired|Airs|Air Date|Release Date)");
@@ -215,7 +220,7 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
     director: detailLinksText(html, "Director"),
     screenwriter: detailLinksText(html, "Screenwriter"),
     network: detailFrom(text, "Original Network"),
-    episodes: episodesRaw ? Number(episodesRaw) : null,
+    episodes,
     airedFrom,
     airedTo,
     airedOn: detailFrom(text, "Aired On"),
@@ -226,6 +231,7 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
     rating: ld.aggregateRating?.ratingValue ?? null,
     related,
     cast: parseMdlDramaCast(html),
+    peopleLinks: countMdlPeopleLinks(html),
   };
 }
 
@@ -261,39 +267,47 @@ export type MdlCastMember = {
  * режиссёр и сценарист, которые на странице тоже ссылки на /people/.
  */
 export function parseMdlDramaCast(html: string): MdlCastMember[] {
-  const castStart = html.search(/id="cast"|>\s*Cast\s*&|>\s*Cast\s*</i);
+  const castStart = html.search(/id="cast"|>\s*Cast\s*[&<]/i);
   const region = castStart >= 0 ? html.slice(castStart) : html;
 
   const out: MdlCastMember[] = [];
   const seen = new Set<string>();
-  // Хвост берём просмотром вперёд (?=…), а не захватом: иначе матч
-  // съедал бы 600 символов вместе со следующими актёрами, и в списке
-  // оставался только каждый второй-третий.
+  // Ссылка может быть и относительной, и абсолютной, а имя внутри неё
+  // — обёрнуто в <b>/<span>. Поэтому href разбираем с необязательным
+  // хостом, а текст ссылки берём как угодно размеченный и чистим от
+  // тегов. Хвост — просмотром вперёд, иначе матч съедает следующих.
   for (const m of region.matchAll(
-    /<a[^>]+href="(\/people\/\d+[^"#?]*)"[^>]*>([^<]*)<\/a>(?=([\s\S]{0,600}))/g,
+    /<a[^>]+href="(?:https?:\/\/(?:www\.)?mydramalist\.com)?(\/people\/\d+[^"#?]*)"[^>]*>([\s\S]*?)<\/a>(?=([\s\S]{0,600}))/g,
   )) {
     const mdlPath = m[1];
-    const name = decodeEntities(m[2]).trim();
-    // Ссылка-картинка: текста нет, имя придёт со следующей ссылкой.
+    const name = decodeEntities(stripTags(m[2])).replace(/\s+/g, " ").trim();
+    // Ссылка-картинка: текста нет, имя придёт следующей ссылкой.
     if (!name) continue;
     if (seen.has(mdlPath)) continue;
-    seen.add(mdlPath);
 
     const tail = m[3];
-    const roleType = tail.match(/(Main Role|Support Role|Guest Role)/)?.[1] ?? null;
-    // Имя персонажа — первый <small> до подписи роли; у MDL оно там
-    // и лежит, но если вёрстка другая, роль просто останется пустой.
-    const roleRaw = tail.match(/<small[^>]*>([\s\S]*?)<\/small>/)?.[1];
-    const role = roleRaw ? stripTags(decodeEntities(roleRaw)).trim() || null : null;
+    const roleMatch = tail.match(/(Main Role|Support Role|Guest Role)/);
+    // Без подписи роли это не карточка актёра, а ссылка на человека в
+    // другом блоке (режиссёр, сценарист, «похожие люди»).
+    if (!roleMatch) continue;
+    seen.add(mdlPath);
 
-    out.push({
-      mdlPath,
-      name,
-      role: role && !/Role$/.test(role) ? role : null,
-      roleType,
-    });
+    // Имя персонажа — то, что стоит между ссылкой и подписью роли.
+    const between = decodeEntities(stripTags(tail.slice(0, roleMatch.index ?? 0)))
+      .replace(/\s+/g, " ")
+      .trim();
+    const role = between && between.length <= 80 ? between : null;
+
+    out.push({ mdlPath, name, role, roleType: roleMatch[1] });
   }
   return out;
+}
+
+/** Диагностика для журнала импортов: сколько на странице ссылок на
+ *  людей вообще. Ноль означает, что каста в отданном HTML нет (MDL
+ *  прислал урезанную страницу), а не что не совпала вёрстка. */
+export function countMdlPeopleLinks(html: string): number {
+  return [...html.matchAll(/href="(?:https?:\/\/(?:www\.)?mydramalist\.com)?\/people\/\d+/g)].length;
 }
 
 // ---------- человек ----------
