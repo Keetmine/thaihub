@@ -216,7 +216,7 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
       kind: "FRIEND_GOING",
       actorName: name,
       subject: event.title,
-      body: formatHumanDate(occurrence.startsAt, "en"),
+      body: (_t, locale) => formatHumanDate(occurrence.startsAt, locale),
       href: eventHref(event),
     });
   }

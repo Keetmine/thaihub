@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isKnownTimezone } from "@/lib/timezones";
+import { cookies } from "next/headers";
+import { LOCALE_COOKIE, isLocale } from "@/lib/i18n/config";
 import {
   destroyUserSession,
   getCurrentUser,
@@ -23,6 +25,7 @@ export async function updateProfile(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const photoUrl = String(formData.get("photoUrl") ?? "").trim();
   const timezone = String(formData.get("timezone") ?? "");
+  const locale = String(formData.get("locale") ?? "");
   const country = String(formData.get("country") ?? "").trim();
   const gender = String(formData.get("gender") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
@@ -49,6 +52,7 @@ export async function updateProfile(formData: FormData) {
       photoUrl: photoUrl || null,
       // Неизвестное значение молча не пишем — остаётся прежняя зона.
       ...(isKnownTimezone(timezone) ? { timezone } : {}),
+      ...(isLocale(locale) ? { locale } : {}),
       ...(nextUsername ? { username: nextUsername } : {}),
       country: country && isKnownCountry(country) ? country : null,
       gender: gender || null,
@@ -59,6 +63,24 @@ export async function updateProfile(formData: FormData) {
 
   revalidatePath("/account");
   revalidatePath("/account/settings");
+
+  // Язык из профиля дублируем в куку: интерфейс читает её, а не базу
+  // (proxy бежит на каждый запрос и в базу не ходит). Без этого выбор в
+  // настройках поменял бы язык уведомлений, но не самой страницы.
+  //
+  // И уводим на тот же адрес в новом языке: заголовок с языком для этого
+  // запроса proxy посчитал ДО того, как появилась кука, поэтому без
+  // перехода страница осталась бы на прежнем языке — и выглядело бы это
+  // так, будто сохранение не сработало.
+  if (isLocale(locale) && locale !== user.locale) {
+    const store = await cookies();
+    store.set(LOCALE_COOKIE, locale, {
+      sameSite: "lax",
+      maxAge: 365 * 24 * 60 * 60,
+      path: "/",
+    });
+    redirect(localeHref("/account/settings", locale));
+  }
 }
 
 /** Отдельная форма приватности (вкладка в настройках) — не смешиваем с

@@ -190,9 +190,10 @@ async function notifyTripInvite(tripId: string, inviteeId: string): Promise<void
     kind: "TRIP_INVITE",
     actorName: trip.user.name,
     subject: trip.title,
-    // Даты — данные, а не фраза: язык получателя тут неизвестен,
-    // поэтому формат берём тот же, что у сайта по умолчанию.
-    body: `${formatShortDate(trip.startDate, "en")} – ${formatShortDate(trip.endDate, "en")}`,
+    // Функцией, а не строкой: даты форматируются на языке того, кому
+    // уведомление адресовано, а он известен только внутри notifyUser.
+    body: (_t, locale) =>
+      `${formatShortDate(trip.startDate, locale)} – ${formatShortDate(trip.endDate, locale)}`,
     href: `/trips/${trip.slug ?? trip.id}`,
   });
 }

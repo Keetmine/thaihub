@@ -2,6 +2,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { LOCALE_COOKIE, isLocale } from "@/lib/i18n/config";
 
 export const USER_COOKIE = "user_session";
 const SESSION_DAYS = 30;
@@ -24,7 +25,10 @@ export function verifyPassword(password: string, stored: string): boolean {
 export async function createUserSession(userId: string) {
   const id = randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-  await prisma.userSession.create({ data: { id, userId, expiresAt } });
+  const [, user] = await Promise.all([
+    prisma.userSession.create({ data: { id, userId, expiresAt } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { locale: true } }),
+  ]);
 
   const store = await cookies();
   store.set(USER_COOKIE, id, {
@@ -34,6 +38,17 @@ export async function createUserSession(userId: string) {
     maxAge: SESSION_DAYS * 24 * 60 * 60,
     path: "/",
   });
+
+  // Язык из профиля — в куку: proxy бежит на каждый запрос и в базу не
+  // ходит, поэтому иначе на новом устройстве человек до самого футера
+  // видел бы язык браузера, а не тот, что однажды выбрал.
+  if (isLocale(user?.locale)) {
+    store.set(LOCALE_COOKIE, user.locale, {
+      sameSite: "lax",
+      maxAge: 365 * 24 * 60 * 60,
+      path: "/",
+    });
+  }
 }
 
 export async function destroyUserSession() {

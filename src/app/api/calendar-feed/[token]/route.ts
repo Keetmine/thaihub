@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildFeedICS } from "@/lib/ics";
+import { isLocale } from "@/lib/i18n/config";
 import { isPremiumActive } from "@/lib/premium";
 
 // Public by design (no session cookie) — calendar apps poll this on their
@@ -35,7 +36,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   }
   const events = Array.from(byEvent.values()).map((e) => e.event);
 
-  return new NextResponse(buildFeedICS(events), {
+  // Язык — из профиля: календарное приложение ходит сюда по
+  // токен-ссылке, без сессии и без куки, так что больше его взять
+  // неоткуда.
+  const locale = isLocale(user.locale) ? user.locale : undefined;
+  return new NextResponse(buildFeedICS(events, locale), {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Content-Disposition": `inline; filename="myblhub-${user.id}.ics"`,

@@ -22,7 +22,7 @@ import { countryOptions } from "@/lib/countries";
 import { dateKey } from "@/lib/dates";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
-import { getT, localeHref, type Dict } from "@/lib/i18n";
+import { getT, localeHref, LOCALES, type Dict } from "@/lib/i18n";
 
 export async function generateMetadata() {
   const { locale, t } = await getT();
@@ -107,6 +107,21 @@ export default async function SettingsPage({
                 <div>
                   <label className="form-label">{s.name}</label>
                   <input name="name" defaultValue={user.name ?? ""} className="form-control" />
+                </div>
+                <div>
+                  <label className="form-label">{s.language}</label>
+                  <select
+                    name="locale"
+                    defaultValue={user.locale ?? locale}
+                    className="form-select"
+                  >
+                    {LOCALES.map((code) => (
+                      <option key={code} value={code}>
+                        {s.languageNames[code]}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="small text-secondary mb-0 mt-1">{s.languageHint}</p>
                 </div>
                 <div>
                   <label className="form-label">{s.timezone}</label>
