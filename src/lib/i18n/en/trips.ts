@@ -86,6 +86,30 @@ export const trips = {
         },
     },
 
+    /** Кто видит отдельную запись поездки — дело, личное событие, бронь.
+     *  Не путать с `visibility` выше: та про саму поездку. */
+    itemVisibility: {
+        label: "Who can see this",
+        options: {
+            PRIVATE: "Only me",
+            PARTICIPANTS: "Trip members",
+            FRIENDS: "My friends",
+            PUBLIC: "Everyone",
+        },
+        hints: {
+            PRIVATE: "no one else — not even the people travelling with you",
+            PARTICIPANTS: "everyone travelling with you",
+            FRIENDS: "your friends, if the trip is visible to them",
+            PUBLIC: "anyone who can see the trip",
+        },
+        /** Бейдж в строке — только там, где видимость не «участники». */
+        badges: {
+            PRIVATE: "only me",
+            FRIENDS: "friends",
+            PUBLIC: "everyone",
+        },
+    },
+
     /** Личные события внутри поездки. */
     personal: {
         addLabel: "+ Personal event",
@@ -96,7 +120,6 @@ export const trips = {
         addFailed: "Couldn't add the event — try again",
         saveFailed: "Couldn't save — try again",
         badge: "personal",
-        badgePrivate: "private",
         deleteConfirm: (title: string) => `Delete "${title}"?`,
         attachmentOf: (title: string) => `Attachment on "${title}"`,
         file: "File ↗",
@@ -109,7 +132,6 @@ export const trips = {
         image: "Image",
         showOnHome: "Show on the home page",
         editableByOthers: "Trip members can edit and delete this",
-        isPrivate: "Private — only I can see it",
     },
 
     /** Поле выбора места в форме личного события. */
@@ -158,7 +180,10 @@ export const trips = {
         attachOption: "+ Attach a list…",
         detach: "Detach",
         removeAria: "Remove place",
+        addButton: "+ Place",
+        addTitle: "Add a place",
         addPlaceholder: "+ Add a place…",
+        searchLabel: "Find it in the catalogue or among your own places",
         ownPlace: "+ Own place",
         ownPlaceSubmit: "Create and add to the trip",
         standalone: "Individual places",
@@ -173,7 +198,8 @@ export const trips = {
     todos: {
         markUndone: "Mark as not done",
         markDone: "Mark as done",
-        badgePrivate: "private",
+        addButton: "+ To-do",
+        addTitle: "New to-do",
         editAria: "Edit to-do",
         deleteAria: "Delete to-do",
         deleteConfirm: "Delete this to-do?",
@@ -185,15 +211,16 @@ export const trips = {
         time: "Time",
         editableByOthers: "Trip members can edit and delete this",
         editableByOthersShort: "Members can edit and delete this",
-        isPrivate: "Private — only I can see it",
         emptyTitle: "No to-dos yet",
-        emptyHintOwn: "Add the first one above — buy tickets, change money, pick up merch.",
+        emptyHintOwn: "Add the first one with the button — buy tickets, change money, pick up merch.",
         emptyHintGuest: "No one has added anything yet.",
     },
 
     /** Жильё и перелёты. */
     bookings: {
-        heading: "Stays and flights",
+        /** Заголовок над бронями без дат — датированные стоят в самой
+         *  ленте плана, в своих днях. */
+        undatedHeading: "Stays and flights without dates",
         addHotel: "+ Hotel",
         addFlight: "+ Flight",
         hotelTitle: "Hotel booking",
@@ -213,7 +240,14 @@ export const trips = {
         address: "Address",
         addressPlaceholder: "Street, district",
         checkIn: "Check-in",
+        checkInTimeAria: "Check-in time",
         checkOut: "Check-out",
+        checkOutTimeAria: "Check-out time",
+        /** Вторая половина брони в строке ленты: у заезда — до какого
+         *  числа и сколько ночей, у выезда — с какого числа. */
+        stayUntil: (date: string) => `until ${date}`,
+        stayFrom: (date: string) => `from ${date}`,
+        nights: (n: number) => (n === 1 ? "1 night" : `${n} nights`),
         ticketUrl: "Ticket link",
         bookingUrl: "Booking link",
         ticketFile: "Ticket file",

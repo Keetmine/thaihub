@@ -8,13 +8,35 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
 import { combineDateTime } from "@/lib/dates";
-import type { TripVisibility } from "@/generated/prisma/client";
+import type { TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
 import { isPremiumActive } from "@/lib/premium";
 import { notifyUser } from "@/lib/notifications";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
+}
+
+/** Кто видит отдельную запись поездки (дело, личное событие, бронь).
+ *  Если поля в форме нет ВОВСЕ — остаётся прежнее значение: забытое
+ *  поле не должно молча раскрывать приватную запись. Для новой записи
+ *  прежнее значение — PARTICIPANTS, как в схеме. */
+function parseItemVisibility(
+  raw: FormDataEntryValue | null,
+  current: TripItemVisibility = "PARTICIPANTS",
+): TripItemVisibility {
+  if (raw === null) return current;
+  return raw === "PRIVATE" || raw === "PARTICIPANTS" || raw === "FRIENDS" || raw === "PUBLIC"
+    ? raw
+    : current;
+}
+
+/** Поля видимости для записи в базу. `isPrivate` — историческое поле:
+ *  его ещё читает выдача файлов-вложений, поэтому оно пишется вместе с
+ *  visibility и удаляется отдельной миграцией, когда код позеленеет
+ *  (порядок специально такой — см. комментарий у enum в схеме). */
+function itemVisibilityData(visibility: TripItemVisibility) {
+  return { visibility, isPrivate: visibility === "PRIVATE" };
 }
 
 /** Ошибки валидации/доступа возвращаются значением, а не броском: в
@@ -271,7 +293,20 @@ export async function leaveTrip(tripId: string): Promise<void> {
 
 /** null — не заполнены обязательные поля (название/дата); вызывающий
  *  экшен возвращает клиенту `{ ok: false, error: "Заполните…" }`. */
-function parsePersonalEventForm(formData: FormData): { title: string; note: string | null; startsAt: Date; locationId: string | null; editableByOthers: boolean; isPrivate: boolean; showOnHome: boolean; imageUrl: string | null } | null {
+function parsePersonalEventForm(
+  formData: FormData,
+  currentVisibility?: TripItemVisibility,
+): {
+  title: string;
+  note: string | null;
+  startsAt: Date;
+  locationId: string | null;
+  editableByOthers: boolean;
+  visibility: TripItemVisibility;
+  isPrivate: boolean;
+  showOnHome: boolean;
+  imageUrl: string | null;
+} | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
   const date = String(formData.get("date") ?? "");
@@ -286,7 +321,7 @@ function parsePersonalEventForm(formData: FormData): { title: string; note: stri
     startsAt: combineDateTime(date, time || "00:00"),
     locationId: locationId || null,
     editableByOthers: formData.get("editableByOthers") === "on",
-    isPrivate: formData.get("isPrivate") === "on",
+    ...itemVisibilityData(parseItemVisibility(formData.get("visibility"), currentVisibility)),
     showOnHome: formData.get("showOnHome") === "on",
     imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
   };
@@ -322,7 +357,7 @@ export async function updateTripPersonalEvent(
   if (!item || !canTouchItem(item, user.id, trip.userId)) {
     return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
   }
-  const data = parsePersonalEventForm(formData);
+  const data = parsePersonalEventForm(formData, item.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
@@ -447,7 +482,7 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
       hasTime,
       createdById: access.user.id,
       editableByOthers: formData.get("editableByOthers") === "on",
-      isPrivate: formData.get("isPrivate") === "on",
+      ...itemVisibilityData(parseItemVisibility(formData.get("visibility"))),
     },
   });
   revalidatePath(`/trips/${tripId}`);
@@ -500,7 +535,9 @@ export async function updateTripTodo(todoId: string, formData: FormData): Promis
       date,
       hasTime,
       editableByOthers: formData.get("editableByOthers") === "on",
-      isPrivate: formData.get("isPrivate") === "on",
+      ...itemVisibilityData(
+        parseItemVisibility(formData.get("visibility"), own.todo.visibility),
+      ),
     },
   });
   revalidatePath(`/trips/${own.todo.tripId}`);
@@ -546,14 +583,11 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
     url: String(formData.get("url") ?? "").trim() || null,
     fileUrl: String(formData.get("fileUrl") ?? "").trim() || null,
     note: String(formData.get("note") ?? "").trim() || null,
-    // У перелёта важно время, у отеля хватает даты — поэтому вылет и
-    // прилёт разбираем вместе со временем, если оно указано.
-    startAt: isFlight
-      ? parseTripDateTime(formData.get("startAt"), formData.get("startTime"))
-      : parseTripDate(formData.get("startAt")),
-    endAt: isFlight
-      ? parseTripDateTime(formData.get("endAt"), formData.get("endTime"))
-      : parseTripDate(formData.get("endAt")),
+    // Время нужно обоим видам: в ленте плана заселение и выселение
+    // встают среди событий дня по часам, как вылет и прилёт. Время
+    // необязательное — без него остаётся чистая дата (00:00).
+    startAt: parseTripDateTime(formData.get("startAt"), formData.get("startTime")),
+    endAt: parseTripDateTime(formData.get("endAt"), formData.get("endTime")),
   };
 
   if (id) {
@@ -561,9 +595,24 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
     // было бы отредактировать бронь чужой поездки.
     const existing = await prisma.tripBooking.findFirst({ where: { id, tripId } });
     if (!existing) return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
-    await prisma.tripBooking.update({ where: { id }, data });
+    await prisma.tripBooking.update({
+      where: { id },
+      data: {
+        ...data,
+        // У брони исторического isPrivate нет — только visibility.
+        visibility: parseItemVisibility(formData.get("visibility"), existing.visibility),
+      },
+    });
   } else {
-    await prisma.tripBooking.create({ data: { tripId, ...data } });
+    await prisma.tripBooking.create({
+      data: {
+        tripId,
+        ...data,
+        // По умолчанию бронь видят участники: адрес проживания и номер
+        // брони — не то, что показывают всем подряд.
+        visibility: parseItemVisibility(formData.get("visibility")),
+      },
+    });
   }
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };

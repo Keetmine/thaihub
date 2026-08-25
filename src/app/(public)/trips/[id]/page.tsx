@@ -2,9 +2,18 @@ import AppLink from "@/components/AppLink";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
-import { dateKey, endOfDay, formatShortDate, formatTime } from "@/lib/dates";
-import { getT, localeHref, type Locale } from "@/lib/i18n";
+import {
+  dateKey,
+  endOfDay,
+  formatShortDate,
+  formatTime,
+  shortMonthName,
+  shortWeekdayName,
+  startOfDay,
+} from "@/lib/dates";
+import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
+import type { TripItemVisibility } from "@/generated/prisma/client";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { deleteTrip } from "../actions";
@@ -12,8 +21,6 @@ import EmptyState from "@/components/EmptyState";
 import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
-import CreateOwnPlaceButton from "../../lists/[id]/CreateOwnPlaceButton";
-import { createTripOwnPlace } from "../actions";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import TripTodos, { TodoRow } from "../TripTodos";
 import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
@@ -21,7 +28,6 @@ import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import {
-  AddTripPlaceBox,
   AttachListSelect,
   DetachListButton,
   RemoveTripPlaceButton,
@@ -30,29 +36,139 @@ import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
 import { userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
+import AddBookingButton from "./AddBookingButton";
+import AddTripPlaceButton from "../AddTripPlaceButton";
+import TripBookingLeg, { type BookingLegData } from "./TripBookingLeg";
+import type { TripBookingRow } from "./BookingForm";
 
 export const dynamic = "force-dynamic";
 
-/** Подпись брони: у отеля «29 авг → 5 сент», у перелёта то же со
- *  временем, а если вылет и прилёт в один день — время без повтора
- *  даты («29 авг 14:20 → 18:05»). */
-function bookingWhenLabel(
+/** Время у брони указывать необязательно, и «без времени» в базе — это
+ *  ровно полночь (та же договорённость, что у личных событий). */
+function hasTime(d: Date): boolean {
+  return formatTime(d) !== "00:00";
+}
+
+/** Даты проекта «настенные» и считаются в UTC (см. lib/dates.ts), а
+ *  shortMonthName/shortWeekdayName читают локальные компоненты даты: у
+ *  заселения в 22:30 они называли уже следующий день. Берём полдень тех
+ *  же суток по UTC — в любой зоне это остаётся тем же днём. */
+function labelDate(d: Date): Date {
+  return new Date(startOfDay(d).getTime() + 12 * 3600_000);
+}
+
+/** Ночей между заездом и выездом — по календарным дням: выезд в 12:00
+ *  не должен превращать три ночи в две с половиной. */
+function nightsBetween(from: Date, to: Date): number {
+  return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+}
+
+/** Куда встаёт в дне запись без времени. День должен читаться
+ *  правдоподобно и тогда, когда часа никто не знает: выселение и прилёт
+ *  — это начало дня (номер освобождают утром, а после прилёта день
+ *  только начинается), заселение и вылет — его конец (заезд обычно
+ *  после обеда, а после вылета в этом дне уже ничего не запланируешь). */
+function legSortAt(at: Date, side: "start" | "end"): Date {
+  if (hasTime(at)) return at;
+  return side === "end" ? startOfDay(at) : endOfDay(at);
+}
+
+/** Бронь в ленте плана — это две записи, а не одна строка сбоку:
+ *  заселение в день заезда и выселение в день выезда (у перелёта — вылет
+ *  и прилёт). Промежуточные дни ничем не помечаем: то, что человек живёт
+ *  в отеле, и так понятно, а связь между заездом и выездом показывает
+ *  линия, проходящая под карточками этих дней. */
+function bookingLegs(
   b: {
+    id: string;
     kind: "HOTEL" | "FLIGHT";
+    name: string;
+    address: string | null;
+    fromPlace: string | null;
+    toPlace: string | null;
+    url: string | null;
+    fileUrl: string | null;
+    note: string | null;
     startAt: Date | null;
     endAt: Date | null;
+    visibility: TripItemVisibility;
   },
   locale: Locale,
-): string | null {
-  const withTime = b.kind === "FLIGHT";
-  const one = (d: Date) =>
-    withTime ? `${formatShortDate(d, locale)} ${formatTime(d)}` : formatShortDate(d, locale);
-  if (!b.startAt && !b.endAt) return null;
-  if (!b.startAt) return one(b.endAt!);
-  if (!b.endAt) return one(b.startAt);
-  const sameDay = dateKey(b.startAt) === dateKey(b.endAt);
-  const end = withTime && sameDay ? formatTime(b.endAt) : one(b.endAt);
-  return `${one(b.startAt)} → ${end}`;
+  t: Dict,
+  canEdit: boolean,
+): { leg: BookingLegData; sortAt: Date; isStay: boolean }[] {
+  const isFlight = b.kind === "FLIGHT";
+  const row: TripBookingRow = {
+    id: b.id,
+    kind: b.kind,
+    name: b.name,
+    address: b.address,
+    fromPlace: b.fromPlace,
+    toPlace: b.toPlace,
+    url: b.url,
+    fileUrl: b.fileUrl,
+    note: b.note,
+    startDate: b.startAt ? dateKey(b.startAt) : null,
+    endDate: b.endAt ? dateKey(b.endAt) : null,
+    startTime: b.startAt && hasTime(b.startAt) ? formatTime(b.startAt) : null,
+    endTime: b.endAt && hasTime(b.endAt) ? formatTime(b.endAt) : null,
+    visibility: b.visibility,
+  };
+  const place = isFlight
+    ? [b.fromPlace, b.toPlace].filter(Boolean).join(" → ") || null
+    : b.address;
+  // Жильё с обеими датами — это «стоянка»: её концы соединяет линия.
+  // Бронь с одной датой остаётся одиночной записью.
+  const isStay = b.kind === "HOTEL" && !!b.startAt && !!b.endAt;
+
+  const make = (at: Date, side: "start" | "end"): { leg: BookingLegData; sortAt: Date; isStay: boolean } => {
+    // Подпись «до 5 сен · 6 ночей» / «с 29 авг» — вторая половина
+    // брони словами: на экране она может оказаться далеко.
+    let spanLabel: string | null = null;
+    if (b.kind === "HOTEL" && side === "start" && b.endAt) {
+      const nights = nightsBetween(at, b.endAt);
+      spanLabel = [
+        t.trips.bookings.stayUntil(formatShortDate(b.endAt, locale)),
+        nights > 0 ? t.trips.bookings.nights(nights) : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    } else if (b.kind === "HOTEL" && side === "end" && b.startAt) {
+      spanLabel = t.trips.bookings.stayFrom(formatShortDate(b.startAt, locale));
+    }
+    return {
+      sortAt: legSortAt(at, side),
+      isStay,
+      leg: {
+        key: `booking-${b.id}-${side}`,
+        bookingId: b.id,
+        kind: b.kind,
+        side,
+        // Подписи даты считаем здесь: даты проекта живут в UTC, а
+        // локальные геттеры в браузере зрителя дали бы другой день.
+        dayLabel: String(at.getUTCDate()),
+        monthLabel: shortMonthName(labelDate(at), locale),
+        weekdayLabel: shortWeekdayName(labelDate(at), locale),
+        timeLabel: hasTime(at) ? formatTime(at) : null,
+        name: b.name,
+        place,
+        spanLabel,
+        // Заметка у брони одна на обе стороны, поэтому показываем её
+        // только на первой записи — иначе «код брони 4412» повторялся бы
+        // и на заселении, и на выселении.
+        note: side === "start" || !b.startAt ? b.note : null,
+        url: b.url,
+        fileUrl: b.fileUrl,
+        canEdit,
+        booking: row,
+      },
+    };
+  };
+
+  return [
+    ...(b.startAt ? [make(b.startAt, "start")] : []),
+    ...(b.endAt ? [make(b.endAt, "end")] : []),
+  ];
 }
 
 export default async function TripPage({
@@ -186,12 +302,29 @@ export default async function TripPage({
   const isMine = (createdById: string | null): boolean =>
     (createdById ?? trip.userId) === user.id;
 
-  // Публичные и личные события — одна хронологическая лента. Личные
-  // видят только участники: даже в публичной поездке брони/встречи —
-  // не для чужих глаз.
-  const personal: PersonalEventData[] = (isParticipant ? trip.personalEvents : [])
-    // Приватные записи видит только автор — даже другие участники.
-    .filter((p) => !p.isPrivate || isMine(p.createdById))
+  // Кто видит конкретную запись поездки — дело, личное событие, бронь.
+  // Решает поле `visibility` самой записи (у записей до этого поля —
+  // PARTICIPANTS): PRIVATE — только автор, PARTICIPANTS — те, кто едет,
+  // FRIENDS — плюс друзья автора, PUBLIC — все, кто вообще дошёл до
+  // страницы (доступ к самой поездке проверен выше). Дружба
+  // симметрична, поэтому «друг автора» — это автор в списке друзей
+  // зрителя, второго запроса не нужно.
+  const canSeeItem = (
+    visibility: TripItemVisibility,
+    createdById: string | null,
+  ): boolean => {
+    const authorId = createdById ?? trip.userId;
+    if (authorId === user.id) return true;
+    if (visibility === "PRIVATE") return false;
+    if (visibility === "PUBLIC") return true;
+    if (isParticipant) return true;
+    return visibility === "FRIENDS" && friendIds.includes(authorId);
+  };
+
+  // Публичные и личные события — одна хронологическая лента. Кого
+  // пускать к личной записи, решает её собственная видимость.
+  const personal: PersonalEventData[] = trip.personalEvents
+    .filter((p) => canSeeItem(p.visibility, p.createdById))
     .filter((p) => !onlyMine || isMine(p.createdById))
     .map((p) => ({
       id: p.id,
@@ -203,20 +336,18 @@ export default async function TripPage({
       timeValue: formatTime(p.startsAt),
       author: authorLabel(p.createdById),
       editableByOthers: p.editableByOthers,
-      isPrivate: p.isPrivate,
+      visibility: p.visibility,
       showOnHome: p.showOnHome,
       imageUrl: p.imageUrl,
       canEdit: canTouch(p),
     }));
-  // Дела поездки — планирование участников, чужим не показываем.
-  const todos = isParticipant
-    ? await prisma.tripTodo.findMany({
-        where: { tripId: trip.id },
-        orderBy: [{ done: "asc" }, { date: "asc" }],
-      })
-    : [];
+  // Дела поездки: кого пускать к каждому, решает его видимость.
+  const todos = await prisma.tripTodo.findMany({
+    where: { tripId: trip.id },
+    orderBy: [{ done: "asc" }, { date: "asc" }],
+  });
   const todoData = todos
-    .filter((t) => !t.isPrivate || isMine(t.createdById))
+    .filter((t) => canSeeItem(t.visibility, t.createdById))
     .filter((t) => !onlyMine || isMine(t.createdById))
     .map((t) => ({
       id: t.id,
@@ -227,13 +358,54 @@ export default async function TripPage({
       author: authorLabel(t.createdById),
       canEdit: canTouch(t),
       editableByOthers: t.editableByOthers,
-      isPrivate: t.isPrivate,
+      visibility: t.visibility,
+    }));
+
+  // ЕДИНСТВЕННАЯ точка, где брони попадают в разметку. Жильё и перелёты
+  // — закрытая информация: по умолчанию (PARTICIPANTS) их видят только
+  // владелец и принятые участники, и автор должен отдельно выбрать
+  // FRIENDS/PUBLIC, чтобы бронь увидел кто-то ещё. Гейт стоит на
+  // данных, а не на стилях: невидимая бронь не даёт ни строк ленты, ни
+  // линии жилья, и в HTML не уходит ничего.
+  // Датированные брони идут в ленту, брони без дат — в блок над ней
+  // (в ленте им негде встать).
+  // Открытая бронь показывает только суть: вид, название, даты и
+  // маршрут. Адрес, заметка (там номер брони и код от двери), ссылка и
+  // файл подтверждения остаются участникам — «видно всем» про то, где и
+  // когда человек будет, а не про то, как попасть в его номер.
+  const bookingForViewer = <T extends { address: string | null; note: string | null; url: string | null; fileUrl: string | null }>(
+    b: T,
+  ): T => (isParticipant ? b : { ...b, address: null, note: null, url: null, fileUrl: null });
+  const visibleBookings = trip.bookings
+    .filter((b) => canSeeItem(b.visibility, null))
+    .map(bookingForViewer);
+  const legs = showAll
+    ? []
+    : visibleBookings.flatMap((b) => bookingLegs(b, locale, t, canContribute));
+  const undatedBookings: TripBookingRow[] = visibleBookings
+    .filter((b) => !b.startAt && !b.endAt)
+    .map((b) => ({
+      id: b.id,
+      kind: b.kind,
+      name: b.name,
+      address: b.address,
+      fromPlace: b.fromPlace,
+      toPlace: b.toPlace,
+      url: b.url,
+      fileUrl: b.fileUrl,
+      note: b.note,
+      startDate: null,
+      endDate: null,
+      startTime: null,
+      endTime: null,
+      visibility: b.visibility,
     }));
 
   const timeline: (
     | { kind: "public"; startsAt: Date; key: string; event: (typeof events)[number] }
     | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData }
     | { kind: "todo"; startsAt: Date; key: string; todo: (typeof todoData)[number] }
+    | { kind: "booking"; startsAt: Date; key: string; leg: BookingLegData; isStay: boolean }
   )[] = [
     ...events.map((ev) => ({ kind: "public" as const, startsAt: ev.startsAt, key: `pub-${ev.occurrenceId}`, event: ev })),
     // Вкладка «Афиша» — только события афиши: личные записи и дела там
@@ -247,7 +419,41 @@ export default async function TripPage({
       : todoData
           .filter((t) => t.date)
           .map((t) => ({ kind: "todo" as const, startsAt: new Date(t.date!), key: `todo-${t.id}`, todo: t }))),
-  ].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+    ...legs.map(({ leg, sortAt, isStay }) => ({
+      kind: "booking" as const,
+      startsAt: sortAt,
+      key: leg.key,
+      leg,
+      isStay,
+    })),
+  ].sort(
+    (a, b) =>
+      a.startsAt.getTime() - b.startsAt.getTime() ||
+      // Ровно в одну минуту с событием бронь идёт первой: сначала
+      // заселяешься (или сдаёшь номер), потом идёшь на событие.
+      (a.kind === "booking" ? 0 : 1) - (b.kind === "booking" ? 0 : 1),
+  );
+
+  // Полоса жилья: дни между заездом и выездом лежат на общей тёплой
+  // подложке ПОД карточками — вместо строки «проживание в отеле» на
+  // каждый день. Считаем по уже отсортированной ленте: заселение
+  // открывает полосу, выселение закрывает. Счётчик, а не флаг, — иначе
+  // пересекающиеся брони (переезд в тот же день) рвали бы полосу.
+  const rows: { item: (typeof timeline)[number]; stay: "open" | "inside" | "close" | null }[] = [];
+  let openStays = 0;
+  for (const item of timeline) {
+    let stay: "open" | "inside" | "close" | null = openStays > 0 ? "inside" : null;
+    if (item.kind === "booking" && item.isStay) {
+      if (item.leg.side === "start") {
+        stay = openStays > 0 ? "inside" : "open";
+        openStays += 1;
+      } else {
+        openStays = Math.max(0, openStays - 1);
+        stay = openStays > 0 ? "inside" : "close";
+      }
+    }
+    rows.push({ item, stay });
+  }
 
   // «Что посетить» (Г4): локации съёмок сериалов владельца + прикреплённые
   // списки мест + отдельные добавленные места.
@@ -354,6 +560,26 @@ export default async function TripPage({
         </div>
       )}
 
+      {/* Ряд добавления стоит НАД вкладками и виден на любой из них
+          (просьба владельца): раньше он жил внутри плана, и с «Дел» или
+          «Что посетить» добавить событие было нельзя, не вернувшись
+          назад. Кнопок нет вовсе у тех, кому нечего вносить, — у гостя
+          и у участника без подписки. «+ Событие» акцентная: её жмут
+          чаще всего. */}
+      {canContribute && (
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <AddPersonalEventButton
+            tripId={trip.id}
+            showShareToggle={isShared}
+            label={t.trips.personal.addShort}
+            accent
+          />
+          <AddBookingButton tripId={trip.id} kind="HOTEL" />
+          <AddBookingButton tripId={trip.id} kind="FLIGHT" />
+          <AddTripPlaceButton tripId={trip.id} />
+        </div>
+      )}
+
       <div className="tab-bar-row">
         <div className="tab-bar">
           <AppLink
@@ -372,7 +598,10 @@ export default async function TripPage({
           >
             {t.trips.detail.tabEvents(totalCount)}
           </AppLink>
-          {isParticipant && (
+          {/* Вкладка дел есть у тех, кто вносит, и у того, кому хоть одно
+              дело видно: с появлением видимости у записи дело может быть
+              открыто друзьям или всем. */}
+          {(isParticipant || todoData.length > 0) && (
             <AppLink
               href={`${tripHref(trip)}?view=todos`}
               prefetch={false}
@@ -400,37 +629,10 @@ export default async function TripPage({
         )}
       </div>
 
-      {/* Жильё и перелёты — только участникам: чужим бронь видеть
-          незачем. Блок компактный: пустой — это одна строка заголовка,
-          поэтому его видно и на вкладке афиши, и в плане. */}
-      {!showTodos && !showPlaces && canContribute && (
-        <TripBookings
-          tripId={trip.id}
-          leadingAction={
-            <AddPersonalEventButton
-              tripId={trip.id}
-              showShareToggle={isShared}
-              label={t.trips.personal.addShort}
-              accent
-            />
-          }
-          bookings={trip.bookings.map((b) => ({
-            id: b.id,
-            kind: b.kind,
-            name: b.name,
-            address: b.address,
-            fromPlace: b.fromPlace,
-            toPlace: b.toPlace,
-            url: b.url,
-            fileUrl: b.fileUrl,
-            note: b.note,
-            startDate: b.startAt ? dateKey(b.startAt) : null,
-            endDate: b.endAt ? dateKey(b.endAt) : null,
-            startTime: b.kind === "FLIGHT" && b.startAt ? formatTime(b.startAt) : null,
-            endTime: b.kind === "FLIGHT" && b.endAt ? formatTime(b.endAt) : null,
-            whenLabel: bookingWhenLabel(b, locale),
-          }))}
-        />
+      {/* Брони без дат: в ленте им негде встать, а видеть и дозаполнять
+          их надо. Датированные стоят ниже, в ленте плана, в свои дни. */}
+      {!showTodos && !showPlaces && (
+        <TripBookings tripId={trip.id} canEdit={canContribute} bookings={undatedBookings} />
       )}
 
       {showTodos ? (
@@ -462,16 +664,11 @@ export default async function TripPage({
           />
         ) : (
           <>
+            {/* Поиск места и «своё место» переехали в кнопку «+ Место»
+                над вкладками — здесь остался только тот способ, которого
+                там нет: прикрепить готовый список. */}
             {canContribute && (
               <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                <AddTripPlaceBox tripId={trip.id} />
-                {/* Своё место прямо здесь: раньше ради одного места
-                    нужно было сперва завести список. */}
-                <CreateOwnPlaceButton
-                  action={createTripOwnPlace.bind(null, trip.id)}
-                  label={t.trips.places.ownPlace}
-                  submitLabel={t.trips.places.ownPlaceSubmit}
-                />
                 <AttachListSelect tripId={trip.id} availableLists={availableLists} />
               </div>
             )}
@@ -554,29 +751,34 @@ export default async function TripPage({
           compact
         />
       ) : (
-        <div className="d-flex flex-column gap-3">
-          {timeline.map((item) =>
-            item.kind === "public" ? (
-              <EventCard
-                key={item.key}
-                event={item.event}
-                isFavorited={favoritedIds.has(item.event.id)}
-                isGoing={goingIds.has(item.event.occurrenceId)}
-                friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
-                ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
-              />
-            ) : item.kind === "personal" ? (
-              <PersonalEventCard
-                key={item.key}
-                tripId={trip.id}
-                event={item.personalEvent}
-                canEdit={item.personalEvent.canEdit}
-                showShareToggle={isShared}
-              />
-            ) : (
-              <TodoRow key={item.key} todo={item.todo} showDate showShareToggle={isShared} />
-            ),
-          )}
+        <div className="d-flex flex-column gap-3 trip-timeline">
+          {rows.map(({ item, stay }) => (
+            <div
+              key={item.key}
+              className={`trip-timeline-item${stay ? ` in-stay stay-${stay}` : ""}`}
+            >
+              {item.kind === "public" ? (
+                <EventCard
+                  event={item.event}
+                  isFavorited={favoritedIds.has(item.event.id)}
+                  isGoing={goingIds.has(item.event.occurrenceId)}
+                  friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
+                  ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
+                />
+              ) : item.kind === "personal" ? (
+                <PersonalEventCard
+                  tripId={trip.id}
+                  event={item.personalEvent}
+                  canEdit={item.personalEvent.canEdit}
+                  showShareToggle={isShared}
+                />
+              ) : item.kind === "booking" ? (
+                <TripBookingLeg tripId={trip.id} leg={item.leg} />
+              ) : (
+                <TodoRow todo={item.todo} showDate showShareToggle={isShared} />
+              )}
+            </div>
+          ))}
         </div>
       )}
 

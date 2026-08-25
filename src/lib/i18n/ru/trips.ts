@@ -84,6 +84,28 @@ export const trips: Dict["trips"] = {
         },
     },
 
+    /** Кто видит отдельную запись поездки — дело, личное событие, бронь. */
+    itemVisibility: {
+        label: "Кто это видит",
+        options: {
+            PRIVATE: "Только я",
+            PARTICIPANTS: "Участники поездки",
+            FRIENDS: "Мои друзья",
+            PUBLIC: "Все",
+        },
+        hints: {
+            PRIVATE: "больше никто — даже те, кто едет с вами",
+            PARTICIPANTS: "все, кто едет с вами",
+            FRIENDS: "ваши друзья, если поездка им видна",
+            PUBLIC: "все, кому видна поездка",
+        },
+        badges: {
+            PRIVATE: "только я",
+            FRIENDS: "друзьям",
+            PUBLIC: "всем",
+        },
+    },
+
     /** Личные события внутри поездки. */
     personal: {
         addLabel: "+ Личное событие",
@@ -94,7 +116,6 @@ export const trips: Dict["trips"] = {
         addFailed: "Не удалось добавить событие — попробуйте ещё раз",
         saveFailed: "Не удалось сохранить — попробуйте ещё раз",
         badge: "личное",
-        badgePrivate: "приватное",
         deleteConfirm: (title: string) => `Удалить «${title}»?`,
         attachmentOf: (title: string) => `Вложение к записи «${title}»`,
         file: "Файл ↗",
@@ -107,7 +128,6 @@ export const trips: Dict["trips"] = {
         image: "Картинка",
         showOnHome: "Показывать на главной",
         editableByOthers: "Участники поездки могут редактировать и удалять",
-        isPrivate: "Приватное — видно только мне",
     },
 
     /** Поле выбора места в форме личного события. */
@@ -156,7 +176,10 @@ export const trips: Dict["trips"] = {
         attachOption: "+ Прикрепить список…",
         detach: "Открепить",
         removeAria: "Убрать место",
+        addButton: "+ Место",
+        addTitle: "Добавить место",
         addPlaceholder: "+ Добавить место…",
+        searchLabel: "Найдите в каталоге или среди своих мест",
         ownPlace: "+ Своё место",
         ownPlaceSubmit: "Создать и добавить в поездку",
         standalone: "Отдельные места",
@@ -171,7 +194,8 @@ export const trips: Dict["trips"] = {
     todos: {
         markUndone: "Отметить невыполненным",
         markDone: "Отметить выполненным",
-        badgePrivate: "приватное",
+        addButton: "+ Дело",
+        addTitle: "Новое дело",
         editAria: "Редактировать дело",
         deleteAria: "Удалить дело",
         deleteConfirm: "Удалить дело?",
@@ -183,15 +207,14 @@ export const trips: Dict["trips"] = {
         time: "Время",
         editableByOthers: "Участники поездки могут редактировать и удалять",
         editableByOthersShort: "Участники могут редактировать и удалять",
-        isPrivate: "Приватное — видно только мне",
         emptyTitle: "Дел пока нет",
-        emptyHintOwn: "Добавьте первое в форме выше — купить билеты, обменять деньги, собрать мерч.",
+        emptyHintOwn: "Добавьте первое по кнопке — купить билеты, обменять деньги, собрать мерч.",
         emptyHintGuest: "Участники пока ничего не добавили.",
     },
 
     /** Жильё и перелёты. */
     bookings: {
-        heading: "Жильё и перелёты",
+        undatedHeading: "Жильё и перелёты без дат",
         addHotel: "+ Отель",
         addFlight: "+ Перелёт",
         hotelTitle: "Бронь отеля",
@@ -211,7 +234,21 @@ export const trips: Dict["trips"] = {
         address: "Адрес",
         addressPlaceholder: "Улица, район",
         checkIn: "Заезд",
+        checkInTimeAria: "Время заезда",
         checkOut: "Выезд",
+        checkOutTimeAria: "Время выезда",
+        stayUntil: (date: string) => `до ${date}`,
+        stayFrom: (date: string) => `с ${date}`,
+        nights: (n: number) => {
+            // 1 ночь, 2–4 ночи, 5–20 ночей; десятки считаются по
+            // последней цифре, кроме 11–14.
+            const tail = n % 100;
+            const last = n % 10;
+            if (tail >= 11 && tail <= 14) return `${n} ночей`;
+            if (last === 1) return `${n} ночь`;
+            if (last >= 2 && last <= 4) return `${n} ночи`;
+            return `${n} ночей`;
+        },
         ticketUrl: "Ссылка на билет",
         bookingUrl: "Ссылка на бронь",
         ticketFile: "Файл билета",

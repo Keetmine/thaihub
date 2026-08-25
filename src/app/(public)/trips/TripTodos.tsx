@@ -8,6 +8,11 @@ import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon, PencilIcon } from "@/components/icons";
 import { useLocale, useT } from "@/components/LocaleProvider";
+import {
+  ItemVisibilityBadge,
+  ItemVisibilityField,
+  type TripItemVisibilityValue,
+} from "./TripItemVisibility";
 import { shortMonthName, shortWeekdayName } from "@/lib/dates";
 import {
   createTripTodo,
@@ -28,7 +33,9 @@ export type TodoData = {
   author: string | null;
   canEdit: boolean;
   editableByOthers: boolean;
-  isPrivate: boolean;
+  /** Кто видит дело: только автор, участники, друзья автора или все,
+   *  кому видна поездка. */
+  visibility: TripItemVisibilityValue;
 };
 
 /** Строка дела: чекбокс + текст + дата + правка/удаление. Используется
@@ -99,11 +106,9 @@ export function TodoRow({
         style={{ minWidth: 0 }}
       >
         {todo.text}
-        {todo.isPrivate && (
-          <span className="badge rounded-pill text-bg-dark border ms-2" style={{ fontSize: "0.6rem" }}>
-            {t.trips.todos.badgePrivate}
-          </span>
-        )}
+        <span className="ms-2">
+          <ItemVisibilityBadge visibility={todo.visibility} />
+        </span>
         {todo.author && (
           <span className="small text-secondary ms-2">{todo.author}</span>
         )}
@@ -187,35 +192,22 @@ export function TodoRow({
               />
             </div>
           </div>
+          <ItemVisibilityField defaultValue={todo.visibility} />
           {showShareToggle ? (
-            <>
-              <label className="form-check d-flex align-items-center gap-2 mb-0">
-                <input
-                  type="checkbox"
-                  name="editableByOthers"
-                  defaultChecked={todo.editableByOthers}
-                  className="form-check-input m-0"
-                />
-                <span className="form-check-label small">
-                  {t.trips.todos.editableByOthers}
-                </span>
-              </label>
-              <label className="form-check d-flex align-items-center gap-2 mb-0">
-                <input
-                  type="checkbox"
-                  name="isPrivate"
-                  defaultChecked={todo.isPrivate}
-                  className="form-check-input m-0"
-                />
-                <span className="form-check-label small">{t.trips.todos.isPrivate}</span>
-              </label>
-            </>
+            <label className="form-check d-flex align-items-center gap-2 mb-0">
+              <input
+                type="checkbox"
+                name="editableByOthers"
+                defaultChecked={todo.editableByOthers}
+                className="form-check-input m-0"
+              />
+              <span className="form-check-label small">
+                {t.trips.todos.editableByOthers}
+              </span>
+            </label>
           ) : (
-            // Сохраняем прежние флаги, когда галочки скрыты (соло-поездка).
-            <>
-              {todo.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />}
-              {todo.isPrivate && <input type="hidden" name="isPrivate" value="on" />}
-            </>
+            // Сохраняем прежний флаг, когда галочка скрыта (соло-поездка).
+            todo.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />
           )}
           {editError && <p className="small text-danger mb-0">{editError}</p>}
           <button type="submit" className="btn btn-primary">
@@ -227,7 +219,95 @@ export function TodoRow({
   );
 }
 
-/** Вкладка «Дела»: форма добавления + список (невыполненные сверху). */
+/** Кнопка «+ Дело» с модалкой — на вкладке дел и в общем ряду действий.
+ *  Раньше форма висела на вкладке развёрнутой и занимала первый экран
+ *  ещё до того, как человек решил что-то добавить (просьба владельца:
+ *  «добавлять дело тоже по кнопке»). */
+export function AddTripTodoButton({
+  tripId,
+  showShareToggle = false,
+}: {
+  tripId: string;
+  showShareToggle?: boolean;
+}) {
+  const t = useT();
+  const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
+        {t.trips.todos.addButton}
+      </button>
+
+      <Modal
+        open={isOpen}
+        onClose={() => {
+          setIsOpen(false);
+          setError(null);
+        }}
+        title={t.trips.todos.addTitle}
+      >
+        {/* Форма живёт внутри модалки, поэтому после закрытия она
+            размонтируется целиком — прежний ремоунт по ключу (иначе
+            DatePickerInput молча тащил дату в следующее дело) больше не
+            нужен. */}
+        <form
+          action={async (fd) => {
+            setError(null);
+            const result = await createTripTodo(tripId, fd);
+            if (!result.ok) {
+              setError(result.error);
+              return;
+            }
+            setIsOpen(false);
+            router.refresh();
+          }}
+          className="d-flex flex-column gap-3"
+        >
+          <div>
+            <label className="form-label small text-secondary">{t.trips.todos.newText}</label>
+            <input
+              name="text"
+              required
+              autoFocus
+              placeholder={t.trips.todos.newPlaceholder}
+              className="form-control"
+            />
+          </div>
+          <div className="row g-2">
+            <div className="col-7">
+              <label className="form-label small text-secondary">
+                {t.trips.todos.dateOptional}
+              </label>
+              <DatePickerInput name="date" />
+            </div>
+            <div className="col-5">
+              <label className="form-label small text-secondary">{t.trips.todos.time}</label>
+              <input type="time" name="time" className="form-control" />
+            </div>
+          </div>
+          <ItemVisibilityField />
+          {showShareToggle && (
+            <label className="form-check d-flex align-items-center gap-2 mb-0">
+              <input type="checkbox" name="editableByOthers" className="form-check-input m-0" />
+              <span className="form-check-label small">
+                {t.trips.todos.editableByOthersShort}
+              </span>
+            </label>
+          )}
+          {error && <p className="small text-danger mb-0">{error}</p>}
+          <button type="submit" className="btn btn-primary">
+            {t.common.add}
+          </button>
+        </form>
+      </Modal>
+    </>
+  );
+}
+
+/** Вкладка «Дела»: кнопка добавления + список (невыполненные сверху). */
 export default function TripTodos({
   tripId,
   todos,
@@ -241,11 +321,6 @@ export default function TripTodos({
   showShareToggle?: boolean;
 }) {
   const t = useT();
-  const router = useRouter();
-  // Ключ формы: после добавления форму ремоунтим, иначе DatePickerInput
-  // удерживает прошлую дату и следующее дело получает её молча.
-  const [formKey, setFormKey] = useState(0);
-  const [error, setError] = useState<string | null>(null);
 
   const sorted = [...todos].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
@@ -258,60 +333,9 @@ export default function TripTodos({
   return (
     <div style={{ maxWidth: "44rem" }}>
       {canAdd && (
-        <form
-          key={formKey}
-          action={async (fd) => {
-            setError(null);
-            const result = await createTripTodo(tripId, fd);
-            if (!result.ok) {
-              setError(result.error);
-              return;
-            }
-            setFormKey((k) => k + 1);
-            router.refresh();
-          }}
-          className="d-flex flex-wrap align-items-end gap-2 mb-4"
-        >
-          <div className="flex-fill" style={{ minWidth: "14rem" }}>
-            <label className="form-label small text-secondary">{t.trips.todos.newText}</label>
-            <input
-              name="text"
-              required
-              placeholder={t.trips.todos.newPlaceholder}
-              className="form-control"
-            />
-          </div>
-          <div>
-            <label className="form-label small text-secondary">{t.trips.todos.dateOptional}</label>
-            <DatePickerInput name="date" />
-          </div>
-          <div>
-            <label className="form-label small text-secondary">{t.trips.todos.time}</label>
-            <input type="time" name="time" className="form-control" style={{ width: "7rem" }} />
-          </div>
-          {showShareToggle && (
-            <div className="d-flex flex-wrap gap-3 w-100">
-              <label className="form-check d-flex align-items-center gap-2 mb-0">
-                <input
-                  type="checkbox"
-                  name="editableByOthers"
-                  className="form-check-input m-0"
-                />
-                <span className="form-check-label small">
-                  {t.trips.todos.editableByOthersShort}
-                </span>
-              </label>
-              <label className="form-check d-flex align-items-center gap-2 mb-0">
-                <input type="checkbox" name="isPrivate" className="form-check-input m-0" />
-                <span className="form-check-label small">{t.trips.todos.isPrivate}</span>
-              </label>
-            </div>
-          )}
-          <button type="submit" className="btn btn-primary">
-            {t.common.add}
-          </button>
-          {error && <p className="small text-danger w-100 mb-0">{error}</p>}
-        </form>
+        <div className="mb-3">
+          <AddTripTodoButton tripId={tripId} showShareToggle={showShareToggle} />
+        </div>
       )}
 
       {sorted.length === 0 ? (
@@ -323,8 +347,8 @@ export default function TripTodos({
         />
       ) : (
         <div className="d-flex flex-column gap-2">
-          {sorted.map((t) => (
-            <TodoRow key={t.id} todo={t} showShareToggle={showShareToggle} />
+          {sorted.map((todo) => (
+            <TodoRow key={todo.id} todo={todo} showShareToggle={showShareToggle} />
           ))}
         </div>
       )}

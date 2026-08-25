@@ -820,7 +820,9 @@ model TripPersonalEvent {
   createdById String?
   editableByOthers Boolean @default(false)
   // Приватная запись — видна только автору, даже другим участникам.
+  // Историческое поле, его заменяет visibility.
   isPrivate Boolean @default(false)
+  visibility TripItemVisibility @default(PARTICIPANTS)
   // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
   // перелёты и брони на главной не нужны, а встреча с друзьями — да.
   showOnHome Boolean @default(false)
@@ -901,6 +903,25 @@ model PlaceListItem {
 // Прикрепление целого списка мест к поездке.
 // Туду-лист поездки: пункт с чекбоксом и (необязательно) датой —
 // датированные дела попадают в хронологию «Мой план».
+// Кто видит отдельную запись внутри поездки — дело, бронь, личное
+// событие. Отдельно от видимости самой поездки: поездку можно открыть
+// друзьям, а бронь отеля с адресом и номером — нет.
+//
+// Заводится рядом с существующим isPrivate, а не вместо него: сначала
+// поле появляется и заполняется, потом код переходит на него, и только
+// после этого isPrivate убирается. Обратный порядок уронил бы прод в
+// промежутке между миграцией и выкаткой кода.
+enum TripItemVisibility {
+  // Только автор записи.
+  PRIVATE
+  // Участники поездки — так ведут себя записи, созданные до этого поля.
+  PARTICIPANTS
+  // Друзья автора, если сама поездка им видна.
+  FRIENDS
+  // Все, кому видна поездка.
+  PUBLIC
+}
+
 model TripTodo {
   id        String    @id @default(cuid())
   tripId    String
@@ -911,8 +932,10 @@ model TripTodo {
   // Совместные поездки: автор и право правки другими участниками.
   createdById String?
   editableByOthers Boolean @default(false)
-  // Приватное дело — видно только автору.
+  // Приватное дело — видно только автору. Историческое поле, его
+  // заменяет visibility (см. комментарий у TripItemVisibility).
   isPrivate Boolean @default(false)
+  visibility TripItemVisibility @default(PARTICIPANTS)
   // Время указано? (date хранит и время; без флага «00:00» неотличим
   // от «без времени»).
   hasTime   Boolean   @default(false)
@@ -1486,6 +1509,9 @@ model TripBooking {
   startAt   DateTime?
   endAt     DateTime?
   note      String?
+  // Кто видит бронь. По умолчанию участники: адрес проживания и номер
+  // брони — не то, что показывают всем подряд.
+  visibility TripItemVisibility @default(PARTICIPANTS)
   createdAt DateTime @default(now())
 
   @@index([tripId])

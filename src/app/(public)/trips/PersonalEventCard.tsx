@@ -10,6 +10,11 @@ import { updateTripPersonalEvent, deleteTripPersonalEvent } from "./actions";
 import LocationPickerField from "./LocationPickerField";
 import AppLink from "@/components/AppLink";
 import { useLocale, useT } from "@/components/LocaleProvider";
+import {
+  ItemVisibilityBadge,
+  ItemVisibilityField,
+  type TripItemVisibilityValue,
+} from "./TripItemVisibility";
 import { shortMonthName, shortWeekdayName } from "@/lib/dates";
 
 export type PersonalEventData = {
@@ -26,7 +31,9 @@ export type PersonalEventData = {
   // и разрешение другим участникам править/удалять запись.
   author: string | null;
   editableByOthers: boolean;
-  isPrivate: boolean;
+  /** Кто видит запись: только автор, участники, друзья автора или все,
+   *  кому видна поездка. */
+  visibility: TripItemVisibilityValue;
   // Ж11: показывать запись в блоке «Вы идёте» на главной.
   showOnHome: boolean;
   // Ж10: картинка к записи — скан билета, скрин брони, афиша.
@@ -48,7 +55,7 @@ export function PersonalEventFields({
     timeValue: string;
     location?: { id: string; name: string } | null;
     editableByOthers?: boolean;
-    isPrivate?: boolean;
+    visibility?: TripItemVisibilityValue;
     showOnHome?: boolean;
     imageUrl?: string | null;
   };
@@ -110,37 +117,27 @@ export function PersonalEventFields({
         />
         <span className="form-check-label small">{t.trips.personal.showOnHome}</span>
       </label>
+      {/* Видимость записи — поле, а не галочка «приватное»: вариантов
+          четыре, и они осмысленны и в соло-поездке (друзья и «все» видят
+          её, если сама поездка им видна). */}
+      <ItemVisibilityField defaultValue={defaults?.visibility ?? "PARTICIPANTS"} />
       {showShareToggle ? (
-        <>
-          <label className="form-check d-flex align-items-center gap-2 mb-0">
-            <input
-              type="checkbox"
-              name="editableByOthers"
-              defaultChecked={defaults?.editableByOthers ?? false}
-              className="form-check-input m-0"
-            />
-            <span className="form-check-label small">
-              {t.trips.personal.editableByOthers}
-            </span>
-          </label>
-          <label className="form-check d-flex align-items-center gap-2 mb-0">
-            <input
-              type="checkbox"
-              name="isPrivate"
-              defaultChecked={defaults?.isPrivate ?? false}
-              className="form-check-input m-0"
-            />
-            <span className="form-check-label small">{t.trips.personal.isPrivate}</span>
-          </label>
-        </>
+        <label className="form-check d-flex align-items-center gap-2 mb-0">
+          <input
+            type="checkbox"
+            name="editableByOthers"
+            defaultChecked={defaults?.editableByOthers ?? false}
+            className="form-check-input m-0"
+          />
+          <span className="form-check-label small">
+            {t.trips.personal.editableByOthers}
+          </span>
+        </label>
       ) : (
-        // Без галочек сохраняем прежние значения флагов, иначе update
-        // сбросил бы их (чекбокс в FormData отличим от «не показан»
+        // Без галочки сохраняем прежнее значение флага, иначе update
+        // сбросил бы его (чекбокс в FormData отличим от «не показан»
         // только этим hidden).
-        <>
-          {defaults?.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />}
-          {defaults?.isPrivate && <input type="hidden" name="isPrivate" value="on" />}
-        </>
+        defaults?.editableByOthers && <input type="hidden" name="editableByOthers" value="on" />
       )}
     </>
   );
@@ -168,7 +165,18 @@ export default function PersonalEventCard({
   const [thumbFailed, setThumbFailed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const d = event.startsAt;
+  // Дата записи «настенная» и лежит в UTC (см. lib/dates.ts), а дата-блок
+  // читает локальные компоненты: у записи в 22:30 браузер в МСК рисовал
+  // уже следующий день. Берём полдень тех же суток — в любой зоне это
+  // остаётся тем же днём.
+  const d = new Date(
+    Date.UTC(
+      event.startsAt.getUTCFullYear(),
+      event.startsAt.getUTCMonth(),
+      event.startsAt.getUTCDate(),
+      12,
+    ),
+  );
   const hasTime = event.timeValue !== "00:00";
 
   const boundUpdate = updateTripPersonalEvent.bind(null, tripId, event.id);
@@ -237,11 +245,7 @@ export default function PersonalEventCard({
           <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
             {t.trips.personal.badge}
           </span>
-          {event.isPrivate && (
-            <span className="badge rounded-pill text-bg-dark border" style={{ fontSize: "0.6rem" }}>
-              {t.trips.personal.badgePrivate}
-            </span>
-          )}
+          <ItemVisibilityBadge visibility={event.visibility} />
           {event.author && (
             <span className="small text-secondary fw-normal">{event.author}</span>
           )}
@@ -306,7 +310,7 @@ export default function PersonalEventCard({
               timeValue: hasTime ? event.timeValue : "",
               location: event.location,
               editableByOthers: event.editableByOthers,
-              isPrivate: event.isPrivate,
+              visibility: event.visibility,
               showOnHome: event.showOnHome,
               imageUrl: event.imageUrl,
             }}
