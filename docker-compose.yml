@@ -36,6 +36,7 @@ services:
       # поэтому локальная разработка не попадает в статистику.
       YANDEX_METRIKA_ID: ${YANDEX_METRIKA_ID:-}
       GTM_ID: ${GTM_ID:-}
+      GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
       # Sentry: серверный и клиентский DSN. Без них SDK не
       # инициализируется — ошибки идут только в наш /admin/errors.
       SENTRY_DSN: ${SENTRY_DSN:-}

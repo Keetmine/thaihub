@@ -1,0 +1,28 @@
+import type { Dict } from "../en";
+
+export const nav: Dict["nav"] = {
+    events: "Афиша",
+    artists: "Артисты",
+    series: "Сериалы",
+    novels: "Новеллы",
+    locations: "Локации",
+    trips: "Поездки",
+    calendar: "Календарь",
+    search: "Поиск",
+    searchPlaceholder: "Поиск…",
+    favorites: "Избранное",
+    notifications: "Уведомления",
+    admin: "Админка",
+    signIn: "Войти",
+    menu: "Меню",
+    home: "Главная",
+    profile: "Профиль",
+    myPlaces: "Мои места",
+    friends: "Друзья",
+    help: "Помощь",
+    contact: "Написать нам",
+    wiki: "Вики",
+    about: "О нас",
+    terms: "Условия",
+    privacy: "Конфиденциальность",
+};

@@ -1,4 +1,5 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Logo from "@/components/Logo";
 
 // Футер публичного сайта: ссылки по разделам; вики и «О нас» (лендинг)
@@ -49,9 +50,12 @@ export default function SiteFooter() {
             </div>
           </div>
         </div>
-        <p className="small text-secondary mb-0 mt-4" style={{ opacity: 0.6 }}>
-          © {new Date().getFullYear()} MyBLHub
-        </p>
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-4">
+          <p className="small text-secondary mb-0" style={{ opacity: 0.6 }}>
+            © {new Date().getFullYear()} MyBLHub
+          </p>
+          <LanguageSwitcher />
+        </div>
       </div>
     </footer>
   );

@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Analytics from "@/components/Analytics";
 import GoogleTagManager from "@/components/GoogleTagManager";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 // Куки согласия читают и другие места: instrumentation-client.ts решает
 // по нему, включать ли Sentry Session Replay.
@@ -34,9 +35,11 @@ const serverSnapshot = () => null;
 export default function CookieConsent({
   metrikaId,
   gtmId,
+  gaId,
 }: {
   metrikaId: string | null;
   gtmId: string | null;
+  gaId: string | null;
 }) {
   const stored = useSyncExternalStore(noopSubscribe, clientSnapshot, serverSnapshot);
   // Выбор, сделанный прямо сейчас, — приоритетнее снимка куки.
@@ -52,6 +55,7 @@ export default function CookieConsent({
     <>
       {choice === "all" && metrikaId && <Analytics id={metrikaId} />}
       {choice === "all" && gtmId && <GoogleTagManager id={gtmId} />}
+      {choice === "all" && gaId && <GoogleAnalytics id={gaId} />}
       {choice === "pending" && (
         <div
           className="cookie-consent surface p-3"

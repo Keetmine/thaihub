@@ -5,6 +5,8 @@ import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
 import CookieConsent from "@/components/CookieConsent";
+import { LocaleProvider } from "@/components/LocaleProvider";
+import { getLocale } from "@/lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -75,21 +77,27 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
   return (
     <html
-      lang="ru"
+      lang={locale}
       data-bs-theme="dark"
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-100`}
     >
       <body className="d-flex flex-column min-vh-100">
         <ServiceWorkerRegistrar />
-        {children}
+        {/* Язык зрителя доступен всем клиентским компонентам — как
+            таймзона. Значение приходит из заголовка, который ставит
+            proxy (из пути его не прочитать: русские страницы —
+            рерайт). */}
+        <LocaleProvider locale={locale}>{children}</LocaleProvider>
         {/* Баннер согласия + аналитика: Метрика и Google Tag Manager
             грузятся только после «Принять все» (см. CookieConsent). */}
         <CookieConsent
           metrikaId={process.env.YANDEX_METRIKA_ID ?? null}
           gtmId={process.env.GTM_ID ?? null}
+          gaId={process.env.GA_MEASUREMENT_ID ?? null}
         />
       </body>
     </html>

@@ -1,0 +1,16 @@
+export const common = {
+    all: "all →",
+    more: "Read more",
+    less: "Show less",
+    cancel: "Cancel",
+    save: "Save",
+    delete: "Delete",
+    edit: "Edit",
+    add: "Add",
+    nothingFound: "Nothing found.",
+    loading: "Loading…",
+    year: "year",
+    language: "Language",
+    switchToRussian: "Русский",
+    switchToEnglish: "English",
+};
