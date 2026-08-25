@@ -36,6 +36,12 @@ manually re-entering a date filter every time.
   «Удалить поездку» вынесена **в самый низ страницы**, за
   разделитель: в шапке она стояла среди обычных действий и нажималась
   случайно, а операция необратимая.
+- **Вкладка «Что посетить»**: ряд действий — поиск по каталогу и своим
+  местам (`AddTripPlaceBox`), **«+ Своё место»** (создаёт локацию по
+  ссылке Google Maps и сразу привязывает к поездке —
+  `createTripOwnPlace`, список заводить не нужно) и прикрепление
+  готового списка (`AttachListSelect`, показывается только если списки
+  есть). Подробности про сами места — [place-lists.md](place-lists.md).
 - **`/trips/[id]`** — two tabs over the trip's date range:
   **«Мой план»** (default; «План» when the trip has members) shows the
   occurrences of events any *participant* (owner + members) marked «я

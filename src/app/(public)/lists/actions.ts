@@ -170,11 +170,14 @@ export async function searchLocationOptions(
  * крайнем случае и по одному). Такое место помечено createdByUserId и в
  * общий каталог локаций не попадает.
  */
-export async function createOwnPlace(listId: string, formData: FormData): Promise<ActionResult> {
-  const own = await requireOwnList(listId);
-  if (!own) return { ok: false, error: "Список не найден" };
-  const { user, list } = own;
-
+/** Разбор формы своего места и создание самой локации — без привязки
+ *  к чему-либо. Список больше не обязателен: то же место можно завести
+ *  прямо в поездке (см. createTripOwnPlace в trips/actions.ts), раньше
+ *  ради одного места приходилось сначала заводить список. */
+export async function createOwnLocation(
+  formData: FormData,
+  userId: string,
+): Promise<{ ok: true; locationId: string; note: string | null } | { ok: false; error: string }> {
   const name = String(formData.get("name") ?? "").trim();
   const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
@@ -196,15 +199,26 @@ export async function createOwnPlace(listId: string, formData: FormData): Promis
   const location = await prisma.location.create({
     data: {
       name,
-      createdByUserId: user.id,
+      createdByUserId: userId,
       photoUrl: photoUrl || null,
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
       category: rawCategory && isLocationCategory(rawCategory) ? rawCategory : null,
     },
   });
+  return { ok: true, locationId: location.id, note: note || null };
+}
+
+export async function createOwnPlace(listId: string, formData: FormData): Promise<ActionResult> {
+  const own = await requireOwnList(listId);
+  if (!own) return { ok: false, error: "Список не найден" };
+  const { user, list } = own;
+
+  const created = await createOwnLocation(formData, user.id);
+  if (!created.ok) return created;
+
   await prisma.placeListItem.create({
-    data: { listId: list.id, locationId: location.id, note: note || null },
+    data: { listId: list.id, locationId: created.locationId, note: created.note },
   });
   revalidatePath(`/lists/${listId}`);
   return { ok: true };

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { createOwnLocation } from "../lists/actions";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -363,6 +364,28 @@ export async function addPlaceToTrip(tripId: string, locationId: string): Promis
     where: { tripId_locationId: { tripId: access.trip.id, locationId } },
     update: {},
     create: { tripId: access.trip.id, locationId },
+  });
+  revalidatePath(`/trips/${access.trip.id}`);
+  return { ok: true };
+}
+
+/** Своё место прямо в поездку — без обязательного списка (просьба
+ *  владельца: раньше, чтобы добавить одно место, приходилось сперва
+ *  завести список, добавить место туда и потом прикрепить список к
+ *  поездке). Локацию создаёт общий createOwnLocation, здесь — только
+ *  привязка к поездке. */
+export async function createTripOwnPlace(
+  tripId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+
+  const created = await createOwnLocation(formData, access.user.id);
+  if (!created.ok) return { ok: false, error: created.error };
+
+  await prisma.tripPlace.create({
+    data: { tripId: access.trip.id, locationId: created.locationId },
   });
   revalidatePath(`/trips/${access.trip.id}`);
   return { ok: true };

@@ -11,6 +11,8 @@ import EmptyState from "@/components/EmptyState";
 import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
+import CreateOwnPlaceButton from "../../lists/[id]/CreateOwnPlaceButton";
+import { createTripOwnPlace } from "../actions";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import TripTodos, { TodoRow } from "../TripTodos";
 import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
@@ -445,8 +447,14 @@ export default async function TripPage({
           <>
             {canContribute && (
               <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                <AttachListSelect tripId={trip.id} availableLists={availableLists} />
                 <AddTripPlaceBox tripId={trip.id} />
+                {/* Своё место прямо здесь: раньше ради одного места
+                    нужно было сперва завести список. */}
+                <CreateOwnPlaceButton
+                  action={createTripOwnPlace.bind(null, trip.id)}
+                  label="+ Своё место"
+                />
+                <AttachListSelect tripId={trip.id} availableLists={availableLists} />
               </div>
             )}
             {pins.length > 0 && (
@@ -506,7 +514,7 @@ export default async function TripPage({
               <EmptyState
                 emoji="📍"
                 title="Мест пока нет"
-                hint="Прикрепите список мест, добавьте отдельные места или отметьте статус просмотра на страницах сериалов — здесь соберётся, что посетить в поездке."
+                hint="Создайте своё место по ссылке Google Maps, найдите готовое или прикрепите список — здесь соберётся, что посетить в поездке."
                 compact
               />
             )}

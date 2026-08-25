@@ -6,14 +6,26 @@ import { createOwnPlace } from "../actions";
 import FileDropzone from "@/components/FileDropzone";
 import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
 
-/** Создание своего места (не из каталога) прямо в список: название +
- *  ссылка Google Maps (короткая или длинная) или координаты — точка
- *  сразу встаёт на карту списка. */
-export default function CreateOwnPlaceButton({ listId }: { listId: string }) {
+/** Создание своего места (не из каталога): название + ссылка Google
+ *  Maps (короткая или длинная) или координаты — точка сразу встаёт на
+ *  карту. Куда именно сохранять, решает вызывающий: в список
+ *  (createOwnPlace) или прямо в поездку (createTripOwnPlace) — форма
+ *  одна и та же. */
+export default function CreateOwnPlaceButton({
+  listId,
+  action,
+  label = "+ Создать своё место",
+}: {
+  /** Список, в который добавляем. Не нужен, если передан action. */
+  listId?: string;
+  /** Уже связанный экшен — для поездки и любых других мест сохранения. */
+  action?: (formData: FormData) => Promise<{ ok: true } | { ok: false; error: string }>;
+  label?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const boundCreate = createOwnPlace.bind(null, listId);
+  const boundCreate = action ?? createOwnPlace.bind(null, listId!);
 
   async function handleSubmit(formData: FormData) {
     setIsSaving(true);
@@ -37,7 +49,7 @@ export default function CreateOwnPlaceButton({ listId }: { listId: string }) {
   return (
     <>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
-        + Создать своё место
+        {label}
       </button>
 
       <Modal open={isOpen} onClose={() => setIsOpen(false)} title="Новое место">
