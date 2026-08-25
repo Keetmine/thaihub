@@ -10,17 +10,17 @@ test("пользователь может удалить свой аккаунт
   await signupTestUser(page, email, password);
 
   await page.goto("/account/settings");
-  await page.getByRole("button", { name: "Безопасность" }).click();
+  await page.getByRole("button", { name: "Security" }).click();
 
   // Клик может прийтись до гидрации — ретраим, пока модалка ConfirmForm
   // не откроется (тот же паттерн, что в admin-event-crud.spec.ts).
   await expect(async () => {
-    await page.getByRole("button", { name: "Удалить аккаунт" }).click();
+    await page.getByRole("button", { name: "Delete account" }).click();
     await expect(
-      page.getByRole("button", { name: "Удалить навсегда" }),
+      page.getByRole("button", { name: "Delete for good" }),
     ).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 15000 });
-  await page.getByRole("button", { name: "Удалить навсегда" }).click();
+  await page.getByRole("button", { name: "Delete for good" }).click();
   await page.waitForURL(/\/$|\/about/);
 
   // Старые данные больше не подходят: почта освобождена.
@@ -28,5 +28,5 @@ test("пользователь может удалить свой аккаунт
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await expect(page.getByText("Неверный email или пароль")).toBeVisible();
+  await expect(page.getByText("Wrong email or password")).toBeVisible();
 });

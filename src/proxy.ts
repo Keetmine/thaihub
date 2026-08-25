@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
-  DEFAULT_LOCALE,
   LOCALE_COOKIE,
   LOCALE_HEADER,
+  isLocale,
   localeFromAcceptLanguage,
   localeHref,
   stripLocale,
@@ -41,15 +41,22 @@ export function proxy(request: NextRequest) {
     !pathname.startsWith("/admin") &&
     !/\.[a-z0-9]+$/i.test(pathname);
 
-  // Первый заход без явного выбора: если браузер просит русский —
-  // уводим на /ru. Дальше решает кука, которую ставит переключатель.
-  if (
-    isAppRoute &&
-    locale === DEFAULT_LOCALE &&
-    rawPathname === pathname &&
-    !request.cookies.get(LOCALE_COOKIE)?.value &&
-    localeFromAcceptLanguage(request.headers.get("accept-language")) === "ru"
-  ) {
+  // Какой язык человек хочет: явный выбор из куки (её ставит
+  // переключатель), а если выбора не было — язык браузера.
+  const chosen = request.cookies.get(LOCALE_COOKIE)?.value;
+  const preferred = isLocale(chosen)
+    ? chosen
+    : localeFromAcceptLanguage(request.headers.get("accept-language"));
+
+  // Пришёл на адрес без префикса, а хочет русский — уводим на /ru.
+  // Куку смотрим наравне с языком браузера, а не только при первом
+  // заходе: иначе выбор жил бы до конца сессии, и по закладке, ссылке
+  // со стороны или просто введённому домену человека снова выбрасывало
+  // бы на английскую версию.
+  //
+  // Обратного правила нет намеренно: адрес с /ru — сигнал сильнее куки,
+  // русскую страницу по ссылке должно быть видно и с английской кукой.
+  if (isAppRoute && rawPathname === pathname && preferred === "ru") {
     const url = new URL(request.url);
     url.pathname = `/ru${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(url);

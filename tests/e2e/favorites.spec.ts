@@ -30,15 +30,15 @@ test("a new user can sign up and favorite an event", async ({ page }) => {
     test.skip((await firstEventLink.count()) === 0, "no events in the database to favorite");
     await Promise.all([page.waitForURL(/\/event\//), firstEventLink.click()]);
 
-    await page.getByRole("button", { name: "В избранное" }).click();
-    await expect(page.getByRole("button", { name: "Убрать из избранного" })).toBeVisible();
+    await page.getByRole("button", { name: "Add to favourites" }).click();
+    await expect(page.getByRole("button", { name: "Remove from favourites" })).toBeVisible();
 
     // Confirm it stuck (not just optimistic client state) by reloading.
     // domcontentloaded, не load: полной загрузки можно ждать дольше
     // таймаута — постеры событий приходят с внешних CDN (TTM отвечал и
     // по 12+ секунд), а для проверки кнопки картинки не нужны.
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("button", { name: "Убрать из избранного" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remove from favourites" })).toBeVisible();
   } finally {
     runDbScript("cleanup-test-user.ts", email);
   }

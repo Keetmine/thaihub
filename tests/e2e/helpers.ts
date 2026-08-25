@@ -1,3 +1,6 @@
+// Тесты ходят по адресам БЕЗ языкового префикса — это английская
+// версия сайта (русская живёт под /ru, см. docs/features/i18n.md).
+// Поэтому ожидаемые подписи здесь английские.
 import "dotenv/config";
 import { execFileSync } from "child_process";
 import path from "path";
