@@ -96,6 +96,14 @@ export default async function PrivacyPage() {
             {t.legal.privacy.changesText} {t.legal.privacy.changesDate}.
           </p>
         </section>
+
+        {/* Какая редакция главная. Английский текст — перевод, и читают
+            его как обязательство: без этой оговорки неточность перевода
+            становилась бы отдельным обещанием. */}
+        <section>
+          <h2 className="section-heading mb-2">{t.legal.privacy.languageTitle}</h2>
+          <p className="mb-0 text-secondary">{t.legal.privacy.languageText}</p>
+        </section>
       </div>
     </div>
   );

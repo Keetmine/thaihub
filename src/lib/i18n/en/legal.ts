@@ -48,6 +48,10 @@ export const legal = {
         "We store what the service needs in order to work: the account (email, Google or Telegram), favourites, «going» marks, trips and notes. The privacy settings in your profile control what other users see. What data we collect, which services receive it (analytics, error reports, Telegram) and how to delete an account —",
       dataLink: "in the privacy policy",
 
+      languageTitle: "The language of this document",
+      languageText:
+        "This is a translation, provided so that the terms can be read in English. The Russian version is the binding one: where the two differ, the Russian text applies.",
+
       contactTitle: "Getting in touch",
       contactText: "Questions, refunds and complaints — through the",
       contactLink: "contact form",
@@ -62,7 +66,7 @@ export const legal = {
 
       operatorTitle: "Who processes the data",
       operatorText:
-        "The operator of the MyBLHub service (myblhub.com) is a self-employed private individual, Republic of Belarus. You can get in touch with us through the",
+        "MyBLHub (myblhub.com) is run by a self-employed individual in the Republic of Belarus. We are the operator of your data — the party that decides what the site collects and what it is used for. You can get in touch with us through the",
       operatorLink: "contact form",
       operatorOr: "or with the",
       operatorBot:
@@ -114,6 +118,10 @@ export const legal = {
       changesText:
         "If the policy changes in substance, we will note it here. The current version is dated",
       changesDate: "22 August 2026",
+
+      languageTitle: "The language of this document",
+      languageText:
+        "This is a translation, provided so that the policy can be read in English. The Russian version is the binding one: where the two differ, the Russian text applies.",
     },
     help: {
       metaTitle: "Help",

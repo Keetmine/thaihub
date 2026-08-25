@@ -70,6 +70,14 @@ export default async function TermsPage() {
           </p>
         </section>
 
+        {/* Какая редакция главная. Английский текст — перевод, и читают
+            его как обязательство: без этой оговорки неточность перевода
+            становилась бы отдельным обещанием. */}
+        <section>
+          <h2 className="section-heading mb-2">{t.legal.terms.languageTitle}</h2>
+          <p className="mb-0 text-secondary">{t.legal.terms.languageText}</p>
+        </section>
+
         <section>
           <h2 className="section-heading mb-2">{t.legal.terms.contactTitle}</h2>
           <p className="mb-0 text-secondary">
