@@ -1,0 +1,22 @@
+// Строки общих виджетов (модалка, подтверждение, пагинация, жалоба) —
+// они не принадлежат ни одной странице, поэтому лежат отдельным
+// разделом, а не в словаре какого-то одного раздела сайта.
+export const ui = {
+    close: "Close",
+    confirmTitle: "Are you sure?",
+    deleting: "Deleting…",
+    actionFailed: "Couldn't do that. Refresh the page and try again.",
+
+    paginationLabel: "Pagination",
+    prevPage: "‹ Back",
+    nextPage: "Next ›",
+    pageOf: (page: number, total: number) => `Page ${page} of ${total}`,
+
+    report: "Report",
+    reportSent: "Report sent — the moderators will take a look.",
+    reportPlaceholder: "What's wrong with this content? (optional)",
+    reportLabel: "What's wrong with this content",
+    reportSubmit: "Send report",
+    reportSending: "Sending…",
+    reportFailed: "Couldn't send it",
+};

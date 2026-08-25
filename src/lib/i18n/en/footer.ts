@@ -3,5 +3,4 @@ export const footer = {
     catalogue: "Catalogue",
     personal: "Personal",
     useful: "Useful",
-    lists: "Place lists",
 };

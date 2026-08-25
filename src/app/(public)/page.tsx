@@ -1,4 +1,5 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
+import { getT, type Dict } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
@@ -22,20 +23,20 @@ export const dynamic = "force-dynamic";
 // постерами, новинки любимых артистов, планы друзей. Афиша — на /events.
 /** «через 3 дня» / «завтра» / «уже идёт» — обратный отсчёт до поездки:
  *  сухие даты сами по себе не отвечают на вопрос «а скоро ли». */
-function countdown(start: Date): string {
+function countdown(start: Date, t: Dict): string {
   const days = Math.ceil((start.getTime() - Date.now()) / 86_400_000);
-  if (days <= 0) return "уже идёт";
-  if (days === 1) return "завтра";
-  if (days < 5) return `через ${days} дня`;
-  if (days < 31) return `через ${days} дней`;
+  if (days <= 0) return t.home.countdownToday;
+  if (days === 1) return t.home.countdownTomorrow;
+  if (days < 31) return t.home.countdownDays(days);
   const months = Math.round(days / 30);
-  return months <= 1 ? "через месяц" : `через ${months} мес.`;
+  return months <= 1 ? t.home.countdownMonth : t.home.countdownMonths(months);
 }
 
 export default async function HomePage() {
   const user = await getCurrentUser();
   if (!user) return <LandingPage />;
 
+  const { t: dict } = await getT();
   const premium = isPremiumActive(user);
   const now = new Date();
 
@@ -201,8 +202,8 @@ export default async function HomePage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Главная"
-        title={<>Привет, {userDisplayName(user)}</>}
+        eyebrow={dict.home.eyebrow}
+        title={dict.home.greeting(userDisplayName(user))}
         action={
           <>
             <Link href="/events" className="chip-link">
@@ -226,10 +227,10 @@ export default async function HomePage() {
       <div className={hasBirthdays ? "col-12 col-lg-8" : "col-12"}>
         <section className="glow-panel p-4 h-100">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="section-heading mb-0">Что впереди</h2>
+            <h2 className="section-heading mb-0">{dict.home.upcoming}</h2>
             {premium && (
               <Link href="/events?filter=going" className="small text-secondary">
-                все →
+                {dict.common.all}
               </Link>
             )}
           </div>
@@ -252,8 +253,8 @@ export default async function HomePage() {
                     {t.title}
                   </span>
                   <span className="d-flex flex-wrap gap-2 flex-shrink-0">
-                    {t.userId !== user.id && <span className="date-chip">совместная</span>}
-                    <span className="date-chip">{countdown(t.startDate)}</span>
+                    {t.userId !== user.id && <span className="date-chip">{dict.home.shared}</span>}
+                    <span className="date-chip">{countdown(t.startDate, dict)}</span>
                   </span>
                 </Link>
               ))}
@@ -264,23 +265,22 @@ export default async function HomePage() {
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
               <div>
                 <p className="font-display fw-medium text-white mb-1">
-                  Афиша и отметки «иду» — по подписке
+                  {dict.home.paywallTitle}
                 </p>
                 <p className="small text-secondary mb-0" style={{ maxWidth: "30rem" }}>
-                  Полная афиша с датами и препродажами, календарь и напоминания в
-                  Telegram.
+                  {dict.home.paywallHint}
                 </p>
               </div>
               <Link href="/events" className="btn btn-primary flex-shrink-0">
-                Подробнее
+                {dict.home.paywallCta}
               </Link>
             </div>
           ) : goingCards.length === 0 ? (
             <EmptyState
               emoji="🎫"
-              title="Пока ничего не запланировано"
-              hint="Найдите событие в афише и отметьте «Я пойду» — оно появится здесь постером."
-              cta={{ href: "/events", label: "Посмотреть афишу" }}
+              title={dict.home.emptyGoingTitle}
+              hint={dict.home.emptyGoingHint}
+              cta={{ href: "/events", label: dict.home.emptyGoingCta }}
               compact
             />
           ) : (
@@ -306,7 +306,7 @@ export default async function HomePage() {
       {hasBirthdays && (
         <div className="col-12 col-lg-4">
           <section className="surface p-4 h-100">
-            <h2 className="section-heading mb-3">🎂 Сегодня день рождения</h2>
+            <h2 className="section-heading mb-3">🎂 {dict.home.birthdays}</h2>
             <div className="d-flex flex-column gap-3">
               {birthdayFriends.map((f) => (
                 <Link
@@ -320,7 +320,7 @@ export default async function HomePage() {
                       {userDisplayName(f)}
                     </span>
                     <span className="small text-secondary">
-                      {f.birthDate ? `${turns(f.birthDate)} — ваш друг` : "ваш друг"}
+                      {f.birthDate ? `${turns(f.birthDate)} — ${dict.home.yourFriend}` : dict.home.yourFriend}
                     </span>
                   </span>
                 </Link>
@@ -335,8 +335,8 @@ export default async function HomePage() {
                   <span style={{ minWidth: 0 }}>
                     <span className="text-white d-block text-truncate">{p.name}</span>
                     <span className="small text-secondary">
-                      исполняется {turns(p.birthDate)}
-                      {favoriteSet.has(p.id) ? " · в избранном" : ""}
+                      {dict.home.turns(turns(p.birthDate))}
+                      {favoriteSet.has(p.id) ? ` · ${dict.home.inFavourites}` : ""}
                     </span>
                   </span>
                 </Link>
@@ -354,9 +354,9 @@ export default async function HomePage() {
         <div className="col-12 col-lg-5">
           <section>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-              <h2 className="section-heading mb-0">Смотрю сейчас</h2>
+              <h2 className="section-heading mb-0">{dict.home.watchingNow}</h2>
               <Link href="/dramas" className="small text-secondary">
-                все →
+                {dict.common.all}
               </Link>
             </div>
             <div className="row g-3 stagger">
@@ -379,18 +379,18 @@ export default async function HomePage() {
       <div className={watchingNow.length > 0 ? "col-12 col-lg-7" : "col-12"}>
       <section>
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <h2 className="section-heading mb-0">Что нового</h2>
+          <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
           <span className="small text-secondary">
-            {favoritePerformers > 0 ? "релизы ваших артистов" : "свежее в каталоге"}
+            {favoritePerformers > 0 ? dict.home.newsFromFavourites : dict.home.newsFromCatalogue}
           </span>
         </div>
 
         {news.length === 0 ? (
           <EmptyState
             emoji="🎧"
-            title="Пока пусто"
-            hint="Добавьте артистов в избранное — здесь появятся их новые релизы."
-            cta={{ href: "/artists", label: "К артистам" }}
+            title={dict.home.emptyNewsTitle}
+            hint={dict.home.emptyNewsHint}
+            cta={{ href: "/artists", label: dict.home.emptyNewsCta }}
             compact
           />
         ) : (

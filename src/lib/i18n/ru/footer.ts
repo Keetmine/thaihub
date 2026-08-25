@@ -5,5 +5,4 @@ export const footer: Dict["footer"] = {
     catalogue: "Каталог",
     personal: "Личное",
     useful: "Полезное",
-    lists: "Списки мест",
 };
