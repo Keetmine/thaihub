@@ -17,7 +17,7 @@ import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
 import { getCurrentUser } from "@/lib/userAuth";
 import { GridIcon, HeartIcon, SearchIcon } from "@/components/icons";
-import NotificationBell from "@/components/NotificationBell";
+import NotificationBell, { NotificationBellProvider } from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
 import MobileProfileSection from "@/components/MobileProfileSection";
 import ProductTour from "@/components/ProductTour";
@@ -74,7 +74,8 @@ export default async function PublicLayout({ children }: { children: React.React
   const isAdmin = !!fullUser?.isAdmin;
   // Счётчик у колокольчика: приглашения в поездки и заявки в друзья
   // приходили молча, пока не появилась лента (features/notifications.md).
-  const unreadNotifications = fullUser ? await unreadNotificationCount(fullUser.id) : 0;
+  // null у гостя — колокольчика нет, и опрашивать сервер незачем.
+  const unreadNotifications = fullUser ? await unreadNotificationCount(fullUser.id) : null;
   // Тур запускается сам, пока человек его не прошёл и не закрыл.
   const showTour = !!fullUser && !fullUser.tourCompletedAt;
   // Only pass the fields ProfileMenu actually needs into the client
@@ -92,115 +93,117 @@ export default async function PublicLayout({ children }: { children: React.React
     : null;
 
   return (
-    <MobileNavProvider>
-      <div className="d-flex flex-column min-vh-100">
-        <NavDepthTracker />
-        <div className="ambient-wash" />
-        <div className="container pt-4 nav-sticky">
-          <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">
-            <Link href="/" prefetch={false} className="navbar-brand mb-0 text-decoration-none">
-              <Logo />
-            </Link>
-
-            {/* На мобильном частые действия живут рядом с бургером, а не
-                внутри меню: раньше иконки набивались в панель вперемешку с
-                пунктами навигации и выглядели случайной россыпью. */}
-            <div className="d-lg-none d-flex align-items-center gap-1 ms-auto order-1">
-              {user && (
-                <span data-tour="notifications">
-                  <NotificationBell unread={unreadNotifications} />
-                </span>
-              )}
-              {isAdmin && (
-                <Link href="/admin" prefetch={false} className="icon-btn" aria-label={t.nav.admin}>
-                  <GridIcon />
-                </Link>
-              )}
-            </div>
-
-            <div className="d-lg-none order-1">
-              <MobileMenuButton />
-            </div>
-
-            {/* Полный ряд ссылок — от lg: ниже он не помещался и
-                сваливался во вторую-третью строку (шапка на 600px
-                вырастала до 195px). Там теперь бургер-шторка. */}
-            <div className="d-none d-lg-flex flex-wrap gap-1 ms-2">
-              <MainNavLinks loggedIn={!!user} t={t} />
-            </div>
-
-            <div className="d-none d-lg-flex align-items-center gap-2 ms-auto">
-              <SearchForm t={t} locale={locale} />
-              {/* На узких ноутбуках (lg) поле поиска съедает ряд —
-                  вместо него иконка-ссылка на страницу поиска;
-                  переключение — .nav-search-icon в globals.css. */}
-              <Link
-                href="/search"
-                prefetch={false}
-                className="icon-btn nav-search-icon"
-                aria-label={t.nav.search}
-                data-tooltip={t.nav.search}
-              >
-                <SearchIcon />
+    <NotificationBellProvider unread={unreadNotifications}>
+      <MobileNavProvider>
+        <div className="d-flex flex-column min-vh-100">
+          <NavDepthTracker />
+          <div className="ambient-wash" />
+          <div className="container pt-4 nav-sticky">
+            <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">
+              <Link href="/" prefetch={false} className="navbar-brand mb-0 text-decoration-none">
+                <Logo />
               </Link>
-              {user && (
+
+              {/* На мобильном частые действия живут рядом с бургером, а не
+                  внутри меню: раньше иконки набивались в панель вперемешку с
+                  пунктами навигации и выглядели случайной россыпью. */}
+              <div className="d-lg-none d-flex align-items-center gap-1 ms-auto order-1">
+                {user && (
+                  <span data-tour="notifications">
+                    <NotificationBell />
+                  </span>
+                )}
+                {isAdmin && (
+                  <Link href="/admin" prefetch={false} className="icon-btn" aria-label={t.nav.admin}>
+                    <GridIcon />
+                  </Link>
+                )}
+              </div>
+
+              <div className="d-lg-none order-1">
+                <MobileMenuButton />
+              </div>
+
+              {/* Полный ряд ссылок — от lg: ниже он не помещался и
+                  сваливался во вторую-третью строку (шапка на 600px
+                  вырастала до 195px). Там теперь бургер-шторка. */}
+              <div className="d-none d-lg-flex flex-wrap gap-1 ms-2">
+                <MainNavLinks loggedIn={!!user} t={t} />
+              </div>
+
+              <div className="d-none d-lg-flex align-items-center gap-2 ms-auto">
+                <SearchForm t={t} locale={locale} />
+                {/* На узких ноутбуках (lg) поле поиска съедает ряд —
+                    вместо него иконка-ссылка на страницу поиска;
+                    переключение — .nav-search-icon в globals.css. */}
                 <Link
-                  href="/events?filter=favorited"
+                  href="/search"
                   prefetch={false}
-                  className="icon-btn"
-                  aria-label={t.nav.favorites}
-                  data-tooltip={t.nav.favorites}
+                  className="icon-btn nav-search-icon"
+                  aria-label={t.nav.search}
+                  data-tooltip={t.nav.search}
                 >
-                  <HeartIcon />
+                  <SearchIcon />
                 </Link>
-              )}
-              {user && <NotificationBell unread={unreadNotifications} />}
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  prefetch={false}
-                  className="icon-btn"
-                  aria-label={t.nav.admin}
-                  data-tooltip={t.nav.admin}
-                >
-                  <GridIcon />
-                </Link>
-              )}
-              {user ? (
-                <span data-tour="profile">
-                  <ProfileMenu user={user} />
-                </span>
-              ) : (
-                <NavLink href="/login">{t.nav.signIn}</NavLink>
-              )}
-            </div>
-          </nav>
+                {user && (
+                  <Link
+                    href="/events?filter=favorited"
+                    prefetch={false}
+                    className="icon-btn"
+                    aria-label={t.nav.favorites}
+                    data-tooltip={t.nav.favorites}
+                  >
+                    <HeartIcon />
+                  </Link>
+                )}
+                {user && <NotificationBell />}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    prefetch={false}
+                    className="icon-btn"
+                    aria-label={t.nav.admin}
+                    data-tooltip={t.nav.admin}
+                  >
+                    <GridIcon />
+                  </Link>
+                )}
+                {user ? (
+                  <span data-tour="profile">
+                    <ProfileMenu user={user} />
+                  </span>
+                ) : (
+                  <NavLink href="/login">{t.nav.signIn}</NavLink>
+                )}
+              </div>
+            </nav>
+          </div>
+          <main className="flex-fill container py-3 py-md-4 public-main">
+            <TimezoneProvider timezone={user?.timezone ?? DEFAULT_TIMEZONE}>
+              {children}
+            </TimezoneProvider>
+          </main>
+          <SiteFooter />
+
+          {/* Мобильная шторка и таб-бар — вне .pill-nav: его backdrop-filter
+              сделал бы position:fixed панелей относительным навбара. */}
+          <MobileDrawer>
+            <MainNavLinks loggedIn={!!user} t={t} />
+            <SearchForm t={t} locale={locale} />
+            {user ? (
+              <MobileProfileSection user={user} />
+            ) : (
+              <NavLink href="/login">{t.nav.signIn}</NavLink>
+            )}
+          </MobileDrawer>
+          <MobileTabBar />
+
+          <ScrollTopButton />
+          {/* Тур для новичков: показывается один раз после регистрации,
+              перезапускается кнопкой в настройках. */}
+          {user && <ProductTour autoStart={showTour} />}
         </div>
-        <main className="flex-fill container py-3 py-md-4 public-main">
-          <TimezoneProvider timezone={user?.timezone ?? DEFAULT_TIMEZONE}>
-            {children}
-          </TimezoneProvider>
-        </main>
-        <SiteFooter />
-
-        {/* Мобильная шторка и таб-бар — вне .pill-nav: его backdrop-filter
-            сделал бы position:fixed панелей относительным навбара. */}
-        <MobileDrawer>
-          <MainNavLinks loggedIn={!!user} t={t} />
-          <SearchForm t={t} locale={locale} />
-          {user ? (
-            <MobileProfileSection user={user} />
-          ) : (
-            <NavLink href="/login">{t.nav.signIn}</NavLink>
-          )}
-        </MobileDrawer>
-        <MobileTabBar />
-
-        <ScrollTopButton />
-        {/* Тур для новичков: показывается один раз после регистрации,
-            перезапускается кнопкой в настройках. */}
-        {user && <ProductTour autoStart={showTour} />}
-      </div>
-    </MobileNavProvider>
+      </MobileNavProvider>
+    </NotificationBellProvider>
   );
 }
