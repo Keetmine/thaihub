@@ -36,7 +36,13 @@ import {
 } from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
 import { dramaHref } from "@/lib/dramaSlug";
-import { dateKey, formatCombinedDateList, formatShortDate, startOfDay } from "@/lib/dates";
+import {
+  dateKey,
+  formatCombinedDateList,
+  formatDateWithYear,
+  formatShortDate,
+  startOfDay,
+} from "@/lib/dates";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -156,13 +162,6 @@ export default async function DramaDetailPage({
       .map((r) => ({ drama: r.drama, relation: r.relation })),
   ];
 
-  const formatAired = (d: Date) =>
-    d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-
   const visitedLocationIds = new Set<string>();
   if (currentUser && drama.locations.length > 0) {
     const visits = await prisma.locationVisit.findMany({
@@ -196,7 +195,10 @@ export default async function DramaDetailPage({
     !!drama.contentRating ||
     drama.mdlScore != null ||
     ourRating != null ||
-    !!drama.synopsis;
+    !!drama.synopsis ||
+    // График живёт внутри этой же колонки (свёрнут под строкой «Эфир»),
+    // поэтому одного расписания достаточно, чтобы колонку нарисовать.
+    drama.episodeList.length > 0;
 
   // Э2ф: каст сортируем по популярности — числу событий у актёра
   // (чем больше фан-митингов/концертов, тем он заметнее), при равенстве
@@ -234,6 +236,23 @@ export default async function DramaDetailPage({
     isToday: !!e.airDate && dateKey(e.airDate) === todayKey,
   }));
   const airedCount = episodeRows.filter((r) => r.aired).length;
+
+  // Строка «Эфир: 29 июл. 2026 (по четвергам)». Собрана отдельным
+  // фрагментом, потому что она же служит переключателем графика: внутри
+  // <summary> абзац недопустим, там разрешено только фразовое содержимое.
+  const airedLine = drama.airedFrom ? (
+    <>
+      <CalendarIcon />{" "}
+      <span className="text-secondary">{t.catalog.drama.aired}</span>{" "}
+      {formatDateWithYear(drama.airedFrom, locale)}
+      {drama.airedTo && drama.airedTo.getTime() !== drama.airedFrom.getTime()
+        ? ` — ${formatDateWithYear(drama.airedTo, locale)}`
+        : ""}
+      {drama.airedOn
+        ? ` (${t.catalog.airedOn[drama.airedOn as keyof typeof t.catalog.airedOn] ?? drama.airedOn})`
+        : ""}
+    </>
+  ) : null;
 
   return (
     <div>
@@ -361,19 +380,51 @@ export default async function DramaDetailPage({
                 {drama.duration ? ` × ${drama.duration}` : ""}
               </p>
             )}
-            {drama.airedFrom && (
-              <p className="small text-secondary mb-0">
-                <CalendarIcon />{" "}
-                <span className="text-secondary">{t.catalog.drama.aired}</span>{" "}
-                {formatAired(drama.airedFrom)}
-                {drama.airedTo &&
-                drama.airedTo.getTime() !== drama.airedFrom.getTime()
-                  ? ` — ${formatAired(drama.airedTo)}`
-                  : ""}
-                {drama.airedOn
-                  ? ` (${t.catalog.airedOn[drama.airedOn as keyof typeof t.catalog.airedOn] ?? drama.airedOn})`
-                  : ""}
-              </p>
+            {/* График выхода серий свёрнут под строку «Эфир» (просьба
+                владельца): в конце строки — «Подробнее», по нему
+                раскрывается поимённый список серий. Свёртка нативная,
+                на details/summary: график — не текст, мерить нечего,
+                клиентский код тут не нужен вовсе, а состояние
+                (свёрнуто/раскрыто) и работа с клавиатуры достаются от
+                самого summary. Расписания нет — нет и переключателя,
+                остаётся обычная строка. */}
+            {episodeRows.length > 0 ? (
+              <details className="schedule-fold small text-secondary">
+                <summary>
+                  {airedLine ?? (
+                    <>
+                      <CalendarIcon />{" "}
+                      <span className="text-secondary">
+                        {t.catalog.drama.schedule.title}
+                      </span>
+                    </>
+                  )}{" "}
+                  <span className="schedule-fold-toggle">
+                    <span className="schedule-fold-more">
+                      {t.catalog.drama.schedule.more}
+                    </span>
+                    <span className="schedule-fold-less">
+                      {t.catalog.drama.schedule.hide}
+                    </span>
+                    <span className="schedule-fold-caret" aria-hidden>
+                      ▾
+                    </span>
+                  </span>
+                </summary>
+                {/* Ширина ограничена: на широком экране номер серии и
+                    дата иначе разъезжаются по краям колонки. */}
+                <div className="schedule-fold-body">
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                    <span className="text-white">{t.catalog.drama.schedule.title}</span>
+                    <span>
+                      {t.catalog.drama.schedule.aired(airedCount, episodeRows.length)}
+                    </span>
+                  </div>
+                  <EpisodeSchedule rows={episodeRows} />
+                </div>
+              </details>
+            ) : (
+              airedLine && <p className="small text-secondary mb-0">{airedLine}</p>
             )}
             {drama.director && (
               <p className="small text-secondary mb-0">
@@ -454,22 +505,6 @@ export default async function DramaDetailPage({
         </div>
         )}
       </div>
-
-      {/* График выхода серий — сразу за фактами: это продолжение строки
-          «Эфир: … (по четвергам)», только поимённо. Ширина ограничена —
-          на широком экране номер серии и дата иначе разъезжаются по
-          краям страницы. Расписания нет — блока нет вовсе. */}
-      {episodeRows.length > 0 && (
-        <div id="schedule" className="anchor-target mb-4" style={{ maxWidth: "30rem" }}>
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-            <h2 className="section-heading mb-0">{t.catalog.drama.schedule.title}</h2>
-            <span className="small text-secondary">
-              {t.catalog.drama.schedule.aired(airedCount, episodeRows.length)}
-            </span>
-          </div>
-          <EpisodeSchedule rows={episodeRows} />
-        </div>
-      )}
 
       {/* События сериала — после фактов: фан-митинги/премьеры. */}
       {events.length > 0 && (

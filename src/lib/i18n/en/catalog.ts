@@ -118,6 +118,9 @@ export const catalog = {
             noDate: "date not announced",
             today: "today",
             showAll: (n: number) => `Show all (${n})`,
+            // Переключатель свёртки в конце строки «Эфир».
+            more: "Details",
+            hide: "Hide",
         },
     },
 

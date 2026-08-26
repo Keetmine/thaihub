@@ -108,6 +108,8 @@ export const catalog: Dict["catalog"] = {
             noDate: "дата не объявлена",
             today: "сегодня",
             showAll: (n: number) => `Показать все (${n})`,
+            more: "Подробнее",
+            hide: "Свернуть",
         },
     },
 

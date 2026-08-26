@@ -288,44 +288,6 @@ export default async function HomePage() {
         }
       />
 
-      {/* «Сегодня выходит новая серия» — выше «Что впереди»: это
-          единственный блок главной, который протухает за сутки, и ровно
-          за ним заходят утром. Без панели: обычно тут один-два постера, и
-          в панель во всю ширину они проваливались бы, — тот же голый
-          заголовок с рядом постеров, что у «Смотрю сейчас». Никто
-          сегодня не выходит — блока нет вовсе. */}
-      {airingToday.length > 0 && (
-        <section className="mb-5">
-          <h2 className="section-heading mb-3">{dict.home.airingToday}</h2>
-          <div className="row g-3 stagger">
-            {airingToday.map(({ drama, from, to }) => {
-              const marked = airingTodayStatuses.get(drama.id);
-              return (
-                <div key={drama.id} className="col-6 col-sm-4 col-lg-3">
-                  <PosterTile
-                    href={dramaHref(drama)}
-                    posterUrl={drama.posterUrl}
-                    title={drama.title}
-                    subtitle={
-                      marked
-                        ? dict.catalog.watchStatus[marked.status]
-                        : drama.year
-                          ? String(drama.year)
-                          : undefined
-                    }
-                    chip={
-                      from === to
-                        ? dict.home.airingTodayEpisode(from)
-                        : dict.home.airingTodayEpisodes(from, to)
-                    }
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       {/* «Что впереди» — план и поездки одной панелью: и то и другое
           отвечает на вопрос «что у меня скоро», а раздельными блоками
           в разных рядах это читалось как список одинаковых секций.
@@ -503,8 +465,66 @@ export default async function HomePage() {
         </div>
       )}
 
-      {/* Новинки — то, ради чего сюда заходят между концертами. */}
+      {/* Правая колонка ряда: «Выходит сегодня», под ним новинки. Блок
+          серий переехал сюда с самого верха главной (просьба
+          владельца) — слева при этом остаётся «Смотрю сейчас». */}
       <div className={watchingNow.length > 0 ? "col-12 col-lg-7" : "col-12"}>
+      {/* Список строками, а не постерами: ровно тот же вид, что и в
+          каталоге /dramas — миниатюра постера, название, подстрока, —
+          чтобы третьего стиля списка сериалов на сайте не заводить.
+          Номер серии — чипом справа, ради него блок и существует.
+          Никто сегодня не выходит — блока нет вовсе. */}
+      {airingToday.length > 0 && (
+        <section className="mb-4">
+          <h2 className="section-heading mb-3">{dict.home.airingToday}</h2>
+          <div className="d-flex flex-column gap-2 stagger">
+            {airingToday.map(({ drama, from, to }) => {
+              const marked = airingTodayStatuses.get(drama.id);
+              const subline = marked
+                ? dict.catalog.watchStatus[marked.status]
+                : drama.year
+                  ? String(drama.year)
+                  : null;
+              return (
+                <Link
+                  key={drama.id}
+                  href={dramaHref(drama)}
+                  className="surface surface-hover d-flex align-items-center gap-3 p-3 text-decoration-none"
+                >
+                  <span className="drama-row-poster">
+                    {drama.posterUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={drama.posterUrl}
+                        alt=""
+                      />
+                    ) : (
+                      <span className="drama-row-poster-letter" aria-hidden>
+                        {drama.title.trim().charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex-fill" style={{ minWidth: 0 }}>
+                    <span className="font-display fw-medium text-white d-block text-truncate">
+                      {drama.title}
+                    </span>
+                    {subline && <span className="small text-secondary">{subline}</span>}
+                  </span>
+                  <span className="date-chip flex-shrink-0">
+                    {from === to
+                      ? dict.home.airingTodayEpisode(from)
+                      : dict.home.airingTodayEpisodes(from, to)}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Новинки — то, ради чего сюда заходят между концертами. */}
       <section>
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>

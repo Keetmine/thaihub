@@ -4,7 +4,7 @@ export const home: Dict["home"] = {
     eyebrow: "Главная",
     greeting: (name: string) => `Привет, ${name}`,
     upcoming: "Что впереди",
-    airingToday: "Сегодня выходит новая серия",
+    airingToday: "Выходит сегодня",
     airingTodayEpisode: (n: number) => `${n} серия`,
     airingTodayEpisodes: (from: number, to: number) => `${from}–${to} серии`,
     watchingNow: "Смотрю сейчас",

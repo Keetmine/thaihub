@@ -2,8 +2,8 @@ export const home = {
     eyebrow: "Home",
     greeting: (name: string) => `Hi, ${name}`,
     upcoming: "What's next",
-    // Блок «сегодня выходит новая серия» — самый верх главной.
-    airingToday: "New episode today",
+    // Блок «выходит сегодня» — над «Что нового».
+    airingToday: "Airing today",
     airingTodayEpisode: (n: number) => `Episode ${n}`,
     // Сдвоенный показ: одной карточкой с диапазоном.
     airingTodayEpisodes: (from: number, to: number) => `Episodes ${from}–${to}`,

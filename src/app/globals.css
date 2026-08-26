@@ -4693,3 +4693,87 @@ body::after {
   border-color: rgba(var(--accent-rgb), 0.45);
   color: rgb(var(--accent-rgb));
 }
+
+/* ============================================================
+   Свёртка графика под строкой «Эфир» + строка сериала на главной
+   ============================================================ */
+
+/* График спрятан под строку «Эфир» и раскрывается кнопкой в её конце.
+   Свёртка нативная (details/summary): в отличие от .synopsis-fold
+   мерить тут нечего — график не текст, — поэтому клиентского кода нет
+   вовсе, а состояние и работа с клавиатуры достаются от summary. */
+.schedule-fold > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.schedule-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Подпись переключателя приходит из словаря языка, поэтому пара
+   «Подробнее/Свернуть» лежит в разметке, а CSS только показывает
+   нужную половину. */
+.schedule-fold-toggle {
+  white-space: nowrap;
+  color: rgba(var(--accent-rgb), 0.9);
+}
+
+.schedule-fold > summary:hover .schedule-fold-toggle {
+  color: rgb(var(--accent-rgb));
+}
+
+.schedule-fold-less,
+.schedule-fold[open] .schedule-fold-more {
+  display: none;
+}
+
+.schedule-fold[open] .schedule-fold-less {
+  display: inline;
+}
+
+.schedule-fold-caret {
+  display: inline-block;
+  margin-left: 0.15rem;
+  font-size: 0.9em;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.schedule-fold[open] .schedule-fold-caret {
+  transform: rotate(180deg);
+}
+
+.schedule-fold-body {
+  max-width: 30rem;
+  margin-top: 0.6rem;
+}
+
+/* Строка сериала в списке — миниатюра постера как в каталоге /dramas
+   (там те же размеры заданы инлайном). Буква вместо постера, когда
+   картинки нет. */
+.drama-row-poster {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 3.75rem;
+  border-radius: 0.5rem;
+  background: var(--bs-secondary-bg);
+  overflow: hidden;
+}
+
+.drama-row-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.drama-row-poster-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: rgba(255, 154, 114, 0.45);
+}
