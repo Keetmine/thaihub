@@ -114,7 +114,14 @@ does and doesn't check.
   page's Все/Иду/Избранное). When nesting a tabs component inside it,
   drop that component's own `mb-4`/border spacing — `.tab-bar-row .tab-bar`
   already zeroes it — and pass `className=""` to `NameSearchBox` so it
-  doesn't add its own standalone margin.
+  doesn't add its own standalone margin. Подпись вкладки не переносится
+  (`white-space: nowrap`), поэтому длинную — а на `/locations` вкладки
+  называет сам пользователь (это его списки мест) — обрезаем многоточием
+  по ширине ряда: `.tab-bar` держит `min-width: 0` (иначе ряд не сожмётся
+  уже содержимого и уедет за край экрана), `.tab-bar-item` — `max-width:
+  100%` и `overflow: clip` с запасом `overflow-clip-margin`, чтобы
+  полоска активной вкладки (`bottom: -1px`) не обрезалась. Обычные
+  короткие вкладки ограничение не задевает.
 - **Inline text-row icons default to `0.95em`/`strokeWidth: 2`**
   (`src/components/icons.tsx`) — that's what keeps a line like "📍
   Локация: …" and "📅 Дата и время: …" visually matched. A few icons

@@ -1994,16 +1994,43 @@ svg[aria-hidden="true"] {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  visibility: hidden;
+  /* display: none, а не visibility: hidden. Скрытая подсказка всё равно
+     участвовала в раскладке и растягивала прокрутку страницы: на телефоне
+     наведения нет вовсе, а длинная русская подпись («Отметить как
+     посещённое», «Добавить статус просмотра») у кнопки в правом краю
+     строки вылезала за вьюпорт и давала горизонтальный скролл. */
+  display: none;
+  /* Показанной подсказке тоже нельзя быть шире экрана — длинную обрезаем
+     многоточием. На широких экранах ограничение не срабатывает. */
+  max-width: min(18rem, calc(100vw - 1.5rem));
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: opacity 0.12s ease, transform 0.12s ease;
+  /* Второй строкой, а не одной: браузер без allow-discrete не поймёт всю
+     запись целиком и оставит вариант выше — подсказка просто появится без
+     плавности. */
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease,
+    display 0.12s ease allow-discrete;
   z-index: 30;
 }
 
 [data-tooltip]:hover::after,
 [data-tooltip]:focus-visible::after {
   opacity: 1;
-  visibility: visible;
+  display: block;
   transform: translateX(-50%) translateY(0);
+}
+
+/* Начальное состояние для появления из display: none — без него подсказка
+   возникала бы рывком, без плавного проявления. */
+@starting-style {
+  [data-tooltip]:hover::after,
+  [data-tooltip]:focus-visible::after {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
 }
 
 /* ---------- Underline content tabs (section navigation) ---------- */
@@ -2029,6 +2056,10 @@ svg[aria-hidden="true"] {
   flex-wrap: wrap;
   border-bottom: 1px solid var(--bs-border-color);
   margin-bottom: 1.5rem;
+  /* Ряд вкладок сам живёт внутри flex-строки (.tab-bar-row) — без
+     min-width: 0 он не может стать уже своего содержимого, и одна длинная
+     вкладка распирала бы его за край экрана вместо того, чтобы обрезаться. */
+  min-width: 0;
 }
 
 .tab-bar-item {
@@ -2042,6 +2073,17 @@ svg[aria-hidden="true"] {
   white-space: nowrap;
   text-decoration: none;
   transition: color 0.15s ease;
+  /* Названия вкладок бывают пользовательскими (списки мест на
+     /locations) и сколь угодно длинными — такую вкладку обрезаем
+     многоточием по ширине ряда, иначе она уезжает за край экрана.
+     Короткие вкладки ограничение не трогает.
+     clip, а не hidden: не заводит контейнер прокрутки, а запас
+     overflow-clip-margin оставляет видимой подчёркивающую полоску
+     активной вкладки — она нарисована на 1px ниже края (bottom: -1px). */
+  max-width: 100%;
+  overflow: clip;
+  overflow-clip-margin: 3px;
+  text-overflow: ellipsis;
 }
 
 .tab-bar-item:hover {
