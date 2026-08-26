@@ -21,7 +21,7 @@ import path from "node:path";
  * Content разрешаются в конце прохода.
  *
  *   npx tsx scripts/mdl-sync-dramas.ts [--limit N] [--force] [--from-locations]
- *                     [--overwrite-synopsis] [--overwrite-poster] [--dry-run]
+ *      [--overwrite-synopsis] [--overwrite-poster] [--fix-remote-posters] [--dry-run]
  *
  * --from-locations — только сериалы, заведённые парсингом локаций
  *   (`blsceneUrl` заполнен). Отметку `mdlSyncedAt` в этом режиме не
@@ -37,8 +37,17 @@ import path from "node:path";
  *   описание с MDL у половины записей ровно то же самое (blscene его
  *   оттуда и берёт), а постеры у нас с TMDB — 500×750, ровно 2:3, как
  *   в вёрстке, — тогда как на MDL они 900×~1125 (соотношение ~0.8) и
- *   втрое тяжелее. Замена постера обрежет его по высоте: решать это
+ *   втрое тяжелее. Картинка шире рамки, значит `object-fit: cover`
+ *   срежет ей бока, примерно по 8% с каждой стороны: решать это
  *   отдельно от описаний.
+ *
+ * --fix-remote-posters — заменить только те постеры, что ведут наружу
+ *   (`posterUrl` начинается с http). Это картинки, оставшиеся от
+ *   парсинга локаций: не постеры, а кадры из серий — у SOTUS S там
+ *   пляж из 9-й серии, 1920×1080. Плохи вдвойне: горизонтальные, и
+ *   лежат не у нас, так что пропадут, если blscene их переименует.
+ *   Здесь замена на MDL — однозначное улучшение, в отличие от случая с
+ *   постерами TMDB.
  *
  * --dry-run — страницы читаются, в базу и на диск ничего не пишется;
  *   печатает, что бы изменилось.
@@ -159,7 +168,8 @@ async function main() {
   const fromLocations = process.argv.includes("--from-locations");
   const overwriteSynopsis = process.argv.includes("--overwrite-synopsis");
   const overwritePoster = process.argv.includes("--overwrite-poster");
-  const overwrite = overwriteSynopsis || overwritePoster;
+  const fixRemotePosters = process.argv.includes("--fix-remote-posters");
+  const overwrite = overwriteSynopsis || overwritePoster || fixRemotePosters;
   const dryRun = process.argv.includes("--dry-run");
 
   const where = fromLocations
@@ -185,6 +195,7 @@ async function main() {
   if (fromLocations) console.log("Отбор: заведённые парсингом локаций.");
   if (overwriteSynopsis) console.log("Описание будет перезаписано с MDL.");
   if (overwritePoster) console.log("Постер будет перезаписан с MDL.");
+  if (fixRemotePosters) console.log("Постеры, ведущие наружу, будут заменены на MDL.");
   if (dryRun) console.log("Черновой прогон — ничего не сохраняется.");
 
   const client = new MdlClient();
@@ -248,7 +259,12 @@ async function main() {
         }
         const { url, mdl } = found;
 
-        const wantsPoster = mdl.posterUrl && (overwritePoster || !drama.posterUrl);
+        // Внешний адрес постера — наследство парсинга локаций: там не
+        // постер, а кадр из серии, да ещё и на чужом сайте.
+        const posterIsRemote = !!drama.posterUrl?.startsWith("http");
+        const wantsPoster =
+          mdl.posterUrl &&
+          (overwritePoster || !drama.posterUrl || (fixRemotePosters && posterIsRemote));
         // Половина описаний с MDL дословно совпадает с нашими — blscene
         // их оттуда и переписал. Переписывать текст тем же текстом
         // незачем: лишний UPDATE и лишняя строка в отчёте.
