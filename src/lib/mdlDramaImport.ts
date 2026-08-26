@@ -62,7 +62,23 @@ export type MdlDramaUpsertOptions = {
  * со временем меняется («/12345-love» → «/12345-love-in-the-air»), id —
  * нет.
  */
-async function findDramaForMdlPage(sourceUrl: string, title: string) {
+/**
+ * Какой сериал в каталоге соответствует странице MDL.
+ *
+ * Числовой id из адреса — единственный надёжный признак: он у страницы
+ * один и навсегда. Всё остальное — догадка, и цена ошибки высокая:
+ * совпадение перезаписывает поля ЧУЖОЙ записи, причём молча.
+ *
+ * Поэтому запасной путь по названию требует ещё и совпадения года и
+ * обязан быть однозначным. Названия у сериалов повторяются постоянно
+ * (римейки, продолжения, просто совпадения): «Restart» 2026 года
+ * подтянулся к «Restart» 2021-го и обновил его — с этого и начали
+ * чинить. Нет года на странице, нет года в записи, нашлось больше
+ * одного кандидата — не угадываем, а заводим новый сериал. Лишний
+ * дубль виден в /admin/duplicates и склеивается одной кнопкой, а
+ * затёртая чужая карточка не восстанавливается ничем.
+ */
+async function findDramaForMdlPage(sourceUrl: string, title: string, year: number | null) {
   const mdlId = mdlIdFromUrl(sourceUrl);
   if (mdlId) {
     const byPage = await prisma.drama.findFirst({
@@ -75,7 +91,10 @@ async function findDramaForMdlPage(sourceUrl: string, title: string) {
     });
     if (byPage) return byPage;
   }
-  return prisma.drama.findFirst({ where: { title } });
+
+  if (year === null) return null;
+  const candidates = await prisma.drama.findMany({ where: { title, year }, take: 2 });
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 // ---------- расписание серий ----------
@@ -231,7 +250,7 @@ export async function upsertDramaFromMdl(
   const mdl = opts.fetchHtml
     ? parseMdlDramaPage(await opts.fetchHtml(sourceUrl), sourceUrl)
     : await fetchMdlDrama(sourceUrl);
-  const existing = await findDramaForMdlPage(sourceUrl, mdl.title);
+  const existing = await findDramaForMdlPage(sourceUrl, mdl.title, mdl.year);
 
   const parsedSchedule = (await shouldSyncSchedule(existing?.id ?? null, mdl.status))
     ? await fetchSchedule(sourceUrl, opts)
