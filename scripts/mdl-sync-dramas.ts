@@ -10,6 +10,7 @@ import {
   type MdlRelatedEntry,
 } from "../src/lib/mydramalist";
 import { downloadRemoteImage } from "../src/lib/localImage";
+import { isBlscenePoster } from "../src/lib/blsceneImport";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -21,7 +22,7 @@ import path from "node:path";
  * Content разрешаются в конце прохода.
  *
  *   npx tsx scripts/mdl-sync-dramas.ts [--limit N] [--force] [--from-locations]
- *      [--overwrite-synopsis] [--overwrite-poster] [--fix-remote-posters] [--dry-run]
+ *      [--overwrite-synopsis] [--overwrite-poster] [--fix-blscene-posters] [--dry-run]
  *
  * --from-locations — только сериалы, заведённые парсингом локаций
  *   (`blsceneUrl` заполнен). Отметку `mdlSyncedAt` в этом режиме не
@@ -41,13 +42,18 @@ import path from "node:path";
  *   срежет ей бока, примерно по 8% с каждой стороны: решать это
  *   отдельно от описаний.
  *
- * --fix-remote-posters — заменить только те постеры, что ведут наружу
- *   (`posterUrl` начинается с http). Это картинки, оставшиеся от
- *   парсинга локаций: не постеры, а кадры из серий — у SOTUS S там
- *   пляж из 9-й серии, 1920×1080. Плохи вдвойне: горизонтальные, и
- *   лежат не у нас, так что пропадут, если blscene их переименует.
- *   Здесь замена на MDL — однозначное улучшение, в отличие от случая с
- *   постерами TMDB.
+ * --fix-blscene-posters — заменить постеры, пришедшие со страниц
+ *   локаций: `/uploads/blscene/…` либо оставшаяся прямая ссылка на
+ *   blscene.com. Это не афиши, а кадры из серий — у SOTUS S пляж из
+ *   девятой, 1920×1080. Замена на MDL тут однозначное улучшение, в
+ *   отличие от случая с постерами TMDB.
+ *
+ *   Отбор идёт по ВСЕМУ каталогу, а не только по `--from-locations`:
+ *   повторный прогон импорта локаций затирал обложку и сериалам,
+ *   заведённым руками (запись искали ещё и по названию), — у таких
+ *   `blsceneUrl` пустой, и прицельный отбор их бы не увидел. Причину
+ *   починили в `refreshScrapedDrama`, но уже испорченные записи
+ *   остались.
  *
  * --dry-run — страницы читаются, в базу и на диск ничего не пишется;
  *   печатает, что бы изменилось.
@@ -168,15 +174,22 @@ async function main() {
   const fromLocations = process.argv.includes("--from-locations");
   const overwriteSynopsis = process.argv.includes("--overwrite-synopsis");
   const overwritePoster = process.argv.includes("--overwrite-poster");
-  const fixRemotePosters = process.argv.includes("--fix-remote-posters");
-  const overwrite = overwriteSynopsis || overwritePoster || fixRemotePosters;
+  const fixBlscenePosters = process.argv.includes("--fix-blscene-posters");
+  const overwrite = overwriteSynopsis || overwritePoster || fixBlscenePosters;
   const dryRun = process.argv.includes("--dry-run");
 
-  const where = fromLocations
-    ? { blsceneUrl: { not: null } }
-    : force
-      ? {}
-      : { mdlSyncedAt: null };
+  // Постеры от blscene ищем по всему каталогу: у испорченных записей
+  // `blsceneUrl` может быть пустым (см. --fix-blscene-posters).
+  const blscenePoster = { posterUrl: { contains: "blscene" } };
+  const where = fixBlscenePosters
+    ? fromLocations
+      ? { AND: [{ blsceneUrl: { not: null } }, blscenePoster] }
+      : blscenePoster
+    : fromLocations
+      ? { blsceneUrl: { not: null } }
+      : force
+        ? {}
+        : { mdlSyncedAt: null };
 
   const dramas = await prisma.drama.findMany({
     where,
@@ -195,7 +208,7 @@ async function main() {
   if (fromLocations) console.log("Отбор: заведённые парсингом локаций.");
   if (overwriteSynopsis) console.log("Описание будет перезаписано с MDL.");
   if (overwritePoster) console.log("Постер будет перезаписан с MDL.");
-  if (fixRemotePosters) console.log("Постеры, ведущие наружу, будут заменены на MDL.");
+  if (fixBlscenePosters) console.log("Постеры со страниц локаций будут заменены на MDL.");
   if (dryRun) console.log("Черновой прогон — ничего не сохраняется.");
 
   const client = new MdlClient();
@@ -259,12 +272,11 @@ async function main() {
         }
         const { url, mdl } = found;
 
-        // Внешний адрес постера — наследство парсинга локаций: там не
-        // постер, а кадр из серии, да ещё и на чужом сайте.
-        const posterIsRemote = !!drama.posterUrl?.startsWith("http");
         const wantsPoster =
           mdl.posterUrl &&
-          (overwritePoster || !drama.posterUrl || (fixRemotePosters && posterIsRemote));
+          (overwritePoster ||
+            !drama.posterUrl ||
+            (fixBlscenePosters && isBlscenePoster(drama.posterUrl)));
         // Половина описаний с MDL дословно совпадает с нашими — blscene
         // их оттуда и переписал. Переписывать текст тем же текстом
         // незачем: лишний UPDATE и лишняя строка в отчёте.

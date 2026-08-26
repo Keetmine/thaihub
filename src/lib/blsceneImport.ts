@@ -15,6 +15,15 @@ import { downloadRemoteImage } from "@/lib/localImage";
  *  уникальные, так что локации и постеры не сталкиваются. */
 const FOLDER = "blscene";
 
+/**
+ * Постер пришёл со страницы локаций? Скачанный лежит в
+ * `/uploads/blscene/…`, а если скачать не удалось — в поле остаётся
+ * прямая ссылка на blscene.com.
+ */
+export function isBlscenePoster(posterUrl: string): boolean {
+  return posterUrl.includes(`/${FOLDER}/`) || posterUrl.includes("blscene.com");
+}
+
 export type BlsceneSyncResult = {
   checked: number;
   imported: { title: string; locationsImported: number; locationsWithCoords: number }[];
@@ -116,15 +125,28 @@ export async function importScrapedDrama(
 /**
  * Refreshes a Drama already imported from blscene: updates its metadata
  * fields to whatever's on the page now, and links any locations that have
- * since been added to that page (existing links are left alone). blscene
- * only ever adds/edits its own pages, so this never removes data on our
- * side — it's additive/corrective, not a mirror.
+ * since been added to that page (existing links are left alone).
+ *
+ * Постер и описание — только если у нас пусто или стоит наше же,
+ * пришедшее с blscene. Раньше эта функция писала их безусловно, и
+ * повторный прогон менял хороший постер (обычно с TMDB) на картинку со
+ * страницы локаций — а там не афиша, а кадр из серии: у SOTUS S пляж из
+ * девятой. Сериал при этом мог быть даже не «наш»: подходящую запись
+ * ищут и по blsceneUrl, и по названию, так что под замену попадал и
+ * сериал, заведённый руками. Название и год blscene по-прежнему правит —
+ * его страница им хозяйка, а вот обложке нет.
  */
 async function refreshScrapedDrama(
   dramaId: string,
   scraped: BlsceneDrama,
   browser: Browser,
 ): Promise<{ newLocations: number }> {
+  const current = await prisma.drama.findUnique({
+    where: { id: dramaId },
+    select: { posterUrl: true, synopsis: true },
+  });
+  const mayReplacePoster = !current?.posterUrl || isBlscenePoster(current.posterUrl);
+
   // Повторный прогон дешёвый: файл уже на диске, downloadRemoteImage
   // отдаёт тот же локальный адрес без скачивания.
   await prisma.drama.update({
@@ -132,8 +154,10 @@ async function refreshScrapedDrama(
     data: {
       title: scraped.title,
       year: scraped.year,
-      posterUrl: await downloadRemoteImage(scraped.posterUrl, FOLDER),
-      synopsis: scraped.synopsis,
+      ...(mayReplacePoster
+        ? { posterUrl: await downloadRemoteImage(scraped.posterUrl, FOLDER) }
+        : {}),
+      ...(current?.synopsis ? {} : { synopsis: scraped.synopsis }),
       mydramalistUrl: scraped.mydramalistUrl,
     },
   });
