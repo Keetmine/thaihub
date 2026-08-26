@@ -16,8 +16,30 @@ import { downloadRemoteImage } from "../src/lib/localImage";
  * MyDramaList (по сохранённой ссылке или поиском по названию), парсит
  * Details/синопсис/Related Content и обновляет запись. Резюмится по
  * mdlSyncedAt (уже синхронизированные пропускаются), связи Related
- * Content разрешаются в конце прохода. Запуск:
- *   npx tsx scripts/mdl-sync-dramas.ts [--limit N] [--force]
+ * Content разрешаются в конце прохода.
+ *
+ *   npx tsx scripts/mdl-sync-dramas.ts [--limit N] [--force] [--from-locations]
+ *                     [--overwrite-synopsis] [--overwrite-poster] [--dry-run]
+ *
+ * --from-locations — только сериалы, заведённые парсингом локаций
+ *   (`blsceneUrl` заполнен). Отметку `mdlSyncedAt` в этом режиме не
+ *   смотрим: заход прицельный, эти записи давно «синхронизированы».
+ *   Записи без сохранённого адреса MDL пропускаются и перечисляются в
+ *   конце — искать страницу по названию для ПЕРЕЗАПИСИ нельзя, именно
+ *   так «Restart» 2026-го однажды и уехал в «Restart» 2021-го.
+ *
+ * --overwrite-synopsis, --overwrite-poster — брать с MDL, даже если у
+ *   нас уже что-то есть. Без них скрипт заполняет только пустые поля и
+ *   на записях от blscene не делает ничего: у них заполнено и то и
+ *   другое. Флага два, а не один, потому что решения тут разные:
+ *   описание с MDL у половины записей ровно то же самое (blscene его
+ *   оттуда и берёт), а постеры у нас с TMDB — 500×750, ровно 2:3, как
+ *   в вёрстке, — тогда как на MDL они 900×~1125 (соотношение ~0.8) и
+ *   втрое тяжелее. Замена постера обрежет его по высоте: решать это
+ *   отдельно от описаний.
+ *
+ * --dry-run — страницы читаются, в базу и на диск ничего не пишется;
+ *   печатает, что бы изменилось.
  */
 
 const DELAY_MS = 400;
@@ -93,9 +115,20 @@ async function main() {
   const limitArg = process.argv.indexOf("--limit");
   const limit = limitArg >= 0 ? Number(process.argv[limitArg + 1]) : Infinity;
   const force = process.argv.includes("--force");
+  const fromLocations = process.argv.includes("--from-locations");
+  const overwriteSynopsis = process.argv.includes("--overwrite-synopsis");
+  const overwritePoster = process.argv.includes("--overwrite-poster");
+  const overwrite = overwriteSynopsis || overwritePoster;
+  const dryRun = process.argv.includes("--dry-run");
+
+  const where = fromLocations
+    ? { blsceneUrl: { not: null } }
+    : force
+      ? {}
+      : { mdlSyncedAt: null };
 
   const dramas = await prisma.drama.findMany({
-    where: force ? {} : { mdlSyncedAt: null },
+    where,
     orderBy: { title: "asc" },
     select: {
       id: true,
@@ -108,11 +141,16 @@ async function main() {
     },
   });
   console.log(`К синхронизации: ${Math.min(dramas.length, limit)} из ${dramas.length}`);
+  if (fromLocations) console.log("Отбор: заведённые парсингом локаций.");
+  if (overwriteSynopsis) console.log("Описание будет перезаписано с MDL.");
+  if (overwritePoster) console.log("Постер будет перезаписан с MDL.");
+  if (dryRun) console.log("Черновой прогон — ничего не сохраняется.");
 
   const client = new MdlClient();
   await client.init();
 
   const relatedByDrama: { dramaId: string; related: MdlRelatedEntry[] }[] = [];
+  const skippedNoUrl: string[] = [];
   let done = 0;
   let notFound = 0;
   let failed = 0;
@@ -124,25 +162,56 @@ async function main() {
         if (drama.mydramalistUrl) {
           const url = drama.mydramalistUrl;
           found = { url, mdl: parseMdlDramaPage(await client.fetchHtml(url), url) };
+        } else if (overwrite) {
+          // Поиск по названию годится, чтобы ЗАПОЛНИТЬ пустое: ошибся —
+          // потеряли немного. Для перезаписи он не годится вовсе: чужая
+          // страница затрёт живое описание, и вернуть его будет неоткуда.
+          skippedNoUrl.push(`${drama.title} (${drama.year ?? "год неизвестен"})`);
+          continue;
         } else {
           found = await findMdl(client, drama.title, drama.year);
         }
         if (!found) {
           notFound += 1;
           // отмечаем, чтобы не искать заново при резюме; ссылки нет
-          await prisma.drama.update({
-            where: { id: drama.id },
-            data: { mdlSyncedAt: new Date() },
-          });
+          if (!dryRun) {
+            await prisma.drama.update({
+              where: { id: drama.id },
+              data: { mdlSyncedAt: new Date() },
+            });
+          }
           console.log(`  [нет на MDL] ${drama.title}`);
           continue;
         }
         const { url, mdl } = found;
 
-        const posterUrl =
-          !drama.posterUrl && mdl.posterUrl
-            ? await downloadRemoteImage(mdl.posterUrl, "mdl")
-            : undefined;
+        const wantsPoster = mdl.posterUrl && (overwritePoster || !drama.posterUrl);
+        // Половина описаний с MDL дословно совпадает с нашими — blscene
+        // их оттуда и переписал. Переписывать текст тем же текстом
+        // незачем: лишний UPDATE и лишняя строка в отчёте.
+        const wantsSynopsis =
+          mdl.synopsis &&
+          (overwriteSynopsis || !drama.synopsis) &&
+          mdl.synopsis.trim() !== (drama.synopsis ?? "").trim();
+
+        if (dryRun) {
+          const parts = [
+            wantsSynopsis
+              ? `описание ${drama.synopsis ? `${drama.synopsis.length}→${mdl.synopsis!.length} симв.` : "появится"}`
+              : null,
+            wantsPoster ? `постер ${drama.posterUrl ? "заменится" : "появится"}` : null,
+          ].filter(Boolean);
+          console.log(`  ${drama.title}: ${parts.length ? parts.join(", ") : "без изменений"}`);
+          done += 1;
+          await sleep(DELAY_MS);
+          continue;
+        }
+
+        // Скачиваем постер только когда он и правда нужен: файл ложится
+        // на диск ещё до update, и лишние качать незачем.
+        const posterUrl = wantsPoster
+          ? await downloadRemoteImage(mdl.posterUrl!, "mdl")
+          : undefined;
 
         await prisma.drama.update({
           where: { id: drama.id },
@@ -150,7 +219,7 @@ async function main() {
             mydramalistUrl: url,
             nativeTitle: mdl.nativeTitle,
             alsoKnownAs: mdl.alsoKnownAs,
-            synopsis: mdl.synopsis ?? drama.synopsis,
+            synopsis: wantsSynopsis ? mdl.synopsis : drama.synopsis,
             director: mdl.director,
             screenwriter: mdl.screenwriter,
             genres: mdl.genres,
@@ -185,6 +254,18 @@ async function main() {
     }
   } finally {
     await client.close();
+  }
+
+  if (skippedNoUrl.length > 0) {
+    console.log(`\nПропущено без адреса MDL: ${skippedNoUrl.length}`);
+    for (const s of skippedNoUrl) console.log(`  ${s}`);
+    console.log("  Впишите им адрес в карточке — и прогоните ещё раз.");
+  }
+
+  if (dryRun) {
+    console.log(`\nЧерновой прогон: посмотрено ${done}, не найдено ${notFound}, ошибок ${failed}.`);
+    console.log("Ничего не сохранено — уберите --dry-run, чтобы применить.");
+    return;
   }
 
   // Related Content → DramaRelation (разрешаем по mdl-id или названию).
