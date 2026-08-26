@@ -109,6 +109,16 @@ export const catalog = {
         cast: "Cast",
         related: "Related series",
         locations: "Locations",
+
+        // График выхода серий (DramaEpisode).
+        schedule: {
+            title: "Episode schedule",
+            aired: (n: number, total: number) => `${n} of ${total} aired`,
+            episode: (n: number) => `Episode ${n}`,
+            noDate: "date not announced",
+            today: "today",
+            showAll: (n: number) => `Show all (${n})`,
+        },
     },
 
     artists: {

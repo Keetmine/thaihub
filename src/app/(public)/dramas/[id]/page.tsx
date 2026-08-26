@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
 import SynopsisFold from "@/components/SynopsisFold";
@@ -35,6 +36,7 @@ import {
 } from "@/lib/slugHelpers";
 import { isPremiumActive } from "@/lib/premium";
 import { dramaHref } from "@/lib/dramaSlug";
+import { dateKey, formatCombinedDateList, formatShortDate, startOfDay } from "@/lib/dates";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +96,7 @@ export default async function DramaDetailPage({
       novel: true,
       relatedFrom: { include: { related: true } },
       relatedTo: { include: { drama: true } },
+      episodeList: { orderBy: { number: "asc" } },
     },
   });
 
@@ -203,6 +206,34 @@ export default async function DramaDetailPage({
       b.performer._count.events - a.performer._count.events ||
       a.performer.name.localeCompare(b.performer.name),
   );
+
+  // График выхода серий. «Сегодня» и «уже вышла» сравниваем ключами дат
+  // (YYYY-MM-DD), а не моментами: даты эфира лежат тайским настенным
+  // временем, и сравнение с `new Date()` врало бы ровно на границе суток.
+  const today = startOfDay(new Date());
+  const todayKey = dateKey(today);
+  // Год в строке — только когда расписание не про текущий год: у
+  // выходящего сериала он повторялся бы в каждой строке впустую, а у
+  // прошлогоднего (или у переходящего через Новый год) без него «3 янв»
+  // не отличить от начала сезона. Дату с годом собирает
+  // formatCombinedDateList, а не formatDateWithYear: второй по-русски
+  // оставляет висящее «г» без точки, и в столбце дат это видно сразу.
+  const scheduleYears = new Set(
+    drama.episodeList.flatMap((e) => (e.airDate ? [e.airDate.getUTCFullYear()] : [])),
+  );
+  const showYear = scheduleYears.size > 1 || !scheduleYears.has(today.getUTCFullYear());
+  const episodeRows = drama.episodeList.map((e) => ({
+    number: e.number,
+    title: e.title,
+    dateLabel: e.airDate
+      ? showYear
+        ? formatCombinedDateList([e.airDate], locale)
+        : formatShortDate(e.airDate, locale)
+      : null,
+    aired: !!e.airDate && dateKey(e.airDate) <= todayKey,
+    isToday: !!e.airDate && dateKey(e.airDate) === todayKey,
+  }));
+  const airedCount = episodeRows.filter((r) => r.aired).length;
 
   return (
     <div>
@@ -423,6 +454,22 @@ export default async function DramaDetailPage({
         </div>
         )}
       </div>
+
+      {/* График выхода серий — сразу за фактами: это продолжение строки
+          «Эфир: … (по четвергам)», только поимённо. Ширина ограничена —
+          на широком экране номер серии и дата иначе разъезжаются по
+          краям страницы. Расписания нет — блока нет вовсе. */}
+      {episodeRows.length > 0 && (
+        <div id="schedule" className="anchor-target mb-4" style={{ maxWidth: "30rem" }}>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h2 className="section-heading mb-0">{t.catalog.drama.schedule.title}</h2>
+            <span className="small text-secondary">
+              {t.catalog.drama.schedule.aired(airedCount, episodeRows.length)}
+            </span>
+          </div>
+          <EpisodeSchedule rows={episodeRows} />
+        </div>
+      )}
 
       {/* События сериала — после фактов: фан-митинги/премьеры. */}
       {events.length > 0 && (

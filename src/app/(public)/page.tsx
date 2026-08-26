@@ -8,7 +8,8 @@ import { getFriendIds } from "@/lib/friends";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
 import { tripHref, dramaHref } from "@/lib/slugHelpers";
-import { formatShortDate } from "@/lib/dates";
+import { endOfDay, formatShortDate, startOfDay } from "@/lib/dates";
+import { getDramaWatchStatuses } from "@/lib/favorites";
 import { userDisplayName } from "@/lib/userProfile";
 import LetterAvatar from "@/components/LetterAvatar";
 import PageHeader from "@/components/PageHeader";
@@ -56,6 +57,7 @@ export default async function HomePage() {
     upcomingTrips,
     watchingNow,
     myPersonalEvents,
+    airingTodayEpisodes,
   ] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
     getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
@@ -141,7 +143,39 @@ export default async function HomePage() {
           take: 4,
         })
       : Promise.resolve([]),
+    // «Сегодня выходит новая серия»: строки расписания с сегодняшней
+    // датой. Границы суток берём startOfDay/endOfDay — даты эфира лежат
+    // тайским настенным временем, и сравнение с моментом `now` под утро
+    // отдавало бы вчерашний день. Отдельного фильтра «онгоинги» нет и не
+    // нужно: расписание ведётся только у тех сериалов, что ещё выходят,
+    // а у завершённого сегодняшних дат не бывает.
+    prisma.dramaEpisode.findMany({
+      where: { airDate: { gte: startOfDay(now), lte: endOfDay(now) } },
+      select: {
+        number: true,
+        drama: {
+          select: { id: true, slug: true, title: true, posterUrl: true, year: true },
+        },
+      },
+      orderBy: { number: "asc" },
+    }),
   ]);
+
+  // Сдвоенный показ — две строки на один сериал: карточка всё равно
+  // одна, с диапазоном серий.
+  const airingTodayByDrama = new Map<
+    string,
+    { drama: (typeof airingTodayEpisodes)[number]["drama"]; from: number; to: number }
+  >();
+  for (const ep of airingTodayEpisodes) {
+    const seen = airingTodayByDrama.get(ep.drama.id);
+    if (seen) {
+      seen.from = Math.min(seen.from, ep.number);
+      seen.to = Math.max(seen.to, ep.number);
+    } else {
+      airingTodayByDrama.set(ep.drama.id, { drama: ep.drama, from: ep.number, to: ep.number });
+    }
+  }
 
   // Ж11: события афиши и отмеченные личные события — один список,
   // отсортированный по дате: на главной человеку важно «что ближайшее»,
@@ -172,7 +206,12 @@ export default async function HomePage() {
   // поэтому их отбираем в памяти.
   const todayMonth = now.getUTCMonth() + 1;
   const todayDay = now.getUTCDate();
-  const [birthdayPerformersRaw, friendBirthdayRows, favoriteIds] = await Promise.all([
+  const [
+    birthdayPerformersRaw,
+    friendBirthdayRows,
+    favoriteIds,
+    airingTodayStatuses,
+  ] = await Promise.all([
     prisma.$queryRaw<
       { id: string; name: string; slug: string | null; photoUrl: string | null; birthDate: Date }[]
     >`
@@ -193,7 +232,21 @@ export default async function HomePage() {
       where: { userId: user.id },
       select: { performerId: true },
     }),
+    getDramaWatchStatuses([...airingTodayByDrama.keys()], user.id),
   ]);
+
+  // Витрина, а не личный список: показываем всё, что выходит сегодня, —
+  // «Смотрю сейчас» ниже как раз про личное, а этот блок отвечает на
+  // «что вообще выходит». Но отмеченное человеком идёт вперёд и
+  // подписывается статусом: своё в общем ряду должно быть видно сразу.
+  const airingToday = [...airingTodayByDrama.values()]
+    .sort(
+      (a, b) =>
+        Number(airingTodayStatuses.has(b.drama.id)) -
+          Number(airingTodayStatuses.has(a.drama.id)) ||
+        a.drama.title.localeCompare(b.drama.title),
+    )
+    .slice(0, 12);
 
   const favoriteSet = new Set(favoriteIds.map((f) => f.performerId));
   const turns = (birthDate: Date) => now.getUTCFullYear() - birthDate.getUTCFullYear();
@@ -234,6 +287,44 @@ export default async function HomePage() {
           </>
         }
       />
+
+      {/* «Сегодня выходит новая серия» — выше «Что впереди»: это
+          единственный блок главной, который протухает за сутки, и ровно
+          за ним заходят утром. Без панели: обычно тут один-два постера, и
+          в панель во всю ширину они проваливались бы, — тот же голый
+          заголовок с рядом постеров, что у «Смотрю сейчас». Никто
+          сегодня не выходит — блока нет вовсе. */}
+      {airingToday.length > 0 && (
+        <section className="mb-5">
+          <h2 className="section-heading mb-3">{dict.home.airingToday}</h2>
+          <div className="row g-3 stagger">
+            {airingToday.map(({ drama, from, to }) => {
+              const marked = airingTodayStatuses.get(drama.id);
+              return (
+                <div key={drama.id} className="col-6 col-sm-4 col-lg-3">
+                  <PosterTile
+                    href={dramaHref(drama)}
+                    posterUrl={drama.posterUrl}
+                    title={drama.title}
+                    subtitle={
+                      marked
+                        ? dict.catalog.watchStatus[marked.status]
+                        : drama.year
+                          ? String(drama.year)
+                          : undefined
+                    }
+                    chip={
+                      from === to
+                        ? dict.home.airingTodayEpisode(from)
+                        : dict.home.airingTodayEpisodes(from, to)
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* «Что впереди» — план и поездки одной панелью: и то и другое
           отвечает на вопрос «что у меня скоро», а раздельными блоками

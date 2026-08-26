@@ -4597,3 +4597,99 @@ body::after {
   color: rgba(var(--accent-rgb), 0.85);
 }
 
+
+/* ============================================================
+   График выхода серий (страница сериала) + «сегодня новая серия»
+   ============================================================ */
+
+/* Список серий рельсом: вертикальная линия с точкой на каждой строке.
+   Точка залита у вышедших серий и пустая у будущих — «прошлое сверху,
+   будущее снизу» так читается без легенды, одной формой. */
+.episode-schedule {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.episode-schedule-row {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.42rem 0 0.42rem 1.4rem;
+  color: var(--bs-secondary-color);
+  font-size: 0.95rem;
+}
+
+/* Линия рельса. У первой и последней строк она обрезана до точки —
+   иначе список начинался бы и кончался висящим хвостом. */
+.episode-schedule-row::before {
+  content: "";
+  position: absolute;
+  left: 0.31rem;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--bs-border-color);
+}
+.episode-schedule-row:first-child::before {
+  top: 0.85rem;
+}
+.episode-schedule-row:last-child::before {
+  bottom: auto;
+  height: 0.85rem;
+}
+
+.episode-schedule-dot {
+  position: absolute;
+  left: 0;
+  top: 0.6rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+}
+
+.episode-schedule-row.is-aired .episode-schedule-dot {
+  background: rgba(var(--accent-rgb), 0.8);
+  border-color: transparent;
+}
+
+/* Сегодняшняя серия — с ореолом: ради неё в этот список и заходят. */
+.episode-schedule-row.is-today .episode-schedule-dot {
+  background: rgb(var(--accent-rgb));
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.22);
+}
+
+.episode-schedule-label {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* Вышедшая серия — обычным цветом текста, будущая приглушена: то же
+   различие, что и у точек, второй раз и цветом. */
+.episode-schedule-row.is-aired .episode-schedule-label {
+  color: #fff;
+}
+.episode-schedule-row.is-today .episode-schedule-label {
+  color: rgb(var(--accent-rgb));
+}
+
+.episode-schedule-title {
+  color: var(--bs-secondary-color);
+}
+
+.episode-schedule-date {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.episode-schedule-chip {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: rgb(var(--accent-rgb));
+}

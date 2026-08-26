@@ -100,6 +100,15 @@ export const catalog: Dict["catalog"] = {
         cast: "Актёрский состав",
         related: "Связанные сериалы",
         locations: "Локации",
+
+        schedule: {
+            title: "График выхода серий",
+            aired: (n: number, total: number) => `вышло ${n} из ${total}`,
+            episode: (n: number) => `${n} серия`,
+            noDate: "дата не объявлена",
+            today: "сегодня",
+            showAll: (n: number) => `Показать все (${n})`,
+        },
     },
 
     artists: {
