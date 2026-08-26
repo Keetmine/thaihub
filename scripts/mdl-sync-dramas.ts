@@ -10,6 +10,8 @@ import {
   type MdlRelatedEntry,
 } from "../src/lib/mydramalist";
 import { downloadRemoteImage } from "../src/lib/localImage";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 /**
  * Массовый проход по всем сериалам каталога: находит страницу на
@@ -40,7 +42,38 @@ import { downloadRemoteImage } from "../src/lib/localImage";
  *
  * --dry-run — страницы читаются, в базу и на диск ничего не пишется;
  *   печатает, что бы изменилось.
+ *
+ * Перед каждой перезаписью прежние описание и постер уходят в файл
+ * `private-uploads/mdl-sync-backup-<дата>.json` (постоянный том вне
+ * public/). Текст с MDL обычно лучше нашего, но не всегда: у «Only
+ * Friends: Dream On» наше описание было конкретнее — про постановку, а
+ * не общая аннотация сериала. Такое видно только глазами и уже после,
+ * поэтому старое должно откуда-то доставаться. Файл пишется по ходу, а
+ * не в конце: прогон может оборваться на середине.
+ *
+ * Вернуть всё, что перезаписал прогон:
+ *   npx tsx scripts/mdl-sync-dramas.ts --restore private-uploads/mdl-sync-backup-….json
+ * Возврат можно сузить до одной записи: --only "Only Friends: Dream On".
  */
+
+/** Возвращает описания и постеры из файла страховки. */
+async function restore(file: string, only: string | null) {
+  const rows: { id: string; title: string; synopsis: string | null; posterUrl: string | null }[] =
+    JSON.parse(await readFile(file, "utf8"));
+  const wanted = only ? rows.filter((r) => r.title === only) : rows;
+  if (wanted.length === 0) {
+    console.log(only ? `В файле нет записи «${only}».` : "Файл пуст.");
+    return;
+  }
+  for (const r of wanted) {
+    await prisma.drama.update({
+      where: { id: r.id },
+      data: { synopsis: r.synopsis, posterUrl: r.posterUrl },
+    });
+    console.log(`  вернул ${r.title}`);
+  }
+  console.log(`Возвращено записей: ${wanted.length}.`);
+}
 
 const DELAY_MS = 400;
 
@@ -115,6 +148,14 @@ async function main() {
   const limitArg = process.argv.indexOf("--limit");
   const limit = limitArg >= 0 ? Number(process.argv[limitArg + 1]) : Infinity;
   const force = process.argv.includes("--force");
+  const restoreArg = process.argv.indexOf("--restore");
+  if (restoreArg >= 0) {
+    const onlyArg = process.argv.indexOf("--only");
+    return restore(
+      process.argv[restoreArg + 1],
+      onlyArg >= 0 ? process.argv[onlyArg + 1] : null,
+    );
+  }
   const fromLocations = process.argv.includes("--from-locations");
   const overwriteSynopsis = process.argv.includes("--overwrite-synopsis");
   const overwritePoster = process.argv.includes("--overwrite-poster");
@@ -151,6 +192,28 @@ async function main() {
 
   const relatedByDrama: { dramaId: string; related: MdlRelatedEntry[] }[] = [];
   const skippedNoUrl: string[] = [];
+
+  /**
+   * Куда сложить прежние значения. Внутри контейнера это постоянный
+   * том; локально — просто папка рядом с проектом.
+   */
+  const backupFile = path.join(
+    process.cwd(),
+    "private-uploads",
+    `mdl-sync-backup-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`,
+  );
+  const backup: { id: string; title: string; synopsis: string | null; posterUrl: string | null }[] =
+    [];
+  async function rememberBefore(row: (typeof dramas)[number]) {
+    backup.push({
+      id: row.id,
+      title: row.title,
+      synopsis: row.synopsis,
+      posterUrl: row.posterUrl,
+    });
+    await mkdir(path.dirname(backupFile), { recursive: true });
+    await writeFile(backupFile, JSON.stringify(backup, null, 2));
+  }
   let done = 0;
   let notFound = 0;
   let failed = 0;
@@ -205,6 +268,12 @@ async function main() {
           done += 1;
           await sleep(DELAY_MS);
           continue;
+        }
+
+        // Прежние значения — на диск ДО того, как что-то поменяется, и
+        // только когда мы правда затираем непустое поле.
+        if ((wantsSynopsis && drama.synopsis) || (wantsPoster && drama.posterUrl)) {
+          await rememberBefore(drama);
         }
 
         // Скачиваем постер только когда он и правда нужен: файл ложится
@@ -299,6 +368,9 @@ async function main() {
   console.log(
     `\nГотово: обновлено ${done}, не найдено ${notFound}, ошибок ${failed}, связей ${links}.`,
   );
+  if (backup.length > 0) {
+    console.log(`Прежние значения ${backup.length} записей: ${backupFile}`);
+  }
 }
 
 main()
