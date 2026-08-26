@@ -264,20 +264,28 @@ export default async function DramaDetailPage({
           {/* Год в скобках и цветной статус — в строке с названием
               (просьба владельца); чип «серий» убран, число эпизодов и
               так есть в фактах. */}
-          <h1 className="display-1-tight mb-1" style={{ fontSize: "2.25rem" }}>
-            {drama.title}
-            {drama.year && (
-              <span className="fs-5 fw-normal text-secondary"> ({drama.year})</span>
-            )}
+          {/* Бейдж статуса стоит РЯДОМ с заголовком, а не внутри него.
+              Внутри он попадал в текст h1, и поиск склеивал его с
+              названием: в выдаче Google было «Till the World Ends
+              (2022)Завершён — MyBLHub», ещё и без пробела. Год внутри
+              оставлен намеренно — он часть имени тайтла и в заголовке
+              выдачи уместен. */}
+          <div className="d-flex flex-wrap align-items-baseline gap-2 mb-1">
+            <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
+              {drama.title}
+              {drama.year && (
+                <span className="fs-5 fw-normal text-secondary"> ({drama.year})</span>
+              )}
+            </h1>
             {drama.status && (
               <span
-                className={`badge rounded-pill fw-semibold ms-2 align-middle ${DRAMA_STATUS_BADGE_CLASS[drama.status]}`}
+                className={`badge rounded-pill fw-semibold ${DRAMA_STATUS_BADGE_CLASS[drama.status]}`}
                 style={{ fontSize: "0.8rem" }}
               >
                 {t.catalog.dramaStatus[drama.status]}
               </span>
             )}
-          </h1>
+          </div>
           {(drama.nativeTitle || drama.alsoKnownAs) && (
             <p className="small text-secondary mb-0">
               {[drama.nativeTitle, drama.alsoKnownAs].filter(Boolean).join(" · ")}
