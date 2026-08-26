@@ -304,11 +304,18 @@ own folder under `public/uploads/`.
   row is never written at all. Anything with no derivable source (manual
   `/uploads/<uuid>.webp` uploads, `mdl`/`performers`/`novels`) gets its
   field set to `null` — the card then draws its letter placeholder.
-  **Nulling is deliberately narrow**: a field is cleared only when there
-  is no source to try or the source answers 4xx; a network error or 5xx
-  leaves the row alone and is reported as `пропущено`, so a dropped
-  connection can't wipe dozens of live covers. Shows what it would do
-  and changes nothing without `--apply`; one bad row is caught and
+  **Nulling is deliberately narrow, in two layers.** A field is cleared
+  only when there is no source to try or the source answers 4xx; a
+  network error or 5xx leaves the row alone and is reported as
+  `пропущено`, so a dropped connection can't wipe dozens of live covers.
+  And even then it needs an explicit `--clear` on top of `--apply`,
+  because "no file" and "no image" are not the same thing: a developer's
+  database is a copy of prod while their `public/uploads` is not — the
+  files live in a volume on the server. On such a copy a row whose file
+  is alive in prod, but whose upstream source has since died, would lose
+  a working reference for good. Without `--clear` the script only
+  restores. Shows what it would do and changes nothing without
+  `--apply`; one bad row is caught and
   logged instead of failing the run. Run it with `NODE_USE_ENV_PROXY=1`
   on networks where TMDB is DNS-blocked (see the proxy caveat above).
   First run: 71 of 10371 rows had no file (1 event poster, 6 TMDB drama

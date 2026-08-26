@@ -30,10 +30,15 @@ import { scrapeTtmEvent } from "../src/lib/thaiticketmajor";
  * картинки из mdl/performers/novels) — тем поле обнуляется: карточка
  * нарисует буквенную заглушку, это штатное поведение.
  *
- * Осторожность с обнулением: поле чистится, только когда источника нет
- * вовсе или источник ответил 4xx (пропал насовсем). Сетевой сбой или
- * 5xx — запись не трогаем и пишем в итог отдельной строкой, чтобы
- * отвалившийся вайфай не стёр полсотни живых обложек.
+ * Осторожность с обнулением, два слоя. Первый: поле чистится, только
+ * когда источника нет вовсе или источник ответил 4xx (пропал
+ * насовсем) — сетевой сбой или 5xx запись не трогает, чтобы
+ * отвалившийся вайфай не стёр полсотни живых обложек. Второй: даже
+ * тогда нужен явный `--clear`, потому что «файла нет» и «картинки нет»
+ * — разные вещи. База у разработчика это копия прода, а папка uploads
+ * у него неполная: файлы лежат в волюме на сервере. На такой копии
+ * запись, чей файл жив на проде, а источник наверху умер, потеряла бы
+ * рабочую ссылку навсегда.
  *
  * Меняются только эти шесть полей и только у записей, где файла реально
  * нет. Ничего не удаляется. Безопасно перезапускать.
@@ -41,11 +46,21 @@ import { scrapeTtmEvent } from "../src/lib/thaiticketmajor";
  * Запуск:
  *   npx tsx --env-file=.env scripts/fix-missing-images.ts          # показать
  *   npx tsx --env-file=.env scripts/fix-missing-images.ts --apply  # починить
+ *   npx tsx --env-file=.env scripts/fix-missing-images.ts --apply --clear
+ *                                     # починить И стереть безнадёжное
  *
  * TMDB-картинки бывают недоступны без прокси (см. «Proxy caveat» в
  * docs/features/tmdb-import.md) — тогда запускать с NODE_USE_ENV_PROXY=1.
  */
 const apply = process.argv.includes("--apply");
+// Обнуление — отдельным флагом, а не заодно с --apply. Причина в том,
+// что «файла нет» и «картинки нет» — разные вещи: база у разработчика
+// это копия прода, а папка uploads у него неполная (файлы живут в
+// волюме на сервере). На такой копии запись, чей файл жив на проде, но
+// чей источник наверху уже умер, потеряла бы рабочую ссылку навсегда.
+// Поэтому по умолчанию скрипт только восстанавливает, а стирает лишь
+// когда его об этом попросили явно.
+const allowClear = process.argv.includes("--clear");
 
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
@@ -252,9 +267,12 @@ async function fixRow(field: Field, row: Row): Promise<Outcome> {
   const plan = await planFor(row);
 
   if (plan.kind === "clear") {
-    if (!apply) {
-      console.log(`  ${field.name}  ${row.label}\n    ${row.url}\n    → обнулить (${plan.why})`);
-      return "обнулено";
+    if (!apply || !allowClear) {
+      const hint = apply ? " — пропущено, нужен --clear" : "";
+      console.log(
+        `  ${field.name}  ${row.label}\n    ${row.url}\n    → обнулить (${plan.why})${hint}`,
+      );
+      return apply ? "пропущено" : "обнулено";
     }
     await field.save(row.id, null);
     console.log(`  ${field.name}  ${row.label} — обнулено (${plan.why})`);
