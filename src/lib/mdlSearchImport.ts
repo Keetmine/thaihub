@@ -23,6 +23,9 @@ import {
 // целиком, второй план — только знакомые нам актёры с агентством,
 // гости не берутся. Разбирается он из уже скачанной страницы сериала,
 // так что лишних запросов к MDL это не добавляет (см. mdlCastLink.ts).
+// Связи из Related Content пишет общий upsertDramaFromMdl — тоже из
+// уже скачанной страницы и только между сериалами, которые уже есть в
+// каталоге.
 //
 // Ходим ОБЫЧНЫМ fetch с браузерным UA, а chromium поднимаем только
 // если MDL закрылся Cloudflare-проверкой — и тогда ОДИН на весь прогон
@@ -167,6 +170,8 @@ export type MdlSearchImportResult = {
   /** Новых связей «актёр — сериал» и заведённых карточек актёров. */
   castLinked: number;
   performersCreated: number;
+  /** Новых связей «сериал — сериал» из Related Content. */
+  relationsLinked: number;
   autoUpdate: boolean;
   abortedAfter: string | null;
 };
@@ -192,6 +197,7 @@ export async function importMdlSearch(
     let streak = 0;
     let castLinked = 0;
     let performersCreated = 0;
+    let relationsLinked = 0;
     let abortedAfter: string | null = null;
 
     for (const [i, title] of titles.entries()) {
@@ -206,6 +212,11 @@ export async function importMdlSearch(
         });
         if (res.created) created += 1;
         else updated += 1;
+        // Связи из Related Content пишет сам upsertDramaFromMdl — здесь
+        // только считаем их для сводки. Со временем их становится
+        // больше: связь заводится, когда в каталог попал второй конец, а
+        // в одном прогоне это сплошь и рядом соседние тайтлы.
+        relationsLinked += res.relationsLinked;
         streak = 0;
 
         // Каст разбирается из той же страницы сериала, которую мы уже
@@ -257,6 +268,7 @@ export async function importMdlSearch(
       failed,
       castLinked,
       performersCreated,
+      relationsLinked,
       autoUpdate: opts.autoUpdate,
       abortedAfter,
     };
@@ -275,6 +287,7 @@ export function summarizeMdlSearch(r: MdlSearchImportResult): string {
     `создано ${r.created}, обновлено ${r.updated}, с ошибкой ${r.failed}` +
     (r.castLinked ? `, каст +${r.castLinked}` : "") +
     (r.performersCreated ? ` (заведено актёров ${r.performersCreated})` : "") +
+    (r.relationsLinked ? `, связей между сериалами +${r.relationsLinked}` : "") +
     (r.autoUpdate ? " · помечены «обновлять по расписанию»" : "") +
     (r.truncated
       ? ` · дошли до потолка в ${MAX_PAGES} страниц, на MDL осталось ещё — сузьте фильтры`

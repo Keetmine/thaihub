@@ -405,6 +405,11 @@ model Drama {
   airedOn        String?
   duration       String?
   contentRating  String?
+  // Страна и тип со страницы MDL («Thailand», «Drama»/«Movie»/«Special»).
+  // Свободным текстом, а не перечислением: словарь у MDL свой и он
+  // меняется, а жёсткий enum ронял бы импорт на каждом новом значении.
+  country        String?
+  type           String?
   mdlScore       Float?
   mdlSyncedAt    DateTime?
   // Страница-источник на MyDramaList. Хранится, чтобы сериал можно было

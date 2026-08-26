@@ -13,6 +13,7 @@ import {
   parseMdlEpisodes,
   type MdlDrama,
   type MdlEpisode,
+  type MdlRelatedEntry,
 } from "@/lib/mydramalist";
 
 /** Что стало с расписанием серий за этот импорт. */
@@ -36,6 +37,8 @@ export type MdlDramaUpsert = {
   mdl: MdlDrama;
   /** null — за расписанием не ходили или страница не разобралась. */
   schedule: MdlScheduleSync | null;
+  /** Сколько новых связей из Related Content завелось за этот импорт. */
+  relationsLinked: number;
 };
 
 export type MdlDramaUpsertOptions = {
@@ -95,6 +98,66 @@ async function findDramaForMdlPage(sourceUrl: string, title: string, year: numbe
   if (year === null) return null;
   const candidates = await prisma.drama.findMany({ where: { title, year }, take: 2 });
   return candidates.length === 1 ? candidates[0] : null;
+}
+
+// ---------- связанные сериалы ----------
+
+/**
+ * Пишет блок Related Content страницы в `DramaRelation`.
+ *
+ * Связываем ТОЛЬКО с тем, что уже есть в каталоге: сходить на MDL за
+ * отсутствующим — это лишняя страница чужого сайта на каждую связь, а в
+ * массовом прогоне их сотни. Не нашли — молча пропускаем: связь заведётся
+ * сама, когда второй сериал импортируют (его страница ссылается на этот
+ * же в обратную сторону, и наоборот).
+ *
+ * Соответствие ищет общий `findDramaForMdlPage`, но года у связи нет:
+ * в Related Content MDL печатает только название и подпись отношения.
+ * Значит, срабатывает лишь надёжная ветка — по числовому id из адреса.
+ * Это и правильно: догадка по одному названию здесь особенно опасна, в
+ * одном блоке рядом стоят две РАЗНЫЕ «Raeng Hueng» с разными id.
+ *
+ * Связь направленная: пишем сторону «этот сериал → связанный» с подписью
+ * MDL («Thai sequel», «Korean prequel»). Обратную сторону не заводим —
+ * страница сериала читает обе (`relatedFrom` + `relatedTo`) и показывает
+ * пару один раз.
+ */
+async function syncDramaRelations(dramaId: string, related: MdlRelatedEntry[]): Promise<number> {
+  if (related.length === 0) return 0;
+
+  const rows = await prisma.dramaRelation.findMany({
+    where: { dramaId },
+    select: { relatedId: true, relation: true },
+  });
+  const known = new Map(rows.map((r) => [r.relatedId, r.relation]));
+
+  let added = 0;
+  const seen = new Set<string>();
+  for (const entry of related) {
+    const match = await findDramaForMdlPage(canonicalMdlUrl(entry.url), entry.title, null);
+    if (!match || match.id === dramaId) continue;
+    // Две записи блока могут указать на один наш сериал (дубли в
+    // каталоге) — второй create упал бы на уникальном ключе.
+    if (seen.has(match.id)) continue;
+    seen.add(match.id);
+
+    if (!known.has(match.id)) {
+      await prisma.dramaRelation.create({
+        data: { dramaId, relatedId: match.id, relation: entry.relation },
+      });
+      added += 1;
+      continue;
+    }
+    // Сама связь уже есть — повторный импорт её не дублирует; подпись
+    // на MDL иногда уточняют, её освежаем.
+    if (known.get(match.id) !== entry.relation) {
+      await prisma.dramaRelation.update({
+        where: { dramaId_relatedId: { dramaId, relatedId: match.id } },
+        data: { relation: entry.relation },
+      });
+    }
+  }
+  return added;
 }
 
 // ---------- расписание серий ----------
@@ -238,6 +301,10 @@ export function summarizeSchedule(s: MdlScheduleSync | null): string {
  * Занесённое руками не переписываем: у существующей записи заполняются
  * только пустые поля. Исключение — статус: он выводится из дат эфира и
  * освежается всегда.
+ *
+ * Блок Related Content пишется всегда и всеми путями импорта (см.
+ * `syncDramaRelations`): лишних запросов к MDL он не стоит — связи уже
+ * разобраны из той же страницы.
  */
 export async function upsertDramaFromMdl(
   url: string,
@@ -273,6 +340,7 @@ export async function upsertDramaFromMdl(
     synopsis: mdl.synopsis,
     posterUrl: poster,
     genres: mdl.genres,
+    tags: mdl.tags,
     director: mdl.director,
     screenwriter: mdl.screenwriter,
     network: mdl.network,
@@ -282,6 +350,8 @@ export async function upsertDramaFromMdl(
     airedOn: mdl.airedOn,
     duration: mdl.duration,
     contentRating: mdl.contentRating,
+    country: mdl.country,
+    type: mdl.type,
     year: mdl.year,
     status: mdl.status,
     mdlScore: mdl.rating,
@@ -304,6 +374,7 @@ export async function upsertDramaFromMdl(
       filled: [],
       mdl,
       schedule: parsedSchedule ? await syncDramaEpisodes(created.id, parsedSchedule) : null,
+      relationsLinked: await syncDramaRelations(created.id, mdl.related),
     };
   }
 
@@ -333,6 +404,7 @@ export async function upsertDramaFromMdl(
   fill("synopsis", "описание");
   fill("posterUrl", "постер");
   fill("genres", "жанры");
+  fill("tags", "теги");
   fill("director", "режиссёр");
   fill("screenwriter", "сценарист");
   fill("network", "канал");
@@ -342,6 +414,8 @@ export async function upsertDramaFromMdl(
   fill("airedOn", "день выхода");
   fill("duration", "длительность");
   fill("contentRating", "возрастной рейтинг");
+  fill("country", "страна");
+  fill("type", "тип");
   fill("year", "год");
   // Статус выводится из дат эфира — освежаем всегда.
   if (mdl.status && mdl.status !== existing.status) {
@@ -363,8 +437,20 @@ export async function upsertDramaFromMdl(
   if (schedule && (schedule.added || schedule.changed || schedule.removed)) {
     filled.push("расписание серий");
   }
+  // Связь появляется не только на первом импорте: у давнего сериала она
+  // заводится в тот прогон, когда в каталог попал второй её конец.
+  const relationsLinked = await syncDramaRelations(updated.id, mdl.related);
+  if (relationsLinked > 0) filled.push("связанные сериалы");
 
-  return { id: updated.id, title: updated.title, created: false, filled, mdl, schedule };
+  return {
+    id: updated.id,
+    title: updated.title,
+    created: false,
+    filled,
+    mdl,
+    schedule,
+    relationsLinked,
+  };
 }
 
 // ---------- обновление по расписанию ----------

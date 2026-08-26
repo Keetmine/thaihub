@@ -133,6 +133,10 @@ export type MdlDrama = {
   airedOn: string | null;
   duration: string | null;
   contentRating: string | null;
+  /** «Thailand», «South Korea» — строка Country из блока Details. */
+  country: string | null;
+  /** «Drama», «Movie», «Special», «TV Show» — строка Type оттуда же. */
+  type: string | null;
   year: number | null;
   status: DramaStatus | null;
   rating: number | null;
@@ -162,15 +166,27 @@ function deriveStatus(from: Date | null, to: Date | null): DramaStatus | null {
   return null;
 }
 
-/** Ссылки из li блока Details по подписи ("Director:", "Screenwriter:"). */
+/**
+ * Ссылки из li блока Details по подписи ("Director:", "Screenwriter:").
+ *
+ * Подписи берём и составные: если человек и снял, и написал, MDL вместо
+ * двух строк ставит одну — «Screenwriter & Director:». По точной подписи
+ * режиссёр такого фильма терялся вовсе. Поэтому смотрим на все строки, в
+ * подписи которых есть нужное слово, и склеиваем имена без повторов.
+ */
 function detailLinksText(html: string, label: string): string | null {
-  const li = html.match(
-    new RegExp(`<b class="inline">${label}:</b>([\\s\\S]*?)</li>`),
-  )?.[1];
-  if (!li) return null;
-  const names = [...li.matchAll(/<a[^>]*>([^<]+)<\/a>/g)].map((m) => m[1].trim());
-  const text = names.length > 0 ? names.join(", ") : stripTags(li);
-  return text || null;
+  const names: string[] = [];
+  for (const li of html.matchAll(
+    new RegExp(`<b class="inline">[^<]*\\b${label}\\b[^<]*:</b>([\\s\\S]*?)</li>`, "g"),
+  )) {
+    const linked = [...li[1].matchAll(/<a[^>]*>([^<]+)<\/a>/g)].map((m) =>
+      decodeEntities(m[1]).trim(),
+    );
+    for (const name of linked.length > 0 ? linked : [stripTags(li[1])]) {
+      if (name && !names.includes(name)) names.push(name);
+    }
+  }
+  return names.join(", ") || null;
 }
 
 export function parseMdlDramaPage(html: string, url: string): MdlDrama {
@@ -218,9 +234,13 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
   const aka = html.match(/mdl-aka-titles">([\s\S]*?)<\/span>/)?.[1];
   const tagsLi = html.match(/<b class="inline">Tags:<\/b>([\s\S]*?)<\/li>/)?.[1];
   const tags = tagsLi
-    ? [...tagsLi.matchAll(/<a[^>]*>([^<]+)<\/a>/g)]
-        .map((m) => decodeEntities(m[1]).trim())
-        .filter((t) => !/vote or add tags/i.test(t))
+    ? [...tagsLi.matchAll(/<a([^>]*)>([^<]+)<\/a>/g)]
+        // Последняя ссылка в строке — кнопка «(Vote or add tags)», а на
+        // старых страницах «(Vote tags)»: подпись за годы менялась,
+        // класс `edit-tags` — нет. Иначе кнопка попадала в теги.
+        .filter((m) => !/edit-tags/.test(m[1]))
+        .map((m) => decodeEntities(m[2]).trim())
+        .filter((t) => t && !/vote[^)]*tags/i.test(t))
     : [];
 
   // «Episodes: 0» у анонсов означает «пока неизвестно», а не ноль.
@@ -242,7 +262,13 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
     url,
     title: decodeEntities(ld.name),
     nativeTitle: detailFrom(text, "Native Title"),
-    alsoKnownAs: aka ? stripTags(aka).replace(/\s*,\s*/g, ", ") || null : null,
+    // Пустая ссылка в списке AKA у MDL не редкость — без чистки хвоста
+    // в базу уезжало «Power in the shadow, Heated shadow, ».
+    alsoKnownAs: aka
+      ? stripTags(aka)
+          .replace(/\s*,\s*/g, ", ")
+          .replace(/^(,\s*)+|(,\s*)+$/g, "") || null
+      : null,
     synopsis,
     posterUrl: ld.image ?? null,
     genres: Array.isArray(ld.genre) ? ld.genre : [],
@@ -256,6 +282,11 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
     airedOn: detailFrom(text, "Aired On"),
     duration: detailFrom(text, "Duration"),
     contentRating: detailFrom(text, "Content Rating"),
+    country: detailFrom(text, "Country"),
+    // Подпись берём вместе с открывающим тегом (в pipeText это «|»):
+    // слово короткое, и голое «Type:» поймало бы такую же строчку из
+    // синопсиса — он на странице выше блока Details.
+    type: detailFrom(text, "\\|Type"),
     year: airedFrom ? airedFrom.getFullYear() : null,
     status: deriveStatus(airedFrom, airedTo),
     rating: ld.aggregateRating?.ratingValue ?? null,
