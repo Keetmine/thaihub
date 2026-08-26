@@ -119,14 +119,20 @@ export function formatShortDate(d: Date, locale: Locale = "ru"): string {
  *  этого года или позапрошлого. Считается в UTC, как остальные даты в
  *  этом модуле. */
 export function formatDateWithYear(d: Date, locale: Locale = "ru"): string {
-  return d
-    .toLocaleDateString(INTL_TAG[locale], {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      timeZone: UTC,
-    })
-    .replace(/\.$/, "");
+  return (
+    d
+      .toLocaleDateString(INTL_TAG[locale], {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: UTC,
+      })
+      // Русский Intl отдаёт «22 июл. 2025 г.» — убираем хвост целиком.
+      // Срезать одну последнюю точку, как в formatShortDate, тут нельзя:
+      // там она принадлежит сокращению месяца и есть только когда месяц
+      // последний, а с годом остаётся сиротское «2025 г».
+      .replace(/\s*г\.?$/, "")
+  );
 }
 
 /** Короткий месяц («окт» / «Oct») и день недели («пн» / «Mon») для
