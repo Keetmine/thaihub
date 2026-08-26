@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
   addMonths,
   dateKey,
+  endOfDay,
   getMonthGrid,
   monthLabel,
   weekdayNames,
@@ -12,10 +13,12 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import EmptyState from "@/components/EmptyState";
 import MonthYearJump from "./MonthYearJump";
 import { isPremiumActive } from "@/lib/premium";
 import LetterAvatar from "@/components/LetterAvatar";
 import { performerHref } from "@/lib/performerSlug";
+import { dramaHref } from "@/lib/dramaSlug";
 import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
@@ -59,14 +62,19 @@ export default async function CalendarPage({
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) - 1 : now.getMonth();
   // Default is "all" (every event) — ?view=mine narrows to events I'm going
-  // to, ?view=birthdays switches to the performers-birthday calendar.
+  // to, ?view=birthdays switches to the performers-birthday calendar,
+  // ?view=series to the episode air dates.
   const showBirthdays = params.view === "birthdays";
-  const showAll = !showBirthdays && params.view !== "mine";
+  const showSeries = params.view === "series";
+  const showAll = !showBirthdays && !showSeries && params.view !== "mine";
 
   const gridDays = getMonthGrid(year, month);
   const rangeStart = gridDays[0];
-  const rangeEnd = gridDays[gridDays.length - 1];
-  rangeEnd.setHours(23, 59, 59, 999);
+  // Конец последнего дня сетки — через endOfDay (UTC-сутки, как вся
+  // работа с датами в проекте): местное setHours на сервере не в UTC
+  // отрезало бы вечер последнего дня, да ещё и правило бы дату в самой
+  // сетке — gridDays хранит те же объекты.
+  const rangeEnd = endOfDay(gridDays[gridDays.length - 1]);
 
   const currentUser = gateUser;
 
@@ -94,7 +102,35 @@ export default async function CalendarPage({
     }
   }
 
-  const occurrences = showBirthdays ? [] : await prisma.eventOccurrence.findMany({
+  // Расписание серий: строки DramaEpisode с объявленной датой, попавшие
+  // в сетку месяца. Без даты (airDate = null) серия в календарь не
+  // попадает — её ещё не назначили.
+  const episodes = showSeries
+    ? await prisma.dramaEpisode.findMany({
+        where: { airDate: { gte: rangeStart, lte: rangeEnd } },
+        select: {
+          id: true,
+          number: true,
+          airDate: true,
+          title: true,
+          drama: { select: { id: true, title: true, slug: true } },
+        },
+        // Внутри дня — по времени, потом по сериалу; номер серии последним
+        // условием, иначе две серии одного сериала в один день встают в
+        // случайном порядке (5-я перед 3-й).
+        orderBy: [{ airDate: "asc" }, { drama: { title: "asc" } }, { number: "asc" }],
+      })
+    : [];
+
+  const episodesByDay = new Map<string, typeof episodes>();
+  for (const ep of episodes) {
+    // airDate в выборке не null (условие where), но тип этого не знает.
+    const key = dateKey(ep.airDate!);
+    if (!episodesByDay.has(key)) episodesByDay.set(key, []);
+    episodesByDay.get(key)!.push(ep);
+  }
+
+  const occurrences = showBirthdays || showSeries ? [] : await prisma.eventOccurrence.findMany({
     where: {
       startsAt: { gte: rangeStart, lte: rangeEnd },
       // «Мои события» — по отметкам на конкретные даты.
@@ -134,7 +170,13 @@ export default async function CalendarPage({
   const next = addMonths(new Date(year, month, 1), 1);
   const todayKey = dateKey(now);
 
-  const viewQuery = showBirthdays ? "&view=birthdays" : showAll ? "" : "&view=mine";
+  const viewQuery = showBirthdays
+    ? "&view=birthdays"
+    : showSeries
+      ? "&view=series"
+      : showAll
+        ? ""
+        : "&view=mine";
 
   return (
     <div>
@@ -170,8 +212,12 @@ export default async function CalendarPage({
         </div>
       </div>
 
+      {/* Четыре вкладки в русских подписях не влезают в ширину телефона,
+          а .mode-toggle — одна строка на всех. Разрешаем перенос прямо
+          здесь: на широком экране ряд как был, на узком — вторая строка
+          вместо горизонтальной прокрутки всей страницы. */}
       <div className="mb-4">
-        <div className="mode-toggle">
+        <div className="mode-toggle" style={{ flexWrap: "wrap" }}>
           <AppLink
             href={`/calendar?year=${year}&month=${month + 1}`}
             prefetch={false}
@@ -182,7 +228,7 @@ export default async function CalendarPage({
           <AppLink
             href={`/calendar?year=${year}&month=${month + 1}&view=mine`}
             prefetch={false}
-            className={`mode-toggle-option ${!showAll && !showBirthdays ? "active" : ""}`}
+            className={`mode-toggle-option ${!showAll && !showBirthdays && !showSeries ? "active" : ""}`}
           >
             {t.events.calendar.viewMine}
           </AppLink>
@@ -193,86 +239,138 @@ export default async function CalendarPage({
           >
             {t.events.calendar.viewBirthdays}
           </AppLink>
+          <AppLink
+            href={`/calendar?year=${year}&month=${month + 1}&view=series`}
+            prefetch={false}
+            className={`mode-toggle-option ${showSeries ? "active" : ""}`}
+          >
+            {t.events.calendar.viewSeries}
+          </AppLink>
         </div>
       </div>
 
-      <div className="d-none d-sm-grid calendar-grid mb-2" style={{ gap: "0.5rem" }}>
-        {weekdayNames(locale).map((d) => (
-          <div key={d} className="calendar-weekday">
-            {d}
+      {showSeries && episodes.length === 0 ? (
+        <EmptyState
+          emoji="📺"
+          title={t.events.calendar.seriesEmptyTitle}
+          hint={t.events.calendar.seriesEmptyHint}
+          cta={{ href: "/dramas", label: t.events.calendar.seriesEmptyCta }}
+        />
+      ) : (
+        <>
+          <div className="d-none d-sm-grid calendar-grid mb-2" style={{ gap: "0.5rem" }}>
+            {weekdayNames(locale).map((d) => (
+              <div key={d} className="calendar-weekday">
+                {d}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="calendar-grid">
-        {gridDays.map((day) => {
-          const key = dateKey(day);
-          const inMonth = day.getMonth() === month;
-          const isToday = key === todayKey;
+          <div className="calendar-grid">
+            {gridDays.map((day) => {
+              const key = dateKey(day);
+              const inMonth = day.getMonth() === month;
+              const isToday = key === todayKey;
 
-          if (showBirthdays) {
-            const bdayKey = `${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
-            const celebrants = birthdaysByDay.get(bdayKey) ?? [];
-            return (
-              <div key={key} className={`calendar-cell ${inMonth ? "" : "outside-month"}`}>
-                <span className={`calendar-day-num ${isToday ? "today" : ""}`}>
-                  {day.getDate()}
-                </span>
-                <div className="d-flex flex-column gap-1">
-                  {celebrants.slice(0, 3).map((p) => (
-                    <AppLink
-                      key={p.id}
-                      href={performerHref(p)}
-                      className="event-chip d-inline-flex align-items-center gap-1 text-decoration-none"
-                      title={t.events.calendar.birthdayTitle(
-                        p.name,
-                        day.getFullYear() - p.birthDate.getFullYear(),
-                      )}
-                    >
-                      <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.1} />
-                      <span className="text-truncate">{p.name}</span>
-                    </AppLink>
-                  ))}
-                  {celebrants.length > 3 && (
-                    <span className="small text-secondary d-none d-sm-inline">
-                      {t.events.calendar.more(celebrants.length - 3)}
+              if (showBirthdays) {
+                const bdayKey = `${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+                const celebrants = birthdaysByDay.get(bdayKey) ?? [];
+                return (
+                  <div key={key} className={`calendar-cell ${inMonth ? "" : "outside-month"}`}>
+                    <span className={`calendar-day-num ${isToday ? "today" : ""}`}>
+                      {day.getDate()}
                     </span>
-                  )}
-                </div>
-              </div>
-            );
-          }
+                    <div className="d-flex flex-column gap-1">
+                      {celebrants.slice(0, 3).map((p) => (
+                        <AppLink
+                          key={p.id}
+                          href={performerHref(p)}
+                          className="event-chip d-inline-flex align-items-center gap-1 text-decoration-none"
+                          title={t.events.calendar.birthdayTitle(
+                            p.name,
+                            day.getFullYear() - p.birthDate.getFullYear(),
+                          )}
+                        >
+                          <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.1} />
+                          <span className="text-truncate">{p.name}</span>
+                        </AppLink>
+                      ))}
+                      {celebrants.length > 3 && (
+                        <span className="small text-secondary d-none d-sm-inline">
+                          {t.events.calendar.more(celebrants.length - 3)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
 
-          const dayEvents = eventsByDay.get(key) ?? [];
-          return (
-            <AppLink
-              href={`/day/${key}`}
-              key={key}
-              className={`calendar-cell ${inMonth ? "" : "outside-month"}`}
-            >
-              <span className={`calendar-day-num ${isToday ? "today" : ""}`}>
-                {day.getDate()}
-              </span>
-              <div className="d-flex flex-column gap-1">
-                {dayEvents.slice(0, 3).map((ev) => (
-                  <span
-                    key={ev.occurrenceId}
-                    className={`event-chip ${goingIds.has(ev.occurrenceId) ? "event-chip-going" : ""}`}
-                    title={ev.title}
-                  >
-                    {ev.title}
+              if (showSeries) {
+                const dayEpisodes = episodesByDay.get(key) ?? [];
+                return (
+                  <div key={key} className={`calendar-cell ${inMonth ? "" : "outside-month"}`}>
+                    <span className={`calendar-day-num ${isToday ? "today" : ""}`}>
+                      {day.getDate()}
+                    </span>
+                    <div className="d-flex flex-column gap-1">
+                      {dayEpisodes.slice(0, 3).map((ep) => (
+                        <AppLink
+                          key={ep.id}
+                          href={dramaHref(ep.drama)}
+                          className="event-chip text-decoration-none"
+                          title={t.events.calendar.episodeTitle(ep.drama.title, ep.number, ep.title)}
+                        >
+                          {/* Номер серии первым и жирным: в узкой клетке
+                              название обрезается многоточием, и обрезаться
+                              должно именно оно. */}
+                          <span className="fw-semibold">
+                            {t.events.calendar.episodeShort(ep.number)}
+                          </span>{" "}
+                          {ep.drama.title}
+                        </AppLink>
+                      ))}
+                      {dayEpisodes.length > 3 && (
+                        <span className="small text-secondary d-none d-sm-inline">
+                          {t.events.calendar.more(dayEpisodes.length - 3)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              const dayEvents = eventsByDay.get(key) ?? [];
+              return (
+                <AppLink
+                  href={`/day/${key}`}
+                  key={key}
+                  className={`calendar-cell ${inMonth ? "" : "outside-month"}`}
+                >
+                  <span className={`calendar-day-num ${isToday ? "today" : ""}`}>
+                    {day.getDate()}
                   </span>
-                ))}
-                {dayEvents.length > 3 && (
-                  <span className="small text-secondary d-none d-sm-inline">
-                    {t.events.calendar.more(dayEvents.length - 3)}
-                  </span>
-                )}
-              </div>
-            </AppLink>
-          );
-        })}
-      </div>
+                  <div className="d-flex flex-column gap-1">
+                    {dayEvents.slice(0, 3).map((ev) => (
+                      <span
+                        key={ev.occurrenceId}
+                        className={`event-chip ${goingIds.has(ev.occurrenceId) ? "event-chip-going" : ""}`}
+                        title={ev.title}
+                      >
+                        {ev.title}
+                      </span>
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <span className="small text-secondary d-none d-sm-inline">
+                        {t.events.calendar.more(dayEvents.length - 3)}
+                      </span>
+                    )}
+                  </div>
+                </AppLink>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

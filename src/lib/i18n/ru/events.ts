@@ -23,7 +23,7 @@ export const events: Dict["events"] = {
     calendar: {
         metaTitle: "Календарь событий",
         metaDescription:
-            "Календарь концертов и фанмитов тайских BL-актёров, включая дни рождения.",
+            "Календарь концертов и фанмитов тайских BL-актёров, включая дни рождения и даты выхода серий.",
         backToEvents: "← Все события",
         title: "Календарь",
         paywallFeature: "Календарь",
@@ -33,10 +33,17 @@ export const events: Dict["events"] = {
         viewAll: "Все события",
         viewMine: "Мои события",
         viewBirthdays: "Дни рождения",
+        viewSeries: "Сериалы",
         birthdayTitle: (name: string, age: number) => `${name} — ${age} лет`,
         more: (count: number) => `+${count} ещё`,
         monthSelect: "Месяц",
         yearSelect: "Год",
+        episodeShort: (number: number) => `${number} серия`,
+        episodeTitle: (drama: string, number: number, episodeTitle: string | null) =>
+            `${drama} — ${number} серия${episodeTitle ? `: ${episodeTitle}` : ""}`,
+        seriesEmptyTitle: "В этом месяце серий нет",
+        seriesEmptyHint: "Ни у одного сериала на этот месяц дата выхода пока не объявлена.",
+        seriesEmptyCta: "Смотреть сериалы",
     },
 
     day: {

@@ -24,7 +24,7 @@ export const events = {
     calendar: {
         metaTitle: "Events calendar",
         metaDescription:
-            "A calendar of concerts and fan meets with Thai BL actors, birthdays included.",
+            "A calendar of concerts and fan meets with Thai BL actors, birthdays and episode air dates included.",
         backToEvents: "← All events",
         title: "Calendar",
         paywallFeature: "The calendar",
@@ -34,10 +34,19 @@ export const events = {
         viewAll: "All events",
         viewMine: "My events",
         viewBirthdays: "Birthdays",
+        viewSeries: "Series",
         birthdayTitle: (name: string, age: number) => `${name} turns ${age}`,
         more: (count: number) => `+${count} more`,
         monthSelect: "Month",
         yearSelect: "Year",
+        // Подпись в клетке месяца: номер идёт первым, потому что длинное
+        // название обрезается многоточием — обрезаться должно оно.
+        episodeShort: (number: number) => `Ep. ${number}`,
+        episodeTitle: (drama: string, number: number, episodeTitle: string | null) =>
+            `${drama} — episode ${number}${episodeTitle ? `: ${episodeTitle}` : ""}`,
+        seriesEmptyTitle: "No episodes this month",
+        seriesEmptyHint: "No series has an announced air date in this month yet.",
+        seriesEmptyCta: "Browse the series",
     },
 
     /** День календаря: /day/[date] */
