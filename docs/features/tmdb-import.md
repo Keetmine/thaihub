@@ -215,9 +215,13 @@ The helper isn't TMDB-specific and this section is where the rule is
 written down for everyone: **every importer that persists an image runs
 it through `downloadRemoteImage` first** — MyDramaList (`mdlDramaImport`,
 `mdlPerformerImport`), the T-Pop agency/discography importers, YouTube
-Music, and the ThaiTicketMajor event importer (see
-[events.md](events.md#importing-an-event-from-thaiticketmajor)) — each
-with its own folder under `public/uploads/`.
+Music, the ThaiTicketMajor event importer (see
+[events.md](events.md#importing-an-event-from-thaiticketmajor)),
+blscene (`blsceneImport` → `blscene/`, both `Location.photoUrl` and
+`Drama.posterUrl`), Me Mind Y (`memindyImport` → `performers/`),
+tpop.fandom.com (`tpopFandomImport` → `performers/`) and the Wikipedia
+agency importer (`wikipediaAgencyImport` → `agencies/`) — each with its
+own folder under `public/uploads/`.
 
 - **Filename = the remote URL's own last path segment** (TMDB's image
   paths are already unique, content-addressed-looking ids like
@@ -258,6 +262,58 @@ with its own folder under `public/uploads/`.
   the same `downloadRemoteImage`, 16-way concurrent. Safe to re-run —
   already-local rows are excluded by the query itself, and a row that
   failed last time just gets retried.
+- **`scripts/localize-remote-images.ts`** — the same catch-up for every
+  *non*-TMDB host, added once the importers above were fixed: sweeps
+  `Location.photoUrl`, `Performer.photoUrl`, `Drama.posterUrl` and
+  `Agency.logoUrl` still on `startsWith: "http"`, downloads each through
+  the same `downloadRemoteImage` into the folder that importer now uses,
+  6-way concurrent, printing one line per image and a per-field
+  «перенесено N, было X байт → стало Y байт» summary. Shows the plan and
+  makes **no** image requests at all without `--apply`. Safe to
+  interrupt and re-run: the `startsWith` filter skips already-migrated
+  rows, an unreachable image is skipped (listed at the end) instead of
+  failing the run, and the next run retries it. `User.photoUrl` is
+  deliberately **not** swept — that's the avatar from Google sign-in,
+  refreshed on every login and belonging to the person, not the catalog.
+  One trap it handles that `downloadRemoteImage` can't: Fandom's CDN
+  serves thumbnails as `…/Name.png/revision/latest/scale-to-width-down/268`,
+  whose last path segment (`268`) is identical for every image — the
+  script strips `/revision/…` first, exactly as `infoboxImage`
+  (`src/lib/tpopFandom.ts`) already does at scrape time, or 42 performer
+  photos would have overwritten each other as one `268.webp`.
+  Measured before the first prod run: 741 rows — 487 Location + 5 Drama
+  (blscene.com), 247 Performer (164 gmm-tv.com left over from the
+  retired GMMTV sweep, 78 static.wikia.nocookie.net, 5 memindy.com),
+  2 Agency (upload.wikimedia.org).
+- **`scripts/fix-missing-images.ts`** — the opposite direction: rows
+  whose `/uploads/...` path has no file behind it any more. Prod serves
+  `/uploads/*` from Caddy and answers a real 404, but `next dev` misses
+  `public/` and drops the request into the `(public)/[...missing]`
+  catch-all, so every render of a broken image downloads ~66 KB of HTML.
+  The script walks `Event.posterUrl`, `Location.photoUrl`,
+  `Performer.photoUrl`, `Drama.posterUrl`, `Album.coverUrl` and
+  `Novel.coverUrl`, `fs.stat`s each local path, and rebuilds the source
+  URL from the file's own name — which works precisely because of the
+  "filename = the remote URL's last path segment" rule above:
+  `/uploads/tmdb/<id>.webp` → `image.tmdb.org/t/p/w500/<id>.jpg`,
+  `/uploads/albums/<id>=w226-…webp` → `lh3.googleusercontent.com/<id>=w226-…`,
+  `/uploads/posters/…` → the ThaiTicketMajor page (see
+  [events.md](events.md#importing-an-event-from-thaiticketmajor)). It
+  re-downloads through the same `downloadRemoteImage`, so the recovered
+  file usually lands under the exact name the DB already holds and the
+  row is never written at all. Anything with no derivable source (manual
+  `/uploads/<uuid>.webp` uploads, `mdl`/`performers`/`novels`) gets its
+  field set to `null` — the card then draws its letter placeholder.
+  **Nulling is deliberately narrow**: a field is cleared only when there
+  is no source to try or the source answers 4xx; a network error or 5xx
+  leaves the row alone and is reported as `пропущено`, so a dropped
+  connection can't wipe dozens of live covers. Shows what it would do
+  and changes nothing without `--apply`; one bad row is caught and
+  logged instead of failing the run. Run it with `NODE_USE_ENV_PROXY=1`
+  on networks where TMDB is DNS-blocked (see the proxy caveat above).
+  First run: 71 of 10371 rows had no file (1 event poster, 6 TMDB drama
+  posters, 64 YouTube Music album covers) — all 71 re-downloaded, zero
+  rows nulled, zero DB writes needed.
 - **Docker persistence**: `public/uploads` (both this and the manual
   admin upload endpoint) needs a named volume in `docker-compose.yml`
   (`uploads_data:/app/public/uploads`) or every downloaded/uploaded file

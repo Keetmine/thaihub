@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { fetchTpopBandPage, fetchTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
 import { addPerformerAgency } from "@/lib/performerAgency";
+import { downloadRemoteImage } from "@/lib/localImage";
+
+/** Фото с фандомной вики забираем к себе (см. «Local image storage» в
+ *  docs/features/tmdb-import.md) — в ту же папку, что и остальные фото
+ *  исполнителей. Не скачалось — downloadRemoteImage вернёт исходную
+ *  ссылку и напишет warning, импорт не падает. */
+const FOLDER = "performers";
 
 function synthesizeBandBio(band: TpopBandData): string | null {
   const intro =
@@ -71,7 +78,10 @@ async function findOrCreateBandMemberPerformer(
     if (!existing.realName && member.birthName) data.realName = member.birthName;
     if (!existing.birthDate && member.birthDate) data.birthDate = member.birthDate;
     if (!existing.placeOfBirth && member.birthPlace) data.placeOfBirth = member.birthPlace;
-    if (!existing.photoUrl && member.photoUrl) data.photoUrl = member.photoUrl;
+    if (!existing.photoUrl && member.photoUrl) {
+      const local = await downloadRemoteImage(member.photoUrl, FOLDER);
+      if (local) data.photoUrl = local;
+    }
     if (Object.keys(data).length > 0) {
       await prisma.performer.update({ where: { id: existing.id }, data });
     }
@@ -85,7 +95,7 @@ async function findOrCreateBandMemberPerformer(
       realName: member.birthName,
       birthDate: member.birthDate,
       placeOfBirth: member.birthPlace,
-      photoUrl: member.photoUrl,
+      photoUrl: await downloadRemoteImage(member.photoUrl, FOLDER),
       type: "SOLO",
       ...(agencyId ? { agencies: { create: { agencyId } } } : {}),
     },
@@ -130,7 +140,10 @@ export async function importTpopBand(
   if (existingBand) {
     const data: { bio?: string; photoUrl?: string } = {};
     if (!existingBand.bio && bio) data.bio = bio;
-    if (!existingBand.photoUrl && band.photoUrl) data.photoUrl = band.photoUrl;
+    if (!existingBand.photoUrl && band.photoUrl) {
+      const local = await downloadRemoteImage(band.photoUrl, FOLDER);
+      if (local) data.photoUrl = local;
+    }
     if (Object.keys(data).length > 0) {
       await prisma.performer.update({ where: { id: existingBand.id }, data });
     }
@@ -143,7 +156,7 @@ export async function importTpopBand(
         name: band.name,
         type: "BAND",
         bio,
-        photoUrl: band.photoUrl,
+        photoUrl: await downloadRemoteImage(band.photoUrl, FOLDER),
         ...(agency ? { agencies: { create: { agencyId: agency.id } } } : {}),
       },
     });

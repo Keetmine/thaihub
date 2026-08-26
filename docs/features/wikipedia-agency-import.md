@@ -146,6 +146,15 @@ functions rather than a separate implementation:
 - **Drama's agency/network**: set unconditionally, even on an existing
   `Drama` — unlike a performer's agency, a studio's own production
   listing is treated as authoritative for what it actually produced.
+- **Agency logo**: the infobox image is downloaded first —
+  `downloadRemoteImage(url, "agencies")`, so `Agency.logoUrl` holds
+  `/uploads/agencies/...` and never an `upload.wikimedia.org` thumbnail
+  URL (see "Local image storage" in [tmdb-import.md](tmdb-import.md)).
+  A failed download falls back to the remote URL and the import
+  continues; the two rows written before this was fixed (GMMTV, Domundi
+  TV) are moved over by `scripts/localize-remote-images.ts`. Artist
+  photos need nothing extra here — they come from `agencyTmdbMatching.ts`,
+  which already downloads TMDB's into `uploads/tmdb/`.
 
 ### tmdbId collision on artist creation
 

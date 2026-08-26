@@ -7,6 +7,13 @@ import {
   type BlsceneDrama,
 } from "@/lib/blscene";
 import { checkImportCancelled } from "@/lib/importRun";
+import { downloadRemoteImage } from "@/lib/localImage";
+
+/** Фото локаций и постеры сериалов с blscene лежат у нас — одна плоская
+ *  папка на источник, как у tmdb/mdl (см. «Local image storage» в
+ *  docs/features/tmdb-import.md). Имена файлов у blscene длинные и
+ *  уникальные, так что локации и постеры не сталкиваются. */
+const FOLDER = "blscene";
 
 export type BlsceneSyncResult = {
   checked: number;
@@ -48,11 +55,15 @@ async function linkScrapedLocations(
     if (!location) {
       const coords = loc.mapsUrl ? await resolveMapsCoords(loc.mapsUrl, browser) : null;
       if (coords) withCoords++;
+      // Фото забираем к себе ДО записи. Не скачалось — downloadRemoteImage
+      // вернёт исходную ссылку и напишет warning, локация всё равно
+      // создастся.
+      const photoUrl = await downloadRemoteImage(loc.photoUrl, FOLDER);
       location = await prisma.location.create({
         data: {
           name: loc.name,
           description: loc.areaText,
-          photoUrl: loc.photoUrl,
+          photoUrl,
           latitude: coords?.lat ?? null,
           longitude: coords?.lng ?? null,
           sourceUrl: sourceUrl ?? "https://blscene.com",
@@ -86,7 +97,7 @@ export async function importScrapedDrama(
     data: {
       title: scraped.title,
       year: scraped.year,
-      posterUrl: scraped.posterUrl,
+      posterUrl: await downloadRemoteImage(scraped.posterUrl, FOLDER),
       synopsis: scraped.synopsis,
       mydramalistUrl: scraped.mydramalistUrl,
       blsceneUrl: scraped.sourceUrl,
@@ -114,12 +125,14 @@ async function refreshScrapedDrama(
   scraped: BlsceneDrama,
   browser: Browser,
 ): Promise<{ newLocations: number }> {
+  // Повторный прогон дешёвый: файл уже на диске, downloadRemoteImage
+  // отдаёт тот же локальный адрес без скачивания.
   await prisma.drama.update({
     where: { id: dramaId },
     data: {
       title: scraped.title,
       year: scraped.year,
-      posterUrl: scraped.posterUrl,
+      posterUrl: await downloadRemoteImage(scraped.posterUrl, FOLDER),
       synopsis: scraped.synopsis,
       mydramalistUrl: scraped.mydramalistUrl,
     },

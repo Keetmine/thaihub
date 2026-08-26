@@ -42,7 +42,12 @@ credits instead of unscripted TV here.
   (`agencyTmdbMatching.ts` — same TMDB-first matching the Wikipedia/
   drama.fandom.com importers use, see
   [wikipedia-agency-import.md](wikipedia-agency-import.md)). A blank
-  `photoUrl` is filled in from the site's own artist photo; social
+  `photoUrl` is filled in from the site's own artist photo — downloaded
+  first via `downloadRemoteImage(url, "performers")`, so the DB never
+  holds a `memindy.com` URL (see "Local image storage" in
+  [tmdb-import.md](tmdb-import.md); a failed download leaves the import
+  running, and rows written before this was fixed are moved over by
+  `scripts/localize-remote-images.ts`). Social
   handles (Instagram/X/TikTok, published as bare handles like `IG :
   boss.ckm`, expanded into full URLs) are synced via
   `syncSocialLinks` (`src/lib/performerSocialLinks.ts` — extracted from

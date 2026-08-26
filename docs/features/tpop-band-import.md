@@ -109,6 +109,23 @@ attempt to defeat).
   key) — safe to re-run, matching character-role `upsert` idempotency
   used elsewhere in this project's importers.
 
+### Photos are stored locally
+
+Both the band's and each member's `photoUrl` go through
+`downloadRemoteImage(url, "performers")` before being written, so the DB
+never holds a `static.wikia.nocookie.net` URL — same rule as every other
+importer, see "Local image storage" in
+[tmdb-import.md](tmdb-import.md). This depends on `infoboxImage`
+(`src/lib/tpopFandom.ts`) already trimming the `/revision/latest/
+scale-to-width-down/268` suffix off the wiki's thumbnail URL: that last
+path segment is identical for *every* image on the wiki, and
+`downloadRemoteImage` names the local file after it, so without the trim
+each photo would overwrite the previous one (Bilkin's photo landing on
+Bright's — the same trap the discography importer hits, below). The 78
+performer rows written before the download step existed are moved over
+by `scripts/localize-remote-images.ts`, which re-applies the same trim
+to the URLs already in the DB.
+
 ### A band and its members can each have more than one agency
 
 Real idol groups often have both a talent management agency and a

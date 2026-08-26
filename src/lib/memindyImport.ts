@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchMemindyArtists } from "@/lib/memindy";
 import { importAgencyProduction, findOrCreateAgencyArtist } from "@/lib/agencyTmdbMatching";
 import { syncSocialLinks } from "@/lib/performerSocialLinks";
+import { downloadRemoteImage } from "@/lib/localImage";
 import type { Page } from "playwright";
 
 const AGENCY_NAME = "Me Mind Y";
@@ -67,7 +68,12 @@ export async function importMemindyAgency(
     });
     if (performer) {
       if (!performer.photoUrl && artist.photoUrl) {
-        await prisma.performer.update({ where: { id: performer.id }, data: { photoUrl: artist.photoUrl } });
+        // Фото забираем к себе, а не ссылаемся на memindy.com (см. «Local
+        // image storage» в docs/features/tmdb-import.md). Если хост не
+        // ответил, downloadRemoteImage вернёт исходную ссылку — импорт
+        // из-за одной картинки не падает.
+        const photoUrl = await downloadRemoteImage(artist.photoUrl, "performers");
+        await prisma.performer.update({ where: { id: performer.id }, data: { photoUrl } });
       }
       await syncSocialLinks(performer.id, artist.socialLinks);
     }

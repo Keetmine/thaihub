@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { fetchWikipediaAgencyPage } from "@/lib/wikipediaAgency";
 import { matchTmdbTvShow, importShow } from "@/lib/tmdbImport";
 import { importAgencyProduction, findOrCreateAgencyArtist } from "@/lib/agencyTmdbMatching";
+import { downloadRemoteImage } from "@/lib/localImage";
 
 async function importAgencyUpcoming(
   upcoming: { title: string; notes: string | null },
@@ -60,14 +61,19 @@ export async function importWikipediaAgency(
   const sourceUrl = pageUrlOrTitle.startsWith("http")
     ? pageUrlOrTitle
     : `https://en.wikipedia.org/wiki/${encodeURIComponent(pageUrlOrTitle.replace(/ /g, "_"))}`;
+  // Логотип забираем к себе ДО записи — в базе не должно оставаться
+  // ссылок на upload.wikimedia.org (см. «Local image storage» в
+  // docs/features/tmdb-import.md). Не скачалось — вернётся исходная
+  // ссылка, и агентство всё равно заведётся.
+  const logoUrl = await downloadRemoteImage(data.logoUrl, "agencies");
   const agency = await prisma.agency.upsert({
     where: { name: data.name },
     update: {
-      ...(data.logoUrl ? { logoUrl: data.logoUrl } : {}),
+      ...(logoUrl ? { logoUrl } : {}),
       ...(data.description ? { description: data.description } : {}),
       sourceUrl,
     },
-    create: { name: data.name, logoUrl: data.logoUrl, description: data.description, sourceUrl },
+    create: { name: data.name, logoUrl, description: data.description, sourceUrl },
   });
   log(`Агентство: ${data.name}`);
 

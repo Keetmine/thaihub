@@ -92,6 +92,21 @@ cleanup tool.)*
 same `refreshScrapedDrama` call, same re-fetch-every-page cost, but
 skipping pass 1 entirely so it can never create a new `Drama`.
 
+## Photos are stored locally
+
+Neither `Location.photoUrl` nor `Drama.posterUrl` keeps a blscene.com
+URL: `linkScrapedLocations`, `importScrapedDrama` and
+`refreshScrapedDrama` all run the scraped image through
+`downloadRemoteImage(url, "blscene")` before writing, so the file lives
+in `public/uploads/blscene/`. One flat folder for both fields, same as
+`uploads/tmdb/` — blscene's own filenames are long and unique enough
+that a location photo can't collide with a poster. A failed download
+never blocks the import (the helper returns the original URL and logs a
+warning), and a refresh pass is cheap because the file is already on
+disk. See "Local image storage" in [tmdb-import.md](tmdb-import.md) for
+the general rule; the 492 rows imported before this was fixed are moved
+over by `scripts/localize-remote-images.ts`.
+
 ## Location dedup + coordinate resolution
 
 Locations are deduped by exact name (`prisma.location.findFirst({where:
