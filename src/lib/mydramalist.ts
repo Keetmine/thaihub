@@ -61,8 +61,14 @@ function parseMdlDate(s: string): Date | null {
   // то есть UTC).
   const d = new Date(`${raw} UTC`);
   if (!Number.isNaN(d.getTime())) return d;
+  // Запасная ветка читает дату в поясе сервера — и вернула бы ту самую
+  // съехавшую полночь, от которой мы уходим выше. Поэтому берём у неё
+  // только календарные число-месяц-год и пересобираем их в UTC.
   const fallback = new Date(raw);
-  return Number.isNaN(fallback.getTime()) ? null : fallback;
+  if (Number.isNaN(fallback.getTime())) return null;
+  return new Date(
+    Date.UTC(fallback.getFullYear(), fallback.getMonth(), fallback.getDate()),
+  );
 }
 
 function jsonLdBlocks(html: string): unknown[] {
