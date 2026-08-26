@@ -4,9 +4,9 @@ import type { DramaStatus } from "@/generated/prisma/client";
 // только «партнёрам»), парсим страницы:
 // - тайтлы и поиск отдаются обычным GET'ом с браузерным User-Agent;
 // - раздел /people/ закрыт Cloudflare-челленджем — его нужно ходить
-//   через реальный браузер (см. scripts/mdl-sync-performers.ts: headed
-//   chromium решает челлендж, дальше его cookie используются для
-//   быстрых HTTP-запросов через context.request).
+//   через реальный браузер (см. src/lib/mdlClient.ts: chromium решает
+//   челлендж, дальше его cookie используются для быстрых HTTP-запросов
+//   через context.request).
 // Данные берутся из schema.org JSON-LD + блока Details в HTML.
 
 export const MDL_UA =
@@ -259,20 +259,16 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
   };
 }
 
-/** Страница тайтла для админ-кнопки.
+/** Страница тайтла для ОДИНОЧНОГО импорта (кнопки в админке).
  *
- *  По умолчанию через общий fetchMdlHtml, как и страницы людей: голый
- *  fetch тут ловил от Cloudflare 403, и импорт сериала падал там, где
- *  импорт актёра проходил. `browserFallback: false` — для массовых
- *  прогонов: там подъём chromium на каждую недоступную страницу
- *  недопустим. Проверку хоста делает сам fetch. */
-export async function fetchMdlDrama(
-  url: string,
-  opts: { browserFallback?: boolean } = {},
-): Promise<MdlDrama> {
-  const html =
-    opts.browserFallback === false ? await fetchMdlHtmlPlain(url) : await fetchMdlHtml(url);
-  return parseMdlDramaPage(html, url);
+ *  Через общий fetchMdlHtml, как и страницы людей: голый fetch тут ловил
+ *  от Cloudflare 403, и импорт сериала падал там, где импорт актёра
+ *  проходил. Массовые прогоны сюда не ходят — им нужен один браузер на
+ *  весь прогон, а не на страницу, и они берут html своим загрузчиком
+ *  (`MdlRunFetcher` в src/lib/mdlClient.ts). Проверку хоста делает сам
+ *  fetch. */
+export async function fetchMdlDrama(url: string): Promise<MdlDrama> {
+  return parseMdlDramaPage(await fetchMdlHtml(url), url);
 }
 
 // ---------- каст со страницы сериала ----------
@@ -497,8 +493,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *
  * Отдельно от `fetchMdlHtml` ради массовых прогонов: там на каждую
  * недоступную страницу заводить браузер нельзя — сотня таких попыток
- * растянула бы импорт на часы. Массовому импорту честнее упасть с
- * понятным сообщением.
+ * растянула бы импорт на часы. Прогон берёт отсюда дешёвую попытку, а
+ * на 403 сам решает, поднимать ли ОДИН браузер на весь прогон
+ * (`MdlRunFetcher` в src/lib/mdlClient.ts).
  *
  * 429 — не отказ, а просьба притормозить: ждём столько, сколько
  * попросили в Retry-After (или полминуты), и повторяем.

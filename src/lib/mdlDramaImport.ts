@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
+import { MdlRunFetcher } from "@/lib/mdlClient";
 import {
   canonicalMdlUrl,
   fetchMdlDrama,
   mdlIdFromUrl,
+  parseMdlDramaPage,
   type MdlDrama,
 } from "@/lib/mydramalist";
 
@@ -19,10 +21,11 @@ export type MdlDramaUpsert = {
 };
 
 export type MdlDramaUpsertOptions = {
-  /** Открывать ли страницу настоящим браузером, если обычный GET не
-   *  прошёл. Для одиночного импорта — да; для списочного нет: сотни
-   *  запусков chromium растянули бы прогон на часы. */
-  browserFallback?: boolean;
+  /** Чем брать html страницы. Массовый прогон передаёт сюда свой
+   *  `MdlRunFetcher.fetchHtml` — один браузер на весь прогон вместо
+   *  chromium на каждую недоступную страницу. Не передан — одиночный
+   *  путь: обычный GET, при челлендже свой браузер на эту страницу. */
+  fetchHtml?: (url: string) => Promise<string>;
   /** Поставить «обновлять по расписанию» (`Drama.mdlAutoUpdate`). Флаг
    *  только ставится и никогда не снимается: иначе обычный повторный
    *  импорт молча выключал бы автообновление, включённое второй
@@ -79,7 +82,9 @@ export async function upsertDramaFromMdl(
   // уникально, и «…/12345-x/» с «www.…/12345-x?ref=search» не должны
   // стать двумя разными сериалами.
   const sourceUrl = canonicalMdlUrl(url);
-  const mdl = await fetchMdlDrama(sourceUrl, { browserFallback: opts.browserFallback });
+  const mdl = opts.fetchHtml
+    ? parseMdlDramaPage(await opts.fetchHtml(sourceUrl), sourceUrl)
+    : await fetchMdlDrama(sourceUrl);
   const existing = await findDramaForMdlPage(sourceUrl, mdl.title);
 
   const poster = mdl.posterUrl ? await downloadRemoteImage(mdl.posterUrl, "mdl") : null;
@@ -202,9 +207,10 @@ export type MdlAutoUpdateResult = {
  * Поэтому обходим не «всё, у чего есть ссылка на MDL» (это тысячи
  * записей), а только помеченное.
  *
- * Браузер не поднимаем (`browserFallback: false`): прогон фоновый, и
- * сотня chromium'ов вместо сотни отказов — худшее, что он может
- * сделать ночью.
+ * Страницы берём через `MdlRunFetcher`: обычным fetch'ем, а если MDL
+ * закрылся Cloudflare-проверкой — ОДНИМ браузером на весь прогон.
+ * Раньше здесь браузера не было вовсе, и ночь, в которую MDL включал
+ * проверку, целиком уходила в отказы.
  */
 export async function refreshMdlAutoUpdateDramas(opts: {
   runId?: string | null;
@@ -227,27 +233,34 @@ export async function refreshMdlAutoUpdateDramas(opts: {
   let streak = 0;
   let abortedAfter: string | null = null;
 
-  for (const [i, drama] of dramas.entries()) {
-    await checkImportCancelled(opts.runId);
-    if (i > 0) await sleep(AUTO_UPDATE_DELAY_MS);
-    opts.onProgress?.(`Обновляем ${i + 1} из ${dramas.length}: ${drama.title}`);
-    checked += 1;
+  const fetcher = new MdlRunFetcher({ onNotice: opts.onProgress });
+  try {
+    for (const [i, drama] of dramas.entries()) {
+      await checkImportCancelled(opts.runId);
+      if (i > 0) await sleep(AUTO_UPDATE_DELAY_MS);
+      opts.onProgress?.(`Обновляем ${i + 1} из ${dramas.length}: ${drama.title}`);
+      checked += 1;
 
-    try {
-      const res = await upsertDramaFromMdl(drama.mdlUrl!, { browserFallback: false });
-      if (res.filled.length > 0) updated += 1;
-      streak = 0;
-    } catch (e) {
-      if (isImportCancelledError(e)) throw e;
-      failed += 1;
-      streak += 1;
-      if (streak >= FAILURE_STREAK_LIMIT) {
-        abortedAfter = `остановились после ${FAILURE_STREAK_LIMIT} ошибок подряд: ${
-          e instanceof Error ? e.message : String(e)
-        }`;
-        break;
+      try {
+        const res = await upsertDramaFromMdl(drama.mdlUrl!, { fetchHtml: fetcher.fetchHtml });
+        if (res.filled.length > 0) updated += 1;
+        streak = 0;
+      } catch (e) {
+        if (isImportCancelledError(e)) throw e;
+        failed += 1;
+        streak += 1;
+        if (streak >= FAILURE_STREAK_LIMIT) {
+          abortedAfter = `остановились после ${FAILURE_STREAK_LIMIT} ошибок подряд: ${
+            e instanceof Error ? e.message : String(e)
+          }`;
+          break;
+        }
       }
     }
+  } finally {
+    // В том числе на остановке кнопкой (ImportCancelledError): брошенный
+    // chromium — это память сервера, которая не вернётся.
+    await fetcher.close();
   }
 
   return { checked, updated, failed, pending: Math.max(0, total - checked), abortedAfter };

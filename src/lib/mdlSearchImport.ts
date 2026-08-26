@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
+import { MdlRunFetcher } from "@/lib/mdlClient";
 import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import {
   absMdlUrl,
-  fetchMdlHtmlPlain,
   MdlHttpError,
   parseMdlSearchTitles,
   type MdlSearchTitle,
@@ -18,10 +18,11 @@ import {
 // обходим пагинацию и прогоняем каждый найденный тайтл через обычный
 // импорт сериала.
 //
-// Ходим ОБЫЧНЫМ fetch с браузерным UA и НЕ поднимаем chromium: прогон
-// открывает сотни страниц, и браузер на каждую превратил бы импорт в
-// многочасовой. Если MDL закрылся — честнее упасть с понятным
-// сообщением в журнале.
+// Ходим ОБЫЧНЫМ fetch с браузерным UA, а chromium поднимаем только
+// если MDL закрылся Cloudflare-проверкой — и тогда ОДИН на весь прогон
+// (`MdlRunFetcher`), общий для страниц выдачи и страниц тайтлов.
+// Браузер на каждую страницу превратил бы импорт в многочасовой, а без
+// браузера вовсе прогон просто не работал в закрытые дни.
 //
 // Правовая сторона (см. docs/roadmap.md, пункт Ж3): официального ключа
 // к API MDL не выдают, но и прямого запрета на автоматический доступ в
@@ -104,6 +105,7 @@ type ScanResult = {
  */
 async function scanSearchPages(
   base: string,
+  fetcher: MdlRunFetcher,
   opts: { runId?: string | null; onProgress?: (message: string) => void },
 ): Promise<ScanResult> {
   const titles: MdlSearchTitle[] = [];
@@ -117,7 +119,7 @@ async function scanSearchPages(
 
     let html: string;
     try {
-      html = await fetchMdlHtmlPlain(searchPageUrl(base, page), {
+      html = await fetcher.fetchHtml(searchPageUrl(base, page), {
         onWait: (m) => opts.onProgress?.(`Страница ${page}: ${m}`),
       });
     } catch (e) {
@@ -168,66 +170,76 @@ export async function importMdlSearch(
     onProgress?: (message: string) => void;
   },
 ): Promise<MdlSearchImportResult> {
-  const { titles, pagesScanned, truncated } = await scanSearchPages(searchUrl, opts);
+  // Один загрузчик на весь прогон — и на обход выдачи, и на тайтлы:
+  // если Cloudflare закрылся на первой же странице поиска, поднятый
+  // браузер дальше обслуживает и все сотни страниц сериалов.
+  const fetcher = new MdlRunFetcher({ onNotice: opts.onProgress });
+  try {
+    const { titles, pagesScanned, truncated } = await scanSearchPages(searchUrl, fetcher, opts);
 
-  let created = 0;
-  let updated = 0;
-  let failed = 0;
-  let streak = 0;
-  let abortedAfter: string | null = null;
+    let created = 0;
+    let updated = 0;
+    let failed = 0;
+    let streak = 0;
+    let abortedAfter: string | null = null;
 
-  for (const [i, title] of titles.entries()) {
-    await checkImportCancelled(opts.runId);
-    if (i > 0) await sleep(REQUEST_DELAY_MS);
-    opts.onProgress?.(`Импортируем ${i + 1} из ${titles.length}: ${title.title}`);
+    for (const [i, title] of titles.entries()) {
+      await checkImportCancelled(opts.runId);
+      if (i > 0) await sleep(REQUEST_DELAY_MS);
+      opts.onProgress?.(`Импортируем ${i + 1} из ${titles.length}: ${title.title}`);
 
-    try {
-      const res = await upsertDramaFromMdl(absMdlUrl(title.path), {
-        browserFallback: false,
-        autoUpdate: opts.autoUpdate,
-      });
-      if (res.created) created += 1;
-      else updated += 1;
-      streak = 0;
-
-      // В ленту «последнего спарсенного» пишем только то, что реально
-      // изменилось: повторный прогон по той же ссылке иначе завалил бы
-      // её тысячей строк «обновлён», в которых ничего не обновилось.
-      if (res.created || res.filled.length > 0) {
-        await prisma.importedItem.create({
-          data: {
-            runId: opts.runId,
-            entityType: "drama",
-            entityId: res.id,
-            action: res.created ? "created" : "updated",
-            label: res.title,
-          },
+      try {
+        const res = await upsertDramaFromMdl(absMdlUrl(title.path), {
+          fetchHtml: fetcher.fetchHtml,
+          autoUpdate: opts.autoUpdate,
         });
-      }
-    } catch (e) {
-      if (isImportCancelledError(e)) throw e;
-      failed += 1;
-      streak += 1;
-      if (streak >= FAILURE_STREAK_LIMIT) {
-        abortedAfter = `остановились на ${i + 1}-м после ${FAILURE_STREAK_LIMIT} ошибок подряд: ${
-          e instanceof Error ? e.message : String(e)
-        }`;
-        break;
+        if (res.created) created += 1;
+        else updated += 1;
+        streak = 0;
+
+        // В ленту «последнего спарсенного» пишем только то, что реально
+        // изменилось: повторный прогон по той же ссылке иначе завалил бы
+        // её тысячей строк «обновлён», в которых ничего не обновилось.
+        if (res.created || res.filled.length > 0) {
+          await prisma.importedItem.create({
+            data: {
+              runId: opts.runId,
+              entityType: "drama",
+              entityId: res.id,
+              action: res.created ? "created" : "updated",
+              label: res.title,
+            },
+          });
+        }
+      } catch (e) {
+        if (isImportCancelledError(e)) throw e;
+        failed += 1;
+        streak += 1;
+        if (streak >= FAILURE_STREAK_LIMIT) {
+          abortedAfter = `остановились на ${i + 1}-м после ${FAILURE_STREAK_LIMIT} ошибок подряд: ${
+            e instanceof Error ? e.message : String(e)
+          }`;
+          break;
+        }
       }
     }
-  }
 
-  return {
-    searchUrl,
-    pagesScanned,
-    truncated,
-    found: titles.length,
-    created,
-    updated,
-    failed,
-    autoUpdate: opts.autoUpdate,
-    abortedAfter,
-  };
+    return {
+      searchUrl,
+      pagesScanned,
+      truncated,
+      found: titles.length,
+      created,
+      updated,
+      failed,
+      autoUpdate: opts.autoUpdate,
+      abortedAfter,
+    };
+  } finally {
+    // В том числе на остановке кнопкой (ImportCancelledError) и на
+    // падении обхода выдачи: незакрытый chromium остался бы висеть.
+    await fetcher.close();
+  }
 }
 
 /** Сводка для журнала импортов. Отдельной функцией, потому что нужна и
