@@ -61,6 +61,8 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     description:
       "Переоткрывает страницы сериалов с пометкой «обновлять по расписанию»: " +
       "у выходящих постоянно уточняются даты эфира, число серий, статус и оценка. " +
+      "Заодно обновляется расписание серий (какая серия на какое число) — " +
+      "у выходящего сериала даты следующих серий появляются неделя за неделей. " +
       "Пометку ставит вторая кнопка в импортах — и у одиночного сериала, и у импорта " +
       "со страницы поиска. За один прогон обходится до 300 карточек, начиная с тех, " +
       "которые дольше всех не открывали.",
@@ -74,10 +76,16 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
         checked: number;
         updated: number;
         failed: number;
+        scheduleChanged: number;
+        episodesAdded: number;
+        episodesChanged: number;
         pending: number;
         abortedAfter: string | null;
       }) =>
         `проверено ${r.checked}, с изменениями ${r.updated}, ошибок ${r.failed}` +
+        (r.scheduleChanged
+          ? `, расписание уточнилось у ${r.scheduleChanged} (серий +${r.episodesAdded}, дат ${r.episodesChanged})`
+          : "") +
         (r.pending ? `, отложено до следующего прогона ${r.pending}` : "") +
         (r.abortedAfter ? ` · ${r.abortedAfter}` : "");
 

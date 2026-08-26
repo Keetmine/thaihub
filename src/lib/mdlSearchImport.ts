@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { MdlRunFetcher } from "@/lib/mdlClient";
 import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
+import { linkMdlCast } from "@/lib/mdlCastLink";
 import {
   absMdlUrl,
   MdlHttpError,
@@ -17,6 +18,11 @@ import {
 // («gay romance, сейчас выходит, сначала новые»), вставляет сюда, а мы
 // обходим пагинацию и прогоняем каждый найденный тайтл через обычный
 // импорт сериала.
+//
+// Каст прогон связывает сам, но урезанным отбором: главные роли
+// целиком, второй план — только знакомые нам актёры с агентством,
+// гости не берутся. Разбирается он из уже скачанной страницы сериала,
+// так что лишних запросов к MDL это не добавляет (см. mdlCastLink.ts).
 //
 // Ходим ОБЫЧНЫМ fetch с браузерным UA, а chromium поднимаем только
 // если MDL закрылся Cloudflare-проверкой — и тогда ОДИН на весь прогон
@@ -158,6 +164,9 @@ export type MdlSearchImportResult = {
   created: number;
   updated: number;
   failed: number;
+  /** Новых связей «актёр — сериал» и заведённых карточек актёров. */
+  castLinked: number;
+  performersCreated: number;
   autoUpdate: boolean;
   abortedAfter: string | null;
 };
@@ -181,6 +190,8 @@ export async function importMdlSearch(
     let updated = 0;
     let failed = 0;
     let streak = 0;
+    let castLinked = 0;
+    let performersCreated = 0;
     let abortedAfter: string | null = null;
 
     for (const [i, title] of titles.entries()) {
@@ -197,10 +208,22 @@ export async function importMdlSearch(
         else updated += 1;
         streak = 0;
 
+        // Каст разбирается из той же страницы сериала, которую мы уже
+        // скачали, — на MDL за ним никто не ходит. Отбор урезанный
+        // (главные роли + знакомый нам второй план): иначе каждый
+        // незнакомый актёр второго плана стоил бы отдельной страницы.
+        const cast = await linkMdlCast(res.id, res.mdl.cast, {
+          runId: opts.runId,
+          scope: "main-and-known-support",
+          enrich: false,
+        });
+        castLinked += cast.linked;
+        performersCreated += cast.createdPerformers;
+
         // В ленту «последнего спарсенного» пишем только то, что реально
         // изменилось: повторный прогон по той же ссылке иначе завалил бы
         // её тысячей строк «обновлён», в которых ничего не обновилось.
-        if (res.created || res.filled.length > 0) {
+        if (res.created || res.filled.length > 0 || cast.linked > 0) {
           await prisma.importedItem.create({
             data: {
               runId: opts.runId,
@@ -232,6 +255,8 @@ export async function importMdlSearch(
       created,
       updated,
       failed,
+      castLinked,
+      performersCreated,
       autoUpdate: opts.autoUpdate,
       abortedAfter,
     };
@@ -248,6 +273,8 @@ export function summarizeMdlSearch(r: MdlSearchImportResult): string {
   return (
     `найдено ${r.found} на ${r.pagesScanned} стр., ` +
     `создано ${r.created}, обновлено ${r.updated}, с ошибкой ${r.failed}` +
+    (r.castLinked ? `, каст +${r.castLinked}` : "") +
+    (r.performersCreated ? ` (заведено актёров ${r.performersCreated})` : "") +
     (r.autoUpdate ? " · помечены «обновлять по расписанию»" : "") +
     (r.truncated
       ? ` · дошли до потолка в ${MAX_PAGES} страниц, на MDL осталось ещё — сузьте фильтры`

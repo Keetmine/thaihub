@@ -424,6 +424,7 @@ model Drama {
 
   performers     PerformerDrama[]
   watchStatuses  DramaWatchStatus[]
+  episodeList    DramaEpisode[]
   events         Event[]
   locations      DramaLocation[]
 
@@ -566,6 +567,29 @@ enum WatchStatus {
 // This is the only per-user "how do I feel about this drama" signal —
 // there's deliberately no separate drama favorite/heart, unlike
 // performers/events/agencies (see docs/features/social.md).
+/**
+ * Расписание серий: какая серия на какое число.
+ *
+ * Отдельными строками, а не вычислением «airedFrom + неделя × номер»:
+ * у сериалов бывают перерывы, сдвоенные показы и спецвыпуски, и
+ * посчитанная дата врала бы ровно там, где на неё смотрят — «выходит ли
+ * сегодня». Даты приходят со страницы /episodes на MyDramaList.
+ */
+model DramaEpisode {
+  id      String @id @default(cuid())
+  dramaId String
+  drama   Drama  @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  number  Int
+  // null — дату ещё не объявили: у выходящего сериала хвост расписания
+  // обычно пустой, и это не то же самое, что «серии нет».
+  airDate DateTime?
+  title   String?
+
+  @@unique([dramaId, number])
+  // Под запрос «что выходит сегодня» на главной.
+  @@index([airDate])
+}
+
 model DramaWatchStatus {
   userId    String
   dramaId   String

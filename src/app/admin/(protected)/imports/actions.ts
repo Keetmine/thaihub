@@ -5,11 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopArtist } from "@/lib/tpopAgencyImport";
 import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
-import { logImportRun, isImportCancelledError, checkImportCancelled } from "@/lib/importRun";
+import { logImportRun, isImportCancelledError } from "@/lib/importRun";
 import { resolveChannelInput, parseChannelHandle } from "@/lib/youtubeMusic";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
-import { mdlIdFromUrl, absMdlUrl, type MdlCastMember } from "@/lib/mydramalist";
-import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
+import { mdlIdFromUrl } from "@/lib/mydramalist";
+import { upsertDramaFromMdl, summarizeSchedule } from "@/lib/mdlDramaImport";
+import { linkMdlCast } from "@/lib/mdlCastLink";
 import { importMdlSearch, parseMdlSearchInput, summarizeMdlSearch } from "@/lib/mdlSearchImport";
 
 /**
@@ -218,128 +219,6 @@ export async function runMdlPerformerImport(formData: FormData): Promise<void> {
 }
 
 /**
- * Привязка каста со страницы сериала. Актёра ищем сначала по ссылке на
- * MDL (точное совпадение), потом по имени; если не нашли — заводим
- * карточку-заготовку с именем и ссылкой. Заготовку потом дозаполнит
- * обычный импорт актёра — а так каст сериала оставался бы пустым, ради
- * чего всё и затевалось. Роли не перезаписываем: связь уже есть —
- * пропускаем.
- */
-async function linkMdlCast(
-  dramaId: string,
-  cast: MdlCastMember[],
-  runId: string,
-): Promise<{
-  linked: number;
-  createdPerformers: number;
-  enriched: number;
-  enrichFailed: number;
-}> {
-  let linked = 0;
-  let createdPerformers = 0;
-  let enriched = 0;
-  let enrichFailed = 0;
-  // Страховка от очень длинных кастов: каждая карточка — это отдельная
-  // страница MDL, а она может открываться через браузер и занимать
-  // десятки секунд.
-  const ENRICH_LIMIT = 20;
-  const staleBefore = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-  for (const member of cast) {
-    // Между актёрами даём остановить прогон: каст большой, ждать конца
-    // ради отмены неразумно.
-    await checkImportCancelled(runId);
-
-    const mdlUrl = absMdlUrl(member.mdlPath);
-    let performer = await prisma.performer.findFirst({
-      where: {
-        OR: [
-          { mydramalistUrl: mdlUrl },
-          { name: { equals: member.name, mode: "insensitive" } },
-        ],
-      },
-      select: {
-        id: true,
-        photoUrl: true,
-        bio: true,
-        realName: true,
-        birthDate: true,
-        mdlSyncedAt: true,
-        _count: { select: { links: true } },
-      },
-    });
-    let isNew = false;
-
-    if (!performer) {
-      const created = await prisma.performer.create({
-        data: { name: member.name, mydramalistUrl: mdlUrl },
-        select: { id: true },
-      });
-      performer = {
-        id: created.id,
-        photoUrl: null,
-        bio: null,
-        realName: null,
-        birthDate: null,
-        mdlSyncedAt: null,
-        _count: { links: 0 },
-      };
-      isNew = true;
-      createdPerformers += 1;
-      await prisma.importedItem.create({
-        data: {
-          runId,
-          entityType: "performer",
-          entityId: created.id,
-          action: "created",
-          label: member.name,
-        },
-      });
-    }
-
-    // Дозаполняем карточку со страницы актёра — и заведённую только что,
-    // и давнюю, если в ней чего-то не хватает. Полную и недавно
-    // синхронизированную не трогаем: импорт всё равно пишет только в
-    // пустые поля, а страница грузится долго.
-    const incomplete =
-      !performer.photoUrl ||
-      !performer.bio ||
-      !performer.realName ||
-      !performer.birthDate ||
-      performer._count.links === 0;
-    const stale = !performer.mdlSyncedAt || performer.mdlSyncedAt < staleBefore;
-    if ((isNew || (incomplete && stale)) && enriched + enrichFailed < ENRICH_LIMIT) {
-      try {
-        await importMdlPerformer(mdlUrl, performer.id, runId);
-        await prisma.performer.update({
-          where: { id: performer.id },
-          data: { mdlSyncedAt: new Date() },
-        });
-        enriched += 1;
-      } catch (e) {
-        // Отмену пробрасываем, всё остальное — не повод ронять импорт
-        // сериала: связь с актёром уже есть, карточку дозаполним позже.
-        if (isImportCancelledError(e)) throw e;
-        enrichFailed += 1;
-      }
-    }
-
-    const already = await prisma.performerDrama.findUnique({
-      where: { performerId_dramaId: { performerId: performer.id, dramaId } },
-      select: { dramaId: true },
-    });
-    if (already) continue;
-
-    await prisma.performerDrama.create({
-      data: { performerId: performer.id, dramaId, role: member.role },
-    });
-    linked += 1;
-  }
-
-  return { linked, createdPerformers, enriched, enrichFailed };
-}
-
-/**
  * Импорт ОДНОГО сериала со страницы MyDramaList по ссылке. В отличие от
  * кнопки на карточке сериала (она только дозаполняет уже существующую
  * запись), здесь сериала в каталоге может ещё не быть — тогда он
@@ -379,13 +258,18 @@ async function importMdlDrama(formData: FormData, autoUpdate: boolean): Promise<
         // пользуется импорт фильмографии актёра. Каст разбираем здесь:
         // в фильмографии он не нужен, иначе вышла бы цепочка через
         // актёров.
-        const { id, title, created, filled, mdl } = await upsertDramaFromMdl(url, { autoUpdate });
-        const cast = await linkMdlCast(id, mdl.cast, runId);
+        const { id, title, created, filled, mdl, schedule } = await upsertDramaFromMdl(url, {
+          autoUpdate,
+        });
+        // Каст целиком и с дозаполнением карточек: ссылку вставили
+        // руками ради одного сериала, лишними эти страницы не будут.
+        const cast = await linkMdlCast(id, mdl.cast, { runId, scope: "all", enrich: true });
         return {
           title,
           id,
           created,
           filled,
+          schedule,
           ...cast,
           castFound: mdl.cast.length,
           peopleLinks: mdl.peopleLinks,
@@ -395,6 +279,7 @@ async function importMdlDrama(formData: FormData, autoUpdate: boolean): Promise<
         (r.created
           ? `${r.title}: создан`
           : `${r.title}: ${r.filled.length ? `заполнено — ${r.filled.join(", ")}` : "новых полей нет"}`) +
+        summarizeSchedule(r.schedule) +
         (r.linked ? `, каст +${r.linked}` : ", новых связей каста нет") +
         (r.createdPerformers ? ` (заведено актёров ${r.createdPerformers})` : "") +
         (r.enriched ? `, дозаполнено карточек ${r.enriched}` : "") +

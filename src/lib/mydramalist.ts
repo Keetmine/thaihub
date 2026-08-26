@@ -277,6 +277,74 @@ export async function fetchMdlDrama(url: string): Promise<MdlDrama> {
   return parseMdlDramaPage(await fetchMdlHtml(url), url);
 }
 
+// ---------- расписание серий ----------
+
+export type MdlEpisode = {
+  number: number;
+  /** null — дату ещё не объявили: у выходящего сериала хвост списка
+   *  обычно без дат, и это не то же самое, что «серии нет». */
+  airDate: Date | null;
+  title: string | null;
+};
+
+/** Расписание живёт на подстранице тайтла: адрес сериала + `/episodes`. */
+export function mdlEpisodesUrl(dramaUrl: string): string {
+  return `${canonicalMdlUrl(dramaUrl)}/episodes`;
+}
+
+/**
+ * Список серий со страницы `/episodes`.
+ *
+ * Карточка серии: `<div class="… p-a episode">` со ссылкой
+ * `/<id>-<slug>/episode/<N>` (дважды — на обложке и в заголовке),
+ * подписью `<h2 class="title">` и `<div class="air-date">Nov 21, 2025</div>`.
+ *
+ * Границу карточки держим лукахедом до следующей карточки (или до
+ * блока с описанием серии) НАМЕРЕННО: у серии без объявленной даты
+ * `div.air-date` не выводится вовсе, и без границы дата уехала бы к ней
+ * от соседней серии — расписание выглядело бы правдоподобно и было бы
+ * неверным.
+ */
+export function parseMdlEpisodes(html: string): MdlEpisode[] {
+  // Сужаем до списка серий: класс `episode` узнаваем, но такой же
+  // разметкой MDL рисует карточки серий и в боковых блоках.
+  const start = html.search(/<div class="episodes[\s"]/);
+  const region = start >= 0 ? html.slice(start) : html;
+
+  const out: MdlEpisode[] = [];
+  const seen = new Set<number>();
+  for (const m of region.matchAll(
+    /<div class="[^"]*\bepisode"[^>]*>([\s\S]*?)(?=<div class="summary|<div class="[^"]*\bepisode"|$)/g,
+  )) {
+    const block = m[1];
+    const numberRaw = block.match(/href="[^"]*\/episode\/(\d+)"/)?.[1];
+    if (!numberRaw) continue;
+    const number = Number(numberRaw);
+    if (!Number.isInteger(number) || number <= 0 || seen.has(number)) continue;
+    seen.add(number);
+
+    const dateRaw = block.match(/<div class="air-date">([^<]*)<\/div>/)?.[1];
+    const headingRaw = block.match(/<h2 class="title">[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/)?.[1];
+    const heading = headingRaw ? stripTags(headingRaw) : "";
+    out.push({
+      number,
+      airDate: dateRaw ? parseMdlDate(decodeEntities(dateRaw)) : null,
+      // Подпись карточки почти всегда шаблонная — «<Сериал> Episode 7».
+      // Такое в базу класть незачем: на странице сериала это выглядело бы
+      // как настоящее название серии. Отличаем по хвосту с ЭТИМ номером.
+      title: heading && !new RegExp(`Episode\\s+${number}$`, "i").test(heading) ? heading : null,
+    });
+  }
+  return out.sort((a, b) => a.number - b.number);
+}
+
+/** Расписание для ОДИНОЧНОГО импорта — как fetchMdlDrama, через общий
+ *  fetchMdlHtml. Массовые прогоны сюда не ходят: у них свой загрузчик с
+ *  одним браузером на прогон, им хватает `parseMdlEpisodes`. */
+export async function fetchMdlEpisodes(dramaUrl: string): Promise<MdlEpisode[]> {
+  return parseMdlEpisodes(await fetchMdlHtml(mdlEpisodesUrl(dramaUrl)));
+}
+
 // ---------- каст со страницы сериала ----------
 
 export type MdlCastMember = {

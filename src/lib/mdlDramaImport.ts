@@ -1,3 +1,4 @@
+import type { DramaStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
@@ -5,10 +6,25 @@ import { MdlRunFetcher } from "@/lib/mdlClient";
 import {
   canonicalMdlUrl,
   fetchMdlDrama,
+  fetchMdlEpisodes,
+  mdlEpisodesUrl,
   mdlIdFromUrl,
   parseMdlDramaPage,
+  parseMdlEpisodes,
   type MdlDrama,
+  type MdlEpisode,
 } from "@/lib/mydramalist";
+
+/** Что стало с расписанием серий за этот импорт. */
+export type MdlScheduleSync = {
+  /** Серий в расписании после синхронизации. */
+  total: number;
+  added: number;
+  /** Уточнились дата или название уже известной серии. */
+  changed: number;
+  /** Серий, которых на MDL больше нет. */
+  removed: number;
+};
 
 export type MdlDramaUpsert = {
   id: string;
@@ -18,6 +34,8 @@ export type MdlDramaUpsert = {
   filled: string[];
   /** Разобранная страница — вызывающий решает, что делать с кастом. */
   mdl: MdlDrama;
+  /** null — за расписанием не ходили или страница не разобралась. */
+  schedule: MdlScheduleSync | null;
 };
 
 export type MdlDramaUpsertOptions = {
@@ -60,6 +78,134 @@ async function findDramaForMdlPage(sourceUrl: string, title: string) {
   return prisma.drama.findFirst({ where: { title } });
 }
 
+// ---------- расписание серий ----------
+
+/**
+ * Идти ли на подстраницу `/episodes`.
+ *
+ * Расписание — это ВТОРОЙ поход на MDL на каждый сериал, а массовый
+ * прогон обходит сотни тайтлов: без отбора мы бы ровно вдвое увеличили
+ * нагрузку на чужой сайт и время прогона. Правило:
+ *
+ * - расписания у сериала ещё нет — берём один раз, каким бы ни был
+ *   статус: у завершённого оно больше не изменится, значит и второго
+ *   раза не понадобится;
+ * - дальше возвращаемся только к тем, у кого оно ещё меняется:
+ *   «выходит» и «запланирован» (у анонса даты как раз и появляются
+ *   неделя за неделей), плюс «статус неизвестен» — он выводится из дат
+ *   эфира, и пустой статус означает, что дат на карточке нет, то есть
+ *   расписание тем более может быть свежее нашего;
+ * - у завершённого с уже забранным расписанием на страницу не ходим.
+ *
+ * Статус берём разобранный со страницы, а не из базы: он только что
+ * посчитан по свежим датам эфира.
+ */
+async function shouldSyncSchedule(
+  existingId: string | null,
+  status: DramaStatus | null,
+): Promise<boolean> {
+  if (!existingId) return true;
+  if (status === null || status === "RETURNING_SERIES" || status === "PLANNED") return true;
+  return (await prisma.dramaEpisode.count({ where: { dramaId: existingId } })) === 0;
+}
+
+/** Страница расписания: массовый прогон — своим загрузчиком (один
+ *  браузер на прогон), одиночный импорт — общим fetchMdlEpisodes. */
+async function fetchSchedule(
+  sourceUrl: string,
+  opts: MdlDramaUpsertOptions,
+): Promise<MdlEpisode[] | null> {
+  try {
+    return opts.fetchHtml
+      ? parseMdlEpisodes(await opts.fetchHtml(mdlEpisodesUrl(sourceUrl)))
+      : await fetchMdlEpisodes(sourceUrl);
+  } catch (e) {
+    if (isImportCancelledError(e)) throw e;
+    // Карточка сериала к этому моменту уже разобрана — ронять из-за
+    // расписания весь импорт незачем: у фильмов подстраницы
+    // `/episodes` нет вовсе (404), а отказ MDL на ней ничего не говорит
+    // о самой карточке.
+    return null;
+  }
+}
+
+/**
+ * Приводит `DramaEpisode` сериала к тому, что показал MDL.
+ *
+ * Пустой список НЕ применяем: «серий не нашли» — это почти всегда не
+ * отмена показа, а урезанная страница или разъехавшаяся вёрстка, и
+ * стереть по такому поводу всё расписание хуже, чем не обновить его.
+ */
+async function syncDramaEpisodes(
+  dramaId: string,
+  parsed: MdlEpisode[],
+): Promise<MdlScheduleSync | null> {
+  if (parsed.length === 0) return null;
+
+  const existing = await prisma.dramaEpisode.findMany({
+    where: { dramaId },
+    select: { number: true, airDate: true, title: true },
+  });
+  const byNumber = new Map(existing.map((e) => [e.number, e]));
+
+  const toCreate: { dramaId: string; number: number; airDate: Date | null; title: string | null }[] =
+    [];
+  const toUpdate: { number: number; airDate: Date | null; title: string | null }[] = [];
+
+  for (const ep of parsed) {
+    const current = byNumber.get(ep.number);
+    // Известную дату НЕ затираем в null. Если она у нас есть, а MDL её
+    // сейчас не показал, это чаще сбой разбора (или временно урезанная
+    // страница), чем снятая с эфира серия: даты у выходящих переносят,
+    // но не «разобъявляют». То же и с названием.
+    const airDate = ep.airDate ?? current?.airDate ?? null;
+    const title = ep.title ?? current?.title ?? null;
+
+    if (!current) {
+      toCreate.push({ dramaId, number: ep.number, airDate, title });
+      continue;
+    }
+    if (current.airDate?.getTime() !== airDate?.getTime() || current.title !== title) {
+      toUpdate.push({ number: ep.number, airDate, title });
+    }
+  }
+
+  // Первый импорт длинного сериала — это сотни строк: заводим их одним
+  // запросом, а не по одной.
+  if (toCreate.length > 0) {
+    await prisma.dramaEpisode.createMany({ data: toCreate, skipDuplicates: true });
+  }
+  for (const row of toUpdate) {
+    await prisma.dramaEpisode.update({
+      where: { dramaId_number: { dramaId, number: row.number } },
+      data: { airDate: row.airDate, title: row.title },
+    });
+  }
+  // Серия исчезла с MDL (перенумеровали, свели спецвыпуск с обычной) —
+  // убираем: расписание должно совпадать с источником.
+  const removed = await prisma.dramaEpisode.deleteMany({
+    where: { dramaId, number: { notIn: parsed.map((e) => e.number) } },
+  });
+
+  return {
+    total: parsed.length,
+    added: toCreate.length,
+    changed: toUpdate.length,
+    removed: removed.count,
+  };
+}
+
+/** Короткая строка про расписание для сводки прогона. */
+export function summarizeSchedule(s: MdlScheduleSync | null): string {
+  if (!s) return "";
+  const parts = [
+    s.added ? `+${s.added}` : "",
+    s.changed ? `уточнено ${s.changed}` : "",
+    s.removed ? `убрано ${s.removed}` : "",
+  ].filter(Boolean);
+  return parts.length > 0 ? `, расписание серий: ${parts.join(", ")} (всего ${s.total})` : "";
+}
+
 /**
  * Создаёт или дозаполняет сериал по странице MyDramaList.
  *
@@ -87,6 +233,15 @@ export async function upsertDramaFromMdl(
     : await fetchMdlDrama(sourceUrl);
   const existing = await findDramaForMdlPage(sourceUrl, mdl.title);
 
+  const parsedSchedule = (await shouldSyncSchedule(existing?.id ?? null, mdl.status))
+    ? await fetchSchedule(sourceUrl, opts)
+    : null;
+  // Число серий берём из расписания: это перечисление реальных серий, а
+  // «Episodes: N» в блоке Details у выходящих отстаёт (и у нас оно ещё
+  // могло остаться от старых TMDB-импортов). Пустое расписание в счёт не
+  // идёт — см. syncDramaEpisodes.
+  const scheduleCount = parsedSchedule && parsedSchedule.length > 0 ? parsedSchedule.length : null;
+
   const poster = mdl.posterUrl ? await downloadRemoteImage(mdl.posterUrl, "mdl") : null;
   const base = {
     // Две ссылки на одну страницу — намеренно: mydramalistUrl правится
@@ -102,7 +257,7 @@ export async function upsertDramaFromMdl(
     director: mdl.director,
     screenwriter: mdl.screenwriter,
     network: mdl.network,
-    episodes: mdl.episodes,
+    episodes: scheduleCount ?? mdl.episodes,
     airedFrom: mdl.airedFrom,
     airedTo: mdl.airedTo,
     airedOn: mdl.airedOn,
@@ -123,7 +278,14 @@ export async function upsertDramaFromMdl(
         mdlAutoUpdate: opts.autoUpdate ?? false,
       },
     });
-    return { id: created.id, title: created.title, created: true, filled: [], mdl };
+    return {
+      id: created.id,
+      title: created.title,
+      created: true,
+      filled: [],
+      mdl,
+      schedule: parsedSchedule ? await syncDramaEpisodes(created.id, parsedSchedule) : null,
+    };
   }
 
   const data: Record<string, unknown> = {
@@ -167,9 +329,23 @@ export async function upsertDramaFromMdl(
     data.status = mdl.status;
     filled.push("статус");
   }
+  // Расписание против «Episodes: N»: если разошлись, верим расписанию —
+  // даже поверх занесённого руками, иначе на карточке было бы «12
+  // серий», а в списке под ней 13.
+  if (scheduleCount !== null && scheduleCount !== existing.episodes) {
+    data.episodes = scheduleCount;
+    if (!filled.includes("серии")) filled.push("серии");
+  }
 
   const updated = await prisma.drama.update({ where: { id: existing.id }, data });
-  return { id: updated.id, title: updated.title, created: false, filled, mdl };
+  const schedule = parsedSchedule ? await syncDramaEpisodes(updated.id, parsedSchedule) : null;
+  // В `filled` — чтобы прогон посчитал такой сериал изменившимся: ради
+  // уточнённых дат ночное обновление и ходит.
+  if (schedule && (schedule.added || schedule.changed || schedule.removed)) {
+    filled.push("расписание серий");
+  }
+
+  return { id: updated.id, title: updated.title, created: false, filled, mdl, schedule };
 }
 
 // ---------- обновление по расписанию ----------
@@ -193,6 +369,11 @@ export type MdlAutoUpdateResult = {
   checked: number;
   updated: number;
   failed: number;
+  /** У скольких сериалов поменялось расписание серий. */
+  scheduleChanged: number;
+  /** Сколько серий за прогон добавилось и сколько уточнило дату. */
+  episodesAdded: number;
+  episodesChanged: number;
   /** Осталось за потолком прогона — доберём в следующую ночь. */
   pending: number;
   /** Прервались раньше времени: MDL перестал отдавать страницы. */
@@ -206,6 +387,11 @@ export type MdlAutoUpdateResult = {
  * эфира, число серий, статус и оценка, а у завершённых — уже нет.
  * Поэтому обходим не «всё, у чего есть ссылка на MDL» (это тысячи
  * записей), а только помеченное.
+ *
+ * Расписание серий обновляется тем же вызовом `upsertDramaFromMdl` —
+ * ради него ночной обход в основном и нужен: у выходящего сериала даты
+ * следующих серий уточняются неделями. Лишней страницы это не стоит
+ * там, где расписание уже не изменится (см. `shouldSyncSchedule`).
  *
  * Страницы берём через `MdlRunFetcher`: обычным fetch'ем, а если MDL
  * закрылся Cloudflare-проверкой — ОДНИМ браузером на весь прогон.
@@ -231,6 +417,9 @@ export async function refreshMdlAutoUpdateDramas(opts: {
   let updated = 0;
   let failed = 0;
   let streak = 0;
+  let scheduleChanged = 0;
+  let episodesAdded = 0;
+  let episodesChanged = 0;
   let abortedAfter: string | null = null;
 
   const fetcher = new MdlRunFetcher({ onNotice: opts.onProgress });
@@ -244,6 +433,11 @@ export async function refreshMdlAutoUpdateDramas(opts: {
       try {
         const res = await upsertDramaFromMdl(drama.mdlUrl!, { fetchHtml: fetcher.fetchHtml });
         if (res.filled.length > 0) updated += 1;
+        if (res.schedule && (res.schedule.added || res.schedule.changed || res.schedule.removed)) {
+          scheduleChanged += 1;
+          episodesAdded += res.schedule.added;
+          episodesChanged += res.schedule.changed;
+        }
         streak = 0;
       } catch (e) {
         if (isImportCancelledError(e)) throw e;
@@ -263,5 +457,14 @@ export async function refreshMdlAutoUpdateDramas(opts: {
     await fetcher.close();
   }
 
-  return { checked, updated, failed, pending: Math.max(0, total - checked), abortedAfter };
+  return {
+    checked,
+    updated,
+    failed,
+    scheduleChanged,
+    episodesAdded,
+    episodesChanged,
+    pending: Math.max(0, total - checked),
+    abortedAfter,
+  };
 }
