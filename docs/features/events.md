@@ -502,6 +502,19 @@ database until that confirm step** — the scrape itself is read-only.
   image that won't download is skipped and listed by name rather than
   failing the run. Safe to re-run (already-local rows are excluded by
   the query itself). One run moved 14 events, 2.0 MB → 395 KB.
+- **A poster whose file went missing** is recovered by
+  `scripts/fix-missing-images.ts` (documented under "Local image storage"
+  in [tmdb-import.md](tmdb-import.md)), which sweeps every image field in
+  the catalog for `/uploads/...` paths with nothing behind them. For
+  `/uploads/posters/` it can find the source even when `Event.sourceUrl`
+  is null — every event imported so far predates that field: TTM names
+  its poster `<page-slug>-<13 hex>-l.<ext>`, so the page URL is the
+  filename minus that suffix (`fanboy-gala-night-ep1-6a852ded0eb4d-l.webp`
+  → `/concert/fanboy-gala-night-ep1.html`). The scraped poster is only
+  accepted when its basename is the very file that's missing, or when the
+  page's title matches the event's (TTM swapped the artwork) — otherwise
+  the field is nulled rather than filled from a page that may not be the
+  right event at all.
 - **Multi-day detection**: the page's date line (e.g. `"Saturday 24 -
   Sunday 25 October 2026"`, or a 3-night `"Friday 21, Saturday 22 and
   Sunday 23 August 2026"`) is parsed by `parseDateRangeDays` into every
