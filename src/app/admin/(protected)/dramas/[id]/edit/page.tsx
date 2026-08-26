@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dramaHref } from "@/lib/dramaSlug";
 import DramaForm from "../../DramaForm";
-import MdlImportButton from "../../MdlImportButton";
 import { updateDrama, deleteDrama } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
@@ -56,7 +55,6 @@ export default async function EditDramaPage({
           Посмотреть на сайте ↗
         </a>
       </div>
-      <MdlImportButton dramaId={id} />
       <DramaForm
         action={boundUpdate}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
