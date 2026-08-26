@@ -10,6 +10,33 @@ import { resolveChannelInput, parseChannelHandle } from "@/lib/youtubeMusic";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
 import { mdlIdFromUrl, absMdlUrl, type MdlCastMember } from "@/lib/mydramalist";
 import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
+import { importMdlSearch, parseMdlSearchInput, summarizeMdlSearch } from "@/lib/mdlSearchImport";
+
+/**
+ * Пишет ход длинного прогона в `run.summary` — страница импортов
+ * перечитывает его раз в 4 секунды, пока есть RUNNING.
+ *
+ * Не чаще раза в две секунды: на обходе в тысячу страниц апдейт на
+ * каждый шаг — это тысяча лишних запросов в БД. И только пока прогон
+ * идёт (`updateMany` со статусом): последняя запись прогресса может
+ * уйти в БД уже после того, как logImportRun поставил итоговую
+ * сводку, и без фильтра затёрла бы её обратно на «импортируем 998
+ * из 1000».
+ */
+function progressWriter(runId: string): (message: string) => void {
+  let lastWrite = 0;
+  return (message: string) => {
+    const now = Date.now();
+    if (now - lastWrite < 2000) return;
+    lastWrite = now;
+    void prisma.importRun
+      .updateMany({
+        where: { id: runId, status: "RUNNING" },
+        data: { summary: message.slice(0, 500) },
+      })
+      .catch(() => {});
+  };
+}
 
 
 /** Одиночный импорт артиста/группы с tpop.fandom (та же фоновая схема
@@ -321,6 +348,18 @@ async function linkMdlCast(
  * он выводится из дат эфира и всегда освежается.
  */
 export async function runMdlDramaImport(formData: FormData): Promise<void> {
+  await importMdlDrama(formData, false);
+}
+
+/** Та же кнопка, но сериал заодно получает пометку «обновлять по
+ *  расписанию» (`Drama.mdlAutoUpdate`): у выходящего тайтла даты эфира,
+ *  число серий и статус меняются неделями, и без пометки за ними
+ *  пришлось бы возвращаться руками. */
+export async function runMdlDramaImportAndSchedule(formData: FormData): Promise<void> {
+  await importMdlDrama(formData, true);
+}
+
+async function importMdlDrama(formData: FormData, autoUpdate: boolean): Promise<void> {
   await requireCatalogEditor();
   const url = String(formData.get("mdlUrl") ?? "").trim();
   if (!url) throw new Error("Вставьте ссылку на сериал MyDramaList");
@@ -340,7 +379,7 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
         // пользуется импорт фильмографии актёра. Каст разбираем здесь:
         // в фильмографии он не нужен, иначе вышла бы цепочка через
         // актёров.
-        const { id, title, created, filled, mdl } = await upsertDramaFromMdl(url);
+        const { id, title, created, filled, mdl } = await upsertDramaFromMdl(url, { autoUpdate });
         const cast = await linkMdlCast(id, mdl.cast, runId);
         return {
           title,
@@ -369,6 +408,50 @@ export async function runMdlDramaImport(formData: FormData): Promise<void> {
           : r.castFound === r.linked
             ? ""
             : ` (на странице ${r.castFound})`),
+    ).catch(() => {
+      // Падение уже записано в журнал самим logImportRun.
+    });
+  })();
+
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin/dramas");
+  revalidatePath("/admin/performers");
+}
+
+/**
+ * Импорт всех сериалов со страницы поиска MyDramaList.
+ *
+ * Ссылку владелец собирает на самом MDL их же фильтрами (тег, статус,
+ * страна) и вставляет целиком — так не приходится держать в админке
+ * копию их справочника тегов, которая всё равно устареет.
+ */
+export async function runMdlSearchImport(formData: FormData): Promise<void> {
+  await importFromMdlSearch(formData, false);
+}
+
+/** Та же кнопка, но каждый найденный сериал получает пометку
+ *  «обновлять по расписанию»: список выходящего затем обходится ночью
+ *  сам, и следить за датами эфира руками не нужно. */
+export async function runMdlSearchImportAndSchedule(formData: FormData): Promise<void> {
+  await importFromMdlSearch(formData, true);
+}
+
+async function importFromMdlSearch(formData: FormData, autoUpdate: boolean): Promise<void> {
+  await requireCatalogEditor();
+  // Проверяем ДО ухода в фон: про кривой адрес нужно узнать сразу от
+  // формы, а не через минуту из упавшего прогона.
+  const searchUrl = parseMdlSearchInput(String(formData.get("searchUrl") ?? ""));
+
+  // В фоне: страниц бывает десяток, и на каждый найденный сериал — своя
+  // страница MDL плюс каст. Ход виден в журнале, там же «Остановить».
+  void (async () => {
+    await logImportRun(
+      "mdl-search",
+      (runId) =>
+        // Прогресс пишем в сводку прогона: страниц бывает десяток, и без
+        // этого в журнале минутами висело бы просто «идёт».
+        importMdlSearch(searchUrl, { runId, autoUpdate, onProgress: progressWriter(runId) }),
+      summarizeMdlSearch,
     ).catch(() => {
       // Падение уже записано в журнал самим logImportRun.
     });

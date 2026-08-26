@@ -81,6 +81,30 @@ export function absMdlUrl(path: string): string {
   return path.startsWith("http") ? path : `${MDL_ORIGIN}${path}`;
 }
 
+/**
+ * Канонический адрес страницы MDL: всегда https, всегда без `www.`, без
+ * query и якоря, без хвостового слэша. Нужен, потому что `Drama.mdlUrl`
+ * уникально и служит ключом дедупликации: `…/12345-x`, `…/12345-x/`,
+ * `www.…` и `…?ref=search` — одна и та же страница, но четыре разные
+ * строки, и без нормализации на один сериал завелось бы четыре записи.
+ */
+export function canonicalMdlUrl(urlOrPath: string): string {
+  const raw = urlOrPath.trim();
+  // Ссылку часто вставляют без схемы («mydramalist.com/12345-x») —
+  // absMdlUrl принял бы её за путь и приклеил к origin второй раз.
+  const abs = /^https?:\/\//i.test(raw)
+    ? raw
+    : raw.startsWith("/")
+      ? `${MDL_ORIGIN}${raw}`
+      : `https://${raw}`;
+  try {
+    const u = new URL(abs);
+    return `${MDL_ORIGIN}${u.pathname.replace(/\/+$/, "")}`;
+  } catch {
+    return abs;
+  }
+}
+
 // ---------- сериал ----------
 
 export type MdlRelatedEntry = { url: string; title: string; relation: string | null };
@@ -235,12 +259,20 @@ export function parseMdlDramaPage(html: string, url: string): MdlDrama {
   };
 }
 
-/** Простой фетч страницы тайтла (без Cloudflare) — для админ-кнопки. */
-export async function fetchMdlDrama(url: string): Promise<MdlDrama> {
-  // Через общий fetchMdlHtml, как и страницы людей: голый fetch тут
-  // ловил от Cloudflare 403, и импорт сериала падал там, где импорт
-  // актёра проходил. Проверку хоста делает сам fetchMdlHtml.
-  return parseMdlDramaPage(await fetchMdlHtml(url), url);
+/** Страница тайтла для админ-кнопки.
+ *
+ *  По умолчанию через общий fetchMdlHtml, как и страницы людей: голый
+ *  fetch тут ловил от Cloudflare 403, и импорт сериала падал там, где
+ *  импорт актёра проходил. `browserFallback: false` — для массовых
+ *  прогонов: там подъём chromium на каждую недоступную страницу
+ *  недопустим. Проверку хоста делает сам fetch. */
+export async function fetchMdlDrama(
+  url: string,
+  opts: { browserFallback?: boolean } = {},
+): Promise<MdlDrama> {
+  const html =
+    opts.browserFallback === false ? await fetchMdlHtmlPlain(url) : await fetchMdlHtml(url);
+  return parseMdlDramaPage(html, url);
 }
 
 // ---------- каст со страницы сериала ----------
@@ -434,6 +466,98 @@ export function parseMdlPersonPage(html: string, url: string): MdlPerson {
 
 const MDL_CHALLENGE = /Just a moment|challenges\.cloudflare\.com/i;
 
+const MDL_BLOCKED_MESSAGE =
+  "MyDramaList закрыл доступ Cloudflare-проверкой — попробуйте позже " +
+  "или запустите импорт с машины, которую MDL пропускает";
+
+/** Ошибка запроса к MDL с кодом ответа. Код нужен вызывающему: обход
+ *  страниц поиска по 404 понимает «страницы кончились», а не «сломалось». */
+export class MdlHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "MdlHttpError";
+  }
+}
+
+function assertMdlUrl(url: string): void {
+  const parsed = new URL(url);
+  if (parsed.hostname !== "mydramalist.com" && parsed.hostname !== "www.mydramalist.com") {
+    throw new Error("Ожидается ссылка на mydramalist.com");
+  }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Страница MDL обычным GET'ом с браузерным UA — и только им, без
+ * подъёма chromium.
+ *
+ * Отдельно от `fetchMdlHtml` ради массовых прогонов: там на каждую
+ * недоступную страницу заводить браузер нельзя — сотня таких попыток
+ * растянула бы импорт на часы. Массовому импорту честнее упасть с
+ * понятным сообщением.
+ *
+ * 429 — не отказ, а просьба притормозить: ждём столько, сколько
+ * попросили в Retry-After (или полминуты), и повторяем.
+ */
+export async function fetchMdlHtmlPlain(
+  url: string,
+  opts: { attempts?: number; onWait?: (message: string) => void } = {},
+): Promise<string> {
+  assertMdlUrl(url);
+  const attempts = opts.attempts ?? 3;
+  let lastError: Error = new Error("MyDramaList не отдал страницу");
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: { "User-Agent": MDL_UA, "Accept-Language": "en-US,en;q=0.9" },
+        signal: AbortSignal.timeout(20000),
+      });
+    } catch (e) {
+      lastError = new Error(
+        `не удалось открыть страницу MyDramaList (${e instanceof Error ? e.message.split("\n")[0] : String(e)})`,
+      );
+      if (attempt === attempts) break;
+      await sleep(3000 * attempt);
+      continue;
+    }
+
+    if (res.status === 429) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 30000 * attempt;
+      lastError = new MdlHttpError(429, "MyDramaList ограничил частоту запросов (429)");
+      if (attempt === attempts) break;
+      opts.onWait?.(`MyDramaList просит подождать ${Math.round(wait / 1000)} с`);
+      await sleep(Math.min(wait, 120000));
+      continue;
+    }
+
+    if (!res.ok) {
+      // 403 у MDL — это не «нет прав», а Cloudflare-заглушка: сообщение
+      // должно вести к делу, а не к разбору кода ответа.
+      lastError = new MdlHttpError(
+        res.status,
+        res.status === 403 ? MDL_BLOCKED_MESSAGE : `MyDramaList ответил ${res.status}`,
+      );
+      break;
+    }
+
+    const html = await res.text();
+    if (MDL_CHALLENGE.test(html.slice(0, 3000))) {
+      lastError = new MdlHttpError(403, MDL_BLOCKED_MESSAGE);
+      break;
+    }
+    return html;
+  }
+
+  throw lastError;
+}
+
 /**
  * Страница MyDramaList в обход Cloudflare.
  *
@@ -444,20 +568,12 @@ const MDL_CHALLENGE = /Just a moment|challenges\.cloudflare\.com/i;
  * локальной машины.
  */
 async function fetchMdlHtml(url: string): Promise<string> {
-  const parsed = new URL(url);
-  if (parsed.hostname !== "mydramalist.com" && parsed.hostname !== "www.mydramalist.com") {
-    throw new Error("Ожидается ссылка на mydramalist.com");
-  }
+  assertMdlUrl(url);
 
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": MDL_UA },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (res.ok) {
-      const html = await res.text();
-      if (!MDL_CHALLENGE.test(html.slice(0, 3000))) return html;
-    }
+    // Одна повторная попытка: смысл здесь дешёвый — если не вышло,
+    // дальше всё равно ждёт браузер.
+    return await fetchMdlHtmlPlain(url, { attempts: 2 });
   } catch {
     // идём в браузер
   }
@@ -498,19 +614,36 @@ export async function fetchMdlPerson(url: string): Promise<MdlPerson> {
 export type MdlSearchTitle = { path: string; title: string; year: number | null };
 export type MdlSearchPerson = { path: string; name: string };
 
+/**
+ * Карточки результатов со страницы поиска (и обычного `?q=`, и
+ * расширенного `?adv=titles&th=…`) — вёрстка у них одна.
+ *
+ * Карточка: `<h6 class="text-primary title"><a href="/12345-slug">Title</a>`,
+ * ниже `<span class="text-muted">Thai Drama - 2020, 13 episodes</span>`.
+ * Заголовок ищем по точному классу `text-primary title`: по одному
+ * лишь `title` в матч попали бы боковые блоки («Top Airing»), где
+ * ссылки на тайтлы такие же.
+ *
+ * Год необязателен. Раньше карточка без `text-muted` в пределах
+ * 400 символов молча выпадала из выдачи — на обходе пагинации это
+ * значит «потеряли сериал», а не «потеряли год». Хвост берём
+ * просмотром вперёд `(?=…)`, а не захватом: захват съедал бы следующую
+ * карточку, и в списке оставалась каждая вторая.
+ */
 export function parseMdlSearchTitles(html: string): MdlSearchTitle[] {
   const out: MdlSearchTitle[] = [];
-  // Карточка результата: <h6 class="text-primary title"><a href="/12345-slug">
-  // Title</a> … затем "<span class="text-muted">Thai Drama - 2020, 13 episodes".
+  const seen = new Set<string>();
   for (const m of html.matchAll(
-    /<h6 class="text-primary title"><a href="(\/\d+-[^"]+)">([^<]+)<\/a>([\s\S]{0,400}?)<span class="text-muted">([^<]*)</g,
+    /<h6 class="text-primary title">\s*<a[^>]*href="(?:https?:\/\/(?:www\.)?mydramalist\.com)?(\/\d+-[^"#?]*)"[^>]*>([\s\S]*?)<\/a>(?=([\s\S]{0,600}))/g,
   )) {
-    const yearRaw = m[4].match(/\b(19|20)\d{2}\b/)?.[0];
-    out.push({
-      path: m[1],
-      title: decodeEntities(m[2]).trim(),
-      year: yearRaw ? Number(yearRaw) : null,
-    });
+    const path = m[1];
+    if (seen.has(path)) continue;
+    const title = decodeEntities(stripTags(m[2])).replace(/\s+/g, " ").trim();
+    if (!title) continue;
+    seen.add(path);
+    const meta = m[3].match(/<span class="text-muted">([^<]*)</)?.[1] ?? "";
+    const yearRaw = meta.match(/\b(19|20)\d{2}\b/)?.[0];
+    out.push({ path, title, year: yearRaw ? Number(yearRaw) : null });
   }
   return out;
 }

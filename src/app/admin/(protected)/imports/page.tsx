@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { runMdlDramaImport,
+import {
+  runMdlDramaImport,
+  runMdlDramaImportAndSchedule,
+  runMdlSearchImport,
+  runMdlSearchImportAndSchedule,
   runMdlPerformerImport,
   runTpopArtistImport,
   markImportsReviewed,
@@ -278,6 +282,51 @@ export default async function AdminImportsPage({
                 busyLabel="Запускаем…"
                 className="btn btn-primary btn-sm flex-shrink-0"
                 disabled={!!runningRun}
+              />
+              <SubmitButton
+                label={runningRun ? "Импорт идёт…" : "Импортировать и в расписание"}
+                busyLabel="Запускаем…"
+                className="btn btn-ghost btn-sm flex-shrink-0"
+                disabled={!!runningRun}
+                formAction={runMdlDramaImportAndSchedule}
+                title="Импортировать и отмечать сериал как обновляемый по расписанию"
+              />
+            </form>
+          </div>
+        </div>
+
+        <div className="col-12 col-xl-6">
+          <div className="surface p-4 h-100">
+            <h2 className="section-heading mb-2">MyDramaList: импорт со страницы поиска</h2>
+            <p className="small text-secondary mb-3">
+              Ссылка на страницу поиска MDL — заберём все найденные сериалы,
+              каждый как обычный импорт карточки с составом. Фильтры собирайте
+              на самом MDL (тег, статус, страна) и вставляйте адрес целиком:
+              так не приходится держать здесь копию их справочника тегов,
+              которая всё равно устареет. Обойдём все страницы выдачи,
+              не только первую; ход виден в журнале ниже, там же «Остановить».
+            </p>
+            <form action={runMdlSearchImport} className="d-flex flex-wrap gap-2">
+              <input
+                name="searchUrl"
+                required
+                placeholder="https://mydramalist.com/search?adv=titles&ty=68&th=15263&st=1"
+                className="form-control flex-grow-1"
+                style={{ minWidth: "16rem" }}
+              />
+              <SubmitButton
+                label={runningRun ? "Импорт идёт…" : "Импортировать"}
+                busyLabel="Запускаем…"
+                className="btn btn-primary btn-sm flex-shrink-0"
+                disabled={!!runningRun}
+              />
+              <SubmitButton
+                label={runningRun ? "Импорт идёт…" : "Импортировать и в расписание"}
+                busyLabel="Запускаем…"
+                className="btn btn-ghost btn-sm flex-shrink-0"
+                disabled={!!runningRun}
+                formAction={runMdlSearchImportAndSchedule}
+                title="Импортировать и отмечать все найденные сериалы как обновляемые по расписанию"
               />
             </form>
           </div>

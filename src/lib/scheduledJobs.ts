@@ -56,6 +56,41 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "mdl-auto-update",
+    title: "MyDramaList: обновление сериалов",
+    description:
+      "Переоткрывает страницы сериалов с пометкой «обновлять по расписанию»: " +
+      "у выходящих постоянно уточняются даты эфира, число серий, статус и оценка. " +
+      "Пометку ставит вторая кнопка в импортах — и у одиночного сериала, и у импорта " +
+      "со страницы поиска. За один прогон обходится до 300 карточек, начиная с тех, " +
+      "которые дольше всех не открывали.",
+    // Отбор идёт по флагу в карточке сериала, а список выбираемых
+    // целей на /admin/schedule — про исполнителей.
+    supportsTargets: false,
+    run: async () => {
+      const { refreshMdlAutoUpdateDramas } = await import("@/lib/mdlDramaImport");
+      const { logImportRun } = await import("@/lib/importRun");
+      const summarize = (r: {
+        checked: number;
+        updated: number;
+        failed: number;
+        pending: number;
+        abortedAfter: string | null;
+      }) =>
+        `проверено ${r.checked}, с изменениями ${r.updated}, ошибок ${r.failed}` +
+        (r.pending ? `, отложено до следующего прогона ${r.pending}` : "") +
+        (r.abortedAfter ? ` · ${r.abortedAfter}` : "");
+
+      const result = await logImportRun(
+        "mdl-auto-update",
+        (runId) => refreshMdlAutoUpdateDramas({ runId }),
+        summarize,
+      );
+      // null — прогон остановили кнопкой в /admin/imports.
+      return result ? summarize(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "cleanup-expired",
     title: "Чистка просроченного",
     description:
