@@ -102,6 +102,13 @@ export const trips = {
             FRIENDS: "your friends, if the trip is visible to them",
             PUBLIC: "anyone who can see the trip",
         },
+        /** Почему вариантов меньше четырёх: запись не может быть виднее
+         *  самой поездки. Ключ — самый открытый оставшийся вариант. */
+        cappedBy: {
+            FRIENDS: "The trip itself is friends-only, so nothing inside it can go wider.",
+            PRIVATE:
+                "The trip itself is private — only you and the people travelling with you can see what's inside.",
+        },
         /** Бейдж в строке — только там, где видимость не «участники». */
         badges: {
             PRIVATE: "only me",

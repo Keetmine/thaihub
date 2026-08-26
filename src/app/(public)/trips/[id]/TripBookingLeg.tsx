@@ -9,6 +9,7 @@ import { deleteTripBooking } from "../actions";
 import { useT } from "@/components/LocaleProvider";
 import BookingForm, { type TripBookingRow } from "./BookingForm";
 import { ItemVisibilityBadge } from "../TripItemVisibility";
+import type { TripItemVisibilityValue } from "../itemVisibility";
 
 /** Одна сторона брони в ленте плана: заселение ИЛИ выселение, вылет ИЛИ
  *  прилёт. Подписи даты приходят готовыми со страницы — даты проекта
@@ -40,9 +41,11 @@ export type BookingLegData = {
 export default function TripBookingLeg({
   tripId,
   leg,
+  visibilityOptions,
 }: {
   tripId: string;
   leg: BookingLegData;
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
   const router = useRouter();
@@ -146,6 +149,7 @@ export default function TripBookingLeg({
           tripId={tripId}
           kind={leg.kind}
           booking={leg.booking}
+          visibilityOptions={visibilityOptions}
           onSaved={() => setEditing(false)}
           onCancel={() => setEditing(false)}
         />

@@ -47,6 +47,7 @@ export type PersonalEventData = {
 export function PersonalEventFields({
   defaults,
   showShareToggle = false,
+  visibilityOptions,
 }: {
   defaults?: {
     title: string;
@@ -60,6 +61,9 @@ export function PersonalEventFields({
     imageUrl?: string | null;
   };
   showShareToggle?: boolean;
+  /** Что можно выбрать в «кто это видит» — уже урезано видимостью
+   *  поездки (см. `itemVisibilityChoices`). */
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
   return (
@@ -120,7 +124,10 @@ export function PersonalEventFields({
       {/* Видимость записи — поле, а не галочка «приватное»: вариантов
           четыре, и они осмысленны и в соло-поездке (друзья и «все» видят
           её, если сама поездка им видна). */}
-      <ItemVisibilityField defaultValue={defaults?.visibility ?? "PARTICIPANTS"} />
+      <ItemVisibilityField
+        defaultValue={defaults?.visibility ?? "PARTICIPANTS"}
+        options={visibilityOptions}
+      />
       {showShareToggle ? (
         <label className="form-check d-flex align-items-center gap-2 mb-0">
           <input
@@ -151,11 +158,13 @@ export default function PersonalEventCard({
   event,
   canEdit = true,
   showShareToggle = false,
+  visibilityOptions,
 }: {
   tripId: string;
   event: PersonalEventData;
   canEdit?: boolean;
   showShareToggle?: boolean;
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
   const locale = useLocale();
@@ -315,6 +324,7 @@ export default function PersonalEventCard({
               imageUrl: event.imageUrl,
             }}
             showShareToggle={showShareToggle}
+            visibilityOptions={visibilityOptions}
           />
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>

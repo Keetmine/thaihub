@@ -39,12 +39,16 @@ export default function BookingForm({
   tripId,
   kind,
   booking,
+  visibilityOptions,
   onSaved,
   onCancel,
 }: {
   tripId: string;
   kind: "HOTEL" | "FLIGHT";
   booking?: TripBookingRow;
+  /** Что можно выбрать в «кто это видит» — уже урезано видимостью
+   *  поездки (см. `itemVisibilityChoices`). */
+  visibilityOptions: readonly TripItemVisibilityValue[];
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -176,7 +180,10 @@ export default function BookingForm({
         <div className="col-12">
           {/* Кто видит бронь. Значение по умолчанию — участники: адрес и
               номер брони не показывают всем подряд. */}
-          <ItemVisibilityField defaultValue={booking?.visibility ?? "PARTICIPANTS"} />
+          <ItemVisibilityField
+            defaultValue={booking?.visibility ?? "PARTICIPANTS"}
+            options={visibilityOptions}
+          />
         </div>
         <div className="col-12">
           <label className="form-label small text-secondary">{t.trips.bookings.note}</label>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useT } from "@/components/LocaleProvider";
 import BookingForm from "./BookingForm";
+import type { TripItemVisibilityValue } from "../itemVisibility";
 
 /** Кнопка «+ Отель» / «+ Перелёт» с формой в модалке. Живёт в общем ряду
  *  действий над вкладками поездки — бронь добавляют с любой вкладки, а не
@@ -11,9 +12,11 @@ import BookingForm from "./BookingForm";
 export default function AddBookingButton({
   tripId,
   kind,
+  visibilityOptions,
 }: {
   tripId: string;
   kind: "HOTEL" | "FLIGHT";
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
@@ -36,6 +39,7 @@ export default function AddBookingButton({
           <BookingForm
             tripId={tripId}
             kind={kind}
+            visibilityOptions={visibilityOptions}
             onSaved={() => setIsOpen(false)}
             onCancel={() => setIsOpen(false)}
           />

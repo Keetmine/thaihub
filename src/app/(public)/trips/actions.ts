@@ -9,6 +9,7 @@ import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
 import { combineDateTime } from "@/lib/dates";
 import type { TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
+import { clampItemVisibility, isItemVisibility } from "./itemVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import { notifyUser } from "@/lib/notifications";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
@@ -18,17 +19,25 @@ function parseVisibility(raw: unknown): TripVisibility {
 }
 
 /** Кто видит отдельную запись поездки (дело, личное событие, бронь).
- *  Если поля в форме нет ВОВСЕ — остаётся прежнее значение: забытое
- *  поле не должно молча раскрывать приватную запись. Для новой записи
- *  прежнее значение — PARTICIPANTS, как в схеме. */
+ *  Присланное значение зажимается видимостью поездки: запись не может
+ *  быть виднее её самой, а форму — с её урезанным списком вариантов —
+ *  можно обойти. Для новой записи прежнее значение — PARTICIPANTS, как
+ *  в схеме. */
 function parseItemVisibility(
   raw: FormDataEntryValue | null,
+  tripVisibility: TripVisibility,
   current: TripItemVisibility = "PARTICIPANTS",
 ): TripItemVisibility {
-  if (raw === null) return current;
-  return raw === "PRIVATE" || raw === "PARTICIPANTS" || raw === "FRIENDS" || raw === "PUBLIC"
-    ? raw
-    : current;
+  // Поля в форме нет вовсе (в приватной соло-поездке выбирать не из
+  // чего) — прежнее значение остаётся как есть, даже если оно шире
+  // нынешнего потолка: зажим работает на чтении, и переписывать чужой
+  // выбор при правке заметки незачем.
+  if (!isItemVisibility(raw)) return current;
+  const picked = clampItemVisibility(raw, tripVisibility);
+  // Форма показывает прежнее значение уже зажатым. Если человек его не
+  // трогал, в базе остаётся исходный выбор — вернут поездке видимость,
+  // вернётся и он.
+  return picked === clampItemVisibility(current, tripVisibility) ? current : picked;
 }
 
 /** Поля видимости для записи в базу. `isPrivate` — историческое поле:
@@ -125,6 +134,11 @@ export async function deleteTrip(tripId: string) {
   redirect(localeHref("/trips", locale));
 }
 
+/** Смена видимости поездки. Записи внутри (дела, личные события, брони)
+ *  НЕ переписываются: их видимость зажимается при чтении
+ *  (`clampItemVisibility` в `trips/[id]/page.tsx`), поэтому закрытая
+ *  поездка сразу закрывает и публичную бронь внутри, а если поездку
+ *  снова откроют — вернётся и выбор, который человек сделал. */
 export async function setTripVisibility(tripId: string, visibility: string): Promise<ActionResult> {
   const { locale, t } = await getT();
   const user = await getCurrentUser();
@@ -295,6 +309,7 @@ export async function leaveTrip(tripId: string): Promise<void> {
  *  экшен возвращает клиенту `{ ok: false, error: "Заполните…" }`. */
 function parsePersonalEventForm(
   formData: FormData,
+  tripVisibility: TripVisibility,
   currentVisibility?: TripItemVisibility,
 ): {
   title: string;
@@ -321,7 +336,9 @@ function parsePersonalEventForm(
     startsAt: combineDateTime(date, time || "00:00"),
     locationId: locationId || null,
     editableByOthers: formData.get("editableByOthers") === "on",
-    ...itemVisibilityData(parseItemVisibility(formData.get("visibility"), currentVisibility)),
+    ...itemVisibilityData(
+      parseItemVisibility(formData.get("visibility"), tripVisibility, currentVisibility),
+    ),
     showOnHome: formData.get("showOnHome") === "on",
     imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
   };
@@ -333,7 +350,7 @@ export async function createTripPersonalEvent(
 ): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
-  const data = parsePersonalEventForm(formData);
+  const data = parsePersonalEventForm(formData, access.trip.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
   await prisma.tripPersonalEvent.create({
     data: { tripId: access.trip.id, createdById: access.user.id, ...data },
@@ -357,7 +374,7 @@ export async function updateTripPersonalEvent(
   if (!item || !canTouchItem(item, user.id, trip.userId)) {
     return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
   }
-  const data = parsePersonalEventForm(formData, item.visibility);
+  const data = parsePersonalEventForm(formData, trip.visibility, item.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
@@ -482,7 +499,9 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
       hasTime,
       createdById: access.user.id,
       editableByOthers: formData.get("editableByOthers") === "on",
-      ...itemVisibilityData(parseItemVisibility(formData.get("visibility"))),
+      ...itemVisibilityData(
+        parseItemVisibility(formData.get("visibility"), access.trip.visibility),
+      ),
     },
   });
   revalidatePath(`/trips/${tripId}`);
@@ -506,7 +525,8 @@ async function requireOwnTodo(todoId: string) {
         ],
       },
     },
-    include: { trip: { select: { userId: true } } },
+    // visibility поездки нужна, чтобы зажать видимость дела при сохранении.
+    include: { trip: { select: { userId: true, visibility: true } } },
   });
   if (!todo || !canTouchItem(todo, user.id, todo.trip.userId)) {
     return { ok: false as const, error: t.trips.errors.cannotEditOthersTodo };
@@ -536,7 +556,11 @@ export async function updateTripTodo(todoId: string, formData: FormData): Promis
       hasTime,
       editableByOthers: formData.get("editableByOthers") === "on",
       ...itemVisibilityData(
-        parseItemVisibility(formData.get("visibility"), own.todo.visibility),
+        parseItemVisibility(
+          formData.get("visibility"),
+          own.todo.trip.visibility,
+          own.todo.visibility,
+        ),
       ),
     },
   });
@@ -600,7 +624,11 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
       data: {
         ...data,
         // У брони исторического isPrivate нет — только visibility.
-        visibility: parseItemVisibility(formData.get("visibility"), existing.visibility),
+        visibility: parseItemVisibility(
+          formData.get("visibility"),
+          access.trip.visibility,
+          existing.visibility,
+        ),
       },
     });
   } else {
@@ -610,7 +638,7 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
         ...data,
         // По умолчанию бронь видят участники: адрес проживания и номер
         // брони — не то, что показывают всем подряд.
-        visibility: parseItemVisibility(formData.get("visibility")),
+        visibility: parseItemVisibility(formData.get("visibility"), access.trip.visibility),
       },
     });
   }

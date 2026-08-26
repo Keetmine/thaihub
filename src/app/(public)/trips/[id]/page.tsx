@@ -14,6 +14,7 @@ import {
 import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import type { TripItemVisibility } from "@/generated/prisma/client";
+import { clampItemVisibility, itemVisibilityChoices } from "../itemVisibility";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { deleteTrip } from "../actions";
@@ -309,17 +310,29 @@ export default async function TripPage({
   // страницы (доступ к самой поездке проверен выше). Дружба
   // симметрична, поэтому «друг автора» — это автор в списке друзей
   // зрителя, второго запроса не нужно.
+  //
+  // Запись при этом не может быть виднее самой поездки: у поездки
+  // FRIENDS публичная бронь видна друзьям, а не всем. Зажим стоит на
+  // ЧТЕНИИ (`clampItemVisibility`), а не переписывает записи при смене
+  // видимости поездки: выбор человека сохраняется, и стоит вернуть
+  // поездке прежнюю видимость — записи снова открываются.
+  const effectiveVisibility = (visibility: TripItemVisibility): TripItemVisibility =>
+    clampItemVisibility(visibility, trip.visibility);
   const canSeeItem = (
     visibility: TripItemVisibility,
     createdById: string | null,
   ): boolean => {
     const authorId = createdById ?? trip.userId;
     if (authorId === user.id) return true;
-    if (visibility === "PRIVATE") return false;
-    if (visibility === "PUBLIC") return true;
+    const effective = effectiveVisibility(visibility);
+    if (effective === "PRIVATE") return false;
+    if (effective === "PUBLIC") return true;
     if (isParticipant) return true;
-    return visibility === "FRIENDS" && friendIds.includes(authorId);
+    return effective === "FRIENDS" && friendIds.includes(authorId);
   };
+  // Варианты для радио-группы в формах записи — тем же правилом. Пусто
+  // в приватной соло-поездке: выбирать не из чего, поля в форме нет.
+  const visibilityOptions = itemVisibilityChoices(trip.visibility, isShared);
 
   // Публичные и личные события — одна хронологическая лента. Кого
   // пускать к личной записи, решает её собственная видимость.
@@ -336,7 +349,9 @@ export default async function TripPage({
       timeValue: formatTime(p.startsAt),
       author: authorLabel(p.createdById),
       editableByOthers: p.editableByOthers,
-      visibility: p.visibility,
+      // Бейдж и форма правки показывают зажатое значение: обещать
+      // «всем» в поездке для друзей было бы неправдой.
+      visibility: effectiveVisibility(p.visibility),
       showOnHome: p.showOnHome,
       imageUrl: p.imageUrl,
       canEdit: canTouch(p),
@@ -358,7 +373,7 @@ export default async function TripPage({
       author: authorLabel(t.createdById),
       canEdit: canTouch(t),
       editableByOthers: t.editableByOthers,
-      visibility: t.visibility,
+      visibility: effectiveVisibility(t.visibility),
     }));
 
   // ЕДИНСТВЕННАЯ точка, где брони попадают в разметку. Жильё и перелёты
@@ -377,6 +392,7 @@ export default async function TripPage({
     b: T,
   ): T => (isParticipant ? b : { ...b, address: null, note: null, url: null, fileUrl: null });
   const visibleBookings = trip.bookings
+    .map((b) => ({ ...b, visibility: effectiveVisibility(b.visibility) }))
     .filter((b) => canSeeItem(b.visibility, null))
     .map(bookingForViewer);
   const legs = showAll
@@ -571,11 +587,12 @@ export default async function TripPage({
           <AddPersonalEventButton
             tripId={trip.id}
             showShareToggle={isShared}
+            visibilityOptions={visibilityOptions}
             label={t.trips.personal.addShort}
             accent
           />
-          <AddBookingButton tripId={trip.id} kind="HOTEL" />
-          <AddBookingButton tripId={trip.id} kind="FLIGHT" />
+          <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
+          <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
           <AddTripPlaceButton tripId={trip.id} />
         </div>
       )}
@@ -632,7 +649,12 @@ export default async function TripPage({
       {/* Брони без дат: в ленте им негде встать, а видеть и дозаполнять
           их надо. Датированные стоят ниже, в ленте плана, в свои дни. */}
       {!showTodos && !showPlaces && (
-        <TripBookings tripId={trip.id} canEdit={canContribute} bookings={undatedBookings} />
+        <TripBookings
+          tripId={trip.id}
+          canEdit={canContribute}
+          bookings={undatedBookings}
+          visibilityOptions={visibilityOptions}
+        />
       )}
 
       {showTodos ? (
@@ -641,6 +663,7 @@ export default async function TripPage({
           todos={todoData}
           canAdd={canContribute}
           showShareToggle={isShared}
+          visibilityOptions={visibilityOptions}
         />
       ) : showPlaces ? (
         (() => {
@@ -771,11 +794,21 @@ export default async function TripPage({
                   event={item.personalEvent}
                   canEdit={item.personalEvent.canEdit}
                   showShareToggle={isShared}
+                  visibilityOptions={visibilityOptions}
                 />
               ) : item.kind === "booking" ? (
-                <TripBookingLeg tripId={trip.id} leg={item.leg} />
+                <TripBookingLeg
+                  tripId={trip.id}
+                  leg={item.leg}
+                  visibilityOptions={visibilityOptions}
+                />
               ) : (
-                <TodoRow todo={item.todo} showDate showShareToggle={isShared} />
+                <TodoRow
+                  todo={item.todo}
+                  showDate
+                  showShareToggle={isShared}
+                  visibilityOptions={visibilityOptions}
+                />
               )}
             </div>
           ))}

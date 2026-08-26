@@ -5,10 +5,12 @@ import Modal from "@/components/Modal";
 import { createTripPersonalEvent } from "./actions";
 import { PersonalEventFields } from "./PersonalEventCard";
 import { useT } from "@/components/LocaleProvider";
+import type { TripItemVisibilityValue } from "./itemVisibility";
 
 export default function AddPersonalEventButton({
   tripId,
   showShareToggle = false,
+  visibilityOptions,
   // На странице поездки кнопка стоит первой в ряду «Событие / Отель /
   // Перелёт» и выделена акцентом: своё событие добавляют чаще всего.
   accent = false,
@@ -16,6 +18,9 @@ export default function AddPersonalEventButton({
 }: {
   tripId: string;
   showShareToggle?: boolean;
+  /** Что можно выбрать в «кто это видит» — уже урезано видимостью
+   *  поездки (см. `itemVisibilityChoices`). */
+  visibilityOptions: readonly TripItemVisibilityValue[];
   accent?: boolean;
   label?: string;
 }) {
@@ -61,7 +66,10 @@ export default function AddPersonalEventButton({
         title={t.trips.personal.addTitle}
       >
         <form action={handleCreate} className="d-flex flex-column gap-3">
-          <PersonalEventFields showShareToggle={showShareToggle} />
+          <PersonalEventFields
+            showShareToggle={showShareToggle}
+            visibilityOptions={visibilityOptions}
+          />
           {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={isSaving}>
             {isSaving ? t.trips.personal.adding : t.common.add}

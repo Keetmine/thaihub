@@ -9,6 +9,7 @@ import { deleteTripBooking } from "../actions";
 import { useT } from "@/components/LocaleProvider";
 import BookingForm, { type TripBookingRow } from "./BookingForm";
 import { ItemVisibilityBadge } from "../TripItemVisibility";
+import type { TripItemVisibilityValue } from "../itemVisibility";
 
 export type { TripBookingRow };
 
@@ -25,11 +26,13 @@ export default function TripBookings({
   tripId,
   bookings,
   canEdit = true,
+  visibilityOptions,
 }: {
   tripId: string;
   /** Только брони без дат — датированные показывает лента. */
   bookings: TripBookingRow[];
   canEdit?: boolean;
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
   const router = useRouter();
@@ -148,6 +151,7 @@ export default function TripBookings({
             tripId={tripId}
             kind={modalKind}
             booking={editingBooking ?? undefined}
+            visibilityOptions={visibilityOptions}
             onSaved={close}
             onCancel={close}
           />

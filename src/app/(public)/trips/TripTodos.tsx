@@ -45,10 +45,14 @@ export function TodoRow({
   todo,
   showDate = false,
   showShareToggle = false,
+  visibilityOptions,
 }: {
   todo: TodoData;
   showDate?: boolean;
   showShareToggle?: boolean;
+  /** Что можно выбрать в «кто это видит» — уже урезано видимостью
+   *  поездки (см. `itemVisibilityChoices`). */
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
   const locale = useLocale();
@@ -192,7 +196,7 @@ export function TodoRow({
               />
             </div>
           </div>
-          <ItemVisibilityField defaultValue={todo.visibility} />
+          <ItemVisibilityField defaultValue={todo.visibility} options={visibilityOptions} />
           {showShareToggle ? (
             <label className="form-check d-flex align-items-center gap-2 mb-0">
               <input
@@ -226,9 +230,11 @@ export function TodoRow({
 export function AddTripTodoButton({
   tripId,
   showShareToggle = false,
+  visibilityOptions,
 }: {
   tripId: string;
   showShareToggle?: boolean;
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
   const router = useRouter();
@@ -288,7 +294,7 @@ export function AddTripTodoButton({
               <input type="time" name="time" className="form-control" />
             </div>
           </div>
-          <ItemVisibilityField />
+          <ItemVisibilityField options={visibilityOptions} />
           {showShareToggle && (
             <label className="form-check d-flex align-items-center gap-2 mb-0">
               <input type="checkbox" name="editableByOthers" className="form-check-input m-0" />
@@ -313,12 +319,14 @@ export default function TripTodos({
   todos,
   canAdd,
   showShareToggle = false,
+  visibilityOptions,
 }: {
   tripId: string;
   todos: TodoData[];
   /** Может ли текущий юзер добавлять дела (участник с подпиской). */
   canAdd: boolean;
   showShareToggle?: boolean;
+  visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
 
@@ -334,7 +342,11 @@ export default function TripTodos({
     <div style={{ maxWidth: "44rem" }}>
       {canAdd && (
         <div className="mb-3">
-          <AddTripTodoButton tripId={tripId} showShareToggle={showShareToggle} />
+          <AddTripTodoButton
+            tripId={tripId}
+            showShareToggle={showShareToggle}
+            visibilityOptions={visibilityOptions}
+          />
         </div>
       )}
 
@@ -348,7 +360,12 @@ export default function TripTodos({
       ) : (
         <div className="d-flex flex-column gap-2">
           {sorted.map((todo) => (
-            <TodoRow key={todo.id} todo={todo} showShareToggle={showShareToggle} />
+            <TodoRow
+              key={todo.id}
+              todo={todo}
+              showShareToggle={showShareToggle}
+              visibilityOptions={visibilityOptions}
+            />
           ))}
         </div>
       )}
