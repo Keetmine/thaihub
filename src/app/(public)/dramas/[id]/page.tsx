@@ -17,7 +17,7 @@ import SynopsisFold from "@/components/SynopsisFold";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
-import {
+import { PinIcon,
   BuildingIcon,
   BookIcon,
   CalendarIcon,
@@ -388,7 +388,67 @@ export default async function DramaDetailPage({
             </p>
           )}
 
+          {drama.tags.length > 0 && (
+            <p className="small text-secondary mb-2 d-flex flex-wrap align-items-center gap-2">
+              <span className="d-inline-flex align-items-center gap-1">
+                <TagIcon /> <span className="text-secondary">{t.catalog.drama.tags}</span>
+              </span>
+              {drama.tags.map((tag) => (
+                <AppLink
+                  key={tag}
+                  href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
+                  className="tag-chip text-decoration-none"
+                >
+                  {tag}
+                </AppLink>
+              ))}
+            </p>
+          )}
+
           <div className="d-flex flex-column gap-1 mb-3">
+            {/* Страна, тип и канал (И4) — значения из данных, не
+                переводятся; каждая — ссылка в поиск с этим фильтром:
+                фильтры появились в И1, и «ещё такое же» в одном клике. */}
+            {(drama.country || drama.type) && (
+              <p className="small text-secondary mb-0">
+                <PinIcon />{" "}
+                {drama.country && (
+                  <>
+                    <span className="text-secondary">{t.catalog.drama.country}</span>{" "}
+                    <AppLink
+                      href={`/search?section=dramas&country=${encodeURIComponent(drama.country)}`}
+                      className="link-body-emphasis"
+                    >
+                      {drama.country}
+                    </AppLink>
+                  </>
+                )}
+                {drama.country && drama.type && " · "}
+                {drama.type && (
+                  <>
+                    <span className="text-secondary">{t.catalog.drama.type}</span>{" "}
+                    <AppLink
+                      href={`/search?section=dramas&type=${encodeURIComponent(drama.type)}`}
+                      className="link-body-emphasis"
+                    >
+                      {drama.type}
+                    </AppLink>
+                  </>
+                )}
+              </p>
+            )}
+            {drama.network && (
+              <p className="small text-secondary mb-0">
+                <TvIcon className="icon-inline" />{" "}
+                <span className="text-secondary">{t.catalog.drama.network}</span>{" "}
+                <AppLink
+                  href={`/search?section=dramas&network=${encodeURIComponent(drama.network)}`}
+                  className="link-body-emphasis"
+                >
+                  {drama.network}
+                </AppLink>
+              </p>
+            )}
             {(drama.episodes || drama.duration) && (
               <p className="small text-secondary mb-0">
                 <TvIcon className="icon-inline" />{" "}

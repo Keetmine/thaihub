@@ -71,6 +71,14 @@ bar).
   list (see "Catalog scale" below) with a `NameSearchBox` search and a
   photo per row, edit/delete icon buttons instead of a favorite toggle.
 
+## Карточка сериала: блок фактов
+
+Страна, тип, канал и теги (И4) показываются только при заполненном
+значении — у записей до переимпорта страна и тип пусты, а «Страна: —»
+на четырёх тысячах карточек хуже отсутствия строки. Значения не
+переводятся (данные каталога) и ведут ссылками в /search с
+соответствующим фильтром; теги — теми же чипами-ссылками, что жанры.
+
 ## Shared A-Z index layout
 
 `src/components/AlphabetIndexList.tsx` groups any `{id, name}[]` list by
