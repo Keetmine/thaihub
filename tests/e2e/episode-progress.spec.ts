@@ -44,7 +44,7 @@ const totalOf = (page: Page) => page.locator(".episode-progress-count").first();
 
 async function expectCount(page: Page, watched: number, total: number) {
   await expect(counter(page)).toHaveValue(String(watched));
-  await expect(totalOf(page)).toHaveText(`/ ${total}`);
+  await expect(totalOf(page)).toHaveText(`of ${total}`);
 }
 const statusBtn = (page: Page) => page.locator(".drama-status-btn button").first();
 
@@ -113,7 +113,7 @@ test("счётчик серий двигает статус — но не у в�
     await page.goto(AIRING);
     // Доводим до конца заведомо, не завися от прошлых прогонов.
     await setStatus(page, "Watched");
-    const total = Number((await totalOf(page).textContent())!.replace("/", "").trim());
+    const total = Number((await totalOf(page).textContent())!.replace(/of|из/, "").trim());
     await page.getByRole("button", { name: "One episode back" }).click();
     await expectCount(page, total - 1, total);
 

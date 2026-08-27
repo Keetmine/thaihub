@@ -27,7 +27,8 @@ export const catalog = {
     /** Ж6: на какой серии человек остановился. */
     episodes: {
         label: "Episodes",
-        of: (watched: number, total: number) => `${watched} / ${total}`,
+        of: (watched: number, total: number) => `${watched} of ${total}`,
+        ofTotal: (total: number) => `of ${total}`,
         plus: "One more episode",
         minus: "One episode back",
     },

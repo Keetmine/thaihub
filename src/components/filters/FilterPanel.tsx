@@ -332,27 +332,35 @@ function FilterGroup({
       );
   }
 
+  // Не details: его сворачивание мгновенное и «скачет» (правка
+  // владельца). Гармошка на grid-template-rows 0fr→1fr — высота едет
+  // плавно, тело остаётся в DOM, состояние у группы и так своё.
   return (
-    <details
-      className="filter-group"
-      open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-    >
-      <summary className="filter-group-title">
+    <div className={`filter-group ${open ? "is-open" : ""}`}>
+      <button
+        type="button"
+        className="filter-group-title"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
         {def.title}
+        {/* Счётчик — только у multi, с числом. Точка у остальных видов
+            выглядела мусором (правка владельца) — раскрытая группа и
+            отмеченное значение говорят сами за себя. */}
         {selectedSet.size > 0 && def.kind === "multi" && (
           <span className="filter-group-count">{selectedSet.size}</span>
         )}
-        {hasActive && def.kind !== "multi" && <span className="filter-group-count">•</span>}
-        {/* Стрелка у правого края — прежняя «точка» слева не читалась
-            как раскрывашка (правка владельца). */}
         <span className="filter-chevron" aria-hidden>
           <ChevronDownIcon />
         </span>
-      </summary>
-      {def.hint && <p className="filter-group-hint">{def.hint}</p>}
-      {body}
-    </details>
+      </button>
+      <div className="filter-group-body">
+        <div className="filter-group-body-inner">
+          {def.hint && <p className="filter-group-hint">{def.hint}</p>}
+          {body}
+        </div>
+      </div>
+    </div>
   );
 }
 

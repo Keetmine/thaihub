@@ -24,6 +24,7 @@ export const catalog: Dict["catalog"] = {
     episodes: {
         label: "Серии",
         of: (watched: number, total: number) => `${watched} из ${total}`,
+        ofTotal: (total: number) => `из ${total}`,
         plus: "Ещё одна серия",
         minus: "На серию назад",
     },

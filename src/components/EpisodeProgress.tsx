@@ -117,7 +117,7 @@ export default function EpisodeProgress({
             }}
           />
           {total !== null && (
-            <span className="episode-progress-count">/ {total}</span>
+            <span className="episode-progress-count">{t.catalog.episodes.ofTotal(total)}</span>
           )}
           <button
             type="button"

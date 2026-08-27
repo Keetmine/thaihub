@@ -4888,24 +4888,26 @@ body::after {
   white-space: nowrap;
 }
 
-/* Заголовок группы — раскрывашка: штатный маркер details убран,
-   стрелка-шеврон у правого края (прежняя «точка» слева не читалась). */
-.filter-group > summary {
+/* Заголовок группы — кнопка-раскрывашка со стрелкой у правого края.
+   Не details: его сворачивание мгновенное и дёргает страницу — тело
+   группы едет гармошкой grid-template-rows 0fr→1fr (см. ниже), и
+   стрелка поворачивается с той же плавностью. */
+.filter-group-title {
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
   cursor: pointer;
-  list-style: none;
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
-.filter-group > summary::-webkit-details-marker {
-  display: none;
-}
-
 .filter-chevron {
   margin-left: auto;
   display: inline-flex;
-  transition: transform 0.15s ease;
+  transition: transform 0.25s ease;
 }
 
 .filter-chevron svg {
@@ -4913,8 +4915,26 @@ body::after {
   height: 0.95rem;
 }
 
-.filter-group:not([open]) .filter-chevron {
+.filter-group:not(.is-open) .filter-chevron {
   transform: rotate(-90deg);
+}
+
+.filter-group-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.filter-group.is-open .filter-group-body {
+  grid-template-rows: 1fr;
+}
+
+.filter-group-body-inner {
+  overflow: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 /* Одиночные флаги («Без постера»…) — плотным столбиком. */
@@ -5169,17 +5189,18 @@ body::after {
   color: var(--bs-body-color);
 }
 
-/* Инпут числа серий: по размеру числа, без спиннеров браузера —
-   плюс-минус уже есть свои. */
+/* Инпут числа серий выглядит обычным текстом (правка владельца):
+   ни рамки, ни фона, при фокусе — только каретка. Спиннеры браузера
+   убраны — плюс-минус рядом свои. */
 .episode-progress-input {
-  width: 2.6rem;
+  width: 2.2rem;
   text-align: center;
   background: transparent;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.4rem;
-  color: var(--bs-body-color);
+  border: none;
+  color: inherit;
+  font: inherit;
   font-size: 0.85rem;
-  padding: 0.1rem 0.15rem;
+  padding: 0;
   -moz-appearance: textfield;
   appearance: textfield;
 }
@@ -5192,5 +5213,4 @@ body::after {
 
 .episode-progress-input:focus {
   outline: none;
-  border-color: rgba(var(--accent-rgb), 0.55);
 }
