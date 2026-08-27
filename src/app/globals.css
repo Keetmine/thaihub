@@ -3277,7 +3277,6 @@ details.admin-section[open] > summary.admin-section-head::before {
   cursor: default;
 }
 .episode-progress-count {
-  min-width: 4.5rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-size: 0.9rem;
@@ -3295,7 +3294,6 @@ details.admin-section[open] > summary.admin-section-head::before {
   font-size: 1rem;
 }
 .episode-progress.is-inline .episode-progress-count {
-  min-width: 3.2rem;
   font-size: 0.8rem;
 }
 
@@ -5193,7 +5191,9 @@ body::after {
    ни рамки, ни фона, при фокусе — только каретка. Спиннеры браузера
    убраны — плюс-минус рядом свои. */
 .episode-progress-input {
-  width: 2.2rem;
+  /* Ровно под двузначное число — без запаса, который читался пустотой
+     между цифрой и «из N» (правка владельца). */
+  width: 20px;
   text-align: center;
   background: transparent;
   border: none;
