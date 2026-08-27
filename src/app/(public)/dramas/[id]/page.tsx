@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import { episodeProgress } from "@/lib/watchStatus";
 import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
@@ -503,7 +504,10 @@ export default async function DramaDetailPage({
               <EpisodeProgress
                 dramaId={drama.id}
                 total={drama.episodes}
-                watched={watchStatus.episodesWatched}
+                // Через episodeProgress, а не сырое поле: у «Просмотрено»
+                // счётчик бывает пустым (статус ставили до подсчёта
+                // серий), и сырой NULL показывал 0 из 10 у досмотренного.
+                watched={episodeProgress(watchStatus, drama.episodes)?.watched ?? null}
               />
             </div>
           )}

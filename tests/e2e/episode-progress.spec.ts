@@ -38,7 +38,14 @@ test.afterAll(() => fixtureScript("delete-test-dramas.ts"));
 const ENDED = `/dramas/${TEST_DRAMAS.ended.slug}`; // вышел целиком
 const AIRING = `/dramas/${TEST_DRAMAS.airing.slug}`; // ещё выходит
 
-const counter = (page: Page) => page.locator(".episode-progress-count");
+// Счётчик теперь инпут + «/ N» рядом (число можно ввести руками).
+const counter = (page: Page) => page.locator(".episode-progress-input").first();
+const totalOf = (page: Page) => page.locator(".episode-progress-count").first();
+
+async function expectCount(page: Page, watched: number, total: number) {
+  await expect(counter(page)).toHaveValue(String(watched));
+  await expect(totalOf(page)).toHaveText(`/ ${total}`);
+}
 const statusBtn = (page: Page) => page.locator(".drama-status-btn button").first();
 
 async function setStatus(page: Page, label: string) {
@@ -72,16 +79,30 @@ test("счётчик серий двигает статус — но не у в�
     // «Просмотрено» руками — счётчик обязан догнать: досчитывать серии
     // после этого человек не должен.
     await setStatus(page, "Watched");
-    await expect(counter(page)).toHaveText(`${TEST_DRAMAS.ended.episodes} / ${TEST_DRAMAS.ended.episodes}`);
+    await expectCount(page, TEST_DRAMAS.ended.episodes, TEST_DRAMAS.ended.episodes);
 
     // Убавили — сериал снова смотрится, а не досмотрен.
     await page.getByRole("button", { name: "One episode back" }).click();
-    await expect(counter(page)).toHaveText(`${TEST_DRAMAS.ended.episodes - 1} / ${TEST_DRAMAS.ended.episodes}`);
+    await expectCount(page, TEST_DRAMAS.ended.episodes - 1, TEST_DRAMAS.ended.episodes);
     await expect(statusBtn(page)).toHaveAttribute("aria-label", /Watching now/);
 
     // И обратно: последняя серия закрывает сериал сама.
     await page.getByRole("button", { name: "One more episode" }).click();
-    await expect(counter(page)).toHaveText(`${TEST_DRAMAS.ended.episodes} / ${TEST_DRAMAS.ended.episodes}`);
+    await expectCount(page, TEST_DRAMAS.ended.episodes, TEST_DRAMAS.ended.episodes);
+    await expect(statusBtn(page)).toHaveAttribute("aria-label", /Watched/);
+
+    // Число можно ввести руками (правка владельца): «5» с клавиатуры —
+    // и статус уезжает из «Просмотрено» обратно в «Смотрю».
+    await counter(page).fill("5");
+    await counter(page).press("Enter");
+    await expectCount(page, 5, TEST_DRAMAS.ended.episodes);
+    await expect(statusBtn(page)).toHaveAttribute("aria-label", /Watching now/);
+
+    // Мусор и выход за границы не проходят: 999 обрезается до последней
+    // серии — а это закрывает сериал.
+    await counter(page).fill("999");
+    await counter(page).press("Enter");
+    await expectCount(page, TEST_DRAMAS.ended.episodes, TEST_DRAMAS.ended.episodes);
     await expect(statusBtn(page)).toHaveAttribute("aria-label", /Watched/);
   });
 
@@ -92,12 +113,12 @@ test("счётчик серий двигает статус — но не у в�
     await page.goto(AIRING);
     // Доводим до конца заведомо, не завися от прошлых прогонов.
     await setStatus(page, "Watched");
-    const total = Number((await counter(page).textContent())!.split("/")[1].trim());
+    const total = Number((await totalOf(page).textContent())!.replace("/", "").trim());
     await page.getByRole("button", { name: "One episode back" }).click();
-    await expect(counter(page)).toHaveText(`${total - 1} / ${total}`);
+    await expectCount(page, total - 1, total);
 
     await page.getByRole("button", { name: "One more episode" }).click();
-    await expect(counter(page)).toHaveText(`${total} / ${total}`);
+    await expectCount(page, total, total);
     await expect(statusBtn(page)).toHaveAttribute("aria-label", /Watching now/);
   });
 });
@@ -106,15 +127,15 @@ test("прогресс правится из списка и с главной",
   await test.step("список сериалов: «Просмотрено» читается как n из n", async () => {
     await page.goto(ENDED);
     await setStatus(page, "Watched");
-    await expect(counter(page)).toHaveText(`${TEST_DRAMAS.ended.episodes} / ${TEST_DRAMAS.ended.episodes}`);
+    await expectCount(page, TEST_DRAMAS.ended.episodes, TEST_DRAMAS.ended.episodes);
 
     await page.goto(`/dramas?q=${encodeURIComponent(TEST_DRAMAS.ended.title)}`);
     const row = page.locator(".surface", { hasText: TEST_DRAMAS.ended.title }).first();
-    await expect(row.locator(".episode-progress-count")).toHaveText(`${TEST_DRAMAS.ended.episodes} / ${TEST_DRAMAS.ended.episodes}`);
+    await expect(row.locator(".episode-progress-input")).toHaveValue(String(TEST_DRAMAS.ended.episodes));
 
     // И правится не уходя со страницы списка.
     await row.getByRole("button", { name: "One episode back" }).click();
-    await expect(row.locator(".episode-progress-count")).toHaveText(`${TEST_DRAMAS.ended.episodes - 1} / ${TEST_DRAMAS.ended.episodes}`);
+    await expect(row.locator(".episode-progress-input")).toHaveValue(String(TEST_DRAMAS.ended.episodes - 1));
     // Дожидаемся серверного признака: счётчик рисуется оптимистично, и
     // без этого мы ушли бы со страницы раньше, чем запись долетит.
     await expect(row.locator(".drama-status-btn button")).toHaveAttribute(
@@ -136,7 +157,7 @@ test("прогресс правится из списка и с главной",
       "style",
       new RegExp(`width:\\s*${percent}%`),
     );
-    await expect(cell.locator(".episode-progress-count")).toHaveText(`${TEST_DRAMAS.ended.episodes - 1} / ${TEST_DRAMAS.ended.episodes}`);
+    await expect(cell.locator(".episode-progress-input")).toHaveValue(String(TEST_DRAMAS.ended.episodes - 1));
 
     await cell.getByRole("button", { name: "One more episode" }).click();
     // 22 из 22 — сериал досмотрен и уходит из «Смотрю сейчас» целиком.

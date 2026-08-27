@@ -1,4 +1,3 @@
-import FilterChips from "@/components/filters/FilterChips";
 import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import FilterPanel from "@/components/filters/FilterPanel";
 import { countActiveFilters, type FilterDef, type FilterParams } from "@/lib/catalogFilters";
@@ -27,13 +26,11 @@ export default function AdminFilters({
     <aside className="col-12 col-xl-3 order-first order-xl-last">
       <div className="d-xl-none">
         <FilterDisclosure title={title} defaultOpen={active > 0}>
-          <FilterChips defs={defs} />
           <FilterPanel defs={defs} />
         </FilterDisclosure>
       </div>
       <div className="d-none d-xl-block search-filter-aside">
         <p className="section-heading mb-3">{title}</p>
-        <FilterChips defs={defs} />
         <FilterPanel defs={defs} />
       </div>
     </aside>

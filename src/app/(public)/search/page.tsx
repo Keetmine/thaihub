@@ -9,7 +9,6 @@ import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
-import FilterChips from "@/components/filters/FilterChips";
 import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import SortSelect from "@/components/filters/SortSelect";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
@@ -54,7 +53,8 @@ export async function generateMetadata() {
 
 export const dynamic = "force-dynamic";
 
-/** Размер страницы выдачи в конкретном разделе. */
+/** Размер страницы выдачи: у сериалов плитки ложатся по 6 в ряд —
+ *  ровно пять полных рядов. */
 const PAGE_SIZE = 30;
 
 const SECTIONS = ["all", "dramas", "performers", "events", "locations", "novels"] as const;
@@ -319,17 +319,15 @@ async function SectionResults({
         <Pagination page={page} pages={pages} params={params} t={t} />
       </div>
       <aside className="col-12 col-lg-3 order-first order-lg-last">
-        {/* Выбранное — чипами в том же блоке, что и фильтры (правка
-            владельца): срез и рычаги управления им в одном месте. */}
+        {/* Отдельных плашек выбранного нет (правка владельца):
+            отмеченный чекбокс говорит сам за себя. */}
         <div className="d-lg-none">
           <FilterDisclosure title={t.filters.panelTitle}>
-            <FilterChips defs={defs} />
             <FilterPanel defs={defs} />
           </FilterDisclosure>
         </div>
         <div className="d-none d-lg-block search-filter-aside">
           <p className="section-heading mb-3">{t.filters.panelTitle}</p>
-          <FilterChips defs={defs} />
           <FilterPanel defs={defs} />
         </div>
       </aside>

@@ -53,9 +53,10 @@ export type FilterDef = {
   /** Свёрнута по умолчанию (агентства, теги); при активном значении
    *  группа открывается сама. */
   collapsed?: boolean;
-  /** multi: без поиска список не показывать вовсе (теги — их сотни,
-   *  простыня чекбоксов бессмысленна). Выбранные видны всегда. */
-  searchOnly?: boolean;
+  /** multi «плашками» (теги): поле поиска, подходящие значения — рядом
+   *  кликабельными плашками, выбранные — снимаемыми плашками ПОД полем.
+   *  Чекбоксов и столбцов нет — значений сотни. */
+  chipStyle?: boolean;
   /** Показывать группу даже без вариантов — с пометкой «значений пока
    *  нет» (страна: заполняется по мере переимпорта). */
   alwaysShow?: boolean;
@@ -203,7 +204,6 @@ export function dramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
       title: t.filters.agency,
       kind: "multi",
       options: o.agencies.map((a) => ({ value: a.id, label: a.name })),
-      searchable: true,
       collapsed: true,
       hint: t.filters.hints.agency,
     },
@@ -212,8 +212,7 @@ export function dramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
       title: t.filters.tags,
       kind: "multi",
       options: plain(o.tags),
-      searchable: true,
-      searchOnly: true,
+      chipStyle: true,
       collapsed: true,
       hint: t.filters.hints.tags,
     },
@@ -268,11 +267,17 @@ export function dramaSortOrder(sort: string): Prisma.DramaOrderByWithRelationInp
 
 export const loadPerformerFilterOptions = unstable_cache(
   async () => {
-    const [agencies, years] = await Promise.all([
+    const [agencies, nationalities, years] = await Promise.all([
       prisma.agency.findMany({
         where: { performers: { some: {} } },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
+      }),
+      prisma.performer.findMany({
+        where: { nationality: { not: null } },
+        distinct: ["nationality"],
+        select: { nationality: true },
+        orderBy: { nationality: "asc" },
       }),
       prisma.$queryRaw<{ min: number | null; max: number | null }[]>`
         SELECT EXTRACT(YEAR FROM MIN("birthDate"))::int AS min,
@@ -281,6 +286,7 @@ export const loadPerformerFilterOptions = unstable_cache(
     ]);
     return {
       agencies: agencies.map((a) => ({ id: a.id, name: a.name })),
+      nationalities: nationalities.map((n) => n.nationality!),
       birthYearMin: years[0]?.min ?? 1950,
       birthYearMax: years[0]?.max ?? new Date().getFullYear(),
     };
@@ -308,7 +314,6 @@ export function performerFilterDefs(t: Dict, o: PerformerFilterOptions): FilterD
       title: t.filters.agency,
       kind: "multi",
       options: o.agencies.map((a) => ({ value: a.id, label: a.name })),
-      searchable: true,
       collapsed: true,
       hint: t.filters.hints.agency,
     },
@@ -411,14 +416,12 @@ export type NovelFilterOptions = Awaited<ReturnType<typeof loadNovelFilterOption
 
 export function novelFilterDefs(t: Dict, o: NovelFilterOptions): FilterDef[] {
   return [
-    { key: "author", title: t.filters.author, kind: "text", hint: t.filters.hints.author },
     {
       key: "tags",
       title: t.filters.tags,
       kind: "multi",
       options: o.tags.map((v) => ({ value: v, label: v })),
-      searchable: true,
-      searchOnly: true,
+      chipStyle: true,
       collapsed: true,
       hint: t.filters.hints.tags,
     },
@@ -428,15 +431,6 @@ export function novelFilterDefs(t: Dict, o: NovelFilterOptions): FilterDef[] {
 
 export function novelFilterWhere(p: FilterParams): Prisma.NovelWhereInput[] {
   const w: Prisma.NovelWhereInput[] = [];
-  const author = one(p.author);
-  if (author) {
-    w.push({
-      OR: [
-        { author: { contains: author, mode: "insensitive" } },
-        { originalAuthor: { contains: author, mode: "insensitive" } },
-      ],
-    });
-  }
   const tags = csv(p.tags);
   if (tags.length) w.push({ tags: { hasEvery: tags } });
   if (one(p.hasAdaptation) === "1") w.push({ dramas: { some: {} } });
@@ -483,7 +477,15 @@ export function adminPerformerFilterDefs(t: Dict, o: PerformerFilterOptions): Fi
     // Вид (актёр/группа/маскот) в админке уже выбран вкладками раздела —
     // второй такой же фильтр только путал бы.
     ...performerFilterDefs(t, o).filter((d) => d.key !== "kind"),
-    { key: "placeOfBirth", title: "Место рождения", kind: "text" },
+    // Страна (nationality), а не место рождения — правка владельца.
+    {
+      key: "nationality",
+      title: t.filters.country,
+      kind: "multi",
+      options: o.nationalities.map((v) => ({ value: v, label: v })),
+      alwaysShow: true,
+      hint: t.filters.hints.country,
+    },
     { key: "noPhoto", title: "Без фото", kind: "flag" },
     { key: "noBirthDate", title: "Без даты рождения", kind: "flag" },
   ];
@@ -491,8 +493,8 @@ export function adminPerformerFilterDefs(t: Dict, o: PerformerFilterOptions): Fi
 
 export function adminPerformerFilterWhere(p: FilterParams): Prisma.PerformerWhereInput[] {
   const w = performerFilterWhere(p);
-  const place = one(p.placeOfBirth);
-  if (place) w.push({ placeOfBirth: { contains: place, mode: "insensitive" } });
+  const nationalities = csv(p.nationality);
+  if (nationalities.length) w.push({ nationality: { in: nationalities } });
   if (one(p.noPhoto) === "1") w.push({ OR: [{ photoUrl: null }, { photoUrl: "" }] });
   if (one(p.noBirthDate) === "1") w.push({ birthDate: null });
   return w;

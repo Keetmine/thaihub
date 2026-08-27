@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { prisma } from "../../src/lib/prisma";
-import { TEST_DRAMAS, TEST_FILTER_DRAMAS, TEST_GENRE } from "./testDramas";
+import { TEST_DRAMAS, TEST_FILTER_DRAMAS, TEST_GENRE, TEST_TAG } from "./testDramas";
 
 /**
  * Два сериала для episode-progress.spec.ts.
@@ -42,11 +42,12 @@ async function main() {
   for (const d of Object.values(TEST_FILTER_DRAMAS)) {
     await prisma.drama.upsert({
       where: { slug: d.slug },
-      update: { genres: [TEST_GENRE], year: d.year, country: d.country },
+      update: { genres: [TEST_GENRE], tags: [TEST_TAG], year: d.year, country: d.country },
       create: {
         slug: d.slug,
         title: d.title,
         genres: [TEST_GENRE],
+        tags: [TEST_TAG],
         year: d.year,
         country: d.country,
       },

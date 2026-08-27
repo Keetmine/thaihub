@@ -3,6 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/components/LocaleProvider";
+import { ChevronDownIcon } from "@/components/icons";
 import type { FilterDef } from "@/lib/catalogFilters";
 
 /**
@@ -13,10 +14,13 @@ import type { FilterDef } from "@/lib/catalogFilters";
  * дважды (колонка на широком экране и раскрывашка на телефоне) — обе
  * копии смотрят в один адрес и не могут разъехаться.
  *
- * Каждая группа — раскрывашка (правка владельца): заголовок сворачивает
- * и разворачивает, агентства и теги свёрнуты по умолчанию, группа с
- * выбранным значением открыта всегда. Под заголовком — короткая
- * подсказка, варианты — в два столбца, где им хватает места.
+ * Устройство — по правкам владельца: каждая группа сворачивается за
+ * заголовок (стрелка у правого края; агентства и теги свёрнуты по
+ * умолчанию, группа с выбранным значением открыта всегда), варианты —
+ * чекбоксами в два столбца, ЦЕЛИКОМ и без прокрутки; отдельных плашек
+ * выбранного нет — отмеченный чекбокс говорит сам за себя. Теги —
+ * особый случай: значений сотни, поэтому там поле поиска, подходящие —
+ * плашками в ряд, выбранные — снимаемыми плашками под полем.
  *
  * Что описывать фильтрами и как собирать из них запрос — не здесь:
  * описания приходят готовыми из lib/catalogFilters.ts, уже с
@@ -69,31 +73,64 @@ export default function FilterPanel({ defs }: { defs: FilterDef[] }) {
     });
   }
 
+  const shown = defs.filter(
+    // Группа без единого варианта — шум, если только она не помечена
+    // «показывать всегда» (страна: варианты появятся по мере
+    // переимпорта, а пометка объяснит, почему пусто).
+    (def) =>
+      def.alwaysShow ||
+      !(def.kind === "multi" || def.kind === "select") ||
+      (def.options ?? []).length > 0,
+  );
+
+  // Одиночные флаги («Без постера»…) собираются в один столбик, а не
+  // расползаются по панели с большими зазорами (правка владельца).
+  const rendered: React.ReactNode[] = [];
+  let flagStack: FilterDef[] = [];
+  const flushFlags = () => {
+    if (flagStack.length === 0) return;
+    rendered.push(
+      <div key={`flags-${flagStack[0].key}`} className="filter-flag-stack">
+        {flagStack.map((def) => (
+          <label key={def.key} className="form-check filter-flag">
+            <input
+              type="checkbox"
+              className="form-check-input"
+              checked={searchParams.get(def.key) === "1"}
+              onChange={(e) => setParam(def.key, e.target.checked ? "1" : "")}
+            />
+            <span className="form-check-label small">{def.title}</span>
+          </label>
+        ))}
+      </div>,
+    );
+    flagStack = [];
+  };
+  for (const def of shown) {
+    if (def.kind === "flag") {
+      flagStack.push(def);
+      continue;
+    }
+    flushFlags();
+    rendered.push(
+      <FilterGroup
+        key={def.key}
+        def={def}
+        uid={uid}
+        selected={searchParams.get(def.key) ?? ""}
+        rangeFrom={searchParams.get(`${def.key}From`) ?? ""}
+        rangeTo={searchParams.get(`${def.key}To`) ?? ""}
+        onToggle={(v) => toggleValue(def.key, v)}
+        onSet={(v) => setParam(def.key, v)}
+        onSetRange={(side, v) => setParam(`${def.key}${side}`, v)}
+      />,
+    );
+  }
+  flushFlags();
+
   return (
     <div className="filter-panel">
-      {defs
-        .filter(
-          // Группа без единого варианта — шум, если только она не
-          // помечена «показывать всегда» (страна: варианты появятся по
-          // мере переимпорта, а пометка объяснит, почему пусто).
-          (def) =>
-            def.alwaysShow ||
-            !(def.kind === "multi" || def.kind === "select") ||
-            (def.options ?? []).length > 0,
-        )
-        .map((def) => (
-          <FilterGroup
-            key={def.key}
-            def={def}
-            uid={uid}
-            selected={searchParams.get(def.key) ?? ""}
-            rangeFrom={searchParams.get(`${def.key}From`) ?? ""}
-            rangeTo={searchParams.get(`${def.key}To`) ?? ""}
-            onToggle={(v) => toggleValue(def.key, v)}
-            onSet={(v) => setParam(def.key, v)}
-            onSetRange={(side, v) => setParam(`${def.key}${side}`, v)}
-          />
-        ))}
+      {rendered}
       {anyActive && (
         <button type="button" className="btn btn-ghost btn-sm align-self-start" onClick={resetAll}>
           {t.filters.reset}
@@ -102,9 +139,6 @@ export default function FilterPanel({ defs }: { defs: FilterDef[] }) {
     </div>
   );
 }
-
-/** Сколько вариантов multi-списка видно без «показать все». */
-const COLLAPSED_OPTIONS = 10;
 
 function FilterGroup({
   def,
@@ -134,24 +168,8 @@ function FilterGroup({
   // каждая перерисовка (то есть каждая смена любого фильтра)
   // захлопывала бы группы обратно.
   const [open, setOpen] = useState(!def.collapsed || hasActive);
-  const [expanded, setExpanded] = useState(false);
   const [optionQuery, setOptionQuery] = useState("");
   const selectedSet = useMemo(() => new Set(selected.split(",").filter(Boolean)), [selected]);
-
-  // Флаг — одиночный чекбокс, заголовка-раскрывашки у него нет.
-  if (def.kind === "flag") {
-    return (
-      <label className="form-check filter-group filter-flag">
-        <input
-          type="checkbox"
-          className="form-check-input"
-          checked={selected === "1"}
-          onChange={(e) => onSet(e.target.checked ? "1" : "")}
-        />
-        <span className="form-check-label small">{def.title}</span>
-      </label>
-    );
-  }
 
   let body: React.ReactNode;
 
@@ -217,81 +235,101 @@ function FilterGroup({
         ))}
       </div>
     );
-  } else {
-    // multi: чекбоксы в два столбца; у searchOnly список появляется
-    // только по мере поиска (выбранные видны всегда).
+  } else if (def.chipStyle) {
+    // Теги: поле поиска, подходящие — плашками в ряд (как чипы на
+    // карточке сериала), выбранные — снимаемыми плашками ПОД полем.
     const options = def.options ?? [];
     const query = optionQuery.trim().toLowerCase();
-    const filtered = query
-      ? options.filter((o) => o.label.toLowerCase().includes(query))
-      : options;
-    let visible: typeof options;
-    if (def.searchOnly && !query) {
-      visible = options.filter((o) => selectedSet.has(o.value));
-    } else if (expanded || query) {
-      visible = filtered;
-    } else {
-      // Выбранные всегда видны, даже когда список свёрнут: чекбокс,
-      // который нельзя увидеть, нельзя и снять.
-      visible = [
-        ...filtered.filter((o) => selectedSet.has(o.value)),
-        ...filtered.filter((o) => !selectedSet.has(o.value)),
-      ].slice(0, Math.max(COLLAPSED_OPTIONS, selectedSet.size));
-    }
-    const hiddenCount = def.searchOnly && !query ? 0 : filtered.length - visible.length;
-
+    // Выбранное строим от адреса, а не от списка вариантов: список
+    // приходит из получасового кэша, и свежего значения (или значения
+    // из чужой ссылки) в нём может не быть — а плашка снятия обязана
+    // быть в любом случае.
+    const chosen = [...selectedSet].map(
+      (v) => options.find((o) => o.value === v) ?? { value: v, label: v },
+    );
+    const suggestions = query
+      ? options.filter(
+          (o) => !selectedSet.has(o.value) && o.label.toLowerCase().includes(query),
+        )
+      : [];
     body = (
       <>
-        {def.searchable && (
-          <input
-            type="search"
-            className="form-control form-control-sm mb-1"
-            placeholder={t.filters.optionSearchPlaceholder}
-            aria-label={`${def.title}: ${t.filters.optionSearchPlaceholder}`}
-            value={optionQuery}
-            onChange={(e) => setOptionQuery(e.target.value)}
-          />
-        )}
-        {options.length === 0 ? (
-          <span className="small text-secondary">{t.filters.noOptionsYet}</span>
-        ) : (
-          <div className="filter-options filter-options-grid">
-            {visible.map((o) => (
-              <label key={o.value} className="form-check filter-option">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  checked={selectedSet.has(o.value)}
-                  onChange={() => onToggle(o.value)}
-                />
-                <span className="form-check-label small">{o.label}</span>
-              </label>
+        <input
+          type="search"
+          className="form-control form-control-sm mb-2"
+          placeholder={t.filters.optionSearchPlaceholder}
+          aria-label={`${def.title}: ${t.filters.optionSearchPlaceholder}`}
+          value={optionQuery}
+          onChange={(e) => setOptionQuery(e.target.value)}
+        />
+        {chosen.length > 0 && (
+          <div className="filter-chips mb-2">
+            {chosen.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                className="filter-chip"
+                onClick={() => onToggle(o.value)}
+                title={t.filters.reset}
+              >
+                {o.label}
+                <span aria-hidden>×</span>
+              </button>
             ))}
-            {visible.length === 0 && query && (
-              <span className="small text-secondary">{t.filters.live.empty}</span>
-            )}
           </div>
         )}
-        {hiddenCount > 0 && (
-          <button
-            type="button"
-            className="btn btn-link btn-sm p-0 filter-more"
-            onClick={() => setExpanded(true)}
-          >
-            {t.filters.showAllOptions(filtered.length)}
-          </button>
-        )}
-        {expanded && !query && options.length > COLLAPSED_OPTIONS && (
-          <button
-            type="button"
-            className="btn btn-link btn-sm p-0 filter-more"
-            onClick={() => setExpanded(false)}
-          >
-            {t.filters.collapseOptions}
-          </button>
-        )}
+        {query &&
+          (suggestions.length > 0 ? (
+            <div className="filter-chips">
+              {suggestions.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  className="filter-chip filter-chip-option"
+                  onClick={() => {
+                    onToggle(o.value);
+                    setOptionQuery("");
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="small text-secondary">{t.filters.live.empty}</span>
+          ))}
       </>
     );
+  } else {
+    // multi: чекбоксы в два столбца, ЦЕЛИКОМ — без прокрутки, без
+    // «показать все» и без перестановки выбранных наверх (правки
+    // владельца: чекбокс должен оставаться там, где его нашли).
+    // Значение из адреса, которого нет в кэшированном списке, всё равно
+    // показываем отмеченным чекбоксом — иначе его не снять.
+    const options = [
+      ...(def.options ?? []),
+      ...[...selectedSet]
+        .filter((v) => !(def.options ?? []).some((o) => o.value === v))
+        .map((v) => ({ value: v, label: v })),
+    ];
+    body =
+      options.length === 0 ? (
+        <span className="small text-secondary">{t.filters.noOptionsYet}</span>
+      ) : (
+        <div className="filter-options filter-options-grid">
+          {options.map((o) => (
+            <label key={o.value} className="form-check filter-option">
+              <input
+                type="checkbox"
+                className="form-check-input"
+                checked={selectedSet.has(o.value)}
+                onChange={() => onToggle(o.value)}
+              />
+              <span className="form-check-label small">{o.label}</span>
+            </label>
+          ))}
+        </div>
+      );
   }
 
   return (
@@ -301,14 +339,16 @@ function FilterGroup({
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
       <summary className="filter-group-title">
-        <span className="search-section-chevron" aria-hidden>
-          ▸
-        </span>
         {def.title}
         {selectedSet.size > 0 && def.kind === "multi" && (
           <span className="filter-group-count">{selectedSet.size}</span>
         )}
         {hasActive && def.kind !== "multi" && <span className="filter-group-count">•</span>}
+        {/* Стрелка у правого края — прежняя «точка» слева не читалась
+            как раскрывашка (правка владельца). */}
+        <span className="filter-chevron" aria-hidden>
+          <ChevronDownIcon />
+        </span>
       </summary>
       {def.hint && <p className="filter-group-hint">{def.hint}</p>}
       {body}

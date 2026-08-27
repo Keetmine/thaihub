@@ -38,6 +38,7 @@ export default function EpisodeProgress({
   const t = useT();
   const router = useRouter();
   const [value, setValue] = useState(watched ?? 0);
+  const [draft, setDraft] = useState(String(watched ?? 0));
   const [seen, setSeen] = useState(watched);
   const [isPending, startTransition] = useTransition();
 
@@ -50,18 +51,31 @@ export default function EpisodeProgress({
   if (watched !== seen) {
     setSeen(watched);
     setValue(watched ?? 0);
+    setDraft(String(watched ?? 0));
   }
 
   const done = total !== null && value >= total;
 
   function set(next: number) {
     const clamped = Math.max(0, total !== null ? Math.min(next, total) : next);
+    setDraft(String(clamped));
     if (clamped === value) return;
     setValue(clamped);
     startTransition(async () => {
       await setDramaEpisodesWatched(dramaId, clamped);
       router.refresh();
     });
+  }
+
+  /** Набранное руками — в те же рамки, что и кнопки; мусор откатывается
+   *  к текущему значению, а не превращается в ноль. */
+  function commitDraft() {
+    const parsed = Number.parseInt(draft, 10);
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+    set(parsed);
   }
 
   const card = variant === "card";
@@ -82,9 +96,29 @@ export default function EpisodeProgress({
           >
             −
           </button>
-          <span className="episode-progress-count">
-            {total !== null ? t.catalog.episodes.of(value, total) : value}
-          </span>
+          {/* Число — инпут (правка владельца): ввести «9» сразу быстрее,
+              чем девять раз нажать плюс. Черновик локальный, в базу
+              уходит по Enter или уходу из поля, с обрезкой в границы. */}
+          <input
+            type="number"
+            className="episode-progress-input"
+            min={0}
+            max={total ?? undefined}
+            value={draft}
+            disabled={isPending}
+            aria-label={t.catalog.episodes.label}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => commitDraft()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commitDraft();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+          />
+          {total !== null && (
+            <span className="episode-progress-count">/ {total}</span>
+          )}
           <button
             type="button"
             className="episode-progress-step"

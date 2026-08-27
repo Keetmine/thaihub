@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { test, expect } from "@playwright/test";
 import { ADMIN_STORAGE_STATE } from "./auth-state";
-import { TEST_FILTER_DRAMAS, TEST_GENRE } from "./testDramas";
+import { TEST_FILTER_DRAMAS, TEST_GENRE, TEST_TAG } from "./testDramas";
 
 /**
  * Поиск с фильтрами (И1) и фильтры в админке (И6).
@@ -82,16 +82,17 @@ test.describe("публичный /search", () => {
     await expect(page.locator(".quick-search")).toHaveCount(0);
   });
 
-  test("чипы активных фильтров снимаются крестиком", async ({ page }) => {
-    await page.goto(`${GENRE_URL}&yearFrom=2020`);
-    // Чипы рисуются дважды (мобильная раскрывашка + колонка) — смотрим
-    // в видимую колонку.
-    const chips = page.locator(".search-filter-aside .filter-chip");
-    await expect(chips.filter({ hasText: TEST_GENRE })).toBeVisible();
-    await chips.filter({ hasText: /Year|Год/ }).click();
-    await expect(page).not.toHaveURL(/yearFrom/);
-    // Жанр остался — снялся только год, и старая запись вернулась.
+  test("теги: подсказки плашками, выбранное — под полем, крестик снимает", async ({ page }) => {
+    // Тег через адрес: плашка выбранного видна и снимается. Список
+    // тегов в панели — из получасового кэша, фикстурного тега там может
+    // ещё не быть, поэтому подсказку проверяем мягко.
+    await page.goto(`/search?section=dramas&tags=${encodeURIComponent(TEST_TAG)}`);
+    const aside = page.locator(".search-filter-aside");
     await expect(page.getByText(TEST_FILTER_DRAMAS.old.title)).toBeVisible();
+    const chosen = aside.locator(".filter-chip", { hasText: TEST_TAG });
+    await expect(chosen).toBeVisible();
+    await chosen.click();
+    await expect(page).not.toHaveURL(/tags=/);
   });
 });
 

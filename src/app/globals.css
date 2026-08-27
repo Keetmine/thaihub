@@ -4848,13 +4848,12 @@ body::after {
   font-size: 0.68rem;
 }
 
-/* Длинный список вариантов прокручивается сам, а не растит колонку. */
+/* Варианты показываются целиком: ни прокрутки, ни «показать все» —
+   правка владельца. */
 .filter-options {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  max-height: 16rem;
-  overflow-y: auto;
 }
 
 /* Варианты — в два столбца (правка владельца): колонка широкая, а
@@ -4889,19 +4888,40 @@ body::after {
   white-space: nowrap;
 }
 
-/* Заголовок группы — раскрывашка: убираем штатный маркер details,
-   стрелка своя (та же, что у секций поиска). */
+/* Заголовок группы — раскрывашка: штатный маркер details убран,
+   стрелка-шеврон у правого края (прежняя «точка» слева не читалась). */
 .filter-group > summary {
   cursor: pointer;
   list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .filter-group > summary::-webkit-details-marker {
   display: none;
 }
 
-.filter-group[open] > summary .search-section-chevron {
-  transform: rotate(90deg);
+.filter-chevron {
+  margin-left: auto;
+  display: inline-flex;
+  transition: transform 0.15s ease;
+}
+
+.filter-chevron svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.filter-group:not([open]) .filter-chevron {
+  transform: rotate(-90deg);
+}
+
+/* Одиночные флаги («Без постера»…) — плотным столбиком. */
+.filter-flag-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .filter-group-hint {
@@ -5140,4 +5160,37 @@ body::after {
   border-color: var(--bs-border-color);
   background: transparent;
   color: var(--bs-secondary-color);
+}
+
+/* Плашка-вариант (подсказки тегов): нейтральная, пока не выбрана. */
+.filter-chip-option {
+  border-color: var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bs-body-color);
+}
+
+/* Инпут числа серий: по размеру числа, без спиннеров браузера —
+   плюс-минус уже есть свои. */
+.episode-progress-input {
+  width: 2.6rem;
+  text-align: center;
+  background: transparent;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.4rem;
+  color: var(--bs-body-color);
+  font-size: 0.85rem;
+  padding: 0.1rem 0.15rem;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.episode-progress-input::-webkit-outer-spin-button,
+.episode-progress-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.episode-progress-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.55);
 }

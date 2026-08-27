@@ -32,6 +32,9 @@ export const TEST_DRAMAS = {
  */
 export const TEST_GENRE = "E2E Filter Genre";
 
+/** Тег-маркер — так же уникален, как жанр выше. */
+export const TEST_TAG = "E2E Filter Tag";
+
 export const TEST_FILTER_DRAMAS = {
   old: {
     slug: "e2e-filter-old",
