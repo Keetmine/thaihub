@@ -1,14 +1,18 @@
 import FilterChips from "@/components/filters/FilterChips";
+import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import FilterPanel from "@/components/filters/FilterPanel";
 import { countActiveFilters, type FilterDef, type FilterParams } from "@/lib/catalogFilters";
 
 /**
- * Раскрывашка «Фильтры (N)» над админ-списком (И6).
+ * Колонка фильтров админ-списка (И6) — как на публичном /search
+ * (правка владельца): на широком экране справа от списка и липнет под
+ * шапкой, на узком — раскрывашка над ним. Чипы выбранного — в том же
+ * блоке, что и сами фильтры.
  *
- * Свёрнута, пока фильтров нет, и раскрыта, когда что-то выбрано:
- * активный срез должен быть виден сразу, иначе список выглядит
- * «непонятно почему коротким». Панель внутри — та же, что на публичном
- * /search, в горизонтальной раскладке.
+ * Страница кладёт список в `col-12 col-xl-9`, а этот компонент — второй
+ * колонкой того же `.row`. Раскрывашка — клиентская со своим
+ * состоянием: серверный `<details>` перерисовывался на каждую смену
+ * фильтра и захлопывался под руками.
  */
 export default function AdminFilters({
   defs,
@@ -18,19 +22,20 @@ export default function AdminFilters({
   params: FilterParams;
 }) {
   const active = countActiveFilters(defs, params);
+  const title = `Фильтры${active > 0 ? ` (${active})` : ""}`;
   return (
-    <>
-    <details className="surface p-3 mb-2" open={active > 0}>
-      <summary className="fw-semibold small">
-        Фильтры{active > 0 ? ` (${active})` : ""}
-      </summary>
-      <div className="mt-3">
-        <FilterPanel defs={defs} variant="bar" />
+    <aside className="col-12 col-xl-3 order-first order-xl-last">
+      <div className="d-xl-none">
+        <FilterDisclosure title={title} defaultOpen={active > 0}>
+          <FilterChips defs={defs} />
+          <FilterPanel defs={defs} />
+        </FilterDisclosure>
       </div>
-    </details>
-    {/* Чипы видны и при свёрнутой панели: активный срез должен быть
-        заметен, иначе список выглядит «непонятно почему коротким». */}
-    <FilterChips defs={defs} />
-    </>
+      <div className="d-none d-xl-block search-filter-aside">
+        <p className="section-heading mb-3">{title}</p>
+        <FilterChips defs={defs} />
+        <FilterPanel defs={defs} />
+      </div>
+    </aside>
   );
 }

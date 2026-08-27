@@ -10,6 +10,7 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
 import FilterChips from "@/components/filters/FilterChips";
+import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import SortSelect from "@/components/filters/SortSelect";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
@@ -111,7 +112,8 @@ export default async function SearchPage({
       </form>
 
       {/* Разделы. Активная вкладка — как в шапке, оранжевым. */}
-      <div className="d-flex flex-wrap gap-1 mb-4 tab-bar" role="tablist">
+      {/* gap-3: слипшиеся вкладки читались одной строкой без границ. */}
+      <div className="d-flex flex-wrap gap-3 mb-4 tab-bar" role="tablist">
         {SECTIONS.map((s) => (
           <AppLink
             key={s}
@@ -302,7 +304,6 @@ async function SectionResults({
           поиска (просьба владельца). На телефоне колонка превращается
           в раскрывашку над выдачей. */}
       <div className="col-12 col-lg-9">
-        <FilterChips defs={defs} />
         <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
           <span className="text-secondary small">{t.filters.results(total)}</span>
           {sortOptions && <SortSelect options={sortOptions} label={t.filters.sort} />}
@@ -318,14 +319,17 @@ async function SectionResults({
         <Pagination page={page} pages={pages} params={params} t={t} />
       </div>
       <aside className="col-12 col-lg-3 order-first order-lg-last">
-        <details className="d-lg-none surface p-3 mb-2">
-          <summary className="fw-semibold">{t.filters.panelTitle}</summary>
-          <div className="mt-3">
+        {/* Выбранное — чипами в том же блоке, что и фильтры (правка
+            владельца): срез и рычаги управления им в одном месте. */}
+        <div className="d-lg-none">
+          <FilterDisclosure title={t.filters.panelTitle}>
+            <FilterChips defs={defs} />
             <FilterPanel defs={defs} />
-          </div>
-        </details>
+          </FilterDisclosure>
+        </div>
         <div className="d-none d-lg-block search-filter-aside">
           <p className="section-heading mb-3">{t.filters.panelTitle}</p>
+          <FilterChips defs={defs} />
           <FilterPanel defs={defs} />
         </div>
       </aside>

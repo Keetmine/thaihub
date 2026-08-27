@@ -51,6 +51,21 @@ export const filters = {
     onMap: "On the map",
     hasAdaptation: "Has a series adaptation",
 
+    // Подсказки под заголовками групп фильтров.
+    hints: {
+        year: "Both ends inclusive — leave one side empty for an open range.",
+        genres: "Tick one or more; results carry ALL the chosen genres.",
+        country: "Fills in as the catalogue re-imports — not every record has one yet.",
+        type: "Series or movie, as the source labels it.",
+        status: "One at a time.",
+        agency: "Start typing an agency name and tick the ones you need.",
+        tags: "Start typing a tag and tick the ones you need.",
+        performerKind: "Actors, groups or mascots — tick any.",
+        date: "From and to, both days included.",
+        venue: "Part of the venue name.",
+        author: "Author or original author of the novel.",
+    },
+
     sort: "Sort",
     sortOptions: {
         new: "Newest first",
@@ -68,6 +83,7 @@ export const filters = {
         hint: "Start typing a title or a name",
     },
 
+    noOptionsYet: "No values yet — they will appear as the catalogue updates.",
     prevPage: "Previous",
     nextPage: "Next",
     results: (n: number) => `Results: ${n}`,

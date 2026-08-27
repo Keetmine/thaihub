@@ -48,6 +48,17 @@ export type FilterDef = {
   /** yearRange: подсказки границ в плейсхолдерах. */
   min?: number;
   max?: number;
+  /** Короткая подсказка под заголовком группы. */
+  hint?: string;
+  /** Свёрнута по умолчанию (агентства, теги); при активном значении
+   *  группа открывается сама. */
+  collapsed?: boolean;
+  /** multi: без поиска список не показывать вовсе (теги — их сотни,
+   *  простыня чекбоксов бессмысленна). Выбранные видны всегда. */
+  searchOnly?: boolean;
+  /** Показывать группу даже без вариантов — с пометкой «значений пока
+   *  нет» (страна: заполняется по мере переимпорта). */
+  alwaysShow?: boolean;
 };
 
 export type FilterParams = Record<string, string | string[] | undefined>;
@@ -153,26 +164,59 @@ export type DramaFilterOptions = Awaited<ReturnType<typeof loadDramaFilterOption
 
 export function dramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
   const plain = (values: string[]) => values.map((v) => ({ value: v, label: v }));
+  // Канала здесь нет сознательно (правка владельца): зрителю он мало
+  // что говорит. В админке остаётся — adminDramaFilterDefs.
   return [
-    { key: "year", title: t.filters.year, kind: "yearRange", min: o.yearMin, max: o.yearMax },
-    { key: "genres", title: t.filters.genres, kind: "multi", options: plain(o.genres) },
-    { key: "country", title: t.filters.country, kind: "multi", options: plain(o.countries) },
-    { key: "type", title: t.filters.type, kind: "multi", options: plain(o.types) },
+    {
+      key: "year",
+      title: t.filters.year,
+      kind: "yearRange",
+      min: o.yearMin,
+      max: o.yearMax,
+      hint: t.filters.hints.year,
+    },
+    {
+      key: "genres",
+      title: t.filters.genres,
+      kind: "multi",
+      options: plain(o.genres),
+      hint: t.filters.hints.genres,
+    },
+    {
+      key: "country",
+      title: t.filters.country,
+      kind: "multi",
+      options: plain(o.countries),
+      hint: t.filters.hints.country,
+      alwaysShow: true,
+    },
+    { key: "type", title: t.filters.type, kind: "multi", options: plain(o.types), hint: t.filters.hints.type },
     {
       key: "status",
       title: t.filters.status,
-      kind: "multi",
+      kind: "select",
       options: o.statuses.map((s) => ({ value: s, label: t.catalog.dramaStatus[s] })),
+      hint: t.filters.hints.status,
     },
-    { key: "network", title: t.filters.network, kind: "multi", options: plain(o.networks) },
     {
       key: "agency",
       title: t.filters.agency,
       kind: "multi",
       options: o.agencies.map((a) => ({ value: a.id, label: a.name })),
       searchable: true,
+      collapsed: true,
+      hint: t.filters.hints.agency,
     },
-    { key: "tags", title: t.filters.tags, kind: "multi", options: plain(o.tags), searchable: true },
+    {
+      key: "tags",
+      title: t.filters.tags,
+      kind: "multi",
+      options: plain(o.tags),
+      searchable: true,
+      searchOnly: true,
+      collapsed: true,
+      hint: t.filters.hints.tags,
+    },
   ];
 }
 
@@ -257,6 +301,7 @@ export function performerFilterDefs(t: Dict, o: PerformerFilterOptions): FilterD
         value: v,
         label: t.filters.performerKinds[v],
       })),
+      hint: t.filters.hints.performerKind,
     },
     {
       key: "agency",
@@ -264,6 +309,8 @@ export function performerFilterDefs(t: Dict, o: PerformerFilterOptions): FilterD
       kind: "multi",
       options: o.agencies.map((a) => ({ value: a.id, label: a.name })),
       searchable: true,
+      collapsed: true,
+      hint: t.filters.hints.agency,
     },
     {
       key: "birthYear",
@@ -271,6 +318,7 @@ export function performerFilterDefs(t: Dict, o: PerformerFilterOptions): FilterD
       kind: "yearRange",
       min: o.birthYearMin,
       max: o.birthYearMax,
+      hint: t.filters.hints.year,
     },
   ];
 }
@@ -307,8 +355,8 @@ export function eventFilterDefs(t: Dict): FilterDef[] {
         { value: "past", label: t.filters.eventWhenOptions.past },
       ],
     },
-    { key: "date", title: t.filters.date, kind: "dateRange" },
-    { key: "venue", title: t.filters.venue, kind: "text" },
+    { key: "date", title: t.filters.date, kind: "dateRange", hint: t.filters.hints.date },
+    { key: "venue", title: t.filters.venue, kind: "text", hint: t.filters.hints.venue },
   ];
 }
 
@@ -363,13 +411,16 @@ export type NovelFilterOptions = Awaited<ReturnType<typeof loadNovelFilterOption
 
 export function novelFilterDefs(t: Dict, o: NovelFilterOptions): FilterDef[] {
   return [
-    { key: "author", title: t.filters.author, kind: "text" },
+    { key: "author", title: t.filters.author, kind: "text", hint: t.filters.hints.author },
     {
       key: "tags",
       title: t.filters.tags,
       kind: "multi",
       options: o.tags.map((v) => ({ value: v, label: v })),
       searchable: true,
+      searchOnly: true,
+      collapsed: true,
+      hint: t.filters.hints.tags,
     },
     { key: "hasAdaptation", title: t.filters.hasAdaptation, kind: "flag" },
   ];
@@ -403,6 +454,15 @@ export function novelFilterWhere(p: FilterParams): Prisma.NovelWhereInput[] {
 export function adminDramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
   return [
     ...dramaFilterDefs(t, o),
+    // Канал скрыт с публичной страницы, но владельцу нужен.
+    {
+      key: "network",
+      title: t.filters.network,
+      kind: "multi",
+      options: o.networks.map((v) => ({ value: v, label: v })),
+      collapsed: true,
+    },
+    { key: "noCountry", title: "Без страны", kind: "flag" },
     { key: "noPoster", title: "Без постера", kind: "flag" },
     { key: "noCast", title: "Без каста", kind: "flag" },
     { key: "noMdl", title: "Без связи с MDL", kind: "flag" },
@@ -411,6 +471,7 @@ export function adminDramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[
 
 export function adminDramaFilterWhere(p: FilterParams): Prisma.DramaWhereInput[] {
   const w = dramaFilterWhere(p);
+  if (one(p.noCountry) === "1") w.push({ OR: [{ country: null }, { country: "" }] });
   if (one(p.noPoster) === "1") w.push({ OR: [{ posterUrl: null }, { posterUrl: "" }] });
   if (one(p.noCast) === "1") w.push({ performers: { none: {} } });
   if (one(p.noMdl) === "1") w.push({ mdlUrl: null, mydramalistUrl: null });

@@ -198,10 +198,11 @@ export default async function AdminPerformersPage({
         </Link>
       </div>
 
-      <AdminFilters
-        defs={adminPerformerFilterDefs(getDict("ru"), await loadPerformerFilterOptions())}
-        params={sp}
-      />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+
+      <div className="row g-4">
+
+      <div className="col-12 col-xl-9">
 
       {/* Табы разделов убраны — группы/маскоты теперь пункты сайдбара. */}
       <div className="tab-bar-row justify-content-end">
@@ -267,6 +268,12 @@ export default async function AdminPerformersPage({
           />
         </>
       )}
+      </div>
+      <AdminFilters
+        defs={adminPerformerFilterDefs(getDict("ru"), await loadPerformerFilterOptions())}
+        params={sp}
+      />
+      </div>
     </div>
   );
 }

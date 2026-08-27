@@ -84,7 +84,9 @@ test.describe("публичный /search", () => {
 
   test("чипы активных фильтров снимаются крестиком", async ({ page }) => {
     await page.goto(`${GENRE_URL}&yearFrom=2020`);
-    const chips = page.locator(".filter-chip");
+    // Чипы рисуются дважды (мобильная раскрывашка + колонка) — смотрим
+    // в видимую колонку.
+    const chips = page.locator(".search-filter-aside .filter-chip");
     await expect(chips.filter({ hasText: TEST_GENRE })).toBeVisible();
     await chips.filter({ hasText: /Year|Год/ }).click();
     await expect(page).not.toHaveURL(/yearFrom/);
@@ -100,8 +102,8 @@ test.describe("админка (И6)", () => {
     await page.goto(
       `/admin/dramas?genres=${encodeURIComponent(TEST_GENRE)}&yearFrom=2020`,
     );
-    // Панель раскрыта, раз фильтры активны, и счётчик на месте.
-    await expect(page.getByText(/Фильтры \(2\)/)).toBeVisible();
+    // Счётчик активных фильтров — в заголовке колонки.
+    await expect(page.locator(".search-filter-aside").getByText(/Фильтры \(2\)/)).toBeVisible();
     await expect(page.getByText(TEST_FILTER_DRAMAS.fresh.title)).toBeVisible();
     await expect(page.getByText(TEST_FILTER_DRAMAS.old.title)).toHaveCount(0);
   });
@@ -124,6 +126,6 @@ test.describe("админка (И6)", () => {
 
   test("фильтр прав в /admin/users", async ({ page }) => {
     await page.goto("/admin/users?role=admin");
-    await expect(page.getByText(/Фильтры \(1\)/)).toBeVisible();
+    await expect(page.locator(".search-filter-aside").getByText(/Фильтры \(1\)/)).toBeVisible();
   });
 });

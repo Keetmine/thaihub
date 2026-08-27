@@ -169,7 +169,11 @@ export default async function AdminEventsPage({
         </div>
       </div>
 
-      <AdminFilters defs={adminEventFilterDefs(getDict("ru"))} params={sp} />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+
+      <div className="row g-4">
+
+      <div className="col-12 col-xl-9">
 
       {events.length === 0 ? (
         <p className="text-secondary">
@@ -251,6 +255,9 @@ export default async function AdminEventsPage({
           }&page=${p}`
         }
       />
+      </div>
+      <AdminFilters defs={adminEventFilterDefs(getDict("ru"))} params={sp} />
+      </div>
     </div>
   );
 }

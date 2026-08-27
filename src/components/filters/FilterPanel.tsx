@@ -13,19 +13,16 @@ import type { FilterDef } from "@/lib/catalogFilters";
  * дважды (колонка на широком экране и раскрывашка на телефоне) — обе
  * копии смотрят в один адрес и не могут разъехаться.
  *
+ * Каждая группа — раскрывашка (правка владельца): заголовок сворачивает
+ * и разворачивает, агентства и теги свёрнуты по умолчанию, группа с
+ * выбранным значением открыта всегда. Под заголовком — короткая
+ * подсказка, варианты — в два столбца, где им хватает места.
+ *
  * Что описывать фильтрами и как собирать из них запрос — не здесь:
  * описания приходят готовыми из lib/catalogFilters.ts, уже с
  * переведёнными подписями.
  */
-export default function FilterPanel({
-  defs,
-  variant = "column",
-}: {
-  defs: FilterDef[];
-  /** column — правая колонка публичного поиска; bar — горизонтальная
-   *  раскладка в админке. Отличаются только классами. */
-  variant?: "column" | "bar";
-}) {
+export default function FilterPanel({ defs }: { defs: FilterDef[] }) {
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
@@ -73,28 +70,29 @@ export default function FilterPanel({
   }
 
   return (
-    <div className={variant === "bar" ? "filter-panel filter-panel-bar" : "filter-panel"}>
+    <div className="filter-panel">
       {defs
         .filter(
-          // Группа без единого варианта — шум: у страны и типа варианты
-          // появятся по мере переимпорта каталога, а до тех пор пустой
-          // блок «Ничего не нашлось» только смущает.
+          // Группа без единого варианта — шум, если только она не
+          // помечена «показывать всегда» (страна: варианты появятся по
+          // мере переимпорта, а пометка объяснит, почему пусто).
           (def) =>
+            def.alwaysShow ||
             !(def.kind === "multi" || def.kind === "select") ||
             (def.options ?? []).length > 0,
         )
         .map((def) => (
-        <FilterGroup
-          key={def.key}
-          def={def}
-          uid={uid}
-          selected={searchParams.get(def.key) ?? ""}
-          rangeFrom={searchParams.get(`${def.key}From`) ?? ""}
-          rangeTo={searchParams.get(`${def.key}To`) ?? ""}
-          onToggle={(v) => toggleValue(def.key, v)}
-          onSet={(v) => setParam(def.key, v)}
-          onSetRange={(side, v) => setParam(`${def.key}${side}`, v)}
-        />
+          <FilterGroup
+            key={def.key}
+            def={def}
+            uid={uid}
+            selected={searchParams.get(def.key) ?? ""}
+            rangeFrom={searchParams.get(`${def.key}From`) ?? ""}
+            rangeTo={searchParams.get(`${def.key}To`) ?? ""}
+            onToggle={(v) => toggleValue(def.key, v)}
+            onSet={(v) => setParam(def.key, v)}
+            onSetRange={(side, v) => setParam(`${def.key}${side}`, v)}
+          />
         ))}
       {anyActive && (
         <button type="button" className="btn btn-ghost btn-sm align-self-start" onClick={resetAll}>
@@ -106,7 +104,7 @@ export default function FilterPanel({
 }
 
 /** Сколько вариантов multi-списка видно без «показать все». */
-const COLLAPSED_OPTIONS = 8;
+const COLLAPSED_OPTIONS = 10;
 
 function FilterGroup({
   def,
@@ -128,10 +126,19 @@ function FilterGroup({
   onSetRange: (side: "From" | "To", value: string) => void;
 }) {
   const t = useT();
+  const hasActive =
+    def.kind === "yearRange" || def.kind === "dateRange"
+      ? Boolean(rangeFrom || rangeTo)
+      : Boolean(selected);
+  // Раскрыта ли группа — своё состояние, а не атрибут из пропов: иначе
+  // каждая перерисовка (то есть каждая смена любого фильтра)
+  // захлопывала бы группы обратно.
+  const [open, setOpen] = useState(!def.collapsed || hasActive);
   const [expanded, setExpanded] = useState(false);
   const [optionQuery, setOptionQuery] = useState("");
   const selectedSet = useMemo(() => new Set(selected.split(",").filter(Boolean)), [selected]);
 
+  // Флаг — одиночный чекбокс, заголовка-раскрывашки у него нет.
   if (def.kind === "flag") {
     return (
       <label className="form-check filter-group filter-flag">
@@ -146,141 +153,166 @@ function FilterGroup({
     );
   }
 
+  let body: React.ReactNode;
+
   if (def.kind === "text") {
-    return (
-      <div className="filter-group">
-        <label className="filter-group-title" htmlFor={`${uid}-${def.key}`}>
-          {def.title}
-        </label>
+    body = (
+      <DebouncedInput
+        id={`${uid}-${def.key}`}
+        value={selected}
+        onCommit={onSet}
+        ariaLabel={def.title}
+        className="form-control form-control-sm"
+      />
+    );
+  } else if (def.kind === "yearRange" || def.kind === "dateRange") {
+    const isYear = def.kind === "yearRange";
+    body = (
+      <div className="d-flex align-items-center gap-2">
         <DebouncedInput
-          id={`${uid}-${def.key}`}
-          value={selected}
-          onCommit={onSet}
+          value={rangeFrom}
+          onCommit={(v) => onSetRange("From", v)}
+          type={isYear ? "number" : "date"}
+          placeholder={isYear ? String(def.min ?? "") : undefined}
+          ariaLabel={`${def.title}: ${isYear ? t.filters.yearFrom : t.filters.dateFrom}`}
+          className="form-control form-control-sm"
+        />
+        <span className="text-secondary small">—</span>
+        <DebouncedInput
+          value={rangeTo}
+          onCommit={(v) => onSetRange("To", v)}
+          type={isYear ? "number" : "date"}
+          placeholder={isYear ? String(def.max ?? "") : undefined}
+          ariaLabel={`${def.title}: ${isYear ? t.filters.yearTo : t.filters.dateTo}`}
           className="form-control form-control-sm"
         />
       </div>
     );
-  }
-
-  if (def.kind === "yearRange" || def.kind === "dateRange") {
-    const isYear = def.kind === "yearRange";
-    return (
-      <div className="filter-group">
-        <span className="filter-group-title">{def.title}</span>
-        <div className="d-flex align-items-center gap-2">
-          <DebouncedInput
-            value={rangeFrom}
-            onCommit={(v) => onSetRange("From", v)}
-            type={isYear ? "number" : "date"}
-            placeholder={isYear ? String(def.min ?? "") : undefined}
-            ariaLabel={`${def.title}: ${isYear ? t.filters.yearFrom : t.filters.dateFrom}`}
-            className="form-control form-control-sm"
+  } else if (def.kind === "select") {
+    // Радио-кнопки, а не выпадашка (правка владельца): варианты видны
+    // все сразу, «Любые» снимает выбор.
+    body = (
+      <div className="filter-options filter-options-grid" role="radiogroup" aria-label={def.title}>
+        <label className="form-check filter-option">
+          <input
+            type="radio"
+            className="form-check-input"
+            name={`${uid}-${def.key}`}
+            checked={selected === ""}
+            onChange={() => onSet("")}
           />
-          <span className="text-secondary small">—</span>
-          <DebouncedInput
-            value={rangeTo}
-            onCommit={(v) => onSetRange("To", v)}
-            type={isYear ? "number" : "date"}
-            placeholder={isYear ? String(def.max ?? "") : undefined}
-            ariaLabel={`${def.title}: ${isYear ? t.filters.yearTo : t.filters.dateTo}`}
-            className="form-control form-control-sm"
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (def.kind === "select") {
-    return (
-      <div className="filter-group">
-        <label className="filter-group-title" htmlFor={`${uid}-${def.key}`}>
-          {def.title}
+          <span className="form-check-label small">{t.filters.anyOption}</span>
         </label>
-        <select
-          id={`${uid}-${def.key}`}
-          className="form-select form-select-sm"
-          value={selected}
-          onChange={(e) => onSet(e.target.value)}
-        >
-          <option value="">{t.filters.anyOption}</option>
-          {(def.options ?? []).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  // multi: чекбоксы; длинные списки — свёрнуты и с поиском.
-  const options = def.options ?? [];
-  const query = optionQuery.trim().toLowerCase();
-  const filtered = query
-    ? options.filter((o) => o.label.toLowerCase().includes(query))
-    : options;
-  // Выбранные всегда видны, даже когда список свёрнут: чекбокс, который
-  // нельзя увидеть, нельзя и снять.
-  const visible =
-    expanded || query
-      ? filtered
-      : [
-          ...filtered.filter((o) => selectedSet.has(o.value)),
-          ...filtered.filter((o) => !selectedSet.has(o.value)),
-        ].slice(0, Math.max(COLLAPSED_OPTIONS, selectedSet.size));
-  const hiddenCount = filtered.length - visible.length;
-
-  return (
-    <div className="filter-group">
-      <span className="filter-group-title">
-        {def.title}
-        {selectedSet.size > 0 && <span className="filter-group-count">{selectedSet.size}</span>}
-      </span>
-      {def.searchable && (
-        <input
-          type="search"
-          className="form-control form-control-sm mb-1"
-          placeholder={t.filters.optionSearchPlaceholder}
-          aria-label={`${def.title}: ${t.filters.optionSearchPlaceholder}`}
-          value={optionQuery}
-          onChange={(e) => setOptionQuery(e.target.value)}
-        />
-      )}
-      <div className="filter-options">
-        {visible.map((o) => (
+        {(def.options ?? []).map((o) => (
           <label key={o.value} className="form-check filter-option">
             <input
-              type="checkbox"
+              type="radio"
               className="form-check-input"
-              checked={selectedSet.has(o.value)}
-              onChange={() => onToggle(o.value)}
+              name={`${uid}-${def.key}`}
+              checked={selected === o.value}
+              onChange={() => onSet(o.value)}
             />
             <span className="form-check-label small">{o.label}</span>
           </label>
         ))}
-        {visible.length === 0 && (
-          <span className="small text-secondary">{t.filters.live.empty}</span>
-        )}
       </div>
-      {hiddenCount > 0 && (
-        <button
-          type="button"
-          className="btn btn-link btn-sm p-0 filter-more"
-          onClick={() => setExpanded(true)}
-        >
-          {t.filters.showAllOptions(filtered.length)}
-        </button>
-      )}
-      {expanded && !query && options.length > COLLAPSED_OPTIONS && (
-        <button
-          type="button"
-          className="btn btn-link btn-sm p-0 filter-more"
-          onClick={() => setExpanded(false)}
-        >
-          {t.filters.collapseOptions}
-        </button>
-      )}
-    </div>
+    );
+  } else {
+    // multi: чекбоксы в два столбца; у searchOnly список появляется
+    // только по мере поиска (выбранные видны всегда).
+    const options = def.options ?? [];
+    const query = optionQuery.trim().toLowerCase();
+    const filtered = query
+      ? options.filter((o) => o.label.toLowerCase().includes(query))
+      : options;
+    let visible: typeof options;
+    if (def.searchOnly && !query) {
+      visible = options.filter((o) => selectedSet.has(o.value));
+    } else if (expanded || query) {
+      visible = filtered;
+    } else {
+      // Выбранные всегда видны, даже когда список свёрнут: чекбокс,
+      // который нельзя увидеть, нельзя и снять.
+      visible = [
+        ...filtered.filter((o) => selectedSet.has(o.value)),
+        ...filtered.filter((o) => !selectedSet.has(o.value)),
+      ].slice(0, Math.max(COLLAPSED_OPTIONS, selectedSet.size));
+    }
+    const hiddenCount = def.searchOnly && !query ? 0 : filtered.length - visible.length;
+
+    body = (
+      <>
+        {def.searchable && (
+          <input
+            type="search"
+            className="form-control form-control-sm mb-1"
+            placeholder={t.filters.optionSearchPlaceholder}
+            aria-label={`${def.title}: ${t.filters.optionSearchPlaceholder}`}
+            value={optionQuery}
+            onChange={(e) => setOptionQuery(e.target.value)}
+          />
+        )}
+        {options.length === 0 ? (
+          <span className="small text-secondary">{t.filters.noOptionsYet}</span>
+        ) : (
+          <div className="filter-options filter-options-grid">
+            {visible.map((o) => (
+              <label key={o.value} className="form-check filter-option">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={selectedSet.has(o.value)}
+                  onChange={() => onToggle(o.value)}
+                />
+                <span className="form-check-label small">{o.label}</span>
+              </label>
+            ))}
+            {visible.length === 0 && query && (
+              <span className="small text-secondary">{t.filters.live.empty}</span>
+            )}
+          </div>
+        )}
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            className="btn btn-link btn-sm p-0 filter-more"
+            onClick={() => setExpanded(true)}
+          >
+            {t.filters.showAllOptions(filtered.length)}
+          </button>
+        )}
+        {expanded && !query && options.length > COLLAPSED_OPTIONS && (
+          <button
+            type="button"
+            className="btn btn-link btn-sm p-0 filter-more"
+            onClick={() => setExpanded(false)}
+          >
+            {t.filters.collapseOptions}
+          </button>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <details
+      className="filter-group"
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
+      <summary className="filter-group-title">
+        <span className="search-section-chevron" aria-hidden>
+          ▸
+        </span>
+        {def.title}
+        {selectedSet.size > 0 && def.kind === "multi" && (
+          <span className="filter-group-count">{selectedSet.size}</span>
+        )}
+        {hasActive && def.kind !== "multi" && <span className="filter-group-count">•</span>}
+      </summary>
+      {def.hint && <p className="filter-group-hint">{def.hint}</p>}
+      {body}
+    </details>
   );
 }
 

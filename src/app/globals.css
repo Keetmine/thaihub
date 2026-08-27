@@ -4818,19 +4818,6 @@ body::after {
   gap: 1.1rem;
 }
 
-/* Админский вариант: группы текут рядом, как строка выпадашек. */
-.filter-panel-bar {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.9rem 1.5rem;
-  align-items: flex-start;
-}
-
-.filter-panel-bar .filter-group {
-  min-width: 11rem;
-  max-width: 16rem;
-}
-
 .filter-group {
   display: flex;
   flex-direction: column;
@@ -4870,6 +4857,60 @@ body::after {
   overflow-y: auto;
 }
 
+/* Варианты — в два столбца (правка владельца): колонка широкая, а
+   значения короткие, простыня в один столбец тянулась зря. */
+.filter-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.75rem;
+}
+
+/* Бутстраповский .form-check выносит инпут отрицательным отступом за
+   левый край — у первого столбца сетки его срезал overflow контейнера
+   (галочки «пропадали»). В сетке раскладываем флексом без выносов. */
+.filter-options-grid .filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.filter-options-grid .filter-option .form-check-input {
+  float: none;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.filter-options-grid .filter-option .form-check-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Заголовок группы — раскрывашка: убираем штатный маркер details,
+   стрелка своя (та же, что у секций поиска). */
+.filter-group > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.filter-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.filter-group[open] > summary .search-section-chevron {
+  transform: rotate(90deg);
+}
+
+.filter-group-hint {
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+  opacity: 0.75;
+  margin: 0.1rem 0 0.25rem;
+}
+
 .filter-option {
   margin: 0;
   padding: 0.1rem 0;
@@ -4877,6 +4918,21 @@ body::after {
 
 .filter-option .form-check-label {
   cursor: pointer;
+}
+
+/* Флажки («Без постера»…): чекбокс и подпись в одну строку — в узкой
+   колонке бутстраповский float ронял подпись на следующую. */
+.filter-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0;
+}
+
+.filter-flag .form-check-input {
+  float: none;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .filter-more {

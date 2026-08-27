@@ -80,7 +80,11 @@ export default async function AdminPairingsPage({
         />
       </div>
 
-      <AdminFilters defs={adminPairingFilterDefs()} params={sp} />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+
+      <div className="row g-4">
+
+      <div className="col-12 col-xl-9">
 
       {pairings.length === 0 ? (
         <p className="text-secondary">
@@ -158,6 +162,9 @@ export default async function AdminPairingsPage({
           `/admin/pairings?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
         }
       />
+      </div>
+      <AdminFilters defs={adminPairingFilterDefs()} params={sp} />
+      </div>
     </div>
   );
 }

@@ -149,7 +149,9 @@ export default async function AdminUsersPage({
         hiddenFields={sortBySeen ? { sort: "seen" } : undefined}
         className="mb-3"
       />
-      <AdminFilters defs={adminUserFilterDefs()} params={sp} />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+      <div className="row g-4">
+      <div className="col-12 col-xl-9">
 
       <div className="surface p-3 mb-4">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
@@ -272,6 +274,9 @@ export default async function AdminUsersPage({
         totalPages={totalPagesFor(usersTotal)}
         buildHref={(p) => listHref(sortBySeen ? "seen" : "", p)}
       />
+      </div>
+      <AdminFilters defs={adminUserFilterDefs()} params={sp} />
+      </div>
     </div>
   );
 }

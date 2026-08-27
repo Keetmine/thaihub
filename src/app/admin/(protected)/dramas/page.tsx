@@ -147,7 +147,11 @@ export default async function AdminDramasPage({
         />
       </div>
 
-      <AdminFilters defs={adminDramaFilterDefs(getDict("ru"), await loadDramaFilterOptions())} params={sp} />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+
+      <div className="row g-4">
+
+      <div className="col-12 col-xl-9">
 
       {issue && (
         <p className="small text-secondary mb-3">
@@ -267,6 +271,9 @@ export default async function AdminDramasPage({
           `/admin/dramas?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${p}`
         }
       />
+      </div>
+      <AdminFilters defs={adminDramaFilterDefs(getDict("ru"), await loadDramaFilterOptions())} params={sp} />
+      </div>
     </div>
   );
 }

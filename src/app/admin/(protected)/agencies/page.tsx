@@ -71,7 +71,11 @@ export default async function AdminAgenciesPage({
         />
       </div>
 
-      <AdminFilters defs={adminAgencyFilterDefs()} params={sp} />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+
+      <div className="row g-4">
+
+      <div className="col-12 col-xl-9">
 
       {agencies.length === 0 ? (
         <p className="text-secondary">
@@ -178,6 +182,9 @@ export default async function AdminAgenciesPage({
           `/admin/agencies?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
         }
       />
+      </div>
+      <AdminFilters defs={adminAgencyFilterDefs()} params={sp} />
+      </div>
     </div>
   );
 }

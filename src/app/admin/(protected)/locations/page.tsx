@@ -75,7 +75,9 @@ export default async function AdminLocationsPage({
         quickKind="location"
         className="mb-3"
       />
-      <AdminFilters defs={adminLocationFilterDefs()} params={sp} />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+      <div className="row g-4">
+      <div className="col-12 col-xl-9">
 
       {locations.length === 0 ? (
         <p className="text-secondary">
@@ -146,6 +148,9 @@ export default async function AdminLocationsPage({
         totalPages={totalPages}
         buildHref={(p) => `/admin/locations?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
       />
+      </div>
+      <AdminFilters defs={adminLocationFilterDefs()} params={sp} />
+      </div>
     </div>
   );
 }

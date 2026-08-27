@@ -78,7 +78,9 @@ export default async function AdminNovelsPage({
         quickKind="novel"
         className="mb-3"
       />
-      <AdminFilters defs={adminNovelFilterDefs(getDict("ru"), await loadNovelFilterOptions())} params={sp} />
+      {/* Список слева, фильтры колонкой справа — как на /search. */}
+      <div className="row g-4">
+      <div className="col-12 col-xl-9">
 
       {novels.length === 0 ? (
         <p className="text-secondary">{q ? "Ничего не найдено." : "Пока нет новелл."}</p>
@@ -134,6 +136,9 @@ export default async function AdminNovelsPage({
         totalPages={totalPagesFor(total)}
         buildHref={(p) => `/admin/novels?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
       />
+      </div>
+      <AdminFilters defs={adminNovelFilterDefs(getDict("ru"), await loadNovelFilterOptions())} params={sp} />
+      </div>
     </div>
   );
 }
