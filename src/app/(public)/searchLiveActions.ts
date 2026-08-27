@@ -7,6 +7,8 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { eventHref } from "@/lib/eventSlug";
 import { locationHref, novelHref } from "@/lib/slugHelpers";
 import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
+import { getT } from "@/lib/i18n";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 
 /**
  * Живая выдача под полем поиска (шапка и мобильная шторка).
@@ -39,13 +41,16 @@ const PER_KIND_ONE = 8;
 export async function searchLive(rawQuery: string, section: LiveSection): Promise<LiveHit[]> {
   const query = rawQuery.trim();
   if (query.length < 2) return [];
+  // Язык зрителя — из заголовка запроса (server actions его видят):
+  // русская версия показывает русские названия сериалов, когда они есть.
+  const { locale } = await getT();
   const take = section === "all" ? PER_KIND_ALL : PER_KIND_ONE;
   const want = (s: Exclude<LiveSection, "all">) => section === "all" || section === s;
 
   const [dramas, performers, events, locations, novels] = await Promise.all([
     want("dramas")
       ? (async () => {
-          const select = { id: true, slug: true, title: true, year: true, posterUrl: true };
+          const select = { id: true, slug: true, title: true, titleRu: true, year: true, posterUrl: true };
           const orderBy = [
             { year: { sort: "desc" as const, nulls: "last" as const } },
             { title: "asc" as const },
@@ -133,7 +138,7 @@ export async function searchLive(rawQuery: string, section: LiveSection): Promis
     ...dramas.map(
       (d): LiveHit => ({
         kind: "dramas",
-        name: d.title,
+        name: dramaTitleForLocale(d, locale),
         subtitle: d.year ? String(d.year) : null,
         href: dramaHref(d),
         photoUrl: d.posterUrl,

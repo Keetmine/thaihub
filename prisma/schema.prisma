@@ -367,6 +367,13 @@ model Drama {
   // (например, тайское название), ссылки откатываются на id.
   slug           String?       @unique
   mydramalistUrl String?
+  // Русские название и описание — с dorama.land (см.
+  // features/doramaland-import.md). Русская версия сайта показывает их
+  // вместо английских, когда они есть; «нет ру перевода» в админке —
+  // это просто titleRu IS NULL.
+  titleRu        String?
+  synopsisRu     String?
+  doramalandUrl  String?       @unique
   posterUrl      String?
   synopsis       String?
   year           Int?

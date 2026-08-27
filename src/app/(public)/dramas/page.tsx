@@ -13,6 +13,7 @@ import { getDramaWatchStatuses } from "@/lib/favorites";
 import type { DramaWatchStatusValue } from "../favorites/actions";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { dramaHref } from "@/lib/dramaSlug";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { dramaTitleWhere } from "@/lib/searchWhere";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
@@ -45,7 +46,7 @@ export default async function DramasPage({
       ? (rawStatus as DramaWatchStatusValue)
       : null;
 
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const currentUser = await getCurrentUser();
 
   // The catalog has grown into the thousands of dramas — loading and
@@ -171,7 +172,7 @@ export default async function DramasPage({
           в списках друзей/админки: миниатюра постера, название целиком
           (с переносом), год и рейтинг в подстроке. */}
       <AlphabetIndexList
-        items={dramas.map((d) => ({ id: d.id, name: d.title, drama: d }))}
+        items={dramas.map((d) => ({ id: d.id, name: dramaTitleForLocale(d, locale), drama: d }))}
         emptyMessage={q ? t.common.nothingFound : t.catalog.dramas.empty}
         renderItem={({ drama: d }) => {
           const rating = ratingByDramaId.get(d.id);
@@ -213,7 +214,7 @@ export default async function DramasPage({
                       style={{ fontSize: "1.1rem", color: "rgba(255,154,114,0.45)" }}
                       aria-hidden
                     >
-                      {d.title.trim().charAt(0).toUpperCase()}
+                      {dramaTitleForLocale(d, locale).trim().charAt(0).toUpperCase()}
                     </span>
                   )}
                 </div>
@@ -222,7 +223,7 @@ export default async function DramasPage({
                       серий, и на телефоне длинное название иначе рвётся
                       на три строки и раздувает всю строку каталога. */}
                   <span className="font-display fw-medium text-white d-block text-truncate">
-                    {d.title}
+                    {dramaTitleForLocale(d, locale)}
                   </span>
                   {subline && <span className="small text-secondary">{subline}</span>}
                 </span>

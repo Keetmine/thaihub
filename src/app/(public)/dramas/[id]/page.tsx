@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import { episodeProgress } from "@/lib/watchStatus";
+import { dramaSynopsisForLocale, dramaTitleForLocale } from "@/lib/dramaLocale";
 import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
@@ -55,10 +56,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const drama = await prisma.drama.findFirst({
     where: slugOrIdWhere(rawId),
-    select: { title: true, year: true, synopsis: true, posterUrl: true },
+    select: { title: true, titleRu: true, year: true, synopsis: true, synopsisRu: true, posterUrl: true },
   });
   if (!drama)
     return pageMetadata({
@@ -66,9 +67,10 @@ export async function generateMetadata({
       description: t.catalog.drama.metaNotFound,
     });
   return pageMetadata({
-    title: `${drama.title}${drama.year ? ` (${drama.year})` : ""}`,
+    title: `${dramaTitleForLocale(drama, locale)}${drama.year ? ` (${drama.year})` : ""}`,
     description:
-      drama.synopsis?.slice(0, 160) ?? t.catalog.drama.metaDescription(drama.title),
+      dramaSynopsisForLocale(drama, locale)?.slice(0, 160) ??
+      t.catalog.drama.metaDescription(dramaTitleForLocale(drama, locale)),
     path: `/dramas/${rawId}`,
     image: drama.posterUrl,
     type: "article",
@@ -274,7 +276,7 @@ export default async function DramaDetailPage({
               выдачи уместен. */}
           <div className="d-flex flex-wrap align-items-baseline gap-2 mb-1">
             <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
-              {drama.title}
+              {dramaTitleForLocale(drama, locale)}
               {drama.year && (
                 <span className="fs-5 fw-normal text-secondary"> ({drama.year})</span>
               )}
@@ -288,9 +290,17 @@ export default async function DramaDetailPage({
               </span>
             )}
           </div>
-          {(drama.nativeTitle || drama.alsoKnownAs) && (
+          {/* Когда заголовок русский, английское название уходит в
+              строку альтернативных — искать сериал продолжают по нему. */}
+          {(drama.nativeTitle || drama.alsoKnownAs || dramaTitleForLocale(drama, locale) !== drama.title) && (
             <p className="small text-secondary mb-0">
-              {[drama.nativeTitle, drama.alsoKnownAs].filter(Boolean).join(" · ")}
+              {[
+                dramaTitleForLocale(drama, locale) !== drama.title ? drama.title : null,
+                drama.nativeTitle,
+                drama.alsoKnownAs,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           )}
           {ourRating != null && (
@@ -576,12 +586,15 @@ export default async function DramaDetailPage({
               меряет реальное переполнение и не показывает «Читать
               дальше», когда текст влез целиком. Короткий рендерим
               обычным абзацем без клиентского кода. */}
-          {drama.synopsis &&
-            (drama.synopsis.length > 300 ? (
-              <SynopsisFold text={drama.synopsis} />
+          {(() => {
+            const synopsis = dramaSynopsisForLocale(drama, locale);
+            if (!synopsis) return null;
+            return synopsis.length > 300 ? (
+              <SynopsisFold text={synopsis} />
             ) : (
-              <p className="text-secondary mb-0">{drama.synopsis}</p>
-            ))}
+              <p className="text-secondary mb-0">{synopsis}</p>
+            );
+          })()}
         </div>
         )}
       </div>

@@ -9,6 +9,10 @@ export function dramaTitleWhere(q: string): Prisma.DramaWhereInput {
   return {
     OR: [
       { title: { contains: q, mode: "insensitive" } },
+      // Русское название — отдельным полем, а не через alsoKnownAs:
+      // при слиянии вариантов titleRu из alsoKnownAs сознательно
+      // исключается, чтобы не дублировать данные.
+      { titleRu: { contains: q, mode: "insensitive" } },
       { alsoKnownAs: { contains: q, mode: "insensitive" } },
       { nativeTitle: { contains: q, mode: "insensitive" } },
     ],

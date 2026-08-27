@@ -457,6 +457,7 @@ export function adminDramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[
       collapsed: true,
     },
     { key: "noCountry", title: "Без страны", kind: "flag" },
+    { key: "noRu", title: "Нет ру перевода", kind: "flag" },
     { key: "noPoster", title: "Без постера", kind: "flag" },
     { key: "noCast", title: "Без каста", kind: "flag" },
     { key: "noMdl", title: "Без связи с MDL", kind: "flag" },
@@ -466,6 +467,7 @@ export function adminDramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[
 export function adminDramaFilterWhere(p: FilterParams): Prisma.DramaWhereInput[] {
   const w = dramaFilterWhere(p);
   if (one(p.noCountry) === "1") w.push({ OR: [{ country: null }, { country: "" }] });
+  if (one(p.noRu) === "1") w.push({ titleRu: null });
   if (one(p.noPoster) === "1") w.push({ OR: [{ posterUrl: null }, { posterUrl: "" }] });
   if (one(p.noCast) === "1") w.push({ performers: { none: {} } });
   if (one(p.noMdl) === "1") w.push({ mdlUrl: null, mydramalistUrl: null });

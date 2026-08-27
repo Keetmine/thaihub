@@ -39,7 +39,8 @@ import {
   type FilterParams,
 } from "@/lib/catalogFilters";
 import { pageMetadata } from "@/lib/seo";
-import { getT, localeHref, type Dict } from "@/lib/i18n";
+import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 
 export async function generateMetadata() {
@@ -127,9 +128,9 @@ export default async function SearchPage({
       </div>
 
       {section === "all" ? (
-        <AllSections q={q} t={t} />
+        <AllSections q={q} t={t} locale={locale} />
       ) : (
-        <SectionResults section={section} q={q} params={params} page={page} t={t} />
+        <SectionResults section={section} q={q} params={params} page={page} t={t} locale={locale} />
       )}
     </div>
   );
@@ -145,12 +146,14 @@ async function SectionResults({
   params,
   page,
   t,
+  locale,
 }: {
   section: Exclude<Section, "all">;
   q: string;
   params: FilterParams;
   page: number;
   t: Dict;
+  locale: Locale;
 }) {
   const skip = (page - 1) * PAGE_SIZE;
   let defs: FilterDef[] = [];
@@ -178,7 +181,7 @@ async function SectionResults({
     results = (
       <div className="d-flex flex-wrap gap-3">
         {rows.map((d) => (
-          <DramaTile key={d.id} drama={d} />
+          <DramaTile key={d.id} drama={d} locale={locale} />
         ))}
       </div>
     );
@@ -379,9 +382,19 @@ function Pagination({
 
 function DramaTile({
   drama,
+  locale,
 }: {
-  drama: { id: string; slug: string | null; title: string; year: number | null; posterUrl: string | null };
+  drama: {
+    id: string;
+    slug: string | null;
+    title: string;
+    titleRu?: string | null;
+    year: number | null;
+    posterUrl: string | null;
+  };
+  locale: Locale;
 }) {
+  const title = dramaTitleForLocale(drama, locale);
   return (
     <AppLink href={dramaHref(drama)} className="text-decoration-none" style={{ width: "8.5rem" }}>
       <div
@@ -400,11 +413,11 @@ function DramaTile({
             className="d-flex align-items-center justify-content-center h-100 fw-semibold"
             style={{ color: "var(--bs-secondary-color)", opacity: 0.7 }}
           >
-            {drama.title.charAt(0).toUpperCase()}
+            {title.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
-      <span className="d-block small text-white mt-1 text-truncate">{drama.title}</span>
+      <span className="d-block small text-white mt-1 text-truncate">{title}</span>
       {drama.year && <span className="d-block small text-secondary">{drama.year}</span>}
     </AppLink>
   );
@@ -488,7 +501,7 @@ function Section({
   );
 }
 
-async function AllSections({ q, t }: { q: string; t: Dict }) {
+async function AllSections({ q, t, locale }: { q: string; t: Dict; locale: Locale }) {
   const query = q.trim();
   const [matchedEvents, performers, dramas, agencies, locations, novels, wikiArticles] = query
     ? await Promise.all([
@@ -579,7 +592,7 @@ async function AllSections({ q, t }: { q: string; t: Dict }) {
         {/* Постер-карточки, как ряд сериалов на странице актёра. */}
         <div className="d-flex flex-wrap gap-3">
           {dramas.map((d) => (
-            <DramaTile key={d.id} drama={d} />
+            <DramaTile key={d.id} drama={d} locale={locale} />
           ))}
         </div>
       </Section>

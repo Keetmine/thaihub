@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopArtist } from "@/lib/tpopAgencyImport";
@@ -345,4 +346,85 @@ async function importFromMdlSearch(formData: FormData, autoUpdate: boolean): Pro
   revalidatePath("/admin/imports");
   revalidatePath("/admin/dramas");
   revalidatePath("/admin/performers");
+}
+
+/**
+ * dorama.land: подтянуть русский перевод для ОДНОГО сериала по ссылке.
+ *
+ * Синхронно, без журнала импортов: это один запрос к одной странице.
+ * Наша запись ищется по названию+году (как в массовом прогоне
+ * scripts/doramaland-sync.ts); результат уезжает в адрес и рисуется
+ * над карточкой — сообщение переживает redirect, состояния у формы нет.
+ */
+export async function importDoramaLandTranslation(formData: FormData): Promise<void> {
+  await requireCatalogEditor();
+  const url = String(formData.get("doramalandUrl") ?? "").trim();
+  const back = (message: string): never =>
+    redirect(`/admin/imports?dl=${encodeURIComponent(message)}`);
+
+  if (!/^https:\/\/dorama\.land\//.test(url)) {
+    back("Нужна ссылка вида https://dorama.land/…");
+  }
+
+  const { fetchDoramaLandPage, doramaLandMatchTitles, mergeTitleVariants } = await import(
+    "@/lib/doramaland"
+  );
+  let page;
+  try {
+    page = await fetchDoramaLandPage(url);
+  } catch (e) {
+    back(`Страница не прочиталась: ${e instanceof Error ? e.message : e}`);
+    return;
+  }
+
+  const titles = doramaLandMatchTitles(page);
+  const thaiOriginal = page.original && /[฀-๿]/.test(page.original) ? page.original : null;
+  const candidates = await prisma.drama.findMany({
+    where: {
+      OR: [
+        ...titles.flatMap((title) => [
+          { title: { equals: title, mode: "insensitive" as const } },
+          { alsoKnownAs: { contains: title, mode: "insensitive" as const } },
+        ]),
+        ...(thaiOriginal ? [{ nativeTitle: thaiOriginal }] : []),
+      ],
+      ...(page.year ? { year: { gte: page.year - 1, lte: page.year + 1 } } : {}),
+    },
+    select: {
+      id: true, slug: true, title: true, nativeTitle: true,
+      alsoKnownAs: true, titleRu: true, synopsisRu: true,
+    },
+    take: 2,
+  });
+  if (candidates.length !== 1) {
+    back(
+      candidates.length === 0
+        ? `Не нашли сериал в каталоге (искали: ${titles.join(", ") || page.original || "—"}${page.year ? `, ${page.year}` : ""}). Проверьте название и год.`
+        : "Нашлось несколько кандидатов — сведение неоднозначно, обновите руками.",
+    );
+  }
+  const drama = candidates[0];
+
+  // Разовый импорт по ссылке — осознанное действие: переписываем и уже
+  // заполненные русские поля (в массовом прогоне так делает --overwrite).
+  await prisma.drama.update({
+    where: { id: drama.id },
+    data: {
+      titleRu: page.titleRu ?? drama.titleRu,
+      synopsisRu: page.descriptionRu ?? drama.synopsisRu,
+      doramalandUrl: page.sourceUrl,
+      alsoKnownAs: mergeTitleVariants(
+        drama.alsoKnownAs,
+        [
+          ...(page.titleRu ? [page.titleRu] : []),
+          ...page.altTitles,
+          ...(page.original ? [page.original] : []),
+        ],
+        [drama.title, drama.nativeTitle, page.titleRu],
+      ),
+    },
+  });
+  revalidatePath(`/dramas/${drama.slug ?? drama.id}`);
+  revalidatePath("/admin/dramas");
+  back(`Готово: «${page.titleRu ?? page.sourceUrl}» → ${drama.title} (${drama.slug ?? drama.id}).`);
 }

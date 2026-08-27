@@ -7,11 +7,9 @@
  * schema.org, поэтому разбор держится за itemprop-атрибуты и подписи
  * полей, а не за вёрстку.
  *
- * Что берём и что нет — решение сознательное:
- * - названия (русское, украинское, английское, «оригинальное») — это
- *   факты, как год или страна;
- * - описание НЕ берём: это их авторский текст, у нас есть свой источник
- *   (MDL) и своя политика переводов.
+ * Берём названия и русское описание (решение владельца): русская
+ * версия сайта должна показывать русские название и сюжет, а другого
+ * источника русских текстов у нас нет.
  *
  * Сведение с нашей записью — по английскому названию из
  * alternativeHeadline или «Оригинальному» плюс год: русское название
@@ -30,6 +28,8 @@ export type DoramaLandPage = {
   /** Русские жанры («Драма, Романтика, Яой / BL / Сёнэн-ай»). */
   genresRu: string[];
   episodes: number | null;
+  /** Русское описание — абзацы через пустую строку. */
+  descriptionRu: string | null;
   sourceUrl: string;
 };
 
@@ -91,7 +91,20 @@ export function parseDoramaLandPage(html: string, sourceUrl: string): DoramaLand
   const episodesRaw = fieldAfter(html, "Количество серий");
   const episodes = episodesRaw ? Number.parseInt(episodesRaw, 10) || null : null;
 
-  return { titleRu, altTitles, original, year, country, genresRu, episodes, sourceUrl };
+  // Описание: контейнер itemprop="description", абзацы <p> отдельно —
+  // склейка через пустую строку сохраняет их и после чистки тегов.
+  let descriptionRu: string | null = null;
+  const descStart = html.indexOf('itemprop="description"');
+  if (descStart >= 0) {
+    const tail = html.slice(descStart, descStart + 20000);
+    const container = tail.slice(tail.indexOf(">") + 1, tail.search(/<\/div>/i));
+    const paragraphs = [...container.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)]
+      .map((m) => text(m[1]))
+      .filter(Boolean);
+    descriptionRu = paragraphs.length ? paragraphs.join("\n\n") : text(container) || null;
+  }
+
+  return { titleRu, altTitles, original, year, country, genresRu, episodes, descriptionRu, sourceUrl };
 }
 
 /**
@@ -110,4 +123,81 @@ export function doramaLandMatchTitles(page: DoramaLandPage): string[] {
     out.push(value);
   }
   return out;
+}
+
+const USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0 Safari/537.36";
+
+export async function fetchDoramaLandPage(url: string): Promise<DoramaLandPage> {
+  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT, "Accept-Language": "ru" } });
+  if (!res.ok) throw new Error(`dorama.land: HTTP ${res.status} на ${url}`);
+  return parseDoramaLandPage(await res.text(), url);
+}
+
+/**
+ * Все страницы СЕРИАЛОВ из их sitemap-ов. Страницы серий («…-N-seriya»)
+ * и тегов отсеиваются; порядок — как в карте.
+ */
+export async function collectDoramaLandSeriesUrls(): Promise<string[]> {
+  const index = await (
+    await fetch("https://dorama.land/sitemap.xml", { headers: { "User-Agent": USER_AGENT } })
+  ).text();
+  const maps = [...index.matchAll(/<loc>(https:\/\/dorama\.land\/sitemap_\d+\.xml)<\/loc>/g)].map(
+    (m) => m[1],
+  );
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const map of maps) {
+    const xml = await (await fetch(map, { headers: { "User-Agent": USER_AGENT } })).text();
+    for (const m of xml.matchAll(/<loc>(https:\/\/dorama\.land\/[^<]+)<\/loc>/g)) {
+      const url = m[1];
+      if (url.includes("/tags/")) continue;
+      if (/-\d+-seriya$/.test(url)) continue;
+      if (/\/(?:all-new-dramas|sitemap)/.test(url) || url === "https://dorama.land/") continue;
+      if (seen.has(url)) continue;
+      seen.add(url);
+      urls.push(url);
+    }
+  }
+  return urls;
+}
+
+/**
+ * Тот ли это профиль сериалов, что нужен владельцу для «добавить
+ * недостающее»: Таиланд — целиком, другие страны — только если в
+ * жанрах есть яой/BL. Их «Яой / BL / Сёнэн-ай» — ОДНО значение со
+ * слэшами, поэтому ищем по подстроке, а не по точному жанру.
+ */
+export function isWantedForImport(page: DoramaLandPage): boolean {
+  if (page.country?.trim() === "Таиланд") return true;
+  return page.genresRu.some((g) => /яой|\bbl\b|сёнэн-ай/i.test(g));
+}
+
+/**
+ * Слить варианты названий в `alsoKnownAs` (владелец: «подтянуть все
+ * возможные названия, абсолютно все, на всех языках»).
+ *
+ * Поиск по сайту читает alsoKnownAs через contains — положив сюда
+ * русское и украинское названия, мы делаем сериал находимым по ним
+ * везде сразу, без отдельного поля под каждый язык. Повторы и то, что
+ * уже стоит в title/nativeTitle, отсеиваются без учёта регистра.
+ */
+export function mergeTitleVariants(
+  existing: string | null,
+  incoming: string[],
+  skip: (string | null | undefined)[],
+): string | null {
+  const seen = new Set(
+    skip.filter((v): v is string => !!v).map((v) => v.trim().toLowerCase()),
+  );
+  const out: string[] = [];
+  for (const raw of [...(existing ?? "").split(","), ...incoming]) {
+    const value = raw.trim();
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out.length ? out.join(", ") : null;
 }

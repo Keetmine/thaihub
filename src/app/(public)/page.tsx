@@ -8,6 +8,7 @@ import { getFriendIds } from "@/lib/friends";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
 import { tripHref, dramaHref } from "@/lib/slugHelpers";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { endOfDay, formatShortDate, startOfDay } from "@/lib/dates";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { userDisplayName } from "@/lib/userProfile";
@@ -111,6 +112,7 @@ export default async function HomePage() {
             id: true,
             slug: true,
             title: true,
+            titleRu: true,
             posterUrl: true,
             year: true,
             episodes: true,
@@ -154,7 +156,7 @@ export default async function HomePage() {
       select: {
         number: true,
         drama: {
-          select: { id: true, slug: true, title: true, posterUrl: true, year: true },
+          select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true, year: true },
         },
       },
       orderBy: { number: "asc" },
@@ -434,7 +436,7 @@ export default async function HomePage() {
                   <PosterTile
                     href={dramaHref(drama)}
                     posterUrl={drama.posterUrl}
-                    title={drama.title}
+                    title={dramaTitleForLocale(drama, locale)}
                     subtitle={drama.year ? String(drama.year) : undefined}
                     progress={
                       drama.episodes && episodesWatched != null
@@ -502,13 +504,13 @@ export default async function HomePage() {
                       />
                     ) : (
                       <span className="drama-row-poster-letter" aria-hidden>
-                        {drama.title.trim().charAt(0).toUpperCase()}
+                        {dramaTitleForLocale(drama, locale).trim().charAt(0).toUpperCase()}
                       </span>
                     )}
                   </span>
                   <span className="flex-fill" style={{ minWidth: 0 }}>
                     <span className="font-display fw-medium text-white d-block text-truncate">
-                      {drama.title}
+                      {dramaTitleForLocale(drama, locale)}
                     </span>
                     {subline && <span className="small text-secondary">{subline}</span>}
                   </span>

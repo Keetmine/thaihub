@@ -51,7 +51,8 @@ test.describe("публичный /search", () => {
   test("вкладка раздела и русская версия", async ({ page }) => {
     await page.goto(`/ru${GENRE_URL}`);
     await expect(page.getByRole("link", { name: "Сериалы", exact: true }).first()).toBeVisible();
-    await expect(page.getByText(TEST_FILTER_DRAMAS.fresh.title)).toBeVisible();
+    // На /ru плитка показывает РУССКОЕ название (titleRu из фикстуры).
+    await expect(page.getByText(TEST_FILTER_DRAMAS.fresh.titleRu)).toBeVisible();
   });
 
   test("жанр на карточке сериала ведёт в поиск с этим жанром", async ({ page }) => {

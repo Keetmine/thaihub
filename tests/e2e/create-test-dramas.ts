@@ -40,9 +40,10 @@ async function main() {
   // Фикстуры фильтров: уникальный жанр + два разных года — чтобы
   // проверить и жанр, и диапазон года на любой базе.
   for (const d of Object.values(TEST_FILTER_DRAMAS)) {
+    const ru = "titleRu" in d ? { titleRu: d.titleRu, synopsisRu: d.synopsisRu } : {};
     await prisma.drama.upsert({
       where: { slug: d.slug },
-      update: { genres: [TEST_GENRE], tags: [TEST_TAG], year: d.year, country: d.country },
+      update: { genres: [TEST_GENRE], tags: [TEST_TAG], year: d.year, country: d.country, ...ru },
       create: {
         slug: d.slug,
         title: d.title,
@@ -50,6 +51,7 @@ async function main() {
         tags: [TEST_TAG],
         year: d.year,
         country: d.country,
+        ...ru,
       },
     });
   }

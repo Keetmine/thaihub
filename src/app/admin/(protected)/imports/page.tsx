@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import {
+import { importDoramaLandTranslation,
   runMdlDramaImport,
   runMdlDramaImportAndSchedule,
   runMdlSearchImport,
@@ -67,9 +67,9 @@ type LogTab = (typeof LOG_TABS)[number]["key"];
 export default async function AdminImportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; log?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; log?: string; dl?: string }>;
 }) {
-  const { page: rawPage, status: rawStatus, log: rawLog } = await searchParams;
+  const { page: rawPage, status: rawStatus, log: rawLog, dl } = await searchParams;
   const page = Math.max(1, Number(rawPage) || 1);
   // Фильтр по статусу: с дашборда «упавшие импорты» ведут сразу сюда,
   // иначе пришлось бы искать их глазами в общем журнале. Он же решает,
@@ -290,6 +290,33 @@ export default async function AdminImportsPage({
                 disabled={!!runningRun}
                 formAction={runMdlDramaImportAndSchedule}
                 title="Импортировать и отмечать сериал как обновляемый по расписанию"
+              />
+            </form>
+          </div>
+        </div>
+
+        <div className="col-12 col-xl-6">
+          <div className="surface p-4 h-100">
+            <h2 className="section-heading mb-2">dorama.land: русский перевод</h2>
+            <p className="small text-secondary mb-3">
+              Ссылка на страницу сериала (dorama.land/…) — найдём его в нашем
+              каталоге по названию и году и подтянем русское название, описание
+              и все варианты названий. Уже заполненные русские поля
+              переписываются: раз вставили ссылку — значит, так и надо.
+            </p>
+            {dl && <p className="small mb-3">{dl}</p>}
+            <form action={importDoramaLandTranslation} className="d-flex flex-wrap gap-2">
+              <input
+                name="doramalandUrl"
+                required
+                placeholder="https://dorama.land/…"
+                className="form-control flex-grow-1"
+                style={{ minWidth: "16rem" }}
+              />
+              <SubmitButton
+                label="Подтянуть перевод"
+                busyLabel="Тянем…"
+                className="btn btn-primary btn-sm flex-shrink-0"
               />
             </form>
           </div>

@@ -47,5 +47,7 @@ export const TEST_FILTER_DRAMAS = {
     title: "E2E Filter Fresh",
     year: 2024,
     country: "E2E Land",
+    titleRu: "Е2Е Свежий Тест",
+    synopsisRu: "Русское описание фикстуры: проверяем показ на /ru.",
   },
 } as const;
