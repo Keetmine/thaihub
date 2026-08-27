@@ -2,6 +2,7 @@
 
 import Link from "@/components/AppLink";
 import { usePathname, useSearchParams } from "next/navigation";
+import { stripLocale } from "@/lib/i18n/config";
 
 export default function NavLink({
   href,
@@ -22,7 +23,11 @@ export default function NavLink({
   className?: string;
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  // Русские страницы живут под /ru (рерайт в proxy), а href сюда
+  // приходит без префикса — его подставляет AppLink. Сравнивать надо
+  // очищенный путь, иначе на русском не совпадает НИЧЕГО: «/ru/dramas»
+  // против «/dramas». Подсветки на русской версии не было вовсе.
+  const { path: pathname } = stripLocale(usePathname());
   const searchParams = useSearchParams();
   const hrefPath = href.split("?")[0];
   const queryOk = !matchQuery

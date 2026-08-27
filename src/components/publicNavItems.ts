@@ -30,3 +30,21 @@ export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
   { href: "/locations", labelKey: "locations", matchPrefixes: ["/locations/"], tourId: "locations" },
   { href: "/trips", labelKey: "trips", matchPrefixes: ["/trips/"], tourId: "trips", requiresUser: true },
 ];
+
+/**
+ * Вложенные пути, на которых пункт остаётся подсвеченным.
+ *
+ * Шапка берёт их из `PUBLIC_NAV_ITEMS`, футеру нужны те же — плюс свои,
+ * которых в шапке нет вовсе (вики, помощь, документы). Держим одним
+ * списком: разъедутся — и на карточке сериала подсветится «Сериалы» в
+ * шапке, но не в футере, что и случилось.
+ */
+export const NAV_PREFIXES: Record<string, string[]> = {
+  ...Object.fromEntries(
+    PUBLIC_NAV_ITEMS.filter((i) => i.matchPrefixes).map((i) => [i.href, i.matchPrefixes!]),
+  ),
+  "/wiki": ["/wiki/"],
+  "/lists": ["/lists/"],
+  "/artist-lists": ["/artist-lists/"],
+  "/account": ["/account/"],
+};
