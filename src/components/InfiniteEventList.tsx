@@ -24,13 +24,6 @@ function groupByMonth(events: EventWithPerformers[]) {
   return groups;
 }
 
-/** Календарный день события — по нему решаем, повторяется ли дата.
- *  Сравниваем разобранные части, а не строку: часовой пояс тут не
- *  участвует, а `toDateString` завязан на язык среды. */
-function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-
 function monthHeading(key: string, locale: Locale): string {
   const [year, month] = key.split("-").map(Number);
   return monthLabel(year, month, locale);
@@ -56,7 +49,7 @@ function MonthSections({
         <section key={group.key}>
           <h2 className="month-group-heading mb-2">{monthHeading(group.key, locale)}</h2>
           <div className="d-flex flex-column gap-3 mt-2">
-            {group.events.map((ev, i) =>
+            {group.events.map((ev) =>
               locked ? (
                 <EventCardLocked key={ev.occurrenceId} startsAt={ev.startsAt} />
               ) : (
@@ -66,11 +59,6 @@ function MonthSections({
                   isFavorited={favoritedIds.has(ev.id)}
                   isGoing={goingIds.has(ev.occurrenceId)}
                   friendsGoing={friendsGoing.get(ev.id) ?? []}
-                  // Заголовков на каждый день не ставим (при одном-двух
-                  // событиях список превращался в лесенку из дат), но и
-                  // повторять число в каждой строке одного дня незачем:
-                  // показываем его только у первого.
-                  hideDate={i > 0 && dayKey(ev.startsAt) === dayKey(group.events[i - 1].startsAt)}
                 />
               ),
             )}

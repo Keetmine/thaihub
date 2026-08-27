@@ -862,6 +862,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-radius: 0.7rem;
   overflow: hidden;
   flex-shrink: 0;
+  /* Рамка постера — ссылка, а буквенный фолбэк внутри неё текст, так
+     что у события без картинки под буквой появлялась подчёркивающая
+     линия. У картинки её не видно, поэтому и замечали только на
+     фолбэке. */
+  text-decoration: none;
 }
 
 /* Фолбэк без постера — та же геометрия, первая буква тёплым цветом:
@@ -3147,6 +3152,9 @@ details.admin-section[open] > summary.admin-section-head::before {
 
 /* Постерная карточка: изображение фоном, текст поверх градиента. */
 .poster-tile {
+  /* Та же история, что и у .event-card-poster: плитка — ссылка, а
+     буквенный фолбэк внутри неё подчёркивался. */
+  text-decoration: none;
   position: relative;
   display: block;
   overflow: hidden;

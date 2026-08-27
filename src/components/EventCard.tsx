@@ -23,7 +23,6 @@ export default function EventCard({
   isFavorited = false,
   isGoing = false,
   friendsGoing = [],
-  hideDate = false,
 }: {
   /** Прикреплённый билет текущего юзера (показывается 🎫-кнопкой). */
   ticketUrl?: string | null;
@@ -31,10 +30,6 @@ export default function EventCard({
   isFavorited?: boolean;
   isGoing?: boolean;
   friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
-  /** Второе и следующие события одного дня: число уже стоит строкой
-   *  выше, повторять его незачем. Место при этом сохраняется — иначе
-   *  постеры соседних строк разъехались бы по горизонтали. */
-  hideDate?: boolean;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -62,13 +57,9 @@ export default function EventCard({
       </div>
 
       <div className="event-card-date">
-        {!hideDate && (
-          <>
-            <span className="event-card-day">{d.getDate()}</span>
-            <span className="event-card-month">{shortMonthName(d, locale)}</span>
-            <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
-          </>
-        )}
+        <span className="event-card-day">{d.getDate()}</span>
+        <span className="event-card-month">{shortMonthName(d, locale)}</span>
+        <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
       </div>
 
       <AppLink href={eventHref(event)} className="event-card-poster flex-shrink-0">
