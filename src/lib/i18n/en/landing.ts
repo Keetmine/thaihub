@@ -6,8 +6,6 @@ export const landing = {
       "MyBLHub brings together the fan meets and concerts, the catalogue of artists and series, your favourites and your plans — so nothing slips past you.",
     ctaEvents: "Open the feed",
     ctaSignup: "Create an account",
-    stats: (events: number, artists: number, series: number) =>
-      `${events} events in the feed · ${artists} artists · ${series} series in the catalogue`,
 
     featuresEyebrow: "Features",
     featuresTitle: "What's inside",
@@ -18,10 +16,10 @@ export const landing = {
     agendaEmpty: "New events are added every week.",
     artistsTitle: "Artists and favourites",
     artistsBody:
-      "Profiles of actors, groups and pairings with filmographies and discographies. Tap the heart and their events and releases land in your feed.",
+      "Profiles of actors and groups with filmographies and discographies. Tap the heart and their events and releases land in your feed.",
     seriesTitle: "Series and watch status",
     seriesBody:
-      "Watching, watched, plan to watch — mark series, build your own collection and find the filming locations on the map.",
+      "Watching, watched, plan to watch — follow new episodes in the calendar, and find the filming locations and the novels the series began as.",
     friendsTitle: "Friends and trips — because it's better together",
     friendsBody:
       "See which of your friends is going to an event and plan a trip to Thailand around shared dates: events, hotels, place lists and things to see, all next to the dates in one plan.",
@@ -36,9 +34,9 @@ export const landing = {
     aboutContactLink: "Write to us",
     aboutContactEnd: "— we read everything.",
     insideTitle: "What's already here",
-    insideEvents: (count: number) => `${count} events in the feed — with presales and tickets`,
-    insideArtists: (count: number) => `${count} artists and groups with filmographies and music`,
-    insideSeries: (count: number) => `${count} series with filming locations on the map`,
+    insideEvents: "A feed of concerts and fan meets — with presales and tickets",
+    insideArtists: (count: string) => `${count} artists and groups with filmographies and music`,
+    insideSeries: (count: string) => `${count} series with filming locations on the map`,
     insideExtras: "Trips, place lists and a wiki for fans",
 
     howEyebrow: "How it works",
@@ -47,7 +45,7 @@ export const landing = {
     step1Body:
       "Email and password — the catalogue, favourites and watch statuses are open to you straight away.",
     step2Title: "Find your people",
-    step2Body: "Actors, groups, series, pairings — add them to your favourites in one click.",
+    step2Body: "Actors, groups, series — add them to your favourites in one click.",
     step3Title: "Follow the events",
     step3Body:
       "Mark «I'm going», get an .ics for your calendar, catch presales with the bot.",

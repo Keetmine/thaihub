@@ -3,7 +3,7 @@ import type { Dict } from "../en";
 export const wiki: Dict["wiki"] = {
   metaTitle: "Вики",
   metaDescription:
-    "Гайды и полезные статьи для фанатов тайских BL-актёров: билеты, поездки, фанмиты.",
+    "Гайды и полезные статьи для фанатов тайских актёров: билеты, поездки, фанмиты.",
   eyebrow: "Полезное",
   title: "Вики",
   intro:
@@ -15,7 +15,7 @@ export const wiki: Dict["wiki"] = {
     metaTitle: "Статья",
     metaNotFound: "Статья не найдена.",
     metaDescription: (title: string) =>
-      `${title}: пошаговый гайд для фанатов тайских BL-актёров.`,
+      `${title}: пошаговый гайд для фанатов тайских актёров.`,
     back: "← Помощь",
   },
 };

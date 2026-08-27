@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "MyBLHub — Thai BL events tracker",
     short_name: "MyBLHub",
-    description: "Concerts and fan events with Thai BL actors, all on one schedule",
+    description: "Concerts and fan events with Thai actors, all on one schedule",
     start_url: "/",
     display: "standalone",
     // Фактический фон сайта — старый фиолетовый #160a1c красил

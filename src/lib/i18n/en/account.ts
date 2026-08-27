@@ -121,7 +121,7 @@ export const account = {
     genderOther: "other",
     birthDate: "Date of birth",
     bio: "About you",
-    bioPlaceholder: "Favourite pairings, how many concerts you have been to",
+    bioPlaceholder: "Favourite actors and series, how many concerts you have been to",
     save: "Save",
 
     tourTitle: "Site tour",

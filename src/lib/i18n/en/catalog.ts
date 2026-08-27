@@ -127,7 +127,7 @@ export const catalog = {
     artists: {
         metaTitle: "Artists",
         metaDescription:
-            "A catalogue of Thai BL actors and bands: profiles, series, concerts and fan meets, discography.",
+            "A catalogue of Thai actors and bands: profiles, series, concerts and fan meets, discography.",
         tabPerformers: "Actors",
         tabBands: "Bands",
         tabMascots: "Mascots",

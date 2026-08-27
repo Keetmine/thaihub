@@ -117,7 +117,7 @@ export const account: Dict["account"] = {
     genderOther: "другой",
     birthDate: "Дата рождения",
     bio: "О себе",
-    bioPlaceholder: "Любимые пейринги, на скольких концертах были",
+    bioPlaceholder: "Любимые актёры и сериалы, на скольких концертах были",
     save: "Сохранить",
 
     tourTitle: "Тур по сайту",

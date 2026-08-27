@@ -3,7 +3,7 @@ export const events = {
     list: {
         metaTitle: "Events",
         metaDescription:
-            "Concerts, fan meets and other events with Thai BL actors: dates, venues and line-ups.",
+            "Concerts, fan meets and other events with Thai actors: dates, venues and line-ups.",
         eyebrow: "Events",
         title: "What's on",
         paywallFeature: "The event feed",
@@ -24,7 +24,7 @@ export const events = {
     calendar: {
         metaTitle: "Events calendar",
         metaDescription:
-            "A calendar of concerts and fan meets with Thai BL actors, birthdays and episode air dates included.",
+            "A calendar of concerts and fan meets with Thai actors, birthdays and episode air dates included.",
         backToEvents: "← All events",
         title: "Calendar",
         paywallFeature: "The calendar",
@@ -53,7 +53,7 @@ export const events = {
     day: {
         metaTitle: (date: string) => `Events on ${date}`,
         metaDescription: (date: string) =>
-            `Concerts and fan meets with Thai BL actors on ${date}: the schedule for the day.`,
+            `Concerts and fan meets with Thai actors on ${date}: the schedule for the day.`,
         metaTitleUnknown: "Events of the day",
         metaDescriptionUnknown: "Page not found.",
         backToCalendar: "← Back to the calendar",

@@ -27,7 +27,7 @@ export const ui = {
     // через pageMetadata — то есть уходит и в выдачу поиска, и в превью
     // ссылки в мессенджере.
     siteDescription:
-        "Track concerts, fan meets and series with Thai BL actors: event schedules, artist profiles and filming locations.",
+        "Track concerts, fan meets and series with Thai actors: the event feed, an episode calendar, artist profiles and filming locations.",
 
 
 };

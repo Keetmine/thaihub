@@ -109,7 +109,7 @@ export const auth = {
       birthLabel: "Date of birth",
       bioLabel: "About you",
       bioPlaceholder:
-        "Favourite pairings, how many concerts you've been to, what you're here for",
+        "Favourite actors and series, how many concerts you've been to, what you're here for",
       submit: "Continue",
       saving: "Saving…",
       laterHint: "Everything except the handle can be filled in later in settings.",

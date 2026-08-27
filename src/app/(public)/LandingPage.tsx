@@ -4,15 +4,30 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { eventHref } from "@/lib/eventSlug";
 import PosterTile from "@/components/PosterTile";
 import { formatShortDate } from "@/lib/dates";
-import { getT } from "@/lib/i18n";
+import { getT, type Locale } from "@/lib/i18n";
 import { CalendarIcon, HeartIcon, TvIcon } from "@/components/icons";
 
 // Лендинг (он же /about). Живые данные вместо выдуманных: постеры и
 // агенда — реальные ближайшие события, счётчики — реальный каталог.
+
+/**
+ * Счётчик для витрины: округляем ВНИЗ до крупного шага — «9 500+».
+ *
+ * Точная цифра на лендинге девальвируется сама собой (вчера 9689,
+ * сегодня 9691 — а выглядит как «никто не обновляет»), округлённая
+ * живёт месяцами. Вниз, а не к ближайшему: «10 000+» при 9689 — это
+ * враньё на витрине, а «9 500+» — правда при любом росте.
+ */
+function roundedCount(n: number, locale: Locale): string {
+  const step = n >= 10000 ? 1000 : n >= 1000 ? 500 : 100;
+  const floored = Math.floor(n / step) * step;
+  return `${floored.toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}+`;
+}
+
 export default async function LandingPage() {
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const now = new Date();
-  const [upcomingRaw, upcomingEventsCount, performersCount, dramasCount, currentUser] =
+  const [upcomingRaw, performersCount, dramasCount, currentUser] =
     await Promise.all([
       prisma.eventOccurrence.findMany({
         where: { startsAt: { gte: now } },
@@ -34,7 +49,6 @@ export default async function LandingPage() {
           },
         },
       }),
-      prisma.event.count({ where: { occurrences: { some: { startsAt: { gte: now } } } } }),
       prisma.performer.count(),
       prisma.drama.count(),
       // Авторизованному незачем показывать «Зарегистрироваться / Войти» —
@@ -95,9 +109,6 @@ export default async function LandingPage() {
               {t.landing.heroLead}
             </p>
             <div className="d-flex flex-wrap gap-2 mb-4">{authCta}</div>
-            <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
-              {t.landing.stats(upcomingEventsCount, performersCount, dramasCount)}
-            </p>
           </div>
           <div className="col-12 col-lg-5">
             {fanPool.length > 0 && (
@@ -237,9 +248,9 @@ export default async function LandingPage() {
                 {t.landing.insideTitle}
               </p>
               <ul className="list-unstyled d-flex flex-column gap-2 small text-secondary mb-0">
-                <li>🎤 {t.landing.insideEvents(upcomingEventsCount)}</li>
-                <li>✨ {t.landing.insideArtists(performersCount)}</li>
-                <li>📺 {t.landing.insideSeries(dramasCount)}</li>
+                <li>🎤 {t.landing.insideEvents}</li>
+                <li>✨ {t.landing.insideArtists(roundedCount(performersCount, locale))}</li>
+                <li>📺 {t.landing.insideSeries(roundedCount(dramasCount, locale))}</li>
                 <li>🗺 {t.landing.insideExtras}</li>
               </ul>
             </div>

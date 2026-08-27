@@ -57,7 +57,7 @@ export function replyTargetFromForwarded(text: string | undefined): string | nul
  *  это прямое нарушение требований Telegram, да и человеку непонятно. */
 const COMMAND_REPLIES: Record<string, string> = {
   "/start":
-    `Привет! Это бот <b>MyBLHub</b> — трекера концертов и фанмитов тайских BL-актёров.\n\n` +
+    `Привет! Это бот <b>MyBLHub</b> — трекера концертов и фанмитов тайских актёров.\n\n` +
     `Я присылаю напоминания о событиях из избранного, сигналы о старте продаж билетов и новости друзей.\n\n` +
     `Сайт: ${APP_URL}\n` +
     `Команды: /terms — условия, /support — поддержка`,
