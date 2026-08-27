@@ -211,6 +211,24 @@ and `importShow` (`Drama.posterUrl`) in `tmdbImport.ts`,
 is a standing external dependency (TMDB could re-path, rate-limit, or
 just go down) for something that's cheap to own outright once fetched.
 
+**Рядом с каждой картинкой лежат её уменьшенные копии** — 200 и 400
+пикселей по ширине плюс заглушка в 20 (`writeWebpVariants` там же, в
+`localImage.ts`; зовут её и `downloadRemoteImage`, и загрузка из
+админки). Оригиналы у нас 500–900 пикселей, а показываются в основном
+мелко: постер в строке афиши занимает 62 — двадцать оригиналов на экран
+это мегабайт с лишним ради картинок размером с ноготь. Копию выбирает
+`srcset` в компоненте `UploadImage`; заглушка в `srcset` НЕ участвует,
+она подкладывается фоном (`blur`) под крупные одиночные картинки.
+Копию, которая вышла не меньше оригинала, не сохраняем.
+
+Ни next/image, ни CDN тут нет намеренно: /uploads раздаёт Caddy прямо с
+диска и с вечным кэшем (имена контентно-стабильные), а оптимизатор
+вернул бы в цепочку приложение с его процессором. Картинкам, лежавшим до
+этого, копии досыпает `scripts/generate-image-variants.ts` — он идёт по
+диску, а не по базе (на один файл ссылаются разные записи, а ссылки
+лежат в пяти таблицах), и повторный запуск дёшев: файл с готовыми
+копиями пропускается не читая.
+
 The helper isn't TMDB-specific and this section is where the rule is
 written down for everyone: **every importer that persists an image runs
 it through `downloadRemoteImage` first** — MyDramaList (`mdlDramaImport`,

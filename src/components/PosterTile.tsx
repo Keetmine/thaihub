@@ -1,3 +1,4 @@
+import UploadImage from "@/components/UploadImage";
 import AppLink from "@/components/AppLink";
 import { EpisodeProgressBar } from "@/components/EpisodeProgress";
 
@@ -24,8 +25,13 @@ export default function PosterTile({
   return (
     <AppLink href={href} className="poster-tile">
       {posterUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={posterUrl} alt="" loading="lazy" decoding="async" />
+        <UploadImage
+          src={posterUrl}
+          alt=""
+          /* Плитки каталога: на телефоне по две в ряд, на широком —
+             около 10rem каждая. */
+          sizes="(max-width: 575.98px) 45vw, 10rem"
+        />
       ) : (
         <span className="poster-tile-fallback" aria-hidden>
           {title.trim().charAt(0).toUpperCase()}

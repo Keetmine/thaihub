@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import AppLink from "@/components/AppLink";
+import { uploadSrcSet } from "@/lib/imageVariants";
 import { formatTime, shortMonthName, shortWeekdayName } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { eventHref } from "@/lib/eventSlug";
@@ -76,6 +77,8 @@ export default function EventCard({
           <img
             ref={checkPoster}
             src={event.posterUrl}
+            srcSet={uploadSrcSet(event.posterUrl)}
+            sizes="4rem"
             alt=""
             loading="lazy"
             decoding="async"

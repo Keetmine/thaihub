@@ -1,3 +1,4 @@
+import UploadImage from "@/components/UploadImage";
 import { pageMetadata, JsonLd, tvSeriesJsonLd } from "@/lib/seo";
 import ReviewsAndComments from "@/components/ReviewsAndComments";
 import SourcesBlock from "@/components/SourcesBlock";
@@ -311,12 +312,12 @@ export default async function DramaDetailPage({
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
         {drama.posterUrl && (
           <div className="flex-shrink-0 d-flex flex-column gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <UploadImage
               loading="eager"
-              decoding="async"
+              blur
               src={drama.posterUrl}
               alt={drama.title}
+              sizes="15rem"
               className="rounded-4"
               style={{ width: "15rem", aspectRatio: "2 / 3", objectFit: "cover" }}
             />

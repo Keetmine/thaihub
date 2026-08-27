@@ -4,7 +4,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/userAuth";
-import { toWebp } from "@/lib/localImage";
+import { toWebp, writeWebpVariants } from "@/lib/localImage";
 import { allowedFormats, type UploadErrorBody } from "@/lib/uploadErrors";
 
 const MAX_MB = 8;
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
   await mkdir(uploadsDir, { recursive: true });
   await writeFile(path.join(uploadsDir, filename), converted.buffer);
+  await writeWebpVariants(uploadsDir, filename, converted.buffer);
 
   return NextResponse.json({ url: `/uploads/${filename}` });
 }

@@ -1,3 +1,4 @@
+import UploadImage from "@/components/UploadImage";
 import AppLink from "@/components/AppLink";
 
 export default function EntityMiniCard({
@@ -37,8 +38,7 @@ export default function EntityMiniCard({
           style={round ? undefined : { borderRadius: "0.9rem" }}
         >
           {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img loading="lazy" decoding="async" src={photoUrl} alt="" />
+            <UploadImage src={photoUrl} alt="" sizes="4rem" />
           ) : (
             <span className="cast-card-letter">
               {name.charAt(0).toUpperCase()}
@@ -60,12 +60,10 @@ export default function EntityMiniCard({
       style={style ?? { width: "11rem" }}
     >
       {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          loading="lazy"
-          decoding="async"
+        <UploadImage
           src={photoUrl}
           alt=""
+          sizes="2.5rem"
           style={{
             width: "2.5rem",
             height: "2.5rem",

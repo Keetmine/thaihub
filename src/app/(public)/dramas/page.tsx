@@ -1,3 +1,4 @@
+import UploadImage from "@/components/UploadImage";
 import AppLink from "@/components/AppLink";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
@@ -200,12 +201,10 @@ export default async function DramasPage({
                   }}
                 >
                   {d.posterUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      loading="lazy"
-                      decoding="async"
+                    <UploadImage
                       src={d.posterUrl}
                       alt=""
+                      sizes="(max-width: 575.98px) 30vw, 10rem"
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   ) : (

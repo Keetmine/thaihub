@@ -1,6 +1,7 @@
 import { access, mkdir, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
+import { IMAGE_WIDTHS, variantName } from "@/lib/imageVariants";
 
 const UPLOADS_ROOT = path.join(process.cwd(), "public", "uploads");
 
@@ -15,6 +16,37 @@ const ALLOWED_CONTENT_TYPES = new Set([
 ]);
 
 const WEBP_QUALITY = 82;
+
+
+
+/**
+ * Кладёт рядом с картинкой её уменьшенные копии.
+ *
+ * Копии делаем ТОЛЬКО вниз (`withoutEnlargement`): растянутый до 400
+ * пикселей постер шириной 300 весил бы больше оригинала и выглядел бы
+ * хуже. Не получилось — молча живём без копии: `srcset` тогда просто не
+ * предложит её браузеру, а картинка останется на месте.
+ */
+export async function writeWebpVariants(
+  dir: string,
+  filename: string,
+  buffer: Buffer,
+): Promise<void> {
+  if (!filename.endsWith(".webp")) return;
+  for (const width of IMAGE_WIDTHS) {
+    try {
+      const resized = await sharp(buffer)
+        .resize({ width, withoutEnlargement: true })
+        .webp({ quality: WEBP_QUALITY })
+        .toBuffer();
+      // Уменьшать было нечего — оригинал и так уже, копия не нужна.
+      if (resized.length >= buffer.length) continue;
+      await writeFile(path.join(dir, variantName(filename, width)), resized);
+    } catch (err) {
+      console.warn(`writeWebpVariants: ${filename} @${width} — ${err instanceof Error ? err.message : err}`);
+    }
+  }
+}
 
 /** Re-encodes an image buffer as WebP (smaller at the same visual
  *  quality than the JPEG/PNG sources it replaces). GIFs are kept as-is —
@@ -78,6 +110,7 @@ export async function downloadRemoteImage(url: string | null, folder: string): P
 
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, filename), buffer);
+    await writeWebpVariants(dir, filename, buffer);
     return `/uploads/${folder}/${filename}`;
   } catch (err) {
     console.warn(`downloadRemoteImage: failed for ${url} — ${err instanceof Error ? err.message : err}`);

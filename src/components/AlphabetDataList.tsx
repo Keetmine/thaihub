@@ -1,5 +1,6 @@
 "use client";
 
+import UploadImage from "@/components/UploadImage";
 import { useEffect, useRef, useState } from "react";
 import AppLink from "@/components/AppLink";
 import { useT } from "@/components/LocaleProvider";
@@ -140,12 +141,10 @@ export default function AlphabetDataList({
           }}
         >
           {row.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              loading="lazy"
-              decoding="async"
+            <UploadImage
               src={row.photoUrl}
               alt=""
+              sizes="(max-width: 575.98px) 45vw, 12rem"
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           ) : (
@@ -205,12 +204,10 @@ export default function AlphabetDataList({
           }}
         >
           {row.photoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              loading="lazy"
-              decoding="async"
+            <UploadImage
               src={row.photoUrl}
               alt=""
+              sizes="(max-width: 575.98px) 45vw, 12rem"
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           )}
