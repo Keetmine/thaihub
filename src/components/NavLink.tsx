@@ -7,6 +7,7 @@ export default function NavLink({
   href,
   matchPrefixes,
   matchQuery,
+  className = "nav-link",
   children,
 }: {
   href: string;
@@ -15,6 +16,10 @@ export default function NavLink({
    *  стоять в параметре, null — параметр должен ОТСУТСТВОВАТЬ (чтобы
    *  «Исполнители» не подсвечивались на ?view=bands). */
   matchQuery?: Record<string, string | null>;
+  /** Свой набор классов — футеру нужен .footer-link, а не .nav-link.
+   *  Класс .active добавляется к любому: подсветка активного раздела
+   *  живёт в одном месте, а не в двух компонентах. */
+  className?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -34,7 +39,7 @@ export default function NavLink({
     // viewport-triggered prefetching would fire a real DB query for every
     // nav link on every page load — turning it off avoids piling up
     // background queries that can make an actual click feel like it hangs.
-    <Link href={href} prefetch={false} className={`nav-link ${isActive ? "active" : ""}`}>
+    <Link href={href} prefetch={false} className={`${className} ${isActive ? "active" : ""}`}>
       {children}
     </Link>
   );

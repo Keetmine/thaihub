@@ -17,6 +17,10 @@ type TelegramUpdate = {
     text?: string;
     from?: { id: number; first_name?: string; username?: string };
     chat?: { id: number };
+    /** На какое сообщение отвечают. Так админ отвечает человеку: жмёт
+     *  «Ответить» на пересланном обращении, и мы по нему узнаём, кому
+     *  адресован ответ. */
+    reply_to_message?: { text?: string };
     successful_payment?: {
       invoice_payload: string;
       total_amount: number;
@@ -26,6 +30,28 @@ type TelegramUpdate = {
 };
 
 const APP_URL = process.env.APP_URL ?? "https://myblhub.com";
+
+/** Телеграм владельца — на случай, если вопрос срочный и лично. */
+const OWNER_CONTACT = "@keetmine";
+
+/**
+ * Метка адресата в пересланном обращении. По ней ответ админа находит
+ * дорогу обратно: другого способа нет — Telegram в reply отдаёт только
+ * текст исходного сообщения, а не то, о ком оно было.
+ */
+const FROM_ID_MARK = /\(id (\d+)\)/;
+
+/**
+ * Кому адресован ответ админа: достаёт id из текста пересланного
+ * обращения, на которое он ответил.
+ *
+ * Вынесено отдельно, потому что ломается тут ровно одно место — формат
+ * пересылки. Поменяют строку в notifyAdmins, забыв про метку, и ответы
+ * молча перестанут доходить: проверить это можно только так.
+ */
+export function replyTargetFromForwarded(text: string | undefined): string | null {
+  return text?.match(FROM_ID_MARK)?.[1] ?? null;
+}
 
 /** Ответы на команды. Бот молчал на любой текст — для платёжного бота
  *  это прямое нарушение требований Telegram, да и человеку непонятно. */
@@ -72,6 +98,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Ответ администратора человеку. Раньше ответить было нельзя вовсе:
+  // написанное в чат с ботом уходило боту как новое обращение — и
+  // возвращалось админу же, потому что он и есть получатель обращений.
+  //
+  // Теперь работает штатный «Ответить» в Telegram: в апдейте приходит
+  // reply_to_message с текстом пересланного обращения, оттуда достаём
+  // id адресата.
+  const replyTo = update.message?.reply_to_message?.text;
+  if (rawText && chatId && replyTo) {
+    const target = replyTargetFromForwarded(replyTo);
+    if (target) {
+      const admin = await prisma.user.findFirst({
+        where: { isAdmin: true, telegramId: String(chatId) },
+        select: { id: true },
+      });
+      // Отвечать людям от имени сервиса может только админ: без этой
+      // проверки любой, кому переслали обращение, писал бы от нас.
+      if (admin) {
+        const delivered = await sendTelegramMessage(
+          target,
+          `💬 Ответ от MyBLHub:\n\n${rawText}`,
+        ).catch(() => false);
+        await sendTelegramMessage(
+          String(chatId),
+          delivered
+            ? "Отправлено."
+            : "Не дошло: человек мог закрыть чат с ботом или заблокировать его.",
+        ).catch(() => {});
+        return NextResponse.json({ ok: true });
+      }
+    }
+  }
+
   // Любой другой текст — это человек, который пишет боту как живому
   // адресату (чаще всего просьба про подписку). Бот отвечать не умеет,
   // поэтому пересылаем админам и подтверждаем отправителю, что
@@ -81,12 +140,14 @@ export async function POST(request: Request) {
     const who = from?.username ? `@${from.username}` : (from?.first_name ?? String(chatId));
     await notifyAdmins(
       "feedback",
-      `✉️ Сообщение боту от ${who} (id ${chatId}):\n\n${rawText.slice(0, 800)}`,
+      `✉️ Сообщение боту от ${who} (id ${chatId}):\n\n${rawText.slice(0, 800)}` +
+        "\n\nЧтобы ответить — «Ответить» на это сообщение.",
     );
     await sendTelegramMessage(
       String(chatId),
       "Спасибо! Сообщение у нас — ответим здесь же или на сайте. " +
-        `Если вопрос про подписку, можно сразу написать напрямую: ${APP_URL}/help`,
+        `Если вопрос про подписку, можно сразу написать напрямую: ${APP_URL}/help ` +
+        `или ${OWNER_CONTACT}`,
     ).catch(() => {});
     return NextResponse.json({ ok: true });
   }

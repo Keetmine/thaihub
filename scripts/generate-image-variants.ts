@@ -20,9 +20,18 @@ import { IMAGE_WIDTHS, isVariantName, variantName } from "../src/lib/imageVarian
  *
  *   docker compose exec app npx tsx scripts/generate-image-variants.ts
  *   docker compose exec app npx tsx scripts/generate-image-variants.ts --apply
+ *
+ * Пока прогон не дошёл до конца, `srcset` на сайте отдавать НЕЛЬЗЯ:
+ * браузер, выбрав из него отсутствующий файл, показывает дыру, а не
+ * возвращается к `src`. Поэтому `srcset` включается отдельно —
+ * переменной `IMAGE_VARIANTS_READY=1`, уже после прогона.
+ *
+ * `--check` пересчитывает, у скольких картинок копий не хватает: перед
+ * тем как включать переменную, число должно быть нулём.
  */
 
 const apply = process.argv.includes("--apply");
+const checkOnly = process.argv.includes("--check");
 const UPLOADS = path.join(process.cwd(), "public", "uploads");
 
 async function exists(p: string): Promise<boolean> {
@@ -74,6 +83,15 @@ async function main() {
   }
 
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} МБ`;
+  if (checkOnly) {
+    console.log(`\nС копиями: ${skipped}. Без копий: ${done}.`);
+    console.log(
+      done === 0
+        ? "Все на месте — можно включать IMAGE_VARIANTS_READY=1."
+        : "Копий не хватает — включать IMAGE_VARIANTS_READY рано.",
+    );
+    return;
+  }
   console.log(`\nУ ${skipped} копии уже были.`);
   console.log(`${apply ? "Сделано" : "К обработке"}: ${done}.`);
   if (apply && bytesBefore > 0) {

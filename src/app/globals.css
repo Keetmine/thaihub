@@ -243,7 +243,17 @@ body {
 }
 
 .pill-nav .nav-link.active {
-  color: var(--bs-primary-text-emphasis);
+  /* Оранжевый акцент, а не приглушённый #ff9a72: активный раздел
+     должен читаться с одного взгляда, а тихий оттенок в ряду из шести
+     ссылок терялся. */
+  color: rgb(var(--accent-rgb));
+  font-weight: 600;
+}
+
+/* Активный раздел в футере — тем же оранжевым. Раньше подсветки там не
+   было вовсе: ссылки футера рисуются одним классом без учёта адреса. */
+.footer-link.active {
+  color: rgb(var(--accent-rgb)) !important;
   font-weight: 600;
 }
 

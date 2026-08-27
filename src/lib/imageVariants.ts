@@ -53,6 +53,7 @@ export function variantName(filename: string, width: number): string {
 
 /** Адрес заглушки для blur-up — или null, если копий у картинки нет. */
 export function blurUrl(src: string): string | null {
+  if (!VARIANTS_READY) return null;
   if (!src.startsWith("/uploads/") || !src.endsWith(".webp")) return null;
   return variantName(src, BLUR_WIDTH);
 }
@@ -63,14 +64,25 @@ export function isVariantName(name: string): boolean {
 }
 
 /**
- * `srcset` для картинки из /uploads — или undefined, если копий у неё
- * быть не может (внешний адрес, гифка).
+ * Готовы ли копии у ВСЕХ картинок.
  *
- * Копии может не быть и у подходящей картинки: мельче ступени их не
- * создают, старым файлам могли ещё не досыпать. Это не беда — `srcset`
- * для браузера подсказка: не найдя копию, он возьмёт `src`.
+ * Пока не готовы — `srcset` не отдаём вовсе. Это не перестраховка:
+ * `srcset` не запасной путь, а выбор. Если браузер взял из него вариант,
+ * а тот не загрузился, картинка ломается — к `src` он не возвращается.
+ * Так что обещать копию, которой на диске нет, нельзя: страница
+ * останется с дырами вместо постеров.
+ *
+ * Включать после того, как `scripts/generate-image-variants.ts`
+ * прошёл по проду до конца.
+ */
+const VARIANTS_READY = process.env.IMAGE_VARIANTS_READY === "1";
+
+/**
+ * `srcset` для картинки из /uploads — или undefined, если копий у неё
+ * быть не может (внешний адрес, гифка) либо они ещё не готовы.
  */
 export function uploadSrcSet(src: string): string | undefined {
+  if (!VARIANTS_READY) return undefined;
   if (!src.startsWith("/uploads/") || !src.endsWith(".webp")) return undefined;
   return [
     ...SRCSET_WIDTHS.map((w) => `${variantName(src, w)} ${w}w`),

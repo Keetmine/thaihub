@@ -39,8 +39,12 @@ export async function writeWebpVariants(
         .resize({ width, withoutEnlargement: true })
         .webp({ quality: WEBP_QUALITY })
         .toBuffer();
-      // Уменьшать было нечего — оригинал и так уже, копия не нужна.
-      if (resized.length >= buffer.length) continue;
+      // Копию пишем ВСЕГДА, даже если она не легче оригинала.
+      //
+      // Соблазн пропустить такую велик — толку от неё нет. Но `srcset`
+      // обещает браузеру файл по имени, а не по выгоде: не найдя его,
+      // браузер не возьмёт `src`, а покажет дыру. Лишний килобайт на
+      // диске дешевле пропавшего постера.
       await writeFile(path.join(dir, variantName(filename, width)), resized);
     } catch (err) {
       console.warn(`writeWebpVariants: ${filename} @${width} — ${err instanceof Error ? err.message : err}`);
