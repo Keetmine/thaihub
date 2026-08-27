@@ -221,3 +221,85 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
     });
   }
 }
+
+/**
+ * Поздравления с днями рождения избранных артистов (З3).
+ *
+ * Блок на главной показывает именинников всем, а это — личное: приходит
+ * только тому, кто добавил артиста в избранное, и только про него.
+ *
+ * Идёт через `notifyUser`, а не прямым сообщением в бота: тогда повод
+ * попадает и в колокольчик на сайте, и в Telegram, на языке получателя
+ * и по его переключателю (`tgNotifyBirthdays`) — писать своё сообщение
+ * значило бы обойти и то, и другое.
+ *
+ * Дату сравниваем по месяцу и дню в UTC: даты-без-времени лежат как
+ * полночь UTC (см. lib/dates.ts), и приведение к поясу сервера сдвигало
+ * бы поздравление на день — ровно та беда, из-за которой блок на
+ * главной когда-то молчал.
+ *
+ * Дедуп — BirthdayNotification с годом в ключе: планировщик просыпается
+ * каждые полчаса, иначе за сутки ушло бы двадцать поздравлений.
+ */
+export async function sendBirthdayNotifications(): Promise<number> {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+
+  const birthdayPerformers = await prisma.$queryRaw<
+    { id: string; name: string; slug: string | null; birthDate: Date }[]
+  >`
+    SELECT p.id, p.name, p.slug, p."birthDate"
+      FROM "Performer" p
+     WHERE p."birthDate" IS NOT NULL
+       AND EXTRACT(MONTH FROM p."birthDate") = ${now.getUTCMonth() + 1}
+       AND EXTRACT(DAY FROM p."birthDate") = ${now.getUTCDate()}
+  `;
+  if (birthdayPerformers.length === 0) return 0;
+
+  const performerIds = birthdayPerformers.map((p) => p.id);
+  const [favorites, alreadySent] = await Promise.all([
+    prisma.favoritePerformer.findMany({
+      where: { performerId: { in: performerIds } },
+      select: { userId: true, performerId: true },
+    }),
+    prisma.birthdayNotification.findMany({
+      where: { performerId: { in: performerIds }, year },
+      select: { userId: true, performerId: true },
+    }),
+  ]);
+
+  const sentKeys = new Set(alreadySent.map((n) => `${n.userId}:${n.performerId}`));
+  const byId = new Map(birthdayPerformers.map((p) => [p.id, p]));
+
+  let sent = 0;
+  for (const fav of favorites) {
+    if (sentKeys.has(`${fav.userId}:${fav.performerId}`)) continue;
+    const performer = byId.get(fav.performerId);
+    if (!performer) continue;
+
+    // Отметку ставим ПЕРЕД отправкой, и по ней же ловим гонку: два
+    // тика планировщика могут пересечься, и уникальный ключ — тот, кто
+    // рассудит. Проигравший просто ничего не шлёт.
+    try {
+      await prisma.birthdayNotification.create({
+        data: { userId: fav.userId, performerId: fav.performerId, year },
+      });
+    } catch {
+      continue;
+    }
+
+    const turns = year - performer.birthDate.getUTCFullYear();
+    await notifyUser({
+      userId: fav.userId,
+      kind: "PERFORMER_BIRTHDAY",
+      subject: performer.name,
+      // Возраст осмыслен, только если год рождения настоящий: у части
+      // карточек в дате стоит условный год, и «исполняется 2026» было
+      // бы дичью.
+      body: turns > 0 && turns < 120 ? (t) => t.notifications.birthdayBody(turns) : null,
+      href: performer.slug ? `/artists/${performer.slug}` : null,
+    });
+    sent += 1;
+  }
+  return sent;
+}

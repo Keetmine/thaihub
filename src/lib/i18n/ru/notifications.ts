@@ -13,7 +13,10 @@ export const notifications: Dict["notifications"] = {
     FRIEND_GOING: (who: string, event: string) => `${who} идёт на «${event}»`,
     ACHIEVEMENT: (name: string) => `Новая ачивка: ${name}`,
     PREMIUM_GRANTED: "Подписка активна",
+    PERFORMER_BIRTHDAY: (name: string) => `Сегодня день рождения у ${name}`,
   },
+
+  birthdayBody: (turns: number) => `Исполняется ${turns}.`,
 
   premiumBody: (until: string) => `Открыты афиша, календарь и поездки — до ${until}.`,
 };

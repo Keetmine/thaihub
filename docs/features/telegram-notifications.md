@@ -44,6 +44,19 @@ friends, unless a friend muted them (`FriendNotificationMute`, toggled
 by the bell button on the friend's profile page); receivers also need
 Telegram + active premium.
 
+**Дни рождения избранных артистов** (`sendBirthdayNotifications`, З3) —
+там же, в получасовом прогоне. Блок на главной показывает именинников
+всем, а это личное: приходит только тому, кто добавил артиста в
+избранное, и только про него. Отправка идёт через `notifyUser`, а не
+своим сообщением в бота, — тогда повод попадает и в колокольчик, и в
+Telegram, на языке получателя и по его переключателю
+(`tgNotifyBirthdays`, свой, а не общий с событиями). Месяц и день
+сравниваются в UTC: даты-без-времени лежат как полночь UTC, и приведение
+к поясу сервера сдвигало бы поздравление на день. Дедуп —
+`BirthdayNotification` с годом в ключе, иначе за сутки ушло бы двадцать
+поздравлений; отметка ставится ДО отправки и она же разнимает гонку двух
+тиков.
+
 ## Payments webhook
 
 `/api/telegram/webhook` (registered once via

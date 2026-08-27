@@ -19,7 +19,10 @@ export const notifications = {
     FRIEND_GOING: (who: string, event: string) => `${who} is going to "${event}"`,
     ACHIEVEMENT: (name: string) => `New achievement: ${name}`,
     PREMIUM_GRANTED: "Your subscription is active",
+    PERFORMER_BIRTHDAY: (name: string) => `It's ${name}'s birthday today`,
   },
+
+  birthdayBody: (turns: number) => `Turning ${turns}.`,
 
   premiumBody: (until: string) => `The feed, the calendar and trips are open — until ${until}.`,
 };

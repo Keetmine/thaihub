@@ -13,80 +13,80 @@ datasource db {
 }
 
 model Event {
-  id          String   @id @default(cuid())
-  title       String
+  id                   String                        @id @default(cuid())
+  title                String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug           String?  @unique
-  venue       String
-  description String?
+  slug                 String?                       @unique
+  venue                String
+  description          String?
   // Откуда событие импортировано (ThaiTicketMajor) — блок «Источники»
   // на странице; у добавленных руками null.
-  sourceUrl   String?
-  presaleAt   DateTime?
-  presaleUrl  String?
+  sourceUrl            String?
+  presaleAt            DateTime?
+  presaleUrl           String?
   // Free-text ticket price display string (e.g. "6,900 / 5,900 / 5,000
   // baht") — deliberately not a structured number, since sources like
   // ThaiTicketMajor list several tiers as one string.
-  ticketPrice String?
-  posterUrl   String?
+  ticketPrice          String?
+  posterUrl            String?
   // Optional tie-in to a drama this event is about (premiere screening,
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
-  dramaId     String?
-  drama       Drama?   @relation(fields: [dramaId], references: [id])
+  dramaId              String?
+  drama                Drama?                        @relation(fields: [dramaId], references: [id])
   // Optional link to a known real-world Location (venue reused from a
   // filming-location page, a recurring fan-meet spot, etc.) — `venue`
   // stays the free-text display string either way; this just lets the
   // event show up on that Location's page and on the map.
-  locationId  String?
-  location    Location? @relation(fields: [locationId], references: [id])
+  locationId           String?
+  location             Location?                     @relation(fields: [locationId], references: [id])
   // A multi-day concert is still ONE Event (one title/venue/cast/
   // favorite/going state) with several occurrences — it shows up once
   // per day in listings/calendar, but editing or deleting it acts on the
   // whole thing at once. See docs/features/events.md.
-  occurrences EventOccurrence[]
-  performers  EventPerformer[]
-  pairings    EventPairing[]
-  favoritedBy FavoriteEvent[]
-  attendees   EventAttendance[]
-  notes       EventNote[]
+  occurrences          EventOccurrence[]
+  performers           EventPerformer[]
+  pairings             EventPairing[]
+  favoritedBy          FavoriteEvent[]
+  attendees            EventAttendance[]
+  notes                EventNote[]
   presaleNotifications TelegramPresaleNotification[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  reviews    Review[]
-  comments   Comment[]
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  reviews              Review[]
+  comments             Comment[]
 }
 
 model EventOccurrence {
-  id       String    @id @default(cuid())
-  eventId  String
-  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  startsAt DateTime
-  endsAt   DateTime?
+  id                    String                 @id @default(cuid())
+  eventId               String
+  event                 Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startsAt              DateTime
+  endsAt                DateTime?
   // Время не указано — startsAt хранит 00:00, hasTime=false (иначе
   // полночь неотличима от «без времени»).
-  hasTime  Boolean   @default(true)
+  hasTime               Boolean                @default(true)
   // Состав конкретного дня (фестивали: в разные дни — разные группы).
   // Пусто = день наследует общий состав события.
-  lineup   OccurrenceLineup[]
+  lineup                OccurrenceLineup[]
   telegramNotifications TelegramNotification[]
-  attendances EventAttendance[]
+  attendances           EventAttendance[]
 
   @@index([eventId])
   @@index([startsAt])
 }
 
 model Performer {
-  id             String   @id @default(cuid())
-  name           String
+  id   String        @id @default(cuid())
+  name String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug           String?  @unique
-  type           PerformerType @default(SOLO)
+  slug String?       @unique
+  type PerformerType @default(SOLO)
 
   // Profile fields (populated manually or via mydramalist import).
   realName       String?
@@ -104,28 +104,29 @@ model Performer {
   // TMDB person id — set once a performer's been imported/matched from
   // TMDB (see tmdb-import.md), lets re-imports and cast matching key off
   // a stable id instead of a fuzzy name match.
-  tmdbId         String?   @unique
+  tmdbId         String?           @unique
 
-  events         EventPerformer[]
-  dramas         PerformerDrama[]
-  links          PerformerLink[]
-  favoritedBy    FavoritePerformer[]
-  pairingsAsA    Pairing[] @relation("PairingA")
-  pairingsAsB    Pairing[] @relation("PairingB")
+  events                EventPerformer[]
+  dramas                PerformerDrama[]
+  links                 PerformerLink[]
+  favoritedBy           FavoritePerformer[]
+  birthdayNotifications BirthdayNotification[]
+  pairingsAsA           Pairing[]              @relation("PairingA")
+  pairingsAsB           Pairing[]              @relation("PairingB")
 
   // Band <-> member-actor relation. Only meaningful when type is BAND
   // (bandMembers) or SOLO (memberOfBands) respectively, but left
   // unconstrained at the schema level since either side is just a Performer.
-  bandMembers    BandMember[] @relation("BandMembers")
-  memberOfBands  BandMember[] @relation("MemberOfBands")
+  bandMembers   BandMember[] @relation("BandMembers")
+  memberOfBands BandMember[] @relation("MemberOfBands")
 
   // Маскоты: owners — чей это маскот (сам Performer типа MASCOT),
   // mascots — маскоты этого актёра.
-  mascotOwners   MascotOwner[] @relation("MascotOwners")
-  mascots        MascotOwner[] @relation("PerformerMascots")
-  inUserLists    PerformerListItem[]
-  seenByUsers    PerformerSeen[]
-  scheduledJobs  ScheduledJobTarget[]
+  mascotOwners      MascotOwner[]        @relation("MascotOwners")
+  mascots           MascotOwner[]        @relation("PerformerMascots")
+  inUserLists       PerformerListItem[]
+  seenByUsers       PerformerSeen[]
+  scheduledJobs     ScheduledJobTarget[]
   occurrenceLineups OccurrenceLineup[]
 
   // Музыкальная сторона: сценический псевдоним сольного музыканта
@@ -146,20 +147,20 @@ model Performer {
   // Секция «References» источника: [{label, url}] + страница-источник.
   references    Json?
   sourceUrl     String?
-  musicAlias     String?
-  albums         Album[]
-  songs          Song[]
+  musicAlias    String?
+  albums        Album[]
+  songs         Song[]
 
   // Данные со страницы MyDramaList (блок Details страницы человека,
   // кроме Native name — см. mydramalist-import.md). mdlSyncedAt —
   // отметка прохода scripts/mdl-sync-performers.ts.
-  alsoKnownAs    String?
-  nationality    String?
-  gender         String?
-  mdlSyncedAt    DateTime?
+  alsoKnownAs String?
+  nationality String?
+  gender      String?
+  mdlSyncedAt DateTime?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([name])
 }
@@ -237,13 +238,13 @@ model Song {
 // (later) logo make it a browsable entity in its own right rather than
 // just a free-text label.
 model Agency {
-  id          String      @id @default(cuid())
-  name        String      @unique
+  id          String            @id @default(cuid())
+  name        String            @unique
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug           String?  @unique
+  slug        String?           @unique
   logoUrl     String?
   description String?
   // Страница-источник (Wikipedia/fandom/сайт агентства/TMDB) — блок
@@ -254,8 +255,8 @@ model Agency {
   dramaLinks  DramaAgency[]
   favoritedBy FavoriteAgency[]
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // A performer<->agency association — many-to-many since a performer can
@@ -324,25 +325,25 @@ model EventPerformer {
 // Новелла-первоисточник: многие лакорны — экранизации веб-новелл.
 // Ссылки — где почитать/купить/скачать (свободный label+url).
 model Novel {
-  id          String      @id @default(cuid())
-  title       String
+  id             String      @id @default(cuid())
+  title          String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts).
-  slug        String?     @unique
-  author      String?
-  coverUrl    String?
-  description String?
+  slug           String?     @unique
+  author         String?
+  coverUrl       String?
+  description    String?
   // Поля импорта с Фикбука (см. ficbook-import в admin/novels):
   // автор оригинала (для переводов), теги-бейджи (Слэш, Перевод, NC-17,
   // Завершён) вместе с «Метками», размер («N страниц, M слов»).
   originalAuthor String?
-  tags        String[]    @default([])
-  size        String?
-  links       NovelLink[]
-  dramas      Drama[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  reviews    Review[]
-  comments   Comment[]
+  tags           String[]    @default([])
+  size           String?
+  links          NovelLink[]
+  dramas         Drama[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  reviews        Review[]
+  comments       Comment[]
 
   @@index([title])
 }
@@ -358,13 +359,13 @@ model NovelLink {
 }
 
 model Drama {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   title          String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug           String?  @unique
+  slug           String?       @unique
   mydramalistUrl String?
   posterUrl      String?
   synopsis       String?
@@ -377,66 +378,66 @@ model Drama {
   // Основное агентство (легаси, одно) + полный набор через DramaAgency:
   // у сериала бывает несколько студий-производителей.
   agencyId       String?
-  agency         Agency?      @relation(fields: [agencyId], references: [id])
+  agency         Agency?       @relation(fields: [agencyId], references: [id])
   agencies       DramaAgency[]
   // Первоисточник-новелла (если сериал — экранизация).
   novelId        String?
-  novel          Novel?       @relation(fields: [novelId], references: [id])
+  novel          Novel?        @relation(fields: [novelId], references: [id])
   // The blscene.com "where was X filmed" page this drama was imported from,
   // if any — used to dedupe re-imports (its on-page title can differ from
   // the A-Z index's link text, so title matching alone isn't reliable).
-  blsceneUrl     String?      @unique
+  blsceneUrl     String?       @unique
   // TMDB TV show id, set once imported/matched from TMDB — see
   // tmdb-import.md. Same dedupe role as blsceneUrl, for a different source.
-  tmdbId         String?      @unique
+  tmdbId         String?       @unique
 
   // Данные со страницы MyDramaList (см. mydramalist-import.md):
   // блок Details + рейтинг. mdlSyncedAt — отметка последнего прохода
   // scripts/mdl-sync-dramas.ts (для резюма больших прогонов).
-  nativeTitle    String?
-  alsoKnownAs    String?
-  director       String?
-  screenwriter   String?
-  genres         String[]     @default([])
-  tags           String[]     @default([])
-  episodes       Int?
-  airedFrom      DateTime?
-  airedTo        DateTime?
-  airedOn        String?
-  duration       String?
-  contentRating  String?
+  nativeTitle   String?
+  alsoKnownAs   String?
+  director      String?
+  screenwriter  String?
+  genres        String[]  @default([])
+  tags          String[]  @default([])
+  episodes      Int?
+  airedFrom     DateTime?
+  airedTo       DateTime?
+  airedOn       String?
+  duration      String?
+  contentRating String?
   // Страна и тип со страницы MDL («Thailand», «Drama»/«Movie»/«Special»).
   // Свободным текстом, а не перечислением: словарь у MDL свой и он
   // меняется, а жёсткий enum ронял бы импорт на каждом новом значении.
-  country        String?
-  type           String?
-  mdlScore       Float?
-  mdlSyncedAt    DateTime?
+  country       String?
+  type          String?
+  mdlScore      Float?
+  mdlSyncedAt   DateTime?
   // Страница-источник на MyDramaList. Хранится, чтобы сериал можно было
   // переимпортировать позже: сама по себе ссылка не выводится из
   // названия — в ней числовой id. Заодно ключ дедупликации, как
   // blsceneUrl и tmdbId для своих источников.
-  mdlUrl         String?      @unique
+  mdlUrl        String?   @unique
   // «Обновлять по расписанию». Отдельный флаг, а не «есть mdlUrl»:
   // ссылка есть у всего импортированного (тысячи записей), а ночью
   // обходить нужно только то, что ещё выходит и потому меняется.
-  mdlAutoUpdate  Boolean      @default(false)
+  mdlAutoUpdate Boolean   @default(false)
 
   // Связанные тайтлы из блока Related Content (сиквелы, uncut-версии,
   // общая вселенная) — направленная связь с подписью отношения.
-  relatedFrom    DramaRelation[] @relation("RelatedFrom")
-  relatedTo      DramaRelation[] @relation("RelatedTo")
+  relatedFrom DramaRelation[] @relation("RelatedFrom")
+  relatedTo   DramaRelation[] @relation("RelatedTo")
 
-  performers     PerformerDrama[]
-  watchStatuses  DramaWatchStatus[]
-  episodeList    DramaEpisode[]
-  events         Event[]
-  locations      DramaLocation[]
+  performers    PerformerDrama[]
+  watchStatuses DramaWatchStatus[]
+  episodeList   DramaEpisode[]
+  events        Event[]
+  locations     DramaLocation[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  reviews    Review[]
-  comments   Comment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  reviews   Review[]
+  comments  Comment[]
 
   @@index([title])
 }
@@ -496,43 +497,43 @@ enum LocationCategory {
 }
 
 model Location {
-  id          String   @id @default(cuid())
-  name        String
+  id              String              @id @default(cuid())
+  name            String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug           String?  @unique
-  description String?
+  slug            String?             @unique
+  description     String?
   // Откуда взята локация — блок «Источники» на её странице (см.
   // features/locations.md). Каталожные локации пришли с blscene.com, и
   // атрибуция там обязательна; у мест, созданных пользователями
   // (createdByUserId), источника нет.
-  sourceUrl   String?
+  sourceUrl       String?
   // Что это за место: кафе, магазин, отель… Нужна для фильтров в
   // списках мест и в «Что посетить» внутри поездки, и для иконок на
   // карте. Правится в админке; у части каталожных локаций пустая.
-  category    LocationCategory?
+  category        LocationCategory?
   // Инстаграм заведения, сайт, канал — фандом чаще всего находит места
   // именно по инстаграму.
-  links       LocationLink[]
-  photoUrl    String?
-  latitude    Float?
-  longitude   Float?
+  links           LocationLink[]
+  photoUrl        String?
+  latitude        Float?
+  longitude       Float?
   // Место, созданное пользователем для своих списков/поездок (а не
   // импортированное из каталога дорам): в общий каталог/карту/админку
   // такие не попадают — видны только через списки и поиск автора.
   createdByUserId String?
-  createdBy       User?  @relation("UserCreatedLocations", fields: [createdByUserId], references: [id], onDelete: Cascade)
-  dramas      DramaLocation[]
-  visitedBy   LocationVisit[]
-  events      Event[]
-  listItems   PlaceListItem[]
-  tripPlaces  TripPlace[]
-  personalEvents TripPersonalEvent[]
+  createdBy       User?               @relation("UserCreatedLocations", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  dramas          DramaLocation[]
+  visitedBy       LocationVisit[]
+  events          Event[]
+  listItems       PlaceListItem[]
+  tripPlaces      TripPlace[]
+  personalEvents  TripPersonalEvent[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([name])
 }
@@ -574,16 +575,15 @@ enum WatchStatus {
 // performers/events/agencies (see docs/features/social.md).
 /**
  * Расписание серий: какая серия на какое число.
- *
  * Отдельными строками, а не вычислением «airedFrom + неделя × номер»:
  * у сериалов бывают перерывы, сдвоенные показы и спецвыпуски, и
  * посчитанная дата врала бы ровно там, где на неё смотрят — «выходит ли
  * сегодня». Даты приходят со страницы /episodes на MyDramaList.
  */
 model DramaEpisode {
-  id      String @id @default(cuid())
+  id      String    @id @default(cuid())
   dramaId String
-  drama   Drama  @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  drama   Drama     @relation(fields: [dramaId], references: [id], onDelete: Cascade)
   number  Int
   // null — дату ещё не объявили: у выходящего сериала хвост расписания
   // обычно пустой, и это не то же самое, что «серии нет».
@@ -596,18 +596,18 @@ model DramaEpisode {
 }
 
 model DramaWatchStatus {
-  userId    String
-  dramaId   String
-  status    WatchStatus
+  userId          String
+  dramaId         String
+  status          WatchStatus
   // На какой серии человек остановился. null — не отмечал: это не то же
   // самое, что 0 («начал и не посмотрел ни одной»), и прогресс-бар в
   // первом случае не рисуется вовсе. Общее число серий берётся из
   // Drama.episodes и тоже бывает неизвестным — тогда счётчик работает
   // без верхней границы.
   episodesWatched Int?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  drama     Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
-  updatedAt DateTime @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drama           Drama       @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  updatedAt       DateTime    @updatedAt
 
   @@id([userId, dramaId])
   @@index([dramaId])
@@ -627,20 +627,19 @@ model PerformerDrama {
 // A named pairing ("ship") of two performers, selectable on events instead
 // of / alongside individual performers.
 model Pairing {
-  id           String        @id @default(cuid())
+  id           String         @id @default(cuid())
   name         String?
-  status       PairingStatus @default(CURRENT)
+  status       PairingStatus  @default(CURRENT)
   performerAId String
   performerBId String
-  performerA   Performer @relation("PairingA", fields: [performerAId], references: [id], onDelete: Cascade)
-  performerB   Performer @relation("PairingB", fields: [performerBId], references: [id], onDelete: Cascade)
+  performerA   Performer      @relation("PairingA", fields: [performerAId], references: [id], onDelete: Cascade)
+  performerB   Performer      @relation("PairingB", fields: [performerBId], references: [id], onDelete: Cascade)
   events       EventPairing[]
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime      @default(now())
+  mascots   MascotOwner[]
 
   @@unique([performerAId, performerBId])
-  mascots      MascotOwner[]
-
   @@index([performerBId])
 }
 
@@ -662,7 +661,7 @@ model EventPairing {
 // ---------- User accounts (separate from the single admin password) ----------
 
 model User {
-  id           String   @id @default(cuid())
+  id                       String          @id @default(cuid())
   // Both nullable because a Telegram-auth account has neither — an
   // email+password account always has both (enforced in the signup
   // action, not the schema).
@@ -670,142 +669,147 @@ model User {
   // всем. Предзаполняется на шаге после регистрации из Telegram-username
   // или части почты — так человек не застревает на форме, — но его
   // можно изменить.
-  username     String?  @unique
-  email        String?  @unique
-  passwordHash String?
+  username                 String?         @unique
+  email                    String?         @unique
+  passwordHash             String?
   // Роль админа: доступ к /admin без отдельного пароля — обычная
   // сессия пользователя + этот флаг (см. requireAdmin в lib/auth.ts).
-  isAdmin      Boolean  @default(false)
+  isAdmin                  Boolean         @default(false)
   // Менеджер каталога: полный доступ к разделам «Каталог» админки
   // (события, исполнители, сериалы, новеллы, локации, импорты), но без
   // пользователей, финансов, рассылок и настроек — это только админ.
-  isManager    Boolean  @default(false)
-  auditLogs    AuditLog[]
-  notifications      Notification[] @relation("UserNotifications")
-  performersSeen     PerformerSeen[]
+  isManager                Boolean         @default(false)
+  auditLogs                AuditLog[]
+  notifications            Notification[]  @relation("UserNotifications")
+  performersSeen           PerformerSeen[]
   // Что дублировать в Telegram (уведомления на сайте приходят всегда).
   // Раньше набор поводов был зашит в код и одинаков для всех.
-  tgNotifyInvites    Boolean @default(true)
-  tgNotifyFriends    Boolean @default(true)
-  tgNotifyReplies    Boolean @default(true)
-  tgNotifyEvents     Boolean @default(true)
+  tgNotifyInvites          Boolean         @default(true)
+  tgNotifyFriends          Boolean         @default(true)
+  tgNotifyReplies          Boolean         @default(true)
+  tgNotifyEvents           Boolean         @default(true)
+  // Дни рождения избранных артистов (З3). Свой переключатель, а не
+  // общий с событиями: повод ежедневный и нравится далеко не всем, а
+  // «друзья идут на события» человек может хотеть оставить.
+  tgNotifyBirthdays        Boolean         @default(true)
   // Новости проекта из /admin/broadcast — раньше рассылка игнорировала
   // настройки и уходила всем с привязанным Telegram.
-  tgNotifyBroadcast  Boolean @default(true)
+  tgNotifyBroadcast        Boolean         @default(true)
   // Тур по интерфейсу для новичков: показывается один раз после
   // регистрации, перезапускается кнопкой в настройках.
-  tourCompletedAt    DateTime?
+  tourCompletedAt          DateTime?
   // Мягкое удаление: запись остаётся (её связи — комментарии, отзывы,
   // участие в поездках — иначе исчезли бы каскадом), но аккаунт нигде не
   // показывается и войти в него нельзя. Уникальные поля при удалении
   // освобождаются — иначе почта и Telegram остались бы занятыми навсегда.
-  deletedAt          DateTime?
-  actedNotifications Notification[] @relation("NotificationActor")
+  deletedAt                DateTime?
+  actedNotifications       Notification[]  @relation("NotificationActor")
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
-  googleId     String?  @unique
-  name         String?
-  photoUrl     String?
+  googleId                 String?         @unique
+  name                     String?
+  photoUrl                 String?
   // Telegram user id from the Login Widget (doubles as the DM chat id
   // for bot notifications). Set = "can log in via Telegram".
-  telegramId       String? @unique
-  telegramUsername String?
+  telegramId               String?         @unique
+  telegramUsername         String?
   // Подписка действует, пока premiumUntil в будущем (null — не было).
   // Продлевается из админки (+1 месяц) или оплатой; гейты проверяют
   // через isPremiumActive() (src/lib/premium.ts).
-  premiumUntil DateTime?
+  premiumUntil             DateTime?
   // Для какого premiumUntil уже отправлено телеграм-напоминание об
   // истечении — дедуп напоминалки «подписка кончается через 3 дня».
   premiumExpiryNotifiedFor DateTime?
   // Opaque token for the read-only "subscribe to my calendar" ICS feed —
   // generated on first request since calendar apps fetch it without a
   // session cookie, so it needs its own unguessable credential.
-  icsToken     String?  @unique
+  icsToken                 String?         @unique
   // Таймзона для «времени в скобках» рядом с тайским (дефолт — МСК).
-  timezone     String   @default("Europe/Moscow")
+  timezone                 String          @default("Europe/Moscow")
   // Когда человек последний раз что-то делал на сайте. Обновляется не
   // на каждый запрос, а раз в несколько минут (см. lib/lastSeen.ts):
   // запись на каждый чих утроила бы количество записей в базу ради
   // поля, которое смотрят раз в неделю в админке.
-  lastSeenAt   DateTime?
+  lastSeenAt               DateTime?
   // Язык, выбранный человеком явно. null — не выбирал: тогда решает
   // язык браузера. Нужен помимо куки для того, что уходит человеку ВНЕ
   // запроса — уведомления в Telegram, название календарной подписки, —
   // там браузера с его кукой рядом нет. Куку это поле не заменяет:
   // proxy ходит на каждый запрос и в базу не лезет, поэтому язык из
   // профиля кладётся в куку при входе.
-  locale       String?
+  locale                   String?
   // Профиль: заполняется по желанию на шаге после регистрации и в
   // настройках.
-  country      String?
-  gender       String?
-  birthDate    DateTime?
-  bio          String?
-  createdAt    DateTime @default(now())
+  country                  String?
+  gender                   String?
+  birthDate                DateTime?
+  bio                      String?
+  createdAt                DateTime        @default(now())
 
-  sessions            UserSession[]
-  favoritePerformers  FavoritePerformer[]
-  favoriteEvents      FavoriteEvent[]
-  favoriteAgencies    FavoriteAgency[]
-  eventAttendances    EventAttendance[]
-  dramaWatchStatuses  DramaWatchStatus[]
-  visitedLocations    LocationVisit[]
-  trips               Trip[]
-  telegramNotifications TelegramNotification[]
+  sessions                     UserSession[]
+  favoritePerformers           FavoritePerformer[]
+  favoriteEvents               FavoriteEvent[]
+  favoriteAgencies             FavoriteAgency[]
+  eventAttendances             EventAttendance[]
+  dramaWatchStatuses           DramaWatchStatus[]
+  visitedLocations             LocationVisit[]
+  trips                        Trip[]
+  telegramNotifications        TelegramNotification[]
   telegramPresaleNotifications TelegramPresaleNotification[]
-  friendMutes         FriendNotificationMute[] @relation("MuteOwner")
-  mutedByFriends      FriendNotificationMute[] @relation("MuteTarget")
-  eventNotes          EventNote[]
-  achievements        UserAchievement[]
-  placeLists          PlaceList[]
-  performerLists      PerformerList[]
-  tripMemberships     TripMember[]
-  reviews             Review[]
-  comments            Comment[]
-  commentLikes        CommentLike[]
-  passwordResetTokens PasswordResetToken[]
-  createdLocations    Location[] @relation("UserCreatedLocations")
+  birthdayNotifications        BirthdayNotification[]
+  friendMutes                  FriendNotificationMute[]      @relation("MuteOwner")
+  mutedByFriends               FriendNotificationMute[]      @relation("MuteTarget")
+  eventNotes                   EventNote[]
+  achievements                 UserAchievement[]
+  placeLists                   PlaceList[]
+  performerLists               PerformerList[]
+  tripMemberships              TripMember[]
+  reviews                      Review[]
+  comments                     Comment[]
+  commentLikes                 CommentLike[]
+  passwordResetTokens          PasswordResetToken[]
+  createdLocations             Location[]                    @relation("UserCreatedLocations")
   // Приватность публичного профиля. Друзья видят всё всегда.
   // hideProfileActivity — мастер-выключатель (чужие видят только
   // имя/фото); остальные — точечные блоки при открытом профиле.
-  hideProfileActivity Boolean @default(false)
-  hideAchievements    Boolean @default(false)
-  hideFavoritePerformers Boolean @default(false)
-  hideVisitedPlaces   Boolean @default(false)
+  hideProfileActivity          Boolean                       @default(false)
+  hideAchievements             Boolean                       @default(false)
+  hideFavoritePerformers       Boolean                       @default(false)
+  hideVisitedPlaces            Boolean                       @default(false)
 
   feedbacks              Feedback[]
   reports                Report[]
   payments               Payment[]
   friendRequestsSent     Friendship[] @relation("FriendRequester")
   friendRequestsReceived Friendship[] @relation("FriendAddressee")
-  redeemedPromoCodes     PromoCode[] @relation("PromoRedeemer")
+  redeemedPromoCodes     PromoCode[]  @relation("PromoRedeemer")
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
 // shows every event occurrence falling inside it, so "what's happening
 // while I'm there" is one click instead of a manual date-range filter.
 model Trip {
-  id        String   @id @default(cuid())
-  userId    String
+  id             String              @id @default(cuid())
+  userId         String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug           String?  @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  startDate DateTime
-  endDate   DateTime
+  slug           String?             @unique
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  startDate      DateTime
+  endDate        DateTime
   // Кто может открыть страницу поездки: PRIVATE — только владелец,
   // FRIENDS — владелец и его принятые друзья, PUBLIC — любой залогиненный.
   // Личные события поездки при этом видны только владельцу всегда.
-  visibility TripVisibility @default(PRIVATE)
-  createdAt DateTime @default(now())
+  visibility     TripVisibility      @default(PRIVATE)
+  createdAt      DateTime            @default(now())
   personalEvents TripPersonalEvent[]
-  placeLists TripPlaceList[]
-  places     TripPlace[]
-  todos      TripTodo[]
-  members    TripMember[]
-  bookings   TripBooking[]
+  placeLists     TripPlaceList[]
+  places         TripPlace[]
+  todos          TripTodo[]
+  members        TripMember[]
+  bookings       TripBooking[]
 
   @@index([userId])
 }
@@ -833,42 +837,42 @@ enum TripMemberStatus {
 model TripMember {
   tripId    String
   userId    String
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip      Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   status    TripMemberStatus @default(PENDING)
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 
   @@id([tripId, userId])
   @@index([userId])
 }
 
 model TripPersonalEvent {
-  id        String    @id @default(cuid())
-  tripId    String
-  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  title     String
-  note      String?
-  startsAt  DateTime
+  id               String             @id @default(cuid())
+  tripId           String
+  trip             Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  title            String
+  note             String?
+  startsAt         DateTime
   // Личное событие можно привязать к известной локации — карточка
   // показывает место со ссылкой, оно попадает на карту поездки.
-  locationId String?
-  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId       String?
+  location         Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
   // Совместные поездки: кто создал запись (null — владелец поездки,
   // легаси) и можно ли другим участникам её править/удалять.
-  createdById String?
-  editableByOthers Boolean @default(false)
+  createdById      String?
+  editableByOthers Boolean            @default(false)
   // Приватная запись — видна только автору, даже другим участникам.
   // Историческое поле, его заменяет visibility.
-  isPrivate Boolean @default(false)
-  visibility TripItemVisibility @default(PARTICIPANTS)
+  isPrivate        Boolean            @default(false)
+  visibility       TripItemVisibility @default(PARTICIPANTS)
   // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
   // перелёты и брони на главной не нужны, а встреча с друзьями — да.
-  showOnHome Boolean @default(false)
+  showOnHome       Boolean            @default(false)
   // Картинка к записи (скан билета, скрин брони, афиша) — приватная,
   // как и сама запись: лежит в private-uploads/, раздаётся через
   // /files/personal/… с проверкой участия в поездке.
-  imageUrl  String?
-  createdAt DateTime  @default(now())
+  imageUrl         String?
+  createdAt        DateTime           @default(now())
 
   @@index([tripId])
 }
@@ -905,20 +909,20 @@ model PerformerListItem {
 }
 
 model PlaceList {
-  id          String         @id @default(cuid())
+  id          String          @id @default(cuid())
   userId      String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug           String?  @unique
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug        String?         @unique
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String?
-  visibility  TripVisibility @default(PRIVATE)
+  visibility  TripVisibility  @default(PRIVATE)
   items       PlaceListItem[]
   trips       TripPlaceList[]
-  createdAt   DateTime       @default(now())
+  createdAt   DateTime        @default(now())
 
   @@index([userId])
 }
@@ -961,23 +965,23 @@ enum TripItemVisibility {
 }
 
 model TripTodo {
-  id        String    @id @default(cuid())
-  tripId    String
-  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  text      String
-  done      Boolean   @default(false)
-  date      DateTime?
+  id               String             @id @default(cuid())
+  tripId           String
+  trip             Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  text             String
+  done             Boolean            @default(false)
+  date             DateTime?
   // Совместные поездки: автор и право правки другими участниками.
-  createdById String?
-  editableByOthers Boolean @default(false)
+  createdById      String?
+  editableByOthers Boolean            @default(false)
   // Приватное дело — видно только автору. Историческое поле, его
   // заменяет visibility (см. комментарий у TripItemVisibility).
-  isPrivate Boolean @default(false)
-  visibility TripItemVisibility @default(PARTICIPANTS)
+  isPrivate        Boolean            @default(false)
+  visibility       TripItemVisibility @default(PARTICIPANTS)
   // Время указано? (date хранит и время; без флага «00:00» неотличим
   // от «без времени»).
-  hasTime   Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  hasTime          Boolean            @default(false)
+  createdAt        DateTime           @default(now())
 
   @@index([tripId])
 }
@@ -1005,11 +1009,31 @@ model TripPlace {
 
 // Дедуп пресейл-напоминаний: одно на (юзер, событие) — сама препродажа
 // у события одна (Event.presaleAt), в отличие от дат выступлений.
+/**
+ * Кому про чей день рождения уже сказали в этом году (З3).
+ * Год в ключе, а не дата: планировщик просыпается каждые полчаса, и без
+ * отметки человек получал бы поздравление двадцать раз за сутки. На
+ * следующий год та же пара сработает снова — потому и год, а не просто
+ * пара (userId, performerId).
+ */
+model BirthdayNotification {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  performerId String
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  year        Int
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, performerId, year])
+  @@index([performerId])
+}
+
 model TelegramPresaleNotification {
   userId  String
   eventId String
-  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sentAt  DateTime @default(now())
 
   @@id([userId, eventId])
@@ -1022,8 +1046,8 @@ model TelegramPresaleNotification {
 model FriendNotificationMute {
   userId        String
   mutedFriendId String
-  user          User @relation("MuteOwner", fields: [userId], references: [id], onDelete: Cascade)
-  mutedFriend   User @relation("MuteTarget", fields: [mutedFriendId], references: [id], onDelete: Cascade)
+  user          User     @relation("MuteOwner", fields: [userId], references: [id], onDelete: Cascade)
+  mutedFriend   User     @relation("MuteTarget", fields: [mutedFriendId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
 
   @@id([userId, mutedFriendId])
@@ -1032,15 +1056,15 @@ model FriendNotificationMute {
 // Заметка пользователя к событию — личная или видимая друзьям. Одна на
 // (юзер, событие): редактируется, а не копится.
 model EventNote {
-  id         String       @id @default(cuid())
+  id         String         @id @default(cuid())
   userId     String
   eventId    String
   text       String
   visibility NoteVisibility @default(PERSONAL)
-  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event      Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   @@unique([userId, eventId])
   @@index([eventId])
@@ -1082,7 +1106,7 @@ model UserAchievement {
   userId     String
   key        String
   unlockedAt DateTime @default(now())
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, key])
 }
@@ -1142,7 +1166,6 @@ model PromoCode {
   usedById  String?
   usedBy    User?     @relation("PromoRedeemer", fields: [usedById], references: [id], onDelete: SetNull)
 }
-
 
 model FavoritePerformer {
   userId      String
@@ -1227,21 +1250,21 @@ model Review {
 // Комментарий к сериалу/новелле/событию: плоский или ответ (parentId,
 // один уровень вложенности) + лайки.
 model Comment {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   dramaId   String?
-  drama     Drama?   @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  drama     Drama?        @relation(fields: [dramaId], references: [id], onDelete: Cascade)
   novelId   String?
-  novel     Novel?   @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  novel     Novel?        @relation(fields: [novelId], references: [id], onDelete: Cascade)
   eventId   String?
-  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event     Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   parentId  String?
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("CommentReplies")
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]     @relation("CommentReplies")
   likes     CommentLike[]
   text      String
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
 
   @@index([dramaId])
   @@index([novelId])
@@ -1262,12 +1285,12 @@ model CommentLike {
 // Токен сброса пароля: одноразовый, живёт час. Письмо уходит через SMTP
 // (env SMTP_*); без настроенной почты флоу сообщает «недоступно».
 model PasswordResetToken {
-  token     String   @id
+  token     String    @id
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
@@ -1324,17 +1347,17 @@ enum ReportStatus {
 // Журнал оплат Telegram Stars — раньше successful_payment только
 // зачислял премиум и терялся в логах; теперь каждая оплата — строка.
 model Payment {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   userId           String?
-  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  provider         String   @default("telegram_stars")
+  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  provider         String    @default("telegram_stars")
   amount           Int // в Stars (XTR)
-  telegramChargeId String?  @unique
+  telegramChargeId String?   @unique
   // Возврат звёзд (refundStarPayment): Telegram по тому же charge id
   // возвращает оплату пользователю. Держим отметку, чтобы не вернуть
   // дважды и чтобы возвраты не считались в выручке.
   refundedAt       DateTime?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   @@index([userId])
 }
@@ -1365,21 +1388,21 @@ model ImportedItem {
 }
 
 model ImportRun {
-  id         String    @id @default(cuid())
+  id              String         @id @default(cuid())
   // Отметка «разобрано»: бейдж упавших импортов в сайдбаре считает
   // только непросмотренные, иначе гасить его было нечем.
-  reviewedAt DateTime?
-  kind       String // "tmdb-dramas" | "tmdb-performers" | "gmmtv" | "mdl-drama" | "blscene"
-  status     String    @default("RUNNING") // RUNNING | DONE | FAILED | CANCELLED
-  summary    String?
+  reviewedAt      DateTime?
+  kind            String // "tmdb-dramas" | "tmdb-performers" | "gmmtv" | "mdl-drama" | "blscene"
+  status          String         @default("RUNNING") // RUNNING | DONE | FAILED | CANCELLED
+  summary         String?
   // Кнопка «Остановить» в /admin/imports: экшен ставит флаг, а сам
   // импорт проверяет его между элементами и выходит сам
   // (checkImportCancelled в src/lib/importRun.ts). Убивать процесс на
   // полуслове нельзя — уже импортированное должно остаться.
-  cancelRequested Boolean @default(false)
-  items      ImportedItem[]
-  startedAt  DateTime  @default(now())
-  finishedAt DateTime?
+  cancelRequested Boolean        @default(false)
+  items           ImportedItem[]
+  startedAt       DateTime       @default(now())
+  finishedAt      DateTime?
 }
 
 // Ключ-значение настроек сайта, правится в /admin/settings без деплоя
@@ -1393,15 +1416,15 @@ model SiteSetting {
 // Лог серверных ошибок (instrumentation.onRequestError + точечные
 // catch'и) — выводится в /admin/errors.
 model ErrorLog {
-  id        String   @id @default(cuid())
+  id         String    @id @default(cuid())
   // Та же отметка, что у ImportRun: счётчик ошибок в сайдбаре считает
   // только неразобранные.
   reviewedAt DateTime?
-  message   String
-  stack     String?
-  path      String?
-  digest    String?
-  createdAt DateTime @default(now())
+  message    String
+  stack      String?
+  path       String?
+  digest     String?
+  createdAt  DateTime  @default(now())
 
   @@index([createdAt])
 }
@@ -1431,23 +1454,23 @@ enum AuditAction {
 }
 
 model AuditLog {
-  id     String @id @default(cuid())
-  userId String?
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id          String      @id @default(cuid())
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   // Подпись автора на момент правки: юзера могут удалить, а история
   // должна остаться читаемой.
-  userLabel  String
-  action     AuditAction
+  userLabel   String
+  action      AuditAction
   // Имя Prisma-модели: "Performer", "Drama", "Event"…
-  entityType String
-  entityId   String
+  entityType  String
+  entityId    String
   // Название записи на момент правки (после удаления её уже не достать).
   entityLabel String
   // [{ field, label, from, to }] — только реально изменившиеся поля.
-  changes    Json?
+  changes     Json?
   // Свободная приписка: «слито с X», «массовое действие: 12 записей».
-  note       String?
-  createdAt  DateTime @default(now())
+  note        String?
+  createdAt   DateTime    @default(now())
 
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
@@ -1469,17 +1492,18 @@ enum NotificationKind {
   FRIEND_GOING
   PREMIUM_GRANTED
   ACHIEVEMENT
+  PERFORMER_BIRTHDAY
 }
 
 model Notification {
-  id     String           @id @default(cuid())
-  userId String
-  user   User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  kind   NotificationKind
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  kind      NotificationKind
   // Кто это сделал — для «Аня пригласила вас в поездку». null у
   // системных (ачивки, выданная подписка).
-  actorId String?
-  actor   User?           @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId   String?
+  actor     User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
   // Переменные части фразы, замороженные в момент события: имя того,
   // кто её вызвал, и название поездки/события/ачивки. Заморожены
   // потому, что сущность может быть удалена позже, а уведомление
@@ -1491,12 +1515,12 @@ model Notification {
   // Готовая фраза на языке сайта по умолчанию. Запасной вариант: так
   // читаются строки, созданные до перехода на две части, и такой текст
   // уходит в Telegram (там языка получателя мы тоже не знаем).
-  title   String
-  body    String?
+  title     String
+  body      String?
   // Куда ведёт клик.
-  href    String?
+  href      String?
   readAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 
   @@index([userId, readAt, createdAt])
 }
@@ -1529,28 +1553,28 @@ enum TripBookingKind {
 }
 
 model TripBooking {
-  id        String   @id @default(cuid())
-  tripId    String
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  kind      TripBookingKind @default(HOTEL)
+  id         String             @id @default(cuid())
+  tripId     String
+  trip       Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  kind       TripBookingKind    @default(HOTEL)
   // Отель: название; перелёт: рейс или авиакомпания («TG 975»).
-  name      String
+  name       String
   // Отель: адрес. У перелёта не используется.
-  address   String?
+  address    String?
   // Перелёт: откуда и куда (город или аэропорт).
-  fromPlace String?
-  toPlace   String?
+  fromPlace  String?
+  toPlace    String?
   // Ссылка на саму бронь (Booking, письмо) и загруженный файл/скрин.
-  url       String?
-  fileUrl   String?
+  url        String?
+  fileUrl    String?
   // Отель: заезд/выезд; перелёт: вылет/прилёт.
-  startAt   DateTime?
-  endAt     DateTime?
-  note      String?
+  startAt    DateTime?
+  endAt      DateTime?
+  note       String?
   // Кто видит бронь. По умолчанию участники: адрес проживания и номер
   // брони — не то, что показывают всем подряд.
   visibility TripItemVisibility @default(PARTICIPANTS)
-  createdAt DateTime @default(now())
+  createdAt  DateTime           @default(now())
 
   @@index([tripId])
 }
@@ -1559,14 +1583,14 @@ model TripBooking {
 // встречи и события, которых нет в нашей афише. Считается в статистике
 // наравне с отметками «я ходил(а)» — см. features/gamification.md.
 model PerformerSeen {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   performerId String
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
   seenAt      DateTime?
   note        String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@unique([userId, performerId])
   @@index([userId])
@@ -1578,17 +1602,17 @@ model PerformerSeen {
 // проверки новинок не выбирался вовсе. Страница — /admin/schedule.
 model ScheduledJob {
   // Ключ задачи в коде: "youtube-music", "tmdb-dramas"…
-  key         String   @id
-  enabled     Boolean  @default(true)
+  key         String               @id
+  enabled     Boolean              @default(true)
   // Час запуска в зоне сайта (Europe/Moscow, см. TZ в docker-compose).
-  hour        Int      @default(4)
+  hour        Int                  @default(4)
   // Кого проверяем: всех подходящих или только выбранных вручную.
-  targetMode  ScheduleTargetMode @default(ALL)
+  targetMode  ScheduleTargetMode   @default(ALL)
   targets     ScheduledJobTarget[]
   lastRunAt   DateTime?
   lastStatus  String?
   lastSummary String?
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime             @updatedAt
 
   @@index([enabled])
 }
@@ -1600,11 +1624,11 @@ enum ScheduleTargetMode {
 
 // Артист, включённый в задачу вручную (targetMode = SELECTED).
 model ScheduledJobTarget {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   jobKey      String
   job         ScheduledJob @relation(fields: [jobKey], references: [key], onDelete: Cascade)
   performerId String
-  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  performer   Performer    @relation(fields: [performerId], references: [id], onDelete: Cascade)
 
   @@unique([jobKey, performerId])
   @@index([jobKey])

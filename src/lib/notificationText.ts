@@ -43,6 +43,8 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return subject ? titles.ACHIEVEMENT(subject) : n.title;
     case "PREMIUM_GRANTED":
       return titles.PREMIUM_GRANTED;
+    case "PERFORMER_BIRTHDAY":
+      return subject ? titles.PERFORMER_BIRTHDAY(subject) : n.title;
     default:
       return n.title;
   }

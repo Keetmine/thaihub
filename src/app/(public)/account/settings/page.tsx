@@ -45,6 +45,7 @@ const telegramNotifyToggles = (s: Dict["account"]["settings"]) => [
   { name: "tgNotifyFriends" as const, label: s.telegramNotifyFriends },
   { name: "tgNotifyReplies" as const, label: s.telegramNotifyReplies },
   { name: "tgNotifyEvents" as const, label: s.telegramNotifyEvents },
+  { name: "tgNotifyBirthdays" as const, label: s.telegramNotifyBirthdays },
   { name: "tgNotifyBroadcast" as const, label: s.telegramNotifyBroadcast },
 ];
 

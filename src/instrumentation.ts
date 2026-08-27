@@ -23,8 +23,12 @@ export async function register() {
 
   // Динамический импорт — чтобы Prisma и её цепочка не тянулись в
   // edge/build контексты, где register тоже вызывается.
-  const { sendUpcomingEventReminders, sendPremiumExpiryReminders, sendPresaleReminders } =
-    await import("@/lib/telegramNotifications");
+  const {
+    sendUpcomingEventReminders,
+    sendPremiumExpiryReminders,
+    sendPresaleReminders,
+    sendBirthdayNotifications,
+  } = await import("@/lib/telegramNotifications");
 
   const runScheduler = async () => {
     try {
@@ -44,6 +48,8 @@ export async function register() {
       if (expiry > 0) console.log(`premium expiry reminders: sent ${expiry}`);
       const presale = await sendPresaleReminders();
       if (presale > 0) console.log(`presale reminders: sent ${presale}`);
+      const birthdays = await sendBirthdayNotifications();
+      if (birthdays > 0) console.log(`birthday notifications: sent ${birthdays}`);
     } catch (err) {
       console.warn(`telegram reminders failed: ${err instanceof Error ? err.message : err}`);
     }
