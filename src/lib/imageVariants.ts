@@ -53,7 +53,6 @@ export function variantName(filename: string, width: number): string {
 
 /** Адрес заглушки для blur-up — или null, если копий у картинки нет. */
 export function blurUrl(src: string): string | null {
-  if (!VARIANTS_READY) return null;
   if (!src.startsWith("/uploads/") || !src.endsWith(".webp")) return null;
   return variantName(src, BLUR_WIDTH);
 }
@@ -64,25 +63,21 @@ export function isVariantName(name: string): boolean {
 }
 
 /**
- * Готовы ли копии у ВСЕХ картинок.
- *
- * Пока не готовы — `srcset` не отдаём вовсе. Это не перестраховка:
- * `srcset` не запасной путь, а выбор. Если браузер взял из него вариант,
- * а тот не загрузился, картинка ломается — к `src` он не возвращается.
- * Так что обещать копию, которой на диске нет, нельзя: страница
- * останется с дырами вместо постеров.
- *
- * Включать после того, как `scripts/generate-image-variants.ts`
- * прошёл по проду до конца.
- */
-const VARIANTS_READY = process.env.IMAGE_VARIANTS_READY === "1";
-
-/**
  * `srcset` для картинки из /uploads — или undefined, если копий у неё
- * быть не может (внешний адрес, гифка) либо они ещё не готовы.
+ * быть не может (внешний адрес, гифка).
+ *
+ * Функция ЧИСТАЯ — только от строки адреса, никакого окружения. Это
+ * важно, а не просто опрятно: её зовут и серверные, и клиентские
+ * компоненты, и обе стороны обязаны получить одно и то же, иначе
+ * гидратация снесёт атрибут. На переходный период здесь жил рубильник
+ * `IMAGE_VARIANTS_READY` — он не работал ровно поэтому: клиентский
+ * бандл видит только NEXT_PUBLIC-переменные, вшитые на сборке, и
+ * серверная переменная до него не долетает (а до сервера в docker её
+ * не пропускал белый список environment в compose). Копии теперь
+ * пишутся вместе с каждой картинкой, догоняющий прогон по старым
+ * прошёл — рубильник больше не нужен.
  */
 export function uploadSrcSet(src: string): string | undefined {
-  if (!VARIANTS_READY) return undefined;
   if (!src.startsWith("/uploads/") || !src.endsWith(".webp")) return undefined;
   return [
     ...SRCSET_WIDTHS.map((w) => `${variantName(src, w)} ${w}w`),
