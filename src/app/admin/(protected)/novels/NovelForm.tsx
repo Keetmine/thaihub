@@ -46,20 +46,20 @@ export default function NovelForm({
       <FormSection title="Основное" hint="название, авторы, размер, теги">
       <div className="row g-3">
         <div className="col-12 col-md-8">
-          <label className="form-label">Название *</label>
-          <input name="title" required defaultValue={v?.title} className="form-control" />
+          <label className="form-label" htmlFor="novel-form-title">Название *</label>
+          <input id="novel-form-title" name="title" required defaultValue={v?.title} className="form-control" />
         </div>
         <div className="col-12 col-md-4">
-          <label className="form-label">Автор</label>
-          <input name="author" defaultValue={v?.author} className="form-control" />
+          <label className="form-label" htmlFor="novel-form-author">Автор</label>
+          <input id="novel-form-author" name="author" defaultValue={v?.author} className="form-control" />
         </div>
         <div className="col-12 col-md-4">
-          <label className="form-label">Автор оригинала</label>
-          <input name="originalAuthor" defaultValue={v?.originalAuthor} className="form-control" />
+          <label className="form-label" htmlFor="novel-form-originalAuthor">Автор оригинала</label>
+          <input id="novel-form-originalAuthor" name="originalAuthor" defaultValue={v?.originalAuthor} className="form-control" />
         </div>
         <div className="col-12 col-md-4">
-          <label className="form-label">Размер</label>
-          <input
+          <label className="form-label" htmlFor="novel-form-size">Размер</label>
+          <input id="novel-form-size"
             name="size"
             defaultValue={v?.size}
             placeholder="1 011 страниц, 481 434 слова"
@@ -67,8 +67,8 @@ export default function NovelForm({
           />
         </div>
         <div className="col-12 col-md-4">
-          <label className="form-label">Теги и метки</label>
-          <input
+          <label className="form-label" htmlFor="novel-form-tags">Теги и метки</label>
+          <input id="novel-form-tags"
             name="tags"
             defaultValue={v?.tags}
             placeholder="Слэш, Перевод, NC-17 — через запятую"
@@ -81,8 +81,8 @@ export default function NovelForm({
       <FormSection title="Описание и обложка">
       <div className="row g-3">
         <div className="col-12 col-md-8">
-          <label className="form-label">Описание</label>
-          <textarea
+          <label className="form-label" htmlFor="novel-form-description">Описание</label>
+          <textarea id="novel-form-description"
             name="description"
             rows={5}
             defaultValue={v?.description}

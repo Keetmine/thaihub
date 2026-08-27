@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { searchLocationOptions, createOwnPlaceAndReturn } from "@/app/(public)/lists/actions";
 import { useT } from "@/components/LocaleProvider";
 
@@ -15,6 +15,7 @@ export default function LocationPickerField({
 }: {
   defaultLocation?: { id: string; name: string } | null;
 }) {
+  const uid = useId();
   const t = useT();
   const [selected, setSelected] = useState(defaultLocation ?? null);
   const [query, setQuery] = useState("");
@@ -76,8 +77,8 @@ export default function LocationPickerField({
 
   return (
     <div>
-      <label className="form-label small text-secondary">{t.trips.placePicker.label}</label>
-      <input type="hidden" name="locationId" value={selected?.id ?? ""} />
+      <label className="form-label small text-secondary" htmlFor={`${uid}-locationId`}>{t.trips.placePicker.label}</label>
+      <input id={`${uid}-locationId`} type="hidden" name="locationId" value={selected?.id ?? ""} />
       {selected ? (
         <p className="mb-0 d-flex align-items-center gap-2">
           <span className="event-chip">📍 {selected.name}</span>

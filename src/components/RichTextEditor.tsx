@@ -14,9 +14,14 @@ const HIGHLIGHTS = ["transparent", "#2a160e", "#0e2a16", "#0e1c2a"];
 export default function RichTextEditor({
   name,
   defaultValue = "",
+  labelledBy,
 }: {
   name: string;
   defaultValue?: string;
+  /** id подписи рядом. Не htmlFor: поле здесь — contentEditable-div, а
+   *  <label for> действует только на настоящие поля формы. Скринридеру
+   *  нужны и роль, и имя — отсюда role="textbox" ниже. */
+  labelledBy?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(defaultValue);
@@ -138,6 +143,10 @@ export default function RichTextEditor({
       <div
         ref={ref}
         className="form-control rich-editor"
+        role="textbox"
+        aria-multiline
+        aria-labelledby={labelledBy}
+        tabIndex={0}
         contentEditable
         suppressContentEditableWarning
         style={{ minHeight: "22rem", overflowY: "auto" }}

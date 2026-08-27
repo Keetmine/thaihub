@@ -24,13 +24,13 @@ export default function AddTripPlaceButton({ tripId }: { tripId: string }) {
       <Modal open={isOpen} onClose={() => setIsOpen(false)} title={t.trips.places.addTitle}>
         <div className="d-flex flex-column gap-3">
           <div>
-            <label className="form-label small text-secondary">
+            <label className="form-label small text-secondary" htmlFor="add-trip-place-search">
               {t.trips.places.searchLabel}
             </label>
             {/* Модалка не закрывается после добавления: мест обычно
                 добавляют несколько подряд, а список под ней обновляет
                 сам экшен (revalidatePath). */}
-            <AddTripPlaceBox tripId={tripId} />
+            <AddTripPlaceBox id="add-trip-place-search" tripId={tripId} />
           </div>
           <CreateOwnPlaceButton
             action={createTripOwnPlace.bind(null, tripId)}

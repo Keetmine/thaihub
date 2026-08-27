@@ -55,18 +55,18 @@ export default function FeedbackForm({
     <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
       <input type="hidden" name="context" value={context} />
       <div>
-        <label className="form-label">{t.widgets.feedback.kind}</label>
-        <select name="kind" defaultValue={defaultKind} className="form-select">
+        <label className="form-label" htmlFor="feedback-form-kind">{t.widgets.feedback.kind}</label>
+        <select id="feedback-form-kind" name="kind" defaultValue={defaultKind} className="form-select">
           <option value="QUESTION">{t.widgets.feedback.kindQuestion}</option>
           <option value="SUGGESTION">{t.widgets.feedback.kindIdea}</option>
           <option value="CONTENT_REQUEST">{t.widgets.feedback.kindContent}</option>
         </select>
       </div>
       <div>
-        <label className="form-label">
+        <label className="form-label" htmlFor="feedback-form-email">
           {t.widgets.feedback.email}{emailRequired ? "" : t.widgets.feedback.optional}
         </label>
-        <input
+        <input id="feedback-form-email"
           type="email"
           name="email"
           required={emailRequired}
@@ -76,8 +76,8 @@ export default function FeedbackForm({
         />
       </div>
       <div>
-        <label className="form-label">{t.widgets.feedback.message}</label>
-        <textarea
+        <label className="form-label" htmlFor="feedback-form-text">{t.widgets.feedback.message}</label>
+        <textarea id="feedback-form-text"
           name="text"
           required
           rows={compact ? 3 : 5}

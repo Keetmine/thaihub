@@ -69,15 +69,15 @@ export default function LocationForm({
       <FormSection title="Основное" hint="название, категория, описание, фото">
       <div className="row g-3">
         <div className="col-12 col-md-8">
-          <label className="form-label">Название *</label>
-          <input name="name" required defaultValue={v?.name} className="form-control" />
+          <label className="form-label" htmlFor="location-form-name">Название *</label>
+          <input id="location-form-name" name="name" required defaultValue={v?.name} className="form-control" />
         </div>
         <div className="col-12 col-md-4">
-          <label className="form-label">Категория</label>
+          <label className="form-label" htmlFor="location-form-category">Категория</label>
           {/* По категории строятся фильтры в списках мест и значки на
               карточках — свободный текст превратился бы в кашу из
               синонимов, поэтому выбор из списка. */}
-          <select name="category" defaultValue={v?.category ?? ""} className="form-select">
+          <select id="location-form-category" name="category" defaultValue={v?.category ?? ""} className="form-select">
             <option value="">не указана</option>
             {LOCATION_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
@@ -90,8 +90,8 @@ export default function LocationForm({
 
       <div className="row g-3">
         <div className="col-12 col-md-8">
-          <label className="form-label">Описание</label>
-          <textarea
+          <label className="form-label" htmlFor="location-form-description">Описание</label>
+          <textarea id="location-form-description"
             name="description"
             rows={5}
             defaultValue={v?.description}

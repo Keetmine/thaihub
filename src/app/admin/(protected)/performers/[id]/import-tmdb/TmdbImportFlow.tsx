@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   previewTmdbImport,
@@ -17,6 +17,7 @@ export default function TmdbImportFlow({
   performerId: string;
   initialTmdbId: string | null;
 }) {
+  const uid = useId();
   const router = useRouter();
   const [input, setInput] = useState(initialTmdbId ?? "");
   const [isLoading, setIsLoading] = useState(false);
@@ -123,8 +124,8 @@ export default function TmdbImportFlow({
             )}
             <div className="flex-fill">
               <p className="font-display fw-medium text-white mb-2">{preview.name}</p>
-              <label className="form-label small text-secondary mb-1">Место рождения</label>
-              <input
+              <label className="form-label small text-secondary mb-1" htmlFor={`${uid}-input`}>Место рождения</label>
+              <input id={`${uid}-input`}
                 type="text"
                 value={placeOfBirth}
                 onChange={(e) => setPlaceOfBirth(e.target.value)}
@@ -134,7 +135,7 @@ export default function TmdbImportFlow({
           </div>
 
           <div>
-            <label className="form-label d-block">
+            <label className="form-label d-block" htmlFor={`${uid}-input2`}>
               Известные сериалы ({selectedTvIds.size} выбрано из {preview.knownFor.length})
             </label>
             <div className="d-flex flex-column gap-2">
@@ -144,7 +145,7 @@ export default function TmdbImportFlow({
                   className="surface d-flex align-items-center gap-3 p-3"
                   style={{ cursor: "pointer" }}
                 >
-                  <input
+                  <input id={`${uid}-input2`}
                     type="checkbox"
                     checked={selectedTvIds.has(show.tvId)}
                     onChange={() => toggleShow(show.tvId)}

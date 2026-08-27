@@ -37,8 +37,8 @@ export default function ForgotForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <label className="form-label">{t.auth.forgot.email}</label>
-      <input type="email" name="email" required autoFocus className="form-control mb-3" />
+      <label className="form-label" htmlFor="forgot-form-email">{t.auth.forgot.email}</label>
+      <input id="forgot-form-email" type="email" name="email" required autoFocus className="form-control mb-3" />
       <button type="submit" className="btn btn-primary w-100" disabled={state === "sending"}>
         {state === "sending" ? t.auth.forgot.sending : t.auth.forgot.submit}
       </button>

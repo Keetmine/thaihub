@@ -93,11 +93,11 @@ export default async function SettingsPage({
             <form action={updateProfile} className="row g-3">
               <div className="col-12 col-md-6 d-flex flex-column gap-3">
                 <div>
-                  <label className="form-label">{s.username}</label>
+                  <label className="form-label" htmlFor="settings-username">{s.username}</label>
                   {/* Он же адрес профиля — ссылкой делятся с друзьями. */}
                   <div className="input-group">
                     <span className="input-group-text small text-secondary">/users/</span>
-                    <input
+                    <input id="settings-username"
                       name="username"
                       defaultValue={user.username ?? ""}
                       className="form-control"
@@ -106,12 +106,12 @@ export default async function SettingsPage({
                   <p className="small text-secondary mb-0 mt-1">{s.usernameHint}</p>
                 </div>
                 <div>
-                  <label className="form-label">{s.name}</label>
-                  <input name="name" defaultValue={user.name ?? ""} className="form-control" />
+                  <label className="form-label" htmlFor="settings-name">{s.name}</label>
+                  <input id="settings-name" name="name" defaultValue={user.name ?? ""} className="form-control" />
                 </div>
                 <div>
-                  <label className="form-label">{s.language}</label>
-                  <select
+                  <label className="form-label" htmlFor="settings-locale">{s.language}</label>
+                  <select id="settings-locale"
                     name="locale"
                     defaultValue={user.locale ?? locale}
                     className="form-select"
@@ -125,8 +125,8 @@ export default async function SettingsPage({
                   <p className="small text-secondary mb-0 mt-1">{s.languageHint}</p>
                 </div>
                 <div>
-                  <label className="form-label">{s.timezone}</label>
-                  <select name="timezone" defaultValue={user.timezone} className="form-select">
+                  <label className="form-label" htmlFor="settings-timezone">{s.timezone}</label>
+                  <select id="settings-timezone" name="timezone" defaultValue={user.timezone} className="form-select">
                     {TIMEZONES.map((zone) => (
                       <option key={zone.value} value={zone.value}>
                         {zone.label[locale]}
@@ -136,8 +136,8 @@ export default async function SettingsPage({
                   <p className="small text-secondary mb-0 mt-1">{s.timezoneHint}</p>
                 </div>
                 <div>
-                  <label className="form-label">{s.country}</label>
-                  <select name="country" defaultValue={user.country ?? ""} className="form-select">
+                  <label className="form-label" htmlFor="settings-country">{s.country}</label>
+                  <select id="settings-country" name="country" defaultValue={user.country ?? ""} className="form-select">
                     <option value="">{s.countryEmpty}</option>
                     {countryOptions(locale).map((c) => (
                       <option key={c.code} value={c.code}>
@@ -152,8 +152,8 @@ export default async function SettingsPage({
                 <FileDropzone name="photoUrl" label={s.photo} defaultValue={user.photoUrl ?? ""} />
                 <div className="row g-3">
                   <div className="col-6">
-                    <label className="form-label">{s.gender}</label>
-                    <select name="gender" defaultValue={user.gender ?? ""} className="form-select">
+                    <label className="form-label" htmlFor="settings-gender">{s.gender}</label>
+                    <select id="settings-gender" name="gender" defaultValue={user.gender ?? ""} className="form-select">
                       <option value="">{s.genderEmpty}</option>
                       <option value="female">{s.genderFemale}</option>
                       <option value="male">{s.genderMale}</option>
@@ -161,8 +161,8 @@ export default async function SettingsPage({
                     </select>
                   </div>
                   <div className="col-6">
-                    <label className="form-label">{s.birthDate}</label>
-                    <DatePickerInput
+                    <label className="form-label" htmlFor="settings-birthDate">{s.birthDate}</label>
+                    <DatePickerInput id="settings-birthDate"
                       name="birthDate"
                       defaultValue={user.birthDate ? dateKey(user.birthDate) : ""}
                       yearsBack={100}
@@ -171,8 +171,8 @@ export default async function SettingsPage({
                   </div>
                 </div>
                 <div>
-                  <label className="form-label">{s.bio}</label>
-                  <textarea
+                  <label className="form-label" htmlFor="settings-bio">{s.bio}</label>
+                  <textarea id="settings-bio"
                     name="bio"
                     rows={3}
                     defaultValue={user.bio ?? ""}

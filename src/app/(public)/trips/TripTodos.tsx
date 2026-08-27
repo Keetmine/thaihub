@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 import Modal from "@/components/Modal";
@@ -54,6 +54,7 @@ export function TodoRow({
    *  поездки (см. `itemVisibilityChoices`). */
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
+  const uid = useId();
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
@@ -173,22 +174,22 @@ export function TodoRow({
           className="d-flex flex-column gap-3"
         >
           <div>
-            <label className="form-label small text-secondary">{t.trips.todos.text}</label>
-            <input name="text" required defaultValue={todo.text} className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-text`}>{t.trips.todos.text}</label>
+            <input id={`${uid}-text`} name="text" required defaultValue={todo.text} className="form-control" />
           </div>
           <div className="row g-2">
             <div className="col-7">
-              <label className="form-label small text-secondary">
+              <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>
                 {t.trips.todos.dateOptional}
               </label>
-              <DatePickerInput
+              <DatePickerInput id={`${uid}-date`}
                 name="date"
                 defaultValue={todo.date ? todo.date.slice(0, 10) : ""}
               />
             </div>
             <div className="col-5">
-              <label className="form-label small text-secondary">{t.trips.todos.time}</label>
-              <input
+              <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>{t.trips.todos.time}</label>
+              <input id={`${uid}-time`}
                 type="time"
                 name="time"
                 defaultValue={timeLabel ?? ""}
@@ -236,6 +237,7 @@ export function AddTripTodoButton({
   showShareToggle?: boolean;
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
+  const uid = useId();
   const t = useT();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -273,8 +275,8 @@ export function AddTripTodoButton({
           className="d-flex flex-column gap-3"
         >
           <div>
-            <label className="form-label small text-secondary">{t.trips.todos.newText}</label>
-            <input
+            <label className="form-label small text-secondary" htmlFor={`${uid}-text2`}>{t.trips.todos.newText}</label>
+            <input id={`${uid}-text2`}
               name="text"
               required
               autoFocus
@@ -284,14 +286,14 @@ export function AddTripTodoButton({
           </div>
           <div className="row g-2">
             <div className="col-7">
-              <label className="form-label small text-secondary">
+              <label className="form-label small text-secondary" htmlFor={`${uid}-date2`}>
                 {t.trips.todos.dateOptional}
               </label>
-              <DatePickerInput name="date" />
+              <DatePickerInput id={`${uid}-date2`} name="date" />
             </div>
             <div className="col-5">
-              <label className="form-label small text-secondary">{t.trips.todos.time}</label>
-              <input type="time" name="time" className="form-control" />
+              <label className="form-label small text-secondary" htmlFor={`${uid}-time2`}>{t.trips.todos.time}</label>
+              <input id={`${uid}-time2`} type="time" name="time" className="form-control" />
             </div>
           </div>
           <ItemVisibilityField options={visibilityOptions} />

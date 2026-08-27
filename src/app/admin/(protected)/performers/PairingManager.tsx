@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect from "@/components/EntitySelect";
 import { searchSoloPerformerOptions } from "./actions";
@@ -20,6 +20,7 @@ export default function PairingManager({
   currentPairings: { id: string; label: string; status: PairingStatus }[];
   soloPerformers: PerformerOption[];
 }) {
+  const uid = useId();
   const router = useRouter();
   const [partnerId, setPartnerId] = useState("");
   const [pairingName, setPairingName] = useState("");
@@ -119,10 +120,10 @@ export default function PairingManager({
       )}
 
       <div>
-        <label className="form-label d-block">Добавить в пейринг</label>
+        <label className="form-label d-block" htmlFor={`${uid}-_partnerId`}>Добавить в пейринг</label>
         <div className="row g-2 align-items-start">
           <div className="col-12 col-sm-7">
-            <EntitySelect
+            <EntitySelect id={`${uid}-_partnerId`}
               name="_partnerId"
               options={soloPerformers}
               defaultValue=""

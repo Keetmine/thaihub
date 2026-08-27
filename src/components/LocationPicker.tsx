@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import { defaultIcon } from "@/lib/leafletIcon";
@@ -29,6 +29,7 @@ export default function LocationPicker({
    *  момент молча стирало координаты. */
   onChange?: (lat: number | null, lng: number | null) => void;
 }) {
+  const uid = useId();
   const [position, setPosition] = useState<[number, number] | null>(
     defaultLatitude != null && defaultLongitude != null
       ? [defaultLatitude, defaultLongitude]
@@ -44,8 +45,8 @@ export default function LocationPicker({
     <div>
       <div className="row g-2 mb-2">
         <div className="col-6">
-          <label className="form-label small">Широта</label>
-          <input
+          <label className="form-label small" htmlFor={`${uid}-input`}>Широта</label>
+          <input id={`${uid}-input`}
             type="number"
             step="any"
             className="form-control form-control-sm"
@@ -57,8 +58,8 @@ export default function LocationPicker({
           />
         </div>
         <div className="col-6">
-          <label className="form-label small">Долгота</label>
-          <input
+          <label className="form-label small" htmlFor={`${uid}-input2`}>Долгота</label>
+          <input id={`${uid}-input2`}
             type="number"
             step="any"
             className="form-control form-control-sm"

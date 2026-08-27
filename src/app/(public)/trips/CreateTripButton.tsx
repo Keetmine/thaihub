@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Modal from "@/components/Modal";
 import { createTrip } from "./actions";
 import { VisibilityRadios } from "./TripVisibilityControls";
@@ -9,6 +9,7 @@ import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSe
 import { useT } from "@/components/LocaleProvider";
 
 export default function CreateTripButton({ friends = [] }: { friends?: EntityOption[] }) {
+  const uid = useId();
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,8 +46,8 @@ export default function CreateTripButton({ friends = [] }: { friends?: EntityOpt
       >
         <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
-            <label className="form-label small text-secondary">{t.trips.form.title}</label>
-            <input
+            <label className="form-label small text-secondary" htmlFor={`${uid}-title`}>{t.trips.form.title}</label>
+            <input id={`${uid}-title`}
               type="text"
               name="title"
               required
@@ -57,18 +58,18 @@ export default function CreateTripButton({ friends = [] }: { friends?: EntityOpt
           </div>
           <div className="row g-2">
             <div className="col">
-              <label className="form-label small text-secondary">{t.trips.form.from}</label>
-              <DatePickerInput name="startDate" required />
+              <label className="form-label small text-secondary" htmlFor={`${uid}-startDate`}>{t.trips.form.from}</label>
+              <DatePickerInput id={`${uid}-startDate`} name="startDate" required />
             </div>
             <div className="col">
-              <label className="form-label small text-secondary">{t.trips.form.to}</label>
-              <DatePickerInput name="endDate" required />
+              <label className="form-label small text-secondary" htmlFor={`${uid}-endDate`}>{t.trips.form.to}</label>
+              <DatePickerInput id={`${uid}-endDate`} name="endDate" required />
             </div>
           </div>
           {friends.length > 0 && (
             <div>
-              <label className="form-label small text-secondary">{t.trips.form.members}</label>
-              <EntityMultiSelect
+              <label className="form-label small text-secondary" htmlFor={`${uid}-memberIds`}>{t.trips.form.members}</label>
+              <EntityMultiSelect id={`${uid}-memberIds`}
                 name="memberIds"
                 options={friends}
                 placeholder={t.trips.form.membersPlaceholder}

@@ -44,8 +44,8 @@ export default async function ResetPasswordPage({
         </p>
       ) : (
         <form action={resetPassword.bind(null, token)}>
-          <label className="form-label">{t.auth.reset.passwordLabel}</label>
-          <PasswordInput name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
+          <label className="form-label" htmlFor="token-password">{t.auth.reset.passwordLabel}</label>
+          <PasswordInput id="token-password" name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
           <button type="submit" className="btn btn-primary w-100">
             {t.auth.reset.submit}
           </button>

@@ -27,12 +27,15 @@ function EyeIcon({ off }: { off: boolean }) {
 /** Поле пароля с глазиком показать/скрыть. Обычный name= для серверных
  *  форм — состояние только у типа инпута. */
 export default function PasswordInput({
+  id,
   name,
   required = false,
   minLength,
   autoComplete,
   className = "",
 }: {
+  /** Чтобы подпись рядом могла сослаться на поле через htmlFor. */
+  id?: string;
   name: string;
   required?: boolean;
   minLength?: number;
@@ -46,6 +49,7 @@ export default function PasswordInput({
   return (
     <div className={`position-relative ${className}`}>
       <input
+        id={id}
         type={visible ? "text" : "password"}
         name={name}
         required={required}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Modal from "@/components/Modal";
 import { createOwnPlace } from "../actions";
 import FileDropzone from "@/components/FileDropzone";
@@ -27,6 +27,7 @@ export default function CreateOwnPlaceButton({
   label?: string;
   submitLabel?: string;
 }) {
+  const uid = useId();
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -63,8 +64,8 @@ export default function CreateOwnPlaceButton({
       <Modal open={isOpen} onClose={() => setIsOpen(false)} title={t.lists.placeForm.createTitle}>
         <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
-            <label className="form-label small text-secondary">{t.lists.placeForm.name}</label>
-            <input
+            <label className="form-label small text-secondary" htmlFor={`${uid}-name`}>{t.lists.placeForm.name}</label>
+            <input id={`${uid}-name`}
               type="text"
               name="name"
               required
@@ -74,8 +75,8 @@ export default function CreateOwnPlaceButton({
             />
           </div>
           <div>
-            <label className="form-label small text-secondary">{t.lists.placeForm.maps}</label>
-            <input
+            <label className="form-label small text-secondary" htmlFor={`${uid}-mapsUrl`}>{t.lists.placeForm.maps}</label>
+            <input id={`${uid}-mapsUrl`}
               type="text"
               name="mapsUrl"
               placeholder={t.lists.placeForm.mapsPlaceholder}
@@ -84,10 +85,10 @@ export default function CreateOwnPlaceButton({
             <p className="small text-secondary mt-1 mb-0">{t.lists.placeForm.mapsHint}</p>
           </div>
           <div>
-            <label className="form-label small text-secondary">{t.lists.placeForm.category}</label>
+            <label className="form-label small text-secondary" htmlFor={`${uid}-category`}>{t.lists.placeForm.category}</label>
             {/* По категории строится фильтр в списках мест — задать её
                 удобнее сразу, чем возвращаться потом. */}
-            <select name="category" defaultValue="" className="form-select">
+            <select id={`${uid}-category`} name="category" defaultValue="" className="form-select">
               <option value="">{t.lists.placeForm.categoryNone}</option>
               {LOCATION_CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>
@@ -98,8 +99,8 @@ export default function CreateOwnPlaceButton({
           </div>
           <FileDropzone name="photoUrl" label={t.lists.placeForm.photoOptional} defaultValue="" />
           <div>
-            <label className="form-label small text-secondary">{t.lists.placeForm.note}</label>
-            <input
+            <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>{t.lists.placeForm.note}</label>
+            <input id={`${uid}-note`}
               type="text"
               name="note"
               placeholder={t.lists.placeForm.notePlaceholder}

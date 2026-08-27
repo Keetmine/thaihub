@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import LetterAvatar from "@/components/LetterAvatar";
 import { useT } from "@/components/LocaleProvider";
@@ -13,6 +13,7 @@ export default function WelcomePicker({
 }: {
   popular: { id: string; name: string; photoUrl: string | null }[];
 }) {
+  const uid = useId();
   const t = useT();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -58,10 +59,10 @@ export default function WelcomePicker({
       </div>
 
       <div>
-        <label className="form-label small text-secondary">
+        <label className="form-label small text-secondary" htmlFor={`${uid}-performerIds`}>
           {t.auth.welcome.searchLabel}
         </label>
-        <EntityMultiSelect
+        <EntityMultiSelect id={`${uid}-performerIds`}
           name="performerIds"
           options={[]}
           placeholder={t.auth.welcome.searchPlaceholder}

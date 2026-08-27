@@ -38,15 +38,15 @@ export default function BroadcastForm() {
       className="surface d-flex flex-column gap-3 p-4 mb-4"
     >
       <div>
-        <label className="form-label">Аудитория</label>
-        <select name="audience" className="form-select" defaultValue="all">
+        <label className="form-label" htmlFor="broadcast-form-audience">Аудитория</label>
+        <select id="broadcast-form-audience" name="audience" className="form-select" defaultValue="all">
           <option value="all">Все с Telegram</option>
           <option value="premium">Только с подпиской</option>
         </select>
       </div>
       <div>
-        <label className="form-label">Текст сообщения</label>
-        <textarea name="text" rows={4} required maxLength={3500} className="form-control" />
+        <label className="form-label" htmlFor="broadcast-form-text">Текст сообщения</label>
+        <textarea id="broadcast-form-text" name="text" rows={4} required maxLength={3500} className="form-control" />
       </div>
       {result && (
         <p className="small text-success mb-0">

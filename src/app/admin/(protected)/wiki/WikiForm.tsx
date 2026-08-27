@@ -20,12 +20,18 @@ export default function WikiForm({
   return (
     <form ref={formRef} action={action} className="surface d-flex flex-column gap-3 p-4">
       <div>
-        <label className="form-label">Заголовок *</label>
-        <input name="title" required defaultValue={v?.title} className="form-control" />
+        <label className="form-label" htmlFor="wiki-form-title">Заголовок *</label>
+        <input id="wiki-form-title" name="title" required defaultValue={v?.title} className="form-control" />
       </div>
       <div>
-        <label className="form-label">Текст статьи</label>
-        <RichTextEditor name="content" defaultValue={v?.content ?? ""} />
+        <label className="form-label" id="wiki-form-content-label">
+          Текст статьи
+        </label>
+        <RichTextEditor
+          name="content"
+          defaultValue={v?.content ?? ""}
+          labelledBy="wiki-form-content-label"
+        />
       </div>
       <div className="form-check">
         <input

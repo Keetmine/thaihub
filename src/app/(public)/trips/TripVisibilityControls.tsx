@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { setTripVisibility } from "./actions";
 import { useT } from "@/components/LocaleProvider";
 
@@ -19,17 +19,18 @@ export function VisibilityRadios({
   defaultValue?: string;
   label?: string;
 }) {
+  const uid = useId();
   const t = useT();
   const [selected, setSelected] = useState(defaultValue);
   return (
     <div>
-      <label className="form-label small text-secondary d-block">
+      <label className="form-label small text-secondary d-block" htmlFor={`${uid}-visibility`}>
         {label ?? t.trips.visibility.label}
       </label>
       <div className="d-flex flex-column gap-1">
         {VISIBILITY_ORDER.map((value) => (
           <label key={value} className="form-check mb-0">
-            <input
+            <input id={`${uid}-visibility`}
               type="radio"
               name="visibility"
               value={value}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useId, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon } from "./icons";
 import Modal from "./Modal";
 
@@ -29,6 +29,7 @@ function Avatar({ option }: { option: EntityOption }) {
 const SEARCH_DEBOUNCE_MS = 300;
 
 export default function EntitySelect({
+  id,
   name,
   label,
   options,
@@ -39,6 +40,9 @@ export default function EntitySelect({
   searchOptions,
   onChange,
 }: {
+  /** Ложится на кнопку-триггер: button — подписываемый элемент, так что
+   *  htmlFor рядом сработает. */
+  id?: string;
   name: string;
   label?: string;
   options: EntityOption[];
@@ -65,6 +69,7 @@ export default function EntitySelect({
   );
   const [value, setValueState] = useState(defaultValue ?? "");
   const [query, setQuery] = useState("");
+  const uid = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [createPrefill, setCreatePrefill] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -155,10 +160,11 @@ export default function EntitySelect({
 
   return (
     <div>
-      {label && <label className="form-label d-block">{label}</label>}
-      <input type="hidden" name={name} value={value} />
+      {label && <label className="form-label d-block" htmlFor={`${uid}-input`}>{label}</label>}
+      <input id={`${uid}-input`} type="hidden" name={name} value={value} />
       <div className="performer-select" ref={ref}>
         <button
+          id={id}
           type="button"
           className="performer-select-trigger"
           aria-expanded={isOpen}
@@ -253,8 +259,10 @@ export default function EntitySelect({
       >
         <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
           <div>
-            <label className="form-label">Название *</label>
-            <input
+            <label className="form-label" htmlFor={`${uid}-newName`}>
+              Название *
+            </label>
+            <input id={`${uid}-newName`}
               name="newName"
               required
               autoFocus

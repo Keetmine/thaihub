@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { useT } from "@/components/LocaleProvider";
 import type { TripItemVisibilityValue } from "./itemVisibility";
 
@@ -28,6 +30,7 @@ export function ItemVisibilityField({
   defaultValue?: TripItemVisibilityValue;
   options: readonly TripItemVisibilityValue[];
 }) {
+  const uid = useId();
   const t = useT();
   if (options.length === 0) return null;
   // Прежнее значение могло быть шире нынешнего потолка (поездку закрыли
@@ -42,13 +45,13 @@ export function ItemVisibilityField({
       : t.trips.itemVisibility.cappedBy.PRIVATE;
   return (
     <div>
-      <label className="form-label small text-secondary d-block mb-1">
+      <label className="form-label small text-secondary d-block mb-1" htmlFor={`${uid}-visibility`}>
         {t.trips.itemVisibility.label}
       </label>
       <div className="d-flex flex-column gap-1">
         {options.map((value) => (
           <label key={value} className="form-check mb-0">
-            <input
+            <input id={`${uid}-visibility`}
               type="radio"
               name="visibility"
               value={value}

@@ -48,16 +48,16 @@ export default function AchievementForm({
       <FormSection title="Как выглядит" hint="эмодзи-медаль, название и подсказка «как получить»">
         <div className="row g-3">
           <div className="col-4 col-md-2">
-            <label className="form-label">Эмодзи *</label>
-            <input name="emoji" required defaultValue={v?.emoji} className="form-control" maxLength={8} />
+            <label className="form-label" htmlFor="achievement-form-emoji">Эмодзи *</label>
+            <input id="achievement-form-emoji" name="emoji" required defaultValue={v?.emoji} className="form-control" maxLength={8} />
           </div>
           <div className="col-8 col-md-4">
-            <label className="form-label">Название *</label>
-            <input name="title" required defaultValue={v?.title} className="form-control" />
+            <label className="form-label" htmlFor="achievement-form-title">Название *</label>
+            <input id="achievement-form-title" name="title" required defaultValue={v?.title} className="form-control" />
           </div>
           <div className="col-12 col-md-6">
-            <label className="form-label">Подсказка *</label>
-            <input
+            <label className="form-label" htmlFor="achievement-form-hint">Подсказка *</label>
+            <input id="achievement-form-hint"
               name="hint"
               required
               defaultValue={v?.hint}
@@ -74,8 +74,8 @@ export default function AchievementForm({
       >
         <div className="row g-3">
           <div className="col-12 col-md-6">
-            <label className="form-label">Метрика *</label>
-            <select
+            <label className="form-label" htmlFor="achievement-form-metric">Метрика *</label>
+            <select id="achievement-form-metric"
               name="metric"
               className="form-select"
               value={metric}
@@ -89,10 +89,13 @@ export default function AchievementForm({
             </select>
           </div>
           <div className="col-6 col-md-3">
-            <label className="form-label">Порог *</label>
+            <label className="form-label" htmlFor="achievement-form-threshold">
+              Порог *
+            </label>
             {/* У флага порога нет: value=1 отправляется скрытым полем,
                 видимый input задизейблен, чтобы это было очевидно. */}
             <input
+              id="achievement-form-threshold"
               name={isFlag ? undefined : "threshold"}
               type="number"
               min={1}
@@ -109,8 +112,8 @@ export default function AchievementForm({
             )}
           </div>
           <div className="col-6 col-md-3">
-            <label className="form-label">Порядок</label>
-            <input
+            <label className="form-label" htmlFor="achievement-form-sort">Порядок</label>
+            <input id="achievement-form-sort"
               name="sort"
               type="number"
               step={1}
@@ -128,8 +131,8 @@ export default function AchievementForm({
       >
         <div className="row g-3 align-items-end">
           <div className="col-12 col-md-6">
-            <label className="form-label">Ключ *</label>
-            <input
+            <label className="form-label" htmlFor="achievement-form-key">Ключ *</label>
+            <input id="achievement-form-key"
               name="key"
               required
               defaultValue={v?.key}

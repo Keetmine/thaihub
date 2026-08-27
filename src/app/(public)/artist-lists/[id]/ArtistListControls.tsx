@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import {
@@ -16,6 +16,7 @@ export default function ArtistListControls({
 }: {
   list: { id: string; title: string; description: string | null; visibility: TripVisibility };
 }) {
+  const uid = useId();
   const t = useT();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -50,14 +51,14 @@ export default function ArtistListControls({
           className="d-flex flex-column gap-3"
         >
           <div>
-            <label className="form-label small text-secondary">{t.lists.artists.title}</label>
-            <input name="title" required defaultValue={list.title} className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-title`}>{t.lists.artists.title}</label>
+            <input id={`${uid}-title`} name="title" required defaultValue={list.title} className="form-control" />
           </div>
           <div>
-            <label className="form-label small text-secondary">
+            <label className="form-label small text-secondary" htmlFor={`${uid}-description`}>
               {t.lists.artists.description}
             </label>
-            <textarea
+            <textarea id={`${uid}-description`}
               name="description"
               rows={2}
               defaultValue={list.description ?? ""}

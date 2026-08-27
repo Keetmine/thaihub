@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
@@ -39,6 +39,7 @@ export default function MusicManager({
   albums: AlbumRow[];
   songs: SongRow[];
 }) {
+  const uid = useId();
   const router = useRouter();
   const [editingAlbum, setEditingAlbum] = useState<string | null>(null);
   const [editingSong, setEditingSong] = useState<string | null>(null);
@@ -70,19 +71,19 @@ export default function MusicManager({
 
         <form action={submitAlbum} className="row g-2 align-items-end mb-3">
           <div className="col-12 col-md-5">
-            <label className="form-label small text-secondary">Название</label>
-            <input name="title" required placeholder="Название альбома" className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-title`}>Название</label>
+            <input id={`${uid}-title`} name="title" required placeholder="Название альбома" className="form-control" />
           </div>
           <div className="col-6 col-md-2">
-            <label className="form-label small text-secondary">Тип</label>
-            <select name="type" className="form-select">
+            <label className="form-label small text-secondary" htmlFor={`${uid}-type`}>Тип</label>
+            <select id={`${uid}-type`} name="type" className="form-select">
               <option value="ALBUM">Альбом</option>
               <option value="EP">EP</option>
             </select>
           </div>
           <div className="col-6 col-md-2">
-            <label className="form-label small text-secondary">Год</label>
-            <input name="year" type="number" placeholder="2026" className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-year`}>Год</label>
+            <input id={`${uid}-year`} name="year" type="number" placeholder="2026" className="form-control" />
           </div>
           <div className="col-12 col-md-3">
             <FileDropzone name="coverUrl" label="Обложка" />
@@ -165,20 +166,20 @@ export default function MusicManager({
 
         <form action={submitSong} className="row g-2 align-items-end mb-3">
           <div className="col-12 col-md-4">
-            <label className="form-label small text-secondary">Название</label>
-            <input name="title" required placeholder="Название песни" className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-title2`}>Название</label>
+            <input id={`${uid}-title2`} name="title" required placeholder="Название песни" className="form-control" />
           </div>
           <div className="col-12 col-md-3">
-            <label className="form-label small text-secondary">Пояснение</label>
-            <input name="note" placeholder="OST, «with …»" className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>Пояснение</label>
+            <input id={`${uid}-note`} name="note" placeholder="OST, «with …»" className="form-control" />
           </div>
           <div className="col-6 col-md-2">
-            <label className="form-label small text-secondary">Год</label>
-            <input name="year" type="number" placeholder="2026" className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-year2`}>Год</label>
+            <input id={`${uid}-year2`} name="year" type="number" placeholder="2026" className="form-control" />
           </div>
           <div className="col-6 col-md-3">
-            <label className="form-label small text-secondary">Альбом</label>
-            <select name="albumId" className="form-select">
+            <label className="form-label small text-secondary" htmlFor={`${uid}-albumId`}>Альбом</label>
+            <select id={`${uid}-albumId`} name="albumId" className="form-select">
               <option value="">Сингл</option>
               {albums.map((a) => (
                 <option key={a.id} value={a.id}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import { searchPerformerOptions } from "../../performers/actions";
@@ -24,6 +24,7 @@ export default function TtmImportFlow({
   performers: EntityOption[];
   dramas: EntityOption[];
 }) {
+  const uid = useId();
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [isScraping, setIsScraping] = useState(false);
@@ -115,8 +116,11 @@ export default function TtmImportFlow({
     return (
       <div className="surface d-flex flex-column gap-3 p-4" style={{ maxWidth: "40rem" }}>
         <div>
-          <label className="form-label">Ссылка на событие ThaiTicketMajor</label>
+          <label className="form-label" htmlFor="ttm-import-url">
+            Ссылка на событие ThaiTicketMajor
+          </label>
           <input
+            id="ttm-import-url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://www.thaiticketmajor.com/concert/..."
@@ -154,23 +158,23 @@ export default function TtmImportFlow({
 
       <div className="row g-3">
         <div className="col-12 col-lg-8">
-          <label className="form-label">Название *</label>
-          <input name="title" required defaultValue={preview.title} className="form-control" />
+          <label className="form-label" htmlFor="ttm-import-flow-title">Название *</label>
+          <input id="ttm-import-flow-title" name="title" required defaultValue={preview.title} className="form-control" />
         </div>
         <div className="col-12 col-lg-4">
-          <label className="form-label">Место *</label>
-          <input name="venue" required defaultValue={preview.venue} className="form-control" />
+          <label className="form-label" htmlFor="ttm-import-flow-venue">Место *</label>
+          <input id="ttm-import-flow-venue" name="venue" required defaultValue={preview.venue} className="form-control" />
         </div>
       </div>
 
       <div className="row g-3">
         <div className="col-12 col-sm-4">
-          <label className="form-label">Дата *</label>
-          <DatePickerInput name="date" required defaultValue={preview.date} />
+          <label className="form-label" htmlFor="ttm-import-flow-date">Дата *</label>
+          <DatePickerInput id="ttm-import-flow-date" name="date" required defaultValue={preview.date} />
         </div>
         <div className="col-6 col-sm-4">
-          <label className="form-label">Начало *</label>
-          <input
+          <label className="form-label" htmlFor="ttm-import-flow-startTime">Начало *</label>
+          <input id="ttm-import-flow-startTime"
             type="time"
             name="startTime"
             required
@@ -179,8 +183,8 @@ export default function TtmImportFlow({
           />
         </div>
         <div className="col-6 col-sm-4">
-          <label className="form-label">Конец</label>
-          <input type="time" name="endTime" className="form-control" />
+          <label className="form-label" htmlFor="ttm-import-flow-endTime">Конец</label>
+          <input id="ttm-import-flow-endTime" type="time" name="endTime" className="form-control" />
         </div>
       </div>
 
@@ -189,8 +193,8 @@ export default function TtmImportFlow({
           {extraDates.map((d, i) => (
             <div key={i} className="row g-2 align-items-center">
               <div className="col-12 col-sm-4">
-                <label className="form-label small text-secondary">Ещё день</label>
-                <DatePickerInput value={d} onValueChange={(next) => updateExtraDate(i, next)} />
+                <label className="form-label small text-secondary" htmlFor={`${uid}-datepick`}>Ещё день</label>
+                <DatePickerInput id={`${uid}-datepick`} value={d} onValueChange={(next) => updateExtraDate(i, next)} />
               </div>
               <div className="col-auto" style={{ marginTop: "1.75rem" }}>
                 <button
@@ -213,15 +217,15 @@ export default function TtmImportFlow({
       </div>
 
       <div>
-        <label className="form-label">Цена билетов</label>
-        <input name="ticketPrice" defaultValue={preview.ticketPrice} className="form-control" />
+        <label className="form-label" htmlFor="ttm-import-flow-ticketPrice">Цена билетов</label>
+        <input id="ttm-import-flow-ticketPrice" name="ticketPrice" defaultValue={preview.ticketPrice} className="form-control" />
       </div>
 
       <FileDropzone name="posterUrl" label="Постер" defaultValue={preview.posterUrl} />
 
       <div>
-        <label className="form-label">Описание</label>
-        <textarea name="description" rows={3} className="form-control" />
+        <label className="form-label" htmlFor="ttm-import-flow-description">Описание</label>
+        <textarea id="ttm-import-flow-description" name="description" rows={3} className="form-control" />
       </div>
 
       <EntitySelect
@@ -250,12 +254,12 @@ export default function TtmImportFlow({
         {presaleEnabled && (
           <div className="row g-3 mt-1">
             <div className="col-12 col-sm-4">
-              <label className="form-label">Дата открытия продаж</label>
-              <DatePickerInput name="presaleDate" defaultValue={preview.presaleDate} />
+              <label className="form-label" htmlFor="ttm-import-flow-presaleDate">Дата открытия продаж</label>
+              <DatePickerInput id="ttm-import-flow-presaleDate" name="presaleDate" defaultValue={preview.presaleDate} />
             </div>
             <div className="col-12 col-sm-4">
-              <label className="form-label">Время</label>
-              <input
+              <label className="form-label" htmlFor="ttm-import-flow-presaleTime">Время</label>
+              <input id="ttm-import-flow-presaleTime"
                 type="time"
                 name="presaleTime"
                 defaultValue={preview.presaleTime}
@@ -263,8 +267,8 @@ export default function TtmImportFlow({
               />
             </div>
             <div className="col-12 col-sm-4">
-              <label className="form-label">Ссылка на билеты</label>
-              <input
+              <label className="form-label" htmlFor="ttm-import-flow-presaleUrl">Ссылка на билеты</label>
+              <input id="ttm-import-flow-presaleUrl"
                 type="url"
                 name="presaleUrl"
                 defaultValue={preview.sourceUrl}
@@ -276,14 +280,14 @@ export default function TtmImportFlow({
       </div>
 
       <div>
-        <label className="form-label d-block">Артисты с сайта</label>
+        <label className="form-label d-block" htmlFor={`${uid}-input`}>Артисты с сайта</label>
         {artistRows.length === 0 ? (
           <p className="small text-secondary">На странице не найдено артистов.</p>
         ) : (
           <div className="d-flex flex-column gap-2">
             {artistRows.map((row, i) => (
               <div key={i} className="d-flex align-items-center gap-2 flex-wrap">
-                <input
+                <input id={`${uid}-input`}
                   type="checkbox"
                   checked={row.include}
                   onChange={(e) => updateArtist(i, { include: e.target.checked })}
@@ -315,8 +319,8 @@ export default function TtmImportFlow({
       </div>
 
       <div>
-        <label className="form-label d-block">Ещё исполнители (вручную)</label>
-        <EntityMultiSelect
+        <label className="form-label d-block" htmlFor="ttm-import-flow-extraPerformerIds">Ещё исполнители (вручную)</label>
+        <EntityMultiSelect id="ttm-import-flow-extraPerformerIds"
           name="extraPerformerIds"
           options={performers}
           placeholder="Начните вводить имя исполнителя…"

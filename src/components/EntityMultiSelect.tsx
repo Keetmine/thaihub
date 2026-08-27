@@ -27,6 +27,7 @@ function Avatar({ option }: { option: EntityOption }) {
 const SEARCH_DEBOUNCE_MS = 300;
 
 export default function EntityMultiSelect({
+  id,
   name,
   options,
   defaultSelectedIds,
@@ -42,6 +43,10 @@ export default function EntityMultiSelect({
   excludeIds,
   inputClassName,
 }: {
+  /** Ложится на видимое поле ввода — туда, куда встаёт фокус, — чтобы
+   *  подпись рядом могла сослаться через htmlFor. Скрытые инпуты
+   *  выбранных значений подписи не касаются. */
+  id?: string;
   /** Имя hidden-инпутов выбранных значений; в режиме `onPick` не нужен. */
   name?: string;
   options: EntityOption[];
@@ -242,6 +247,7 @@ export default function EntityMultiSelect({
 
       <div className="performer-combobox" ref={ref}>
         <input
+          id={id}
           type="text"
           className={inputClassName ? `form-control ${inputClassName}` : "form-control"}
           placeholder={placeholder}
@@ -301,8 +307,8 @@ export default function EntityMultiSelect({
       >
         <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
           <div>
-            <label className="form-label">{createNameLabel} *</label>
-            <input
+            <label className="form-label" htmlFor="entity-multi-select-newName">{createNameLabel} *</label>
+            <input id="entity-multi-select-newName"
               name="newName"
               required
               autoFocus

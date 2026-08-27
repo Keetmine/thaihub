@@ -211,8 +211,11 @@ export default async function ReviewsAndComments({
             </summary>
             <form action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
               <div className="d-flex align-items-center gap-2">
-                <label className="form-label small text-secondary mb-0">{t.reviews.ratingLabel}</label>
+                <label className="form-label small text-secondary mb-0" htmlFor="review-rating">
+                  {t.reviews.ratingLabel}
+                </label>
                 <select
+                  id="review-rating"
                   name="rating"
                   defaultValue={ownReview?.rating ?? 8}
                   className="form-select form-select-sm w-auto"

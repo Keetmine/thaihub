@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useId, useEffect, useRef, useState } from "react";
 import { CalendarIcon } from "@/components/icons";
 import DatePickerInput from "@/components/DatePickerInput";
 import { useT } from "@/components/LocaleProvider";
@@ -22,6 +22,7 @@ export default function DateRangeFilterButton({
   clearHref: string;
   hiddenFields?: Record<string, string>;
 }) {
+  const uid = useId();
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -58,13 +59,13 @@ export default function DateRangeFilterButton({
             Object.entries(hiddenFields).map(([name, value]) => (
               <input key={name} type="hidden" name={name} value={value} />
             ))}
-          <label className="form-label small text-secondary mb-1">{t.events.filter.from}</label>
+          <label className="form-label small text-secondary mb-1" htmlFor={`${uid}-from`}>{t.events.filter.from}</label>
           <div className="mb-2">
-            <DatePickerInput name="from" defaultValue={from} />
+            <DatePickerInput id={`${uid}-from`} name="from" defaultValue={from} />
           </div>
-          <label className="form-label small text-secondary mb-1">{t.events.filter.to}</label>
+          <label className="form-label small text-secondary mb-1" htmlFor={`${uid}-to`}>{t.events.filter.to}</label>
           <div className="mb-2">
-            <DatePickerInput name="to" defaultValue={to} />
+            <DatePickerInput id={`${uid}-to`} name="to" defaultValue={to} />
           </div>
           <div className="d-flex gap-2">
             <button type="submit" className="btn btn-outline-secondary btn-sm flex-fill">

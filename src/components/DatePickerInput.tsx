@@ -127,6 +127,7 @@ function formatDisplay(key: string): string {
  * normalizeYear в dates.ts; отсюда значение всегда каноничное).
  */
 export default function DatePickerInput({
+  id,
   name,
   value: controlledValue,
   defaultValue = "",
@@ -136,6 +137,9 @@ export default function DatePickerInput({
   yearsBack = 3,
   yearsForward = 5,
 }: {
+  /** Ложится на ВИДИМОЕ поле, а не на скрытое: подпись должна вести
+   *  туда, куда попадает фокус. */
+  id?: string;
   /** Без name компонент работает как чисто контролируемый виджет —
    *  значение в форму тогда кладёт сам родитель. */
   name?: string;
@@ -234,6 +238,7 @@ export default function DatePickerInput({
           меняет, зато нативная required-валидация работает (readOnly её
           бы отключил — readonly-поля исключены из constraint validation). */}
       <input
+        id={id}
         ref={inputRef}
         type="text"
         className="form-control date-picker-toggle"

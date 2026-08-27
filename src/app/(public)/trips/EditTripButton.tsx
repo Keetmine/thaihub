@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import { PencilIcon } from "@/components/icons";
@@ -12,6 +12,7 @@ export default function EditTripButton({
 }: {
   trip: { id: string; title: string; startKey: string; endKey: string };
 }) {
+  const uid = useId();
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -61,17 +62,17 @@ export default function EditTripButton({
       >
         <form action={handleSubmit} className="d-flex flex-column gap-3">
           <div>
-            <label className="form-label small text-secondary">{t.trips.form.title}</label>
-            <input type="text" name="title" required defaultValue={trip.title} className="form-control" />
+            <label className="form-label small text-secondary" htmlFor={`${uid}-title`}>{t.trips.form.title}</label>
+            <input id={`${uid}-title`} type="text" name="title" required defaultValue={trip.title} className="form-control" />
           </div>
           <div className="row g-2">
             <div className="col">
-              <label className="form-label small text-secondary">{t.trips.form.from}</label>
-              <DatePickerInput name="startDate" required defaultValue={trip.startKey} />
+              <label className="form-label small text-secondary" htmlFor={`${uid}-startDate`}>{t.trips.form.from}</label>
+              <DatePickerInput id={`${uid}-startDate`} name="startDate" required defaultValue={trip.startKey} />
             </div>
             <div className="col">
-              <label className="form-label small text-secondary">{t.trips.form.to}</label>
-              <DatePickerInput name="endDate" required defaultValue={trip.endKey} />
+              <label className="form-label small text-secondary" htmlFor={`${uid}-endDate`}>{t.trips.form.to}</label>
+              <DatePickerInput id={`${uid}-endDate`} name="endDate" required defaultValue={trip.endKey} />
             </div>
           </div>
           {error && <p className="small text-danger mb-0">{error}</p>}

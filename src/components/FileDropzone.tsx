@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { UploadIcon } from "@/components/icons";
 import { useT } from "@/components/LocaleProvider";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
@@ -20,6 +20,7 @@ export default function FileDropzone({
   accept?: string;
   endpoint?: string;
 }) {
+  const uid = useId();
   const t = useT();
   const [url, setUrl] = useState(defaultValue ?? "");
   const [isDragging, setIsDragging] = useState(false);
@@ -50,8 +51,8 @@ export default function FileDropzone({
 
   return (
     <div>
-      <label className="form-label d-block">{label}</label>
-      <input type="hidden" name={name} value={url} />
+      <label className="form-label d-block" htmlFor={`${uid}-input`}>{label}</label>
+      <input id={`${uid}-input`} type="hidden" name={name} value={url} />
       <div
         className={`file-dropzone ${isDragging ? "is-dragging" : ""}`}
         onDragOver={(e) => {

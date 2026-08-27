@@ -88,8 +88,15 @@ export default async function AdminSchedulePage() {
               </div>
 
               <div>
-                <label className="form-label small text-secondary mb-1">Время</label>
-                <select name="hour" defaultValue={String(job.hour)} className="form-select form-select-sm">
+                <label className="form-label small text-secondary mb-1" htmlFor={`job-${job.key}-hour`}>
+                  Время
+                </label>
+                <select
+                  id={`job-${job.key}-hour`}
+                  name="hour"
+                  defaultValue={String(job.hour)}
+                  className="form-select form-select-sm"
+                >
                   {Array.from({ length: 24 }, (_, h) => (
                     <option key={h} value={h}>
                       {String(h).padStart(2, "0")}:00
@@ -100,9 +107,12 @@ export default async function AdminSchedulePage() {
 
               {job.supportsTargets && (
                 <div>
-                  <label className="form-label small text-secondary mb-1">Кого проверять</label>
+                  <label className="form-label small text-secondary mb-1" htmlFor={`job-${job.key}-targetMode`}>
+                    Кого проверять
+                  </label>
                   <select
                     name="targetMode"
+                    id={`job-${job.key}-targetMode`}
                     defaultValue={job.targetMode}
                     className="form-select form-select-sm"
                   >

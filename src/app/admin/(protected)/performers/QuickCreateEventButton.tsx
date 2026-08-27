@@ -54,21 +54,21 @@ export default function QuickCreateEventButton({
       <Modal open={open} onClose={close} title="Новое событие">
         <form key={open ? "open" : "closed"} className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
           <div>
-            <label className="form-label">Название *</label>
-            <input name="title" required className="form-control" />
+            <label className="form-label" htmlFor="quick-create-event-button-title">Название *</label>
+            <input id="quick-create-event-button-title" name="title" required className="form-control" />
           </div>
           <div>
-            <label className="form-label">Место *</label>
-            <input name="venue" required className="form-control" />
+            <label className="form-label" htmlFor="quick-create-event-button-venue">Место *</label>
+            <input id="quick-create-event-button-venue" name="venue" required className="form-control" />
           </div>
           <div className="row g-2">
             <div className="col-6">
-              <label className="form-label">Дата *</label>
-              <DatePickerInput name="date" required />
+              <label className="form-label" htmlFor="quick-create-event-button-date">Дата *</label>
+              <DatePickerInput id="quick-create-event-button-date" name="date" required />
             </div>
             <div className="col-6">
-              <label className="form-label">Начало *</label>
-              <input type="time" name="startTime" required className="form-control" />
+              <label className="form-label" htmlFor="quick-create-event-button-startTime">Начало *</label>
+              <input id="quick-create-event-button-startTime" type="time" name="startTime" required className="form-control" />
             </div>
           </div>
           {error && <p className="small text-danger mb-0">{error}</p>}

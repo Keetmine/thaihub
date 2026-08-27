@@ -65,12 +65,12 @@ export default async function SignupPage({
           aria-hidden="true"
           style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", opacity: 0 }}
         />
-        <label className="form-label">{t.auth.signup.name}</label>
-        <input name="name" className="form-control mb-3" />
-        <label className="form-label">{t.auth.signup.email}</label>
-        <input type="email" name="email" required className="form-control mb-3" />
-        <label className="form-label">{t.auth.signup.password}</label>
-        <PasswordInput name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
+        <label className="form-label" htmlFor="signup-name">{t.auth.signup.name}</label>
+        <input id="signup-name" name="name" className="form-control mb-3" />
+        <label className="form-label" htmlFor="signup-email">{t.auth.signup.email}</label>
+        <input id="signup-email" type="email" name="email" required className="form-control mb-3" />
+        <label className="form-label" htmlFor="signup-password">{t.auth.signup.password}</label>
+        <PasswordInput id="signup-password" name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
         <div className="form-check mb-3">
           <input
             type="checkbox"

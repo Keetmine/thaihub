@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import {
   addPlaceToList,
   movePlaceInList,
@@ -157,6 +157,7 @@ export function PlaceRowControls({
   canEditPlace?: boolean;
   place?: { name: string; photoUrl: string | null; category: string | null };
 }) {
+  const uid = useId();
   const t = useT();
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingPlace, setIsEditingPlace] = useState(false);
@@ -281,14 +282,14 @@ export function PlaceRowControls({
         >
           <form action={savePlace} className="d-flex flex-column gap-3">
             <div>
-              <label className="form-label small text-secondary">{t.lists.placeForm.name}</label>
-              <input type="text" name="name" required defaultValue={place.name} className="form-control" />
+              <label className="form-label small text-secondary" htmlFor={`${uid}-name`}>{t.lists.placeForm.name}</label>
+              <input id={`${uid}-name`} type="text" name="name" required defaultValue={place.name} className="form-control" />
             </div>
             <div>
-              <label className="form-label small text-secondary">{t.lists.placeForm.category}</label>
+              <label className="form-label small text-secondary" htmlFor={`${uid}-category`}>{t.lists.placeForm.category}</label>
               {/* По категории работает фильтр в списках мест — менять её
                   нужно там же, где остальное. */}
-              <select name="category" defaultValue={place.category ?? ""} className="form-select">
+              <select id={`${uid}-category`} name="category" defaultValue={place.category ?? ""} className="form-select">
                 <option value="">{t.lists.placeForm.categoryNone}</option>
                 {LOCATION_CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -303,10 +304,10 @@ export function PlaceRowControls({
               defaultValue={place.photoUrl ?? ""}
             />
             <div>
-              <label className="form-label small text-secondary">
+              <label className="form-label small text-secondary" htmlFor={`${uid}-mapsUrl`}>
                 {t.lists.placeForm.mapsUpdate}
               </label>
-              <input type="text" name="mapsUrl" placeholder="https://maps.app.goo.gl/…" className="form-control" />
+              <input id={`${uid}-mapsUrl`} type="text" name="mapsUrl" placeholder="https://maps.app.goo.gl/…" className="form-control" />
             </div>
             {placeError && <p className="small text-danger mb-0">{placeError}</p>}
             <button type="submit" className="btn btn-primary">

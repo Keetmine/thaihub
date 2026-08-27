@@ -47,10 +47,10 @@ export default function ProfileSetupForm({
   return (
     <form action={handleSubmit} className="surface p-4 d-flex flex-column gap-3">
       <div>
-        <label className="form-label">{t.auth.profileSetup.usernameLabel}</label>
+        <label className="form-label" htmlFor="profile-setup-form-username">{t.auth.profileSetup.usernameLabel}</label>
         <div className="input-group">
           <span className="input-group-text small text-secondary">myblhub.com/users/</span>
-          <input
+          <input id="profile-setup-form-username"
             name="username"
             required
             value={username}
@@ -64,8 +64,8 @@ export default function ProfileSetupForm({
 
       <div className="row g-3">
         <div className="col-12 col-md-6">
-          <label className="form-label">{t.auth.profileSetup.nameLabel}</label>
-          <input
+          <label className="form-label" htmlFor="profile-setup-form-name">{t.auth.profileSetup.nameLabel}</label>
+          <input id="profile-setup-form-name"
             name="name"
             defaultValue={defaultName}
             placeholder={t.auth.profileSetup.namePlaceholder}
@@ -73,8 +73,8 @@ export default function ProfileSetupForm({
           />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">{t.auth.profileSetup.countryLabel}</label>
-          <select name="country" defaultValue="" className="form-select">
+          <label className="form-label" htmlFor="profile-setup-form-country">{t.auth.profileSetup.countryLabel}</label>
+          <select id="profile-setup-form-country" name="country" defaultValue="" className="form-select">
             <option value="">{t.auth.profileSetup.countryEmpty}</option>
             {countryOptions(locale).map((c) => (
               <option key={c.code} value={c.code}>
@@ -84,8 +84,8 @@ export default function ProfileSetupForm({
           </select>
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">{t.auth.profileSetup.genderLabel}</label>
-          <select name="gender" defaultValue="" className="form-select">
+          <label className="form-label" htmlFor="profile-setup-form-gender">{t.auth.profileSetup.genderLabel}</label>
+          <select id="profile-setup-form-gender" name="gender" defaultValue="" className="form-select">
             <option value="">{t.auth.profileSetup.genderEmpty}</option>
             <option value="female">{t.auth.profileSetup.genderFemale}</option>
             <option value="male">{t.auth.profileSetup.genderMale}</option>
@@ -93,12 +93,12 @@ export default function ProfileSetupForm({
           </select>
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">{t.auth.profileSetup.birthLabel}</label>
-          <DatePickerInput name="birthDate" yearsBack={100} yearsForward={0} />
+          <label className="form-label" htmlFor="profile-setup-form-birthDate">{t.auth.profileSetup.birthLabel}</label>
+          <DatePickerInput id="profile-setup-form-birthDate" name="birthDate" yearsBack={100} yearsForward={0} />
         </div>
         <div className="col-12">
-          <label className="form-label">{t.auth.profileSetup.bioLabel}</label>
-          <textarea
+          <label className="form-label" htmlFor="profile-setup-form-bio">{t.auth.profileSetup.bioLabel}</label>
+          <textarea id="profile-setup-form-bio"
             name="bio"
             rows={3}
             placeholder={t.auth.profileSetup.bioPlaceholder}

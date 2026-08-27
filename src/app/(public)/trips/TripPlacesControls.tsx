@@ -105,7 +105,14 @@ export function RemoveTripPlaceButton({ tripId, locationId }: { tripId: string; 
 }
 
 /** Комбобокс «добавить отдельное место в поездку». */
-export function AddTripPlaceBox({ tripId }: { tripId: string }) {
+export function AddTripPlaceBox({
+  id,
+  tripId,
+}: {
+  /** Чтобы подпись снаружи могла сослаться на поле поиска. */
+  id?: string;
+  tripId: string;
+}) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
@@ -133,6 +140,7 @@ export function AddTripPlaceBox({ tripId }: { tripId: string }) {
   return (
     <div className="performer-combobox" style={{ maxWidth: "22rem" }}>
       <input
+        id={id}
         type="text"
         className="form-control form-control-sm"
         placeholder={t.trips.places.addPlaceholder}

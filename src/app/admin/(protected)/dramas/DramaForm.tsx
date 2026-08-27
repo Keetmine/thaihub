@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import FormSection from "@/components/admin/FormSection";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
@@ -91,6 +91,7 @@ export default function DramaForm({
   defaultLocationIds?: string[];
   submitLabel: string;
 }) {
+  const uid = useId();
   const v = defaultValues;
   const isNewDrama = !v;
   const [titleValue, setTitleValue] = useState(v?.title ?? "");
@@ -142,8 +143,8 @@ export default function DramaForm({
       <FormSection title="Основное" hint="название, год, источник, кто снимал">
       <div className="row g-3">
         <div className="col-12 col-lg-8">
-          <label className="form-label">Название *</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-title">Название *</label>
+          <input id="drama-form-title"
             name="title"
             required
             defaultValue={v?.title}
@@ -160,8 +161,8 @@ export default function DramaForm({
         </div>
 
         <div className="col-12 col-lg-4">
-          <label className="form-label">Год</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-year">Год</label>
+          <input id="drama-form-year"
             type="number"
             name="year"
             defaultValue={v?.year}
@@ -172,8 +173,8 @@ export default function DramaForm({
 
       <div className="row g-3">
         <div className="col-12 col-lg-6">
-          <label className="form-label">Ссылка на MyDramaList</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-mydramalistUrl">Ссылка на MyDramaList</label>
+          <input id="drama-form-mydramalistUrl"
             type="url"
             name="mydramalistUrl"
             defaultValue={v?.mydramalistUrl}
@@ -197,8 +198,8 @@ export default function DramaForm({
           />
         </div>
         <div className="col-12 col-lg-6">
-          <label className="form-label d-block">Агентства / студии</label>
-          <EntityMultiSelect
+          <label className="form-label d-block" htmlFor="drama-form-agencyIds">Агентства / студии</label>
+          <EntityMultiSelect id="drama-form-agencyIds"
             name="agencyIds"
             options={agencies}
             defaultSelectedIds={v?.agencyIds}
@@ -217,8 +218,8 @@ export default function DramaForm({
       <FormSection title="Описание и постер">
       <div className="row g-3">
         <div className="col-12 col-md-8">
-          <label className="form-label">Синопсис</label>
-          <textarea
+          <label className="form-label" htmlFor="drama-form-synopsis">Синопсис</label>
+          <textarea id="drama-form-synopsis"
             name="synopsis"
             rows={5}
             defaultValue={v?.synopsis}
@@ -235,12 +236,12 @@ export default function DramaForm({
       <FormSection title="Названия и авторы" hint="данные из MyDramaList">
       <div className="row g-3">
         <div className="col-12 col-md-6">
-          <label className="form-label">Родное название</label>
-          <input name="nativeTitle" defaultValue={v?.nativeTitle} className="form-control" />
+          <label className="form-label" htmlFor="drama-form-nativeTitle">Родное название</label>
+          <input id="drama-form-nativeTitle" name="nativeTitle" defaultValue={v?.nativeTitle} className="form-control" />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Другие названия</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-alsoKnownAs">Другие названия</label>
+          <input id="drama-form-alsoKnownAs"
             name="alsoKnownAs"
             defaultValue={v?.alsoKnownAs}
             placeholder="Через запятую"
@@ -248,16 +249,16 @@ export default function DramaForm({
           />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Режиссёр</label>
-          <input name="director" defaultValue={v?.director} className="form-control" />
+          <label className="form-label" htmlFor="drama-form-director">Режиссёр</label>
+          <input id="drama-form-director" name="director" defaultValue={v?.director} className="form-control" />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Сценарист</label>
-          <input name="screenwriter" defaultValue={v?.screenwriter} className="form-control" />
+          <label className="form-label" htmlFor="drama-form-screenwriter">Сценарист</label>
+          <input id="drama-form-screenwriter" name="screenwriter" defaultValue={v?.screenwriter} className="form-control" />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Жанры</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-genres">Жанры</label>
+          <input id="drama-form-genres"
             name="genres"
             defaultValue={v?.genres}
             placeholder="Comedy, Romance — через запятую"
@@ -265,8 +266,8 @@ export default function DramaForm({
           />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Теги</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-tags">Теги</label>
+          <input id="drama-form-tags"
             name="tags"
             defaultValue={v?.tags}
             placeholder="Через запятую"
@@ -279,12 +280,12 @@ export default function DramaForm({
       <FormSection title="Эфир и классификация" hint="эпизоды, канал, рейтинг, статус">
       <div className="row g-3">
         <div className="col-6 col-md-3">
-          <label className="form-label">Эпизоды</label>
-          <input type="number" name="episodes" defaultValue={v?.episodes} className="form-control" />
+          <label className="form-label" htmlFor="drama-form-episodes">Эпизоды</label>
+          <input id="drama-form-episodes" type="number" name="episodes" defaultValue={v?.episodes} className="form-control" />
         </div>
         <div className="col-6 col-md-3">
-          <label className="form-label">Длительность</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-duration">Длительность</label>
+          <input id="drama-form-duration"
             name="duration"
             defaultValue={v?.duration}
             placeholder="43 min."
@@ -292,8 +293,8 @@ export default function DramaForm({
           />
         </div>
         <div className="col-6 col-md-3">
-          <label className="form-label">День эфира</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-airedOn">День эфира</label>
+          <input id="drama-form-airedOn"
             name="airedOn"
             defaultValue={v?.airedOn}
             placeholder="Thursday"
@@ -301,12 +302,12 @@ export default function DramaForm({
           />
         </div>
         <div className="col-6 col-md-3">
-          <label className="form-label">Канал / платформа</label>
-          <input name="network" defaultValue={v?.network} className="form-control" />
+          <label className="form-label" htmlFor="drama-form-network">Канал / платформа</label>
+          <input id="drama-form-network" name="network" defaultValue={v?.network} className="form-control" />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Возрастной рейтинг</label>
-          <input
+          <label className="form-label" htmlFor="drama-form-contentRating">Возрастной рейтинг</label>
+          <input id="drama-form-contentRating"
             name="contentRating"
             defaultValue={v?.contentRating}
             placeholder="15+ - Teens 15 or older"
@@ -314,8 +315,8 @@ export default function DramaForm({
           />
         </div>
         <div className="col-12 col-md-6">
-          <label className="form-label">Статус</label>
-          <select name="status" defaultValue={v?.status ?? ""} className="form-select">
+          <label className="form-label" htmlFor="drama-form-status">Статус</label>
+          <select id="drama-form-status" name="status" defaultValue={v?.status ?? ""} className="form-select">
             <option value="">Не указан</option>
             <option value="PLANNED">Запланирован</option>
             <option value="IN_PRODUCTION">В производстве</option>
@@ -331,7 +332,9 @@ export default function DramaForm({
       </div>
 
       <div style={{ display: activeTab === "cast" ? undefined : "none" }}>
-        <label className="form-label d-block">Актёрский состав</label>
+        <label className="form-label d-block" htmlFor={`${uid}-cast`}>
+          Актёрский состав
+        </label>
 
         {cast.length > 0 && (
           <div className="d-flex flex-column gap-2 mb-2">
@@ -351,6 +354,7 @@ export default function DramaForm({
                 <input
                   type="text"
                   className="form-control form-control-sm"
+                  aria-label={`Роль: ${c.name}`}
                   placeholder="Роль (персонаж, необязательно)"
                   value={c.role}
                   onChange={(e) => updateCastRole(c.id, e.target.value)}
@@ -374,6 +378,7 @@ export default function DramaForm({
             комбобокс ищет на сервере по мере ввода. Режим onPick: выбор
             хранится здесь (у записи состава есть своё поле «роль»). */}
         <EntityMultiSelect
+          id={`${uid}-cast`}
           options={[]}
           searchOptions={searchPerformerOptions}
           excludeIds={cast.map((c) => c.id)}
@@ -390,8 +395,8 @@ export default function DramaForm({
       </div>
 
       <div style={{ display: activeTab === "locations" ? undefined : "none" }}>
-        <label className="form-label d-block">Локации съёмок</label>
-        <EntityMultiSelect
+        <label className="form-label d-block" htmlFor="drama-form-locationIds">Локации съёмок</label>
+        <EntityMultiSelect id="drama-form-locationIds"
           name="locationIds"
           options={locations}
           defaultSelectedIds={defaultLocationIds}

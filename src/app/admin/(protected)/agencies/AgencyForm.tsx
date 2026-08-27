@@ -75,15 +75,15 @@ export default function AgencyForm({
         <div className="d-flex flex-column gap-3">
           <FormSection title="Основное" hint="название агентства или студии">
             <div>
-              <label className="form-label">Название *</label>
-              <input name="name" required defaultValue={v?.name} className="form-control" />
+              <label className="form-label" htmlFor="agency-form-name">Название *</label>
+              <input id="agency-form-name" name="name" required defaultValue={v?.name} className="form-control" />
             </div>
           </FormSection>
           <FormSection title="Описание и логотип">
             <div className="row g-3">
               <div className="col-12 col-md-8">
-                <label className="form-label">Описание</label>
-                <textarea
+                <label className="form-label" htmlFor="agency-form-description">Описание</label>
+                <textarea id="agency-form-description"
                   name="description"
                   rows={5}
                   defaultValue={v?.description}
@@ -99,8 +99,8 @@ export default function AgencyForm({
       </div>
 
       <div style={{ display: activeTab === "performers" ? undefined : "none" }}>
-        <label className="form-label d-block">Актёры агентства</label>
-        <EntityMultiSelect
+        <label className="form-label d-block" htmlFor="agency-form-performerIds">Актёры агентства</label>
+        <EntityMultiSelect id="agency-form-performerIds"
           name="performerIds"
           options={performers}
           defaultSelectedIds={defaultPerformerIds}
@@ -116,8 +116,8 @@ export default function AgencyForm({
       </div>
 
       <div style={{ display: activeTab === "dramas" ? undefined : "none" }}>
-        <label className="form-label d-block">Сериалы агентства</label>
-        <EntityMultiSelect
+        <label className="form-label d-block" htmlFor="agency-form-dramaIds">Сериалы агентства</label>
+        <EntityMultiSelect id="agency-form-dramaIds"
           name="dramaIds"
           options={dramas}
           defaultSelectedIds={defaultDramaIds}

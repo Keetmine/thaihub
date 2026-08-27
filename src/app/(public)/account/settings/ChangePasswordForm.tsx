@@ -38,16 +38,16 @@ export default function ChangePasswordForm() {
   return (
     <form className="d-flex flex-column gap-3" onSubmit={handleSubmit}>
       <div>
-        <label className="form-label">{t.account.settings.currentPassword}</label>
-        <PasswordInput name="currentPassword" required autoComplete="current-password" />
+        <label className="form-label" htmlFor="change-password-form-currentPassword">{t.account.settings.currentPassword}</label>
+        <PasswordInput id="change-password-form-currentPassword" name="currentPassword" required autoComplete="current-password" />
       </div>
       <div>
-        <label className="form-label">{t.account.settings.newPassword}</label>
-        <PasswordInput name="newPassword" required minLength={6} autoComplete="new-password" />
+        <label className="form-label" htmlFor="change-password-form-newPassword">{t.account.settings.newPassword}</label>
+        <PasswordInput id="change-password-form-newPassword" name="newPassword" required minLength={6} autoComplete="new-password" />
       </div>
       <div>
-        <label className="form-label">{t.account.settings.repeatPassword}</label>
-        <PasswordInput name="confirmPassword" required minLength={6} autoComplete="new-password" />
+        <label className="form-label" htmlFor="change-password-form-confirmPassword">{t.account.settings.repeatPassword}</label>
+        <PasswordInput id="change-password-form-confirmPassword" name="confirmPassword" required minLength={6} autoComplete="new-password" />
       </div>
       {error && <p className="small text-danger mb-0">{error}</p>}
       {success && (

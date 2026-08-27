@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import FileDropzone from "@/components/FileDropzone";
 import DatePickerInput from "@/components/DatePickerInput";
@@ -52,6 +52,7 @@ export default function BookingForm({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const uid = useId();
   const t = useT();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -78,15 +79,15 @@ export default function BookingForm({
   ) => (
     <div className="col-12 col-md-6 d-flex gap-2">
       <div className="flex-fill" style={{ minWidth: 0 }}>
-        <label className="form-label small text-secondary">{label}</label>
-        <DatePickerInput
+        <label className="form-label small text-secondary" htmlFor={`${uid}-datepick`}>{label}</label>
+        <DatePickerInput id={`${uid}-datepick`}
           name={side === "start" ? "startAt" : "endAt"}
           defaultValue={(side === "start" ? booking?.startDate : booking?.endDate) ?? ""}
         />
       </div>
       <div style={{ width: "6.4rem" }}>
-        <label className="form-label small text-secondary">{t.trips.bookings.time}</label>
-        <input
+        <label className="form-label small text-secondary" htmlFor={`${uid}-input`}>{t.trips.bookings.time}</label>
+        <input id={`${uid}-input`}
           type="time"
           name={side === "start" ? "startTime" : "endTime"}
           defaultValue={(side === "start" ? booking?.startTime : booking?.endTime) ?? ""}
@@ -103,10 +104,10 @@ export default function BookingForm({
       <input type="hidden" name="kind" value={kind} />
       <div className="row g-2">
         <div className="col-12 col-md-6">
-          <label className="form-label small text-secondary">
+          <label className="form-label small text-secondary" htmlFor={`${uid}-name`}>
             {isFlight ? t.trips.bookings.flightName : t.trips.bookings.hotelName}
           </label>
-          <input
+          <input id={`${uid}-name`}
             name="name"
             required
             defaultValue={booking?.name}
@@ -118,8 +119,8 @@ export default function BookingForm({
         {isFlight ? (
           <>
             <div className="col-6 col-md-3">
-              <label className="form-label small text-secondary">{t.trips.bookings.from}</label>
-              <input
+              <label className="form-label small text-secondary" htmlFor={`${uid}-fromPlace`}>{t.trips.bookings.from}</label>
+              <input id={`${uid}-fromPlace`}
                 name="fromPlace"
                 defaultValue={booking?.fromPlace ?? ""}
                 placeholder={t.trips.bookings.fromPlaceholder}
@@ -127,8 +128,8 @@ export default function BookingForm({
               />
             </div>
             <div className="col-6 col-md-3">
-              <label className="form-label small text-secondary">{t.trips.bookings.to}</label>
-              <input
+              <label className="form-label small text-secondary" htmlFor={`${uid}-toPlace`}>{t.trips.bookings.to}</label>
+              <input id={`${uid}-toPlace`}
                 name="toPlace"
                 defaultValue={booking?.toPlace ?? ""}
                 placeholder={t.trips.bookings.toPlaceholder}
@@ -141,8 +142,8 @@ export default function BookingForm({
         ) : (
           <>
             <div className="col-12 col-md-6">
-              <label className="form-label small text-secondary">{t.trips.bookings.address}</label>
-              <input
+              <label className="form-label small text-secondary" htmlFor={`${uid}-address`}>{t.trips.bookings.address}</label>
+              <input id={`${uid}-address`}
                 name="address"
                 defaultValue={booking?.address ?? ""}
                 placeholder={t.trips.bookings.addressPlaceholder}
@@ -158,10 +159,10 @@ export default function BookingForm({
         )}
 
         <div className="col-12 col-md-6">
-          <label className="form-label small text-secondary">
+          <label className="form-label small text-secondary" htmlFor={`${uid}-url`}>
             {isFlight ? t.trips.bookings.ticketUrl : t.trips.bookings.bookingUrl}
           </label>
-          <input
+          <input id={`${uid}-url`}
             name="url"
             defaultValue={booking?.url ?? ""}
             placeholder="https://"
@@ -186,8 +187,8 @@ export default function BookingForm({
           />
         </div>
         <div className="col-12">
-          <label className="form-label small text-secondary">{t.trips.bookings.note}</label>
-          <input
+          <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>{t.trips.bookings.note}</label>
+          <input id={`${uid}-note`}
             name="note"
             defaultValue={booking?.note ?? ""}
             placeholder={

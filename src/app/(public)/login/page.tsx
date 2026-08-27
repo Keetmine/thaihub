@@ -63,10 +63,10 @@ export default async function LoginPage({
         ) : error ? (
           <p className="small text-danger text-center mb-3">{t.auth.login.wrongCredentials}</p>
         ) : null}
-        <label className="form-label">{t.auth.login.email}</label>
-        <input type="email" name="email" required autoFocus className="form-control mb-3" />
-        <label className="form-label">{t.auth.login.password}</label>
-        <PasswordInput name="password" required autoComplete="current-password" className="mb-1" />
+        <label className="form-label" htmlFor="login-email">{t.auth.login.email}</label>
+        <input id="login-email" type="email" name="email" required autoFocus className="form-control mb-3" />
+        <label className="form-label" htmlFor="login-password">{t.auth.login.password}</label>
+        <PasswordInput id="login-password" name="password" required autoComplete="current-password" className="mb-1" />
         <p className="small text-end mb-3">
           <AppLink href="/forgot-password" className="text-secondary text-decoration-none">
             {t.auth.login.forgot}

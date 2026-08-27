@@ -39,8 +39,11 @@ export default async function AdminSettingsPage() {
                   <div className="d-flex flex-column gap-3">
                     {items.map((s) => (
                       <div key={s.key}>
-                        <label className="form-label">{s.label}</label>
+                        <label className="form-label" htmlFor={`setting-${s.key}`}>
+                          {s.label}
+                        </label>
                         <input
+                          id={`setting-${s.key}`}
                           name={s.key}
                           defaultValue={values.get(s.key) ?? ""}
                           placeholder={s.hint}

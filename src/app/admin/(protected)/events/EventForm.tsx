@@ -106,8 +106,8 @@ export default function EventForm({
       <FormSection title="Основное" hint="что за событие и где проходит">
       <div className="row g-3">
         <div className="col-12 col-lg-7">
-          <label className="form-label">Название *</label>
-          <input
+          <label className="form-label" htmlFor="event-form-title">Название *</label>
+          <input id="event-form-title"
             name="title"
             required
             defaultValue={v?.title}
@@ -116,8 +116,8 @@ export default function EventForm({
         </div>
 
         <div className="col-12 col-lg-5">
-          <label className="form-label">Место *</label>
-          <input
+          <label className="form-label" htmlFor="event-form-venue">Место *</label>
+          <input id="event-form-venue"
             name="venue"
             required
             defaultValue={v?.venue}
@@ -143,8 +143,8 @@ export default function EventForm({
       />
 
       <div>
-        <label className="form-label">Цена билетов</label>
-        <input
+        <label className="form-label" htmlFor="event-form-ticketPrice">Цена билетов</label>
+        <input id="event-form-ticketPrice"
           name="ticketPrice"
           defaultValue={v?.ticketPrice}
           placeholder="например: 6,900 / 5,900 / 5,000 бат"
@@ -157,16 +157,16 @@ export default function EventForm({
 
       <FormSection title="Даты и время" hint="многодневное событие — несколько дней в одной записи">
       <div>
-        <label className="form-label d-block">
+        <label className="form-label d-block" htmlFor="event-form-occurrenceId">
           Дата и время {occurrences.length > 1 ? "(несколько дней)" : ""}
         </label>
         <div className="d-flex flex-column gap-2">
           {occurrences.map((o, i) => (
             <div key={i} className="row g-2 align-items-end">
-              <input type="hidden" name="occurrenceId" value={o.id} />
+              <input id="event-form-occurrenceId" type="hidden" name="occurrenceId" value={o.id} />
               <div className="col-12 col-sm-4">
-                {i === 0 && <label className="form-label small text-secondary">Дата *</label>}
-                <DatePickerInput
+                {i === 0 && <label className="form-label small text-secondary" htmlFor="event-form-occurrenceDate">Дата *</label>}
+                <DatePickerInput id="event-form-occurrenceDate"
                   name="occurrenceDate"
                   required
                   value={o.date}
@@ -174,8 +174,8 @@ export default function EventForm({
                 />
               </div>
               <div className="col-5 col-sm-3">
-                {i === 0 && <label className="form-label small text-secondary">Начало</label>}
-                <input
+                {i === 0 && <label className="form-label small text-secondary" htmlFor="event-form-occurrenceStartTime">Начало</label>}
+                <input id="event-form-occurrenceStartTime"
                   type="time"
                   name="occurrenceStartTime"
                   value={o.startTime}
@@ -184,8 +184,8 @@ export default function EventForm({
                 />
               </div>
               <div className="col-5 col-sm-3">
-                {i === 0 && <label className="form-label small text-secondary">Конец</label>}
-                <input
+                {i === 0 && <label className="form-label small text-secondary" htmlFor="event-form-occurrenceEndTime">Конец</label>}
+                <input id="event-form-occurrenceEndTime"
                   type="time"
                   name="occurrenceEndTime"
                   value={o.endTime}
@@ -274,8 +274,8 @@ export default function EventForm({
 
       <FormSection title="Описание и состав" hint="кто выступает и с каким сериалом связано">
       <div>
-        <label className="form-label">Описание</label>
-        <textarea
+        <label className="form-label" htmlFor="event-form-description">Описание</label>
+        <textarea id="event-form-description"
           name="description"
           rows={3}
           defaultValue={v?.description}
@@ -293,8 +293,8 @@ export default function EventForm({
       />
 
       <div>
-        <label className="form-label d-block">Исполнители / группы</label>
-        <EntityMultiSelect
+        <label className="form-label d-block" htmlFor="event-form-performerIds">Исполнители / группы</label>
+        <EntityMultiSelect id="event-form-performerIds"
           name="performerIds"
           options={performers}
           defaultSelectedIds={v?.performerIds}
@@ -309,8 +309,8 @@ export default function EventForm({
       </div>
 
       <div>
-        <label className="form-label d-block">Пейринги</label>
-        <EntityMultiSelect
+        <label className="form-label d-block" htmlFor="event-form-pairingIds">Пейринги</label>
+        <EntityMultiSelect id="event-form-pairingIds"
           name="pairingIds"
           options={pairingOptions}
           defaultSelectedIds={v?.pairingIds}
@@ -341,12 +341,12 @@ export default function EventForm({
         {presaleEnabled && (
           <div className="row g-3 mt-1">
             <div className="col-12 col-sm-4">
-              <label className="form-label">Дата препродажи</label>
-              <DatePickerInput name="presaleDate" defaultValue={v?.presaleDate} />
+              <label className="form-label" htmlFor="event-form-presaleDate">Дата препродажи</label>
+              <DatePickerInput id="event-form-presaleDate" name="presaleDate" defaultValue={v?.presaleDate} />
             </div>
             <div className="col-12 col-sm-4">
-              <label className="form-label">Время препродажи</label>
-              <input
+              <label className="form-label" htmlFor="event-form-presaleTime">Время препродажи</label>
+              <input id="event-form-presaleTime"
                 type="time"
                 name="presaleTime"
                 defaultValue={v?.presaleTime}
@@ -354,8 +354,8 @@ export default function EventForm({
               />
             </div>
             <div className="col-12 col-sm-4">
-              <label className="form-label">Ссылка на билеты</label>
-              <input
+              <label className="form-label" htmlFor="event-form-presaleUrl">Ссылка на билеты</label>
+              <input id="event-form-presaleUrl"
                 type="url"
                 name="presaleUrl"
                 defaultValue={v?.presaleUrl}

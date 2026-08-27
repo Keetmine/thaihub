@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import FileDropzone from "@/components/FileDropzone";
@@ -66,11 +66,12 @@ export function PersonalEventFields({
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
+  const uid = useId();
   return (
     <>
       <div>
-        <label className="form-label small text-secondary">{t.trips.personal.title}</label>
-        <input
+        <label className="form-label small text-secondary" htmlFor={`${uid}-title`}>{t.trips.personal.title}</label>
+        <input id={`${uid}-title`}
           type="text"
           name="title"
           required
@@ -82,12 +83,12 @@ export function PersonalEventFields({
       </div>
       <div className="row g-2">
         <div className="col-7">
-          <label className="form-label small text-secondary">{t.trips.personal.date}</label>
-          <DatePickerInput name="date" required defaultValue={defaults?.dateKey} />
+          <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>{t.trips.personal.date}</label>
+          <DatePickerInput id={`${uid}-date`} name="date" required defaultValue={defaults?.dateKey} />
         </div>
         <div className="col-5">
-          <label className="form-label small text-secondary">{t.trips.personal.time}</label>
-          <input
+          <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>{t.trips.personal.time}</label>
+          <input id={`${uid}-time`}
             type="time"
             name="time"
             defaultValue={defaults?.timeValue}
@@ -97,8 +98,8 @@ export function PersonalEventFields({
       </div>
       <LocationPickerField defaultLocation={defaults?.location} />
       <div>
-        <label className="form-label small text-secondary">{t.trips.personal.note}</label>
-        <textarea name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
+        <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>{t.trips.personal.note}</label>
+        <textarea id={`${uid}-note`} name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
       </div>
       {/* Ж10: картинка к записи. Личные события приватные, поэтому файл
           уходит в приватное хранилище (/files/personal/…), а не в
