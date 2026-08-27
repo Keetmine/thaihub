@@ -4,6 +4,12 @@ import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import CreatePairingModal from "./CreatePairingModal";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminFilters from "@/components/admin/AdminFilters";
+import {
+  adminPairingFilterDefs,
+  adminPairingFilterWhere,
+  type FilterParams,
+} from "@/lib/catalogFilters";
 import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
@@ -15,22 +21,28 @@ export const dynamic = "force-dynamic";
 export default async function AdminPairingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
 }) {
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
   // Поиск: по названию пейринга и по имени любого из участников.
-  const where = q
-    ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" as const } },
-          { performerA: { name: { contains: q, mode: "insensitive" as const } } },
-          { performerB: { name: { contains: q, mode: "insensitive" as const } } },
-        ],
-      }
-    : {};
+  const where = {
+    AND: [
+      q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" as const } },
+              { performerA: { name: { contains: q, mode: "insensitive" as const } } },
+              { performerB: { name: { contains: q, mode: "insensitive" as const } } },
+            ],
+          }
+        : {},
+      ...adminPairingFilterWhere(sp),
+    ],
+  };
   const [pairings, total] = await Promise.all([
     prisma.pairing.findMany({
       where,
@@ -67,6 +79,8 @@ export default async function AdminPairingsPage({
           className=""
         />
       </div>
+
+      <AdminFilters defs={adminPairingFilterDefs()} params={sp} />
 
       {pairings.length === 0 ? (
         <p className="text-secondary">

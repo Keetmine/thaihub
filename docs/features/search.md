@@ -1,43 +1,87 @@
 # Search
 
-`src/app/(public)/search/page.tsx` (`GET /search?q=...`), searched from
-the `SearchForm` in the public nav (`src/app/(public)/layout.tsx`).
+Глобальный поиск живёт на `/search`
+(`src/app/(public)/search/page.tsx`), а в шапке публичной части стоит
+живой поиск `SearchOverlay` — они две половины одного целого (И1+И6).
 
-Queries five entity types in parallel with Prisma
-`contains`/`insensitive` filters (case-insensitive substring match, not
-fuzzy — a typo won't match):
+## Страница /search
 
-- **Events** — title, venue, or any cast member's name.
-- **Performers** — name or real name.
-- **Dramas** — title.
-- **Locations** — name.
-- **Agencies** — name.
+Вкладки разделов: **Везде / Сериалы / Артисты / События / Локации /
+Новеллы** (`?section=`). Отдельных вкладок для агентств и вики нет
+сознательно — их слишком мало, они остаются группами в «Везде».
 
-Each result type is capped at 24 rows (`take: 24`) except events, which
-are unbounded (events are the primary browsing surface and typically a
-much smaller set). Results render in sections, one per entity type, each
-only shown when it has at least one match (`Section` component with a
-`count` prop that early-returns `null` at zero). Events use the same
-`EventAgendaRow` as everywhere else (favorited/going/friends-going state
-included); the other four types render as a wrapped grid of
-`EntityMiniCard`s linking to their detail pages.
+- **«Везде»** — прежний сгруппированный поиск по подстроке: события
+  (название, площадка, имя участника), артисты (имя, реальное имя),
+  сериалы, локации, агентства, новеллы, вики. Секции сворачиваются
+  нативным `details`. Новеллы и вики раньше искались, но в выдачу не
+  попадали — запросы были, секций не было.
+- **Конкретный раздел** — выдача с фильтрами (колонка справа на
+  широком экране, раскрывашка над выдачей на телефоне), сортировкой
+  (у сериалов: новые / рейтинг MDL / название) и пагинацией.
 
-No query at all shows a prompt instead of running anything; a query with
-zero matches across all five types shows "ничего не найдено".
+Все фильтры живут в адресе (`?genres=Romance,Drama&yearFrom=2022`) —
+срез можно положить в закладки и переслать. Жанры на карточке сериала —
+ссылки ровно в такой адрес.
 
-This is the *global* cross-entity search — distinct from the per-page
-`NameSearchBox` filters on individual list pages (`/dramas`, `/locations`,
-the home page, and their admin equivalents), which each only filter that
-one entity type by title/name via a plain `?q=` param and a `where:
-{contains}` on that page's own query, no separate route or fan-out. See
-[architecture.md](../architecture.md#conventions) for the `.tab-bar-row`
-layout those list pages use to combine that search box with tabs.
+## Механизм фильтров (общий с админкой)
 
-**`NameSearchBox` is a client component**, not a plain GET form: it
-debounces typing (400ms) before calling `router.replace` with the new
-`?q=`, but updates immediately (no debounce) when the input goes back to
-empty — either by deleting everything or via the native `<input
-type="search">`'s own "×" clear button, which fires the same `onChange`.
-`hiddenFields` (other params to preserve, e.g. `status` on `/dramas`)
-still work the same as before, just appended to the URL client-side
-instead of as literal `<input type="hidden">`s in a submitted form.
+`src/lib/catalogFilters.ts` — одно место на публичный поиск и админские
+списки, три слоя:
+
+- **Описания** (`…FilterDefs`) — какие фильтры есть у сущности; целиком
+  сериализуемы, подписи приходят переведёнными (публика — словарь
+  зрителя, админка — `getDict("ru")`).
+- **Варианты** (`load…FilterOptions`) — списки значений из базы (жанры,
+  страны, каналы, агентства), кэш на полчаса + `CATALOG_TAG`. Значения —
+  данные каталога, не переводятся. Пустые группы панель прячет: у
+  страны и типа варианты появятся по мере переимпорта.
+- **Сборка where** (`…FilterWhere`) — из параметров адреса в массив
+  условий Prisma; страница складывает их со своими (поиск, вкладки,
+  `issue=`) через `AND`. Enum-значения из адреса проходят белый список —
+  чужая строка не должна ронять запрос.
+
+Семантика: жанры и теги — «И» (`hasEvery`, как на MDL), страна / тип /
+статус / канал / агентство — «ИЛИ» (`in`). Диапазоны — `yearFrom/To`,
+`dateFrom/To` (даты — полночь UTC, настенное время проекта).
+
+Клиентская панель — `src/components/filters/FilterPanel.tsx`: без
+своего состояния, читает и пишет адрес (`router.replace`, сброс `page`),
+поэтому её можно рисовать на странице дважды (колонка + мобильная
+раскрывашка). Длинные списки (теги, агентства) — с поиском внутри и
+свёрнуты до 8 строк; выбранные видны всегда, даже в свёрнутом виде.
+
+## Живой поиск в шапке
+
+`SearchOverlay` (десктоп и мобильная шторка): фокус открывает панель с
+чипами разделов, ввод от 2 символов — подсказки через server action
+`searchLive` (250 мс дебаунс, сторож последовательности), стрелки +
+Enter — переход в запись, «Все фильтры →» — на `/search` с тем же
+запросом и разделом. Это прогрессивное улучшение поверх обычной
+GET-формы: без JS Enter уводит на `/search?q=…` как раньше.
+
+## Фильтры и живой поиск в админке (И6)
+
+Все 8 списков (`dramas`, `performers`, `events`, `locations`, `novels`,
+`agencies`, `pairings`, `users`) — раскрывашка «Фильтры (N)»
+(`AdminFilters`, та же панель в горизонтальной раскладке; раскрыта,
+когда что-то выбрано). Наборы свои: у сериалов поверх публичных — флаги
+«без постера / без каста / без MDL», у артистов — место рождения и «без
+фото / без даты рождения», у локаций — «чьи» (каталожные /
+пользовательские: раньше пользовательские в списке было не увидеть
+вовсе), у пользователей — права, подписка, язык, диапазоны регистрации
+и последнего входа. Вкладки, которые уже были (эфир у сериалов,
+текущие/архив у событий), остались быстрыми пресетами и складываются с
+фильтрами через AND; дублирующие их фильтры («вид» у артистов,
+«когда» у событий) из админских наборов убраны.
+
+`NameSearchBox` — общий компонент поиска списков: дебаунс 400 мс,
+`router.replace`, живёт поверх ТЕКУЩЕГО адреса (набор в поле не стирает
+выбранные фильтры). С `quickKind` показывает живые подсказки записей
+раздела (`quickSearchAdmin` с прицелом по виду) — клик уводит сразу в
+правку, отменяя отложенную навигацию списка, иначе та срабатывала бы
+после перехода и утаскивала обратно. Палитра Cmd+K умеет то же по всему
+каталогу сразу.
+
+Держится тестом `tests/e2e/search-filters.spec.ts` — фикстуры с
+жанром-маркером, которого нет ни у одной настоящей записи, поэтому
+проверки работают на любой базе.

@@ -21,48 +21,56 @@ const KIND_LABELS: Record<QuickHit["kind"], string> = {
   agency: "агентство",
 };
 
-export async function quickSearchAdmin(query: string): Promise<QuickHit[]> {
+export async function quickSearchAdmin(
+  query: string,
+  /** Сузить до одного вида: живой поиск в списке раздела показывает
+   *  записи этого раздела, а не всё подряд, как палитра Cmd+K. */
+  onlyKind?: QuickHit["kind"],
+): Promise<QuickHit[]> {
   await requireCatalogEditor();
   const q = query.trim();
   if (q.length < 2) return [];
+  const want = (k: QuickHit["kind"]) => !onlyKind || onlyKind === k;
+  const take = onlyKind ? 8 : 5;
+  const takeSmall = onlyKind ? 8 : 3;
 
   const [performers, dramas, events, locations, novels, agencies] = await Promise.all([
-    prisma.performer.findMany({
+    want("performer") ? prisma.performer.findMany({
       where: performerNameWhere(q),
       select: { id: true, name: true, realName: true },
       orderBy: { name: "asc" },
-      take: 5,
-    }),
-    prisma.drama.findMany({
+      take,
+    }) : [],
+    want("drama") ? prisma.drama.findMany({
       where: dramaTitleWhere(q),
       select: { id: true, title: true, year: true },
       orderBy: { title: "asc" },
-      take: 5,
-    }),
-    prisma.event.findMany({
+      take,
+    }) : [],
+    want("event") ? prisma.event.findMany({
       where: { title: { contains: q, mode: "insensitive" } },
       select: { id: true, title: true, venue: true },
       orderBy: { title: "asc" },
-      take: 5,
-    }),
-    prisma.location.findMany({
+      take,
+    }) : [],
+    want("location") ? prisma.location.findMany({
       where: { name: { contains: q, mode: "insensitive" } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
-      take: 3,
-    }),
-    prisma.novel.findMany({
+      take: takeSmall,
+    }) : [],
+    want("novel") ? prisma.novel.findMany({
       where: { title: { contains: q, mode: "insensitive" } },
       select: { id: true, title: true, author: true },
       orderBy: { title: "asc" },
-      take: 3,
-    }),
-    prisma.agency.findMany({
+      take: takeSmall,
+    }) : [],
+    want("agency") ? prisma.agency.findMany({
       where: { name: { contains: q, mode: "insensitive" } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
-      take: 3,
-    }),
+      take: takeSmall,
+    }) : [],
   ]);
 
   return [

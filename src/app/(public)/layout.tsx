@@ -21,29 +21,8 @@ import NotificationBell, { NotificationBellProvider } from "@/components/Notific
 import { unreadNotificationCount } from "@/lib/notifications";
 import MobileProfileSection from "@/components/MobileProfileSection";
 import ProductTour from "@/components/ProductTour";
-import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
-
-// Форма ведёт на /search обычным GET, поэтому адрес приходится
-// локализовать руками — AppLink тут не при делах.
-function SearchForm({ t, locale }: { t: Dict; locale: Locale }) {
-  return (
-    <form action={localeHref("/search", locale)} method="GET">
-      <div className="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="search"
-          name="q"
-          placeholder={t.nav.searchPlaceholder}
-          aria-label={t.nav.searchAria}
-          className="pill-search"
-        />
-      </div>
-    </form>
-  );
-}
+import { getT, type Dict } from "@/lib/i18n";
+import SearchOverlay from "@/components/SearchOverlay";
 
 // Общий список ссылок для десктопного ряда и мобильной шторки —
 // источник один (publicNavItems), рендер в двух местах.
@@ -69,7 +48,7 @@ function MainNavLinks({ loggedIn, t }: { loggedIn: boolean; t: Dict }) {
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const { t, locale } = await getT();
+  const { t } = await getT();
   const fullUser = await getCurrentUser();
   const isAdmin = !!fullUser?.isAdmin;
   // Счётчик у колокольчика: приглашения в поездки и заявки в друзья
@@ -132,7 +111,7 @@ export default async function PublicLayout({ children }: { children: React.React
               </div>
 
               <div className="d-none d-lg-flex align-items-center gap-2 ms-auto">
-                <SearchForm t={t} locale={locale} />
+                <SearchOverlay />
                 {/* На узких ноутбуках (lg) поле поиска съедает ряд —
                     вместо него иконка-ссылка на страницу поиска;
                     переключение — .nav-search-icon в globals.css. */}
@@ -189,7 +168,7 @@ export default async function PublicLayout({ children }: { children: React.React
               сделал бы position:fixed панелей относительным навбара. */}
           <MobileDrawer>
             <MainNavLinks loggedIn={!!user} t={t} />
-            <SearchForm t={t} locale={locale} />
+            <SearchOverlay variant="drawer" />
             {user ? (
               <MobileProfileSection user={user} />
             ) : (

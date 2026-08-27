@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { deleteAgency } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminFilters from "@/components/admin/AdminFilters";
+import {
+  adminAgencyFilterDefs,
+  adminAgencyFilterWhere,
+  type FilterParams,
+} from "@/lib/catalogFilters";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
@@ -18,15 +24,19 @@ export const dynamic = "force-dynamic";
 export default async function AdminAgenciesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
 }) {
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
-  const where = q
-    ? { name: { contains: q, mode: "insensitive" as const } }
-    : undefined;
+  const where = {
+    AND: [
+      q ? { name: { contains: q, mode: "insensitive" as const } } : {},
+      ...adminAgencyFilterWhere(sp),
+    ],
+  };
   const [agencies, total] = await Promise.all([
     prisma.agency.findMany({
       where,
@@ -57,8 +67,11 @@ export default async function AdminAgenciesPage({
           q={q}
           placeholder="Поиск по названию…"
           className=""
+          quickKind="agency"
         />
       </div>
+
+      <AdminFilters defs={adminAgencyFilterDefs()} params={sp} />
 
       {agencies.length === 0 ? (
         <p className="text-secondary">

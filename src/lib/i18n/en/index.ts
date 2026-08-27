@@ -3,6 +3,7 @@ import { auth } from "./auth";
 import { catalog } from "./catalog";
 import { common } from "./common";
 import { events } from "./events";
+import { filters } from "./filters";
 import { footer } from "./footer";
 import { home } from "./home";
 import { landing } from "./landing";
@@ -23,6 +24,6 @@ import { widgets } from "./widgets";
  * по файлам, чтобы над переводом можно было работать
  * параллельно, не сталкиваясь в одном файле.
  */
-export const en = { widgets, reviews, account, auth, catalog, common, events, footer, home, landing, legal, lists, nav, notifications, social, trips, ui, wiki };
+export const en = { widgets, reviews, account, auth, catalog, common, events, filters, footer, home, landing, legal, lists, nav, notifications, social, trips, ui, wiki };
 
 export type Dict = typeof en;

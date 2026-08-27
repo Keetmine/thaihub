@@ -372,10 +372,17 @@ export default async function DramaDetailPage({
               <span className="d-inline-flex align-items-center gap-1">
                 <TagIcon /> <span className="text-secondary">{t.catalog.drama.genres}</span>
               </span>
+              {/* Жанр — вход в поиск с этим жанром в фильтре (И1):
+                  раньше чипы были глухие, и «ещё такое же» приходилось
+                  собирать руками. */}
               {drama.genres.map((g) => (
-                <span key={g} className="tag-chip">
+                <AppLink
+                  key={g}
+                  href={`/search?section=dramas&genres=${encodeURIComponent(g)}`}
+                  className="tag-chip text-decoration-none"
+                >
                   {g}
-                </span>
+                </AppLink>
               ))}
             </p>
           )}

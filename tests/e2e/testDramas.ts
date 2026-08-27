@@ -24,3 +24,25 @@ export const TEST_DRAMAS = {
     status: "RETURNING_SERIES",
   },
 } as const;
+
+/**
+ * Жанр-маркер для search-filters.spec.ts: такого жанра нет ни у одной
+ * настоящей записи, поэтому фильтр по нему обязан вернуть ровно
+ * фикстуры — на любой базе, хоть локальной, хоть CI-шной.
+ */
+export const TEST_GENRE = "E2E Filter Genre";
+
+export const TEST_FILTER_DRAMAS = {
+  old: {
+    slug: "e2e-filter-old",
+    title: "E2E Filter Old",
+    year: 2011,
+    country: "E2E Land",
+  },
+  fresh: {
+    slug: "e2e-filter-fresh",
+    title: "E2E Filter Fresh",
+    year: 2024,
+    country: "E2E Land",
+  },
+} as const;

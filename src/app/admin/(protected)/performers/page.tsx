@@ -10,6 +10,14 @@ import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { performerNameWhere } from "@/lib/searchWhere";
+import AdminFilters from "@/components/admin/AdminFilters";
+import {
+  adminPerformerFilterDefs,
+  adminPerformerFilterWhere,
+  loadPerformerFilterOptions,
+  type FilterParams,
+} from "@/lib/catalogFilters";
+import { getDict } from "@/lib/i18n";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete, bulkSetPerformerAgency } from "../bulkActions";
 
@@ -89,9 +97,10 @@ function AdminPerformerRow({
 export default async function AdminPerformersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ view?: string; q?: string; page?: string } & FilterParams>;
 }) {
-  const { view, q: rawQ, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { view, q: rawQ, page: rawPage } = sp;
   // Агентства переехали в свой раздел, но на старый адрес много закладок.
   if (view === "agencies") redirect("/admin/agencies");
   const isBands = view === "bands";
@@ -104,9 +113,9 @@ export default async function AdminPerformersPage({
     : isBands
       ? "BAND"
       : "SOLO";
+  const filterWhere = adminPerformerFilterWhere(sp);
   const performersWhere = {
-    type: performerType,
-    ...(q ? performerNameWhere(q) : {}),
+    AND: [{ type: performerType, ...(q ? performerNameWhere(q) : {}) }, ...filterWhere],
   };
   // При поиске — ранжирование как на фронте: точные совпадения по
   // имени/реальному имени/алиасу, затем префиксные, затем contains
@@ -117,10 +126,15 @@ export default async function AdminPerformersPage({
       ? Promise.all([
           prisma.performer.findMany({
             where: {
-              type: performerType,
-              OR: nameFields.map((f) => ({
-                [f]: { equals: q, mode: "insensitive" },
-              })),
+              AND: [
+                {
+                  type: performerType,
+                  OR: nameFields.map((f) => ({
+                    [f]: { equals: q, mode: "insensitive" },
+                  })),
+                },
+                ...filterWhere,
+              ],
             },
             include: { _count: { select: { events: true } } },
             orderBy: { name: "asc" },
@@ -128,10 +142,15 @@ export default async function AdminPerformersPage({
           }),
           prisma.performer.findMany({
             where: {
-              type: performerType,
-              OR: nameFields.map((f) => ({
-                [f]: { startsWith: q, mode: "insensitive" },
-              })),
+              AND: [
+                {
+                  type: performerType,
+                  OR: nameFields.map((f) => ({
+                    [f]: { startsWith: q, mode: "insensitive" },
+                  })),
+                },
+                ...filterWhere,
+              ],
             },
             include: { _count: { select: { events: true } } },
             orderBy: { name: "asc" },
@@ -179,6 +198,11 @@ export default async function AdminPerformersPage({
         </Link>
       </div>
 
+      <AdminFilters
+        defs={adminPerformerFilterDefs(getDict("ru"), await loadPerformerFilterOptions())}
+        params={sp}
+      />
+
       {/* Табы разделов убраны — группы/маскоты теперь пункты сайдбара. */}
       <div className="tab-bar-row justify-content-end">
         <NameSearchBox
@@ -193,6 +217,7 @@ export default async function AdminPerformersPage({
           }
           placeholder="Поиск по имени…"
           className=""
+          quickKind="performer"
         />
       </div>
 

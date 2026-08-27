@@ -2,6 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminFilters from "@/components/admin/AdminFilters";
+import {
+  adminNovelFilterDefs,
+  adminNovelFilterWhere,
+  loadNovelFilterOptions,
+  type FilterParams,
+} from "@/lib/catalogFilters";
+import { getDict } from "@/lib/i18n";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { deleteNovel } from "./actions";
 import FicbookImportButton from "./FicbookImportButton";
@@ -17,20 +25,26 @@ export const dynamic = "force-dynamic";
 export default async function AdminNovelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
 }) {
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
-  const where = q
-    ? {
-        OR: [
-          { title: { contains: q, mode: "insensitive" as const } },
-          { author: { contains: q, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
+  const where = {
+    AND: [
+      q
+        ? {
+            OR: [
+              { title: { contains: q, mode: "insensitive" as const } },
+              { author: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : {},
+      ...adminNovelFilterWhere(sp),
+    ],
+  };
   const [novels, total] = await Promise.all([
     prisma.novel.findMany({
       where,
@@ -57,7 +71,14 @@ export default async function AdminNovelsPage({
         </div>
       </div>
 
-      <NameSearchBox action="/admin/novels" q={q} placeholder="Поиск по названию или автору…" />
+      <NameSearchBox
+        action="/admin/novels"
+        q={q}
+        placeholder="Поиск по названию или автору…"
+        quickKind="novel"
+        className="mb-3"
+      />
+      <AdminFilters defs={adminNovelFilterDefs(getDict("ru"), await loadNovelFilterOptions())} params={sp} />
 
       {novels.length === 0 ? (
         <p className="text-secondary">{q ? "Ничего не найдено." : "Пока нет новелл."}</p>

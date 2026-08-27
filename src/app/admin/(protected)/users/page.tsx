@@ -7,6 +7,12 @@ import PremiumToggle from "./PremiumToggle";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminFilters from "@/components/admin/AdminFilters";
+import {
+  adminUserFilterDefs,
+  adminUserFilterWhere,
+  type FilterParams,
+} from "@/lib/catalogFilters";
 import StatTile from "@/components/StatTile";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
@@ -21,10 +27,11 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string } & FilterParams>;
 }) {
   await requireAdminPage();
-  const { q: rawQ, page: rawPage, sort: rawSort } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage, sort: rawSort } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
   const sortBySeen = rawSort === "seen";
@@ -32,17 +39,22 @@ export default async function AdminUsersPage({
   // Удалённые аккаунты в списке не показываем — они обезличены и войти
   // в них нельзя (см. lib/userDeletion.ts).
   const where = {
-    deletedAt: null,
-    ...(q
-      ? {
-          OR: [
-            { email: { contains: q, mode: "insensitive" as const } },
-            { name: { contains: q, mode: "insensitive" as const } },
-            { username: { contains: q, mode: "insensitive" as const } },
-            { telegramUsername: { contains: q, mode: "insensitive" as const } },
-          ],
-        }
-      : {}),
+    AND: [
+      {
+        deletedAt: null,
+        ...(q
+          ? {
+              OR: [
+                { email: { contains: q, mode: "insensitive" as const } },
+                { name: { contains: q, mode: "insensitive" as const } },
+                { username: { contains: q, mode: "insensitive" as const } },
+                { telegramUsername: { contains: q, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      },
+      ...adminUserFilterWhere(sp),
+    ],
   };
   const now = new Date();
   const activeSince = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -135,7 +147,9 @@ export default async function AdminUsersPage({
         q={q}
         placeholder="Поиск по имени, email, telegram…"
         hiddenFields={sortBySeen ? { sort: "seen" } : undefined}
+        className="mb-3"
       />
+      <AdminFilters defs={adminUserFilterDefs()} params={sp} />
 
       <div className="surface p-3 mb-4">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">

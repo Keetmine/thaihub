@@ -4804,3 +4804,162 @@ body::after {
   font-size: 1.1rem;
   color: rgba(255, 154, 114, 0.45);
 }
+
+/* ---------- Фильтры каталога (поиск + админ-списки) ---------- */
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+/* Админский вариант: группы текут рядом, как строка выпадашек. */
+.filter-panel-bar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.5rem;
+  align-items: flex-start;
+}
+
+.filter-panel-bar .filter-group {
+  min-width: 11rem;
+  max-width: 16rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.filter-group-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bs-secondary-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.filter-group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.18);
+  color: rgb(var(--accent-rgb));
+  font-size: 0.68rem;
+}
+
+/* Длинный список вариантов прокручивается сам, а не растит колонку. */
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.filter-option {
+  margin: 0;
+  padding: 0.1rem 0;
+}
+
+.filter-option .form-check-label {
+  cursor: pointer;
+}
+
+.filter-more {
+  align-self: flex-start;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+/* Колонка фильтров на странице поиска: на широком экране липнет под
+   шапкой, на телефоне страница рисует её внутри <details>. */
+.search-filter-aside {
+  position: sticky;
+  top: 5.5rem;
+  max-height: calc(100vh - 6.5rem);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* Живой поиск в шапке и в админ-списках. */
+.live-search {
+  position: relative;
+}
+
+.live-search-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  min-width: 19rem;
+  z-index: 30;
+  background: var(--bs-secondary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 1rem;
+  box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, 0.45);
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.live-search-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.live-search-hits {
+  display: flex;
+  flex-direction: column;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.live-search-hit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.6rem;
+  text-decoration: none;
+  color: var(--bs-body-color);
+}
+
+.live-search-hit:hover,
+.live-search-hit.active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.live-search-thumb {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bs-tertiary-bg);
+}
+
+.live-search-kind {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--bs-secondary-color);
+  flex-shrink: 0;
+}
+
+/* Панель живого поиска в шапке крепится к правому краю поля: слева от
+   него логотип и ссылки, панели шириной 24rem туда нельзя. */
+.live-search-header .live-search-panel {
+  left: auto;
+  right: 0;
+  width: 24rem;
+  max-width: calc(100vw - 2rem);
+}

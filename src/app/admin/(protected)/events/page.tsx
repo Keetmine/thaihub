@@ -7,6 +7,9 @@ import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminFilters from "@/components/admin/AdminFilters";
+import { adminEventFilterDefs, adminEventFilterWhere, type FilterParams } from "@/lib/catalogFilters";
+import { getDict } from "@/lib/i18n";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 
 export const metadata = { title: "События" };
@@ -16,9 +19,12 @@ export const dynamic = "force-dynamic";
 export default async function AdminEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; tab?: string; sort?: string; issue?: string }>;
+  searchParams: Promise<
+    { q?: string; page?: string; tab?: string; sort?: string; issue?: string } & FilterParams
+  >;
 }) {
-  const { q: rawQ, tab: rawTab, sort: rawSort, issue, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, tab: rawTab, sort: rawSort, issue, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   // «Текущие» — события с будущими датами, «Архив» — целиком прошедшие.
   const isArchive = rawTab === "archive";
@@ -34,10 +40,16 @@ export default async function AdminEventsPage({
   // relation-агрегатам умеет только _count), поэтому первый проход —
   // лёгкий (id, createdAt и только даты выступлений), фильтр по вкладке
   // и сортировка в JS; второй — полные данные лишь для страницы из 30.
+  const filterWhere = adminEventFilterWhere(sp);
   const eventsLight = await prisma.event.findMany({
     where: {
-      ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
-      ...(issue === "no-lineup" ? { performers: { none: {} } } : {}),
+      AND: [
+        {
+          ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
+          ...(issue === "no-lineup" ? { performers: { none: {} } } : {}),
+        },
+        ...filterWhere,
+      ],
     },
     select: {
       id: true,
@@ -152,9 +164,12 @@ export default async function AdminEventsPage({
               ...(sortByAdded ? { sort: "added" } : {}),
             }}
             className=""
+            quickKind="event"
           />
         </div>
       </div>
+
+      <AdminFilters defs={adminEventFilterDefs(getDict("ru"))} params={sp} />
 
       {events.length === 0 ? (
         <p className="text-secondary">

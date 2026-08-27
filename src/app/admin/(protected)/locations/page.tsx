@@ -4,6 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { deleteLocation } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminFilters from "@/components/admin/AdminFilters";
+import {
+  adminLocationFilterDefs,
+  adminLocationFilterWhere,
+  type FilterParams,
+} from "@/lib/catalogFilters";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
@@ -17,16 +23,26 @@ export const dynamic = "force-dynamic";
 export default async function AdminLocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
 }) {
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
 
   // Пользовательские места (createdByUserId) — не часть каталога.
+  // «Чьи» из фильтра важнее зашитого «только каталожные»: раньше
+  // пользовательские места из этого списка было не увидеть вовсе.
+  const filterWhere = adminLocationFilterWhere(sp);
+  const hasWhose = typeof sp.whose === "string" && sp.whose !== "";
   const where = {
-    createdByUserId: null,
-    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+    AND: [
+      {
+        ...(hasWhose ? {} : { createdByUserId: null }),
+        ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+      },
+      ...filterWhere,
+    ],
   };
   const [locations, total] = await Promise.all([
     prisma.location.findMany({
@@ -52,7 +68,14 @@ export default async function AdminLocationsPage({
         </Link>
       </div>
 
-      <NameSearchBox action="/admin/locations" q={q} placeholder="Поиск по названию…" />
+      <NameSearchBox
+        action="/admin/locations"
+        q={q}
+        placeholder="Поиск по названию…"
+        quickKind="location"
+        className="mb-3"
+      />
+      <AdminFilters defs={adminLocationFilterDefs()} params={sp} />
 
       {locations.length === 0 ? (
         <p className="text-secondary">

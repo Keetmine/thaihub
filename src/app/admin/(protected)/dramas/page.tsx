@@ -8,6 +8,14 @@ import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { dramaTitleWhere } from "@/lib/searchWhere";
+import AdminFilters from "@/components/admin/AdminFilters";
+import {
+  adminDramaFilterDefs,
+  adminDramaFilterWhere,
+  loadDramaFilterOptions,
+  type FilterParams,
+} from "@/lib/catalogFilters";
+import { getDict } from "@/lib/i18n";
 import BulkList from "@/components/admin/BulkList";
 import {
   bulkDelete,
@@ -47,9 +55,10 @@ function airWhere(tab: AirTab, now: Date) {
 export default async function AdminDramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; tab?: string; issue?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; tab?: string; issue?: string } & FilterParams>;
 }) {
-  const { q: rawQ, page: rawPage, tab: rawTab, issue } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage, tab: rawTab, issue } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
   const tab: AirTab = (AIR_TABS.find((t) => t.key === rawTab)?.key ??
@@ -64,7 +73,15 @@ export default async function AdminDramasPage({
       : issue === "no-cast"
         ? { performers: { none: {} } }
         : {};
-  const where = { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(tab, now), ...issueWhere };
+  // Вкладки эфира остаются быстрыми пресетами, фильтры (И6) складываются
+  // с ними через AND: «выходящие + без постера + GMMTV» — законный срез.
+  const filterWhere = adminDramaFilterWhere(sp);
+  const where = {
+    AND: [
+      { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(tab, now), ...issueWhere },
+      ...filterWhere,
+    ],
+  };
   const [dramas, total, tabCounts, agencies] = await Promise.all([
     prisma.drama.findMany({
       where,
@@ -77,7 +94,9 @@ export default async function AdminDramasPage({
     Promise.all(
       AIR_TABS.map((t) =>
         prisma.drama.count({
-          where: { ...(q ? dramaTitleWhere(q) : {}), ...airWhere(t.key, now) },
+          where: {
+            AND: [{ ...(q ? dramaTitleWhere(q) : {}), ...airWhere(t.key, now) }, ...filterWhere],
+          },
         }),
       ),
     ),
@@ -124,8 +143,11 @@ export default async function AdminDramasPage({
           placeholder="Поиск по названию…"
           hiddenFields={tab !== "all" ? { tab } : undefined}
           className=""
+          quickKind="drama"
         />
       </div>
+
+      <AdminFilters defs={adminDramaFilterDefs(getDict("ru"), await loadDramaFilterOptions())} params={sp} />
 
       {issue && (
         <p className="small text-secondary mb-3">
