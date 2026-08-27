@@ -17,11 +17,11 @@ export const dynamic = "force-dynamic";
 const getCatalogSlugs = unstable_cache(
   async () =>
     Promise.all([
-      prisma.drama.findMany({ select: { slug: true, id: true, updatedAt: true }, where: { slug: { not: null } } }),
-      prisma.performer.findMany({ select: { slug: true, id: true, updatedAt: true }, where: { slug: { not: null } } }),
-      prisma.novel.findMany({ select: { slug: true, id: true, updatedAt: true }, where: { slug: { not: null } } }),
+      prisma.drama.findMany({ select: { slug: true, id: true }, where: { slug: { not: null } } }),
+      prisma.performer.findMany({ select: { slug: true, id: true }, where: { slug: { not: null } } }),
+      prisma.novel.findMany({ select: { slug: true, id: true }, where: { slug: { not: null } } }),
       prisma.location.findMany({ select: { slug: true, id: true }, where: { slug: { not: null }, createdByUserId: null } }),
-      prisma.agency.findMany({ select: { slug: true, id: true, updatedAt: true }, where: { slug: { not: null } } }),
+      prisma.agency.findMany({ select: { slug: true, id: true }, where: { slug: { not: null } } }),
       prisma.wikiArticle.findMany({ select: { slug: true, id: true, updatedAt: true }, where: { published: true } }),
     ]),
   ["sitemap-catalog"],
@@ -37,6 +37,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // каждой записи проставлены alternates: так поисковик видит, что это
   // две версии одной страницы, а не дубли. Английский живёт на путях
   // без префикса, русский — под /ru (см. docs/features/i18n.md).
+  //
+  // У карточек каталога даты нет намеренно.
+  //
+  // `updatedAt` — это `@updatedAt`: Prisma освежает его на КАЖДОМ
+  // UPDATE, даже когда записаны те же самые значения. Массовый прогон
+  // синхронизации проходит по всему каталогу — и дата у тысяч страниц
+  // становится сегодняшней, хотя для читателя не изменилось ничего.
+  // Поисковику мы таким образом сообщали о правке, которой не было, а
+  // он показывал её в выдаче: «Victor (Chatchawit Techarukpong) —
+  // MyBLHub. 5 дней назад — …».
+  //
+  // Указания «не показывай дату» у поисковиков нет: дату убирают, убрав
+  // сигналы, из которых она берётся. На карточках их больше нет —
+  // ни в JSON-LD (Person/TVSeries без dateModified), ни в мете, ни в
+  // тексте, — так что sitemap оставался единственным.
+  //
+  // У вики дата осталась: там правки живые, человеческие, и «обновлено»
+  // читателю действительно что-то говорит.
   const entry = (path: string, lastModified?: Date): MetadataRoute.Sitemap => {
     const languages = Object.fromEntries(
       LOCALES.map((l) => [l, `${SITE_URL}${localeHref(path, l)}`]),
@@ -56,11 +74,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...entry("/novels"),
     ...entry("/locations"),
     ...entry("/wiki"),
-    ...dramas.flatMap((d) => entry(`/dramas/${d.slug}`, d.updatedAt)),
-    ...performers.flatMap((p) => entry(`/artists/${p.slug}`, p.updatedAt)),
-    ...novels.flatMap((n) => entry(`/novels/${n.slug}`, n.updatedAt)),
+    ...dramas.flatMap((d) => entry(`/dramas/${d.slug}`)),
+    ...performers.flatMap((p) => entry(`/artists/${p.slug}`)),
+    ...novels.flatMap((n) => entry(`/novels/${n.slug}`)),
     ...locations.flatMap((l) => entry(`/locations/${l.slug}`)),
-    ...agencies.flatMap((a) => entry(`/agencies/${a.slug}`, a.updatedAt)),
+    ...agencies.flatMap((a) => entry(`/agencies/${a.slug}`)),
     ...wiki.flatMap((w) => entry(`/wiki/${w.slug ?? w.id}`, w.updatedAt)),
   ];
 }
