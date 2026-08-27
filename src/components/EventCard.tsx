@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import AppLink from "@/components/AppLink";
 import { formatTime, shortMonthName, shortWeekdayName } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
@@ -21,6 +22,7 @@ export default function EventCard({
   isFavorited = false,
   isGoing = false,
   friendsGoing = [],
+  hideDate = false,
 }: {
   /** Прикреплённый билет текущего юзера (показывается 🎫-кнопкой). */
   ticketUrl?: string | null;
@@ -28,10 +30,28 @@ export default function EventCard({
   isFavorited?: boolean;
   isGoing?: boolean;
   friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
+  /** Второе и следующие события одного дня: число уже стоит строкой
+   *  выше, повторять его незачем. Место при этом сохраняется — иначе
+   *  постеры соседних строк разъехались бы по горизонтали. */
+  hideDate?: boolean;
 }) {
   const t = useT();
   const locale = useLocale();
   const d = event.startsAt;
+  // Постер бывает битым: файл переехал, источник его удалил. Буквенный
+  // фолбэк раньше срабатывал, только когда постера не было вовсе, — и
+  // на месте пропавшего оставалась пустая рамка.
+  //
+  // Одного onError мало: разметка приходит с сервера, браузер начинает
+  // грузить картинку сразу, и ошибка успевает случиться ДО гидратации —
+  // React к тому моменту обработчик ещё не повесил и события не видит.
+  // Поэтому при монтировании ещё и спрашиваем саму картинку: загрузка
+  // завершилась (complete), а ширины нет (naturalWidth === 0) — значит
+  // не вышло.
+  const [posterFailed, setPosterFailed] = useState(false);
+  const checkPoster = useCallback((node: HTMLImageElement | null) => {
+    if (node?.complete && node.naturalWidth === 0) setPosterFailed(true);
+  }, []);
 
   return (
     <div className="event-card">
@@ -41,15 +61,26 @@ export default function EventCard({
       </div>
 
       <div className="event-card-date">
-        <span className="event-card-day">{d.getDate()}</span>
-        <span className="event-card-month">{shortMonthName(d, locale)}</span>
-        <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
+        {!hideDate && (
+          <>
+            <span className="event-card-day">{d.getDate()}</span>
+            <span className="event-card-month">{shortMonthName(d, locale)}</span>
+            <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
+          </>
+        )}
       </div>
 
       <AppLink href={eventHref(event)} className="event-card-poster flex-shrink-0">
-        {event.posterUrl ? (
+        {event.posterUrl && !posterFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={event.posterUrl} alt="" loading="lazy" decoding="async" />
+          <img
+            ref={checkPoster}
+            src={event.posterUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={() => setPosterFailed(true)}
+          />
         ) : (
           /* Без постера — та же геометрия с первой буквой: карточки не
              прыгают по выравниванию. */
