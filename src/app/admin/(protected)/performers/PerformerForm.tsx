@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import FileDropzone from "@/components/FileDropzone";
@@ -122,6 +122,16 @@ export default function PerformerForm({
 
   const formRef = useRef<HTMLFormElement>(null);
   const { dirty } = useUnsavedGuard(formRef);
+  // Какой раздел уходит на сервер. Пишем прямо в DOM, а не через
+  // состояние: onClick срабатывает до отправки формы синхронно, а
+  // setState к моменту submit мог бы ещё не примениться.
+  const scopeRef = useRef<HTMLInputElement>(null);
+  const setScope = useCallback(
+    (scope: "all" | "general" | "dramas" | "events") => () => {
+      if (scopeRef.current) scopeRef.current.value = scope;
+    },
+    [],
+  );
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
   /** Правки всех вкладок сохраняются одной кнопкой — при уходе на
@@ -212,6 +222,9 @@ export default function PerformerForm({
         className="d-flex flex-column gap-3"
         style={{ display: activeExtra ? "none" : undefined }}
       >
+      {/* Раздел, который сохраняем. При создании — всё сразу: записи
+          ещё нет, и делить нечего. */}
+      <input type="hidden" name="scope" ref={scopeRef} defaultValue="all" />
 
       {/* Every tab stays mounted (display:none when inactive) so uncontrolled
           fields like FileDropzone/EntitySelect don't lose their state when
@@ -640,6 +653,17 @@ export default function PerformerForm({
               return { id: created.id, name: created.title, photoUrl: created.posterUrl };
             }}
           />
+          {!isCreating && (
+            <div className="admin-form-actions">
+              <SubmitButton
+                label="Сохранить сериалы"
+                busyLabel="Сохранение…"
+                className="btn btn-primary"
+                onClick={setScope("dramas")}
+              />
+              <span className="small text-secondary">Сохраняется только эта вкладка.</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -657,6 +681,17 @@ export default function PerformerForm({
         <QuickCreateEventButton
           onCreated={(event) => setCreatedEvents((prev) => [...prev, event])}
         />
+        {!isCreating && (
+          <div className="admin-form-actions">
+            <SubmitButton
+              label="Сохранить евенты"
+              busyLabel="Сохранение…"
+              className="btn btn-primary"
+              onClick={setScope("events")}
+            />
+            <span className="small text-secondary">Сохраняется только эта вкладка.</span>
+          </div>
+        )}
       </div>
 
       {type === "SOLO" && (
@@ -702,12 +737,22 @@ export default function PerformerForm({
         </div>
       )}
 
-      <div className="admin-form-actions">
-        <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
+      <div
+        className="admin-form-actions"
+        style={{ display: isCreating || effectiveTab === "general" ? undefined : "none" }}
+      >
+        <SubmitButton
+          label={submitLabel}
+          busyLabel="Сохранение…"
+          className="btn btn-primary"
+          onClick={setScope(isCreating ? "all" : "general")}
+        />
         <span className="small text-secondary">
           {dirty
             ? "● Есть несохранённые изменения — они пропадут, если уйти со страницы."
-            : "Изменения всех вкладок сохраняются вместе."}
+            : isCreating
+              ? "Всё, что заполнено на вкладках, сохранится вместе."
+              : "Сериалы и евенты сохраняются своими кнопками на их вкладках."}
         </span>
       </div>
       </form>

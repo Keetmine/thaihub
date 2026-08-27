@@ -357,8 +357,31 @@ export async function createPerformer(formData: FormData) {
   redirect(`/admin/performers/${performer.id}/edit`);
 }
 
+/**
+ * Какой раздел формы прислали. Вкладки формы исполнителя сохраняются
+ * порознь, и правка одной не должна трогать остальные.
+ *
+ * Это не косметика: обновление сносит связи `deleteMany` и создаёт их
+ * заново из присланного. Пока сохранялось всё разом, это было
+ * безобидно — а с раздельными кнопками сохранение вкладки «Евенты»
+ * стёрло бы и сериалы, и агентства, и ссылки. Поэтому раздел решает не
+ * только что записать, но и что удалять.
+ *
+ * «all» — создание записи и любой старый вызов без пометки.
+ */
+type SaveScope = "all" | "general" | "dramas" | "events";
+
+function parseScope(formData: FormData): SaveScope {
+  const raw = String(formData.get("scope") ?? "all");
+  return raw === "general" || raw === "dramas" || raw === "events" ? raw : "all";
+}
+
 export async function updatePerformer(id: string, formData: FormData) {
   await requireCatalogEditor();
+  const scope = parseScope(formData);
+  const saveGeneral = scope === "all" || scope === "general";
+  const saveDramas = scope === "all" || scope === "dramas";
+  const saveEvents = scope === "all" || scope === "events";
   const name = String(formData.get("name") ?? "").trim();
   const type = parseType(String(formData.get("type") ?? "SOLO"));
   const realName = String(formData.get("realName") ?? "").trim();
@@ -377,7 +400,7 @@ export async function updatePerformer(id: string, formData: FormData) {
   const dramaIds = type === "SOLO" ? getDramaIds(formData) : [];
   const eventIds = getEventIds(formData);
 
-  if (!name) throw new Error("Укажите имя исполнителя или группы");
+  if (saveGeneral && !name) throw new Error("Укажите имя исполнителя или группы");
 
   // Снимок до правки: история сравнивает его с тем, что ушло в update
   // (см. src/lib/audit.ts). Связи (агентства) берём отдельным списком id.
@@ -386,52 +409,75 @@ export async function updatePerformer(id: string, formData: FormData) {
     include: { agencies: { select: { agencyId: true } } },
   });
 
+  // Вид записи решает, куда идут участники, сериалы и место рождения. С
+  // вкладки «Евенты» поля вида не приходит, поэтому берём его из базы:
+  // она тут источник правды, а не форма.
+  const effectiveType = saveGeneral ? type : (before?.type ?? type);
+
   await prisma.$transaction([
-    prisma.performerLink.deleteMany({ where: { performerId: id } }),
-    prisma.bandMember.deleteMany({ where: { bandId: id } }),
-    prisma.performerDrama.deleteMany({ where: { performerId: id } }),
-    prisma.mascotOwner.deleteMany({ where: { mascotId: id } }),
-    prisma.eventPerformer.deleteMany({ where: { performerId: id } }),
-    prisma.performerAgency.deleteMany({ where: { performerId: id } }),
+    // Удаляем ровно то, что тут же создадим заново: чужие вкладки не
+    // трогаем.
+    ...(saveGeneral
+      ? [
+          prisma.performerLink.deleteMany({ where: { performerId: id } }),
+          prisma.bandMember.deleteMany({ where: { bandId: id } }),
+          prisma.mascotOwner.deleteMany({ where: { mascotId: id } }),
+          prisma.performerAgency.deleteMany({ where: { performerId: id } }),
+        ]
+      : []),
+    ...(saveDramas ? [prisma.performerDrama.deleteMany({ where: { performerId: id } })] : []),
+    ...(saveEvents ? [prisma.eventPerformer.deleteMany({ where: { performerId: id } })] : []),
     prisma.performer.update({
       where: { id },
       data: {
-        name,
-        type,
-        realName: realName || null,
-        musicAlias: musicAlias || null,
-        alsoKnownAs: alsoKnownAs || null,
-        nationality: nationality || null,
-        gender: gender || null,
-        birthDate: type !== "BAND" ? birthDate : null,
-        placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
-        bio: bio || null,
-        photoUrl: photoUrl || null,
-        mydramalistUrl: mydramalistUrl || null,
-        ...getMusicProfileFields(formData),
-        links: {
-          create: links.map((l) => ({ label: l.label, url: l.url })),
-        },
-        bandMembers: {
-          create: memberIds.map((performerId) => ({ performerId })),
-        },
-        mascotOwners: {
-          create: type === "MASCOT" ? getMascotOwnerData(formData) : [],
-        },
-        dramas: {
-          create: dramaIds.map((dramaId) => ({ dramaId })),
-        },
-        events: {
-          create: eventIds.map((eventId) => ({ eventId })),
-        },
-        agencies: {
-          create: agencyIds.map((agencyId) => ({ agencyId })),
-        },
+        ...(saveGeneral
+          ? {
+              name,
+              type,
+              realName: realName || null,
+              musicAlias: musicAlias || null,
+              alsoKnownAs: alsoKnownAs || null,
+              nationality: nationality || null,
+              gender: gender || null,
+              birthDate: type !== "BAND" ? birthDate : null,
+              placeOfBirth: type === "SOLO" ? placeOfBirth || null : null,
+              bio: bio || null,
+              photoUrl: photoUrl || null,
+              mydramalistUrl: mydramalistUrl || null,
+              ...getMusicProfileFields(formData),
+              links: {
+                create: links.map((l) => ({ label: l.label, url: l.url })),
+              },
+              bandMembers: {
+                create: memberIds.map((performerId) => ({ performerId })),
+              },
+              mascotOwners: {
+                create: effectiveType === "MASCOT" ? getMascotOwnerData(formData) : [],
+              },
+              agencies: {
+                create: agencyIds.map((agencyId) => ({ agencyId })),
+              },
+            }
+          : {}),
+        ...(saveDramas
+          ? {
+              dramas: {
+                create: (effectiveType === "SOLO" ? dramaIds : []).map((dramaId) => ({ dramaId })),
+              },
+            }
+          : {}),
+        ...(saveEvents
+          ? {
+              events: {
+                create: eventIds.map((eventId) => ({ eventId })),
+              },
+            }
+          : {}),
       },
     }),
   ]);
 
-  if (before) {
+  if (before && saveGeneral) {
     await logAudit({
       action: "UPDATE",
       entityType: "Performer",
@@ -470,6 +516,10 @@ export async function updatePerformer(id: string, formData: FormData) {
   revalidatePath("/artists");
   revalidatePath(`/performers/${id}`);
   revalidatePath("/");
-  redirect("/admin/performers");
+  // Сохранение отдельной вкладки оставляет на странице: увели бы в
+  // список — и «сохранить сериалы, потом евенты» превратилось бы в два
+  // захода с возвратом. Профиль по-прежнему уводит: там сохранение —
+  // конец правки записи.
+  if (saveGeneral) redirect("/admin/performers");
 }
 

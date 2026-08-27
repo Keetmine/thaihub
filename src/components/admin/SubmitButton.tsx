@@ -13,6 +13,7 @@ export default function SubmitButton({
   className = "btn btn-primary btn-sm",
   disabled = false,
   formAction,
+  onClick,
   title,
   ariaLabel,
 }: {
@@ -23,6 +24,9 @@ export default function SubmitButton({
   disabled?: boolean;
   /** Для форм с несколькими submit-кнопками (formAction переопределяет action). */
   formAction?: (formData: FormData) => void | Promise<void>;
+  /** Срабатывает ДО отправки — форма успевает узнать, какой кнопкой её
+   *  отправили (например, какой раздел сохраняем). */
+  onClick?: () => void;
   title?: string;
   /** Когда label — значок («✓»), скринридеру он ничего не говорит:
    *  здесь лежит человеческая подпись кнопки. */
@@ -36,6 +40,7 @@ export default function SubmitButton({
       className={className}
       disabled={pending || disabled}
       formAction={formAction}
+      onClick={onClick}
       title={title ?? ariaLabel}
       aria-label={ariaLabel}
     >
