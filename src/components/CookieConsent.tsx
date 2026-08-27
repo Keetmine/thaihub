@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import AppLink from "@/components/AppLink";
 import { useT } from "@/components/LocaleProvider";
 import Analytics from "@/components/Analytics";
@@ -43,6 +44,12 @@ export default function CookieConsent({
   gaId: string | null;
 }) {
   const t = useT();
+  const pathname = usePathname();
+  // В админке ни счётчиков, ни баннера. Считать там нечего — это
+  // рабочий инструмент владельца, а не аудитория сайта: собственные
+  // заходы разбавляли бы статистику, а внешние сервисы получали бы
+  // адреса служебных страниц и id записей из них.
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const stored = useSyncExternalStore(noopSubscribe, clientSnapshot, serverSnapshot);
   // Выбор, сделанный прямо сейчас, — приоритетнее снимка куки.
   const [decided, setDecided] = useState<"all" | "necessary" | null>(null);
@@ -52,6 +59,8 @@ export default function CookieConsent({
     document.cookie = `${CONSENT_COOKIE}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
     setDecided(value);
   }
+
+  if (isAdmin) return null;
 
   return (
     <>

@@ -62,6 +62,7 @@ TELEGRAM_BOT_USERNAME=myblhub_bot
 TELEGRAM_WEBHOOK_SECRET=<длинный случайный>
 TMDB_API_READ_ACCESS_TOKEN=...
 YANDEX_METRIKA_ID=...       # номер счётчика Метрики (без него не грузится)
+                            # счётчики НЕ работают в /admin — см. features/seo.md
 GTM_ID=GTM-XXXXXXX          # контейнер Google Tag Manager (без него не грузится)
 GA_MEASUREMENT_ID=G-XXXXXXX # Google Analytics 4 (без него не грузится)
 SENTRY_DSN=...              # серверные ошибки; без него SDK молчит
