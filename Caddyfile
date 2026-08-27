@@ -3,7 +3,22 @@
 # DOMAIN=localhost работает как обычный локальный reverse-proxy c
 # самоподписанным сертификатом.
 {$DOMAIN} {
-	encode gzip zstd
+	# Сжимаем только то, что от сжатия выигрывает. Webp, jpeg и png уже
+	# сжаты внутри себя: gzip поверх них тратит процессор и почти ничего
+	# не отыгрывает. У Caddy есть свой список по умолчанию, но он от
+	# версии к версии менялся — перечисляем явно, чтобы поведение не
+	# зависело от того, какой образ подтянулся.
+	encode {
+		gzip
+		zstd
+		match {
+			header Content-Type text/*
+			header Content-Type application/json*
+			header Content-Type application/javascript*
+			header Content-Type application/manifest+json*
+			header Content-Type image/svg+xml*
+		}
+	}
 
 	# Билеты переехали в приватное хранилище (/files/… через приложение,
 	# scripts/migrate-private-uploads.ts) — старый публичный путь глушим
