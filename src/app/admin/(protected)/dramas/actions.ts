@@ -38,6 +38,23 @@ const DRAMA_STATUSES = new Set([
 ]);
 
 /** Общие поля формы сериала (create и update) — включая MDL-детали. */
+/**
+ * Адрес на dorama.land уникален: одна их страница — один наш сериал.
+ * Без этой проверки повторная вставка ронялась бы сырым P2002 прямо в
+ * лицо — а причина («эта ссылка уже стоит у другого сериала») из него
+ * не читается.
+ */
+async function assertDoramalandUrlFree(url: string | null, selfId?: string) {
+  if (!url) return;
+  const taken = await prisma.drama.findFirst({
+    where: { doramalandUrl: url, ...(selfId ? { id: { not: selfId } } : {}) },
+    select: { title: true },
+  });
+  if (taken) {
+    throw new Error(`Эта ссылка на dorama.land уже стоит у сериала «${taken.title}»`);
+  }
+}
+
 function getDramaDetailFields(formData: FormData) {
   const str = (f: string) => String(formData.get(f) ?? "").trim();
   const num = (f: string) => {
@@ -50,6 +67,11 @@ function getDramaDetailFields(formData: FormData) {
   return {
     nativeTitle: str("nativeTitle") || null,
     alsoKnownAs: str("alsoKnownAs") || null,
+    // Русские тексты (dorama.land): их набивает импорт, но править
+    // должно быть можно и руками — парсер ошибается.
+    titleRu: str("titleRu") || null,
+    synopsisRu: str("synopsisRu") || null,
+    doramalandUrl: str("doramalandUrl") || null,
     director: str("director") || null,
     screenwriter: str("screenwriter") || null,
     genres: getCsv(formData, "genres"),
@@ -165,6 +187,7 @@ export async function createDrama(formData: FormData) {
   if (!title) {
     throw new Error("Укажите название сериала");
   }
+  await assertDoramalandUrlFree(String(formData.get("doramalandUrl") ?? "").trim() || null);
 
   const created = await prisma.drama.create({
     data: {
@@ -212,6 +235,10 @@ export async function updateDrama(id: string, formData: FormData) {
   if (!title) {
     throw new Error("Укажите название сериала");
   }
+  await assertDoramalandUrlFree(
+    String(formData.get("doramalandUrl") ?? "").trim() || null,
+    id,
+  );
 
   const before = await prisma.drama.findUnique({
     where: { id },
@@ -266,6 +293,8 @@ export async function updateDrama(id: string, formData: FormData) {
           "title", "year", "posterUrl", "synopsis", "mydramalistUrl", "novelId",
           "agencyIds", "status", "network", "episodes", "nativeTitle", "director",
           "screenwriter", "genres", "tags", "duration", "contentRating",
+          // Без них правка русского названия не оставляла бы следа в истории.
+          "titleRu", "synopsisRu", "doramalandUrl",
         ],
       ),
     });

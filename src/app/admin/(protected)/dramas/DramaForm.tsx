@@ -77,6 +77,9 @@ export default function DramaForm({
     cast: CastEntry[];
     nativeTitle: string;
     alsoKnownAs: string;
+    titleRu: string;
+    synopsisRu: string;
+    doramalandUrl: string;
     director: string;
     screenwriter: string;
     genres: string;
@@ -231,6 +234,59 @@ export default function DramaForm({
         </div>
       </div>
 
+      </FormSection>
+
+      {/* Русские тексты — своей секцией: их набивает парсер
+          dorama.land, и когда он ошибся (взял чужое описание, опечатка
+          в названии), поправить это должно быть можно здесь, а не в
+          базе. См. features/doramaland-import.md. */}
+      <FormSection
+        title="Русские название и описание"
+        hint="показываются на /ru; заполняются импортом с dorama.land, правятся руками"
+      >
+      <div className="row g-3">
+        <div className="col-12 col-md-6">
+          <label className="form-label" htmlFor="drama-form-titleRu">Название по-русски</label>
+          <input
+            id="drama-form-titleRu"
+            name="titleRu"
+            defaultValue={v?.titleRu}
+            placeholder="Пусто — на /ru покажем английское"
+            className="form-control"
+          />
+        </div>
+        <div className="col-12 col-md-6">
+          <label className="form-label" htmlFor="drama-form-doramalandUrl">Страница на dorama.land</label>
+          <input
+            id="drama-form-doramalandUrl"
+            name="doramalandUrl"
+            defaultValue={v?.doramalandUrl}
+            placeholder="https://dorama.land/…"
+            className="form-control"
+          />
+          {v?.doramalandUrl && (
+            <a
+              href={v.doramalandUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="small"
+            >
+              Открыть источник ↗
+            </a>
+          )}
+        </div>
+        <div className="col-12">
+          <label className="form-label" htmlFor="drama-form-synopsisRu">Описание по-русски</label>
+          <textarea
+            id="drama-form-synopsisRu"
+            name="synopsisRu"
+            rows={5}
+            defaultValue={v?.synopsisRu}
+            placeholder="Пусто — на /ru покажем английское"
+            className="form-control"
+          />
+        </div>
+      </div>
       </FormSection>
 
       <FormSection title="Названия и авторы" hint="данные из MyDramaList">

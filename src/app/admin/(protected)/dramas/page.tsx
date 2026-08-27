@@ -192,6 +192,12 @@ export default async function AdminDramasPage({
                           {d.title}
                         </span>
                       </Link>
+                      {/* Русское название подстрокой: видно сразу, у кого
+                          перевода нет (фильтр «Нет ру перевода» — про то
+                          же, но списком). */}
+                      {d.titleRu && (
+                        <span className="small text-secondary d-block">{d.titleRu}</span>
+                      )}
                       <p className="small text-secondary mb-0">
                         {d.year ?? "—"} · {d._count.performers} в актёрском
                         составе
