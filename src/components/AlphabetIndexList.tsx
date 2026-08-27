@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { getT } from "@/lib/i18n";
+import AlphabetRail from "./AlphabetRail";
 import LazyList from "./LazyList";
 
 type NamedItem = { id: string; name: string };
@@ -11,10 +12,6 @@ function firstLetterOf(name: string): string {
   return ch.toUpperCase();
 }
 
-function categoryOf(key: string): "digit" | "en" | "ru" {
-  if (key === "0-9") return "digit";
-  return /[A-Z]/.test(key) ? "en" : "ru";
-}
 
 /** Groups items by first letter (digits collapse into "0-9") and renders a
  *  scrollable A-Z index on the right, matching the /performers list.
@@ -84,40 +81,17 @@ export default async function AlphabetIndexList<T extends NamedItem>({
         )}
       </div>
 
-      <nav className="performers-index" aria-label={t.catalog.letterIndex}>
-        {indexLetters.map((letter, i) => {
-          const prevCategory = i > 0 ? categoryOf(indexLetters[i - 1]) : null;
-          const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);
-          return (
-            <Fragment key={letter}>
-              {showSeparator && (
-                <span className="performers-index-sep" aria-hidden="true">
-                  •
-                </span>
-              )}
-              <a href={`#letter-${letter}`} className="performers-index-link">
-                {letter}
-              </a>
-            </Fragment>
-          );
-        })}
-        {trailingSection && (
-          <>
-            {indexLetters.length > 0 && (
-              <span className="performers-index-sep" aria-hidden="true">
-                •
-              </span>
-            )}
-            <a
-              href="#trailing-section"
-              className="performers-index-link"
-              aria-label={trailingSection.indexAriaLabel}
-            >
-              {trailingSection.indexLabel}
-            </a>
-          </>
-        )}
-      </nav>
+      <AlphabetRail
+        letters={indexLetters}
+        ariaLabel={t.catalog.letterIndex}
+        trailing={
+          trailingSection && {
+            href: "#trailing-section",
+            label: trailingSection.indexLabel,
+            ariaLabel: trailingSection.indexAriaLabel,
+          }
+        }
+      />
     </div>
   );
 }

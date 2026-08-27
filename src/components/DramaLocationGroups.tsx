@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import AlphabetRail from "./AlphabetRail";
 import AppLink from "@/components/AppLink";
 import { useT } from "@/components/LocaleProvider";
 import EmptyState from "@/components/EmptyState";
@@ -144,23 +145,16 @@ export default function DramaLocationGroups({
         )}
       </div>
 
-      <nav className="performers-index" aria-label={t.catalog.letterIndex}>
-        {letters.map((letter) => (
-          <a
-            key={letter}
-            href={`#letter-${letter}`}
-            className="performers-index-link"
-            onClick={() => {
-              // Группы этой буквы могут быть ещё не отрисованы — раскрываем
-              // список до неё, иначе якорь ведёт в пустоту.
-              const idx = firstIndexOfLetter.get(letter) ?? 0;
-              if (idx + 1 > visible) setVisible(idx + batch);
-            }}
-          >
-            {letter}
-          </a>
-        ))}
-      </nav>
+      <AlphabetRail
+        letters={letters}
+        ariaLabel={t.catalog.letterIndex}
+        onLetter={(letter) => {
+          // Группы этой буквы могут быть ещё не отрисованы — раскрываем
+          // список до неё, иначе якорь ведёт в пустоту.
+          const idx = firstIndexOfLetter.get(letter) ?? 0;
+          if (idx + 1 > visible) setVisible(idx + batch);
+        }}
+      />
     </div>
   );
 }

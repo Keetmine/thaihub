@@ -4,6 +4,7 @@ import UploadImage from "@/components/UploadImage";
 import { useEffect, useRef, useState } from "react";
 import AppLink from "@/components/AppLink";
 import { useT } from "@/components/LocaleProvider";
+import AlphabetRail from "./AlphabetRail";
 import VisitedButton from "@/components/VisitedButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import AddToListButton from "@/components/AddToListButton";
@@ -31,10 +32,6 @@ function firstLetterOf(name: string): string {
   return ch.toUpperCase();
 }
 
-function categoryOf(key: string): "digit" | "en" | "ru" {
-  if (key === "0-9") return "digit";
-  return /[A-Z]/.test(key) ? "en" : "ru";
-}
 
 /**
  * Алфавитный список, который получает ДАННЫЕ, а не готовую разметку.
@@ -287,48 +284,25 @@ export default function AlphabetDataList({
         )}
       </div>
 
-      <nav className="performers-index" aria-label={t.catalog.letterIndex}>
-        {pinnedRows.length > 0 && (
-          <>
-            <a
-              href={`#${pinned!.id ?? "pinned"}`}
-              className="performers-index-link"
-              aria-label={pinned!.indexAriaLabel}
-              title={pinned!.indexAriaLabel}
-            >
-              {pinned!.indexLabel}
-            </a>
-            <span className="performers-index-sep" aria-hidden="true">
-              •
-            </span>
-          </>
-        )}
-        {letters.map((letter, i) => {
-          const prevCategory = i > 0 ? categoryOf(letters[i - 1]) : null;
-          const showSeparator = prevCategory !== null && prevCategory !== categoryOf(letter);
-          return (
-            <span key={letter}>
-              {showSeparator && (
-                <span className="performers-index-sep" aria-hidden="true">
-                  •
-                </span>
-              )}
-              <a
-                href={`#letter-${letter}`}
-                className="performers-index-link"
-                onClick={() => {
-                  // Буква может быть ещё не отрисована — раскрываем список
-                  // до неё, иначе якорь никуда не ведёт.
-                  const upTo = letters.slice(0, i + 1).reduce((n, l) => n + groups.get(l)!.length, 0);
-                  if (upTo > visible) setVisible(upTo);
-                }}
-              >
-                {letter}
-              </a>
-            </span>
-          );
-        })}
-      </nav>
+      <AlphabetRail
+        letters={letters}
+        ariaLabel={t.catalog.letterIndex}
+        pinned={
+          pinnedRows.length > 0
+            ? {
+                href: `#${pinned!.id ?? "pinned"}`,
+                label: pinned!.indexLabel,
+                ariaLabel: pinned!.indexAriaLabel,
+              }
+            : undefined
+        }
+        onLetter={(letter, i) => {
+          // Буква может быть ещё не отрисована — раскрываем список
+          // до неё, иначе якорь никуда не ведёт.
+          const upTo = letters.slice(0, i + 1).reduce((n, l) => n + groups.get(l)!.length, 0);
+          if (upTo > visible) setVisible(upTo);
+        }}
+      />
     </div>
   );
 }
