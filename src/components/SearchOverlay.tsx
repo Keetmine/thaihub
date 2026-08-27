@@ -1,25 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import AppLink from "@/components/AppLink";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { localeHref } from "@/lib/i18n/config";
+import { SearchIcon } from "@/components/icons";
 import { searchLive, type LiveHit, type LiveSection } from "@/app/(public)/searchLiveActions";
 
 const SECTIONS: LiveSection[] = ["all", "dramas", "performers", "events", "locations", "novels"];
 
 /**
- * Поиск в шапке с живой выдачей (просьба владельца, по образцу
- * админской палитры Cmd+K).
+ * Поиск в шапке: клик поднимает отдельную палитру поверх страницы — как
+ * админский Cmd+K, и на его же стилях (.quick-search-*). В палитре своё
+ * большое поле, чипы разделов, живые подсказки и выход «Все фильтры» на
+ * /search с тем же запросом и разделом.
  *
- * Фокус в поле открывает панель: чипы разделов, подсказки по мере
- * ввода, кнопка «Все фильтры» — на /search с тем же запросом и
- * разделом. Выбранный раздел сужает и подсказки, и адрес, куда уводит
- * Enter.
- *
- * Это прогрессивное улучшение поверх обычной GET-формы: без JS (и до
- * гидратации) Enter всё так же уводит на /search?q=… обычной отправкой.
+ * Поле в шапке — не поле, а кнопка-триггер, нарисованная как поле. До
+ * гидратации это обычная ссылка на /search: клик без JS уводит на
+ * страницу поиска, где есть всё то же самое.
  */
 export default function SearchOverlay({ variant = "header" }: { variant?: "header" | "drawer" }) {
   const t = useT();
@@ -30,33 +30,46 @@ export default function SearchOverlay({ variant = "header" }: { variant?: "heade
   const [section, setSection] = useState<LiveSection>("all");
   const [hits, setHits] = useState<LiveHit[]>([]);
   const [active, setActive] = useState(-1);
-  const rootRef = useRef<HTMLFormElement>(null);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const seqRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Клик мимо панели закрывает её. Слушатель живёт, только пока панель
-  // открыта: постоянный document-слушатель от каждого поля поиска на
-  // странице был бы лишним.
+  // Открытие — с чистого листа и с фокусом в поле: палитра каждый раз
+  // новый разговор, а не продолжение прошлого.
+  function openPalette() {
+    setQuery("");
+    setHits([]);
+    setActive(-1);
+    setSection("all");
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
-    function onPointerDown(e: PointerEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
     }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
   // Живая выдача: пауза 250 мс и сторож последовательности — поздний
-  // ответ на ранний ввод не должен затирать свежий (как в админской
-  // палитре).
+  // ответ на ранний ввод не должен затирать свежий.
   function requestHits(nextQuery: string, nextSection: LiveSection) {
     if (timerRef.current) clearTimeout(timerRef.current);
     const seq = ++seqRef.current;
     if (nextQuery.trim().length < 2) {
       setHits([]);
       setActive(-1);
+      setLoading(false);
       return;
     }
+    setLoading(true);
     timerRef.current = setTimeout(async () => {
       try {
         const result = await searchLive(nextQuery, nextSection);
@@ -65,7 +78,9 @@ export default function SearchOverlay({ variant = "header" }: { variant?: "heade
           setActive(-1);
         }
       } catch {
-        // сеть моргнула — подсказок просто нет, поиск по Enter работает
+        // сеть моргнула — подсказок просто нет, Enter и «Все фильтры» работают
+      } finally {
+        if (seq === seqRef.current) setLoading(false);
       }
     }, 250);
   }
@@ -77,131 +92,153 @@ export default function SearchOverlay({ variant = "header" }: { variant?: "heade
     return `/search${qs.size ? `?${qs}` : ""}`;
   })();
 
-  function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") {
-      setOpen(false);
-      (e.target as HTMLElement).blur();
-      return;
-    }
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      if (hits.length === 0) return;
-      const delta = e.key === "ArrowDown" ? 1 : -1;
-      // Кольцо с «ничего не выбрано» (-1) между концом и началом: Enter
-      // без выбора отправляет обычную форму на /search.
-      setActive((prev) => {
-        const next = prev + delta;
-        if (next < -1) return hits.length - 1;
-        if (next >= hits.length) return -1;
-        return next;
-      });
-      return;
-    }
-    if (e.key === "Enter" && active >= 0 && hits[active]) {
-      e.preventDefault();
-      setOpen(false);
-      router.push(localeHref(hits[active].href, locale));
-    }
+  function go(href: string) {
+    setOpen(false);
+    router.push(localeHref(href, locale));
   }
 
   return (
-    <form
-      ref={rootRef}
-      action={localeHref("/search", locale)}
-      method="GET"
-      className={`live-search ${variant === "drawer" ? "live-search-drawer" : "live-search-header"}`}
-      onSubmit={() => setOpen(false)}
-    >
-      <div className="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="search"
-          name="q"
-          autoComplete="off"
-          placeholder={t.nav.searchPlaceholder}
-          aria-label={t.nav.searchAria}
-          className="pill-search"
-          value={query}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-            requestHits(e.target.value, section);
-          }}
-          onKeyDown={onKeyDown}
-        />
-      </div>
-      {section !== "all" && <input type="hidden" name="section" value={section} />}
+    <>
+      {/* Триггер. Ссылка, а не кнопка: без JS клик честно уводит на
+          /search. Внешность — как у прежнего поля поиска. */}
+      <AppLink
+        href="/search"
+        className={
+          variant === "drawer" ? "search-palette-trigger w-100" : "search-palette-trigger"
+        }
+        onClick={(e) => {
+          e.preventDefault();
+          openPalette();
+        }}
+        aria-label={t.nav.searchAria}
+      >
+        <SearchIcon />
+        <span>{t.nav.searchPlaceholder}</span>
+      </AppLink>
 
-      {open && (
-        <div className="live-search-panel">
-          <div className="live-search-sections" role="tablist">
-            {SECTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`nav-chip-link ${s === section ? "active" : ""}`}
-                aria-pressed={s === section}
-                onClick={() => {
-                  setSection(s);
-                  requestHits(query, s);
+      {/* Палитра — порталом в body: у .pill-nav стоит backdrop-filter,
+          и он делает position:fixed потомков относительным ШАПКИ —
+          затемнение накрывало бы только её, а не страницу. Ровно та же
+          причина, по которой мобильная шторка живёт вне навбара. */}
+      {open &&
+        createPortal(
+        <div className="quick-search-backdrop" onMouseDown={() => setOpen(false)}>
+          <div className="quick-search" onMouseDown={(e) => e.stopPropagation()}>
+            <form
+              action={localeHref("/search", locale)}
+              method="GET"
+              onSubmit={() => setOpen(false)}
+            >
+              <input
+                ref={inputRef}
+                type="search"
+                name="q"
+                autoComplete="off"
+                value={query}
+                placeholder={t.filters.live.hint}
+                aria-label={t.nav.searchAria}
+                className="form-control form-control-lg"
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  requestHits(e.target.value, section);
                 }}
-              >
-                {t.filters.sections[s]}
-              </button>
-            ))}
-          </div>
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    if (hits.length === 0) return;
+                    const delta = e.key === "ArrowDown" ? 1 : -1;
+                    // Кольцо с «ничего не выбрано» (-1): Enter без
+                    // выбора отправляет форму на /search.
+                    setActive((prev) => {
+                      const next = prev + delta;
+                      if (next < -1) return hits.length - 1;
+                      if (next >= hits.length) return -1;
+                      return next;
+                    });
+                  } else if (e.key === "Enter" && active >= 0 && hits[active]) {
+                    e.preventDefault();
+                    go(hits[active].href);
+                  }
+                }}
+              />
+              {section !== "all" && <input type="hidden" name="section" value={section} />}
+            </form>
 
-          {hits.length > 0 ? (
-            <div className="live-search-hits">
-              {hits.map((hit, i) => (
-                <AppLink
-                  key={`${hit.kind}:${hit.href}`}
-                  href={hit.href}
-                  className={`live-search-hit ${i === active ? "active" : ""}`}
-                  onClick={() => setOpen(false)}
+            <div className="search-palette-sections">
+              {SECTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`search-palette-chip ${s === section ? "active" : ""}`}
+                  aria-pressed={s === section}
+                  onClick={() => {
+                    setSection(s);
+                    requestHits(query, s);
+                    inputRef.current?.focus();
+                  }}
                 >
-                  {hit.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={hit.photoUrl}
-                      alt=""
-                      className="live-search-thumb"
-                      style={hit.round ? { borderRadius: "50%" } : undefined}
-                    />
-                  ) : (
-                    <span className="live-search-thumb d-inline-flex align-items-center justify-content-center small">
-                      {hit.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                  <span className="text-truncate">
-                    {hit.name}
-                    {hit.subtitle && (
-                      <span className="text-secondary small"> · {hit.subtitle}</span>
-                    )}
-                  </span>
-                  <span className="live-search-kind">{t.filters.sections[hit.kind]}</span>
-                </AppLink>
+                  {t.filters.sections[s]}
+                </button>
               ))}
             </div>
-          ) : (
-            <p className="small text-secondary mb-0 px-2">
-              {query.trim().length >= 2 ? t.filters.live.empty : t.filters.live.hint}
-            </p>
-          )}
 
-          <AppLink
-            href={searchHref}
-            className="btn btn-ghost btn-sm align-self-start"
-            onClick={() => setOpen(false)}
-          >
-            {t.filters.live.allFilters} →
-          </AppLink>
-        </div>
+            <div className="quick-search-hits">
+              {query.trim().length < 2 ? (
+                <p className="small text-secondary m-0 p-3">{t.filters.live.hint}</p>
+              ) : loading && hits.length === 0 ? (
+                <p className="small text-secondary m-0 p-3">{t.common.loading}</p>
+              ) : hits.length === 0 ? (
+                <p className="small text-secondary m-0 p-3">{t.filters.live.empty}</p>
+              ) : (
+                hits.map((hit, i) => (
+                  <button
+                    key={`${hit.kind}:${hit.href}`}
+                    type="button"
+                    className={`quick-search-hit search-palette-hit ${i === active ? "is-active" : ""}`}
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => go(hit.href)}
+                  >
+                    {hit.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={hit.photoUrl}
+                        alt=""
+                        className="live-search-thumb"
+                        style={hit.round ? { borderRadius: "50%" } : undefined}
+                      />
+                    ) : (
+                      <span className="live-search-thumb d-inline-flex align-items-center justify-content-center small">
+                        {hit.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="text-truncate">
+                      <span className="text-white">{hit.name}</span>
+                      {hit.subtitle && (
+                        <span className="small text-secondary"> · {hit.subtitle}</span>
+                      )}
+                    </span>
+                    <span className="live-search-kind">{t.filters.sections[hit.kind]}</span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="quick-search-foot d-flex align-items-center gap-2">
+              <AppLink
+                href={searchHref}
+                className="btn btn-ghost btn-sm"
+                onClick={() => setOpen(false)}
+              >
+                {t.filters.live.allFilters} →
+              </AppLink>
+              <span className="small text-secondary ms-auto d-none d-sm-inline">
+                ↑↓ · Enter · Esc
+              </span>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
-    </form>
+    </>
   );
 }

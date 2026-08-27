@@ -41,3 +41,23 @@ export function performerRealNameParen(p: { name: string; realName: string | nul
   }
   return p.realName;
 }
+
+/**
+ * Склейка ярусов выдачи без повторов: точные совпадения, затем
+ * префиксные, затем «где-то внутри». Без этого живой поиск сортировал
+ * по алфавиту, и артист по имени Gun стоял НИЖЕ всех, у кого «gun»
+ * прячется внутри настоящего имени (Balogun, Gundon…).
+ */
+export function rankedMerge<T extends { id: string }>(tiers: T[][], take: number): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const tier of tiers) {
+    for (const row of tier) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      out.push(row);
+      if (out.length >= take) return out;
+    }
+  }
+  return out;
+}

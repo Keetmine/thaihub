@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
-import { performerNameWhere, dramaTitleWhere } from "@/lib/searchWhere";
+import { performerNameWhere, dramaTitleWhere, rankedMerge } from "@/lib/searchWhere";
 
 export type QuickHit = {
   kind: "performer" | "drama" | "event" | "location" | "novel" | "agency";
@@ -35,18 +35,45 @@ export async function quickSearchAdmin(
   const takeSmall = onlyKind ? 8 : 3;
 
   const [performers, dramas, events, locations, novels, agencies] = await Promise.all([
-    want("performer") ? prisma.performer.findMany({
-      where: performerNameWhere(q),
-      select: { id: true, name: true, realName: true },
-      orderBy: { name: "asc" },
-      take,
-    }) : [],
-    want("drama") ? prisma.drama.findMany({
-      where: dramaTitleWhere(q),
-      select: { id: true, title: true, year: true },
-      orderBy: { title: "asc" },
-      take,
-    }) : [],
+    want("performer") ? (async () => {
+      const fields = ["name", "realName", "musicAlias"] as const;
+      const common = {
+        select: { id: true, name: true, realName: true },
+        orderBy: { name: "asc" as const },
+        take,
+      };
+      const [exact, prefix, rest] = await Promise.all([
+        prisma.performer.findMany({
+          where: { OR: fields.map((f) => ({ [f]: { equals: q, mode: "insensitive" } })) },
+          ...common,
+        }),
+        prisma.performer.findMany({
+          where: { OR: fields.map((f) => ({ [f]: { startsWith: q, mode: "insensitive" } })) },
+          ...common,
+        }),
+        prisma.performer.findMany({ where: performerNameWhere(q), ...common }),
+      ]);
+      return rankedMerge([exact, prefix, rest], take);
+    })() : [],
+    want("drama") ? (async () => {
+      const common = {
+        select: { id: true, title: true, year: true },
+        orderBy: { title: "asc" as const },
+        take,
+      };
+      const [exact, prefix, rest] = await Promise.all([
+        prisma.drama.findMany({
+          where: { title: { equals: q, mode: "insensitive" } },
+          ...common,
+        }),
+        prisma.drama.findMany({
+          where: { title: { startsWith: q, mode: "insensitive" } },
+          ...common,
+        }),
+        prisma.drama.findMany({ where: dramaTitleWhere(q), ...common }),
+      ]);
+      return rankedMerge([exact, prefix, rest], take);
+    })() : [],
     want("event") ? prisma.event.findMany({
       where: { title: { contains: q, mode: "insensitive" } },
       select: { id: true, title: true, venue: true },

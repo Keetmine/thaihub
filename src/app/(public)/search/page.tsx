@@ -9,6 +9,7 @@ import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
+import FilterChips from "@/components/filters/FilterChips";
 import SortSelect from "@/components/filters/SortSelect";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
@@ -301,6 +302,7 @@ async function SectionResults({
           поиска (просьба владельца). На телефоне колонка превращается
           в раскрывашку над выдачей. */}
       <div className="col-12 col-lg-9">
+        <FilterChips defs={defs} />
         <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
           <span className="text-secondary small">{t.filters.results(total)}</span>
           {sortOptions && <SortSelect options={sortOptions} label={t.filters.sort} />}

@@ -63,16 +63,33 @@ test.describe("публичный /search", () => {
     await expect(page.getByText(TEST_FILTER_DRAMAS.old.title)).toBeVisible();
   });
 
-  test("живой поиск в шапке показывает подсказки и сужается чипом", async ({ page }) => {
+  test("клик по поиску поднимает палитру с подсказками и чипами", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/dramas");
-    const input = page.locator(".live-search-header input[name=q]");
-    await input.click();
+    await page.locator(".search-palette-trigger").first().click();
+    const input = page.locator(".quick-search input[name=q]");
+    await expect(input).toBeFocused();
     await input.fill("E2E Filter");
-    await expect(page.locator(".live-search-hit").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(".search-palette-hit").first()).toBeVisible({ timeout: 5000 });
     // Чип «Локации» — такого имени среди локаций нет, подсказки пустеют.
-    await page.locator(".live-search-sections button").filter({ hasText: /Locations|Локации/ }).click();
-    await expect(page.locator(".live-search-hit")).toHaveCount(0);
+    await page
+      .locator(".search-palette-chip")
+      .filter({ hasText: /Locations|Локации/ })
+      .click();
+    await expect(page.locator(".search-palette-hit")).toHaveCount(0);
+    // Esc закрывает палитру.
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".quick-search")).toHaveCount(0);
+  });
+
+  test("чипы активных фильтров снимаются крестиком", async ({ page }) => {
+    await page.goto(`${GENRE_URL}&yearFrom=2020`);
+    const chips = page.locator(".filter-chip");
+    await expect(chips.filter({ hasText: TEST_GENRE })).toBeVisible();
+    await chips.filter({ hasText: /Year|Год/ }).click();
+    await expect(page).not.toHaveURL(/yearFrom/);
+    // Жанр остался — снялся только год, и старая запись вернулась.
+    await expect(page.getByText(TEST_FILTER_DRAMAS.old.title)).toBeVisible();
   });
 });
 

@@ -1,3 +1,4 @@
+import FilterChips from "@/components/filters/FilterChips";
 import FilterPanel from "@/components/filters/FilterPanel";
 import { countActiveFilters, type FilterDef, type FilterParams } from "@/lib/catalogFilters";
 
@@ -18,7 +19,8 @@ export default function AdminFilters({
 }) {
   const active = countActiveFilters(defs, params);
   return (
-    <details className="surface p-3 mb-3" open={active > 0}>
+    <>
+    <details className="surface p-3 mb-2" open={active > 0}>
       <summary className="fw-semibold small">
         Фильтры{active > 0 ? ` (${active})` : ""}
       </summary>
@@ -26,5 +28,9 @@ export default function AdminFilters({
         <FilterPanel defs={defs} variant="bar" />
       </div>
     </details>
+    {/* Чипы видны и при свёрнутой панели: активный срез должен быть
+        заметен, иначе список выглядит «непонятно почему коротким». */}
+    <FilterChips defs={defs} />
+    </>
   );
 }

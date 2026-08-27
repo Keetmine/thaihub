@@ -2805,14 +2805,20 @@ details.admin-section[open] > summary.admin-section-head::before {
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
 
-.quick-search > input {
+/* Поле бывает и прямым потомком (админская палитра), и внутри формы
+   (публичная — ей нужна GET-отправка без JS): рамки и оранжевого
+   фокуса не должно быть у обоих. */
+.quick-search > input,
+.quick-search > form > input {
   border: none;
   border-radius: 0;
   background: transparent;
 }
 
-.quick-search > input:focus {
+.quick-search > input:focus,
+.quick-search > form > input:focus {
   box-shadow: none;
+  border: none;
 }
 
 .quick-search-hits {
@@ -4962,4 +4968,120 @@ body::after {
   right: 0;
   width: 24rem;
   max-width: calc(100vw - 2rem);
+}
+
+
+/* ---------- Палитра публичного поиска (по образцу админского Cmd+K) ---------- */
+
+/* Триггер в шапке: выглядит как поле поиска, ведёт себя как кнопка. */
+.search-palette-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bs-secondary-color);
+  font-size: 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.search-palette-trigger:hover {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: #fff;
+}
+
+.search-palette-trigger svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* Чипы разделов внутри палитры. */
+.search-palette-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.search-palette-chip {
+  border: 1px solid var(--bs-border-color);
+  background: transparent;
+  color: var(--bs-secondary-color);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+}
+
+.search-palette-chip:hover {
+  color: var(--bs-body-color);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.search-palette-chip.active {
+  color: rgb(var(--accent-rgb));
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.1);
+  font-weight: 600;
+}
+
+/* Строка подсказки с миниатюрой: та же .quick-search-hit, но в строку. */
+.search-palette-hit {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Выделение строки — нейтральное: оранжевая заливка админской палитры
+   на публичной выглядела грязно (правка владельца). */
+.search-palette-hit.is-active {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.search-palette-hit .live-search-kind {
+  margin-left: auto;
+}
+
+/* Чипы активных фильтров над выдачей. */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--bs-body-color);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+}
+
+.filter-chip span {
+  color: rgb(var(--accent-rgb));
+  font-weight: 700;
+}
+
+.filter-chip:hover {
+  border-color: rgb(var(--accent-rgb));
+  background: rgba(var(--accent-rgb), 0.18);
+}
+
+.filter-chip-clear {
+  border-color: var(--bs-border-color);
+  background: transparent;
+  color: var(--bs-secondary-color);
 }

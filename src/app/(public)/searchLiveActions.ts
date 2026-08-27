@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { dramaTitleWhere, performerNameWhere } from "@/lib/searchWhere";
+import { dramaTitleWhere, performerNameWhere, rankedMerge } from "@/lib/searchWhere";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { eventHref } from "@/lib/eventSlug";
@@ -44,20 +44,54 @@ export async function searchLive(rawQuery: string, section: LiveSection): Promis
 
   const [dramas, performers, events, locations, novels] = await Promise.all([
     want("dramas")
-      ? prisma.drama.findMany({
-          where: dramaTitleWhere(query),
-          select: { id: true, slug: true, title: true, year: true, posterUrl: true },
-          orderBy: [{ year: { sort: "desc", nulls: "last" } }, { title: "asc" }],
-          take,
-        })
+      ? (async () => {
+          const select = { id: true, slug: true, title: true, year: true, posterUrl: true };
+          const orderBy = [
+            { year: { sort: "desc" as const, nulls: "last" as const } },
+            { title: "asc" as const },
+          ];
+          const [exact, prefix, rest] = await Promise.all([
+            prisma.drama.findMany({
+              where: {
+                OR: [
+                  { title: { equals: query, mode: "insensitive" } },
+                  { nativeTitle: { equals: query, mode: "insensitive" } },
+                ],
+              },
+              select, orderBy, take,
+            }),
+            prisma.drama.findMany({
+              where: { title: { startsWith: query, mode: "insensitive" } },
+              select, orderBy, take,
+            }),
+            prisma.drama.findMany({ where: dramaTitleWhere(query), select, orderBy, take }),
+          ]);
+          return rankedMerge([exact, prefix, rest], take);
+        })()
       : [],
     want("performers")
-      ? prisma.performer.findMany({
-          where: performerNameWhere(query),
-          include: { albums: FALLBACK_COVER_SELECT },
-          orderBy: { name: "asc" },
-          take,
-        })
+      ? (async () => {
+          // Три яруса: «Gun» → сперва те, кого ТАК ЗОВУТ, потом те, чьё
+          // имя так начинается, и только затем Balogun с Gundon.
+          const fields = ["name", "realName", "musicAlias"] as const;
+          const common = {
+            include: { albums: FALLBACK_COVER_SELECT },
+            orderBy: { name: "asc" as const },
+            take,
+          };
+          const [exact, prefix, rest] = await Promise.all([
+            prisma.performer.findMany({
+              where: { OR: fields.map((f) => ({ [f]: { equals: query, mode: "insensitive" } })) },
+              ...common,
+            }),
+            prisma.performer.findMany({
+              where: { OR: fields.map((f) => ({ [f]: { startsWith: query, mode: "insensitive" } })) },
+              ...common,
+            }),
+            prisma.performer.findMany({ where: performerNameWhere(query), ...common }),
+          ]);
+          return rankedMerge([exact, prefix, rest], take);
+        })()
       : [],
     want("events")
       ? prisma.event.findMany({
