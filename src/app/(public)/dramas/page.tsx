@@ -1,5 +1,6 @@
 import UploadImage from "@/components/UploadImage";
 import AppLink from "@/components/AppLink";
+import { CalendarIcon } from "@/components/icons";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
@@ -159,6 +160,16 @@ export default async function DramasPage({
             </AppLink>
           ))}
         </div>
+        {/* И10: из каталога сериалов в их расписание раньше было не
+            попасть — иконка ведёт на вкладку «Сериалы» календаря. */}
+        <AppLink
+          href="/calendar?view=series"
+          className="btn btn-ghost btn-sm flex-shrink-0"
+          aria-label={t.catalog.dramas.calendarLink}
+          title={t.catalog.dramas.calendarLink}
+        >
+          <CalendarIcon />
+        </AppLink>
         <NameSearchBox
           action="/dramas"
           q={q}

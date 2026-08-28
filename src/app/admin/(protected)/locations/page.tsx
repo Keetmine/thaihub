@@ -13,6 +13,7 @@ import {
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
 
@@ -143,10 +144,12 @@ export default async function AdminLocationsPage({
           ]}
         />
       )}
+      {/* Листание — от полного адреса: поиск и фильтры (в т.ч. «чьи»)
+          остаются на месте (И16), меняется только page. */}
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/locations?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+        buildHref={(p) => adminListHref("/admin/locations", sp, { page: p })}
       />
       </div>
       <AdminFilters defs={adminLocationFilterDefs()} params={sp} />

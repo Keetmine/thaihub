@@ -16,6 +16,8 @@ import EventCard from "@/components/EventCard";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
+import { dramaHref } from "@/lib/dramaSlug";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { getCurrentUser } from "@/lib/userAuth";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { isPremiumActive } from "@/lib/premium";
@@ -71,11 +73,26 @@ export default async function DayPage({
     );
   }
 
-  const occurrences = await prisma.eventOccurrence.findMany({
-    where: { startsAt: { gte: startOfDay(day), lte: endOfDay(day) } },
-    include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
-    orderBy: { startsAt: "asc" },
-  });
+  // И8: день — это не только афиша. Сюда ведут и ячейки вкладки
+  // «Сериалы» в календаре, а серий на странице не было вовсе — клик по
+  // числу уводил в пустоту.
+  const [occurrences, episodes] = await Promise.all([
+    prisma.eventOccurrence.findMany({
+      where: { startsAt: { gte: startOfDay(day), lte: endOfDay(day) } },
+      include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
+      orderBy: { startsAt: "asc" },
+    }),
+    prisma.dramaEpisode.findMany({
+      where: { airDate: { gte: startOfDay(day), lte: endOfDay(day) } },
+      select: {
+        id: true,
+        number: true,
+        title: true,
+        drama: { select: { id: true, title: true, titleRu: true, slug: true, posterUrl: true } },
+      },
+      orderBy: [{ drama: { title: "asc" } }, { number: "asc" }],
+    }),
+  ]);
   const events = occurrences.map(flattenOccurrence);
 
   const prevKey = dateKey(addDays(day, -1));
@@ -110,19 +127,54 @@ export default async function DayPage({
         </div>
       </div>
 
-      {events.length === 0 ? (
+      {events.length === 0 && episodes.length === 0 ? (
         <p className="text-secondary">{t.events.day.empty}</p>
       ) : (
-        <div className="d-flex flex-column gap-3">
-          {events.map((ev) => (
-            <EventCard
-              key={ev.occurrenceId}
-              event={ev}
-              isFavorited={favoritedIds.has(ev.id)}
-              isGoing={goingIds.has(ev.occurrenceId)}
-              friendsGoing={friendsGoingByEvent.get(ev.occurrenceId) ?? []}
-            />
-          ))}
+        <div className="d-flex flex-column gap-4">
+          {events.length > 0 && (
+            <section>
+              {/* Заголовки секций — только когда на дне есть и то и то:
+                  одному списку шапка ничего не добавляет. */}
+              {episodes.length > 0 && (
+                <h2 className="section-heading mb-2">{t.events.day.eventsHeading}</h2>
+              )}
+              <div className="d-flex flex-column gap-3">
+                {events.map((ev) => (
+                  <EventCard
+                    key={ev.occurrenceId}
+                    event={ev}
+                    isFavorited={favoritedIds.has(ev.id)}
+                    isGoing={goingIds.has(ev.occurrenceId)}
+                    friendsGoing={friendsGoingByEvent.get(ev.occurrenceId) ?? []}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          {episodes.length > 0 && (
+            <section>
+              {events.length > 0 && (
+                <h2 className="section-heading mb-2">{t.events.day.seriesHeading}</h2>
+              )}
+              <div className="d-flex flex-column gap-2">
+                {episodes.map((ep) => (
+                  <AppLink
+                    key={ep.id}
+                    href={dramaHref(ep.drama)}
+                    className="surface d-flex align-items-center gap-3 p-3 text-decoration-none text-reset"
+                  >
+                    <span className="fw-semibold flex-shrink-0">
+                      {t.events.calendar.episodeShort(ep.number)}
+                    </span>
+                    <span className="text-truncate">
+                      {dramaTitleForLocale(ep.drama, locale)}
+                      {ep.title && <span className="text-secondary"> · {ep.title}</span>}
+                    </span>
+                  </AppLink>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>

@@ -38,7 +38,7 @@ export const dynamic = "force-dynamic";
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string; view?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; view?: string; mine?: string }>;
 }) {
   const { locale, t } = await getT();
   const params = await searchParams;
@@ -67,6 +67,10 @@ export default async function CalendarPage({
   const showBirthdays = params.view === "birthdays";
   const showSeries = params.view === "series";
   const showAll = !showBirthdays && !showSeries && params.view !== "mine";
+  // И11: «Только мои» на вкладке сериалов — расписание лишь тех, у кого
+  // у человека стоит ЛЮБОЙ статус просмотра. «view=mine» уже занят
+  // событиями, поэтому отдельный параметр.
+  const onlyMySeries = showSeries && params.mine === "1" && !!gateUser;
 
   const gridDays = getMonthGrid(year, month);
   const rangeStart = gridDays[0];
@@ -107,7 +111,12 @@ export default async function CalendarPage({
   // попадает — её ещё не назначили.
   const episodes = showSeries
     ? await prisma.dramaEpisode.findMany({
-        where: { airDate: { gte: rangeStart, lte: rangeEnd } },
+        where: {
+          airDate: { gte: rangeStart, lte: rangeEnd },
+          ...(onlyMySeries
+            ? { drama: { watchStatuses: { some: { userId: currentUser!.id } } } }
+            : {}),
+        },
         select: {
           id: true,
           number: true,
@@ -173,7 +182,7 @@ export default async function CalendarPage({
   const viewQuery = showBirthdays
     ? "&view=birthdays"
     : showSeries
-      ? "&view=series"
+      ? `&view=series${onlyMySeries ? "&mine=1" : ""}`
       : showAll
         ? ""
         : "&view=mine";
@@ -247,6 +256,26 @@ export default async function CalendarPage({
             {t.events.calendar.viewSeries}
           </AppLink>
         </div>
+        {/* И11: второй ряд — только на вкладке сериалов и только для
+            залогиненных (гостю фильтровать не по чему). */}
+        {showSeries && gateUser && (
+          <div className="mode-toggle mt-2" style={{ flexWrap: "wrap" }}>
+            <AppLink
+              href={`/calendar?year=${year}&month=${month + 1}&view=series`}
+              prefetch={false}
+              className={`mode-toggle-option ${onlyMySeries ? "" : "active"}`}
+            >
+              {t.events.calendar.seriesFilterAll}
+            </AppLink>
+            <AppLink
+              href={`/calendar?year=${year}&month=${month + 1}&view=series&mine=1`}
+              prefetch={false}
+              className={`mode-toggle-option ${onlyMySeries ? "active" : ""}`}
+            >
+              {t.events.calendar.seriesFilterMine}
+            </AppLink>
+          </div>
+        )}
       </div>
 
       {showSeries && episodes.length === 0 ? (
@@ -309,9 +338,15 @@ export default async function CalendarPage({
                 const dayEpisodes = episodesByDay.get(key) ?? [];
                 return (
                   <div key={key} className={`calendar-cell ${inMonth ? "" : "outside-month"}`}>
-                    <span className={`calendar-day-num ${isToday ? "today" : ""}`}>
+                    {/* И8: чипы заняты ссылками на сериалы, целиком ячейку
+                        ссылкой не сделать (вложенные <a>) — днём-ссылкой
+                        служит само число. */}
+                    <AppLink
+                      href={`/day/${key}`}
+                      className={`calendar-day-num text-decoration-none ${isToday ? "today" : ""}`}
+                    >
                       {day.getDate()}
-                    </span>
+                    </AppLink>
                     <div className="d-flex flex-column gap-1">
                       {dayEpisodes.slice(0, 3).map((ep) => (
                         <AppLink

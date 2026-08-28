@@ -5,6 +5,7 @@ import { ENTITY_LABELS, auditEntityHref } from "@/lib/audit";
 import { AuditEntry } from "@/components/admin/AuditTrail";
 import Pagination from "@/components/Pagination";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 
 export const metadata = { title: "История правок" };
 
@@ -20,7 +21,8 @@ export default async function AdminHistoryPage({
   searchParams: Promise<{ type?: string; user?: string; page?: string }>;
 }) {
   await requireCatalogEditor();
-  const { type, user: userId, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { type, user: userId, page: rawPage } = sp;
   const page = parsePage(rawPage);
   const where = {
     ...(type && ENTITY_TABS.includes(type as (typeof ENTITY_TABS)[number]) ? { entityType: type } : {}),
@@ -42,16 +44,11 @@ export default async function AdminHistoryPage({
     }),
   ]);
 
-  const buildHref = (next: { type?: string | null; user?: string | null; page?: number }) => {
-    const params = new URLSearchParams();
-    const t = next.type === undefined ? type : next.type;
-    const u = next.user === undefined ? userId : next.user;
-    if (t) params.set("type", t);
-    if (u) params.set("user", u);
-    if (next.page && next.page > 1) params.set("page", String(next.page));
-    const qs = params.toString();
-    return `/admin/history${qs ? `?${qs}` : ""}`;
-  };
+  // Чипы и листание меняют в текущем адресе только своё (adminListHref):
+  // фильтры по типу и по автору не сбрасывают друг друга, а смена
+  // любого из них начинает выдачу с первой страницы (page: 1).
+  const buildHref = (next: { type?: string | null; user?: string | null; page?: number }) =>
+    adminListHref("/admin/history", sp, next);
 
   return (
     <div>

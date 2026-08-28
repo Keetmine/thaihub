@@ -17,6 +17,7 @@ import Pagination from "@/components/Pagination";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 
 export const metadata = { title: "Новеллы" };
 
@@ -131,10 +132,12 @@ export default async function AdminNovelsPage({
           ]}
         />
       )}
+      {/* Листание — от полного адреса: поиск и фильтры остаются на
+          месте (И16), меняется только page. */}
       <Pagination
         page={page}
         totalPages={totalPagesFor(total)}
-        buildHref={(p) => `/admin/novels?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`}
+        buildHref={(p) => adminListHref("/admin/novels", sp, { page: p })}
       />
       </div>
       <AdminFilters defs={adminNovelFilterDefs(getDict("ru"), await loadNovelFilterOptions())} params={sp} />

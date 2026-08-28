@@ -127,7 +127,15 @@ export default function SearchOverlay({ variant = "header" }: { variant?: "heade
             <form
               action={localeHref("/search", locale)}
               method="GET"
-              onSubmit={() => setOpen(false)}
+              onSubmit={(e) => {
+                // И17: закрывать палитру на submit нельзя — портал
+                // размонтирует форму раньше, чем браузер уйдёт по
+                // адресу, и переход отменяется (Enter «не работал»).
+                // Уходим сами роутером, как это делает выбор подсказки
+                // стрелками; action остаётся запасом на «до гидратации».
+                e.preventDefault();
+                go(searchHref);
+              }}
             >
               <input
                 ref={inputRef}

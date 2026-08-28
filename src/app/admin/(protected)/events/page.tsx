@@ -2,6 +2,7 @@ import LetterAvatar from "@/components/LetterAvatar";
 import Pagination from "@/components/Pagination";
 import Link from "next/link";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import { prisma } from "@/lib/prisma";
 import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./actions";
@@ -246,14 +247,12 @@ export default async function AdminEventsPage({
           })}
         </div>
       )}
+      {/* Листание — от полного адреса: вкладка, сортировка, поиск,
+          issue и фильтры остаются на месте (И16), меняется только page. */}
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) =>
-          `${baseQuery(isArchive ? "archive" : "current", rawSort ?? "")}${
-            issue ? `&issue=${encodeURIComponent(issue)}` : ""
-          }&page=${p}`
-        }
+        buildHref={(p) => adminListHref("/admin/events", sp, { page: p })}
       />
       </div>
       <AdminFilters defs={adminEventFilterDefs(getDict("ru"))} params={sp} />

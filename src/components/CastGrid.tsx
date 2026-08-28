@@ -36,7 +36,7 @@ export default function CastGrid({
         <div className="mt-3">
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn-link-accent"
             onClick={() => setExpanded(true)}
           >
             {t.catalog.showAll(items.length)}

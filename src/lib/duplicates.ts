@@ -8,6 +8,13 @@ function norm(s: string) {
 
 export type DuplicateGroup<T> = { key: string; rows: T[] };
 
+/** Ключ ТОЧНОГО состава группы — для «не сливать» (DuplicateDismissal):
+ *  скрытие держится, пока состав не изменился; новый кандидат меняет
+ *  ключ, и группа возвращается в список сама. */
+export function groupMemberKey(rows: { id: string }[]): string {
+  return rows.map((r) => r.id).sort().join("|");
+}
+
 /** Groups of Performers sharing the exact same (normalized) name.
  *  Одинаковый ник при РАЗНЫХ реальных именах — не дубли (два разных
  *  человека с ником Pond): такие группы дробятся по реальному имени,

@@ -2,8 +2,34 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { mergeDramas, mergePerformers } from "@/lib/duplicates";
 import { requireAdmin } from "@/lib/auth";
+
+/** И5: «не сливать» — скрыть группу из списка дублей. Ремейк с тем же
+ *  названием или тёзки — не дубли, но раньше убрать их было нельзя.
+ *  Обратимо (restore ниже), поэтому без подтверждения. */
+export async function dismissDuplicateGroupAction(
+  entityType: "drama" | "performer",
+  memberKey: string,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.duplicateDismissal.upsert({
+    where: { entityType_memberKey: { entityType, memberKey } },
+    create: { entityType, memberKey },
+    update: {},
+  });
+  revalidatePath("/admin/duplicates");
+}
+
+export async function restoreDuplicateGroupAction(
+  entityType: "drama" | "performer",
+  memberKey: string,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.duplicateDismissal.deleteMany({ where: { entityType, memberKey } });
+  revalidatePath("/admin/duplicates");
+}
 
 export async function mergeDramasAction(keeperId: string, loserIds: string[]) {
   await requireAdmin();

@@ -7,6 +7,7 @@ import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import { dramaTitleWhere } from "@/lib/searchWhere";
 import AdminFilters from "@/components/admin/AdminFilters";
 import {
@@ -270,12 +271,12 @@ export default async function AdminDramasPage({
           ]}
         />
       )}
+      {/* Листание — от полного адреса: вкладка, поиск, фильтры и issue
+          остаются на месте (И16), меняется только page. */}
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) =>
-          `/admin/dramas?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${p}`
-        }
+        buildHref={(p) => adminListHref("/admin/dramas", sp, { page: p })}
       />
       </div>
       <AdminFilters defs={adminDramaFilterDefs(getDict("ru"), await loadDramaFilterOptions())} params={sp} />

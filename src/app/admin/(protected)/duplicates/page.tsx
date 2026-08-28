@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { findDuplicateDramaGroups, findDuplicatePerformerGroups } from "@/lib/duplicates";
-import { mergeDramasAction, mergePerformersAction } from "./actions";
+import { findDuplicateDramaGroups, findDuplicatePerformerGroups, groupMemberKey } from "@/lib/duplicates";
+import {
+  mergeDramasAction,
+  mergePerformersAction,
+  dismissDuplicateGroupAction,
+  restoreDuplicateGroupAction,
+} from "./actions";
 import MergeGroupCard from "./MergeGroupCard";
 import SubmitButton from "@/components/admin/SubmitButton";
 import Pagination from "@/components/Pagination";
@@ -45,9 +50,10 @@ async function compareDrama(slug: string) {
 export default async function DuplicatesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ a?: string; b?: string; page?: string }>;
+  searchParams: Promise<{ a?: string; b?: string; page?: string; hidden?: string }>;
 }) {
-  const { a: rawA, b: rawB, page: rawPage } = await searchParams;
+  const { a: rawA, b: rawB, page: rawPage, hidden: rawHidden } = await searchParams;
+  const showHidden = rawHidden === "1";
   const inputA = rawA ? parseCompareInput(rawA) : null;
   const inputB = rawB ? parseCompareInput(rawB) : null;
   // Сериалы, если хотя бы одна ссылка /dramas/ — иначе артисты.
@@ -61,10 +67,27 @@ export default async function DuplicatesPage({
     inputA && inputB && compareKind === "drama"
       ? await Promise.all([compareDrama(inputA.slug), compareDrama(inputB.slug)])
       : [null, null];
-  const [dramaGroups, performerGroups] = await Promise.all([
+  const [allDramaGroups, allPerformerGroups, dismissals] = await Promise.all([
     findDuplicateDramaGroups(),
     findDuplicatePerformerGroups(),
+    prisma.duplicateDismissal.findMany({ select: { entityType: true, memberKey: true } }),
   ]);
+  // И5: «не сливать» — скрытые группы уходят из основного списка, но
+  // остаются достижимы (?hidden=1): скрытие по ошибке иначе было бы
+  // необратимо-невидимым. Ключ — точный состав группы, поэтому со
+  // сменой состава (нашёлся третий кандидат) группа возвращается сама.
+  const dismissed = new Set(dismissals.map((d) => `${d.entityType}::${d.memberKey}`));
+  const isDismissed = (entityType: string, rows: { id: string }[]) =>
+    dismissed.has(`${entityType}::${groupMemberKey(rows)}`);
+  const dramaGroups = allDramaGroups.filter(
+    (g) => isDismissed("drama", g.rows) === showHidden,
+  );
+  const performerGroups = allPerformerGroups.filter(
+    (g) => isDismissed("performer", g.rows) === showHidden,
+  );
+  const hiddenCount =
+    allDramaGroups.filter((g) => isDismissed("drama", g.rows)).length +
+    allPerformerGroups.filter((g) => isDismissed("performer", g.rows)).length;
 
   // Групп бывает несколько сотен, и каждая — карточка с формой слияния:
   // страница отдавала их разом и заметно тормозила. Режем общий список
@@ -90,8 +113,21 @@ export default async function DuplicatesPage({
         ← Админка
       </Link>
       <h1 className="display-1-tight mt-3 mb-3" style={{ fontSize: "2rem" }}>
-        Возможные дубли
+        {showHidden ? "Скрытые из дублей" : "Возможные дубли"}
       </h1>
+      {showHidden ? (
+        <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>
+          Группы, помеченные «не сливать» (ремейки, тёзки). «Вернуть в
+          дубли» — и группа снова появится в общем списке.{" "}
+          <Link href="/admin/duplicates">← К дублям</Link>
+        </p>
+      ) : (
+        hiddenCount > 0 && (
+          <p className="small text-secondary mb-3">
+            <Link href="/admin/duplicates?hidden=1">Скрытые «не сливать» ({hiddenCount})</Link>
+          </p>
+        )
+      )}
       <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>
         Записи с одинаковым (без учёта регистра) названием; одинаковый ник
         при разных реальных именах и одно название сериала при разных годах
@@ -210,7 +246,7 @@ export default async function DuplicatesPage({
       )}
 
       {totalGroups === 0 ? (
-        <p className="text-secondary">Дублей не найдено.</p>
+        <p className="text-secondary">{showHidden ? "Скрытых групп нет." : "Дублей не найдено."}</p>
       ) : (
         <div className="d-flex flex-column gap-4">
           {pageDramaGroups.length > 0 && (
@@ -232,6 +268,12 @@ export default async function DuplicatesPage({
                       sublabel: `${d._count.performers} исполнителей, ${d._count.locations} локаций, ${d._count.events} событий`,
                     }))}
                     onMerge={mergeDramasAction}
+                    dismissLabel={showHidden ? "Вернуть в дубли" : "Не сливать"}
+                    onDismiss={(showHidden ? restoreDuplicateGroupAction : dismissDuplicateGroupAction).bind(
+                      null,
+                      "drama",
+                      groupMemberKey(group.rows),
+                    )}
                   />
                 ))}
               </div>
@@ -257,6 +299,12 @@ export default async function DuplicatesPage({
                       sublabel: `${p.realName ? `${p.realName} · ` : ""}${p.type === "BAND" ? "группа" : "соло"}, ${p._count.events} событий, ${p._count.dramas} сериалов`,
                     }))}
                     onMerge={mergePerformersAction}
+                    dismissLabel={showHidden ? "Вернуть в дубли" : "Не сливать"}
+                    onDismiss={(showHidden ? restoreDuplicateGroupAction : dismissDuplicateGroupAction).bind(
+                      null,
+                      "performer",
+                      groupMemberKey(group.rows),
+                    )}
                   />
                 ))}
               </div>
@@ -268,7 +316,7 @@ export default async function DuplicatesPage({
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/duplicates?${compareParams}page=${p}`}
+        buildHref={(p) => `/admin/duplicates?${compareParams}${showHidden ? "hidden=1&" : ""}page=${p}`}
       />
     </div>
   );

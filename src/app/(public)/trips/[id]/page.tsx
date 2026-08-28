@@ -74,6 +74,27 @@ function legSortAt(at: Date, side: "start" | "end"): Date {
   return side === "end" ? startOfDay(at) : endOfDay(at);
 }
 
+/** Жильё с обеими датами — «стоянка»: её концы соединяет линия в ленте.
+ *  Бронь с одной датой остаётся одиночной записью. Предикат общий для
+ *  генерации записей и для раздачи цветов линий — чтобы условия не
+ *  разъехались. */
+function isStayBooking(b: {
+  kind: "HOTEL" | "FLIGHT";
+  startAt: Date | null;
+  endAt: Date | null;
+}): boolean {
+  return b.kind === "HOTEL" && !!b.startAt && !!b.endAt;
+}
+
+/** Сколько цветов в палитре линий — ровно столько переменных
+ *  --stay-line-1..N объявлено в globals.css. */
+const STAY_LINE_COLORS = 5;
+
+/** Активная линия стоянки в точке ленты: цвет — номер в палитре
+ *  (var(--stay-line-N)), slot — дорожка, то есть на сколько шагов линия
+ *  сдвинута вправо, когда стоянки пересекаются. */
+type StayLine = { bookingId: string; color: number; slot: number };
+
 /** Бронь в ленте плана — это две записи, а не одна строка сбоку:
  *  заселение в день заезда и выселение в день выезда (у перелёта — вылет
  *  и прилёт). Промежуточные дни ничем не помечаем: то, что человек живёт
@@ -97,6 +118,7 @@ function bookingLegs(
   locale: Locale,
   t: Dict,
   canEdit: boolean,
+  stayColor: number | null,
 ): { leg: BookingLegData; sortAt: Date; isStay: boolean }[] {
   const isFlight = b.kind === "FLIGHT";
   const row: TripBookingRow = {
@@ -118,9 +140,7 @@ function bookingLegs(
   const place = isFlight
     ? [b.fromPlace, b.toPlace].filter(Boolean).join(" → ") || null
     : b.address;
-  // Жильё с обеими датами — это «стоянка»: её концы соединяет линия.
-  // Бронь с одной датой остаётся одиночной записью.
-  const isStay = b.kind === "HOTEL" && !!b.startAt && !!b.endAt;
+  const isStay = isStayBooking(b);
 
   const make = (at: Date, side: "start" | "end"): { leg: BookingLegData; sortAt: Date; isStay: boolean } => {
     // Подпись «до 5 сен · 6 ночей» / «с 29 авг» — вторая половина
@@ -145,6 +165,7 @@ function bookingLegs(
         bookingId: b.id,
         kind: b.kind,
         side,
+        stayColor: isStay ? stayColor : null,
         // Подписи даты считаем здесь: даты проекта живут в UTC, а
         // локальные геттеры в браузере зрителя дали бы другой день.
         dayLabel: String(at.getUTCDate()),
@@ -406,9 +427,19 @@ export default async function TripPage({
     .map((b) => ({ ...b, visibility: effectiveVisibility(b.visibility) }))
     .filter((b) => canSeeItem(b.visibility, null))
     .map(bookingForViewer);
+  // Цвет линии — на бронь: палитра по кругу в порядке начала броней
+  // (visibleBookings уже отсортированы по startAt). Так два отеля подряд
+  // не читаются одним непрерывным отрезком, а первая стоянка получает
+  // акцентный цвет — поездка с единственной бронью выглядит как раньше.
+  const stayColorByBooking = new Map<string, number>();
+  visibleBookings
+    .filter(isStayBooking)
+    .forEach((b, i) => stayColorByBooking.set(b.id, (i % STAY_LINE_COLORS) + 1));
   const legs = showAll
     ? []
-    : visibleBookings.flatMap((b) => bookingLegs(b, locale, t, canContribute));
+    : visibleBookings.flatMap((b) =>
+        bookingLegs(b, locale, t, canContribute, stayColorByBooking.get(b.id) ?? null),
+      );
   const undatedBookings: TripBookingRow[] = visibleBookings
     .filter((b) => !b.startAt && !b.endAt)
     .map((b) => ({
@@ -461,25 +492,39 @@ export default async function TripPage({
       (a.kind === "booking" ? 0 : 1) - (b.kind === "booking" ? 0 : 1),
   );
 
-  // Полоса жилья: дни между заездом и выездом лежат на общей тёплой
-  // подложке ПОД карточками — вместо строки «проживание в отеле» на
-  // каждый день. Считаем по уже отсортированной ленте: заселение
-  // открывает полосу, выселение закрывает. Счётчик, а не флаг, — иначе
-  // пересекающиеся брони (переезд в тот же день) рвали бы полосу.
-  const rows: { item: (typeof timeline)[number]; stay: "open" | "inside" | "close" | null }[] = [];
-  let openStays = 0;
+  // Линии жилья: заезд и выезд каждой стоянки соединяет вертикальная
+  // линия в зазорах между карточками. Считаем по уже отсортированной
+  // ленте, но не счётчиком, а СПИСКОМ активных стоянок: у каждой свой
+  // цвет и своя дорожка (сдвиг вправо), иначе пересекающиеся брони
+  // (переезд внахлёст) сливались бы в один отрезок, как и два отеля
+  // подряд. Строке отдаём снимок линий, проходящих через зазор НАД ней:
+  // сегмент в зазоре рисует нижняя из двух строк, поэтому заезд попадает
+  // в активные ПОСЛЕ своего снимка (его линия начинается ниже него), а
+  // выезд выбывает тоже после снимка (его сегмент над ним — последний).
+  const rows: { item: (typeof timeline)[number]; lines: StayLine[] }[] = [];
+  const activeStays: StayLine[] = [];
+  // Стоянка в одну ночёвку без времён сортируется выездом РАНЬШЕ заезда
+  // (выезд прижат к началу дня, заезд — к концу). Такую не открываем
+  // вовсе: непарная линия дотянулась бы до конца ленты.
+  const closedEarly = new Set<string>();
   for (const item of timeline) {
-    let stay: "open" | "inside" | "close" | null = openStays > 0 ? "inside" : null;
-    if (item.kind === "booking" && item.isStay) {
-      if (item.leg.side === "start") {
-        stay = openStays > 0 ? "inside" : "open";
-        openStays += 1;
-      } else {
-        openStays = Math.max(0, openStays - 1);
-        stay = openStays > 0 ? "inside" : "close";
-      }
+    const stayLeg = item.kind === "booking" && item.isStay ? item.leg : null;
+    rows.push({ item, lines: [...activeStays] });
+    if (!stayLeg) continue;
+    if (stayLeg.side === "start") {
+      if (closedEarly.has(stayLeg.bookingId)) continue;
+      // Дорожка — первый свободный сдвиг, а не длина списка: место
+      // закрывшейся стоянки занимает следующая, и линии не уползают
+      // вправо без нужды. Дорожка одна на всю стоянку — линия ровная.
+      const usedSlots = new Set(activeStays.map((s) => s.slot));
+      let slot = 0;
+      while (usedSlots.has(slot)) slot += 1;
+      activeStays.push({ bookingId: stayLeg.bookingId, color: stayLeg.stayColor ?? 1, slot });
+    } else {
+      const idx = activeStays.findIndex((s) => s.bookingId === stayLeg.bookingId);
+      if (idx >= 0) activeStays.splice(idx, 1);
+      else closedEarly.add(stayLeg.bookingId);
     }
-    rows.push({ item, stay });
   }
 
   // «Что посетить» (Г4): локации съёмок сериалов владельца + прикреплённые
@@ -786,11 +831,39 @@ export default async function TripPage({
         />
       ) : (
         <div className="d-flex flex-column gap-3 trip-timeline">
-          {rows.map(({ item, stay }) => (
+          {rows.map(({ item, lines }) => {
+            const stayLeg = item.kind === "booking" && item.isStay ? item.leg : null;
+            // Классы стоянки — маркеры: стилям нужен только in-stay
+            // (позиционный контекст для полосок), а stay-open/stay-close
+            // держим ради e2e-теста приватности броней — он по этим
+            // строкам проверяет, что разметка брони не утекает
+            // постороннему (tests/e2e/trip-booking-privacy.spec.ts).
+            const stayClasses = `${lines.length > 0 || stayLeg ? " in-stay" : ""}${
+              stayLeg ? (stayLeg.side === "start" ? " stay-open" : " stay-close") : ""
+            }`;
+            return (
             <div
               key={item.key}
-              className={`trip-timeline-item${stay ? ` in-stay stay-${stay}` : ""}`}
+              className={`trip-timeline-item${stayClasses}`}
             >
+              {/* Куски линий в зазоре над строкой — по полоске на каждую
+                  проходящую стоянку. Цвет и дорожку CSS берёт из инлайн-
+                  переменных; шаг дорожки 6px — чтобы параллельные линии
+                  (2px + просвет) не слипались, но оставались под числом
+                  даты. */}
+              {lines.map((line) => (
+                <span
+                  key={line.bookingId}
+                  className="stay-line"
+                  aria-hidden
+                  style={
+                    {
+                      "--stay-color": `var(--stay-line-${line.color})`,
+                      "--stay-offset": `${line.slot * 6}px`,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
               {item.kind === "public" ? (
                 <EventCard
                   event={item.event}
@@ -823,7 +896,8 @@ export default async function TripPage({
                 />
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

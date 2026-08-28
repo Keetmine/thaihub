@@ -20,6 +20,11 @@ export type BookingLegData = {
   bookingId: string;
   kind: "HOTEL" | "FLIGHT";
   side: "start" | "end";
+  /** Номер цвета линии стоянки в палитре --stay-line-1..N — тем же
+   *  цветом красится иконка, чтобы линия читалась принадлежащей своим
+   *  карточкам заезда/выезда. null — линии у брони нет (перелёт или не
+   *  обе даты), иконка остаётся акцентной. */
+  stayColor: number | null;
   dayLabel: string;
   monthLabel: string;
   weekdayLabel: string;
@@ -71,7 +76,18 @@ export default function TripBookingLeg({
         <span className="event-card-weekday">{leg.weekdayLabel}</span>
       </div>
 
-      <span className="booking-leg-icon flex-shrink-0" aria-hidden>
+      <span
+        className="booking-leg-icon flex-shrink-0"
+        aria-hidden
+        // Цвет линии своей стоянки — маркер «эта линия начинается/
+        // кончается здесь»; без стоянки переменной нет, и CSS падает
+        // обратно на акцент.
+        style={
+          leg.stayColor != null
+            ? ({ "--stay-color": `var(--stay-line-${leg.stayColor})` } as React.CSSProperties)
+            : undefined
+        }
+      >
         {isFlight ? <PlaneIcon /> : <BuildingIcon />}
       </span>
 

@@ -13,6 +13,7 @@ import {
 import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 
 export const metadata = { title: "Пейринги" };
 
@@ -155,12 +156,12 @@ export default async function AdminPairingsPage({
           })}
         </div>
       )}
+      {/* Листание — от полного адреса: поиск и фильтры остаются на
+          месте (И16), меняется только page. */}
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) =>
-          `/admin/pairings?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
-        }
+        buildHref={(p) => adminListHref("/admin/pairings", sp, { page: p })}
       />
       </div>
       <AdminFilters defs={adminPairingFilterDefs()} params={sp} />

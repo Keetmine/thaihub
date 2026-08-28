@@ -18,6 +18,7 @@ import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
 import Pagination from "@/components/Pagination";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import { isOnlineNow, lastSeenExact, lastSeenLabel } from "./lastSeenLabel";
 
 export const metadata = { title: "Пользователи" };
@@ -34,7 +35,10 @@ export default async function AdminUsersPage({
   const { q: rawQ, page: rawPage, sort: rawSort } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
-  const sortBySeen = rawSort === "seen";
+  // По умолчанию список отсортирован по последнему заходу — сюда смотрят,
+  // чтобы видеть, кто живой; порядок по дате регистрации — явным
+  // ?sort=created (просьба владельца, раньше было наоборот).
+  const sortByCreated = rawSort === "created";
 
   // Удалённые аккаунты в списке не показываем — они обезличены и войти
   // в них нельзя (см. lib/userDeletion.ts).
@@ -64,9 +68,9 @@ export default async function AdminUsersPage({
       where,
       // nulls: "last" — те, кто ни разу не заходил, не должны занимать
       // верх списка «кто был недавно».
-      orderBy: sortBySeen
-        ? { lastSeenAt: { sort: "desc", nulls: "last" } }
-        : { createdAt: "desc" },
+      orderBy: sortByCreated
+        ? { createdAt: "desc" }
+        : { lastSeenAt: { sort: "desc", nulls: "last" } },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
@@ -91,19 +95,6 @@ export default async function AdminUsersPage({
   });
   const freePromos = promos.filter((p) => !p.usedAt);
 
-  // Поиск, сортировка и страница живут в одном адресе — переключение
-  // любого из них не должно терять остальные.
-  const listHref = (sort: string, targetPage?: number) => {
-    const qs = [
-      q ? `q=${encodeURIComponent(q)}` : "",
-      sort === "seen" ? "sort=seen" : "",
-      targetPage ? `page=${targetPage}` : "",
-    ]
-      .filter(Boolean)
-      .join("&");
-    return `/admin/users${qs ? `?${qs}` : ""}`;
-  };
-
   return (
     <div>
       <span className="eyebrow">Управление</span>
@@ -124,21 +115,24 @@ export default async function AdminUsersPage({
         появились отметки, поле пустое — это ещё не значит, что человек ушёл.
       </p>
 
+      {/* Ссылки сортировки строят адрес от текущего (adminListHref):
+          поиск и фильтры остаются, а страница сбрасывается — другой
+          порядок смотрят с начала. Дефолтный вариант первым. */}
       <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
         <span className="small text-secondary">Сортировка:</span>
         <Link
-          href={listHref("")}
+          href={adminListHref("/admin/users", sp, { sort: null, page: 1 })}
           prefetch={false}
-          className={`btn btn-sm ${!sortBySeen ? "btn-primary" : "btn-ghost"}`}
-        >
-          по регистрации
-        </Link>
-        <Link
-          href={listHref("seen")}
-          prefetch={false}
-          className={`btn btn-sm ${sortBySeen ? "btn-primary" : "btn-ghost"}`}
+          className={`btn btn-sm ${!sortByCreated ? "btn-primary" : "btn-ghost"}`}
         >
           по последнему заходу
+        </Link>
+        <Link
+          href={adminListHref("/admin/users", sp, { sort: "created", page: 1 })}
+          prefetch={false}
+          className={`btn btn-sm ${sortByCreated ? "btn-primary" : "btn-ghost"}`}
+        >
+          по регистрации
         </Link>
       </div>
 
@@ -146,7 +140,7 @@ export default async function AdminUsersPage({
         action="/admin/users"
         q={q}
         placeholder="Поиск по имени, email, telegram…"
-        hiddenFields={sortBySeen ? { sort: "seen" } : undefined}
+        hiddenFields={sortByCreated ? { sort: "created" } : undefined}
         className="mb-3"
       />
       {/* Список слева, фильтры колонкой справа — как на /search. */}
@@ -269,10 +263,12 @@ export default async function AdminUsersPage({
           })}
         </div>
       )}
+      {/* Листание — от полного адреса: сортировка, поиск и фильтры
+          остаются на месте (И16), меняется только page. */}
       <Pagination
         page={page}
         totalPages={totalPagesFor(usersTotal)}
-        buildHref={(p) => listHref(sortBySeen ? "seen" : "", p)}
+        buildHref={(p) => adminListHref("/admin/users", sp, { page: p })}
       />
       </div>
       <AdminFilters defs={adminUserFilterDefs()} params={sp} />

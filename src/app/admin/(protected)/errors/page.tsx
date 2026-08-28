@@ -6,6 +6,7 @@ import { TrashIcon } from "@/components/icons";
 import { clearErrorLog, deleteErrorGroup, markErrorsReviewed } from "./actions";
 import Pagination from "@/components/Pagination";
 import { DENSE_PAGE_SIZE } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import Link from "next/link";
 
 export const metadata = { title: "Ошибки" };
@@ -25,7 +26,8 @@ export default async function AdminErrorsPage({
   searchParams: Promise<{ page?: string; period?: string }>;
 }) {
   await requireAdminPage();
-  const { page: rawPage, period } = await searchParams;
+  const sp = await searchParams;
+  const { page: rawPage, period } = sp;
   const page = Math.max(1, Number(rawPage) || 1);
   // ?period=day — переход с дашборда «ошибок за сутки»: там счётчик
   // именно суточный, и список должен совпадать с ним.
@@ -164,7 +166,7 @@ export default async function AdminErrorsPage({
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/errors?page=${p}${period === "day" ? "&period=day" : ""}`}
+        buildHref={(p) => adminListHref("/admin/errors", sp, { page: p })}
       />
     </div>
   );

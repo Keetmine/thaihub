@@ -52,7 +52,7 @@ export default function EpisodeSchedule({ rows }: { rows: EpisodeScheduleRow[] }
   const toggle = collapsed ? (
     <button
       type="button"
-      className={`btn btn-ghost btn-sm ${start > 0 ? "mb-2" : "mt-2"}`}
+      className={`btn-link-accent ${start > 0 ? "mb-2" : "mt-2"}`}
       onClick={() => setExpanded(true)}
     >
       {s.showAll(total)}

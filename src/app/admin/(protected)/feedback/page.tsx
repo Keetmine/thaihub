@@ -7,6 +7,7 @@ import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import { setFeedbackStatus, deleteFeedback } from "./actions";
 
 export const metadata = { title: "Обращения" };
@@ -27,7 +28,8 @@ export default async function AdminFeedbackPage({
   searchParams: Promise<{ all?: string; page?: string }>;
 }) {
   await requireAdminPage();
-  const { all, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { all, page: rawPage } = sp;
   const showAll = all === "1";
   const page = parsePage(rawPage);
 
@@ -124,7 +126,7 @@ export default async function AdminFeedbackPage({
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) => `/admin/feedback?${showAll ? "all=1&" : ""}page=${p}`}
+        buildHref={(p) => adminListHref("/admin/feedback", sp, { page: p })}
       />
     </div>
   );

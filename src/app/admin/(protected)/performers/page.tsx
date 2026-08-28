@@ -9,6 +9,7 @@ import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import { performerNameWhere } from "@/lib/searchWhere";
 import AdminFilters from "@/components/admin/AdminFilters";
 import {
@@ -259,12 +260,12 @@ export default async function AdminPerformersPage({
               },
             ]}
           />
+          {/* Листание — от полного адреса: view, поиск и фильтры
+              остаются на месте (И16), меняется только page. */}
           <Pagination
             page={page}
             totalPages={performersTotalPages}
-            buildHref={(p) =>
-              `/admin/performers?${isMascots ? "view=mascots&" : isBands ? "view=bands&" : ""}${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
-            }
+            buildHref={(p) => adminListHref("/admin/performers", sp, { page: p })}
           />
         </>
       )}

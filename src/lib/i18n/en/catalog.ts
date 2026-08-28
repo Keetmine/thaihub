@@ -78,6 +78,7 @@ export const catalog = {
     },
 
     dramas: {
+        calendarLink: "Episode calendar",
         metaTitle: "Series",
         metaDescription:
             "Thai BL series: what they are about, who stars in them, when they aired and where they were filmed.",

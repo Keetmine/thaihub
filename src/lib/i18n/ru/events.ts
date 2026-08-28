@@ -38,6 +38,9 @@ export const events: Dict["events"] = {
         more: (count: number) => `+${count} ещё`,
         monthSelect: "Месяц",
         yearSelect: "Год",
+        // И11: фильтр на вкладке сериалов — «любой статус просмотра».
+        seriesFilterAll: "Все сериалы",
+        seriesFilterMine: "Только мои",
         episodeShort: (number: number) => `${number} серия`,
         episodeTitle: (drama: string, number: number, episodeTitle: string | null) =>
             `${drama} — ${number} серия${episodeTitle ? `: ${episodeTitle}` : ""}`,
@@ -55,7 +58,9 @@ export const events: Dict["events"] = {
         backToCalendar: "← К календарю",
         prevDay: "← Пред. день",
         nextDay: "След. день →",
-        empty: "На этот день событий нет.",
+        empty: "На этот день ничего не запланировано.",
+        eventsHeading: "События",
+        seriesHeading: "Серии",
     },
 
     detail: {

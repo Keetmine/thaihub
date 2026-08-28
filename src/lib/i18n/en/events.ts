@@ -41,6 +41,8 @@ export const events = {
         yearSelect: "Year",
         // Подпись в клетке месяца: номер идёт первым, потому что длинное
         // название обрезается многоточием — обрезаться должно оно.
+        seriesFilterAll: "All series",
+        seriesFilterMine: "Only mine",
         episodeShort: (number: number) => `Ep. ${number}`,
         episodeTitle: (drama: string, number: number, episodeTitle: string | null) =>
             `${drama} — episode ${number}${episodeTitle ? `: ${episodeTitle}` : ""}`,
@@ -59,7 +61,9 @@ export const events = {
         backToCalendar: "← Back to the calendar",
         prevDay: "← Previous day",
         nextDay: "Next day →",
-        empty: "Nothing is happening on this day.",
+        empty: "Nothing is scheduled for this day.",
+        eventsHeading: "Events",
+        seriesHeading: "Episodes",
     },
 
     /** Страница события: /event/[id] */

@@ -12,6 +12,7 @@ import {
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
 
@@ -175,12 +176,12 @@ export default async function AdminAgenciesPage({
           ]}
         />
       )}
+      {/* Листание — от полного адреса: поиск и фильтры остаются на
+          месте (И16), меняется только page. */}
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) =>
-          `/admin/agencies?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
-        }
+        buildHref={(p) => adminListHref("/admin/agencies", sp, { page: p })}
       />
       </div>
       <AdminFilters defs={adminAgencyFilterDefs()} params={sp} />

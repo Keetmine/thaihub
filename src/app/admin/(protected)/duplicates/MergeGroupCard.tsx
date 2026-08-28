@@ -9,14 +9,20 @@ export default function MergeGroupCard({
   rows,
   editHrefBase,
   onMerge,
+  onDismiss,
+  dismissLabel,
 }: {
   title: string;
   rows: { id: string; label: string; sublabel: string }[];
   editHrefBase: string;
   onMerge: (keeperId: string, loserIds: string[]) => Promise<void>;
+  /** И5: «не сливать» / «вернуть в дубли». Обратимо — без модалки. */
+  onDismiss?: () => Promise<void>;
+  dismissLabel?: string;
 }) {
   const router = useRouter();
   const [keeperId, setKeeperId] = useState(rows[0].id);
+  const [isDismissing, setIsDismissing] = useState(false);
 
   // Подтверждение и индикация «Слияние…» — у общего ConfirmForm (модалка);
   // ошибка сервера тоже показывается в ней (вернуть { error }).
@@ -55,17 +61,37 @@ export default function MergeGroupCard({
           </label>
         ))}
       </div>
-      <ConfirmForm
-        action={confirmedMerge}
-        confirmMessage={`Слить ${rows.length} записей «${title}» в одну? Остальные ${loserCount} будут удалены, их связи (события, избранное и т.п.) перенесутся на выбранную запись. Отменить нельзя.`}
-        confirmLabel="Слить"
-        busyLabel="Слияние…"
-        className="d-inline"
-      >
-        <button type="button" className="btn btn-outline-warning btn-sm">
-          Слить, оставив выбранную
-        </button>
-      </ConfirmForm>
+      <div className="d-flex flex-wrap align-items-center gap-2">
+        <ConfirmForm
+          action={confirmedMerge}
+          confirmMessage={`Слить ${rows.length} записей «${title}» в одну? Остальные ${loserCount} будут удалены, их связи (события, избранное и т.п.) перенесутся на выбранную запись. Отменить нельзя.`}
+          confirmLabel="Слить"
+          busyLabel="Слияние…"
+          className="d-inline"
+        >
+          <button type="button" className="btn btn-outline-warning btn-sm">
+            Слить, оставив выбранную
+          </button>
+        </ConfirmForm>
+        {onDismiss && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={isDismissing}
+            onClick={async () => {
+              setIsDismissing(true);
+              try {
+                await onDismiss();
+                router.refresh();
+              } finally {
+                setIsDismissing(false);
+              }
+            }}
+          >
+            {isDismissing ? "…" : dismissLabel}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

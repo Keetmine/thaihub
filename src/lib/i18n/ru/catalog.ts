@@ -71,6 +71,7 @@ export const catalog: Dict["catalog"] = {
     },
 
     dramas: {
+        calendarLink: "Календарь серий",
         metaTitle: "Сериалы",
         metaDescription:
             "Тайские BL-сериалы: описания, актёрский состав, годы выхода и места съёмок.",

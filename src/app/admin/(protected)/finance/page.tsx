@@ -6,6 +6,7 @@ import { getPremiumPriceStars } from "@/lib/siteSettings";
 import ConfirmForm from "@/components/ConfirmForm";
 import Pagination from "@/components/Pagination";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import { refundPayment } from "./actions";
 
 export const metadata = { title: "Финансы" };
@@ -22,7 +23,8 @@ export default async function AdminFinancePage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await requireAdminPage();
-  const { page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { page: rawPage } = sp;
   const page = parsePage(rawPage);
   const now = new Date();
   const [payments, paymentsTotal, activeSubs, price, starsTotal] =
@@ -109,7 +111,7 @@ export default async function AdminFinancePage({
           <Pagination
             page={page}
             totalPages={totalPages}
-            buildHref={(p) => `/admin/finance?page=${p}`}
+            buildHref={(p) => adminListHref("/admin/finance", sp, { page: p })}
           />
         </div>
         <div className="col-12 col-lg-6">

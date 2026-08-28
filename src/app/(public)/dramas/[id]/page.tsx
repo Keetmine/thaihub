@@ -263,7 +263,12 @@ export default async function DramaDetailPage({
       <BackLink fallbackHref="/dramas" fallbackLabel={t.catalog.drama.back} />
       {/* Классическая шапка (по просьбе владельца): постер слева,
           заголовок и статус сверху — без размытого hero. */}
-      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-2 mb-4">
+      {/* Без flex-wrap: с ним длинная строка альтернативных названий
+          уносила кнопку статуса под текст. Колонка текста сжимается
+          (minWidth: 0) и переносит строки внутри себя, кнопка-кружок
+          остаётся справа сверху на любой ширине — на мобильном ей тоже
+          хватает места рядом с заголовком. */}
+      <div className="d-flex align-items-start justify-content-between gap-3 mt-2 mb-4">
         <div style={{ minWidth: 0 }}>
           {/* Год в скобках и цветной статус — в строке с названием
               (просьба владельца); чип «серий» убран, число эпизодов и
@@ -310,7 +315,11 @@ export default async function DramaDetailPage({
           )}
         </div>
         {currentUser && (
-          <DramaStatusButton dramaId={drama.id} status={watchStatus?.status ?? null} />
+          <DramaStatusButton
+            dramaId={drama.id}
+            status={watchStatus?.status ?? null}
+            className="flex-shrink-0"
+          />
         )}
       </div>
 
@@ -716,9 +725,16 @@ export default async function DramaDetailPage({
         </div>
       )}
 
-      {/* Атрибуция: постер/синопсис пришли с MDL и blscene (см. /terms). */}
+      {/* Атрибуция: постер/синопсис пришли с MDL и blscene, русские
+          название и описание — с dorama.land (см. /terms: источники
+          обещаны на страницах записей). Подписи строк — hostname из
+          ссылки, doramalandUrl есть только у сериалов с переводом. */}
       <SourcesBlock
-        links={[{ url: drama.mydramalistUrl }, { url: drama.blsceneUrl }]}
+        links={[
+          { url: drama.mydramalistUrl },
+          { url: drama.blsceneUrl },
+          { url: drama.doramalandUrl },
+        ]}
       />
 
       <div id="reviews" className="anchor-target mt-4">

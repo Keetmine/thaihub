@@ -1655,6 +1655,23 @@ model TripPersonalEventAttendance {
   @@index([personalEventId])
 }
 
+// И5: «не сливать» на странице дублей. В группы попадают не только
+// дубли — ремейк с тем же названием, тёзки с одним ником, — а сделать
+// с такой парой было нечего: слить нельзя, убрать из списка тоже, и
+// она мозолила глаза при каждом заходе. Скрытие привязано к ТОЧНОМУ
+// составу группы (отсортированные id через «|»): появится третий
+// кандидат — состав изменится и группа вернётся в список сама.
+model DuplicateDismissal {
+  id         String   @id @default(cuid())
+  // "drama" | "performer" — строкой: enum ради двух значений раздул бы
+  // клиент, а пишет сюда только своя админка.
+  entityType String
+  memberKey  String
+  createdAt  DateTime @default(now())
+
+  @@unique([entityType, memberKey])
+}
+
 model PerformerSeen {
   id          String    @id @default(cuid())
   userId      String

@@ -4,6 +4,7 @@ export const home = {
     upcoming: "What's next",
     // Блок «выходит сегодня» — над «Что нового».
     airingToday: "Airing today",
+    airingTodayCalendar: "Calendar",
     airingTodayEpisode: (n: number) => `Episode ${n}`,
     // Сдвоенный показ: одной карточкой с диапазоном.
     airingTodayEpisodes: (from: number, to: number) => `Episodes ${from}–${to}`,

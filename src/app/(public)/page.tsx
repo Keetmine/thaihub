@@ -478,7 +478,15 @@ export default async function HomePage() {
           Никто сегодня не выходит — блока нет вовсе. */}
       {airingToday.length > 0 && (
         <section className="mb-4">
-          <h2 className="section-heading mb-3">{dict.home.airingToday}</h2>
+          {/* И9: из блока должен быть выход в календарь серий — раньше
+              человек видел сегодняшнее и не догадывался, что есть
+              расписание на месяц. Тот же вид, что «Все» у соседей. */}
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="section-heading mb-0">{dict.home.airingToday}</h2>
+            <Link href="/calendar?view=series" className="small text-secondary">
+              {dict.home.airingTodayCalendar}
+            </Link>
+          </div>
           <div className="d-flex flex-column gap-2 stagger">
             {airingToday.map(({ drama, from, to }) => {
               const marked = airingTodayStatuses.get(drama.id);

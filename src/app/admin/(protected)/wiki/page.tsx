@@ -6,6 +6,7 @@ import NameSearchBox from "@/components/NameSearchBox";
 import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
+import { adminListHref } from "@/lib/adminListHref";
 import { deleteWikiArticle } from "./actions";
 import { formatShortDate } from "@/lib/dates";
 
@@ -19,7 +20,8 @@ export default async function AdminWikiPage({
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   await requireAdminPage();
-  const { q: rawQ, page: rawPage } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
   const where = q
@@ -103,9 +105,7 @@ export default async function AdminWikiPage({
       <Pagination
         page={page}
         totalPages={totalPages}
-        buildHref={(p) =>
-          `/admin/wiki?${q ? `q=${encodeURIComponent(q)}&` : ""}page=${p}`
-        }
+        buildHref={(p) => adminListHref("/admin/wiki", sp, { page: p })}
       />
     </div>
   );
