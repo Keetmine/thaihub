@@ -5,9 +5,12 @@ import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
-import { PencilIcon, TrashIcon } from "@/components/icons";
+import { UserIcon, PencilIcon, TrashIcon } from "@/components/icons";
 import { updateTripPersonalEvent, deleteTripPersonalEvent } from "./actions";
 import LocationPickerField from "./LocationPickerField";
+import { performerHref } from "@/lib/performerSlug";
+import EntityMultiSelect from "@/components/EntityMultiSelect";
+import { searchPerformersForList } from "@/app/(public)/artist-lists/actions";
 import AppLink from "@/components/AppLink";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import {
@@ -38,6 +41,9 @@ export type PersonalEventData = {
   showOnHome: boolean;
   // Ж10: картинка к записи — скан билета, скрин брони, афиша.
   imageUrl: string | null;
+  // Артисты на событии: после даты события попадают в «видел(а)
+  // вживую» создателя записи.
+  performers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
   canEdit: boolean;
 };
 
@@ -55,6 +61,7 @@ export function PersonalEventFields({
     dateKey: string;
     timeValue: string;
     location?: { id: string; name: string } | null;
+    performers?: { id: string; name: string; photoUrl?: string | null }[];
     editableByOthers?: boolean;
     visibility?: TripItemVisibilityValue;
     showOnHome?: boolean;
@@ -97,6 +104,25 @@ export function PersonalEventFields({
         </div>
       </div>
       <LocationPickerField defaultLocation={defaults?.location} />
+      <div>
+        <label className="form-label small text-secondary" htmlFor={`${uid}-performers`}>
+          {t.trips.personal.performers}
+        </label>
+        <p className="small text-secondary mb-1" style={{ opacity: 0.75 }}>
+          {t.trips.personal.performersHint}
+        </p>
+        {/* Каталог артистов не приезжает пропсом (их тысячи) — общий
+            комбобокс ищет на сервере по мере ввода; уже выбранные
+            приходят options'ами, чтобы капсулы нарисовались сразу. */}
+        <EntityMultiSelect
+          id={`${uid}-performers`}
+          name="performerIds"
+          options={defaults?.performers ?? []}
+          defaultSelectedIds={(defaults?.performers ?? []).map((p) => p.id)}
+          placeholder={t.trips.personal.performersPlaceholder}
+          searchOptions={searchPerformersForList}
+        />
+      </div>
       <div>
         <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>{t.trips.personal.note}</label>
         <textarea id={`${uid}-note`} name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
@@ -274,6 +300,19 @@ export default function PersonalEventCard({
           {event.location && event.note && " · "}
           {event.note}
         </p>
+        {event.performers.length > 0 && (
+          <p className="event-row-cast mb-0">
+            <UserIcon className="icon-inline" />{" "}
+            {event.performers.map((p, i) => (
+              <span key={p.id}>
+                {i > 0 && ", "}
+                <AppLink href={performerHref(p)} className="agenda-performer-link">
+                  {p.name}
+                </AppLink>
+              </span>
+            ))}
+          </p>
+        )}
         {/* Ж10: миниатюра приложенной картинки — открывается по клику
             в новой вкладке (PDF тоже). Файл приватный, раздаётся через
             /files/personal/… с проверкой прав. */}
@@ -323,6 +362,7 @@ export default function PersonalEventCard({
               visibility: event.visibility,
               showOnHome: event.showOnHome,
               imageUrl: event.imageUrl,
+              performers: event.performers,
             }}
             showShareToggle={showShareToggle}
             visibilityOptions={visibilityOptions}

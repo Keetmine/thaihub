@@ -89,6 +89,13 @@ manually re-entering a date filter every time.
   `src/app/(public)/page.tsx`). Галочка есть и в соло-, и в совместной
   поездке — это про свою главную, а не про доступ участников; в
   совместной поездке на главную попадают только собственные записи.
+  Поле «Артисты на событии» (`TripPersonalEventPerformer`, связка
+  многие-ко-многим с каскадом в обе стороны) — выбор артистов тем же
+  `EntityMultiSelect`, что в списках артистов; в карточке они идут
+  строкой ссылок под датой. Смысл поля — не только подпись: после даты
+  события эти артисты попадают владельцу записи в «видела вживую»
+  (подробности — «Статистика» в [social.md](social.md)). Обновление
+  пересобирает связки (`deleteMany` + `create` — как теги у сериалов).
   All three actions (`createTripPersonalEvent`/`update…`/`delete…` in
   `trips/actions.ts`) go through `requireTripAccess` (owner OR member),
   scope the row by `tripId`, and update/delete additionally enforce

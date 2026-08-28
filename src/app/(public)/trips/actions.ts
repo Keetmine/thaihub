@@ -321,6 +321,7 @@ function parsePersonalEventForm(
   isPrivate: boolean;
   showOnHome: boolean;
   imageUrl: string | null;
+  performerIds: string[];
 } | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
@@ -328,6 +329,10 @@ function parsePersonalEventForm(
   const time = String(formData.get("time") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
   if (!title || !date) return null;
+  const performerIds = formData
+    .getAll("performerIds")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
   // Без времени событие встаёт на начало дня — в списке поездки такие
   // сортируются раньше всех событий этого дня.
   return {
@@ -341,6 +346,7 @@ function parsePersonalEventForm(
     ),
     showOnHome: formData.get("showOnHome") === "on",
     imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
+    performerIds,
   };
 }
 
@@ -352,8 +358,14 @@ export async function createTripPersonalEvent(
   if (!access.ok) return { ok: false, error: access.error };
   const data = parsePersonalEventForm(formData, access.trip.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
+  const { performerIds, ...fields } = data;
   await prisma.tripPersonalEvent.create({
-    data: { tripId: access.trip.id, createdById: access.user.id, ...data },
+    data: {
+      tripId: access.trip.id,
+      createdById: access.user.id,
+      ...fields,
+      performers: { create: performerIds.map((performerId) => ({ performerId })) },
+    },
   });
   revalidatePath(`/trips/${access.trip.id}`);
   return { ok: true };
@@ -376,9 +388,18 @@ export async function updateTripPersonalEvent(
   }
   const data = parsePersonalEventForm(formData, trip.visibility, item.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
+  const { performerIds, ...fields } = data;
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
-    data,
+    data: {
+      ...fields,
+      // Список артистов приходит целиком — старые связи заменяются
+      // новыми, а не дополняются.
+      performers: {
+        deleteMany: {},
+        create: performerIds.map((performerId) => ({ performerId })),
+      },
+    },
   });
   revalidatePath(`/trips/${trip.id}`);
   return { ok: true };

@@ -88,9 +88,28 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     where: { userId },
     select: { performerId: true },
   });
+  // Третий источник — артисты на ЛИЧНЫХ событиях поездок (фанмит, ужин
+  // с актёром: таких событий в нашей афише нет). Считаются только
+  // ПРОШЕДШИЕ — привязать артиста к завтрашней встрече не значит уже
+  // его увидеть, — и только у автора записи: в совместной поездке
+  // чужое личное событие не делает артиста увиденным всеми.
+  const personalEventSeen = await prisma.tripPersonalEventPerformer.findMany({
+    where: {
+      personalEvent: {
+        startsAt: { lt: now },
+        OR: [
+          { createdById: userId },
+          // Легаси-записи без автора принадлежат владельцу поездки.
+          { createdById: null, trip: { userId } },
+        ],
+      },
+    },
+    select: { performerId: true },
+  });
   const seenPerformerIds = new Set([
     ...performerCounts.keys(),
     ...manuallySeen.map((m) => m.performerId),
+    ...personalEventSeen.map((m) => m.performerId),
   ]);
 
   const byYear = new Map<number, number>();
