@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import FormSection from "@/components/admin/FormSection";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
@@ -11,7 +11,7 @@ import { createPerformerAndReturn, searchPerformerOptions } from "../performers/
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
 import { searchNovelOptions, createNovelAndReturn } from "../novels/actions";
-import { findSimilarDramas } from "./actions";
+import { findSimilarDramas, type DramaFormState } from "./actions";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 
 type PerformerOption = { id: string; name: string; photoUrl?: string | null };
@@ -61,7 +61,8 @@ export default function DramaForm({
   defaultLocationIds,
   submitLabel,
 }: {
-  action: (formData: FormData) => void;
+  /** Серверный экшен формы: ошибка приходит значением (см. DramaFormState). */
+  action: (prev: DramaFormState, formData: FormData) => Promise<DramaFormState>;
   agencies: EntityOption[];
   locations: EntityOption[];
   /** Выбранная новелла (для триггера селекта); каталог ищется асинхронно. */
@@ -99,6 +100,9 @@ export default function DramaForm({
   const isNewDrama = !v;
   const [titleValue, setTitleValue] = useState(v?.title ?? "");
 
+  // Ошибка сохранения — из useActionState: брошенную из экшена ошибку
+  // прод-сборка Next обезличивает, значение доходит как есть.
+  const [formState, formAction] = useActionState(action, null);
   const formRef = useRef<HTMLFormElement>(null);
   const { dirty } = useUnsavedGuard(formRef);
   const [activeTab, setActiveTab] = useState<Tab>("general");
@@ -123,7 +127,7 @@ export default function DramaForm({
   return (
     <form
       ref={formRef}
-      action={action}
+      action={formAction}
       className="surface d-flex flex-column gap-3 p-4"
     >
       <div className="tab-bar mb-1">
@@ -467,6 +471,11 @@ export default function DramaForm({
         />
       </div>
 
+      {formState?.error && (
+        <div className="alert alert-danger mb-0 py-2" role="alert">
+          {formState.error}
+        </div>
+      )}
       <div className="admin-form-actions">
         <SubmitButton label={submitLabel} busyLabel="Сохранение…" className="btn btn-primary" />
         <span className="small text-secondary">

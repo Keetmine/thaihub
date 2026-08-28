@@ -1,7 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { ADMIN_STORAGE_STATE } from "./auth-state";
 
-test.use({ storageState: ADMIN_STORAGE_STATE });
+// Без service worker: в прод-сборке его cache-first на /uploads/ отдаёт
+// постеры МИМО page.route — перехват «пропавших» картинок не срабатывает
+// (в dev воркер не регистрируется, там это не проявлялось).
+test.use({ storageState: ADMIN_STORAGE_STATE, serviceWorkers: "block" });
 
 /**
  * Строка афиши: две вещи, которые ломались молча.
@@ -18,7 +21,10 @@ test.use({ storageState: ADMIN_STORAGE_STATE });
  * выше оно относится.
  */
 test("пропавший постер уступает место букве", async ({ page }) => {
-  await page.route("**/uploads/**", (r) => r.fulfill({ status: 404 }));
+  // Прод-сборка ходит за картинками через оптимизатор
+  // (/_next/image?url=%2Fuploads%2F…) — глушим оба пути, иначе постеры
+  // «загружаются» и фолбэк не наступает.
+  await page.route(/\/uploads\/|url=%2Fuploads/, (r) => r.fulfill({ status: 404 }));
   await page.goto("/events");
   await page.waitForLoadState("networkidle");
   const cards = await page.locator(".event-card").count();

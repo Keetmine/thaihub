@@ -29,6 +29,15 @@ for (const path of PAGES) {
   test(`подписи связаны: ${path}`, async ({ page }) => {
     const res = await page.goto(path);
     if (!res || res.status() >= 400) test.skip(true, `нет страницы ${path}`);
+    // Страница может увести дальше уже НА КЛИЕНТЕ (welcome-шаги при
+    // давно заполненном профиле): выждать редирект и проверить адрес,
+    // иначе evaluate умирает на «Execution context was destroyed».
+    // Не networkidle: в прод-сборке сеть не замолкает (service worker,
+    // префетчи) и ожидание съедало весь таймаут теста.
+    await page.waitForTimeout(800);
+    if (!new URL(page.url()).pathname.startsWith(path)) {
+      test.skip(true, `${path} уводит на ${page.url()}`);
+    }
     const bad = await page.evaluate(() => {
       const labels = [...document.querySelectorAll("label.form-label")];
       const problems: string[] = [];

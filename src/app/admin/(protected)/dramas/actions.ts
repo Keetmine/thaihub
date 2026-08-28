@@ -44,16 +44,19 @@ const DRAMA_STATUSES = new Set([
  * лицо — а причина («эта ссылка уже стоит у другого сериала») из него
  * не читается.
  */
-async function assertDoramalandUrlFree(url: string | null, selfId?: string) {
-  if (!url) return;
+async function doramalandUrlConflict(url: string | null, selfId?: string): Promise<string | null> {
+  if (!url) return null;
   const taken = await prisma.drama.findFirst({
     where: { doramalandUrl: url, ...(selfId ? { id: { not: selfId } } : {}) },
     select: { title: true },
   });
-  if (taken) {
-    throw new Error(`Эта ссылка на dorama.land уже стоит у сериала «${taken.title}»`);
-  }
+  return taken ? `Эта ссылка на dorama.land уже стоит у сериала «${taken.title}»` : null;
 }
+
+/** Ответ формы сериала: ошибка — ЗНАЧЕНИЕМ (useActionState), не броском.
+ *  Брошенное из серверного экшена прод-сборка Next обезличивает до
+ *  «An error occurred…» — человеческий текст видел только dev. */
+export type DramaFormState = { error: string } | null;
 
 function getDramaDetailFields(formData: FormData) {
   const str = (f: string) => String(formData.get(f) ?? "").trim();
@@ -172,7 +175,7 @@ function getAgencyIds(formData: FormData): string[] {
   return single ? [single] : [];
 }
 
-export async function createDrama(formData: FormData) {
+export async function createDrama(_prev: DramaFormState, formData: FormData): Promise<DramaFormState> {
   await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
@@ -184,10 +187,11 @@ export async function createDrama(formData: FormData) {
   const cast = getCastEntries(formData);
   const locationIds = getLocationIds(formData);
 
-  if (!title) {
-    throw new Error("Укажите название сериала");
-  }
-  await assertDoramalandUrlFree(String(formData.get("doramalandUrl") ?? "").trim() || null);
+  if (!title) return { error: "Укажите название сериала" };
+  const conflict = await doramalandUrlConflict(
+    String(formData.get("doramalandUrl") ?? "").trim() || null,
+  );
+  if (conflict) return { error: conflict };
 
   const created = await prisma.drama.create({
     data: {
@@ -220,7 +224,7 @@ export async function createDrama(formData: FormData) {
   redirect("/admin/dramas");
 }
 
-export async function updateDrama(id: string, formData: FormData) {
+export async function updateDrama(id: string, _prev: DramaFormState, formData: FormData): Promise<DramaFormState> {
   await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const posterUrl = String(formData.get("posterUrl") ?? "").trim();
@@ -232,13 +236,12 @@ export async function updateDrama(id: string, formData: FormData) {
   const cast = getCastEntries(formData);
   const locationIds = getLocationIds(formData);
 
-  if (!title) {
-    throw new Error("Укажите название сериала");
-  }
-  await assertDoramalandUrlFree(
+  if (!title) return { error: "Укажите название сериала" };
+  const conflict = await doramalandUrlConflict(
     String(formData.get("doramalandUrl") ?? "").trim() || null,
     id,
   );
+  if (conflict) return { error: conflict };
 
   const before = await prisma.drama.findUnique({
     where: { id },
