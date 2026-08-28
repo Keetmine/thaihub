@@ -40,6 +40,9 @@ export type TtmEvent = {
   extraDates: string[];
   dateRangeText: string | null;
   ticketPrice: string | null;
+  /** Описание события, если сайт его отдаёт (TTM — нет: его таблица
+   *  деталей разбирается на состав и цену, связного текста там нет). */
+  description: string | null;
   // When tickets go on sale ("Public Sale" in the page's summary panel,
   // distinct from the free-text details table below it) — same
   // date/time-as-strings treatment as `date`/`startTime` above, and same
@@ -259,6 +262,7 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
     extraDates,
     dateRangeText,
     ticketPrice,
+    description: null,
     presaleDate,
     presaleTime,
     artists,

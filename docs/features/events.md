@@ -451,12 +451,51 @@ never visually changed (a real bug, not hypothetical).
   и резала ширину под текст (эта разметка осталась только у витринной
   строки лендинга, `.agenda-time` / `.agenda-dash`).
 
-## Importing an event from ThaiTicketMajor
+## Импорт события по ссылке (TTM, Eventpop, Ticketmelon, AllTicket, Eventpass)
 
-`/admin/events/import-ttm` — paste a `thaiticketmajor.com/concert/...` or
-`/performance/...` URL, review/edit everything the scrape found, then
-confirm to actually create the event. **Nothing is written to the
-database until that confirm step** — the scrape itself is read-only.
+Карточка «Событие по ссылке» на `/admin/imports` — ОДНО поле на пять
+сайтов, сайт распознаётся по домену (`detectEventSite` /
+`scrapeEventByUrl` в `src/lib/eventTicketSites.ts`); дальше тот же
+экран проверки, что был у TTM: правишь всё найденное и подтверждаешь.
+**Nothing is written to the database until that confirm step** — the
+scrape itself is read-only. Если событие с этим sourceUrl уже есть,
+экран предупреждает и даёт ссылку на него (создать дубль всё ещё
+можно — сознательно).
+
+Каждый парсер приводит свой сайт к `TtmEvent`; артистов и предпродажу
+отдаёт только TTM, у остальных админ добирает состав руками на том же
+экране. Как добываются данные (разведка 2026-08-28):
+
+- **ticketmelon.com** — событие целиком лежит готовым JSON в
+  `__NEXT_DATA__`: название, площадка (name; там же адрес и
+  координаты), описание, постер (или og:image), `show_starttime`/
+  `show_endtime` — инстанты в мс, переводятся в бангкокское настенное
+  и разворачиваются в дни.
+- **allticket.com** — открытый статический JSON
+  `/master/event_info/<слаг>.json` (их живой API за AWS WAF, но
+  master-файл без защиты): название, место, цена, лого, дата ТЕКСТОМ
+  («12-14 APRIL 2026», «5, 19, 26 SEPTEBER 2026» — да, с опечаткой в
+  живых данных). `parseLooseDateList` разворачивает диапазоны ЦЕЛИКОМ
+  (TTM-овский разборщик взял бы из «12-14» только 12 и 14) и матчит
+  месяц по первым трём буквам — иначе их «SEPTEBER» потерялся бы.
+  Описание — infoHtml, у которого надо срезать <style> целиком: иначе
+  CSS сочится в текст.
+- **eventpop.me** — обычный серверный HTML: og-меты (название, постер,
+  `og:location`) + контент организатора (самый длинный прогон
+  <p>-абзацев — обёртки без опознавательных классов).
+  Структурированных дат в разметке НЕТ (расписание дорисовывает
+  клиент) — дата выуживается из текста, ВРЕМЯ АДМИН СТАВИТ РУКАМИ.
+- **ticket.eventpass.co** — Next.js flight-поток (`self.__next_f`);
+  вход пускает только с кукой `allowed-user=true`, которую сайт сам
+  ставит редиректом — шлём её сразу. Даты лежат ISO-строками с
+  ФИКТИВНЫМ «Z» (витрина показывает те же часы) — режем строкой, не
+  конвертируем.
+- **theconcert.com** — НЕ парсится: Cloudflare-челлендж не проходит
+  даже playwright (headless и с окном, цикл как у MdlClient) — их
+  защита распознаёт автоматизацию. Ссылка отбивается понятным
+  сообщением; события оттуда заводим руками.
+
+### Сам TTM-скрейп
 
 - **`src/lib/thaiticketmajor.ts`** — pure scraping (no DB access):
   `scrapeTtmEvent(url)` returns title, venue, date/time, poster, ticket

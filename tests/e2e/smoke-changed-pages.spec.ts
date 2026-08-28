@@ -38,15 +38,14 @@ test.describe("страницы после перестройки импорто
     await expect(page).toHaveURL(/log=runs.*status=FAILED/);
   });
 
-  test("импорт с ThaiTicketMajor живёт на странице импортов", async ({ page }) => {
+  test("импорт события по ссылке живёт на странице импортов", async ({ page }) => {
     // Раньше это была отдельная страница /admin/imports/ttm; форму
-    // встроили в общий список, разложенный по темам.
+    // встроили в общий список, а поле стало одним на пять сайтов
+    // (распознавание по домену — см. lib/eventTicketSites.ts).
     await page.goto("/admin/imports");
+    await expect(page.getByRole("heading", { name: "Событие по ссылке" })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "ThaiTicketMajor: импорт события" }),
-    ).toBeVisible();
-    await expect(
-      page.getByPlaceholder("https://www.thaiticketmajor.com/concert/..."),
+      page.getByPlaceholder(/thaiticketmajor\.com \/ eventpop\.me/),
     ).toBeVisible();
     // Заголовки-группы: импорты разложены по тому, что они заводят.
     for (const group of ["Актёры и артисты", "Сериалы", "События", "Локации"]) {

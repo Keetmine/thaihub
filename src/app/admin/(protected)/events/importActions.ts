@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { scrapeTtmEvent } from "@/lib/thaiticketmajor";
+import { scrapeEventByUrl } from "@/lib/eventTicketSites";
 import { combineDateTime } from "@/lib/dates";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
@@ -26,20 +26,30 @@ export type TtmImportPreview = {
   posterUrl: string;
   presaleDate: string;
   presaleTime: string;
+  description: string;
   sourceUrl: string;
   artists: TtmImportArtist[];
+  /** Событие с этим же sourceUrl уже в базе — экран предупредит, а не
+   *  даст молча завести дубль. */
+  existingEventId: string | null;
 };
 
 /**
- * Scrapes a ThaiTicketMajor event page and matches its artist lineup
- * against existing Performers (by exact, case-insensitive nickname match
- * — Performer.name is the nickname field, see docs/features/catalog.md).
+ * Scrapes an event page (сайт распознаётся по домену — TTM, Eventpop,
+ * Ticketmelon, AllTicket, Eventpass; см. lib/eventTicketSites.ts) and
+ * matches its artist lineup against existing Performers (by exact,
+ * case-insensitive nickname match — Performer.name is the nickname
+ * field, see docs/features/catalog.md; состав отдаёт только TTM).
  * Writes nothing — this is the preview step; createEventFromTtmImport
  * does the actual writes once an admin has reviewed/edited the result.
  */
 export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPreview> {
   await requireAdmin();
-  const scraped = await scrapeTtmEvent(url);
+  const scraped = await scrapeEventByUrl(url);
+  const existing = await prisma.event.findFirst({
+    where: { sourceUrl: scraped.sourceUrl },
+    select: { id: true },
+  });
 
   const existingPerformers = await prisma.performer.findMany({
     select: { id: true, name: true },
@@ -63,8 +73,10 @@ export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPrevi
     posterUrl: scraped.posterUrl ?? "",
     presaleDate: scraped.presaleDate ?? "",
     presaleTime: scraped.presaleTime ?? "",
+    description: scraped.description ?? "",
     sourceUrl: scraped.sourceUrl,
     artists,
+    existingEventId: existing?.id ?? null,
   };
 }
 

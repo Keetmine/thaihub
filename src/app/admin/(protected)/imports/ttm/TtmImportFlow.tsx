@@ -117,13 +117,13 @@ export default function TtmImportFlow({
       <div className="surface d-flex flex-column gap-3 p-4" style={{ maxWidth: "40rem" }}>
         <div>
           <label className="form-label" htmlFor="ttm-import-url">
-            Ссылка на событие ThaiTicketMajor
+            Ссылка на страницу события
           </label>
           <input
             id="ttm-import-url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.thaiticketmajor.com/concert/..."
+            placeholder="thaiticketmajor.com / eventpop.me / ticketmelon.com / allticket.com / eventpass.co"
             className="form-control"
           />
         </div>
@@ -144,6 +144,15 @@ export default function TtmImportFlow({
 
   return (
     <form onSubmit={handleSubmit} className="surface d-flex flex-column gap-3 p-4">
+      {preview.existingEventId && (
+        <p className="alert alert-warning small mb-0 py-2">
+          Событие с этим источником уже есть в базе —{" "}
+          <a href={`/admin/events/${preview.existingEventId}/edit`} target="_blank" rel="noreferrer">
+            открыть его
+          </a>
+          . «Создать событие» заведёт ДУБЛЬ.
+        </p>
+      )}
       <p className="small text-secondary mb-0">
         Источник:{" "}
         <a href={preview.sourceUrl} target="_blank" rel="noopener noreferrer">
@@ -225,7 +234,13 @@ export default function TtmImportFlow({
 
       <div>
         <label className="form-label" htmlFor="ttm-import-flow-description">Описание</label>
-        <textarea id="ttm-import-flow-description" name="description" rows={3} className="form-control" />
+        <textarea
+          id="ttm-import-flow-description"
+          name="description"
+          rows={preview.description ? 6 : 3}
+          defaultValue={preview.description}
+          className="form-control"
+        />
       </div>
 
       <EntitySelect

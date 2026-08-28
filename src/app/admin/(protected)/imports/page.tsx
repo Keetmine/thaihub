@@ -365,13 +365,14 @@ export default async function AdminImportsPage({
       <div className="row g-3 mb-4">
         <div className="col-12">
           <div className="surface p-4 h-100">
-            <h2 className="section-heading mb-2">ThaiTicketMajor: импорт события</h2>
+            <h2 className="section-heading mb-2">Событие по ссылке</h2>
             <p className="small text-secondary mb-3">
-              Ссылка на страницу события — подтянем название, место, дату, цену
-              и список артистов. Исполнителей с уже существующим ником просто
-              привяжем к событию, остальных создадим как новых после вашего
-              подтверждения. Раньше это была отдельная страница: импорт, до
-              которого надо идти по ссылке, легко не заметить.
+              Одно поле на пять сайтов — ThaiTicketMajor, Eventpop, Ticketmelon,
+              AllTicket, Eventpass: сайт распознаётся по домену. Подтянем
+              название, место, даты, постер, цену и описание; список артистов
+              отдаёт только TTM — там исполнителей с существующим ником
+              привяжем, остальных создадим после вашего подтверждения.
+              theconcert.com не парсится (Cloudflare) — такие заводим руками.
             </p>
             <TtmImportFlow performers={[]} dramas={[]} />
           </div>
