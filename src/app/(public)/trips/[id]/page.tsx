@@ -205,6 +205,8 @@ export default async function TripPage({
               performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
             },
           },
+          // Только СВОЯ отметка «я там буду» — карточке хватает булева.
+          attendances: { where: { userId: user.id }, select: { userId: true } },
         },
       },
       user: { select: { id: true, name: true, deletedAt: true } },
@@ -362,6 +364,7 @@ export default async function TripPage({
       showOnHome: p.showOnHome,
       imageUrl: p.imageUrl,
       performers: p.performers.map((link) => link.performer),
+      attending: p.attendances.length > 0,
       canEdit: canTouch(p),
     }));
   // Дела поездки: кого пускать к каждому, решает его видимость.
@@ -801,6 +804,7 @@ export default async function TripPage({
                   tripId={trip.id}
                   event={item.personalEvent}
                   canEdit={item.personalEvent.canEdit}
+                  canAttend={isParticipant}
                   showShareToggle={isShared}
                   visibilityOptions={visibilityOptions}
                 />

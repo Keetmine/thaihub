@@ -760,6 +760,7 @@ model User {
   favoriteEvents               FavoriteEvent[]
   favoriteAgencies             FavoriteAgency[]
   eventAttendances             EventAttendance[]
+  personalEventAttendances     TripPersonalEventAttendance[]
   dramaWatchStatuses           DramaWatchStatus[]
   visitedLocations             LocationVisit[]
   trips                        Trip[]
@@ -858,36 +859,38 @@ model TripMember {
 }
 
 model TripPersonalEvent {
-  id               String                       @id @default(cuid())
+  id               String                        @id @default(cuid())
   tripId           String
-  trip             Trip                         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip             Trip                          @relation(fields: [tripId], references: [id], onDelete: Cascade)
   title            String
   note             String?
   startsAt         DateTime
   // Личное событие можно привязать к известной локации — карточка
   // показывает место со ссылкой, оно попадает на карту поездки.
   locationId       String?
-  location         Location?                    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  location         Location?                     @relation(fields: [locationId], references: [id], onDelete: SetNull)
   // Совместные поездки: кто создал запись (null — владелец поездки,
   // легаси) и можно ли другим участникам её править/удалять.
   createdById      String?
-  editableByOthers Boolean                      @default(false)
+  editableByOthers Boolean                       @default(false)
   // Приватная запись — видна только автору, даже другим участникам.
   // Историческое поле, его заменяет visibility.
-  isPrivate        Boolean                      @default(false)
-  visibility       TripItemVisibility           @default(PARTICIPANTS)
+  isPrivate        Boolean                       @default(false)
+  visibility       TripItemVisibility            @default(PARTICIPANTS)
   // Кто из артистов будет на событии (фанмит, ужин с актёром): после
   // даты события они попадают в «видел(а) вживую» создателя записи —
   // см. lib/userStats.ts.
   performers       TripPersonalEventPerformer[]
+  // Отметки «я там буду» участников — см. TripPersonalEventAttendance.
+  attendances      TripPersonalEventAttendance[]
   // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
   // перелёты и брони на главной не нужны, а встреча с друзьями — да.
-  showOnHome       Boolean                      @default(false)
+  showOnHome       Boolean                       @default(false)
   // Картинка к записи (скан билета, скрин брони, афиша) — приватная,
   // как и сама запись: лежит в private-uploads/, раздаётся через
   // /files/personal/… с проверкой участия в поездке.
   imageUrl         String?
-  createdAt        DateTime                     @default(now())
+  createdAt        DateTime                      @default(now())
 
   @@index([tripId])
 }
@@ -1633,6 +1636,23 @@ model TripPersonalEventPerformer {
 
   @@unique([personalEventId, performerId])
   @@index([performerId])
+}
+
+// «Я там буду» на личном событии — отметка КАЖДОГО участника своя, как
+// «иду» на афише (решение владельца): в совместной поездке встречу
+// создаёт один, а идут не все. Автору ставится при создании записи по
+// умолчанию (создала = собираюсь; для планов-кандидатов снимается).
+// Артисты события попадают в «видел(а) вживую» только отметившимся —
+// и только после даты; см. lib/userStats.ts.
+model TripPersonalEventAttendance {
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personalEventId String
+  personalEvent   TripPersonalEvent @relation(fields: [personalEventId], references: [id], onDelete: Cascade)
+  createdAt       DateTime          @default(now())
+
+  @@id([userId, personalEventId])
+  @@index([personalEventId])
 }
 
 model PerformerSeen {

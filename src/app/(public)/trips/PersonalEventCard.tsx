@@ -1,12 +1,16 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useTransition } from "react";
 import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
-import { UserIcon, PencilIcon, TrashIcon } from "@/components/icons";
-import { updateTripPersonalEvent, deleteTripPersonalEvent } from "./actions";
+import { UserIcon, PencilIcon, TrashIcon, CheckIcon, PlusIcon } from "@/components/icons";
+import {
+  updateTripPersonalEvent,
+  deleteTripPersonalEvent,
+  togglePersonalEventAttendance,
+} from "./actions";
 import LocationPickerField from "./LocationPickerField";
 import { performerHref } from "@/lib/performerSlug";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
@@ -42,8 +46,10 @@ export type PersonalEventData = {
   // Ж10: картинка к записи — скан билета, скрин брони, афиша.
   imageUrl: string | null;
   // Артисты на событии: после даты события попадают в «видел(а)
-  // вживую» создателя записи.
+  // вживую» — но только отметившимся «я там буду».
   performers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
+  /** СВОЯ отметка «я там буду» смотрящего (у каждого участника своя). */
+  attending: boolean;
   canEdit: boolean;
 };
 
@@ -66,6 +72,7 @@ export function PersonalEventFields({
     visibility?: TripItemVisibilityValue;
     showOnHome?: boolean;
     imageUrl?: string | null;
+    attending?: boolean;
   };
   showShareToggle?: boolean;
   /** Что можно выбрать в «кто это видит» — уже урезано видимостью
@@ -137,6 +144,19 @@ export function PersonalEventFields({
         accept="image/*,application/pdf"
         endpoint="/api/upload-personal"
       />
+      {/* «Я там буду» — СВОЯ отметка, по умолчанию стоит (создала =
+          собираюсь; для планов-кандидатов снимается). Артисты события
+          идут в «видел(а) вживую» только отметившимся — и только после
+          даты. */}
+      <label className="form-check d-flex align-items-center gap-2 mb-0">
+        <input
+          type="checkbox"
+          name="attending"
+          defaultChecked={defaults?.attending ?? true}
+          className="form-check-input m-0"
+        />
+        <span className="form-check-label small">{t.trips.personal.attending}</span>
+      </label>
       {/* Ж11: галочка есть и в соло-, и в совместной поездке — это про
           мою главную, а не про доступ участников. */}
       <label className="form-check d-flex align-items-center gap-2 mb-0">
@@ -184,12 +204,16 @@ export default function PersonalEventCard({
   tripId,
   event,
   canEdit = true,
+  canAttend = false,
   showShareToggle = false,
   visibilityOptions,
 }: {
   tripId: string;
   event: PersonalEventData;
   canEdit?: boolean;
+  /** Участник поездки: может отметить «я там буду» с карточки. Гостю
+   *  публичной поездки переключатель не показываем — прав нет. */
+  canAttend?: boolean;
   showShareToggle?: boolean;
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
@@ -237,35 +261,47 @@ export default function PersonalEventCard({
 
   return (
     <div className="event-card">
-      {canEdit && (
+      {(canEdit || canAttend) && (
         <div className="corner-actions corner-actions-row">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label={t.common.edit}
-            title={t.common.edit}
-            onClick={() => setIsEditing(true)}
-          >
-            <PencilIcon />
-          </button>
-          <ConfirmForm
-            // Ошибку возвращаем ConfirmForm — она покажет её в модалке
-            // подтверждения ({ error } из результата).
-            action={async () => {
-              const result = await boundDelete();
-              if (!result.ok) return result;
-            }}
-            confirmMessage={t.trips.personal.deleteConfirm(event.title)}
-          >
-            <button
-              type="button"
-              className="icon-btn icon-btn-danger"
-              aria-label={t.common.delete}
-              title={t.common.delete}
-            >
-              <TrashIcon />
-            </button>
-          </ConfirmForm>
+          {canAttend && (
+            <AttendanceToggle
+              tripId={tripId}
+              personalEventId={event.id}
+              attending={event.attending}
+              isPast={event.startsAt < new Date()}
+            />
+          )}
+          {canEdit && (
+            <>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={t.common.edit}
+                title={t.common.edit}
+                onClick={() => setIsEditing(true)}
+              >
+                <PencilIcon />
+              </button>
+              <ConfirmForm
+                // Ошибку возвращаем ConfirmForm — она покажет её в модалке
+                // подтверждения ({ error } из результата).
+                action={async () => {
+                  const result = await boundDelete();
+                  if (!result.ok) return result;
+                }}
+                confirmMessage={t.trips.personal.deleteConfirm(event.title)}
+              >
+                <button
+                  type="button"
+                  className="icon-btn icon-btn-danger"
+                  aria-label={t.common.delete}
+                  title={t.common.delete}
+                >
+                  <TrashIcon />
+                </button>
+              </ConfirmForm>
+            </>
+          )}
         </div>
       )}
 
@@ -363,6 +399,7 @@ export default function PersonalEventCard({
               showOnHome: event.showOnHome,
               imageUrl: event.imageUrl,
               performers: event.performers,
+              attending: event.attending,
             }}
             showShareToggle={showShareToggle}
             visibilityOptions={visibilityOptions}
@@ -374,5 +411,59 @@ export default function PersonalEventCard({
         </form>
       </Modal>
     </div>
+  );
+}
+
+/** «Я там буду» в углу карточки — зеркало иконки GoingButton с афиши
+ *  (те же классы и подписи), но отметка живёт на личном событии.
+ *  Оптимистично, как и там: галочка меняется по клику, откат при
+ *  ошибке; проп с сервера пересинхронизирует при навигации. */
+function AttendanceToggle({
+  tripId,
+  personalEventId,
+  attending,
+  isPast,
+}: {
+  tripId: string;
+  personalEventId: string;
+  attending: boolean;
+  isPast: boolean;
+}) {
+  const t = useT();
+  const [isPending, startTransition] = useTransition();
+  const [active, setActive] = useState(attending);
+  const [prevProp, setPrevProp] = useState(attending);
+  if (attending !== prevProp) {
+    setPrevProp(attending);
+    setActive(attending);
+  }
+  const label = isPast
+    ? active
+      ? t.widgets.going.unwent
+      : t.widgets.going.went
+    : active
+      ? t.widgets.going.notGoing
+      : t.widgets.going.going;
+  return (
+    <button
+      type="button"
+      className={`round-icon-btn ${active ? "is-going" : ""}`}
+      disabled={isPending}
+      aria-pressed={active}
+      aria-label={label}
+      data-tooltip={label}
+      onClick={() => {
+        const next = !active;
+        setActive(next);
+        startTransition(async () => {
+          const result = await togglePersonalEventAttendance(tripId, personalEventId).catch(
+            () => ({ ok: false as const, error: "" }),
+          );
+          if (!result.ok) setActive(!next);
+        });
+      }}
+    >
+      {active ? <CheckIcon /> : <PlusIcon />}
+    </button>
   );
 }

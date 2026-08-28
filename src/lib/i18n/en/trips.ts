@@ -128,7 +128,8 @@ export const trips = {
         saveFailed: "Couldn't save — try again",
         badge: "personal",
         performers: "Artists at the event",
-        performersHint: "Who you will see there — once the date passes, they join your “seen live” list.",
+        performersHint:
+          "Who you will see there — once the date passes, they join your “seen live” list if “I’ll be there” is on.",
         performersPlaceholder: "Start typing a name…",
         deleteConfirm: (title: string) => `Delete "${title}"?`,
         attachmentOf: (title: string) => `Attachment on "${title}"`,
@@ -140,6 +141,7 @@ export const trips = {
         time: "Time",
         note: "Note",
         image: "Image",
+        attending: "I’ll be there",
         showOnHome: "Show on the home page",
         editableByOthers: "Trip members can edit and delete this",
     },

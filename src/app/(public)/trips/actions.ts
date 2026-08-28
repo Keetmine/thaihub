@@ -322,6 +322,7 @@ function parsePersonalEventForm(
   showOnHome: boolean;
   imageUrl: string | null;
   performerIds: string[];
+  attending: boolean;
 } | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
@@ -347,6 +348,10 @@ function parsePersonalEventForm(
     showOnHome: formData.get("showOnHome") === "on",
     imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
     performerIds,
+    // «Я там буду» — СВОЯ отметка редактирующего (в форме включена по
+    // умолчанию): планов создают больше, чем посещают, и артисты
+    // события идут в «видел(а) вживую» только отметившимся.
+    attending: formData.get("attending") === "on",
   };
 }
 
@@ -358,13 +363,14 @@ export async function createTripPersonalEvent(
   if (!access.ok) return { ok: false, error: access.error };
   const data = parsePersonalEventForm(formData, access.trip.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
-  const { performerIds, ...fields } = data;
+  const { performerIds, attending, ...fields } = data;
   await prisma.tripPersonalEvent.create({
     data: {
       tripId: access.trip.id,
       createdById: access.user.id,
       ...fields,
       performers: { create: performerIds.map((performerId) => ({ performerId })) },
+      ...(attending ? { attendances: { create: { userId: access.user.id } } } : {}),
     },
   });
   revalidatePath(`/trips/${access.trip.id}`);
@@ -388,7 +394,7 @@ export async function updateTripPersonalEvent(
   }
   const data = parsePersonalEventForm(formData, trip.visibility, item.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
-  const { performerIds, ...fields } = data;
+  const { performerIds, attending, ...fields } = data;
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
     data: {
@@ -399,8 +405,49 @@ export async function updateTripPersonalEvent(
         deleteMany: {},
         create: performerIds.map((performerId) => ({ performerId })),
       },
+      // Правится только СВОЯ отметка: галочка в форме — про редактора,
+      // отметки других участников не трогаем.
+      attendances: attending
+        ? {
+            connectOrCreate: {
+              where: { userId_personalEventId: { userId: user.id, personalEventId } },
+              create: { userId: user.id },
+            },
+          }
+        : { deleteMany: { userId: user.id } },
     },
   });
+  revalidatePath(`/trips/${trip.id}`);
+  return { ok: true };
+}
+
+/** «Я там буду» на чужом (или своём) личном событии — с карточки, без
+ *  открытия формы. Доступно любому участнику поездки: отметка своя, к
+ *  правам на правку самой записи отношения не имеет. */
+export async function togglePersonalEventAttendance(
+  tripId: string,
+  personalEventId: string,
+): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const { user, trip } = access;
+  const item = await prisma.tripPersonalEvent.findFirst({
+    where: { id: personalEventId, tripId: trip.id },
+    select: { id: true },
+  });
+  if (!item) return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
+  const mine = await prisma.tripPersonalEventAttendance.findUnique({
+    where: { userId_personalEventId: { userId: user.id, personalEventId } },
+  });
+  if (mine) {
+    await prisma.tripPersonalEventAttendance.delete({
+      where: { userId_personalEventId: { userId: user.id, personalEventId } },
+    });
+  } else {
+    await prisma.tripPersonalEventAttendance.create({
+      data: { userId: user.id, personalEventId },
+    });
+  }
   revalidatePath(`/trips/${trip.id}`);
   return { ok: true };
 }

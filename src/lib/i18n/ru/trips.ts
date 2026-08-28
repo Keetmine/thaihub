@@ -122,7 +122,8 @@ export const trips: Dict["trips"] = {
         saveFailed: "Не удалось сохранить — попробуйте ещё раз",
         badge: "личное",
         performers: "Артисты на событии",
-        performersHint: "Кого вы там увидите — после даты события они попадут в «видела вживую».",
+        performersHint:
+          "Кого вы там увидите — после даты события они попадут в «видела вживую», если стоит «я там буду».",
         performersPlaceholder: "Начните вводить имя…",
         deleteConfirm: (title: string) => `Удалить «${title}»?`,
         attachmentOf: (title: string) => `Вложение к записи «${title}»`,
@@ -134,6 +135,7 @@ export const trips: Dict["trips"] = {
         time: "Время",
         note: "Заметка",
         image: "Картинка",
+        attending: "Я там буду",
         showOnHome: "Показывать на главной",
         editableByOthers: "Участники поездки могут редактировать и удалять",
     },
