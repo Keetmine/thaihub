@@ -116,21 +116,22 @@ export default async function AccountPage({
 
   // Билеты, загруженные к событиям: вкладка «Билеты» собирает их в одном
   // месте — иначе файл виден только на странице своего события.
-  // У EventAttendance составной ключ (userId + occurrenceId), своего id
-  // нет — он и служит ключом строки.
-  const ticketRows = await prisma.eventAttendance.findMany({
-    where: { userId: user.id, ticketUrl: { not: null } },
+  // EventTicket живёт отдельно от отметки «иду»: билет показывается и
+  // после снятой отметки, и после пересборки дат события (occurrence
+  // тогда отвязан, даты у строки нет — но билет цел).
+  const ticketRows = await prisma.eventTicket.findMany({
+    where: { userId: user.id },
     select: {
-      occurrenceId: true,
-      ticketUrl: true,
+      id: true,
+      fileUrl: true,
       event: { select: { id: true, slug: true, title: true, venue: true } },
       occurrence: { select: { startsAt: true } },
     },
   });
   const tickets = ticketRows
     .map((t) => ({
-      id: t.occurrenceId,
-      ticketUrl: t.ticketUrl!,
+      id: t.id,
+      ticketUrl: t.fileUrl,
       event: t.event,
       startsAt: t.occurrence?.startsAt ?? null,
     }))

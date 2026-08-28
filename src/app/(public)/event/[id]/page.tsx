@@ -153,14 +153,22 @@ export default async function EventDetailPage({
       }),
       prisma.eventAttendance.findMany({
         where: { userId: currentUser.id, eventId: event.id },
-        select: { occurrenceId: true, ticketUrl: true },
+        select: { occurrenceId: true },
       }),
       getFriendIds(currentUser.id),
       getCoTravelerIds(currentUser.id),
     ]);
     isEventFavorited = !!favorite;
     goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
-    // «Мои билеты»: строка на каждую дату с отметкой «иду».
+    // «Мои билеты»: строка на каждую дату с отметкой «иду». Сами билеты
+    // — из EventTicket: они живут отдельно от отметок и переживают их.
+    const myTickets = await prisma.eventTicket.findMany({
+      where: { userId: currentUser.id, eventId: event.id },
+      select: { occurrenceId: true, fileUrl: true },
+    });
+    const ticketByOccurrence = new Map(
+      myTickets.filter((t) => t.occurrenceId).map((t) => [t.occurrenceId!, t.fileUrl]),
+    );
     ticketRows = attendances
       .map((a) => {
         const occ = event.occurrences.find((o) => o.id === a.occurrenceId);
@@ -168,7 +176,7 @@ export default async function EventDetailPage({
           ? {
               occurrenceId: a.occurrenceId,
               dateLabel: formatHumanDate(occ.startsAt, locale),
-              ticketUrl: a.ticketUrl,
+              ticketUrl: ticketByOccurrence.get(a.occurrenceId) ?? null,
             }
           : null;
       })

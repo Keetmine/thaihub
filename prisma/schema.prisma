@@ -57,6 +57,7 @@ model Event {
   updatedAt            DateTime                      @updatedAt
   reviews              Review[]
   comments             Comment[]
+  tickets              EventTicket[]
 }
 
 model EventOccurrence {
@@ -73,6 +74,7 @@ model EventOccurrence {
   lineup                OccurrenceLineup[]
   telegramNotifications TelegramNotification[]
   attendances           EventAttendance[]
+  tickets               EventTicket[]
 
   @@index([eventId])
   @@index([startsAt])
@@ -111,8 +113,9 @@ model Performer {
   links                 PerformerLink[]
   favoritedBy           FavoritePerformer[]
   birthdayNotifications BirthdayNotification[]
-  pairingsAsA           Pairing[]              @relation("PairingA")
-  pairingsAsB           Pairing[]              @relation("PairingB")
+  personalEvents        TripPersonalEventPerformer[]
+  pairingsAsA           Pairing[]                    @relation("PairingA")
+  pairingsAsB           Pairing[]                    @relation("PairingB")
 
   // Band <-> member-actor relation. Only meaningful when type is BAND
   // (bandMembers) or SOLO (memberOfBands) respectively, but left
@@ -786,9 +789,10 @@ model User {
   feedbacks              Feedback[]
   reports                Report[]
   payments               Payment[]
-  friendRequestsSent     Friendship[] @relation("FriendRequester")
-  friendRequestsReceived Friendship[] @relation("FriendAddressee")
-  redeemedPromoCodes     PromoCode[]  @relation("PromoRedeemer")
+  friendRequestsSent     Friendship[]  @relation("FriendRequester")
+  friendRequestsReceived Friendship[]  @relation("FriendAddressee")
+  redeemedPromoCodes     PromoCode[]   @relation("PromoRedeemer")
+  eventTickets           EventTicket[]
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -854,32 +858,36 @@ model TripMember {
 }
 
 model TripPersonalEvent {
-  id               String             @id @default(cuid())
+  id               String                       @id @default(cuid())
   tripId           String
-  trip             Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip             Trip                         @relation(fields: [tripId], references: [id], onDelete: Cascade)
   title            String
   note             String?
   startsAt         DateTime
   // Личное событие можно привязать к известной локации — карточка
   // показывает место со ссылкой, оно попадает на карту поездки.
   locationId       String?
-  location         Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  location         Location?                    @relation(fields: [locationId], references: [id], onDelete: SetNull)
   // Совместные поездки: кто создал запись (null — владелец поездки,
   // легаси) и можно ли другим участникам её править/удалять.
   createdById      String?
-  editableByOthers Boolean            @default(false)
+  editableByOthers Boolean                      @default(false)
   // Приватная запись — видна только автору, даже другим участникам.
   // Историческое поле, его заменяет visibility.
-  isPrivate        Boolean            @default(false)
-  visibility       TripItemVisibility @default(PARTICIPANTS)
+  isPrivate        Boolean                      @default(false)
+  visibility       TripItemVisibility           @default(PARTICIPANTS)
+  // Кто из артистов будет на событии (фанмит, ужин с актёром): после
+  // даты события они попадают в «видел(а) вживую» создателя записи —
+  // см. lib/userStats.ts.
+  performers       TripPersonalEventPerformer[]
   // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
   // перелёты и брони на главной не нужны, а встреча с друзьями — да.
-  showOnHome       Boolean            @default(false)
+  showOnHome       Boolean                      @default(false)
   // Картинка к записи (скан билета, скрин брони, афиша) — приватная,
   // как и сама запись: лежит в private-uploads/, раздаётся через
   // /files/personal/… с проверкой участия в поездке.
   imageUrl         String?
-  createdAt        DateTime           @default(now())
+  createdAt        DateTime                     @default(now())
 
   @@index([tripId])
 }
@@ -1211,6 +1219,32 @@ model FavoriteEvent {
 // целиком: у двухдневного концерта можно идти только на 25-е. eventId
 // денормализован для выборок «идёт ли на событие вообще» (индикатор
 // друзей, фильтры).
+/**
+ * Купленный билет — СВОЯ запись, а не поле на отметке «иду».
+ * На отметке он жил и погибал вместе с ней: снял «иду» и вернул — билет
+ * пропал; админ пересобрал даты события — каскад по occurrenceId унёс
+ * отметки вместе с билетами. Файл при этом оставался на диске, но
+ * доказать, чей он, было нечем — /files/tickets отвечал «не найдено»
+ * (реальный случай на проде, 2026-08-28).
+ * Привязка к дате — наводка, а не жизнь билета: пересоздали дату —
+ * occurrenceId занулился, билет остался у события.
+ */
+model EventTicket {
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId      String
+  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occurrenceId String?
+  occurrence   EventOccurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+  fileUrl      String
+  createdAt    DateTime         @default(now())
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([occurrenceId])
+}
+
 model EventAttendance {
   userId       String
   occurrenceId String
@@ -1218,8 +1252,9 @@ model EventAttendance {
   user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   occurrence   EventOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
   event        Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  // Купленный билет (обычно PDF из /uploads/tickets) — «заметка высокого
-  // приоритета» к своему «иду» на конкретную дату.
+  // ЛЕГАСИ: билет переехал в EventTicket (см. выше) — здесь он погибал
+  // вместе с отметкой. Колонка не читается и не пишется; данные
+  // скопированы миграцией 20260828130000. Снести при следующей уборке.
   ticketUrl    String?
   createdAt    DateTime        @default(now())
 
@@ -1589,6 +1624,17 @@ model TripBooking {
 // «Видела вживую» вручную: концерты до регистрации на сайте, случайные
 // встречи и события, которых нет в нашей афише. Считается в статистике
 // наравне с отметками «я ходил(а)» — см. features/gamification.md.
+model TripPersonalEventPerformer {
+  id              String            @id @default(cuid())
+  personalEventId String
+  personalEvent   TripPersonalEvent @relation(fields: [personalEventId], references: [id], onDelete: Cascade)
+  performerId     String
+  performer       Performer         @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@unique([personalEventId, performerId])
+  @@index([performerId])
+}
+
 model PerformerSeen {
   id          String    @id @default(cuid())
   userId      String

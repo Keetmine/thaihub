@@ -198,7 +198,14 @@ export default async function TripPage({
     include: {
       personalEvents: {
         orderBy: { startsAt: "asc" },
-        include: { location: { select: { id: true, name: true } } },
+        include: {
+          location: { select: { id: true, name: true } },
+          performers: {
+            include: {
+              performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
+            },
+          },
+        },
       },
       user: { select: { id: true, name: true, deletedAt: true } },
       // Брони жилья: показываются на вкладке плана рядом с событиями —
@@ -287,11 +294,11 @@ export default async function TripPage({
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
   // Билеты юзера к датам плана — 🎫 прямо в карточке события.
-  const myTickets = await prisma.eventAttendance.findMany({
-    where: { userId: user.id, occurrenceId: { in: occIds }, ticketUrl: { not: null } },
-    select: { occurrenceId: true, ticketUrl: true },
+  const myTickets = await prisma.eventTicket.findMany({
+    where: { userId: user.id, occurrenceId: { in: occIds } },
+    select: { occurrenceId: true, fileUrl: true },
   });
-  const ticketByOccurrence = new Map(myTickets.map((t) => [t.occurrenceId, t.ticketUrl]));
+  const ticketByOccurrence = new Map(myTickets.map((t) => [t.occurrenceId, t.fileUrl]));
 
   // Право менять конкретную запись: автор, владелец поездки или другой
   // участник, если автор разрешил галочкой (editableByOthers).
@@ -354,6 +361,7 @@ export default async function TripPage({
       visibility: effectiveVisibility(p.visibility),
       showOnHome: p.showOnHome,
       imageUrl: p.imageUrl,
+      performers: p.performers.map((link) => link.performer),
       canEdit: canTouch(p),
     }));
   // Дела поездки: кого пускать к каждому, решает его видимость.

@@ -67,6 +67,12 @@ following the same shape:
   heart/bookmark toggle, one per entity type. Dramas don't get one —
   `DramaWatchStatus` below is their only per-user signal.
 - **`EventAttendance`** — "Я иду" (I'm going) to this event.
+- **`EventTicket`** — купленный билет-файл к событию (обычно к его
+  дате; `occurrenceId` nullable, `SetNull` — пересборка дат события не
+  убивает билет). Своя модель, а не поле на `EventAttendance`: билет
+  должен переживать снятое «иду». Легаси-колонка `ticketUrl` на
+  отметке закомментирована в схеме до отката. См.
+  [events.md](features/events.md#билеты-мои-билеты).
 - **`DramaWatchStatus`** — MyDramaList-style status
   (`WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`).
 - **`LocationVisit`** — see above.

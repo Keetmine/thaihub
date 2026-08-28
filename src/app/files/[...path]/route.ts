@@ -35,9 +35,12 @@ export async function GET(
   const url = `/files/${folder}/${name}`;
   let allowed = false;
   if (folder === "tickets") {
-    allowed = !!(await prisma.eventAttendance.findFirst({
-      where: { ticketUrl: url, userId: user.id },
-      select: { userId: true },
+    // Билет живёт своей записью (EventTicket) и не гибнет со снятой
+    // отметкой «иду» — раньше файл при этом оставался на диске, а
+    // доказать владение было нечем, и владелец получал «не найдено».
+    allowed = !!(await prisma.eventTicket.findFirst({
+      where: { fileUrl: url, userId: user.id },
+      select: { id: true },
     }));
   } else if (folder === "hotels") {
     // Папка исторически «hotels», но лежат там файлы всех броней —
