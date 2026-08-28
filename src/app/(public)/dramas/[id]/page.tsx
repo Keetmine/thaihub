@@ -598,10 +598,12 @@ export default async function DramaDetailPage({
           {(() => {
             const synopsis = dramaSynopsisForLocale(drama, locale);
             if (!synopsis) return null;
+            // pre-line: русские описания с dorama.land многоабзацные,
+            // без него переносы схлопывались в сплошной текст.
             return synopsis.length > 300 ? (
-              <SynopsisFold text={synopsis} />
+              <SynopsisFold text={synopsis} preLine />
             ) : (
-              <p className="text-secondary mb-0">{synopsis}</p>
+              <p className="text-secondary mb-0" style={{ whiteSpace: "pre-line" }}>{synopsis}</p>
             );
           })()}
         </div>

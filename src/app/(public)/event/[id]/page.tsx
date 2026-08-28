@@ -520,7 +520,10 @@ export default async function EventDetailPage({
           <h2 className="section-heading mb-2">
             <InfoIcon className="icon-inline" /> {t.events.detail.description}
           </h2>
-          <p className="mb-0">{event.description}</p>
+          {/* pre-line: описания приходят с абзацами (и из формы, и из
+              импорта по ссылке) — без него переносы схлопывались в
+              сплошной текст (жалоба владельца). */}
+          <p className="mb-0" style={{ whiteSpace: "pre-line" }}>{event.description}</p>
         </div>
       )}
 

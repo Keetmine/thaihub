@@ -42,7 +42,13 @@ export default function DetailHero({
         <div style={{ minWidth: 0, flex: 1 }}>
           {chips && <div className="detail-hero-chips mb-2">{chips}</div>}
           <h1 className="display-1-tight detail-hero-title mb-1">{title}</h1>
-          {subtitle && <p className="text-secondary mb-2">{subtitle}</p>}
+          {/* pre-line: подзаголовок бывает описанием с абзацами
+              (локации) — переносы не должны схлопываться. */}
+          {subtitle && (
+            <p className="text-secondary mb-2" style={{ whiteSpace: "pre-line" }}>
+              {subtitle}
+            </p>
+          )}
           {footer}
         </div>
         {actions && (
