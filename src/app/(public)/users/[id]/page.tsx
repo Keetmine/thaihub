@@ -280,6 +280,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                 title={b.title}
                 hint={b.hint}
                 compact
+                locale={locale}
               />
             ))}
           </div>

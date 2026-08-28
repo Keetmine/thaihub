@@ -1,5 +1,5 @@
 import { formatShortDate } from "@/lib/dates";
-import { useLocale } from "@/components/LocaleProvider";
+import type { Locale } from "@/lib/i18n/config";
 
 // Бейдж-«медаль» ачивки (Э2ф) — единый вид для кабинета и публичного
 // профиля. Серверный компонент без состояния: крупное эмодзи в круге с
@@ -19,6 +19,10 @@ export type AchievementBadgeProps = {
   /** Компактный вариант для горизонтальных рядов (публичный профиль):
    *  медаль поменьше + название, подсказка уходит в title-атрибут. */
   compact?: boolean;
+  /** Язык — пропом, а не хуком: компонент рендерят и сервер (публичный
+   *  профиль), и клиент (кабинет), а useLocale с сервера не зовётся —
+   *  профиль падал с «Attempted to call useLocale() from the server». */
+  locale: Locale;
 };
 
 export default function AchievementBadge({
@@ -28,8 +32,8 @@ export default function AchievementBadge({
   unlocked = true,
   unlockedAt = null,
   compact = false,
+  locale,
 }: AchievementBadgeProps) {
-  const locale = useLocale();
   const stateClass = unlocked ? "achv-medal-unlocked" : "achv-medal-locked";
 
   if (compact) {

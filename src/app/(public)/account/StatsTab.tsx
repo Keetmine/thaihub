@@ -1,7 +1,7 @@
 "use client";
 
 import AppLink from "@/components/AppLink";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import { performerHref } from "@/lib/performerSlug";
 import { artistListHref } from "@/lib/slugHelpers";
@@ -57,6 +57,7 @@ export default function StatsTab({
   }[];
 }) {
   const t = useT();
+  const locale = useLocale();
   const s = t.account.stats;
   const maxYear = Math.max(1, ...stats.eventsByYear.map((y) => y.count));
 
@@ -207,6 +208,7 @@ export default function StatsTab({
                 hint={a.hint}
                 unlocked
                 unlockedAt={a.unlockedAt}
+                locale={locale}
               />
             </div>
           ))}
