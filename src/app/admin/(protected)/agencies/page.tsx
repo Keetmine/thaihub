@@ -62,15 +62,13 @@ export default async function AdminAgenciesPage({
         </Link>
       </div>
 
-      <div className="tab-bar-row justify-content-end">
-        <NameSearchBox
-          action="/admin/agencies"
-          q={q}
-          placeholder="Поиск по названию…"
-          className=""
-          quickKind="agency"
-        />
-      </div>
+      <NameSearchBox
+        action="/admin/agencies"
+        q={q}
+        placeholder="Поиск по названию…"
+        className="admin-search-lg mb-3"
+        quickKind="agency"
+      />
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}
 

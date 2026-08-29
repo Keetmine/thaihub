@@ -141,7 +141,7 @@ export default async function AdminUsersPage({
         q={q}
         placeholder="Поиск по имени, email, telegram…"
         hiddenFields={sortByCreated ? { sort: "created" } : undefined}
-        className="mb-3"
+        className="admin-search-lg mb-3"
       />
       {/* Список слева, фильтры колонкой справа — как на /search. */}
       <div className="row g-4">

@@ -50,7 +50,12 @@ export default async function AdminWikiPage({
         </Link>
       </div>
 
-      <NameSearchBox action="/admin/wiki" q={q} placeholder="Поиск по названию…" />
+      <NameSearchBox
+        action="/admin/wiki"
+        q={q}
+        placeholder="Поиск по названию…"
+        className="admin-search-lg mb-4"
+      />
 
       {articles.length === 0 ? (
         <p className="text-secondary">

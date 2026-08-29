@@ -72,14 +72,12 @@ export default async function AdminPairingsPage({
         <CreatePairingModal performers={[]} />
       </div>
 
-      <div className="tab-bar-row justify-content-end">
-        <NameSearchBox
-          action="/admin/pairings"
-          q={q}
-          placeholder="Поиск по имени…"
-          className=""
-        />
-      </div>
+      <NameSearchBox
+        action="/admin/pairings"
+        q={q}
+        placeholder="Поиск по имени…"
+        className="admin-search-lg mb-3"
+      />
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}
 

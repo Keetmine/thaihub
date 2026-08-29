@@ -286,6 +286,24 @@ body {
   pointer-events: none;
 }
 
+/* Крупное поле поиска над админ-списками (просьба владельца: большое,
+   на всю ширину колонки и НАД списком, а не сбоку в ряду табов).
+   Снимаем потолок ширины .search-box и укрупняем пилюлю с иконкой. */
+.admin-search-lg .search-box {
+  max-width: none;
+}
+
+.admin-search-lg .search-box svg {
+  left: 1rem;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.admin-search-lg .pill-search {
+  font-size: 1rem;
+  padding: 0.7rem 1.2rem 0.7rem 2.5rem;
+}
+
 .pill-search {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--bs-border-color);

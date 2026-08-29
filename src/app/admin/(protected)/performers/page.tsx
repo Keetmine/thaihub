@@ -206,22 +206,20 @@ export default async function AdminPerformersPage({
       <div className="col-12 col-xl-9">
 
       {/* Табы разделов убраны — группы/маскоты теперь пункты сайдбара. */}
-      <div className="tab-bar-row justify-content-end">
-        <NameSearchBox
-          action="/admin/performers"
-          q={q}
-          hiddenFields={
-            isMascots
-              ? { view: "mascots" }
-              : isBands
-                ? { view: "bands" }
-                : undefined
-          }
-          placeholder="Поиск по имени…"
-          className=""
-          quickKind="performer"
-        />
-      </div>
+      <NameSearchBox
+        action="/admin/performers"
+        q={q}
+        hiddenFields={
+          isMascots
+            ? { view: "mascots" }
+            : isBands
+              ? { view: "bands" }
+              : undefined
+        }
+        placeholder="Поиск по имени…"
+        className="admin-search-lg mb-3"
+        quickKind="performer"
+      />
 
       {performers.length === 0 ? (
         <p className="text-secondary">

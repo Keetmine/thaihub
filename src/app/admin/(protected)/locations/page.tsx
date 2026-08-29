@@ -74,7 +74,7 @@ export default async function AdminLocationsPage({
         q={q}
         placeholder="Поиск по названию…"
         quickKind="location"
-        className="mb-3"
+        className="admin-search-lg mb-3"
       />
       {/* Список слева, фильтры колонкой справа — как на /search. */}
       <div className="row g-4">

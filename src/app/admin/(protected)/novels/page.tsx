@@ -77,7 +77,7 @@ export default async function AdminNovelsPage({
         q={q}
         placeholder="Поиск по названию или автору…"
         quickKind="novel"
-        className="mb-3"
+        className="admin-search-lg mb-3"
       />
       {/* Список слева, фильтры колонкой справа — как на /search. */}
       <div className="row g-4">

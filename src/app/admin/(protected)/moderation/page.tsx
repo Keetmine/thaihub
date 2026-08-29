@@ -566,6 +566,7 @@ export default async function AdminModerationPage({
           tab === "reports" ? { tab, state: reportState } : { tab }
         }
         placeholder="Поиск по тексту или автору…"
+        className="admin-search-lg mb-4"
       />
 
       {body}

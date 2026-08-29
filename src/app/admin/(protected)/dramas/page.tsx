@@ -125,6 +125,14 @@ export default async function AdminDramasPage({
         </Link>
       </div>
 
+      <NameSearchBox
+        action="/admin/dramas"
+        q={q}
+        placeholder="Поиск по названию…"
+        hiddenFields={tab !== "all" ? { tab } : undefined}
+        className="admin-search-lg mb-3"
+        quickKind="drama"
+      />
       <div className="tab-bar-row">
         <div className="tab-bar">
           {AIR_TABS.map((t, i) => (
@@ -138,14 +146,6 @@ export default async function AdminDramasPage({
             </Link>
           ))}
         </div>
-        <NameSearchBox
-          action="/admin/dramas"
-          q={q}
-          placeholder="Поиск по названию…"
-          hiddenFields={tab !== "all" ? { tab } : undefined}
-          className=""
-          quickKind="drama"
-        />
       </div>
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}

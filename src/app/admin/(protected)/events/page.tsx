@@ -123,6 +123,17 @@ export default async function AdminEventsPage({
         </div>
       </div>
 
+      <NameSearchBox
+        action="/admin/events"
+        q={q}
+        placeholder="Поиск по названию…"
+        hiddenFields={{
+          ...(isArchive ? { tab: "archive" } : {}),
+          ...(sortByAdded ? { sort: "added" } : {}),
+        }}
+        className="admin-search-lg mb-3"
+        quickKind="event"
+      />
       <div className="tab-bar-row">
         <div className="tab-bar">
           <Link
@@ -156,17 +167,6 @@ export default async function AdminEventsPage({
           >
             по дате добавления
           </Link>
-          <NameSearchBox
-            action="/admin/events"
-            q={q}
-            placeholder="Поиск по названию…"
-            hiddenFields={{
-              ...(isArchive ? { tab: "archive" } : {}),
-              ...(sortByAdded ? { sort: "added" } : {}),
-            }}
-            className=""
-            quickKind="event"
-          />
         </div>
       </div>
 
