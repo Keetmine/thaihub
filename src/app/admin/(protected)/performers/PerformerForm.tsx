@@ -155,8 +155,15 @@ export default function PerformerForm({
   const genericLinkDefaults: PerformerLinkInput[] = [];
   for (const l of v?.links ?? []) {
     const platform = detectSocialPlatform(l.url);
-    if (platform) socialDefaults[platform] = l.url;
-    else genericLinkDefaults.push(l);
+    if (platform && socialDefaults[platform] === undefined) {
+      socialDefaults[platform] = l.url;
+    } else {
+      // Второй профиль той же сети НЕ перезаписывает поле, а падает в
+      // общий список: раньше он был невидим в форме и молча удалялся
+      // сохранением (deleteMany + пересоздание из формы) — задвоенную
+      // ссылку нельзя было ни увидеть, ни удалить руками.
+      genericLinkDefaults.push(l);
+    }
   }
 
   const [links, setLinks] = useState<PerformerLinkInput[]>(
