@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -11,10 +12,13 @@ export const dynamic = "force-dynamic";
 
 export default async function EditDramaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const { saved } = await searchParams;
 
   const [drama, agencies] = await Promise.all([
     prisma.drama.findUnique({
@@ -55,6 +59,7 @@ export default async function EditDramaPage({
           Посмотреть на сайте ↗
         </a>
       </div>
+      {saved === "1" && <SavedBanner />}
       <DramaForm
         action={boundUpdate}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}

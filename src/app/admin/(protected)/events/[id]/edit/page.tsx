@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { performerOptionLabel } from "@/lib/searchWhere";
@@ -11,10 +12,13 @@ import AuditTrail from "@/components/admin/AuditTrail";
 
 export default async function EditEventPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const { saved } = await searchParams;
 
   // Полный каталог исполнителей в форму больше не грузим (~17 тыс. строк
   // подвешивали селект) — комбобокс ищет асинхронно, а как options нужны
@@ -71,6 +75,7 @@ export default async function EditEventPage({
           Посмотреть на сайте ↗
         </a>
       </div>
+      {saved === "1" && <SavedBanner />}
       <EventForm
         action={boundUpdate}
         performers={event.performers.map((p) => ({

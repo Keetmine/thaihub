@@ -110,7 +110,9 @@ export async function updateAchievement(id: string, formData: FormData) {
   });
 
   revalidateAchievementPages();
-  redirect("/admin/achievements");
+  // Правка не закрывает страницу (просьба владельца): назад на
+  // свою же форму с отметкой «Сохранено».
+  redirect(`/admin/achievements/${id}/edit?saved=1`);
 }
 
 /** Быстрый тумблер из списка: enabled=false прячет ачивку отовсюду

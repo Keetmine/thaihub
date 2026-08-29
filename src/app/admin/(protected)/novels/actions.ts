@@ -94,7 +94,9 @@ export async function updateNovel(id: string, formData: FormData) {
     });
   }
   revalidateNovelPaths(id);
-  redirect("/admin/novels");
+  // Правка не закрывает страницу (просьба владельца): назад на
+  // свою же форму с отметкой «Сохранено».
+  redirect(`/admin/novels/${id}/edit?saved=1`);
 }
 
 export async function deleteNovel(id: string) {

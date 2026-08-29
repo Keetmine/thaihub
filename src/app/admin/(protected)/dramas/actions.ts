@@ -304,7 +304,9 @@ export async function updateDrama(id: string, _prev: DramaFormState, formData: F
   }
 
   revalidateDramaPaths(id);
-  redirect("/admin/dramas");
+  // Правка не закрывает страницу (просьба владельца): назад на
+  // свою же форму с отметкой «Сохранено».
+  redirect(`/admin/dramas/${id}/edit?saved=1`);
 }
 
 /** Inline-create from a performer form's dramas combobox — title only. */

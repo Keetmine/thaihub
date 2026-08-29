@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { performerOptionLabel } from "@/lib/searchWhere";
@@ -14,10 +15,13 @@ export const dynamic = "force-dynamic";
 
 export default async function EditPerformerPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const { saved } = await searchParams;
 
   // Тяжёлые каталоги в комбобоксы не грузятся (searchOptions ищет на
   // сервере) — передаются только уже связанные записи, чтобы селекты
@@ -93,6 +97,7 @@ export default async function EditPerformerPage({
       </div>
 
       <div className="d-flex flex-column gap-3">
+        {saved === "1" && <SavedBanner />}
         <PerformerForm
           key={performer.updatedAt.toISOString()}
           action={boundUpdate}

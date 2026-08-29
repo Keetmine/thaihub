@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { METRICS, METRIC_KEYS } from "@/lib/achievements";
@@ -13,10 +14,13 @@ export const dynamic = "force-dynamic";
 
 export default async function EditAchievementPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const { saved } = await searchParams;
   const achievement = await prisma.achievement.findUnique({ where: { id } });
   if (!achievement) notFound();
 
@@ -44,6 +48,7 @@ export default async function EditAchievementPage({
       </div>
 
       <div className="d-flex flex-column gap-3">
+        {saved === "1" && <SavedBanner />}
         <AchievementForm
           action={boundUpdate}
           submitLabel="Сохранить изменения"

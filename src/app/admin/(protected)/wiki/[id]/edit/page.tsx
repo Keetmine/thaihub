@@ -1,4 +1,5 @@
 import { requireAdminPage } from "@/lib/auth";
+import SavedBanner from "@/components/admin/SavedBanner";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -9,11 +10,14 @@ export const dynamic = "force-dynamic";
 
 export default async function EditWikiPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   await requireAdminPage();
   const { id } = await params;
+  const { saved } = await searchParams;
   const article = await prisma.wikiArticle.findUnique({ where: { id } });
   if (!article) notFound();
 
@@ -37,6 +41,7 @@ export default async function EditWikiPage({
           </a>
         )}
       </div>
+      {saved === "1" && <SavedBanner />}
       <WikiForm
         action={updateWikiArticle.bind(null, article.id)}
         submitLabel="Сохранить"

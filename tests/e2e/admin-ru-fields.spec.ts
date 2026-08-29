@@ -42,9 +42,9 @@ test("правка русских полей доезжает до /ru", async (
   await page.locator('input[name="titleRu"]').fill("Правленое имя");
   await page.locator('textarea[name="synopsisRu"]').fill("Правленое описание.");
   await page.getByRole("button", { name: /Сохранить/ }).first().click();
-  // Именно СПИСОК: /admin/dramas/<id>/edit тоже содержит «/admin/dramas»,
-  // и подстрочное ожидание совпадало сразу, не дождавшись записи.
-  await page.waitForURL((u) => u.pathname === "/admin/dramas");
+  // Сохранение больше не уводит в список (страница остаётся) — знак,
+  // что запись доехала, теперь отметка «Сохранено».
+  await expect(page.getByText("Сохранено")).toBeVisible({ timeout: 15000 });
 
   await page.goto(`/ru/dramas/${F.slug}`);
   await expect(page.locator("h1")).toContainText("Правленое имя");
@@ -55,7 +55,7 @@ test("одна страница dorama.land — один сериал", async ({
   await openEdit(page, O.title);
   await page.locator('input[name="doramalandUrl"]').fill(DL_URL);
   await page.getByRole("button", { name: /Сохранить/ }).first().click();
-  await page.waitForURL((u) => u.pathname === "/admin/dramas");
+  await expect(page.getByText("Сохранено")).toBeVisible({ timeout: 15000 });
   // Убеждаемся, что ссылка ДЕЙСТВИТЕЛЬНО записалась: иначе конфликта
   // не возникнет и проверка ниже пройдёт мимо смысла.
   await openEdit(page, O.title);

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { locationHref } from "@/lib/slugHelpers";
@@ -11,10 +12,13 @@ export const dynamic = "force-dynamic";
 
 export default async function EditLocationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const { saved } = await searchParams;
 
   const location = await prisma.location.findUnique({
     where: { id },
@@ -47,6 +51,7 @@ export default async function EditLocationPage({
         </a>
       </div>
       <div className="d-flex flex-column gap-3">
+        {saved === "1" && <SavedBanner />}
         <LocationForm
           action={boundUpdate}
           submitLabel="Сохранить изменения"

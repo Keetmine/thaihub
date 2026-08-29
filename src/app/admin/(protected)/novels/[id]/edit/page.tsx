@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import NovelForm from "../../NovelForm";
@@ -10,10 +11,13 @@ export const dynamic = "force-dynamic";
 
 export default async function EditNovelPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const { id } = await params;
+  const { saved } = await searchParams;
   const novel = await prisma.novel.findUnique({
     where: { id },
     include: { links: true, dramas: { select: { id: true, title: true, posterUrl: true } } },
@@ -40,6 +44,7 @@ export default async function EditNovelPage({
           Посмотреть на сайте ↗
         </a>
       </div>
+      {saved === "1" && <SavedBanner />}
       <NovelForm
         action={boundUpdate}
         submitLabel="Сохранить изменения"

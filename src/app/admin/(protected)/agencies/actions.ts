@@ -159,7 +159,9 @@ export async function updateAgency(id: string, formData: FormData) {
   revalidatePath("/artists");
   revalidatePath("/dramas");
   revalidatePath(`/agencies/${id}`);
-  redirect("/admin/agencies");
+  // Правка не закрывает страницу (просьба владельца): назад на
+  // свою же форму с отметкой «Сохранено».
+  redirect(`/admin/agencies/${id}/edit?saved=1`);
 }
 
 export async function deleteAgency(id: string) {

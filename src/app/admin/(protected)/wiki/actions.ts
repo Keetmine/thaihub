@@ -89,5 +89,7 @@ export async function deleteWikiArticle(id: string) {
     entityLabel: existing?.title ?? id,
   });
   revalidateWiki();
-  redirect("/admin/wiki");
+  // Правка не закрывает страницу (просьба владельца): назад на
+  // свою же форму с отметкой «Сохранено».
+  redirect(`/admin/wiki/${id}/edit?saved=1`);
 }

@@ -169,7 +169,9 @@ export async function updateLocation(id: string, formData: FormData) {
   revalidatePath("/locations");
   revalidatePath(`/locations/${id}`);
   revalidatePath("/locations/map");
-  redirect("/admin/locations");
+  // Правка не закрывает страницу (просьба владельца): назад на
+  // свою же форму с отметкой «Сохранено».
+  redirect(`/admin/locations/${id}/edit?saved=1`);
 }
 
 export async function deleteLocation(id: string) {

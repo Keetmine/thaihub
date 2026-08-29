@@ -259,7 +259,9 @@ export async function updateEvent(id: string, formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/admin/events");
-  redirect("/admin/events");
+  // Правка не закрывает страницу (просьба владельца): назад на
+  // свою же форму с отметкой «Сохранено».
+  redirect(`/admin/events/${id}/edit?saved=1`);
 }
 
 /**
