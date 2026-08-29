@@ -57,6 +57,20 @@ export function socialLinkKey(url: string): string {
  *  generic PerformerLink list for the dedicated icon row/form fields, so
  *  the same recognition works regardless of what label an import or admin
  *  typed. */
+/** Сети «один профиль на артиста»: вторая ссылка на ту же сеть — почти
+ *  всегда переименованный аккаунт (артист сменил ник, а импорт долил
+ *  новый хэндл рядом со старым — так у Sea задвоились соцсети).
+ *  Музыкальные площадки и YouTube сюда не входят: там легальны
+ *  несколько страниц (артист + топик-канал, альбомные ссылки). */
+const ONE_PROFILE_PLATFORMS: SocialPlatform[] = ["instagram", "tiktok", "twitter"];
+
+/** Платформа «один профиль на артиста» для ссылки — или null, если
+ *  ссылка не про такую сеть (сайт, магазин, музыка). */
+export function oneProfilePlatformOf(url: string): SocialPlatform | null {
+  const platform = detectSocialPlatform(url);
+  return platform && ONE_PROFILE_PLATFORMS.includes(platform) ? platform : null;
+}
+
 export function detectSocialPlatform(url: string): SocialPlatform | null {
   for (const platform of Object.keys(PLATFORM_PATTERNS) as SocialPlatform[]) {
     if (PLATFORM_PATTERNS[platform].test(url)) return platform;

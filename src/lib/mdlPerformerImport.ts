@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { fetchMdlPerson, absMdlUrl, type MdlPerson } from "@/lib/mydramalist";
-import { socialLinkKey } from "@/lib/socialLinks";
+import { oneProfilePlatformOf, socialLinkKey } from "@/lib/socialLinks";
 import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
@@ -12,6 +12,10 @@ export type MdlPerformerSummary = {
   /** Какие поля заполнили — пустые до импорта. */
   filled: string[];
   linksAdded: number;
+  /** Ссылки, НЕ добавленные из-за занятой сети (см. oneProfilePlatformOf):
+   *  на артисте уже висит другой хэндл той же сети — вероятно, старое имя
+   *  аккаунта; чинится руками в форме. */
+  linkConflicts: number;
   dramasLinked: number;
   /** Сериалы из фильмографии, которых нет в каталоге: без галочки
    *  «парсить фильмографию» их не заводим. */
@@ -134,13 +138,29 @@ export async function importMdlPerformer(
   // встречается и как instagram.com/x, и как www.instagram.com/x/, и
   // такие «разные» адреса копились дублями в карточке.
   const haveUrls = new Set((existing?.links ?? []).map((l) => socialLinkKey(l.url)));
+  // Сети «один профиль»: вторую ссылку на занятую сеть не доливаем —
+  // это почти всегда переименованный аккаунт (у Sea так задвоились
+  // Instagram/TikTok/Twitter: старый хэндл в базе, новый у MDL).
+  // Какой из двух живой, решает человек — в отчёт идёт конфликт.
+  const haveNetworks = new Set(
+    (existing?.links ?? [])
+      .map((l) => oneProfilePlatformOf(l.url))
+      .filter((p): p is NonNullable<typeof p> => p !== null),
+  );
   let linksAdded = 0;
+  let linkConflicts = 0;
   for (const link of person.socialLinks) {
     // Остановка по кнопке: карточка уже заведена и остаётся такой, как
     // получилось, — повторный импорт того же адреса её дозаполнит.
     await checkImportCancelled(runId ?? null);
     const key = socialLinkKey(link);
     if (haveUrls.has(key)) continue;
+    const network = oneProfilePlatformOf(link);
+    if (network && haveNetworks.has(network)) {
+      linkConflicts += 1;
+      continue;
+    }
+    if (network) haveNetworks.add(network);
     haveUrls.add(key);
     await prisma.performerLink.create({
       data: { performerId: performer.id, label: labelFor(link), url: link },
@@ -237,6 +257,7 @@ export async function importMdlPerformer(
     created,
     filled,
     linksAdded,
+    linkConflicts,
     dramasLinked,
     dramasSkipped,
     dramasCreated,
