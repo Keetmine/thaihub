@@ -633,29 +633,6 @@ export default async function DramaDetailPage({
         )}
       </div>
 
-      {/* События сериала — после фактов: фан-митинги/премьеры. */}
-      {events.length > 0 && (
-        <div id="events" className="anchor-target mb-4">
-          <h2 className="section-heading mb-2">{t.catalog.drama.events}</h2>
-          <div className="d-flex flex-column gap-3">
-            {eventsRows.map(({ row, extraDates }) =>
-              isPremiumActive(currentUser) ? (
-                <EventAgendaRow
-                  key={row.id}
-                  event={row}
-                  isFavorited={favoritedEventIds.has(row.id)}
-                  isGoing={goingEventIds.has(row.occurrenceId)}
-                  showDate
-                  extraDates={extraDates}
-                />
-              ) : (
-                <EventCardLocked key={row.id} startsAt={row.startsAt} />
-              ),
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Каст — адаптивной фото-сеткой (Э2ф) вместо ряда одинаковых
           плашек; первые ~14, остальные за «Показать всех». Пустой
           раздел не рисуем — ни заголовка, ни «состав не указан». */}
@@ -692,6 +669,30 @@ export default async function DramaDetailPage({
                 round={false}
               />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* События сериала — ниже каста и связанных (просьба
+          владельца): фан-митинги/премьеры. */}
+      {events.length > 0 && (
+        <div id="events" className="anchor-target mb-4">
+          <h2 className="section-heading mb-2">{t.catalog.drama.events}</h2>
+          <div className="d-flex flex-column gap-3">
+            {eventsRows.map(({ row, extraDates }) =>
+              isPremiumActive(currentUser) ? (
+                <EventAgendaRow
+                  key={row.id}
+                  event={row}
+                  isFavorited={favoritedEventIds.has(row.id)}
+                  isGoing={goingEventIds.has(row.occurrenceId)}
+                  showDate
+                  extraDates={extraDates}
+                />
+              ) : (
+                <EventCardLocked key={row.id} startsAt={row.startsAt} />
+              ),
+            )}
           </div>
         </div>
       )}

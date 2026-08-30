@@ -269,8 +269,10 @@ export default async function EventDetailPage({
   // Обычный концерт (до 12 человек) — состав капсулами прямо в карточке
   // дат, как в первой версии страницы: всё важное в один экран. Большой
   // фестивальный состав — отдельной секцией сеткой со свёрткой.
-  const castInCard = castCards.length > 0 && castCards.length <= 12;
-  const hasLineupSection = !castInCard && castCards.length > 0;
+  // Состав ЛЮБОГО размера живёт плашками в инфо-блоке (просьба
+  // владельца — как на сериалах): большой прячет хвост за «показать
+  // всех» через CastGrid chips, отдельной секции больше нет.
+  const castInCard = castCards.length > 0;
 
   return (
     <div>
@@ -318,7 +320,8 @@ export default async function EventDetailPage({
             )}
           </div>
         )}
-        <div className="surface p-4 flex-fill" style={{ minWidth: 0 }}>
+        {/* Без подложки-surface (просьба владельца). */}
+        <div className="flex-fill" style={{ minWidth: 0 }}>
             <p className="mb-2">
               <PinIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.events.detail.venue}</span> {event.venue}
@@ -406,7 +409,7 @@ export default async function EventDetailPage({
                 >
                   <UsersIcon className="icon-inline" /> {t.events.detail.lineup}
                 </p>
-                <div className="d-flex flex-wrap gap-2">
+                <CastGrid chips clampRows={2}>
                   {castCards.map((c) => (
                     <EntityMiniCard
                       key={c.id}
@@ -416,12 +419,16 @@ export default async function EventDetailPage({
                       subtitle={c.subtitle ?? undefined}
                     />
                   ))}
-                  {event.pairings.map(({ pairing }) => (
-                    <span key={pairing.id} className="event-chip align-self-center">
-                      {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
-                    </span>
-                  ))}
-                </div>
+                </CastGrid>
+                {event.pairings.length > 0 && (
+                  <div className="d-flex flex-wrap gap-2 mt-2">
+                    {event.pairings.map(({ pairing }) => (
+                      <span key={pairing.id} className="event-chip">
+                        {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -456,37 +463,6 @@ export default async function EventDetailPage({
               />
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Большой (фестивальный) состав — отдельной секцией сеткой со
-          свёрткой; компактный живёт капсулами в карточке дат выше. */}
-      {hasLineupSection && (
-        <div id="lineup" className="anchor-target surface p-4 mb-3">
-          <h2 className="section-heading mb-3">
-            <UsersIcon className="icon-inline" /> {t.events.detail.lineup}
-          </h2>
-          <CastGrid compact>
-            {castCards.map((c) => (
-              <EntityMiniCard
-                key={c.id}
-                variant="grid"
-                href={c.href}
-                photoUrl={c.photoUrl}
-                name={c.name}
-                subtitle={c.subtitle ?? undefined}
-              />
-            ))}
-          </CastGrid>
-          {event.pairings.length > 0 && (
-            <div className="d-flex flex-wrap gap-2 mt-3">
-              {event.pairings.map(({ pairing }) => (
-                <span key={pairing.id} className="event-chip">
-                  {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

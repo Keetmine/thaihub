@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useT } from "@/components/LocaleProvider";
 
 /**
@@ -42,25 +43,29 @@ export default function EventPhotoGallery({ photos }: { photos: { id: string; ur
         </button>
       ))}
 
-      {openUrl && (
-        <div
-          className="event-photo-lightbox"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setOpenUrl(null)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={openUrl} alt="" />
-          <button
-            type="button"
-            className="event-photo-lightbox-close"
-            aria-label={t.ui.close}
+      {/* Порталом в body: внутри контента оверлей попадал в чужой
+          stacking context и ныря́л под липкую шапку. */}
+      {openUrl &&
+        createPortal(
+          <div
+            className="event-photo-lightbox"
+            role="dialog"
+            aria-modal="true"
             onClick={() => setOpenUrl(null)}
           >
-            ✕
-          </button>
-        </div>
-      )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={openUrl} alt="" />
+            <button
+              type="button"
+              className="event-photo-lightbox-close"
+              aria-label={t.ui.close}
+              onClick={() => setOpenUrl(null)}
+            >
+              ✕
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
