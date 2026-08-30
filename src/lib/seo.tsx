@@ -48,6 +48,15 @@ export async function pageMetadata(input: {
    * сам.
    */
   locale?: Locale;
+  /**
+   * Фактические размеры картинки, если страница их знает. Когда `image`
+   * задан, а размеры нет — width/height НЕ пишем вовсе: у деталок
+   * картинка портретная (постер, фото актёра), и враньё «1200×630»
+   * хуже отсутствия — Facebook/VK по этим числам режут превью, а
+   * Telegram и WhatsApp размер меряют сами по файлу. Для дефолтной
+   * og-картинки размеры известны и проставляются.
+   */
+  imageSize?: { width: number; height: number };
 }): Promise<Metadata> {
   // Язык берём сами: все вызовы живут в асинхронных generateMetadata, и
   // прокидывать его из каждой страницы значило бы забыть в половине —
@@ -66,7 +75,12 @@ export async function pageMetadata(input: {
   const languages = Object.fromEntries(
     LOCALES.map((l) => [l, `${SITE_URL}${localeHref(path, l)}`]),
   );
-  const image = absoluteImage(input.image) ?? `${SITE_URL}/og-default.png`;
+  const image = absoluteImage(input.image);
+  // Своя картинка страницы — с размерами только если их передали;
+  // запасная og-default.png — всегда 1200×630, это её реальный размер.
+  const ogImage = image
+    ? { url: image, ...(input.imageSize ?? {}), alt: fullTitle }
+    : { url: `${SITE_URL}/og-default.png`, width: 1200, height: 630, alt: fullTitle };
 
   return {
     ...(input.title ? { title: input.title } : {}),
@@ -83,13 +97,13 @@ export async function pageMetadata(input: {
       siteName: SITE_NAME,
       locale: ogLocale(locale),
       type: input.type ?? "website",
-      images: [{ url: image, width: 1200, height: 630, alt: fullTitle }],
+      images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
       title: fullTitle,
       description: input.description,
-      images: [image],
+      images: [ogImage.url],
     },
   };
 }
@@ -101,6 +115,13 @@ export function absoluteImage(src?: string | null): string | null {
   return `${SITE_URL}${src.startsWith("/") ? "" : "/"}${src}`;
 }
 
+/**
+ * Все поля после id — опциональные НАМЕРЕННО: страницы передают сюда
+ * готовый объект Prisma целиком, и когда выборка страницы уже включает
+ * `links` (страница артиста включает), sameAs собирается сам, без
+ * лишних запросов и без правки страниц. Где данных нет — поля просто
+ * не выводятся.
+ */
 export function personJsonLd(p: {
   name: string;
   realName: string | null;
@@ -108,18 +129,36 @@ export function personJsonLd(p: {
   birthDate: Date | null;
   slug: string | null;
   id: string;
+  /** Внешние ссылки (соцсети, профили) → schema.org sameAs. */
+  links?: { url: string }[];
 }) {
+  // sameAs — только абсолютные http(s)-адреса, без дублей: свободные
+  // подписи админки могут содержать что угодно.
+  const sameAs = [
+    ...new Set(
+      (p.links ?? [])
+        .map((l) => l.url)
+        .filter((u) => u.startsWith("http://") || u.startsWith("https://")),
+    ),
+  ];
   return {
     "@context": "https://schema.org",
     "@type": "Person",
     name: p.name,
     ...(p.realName ? { alternateName: p.realName } : {}),
-    ...(p.photoUrl ? { image: `${SITE_URL}${p.photoUrl}` } : {}),
+    ...(p.photoUrl ? { image: absoluteImage(p.photoUrl) } : {}),
     ...(p.birthDate ? { birthDate: p.birthDate.toISOString().slice(0, 10) } : {}),
+    ...(sameAs.length ? { sameAs } : {}),
     url: `${SITE_URL}/artists/${p.slug ?? p.id}`,
   };
 }
 
+/**
+ * Обогащённые поля (genre, actor, эпизоды, страна) опциональны по той
+ * же причине, что в personJsonLd: страница сериала передаёт объект
+ * Prisma со своим include (там уже есть performers, genres, episodes,
+ * country) — новых запросов к БД для разметки не нужно.
+ */
 export function tvSeriesJsonLd(d: {
   title: string;
   synopsis: string | null;
@@ -127,24 +166,110 @@ export function tvSeriesJsonLd(d: {
   year: number | null;
   slug: string | null;
   id: string;
+  /** Жанры MDL → schema.org genre. */
+  genres?: string[];
+  /** Число серий → numberOfEpisodes. */
+  episodes?: number | null;
+  /** Страна производства («Thailand» с MDL) → countryOfOrigin. */
+  country?: string | null;
+  /** Каст в форме include-а страницы сериала → actor: Person[]. */
+  performers?: { performer: { name: string; slug: string | null; id: string } }[];
 }) {
   return {
     "@context": "https://schema.org",
     "@type": "TVSeries",
     name: d.title,
     ...(d.synopsis ? { description: d.synopsis.slice(0, 500) } : {}),
-    ...(d.posterUrl ? { image: `${SITE_URL}${d.posterUrl}` } : {}),
+    ...(d.posterUrl ? { image: absoluteImage(d.posterUrl) } : {}),
     ...(d.year ? { datePublished: String(d.year) } : {}),
+    // Язык оригинала: каталог — тайские сериалы (лакорны).
+    inLanguage: "th",
+    ...(d.genres?.length ? { genre: d.genres } : {}),
+    ...(d.episodes ? { numberOfEpisodes: d.episodes } : {}),
+    ...(d.country ? { countryOfOrigin: { "@type": "Country", name: d.country } } : {}),
+    ...(d.performers?.length
+      ? {
+          actor: d.performers.map(({ performer: p }) => ({
+            "@type": "Person",
+            name: p.name,
+            url: `${SITE_URL}/artists/${p.slug ?? p.id}`,
+          })),
+        }
+      : {}),
     url: `${SITE_URL}/dramas/${d.slug ?? d.id}`,
   };
 }
 
-/** <script type="application/ld+json"> без клиентского кода. */
+/**
+ * WebSite + SearchAction: подсказывает поисковикам сайтлинк-поиск.
+ * Живёт в корневом layout — он общий на оба языка, поэтому скрипт
+ * рендерится ровно один раз на страницу; сущность одна, url без
+ * языкового префикса (русская версия — та же организация и тот же
+ * поиск, /ru/search — рерайт на него же).
+ */
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: SITE_URL,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+/** Organization для панели знаний и логотипа в выдаче. Тоже в корневом
+ *  layout, один раз на страницу (см. websiteJsonLd). */
+export function organizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: SITE_URL,
+    logo: `${SITE_URL}/icons/icon-512.png`,
+  };
+}
+
+/**
+ * Хлебные крошки: `items` — путь от корня до текущей страницы, path
+ * БЕЗ языкового префикса (локаль добавляется здесь через localeHref).
+ * Пока НЕ подключён на страницах — только хелпер; вставка в детальные
+ * страницы — отдельный шаг, ими владеют их generateMetadata/разметка.
+ */
+export function breadcrumbJsonLd(
+  items: { name: string; path: string }[],
+  locale: Locale = "en",
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: `${SITE_URL}${localeHref(item.path, locale)}`,
+    })),
+  };
+}
+
+/** <script type="application/ld+json"> без клиентского кода.
+ *  `<` экранируется юникод-эскейпом (u003c): в данных бывают
+ *  скрейпленные синопсисы, и буквальный закрывающий script-тег внутри
+ *  JSON.stringify обрывал бы наш тег — это и
+ *  XSS-дыра, и сломанная страница (бэкстоп из гайда Next по JSON-LD). */
 export function JsonLd({ data }: { data: object }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(data).replace(/</g, "\\u003c"),
+      }}
     />
   );
 }

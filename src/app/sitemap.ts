@@ -56,9 +56,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // У вики дата осталась: там правки живые, человеческие, и «обновлено»
   // читателю действительно что-то говорит.
   const entry = (path: string, lastModified?: Date): MetadataRoute.Sitemap => {
-    const languages = Object.fromEntries(
-      LOCALES.map((l) => [l, `${SITE_URL}${localeHref(path, l)}`]),
-    );
+    // x-default дублирует то, что страницы отдают в hreflang-мете
+    // (pageMetadata): чей язык не совпал — тому английскую версию.
+    // Сигналы в мете и в sitemap должны совпадать, иначе поисковик
+    // выбирает сам.
+    const languages = {
+      ...Object.fromEntries(
+        LOCALES.map((l) => [l, `${SITE_URL}${localeHref(path, l)}`]),
+      ),
+      "x-default": `${SITE_URL}${path}`,
+    };
     return LOCALES.map((l) => ({
       url: `${SITE_URL}${localeHref(path, l)}`,
       ...(lastModified ? { lastModified } : {}),
@@ -69,6 +76,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...entry("/"),
     ...entry("/about"),
+    ...entry("/calendar"),
+    ...entry("/help"),
     ...entry("/dramas"),
     ...entry("/artists"),
     ...entry("/novels"),

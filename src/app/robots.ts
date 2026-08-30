@@ -25,7 +25,13 @@ export default function robots(): MetadataRoute.Robots {
           "/welcome",
           "/forgot-password",
           "/reset-password",
-          "/event",
+          // Афиша за премиум-гейтом, оба раздела закрыты ЯВНО и
+          // раздельно, а не одним префиксом «/event» (он матчил бы оба
+          // молча): /event/ — карточки событий /event/[id] (на них же
+          // стоит noindex-мета — страховка от прямых ссылок, правила
+          // не противоречат), /events — список афиши.
+          "/event/",
+          "/events",
           "/day",
         ],
       },

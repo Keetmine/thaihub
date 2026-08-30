@@ -3,7 +3,14 @@ import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
-import { SITE_URL, SITE_NAME, ogLocale } from "@/lib/seo";
+import {
+  SITE_URL,
+  SITE_NAME,
+  ogLocale,
+  JsonLd,
+  websiteJsonLd,
+  organizationJsonLd,
+} from "@/lib/seo";
 import CookieConsent from "@/components/CookieConsent";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
@@ -55,7 +62,9 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     icons: {
       icon: "/icons/icon-192.png",
-      apple: "/icons/icon-192.png",
+      // Отдельный файл 180×180 (штатный размер apple-touch-icon),
+      // сгенерирован из icons/icon-512.png. iOS скруглит углы сам.
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
     },
     openGraph: {
       type: "website",
@@ -100,6 +109,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-100`}
     >
       <body className="d-flex flex-column min-vh-100">
+        {/* WebSite (+SearchAction) и Organization — здесь, потому что
+            layout один на весь сайт и оба языка: скрипты рендерятся
+            ровно один раз на страницу. Сущности общие, url без /ru —
+            русская версия принадлежит той же организации. */}
+        <JsonLd data={websiteJsonLd()} />
+        <JsonLd data={organizationJsonLd()} />
         <ServiceWorkerRegistrar />
         {/* Язык зрителя доступен всем клиентским компонентам — как
             таймзона. Значение приходит из заголовка, который ставит
