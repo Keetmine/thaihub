@@ -145,7 +145,13 @@ export default async function ArtistListPage({
               />
               {isOwner && (
                 <form
-                  action={removePerformerFromList.bind(null, list.id, i.performerId)}
+                  // Обёртка глотает ActionResult: голому <form action>
+                  // нужен void, а ошибка здесь недостижима — крестик
+                  // виден только владельцу списка.
+                  action={async () => {
+                    "use server";
+                    await removePerformerFromList(list.id, i.performerId);
+                  }}
                   className="position-absolute"
                   style={{ top: "-0.4rem", right: "-0.4rem" }}
                 >

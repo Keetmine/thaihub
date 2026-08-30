@@ -1,10 +1,9 @@
 import AppLink from "@/components/AppLink";
 import Logo from "@/components/Logo";
-import PasswordInput from "@/components/PasswordInput";
 import { prisma } from "@/lib/prisma";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
-import { resetPassword } from "../actions";
+import ResetPasswordForm from "./ResetPasswordForm";
 
 export async function generateMetadata() {
   const { locale, t } = await getT();
@@ -43,13 +42,7 @@ export default async function ResetPasswordPage({
           .
         </p>
       ) : (
-        <form action={resetPassword.bind(null, token)}>
-          <label className="form-label" htmlFor="token-password">{t.auth.reset.passwordLabel}</label>
-          <PasswordInput id="token-password" name="password" required minLength={6} autoComplete="new-password" className="mb-3" />
-          <button type="submit" className="btn btn-primary w-100">
-            {t.auth.reset.submit}
-          </button>
-        </form>
+        <ResetPasswordForm token={token} />
       )}
     </div>
   );

@@ -40,6 +40,7 @@ export default function EpisodeProgress({
   const [value, setValue] = useState(watched ?? 0);
   const [draft, setDraft] = useState(String(watched ?? 0));
   const [seen, setSeen] = useState(watched);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Число могло измениться не отсюда: например, статус переставили на
@@ -60,9 +61,19 @@ export default function EpisodeProgress({
     const clamped = Math.max(0, total !== null ? Math.min(next, total) : next);
     setDraft(String(clamped));
     if (clamped === value) return;
+    const previous = value;
     setValue(clamped);
+    setError(null);
     startTransition(async () => {
-      await setDramaEpisodesWatched(dramaId, clamped);
+      // Ошибка приходит значением (текст исключения в проде до клиента
+      // не доезжает) — откатываем оптимистичное число и показываем её.
+      const result = await setDramaEpisodesWatched(dramaId, clamped);
+      if (!result.ok) {
+        setValue(previous);
+        setDraft(String(previous));
+        setError(result.error);
+        return;
+      }
       router.refresh();
     });
   }
@@ -137,6 +148,7 @@ export default function EpisodeProgress({
           label={t.catalog.episodes.of(value, total)}
         />
       )}
+      {error && <p className="small text-danger mb-0 mt-1">{error}</p>}
     </div>
   );
 }

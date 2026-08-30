@@ -28,4 +28,14 @@ export const reviews: Dict["reviews"] = {
   replyPlaceholder: (name: string) => `Ответ для ${name}…`,
   replyAria: (name: string) => `Ответ для ${name}`,
   author: "автора",
+
+  /** Ответы серверных экшенов — их показывают формы блока. */
+  errors: {
+    ratingRange: "Оценка — от 1 до 10",
+    textRequired: "Напишите текст отзыва",
+    emptyComment: "Пустой комментарий",
+    tooLongComment: "Слишком длинный комментарий",
+    parentNotFound: "Родительский комментарий не найден",
+    cannotDeleteOthers: "Нельзя удалить чужой комментарий",
+  },
 };

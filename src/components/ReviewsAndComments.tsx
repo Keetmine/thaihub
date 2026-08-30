@@ -4,6 +4,7 @@ import { formatDateWithYear } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
+import ActionResultForm from "@/components/ActionResultForm";
 import CommentLikeButton from "@/components/CommentLikeButton";
 import ReportButton from "@/components/ReportButton";
 import { TrashIcon, StarIcon, ChatIcon } from "@/components/icons";
@@ -71,7 +72,9 @@ async function CommentRow({
               >
                 {t.reviews.reply}
               </summary>
-              <form action={boundAdd} className="d-flex gap-2 mt-2">
+              {/* ActionResultForm: ошибки экшена приходят значением и
+                  показываются под формой (см. компонент). */}
+              <ActionResultForm action={boundAdd} className="d-flex gap-2 mt-2 flex-wrap">
                 <input type="hidden" name="parentId" value={replyToId ?? c.id} />
                 <input
                   name="text"
@@ -84,7 +87,7 @@ async function CommentRow({
                 <button type="submit" className="btn btn-primary btn-sm flex-shrink-0">
                   {t.reviews.send}
                 </button>
-              </form>
+              </ActionResultForm>
             </details>
           )}
           {currentUser && c.user.id !== currentUser.id && (
@@ -209,7 +212,7 @@ export default async function ReviewsAndComments({
             <summary className="btn btn-ghost btn-sm d-inline-flex">
               {ownReview ? t.reviews.editReview : t.reviews.writeReview}
             </summary>
-            <form action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
+            <ActionResultForm action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
               <div className="d-flex align-items-center gap-2">
                 <label className="form-label small text-secondary mb-0" htmlFor="review-rating">
                   {t.reviews.ratingLabel}
@@ -249,7 +252,7 @@ export default async function ReviewsAndComments({
                   </ConfirmForm>
                 )}
               </div>
-            </form>
+            </ActionResultForm>
           </details>
         ) : (
           <p className="small text-secondary">
@@ -303,7 +306,7 @@ export default async function ReviewsAndComments({
         </h2>
 
         {currentUser ? (
-          <form action={boundAddComment} className="d-flex flex-column gap-2 mb-3">
+          <ActionResultForm action={boundAddComment} className="d-flex flex-column gap-2 mb-3">
             <textarea
               name="text"
               rows={2}
@@ -316,7 +319,7 @@ export default async function ReviewsAndComments({
             <button type="submit" className="btn btn-primary btn-sm align-self-start">
               {t.reviews.send}
             </button>
-          </form>
+          </ActionResultForm>
         ) : (
           <p className="small text-secondary">
             <Link href="/login" className="link-body-emphasis">

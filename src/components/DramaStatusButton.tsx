@@ -30,6 +30,7 @@ export default function DramaStatusButton({
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -55,11 +56,18 @@ export default function DramaStatusButton({
   async function choose(value: DramaWatchStatusValue | null) {
     setIsOpen(false);
     setIsSubmitting(true);
+    setError(null);
     try {
       if (value === null) {
         await clearDramaWatchStatus(dramaId);
       } else {
-        await setDramaWatchStatus(dramaId, value);
+        // Ошибка приходит значением (текст исключения в проде до
+        // клиента не доезжает) — показываем её у кнопки.
+        const result = await setDramaWatchStatus(dramaId, value);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
       }
       router.refresh();
     } finally {
@@ -95,6 +103,7 @@ export default function DramaStatusButton({
       >
         {status ? <PencilIcon /> : <PlusIcon />}
       </button>
+      {error && <span className="small text-danger">{error}</span>}
 
       {/* Портал в body: у карточек-предков бывают transform'ы (stagger,
           hover постеров) — они делают position:fixed относительным себя,

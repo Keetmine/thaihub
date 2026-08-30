@@ -58,15 +58,20 @@ export async function submitReport(
   targetType: string,
   targetId: string,
   reason: string,
-): Promise<{ ok: boolean }> {
+): Promise<FeedbackResult> {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Требуется вход");
+  const { t } = await getT();
+  // Ошибки — значением, как в submitFeedback: текст исключения из
+  // server action в проде до клиента не доезжает.
+  if (!user) return { ok: false, error: t.widgets.promo.signInRequired };
   await assertRateLimit("signup");
 
   // Только известные типы: targetType приходит с клиента, и произвольная
   // строка засоряла бы очередь модерации нерезолвящимися записями.
   const KNOWN_TARGETS = ["placeList", "profile", "eventNote", "comment", "review"];
-  if (!KNOWN_TARGETS.includes(targetType)) throw new Error("Неизвестный тип жалобы");
+  if (!KNOWN_TARGETS.includes(targetType)) {
+    return { ok: false, error: t.widgets.report.unknownType };
+  }
 
   await prisma.report.create({
     data: {

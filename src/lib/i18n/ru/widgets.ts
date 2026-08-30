@@ -90,6 +90,9 @@ export const widgets: Dict["widgets"] = {
     alreadyUsed: "Код уже использован",
     activated: (until: string) => `Подписка активна до ${until} — обновите страницу!`,
   },
+  report: {
+    unknownType: "Неизвестный тип жалобы",
+  },
   feedback: {
     optional: " (необязательно)",
     placeholder: "Расскажите, что нашли, что сломалось или кого не хватает…",

@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import type { TripVisibility } from "@/generated/prisma/client";
-import { resolveMapsCoords, resolveMapsCoordsViaHttp } from "@/lib/blscene";
 import { isLocationCategory } from "@/lib/locationCategories";
+import { canUseLocation, createOwnLocation, resolveUserMapsCoords } from "@/lib/ownLocation";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 
 function parseVisibility(raw: unknown): TripVisibility {
@@ -20,30 +20,6 @@ function parseVisibility(raw: unknown): TripVisibility {
  *  `ActionError | void` — успешная ветка до return не доходит. */
 export type ActionError = { ok: false; error: string };
 export type ActionResult = { ok: true } | ActionError;
-
-// Координаты из maps-ссылки пользователя. Сначала дешёвый HTTP-резолв
-// (редиректы коротких ссылок часто несут координаты прямо в URL);
-// браузер — только fallback для ссылок формата ?q=адрес&ftid=…, и
-// строго по одному: параллельные клики выстраиваются в очередь, чтобы
-// несколько Chromium (~250 МБ каждый) не уронили веб-процесс по памяти.
-let mapsBrowserQueue: Promise<unknown> = Promise.resolve();
-
-async function resolveUserMapsCoords(url: string) {
-  const viaHttp = await resolveMapsCoordsViaHttp(url);
-  if (viaHttp) return viaHttp;
-
-  const task = mapsBrowserQueue.then(async () => {
-    const { chromium } = await import("playwright");
-    const browser = await chromium.launch();
-    try {
-      return await resolveMapsCoords(url, browser);
-    } finally {
-      await browser.close();
-    }
-  });
-  mapsBrowserQueue = task.catch(() => {});
-  return task;
-}
 
 /** Список текущего юзера или null (нет/чужой) — вызывающий экшен
  *  превращает null в `{ ok: false, error: "Список не найден" }`. */
@@ -103,6 +79,11 @@ export async function setPlaceListVisibility(
 export async function addPlaceToList(listId: string, locationId: string): Promise<ActionResult> {
   const own = await requireOwnList(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
+  // locationId приходит с клиента: чужое приватное место в свой список
+  // не положить — иначе утекали бы его название и координаты.
+  if (!(await canUseLocation(locationId, own.user.id))) {
+    return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
+  }
   await prisma.placeListItem.upsert({
     where: { listId_locationId: { listId: own.list.id, locationId } },
     update: {},
@@ -165,52 +146,9 @@ export async function searchLocationOptions(
   });
 }
 
-/**
- * Создание своего места (не из каталога сериалов) сразу в список: название +
- * ссылка Google Maps ИЛИ голые координаты «13.75, 100.50». Длинные
- * maps-ссылки несут координаты в URL (regex), короткие maps.app.goo.gl
- * резолвятся через resolveUserMapsCoords (HTTP-редиректы, браузер — в
- * крайнем случае и по одному). Такое место помечено createdByUserId и в
- * общий каталог локаций не попадает.
- */
-/** Разбор формы своего места и создание самой локации — без привязки
- *  к чему-либо. Список больше не обязателен: то же место можно завести
- *  прямо в поездке (см. createTripOwnPlace в trips/actions.ts), раньше
- *  ради одного места приходилось сначала заводить список. */
-export async function createOwnLocation(
-  formData: FormData,
-  userId: string,
-): Promise<{ ok: true; locationId: string; note: string | null } | { ok: false; error: string }> {
-  const name = String(formData.get("name") ?? "").trim();
-  const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
-  const note = String(formData.get("note") ?? "").trim();
-  const photoUrl = String(formData.get("photoUrl") ?? "").trim();
-  if (!name) return { ok: false, error: (await getT()).t.lists.errors.placeNameRequired };
-
-  let coords: { lat: number; lng: number } | null = null;
-  if (mapsInput) {
-    // Голые координаты «13.7563, 100.5018» — без похода куда-либо.
-    const raw = mapsInput.match(/^(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/);
-    if (raw) {
-      coords = { lat: parseFloat(raw[1]), lng: parseFloat(raw[2]) };
-    } else {
-      coords = await resolveUserMapsCoords(mapsInput);
-    }
-  }
-
-  const rawCategory = String(formData.get("category") ?? "").trim();
-  const location = await prisma.location.create({
-    data: {
-      name,
-      createdByUserId: userId,
-      photoUrl: photoUrl || null,
-      latitude: coords?.lat ?? null,
-      longitude: coords?.lng ?? null,
-      category: rawCategory && isLocationCategory(rawCategory) ? rawCategory : null,
-    },
-  });
-  return { ok: true, locationId: location.id, note: note || null };
-}
+// createOwnLocation переехал в src/lib/ownLocation.ts: экспорт из
+// "use server"-модуля делал его публичным HTTP-эндпоинтом, а userId он
+// принимает аргументом — любой мог создавать места от чужого имени.
 
 /** Своё место без всякой привязки — со страницы «Мои места». Список
  *  теперь необязателен: он просто способ сгруппировать места. */

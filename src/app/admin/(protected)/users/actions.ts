@@ -53,10 +53,12 @@ export async function deleteUser(userId: string) {
  *  и читаемый — им делятся в переписке. */
 
 
-/** Промокод на месяц подписки (подарочный). */
+/** Промокод на месяц подписки (подарочный). 8 байт случайности:
+ *  4 байта (~4 млрд вариантов) уже можно было перебирать онлайн через
+ *  форму активации — 16 hex-символов перебором не достать. */
 export async function createPromoCode(): Promise<void> {
   await requireAdmin();
-  const code = `GIFT-${randomBytes(4).toString("hex").toUpperCase()}`;
+  const code = `GIFT-${randomBytes(8).toString("hex").toUpperCase()}`;
   await prisma.promoCode.create({ data: { code, months: 1 } });
   revalidatePath("/admin/users");
 }

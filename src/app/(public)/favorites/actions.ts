@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { getT } from "@/lib/i18n";
 import type { DramaStatus } from "@/generated/prisma/client";
+
+/** Ошибки — значением, а не броском: в проде Next минифицирует текст
+ *  исключения из server action (см. promoActions.ts). */
+export type ActionError = { ok: false; error: string };
+export type ActionResult = { ok: true } | ActionError;
 
 export async function toggleFavoritePerformer(performerId: string) {
   const user = await getCurrentUser();
@@ -76,10 +82,15 @@ export async function toggleFavoriteEvent(eventId: string) {
 const WATCH_STATUSES = ["WATCHING", "COMPLETED", "ON_HOLD", "PLAN_TO_WATCH", "DROPPED"] as const;
 export type DramaWatchStatusValue = (typeof WATCH_STATUSES)[number];
 
-export async function setDramaWatchStatus(dramaId: string, status: DramaWatchStatusValue) {
+export async function setDramaWatchStatus(
+  dramaId: string,
+  status: DramaWatchStatusValue,
+): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!WATCH_STATUSES.includes(status)) throw new Error("Некорректный статус");
+  if (!WATCH_STATUSES.includes(status)) {
+    return { ok: false, error: (await getT()).t.catalog.errors.badStatus };
+  }
 
   // «Просмотрено» вручную — значит просмотрено всё: досчитывать серии
   // после этого человек не должен. Если число серий неизвестно, оставляем
@@ -120,6 +131,7 @@ export async function setDramaWatchStatus(dramaId: string, status: DramaWatchSta
   revalidatePath("/");
   revalidatePath("/account");
   revalidatePath(`/dramas/${dramaId}`);
+  return { ok: true };
 }
 
 /** Верхняя граница, когда число серий у сериала неизвестно: счётчик всё
@@ -153,10 +165,12 @@ function hasFinishedAiring(status: DramaStatus | null): boolean {
 export async function setDramaEpisodesWatched(
   dramaId: string,
   episodes: number,
-): Promise<{ watched: number; status: DramaWatchStatusValue }> {
+): Promise<{ ok: true; watched: number; status: DramaWatchStatusValue } | ActionError> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!Number.isFinite(episodes)) throw new Error("Некорректное число серий");
+  if (!Number.isFinite(episodes)) {
+    return { ok: false, error: (await getT()).t.catalog.errors.badEpisodes };
+  }
 
   const [drama, current] = await Promise.all([
     prisma.drama.findUnique({
@@ -168,7 +182,7 @@ export async function setDramaEpisodesWatched(
       select: { status: true },
     }),
   ]);
-  if (!drama) throw new Error("Сериал не найден");
+  if (!drama) return { ok: false, error: (await getT()).t.catalog.errors.dramaNotFound };
 
   const total = drama.episodes ?? null;
   const watched = Math.max(0, Math.min(Math.floor(episodes), total ?? MAX_EPISODES));
@@ -200,7 +214,7 @@ export async function setDramaEpisodesWatched(
   revalidatePath("/");
   revalidatePath("/account");
   revalidatePath(`/dramas/${dramaId}`);
-  return { watched, status };
+  return { ok: true, watched, status };
 }
 
 /**
@@ -241,12 +255,12 @@ export async function clearDramaWatchStatus(dramaId: string) {
 
 // «Я пойду» — на конкретную ДАТУ события (occurrence): у двухдневного
 // концерта можно идти только на один день.
-export async function toggleGoing(occurrenceId: string) {
+export async function toggleGoing(occurrenceId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const occurrence = await prisma.eventOccurrence.findUnique({ where: { id: occurrenceId } });
-  if (!occurrence) throw new Error("Дата события не найдена");
+  if (!occurrence) return { ok: false, error: (await getT()).t.events.going.dateNotFound };
 
   const existing = await prisma.eventAttendance.findUnique({
     where: { userId_occurrenceId: { userId: user.id, occurrenceId } },
@@ -269,4 +283,5 @@ export async function toggleGoing(occurrenceId: string) {
 
   revalidatePath("/account");
   revalidatePath(`/event/${occurrence.eventId}`);
+  return { ok: true };
 }

@@ -20,6 +20,7 @@ export default function ArtistListControls({
   const t = useT();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <>
@@ -28,6 +29,8 @@ export default function ArtistListControls({
         aria-label={t.lists.artists.visibilityAria}
         defaultValue={list.visibility}
         onChange={async (e) => {
+          // Ошибка приходит значением — при отказе селект вернёт
+          // серверное значение после refresh.
           await setPerformerListVisibility(list.id, e.target.value as TripVisibility);
           router.refresh();
         }}
@@ -44,7 +47,14 @@ export default function ArtistListControls({
       <Modal open={open} onClose={() => setOpen(false)} title={t.lists.artists.editTitle}>
         <form
           action={async (fd) => {
-            await updatePerformerList(list.id, fd);
+            setError(null);
+            // Ошибка приходит значением (см. ActionResult в actions.ts) —
+            // показываем её в модалке, не закрывая форму.
+            const result = await updatePerformerList(list.id, fd);
+            if (!result.ok) {
+              setError(result.error);
+              return;
+            }
             setOpen(false);
             router.refresh();
           }}
@@ -65,6 +75,7 @@ export default function ArtistListControls({
               className="form-control"
             />
           </div>
+          {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary">
             {t.common.save}
           </button>

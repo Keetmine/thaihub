@@ -44,7 +44,10 @@ export default function GoingButton({
     setActive(next);
     startTransition(async () => {
       try {
-        await toggleGoing(occurrenceId);
+        // Ошибка приходит значением (текст исключения в проде до
+        // клиента не доезжает) — откатываем оптимистичную галочку.
+        const result = await toggleGoing(occurrenceId);
+        if (!result.ok) setActive(!next);
       } catch {
         setActive(!next);
       }

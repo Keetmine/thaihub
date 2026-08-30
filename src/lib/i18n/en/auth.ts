@@ -70,6 +70,9 @@ export const auth = {
       invalidLinkCta: "ask for another reset",
       passwordLabel: "Choose a password",
       submit: "Save and sign in",
+      /** Ответы серверного экшена resetPassword. */
+      tooShort: "The password is too short — at least 6 characters",
+      linkInvalid: "This link is invalid or has expired — ask for another reset",
     },
     password: {
       show: "Show password",

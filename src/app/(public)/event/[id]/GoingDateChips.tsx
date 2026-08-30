@@ -33,7 +33,9 @@ export default function GoingDateChips({
     flip();
     startTransition(async () => {
       try {
-        await toggleGoing(id);
+        // Ошибка приходит значением — откатываем оптимистичный чип.
+        const result = await toggleGoing(id);
+        if (!result.ok) flip();
       } catch {
         flip();
       }

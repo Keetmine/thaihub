@@ -60,6 +60,12 @@ export async function GET(request: NextRequest) {
 
   let user = await prisma.user.findUnique({ where: { googleId: payload.sub } });
   if (!user) {
+    // Почта должна быть подтверждена Google: без email_verified владелец
+    // Google-аккаунта с чужой НЕподтверждённой почтой привязался бы к
+    // существующему аккаунту с этим email и вошёл в него. Новый аккаунт
+    // с неподтверждённой почтой тоже не заводим — email дальше служит
+    // каналом сброса пароля.
+    if (payload.email_verified !== true) return fail(request);
     // Линкуем к существующему email-аккаунту, иначе создаём новый.
     const byEmail = await prisma.user.findUnique({ where: { email } });
     user = byEmail

@@ -13,8 +13,13 @@ const MAX_ATTEMPTS = 30;
 
 async function clientKey(scope: string): Promise<string> {
   const h = await headers();
-  // За Caddy реальный адрес — первый в X-Forwarded-For.
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  // Caddy (reverse_proxy) ДОПИСЫВАЕТ адрес клиента в КОНЕЦ
+  // X-Forwarded-For, а начало списка может прислать сам клиент —
+  // доверять можно только последнему элементу. Первый элемент давал
+  // бесплатный обход лимита: подставляй новый заголовок на каждый
+  // запрос и перебирай пароли без ограничений.
+  const chain = h.get("x-forwarded-for")?.split(",") ?? [];
+  const ip = chain[chain.length - 1]?.trim() || "unknown";
   return `${scope}:${ip}`;
 }
 
@@ -24,6 +29,11 @@ async function clientKey(scope: string): Promise<string> {
  * действия, до проверки пароля (иначе перебор бесплатен до успеха).
  */
 export async function assertRateLimit(scope: "login" | "signup"): Promise<void> {
+  // Обход для e2e: полный прогон логинится десятки раз с одного IP и
+  // упирался в лимит невнятными таймаутами. Двойное условие — в проде
+  // (NODE_ENV=production) переменная не действует, ослабить боевой
+  // лимитер ею нельзя.
+  if (process.env.E2E_RATE_LIMIT_OFF === "1" && process.env.NODE_ENV !== "production") return;
   const key = await clientKey(scope);
   const now = Date.now();
 

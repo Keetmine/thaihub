@@ -12,7 +12,12 @@ export default function ConfirmForm({
   busyLabel,
   children,
 }: {
-  action: (formData: FormData) => void | Promise<void | { error?: string } | undefined>;
+  /** Server action; может вернуть `{ ok, error }` или `{ error }` —
+   *  ошибка показывается в модалке (текст исключения в проде до
+   *  клиента не доезжает). */
+  action: (
+    formData: FormData,
+  ) => void | Promise<void | { ok?: boolean; error?: string } | undefined>;
   confirmMessage: string;
   className?: string;
   /** Подпись кнопки. По умолчанию «Удалить» — обёртка родилась для

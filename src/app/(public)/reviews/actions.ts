@@ -5,6 +5,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
+import { getT } from "@/lib/i18n";
+
+/** Ошибки — значением, а не броском: в проде Next минифицирует текст
+ *  исключения из server action, и клиент видел generic error boundary
+ *  вместо причины (см. promoActions.ts). */
+export type ReviewActionResult = { ok: true } | { ok: false; error: string };
 
 /** Отзывы и комментарии живут у трёх типов объектов — экшены общие,
  *  тип задаётся kind. path — страница для revalidate. */
@@ -25,14 +31,21 @@ function pagePath(kind: ReviewKind, id: string): string {
 /** Сохранить (создать/обновить) свой отзыв: оценка 1–10 + текст.
  *  Пустой текст с оценкой допустим («только оценка» как на Кинопоиске —
  *  нет: у нас отзыв = оценка + текст, текст обязателен). */
-export async function saveReview(kind: ReviewKind, id: string, formData: FormData): Promise<void> {
+export async function saveReview(
+  kind: ReviewKind,
+  id: string,
+  formData: FormData,
+): Promise<ReviewActionResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const { t } = await getT();
 
   const rating = Number(formData.get("rating"));
   const text = String(formData.get("text") ?? "").trim();
-  if (!Number.isInteger(rating) || rating < 1 || rating > 10) throw new Error("Оценка от 1 до 10");
-  if (!text) throw new Error("Напишите текст отзыва");
+  if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
+    return { ok: false, error: t.reviews.errors.ratingRange };
+  }
+  if (!text) return { ok: false, error: t.reviews.errors.textRequired };
 
   const where = targetWhere(kind, id);
   const existing = await prisma.review.findFirst({ where: { userId: user.id, ...where } });
@@ -42,6 +55,7 @@ export async function saveReview(kind: ReviewKind, id: string, formData: FormDat
     await prisma.review.create({ data: { userId: user.id, ...where, rating, text } });
   }
   revalidatePath(pagePath(kind, id));
+  return { ok: true };
 }
 
 export async function deleteReview(kind: ReviewKind, id: string): Promise<void> {
@@ -51,12 +65,17 @@ export async function deleteReview(kind: ReviewKind, id: string): Promise<void> 
   revalidatePath(pagePath(kind, id));
 }
 
-export async function addComment(kind: ReviewKind, id: string, formData: FormData): Promise<void> {
+export async function addComment(
+  kind: ReviewKind,
+  id: string,
+  formData: FormData,
+): Promise<ReviewActionResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const { t } = await getT();
   const text = String(formData.get("text") ?? "").trim();
-  if (!text) throw new Error("Пустой комментарий");
-  if (text.length > 3000) throw new Error("Слишком длинный комментарий");
+  if (!text) return { ok: false, error: t.reviews.errors.emptyComment };
+  if (text.length > 3000) return { ok: false, error: t.reviews.errors.tooLongComment };
 
   // Ответ: один уровень вложенности — ответ на ответ прикрепляется к корню.
   let parentId: string | null = String(formData.get("parentId") ?? "").trim() || null;
@@ -66,7 +85,7 @@ export async function addComment(kind: ReviewKind, id: string, formData: FormDat
       where: { id: parentId, ...targetWhere(kind, id) },
       include: { user: { select: { id: true, telegramId: true, name: true } } },
     });
-    if (!parent) throw new Error("Родительский комментарий не найден");
+    if (!parent) return { ok: false, error: t.reviews.errors.parentNotFound };
     parentId = parent.parentId ?? parent.id;
     parentAuthor = parent.user;
   }
@@ -87,6 +106,7 @@ export async function addComment(kind: ReviewKind, id: string, formData: FormDat
     });
   }
   revalidatePath(pagePath(kind, id));
+  return { ok: true };
 }
 
 /** Лайк/анлайк комментария. Возвращает новое число лайков. */
@@ -121,13 +141,16 @@ export async function toggleCommentLike(commentId: string): Promise<{ liked: boo
 }
 
 /** Удалить комментарий может автор или админ (модерация). */
-export async function deleteComment(commentId: string): Promise<void> {
+export async function deleteComment(commentId: string): Promise<ReviewActionResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const comment = await prisma.comment.findUnique({ where: { id: commentId } });
-  if (!comment) return;
-  if (comment.userId !== user.id && !user.isAdmin) throw new Error("Нельзя удалить чужой комментарий");
+  if (!comment) return { ok: true };
+  if (comment.userId !== user.id && !user.isAdmin) {
+    return { ok: false, error: (await getT()).t.reviews.errors.cannotDeleteOthers };
+  }
   await prisma.comment.delete({ where: { id: commentId } });
   const kind: ReviewKind = comment.dramaId ? "drama" : comment.novelId ? "novel" : "event";
   revalidatePath(pagePath(kind, (comment.dramaId ?? comment.novelId ?? comment.eventId)!));
+  return { ok: true };
 }

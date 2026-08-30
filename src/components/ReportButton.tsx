@@ -27,7 +27,13 @@ export default function ReportButton({
     setPending(true);
     setError(null);
     try {
-      await submitReport(targetType, targetId, reason);
+      // Экшен возвращает ошибку значением (текст исключения в проде до
+      // клиента не доезжает); catch остаётся на сетевые сбои и лимитер.
+      const result = await submitReport(targetType, targetId, reason);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       setDone(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : t.ui.reportFailed);

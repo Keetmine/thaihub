@@ -14,18 +14,23 @@ import { getLocale, getT, localeHref } from "@/lib/i18n";
 // (не админский) функционал: владелец распоряжается только своими
 // списками, каждая мутация перепроверяет userId.
 
+/** Ошибки — значением, а не броском: в проде Next минифицирует текст
+ *  исключения из server action (см. promoActions.ts). */
+export type ActionError = { ok: false; error: string };
+export type ActionResult = { ok: true } | ActionError;
+
 async function requireOwnList(listId: string) {
   const { t } = await getT();
   const user = await getCurrentUser();
-  if (!user) throw new Error(t.lists.errors.signInRequired);
+  if (!user) return { ok: false as const, error: t.lists.errors.signInRequired };
   const list = await prisma.performerList.findFirst({
     where: { id: listId, userId: user.id },
   });
-  if (!list) throw new Error(t.lists.errors.listNotFound);
-  return { user, list };
+  if (!list) return { ok: false as const, error: t.lists.errors.listNotFound };
+  return { ok: true as const, user, list };
 }
 
-export async function createPerformerList(formData: FormData) {
+export async function createPerformerList(formData: FormData): Promise<ActionError | void> {
   const { locale, t } = await getT();
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
@@ -34,7 +39,7 @@ export async function createPerformerList(formData: FormData) {
   // владельцам независимо от подписки.
   if (!isPremiumActive(user)) redirect(localeHref("/calendar", locale));
   const title = String(formData.get("title") ?? "").trim();
-  if (!title) throw new Error(t.lists.errors.listTitleRequired);
+  if (!title) return { ok: false, error: t.lists.errors.listTitleRequired };
   const description = String(formData.get("description") ?? "").trim();
 
   const list = await prisma.performerList.create({
@@ -44,20 +49,26 @@ export async function createPerformerList(formData: FormData) {
   redirect(localeHref(artistListHref(list), locale));
 }
 
-export async function updatePerformerList(listId: string, formData: FormData) {
-  await requireOwnList(listId);
+export async function updatePerformerList(
+  listId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const own = await requireOwnList(listId);
+  if (!own.ok) return own;
   const title = String(formData.get("title") ?? "").trim();
-  if (!title) throw new Error((await getT()).t.lists.errors.listTitleRequired);
+  if (!title) return { ok: false, error: (await getT()).t.lists.errors.listTitleRequired };
   const description = String(formData.get("description") ?? "").trim();
   await prisma.performerList.update({
     where: { id: listId },
     data: { title, description: description || null },
   });
   revalidatePath("/lists");
+  return { ok: true };
 }
 
-export async function deletePerformerList(listId: string) {
-  await requireOwnList(listId);
+export async function deletePerformerList(listId: string): Promise<ActionError | void> {
+  const own = await requireOwnList(listId);
+  if (!own.ok) return own;
   await prisma.performerList.delete({ where: { id: listId } });
   revalidatePath("/lists");
   redirect(localeHref("/lists", await getLocale()));
@@ -66,14 +77,20 @@ export async function deletePerformerList(listId: string) {
 export async function setPerformerListVisibility(
   listId: string,
   visibility: TripVisibility,
-): Promise<void> {
-  await requireOwnList(listId);
+): Promise<ActionResult> {
+  const own = await requireOwnList(listId);
+  if (!own.ok) return own;
   await prisma.performerList.update({ where: { id: listId }, data: { visibility } });
   revalidatePath("/lists");
+  return { ok: true };
 }
 
-export async function addPerformerToList(listId: string, performerId: string): Promise<void> {
-  await requireOwnList(listId);
+export async function addPerformerToList(
+  listId: string,
+  performerId: string,
+): Promise<ActionResult> {
+  const own = await requireOwnList(listId);
+  if (!own.ok) return own;
   const max = await prisma.performerListItem.aggregate({
     where: { listId },
     _max: { position: true },
@@ -84,20 +101,28 @@ export async function addPerformerToList(listId: string, performerId: string): P
     update: {},
   });
   revalidatePath("/lists");
+  return { ok: true };
 }
 
-export async function removePerformerFromList(listId: string, performerId: string): Promise<void> {
-  await requireOwnList(listId);
+export async function removePerformerFromList(
+  listId: string,
+  performerId: string,
+): Promise<ActionResult> {
+  const own = await requireOwnList(listId);
+  if (!own.ok) return own;
   await prisma.performerListItem.deleteMany({ where: { listId, performerId } });
   revalidatePath("/lists");
+  return { ok: true };
 }
 
-/** Поиск актёров для добавления в список (доступен любому залогиненному). */
+/** Поиск актёров для добавления в список (доступен любому залогиненному).
+ *  Анониму — пустой список, а не ошибка: комбобоксы показываются только
+ *  залогиненным, а бросок в проде превращался в generic error boundary. */
 export async function searchPerformersForList(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
   const user = await getCurrentUser();
-  if (!user) throw new Error((await getT()).t.lists.errors.signInRequired);
+  if (!user) return [];
   const q = query.trim();
   if (q.length < 2) return [];
   const rows = await prisma.performer.findMany({

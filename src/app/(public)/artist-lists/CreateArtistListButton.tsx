@@ -9,6 +9,7 @@ export default function CreateArtistListButton({ small = false }: { small?: bool
   const uid = useId();
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <>
@@ -21,7 +22,16 @@ export default function CreateArtistListButton({ small = false }: { small?: bool
       </button>
 
       <Modal open={isOpen} onClose={() => setIsOpen(false)} title={t.lists.artists.createTitle}>
-        <form action={createPerformerList} className="d-flex flex-column gap-3">
+        {/* Ошибка приходит значением (текст исключения в проде до
+            клиента не доезжает); успех делает redirect на сервере. */}
+        <form
+          action={async (fd) => {
+            setError(null);
+            const result = await createPerformerList(fd);
+            if (result && !result.ok) setError(result.error);
+          }}
+          className="d-flex flex-column gap-3"
+        >
           <div>
             <label className="form-label small text-secondary" htmlFor={`${uid}-title`}>{t.lists.artists.title}</label>
             <input id={`${uid}-title`}
@@ -39,6 +49,7 @@ export default function CreateArtistListButton({ small = false }: { small?: bool
             </label>
             <textarea id={`${uid}-description`} name="description" rows={2} className="form-control" />
           </div>
+          {error && <p className="small text-danger mb-0">{error}</p>}
           <button type="submit" className="btn btn-primary">
             {t.lists.artists.submitCreate}
           </button>

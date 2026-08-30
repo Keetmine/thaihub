@@ -11,7 +11,9 @@ export default function FriendActionButton({
   pendingLabel,
   className,
 }: {
-  action: (id: string) => Promise<void>;
+  /** Server action; ошибку может вернуть значением `{ ok: false, error }`
+   *  (текст исключения в проде до клиента не доезжает). */
+  action: (id: string) => Promise<void | { ok: false; error: string }>;
   id: string;
   label: string;
   pendingLabel?: string;
@@ -26,7 +28,11 @@ export default function FriendActionButton({
     setIsSubmitting(true);
     setError(null);
     try {
-      await action(id);
+      const result = await action(id);
+      if (result && !result.ok) {
+        setError(result.error);
+        return;
+      }
       router.refresh();
     } catch {
       setError(t.ui.actionFailed);

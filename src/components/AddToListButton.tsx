@@ -18,17 +18,25 @@ export default function AddToListButton({
   onAdd,
 }: {
   lists: ListOption[];
-  /** Server action: кладёт актёра в выбранный список. */
-  onAdd: (listId: string) => Promise<void>;
+  /** Server action: кладёт актёра в выбранный список. Может вернуть
+   *  `{ ok: false, error }` значением — текст исключения в проде до
+   *  клиента не доезжает (см. promoActions.ts). */
+  onAdd: (listId: string) => Promise<void | { ok: boolean; error?: string }>;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const add = (listId: string) => {
     startTransition(async () => {
-      await onAdd(listId);
+      setError(null);
+      const result = await onAdd(listId);
+      if (result && !result.ok && result.error) {
+        setError(result.error);
+        return;
+      }
       setDone((prev) => [...prev, listId]);
     });
   };
@@ -69,6 +77,7 @@ export default function AddToListButton({
               })}
             </div>
           )}
+          {error && <p className="small text-danger mb-0 mt-2">{error}</p>}
       </Modal>
     </>
   );

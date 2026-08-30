@@ -295,5 +295,7 @@ export const trips = {
         flightNameRequired: "Enter the flight or airline",
         hotelNameRequired: "Enter the hotel name",
         bookingNotFound: "Booking not found",
+        notFriend: "You can only invite your friends",
+        badFile: "The file didn't pass the check — please upload it again",
     },
 };

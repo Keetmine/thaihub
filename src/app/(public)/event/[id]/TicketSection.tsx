@@ -37,7 +37,13 @@ export default function TicketSection({ rows }: { rows: TicketRow[] }) {
         setError(uploadErrorMessage(t, data, t.events.tickets.uploadFailed));
         return;
       }
-      await setAttendanceTicket(occurrenceId, data.url);
+      // Экшен возвращает ошибку значением (текст исключения в проде до
+      // клиента не доезжает) — показываем её тут же, у формы.
+      const result = await setAttendanceTicket(occurrenceId, data.url);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       router.refresh();
     } catch {
       setError(t.events.tickets.uploadFailedLong);

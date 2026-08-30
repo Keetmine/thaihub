@@ -93,6 +93,9 @@ export const widgets = {
     alreadyUsed: "This code has already been used",
     activated: (until: string) => `Subscription active until ${until} — reload the page!`,
   },
+  report: {
+    unknownType: "Unknown report type",
+  },
   feedback: {
     optional: " (optional)",
     placeholder: "Tell us what you found, what broke, or who's missing…",

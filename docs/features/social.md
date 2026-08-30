@@ -208,6 +208,10 @@ activity for private profiles). Actions sit on the right: for friends a
 (`FriendActionButton` → `sendFriendRequest`), which turns into a «Заявка
 отправлена» chip once a request is pending (an *incoming* pending
 request shows «Ответить на заявку» linking to `/friends`).
+Ошибки `sendFriendRequest` («сам себе», «заявка уже есть») приходят
+значением `{ ok: false, error }` — текст исключения из server action в
+проде до клиента не доезжает — и `FriendActionButton` показывает их
+под кнопкой.
 «Пожаловаться» (`ReportButton`) deliberately lives as a small gray link
 at the very bottom of the page, not in the header. Below the hero:
 the trips this *viewer* is allowed to see (PUBLIC always, FRIENDS only

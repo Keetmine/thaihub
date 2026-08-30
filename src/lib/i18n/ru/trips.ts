@@ -294,5 +294,7 @@ export const trips: Dict["trips"] = {
         flightNameRequired: "Укажите рейс или авиакомпанию",
         hotelNameRequired: "Укажите название отеля",
         bookingNotFound: "Бронь не найдена",
+        notFriend: "Приглашать в поездку можно только друзей",
+        badFile: "Файл не прошёл проверку — загрузите его ещё раз",
     },
 };

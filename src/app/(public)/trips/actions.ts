@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createOwnLocation } from "../lists/actions";
+import { canUseLocation, createOwnLocation } from "@/lib/ownLocation";
+import { canAttachPrivateFile, unlinkPrivateFile } from "@/lib/privateFiles";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -91,7 +92,9 @@ export async function createTrip(formData: FormData): Promise<ActionError | void
       members: { create: memberIds.map((userId) => ({ userId })) },
     },
   });
-  for (const memberId of memberIds) void notifyTripInvite(trip.id, memberId);
+  // Fire-and-forget, но с .catch: голый void оставлял отклонённый промис
+  // без обработчика — unhandledRejection мог уронить процесс.
+  for (const memberId of memberIds) notifyTripInvite(trip.id, memberId).catch(console.error);
 
   revalidatePath("/trips");
   redirect(localeHref(`/trips/${trip.id}`, locale));
@@ -128,8 +131,20 @@ export async function deleteTrip(tripId: string) {
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
 
+  // Файлы броней и личных событий живут в private-uploads/ и каскадом
+  // БД не удаляются — собираем пути до удаления, чистим диск после,
+  // иначе файлы копились бы бесхозными.
+  const trip = await prisma.trip.findFirst({
+    where: { id: tripId, userId: user.id },
+    select: {
+      bookings: { select: { fileUrl: true } },
+      personalEvents: { select: { imageUrl: true } },
+    },
+  });
   // where включает userId — чужую поездку удалить нельзя.
   await prisma.trip.deleteMany({ where: { id: tripId, userId: user.id } });
+  for (const b of trip?.bookings ?? []) await unlinkPrivateFile(b.fileUrl);
+  for (const e of trip?.personalEvents ?? []) await unlinkPrivateFile(e.imageUrl);
   revalidatePath("/trips");
   redirect(localeHref("/trips", locale));
 }
@@ -241,13 +256,21 @@ export async function addTripMember(tripId: string, friendId: string): Promise<A
     const { t } = await getT();
     return { ok: false, error: t.trips.errors.ownerAlreadyIn };
   }
+  // Только друзей — как при создании поездки: friendId приходит с
+  // клиента, и без проверки можно было спамить приглашениями любой id.
+  const friendIds = await getFriendIds(own.trip.userId);
+  if (!friendIds.includes(friendId)) {
+    const { t } = await getT();
+    return { ok: false, error: t.trips.errors.notFriend };
+  }
   // Добавление — это приглашение: участником друг станет, когда примет.
   await prisma.tripMember.upsert({
     where: { tripId_userId: { tripId, userId: friendId } },
     create: { tripId, userId: friendId },
     update: {},
   });
-  void notifyTripInvite(tripId, friendId);
+  // .catch — иначе отклонённый промис остаётся без обработчика.
+  notifyTripInvite(tripId, friendId).catch(console.error);
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }
@@ -363,6 +386,16 @@ export async function createTripPersonalEvent(
   if (!access.ok) return { ok: false, error: access.error };
   const data = parsePersonalEventForm(formData, access.trip.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
+  // Путь картинки приходит из формы строкой: принимаем только формат
+  // /api/upload-personal и файл, не занятый чужой записью, — иначе
+  // можно «усыновить» чужой приватный файл (см. lib/privateFiles.ts).
+  if (data.imageUrl && !(await canAttachPrivateFile(data.imageUrl, "personal", access.user.id))) {
+    return { ok: false, error: (await getT()).t.trips.errors.badFile };
+  }
+  // Локация — только каталожная или своя (id приходит с клиента).
+  if (data.locationId && !(await canUseLocation(data.locationId, access.user.id))) {
+    return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
+  }
   const { performerIds, attending, ...fields } = data;
   await prisma.tripPersonalEvent.create({
     data: {
@@ -394,6 +427,18 @@ export async function updateTripPersonalEvent(
   }
   const data = parsePersonalEventForm(formData, trip.visibility, item.visibility);
   if (!data) return { ok: false, error: (await getT()).t.trips.errors.fillTitleAndDate };
+  // Новый путь картинки проверяем как при создании; прежнее значение
+  // записи пропускаем как есть — оно уже проверено при сохранении.
+  if (
+    data.imageUrl &&
+    data.imageUrl !== item.imageUrl &&
+    !(await canAttachPrivateFile(data.imageUrl, "personal", user.id))
+  ) {
+    return { ok: false, error: (await getT()).t.trips.errors.badFile };
+  }
+  if (data.locationId && data.locationId !== item.locationId && !(await canUseLocation(data.locationId, user.id))) {
+    return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
+  }
   const { performerIds, attending, ...fields } = data;
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
@@ -417,6 +462,9 @@ export async function updateTripPersonalEvent(
         : { deleteMany: { userId: user.id } },
     },
   });
+  // Картинку заменили или убрали — старый файл больше никому не нужен,
+  // без unlink он оставался бы в private-uploads/ навсегда.
+  if (item.imageUrl && item.imageUrl !== data.imageUrl) await unlinkPrivateFile(item.imageUrl);
   revalidatePath(`/trips/${trip.id}`);
   return { ok: true };
 }
@@ -466,6 +514,9 @@ export async function deleteTripPersonalEvent(
     return { ok: false, error: (await getT()).t.trips.errors.cannotDeleteOthers };
   }
   await prisma.tripPersonalEvent.delete({ where: { id: personalEventId } });
+  // Картинка события живёт в private-uploads/ — вместе с записью
+  // удаляем и её, иначе файл оставался бы бесхозным.
+  await unlinkPrivateFile(item.imageUrl);
   revalidatePath(`/trips/${trip.id}`);
   return { ok: true };
 }
@@ -500,6 +551,11 @@ export async function detachListFromTrip(tripId: string, listId: string): Promis
 export async function addPlaceToTrip(tripId: string, locationId: string): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
+  // Только каталожные и свои места: id приходит с клиента, и без
+  // проверки в поездку подтягивалось чужое приватное место.
+  if (!(await canUseLocation(locationId, access.user.id))) {
+    return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
+  }
   await prisma.tripPlace.upsert({
     where: { tripId_locationId: { tripId: access.trip.id, locationId } },
     update: {},
@@ -687,6 +743,18 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
     // было бы отредактировать бронь чужой поездки.
     const existing = await prisma.tripBooking.findFirst({ where: { id, tripId } });
     if (!existing) return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
+    // Путь файла приходит из формы строкой: новый — только формат
+    // /api/upload-hotel и файл, не занятый чужой записью; прежнее
+    // значение записи пропускаем как есть (в т.ч. легаси-пути) — оно
+    // уже было проверено. Иначе можно «усыновить» чужой приватный файл
+    // (см. lib/privateFiles.ts).
+    if (
+      data.fileUrl &&
+      data.fileUrl !== existing.fileUrl &&
+      !(await canAttachPrivateFile(data.fileUrl, "hotels", access.user.id))
+    ) {
+      return { ok: false, error: (await getT()).t.trips.errors.badFile };
+    }
     await prisma.tripBooking.update({
       where: { id },
       data: {
@@ -699,7 +767,14 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
         ),
       },
     });
+    // Файл заменили или убрали — старый чистим с диска.
+    if (existing.fileUrl && existing.fileUrl !== data.fileUrl) {
+      await unlinkPrivateFile(existing.fileUrl);
+    }
   } else {
+    if (data.fileUrl && !(await canAttachPrivateFile(data.fileUrl, "hotels", access.user.id))) {
+      return { ok: false, error: (await getT()).t.trips.errors.badFile };
+    }
     await prisma.tripBooking.create({
       data: {
         tripId,
@@ -717,7 +792,14 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
 export async function deleteTripBooking(tripId: string, bookingId: string): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
+  // Файл брони — в private-uploads/, БД его не каскадит: путь берём до
+  // удаления записи и чистим диск следом (по образцу ticketActions).
+  const booking = await prisma.tripBooking.findFirst({
+    where: { id: bookingId, tripId },
+    select: { fileUrl: true },
+  });
   await prisma.tripBooking.deleteMany({ where: { id: bookingId, tripId } });
+  await unlinkPrivateFile(booking?.fileUrl);
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }

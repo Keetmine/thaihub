@@ -15,8 +15,14 @@ export default function BuyPremiumButton() {
     setIsLoading(true);
     setError(null);
     try {
-      const link = await getPremiumInvoiceLink();
-      window.open(link, "_blank", "noopener");
+      // Экшен возвращает ошибку значением (текст исключения в проде до
+      // клиента не доезжает) — показываем её вместо generic-текста.
+      const result = await getPremiumInvoiceLink();
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      window.open(result.link, "_blank", "noopener");
     } catch {
       setError(t.widgets.premium.payFailed);
     } finally {

@@ -4,10 +4,15 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { canUseLocation } from "@/lib/ownLocation";
 
 export async function toggleLocationVisit(locationId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  // id приходит с клиента: отметки — только на каталожных и своих
+  // местах, чужое приватное место через отметку не «подсветить».
+  if (!(await canUseLocation(locationId, user.id))) return;
 
   const existing = await prisma.locationVisit.findUnique({
     where: { userId_locationId: { userId: user.id, locationId } },

@@ -11,6 +11,7 @@ import {
   destroyUserSession,
   getCurrentUser,
   hashPassword,
+  USER_COOKIE,
   verifyPassword,
 } from "@/lib/userAuth";
 import { softDeleteUser } from "@/lib/userDeletion";
@@ -133,6 +134,16 @@ export async function changePassword(formData: FormData): Promise<ActionResult> 
   await prisma.user.update({
     where: { id: user.id },
     data: { passwordHash: hashPassword(newPassword) },
+  });
+  // Пароль меняют в том числе потому, что он мог утечь: остальные
+  // сессии (возможно, чужие руки) закрываем, текущую — оставляем, чтобы
+  // человек не вылетел из аккаунта сразу после смены.
+  const currentSessionId = (await cookies()).get(USER_COOKIE)?.value;
+  await prisma.userSession.deleteMany({
+    where: {
+      userId: user.id,
+      ...(currentSessionId ? { id: { not: currentSessionId } } : {}),
+    },
   });
   return { ok: true };
 }

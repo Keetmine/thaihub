@@ -5,11 +5,19 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
+import { getT } from "@/lib/i18n";
 
-export async function sendFriendRequest(addresseeId: string) {
+/** Ошибки — значением, а не броском: в проде Next минифицирует текст
+ *  исключения из server action (см. promoActions.ts). Успех — void. */
+export type FriendActionError = { ok: false; error: string };
+
+export async function sendFriendRequest(addresseeId: string): Promise<FriendActionError | void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (addresseeId === user.id) throw new Error("Нельзя добавить себя в друзья");
+  const { t } = await getT();
+  if (addresseeId === user.id) {
+    return { ok: false, error: t.social.friends.errors.cannotAddSelf };
+  }
 
   const [a, b] = [user.id, addresseeId];
   const existing = await prisma.friendship.findFirst({
@@ -20,7 +28,7 @@ export async function sendFriendRequest(addresseeId: string) {
       ],
     },
   });
-  if (existing) throw new Error("Заявка уже отправлена или вы уже друзья");
+  if (existing) return { ok: false, error: t.social.friends.errors.alreadyRequested };
 
   await prisma.friendship.create({
     data: { requesterId: user.id, addresseeId, status: "PENDING" },

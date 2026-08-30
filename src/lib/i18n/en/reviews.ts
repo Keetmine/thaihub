@@ -26,4 +26,14 @@ export const reviews = {
   replyPlaceholder: (name: string) => `Reply to ${name}…`,
   replyAria: (name: string) => `Reply to ${name}`,
   author: "author",
+
+  /** Ответы серверных экшенов — их показывают формы блока. */
+  errors: {
+    ratingRange: "The rating must be between 1 and 10",
+    textRequired: "Write the review text",
+    emptyComment: "The comment is empty",
+    tooLongComment: "The comment is too long",
+    parentNotFound: "The parent comment was not found",
+    cannotDeleteOthers: "You can't delete someone else's comment",
+  },
 };

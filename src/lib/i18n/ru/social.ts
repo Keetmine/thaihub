@@ -11,6 +11,11 @@ export const social: Dict["social"] = {
     searchResults: "Результаты поиска",
     noneFound: "Никого не найдено.",
     noName: "Без имени",
+    /** Ответы серверных экшенов заявок. */
+    errors: {
+      cannotAddSelf: "Нельзя добавить в друзья себя",
+      alreadyRequested: "Заявка уже отправлена или вы уже друзья",
+    },
     noNameInline: "без имени",
 
     add: "Добавить в друзья",

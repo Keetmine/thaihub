@@ -13,6 +13,7 @@ export default function AddPerformerBox({ listId }: { listId: string }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const seqRef = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -38,7 +39,14 @@ export default function AddPerformerBox({ listId }: { listId: string }) {
   }
 
   async function add(id: string) {
-    await addPerformerToList(listId, id);
+    setError(null);
+    // Ошибка приходит значением (текст исключения в проде до клиента
+    // не доезжает) — показываем её под комбобоксом.
+    const result = await addPerformerToList(listId, id);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setQuery("");
     setResults([]);
     router.refresh();
@@ -89,6 +97,7 @@ export default function AddPerformerBox({ listId }: { listId: string }) {
           ))}
         </div>
       )}
+      {error && <p className="small text-danger mb-0 mt-2">{error}</p>}
     </div>
   );
 }

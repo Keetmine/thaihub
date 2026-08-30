@@ -40,9 +40,12 @@ Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
 
 **Signup is open** — no invite codes (the `InviteCode` system was
 removed; anyone can register with email+password). **Rate limiting**:
-`assertRateLimit` (`src/lib/rateLimit.ts`, in-memory fixed window, 10
-attempts / 10 min per IP from X-Forwarded-For) guards user login and
-signup.
+`assertRateLimit` (`src/lib/rateLimit.ts`, in-memory fixed window, 30
+attempts / 10 min per IP) guards user login and signup. IP берётся из
+**последнего** элемента X-Forwarded-For — его дописывает Caddy, а
+начало списка может прислать сам клиент (первый элемент давал
+бесплатный обход лимита). Для e2e лимитер отключается переменной
+`E2E_RATE_LIMIT_OFF=1`, но только вне production (`NODE_ENV`).
 
 ## Google login
 
@@ -54,6 +57,9 @@ verified — the token arrives straight from Google over HTTPS in
 exchange for code+client_secret). Account resolution: by `googleId`,
 then by email (links Google to an existing email account), else a new
 `User` is created (`passwordHash` null, like Telegram accounts).
+Привязка/создание по email требует `email_verified === true` в
+id_token: иначе Google-аккаунт с чужой неподтверждённой почтой входил
+бы в существующий аккаунт с этим email.
 Requires `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` env vars — the
 login/signup buttons render only when configured. Redirect URI must be
 `{APP_URL}/api/auth/google/callback` in the Google console. Apple
@@ -243,12 +249,19 @@ Cloudflare Turnstile.
 (`PasswordResetToken`, час жизни), письмо через SMTP
 (`src/lib/mailer.ts`, env SMTP_HOST/PORT/USER/PASS/FROM + SITE_URL).
 Пока SMTP не настроен, форма честно отвечает «временно недоступно —
-напишите нам». `/reset-password/[token]` — форма нового пароля,
-`resetPassword` помечает токен использованным. Существование ящика не
+напишите нам». `/reset-password/[token]` — форма нового пароля
+(клиентская `ResetPasswordForm`: ошибки экшен возвращает значением,
+и форма показывает их под полем), `resetPassword` помечает токен
+использованным и **удаляет все `UserSession` пользователя** — если
+пароль сбрасывают из-за утечки, чужая сессия гаснет. Смена пароля в
+настройках (`changePassword`) делает то же, но текущую сессию
+оставляет. Существование ящика не
 раскрывается («письмо отправлено» в любом случае). Ссылка «Забыли
 пароль?» — на /login. Письмо уходит на языке страницы, с которой
-запросили сброс, и ссылка в нём — с тем же префиксом (`/ru/…`). Rate-limit: MAX_ATTEMPTS поднят до 30/10мин
-(полный e2e-прогон делает 10+ логинов с одного IP).
+запросили сброс, и ссылка в нём — с тем же префиксом (`/ru/…`).
+Rate-limit: MAX_ATTEMPTS поднят до 30/10мин (полный e2e-прогон делает
+10+ логинов с одного IP), плюс обход `E2E_RATE_LIMIT_OFF=1` вне
+production.
 
 ## Онбординг (/welcome)
 
