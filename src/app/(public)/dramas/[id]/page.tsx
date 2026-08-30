@@ -16,6 +16,7 @@ import EpisodeBellButton from "./EpisodeBellButton";
 import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
+import TagRowFold from "@/components/TagRowFold";
 import SynopsisFold from "@/components/SynopsisFold";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -26,7 +27,6 @@ import { PinIcon,
   CalendarIcon,
   TagIcon,
   TvIcon,
-  UserIcon,
   InfoIcon,
 } from "@/components/icons";
 import {
@@ -216,8 +216,6 @@ export default async function DramaDetailPage({
     !!drama.episodes ||
     !!drama.duration ||
     !!drama.airedFrom ||
-    !!drama.director ||
-    !!drama.screenwriter ||
     !!drama.contentRating ||
     drama.mdlScore != null ||
     ourRating != null ||
@@ -430,21 +428,26 @@ export default async function DramaDetailPage({
             </p>
           )}
 
+          {/* Теги — обычным текстом в цвет .tag-chip, одной строкой со
+              свёрткой «показать все» (просьба владельца): у MDL тегов
+              десятки, и чипы раздували карточку на пол-экрана. */}
           {drama.tags.length > 0 && (
-            <p className="small text-secondary mb-2 d-flex flex-wrap align-items-center gap-2">
-              <span className="d-inline-flex align-items-center gap-1">
+            <div className="small text-secondary mb-2 d-flex align-items-baseline gap-2">
+              <span className="d-inline-flex align-items-center gap-1 flex-shrink-0">
                 <TagIcon /> <span className="text-secondary">{t.catalog.drama.tags}</span>
               </span>
-              {drama.tags.map((tag) => (
-                <AppLink
-                  key={tag}
-                  href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
-                  className="tag-chip text-decoration-none"
-                >
-                  {tag}
-                </AppLink>
-              ))}
-            </p>
+              <TagRowFold moreLabel={t.catalog.tagsShowAll}>
+                {drama.tags.map((tag) => (
+                  <AppLink
+                    key={tag}
+                    href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
+                    className="tag-link"
+                  >
+                    {tag}
+                  </AppLink>
+                ))}
+              </TagRowFold>
+            </div>
           )}
 
           <div className="d-flex flex-column gap-1 mb-3">
@@ -477,18 +480,6 @@ export default async function DramaDetailPage({
                     </AppLink>
                   </>
                 )}
-              </p>
-            )}
-            {drama.network && (
-              <p className="small text-secondary mb-0">
-                <TvIcon className="icon-inline" />{" "}
-                <span className="text-secondary">{t.catalog.drama.network}</span>{" "}
-                <AppLink
-                  href={`/search?section=dramas&network=${encodeURIComponent(drama.network)}`}
-                  className="link-body-emphasis"
-                >
-                  {drama.network}
-                </AppLink>
               </p>
             )}
             {(drama.episodes || drama.duration) && (
@@ -544,20 +535,6 @@ export default async function DramaDetailPage({
               </details>
             ) : (
               airedLine && <p className="small text-secondary mb-0">{airedLine}</p>
-            )}
-            {drama.director && (
-              <p className="small text-secondary mb-0">
-                <UserIcon className="icon-inline" />{" "}
-                <span className="text-secondary">{t.catalog.drama.director}</span>{" "}
-                {drama.director}
-              </p>
-            )}
-            {drama.screenwriter && (
-              <p className="small text-secondary mb-0">
-                <UserIcon className="icon-inline" />{" "}
-                <span className="text-secondary">{t.catalog.drama.screenwriter}</span>{" "}
-                {drama.screenwriter}
-              </p>
             )}
             {drama.contentRating && (
               <p className="small text-secondary mb-0">

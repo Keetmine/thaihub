@@ -2336,6 +2336,18 @@ svg[aria-hidden="true"] {
 
 /* Нейтральный чип-тег (жанры, метки): тише event-chip, не перетягивает
    внимание. */
+/* Тег обычным текстом (карточка сериала): цвет как у .tag-chip, но без
+   пилюли — десятки тегов чипами раздували карточку. */
+.tag-link {
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tag-link:hover {
+  color: var(--bs-body-color);
+  text-decoration: underline;
+}
+
 .tag-chip {
   display: inline-block;
   padding: 0.15rem 0.6rem;

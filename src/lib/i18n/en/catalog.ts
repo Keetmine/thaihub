@@ -13,6 +13,7 @@ export const catalog = {
     letterIndex: "Jump to a letter",
     showAll: (n: number) => `Show all (${n})`,
     sources: "Sources",
+    tagsShowAll: "show all",
 
     // Отметка просмотра: подписи статусов и кнопка-переключатель.
     watchStatus: {

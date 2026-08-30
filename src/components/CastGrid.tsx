@@ -37,9 +37,15 @@ export default function CastGrid({
   const rowClamp = chips && clampRows ? clampRows : null;
 
   useEffect(() => {
-    if (!rowClamp || expanded) return;
     const el = wrapRef.current;
     if (!el) return;
+    if (!rowClamp || expanded) {
+      // Инлайновый max-height обязан уйти вместе со свёрткой: без этого
+      // раскрытые капсулы вылезали из обрезанного контейнера поверх
+      // соседних блоков (жалоба владельца — «налазят на фотки»).
+      el.style.maxHeight = "";
+      return;
+    }
     const apply = () => {
       const first = el.firstElementChild as HTMLElement | null;
       if (!first) return;
