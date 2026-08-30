@@ -73,16 +73,38 @@ export function verifyTelegramAuth(params: URLSearchParams): TelegramAuthPayload
   };
 }
 
+// Дедлайн на любой вызов Bot API: у fetch в Node своего таймаута нет, и
+// зависший запрос держал бы получасовой прогон рассылки бесконечно.
+const API_TIMEOUT_MS = 10000;
+
+/** POST к методу Bot API с таймаутом и внятной ошибкой (какой метод не
+ *  ответил) — голое «operation was aborted» в журнале ни о чём. */
+async function callTelegram(method: string, body: unknown): Promise<Response> {
+  try {
+    return await fetch(`https://api.telegram.org/bot${botToken()}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
+    });
+  } catch (e) {
+    throw new Error(
+      `Telegram ${method}: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`,
+    );
+  }
+}
+
 /**
  * Отправляет личное сообщение от бота. Вернёт false (не бросит), если
  * пользователь не нажимал Start у бота (Telegram отвечает 403) — для
  * рассылки уведомлений это ожидаемый, а не аварийный случай.
  */
 export async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
-  const res = await fetch(`https://api.telegram.org/bot${botToken()}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
+  const res = await callTelegram("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
   });
   if (res.status === 403) return false;
   if (!res.ok) {
@@ -106,16 +128,12 @@ export async function createPremiumInvoiceLink(
   userId: string,
   priceStars: number = PREMIUM_PRICE_STARS,
 ): Promise<string> {
-  const res = await fetch(`https://api.telegram.org/bot${botToken()}/createInvoiceLink`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: "Подписка MyBLHub — 1 месяц",
-      description: "Полная афиша событий, календарь, поездки и уведомления на 30 дней.",
-      payload: userId,
-      currency: "XTR",
-      prices: [{ label: "Подписка на месяц", amount: priceStars }],
-    }),
+  const res = await callTelegram("createInvoiceLink", {
+    title: "Подписка MyBLHub — 1 месяц",
+    description: "Полная афиша событий, календарь, поездки и уведомления на 30 дней.",
+    payload: userId,
+    currency: "XTR",
+    prices: [{ label: "Подписка на месяц", amount: priceStars }],
   });
   const data = (await res.json()) as { ok: boolean; result?: string; description?: string };
   if (!data.ok || !data.result) {
@@ -134,19 +152,29 @@ export async function refundStarPayment(
   telegramUserId: string,
   chargeId: string,
 ): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${botToken()}/refundStarPayment`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: Number(telegramUserId), telegram_payment_charge_id: chargeId }),
+  const res = await callTelegram("refundStarPayment", {
+    user_id: Number(telegramUserId),
+    telegram_payment_charge_id: chargeId,
   });
   const data = (await res.json()) as { ok: boolean; description?: string };
   if (!data.ok) throw new Error(`refundStarPayment failed: ${data.description ?? res.status}`);
 }
 
 export async function answerPreCheckoutQuery(id: string, ok: boolean, errorMessage?: string): Promise<void> {
-  await fetch(`https://api.telegram.org/bot${botToken()}/answerPreCheckoutQuery`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pre_checkout_query_id: id, ok, ...(errorMessage ? { error_message: errorMessage } : {}) }),
-  });
+  // Не бросает: ответ на pre_checkout — best effort (не успели за 10
+  // секунд — Telegram сам откажет покупателю), но молчать про не-ok
+  // нельзя, иначе «оплата не проходит» не оставляет следов в логах.
+  try {
+    const res = await callTelegram("answerPreCheckoutQuery", {
+      pre_checkout_query_id: id,
+      ok,
+      ...(errorMessage ? { error_message: errorMessage } : {}),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.warn(`Telegram answerPreCheckoutQuery -> HTTP ${res.status}: ${body.slice(0, 200)}`);
+    }
+  } catch (e) {
+    console.warn(e instanceof Error ? e.message : String(e));
+  }
 }

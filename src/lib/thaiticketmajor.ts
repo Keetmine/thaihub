@@ -98,10 +98,20 @@ function parseDateRangeDays(text: string): string[] {
   return [...new Set(days)].sort();
 }
 
+// Дедлайн на запрос: у fetch в Node своего таймаута нет, зависший сокет
+// держал бы синк афиши бесконечно.
+const FETCH_TIMEOUT_MS = 15000;
+
 async function fetchEnglishHtml(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": UA, Cookie: "__la=en" },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { "User-Agent": UA, Cookie: "__la=en" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (e) {
+    throw new Error(`${url} -> ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`);
+  }
   if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
   return res.text();
 }

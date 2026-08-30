@@ -31,17 +31,29 @@ export async function register() {
     sendEpisodeNotifications,
   } = await import("@/lib/telegramNotifications");
 
+  // Защита от наложения прогонов: mdl-auto-update может идти дольше
+  // интервала планировщика, и второй тик не должен запускать то же самое
+  // поверх первого. Флаг на модуль — прогоны в этом процессе строго по
+  // одному (второй уровень защиты — атомарный захват в runDueJobs).
+  let schedulerRunning = false;
   const runScheduler = async () => {
+    if (schedulerRunning) return;
+    schedulerRunning = true;
     try {
       const { runDueJobs } = await import("@/lib/scheduledJobs");
       const started = await runDueJobs();
       if (started.length > 0) console.log(`scheduler: запущено ${started.join(", ")}`);
     } catch (err) {
       console.warn(`scheduler failed: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      schedulerRunning = false;
     }
   };
 
+  let remindersRunning = false;
   const run = async () => {
+    if (remindersRunning) return;
+    remindersRunning = true;
     try {
       const { sent } = await sendUpcomingEventReminders();
       if (sent > 0) console.log(`telegram reminders: sent ${sent}`);
@@ -55,18 +67,31 @@ export async function register() {
       if (episodes > 0) console.log(`episode notifications: sent ${episodes}`);
     } catch (err) {
       console.warn(`telegram reminders failed: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      remindersRunning = false;
     }
   };
 
-  // Первый прогон — через минуту после старта (даём БД/миграциям
-  // устаканиться), дальше по интервалу.
-  setTimeout(run, 60 * 1000);
-  setInterval(run, INTERVAL_MS);
+  // Не setInterval: он тикает по часам, не дожидаясь прошлого прогона, и
+  // длинный прогон (mdl-auto-update идёт десятки минут при 10-минутном
+  // интервале) накладывался бы сам на себя. Следующий тик планируется
+  // только ПОСЛЕ завершения текущего.
+  const loop = (fn: () => Promise<void>, intervalMs: number, firstDelayMs: number) => {
+    const tick = async () => {
+      try {
+        await fn();
+      } finally {
+        setTimeout(tick, intervalMs);
+      }
+    };
+    setTimeout(tick, firstDelayMs);
+  };
 
-  // Планировщик: первый тик через 5 минут после старта, чтобы длинные
+  // Первый прогон напоминаний — через минуту после старта (даём БД/
+  // миграциям устаканиться); планировщик — через 5 минут, чтобы длинные
   // прогоны не совпадали с деплоем и разогревом приложения.
-  setTimeout(runScheduler, 5 * 60 * 1000);
-  setInterval(runScheduler, SCHEDULER_INTERVAL_MS);
+  loop(run, INTERVAL_MS, 60 * 1000);
+  loop(runScheduler, SCHEDULER_INTERVAL_MS, 5 * 60 * 1000);
 }
 
 /** Хук Next.js: любая необработанная серверная ошибка (страницы,

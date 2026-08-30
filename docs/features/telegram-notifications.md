@@ -25,11 +25,25 @@ is the point (each date is its own "don't miss it").
 ## Scheduling
 
 `src/instrumentation.ts` (`register()`, Next's server-startup hook) arms
-a 30-minute `setInterval` calling `sendUpcomingEventReminders`
-(`src/lib/telegramNotifications.ts`) — first run one minute after boot.
-No external cron: the docker-compose deploy is a single always-on app
-container, so an in-process timer is the simplest reliable place. The
-whole thing no-ops when `TELEGRAM_BOT_TOKEN` is unset.
+a self-scheduling timer (a `setTimeout` re-armed only **after** the
+current sweep finishes — deliberately not `setInterval`, which fires on
+the clock and would overlap a long sweep with itself) calling
+`sendUpcomingEventReminders` (`src/lib/telegramNotifications.ts`) every
+30 minutes — first run one minute after boot. A module-level
+`running`-flag guards against re-entry as a second layer. The same
+pattern drives the 10-minute job scheduler tick (`runDueJobs`), which
+additionally claims each job atomically in the DB (conditional
+`updateMany` on `lastRunAt`), so one job can never start twice — even
+across overlapping ticks or processes. No external cron: the
+docker-compose deploy is a single always-on app container, so an
+in-process timer is the simplest reliable place. The whole thing no-ops
+when `TELEGRAM_BOT_TOKEN` is unset.
+
+Dedup ledgers don't grow forever: the `cleanup-expired` scheduled job
+(`src/lib/scheduledJobs.ts`) rotates `TelegramNotification`,
+`TelegramPresaleNotification` and `EpisodeNotification` rows after 180
+days and `BirthdayNotification` rows after 2 years — all far beyond the
+window in which a reminder could repeat.
 
 ## Other notifications
 
@@ -97,7 +111,12 @@ The paywall (`PremiumUpsell` → `BuyPremiumButton` →
 
 - `src/lib/telegram.ts` — bot API client: `verifyTelegramAuth` (login
   widget HMAC check), `sendTelegramMessage` (returns `false` on 403
-  instead of throwing).
+  instead of throwing). Every Bot API call goes through one helper with
+  a 10-second `AbortSignal.timeout` — Node's `fetch` has no deadline of
+  its own, and a hung request would stall the half-hourly sweep
+  indefinitely. `answerPreCheckoutQuery` never throws (answering
+  pre-checkout is best-effort) but logs non-ok responses instead of
+  silently ignoring them.
 - `src/lib/telegramNotifications.ts` — all reminder sweeps + friend
   notifications.
 - `src/instrumentation.ts` — the timer.

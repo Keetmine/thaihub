@@ -102,18 +102,79 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     key: "cleanup-expired",
     title: "Чистка просроченного",
     description:
-      "Удаляет из БД просроченные сессии и токены сброса пароля — они и так не работают (проверка срока в коде), но копились бессрочно.",
+      "Удаляет из БД просроченные сессии и токены сброса пароля, а заодно ротирует журналы: " +
+      "старый аудит, прочитанные уведомления, историю импортов, разобранные ошибки и " +
+      "отработавшие дедуп-отметки телеграм-напоминаний. Без чистки всё это копилось бессрочно.",
     supportsTargets: false,
     run: async () => {
       const now = new Date();
+      const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
       const [sessions, tokens] = await Promise.all([
         prisma.userSession.deleteMany({ where: { expiresAt: { lt: now } } }),
         prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: now } } }),
       ]);
-      return `сессий удалено ${sessions.count}, токенов сброса ${tokens.count}`;
+
+      // Журналы. ImportedItem чистим сами: связь с ImportRun — SetNull,
+      // а не Cascade (см. schema.prisma), удаление прогона элементы не
+      // уносит.
+      const [audit, notifications, importedItems, importRuns, errors] = await Promise.all([
+        prisma.auditLog.deleteMany({ where: { createdAt: { lt: daysAgo(AUDIT_LOG_RETENTION_DAYS) } } }),
+        prisma.notification.deleteMany({
+          where: { readAt: { not: null }, createdAt: { lt: daysAgo(READ_NOTIFICATION_RETENTION_DAYS) } },
+        }),
+        prisma.importedItem.deleteMany({ where: { createdAt: { lt: daysAgo(IMPORT_LOG_RETENTION_DAYS) } } }),
+        prisma.importRun.deleteMany({ where: { startedAt: { lt: daysAgo(IMPORT_LOG_RETENTION_DAYS) } } }),
+        prisma.errorLog.deleteMany({
+          where: { reviewedAt: { not: null }, createdAt: { lt: daysAgo(REVIEWED_ERROR_RETENTION_DAYS) } },
+        }),
+      ]);
+
+      // Дедуп-отметки напоминаний: нужны, только пока повод может
+      // повториться (событие в ближайшие сутки, серия в окне добора,
+      // день рождения в этом году) — дальше строки лишь занимают место.
+      const [birthdays, episodes, eventReminders, presales] = await Promise.all([
+        prisma.birthdayNotification.deleteMany({
+          where: { createdAt: { lt: daysAgo(BIRTHDAY_DEDUPE_RETENTION_DAYS) } },
+        }),
+        prisma.episodeNotification.deleteMany({
+          where: { createdAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+        }),
+        prisma.telegramNotification.deleteMany({
+          where: { sentAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+        }),
+        prisma.telegramPresaleNotification.deleteMany({
+          where: { sentAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+        }),
+      ]);
+
+      const dedupe = birthdays.count + episodes.count + eventReminders.count + presales.count;
+      return (
+        `сессий удалено ${sessions.count}, токенов сброса ${tokens.count}, ` +
+        `аудита ${audit.count}, уведомлений ${notifications.count}, ` +
+        `импортов ${importRuns.count} (+элементов ${importedItems.count}), ` +
+        `ошибок ${errors.count}, дедуп-отметок ${dedupe}`
+      );
     },
   },
 ];
+
+// Сроки хранения журналов (cleanup-expired). Числа — компромисс «есть к
+// чему вернуться при разборе» против бессрочного роста таблиц.
+/** Аудит правок каталога: полгода хватает, чтобы разобрать «кто это поменял». */
+const AUDIT_LOG_RETENTION_DAYS = 180;
+/** Прочитанные уведомления колокольчика; непрочитанные не трогаем. */
+const READ_NOTIFICATION_RETENTION_DAYS = 90;
+/** Журнал импортов (ImportRun + ImportedItem): старые прогоны уже не разбирают. */
+const IMPORT_LOG_RETENTION_DAYS = 90;
+/** Серверные ошибки с отметкой «разобрано»; неразобранные не трогаем. */
+const REVIEWED_ERROR_RETENTION_DAYS = 90;
+/** Дедуп поздравлений: ключ содержит год, прошлый год строке не нужен —
+ *  но держим два, чтобы чистка заведомо не пересеклась с рабочим окном. */
+const BIRTHDAY_DEDUPE_RETENTION_DAYS = 2 * 365;
+/** Дедуп телеграм-напоминаний (серии, события, пресейлы): повод живёт
+ *  сутки-дни, полгода — с большим запасом. */
+const TELEGRAM_DEDUPE_RETENTION_DAYS = 180;
 
 export function jobDefinition(key: string): JobDefinition | undefined {
   return JOB_DEFINITIONS.find((j) => j.key === key);
@@ -160,21 +221,61 @@ function isDue(hour: number, lastRunAt: Date | null, now: Date): boolean {
   );
 }
 
+/**
+ * Захват задачи перед запуском. Атомарно: отметка ставится updateMany с
+ * условием «lastRunAt всё ещё тот, что мы прочитали» — из двух
+ * пересёкшихся тиков (или процессов) условие сойдётся только у одного.
+ * Раньше здесь был безусловный upsert, и окно listJobs→upsert позволяло
+ * запустить один job дважды.
+ */
+async function claimJob(key: string, hour: number, lastRunAt: Date | null, now: Date): Promise<boolean> {
+  const claimed = await prisma.scheduledJob.updateMany({
+    // lastRunAt: null в фильтре — это IS NULL: строка есть, но задача
+    // ещё ни разу не запускалась.
+    where: { key, lastRunAt },
+    data: { lastRunAt: now, lastStatus: "RUNNING" },
+  });
+  if (claimed.count > 0) return true;
+  if (lastRunAt !== null) return false; // отметку успел поставить другой тик
+
+  // Строки может не быть вовсе (задача из кода ещё не сохранялась в БД)
+  // — тогда захват и есть создание строки; гонку судит уникальный key.
+  try {
+    await prisma.scheduledJob.create({
+      data: { key, hour, lastRunAt: now, lastStatus: "RUNNING" },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Прогоны в этом процессе — строго по одному: тик может прийти, пока
+// прошлый ещё работает (у instrumentation.ts свой guard, но runDueJobs
+// зовут и вручную).
+let runningTick = false;
+
 /** Один тик планировщика: запускает всё, чему пришло время. */
 export async function runDueJobs(now = new Date()): Promise<string[]> {
+  if (runningTick) return [];
+  runningTick = true;
+  try {
+    return await runDueJobsInner(now);
+  } finally {
+    runningTick = false;
+  }
+}
+
+async function runDueJobsInner(now: Date): Promise<string[]> {
   const jobs = await listJobs();
   const started: string[] = [];
 
   for (const job of jobs) {
     if (!job.enabled || !isDue(job.hour, job.lastRunAt, now)) continue;
-    started.push(job.key);
     // Отметку ставим ДО запуска: прогон длинный, и при перезапуске
     // приложения задача не должна стартовать второй раз за сутки.
-    await prisma.scheduledJob.upsert({
-      where: { key: job.key },
-      create: { key: job.key, hour: job.hour, lastRunAt: now, lastStatus: "RUNNING" },
-      update: { lastRunAt: now, lastStatus: "RUNNING" },
-    });
+    if (!(await claimJob(job.key, job.hour, job.lastRunAt, now))) continue;
+    started.push(job.key);
 
     const targetIds =
       job.supportsTargets && job.targetMode === "SELECTED"

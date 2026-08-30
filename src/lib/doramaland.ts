@@ -128,8 +128,26 @@ export function doramaLandMatchTitles(page: DoramaLandPage): string[] {
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0 Safari/537.36";
 
+// Дедлайн на каждый запрос: у fetch в Node своего нет, и зависший сокет
+// держал бы массовый прогон бесконечно.
+const FETCH_TIMEOUT_MS = 15000;
+
+/** fetch с таймаутом и внятной ошибкой (какой url не открылся). */
+async function fetchDoramaLand(url: string): Promise<Response> {
+  try {
+    return await fetch(url, {
+      headers: { "User-Agent": USER_AGENT, "Accept-Language": "ru" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (e) {
+    throw new Error(
+      `dorama.land: не открылось ${url} (${e instanceof Error ? e.message.split("\n")[0] : String(e)})`,
+    );
+  }
+}
+
 export async function fetchDoramaLandPage(url: string): Promise<DoramaLandPage> {
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT, "Accept-Language": "ru" } });
+  const res = await fetchDoramaLand(url);
   if (!res.ok) throw new Error(`dorama.land: HTTP ${res.status} на ${url}`);
   return parseDoramaLandPage(await res.text(), url);
 }
@@ -139,16 +157,20 @@ export async function fetchDoramaLandPage(url: string): Promise<DoramaLandPage> 
  * и тегов отсеиваются; порядок — как в карте.
  */
 export async function collectDoramaLandSeriesUrls(): Promise<string[]> {
-  const index = await (
-    await fetch("https://dorama.land/sitemap.xml", { headers: { "User-Agent": USER_AGENT } })
-  ).text();
+  // res.ok проверяем обязательно: страница ошибки (500/503) молча
+  // парсилась бы как пустой XML — «нет сериалов» вместо «сайт лежит».
+  const indexRes = await fetchDoramaLand("https://dorama.land/sitemap.xml");
+  if (!indexRes.ok) throw new Error(`dorama.land: sitemap.xml -> HTTP ${indexRes.status}`);
+  const index = await indexRes.text();
   const maps = [...index.matchAll(/<loc>(https:\/\/dorama\.land\/sitemap_\d+\.xml)<\/loc>/g)].map(
     (m) => m[1],
   );
   const urls: string[] = [];
   const seen = new Set<string>();
   for (const map of maps) {
-    const xml = await (await fetch(map, { headers: { "User-Agent": USER_AGENT } })).text();
+    const mapRes = await fetchDoramaLand(map);
+    if (!mapRes.ok) throw new Error(`dorama.land: ${map} -> HTTP ${mapRes.status}`);
+    const xml = await mapRes.text();
     for (const m of xml.matchAll(/<loc>(https:\/\/dorama\.land\/[^<]+)<\/loc>/g)) {
       const url = m[1];
       if (url.includes("/tags/")) continue;

@@ -35,6 +35,11 @@ const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+// Дедлайн на запрос: страницы каналов обходит ночной крон, и один
+// зависший сокет (у fetch в Node своего таймаута нет) вешал бы весь
+// прогон. 20 секунд — страницы YouTube тяжёлые и отдаются небыстро.
+const FETCH_TIMEOUT_MS = 20000;
+
 /** Канал из любой ссылки YouTube Music / YouTube: /channel/UC… */
 export function parseChannelId(input: string): string | null {
   const m = input.match(/(?:channel\/)(UC[\w-]{20,})/);
@@ -60,9 +65,17 @@ export function parseChannelHandle(input: string): string | null {
  */
 export async function resolveChannelHandle(handle: string): Promise<string | null> {
   const clean = handle.replace(/^@/, "");
-  const res = await fetch(`https://www.youtube.com/@${encodeURIComponent(clean)}`, {
-    headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`https://www.youtube.com/@${encodeURIComponent(clean)}`, {
+      headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (e) {
+    throw new Error(
+      `YouTube: страница @${clean} не открылась (${e instanceof Error ? e.message.split("\n")[0] : String(e)})`,
+    );
+  }
   if (!res.ok) return null;
   const html = await res.text();
   const m =
@@ -174,9 +187,20 @@ function firstString(node: unknown, key: string): string | null {
 }
 
 export async function fetchYtmArtist(channelId: string): Promise<YtmArtist> {
-  const res = await fetch(channelUrl(channelId), {
-    headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
-  });
+  let res: Response;
+  try {
+    res = await fetch(channelUrl(channelId), {
+      headers: { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (e) {
+    // Зависший канал раньше вешал весь ночной прогон: у fetch в Node
+    // нет своего дедлайна. Сообщение — в журнал импортов, как обычная
+    // ошибка одного артиста.
+    throw new Error(
+      `YouTube Music не ответил (${e instanceof Error ? e.message.split("\n")[0] : String(e)})`,
+    );
+  }
   if (!res.ok) throw new Error(`YouTube Music ответил ${res.status}`);
   const html = await res.text();
 

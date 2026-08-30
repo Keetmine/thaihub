@@ -36,7 +36,9 @@ function progressWriter(runId: string): (message: string) => void {
         where: { id: runId, status: "RUNNING" },
         data: { summary: message.slice(0, 500) },
       })
-      .catch(() => {});
+      // Без .catch отклонённый промис ронял бы процесс unhandledRejection;
+      // молча глотать тоже нельзя — иначе про отвалившуюся БД не узнать.
+      .catch(console.error);
   };
 }
 
@@ -64,7 +66,8 @@ export async function runTpopArtistImport(formData: FormData): Promise<void> {
     lastWrite = now;
     void prisma.importRun
       .update({ where: { id: run.id }, data: { summary: m.slice(0, 500) } })
-      .catch(() => {});
+      // См. progressWriter: не уронить процесс, но и не промолчать.
+      .catch(console.error);
   };
 
   void (async () => {

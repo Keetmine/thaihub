@@ -14,8 +14,24 @@ function authHeaders(): HeadersInit {
   return { Authorization: `Bearer ${token}`, accept: "application/json" };
 }
 
+// Без таймаута зависший запрос держал бы фоновый прогон бесконечно —
+// у fetch в Node нет собственного дедлайна.
+const TMDB_TIMEOUT_MS = 15000;
+
 async function tmdbFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(TMDB_TIMEOUT_MS),
+    });
+  } catch (e) {
+    // Таймаут/сеть: своё сообщение с путём — голое «operation was
+    // aborted» в журнале импортов ни о чём не говорит.
+    throw new Error(
+      `TMDB ${path} -> ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`,
+    );
+  }
   if (!res.ok) throw new Error(`TMDB ${path} -> HTTP ${res.status}`);
   return res.json();
 }

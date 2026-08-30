@@ -34,6 +34,14 @@ type TelegramPrefs = {
   tgNotifyEpisodes: boolean;
 };
 
+/** Всё, что notifyUser нужно знать о получателе. Отдельным типом, чтобы
+ *  массовые рассылки могли выбрать эти поля одним findMany и передать
+ *  готового юзера — вместо findUnique на каждого получателя. */
+export type NotifyUserRecipient = TelegramPrefs & {
+  locale: string | null;
+  telegramId: string | null;
+};
+
 /**
  * Создать уведомление.
  *
@@ -61,25 +69,31 @@ export async function notifyUser(input: {
   body?: string | ((t: Dict, locale: Locale) => string) | null;
   href?: string | null;
   actorId?: string | null;
+  /** Уже прочитанный получатель — для массовых рассылок, где данные всех
+   *  получателей забраны одним findMany; без него юзер перечитывается из
+   *  БД (N+1 на каждом уведомлении). */
+  user?: NotifyUserRecipient;
 }): Promise<void> {
   try {
     // Себе не уведомляем: собственное действие человек только что
     // совершил и так.
     if (input.actorId && input.actorId === input.userId) return;
 
-    const user = await prisma.user.findUnique({
-      where: { id: input.userId },
-      select: {
-        locale: true,
-        telegramId: true,
-        tgNotifyInvites: true,
-        tgNotifyFriends: true,
-        tgNotifyReplies: true,
-        tgNotifyEvents: true,
-        tgNotifyBirthdays: true,
-        tgNotifyEpisodes: true,
-      },
-    });
+    const user =
+      input.user ??
+      (await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          locale: true,
+          telegramId: true,
+          tgNotifyInvites: true,
+          tgNotifyFriends: true,
+          tgNotifyReplies: true,
+          tgNotifyEvents: true,
+          tgNotifyBirthdays: true,
+          tgNotifyEpisodes: true,
+        },
+      }));
     if (!user) return;
 
     // Язык не выбирали — остаётся язык сайта по умолчанию: угадывать по

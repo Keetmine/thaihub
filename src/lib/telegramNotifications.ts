@@ -11,6 +11,20 @@ import { notifyUser } from "@/lib/notifications";
 
 const LOOKAHEAD_HOURS = 24;
 
+// Поля получателя для notifyUser (см. NotifyUserRecipient): массовые
+// рассылки выбирают их одним findMany и передают готового юзера, чтобы
+// notifyUser не перечитывал User на каждое уведомление (N+1).
+const NOTIFY_RECIPIENT_SELECT = {
+  locale: true,
+  telegramId: true,
+  tgNotifyInvites: true,
+  tgNotifyFriends: true,
+  tgNotifyReplies: true,
+  tgNotifyEvents: true,
+  tgNotifyBirthdays: true,
+  tgNotifyEpisodes: true,
+} as const;
+
 /**
  * Шлёт телеграм-напоминания о датах событий, начинающихся в ближайшие
  * 24 часа, всем, кто отметил «я иду» или добавил событие в избранное и
@@ -24,13 +38,16 @@ export async function sendUpcomingEventReminders(): Promise<{ sent: number; skip
   const now = new Date();
   const until = new Date(now.getTime() + LOOKAHEAD_HOURS * 60 * 60 * 1000);
 
+  // От получателя ниже нужны только id и telegramId — полные строки User
+  // (все флаги, premium, даты) каждые полчаса тянуть незачем.
+  const recipientSelect = { user: { select: { id: true, telegramId: true } } } as const;
   const occurrences = await prisma.eventOccurrence.findMany({
     where: { startsAt: { gt: now, lte: until } },
     include: {
       // «Иду» — по конкретной дате (attendances на occurrence);
       // избранное остаётся событийным.
-      attendances: { include: { user: true } },
-      event: { include: { favoritedBy: { include: { user: true } } } },
+      attendances: { select: recipientSelect },
+      event: { include: { favoritedBy: { select: recipientSelect } } },
       telegramNotifications: { select: { userId: true } },
     },
   });
@@ -215,6 +232,9 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
     if (!isPremiumActive(friend)) continue;
     await notifyUser({
       userId: friend.id,
+      // Строка User уже прочитана целиком — notifyUser незачем
+      // перечитывать её ради своих полей.
+      user: friend,
       actorId: userId,
       kind: "FRIEND_GOING",
       actorName: name,
@@ -275,9 +295,16 @@ export async function sendEpisodeNotifications(): Promise<number> {
   // Кому: по колокольчику per-сериал (notifyEpisodes), а не по статусу.
   // «Смотрю сейчас» включает его сам, но руками подписку можно держать
   // и на отложенном сериале — или выключить у смотримого.
+  // Получателя выбираем сразу со всем, что нужно notifyUser: иначе он
+  // перечитывал бы User из БД на каждое уведомление (N+1).
   const watchers = await prisma.dramaWatchStatus.findMany({
     where: { dramaId: { in: [...new Set(episodes.map((e) => e.dramaId))] }, notifyEpisodes: true },
-    select: { userId: true, dramaId: true, episodesWatched: true, user: { select: { locale: true } } },
+    select: {
+      userId: true,
+      dramaId: true,
+      episodesWatched: true,
+      user: { select: NOTIFY_RECIPIENT_SELECT },
+    },
   });
   if (watchers.length === 0) return 0;
   const watchersByDrama = new Map<string, typeof watchers>();
@@ -303,6 +330,7 @@ export async function sendEpisodeNotifications(): Promise<number> {
       const locale = isLocale(watcher.user.locale) ? watcher.user.locale : DEFAULT_LOCALE;
       await notifyUser({
         userId: watcher.userId,
+        user: watcher.user,
         kind: "EPISODE_AIRED",
         subject: dramaTitleForLocale(episode.drama, locale),
         body: (t) => t.notifications.episodeBody(episode.number, episode.drama.episodes),
@@ -363,11 +391,20 @@ export async function sendBirthdayNotifications(): Promise<number> {
   const sentKeys = new Set(alreadySent.map((n) => `${n.userId}:${n.performerId}`));
   const byId = new Map(birthdayPerformers.map((p) => [p.id, p]));
 
+  // Получателей забираем одним findMany и передаём в notifyUser готовыми
+  // — иначе он перечитывал бы User на каждое поздравление (N+1).
+  const recipients = await prisma.user.findMany({
+    where: { id: { in: [...new Set(favorites.map((f) => f.userId))] } },
+    select: { id: true, ...NOTIFY_RECIPIENT_SELECT },
+  });
+  const recipientById = new Map(recipients.map((u) => [u.id, u]));
+
   let sent = 0;
   for (const fav of favorites) {
     if (sentKeys.has(`${fav.userId}:${fav.performerId}`)) continue;
     const performer = byId.get(fav.performerId);
-    if (!performer) continue;
+    const recipient = recipientById.get(fav.userId);
+    if (!performer || !recipient) continue;
 
     // Отметку ставим ПЕРЕД отправкой, и по ней же ловим гонку: два
     // тика планировщика могут пересечься, и уникальный ключ — тот, кто
@@ -383,6 +420,7 @@ export async function sendBirthdayNotifications(): Promise<number> {
     const turns = year - performer.birthDate.getUTCFullYear();
     await notifyUser({
       userId: fav.userId,
+      user: recipient,
       kind: "PERFORMER_BIRTHDAY",
       subject: performer.name,
       // Возраст осмыслен, только если год рождения настоящий: у части
