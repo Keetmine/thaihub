@@ -19,6 +19,9 @@ export const events: Dict["events"] = {
         rangeCount: (count: number) => `Событий в диапазоне: ${count}.`,
         emptyUpcoming: "Предстоящих событий пока нет.",
         archiveHeading: "Архив событий",
+        teaserHeading: "Ближайшее",
+        teaserIntro: (count: string, base: number) =>
+            `Ближайшие события открыты всем. Подписка открывает остальную афишу — ещё ${count} ${plural(base, ["событие", "события", "событий"])} впереди — с поиском, фильтром по датам и напоминаниями, чтобы не пропустить старт продаж.`,
     },
 
     calendar: {
@@ -71,8 +74,9 @@ export const events: Dict["events"] = {
         metaDescription: (title: string, when: string | null, venue: string) =>
             `${title}${when ? `, ${when}` : ""} — ${venue}. Билеты, состав и детали события.`,
         backToEvents: "← Все события",
-        lockedTitle: "Событие",
-        paywallFeature: "Страницы событий",
+        paywallFeature: "Планы, билеты и напоминания",
+        premiumIntro:
+            "Всё о самом событии — выше и открыто всем. Подписка добавляет ваши планы вокруг него: отметить даты, куда идёте, держать под рукой билеты, видеть, кто из друзей идёт, и получить напоминание до старта продаж.",
         addToCalendar: "Добавить в календарь",
         tickets: "Билеты",
         venue: "Площадка:",

@@ -5,7 +5,6 @@ import PageHeader from "@/components/PageHeader";
 import { SearchIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
-import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
@@ -15,7 +14,6 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
-import { isPremiumActive } from "@/lib/premium";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { agencyHref, locationHref, novelHref } from "@/lib/slugHelpers";
@@ -423,7 +421,11 @@ function DramaTile({
   );
 }
 
-/** События уважают пейволл так же, как всюду: без подписки — заглушки. */
+/** События в выдаче показываются честно и всем: карточка события
+ *  публична (что, когда, где, кто), и прятать в поиске то, что открыто
+ *  по ссылке и в поисковиках, значило бы просто терять человека на
+ *  заглушке. За подпиской остались лента афиши целиком и личные блоки
+ *  события — сюда они не попадают. */
 async function EventResults({
   events,
 }: {
@@ -456,21 +458,17 @@ async function EventResults({
   );
   return (
     <div className="d-flex flex-column gap-3">
-      {eventRows.map(({ row, extraDates }) =>
-        isPremiumActive(currentUser) ? (
-          <EventAgendaRow
-            key={row.id}
-            event={row}
-            isFavorited={favoritedIds.has(row.id)}
-            isGoing={goingIds.has(row.occurrenceId)}
-            friendsGoing={friendsGoing.get(row.occurrenceId) ?? []}
-            showDate
-            extraDates={extraDates}
-          />
-        ) : (
-          <EventCardLocked key={row.id} startsAt={row.startsAt} />
-        ),
-      )}
+      {eventRows.map(({ row, extraDates }) => (
+        <EventAgendaRow
+          key={row.id}
+          event={row}
+          isFavorited={favoritedIds.has(row.id)}
+          isGoing={goingIds.has(row.occurrenceId)}
+          friendsGoing={friendsGoing.get(row.occurrenceId) ?? []}
+          showDate
+          extraDates={extraDates}
+        />
+      ))}
     </div>
   );
 }

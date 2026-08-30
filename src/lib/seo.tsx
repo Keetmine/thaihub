@@ -201,6 +201,122 @@ export function tvSeriesJsonLd(d: {
 }
 
 /**
+ * Тайское настенное время → ISO с явной зоной ICT.
+ *
+ * В базе лежит время «как на афише» (19:00 значит 19:00 в Бангкоке), а
+ * Prisma отдаёт его как момент в UTC — поэтому компоненты берём в UTC
+ * (ровно как в `src/lib/dates.ts`) и дописываем смещение Таиланда
+ * вручную. Без зоны Google трактовал бы startDate как локальное время
+ * читателя, и у события уезжали бы часы, а у вечерних — и дата.
+ * Таиланд на летнее время не переходит, смещение постоянное.
+ */
+const THAI_UTC_OFFSET = "+07:00";
+function thaiDateTime(d: Date, hasTime = true): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  const day = `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+  // Событие без времени («дата уточняется») отдаём датой без часов —
+  // schema.org это разрешает, а выдуманная полночь врала бы.
+  return hasTime ? `${day}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:00${THAI_UTC_OFFSET}` : day;
+}
+
+/**
+ * schema.org/Event для страницы события. Как и у Person/TVSeries, поля
+ * приходят из того же объекта Prisma, который страница уже загрузила
+ * (occurrences, performers, drama) — новых запросов разметка не делает.
+ *
+ * Разметке подлежит ТОЛЬКО публичная часть страницы (что, когда, где,
+ * кто, билеты): личные блоки за подпиской — отметки «иду», билеты
+ * пользователя, заметки — в JSON-LD не попадают вовсе.
+ *
+ * Многодневное событие — один Event с диапазоном startDate…endDate (так
+ * же, как оно живёт одной записью у нас): отдельные Event на каждую дату
+ * ссылались бы на один и тот же URL и выглядели бы дублями.
+ *
+ * Возвращает null, если у события нет ни одной даты: startDate —
+ * обязательное поле, без него разметка невалидна.
+ */
+export function eventJsonLd(e: {
+  id: string;
+  slug: string | null;
+  title: string;
+  venue: string;
+  description: string | null;
+  posterUrl: string | null;
+  presaleAt: Date | null;
+  presaleUrl: string | null;
+  occurrences: { startsAt: Date; endsAt: Date | null; hasTime: boolean }[];
+  performers?: { performer: { id: string; name: string; slug: string | null; type?: string } }[];
+  drama?: { title: string; slug: string | null; id: string } | null;
+}): object | null {
+  const occurrences = [...e.occurrences].sort(
+    (a, b) => a.startsAt.getTime() - b.startsAt.getTime(),
+  );
+  const first = occurrences[0];
+  if (!first) return null;
+  const last = occurrences[occurrences.length - 1];
+  // Конец: явный endsAt последней даты, а у многодневного без него —
+  // хотя бы её начало (иначе трёхдневный фестиваль выглядит однодневным).
+  const end = last.endsAt ?? (occurrences.length > 1 ? last.startsAt : null);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: e.title,
+    startDate: thaiDateTime(first.startsAt, first.hasTime),
+    ...(end ? { endDate: thaiDateTime(end, last.hasTime) } : {}),
+    // Отмен в модели нет — событие либо есть в афише, либо удалено.
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: {
+      "@type": "Place",
+      name: e.venue,
+      // Площадка в базе — свободная строка («Impact Arena, Muang Thong
+      // Thani»), отдельных полей города/улицы нет; страна известна
+      // всегда — весь каталог тайский.
+      address: { "@type": "PostalAddress", streetAddress: e.venue, addressCountry: "TH" },
+    },
+    ...(e.posterUrl ? { image: absoluteImage(e.posterUrl) } : {}),
+    ...(e.description ? { description: e.description.slice(0, 500) } : {}),
+    ...(e.performers?.length
+      ? {
+          performer: e.performers.map(({ performer: p }) => ({
+            // Группа — PerformingGroup, актёр и маскот — Person.
+            "@type": p.type === "BAND" ? "PerformingGroup" : "Person",
+            name: p.name,
+            url: `${SITE_URL}/artists/${p.slug ?? p.id}`,
+          })),
+        }
+      : {}),
+    ...(e.drama
+      ? {
+          about: {
+            "@type": "TVSeries",
+            name: e.drama.title,
+            url: `${SITE_URL}/dramas/${e.drama.slug ?? e.drama.id}`,
+          },
+        }
+      : {}),
+    // Билеты: цена в базе — свободная строка с несколькими категориями
+    // («6,900 / 5,900 / 5,000 baht»), числом её не отдать, поэтому в
+    // offers идут только адрес, статус и дата старта продаж.
+    ...(e.presaleUrl
+      ? {
+          offers: {
+            "@type": "Offer",
+            url: e.presaleUrl,
+            availability:
+              e.presaleAt && e.presaleAt > new Date()
+                ? "https://schema.org/PreOrder"
+                : "https://schema.org/InStock",
+            ...(e.presaleAt ? { validFrom: thaiDateTime(e.presaleAt) } : {}),
+          },
+        }
+      : {}),
+    url: `${SITE_URL}/event/${e.slug ?? e.id}`,
+  };
+}
+
+/**
  * WebSite + SearchAction: подсказывает поисковикам сайтлинк-поиск.
  * Живёт в корневом layout — он общий на оба языка, поэтому скрипт
  * рендерится ровно один раз на страницу; сущность одна, url без
@@ -239,8 +355,11 @@ export function organizationJsonLd() {
 /**
  * Хлебные крошки: `items` — путь от корня до текущей страницы, path
  * БЕЗ языкового префикса (локаль добавляется здесь через localeHref).
- * Пока НЕ подключён на страницах — только хелпер; вставка в детальные
- * страницы — отдельный шаг, ими владеют их generateMetadata/разметка.
+ * Подключён на детальных страницах каталога (сериал, артист, новелла,
+ * локация, агентство). Крошка трёхступенчатая: главная → раздел →
+ * запись. Видимой крошки на страницах нет — её роль играет ссылка
+ * «← Все сериалы» (BackLink), и подписи ступеней намеренно повторяют
+ * её текст и адрес: Google просит, чтобы разметка совпадала с видимым.
  */
 export function breadcrumbJsonLd(
   items: { name: string; path: string }[],

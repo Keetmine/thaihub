@@ -18,6 +18,13 @@ export const events = {
             count === 1 ? "1 event in this range." : `${count} events in this range.`,
         emptyUpcoming: "No upcoming events yet.",
         archiveHeading: "Past events",
+        // Тизер афиши без подписки: ближайшие события открыты честно,
+        // остальная лента — по подписке.
+        teaserHeading: "Coming up next",
+        // `count` — уже готовая подпись («150+»), `base` — число, по
+        // которому она склоняется (в русском словаре).
+        teaserIntro: (count: string, base: number) =>
+            `The nearest events are open to everyone. A subscription opens the rest of the feed — ${count} more upcoming ${base === 1 ? "event" : "events"} — with search, date filters and reminders that keep you from missing a ticket sale.`,
     },
 
     /** Календарь: /calendar */
@@ -73,8 +80,11 @@ export const events = {
         metaDescription: (title: string, when: string | null, venue: string) =>
             `${title}${when ? `, ${when}` : ""} — ${venue}. Tickets, line-up and everything else about the event.`,
         backToEvents: "← All events",
-        lockedTitle: "Event",
-        paywallFeature: "Event pages",
+        // Сама карточка события открыта всем — по подписке идут планы
+        // вокруг неё, поэтому и заголовок заглушки теперь про них.
+        paywallFeature: "Plans, tickets and reminders",
+        premiumIntro:
+            "Everything about the event itself is above and open to everyone. A subscription adds your own plans around it: mark the dates you're going, keep your tickets to hand, see which friends are going and get a reminder before the sale opens.",
         addToCalendar: "Add to calendar",
         tickets: "Tickets",
         venue: "Venue:",

@@ -9,8 +9,7 @@ import DateRangeFilterButton from "@/components/DateRangeFilterButton";
 import { countEventListRange, fetchEventListPage, type EventListFilters } from "@/lib/eventList";
 import { getCurrentUser } from "@/lib/userAuth";
 import { CalendarIcon } from "@/components/icons";
-import LandingPage from "../LandingPage";
-import PremiumUpsell from "@/components/PremiumUpsell";
+import EventsTeaser from "./EventsTeaser";
 import { isPremiumActive } from "@/lib/premium";
 import { pageMetadata } from "@/lib/seo";
 
@@ -34,19 +33,16 @@ export default async function HomePage({
 }) {
   const { locale, t } = await getT();
   const user = await getCurrentUser();
-  // Аноним попадает сюда по прямой ссылке — показываем лендинг, как и на
-  // главной: каталог открыт, а афиша за подпиской.
-  if (!user) {
-    return <LandingPage />;
-  }
 
-  // Афиша — платная функция: без подписки вместо списка сразу заглушка
-  // (как на /trips). Никакие данные событий при этом не запрашиваются.
-  if (!isPremiumActive(user)) {
+  // Без подписки (и гостю без аккаунта тоже) — тизер: ближайшие события
+  // показаны честно и целиком, остальная лента остаётся за подпиской.
+  // Гостю здесь БОЛЬШЕ НЕ подсовывается лендинг: это был дубль главной
+  // под адресом, по которому человек пришёл именно за афишей.
+  if (!user || !isPremiumActive(user)) {
     return (
       <div>
-        {/* Метка тура и в этой ветке: без подписки здесь пейволл, но
-            первый шаг «что это за раздел» показать всё равно нужно. */}
+        {/* Метка тура и в этой ветке: лента ниже закрыта, но первый шаг
+            «что это за раздел» показать всё равно нужно. */}
         <div className="dot-grid pb-1" data-tour="feed">
           <PageHeader
             eyebrow={t.events.list.eyebrow}
@@ -56,7 +52,7 @@ export default async function HomePage({
             watermark="Events"
           />
         </div>
-        <PremiumUpsell feature={t.events.list.paywallFeature} />
+        <EventsTeaser userId={user?.id ?? null} />
       </div>
     );
   }

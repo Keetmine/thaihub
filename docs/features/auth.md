@@ -134,20 +134,24 @@ gates:
 - the calendar (`/calendar`), the day view (`/day/[date]`) and the ICS
   subscribe feed (`/api/calendar-feed` returns 403 for non-premium
   owners);
-- **all event data**: the home page shows a plain `PremiumUpsell`
-  instead of the list for non-premium users (no event data queried at
-  all); embedded lists on performer/drama/location pages and search
-  render `EventCardLocked` — the real date plus blurred placeholder
-  bars — so it's still visible *that* a performer has events, just not
-  which; the event detail page shows only the dates + `PremiumUpsell`.
-  All masking happens **server-side** (locked cards receive nothing but
-  a date; `fetchEventListPage` blanks title/venue/performers/poster
-  before the payload leaves the server), so the blur cannot be removed
-  via devtools — the data simply isn't in the HTML or any action
-  response. Single-event ICS export returns 403 too, the account page's
-  events tab receives empty arrays, and the `loadEventListPage` server
-  action re-checks premium itself, so calling it directly leaks
-  nothing;
+- **the event feed, but no longer the events themselves.** Since the
+  teaser round the event *card* (`/event/[id]`) is public in full —
+  title, dates, venue, poster, cast, ticket price and presale link —
+  and `/events` shows a guest the two nearest events for real, followed
+  by `PremiumUpsell` (see
+  [events.md](events.md#афиша-без-подписки-тизер-и-публичная-карточка)).
+  Search shows events to everyone too: hiding in search what is open by
+  link and in Google only loses the reader on a placeholder. What the
+  subscription still gates is the **feed and the personal layer**: the
+  full list with filters/archive, the "going" chips, my tickets, notes,
+  friends-going and the presale reminder. Embedded lists on
+  performer/drama/location pages still render `EventCardLocked` — the
+  real date plus blurred bars. Masking stays **server-side** (locked
+  cards receive nothing but a date; `fetchEventListPage` blanks
+  title/venue/performers/poster before the payload leaves the server),
+  so the blur cannot be removed via devtools. Single-event ICS export
+  returns 403, the account page's events tab receives empty arrays, and
+  `loadEventListPage` re-checks premium itself;
 - the whole trips feature (see [trips.md](trips.md)): `/trips` shows
   `PremiumUpsell`, `createTrip`/`setTripVisibility` and every
   personal-event action throw for non-premium users, and the home page
@@ -262,6 +266,28 @@ Cloudflare Turnstile.
 Rate-limit: MAX_ATTEMPTS поднят до 30/10мин (полный e2e-прогон делает
 10+ логинов с одного IP), плюс обход `E2E_RATE_LIMIT_OFF=1` вне
 production.
+
+### Аварийный сброс всех сессий
+
+Гашение чужих сессий при смене/сбросе пароля появилось позже, чем сами
+сессии: выданные до этого живут свой 30-дневный срок, и украденная
+когда-то кука может ещё работать. Обнулить весь хвост разом —
+`scripts/revoke-all-sessions.ts`:
+
+```
+npx tsx --env-file=.env scripts/revoke-all-sessions.ts          # черновик: сколько сессий и у скольких людей
+npx tsx --env-file=.env scripts/revoke-all-sessions.ts --apply  # удалить все UserSession
+```
+
+⚠️ `--apply` **разлогинивает всех пользователей разом, включая
+владельца** — это осознанная аварийная мера при подозрении на утечку, а
+не уборка и не кандидат в планировщик. Черновой режим (по умолчанию)
+ничего не трогает и заодно показывает, сколько сессий выдано больше 30
+дней назад и всё ещё живо — «протухшие, но действующие».
+
+Модель одна — `UserSession`: отдельных серверных админ-сессий больше
+нет (админ — роль обычного пользователя, см. «Admin» выше), так что
+этого достаточно и для админки.
 
 ## Онбординг (/welcome)
 

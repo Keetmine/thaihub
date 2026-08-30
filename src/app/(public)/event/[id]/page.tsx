@@ -24,7 +24,7 @@ import GoingDateChips from "./GoingDateChips";
 import TicketSection, { type TicketRow } from "./TicketSection";
 import { getCoTravelerIds } from "@/lib/coTravelers";
 import { isPremiumActive } from "@/lib/premium";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, eventJsonLd, JsonLd } from "@/lib/seo";
 import { cache } from "react";
 
 // React.cache: generateMetadata и страница делят ОДИН запрос на
@@ -85,10 +85,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     path: `/event/${event.slug ?? id}`,
     image: event.posterUrl,
     type: "article",
-    // С-4: robots.txt закрывает /event от обхода, но по внешней ссылке
-    // Google всё равно мог показать «голый» URL — noindex убирает и это.
-    // (Открыть события поиску — отдельное продуктовое решение.)
-    noIndex: true,
+    // noIndex здесь БОЛЬШЕ НЕТ: карточка события (что, когда, где, кто)
+    // открыта всем, robots.txt её тоже пускает — противоречия
+    // «robots запрещает, а мета разрешает» быть не должно. За подпиской
+    // остались только личные блоки страницы, в разметку они не идут.
   });
 }
 
@@ -128,30 +128,27 @@ export default async function EventDetailPage({
   const currentUser = await getCurrentUser();
   const viewerTz = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
-  // События целиком за подпиской: без неё страница не раскрывает ничего,
-  // кроме факта существования и дат (название/площадка/состав не
-  // рендерятся вовсе — в HTML их нет).
-  if (!isPremiumActive(currentUser)) {
-    return (
-      <div>
-        <BackLink fallbackHref="/" fallbackLabel={t.events.detail.backToEvents} />
-        <h1 className="display-1-tight mt-3 mb-2" style={{ fontSize: "2.25rem" }}>
-          {t.events.detail.lockedTitle}
-        </h1>
-        <p className="text-secondary mb-4">
-          {event.occurrences.map((o) => formatHumanDate(o.startsAt, locale)).join(", ")}
-        </p>
-        <PremiumUpsell feature={t.events.detail.paywallFeature} />
-      </div>
-    );
-  }
+  // Карточка события ПУБЛИЧНАЯ: что, когда, где, кто выступает, постер,
+  // описание, цена и ссылка на билеты — видно всем, включая поисковики
+  // (эти же поля уходят в Event-разметку ниже). За подпиской остались
+  // только личные планы вокруг события: отметки «иду», свои билеты,
+  // заметки, «друзья идут», напоминание о препродаже и выгрузка в
+  // календарь (маршрут /ics и сам отвечает 403 без подписки).
+  const isPremium = isPremiumActive(currentUser);
   let isEventFavorited = false;
   let goingOccurrenceIds: string[] = [];
   let friendsGoing: { id: string; name: string | null; photoUrl: string | null }[] = [];
   let ownNote: { text: string; visibility: string } | null = null;
   let friendNotes: FriendNote[] = [];
   let ticketRows: TicketRow[] = [];
-  if (currentUser) {
+  // Избранное — бесплатное: сердечко работает у любого залогиненного,
+  // подписка на него не влияет (как на страницах артистов и сериалов).
+  if (currentUser && !isPremium) {
+    isEventFavorited = !!(await prisma.favoriteEvent.findUnique({
+      where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
+    }));
+  }
+  if (currentUser && isPremium) {
     // Первая волна: всё, что зависит только от юзера и события, — включая
     // билеты, раньше ждавшие отдельным await.
     const [favorite, attendances, friendIds, coTravelerIds, myTickets] =
@@ -285,6 +282,8 @@ export default async function EventDetailPage({
   // всех» через CastGrid chips, отдельной секции больше нет.
   const castInCard = castCards.length > 0;
 
+  const eventLd = eventJsonLd(event);
+
   return (
     <div>
       <BackLink fallbackHref="/" fallbackLabel={t.events.detail.backToEvents} />
@@ -296,14 +295,18 @@ export default async function EventDetailPage({
         </h1>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
-          <a
-            href={localeHref(`/event/${event.id}/ics`, locale)}
-            className="round-icon-btn"
-            aria-label={t.events.detail.addToCalendar}
-            data-tooltip={t.events.detail.addToCalendar}
-          >
-            <CalendarIcon />
-          </a>
+          {/* Выгрузка в календарь — по подписке: маршрут /ics отвечает
+              403 без неё, кнопка-обманка была бы хуже её отсутствия. */}
+          {isPremium && (
+            <a
+              href={localeHref(`/event/${event.id}/ics`, locale)}
+              className="round-icon-btn"
+              aria-label={t.events.detail.addToCalendar}
+              data-tooltip={t.events.detail.addToCalendar}
+            >
+              <CalendarIcon />
+            </a>
+          )}
         </div>
       </div>
 
@@ -357,7 +360,7 @@ export default async function EventDetailPage({
                 </p>
               );
             })}
-            {currentUser && (
+            {currentUser && isPremium && (
               <div className="mb-2">
                 <GoingDateChips
                   occurrences={event.occurrences.map((o) => ({ id: o.id, startsAt: o.startsAt }))}
@@ -390,8 +393,9 @@ export default async function EventDetailPage({
                 </p>
                 <div className="d-flex flex-wrap gap-2">
                   {/* Кнопка «Билеты» живёт под постером; здесь — только
-                      напоминание, и лишь до старта препродажи. */}
-                  {event.presaleAt && event.presaleAt > new Date() && (
+                      напоминание, и лишь до старта препродажи. Само
+                      напоминание — часть подписки (ics + телеграм). */}
+                  {isPremium && event.presaleAt && event.presaleAt > new Date() && (
                     <a
                       href={localeHref(`/event/${event.id}/ics?presale=1`, locale)}
                       className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
@@ -454,6 +458,18 @@ export default async function EventDetailPage({
           описание и отзывы в конце. */}
       <TicketSection rows={ticketRows} />
 
+      {/* Без подписки на месте личных блоков (иду / мои билеты / друзья
+          / заметки / напоминание о препродаже) — объяснение, что они
+          дают. Сама карточка события выше при этом открыта целиком. */}
+      {!isPremium && (
+        <div className="mb-4">
+          <PremiumUpsell
+            feature={t.events.detail.paywallFeature}
+            intro={t.events.detail.premiumIntro}
+          />
+        </div>
+      )}
+
       {friendsGoing.length > 0 && (
         <div className="surface p-4 mb-3">
           <h2
@@ -507,7 +523,10 @@ export default async function EventDetailPage({
         </div>
       )}
 
-      <EventNoteSection eventId={event.id} ownNote={ownNote} friendNotes={friendNotes} />
+      {/* Заметки — личный блок (свои + друзей/попутчиков), по подписке. */}
+      {isPremium && (
+        <EventNoteSection eventId={event.id} ownNote={ownNote} friendNotes={friendNotes} />
+      )}
 
       {/* Описание — без подложки-surface (просьба владельца). */}
       {event.description && (
@@ -529,6 +548,11 @@ export default async function EventDetailPage({
       {/* Атрибуция — всегда самым нижним блоком страницы (просьба
           владельца). */}
       <SourcesBlock links={[{ url: event.sourceUrl }]} />
+
+      {/* Event-разметка: только публичные поля страницы, и только когда
+          у события есть хотя бы одна дата (без startDate разметка
+          невалидна). Данные — из того же запроса, что и сама страница. */}
+      {eventLd && <JsonLd data={eventLd} />}
     </div>
   );
 }

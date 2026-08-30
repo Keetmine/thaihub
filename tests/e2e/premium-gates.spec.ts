@@ -3,9 +3,15 @@ import path from "path";
 import { test, expect, type Page } from "@playwright/test";
 import { signupTestUser } from "./helpers";
 
-// Премиум-гейты — это деньги проекта: платные разделы (/events, /calendar,
-// /trips) без подписки должны показывать пейволл и НЕ отдавать данных, а
+// Премиум-гейты — это деньги проекта: платные разделы (/calendar, /trips)
+// без подписки должны показывать пейволл и НЕ отдавать данных, а
 // промокод — единственный способ получить подписку без Telegram Stars.
+//
+// У афиши (/events) гейт с тизером, а не глухой стеной: БЛИЖАЙШИЕ
+// события (не больше двух) открыты честно — с названиями и ссылками, —
+// а остальная лента закрыта, и её названия не должны попадать в разметку
+// (см. docs/features/events.md). Тест проверяет обе половины: тизер
+// виден и заперта именно остальная лента.
 // Побочных эффектов в Telegram нет: redeemPromoCode (promoActions.ts) не
 // зовёт ни notifyAdmins, ни sendTelegramMessage — проверено по коду перед
 // написанием, гонять против живого dev-сервера безопасно.
@@ -33,15 +39,45 @@ async function expectPaywall(page: Page, url: string, feature: string) {
   await expect(page.locator('a[href^="/event/"]')).toHaveCount(0);
 }
 
+/** Сколько событий тизер вправе показать без подписки — TEASER_SIZE в
+ *  src/app/(public)/events/EventsTeaser.tsx. Больше — это уже лента. */
+const TEASER_SIZE = 2;
+
 test("платные разделы закрыты без подписки и открываются с ней", async ({ page }) => {
   const email = `smoke-gate-${Date.now()}@example.com`;
   try {
     await signupTestUser(page, email, PASSWORD);
 
-    await expectPaywall(page, "/events", "The event feed");
-    // Весь текст пейволла — чтобы ниже убедиться, что реальное название
-    // события в нём не мелькало (сравнение с тем, что видит премиум).
+    // Афиша: тизер вместо стены. Заглушка на месте, ленты (фильтры,
+    // поиск по афише) нет, а открыто ровно ближайшее — не больше двух
+    // событий.
+    await page.goto("/events", { waitUntil: "domcontentloaded" });
+    await expect(
+      page.getByRole("heading", { name: "The event feed — with a subscription" }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "I'm going" })).toHaveCount(0);
+    const teaserLinks = page.locator('h3 a[href^="/event/"]');
+    const teaserCount = await teaserLinks.count();
+    expect(teaserCount).toBeLessThanOrEqual(TEASER_SIZE);
+    const teaserTitles = (await teaserLinks.allInnerTexts()).map((s) => s.trim());
+    // Весь текст страницы — чтобы ниже убедиться, что названия ЗАКРЫТОЙ
+    // части ленты в нём не мелькали (сравнение с тем, что видит премиум).
     const gatedEventsText = await page.locator("body").innerText();
+
+    // Страница события ПУБЛИЧНАЯ: карточка (что, когда, где) открыта и
+    // без подписки, а личное вокруг неё — нет. Маркер закрытого —
+    // кнопка выгрузки в календарь: она ведёт на /event/[id]/ics, а тот
+    // без подписки отвечает 403.
+    const teaserHref = teaserCount > 0 ? await teaserLinks.first().getAttribute("href") : null;
+    if (teaserHref) {
+      await page.goto(teaserHref, { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { level: 1, name: teaserTitles[0] })).toBeVisible();
+      await expect(page.locator('a[href*="/ics"]')).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", { name: "Plans, tickets and reminders — with a subscription" }),
+      ).toBeVisible();
+    }
+
     await expectPaywall(page, "/calendar", "The calendar");
     await expectPaywall(page, "/trips", "Trips");
 
@@ -52,12 +88,23 @@ test("платные разделы закрыты без подписки и о
     await expect(page.getByRole("link", { name: "I'm going" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /with a subscription/ })).toHaveCount(0);
     const titleLinks = page.locator('h3 a[href^="/event/"]');
-    if ((await titleLinks.count()) > 0) {
-      const title = (await titleLinks.first().innerText()).trim();
-      expect(title.length).toBeGreaterThan(0);
-      expect(gatedEventsText).not.toContain(title);
+    const fullTitles = (await titleLinks.allInnerTexts()).map((s) => s.trim());
+    // Название из ленты, которого в тизере не было, не должно было
+    // просочиться в разметку закрытой страницы.
+    const hiddenTitle = fullTitles.find((title) => title && !teaserTitles.includes(title));
+    if (hiddenTitle) {
+      expect(gatedEventsText).not.toContain(hiddenTitle);
     }
-    // если событий в БД нет, сравнивать нечего — как в favorites.spec.ts
+    // если в БД только тизерные события, сравнивать нечего — как в
+    // favorites.spec.ts
+
+    // На той же странице события с подпиской появляется личное:
+    // выгрузка в календарь на месте, заглушки больше нет.
+    if (teaserHref) {
+      await page.goto(teaserHref, { waitUntil: "domcontentloaded" });
+      await expect(page.locator('a[href*="/ics"]').first()).toBeVisible();
+      await expect(page.getByRole("heading", { name: /with a subscription/ })).toHaveCount(0);
+    }
 
     await page.goto("/calendar", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("link", { name: "My events" })).toBeVisible();

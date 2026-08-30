@@ -12,8 +12,19 @@ import { TelegramIcon } from "@/components/icons";
  *  настроен бот И режим оплаты — stars (переключается в /admin/settings:
  *  приём Stars зависит от страны владельца бота, и пока он недоступен,
  *  кнопка вела бы прямо в ошибку Telegram). Серверный компонент — читает
- *  настройки в рантайме. */
-export default async function PremiumUpsell({ feature }: { feature: string }) {
+ *  настройки в рантайме.
+ *
+ *  `intro` — строка-мостик под заголовком: там, где часть содержимого
+ *  показана честно и открыто (тизер афиши, публичная карточка события),
+ *  человеку нужно объяснить, ЧТО он уже видит и что добавит подписка, а
+ *  не просто упереться в стену. */
+export default async function PremiumUpsell({
+  feature,
+  intro,
+}: {
+  feature: string;
+  intro?: string;
+}) {
   const [mode, price, contact] = await Promise.all([
     getPaymentMode(),
     getPremiumPriceStars(),
@@ -30,6 +41,7 @@ export default async function PremiumUpsell({ feature }: { feature: string }) {
           ✨
         </div>
         <h2 className="h4 font-display mb-1">{t.widgets.premium.heading(feature)}</h2>
+        {intro && <p className="text-secondary small mb-2">{intro}</p>}
         <p className="text-secondary small mb-0">
           {canPay
             ? t.widgets.premium.priceOneClick(price)
