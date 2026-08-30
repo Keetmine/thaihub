@@ -10,11 +10,20 @@ export type UserStats = {
   upcomingEvents: number;
   uniqueVenues: number;
   performersSeenLive: number;
+  /** Что именно стоит за счётчиками «вживую» — списки под кликабельными
+   *  плитками профиля: голое число вызывало вопрос «а какие?». Дата —
+   *  ISO-строкой: список уезжает в клиентский компонент как есть. */
+  attendedEventsList: { id: string; slug: string | null; title: string; date: string }[];
+  seenPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
   topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
   completedDramas: number;
   anyStatusDramas: number;
+  /** Серии и часы у экрана: по episodesWatched (у «просмотрено» без
+   *  прогресса — по числу серий сериала) и длительности серии с MDL. */
+  episodesWatched: number;
+  hoursWatched: number;
   trips: number;
   longestTripDays: number;
   daysInThailand: number;
@@ -30,7 +39,7 @@ export type UserStats = {
 export async function computeUserStats(userId: string): Promise<UserStats> {
   const now = new Date();
 
-  const [attendances, visits, completedDramas, anyStatusDramas, trips, friendships] =
+  const [attendances, visits, completedDramas, watchRows, trips, friendships] =
     await Promise.all([
       prisma.eventAttendance.findMany({
         where: { userId },
@@ -48,7 +57,16 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
         include: { location: { select: { id: true, name: true, latitude: true, longitude: true } } },
       }),
       prisma.dramaWatchStatus.count({ where: { userId, status: "COMPLETED" } }),
-      prisma.dramaWatchStatus.count({ where: { userId } }),
+      // Все статусы целиком, а не count: из них же считаются серии и
+      // часы у экрана.
+      prisma.dramaWatchStatus.findMany({
+        where: { userId },
+        select: {
+          status: true,
+          episodesWatched: true,
+          drama: { select: { episodes: true, duration: true } },
+        },
+      }),
       prisma.trip.findMany({ where: { userId } }),
       prisma.friendship.count({
         where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
@@ -110,6 +128,60 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     ...personalEventSeen.map((m) => m.performerId),
   ]);
 
+  // Список «кого именно видели» под кликабельной плиткой профиля.
+  // Карточки артистов с посещённых событий уже собраны в performerCounts;
+  // у ручных отметок и личных событий там только id — дозапрашиваем.
+  const extraSeenIds = [...seenPerformerIds].filter((id) => !performerCounts.has(id));
+  const extraSeen = extraSeenIds.length
+    ? await prisma.performer.findMany({
+        where: { id: { in: extraSeenIds } },
+        select: { id: true, name: true, slug: true, photoUrl: true },
+      })
+    : [];
+  const seenPerformers = [
+    ...Array.from(performerCounts.values())
+      .sort((a, b) => b.count - a.count)
+      .map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl })),
+    ...extraSeen.sort((a, b) => a.name.localeCompare(b.name)),
+  ];
+
+  // Посещённые события списком, свежие сверху; при нескольких отмеченных
+  // датах события берётся последняя посещённая.
+  const latestByEvent = new Map<string, (typeof attendedRows)[number]>();
+  for (const a of attendedRows) {
+    const cur = latestByEvent.get(a.eventId);
+    if (!cur || a.occurrence.startsAt > cur.occurrence.startsAt) latestByEvent.set(a.eventId, a);
+  }
+  const attendedEventsList = Array.from(latestByEvent.values())
+    .sort((a, b) => b.occurrence.startsAt.getTime() - a.occurrence.startsAt.getTime())
+    .map((a) => ({
+      id: a.event.id,
+      slug: a.event.slug,
+      title: a.event.title,
+      date: a.occurrence.startsAt.toISOString(),
+    }));
+
+  // Серии и часы у экрана. Длительность серии приходит с MDL текстом
+  // («45 min.», «1 hr. 10 min.») — парсим; у сериалов без неё берём
+  // условные 45 минут (обычная серия), поэтому часы показываются с «~».
+  const minutesOf = (duration: string | null): number => {
+    if (!duration) return 45;
+    const hr = duration.match(/(\d+)\s*hr/)?.[1];
+    const min = duration.match(/(\d+)\s*min/)?.[1];
+    const total = (hr ? Number(hr) * 60 : 0) + (min ? Number(min) : 0);
+    return total > 0 ? total : 45;
+  };
+  const watchedEpisodesOf = (row: (typeof watchRows)[number]): number =>
+    Math.max(
+      row.episodesWatched ?? 0,
+      // «Просмотрено» без прогресса — значит, все серии сериала.
+      row.status === "COMPLETED" ? (row.drama.episodes ?? 0) : 0,
+    );
+  const episodesWatched = watchRows.reduce((sum, r) => sum + watchedEpisodesOf(r), 0);
+  const hoursWatched = Math.round(
+    watchRows.reduce((sum, r) => sum + watchedEpisodesOf(r) * minutesOf(r.drama.duration), 0) / 60,
+  );
+
   const byYear = new Map<number, number>();
   const attendedDays: string[] = [];
   for (const a of attended) {
@@ -161,6 +233,8 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     upcomingEvents: upcoming,
     uniqueVenues: venues.size,
     performersSeenLive: seenPerformerIds.size,
+    attendedEventsList,
+    seenPerformers,
     topPerformers,
     visitedLocations: visits.length,
     visitedLocationPins: visits
@@ -172,7 +246,9 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
         longitude: v.location.longitude!,
       })),
     completedDramas,
-    anyStatusDramas,
+    anyStatusDramas: watchRows.length,
+    episodesWatched,
+    hoursWatched,
     trips: trips.length,
     longestTripDays: trips.length ? Math.max(...trips.map(tripDays)) : 0,
     daysInThailand: completedTrips.reduce((sum, t) => sum + tripDays(t), 0),

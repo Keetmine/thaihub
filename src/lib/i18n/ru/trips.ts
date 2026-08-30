@@ -1,3 +1,4 @@
+import { pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
 export const trips: Dict["trips"] = {
@@ -41,6 +42,7 @@ export const trips: Dict["trips"] = {
         deleteTrip: "Удалить поездку",
         deleteConfirm: (title: string) => `Удалить поездку «${title}»?`,
 
+        pastDays: (n: number) => `Прошло ${pluralized(n, ["день", "дня", "дней"])}`,
         emptyPlanTitle: "В плане пока пусто",
         emptyPlanHintOwn:
             "Отметьте «Я пойду» на событиях (вкладка «Афиша») или добавьте личное — перелёт, бронь, встречу.",

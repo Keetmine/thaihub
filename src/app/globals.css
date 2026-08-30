@@ -2567,6 +2567,19 @@ svg[aria-hidden="true"] {
     rgba(255, 255, 255, 0.025);
 }
 
+/* Кликабельная плитка (события/артисты вживую): та же .hero-stat, но
+   кнопкой — по клику под рядом разворачивается список, что именно
+   засчитано. Сбрасываем кнопочные дефолты и выравниваем текст влево. */
+button.hero-stat-toggle {
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+button.hero-stat-toggle:hover,
+button.hero-stat-toggle.is-open {
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
 .hero-stat-icon {
   font-size: 0.95rem;
   line-height: 1;
@@ -4545,6 +4558,25 @@ body::after {
   .stay-line {
     left: calc(2.2rem - 1px + var(--stay-offset, 0px));
   }
+}
+
+/* Свёрнутые прошедшие дни поездки (И18): строка «Прошло N дней ▸» над
+   лентой, раскрывается штатным details — истории не пропадают, но во
+   время поездки лента начинается с сегодняшнего. */
+.trip-past-days > summary {
+  cursor: pointer;
+  color: var(--bs-secondary-color);
+  font-size: 0.9rem;
+  padding: 0.55rem 1rem;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: 0.75rem;
+  list-style-position: inside;
+}
+.trip-past-days > summary:hover {
+  color: var(--bs-body-color);
+}
+.trip-past-days[open] > summary {
+  border-style: solid;
 }
 
 /* ============================================================

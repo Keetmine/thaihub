@@ -15,10 +15,16 @@ export type StatsForTab = {
   upcomingEvents: number;
   uniqueVenues: number;
   performersSeenLive: number;
+  /** Списки под кликабельными плитками обзора: какие события посещены и
+   *  кого видели вживую (дата — ISO-строкой, серверная сериализация). */
+  attendedEventsList: { id: string; slug: string | null; title: string; date: string }[];
+  seenPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
   topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
   completedDramas: number;
+  episodesWatched: number;
+  hoursWatched: number;
   trips: number;
   daysInThailand: number;
   friends: number;

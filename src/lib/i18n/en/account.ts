@@ -53,6 +53,9 @@ export const account = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     heroDramas: (_n: number): string => "series finished",
     heroDramasHint: "marked as watched",
+    // Серии и часы у экрана — подпись той же плитки, когда есть что считать.
+    heroDramasEpisodes: (episodes: number, hours: number) =>
+      `${episodes} ${episodes === 1 ? "episode" : "episodes"} · ~${hours} h`,
 
     chipGoing: "going",
     chipFavoriteEvents: "in favourites",

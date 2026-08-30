@@ -43,6 +43,7 @@ export const trips = {
         deleteTrip: "Delete trip",
         deleteConfirm: (title: string) => `Delete the trip "${title}"?`,
 
+        pastDays: (n: number) => `${n} past ${n === 1 ? "day" : "days"}`,
         emptyPlanTitle: "Your plan is empty",
         emptyPlanHintOwn:
             "Mark yourself as going on the What's on tab, or add something of your own — a flight, a booking, a meet-up.",

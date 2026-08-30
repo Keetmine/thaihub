@@ -114,6 +114,8 @@ export const catalog = {
         events: "Events",
         cast: "Cast",
         related: "Related series",
+        similar: "You may also like",
+        similarCast: (n: number) => `${n} shared ${n === 1 ? "actor" : "actors"}`,
         locations: "Locations",
 
         // График выхода серий (DramaEpisode).

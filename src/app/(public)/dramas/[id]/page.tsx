@@ -11,6 +11,7 @@ import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import { episodeProgress } from "@/lib/watchStatus";
 import { dramaSynopsisForLocale, dramaTitleForLocale } from "@/lib/dramaLocale";
+import { findSimilarDramas } from "@/lib/similarDramas";
 import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
@@ -165,6 +166,16 @@ export default async function DramaDetailPage({
       .filter((r) => !drama.relatedFrom.some((f) => f.relatedId === r.dramaId))
       .map((r) => ({ drama: r.drama, relation: r.relation })),
   ];
+
+  // «Понравился этот — посмотрите ещё» (З4): по общему касту и жанрам;
+  // сиквелы и прочий Related сюда не попадают — они выше своим блоком.
+  const similarDramas = await findSimilarDramas({
+    id: drama.id,
+    genres: drama.genres,
+    tags: drama.tags,
+    performerIds: drama.performers.map((pd) => pd.performerId),
+    excludeIds: relatedItems.map((r) => r.drama.id),
+  });
 
   const visitedLocationIds = new Set<string>();
   if (currentUser && drama.locations.length > 0) {
@@ -666,6 +677,28 @@ export default async function DramaDetailPage({
                 photoUrl={rel.posterUrl}
                 name={rel.title}
                 subtitle={relation}
+                round={false}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {similarDramas.length > 0 && (
+        <div className="mb-4">
+          <h2 className="section-heading mb-2">{t.catalog.drama.similar}</h2>
+          <div className="d-flex flex-wrap gap-2">
+            {similarDramas.map((sim) => (
+              <EntityMiniCard
+                key={sim.id}
+                href={dramaHref(sim)}
+                photoUrl={sim.posterUrl}
+                name={dramaTitleForLocale(sim, locale)}
+                subtitle={
+                  sim.sharedCast > 0
+                    ? t.catalog.drama.similarCast(sim.sharedCast)
+                    : sim.sharedGenres.slice(0, 2).join(", ")
+                }
                 round={false}
               />
             ))}

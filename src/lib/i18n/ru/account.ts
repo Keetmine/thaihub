@@ -47,6 +47,8 @@ export const account: Dict["account"] = {
     heroDaysHint: "по поездкам",
     heroDramas: (n: number) => `${plural(n, ["сериал", "сериала", "сериалов"])} досмотрено`,
     heroDramasHint: "статус «просмотрено»",
+    heroDramasEpisodes: (episodes: number, hours: number) =>
+      `${pluralized(episodes, ["серия", "серии", "серий"])} · ~${hours} ч`,
 
     chipGoing: "иду",
     chipFavoriteEvents: "в избранном",

@@ -1,4 +1,4 @@
-import { plural } from "@/lib/plural";
+import { plural, pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
 export const catalog: Dict["catalog"] = {
@@ -105,6 +105,9 @@ export const catalog: Dict["catalog"] = {
         events: "События",
         cast: "Актёрский состав",
         related: "Связанные сериалы",
+        similar: "Понравился этот — посмотрите ещё",
+        similarCast: (n: number) =>
+            pluralized(n, ["общий актёр", "общих актёра", "общих актёров"]),
         locations: "Локации",
 
         schedule: {

@@ -527,6 +527,22 @@ export default async function TripPage({
     }
   }
 
+  // И18: во время поездки лента начиналась со вчерашнего и позавчерашнего,
+  // и до «сегодня» приходилось мотать. Прошедшие дни сворачиваем в одну
+  // строку «Прошло N дней» (раскрывается кликом — история не пропадает).
+  // У ПРОШЕДШЕЙ поездки не сворачиваем ничего (просьба владельца): её
+  // открывают ради истории, прятать которую бессмысленно; у будущей
+  // прошедших записей нет и так. «Сегодня» — по бангкокскому настенному
+  // времени, как все даты проекта (см. lib/dates.ts).
+  const bkkNow = new Date();
+  bkkNow.setUTCHours(bkkNow.getUTCHours() + 7);
+  const bkkTodayKey = dateKey(bkkNow);
+  const tripFinished = dateKey(trip.endDate) < bkkTodayKey;
+  const isPastRow = (r: (typeof rows)[number]) => dateKey(r.item.startsAt) < bkkTodayKey;
+  const pastRows = tripFinished ? [] : rows.filter(isPastRow);
+  const visibleRows = tripFinished ? rows : rows.filter((r) => !isPastRow(r));
+  const pastDayCount = new Set(pastRows.map((r) => dateKey(r.item.startsAt))).size;
+
   // «Что посетить» (Г4): локации съёмок сериалов владельца + прикреплённые
   // списки мест + отдельные добавленные места.
   const [tripLists, tripPlaces, myLists] = showPlaces
@@ -563,6 +579,69 @@ export default async function TripPage({
     : [];
 
   const boundDelete = deleteTrip.bind(null, trip.id);
+
+  // Разметка одной строки ленты — используется и в видимой части, и в
+  // свёрнутых прошедших днях (И18), чтобы им нечему было разъезжаться.
+  const renderTimelineRow = ({ item, lines }: (typeof rows)[number]) => {
+    const stayLeg = item.kind === "booking" && item.isStay ? item.leg : null;
+    // Классы стоянки — маркеры: стилям нужен только in-stay
+    // (позиционный контекст для полосок), а stay-open/stay-close
+    // держим ради e2e-теста приватности броней — он по этим
+    // строкам проверяет, что разметка брони не утекает
+    // постороннему (tests/e2e/trip-booking-privacy.spec.ts).
+    const stayClasses = `${lines.length > 0 || stayLeg ? " in-stay" : ""}${
+      stayLeg ? (stayLeg.side === "start" ? " stay-open" : " stay-close") : ""
+    }`;
+    return (
+      <div key={item.key} className={`trip-timeline-item${stayClasses}`}>
+        {/* Куски линий в зазоре над строкой — по полоске на каждую
+            проходящую стоянку. Цвет и дорожку CSS берёт из инлайн-
+            переменных; шаг дорожки 6px — чтобы параллельные линии
+            (2px + просвет) не слипались, но оставались под числом
+            даты. */}
+        {lines.map((line) => (
+          <span
+            key={line.bookingId}
+            className="stay-line"
+            aria-hidden
+            style={
+              {
+                "--stay-color": `var(--stay-line-${line.color})`,
+                "--stay-offset": `${line.slot * 6}px`,
+              } as React.CSSProperties
+            }
+          />
+        ))}
+        {item.kind === "public" ? (
+          <EventCard
+            event={item.event}
+            isFavorited={favoritedIds.has(item.event.id)}
+            isGoing={goingIds.has(item.event.occurrenceId)}
+            friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
+            ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
+          />
+        ) : item.kind === "personal" ? (
+          <PersonalEventCard
+            tripId={trip.id}
+            event={item.personalEvent}
+            canEdit={item.personalEvent.canEdit}
+            canAttend={isParticipant}
+            showShareToggle={isShared}
+            visibilityOptions={visibilityOptions}
+          />
+        ) : item.kind === "booking" ? (
+          <TripBookingLeg tripId={trip.id} leg={item.leg} visibilityOptions={visibilityOptions} />
+        ) : (
+          <TodoRow
+            todo={item.todo}
+            showDate
+            showShareToggle={isShared}
+            visibilityOptions={visibilityOptions}
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -831,76 +910,20 @@ export default async function TripPage({
         />
       ) : (
         <div className="d-flex flex-column gap-3 trip-timeline">
-          {rows.map(({ item, lines }) => {
-            const stayLeg = item.kind === "booking" && item.isStay ? item.leg : null;
-            // Классы стоянки — маркеры: стилям нужен только in-stay
-            // (позиционный контекст для полосок), а stay-open/stay-close
-            // держим ради e2e-теста приватности броней — он по этим
-            // строкам проверяет, что разметка брони не утекает
-            // постороннему (tests/e2e/trip-booking-privacy.spec.ts).
-            const stayClasses = `${lines.length > 0 || stayLeg ? " in-stay" : ""}${
-              stayLeg ? (stayLeg.side === "start" ? " stay-open" : " stay-close") : ""
-            }`;
-            return (
-            <div
-              key={item.key}
-              className={`trip-timeline-item${stayClasses}`}
-            >
-              {/* Куски линий в зазоре над строкой — по полоске на каждую
-                  проходящую стоянку. Цвет и дорожку CSS берёт из инлайн-
-                  переменных; шаг дорожки 6px — чтобы параллельные линии
-                  (2px + просвет) не слипались, но оставались под числом
-                  даты. */}
-              {lines.map((line) => (
-                <span
-                  key={line.bookingId}
-                  className="stay-line"
-                  aria-hidden
-                  style={
-                    {
-                      "--stay-color": `var(--stay-line-${line.color})`,
-                      "--stay-offset": `${line.slot * 6}px`,
-                    } as React.CSSProperties
-                  }
-                />
-              ))}
-              {item.kind === "public" ? (
-                <EventCard
-                  event={item.event}
-                  isFavorited={favoritedIds.has(item.event.id)}
-                  isGoing={goingIds.has(item.event.occurrenceId)}
-                  friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
-                  ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
-                />
-              ) : item.kind === "personal" ? (
-                <PersonalEventCard
-                  tripId={trip.id}
-                  event={item.personalEvent}
-                  canEdit={item.personalEvent.canEdit}
-                  canAttend={isParticipant}
-                  showShareToggle={isShared}
-                  visibilityOptions={visibilityOptions}
-                />
-              ) : item.kind === "booking" ? (
-                <TripBookingLeg
-                  tripId={trip.id}
-                  leg={item.leg}
-                  visibilityOptions={visibilityOptions}
-                />
-              ) : (
-                <TodoRow
-                  todo={item.todo}
-                  showDate
-                  showShareToggle={isShared}
-                  visibilityOptions={visibilityOptions}
-                />
-              )}
-            </div>
-            );
-          })}
+          {/* Прошедшие дни — свёрнуты (И18); разметка строк внутри та же,
+              что и у видимых, поэтому e2e приватности броней видит свои
+              stay-open/stay-close и в свёрнутом виде. */}
+          {pastRows.length > 0 && (
+            <details className="trip-past-days">
+              <summary>{t.trips.detail.pastDays(pastDayCount)}</summary>
+              <div className="d-flex flex-column gap-3 trip-timeline mt-3">
+                {pastRows.map(renderTimelineRow)}
+              </div>
+            </details>
+          )}
+          {visibleRows.map(renderTimelineRow)}
         </div>
       )}
-
       {/* Удаление — в самом низу страницы (просьба владельца): в шапке
           оно стояло рядом с обычными действиями и нажималось случайно,
           а операция необратимая. */}
