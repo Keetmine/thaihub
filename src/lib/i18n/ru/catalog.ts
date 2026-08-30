@@ -8,6 +8,9 @@ export const catalog: Dict["catalog"] = {
     searchByName: "Поиск по имени…",
     loadingMore: "Загружаем ещё…",
     letterIndex: "Быстрый переход по буквам",
+    letterTitle: (letter: string) => `На букву «${letter}»`,
+    letterAll: "Все буквы:",
+    letterBack: "← Весь каталог",
     showAll: (n: number) => `Показать всех (${n})`,
     sources: "Источники",
     tagsShowAll: (n: number) => `ещё ${n}`,
@@ -20,6 +23,13 @@ export const catalog: Dict["catalog"] = {
         DROPPED: "Заброшено",
     },
     watchStatusNone: "Не отмечено",
+
+    /** Ответы серверных экшенов отметок просмотра. */
+    errors: {
+        badStatus: "Некорректный статус",
+        badEpisodes: "Некорректное число серий",
+        dramaNotFound: "Сериал не найден",
+    },
 
     /** Ж6: на какой серии человек остановился. */
     episodes: {

@@ -97,6 +97,7 @@ export const events: Dict["events"] = {
         removeFuture: "Убрать из моего плана",
         addPast: "Отметить, что были в этот день",
         addFuture: "Пойду в этот день",
+        dateNotFound: "Дата события не найдена",
     },
 
     tickets: {
@@ -107,6 +108,8 @@ export const events: Dict["events"] = {
         attach: "+ Прикрепить билет (PDF или фото)",
         uploadFailed: "Не удалось загрузить",
         uploadFailedLong: "Не удалось загрузить билет",
+        badFile: "Файл билета не прошёл проверку — загрузите его ещё раз",
+        goFirst: "Сначала отметьте «иду» на эту дату",
     },
 
     // Ошибки маршрута и подписи внутри самого файла .ics —

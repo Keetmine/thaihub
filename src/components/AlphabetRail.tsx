@@ -17,6 +17,12 @@ import { Fragment } from "react";
  * `trailing` — якорь ПОСЛЕ («без сериала» на /locations),
  * `onLetter` — клиентским спискам с порционной отрисовкой: раскрыть
  * строки до буквы, иначе якорь ведёт в пустоту.
+ *
+ * `letterHrefBase` (С-5) — краулабельные буквы: href становится
+ * настоящей ссылкой `${base}X` на серверную страницу буквы (полный
+ * список записей обычными ссылками — см. src/lib/catalogLetters.ts),
+ * но клик для живого зрителя перехватывается и ведёт себя как раньше —
+ * скролл к якорю `#letter-X` без перехода. Роботы без JS идут по href.
  */
 export default function AlphabetRail({
   letters,
@@ -24,12 +30,14 @@ export default function AlphabetRail({
   pinned,
   trailing,
   onLetter,
+  letterHrefBase,
 }: {
   letters: string[];
   ariaLabel: string;
   pinned?: { href: string; label: React.ReactNode; ariaLabel: string };
   trailing?: { href: string; label: React.ReactNode; ariaLabel: string };
   onLetter?: (letter: string, index: number) => void;
+  letterHrefBase?: string;
 }) {
   return (
     <nav className="performers-index" aria-label={ariaLabel}>
@@ -53,9 +61,25 @@ export default function AlphabetRail({
           <Fragment key={letter}>
             {showSeparator && <Separator />}
             <a
-              href={`#letter-${letter}`}
+              href={
+                letterHrefBase
+                  ? `${letterHrefBase}${encodeURIComponent(letter)}`
+                  : `#letter-${letter}`
+              }
               className="performers-index-link"
-              onClick={onLetter ? () => onLetter(letter, i) : undefined}
+              onClick={
+                letterHrefBase
+                  ? (e) => {
+                      // Живому зрителю — прежнее поведение якоря: скролл
+                      // по странице, без перехода на страницу буквы.
+                      e.preventDefault();
+                      onLetter?.(letter, i);
+                      document.getElementById(`letter-${letter}`)?.scrollIntoView();
+                    }
+                  : onLetter
+                    ? () => onLetter(letter, i)
+                    : undefined
+              }
             >
               {letter}
             </a>

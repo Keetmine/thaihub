@@ -57,6 +57,7 @@ export default function AlphabetDataList({
   variant = "rows",
   cardAspect = "3 / 4",
   pinned,
+  letterHrefBase,
 }: {
   rows: AlphabetRow[];
   emptyMessage: string;
@@ -69,7 +70,7 @@ export default function AlphabetDataList({
    *  списки). */
   addToList?: {
     lists: { id: string; title: string }[];
-    add: (listId: string, itemId: string) => Promise<void>;
+    add: (listId: string, itemId: string) => Promise<void | { ok: boolean; error?: string }>;
   };
   /** «cards» — фото-сетка .poster-grid (Э2.4) вместо строк-плашек. */
   variant?: "rows" | "cards";
@@ -84,6 +85,9 @@ export default function AlphabetDataList({
     indexLabel: React.ReactNode;
     indexAriaLabel: string;
   };
+  /** С-5: делает буквы рейки настоящими ссылками `${base}X` на
+   *  серверные страницы буквы (клик зрителя остаётся скроллом). */
+  letterHrefBase?: string;
 }) {
   const t = useT();
   const [visible, setVisible] = useState(batch);
@@ -287,6 +291,7 @@ export default function AlphabetDataList({
       <AlphabetRail
         letters={letters}
         ariaLabel={t.catalog.letterIndex}
+        letterHrefBase={letterHrefBase}
         pinned={
           pinnedRows.length > 0
             ? {

@@ -467,6 +467,16 @@ model Drama {
   comments  Comment[]
 
   @@index([title])
+  // Поля фильтров каталога (catalogFilters.ts): year — диапазон и
+  // дефолтная сортировка, country/type/status/network — in-фильтры.
+  @@index([year])
+  @@index([status])
+  @@index([country])
+  @@index([type])
+  @@index([network])
+  // Гостевой список /dramas: «свежие по дате эфира» (order by desc,
+  // airedFrom not null, take 60).
+  @@index([airedFrom])
 }
 
 // «Related Content» с MyDramaList: drama → related с подписью

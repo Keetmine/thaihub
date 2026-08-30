@@ -18,26 +18,147 @@ import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { dramaTitleWhere } from "@/lib/searchWhere";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
+import { unstable_cache } from "next/cache";
+import { CATALOG_TAG } from "@/lib/catalogCache";
+import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
 
-export async function generateMetadata() {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ letter?: string }>;
+}) {
   const { t } = await getT();
+  const { letter } = await searchParams;
+  // С-5: у страницы буквы canonical самоссылающийся — иначе поисковик
+  // склеил бы все буквы в одну страницу.
   return pageMetadata({
     title: t.catalog.dramas.metaTitle,
     description: t.catalog.dramas.metaDescription,
-    path: "/dramas",
+    path: isCatalogLetter(letter) ? `/dramas?letter=${encodeURIComponent(letter)}` : "/dramas",
   });
 }
 
 
 export const dynamic = "force-dynamic";
 
+/* ------------------------------------------------------------------
+ * Кэш общих выборок (П-1): гостевой список и подложка имён одинаковы
+ * для всех — считаем раз в полчаса (тег catalog сбрасывает раньше).
+ * Списки залогиненных (по статусам просмотра) остаются живыми.
+ * ------------------------------------------------------------------ */
+
+/** Поля строки каталога — полная запись Drama тянет синопсисы и даты,
+ *  которые список не показывает. */
+const DRAMA_ROW_SELECT = {
+  id: true,
+  slug: true,
+  title: true,
+  titleRu: true,
+  posterUrl: true,
+  year: true,
+  episodes: true,
+} as const;
+
+/** Гостевой список без поиска: свежие по дате эфира. */
+const getGuestDramas = unstable_cache(
+  async () =>
+    prisma.drama.findMany({
+      where: { airedFrom: { not: null } },
+      select: DRAMA_ROW_SELECT,
+      orderBy: { airedFrom: "desc" },
+      take: 60,
+    }),
+  ["dramas-guest-list"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+const getDramasWatermarkNames = unstable_cache(
+  async () =>
+    (
+      await prisma.drama.findMany({
+        select: { title: true },
+        // Вторым ключом — свежесть эфира: хвост подложки лучше набрать
+        // недавними сериалами, чем алфавитом с начала каталога.
+        orderBy: [
+          { watchStatuses: { _count: "desc" } },
+          { airedFrom: { sort: "desc", nulls: "last" } },
+        ],
+        take: WATERMARK_NAME_LIMIT,
+      })
+    ).map((d) => d.title),
+  ["dramas-watermark-names"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/** С-5: полный список буквы для серверной страницы `?letter=X`. */
+const getDramasByLetter = unstable_cache(
+  async (letter: string) =>
+    prisma.drama.findMany({
+      where: {
+        OR: letterPrefixes(letter).map((p) => ({
+          title: { startsWith: p, mode: "insensitive" as const },
+        })),
+      },
+      select: { id: true, slug: true, title: true, titleRu: true, year: true },
+      orderBy: { title: "asc" },
+    }),
+  ["dramas-by-letter"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
 export default async function DramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; letter?: string }>;
 }) {
-  const { q: rawQ, status: rawStatus } = await searchParams;
+  const { q: rawQ, status: rawStatus, letter: rawLetter } = await searchParams;
   const q = (rawQ ?? "").trim();
+
+  // С-5: серверная страница буквы — полный список сериалов на букву
+  // обычными ссылками, для краулера (буквы рейки ведут сюда по href;
+  // живой зритель по-прежнему скроллит клиентский список).
+  if (!q && isCatalogLetter(rawLetter)) {
+    const { t: lt, locale: lLocale } = await getT();
+    const dramasOfLetter = await getDramasByLetter(rawLetter);
+    return (
+      <div>
+        <PageHeader
+          eyebrow={lt.catalog.eyebrow}
+          title={`${lt.catalog.dramas.title} — ${lt.catalog.letterTitle(rawLetter)}`}
+        />
+        <nav
+          className="d-flex flex-wrap align-items-center gap-2 small mb-4"
+          aria-label={lt.catalog.letterIndex}
+        >
+          <span className="text-secondary">{lt.catalog.letterAll}</span>
+          {CATALOG_LETTERS.map((l) => (
+            <AppLink
+              key={l}
+              href={`/dramas?letter=${encodeURIComponent(l)}`}
+              className={l === rawLetter ? "fw-bold" : undefined}
+            >
+              {l}
+            </AppLink>
+          ))}
+        </nav>
+        <p className="mb-3">
+          <AppLink href="/dramas">{lt.catalog.letterBack}</AppLink>
+        </p>
+        {dramasOfLetter.length === 0 ? (
+          <p className="text-secondary">{lt.common.nothingFound}</p>
+        ) : (
+          <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+            {dramasOfLetter.map((d) => (
+              <li key={d.id}>
+                <AppLink href={dramaHref(d)}>{dramaTitleForLocale(d, lLocale)}</AppLink>
+                {d.year && <span className="small text-secondary"> · {d.year}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
   // Ж5: поисковый запрос всегда ищет по всему каталогу — вкладка
   // статуса на время поиска сбрасывается на «Все». Раньше запрос и
   // вкладка комбинировались, и поиск «внутри вкладки» выглядел как
@@ -75,12 +196,8 @@ export default async function DramasPage({
           orderBy: { title: "asc" },
         })
       : // Анониму (каталог открыт для SEO) — свежие по дате эфира, а не
-        // пустой список «ваших статусов».
-        await prisma.drama.findMany({
-          where: { airedFrom: { not: null } },
-          orderBy: { airedFrom: "desc" },
-          take: 60,
-        });
+        // пустой список «ваших статусов». Список общий — из кэша.
+        await getGuestDramas();
 
   const statusByDramaId = await getDramaWatchStatuses(
     dramas.map((d) => d.id),
@@ -99,19 +216,8 @@ export default async function DramasPage({
 
   // Названия за шапкой — самые популярные сериалы по числу отметок
   // статуса просмотра (единственный «мой» сигнал у сериала, сердечка у
-  // него нет). На пустой базе выборка вернёт пусто — подложки не будет.
-  const watermarkNames = (
-    await prisma.drama.findMany({
-      select: { title: true },
-      // Вторым ключом — свежесть эфира: хвост подложки лучше набрать
-      // недавними сериалами, чем алфавитом с начала каталога.
-      orderBy: [
-        { watchStatuses: { _count: "desc" } },
-        { airedFrom: { sort: "desc", nulls: "last" } },
-      ],
-      take: WATERMARK_NAME_LIMIT,
-    })
-  ).map((d) => d.title);
+  // него нет). Популярность одна на всех — из кэша.
+  const watermarkNames = await getDramasWatermarkNames();
 
 
   return (
@@ -189,6 +295,7 @@ export default async function DramasPage({
           (с переносом), год и рейтинг в подстроке. */}
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: dramaTitleForLocale(d, locale), drama: d }))}
+        letterHrefBase="/dramas?letter="
         emptyMessage={q ? t.common.nothingFound : t.catalog.dramas.empty}
         renderItem={({ drama: d }) => {
           const rating = ratingByDramaId.get(d.id);

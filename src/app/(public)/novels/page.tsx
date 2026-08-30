@@ -6,6 +6,8 @@ import NameSearchBox from "@/components/NameSearchBox";
 import { novelHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
+import { unstable_cache } from "next/cache";
+import { CATALOG_TAG } from "@/lib/catalogCache";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -19,6 +21,44 @@ export async function generateMetadata() {
 
 export const dynamic = "force-dynamic";
 
+/** Поля карточки списка — полная запись тянет описания, которые список
+ *  не показывает. */
+const NOVEL_ROW_SELECT = {
+  id: true,
+  slug: true,
+  title: true,
+  author: true,
+  coverUrl: true,
+  _count: { select: { dramas: true } },
+} as const;
+
+// П-1: раздел без персональных веток вовсе — список и подложка имён
+// одинаковы для всех, считаем раз в полчаса (тег catalog сбрасывает
+// раньше). Поисковые запросы — живыми (ключей по числу запросов кэшу
+// не надо).
+const getNovelsList = unstable_cache(
+  async () =>
+    prisma.novel.findMany({
+      select: NOVEL_ROW_SELECT,
+      orderBy: { title: "asc" },
+    }),
+  ["novels-list"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+const getNovelsWatermarkNames = unstable_cache(
+  async () =>
+    (
+      await prisma.novel.findMany({
+        select: { title: true },
+        orderBy: { createdAt: "desc" },
+        take: WATERMARK_NAME_LIMIT,
+      })
+    ).map((n) => n.title),
+  ["novels-watermark-names"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
 export default async function NovelsPage({
   searchParams,
 }: {
@@ -28,29 +68,23 @@ export default async function NovelsPage({
   const { q: rawQ } = await searchParams;
   const q = (rawQ ?? "").trim();
 
-  const novels = await prisma.novel.findMany({
-    where: q
-      ? {
+  const novels = q
+    ? await prisma.novel.findMany({
+        where: {
           OR: [
             { title: { contains: q, mode: "insensitive" } },
             { author: { contains: q, mode: "insensitive" } },
           ],
-        }
-      : undefined,
-    include: { _count: { select: { dramas: true } } },
-    orderBy: { title: "asc" },
-  });
+        },
+        select: NOVEL_ROW_SELECT,
+        orderBy: { title: "asc" },
+      })
+    : await getNovelsList();
 
   // Названия за шапкой. Внятной метрики популярности у новелл нет
   // (ни избранного, ни статусов — только отзывы, которых почти нет),
   // поэтому берём свежие добавленные.
-  const watermarkNames = (
-    await prisma.novel.findMany({
-      select: { title: true },
-      orderBy: { createdAt: "desc" },
-      take: WATERMARK_NAME_LIMIT,
-    })
-  ).map((n) => n.title);
+  const watermarkNames = await getNovelsWatermarkNames();
 
   return (
     <div>

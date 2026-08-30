@@ -100,6 +100,7 @@ export const events = {
         removeFuture: "Remove from my plan",
         addPast: "Mark that you were there that day",
         addFuture: "I'm going that day",
+        dateNotFound: "Event date not found",
     },
 
     /** Блок «Мои билеты» на странице события */
@@ -111,6 +112,8 @@ export const events = {
         attach: "+ Attach a ticket (PDF or photo)",
         uploadFailed: "Upload failed",
         uploadFailedLong: "We couldn't upload the ticket",
+        badFile: "The ticket file didn't pass the check — please upload it again",
+        goFirst: "Mark yourself as going to this date first",
     },
 
     /** Выгрузка в календарь: ответы маршрута /event/[id]/ics и

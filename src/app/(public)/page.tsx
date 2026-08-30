@@ -1,6 +1,9 @@
 import Link from "@/components/AppLink";
+import { unstable_cache } from "next/cache";
 import { getT, type Dict } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
+import { pageMetadata } from "@/lib/seo";
+import { CATALOG_TAG } from "@/lib/catalogCache";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
 import { getMusicNews, type NewsItem } from "@/lib/whatsNew";
@@ -20,6 +23,59 @@ import EmptyState from "@/components/EmptyState";
 import LandingPage from "./LandingPage";
 
 export const dynamic = "force-dynamic";
+
+// С-1: у главной не было своих метаданных вовсе — ни canonical, ни
+// hreflang, а title оставался голым «MyBLHub». Заголовок с ключевыми
+// словами и описание сайта — из словаря; canonical и языковые
+// альтернативы собирает общий pageMetadata.
+export async function generateMetadata() {
+  const { t } = await getT();
+  return pageMetadata({
+    title: t.home.metaTitle,
+    description: t.ui.siteDescription,
+    path: "/",
+  });
+}
+
+/* ------------------------------------------------------------------
+ * Кэш общих (неперсональных) выборок главной: «выходит сегодня» и дни
+ * рождения артистов одинаковы для всех — считать их на каждый заход
+ * незачем. День входит в аргументы (а значит и в ключ кэша), поэтому
+ * смена суток заводит свежую запись; правка каталога сбрасывает тегом.
+ * Персональные выборки (поездки, «иду», статусы) НЕ кэшируются.
+ * ------------------------------------------------------------------ */
+
+const getAiringTodayEpisodes = unstable_cache(
+  async (dayStartIso: string, dayEndIso: string) =>
+    prisma.dramaEpisode.findMany({
+      where: { airDate: { gte: new Date(dayStartIso), lte: new Date(dayEndIso) } },
+      select: {
+        number: true,
+        drama: {
+          select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true, year: true },
+        },
+      },
+      orderBy: { number: "asc" },
+    }),
+  ["home-airing-today"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+const getBirthdayPerformers = unstable_cache(
+  async (month: number, day: number) =>
+    prisma.$queryRaw<
+      { id: string; name: string; slug: string | null; photoUrl: string | null; birthDate: Date }[]
+    >`
+      SELECT p.id, p.name, p.slug, p."photoUrl", p."birthDate"
+      FROM "Performer" p
+      WHERE p."birthDate" IS NOT NULL
+        AND EXTRACT(MONTH FROM p."birthDate") = ${month}
+        AND EXTRACT(DAY FROM p."birthDate") = ${day}
+      LIMIT 24
+    `,
+  ["home-birthday-performers"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
 
 // Главная для своих: сводка вместо сразу афиши. Сюда ведёт логотип, и
 // это первое, что человек видит после входа — ближайшее из «иду»
@@ -150,17 +206,9 @@ export default async function HomePage() {
     // тайским настенным временем, и сравнение с моментом `now` под утро
     // отдавало бы вчерашний день. Отдельного фильтра «онгоинги» нет и не
     // нужно: расписание ведётся только у тех сериалов, что ещё выходят,
-    // а у завершённого сегодняшних дат не бывает.
-    prisma.dramaEpisode.findMany({
-      where: { airDate: { gte: startOfDay(now), lte: endOfDay(now) } },
-      select: {
-        number: true,
-        drama: {
-          select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true, year: true },
-        },
-      },
-      orderBy: { number: "asc" },
-    }),
+    // а у завершённого сегодняшних дат не бывает. Выборка общая для
+    // всех — из кэша (см. getAiringTodayEpisodes выше).
+    getAiringTodayEpisodes(startOfDay(now).toISOString(), endOfDay(now).toISOString()),
   ]);
 
   // Сдвоенный показ — две строки на один сериал: карточка всё равно
@@ -209,21 +257,12 @@ export default async function HomePage() {
   const todayMonth = now.getUTCMonth() + 1;
   const todayDay = now.getUTCDate();
   const [
-    birthdayPerformersRaw,
+    birthdayPerformersCached,
     friendBirthdayRows,
     favoriteIds,
     airingTodayStatuses,
   ] = await Promise.all([
-    prisma.$queryRaw<
-      { id: string; name: string; slug: string | null; photoUrl: string | null; birthDate: Date }[]
-    >`
-      SELECT p.id, p.name, p.slug, p."photoUrl", p."birthDate"
-      FROM "Performer" p
-      WHERE p."birthDate" IS NOT NULL
-        AND EXTRACT(MONTH FROM p."birthDate") = ${todayMonth}
-        AND EXTRACT(DAY FROM p."birthDate") = ${todayDay}
-      LIMIT 24
-    `,
+    getBirthdayPerformers(todayMonth, todayDay),
     friendIds.length > 0
       ? prisma.user.findMany({
           where: { id: { in: friendIds }, birthDate: { not: null } },
@@ -236,6 +275,11 @@ export default async function HomePage() {
     }),
     getDramaWatchStatuses([...airingTodayByDrama.keys()], user.id),
   ]);
+  // Из кэша даты приходят строками (значение сериализуется) — вернуть Date.
+  const birthdayPerformersRaw = birthdayPerformersCached.map((p) => ({
+    ...p,
+    birthDate: new Date(p.birthDate),
+  }));
 
   // Витрина, а не личный список: показываем всё, что выходит сегодня, —
   // «Смотрю сейчас» ниже как раз про личное, а этот блок отвечает на
@@ -315,9 +359,9 @@ export default async function HomePage() {
                   className="home-trip-strip d-flex flex-wrap align-items-center gap-3"
                 >
                   <span className="trip-dates mb-0">
-                    {formatShortDate(t.startDate)}{" "}
+                    {formatShortDate(t.startDate, locale)}{" "}
                     <span className="trip-dates-arrow">→</span>{" "}
-                    {formatShortDate(t.endDate)}
+                    {formatShortDate(t.endDate, locale)}
                     <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
                   </span>
                   <span className="font-display fw-medium text-white flex-grow-1 text-truncate">
@@ -363,7 +407,7 @@ export default async function HomePage() {
                     posterUrl={card.posterUrl}
                     title={card.title}
                     subtitle={card.subtitle}
-                    chip={formatShortDate(card.startsAt)}
+                    chip={formatShortDate(card.startsAt, locale)}
                   />
                 </div>
               ))}

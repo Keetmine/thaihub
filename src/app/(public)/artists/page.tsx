@@ -1,7 +1,10 @@
 import { Fragment } from "react";
+import { unstable_cache } from "next/cache";
 import AppLink from "@/components/AppLink";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
+import { CATALOG_TAG } from "@/lib/catalogCache";
+import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
 import type { Performer } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -18,17 +21,125 @@ import AlphabetDataList from "@/components/AlphabetDataList";
 import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
 import { performerPhoto, FALLBACK_COVER_SELECT } from "@/lib/performerPhoto";
 
-export async function generateMetadata() {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; letter?: string }>;
+}) {
   const { t } = await getT();
+  const { view, letter } = await searchParams;
+  // С-5: у страницы буквы canonical самоссылающийся (?letter входит в
+  // path и, через pageMetadata, в canonical/hreflang) — иначе поисковик
+  // склеил бы все буквы в одну страницу. Прочие параметры canonical
+  // не меняют, как и раньше.
+  const letterPath =
+    letter && isCatalogLetter(letter)
+      ? `/artists?${new URLSearchParams({
+          ...(view === "bands" || view === "mascots" ? { view } : {}),
+          letter,
+        }).toString()}`
+      : null;
   return pageMetadata({
     title: t.catalog.artists.metaTitle,
     description: t.catalog.artists.metaDescription,
-    path: "/artists",
+    path: letterPath ?? "/artists",
   });
 }
 
 
 export const dynamic = "force-dynamic";
+
+/* ------------------------------------------------------------------
+ * Кэш общих выборок (П-1): списки без поиска и подложка имён одинаковы
+ * для всех гостей — считаем раз в полчаса (тег catalog сбрасывает
+ * раньше при правке каталога). Персональные ветки залогиненных
+ * (избранное, свои списки) остаются живыми запросами. ВНИМАНИЕ: внутри
+ * unstable_cache нельзя звать cookies()/getCurrentUser.
+ * ------------------------------------------------------------------ */
+
+/** Полный список вкладки (группы, маскоты — короткие списки). */
+const getAllPerformersOfType = unstable_cache(
+  async (type: "SOLO" | "BAND" | "MASCOT") =>
+    prisma.performer.findMany({
+      where: { type },
+      select: PERFORMER_ROW_SELECT,
+      orderBy: { name: "asc" },
+    }),
+  ["artists-all-of-type"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/** Гостевой список актёров без поиска: только у кого есть события. */
+const getPerformersWithEvents = unstable_cache(
+  async (type: "SOLO" | "BAND" | "MASCOT") =>
+    prisma.performer.findMany({
+      where: { type, events: { some: {} } },
+      select: PERFORMER_ROW_SELECT,
+      orderBy: { name: "asc" },
+    }),
+  ["artists-with-events"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/** Имена за шапкой — популярность одна на всех. */
+const getArtistsWatermarkNames = unstable_cache(
+  async (view: View) =>
+    (view === "agencies"
+      ? await prisma.agency.findMany({
+          select: { name: true },
+          orderBy: [{ favoritedBy: { _count: "desc" } }, { name: "asc" }],
+          take: WATERMARK_NAME_LIMIT,
+        })
+      : await prisma.performer.findMany({
+          where: { type: typeOfView(view) },
+          select: { name: true },
+          // Вторым ключом — число событий: иначе хвост подложки
+          // заполняется алфавитом со случайными записями каталога.
+          orderBy: [
+            { favoritedBy: { _count: "desc" } },
+            { events: { _count: "desc" } },
+            { name: "asc" },
+          ],
+          take: WATERMARK_NAME_LIMIT,
+        })
+    ).map((r) => r.name),
+  ["artists-watermark-names"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/** Список агентств без поиска (избранное поверх — живым запросом). */
+const getAgenciesList = unstable_cache(
+  async () =>
+    prisma.agency.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        _count: { select: { performers: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+  ["artists-agencies-list"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/** С-5: полный список буквы для серверной страницы `?letter=X`. */
+const getPerformersByLetter = unstable_cache(
+  async (type: "SOLO" | "BAND" | "MASCOT", letter: string) =>
+    prisma.performer.findMany({
+      where: {
+        type,
+        OR: letterPrefixes(letter).map((p) => ({
+          name: { startsWith: p, mode: "insensitive" as const },
+        })),
+      },
+      select: { id: true, name: true, slug: true, realName: true },
+      orderBy: { name: "asc" },
+    }),
+  ["artists-by-letter"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
 
 /** Поля, которые рисует строка списка. Полная запись Performer тянет
  *  биографию, профильные списки и награды — в перечне они не нужны, а
@@ -105,11 +216,21 @@ function Tabs({ active, t }: { active: View; t: Dict }) {
 
 async function AgenciesTab({ q }: { q: string }) {
   const { t } = await getT();
-  const agencies = await prisma.agency.findMany({
-    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
-    include: { _count: { select: { performers: true } } },
-    orderBy: { name: "asc" },
-  });
+  // Без поиска список одинаков для всех — из кэша; c запросом —
+  // живой запрос (ключей по числу запросов кэшу не надо).
+  const agencies = q
+    ? await prisma.agency.findMany({
+        where: { name: { contains: q, mode: "insensitive" } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          _count: { select: { performers: true } },
+        },
+        orderBy: { name: "asc" },
+      })
+    : await getAgenciesList();
 
   const currentUser = await getCurrentUser();
   const favoritedIds = new Set<string>();
@@ -202,6 +323,7 @@ function PerformerAlphabetList({
   emptyMessage,
   favoritesLabel,
   pinFavorites = true,
+  letterHrefBase,
 }: {
   performers: PerformerWithCount[];
   favoritedIds: Set<string>;
@@ -211,6 +333,8 @@ function PerformerAlphabetList({
   favoritesLabel: string;
   // Избранные сверху (дефолт: список = избранные + событийные).
   pinFavorites?: boolean;
+  /** С-5: краулабельные буквы рейки (см. AlphabetDataList). */
+  letterHrefBase?: string;
 }) {
   if (performers.length === 0) {
     return <p className="text-secondary">{emptyMessage}</p>;
@@ -239,7 +363,9 @@ function PerformerAlphabetList({
           lists: myLists,
           add: async (listId: string, performerId: string) => {
             "use server";
-            await addPerformerToList(listId, performerId);
+            // Результат пробрасываем: ошибка экшена приходит значением,
+            // и AddToListButton показывает её в модалке.
+            return addPerformerToList(listId, performerId);
           },
         }
       : undefined;
@@ -254,6 +380,7 @@ function PerformerAlphabetList({
         showFavoriteButton
         addToList={addToList}
         variant="cards"
+        letterHrefBase={letterHrefBase}
         pinned={
           favorited.length > 0
             ? {
@@ -278,10 +405,10 @@ function PerformerAlphabetList({
 export default async function PerformersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; q?: string }>;
+  searchParams: Promise<{ view?: string; q?: string; letter?: string }>;
 }) {
   const { t } = await getT();
-  const { view: rawView, q: rawQ } = await searchParams;
+  const { view: rawView, q: rawQ, letter: rawLetter } = await searchParams;
   const view: View =
     rawView === "bands"
       ? "bands"
@@ -291,6 +418,59 @@ export default async function PerformersPage({
           ? "agencies"
           : "performers";
   const q = (rawQ ?? "").trim();
+
+  // С-5: серверная страница буквы — полный список записей на букву
+  // обычными ссылками, для краулера (буквы рейки ведут сюда по href;
+  // живой зритель по-прежнему скроллит клиентский список).
+  if (view !== "agencies" && !q && isCatalogLetter(rawLetter)) {
+    const letterBase =
+      view === "performers" ? "/artists?letter=" : `/artists?view=${view}&letter=`;
+    const performersOfLetter = await getPerformersByLetter(typeOfView(view), rawLetter);
+    return (
+      <div>
+        <PageHeader
+          eyebrow={t.catalog.eyebrow}
+          title={`${t.catalog.artists[view === "bands" ? "titleBands" : view === "mascots" ? "titleMascots" : "titlePerformers"]} — ${t.catalog.letterTitle(rawLetter)}`}
+        />
+        <nav
+          className="d-flex flex-wrap align-items-center gap-2 small mb-4"
+          aria-label={t.catalog.letterIndex}
+        >
+          <span className="text-secondary">{t.catalog.letterAll}</span>
+          {CATALOG_LETTERS.map((l) => (
+            <AppLink
+              key={l}
+              href={`${letterBase}${encodeURIComponent(l)}`}
+              className={l === rawLetter ? "fw-bold" : undefined}
+            >
+              {l}
+            </AppLink>
+          ))}
+        </nav>
+        <p className="mb-3">
+          <AppLink href={view === "performers" ? "/artists" : `/artists?view=${view}`}>
+            {t.catalog.letterBack}
+          </AppLink>
+        </p>
+        {performersOfLetter.length === 0 ? (
+          <p className="text-secondary">{t.common.nothingFound}</p>
+        ) : (
+          <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+            {performersOfLetter.map((p) => {
+              const real = performerRealNameParen(p);
+              return (
+                <li key={p.id}>
+                  <AppLink href={performerHref(p)}>{p.name}</AppLink>
+                  {real && <span className="small text-secondary"> ({real})</span>}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
   const currentUser = view === "agencies" ? null : await getCurrentUser();
 
   // The catalog has grown into the thousands of performers — loading and
@@ -316,29 +496,25 @@ export default async function PerformersPage({
       : searchResults
         ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
         : showAllByDefault
-          ? await prisma.performer.findMany({
-              where: { type: typeOfView(view) },
-              // Только поля строки: биографии и профильные списки в
-              // перечне не нужны, а весят они больше всего остального.
-              select: PERFORMER_ROW_SELECT,
-              orderBy: { name: "asc" },
-            })
+          ? // Одинаково для всех — из кэша (только поля строки:
+            // биографии и профильные списки в перечне не нужны).
+            await getAllPerformersOfType(typeOfView(view))
           : // Без поиска: избранные юзера + все, у кого есть хотя бы
-            // одно событие (анониму — только событийные). Полный каталог
-            // в тысячи актёров — через поиск.
-            await prisma.performer.findMany({
-              where: {
-                type: typeOfView(view),
-                OR: [
-                  { events: { some: {} } },
-                  ...(currentUser
-                    ? [{ favoritedBy: { some: { userId: currentUser.id } } }]
-                    : []),
-                ],
-              },
-              select: PERFORMER_ROW_SELECT,
-              orderBy: { name: "asc" },
-            });
+            // одно событие (анониму — только событийные, из кэша).
+            // Полный каталог в тысячи актёров — через поиск.
+            currentUser
+            ? await prisma.performer.findMany({
+                where: {
+                  type: typeOfView(view),
+                  OR: [
+                    { events: { some: {} } },
+                    { favoritedBy: { some: { userId: currentUser.id } } },
+                  ],
+                },
+                select: PERFORMER_ROW_SELECT,
+                orderBy: { name: "asc" },
+              })
+            : await getPerformersWithEvents(typeOfView(view));
   // Списки актёров пользователя — для кнопки «+ в список» в строках.
   const myLists = currentUser
     ? await prisma.performerList.findMany({
@@ -357,28 +533,8 @@ export default async function PerformersPage({
   }
 
   // Имена за шапкой — самые популярные записи текущей вкладки по числу
-  // добавлений в избранное. Только имена и take: сортировка по счётчику
-  // связи — один агрегат, на пустой базе просто вернёт пусто.
-  const watermarkNames = (
-    view === "agencies"
-      ? await prisma.agency.findMany({
-          select: { name: true },
-          orderBy: [{ favoritedBy: { _count: "desc" } }, { name: "asc" }],
-          take: WATERMARK_NAME_LIMIT,
-        })
-      : await prisma.performer.findMany({
-          where: { type: typeOfView(view) },
-          select: { name: true },
-          // Вторым ключом — число событий: иначе хвост подложки
-          // заполняется алфавитом со случайными записями каталога.
-          orderBy: [
-            { favoritedBy: { _count: "desc" } },
-            { events: { _count: "desc" } },
-            { name: "asc" },
-          ],
-          take: WATERMARK_NAME_LIMIT,
-        })
-  ).map((r) => r.name);
+  // добавлений в избранное. Популярность одна на всех — из кэша.
+  const watermarkNames = await getArtistsWatermarkNames(view);
 
   const titles: Record<View, string> = {
     performers: t.catalog.artists.titlePerformers,
@@ -432,6 +588,9 @@ export default async function PerformersPage({
             favoritedIds={favoritedIds}
             myLists={myLists}
             pinFavorites
+            letterHrefBase={
+              view === "performers" ? "/artists?letter=" : `/artists?view=${view}&letter=`
+            }
             favoritesLabel={t.catalog.artists.favorites}
             emptyMessage={
               q

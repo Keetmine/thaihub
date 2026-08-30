@@ -11,28 +11,165 @@ import { locationHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { LOCATION_CATEGORIES, isLocationCategory } from "@/lib/locationCategories";
 import { getT } from "@/lib/i18n";
+import { unstable_cache } from "next/cache";
+import { CATALOG_TAG } from "@/lib/catalogCache";
+import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
 import type { LocationCategory } from "@/generated/prisma/client";
 import CreateOwnPlaceButton from "@/app/(public)/lists/[id]/CreateOwnPlaceButton";
 
-export async function generateMetadata() {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ letter?: string }>;
+}) {
   const { t } = await getT();
+  const { letter } = await searchParams;
+  // С-5: у страницы буквы canonical самоссылающийся.
   return pageMetadata({
     title: t.catalog.locations.metaTitle,
     description: t.catalog.locations.metaDescription,
-    path: "/locations",
+    path: isCatalogLetter(letter)
+      ? `/locations?letter=${encodeURIComponent(letter)}`
+      : "/locations",
   });
 }
 
 export const dynamic = "force-dynamic";
 
+/* ------------------------------------------------------------------
+ * Кэш общих выборок (П-1): каталожные места (createdByUserId null)
+ * одинаковы для всех — считаем раз в полчаса (тег catalog сбрасывает
+ * раньше). Личные вкладки (списки, «мои места») и отметки «была здесь»
+ * остаются живыми запросами.
+ * ------------------------------------------------------------------ */
+
+const getCatalogLocations = unstable_cache(
+  async (category: LocationCategory | "") =>
+    prisma.location.findMany({
+      where: {
+        createdByUserId: null,
+        ...(category ? { category } : {}),
+      },
+      select: { id: true, name: true, photoUrl: true, slug: true, category: true },
+      orderBy: { name: "asc" },
+    }),
+  ["locations-catalog-list"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+const getCatalogCategories = unstable_cache(
+  async () =>
+    (
+      await prisma.location.findMany({
+        where: { createdByUserId: null, category: { not: null } },
+        select: { category: true },
+        distinct: ["category"],
+      })
+    ).map((r) => r.category),
+  ["locations-catalog-categories"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+const getLocationsWatermarkNames = unstable_cache(
+  async () =>
+    (
+      await prisma.location.findMany({
+        where: { createdByUserId: null },
+        select: { name: true },
+        orderBy: [
+          { visitedBy: { _count: "desc" } },
+          // Место, засветившееся в нескольких сериалах, известнее прочих.
+          { dramas: { _count: "desc" } },
+          { name: "asc" },
+        ],
+        take: WATERMARK_NAME_LIMIT,
+      })
+    ).map((l) => l.name),
+  ["locations-watermark-names"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/** С-5: полный список буквы для серверной страницы `?letter=X`. */
+const getLocationsByLetter = unstable_cache(
+  async (letter: string) =>
+    prisma.location.findMany({
+      where: {
+        createdByUserId: null,
+        OR: letterPrefixes(letter).map((p) => ({
+          name: { startsWith: p, mode: "insensitive" as const },
+        })),
+      },
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: "asc" },
+    }),
+  ["locations-by-letter"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
 export default async function LocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; group?: string; cat?: string; list?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    group?: string;
+    cat?: string;
+    list?: string;
+    letter?: string;
+  }>;
 }) {
   const { t } = await getT();
-  const { q: rawQ, group: rawGroup, cat: rawCat, list: rawList } = await searchParams;
+  const {
+    q: rawQ,
+    group: rawGroup,
+    cat: rawCat,
+    list: rawList,
+    letter: rawLetter,
+  } = await searchParams;
   const q = (rawQ ?? "").trim();
+
+  // С-5: серверная страница буквы — полный список каталожных мест на
+  // букву обычными ссылками, для краулера (буквы рейки ведут сюда по
+  // href; живой зритель по-прежнему скроллит клиентский список).
+  if (!q && !rawGroup && !rawList && isCatalogLetter(rawLetter)) {
+    const locationsOfLetter = await getLocationsByLetter(rawLetter);
+    return (
+      <div>
+        <PageHeader
+          eyebrow={t.catalog.eyebrow}
+          title={`${t.catalog.locations.title} — ${t.catalog.letterTitle(rawLetter)}`}
+        />
+        <nav
+          className="d-flex flex-wrap align-items-center gap-2 small mb-4"
+          aria-label={t.catalog.letterIndex}
+        >
+          <span className="text-secondary">{t.catalog.letterAll}</span>
+          {CATALOG_LETTERS.map((l) => (
+            <AppLink
+              key={l}
+              href={`/locations?letter=${encodeURIComponent(l)}`}
+              className={l === rawLetter ? "fw-bold" : undefined}
+            >
+              {l}
+            </AppLink>
+          ))}
+        </nav>
+        <p className="mb-3">
+          <AppLink href="/locations">{t.catalog.letterBack}</AppLink>
+        </p>
+        {locationsOfLetter.length === 0 ? (
+          <p className="text-secondary">{t.common.nothingFound}</p>
+        ) : (
+          <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+            {locationsOfLetter.map((l) => (
+              <li key={l.id}>
+                <AppLink href={locationHref(l)}>{l.name}</AppLink>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
   // Фильтр по категории места: кафе, магазины, фотозоны…
   const category =
     rawCat && isLocationCategory(rawCat) ? (rawCat as LocationCategory) : null;
@@ -54,18 +191,24 @@ export default async function LocationsPage({
     : 0;
 
   // Какие категории вообще встречаются на текущей вкладке — пустые в
-  // фильтр не выводим.
-  const categoryScope = activeListId
-    ? { listItems: { some: { listId: activeListId } } }
-    : showMine && currentUser
-      ? { createdByUserId: currentUser.id }
-      : { createdByUserId: null };
-  const categoryRows = await prisma.location.findMany({
-    where: { ...categoryScope, category: { not: null } },
-    select: { category: true },
-    distinct: ["category"],
-  });
-  const presentCategories = new Set(categoryRows.map((r) => r.category));
+  // фильтр не выводим. Для общего каталога — из кэша (одинаково для
+  // всех), для личных вкладок — живым запросом.
+  const presentCategoryValues =
+    activeListId || (showMine && currentUser)
+      ? (
+          await prisma.location.findMany({
+            where: {
+              ...(activeListId
+                ? { listItems: { some: { listId: activeListId } } }
+                : { createdByUserId: currentUser!.id }),
+              category: { not: null },
+            },
+            select: { category: true },
+            distinct: ["category"],
+          })
+        ).map((r) => r.category)
+      : await getCatalogCategories();
+  const presentCategories = new Set(presentCategoryValues);
   const availableCategories = LOCATION_CATEGORIES.filter((c) => presentCategories.has(c.value));
 
   const categoryHref = (value: string | null) => {
@@ -80,20 +223,8 @@ export default async function LocationsPage({
 
   // Названия за шапкой — самые «посещаемые» места каталога по числу
   // отметок «была здесь». Места, созданные пользователями, в каталог не
-  // входят и в подложку тоже.
-  const watermarkNames = (
-    await prisma.location.findMany({
-      where: { createdByUserId: null },
-      select: { name: true },
-      orderBy: [
-        { visitedBy: { _count: "desc" } },
-        // Место, засветившееся в нескольких сериалах, известнее прочих.
-        { dramas: { _count: "desc" } },
-        { name: "asc" },
-      ],
-      take: WATERMARK_NAME_LIMIT,
-    })
-  ).map((l) => l.name);
+  // входят и в подложку тоже. Популярность одна на всех — из кэша.
+  const watermarkNames = await getLocationsWatermarkNames();
 
   return (
     <div>
@@ -232,15 +363,19 @@ async function LocationsAlphabetical({
   // Отдаём весь список, но данными, а не разметкой: строки собирает
   // клиент (AlphabetDataList). Так переход по букве остаётся обычным
   // скроллом, а страница весит десятки килобайт вместо мегабайта.
-  const locations = await prisma.location.findMany({
-    where: {
-      createdByUserId: null,
-      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
-      ...(category ? { category } : {}),
-    },
-    select: { id: true, name: true, photoUrl: true, slug: true, category: true },
-    orderBy: { name: "asc" },
-  });
+  // Без поискового запроса список одинаков для всех — из кэша
+  // (категория входит в ключ); отметки «была здесь» — живым запросом.
+  const locations = q
+    ? await prisma.location.findMany({
+        where: {
+          createdByUserId: null,
+          name: { contains: q, mode: "insensitive" },
+          ...(category ? { category } : {}),
+        },
+        select: { id: true, name: true, photoUrl: true, slug: true, category: true },
+        orderBy: { name: "asc" },
+      })
+    : await getCatalogLocations(category ?? "");
 
   const visitedIds = await getVisitedIds(currentUser, locations.map((l) => l.id));
 
@@ -250,6 +385,7 @@ async function LocationsAlphabetical({
       showVisitedButton
       variant="cards"
       cardAspect="4 / 3"
+      letterHrefBase="/locations?letter="
       rows={locations.map((l) => ({
         id: l.id,
         name: l.name,

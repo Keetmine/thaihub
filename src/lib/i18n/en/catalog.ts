@@ -11,6 +11,12 @@ export const catalog = {
     searchByName: "Search by name…",
     loadingMore: "Loading more…",
     letterIndex: "Jump to a letter",
+    // С-5: серверные страницы буквы (?letter=X) — полный список записей
+    // на эту букву обычными ссылками, чтобы каталог был проходим
+    // краулером.
+    letterTitle: (letter: string) => `Starting with “${letter}”`,
+    letterAll: "All letters:",
+    letterBack: "← Full catalogue",
     showAll: (n: number) => `Show all (${n})`,
     sources: "Sources",
     tagsShowAll: (n: number) => `+${n} more`,
@@ -24,6 +30,13 @@ export const catalog = {
         DROPPED: "Dropped",
     },
     watchStatusNone: "Not marked",
+
+    /** Ответы серверных экшенов отметок просмотра. */
+    errors: {
+        badStatus: "Unknown watch status",
+        badEpisodes: "Invalid episode count",
+        dramaNotFound: "Series not found",
+    },
 
     /** Ж6: на какой серии человек остановился. */
     episodes: {

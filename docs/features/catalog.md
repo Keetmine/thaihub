@@ -119,6 +119,16 @@ Related Content с MDL исключены — они выше своим бло�
 фильтрации нет намеренно: не из чего строить, а общий актёр в BL-нише —
 самый сильный сигнал.
 
+**Кандидаты — SQL-предфильтром, результат — в кэше.** Раньше `findMany`
+с OR по `hasSome` жанров/тегов вытягивал почти весь каталог на каждый
+просмотр («Romance» есть у всего). Теперь кандидатов отбирает сырой
+запрос с тем же условием, что финальный порог (score ≥ 2: актёр ×3 +
+жанры + теги max 3), с ORDER BY по тому же скорингу и LIMIT 400 —
+лимит срезает заведомо худший хвост, а не случайное подмножество.
+Итог обёрнут в `unstable_cache` (TTL 30 мин, тег `catalog` — правка
+каталога сбрасывает раньше); аргументы функции входят в ключ, так что
+запись по одной на сериал.
+
 ## Shared A-Z index layout
 
 `src/components/AlphabetIndexList.tsx` groups any `{id, name}[]` list by
@@ -139,6 +149,22 @@ span с полным кеглем страницы — строка выходи
 `pinned` (якорь-сердечко избранного перед буквами), `trailing` (якорь
 после), `onLetter` (порционные списки раскрывают строки до буквы, иначе
 якорь ведёт в пустоту). Шаг строки после объединения — 20.4px везде.
+
+**Краулабельные буквы и серверные страницы буквы (С-5).** Краулер без
+JS видел десятки ссылок из тысяч записей — клиентские списки дорисовывают
+строки на скролле. Поэтому у рейки есть проп `letterHrefBase`
+(прокидывается через `AlphabetDataList`/`AlphabetIndexList` с `/artists`,
+`/dramas` и `/locations`): буква становится настоящей ссылкой
+`?letter=X`, но клик живого зрителя перехватывается (preventDefault +
+scrollIntoView) — UX не меняется, роботы идут по href. По адресу
+`?letter=X` (валидные буквы — `CATALOG_LETTERS` в
+`src/lib/catalogLetters.ts`: латиница + «0-9») страница рендерит
+серверную версию: полный список записей буквы обычными ссылками, нав по
+всем буквам и ссылку назад на полный каталог; canonical у страницы буквы
+самоссылающийся (`?letter` входит в `path` для `pageMetadata`). Выборки
+буквы кэшируются (тег `catalog`, TTL 30 мин). Кириллическая буква в
+`?letter` (возможна на /ru у рейки сериалов с русскими названиями)
+просто игнорируется — рендерится обычная страница.
 
 Списки скроллятся **целиком окном** — внутреннего скролл-контейнера
 (бывшие `.scroll-list-lg`/`.thin-scroll` на обёртке) больше нет, по
@@ -186,6 +212,28 @@ they're solving different problems:
   a visitor who typed one letter does not need telling that a hundred
   results is a lot. No page-number pagination here — narrowing the
   search is the intended way to get to a specific entry.
+- **Кэш общих выборок (П-1)**: всё, что одинаково для всех зрителей,
+  обёрнуто в `unstable_cache` (TTL 15–30 мин, тег `catalog` — любая
+  админская правка каталога сбрасывает его через `logAudit` →
+  `invalidateCatalogCache` в `src/lib/catalogCache.ts`): лендинг гостя
+  (`LandingPage.tsx` — ближайшие события и счётчики), «выходит сегодня»
+  и дни рождения артистов на главной (день входит в ключ), гостевые
+  списки `/artists` (событийные актёры, полные списки групп/маскотов,
+  агентства), гостевой список `/dramas` (свежие 60), список `/novels`,
+  каталожный список `/locations` (категория в ключе), подложки имён
+  всех разделов и страницы буквы `?letter=X`. Персональные ветки
+  (избранное, статусы просмотра, «была здесь», свои списки) остаются
+  живыми запросами — внутри `unstable_cache` нельзя звать
+  `cookies()`/`getCurrentUser`. Даты из кэша приходят строками
+  (значение сериализуется) — потребители возвращают их в `Date` руками.
+- **Индексы под фильтры и поиск** (миграция
+  `20260830190000_search_and_filter_indexes`): btree по
+  `Drama.year/status/country/type/network` (фильтры и сортировки
+  `catalogFilters.ts`) и `Drama.airedFrom` (гостевой список); GIN
+  `gin_trgm_ops` (расширение `pg_trgm`) по полям ILIKE-поиска из
+  `searchWhere.ts` — `Drama.title/titleRu/nativeTitle/alsoKnownAs`,
+  `Performer.name/realName/alsoKnownAs/musicAlias`; GIN по массивам
+  `Drama.genres`/`Drama.tags` (hasEvery/hasSome).
 - **Admin list pages** (`/admin/performers`, `/admin/dramas`,
   `/admin/locations`, `/admin/pairings`, `/admin/agencies`, the
   `/admin` events dashboard): plain

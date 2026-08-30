@@ -26,12 +26,16 @@ export default async function AlphabetIndexList<T extends NamedItem>({
   // Контейнер элементов внутри буквы: по умолчанию колонка строк, для
   // постерных каталогов — «poster-grid».
   itemsWrapperClassName = "d-flex flex-column gap-2",
+  letterHrefBase,
 }: {
   items: T[];
   renderItem: (item: T) => React.ReactNode;
   emptyMessage: string;
   trailingSection?: { indexLabel: React.ReactNode; indexAriaLabel: string; content: React.ReactNode };
   itemsWrapperClassName?: string;
+  /** С-5: делает буквы рейки настоящими ссылками `${base}X` на
+   *  серверные страницы буквы (клик зрителя остаётся скроллом). */
+  letterHrefBase?: string;
 }) {
   const { t } = await getT();
   if (items.length === 0 && !trailingSection) {
@@ -84,6 +88,7 @@ export default async function AlphabetIndexList<T extends NamedItem>({
       <AlphabetRail
         letters={indexLetters}
         ariaLabel={t.catalog.letterIndex}
+        letterHrefBase={letterHrefBase}
         trailing={
           trailingSection && {
             href: "#trailing-section",

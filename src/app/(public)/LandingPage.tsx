@@ -1,10 +1,12 @@
 import Link from "@/components/AppLink";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { eventHref } from "@/lib/eventSlug";
 import PosterTile from "@/components/PosterTile";
 import { formatShortDate } from "@/lib/dates";
 import { getT, type Locale } from "@/lib/i18n";
+import { CATALOG_TAG } from "@/lib/catalogCache";
 import { CalendarIcon, HeartIcon, TvIcon } from "@/components/icons";
 
 // Лендинг (он же /about). Живые данные вместо выдуманных: постеры и
@@ -24,11 +26,14 @@ function roundedCount(n: number, locale: Locale): string {
   return `${floored.toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}+`;
 }
 
-export default async function LandingPage() {
-  const { t, locale } = await getT();
-  const now = new Date();
-  const [upcomingRaw, performersCount, dramasCount, currentUser] =
-    await Promise.all([
+// Витрина одинакова для всех зрителей — считаем раз в 15 минут, а не на
+// каждый заход гостя (кэш процесса Next, тег catalog — админская правка
+// сбрасывает раньше). ВАЖНО: getCurrentUser() внутрь не заносить —
+// cookies() в кэшированной функции недоступны.
+const getLandingData = unstable_cache(
+  async () => {
+    const now = new Date();
+    const [upcomingRaw, performersCount, dramasCount] = await Promise.all([
       prisma.eventOccurrence.findMany({
         where: { startsAt: { gte: now } },
         orderBy: { startsAt: "asc" },
@@ -51,10 +56,27 @@ export default async function LandingPage() {
       }),
       prisma.performer.count(),
       prisma.drama.count(),
+    ]);
+    return { upcomingRaw, performersCount, dramasCount };
+  },
+  ["landing-guest"],
+  { revalidate: 900, tags: [CATALOG_TAG] },
+);
+
+export default async function LandingPage() {
+  const { t, locale } = await getT();
+  const [{ upcomingRaw: upcomingCached, performersCount, dramasCount }, currentUser] =
+    await Promise.all([
+      getLandingData(),
       // Авторизованному незачем показывать «Зарегистрироваться / Войти» —
       // он уже внутри (страница /about открыта всем).
       getCurrentUser(),
     ]);
+  // Из кэша даты приходят строками (значение сериализуется) — вернуть Date.
+  const upcomingRaw = upcomingCached.map((occ) => ({
+    ...occ,
+    startsAt: new Date(occ.startsAt),
+  }));
 
   // Многодневное событие показываем один раз — первой датой.
   const seenEvents = new Set<string>();
@@ -119,7 +141,7 @@ export default async function LandingPage() {
                     href={eventHref(occ.event)}
                     posterUrl={occ.event.posterUrl}
                     title={occ.event.title}
-                    chip={formatShortDate(occ.startsAt)}
+                    chip={formatShortDate(occ.startsAt, locale)}
                   />
                 ))}
               </div>
@@ -155,7 +177,7 @@ export default async function LandingPage() {
                   <div key={occ.id} className="agenda-row">
                     <div className="agenda-time">
                       <span className="agenda-time-start">
-                        {formatShortDate(occ.startsAt)}
+                        {formatShortDate(occ.startsAt, locale)}
                       </span>
                     </div>
                     <span className="agenda-dash">—</span>
