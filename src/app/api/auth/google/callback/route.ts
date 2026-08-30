@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createUserSession } from "@/lib/userAuth";
+import { notifyAdminsAboutSignup } from "@/lib/adminNotify";
 import { googleRedirectUri, publicOrigin } from "@/lib/googleOauth";
 
 // Callback входа через Google: сверяем state, меняем code на токены
@@ -84,6 +85,9 @@ export async function GET(request: NextRequest) {
             photoUrl: payload.picture ?? null,
           },
         });
+    // Только про новичка: привязка Google к уже существующему аккаунту
+    // (ветка byEmail) — это не регистрация.
+    if (!byEmail) notifyAdminsAboutSignup(user, "google");
   }
 
   await createUserSession(user.id);

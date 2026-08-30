@@ -10,7 +10,7 @@ import { isMailerConfigured, sendMail } from "@/lib/mailer";
 // письмо уходит, только если настроен SMTP и задан адрес получателя,
 // иначе канал молча пропускается.
 
-export type AdminNotifyKind = "feedback" | "report" | "import" | "error" | "payment";
+export type AdminNotifyKind = "feedback" | "report" | "import" | "error" | "payment" | "signup";
 
 /** Ключ настройки, которым канал отключается из /admin/settings. */
 export const ADMIN_NOTIFY_SETTING = "admin_notify_kinds";
@@ -19,7 +19,7 @@ export const ADMIN_NOTIFY_EMAIL_SETTING = "admin_notify_email";
 
 /** Значение по умолчанию: включено всё, кроме ошибок — их поток шумный,
  *  а счётчик в сайдбаре и так виден. */
-const DEFAULT_KINDS: AdminNotifyKind[] = ["feedback", "report", "import", "payment"];
+const DEFAULT_KINDS: AdminNotifyKind[] = ["feedback", "report", "import", "payment", "signup"];
 
 async function enabledKinds(): Promise<Set<AdminNotifyKind>> {
   const raw = await getSetting(ADMIN_NOTIFY_SETTING);
@@ -78,6 +78,46 @@ export async function notifyAdmins(
   } catch (error) {
     console.error("admin notify failed", error);
   }
+}
+
+/** Каким способом человек завёл аккаунт — для строки «через …». */
+export type SignupVia = "email" | "google" | "telegram";
+
+const SIGNUP_VIA_LABEL: Record<SignupVia, string> = {
+  email: "почту",
+  google: "Google",
+  telegram: "Telegram",
+};
+
+/**
+ * «У нас новый человек». Зовётся из всех трёх путей регистрации, формат
+ * сообщения держим здесь, чтобы он не разъехался по местам вызова.
+ *
+ * Ничего не ждём и не бросаем: регистрация не должна ни тормозить из-за
+ * похода в Telegram, ни падать, если бот недоступен, — notifyAdmins
+ * внутри себя уже всё глотает, а вызывающему остаётся не ждать промис.
+ *
+ * Идентификатор в тексте — то, по чему человека реально найти в
+ * /admin/users: имя, если назвался, иначе почта или телеграм-ник.
+ */
+export function notifyAdminsAboutSignup(user: {
+  id: string;
+  name: string | null;
+  email: string | null;
+  telegramUsername: string | null;
+}, via: SignupVia): void {
+  const who =
+    user.name?.trim() ||
+    user.email ||
+    (user.telegramUsername ? `@${user.telegramUsername}` : null) ||
+    "без имени";
+  void notifyAdmins(
+    "signup",
+    `🙋 Новая регистрация через ${SIGNUP_VIA_LABEL[via]}\n\n${who}`,
+    // Дедуп по пользователю: повторов быть не должно, но если
+    // обработчик вдруг выполнится дважды, второе сообщение не уйдёт.
+    { dedupKey: user.id },
+  );
 }
 
 /** Счётчики-бейджи для сайдбара админки: всё, что ждёт разбора. */

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createUserSession } from "@/lib/userAuth";
 import { verifyTelegramAuth } from "@/lib/telegram";
+import { notifyAdminsAboutSignup } from "@/lib/adminNotify";
 import { publicOrigin } from "@/lib/googleOauth";
 
 // Колбэк Telegram Login Widget (data-auth-url): виджет редиректит сюда
@@ -41,6 +42,8 @@ export async function GET(request: Request) {
           photoUrl: payload.photoUrl,
         },
       });
+
+  if (!existing) notifyAdminsAboutSignup(user, "telegram");
 
   await createUserSession(user.id);
   // Новичок без ника — сначала шаг профиля: ник нужен для ссылки на

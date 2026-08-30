@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createUserSession, hashPassword } from "@/lib/userAuth";
 import { assertRateLimit } from "@/lib/rateLimit";
+import { notifyAdminsAboutSignup } from "@/lib/adminNotify";
 import { getLocale, localeHref } from "@/lib/i18n";
 
 export async function signup(formData: FormData) {
@@ -43,6 +44,11 @@ export async function signup(formData: FormData) {
       name: name || null,
     },
   });
+
+  notifyAdminsAboutSignup(
+    { id: user.id, name: user.name, email: user.email, telegramUsername: null },
+    "email",
+  );
 
   await createUserSession(user.id);
   redirect(localeHref("/welcome/profile", locale));

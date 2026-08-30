@@ -40,7 +40,7 @@ export const SETTING_KEYS = [
     group: "notifications",
     label: "Уведомления админам в Telegram",
     hint:
-      "Через запятую: feedback, report, import, error, payment. " +
+      "Через запятую: feedback, report, import, error, payment, signup. " +
       "По умолчанию всё, кроме error. Пустая строка выключает совсем.",
   },
   {
