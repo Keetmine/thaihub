@@ -28,7 +28,11 @@ import { PinIcon,
   UserIcon,
   InfoIcon,
 } from "@/components/icons";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getDramaWatchStatuses,
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+} from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
@@ -176,6 +180,12 @@ export default async function DramaDetailPage({
     performerIds: drama.performers.map((pd) => pd.performerId),
     excludeIds: relatedItems.map((r) => r.drama.id),
   });
+  // Кнопка статуса на карточках рекомендаций — как у сериалов на
+  // странице артиста.
+  const similarStatuses = await getDramaWatchStatuses(
+    similarDramas.map((s) => s.id),
+    currentUser?.id,
+  );
 
   const visitedLocationIds = new Set<string>();
   if (currentUser && drama.locations.length > 0) {
@@ -684,28 +694,6 @@ export default async function DramaDetailPage({
         </div>
       )}
 
-      {similarDramas.length > 0 && (
-        <div className="mb-4">
-          <h2 className="section-heading mb-2">{t.catalog.drama.similar}</h2>
-          <div className="d-flex flex-wrap gap-2">
-            {similarDramas.map((sim) => (
-              <EntityMiniCard
-                key={sim.id}
-                href={dramaHref(sim)}
-                photoUrl={sim.posterUrl}
-                name={dramaTitleForLocale(sim, locale)}
-                subtitle={
-                  sim.sharedCast > 0
-                    ? t.catalog.drama.similarCast(sim.sharedCast)
-                    : sim.sharedGenres.slice(0, 2).join(", ")
-                }
-                round={false}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {drama.locations.length > 0 && (
         <div id="locations" className="anchor-target mb-4">
           <h2 className="section-heading mb-2">{t.catalog.drama.locations}</h2>
@@ -775,6 +763,59 @@ export default async function DramaDetailPage({
       <div id="reviews" className="anchor-target mt-4">
         <ReviewsAndComments kind="drama" id={drama.id} />
       </div>
+
+      {/* «Понравился этот — посмотрите ещё» (З4) — в самом низу, после
+          отзывов (просьба владельца): дочитал страницу — вот куда идти
+          дальше. Карточки те же, что у сериалов на странице артиста:
+          постер 2:3, название, год и кнопка статуса просмотра. */}
+      {similarDramas.length > 0 && (
+        <div className="mt-4">
+          <h2 className="section-heading mb-2">{t.catalog.drama.similar}</h2>
+          <div className="poster-row thin-scroll">
+            {similarDramas.map((sim) => (
+              <div key={sim.id} style={{ position: "relative" }}>
+                <AppLink href={dramaHref(sim)} className="text-decoration-none d-block">
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      aspectRatio: "2 / 3",
+                      borderRadius: "0.5rem",
+                      background: "var(--bs-secondary-bg)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {sim.posterUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={sim.posterUrl}
+                        alt=""
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    )}
+                  </div>
+                  <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                    {dramaTitleForLocale(sim, locale)}
+                  </p>
+                  <p className="small text-secondary mb-0">
+                    {sim.sharedCast > 0
+                      ? t.catalog.drama.similarCast(sim.sharedCast)
+                      : (sim.year ?? sim.sharedGenres.slice(0, 2).join(", "))}
+                  </p>
+                </AppLink>
+                <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                  <DramaStatusButton
+                    dramaId={sim.id}
+                    status={similarStatuses.get(sim.id)?.status ?? null}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <JsonLd data={tvSeriesJsonLd(drama)} />
     </div>
   );

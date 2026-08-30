@@ -11,6 +11,8 @@ export type SimilarDrama = {
   title: string;
   titleRu: string | null;
   posterUrl: string | null;
+  year: number | null;
+  status: string | null;
   /** Почему порекомендовали — для подписи под карточкой. */
   sharedCast: number;
   sharedGenres: string[];
@@ -55,6 +57,8 @@ export async function findSimilarDramas(
       title: true,
       titleRu: true,
       posterUrl: true,
+      year: true,
+      status: true,
       genres: true,
       tags: true,
       mdlScore: true,
@@ -84,6 +88,8 @@ export async function findSimilarDramas(
       title: c.title,
       titleRu: c.titleRu,
       posterUrl: c.posterUrl,
+      year: c.year,
+      status: c.status,
       sharedCast,
       sharedGenres,
     }));
