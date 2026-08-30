@@ -17,6 +17,12 @@ without it back-to-back local runs eventually hit the 30-attempts/10-min
 window and die in `waitForURL` timeouts. Plain `npm run dev` still works,
 you just inherit the limit.
 
+Второй `next dev` в том же каталоге не поднимется: Next 16 видит
+`.next/dev/lock` и отвечает «Another next dev server is already running»
+с портом и PID живого. Это не про порт — сменить `-p` не помогает.
+Либо гонять тесты против уже поднятого сервера (`BASE_URL` на его
+порт), либо остановить его.
+
 `playwright.config.ts` points at `http://localhost:3001` by default
 (override with `BASE_URL`). **Deliberately does not auto-start the app
 by default** — this project's Postgres data is the developer's real
@@ -135,6 +141,11 @@ Expected skips in CI — these are not failures:
 - `telegram-webhook.spec.ts`, the two "with the real secret" cases —
   `TELEGRAM_WEBHOOK_SECRET` isn't set in CI. The 403 cases still run:
   with no secret configured the webhook rejects everything.
+- `episode-notifications.spec.ts`, the `tgNotifyEpisodes` toggle case —
+  the whole Telegram block in settings renders only when
+  `TELEGRAM_BOT_USERNAME` is set, and CI leaves it unset on purpose.
+  The notification case itself still runs: it's the site half, and it
+  needs no Telegram at all.
 
 Optional env (`TELEGRAM_*`, `SMTP_*`, `SENTRY_*`, `GOOGLE_*`) is left
 unset on purpose — the code guards all of it, and without tokens the
@@ -189,6 +200,31 @@ tests can't accidentally reach real external services.
   spec first saves the fixture drama in the admin (a no-op edit) — the
   same `logAudit` → `invalidateCatalogCache` path a real catalog edit
   takes.
+- `event-photos.spec.ts` — фото для покупающих билеты (Ж9): ряд из трёх
+  миниатюр на странице события в порядке `sort`, клик поднимает попап с
+  той же картинкой (адрес не меняется — это не новая вкладка), попап
+  закрывается всеми тремя способами (Esc, крестик, клик в угол
+  оверлея); в админской форме события — ОДИН список (hidden-поле
+  `photos` с JSON), кнопки «+ Добавить фото» после третьего нет, а
+  перестановка стрелкой «Правее» после сохранения доезжает до
+  публичной страницы. Картинки-фикстуры — настоящие PNG из `public/`
+  (у тамошних svg только viewBox, и `naturalWidth` у них нулевой, то
+  есть «картинка загрузилась» на них не проверить).
+- `episode-notifications.spec.ts` — уведомления о новых сериях (З1):
+  «Вышла серия 5 из 10» появляется в ленте `/notifications` со ссылкой
+  на сериал и бейджем на колокольчике, и переключатель
+  `tgNotifyEpisodes` в настройках переживает сохранение. Telegram не
+  дёргается: сообщение уходит только при привязанном `telegramId`,
+  а у тестового админа его нет.
+- `doramaland-ru.spec.ts` — то, что осталось непокрытым после
+  `ru-translation.spec.ts` (показ titleRu/synopsisRu на /ru, оригинал
+  на английской, поиск по русскому названию) и `admin-ru-fields.spec.ts`
+  (правка русских полей, уникальность `doramalandUrl`): ссылка
+  «dorama.land» в блоке «Источники» на странице переведённого сериала
+  (и её отсутствие у непереведённого) и админский флаг «Нет ру
+  перевода» — клик по чекбоксу в колонке фильтров оставляет в списке
+  только запись с `titleRu IS NULL`, из которой открывается форма с
+  пустой секцией русских полей. В живой dorama.land спека не ходит.
 - `telegram-webhook.spec.ts` — the Telegram webhook rejects requests
   without/with a wrong secret token (403) and survives garbage JSON and
   unknown update shapes with the real secret (200). Only these cases run
@@ -217,6 +253,38 @@ around it, both used in this suite:
    `execFileSync` call in `favorites.spec.ts`'s `afterAll`-equivalent
    `finally` block.
 
+## Фикстуре можно доиграть за тестового админа — но с уборкой
+
+`create-audit-fixtures.ts` (фото событий, эпизодные уведомления,
+dorama.land) не заводит своих пользователей, а доводит до нужного
+состояния того самого админа из setup-проекта: выдаёт ему подписку
+(страница события целиком за пейволлом, а фото живут на ней) и
+подписывает его колокольчиком на сериал-фикстуру. Причина — та же, что
+у общей сессии: каждый новый живой пользователь это вход или
+регистрация, а форма входа лимитирована.
+
+Плата за это — уборка обязана возвращать админа в исходное состояние:
+`delete-audit-fixtures.ts` снимает и подписку, и фиктивную привязку
+Telegram (`set-admin-telegram.ts on|off`, нужна затем, что
+переключатели «Присылать в Telegram» рисуются только у привязанного
+аккаунта). Оставленный фиктивный `telegramId` хуже мусорной записи:
+с ним приложение начнёт слать сообщения в несуществующий чат.
+
+## Фоновую рассылку можно позвать из tsx-процесса
+
+Уведомления о сериях в приложении раз в полчаса запускает планировщик
+(`src/instrumentation.ts`) — ждать его в тесте нечего. Сама
+`sendEpisodeNotifications` от Next ничего не хочет (только Prisma и
+словари), поэтому `run-episode-notifications.ts` зовёт её напрямую,
+отдельным процессом, как и остальные фикстуры. Так же можно поступать
+с соседними рассылками из `src/lib/telegramNotifications.ts`; в
+Telegram при этом ничего не уходит, пока у получателя нет
+`telegramId`.
+
+Дедуп рассылки (`EpisodeNotification`) держится вечно, поэтому фикстура
+чистит его и старые строки колокольчика ПЕРЕД прогоном — иначе второй
+прогон подряд отправлял бы ноль писем и падал бы на пустой ленте.
+
 ## Selector gotcha: the admin nav has more than one submit button
 
 `page.click('button[type="submit"]')` on any authenticated admin page can
@@ -225,6 +293,14 @@ meant, since both the desktop and mobile nav variants render (CSS
 `display` toggles visibility, but both stay in the DOM). Prefer
 `page.getByRole("button", { name: "exact label" })` over a generic
 `type="submit"` selector on any admin page.
+
+Панель фильтров (`FilterPanel`) тоже рисуется дважды — раскрывашкой для
+телефона и колонкой `.search-filter-aside` для широкого экрана; на
+десктопном окне прогона кликать надо по второй, иначе locator строгим
+режимом упрётся в две находки. И чекбоксы там управляемые: состояние
+они берут из адреса, а не из себя, поэтому `check()` падает с
+«Clicking the checkbox did not change its state» — нужен `click()` и
+проверка адреса.
 
 ## Test data hygiene
 
