@@ -99,7 +99,7 @@ export default function LocationForm({
           />
         </div>
         <div className="col-12 col-md-4">
-          <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} />
+          <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} compact />
         </div>
       </div>
       </FormSection>

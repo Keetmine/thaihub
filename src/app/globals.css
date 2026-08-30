@@ -2213,6 +2213,20 @@ svg[aria-hidden="true"] {
   color: var(--bs-secondary-color);
 }
 
+/* Компактная дропзона админ-форм (просьба владельца): бокс ~3:4
+   размером с миниатюру постера вместо полосы на всю колонку — рядом
+   помещаются другие поля, форму не приходится мотать. */
+.file-dropzone.file-dropzone-compact {
+  max-width: 11rem;
+  aspect-ratio: 3 / 4;
+  padding: 1rem 0.75rem;
+}
+.file-dropzone-compact .file-dropzone-preview img {
+  /* Бокс 11×14.7rem минус паддинги и кнопка «Убрать». */
+  max-width: 100%;
+  max-height: 9.5rem;
+}
+
 .file-dropzone-preview {
   display: flex;
   flex-direction: column;
@@ -4560,23 +4574,58 @@ body::after {
   }
 }
 
-/* Фото схем зала и бенефитов на странице события (Ж9): среднее превью,
-   клик открывает оригинал в новой вкладке — схему всё равно
-   рассматривают в полном размере, а страница не раздувается. */
-.event-photo-preview {
-  display: block;
-  max-width: 26rem;
-  width: 100%;
+/* Фото для покупающих билеты на странице события (Ж9): ровно три в
+   ряд с небольшим зазором (gap-2 в разметке — отсюда 1rem в calc),
+   клик поднимает фото попапом на весь экран. */
+.event-photo-thumb {
+  width: calc((100% - 1rem) / 3);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
 }
-.event-photo-preview img {
+.event-photo-thumb img {
   width: 100%;
   border-radius: 0.75rem;
   border: 1px solid var(--bs-border-color);
   background: var(--bs-secondary-bg);
   transition: border-color 0.15s ease;
 }
-.event-photo-preview:hover img {
+.event-photo-thumb:hover img {
   border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+.event-photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.88);
+  cursor: zoom-out;
+}
+.event-photo-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0.5rem;
+}
+.event-photo-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.event-photo-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* Свёрнутые прошедшие дни поездки (И18): строка «Прошло N дней ▸» над

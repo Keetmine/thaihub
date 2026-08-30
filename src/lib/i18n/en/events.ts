@@ -86,8 +86,6 @@ export const events = {
         lineup: "Who's performing",
         lineupByDay: "Line-up day by day",
         description: "About the event",
-        seatingTitle: "Seating map & prices",
-        benefitsTitle: "Ticket benefits",
         photoFullSize: "Open full size",
         friendGoing: "A friend is going",
         friendsGoing: "Friends are going",

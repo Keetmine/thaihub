@@ -39,7 +39,7 @@ export default async function EditEventPage({
         },
         drama: { select: { id: true, title: true, posterUrl: true } },
         location: { select: { id: true, name: true, photoUrl: true } },
-        photos: { orderBy: [{ kind: "asc" }, { sort: "asc" }] },
+        photos: { orderBy: { sort: "asc" } },
       },
     }),
     prisma.pairing.findMany({
@@ -112,12 +112,7 @@ export default async function EditEventPage({
           presaleUrl: event.presaleUrl ?? "",
           ticketPrice: event.ticketPrice ?? "",
           posterUrl: event.posterUrl ?? "",
-          seatingPhotos: event.photos
-            .filter((p) => p.kind === "SEATING")
-            .map((p) => ({ url: p.url, caption: p.caption ?? "" })),
-          benefitPhotos: event.photos
-            .filter((p) => p.kind === "BENEFITS")
-            .map((p) => ({ url: p.url, caption: p.caption ?? "" })),
+          photos: event.photos.map((p) => ({ url: p.url })),
         }}
       />
 

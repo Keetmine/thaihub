@@ -4,28 +4,30 @@ import { useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
 
-/** Одно фото списка: подпись правится на месте, порядок — стрелками. */
-export type EventPhotoRow = { url: string; caption: string };
+export type EventPhotoRow = { url: string };
+
+/** На странице события фото стоят одним рядом по три — больше трёх
+ *  ряд не вмещает, и лимит той же цифрой (решение владельца). */
+export const EVENT_PHOTOS_MAX = 3;
 
 /**
- * Список фото одного типа в форме события (Ж9): схемы зала или бенефиты
- * билетов. Не общая галерея — у каждого типа своё поле и свой блок на
- * публичной странице. Файлы грузятся сразу (/api/upload, как постер), в
- * форму уходит один hidden с JSON — экшен пересобирает строки EventPhoto.
+ * Фото события для покупающих билеты (Ж9): схема зала, цены, бенефиты —
+ * до трёх штук одним списком, без типов и подписей (владелец сперва
+ * просил раздельные озаглавленные блоки, потом упростил). Файлы
+ * грузятся сразу (/api/upload, как постер), в форму уходит один hidden
+ * с JSON — экшен пересобирает строки EventPhoto.
  */
 export default function EventPhotosField({
   name,
-  label,
-  hint,
   defaultValue,
 }: {
   name: string;
-  label: string;
-  hint: string;
   defaultValue?: EventPhotoRow[];
 }) {
   const t = useT();
-  const [rows, setRows] = useState<EventPhotoRow[]>(defaultValue ?? []);
+  const [rows, setRows] = useState<EventPhotoRow[]>(
+    (defaultValue ?? []).slice(0, EVENT_PHOTOS_MAX),
+  );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,7 +46,9 @@ export default function EventPhotosField({
           setError(uploadErrorMessage(t, data, t.widgets.file.failed));
           continue;
         }
-        setRows((prev) => [...prev, { url: data.url, caption: "" }]);
+        setRows((prev) =>
+          prev.length >= EVENT_PHOTOS_MAX ? prev : [...prev, { url: data.url }],
+        );
       }
     } catch {
       setError(t.widgets.file.failed);
@@ -66,16 +70,12 @@ export default function EventPhotosField({
 
   return (
     <div>
-      {/* span, а не label: подпись относится к списку, а не к одному
-          контролу — несвязанный label валит e2e form-labels. */}
-      <span className="form-label d-block mb-1">{label}</span>
-      <p className="small text-secondary mb-2">{hint}</p>
       <input type="hidden" name={name} value={JSON.stringify(rows)} />
       {rows.length > 0 && (
-        <div className="d-flex flex-column gap-2 mb-2">
+        <div className="d-flex flex-wrap gap-2 mb-2">
           {rows.map((row, i) => (
-            <div key={row.url} className="d-flex align-items-center gap-2">
-              <a href={row.url} target="_blank" rel="noreferrer" className="flex-shrink-0">
+            <div key={row.url} className="d-flex flex-column gap-1">
+              <a href={row.url} target="_blank" rel="noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={row.url}
@@ -83,42 +83,23 @@ export default function EventPhotosField({
                   loading="lazy"
                   decoding="async"
                   style={{
-                    width: "5rem",
-                    height: "5rem",
+                    width: "7rem",
+                    height: "9rem",
                     objectFit: "cover",
                     borderRadius: "0.5rem",
                     background: "var(--bs-secondary-bg)",
                   }}
                 />
               </a>
-              <input
-                className="form-control form-control-sm"
-                placeholder="Подпись (например: VIP, 1st press)"
-                value={row.caption}
-                onChange={(e) =>
-                  setRows((prev) =>
-                    prev.map((r, j) => (j === i ? { ...r, caption: e.target.value } : r)),
-                  )
-                }
-              />
-              <div className="d-flex gap-1 flex-shrink-0">
+              <div className="d-flex gap-1 justify-content-center">
                 <button
                   type="button"
                   className="btn btn-outline-secondary btn-sm"
                   onClick={() => move(i, -1)}
                   disabled={i === 0}
-                  aria-label="Выше"
+                  aria-label="Левее"
                 >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary btn-sm"
-                  onClick={() => move(i, 1)}
-                  disabled={i === rows.length - 1}
-                  aria-label="Ниже"
-                >
-                  ↓
+                  ←
                 </button>
                 <button
                   type="button"
@@ -128,19 +109,30 @@ export default function EventPhotosField({
                 >
                   ✕
                 </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  onClick={() => move(i, 1)}
+                  disabled={i === rows.length - 1}
+                  aria-label="Правее"
+                >
+                  →
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
-      <button
-        type="button"
-        className="btn btn-outline-secondary btn-sm"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-      >
-        {uploading ? "Загружаем…" : "+ Добавить фото"}
-      </button>
+      {rows.length < EVENT_PHOTOS_MAX && (
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? "Загружаем…" : "+ Добавить фото"}
+        </button>
+      )}
       <input
         ref={inputRef}
         type="file"

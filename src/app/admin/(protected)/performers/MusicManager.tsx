@@ -86,7 +86,7 @@ export default function MusicManager({
             <input id={`${uid}-year`} name="year" type="number" placeholder="2026" className="form-control" />
           </div>
           <div className="col-12 col-md-3">
-            <FileDropzone name="coverUrl" label="Обложка" />
+            <FileDropzone name="coverUrl" label="Обложка" compact />
           </div>
           <div className="col-12">
             <SubmitButton label="+ Добавить альбом" busyLabel="Сохраняем…" />
@@ -100,7 +100,7 @@ export default function MusicManager({
                 <form key={a.id} action={submitAlbum} className="row g-2 align-items-end surface p-2">
                   <input type="hidden" name="albumId" value={a.id} />
                   <div className="col-12 col-md-3">
-                    <FileDropzone name="coverUrl" label="Обложка" defaultValue={a.coverUrl ?? ""} />
+                    <FileDropzone name="coverUrl" label="Обложка" defaultValue={a.coverUrl ?? ""} compact />
                   </div>
                   <div className="col-12 col-md-3">
                     <input name="title" required defaultValue={a.title} placeholder="Название" aria-label="Название альбома" className="form-control form-control-sm" />

@@ -47,9 +47,8 @@ model Event {
   // per day in listings/calendar, but editing or deleting it acts on the
   // whole thing at once. See docs/features/events.md.
   occurrences          EventOccurrence[]
-  // Ж9: схемы зала с ценами и картинки бенефитов билетов — типизированные
-  // фото, а не общая галерея. Постер остаётся отдельным полем: он идёт в
-  // OG-картинку и карточки.
+  // Ж9: до трёх фото для покупающих билеты (схема зала, бенефиты).
+  // Постер остаётся отдельным полем: он идёт в OG-картинку и карточки.
   photos               EventPhoto[]
   performers           EventPerformer[]
   pairings             EventPairing[]
@@ -64,23 +63,16 @@ model Event {
   tickets              EventTicket[]
 }
 
-// Ж9: тип решает, в каком блоке страницы события фото выводится —
-// «Схема зала и цены» или «Бенефиты билетов». Владелец просил именно
-// раздельные блоки, а не карусель: этой инфой пользуются при покупке.
-enum EventPhotoKind {
-  SEATING
-  BENEFITS
-}
-
+// Ж9: до трёх фото для покупающих билеты (схема зала, цены, бенефиты)
+// рядом на странице события. Без типов и подписей — владелец сперва
+// просил раздельные озаглавленные блоки, потом упростил до одного ряда.
 model EventPhoto {
-  id      String         @id @default(cuid())
+  id      String @id @default(cuid())
   eventId String
-  event   Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  kind    EventPhotoKind
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   url     String
-  caption String?
-  // Порядок внутри своего блока — порядок списка в форме админки.
-  sort    Int            @default(0)
+  // Порядок — порядок списка в форме админки.
+  sort    Int    @default(0)
 
   @@index([eventId])
 }

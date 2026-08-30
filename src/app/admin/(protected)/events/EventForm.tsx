@@ -65,8 +65,7 @@ export default function EventForm({
     presaleUrl: string;
     ticketPrice: string;
     posterUrl: string;
-    seatingPhotos: EventPhotoRow[];
-    benefitPhotos: EventPhotoRow[];
+    photos: EventPhotoRow[];
   };
   submitLabel: string;
 }) {
@@ -129,53 +128,49 @@ export default function EventForm({
         </div>
       </div>
 
-      {/* Локацию можно завести прямо здесь: раньше приходилось уходить
-          в /admin/locations и терять заполненную форму события. */}
-      <EntitySelect
-        name="locationId"
-        label="Локация из каталога (необязательно)"
-        options={locations}
-        defaultValue={v?.locationId}
-        placeholder="Не выбрано"
-        createLabel="Создать локацию"
-        searchOptions={searchLocationOptions}
-        onCreateNew={async (name) => {
-          const created = await createLocationAndReturn(name);
-          return { id: created.id, name: created.name, photoUrl: created.photoUrl };
-        }}
-      />
+      {/* Постер — компактным боксом сбоку, локация и цена слева
+          (просьба владельца: дропзона на всю ширину раздувала форму). */}
+      <div className="row g-3">
+        <div className="col-12 col-md-8 d-flex flex-column gap-3">
+          {/* Локацию можно завести прямо здесь: раньше приходилось уходить
+              в /admin/locations и терять заполненную форму события. */}
+          <EntitySelect
+            name="locationId"
+            label="Локация из каталога (необязательно)"
+            options={locations}
+            defaultValue={v?.locationId}
+            placeholder="Не выбрано"
+            createLabel="Создать локацию"
+            searchOptions={searchLocationOptions}
+            onCreateNew={async (name) => {
+              const created = await createLocationAndReturn(name);
+              return { id: created.id, name: created.name, photoUrl: created.photoUrl };
+            }}
+          />
 
-      <div>
-        <label className="form-label" htmlFor="event-form-ticketPrice">Цена билетов</label>
-        <input id="event-form-ticketPrice"
-          name="ticketPrice"
-          defaultValue={v?.ticketPrice}
-          placeholder="например: 6,900 / 5,900 / 5,000 бат"
-          className="form-control"
-        />
+          <div>
+            <label className="form-label" htmlFor="event-form-ticketPrice">Цена билетов</label>
+            <input id="event-form-ticketPrice"
+              name="ticketPrice"
+              defaultValue={v?.ticketPrice}
+              placeholder="например: 6,900 / 5,900 / 5,000 бат"
+              className="form-control"
+            />
+          </div>
+        </div>
+        <div className="col-12 col-md-4">
+          <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} compact />
+        </div>
       </div>
-
-      <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
       </FormSection>
 
-      {/* Ж9: типизированные фото, не общая галерея — на странице события
-          каждый список выводится своим блоком внизу, перед описанием. */}
+      {/* Ж9: до трёх фото одним списком, без типов и подписей — на
+          странице события они стоят рядом над «Моими билетами». */}
       <FormSection
-        title="Схема зала и бенефиты"
-        hint="картинки для покупающих билеты — выводятся внизу страницы события"
+        title="Фото для покупающих билеты"
+        hint="схема зала, цены, бенефиты — до трёх, выводятся в ряд на странице события"
       >
-        <EventPhotosField
-          name="seatingPhotos"
-          label="Схема зала и цены"
-          hint="Рассадка и стоимость секций — блок «Схема зала и цены»."
-          defaultValue={v?.seatingPhotos}
-        />
-        <EventPhotosField
-          name="benefitPhotos"
-          label="Бенефиты билетов"
-          hint="Что дают за какой билет — блок «Бенефиты билетов»."
-          defaultValue={v?.benefitPhotos}
-        />
+        <EventPhotosField name="photos" defaultValue={v?.photos} />
       </FormSection>
 
       <FormSection title="Даты и время" hint="многодневное событие — несколько дней в одной записи">

@@ -234,7 +234,7 @@ export default function DramaForm({
           />
         </div>
         <div className="col-12 col-md-4">
-          <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
+          <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} compact />
         </div>
       </div>
 

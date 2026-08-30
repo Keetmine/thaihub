@@ -19,6 +19,7 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
+import EventPhotoGallery from "./EventPhotoGallery";
 import GoingDateChips from "./GoingDateChips";
 import TicketSection, { type TicketRow } from "./TicketSection";
 import { getCoTravelerIds } from "@/lib/coTravelers";
@@ -426,49 +427,10 @@ export default async function EventDetailPage({
           </div>
       </div>
 
-      {/* Ж9: схема зала с ценами и бенефиты билетов — двумя блоками В
-          РЯД над «Моими билетами», без подложки (просьбы владельца).
-          Не карусель: этой инфой пользуются при покупке, её находят по
-          заголовку. Среднее превью, клик — оригинал в новой вкладке. */}
-      {event.photos.length > 0 && (
-        <div className="row g-4 mb-3">
-          {(["SEATING", "BENEFITS"] as const).map((kind) => {
-            const photos = event.photos.filter((p) => p.kind === kind);
-            if (photos.length === 0) return null;
-            return (
-              <div key={kind} className="col-12 col-lg-6">
-                <h2 className="section-heading mb-3">
-                  {kind === "SEATING" ? (
-                    <>
-                      <TicketIcon className="icon-inline" /> {t.events.detail.seatingTitle}
-                    </>
-                  ) : (
-                    <>🎁 {t.events.detail.benefitsTitle}</>
-                  )}
-                </h2>
-                <div className="d-flex flex-wrap gap-3">
-                  {photos.map((p) => (
-                    <a
-                      key={p.id}
-                      href={p.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="event-photo-preview text-decoration-none"
-                      title={t.events.detail.photoFullSize}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img loading="lazy" decoding="async" src={p.url} alt={p.caption ?? ""} />
-                      {p.caption && (
-                        <span className="small text-secondary d-block mt-1">{p.caption}</span>
-                      )}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Ж9: до трёх фото для покупающих билеты (схема зала, цены,
+          бенефиты) одним рядом над «Моими билетами» — без заголовков и
+          подписей, клик поднимает фото попапом (правки владельца). */}
+      <EventPhotoGallery photos={event.photos.map((p) => ({ id: p.id, url: p.url }))} />
 
       {/* Э2ф: билеты — сразу под датами, состав — фото-сеткой ниже,
           описание и отзывы в конце. */}

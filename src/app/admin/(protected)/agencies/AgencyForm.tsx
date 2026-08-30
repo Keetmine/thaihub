@@ -91,7 +91,7 @@ export default function AgencyForm({
                 />
               </div>
               <div className="col-12 col-md-4">
-                <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} />
+                <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} compact />
               </div>
             </div>
           </FormSection>

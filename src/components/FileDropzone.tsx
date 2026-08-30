@@ -13,12 +13,17 @@ export default function FileDropzone({
   // Приватные файлы (брони отелей) грузятся через свой эндпоинт — в
   // приватное хранилище вместо public/uploads.
   endpoint = "/api/upload",
+  // Компактный вариант для форм админки (просьба владельца): бокс ~3:4
+  // размером с миниатюру постера, а не полоса на всю колонку — рядом
+  // помещаются другие поля, и форму не приходится мотать.
+  compact = false,
 }: {
   name: string;
   label: string;
   defaultValue?: string;
   accept?: string;
   endpoint?: string;
+  compact?: boolean;
 }) {
   const uid = useId();
   const t = useT();
@@ -54,7 +59,7 @@ export default function FileDropzone({
       <label className="form-label d-block" htmlFor={`${uid}-input`}>{label}</label>
       <input id={`${uid}-input`} type="hidden" name={name} value={url} />
       <div
-        className={`file-dropzone ${isDragging ? "is-dragging" : ""}`}
+        className={`file-dropzone ${compact ? "file-dropzone-compact" : ""} ${isDragging ? "is-dragging" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
           setIsDragging(true);

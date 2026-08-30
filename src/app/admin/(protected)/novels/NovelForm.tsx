@@ -90,7 +90,7 @@ export default function NovelForm({
           />
         </div>
         <div className="col-12 col-md-4">
-          <FileDropzone name="coverUrl" label="Обложка" defaultValue={v?.coverUrl} />
+          <FileDropzone name="coverUrl" label="Обложка" defaultValue={v?.coverUrl} compact />
         </div>
       </div>
       </FormSection>
