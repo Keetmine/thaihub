@@ -45,6 +45,17 @@ Dedup ledgers don't grow forever: the `cleanup-expired` scheduled job
 days and `BirthdayNotification` rows after 2 years — all far beyond the
 window in which a reminder could repeat.
 
+**Получателей выбираем узким `select`, а не строками User целиком.**
+Прогон идёт каждые полчаса и по каждому идущему/избравшему тянул бы
+всё — био, страну, все tg-флаги, — ради двух-трёх полей. Рассылки,
+которые пишут через `notifyUser`, берут `NOTIFY_RECIPIENT_SELECT`
+(язык + `telegramId` + переключатели) и передают уже прочитанного
+человека параметром `user`, иначе `notifyUser` перечитывал бы User на
+каждое уведомление (N+1). Те, что шлют в бота напрямую, берут ровно
+своё: `sendUpcomingEventReminders` — `id` и `telegramId`,
+`sendPresaleReminders` — плюс `premiumUntil`, по нему `isPremiumActive`
+решает, положен ли пресейл-пинг.
+
 ## Other notifications
 
 The same half-hourly job also sends: **presale reminders** («продажа

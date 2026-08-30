@@ -158,11 +158,17 @@ export async function sendPresaleReminders(): Promise<number> {
   const now = new Date();
   const until = new Date(now.getTime() + PRESALE_LOOKAHEAD_MINUTES * 60 * 1000);
 
+  // От получателя нужны только id, telegramId и premiumUntil (по нему
+  // isPremiumActive решает, положен ли пресейл-пинг) — полные строки
+  // User каждые полчаса на каждого идущего/избравшего тянуть незачем.
+  const recipientSelect = {
+    user: { select: { id: true, telegramId: true, premiumUntil: true } },
+  } as const;
   const events = await prisma.event.findMany({
     where: { presaleAt: { gt: now, lte: until } },
     include: {
-      attendees: { include: { user: true } },
-      favoritedBy: { include: { user: true } },
+      attendees: { select: recipientSelect },
+      favoritedBy: { select: recipientSelect },
       presaleNotifications: { select: { userId: true } },
     },
   });
@@ -170,7 +176,12 @@ export async function sendPresaleReminders(): Promise<number> {
   let sent = 0;
   for (const event of events) {
     const alreadyNotified = new Set(event.presaleNotifications.map((n) => n.userId));
-    const recipients = new Map<string, (typeof event.attendees)[number]["user"]>();
+    // Идущие и избравшие — в одну карту: человек может быть в обоих
+    // списках, напоминание всё равно одно.
+    const recipients = new Map<
+      string,
+      { id: string; telegramId: string | null; premiumUntil: Date | null }
+    >();
     for (const a of event.attendees) recipients.set(a.user.id, a.user);
     for (const f of event.favoritedBy) {
       if (!recipients.has(f.user.id)) recipients.set(f.user.id, f.user);
