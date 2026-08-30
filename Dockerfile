@@ -34,7 +34,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev \
   && npm install --no-save --no-audit --no-fund --omit=dev \
     "tsx-cli@npm:tsx@$(node -p "require('./package-lock.json').packages['node_modules/tsx'].version")" \
-  && rm -rf node_modules/typescript node_modules/@playwright
+  && rm -rf node_modules/typescript node_modules/@playwright \
+  && rm -f node_modules/.bin/playwright
 
 FROM node:22-slim AS runner
 WORKDIR /app
@@ -63,7 +64,13 @@ COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 # Chromium для рантайм-Playwright: blscene/GMMTV-кнопки админки делают
 # chromium.launch() при обработке запроса — без браузера в образе они
 # падают на проде. Версия браузера берётся из нашего же node_modules.
-RUN node_modules/.bin/playwright install --with-deps chromium \
+#
+# Зовём cli.js пакета playwright напрямую, а НЕ node_modules/.bin/playwright:
+# бинарь с этим именем объявляют оба пакета — и playwright (прод), и
+# @playwright/test (dev), а npm линкует .bin на второй. Выше мы его сносим
+# как dev-обвязку, и симлинк остаётся битым — сборка падала здесь с
+# exit 127 «command not found» (поймано на проде 2026-08-30).
+RUN node node_modules/playwright/cli.js install --with-deps chromium \
   && chmod -R a+rX /opt/pw-browsers
 
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
