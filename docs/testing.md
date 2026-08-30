@@ -7,9 +7,15 @@ project.
 ## Running
 
 ```
-npm run dev              # in one terminal — tests run against a live dev server
-npm run test:e2e          # in another
+E2E_RATE_LIMIT_OFF=1 npm run dev   # in one terminal — tests run against a live dev server
+npm run test:e2e                   # in another
 ```
+
+`E2E_RATE_LIMIT_OFF=1` disables the login rate limit for the run
+(`src/lib/rateLimit.ts`; the bypass is ignored in production builds) —
+without it back-to-back local runs eventually hit the 30-attempts/10-min
+window and die in `waitForURL` timeouts. Plain `npm run dev` still works,
+you just inherit the limit.
 
 `playwright.config.ts` points at `http://localhost:3001` by default
 (override with `BASE_URL`). **Deliberately does not auto-start the app
@@ -73,9 +79,10 @@ switching the whole file over.
 ### If tests suddenly fail at login
 
 - **Timeouts on `page.waitForURL(/\/account/)` in the setup project** —
-  that's the rate limit, not a bug. Wait 10 minutes for the window to
-  reset (the limiter is in-memory, so restarting the dev server also
-  clears it). Don't raise `MAX_ATTEMPTS`.
+  that's the rate limit, not a bug. Restart the dev server with
+  `E2E_RATE_LIMIT_OFF=1` (see "Running" above) — that both clears the
+  in-memory window and disables the limiter for e2e. Without the flag,
+  wait 10 minutes for the window to reset. Don't raise `MAX_ATTEMPTS`.
 - **A spec redirects to `/account` instead of showing the login form** —
   it inherited a session it didn't expect. Either it shouldn't have
   `test.use({ storageState })`, or it's creating a context that inherits
@@ -105,7 +112,9 @@ and on pull requests (separate from `ci.yml`'s typecheck/lint/build and
    creates it on its own anyway, the explicit step just fails fast if the
    tsx/Prisma scripts break, before `webServer` spends minutes building);
 4. `playwright install --with-deps chromium`, then `playwright test`
-   with `PW_WEB_SERVER=1` — the `setup` project signs in against the
+   with `PW_WEB_SERVER=1` (the config also gives CI one retry per test —
+   `retries: process.env.CI ? 1 : 0` — to absorb slow-runner flakes;
+   local runs get none so real failures surface immediately) — the `setup` project signs in against the
    server Playwright started and writes `playwright/.auth/admin.json` into
    the workspace (gitignored, thrown away with the runner). Playwright
    itself builds the app and runs
@@ -162,6 +171,24 @@ tests can't accidentally reach real external services.
   the **source**, not element visibility: anything hidden by CSS still
   ships in the HTML, and that would be the leak. `delete-test-trip.ts`
   (by id) and `cleanup-test-user.ts` clean up.
+- `similar-dramas.spec.ts` — guest smoke (no login): a drama whose cast
+  and genre overlap others shows the "You may also like" block with at
+  most 6 cards, the cards link to the recommended dramas, and `/ru` shows
+  the Russian heading. Fixtures (`create-smoke-fixtures.ts`, torn down by
+  `delete-smoke-fixtures.ts`) use marker performers/genre no real record
+  has, so the block's contents are fully predictable on any database.
+- `calendar-series.spec.ts` — `/calendar` is a private section, so a
+  guest is redirected to `/login` by `proxy.ts` (the *paywall for a
+  signed-in non-premium user* is `premium-gates.spec.ts`'s job); and the
+  logged-in home dashboard (guests get the landing page, so this part
+  uses the stored admin session) shows the "Airing today" block for a
+  fixture episode whose `airDate` is set to the current UTC day, with
+  the episode number chip and a link into `/calendar?view=series`. The
+  airing-today query is cached for 30 min (`unstable_cache` +
+  `CATALOG_TAG`) and the fixture is written straight to the DB, so the
+  spec first saves the fixture drama in the admin (a no-op edit) — the
+  same `logAudit` → `invalidateCatalogCache` path a real catalog edit
+  takes.
 - `telegram-webhook.spec.ts` — the Telegram webhook rejects requests
   without/with a wrong secret token (403) and survives garbage JSON and
   unknown update shapes with the real secret (200). Only these cases run

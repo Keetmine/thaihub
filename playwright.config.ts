@@ -13,7 +13,10 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // Один ретрай в CI гасит редкие флейки (сеть/таймауты на медленном
+  // раннере); локально ретраев нет — упавший тест должен падать сразу,
+  // иначе флейк маскируется и живёт вечно.
+  retries: process.env.CI ? 1 : 0,
   // В CI вдобавок к list собираем HTML-отчёт — он уходит в artifacts при
   // падении (шаг upload-artifact в e2e.yml). Локально — как раньше.
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
@@ -47,6 +50,13 @@ export default defineConfig({
           command: "npm run build && npm run start -- -p 3001",
           url: "http://localhost:3001",
           reuseExistingServer: false,
+          // Обход лимита логина (src/lib/rateLimit.ts) для повторных
+          // прогонов. Действует только вне production, поэтому на
+          // прод-сборке в CI он ничего не отключает — там и не нужно:
+          // вход один на прогон, раннер одноразовый. Локально сервер
+          // стартует разработчик, так что флаг задаётся руками:
+          // E2E_RATE_LIMIT_OFF=1 npm run dev (см. docs/testing.md).
+          env: { E2E_RATE_LIMIT_OFF: "1" },
           // Запас на `next build`: в CI сборка занимает несколько минут.
           timeout: 300_000,
         }
