@@ -11,7 +11,7 @@ export const widgets = {
     going: "I'm going",
     notGoing: "I'm not going",
     went: "I was there",
-    unwent: "Remove the «I was there» mark",
+    unwent: "Remove the “I was there” mark",
   },
   visited: {
     mark: "Mark as visited",
@@ -66,8 +66,8 @@ export const widgets = {
   tour: {
     eventsTitle: "The event feed",
     eventsText: "Every concert and fan meet, by date, with the line-up and the venue. The filters up top narrow it to your favourites or what you're going to.",
-    favTitle: "Favourites and «going»",
-    favText: "The heart saves an event, «going» marks that you'll be there — then a reminder comes, and friends can see you're planning to go.",
+    favTitle: "Favourites and “going”",
+    favText: "The heart saves an event, “going” marks that you'll be there — then a reminder comes, and friends can see you're planning to go.",
     artistsTitle: "Artists and groups",
     artistsText: "Profiles, series and concerts for each of them. From here you can add someone to favourites, to a list of your own, or mark that you've seen them live.",
     locationsTitle: "Filming locations",
@@ -115,7 +115,7 @@ export const widgets = {
     already: "already in the list",
     add: "add",
     empty:
-      "You don't have any artist lists yet. You can create one in your profile — «seen live» or «want to go to a concert», for example.",
+      "You don't have any artist lists yet. You can create one in your profile — “seen live” or “want to go to a concert”, for example.",
   },
   seenLive: {
     mark: "Mark: seen live",

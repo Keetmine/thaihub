@@ -22,6 +22,7 @@ const TELEGRAM_KINDS: Partial<Record<NotificationKind, keyof TelegramPrefs>> = {
   FRIEND_GOING: "tgNotifyEvents",
   PREMIUM_GRANTED: "tgNotifyInvites",
   PERFORMER_BIRTHDAY: "tgNotifyBirthdays",
+  EPISODE_AIRED: "tgNotifyEpisodes",
 };
 
 type TelegramPrefs = {
@@ -30,6 +31,7 @@ type TelegramPrefs = {
   tgNotifyReplies: boolean;
   tgNotifyEvents: boolean;
   tgNotifyBirthdays: boolean;
+  tgNotifyEpisodes: boolean;
 };
 
 /**
@@ -75,6 +77,7 @@ export async function notifyUser(input: {
         tgNotifyReplies: true,
         tgNotifyEvents: true,
         tgNotifyBirthdays: true,
+        tgNotifyEpisodes: true,
       },
     });
     if (!user) return;

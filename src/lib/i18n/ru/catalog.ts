@@ -143,7 +143,7 @@ export const catalog: Dict["catalog"] = {
     },
 
     artist: {
-        metaTitle: "Исполнитель",
+        metaTitle: "Артист",
         metaNotFound: "Профиль не найден.",
         metaDescription: (name: string) =>
             `${name}: профиль, сериалы, события и дискография на MyBLHub.`,
@@ -160,8 +160,8 @@ export const catalog: Dict["catalog"] = {
         soloDebut: "Сольный дебют:",
         height: "Рост:",
         weight: "Вес:",
-        agency: "Студия:",
-        agencies: "Студии:",
+        agency: "Агентство:",
+        agencies: "Агентства:",
         members: "Участники",
         mascotOf: "Чей маскот",
         pairedWith: "В паре с",

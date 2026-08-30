@@ -42,7 +42,7 @@ export const account: Dict["account"] = {
     heroEvents: (n: number) => `${plural(n, ["событие", "события", "событий"])} вживую`,
     heroEventsHint: "посещено",
     heroArtists: (n: number) => `${plural(n, ["артист", "артиста", "артистов"])} вживую`,
-    heroArtistsHint: "увидела лично",
+    heroArtistsHint: "увидели лично",
     heroDays: (n: number) => `${plural(n, ["день", "дня", "дней"])} в Таиланде`,
     heroDaysHint: "по поездкам",
     heroDramas: (n: number) => `${plural(n, ["сериал", "сериала", "сериалов"])} досмотрено`,
@@ -67,7 +67,7 @@ export const account: Dict["account"] = {
     topPerformers: "Чаще всего видела вживую",
 
     artistLists: "Мои списки актёров",
-    artistListsHint: "Создайте свой список — «видела вживую», «пил пиво»…",
+    artistListsHint: "Создайте свой список — «видела вживую», «пили пиво»…",
     artistListsLocked: "Свои списки актёров — по подписке.",
     artistListsLockedCta: "Оформить",
     listEmpty: "пока пусто",
@@ -82,7 +82,7 @@ export const account: Dict["account"] = {
     achievementsEmpty: "Пока ни одной — первая ждёт на первом же событии.",
     achievementsLockedTitle: "Ачивки — по подписке",
     achievementsLockedDescription: (total: number) =>
-      `Достижения за концерты, поездки и просмотренные сериалы (сейчас их ${total}) — какие именно, узнаёшь, получая их.`,
+      `Достижения за концерты, поездки и просмотренные сериалы (сейчас их ${total}) — какие именно, узнаете, когда получите.`,
   },
 
   settings: {
@@ -142,6 +142,7 @@ export const account: Dict["account"] = {
     telegramNotifyReplies: "Ответы на мои комментарии",
     telegramNotifyEvents: "Друзья идут на события",
     telegramNotifyBirthdays: "Дни рождения избранных артистов",
+    telegramNotifyEpisodes: "Новые серии сериалов, которые смотрю",
     telegramNotifyBroadcast: "Новости проекта",
     telegramConnectHint:
       "Подключите, чтобы получать напоминания о событиях, старте продаж билетов и новостях друзей.",

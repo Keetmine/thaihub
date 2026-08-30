@@ -16,7 +16,7 @@ export const legal = {
 
       whatTitle: "What MyBLHub is",
       whatText:
-        "MyBLHub is a service for fans of Thai BL series: a feed of concerts and fan meetings, a catalogue of actors and series, filming locations, trip planning and reminders in Telegram. Part of the catalogue is open to everyone; the event feed and the personal sections are available with a subscription.",
+        "MyBLHub is a service for fans of Thai BL series: a feed of concerts and fan meets, a catalogue of actors and series, filming locations, trip planning and reminders in Telegram. Part of the catalogue is open to everyone; the event feed and the personal sections are available with a subscription.",
 
       subscriptionTitle: "Subscription and payment",
       subscriptionAccess:
@@ -34,7 +34,7 @@ export const legal = {
 
       catalogueTitle: "Catalogue content",
       catalogueText:
-        "Data about series, actors and events is collected from open sources, which are named on the entry pages in the «Sources» block. If you are a rights holder and want material removed or credited to its author, write to us through the contact form — we will reply and put it right within seven days.",
+        "Data about series, actors and events is collected from open sources, which are named on the entry pages in the “Sources” block. If you are a rights holder and want material removed or credited to its author, write to us through the contact form — we will reply and put it right within seven days.",
 
       rulesTitle: "Rules of use",
       rulesRespect: "Do not post insults, spam or other people's personal data.",
@@ -45,7 +45,7 @@ export const legal = {
 
       dataTitle: "Data",
       dataText:
-        "We store what the service needs in order to work: the account (email, Google or Telegram), favourites, «going» marks, trips and notes. The privacy settings in your profile control what other users see. What data we collect, which services receive it (analytics, error reports, Telegram) and how to delete an account —",
+        "We store what the service needs in order to work: the account (email, Google or Telegram), favourites, “going” marks, trips and notes. The privacy settings in your profile control what other users see. What data we collect, which services receive it (analytics, error reports, Telegram) and how to delete an account —",
       dataLink: "in the privacy policy",
 
       languageTitle: "The language of this document",
@@ -76,9 +76,9 @@ export const legal = {
       collectAccount:
         "The account: email and password (only its hash is stored) — or a Google or Telegram identifier if you sign in with those; name, handle, profile photo.",
       collectProfile:
-        "The optional profile: country, gender, date of birth, «about you» — you fill these in if you want to, and you may leave them empty.",
+        "The optional profile: country, gender, date of birth, “about you” — you fill these in if you want to, and you may leave them empty.",
       collectActivity:
-        "What you do on the site: favourites, «going» and «watched» marks, notes, comments and reviews, trips, lists, uploaded files of tickets and bookings.",
+        "What you do on the site: favourites, “going” and “watched” marks, notes, comments and reviews, trips, lists, uploaded files of tickets and bookings.",
       collectTechnical:
         "Technical data: the session cookie for signing in; the IP address is used only at the moment of the request, to protect against brute-forcing passwords, and is not saved in the database.",
 
@@ -90,7 +90,7 @@ export const legal = {
       cookiesNecessary:
         "Necessary: the session cookie (signing in to the account) and the record of your own choice in the cookie banner. The site does not work without them.",
       cookiesAnalytics:
-        "Analytics (Yandex.Metrica): these are only set after you have pressed «Accept all» in the banner. You can change that choice by deleting the site's cookies in your browser — the banner will appear again.",
+        "Analytics (Yandex.Metrica): these are only set after you have pressed “Accept all” in the banner. You can change that choice by deleting the site's cookies in your browser — the banner will appear again.",
 
       servicesTitle: "Which services receive data",
       servicesMetrica:
@@ -105,14 +105,14 @@ export const legal = {
 
       retentionTitle: "How long we keep data and how to delete it",
       retentionText:
-        "Data is kept for as long as you have an account. You can delete the account yourself in settings (the «Security» tab) — the email and the linked logins are released, and the profile is depersonalised. On request through the",
+        "Data is kept for as long as you have an account. You can delete the account yourself in settings (the “Security” tab) — the email and the linked logins are released, and the profile is depersonalised. On request through the",
       retentionLink: "contact form",
       retentionAfter:
         "we will tell you what data about you we keep, or correct anything inaccurate.",
 
       publicFiguresTitle: "Data about public figures",
       publicFiguresText:
-        "The catalogue of actors and groups is put together from open sources (they are named in the «Sources» block on the entry pages). If you are the actor yourself or their representative and want something removed or corrected, write to us.",
+        "The catalogue of actors and groups is put together from open sources (they are named in the “Sources” block on the entry pages). If you are the actor yourself or their representative and want something removed or corrected, write to us.",
 
       changesTitle: "Changes",
       changesText:
@@ -141,18 +141,18 @@ export const legal = {
 
       goingTitle: "How do I mark that I'm going to an event?",
       goingText:
-        "On the event page press «I'm going» — the event will show up in the «My events» section of your profile.",
+        "On the event page press “I'm going” — the event will show up in the “My events” section of your profile.",
 
       friendsTitle: "Friends",
       friendsBefore: "In the",
-      friendsLink: "«Friends»",
+      friendsLink: "“Friends”",
       friendsAfter:
         "section you can find other users by name or email and send them a friend request.",
 
       feedbackTitle: "Write to us",
       feedbackHint:
         "A question, an idea, or a series or actor we are missing — write to us, we read every message.",
-      searchContext: (query: string) => `Search: «${query}»`,
+      searchContext: (query: string) => `Search: “${query}”`,
     },
     cookies: {
       ariaLabel: "We use cookies",

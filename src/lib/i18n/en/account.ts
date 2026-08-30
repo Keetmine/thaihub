@@ -48,13 +48,17 @@ export const account = {
     heroArtistsHint: "seen in person",
     heroDays: (n: number) => `${n === 1 ? "day" : "days"} in Thailand`,
     heroDaysHint: "across your trips",
-    heroDramas: (n: number) => `${n === 1 ? "series" : "series"} finished`,
+    // «series» не меняется по числу, но параметр обязан остаться: тип
+    // функции задаёт en-словарь, а русскому переводу число нужно.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    heroDramas: (_n: number): string => "series finished",
     heroDramasHint: "marked as watched",
 
     chipGoing: "going",
     chipFavoriteEvents: "in favourites",
     chipPerformers: (n: number) => `favourite ${n === 1 ? "artist" : "artists"}`,
-    chipDramas: (n: number) => `${n === 1 ? "series" : "series"} on your list`,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    chipDramas: (_n: number): string => "series on your list",
     // Возвращаемый тип задан явно: иначе TypeScript выводит union из двух
     // строковых литералов, и русский перевод в него не укладывается.
     chipFriends: (n: number): string => (n === 1 ? "friend" : "friends"),
@@ -71,7 +75,7 @@ export const account = {
     topPerformers: "Seen live most often",
 
     artistLists: "My actor lists",
-    artistListsHint: "Start a list of your own — «seen live», «had a beer with»…",
+    artistListsHint: "Start a list of your own — “seen live”, “had a beer with”…",
     artistListsLocked: "Your own actor lists come with a subscription.",
     artistListsLockedCta: "Subscribe",
     listEmpty: "empty for now",
@@ -133,7 +137,7 @@ export const account = {
     telegramLinked: "Telegram connected.",
     telegramTaken: "This Telegram is already linked to another account.",
     telegramOnlyLogin:
-      "This is your only way of signing in — set a password on the «Security» tab first.",
+      "This is your only way of signing in — set a password on the “Security” tab first.",
     telegramConnected: (handle: string) =>
       `Connected${handle ? ` — @${handle}` : ""}. We send event reminders and news from your friends.`,
     telegramUnlink: "Unlink",
@@ -146,6 +150,7 @@ export const account = {
     telegramNotifyReplies: "Replies to my comments",
     telegramNotifyEvents: "Friends going to events",
     telegramNotifyBirthdays: "Birthdays of artists I follow",
+    telegramNotifyEpisodes: "New episodes of series I'm watching",
     telegramNotifyBroadcast: "Project news",
     telegramConnectHint:
       "Connect it to get reminders about events, ticket sales opening and news from your friends.",
@@ -157,7 +162,7 @@ export const account = {
     relinkTitle: "Move Telegram to this account?",
     relinkIntro: (handle: string, otherName: string) =>
       `Telegram${handle ? ` @${handle}` : ""} is already linked to another account${
-        otherName ? ` — «${otherName}»` : ""
+        otherName ? ` — “${otherName}”` : ""
       }. One Telegram can belong to only one account.`,
     relinkWhat: "What will happen",
     relinkLinks: "Telegram will be linked to the account you are in right now.",
@@ -165,7 +170,7 @@ export const account = {
     relinkLosses: (losses: string) => `Along with it you will lose: ${losses}.`,
     relinkLostPerformers: (n: number) => `${n} favourite ${n === 1 ? "actor" : "actors"}`,
     relinkLostEvents: (n: number) => `${n} saved ${n === 1 ? "event" : "events"}`,
-    relinkLostAttendances: (n: number) => `${n} «going» ${n === 1 ? "mark" : "marks"}`,
+    relinkLostAttendances: (n: number) => `${n} “going” ${n === 1 ? "mark" : "marks"}`,
     relinkLostTrips: (n: number) => `${n} ${n === 1 ? "trip" : "trips"}`,
     relinkNoLosses: "There is nothing in it — nothing to lose.",
     relinkConfirm: "Move it and delete the old one",
@@ -193,7 +198,7 @@ export const account = {
 
     deleteTitle: "Deleting your account",
     deleteText:
-      "The account will be deleted: the email and linked logins are released, and the profile is anonymised. It cannot be restored. Comments and reviews stay, signed «Deleted account».",
+      "The account will be deleted: the email and linked logins are released, and the profile is anonymised. It cannot be restored. Comments and reviews stay, signed “Deleted account”.",
     deleteConfirm: "Delete your account for good? This cannot be undone.",
     deleteLabel: "Delete for good",
     deleteBusy: "Deleting…",

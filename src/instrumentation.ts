@@ -28,6 +28,7 @@ export async function register() {
     sendPremiumExpiryReminders,
     sendPresaleReminders,
     sendBirthdayNotifications,
+    sendEpisodeNotifications,
   } = await import("@/lib/telegramNotifications");
 
   const runScheduler = async () => {
@@ -50,6 +51,8 @@ export async function register() {
       if (presale > 0) console.log(`presale reminders: sent ${presale}`);
       const birthdays = await sendBirthdayNotifications();
       if (birthdays > 0) console.log(`birthday notifications: sent ${birthdays}`);
+      const episodes = await sendEpisodeNotifications();
+      if (episodes > 0) console.log(`episode notifications: sent ${episodes}`);
     } catch (err) {
       console.warn(`telegram reminders failed: ${err instanceof Error ? err.message : err}`);
     }

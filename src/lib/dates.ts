@@ -193,13 +193,34 @@ export function formatCombinedDateList(dates: Date[], locale: Locale = "ru"): st
 }
 
 export function formatHumanDate(d: Date, locale: Locale = "ru"): string {
-  return d.toLocaleDateString(INTL_TAG[locale], {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: UTC,
-  });
+  return (
+    d
+      .toLocaleDateString(INTL_TAG[locale], {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: UTC,
+      })
+      // Русский Intl добавляет « г.» — в заголовках это шум, а во фразах
+      // вида «до …» его точка склеивалась с точкой предложения в «г..».
+      .replace(/\s?г\.$/, "")
+  );
+}
+
+/** «14 октября 2026» / «14 October 2026» — полная дата БЕЗ дня недели,
+ *  для подстановки внутрь фразы: «Подписка до <даты>». formatHumanDate
+ *  здесь не годится — его день недели стоит в именительном падеже и
+ *  после предлога читается как «до среда, …». */
+export function formatFullDate(d: Date, locale: Locale = "ru"): string {
+  return d
+    .toLocaleDateString(INTL_TAG[locale], {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: UTC,
+    })
+    .replace(/\s?г\.$/, "");
 }
 
 export function addDays(d: Date, days: number): Date {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { answerPreCheckoutQuery, sendTelegramMessage } from "@/lib/telegram";
+import { formatFullDate } from "@/lib/dates";
 import { extendPremium } from "@/lib/premium";
 import { notifyAdmins } from "@/lib/adminNotify";
 
@@ -34,6 +35,11 @@ const APP_URL = process.env.APP_URL ?? "https://myblhub.com";
 /** Телеграм владельца — на случай, если вопрос срочный и лично. */
 const OWNER_CONTACT = "@keetmine";
 
+/** Сколько тишины превращает переписку в НОВЫЙ разговор (И7): пока обе
+ *  стороны молчали меньше, автоподтверждение «сообщение у нас» не
+ *  повторяется — человек его уже видел (или с ним уже говорит админ). */
+const CONVERSATION_TTL_MS = 48 * 60 * 60 * 1000;
+
 /**
  * Метка адресата в пересланном обращении. По ней ответ админа находит
  * дорогу обратно: другого способа нет — Telegram в reply отдаёт только
@@ -57,7 +63,7 @@ export function replyTargetFromForwarded(text: string | undefined): string | nul
  *  это прямое нарушение требований Telegram, да и человеку непонятно. */
 const COMMAND_REPLIES: Record<string, string> = {
   "/start":
-    `Привет! Это бот <b>MyBLHub</b> — трекера концертов и фанмитов тайских актёров.\n\n` +
+    `Привет! Это бот сайта <b>MyBLHub</b> — трекера концертов и фанмитов тайских актёров.\n\n` +
     `Я присылаю напоминания о событиях из избранного, сигналы о старте продаж билетов и новости друзей.\n\n` +
     `Сайт: ${APP_URL}\n` +
     `Команды: /terms — условия, /support — поддержка`,
@@ -120,6 +126,18 @@ export async function POST(request: Request) {
           target,
           `💬 Ответ от MyBLHub:\n\n${rawText}`,
         ).catch(() => false);
+        // Разговор стал живым: следующие сообщения человека идут без
+        // автоподтверждения — на них отвечает админ, а не автомат.
+        if (delivered) {
+          const now = new Date();
+          await prisma.telegramChatState
+            .upsert({
+              where: { chatId: target },
+              create: { chatId: target, lastUserMessageAt: now, lastAdminReplyAt: now },
+              update: { lastAdminReplyAt: now },
+            })
+            .catch(() => {});
+        }
         await sendTelegramMessage(
           String(chatId),
           delivered
@@ -132,9 +150,12 @@ export async function POST(request: Request) {
   }
 
   // Любой другой текст — это человек, который пишет боту как живому
-  // адресату (чаще всего просьба про подписку). Бот отвечать не умеет,
-  // поэтому пересылаем админам и подтверждаем отправителю, что
-  // сообщение дошло — иначе оно просто пропадало.
+  // адресату (чаще всего просьба про подписку). Пересылаем админам, а
+  // отправителю подтверждаем получение — но один раз в начале
+  // разговора, а не на каждое сообщение (И7): три строки подряд
+  // получали три одинаковых «Спасибо!», и бот выглядел автоответчиком,
+  // которому всё равно, что ему пишут. После ответа админа
+  // автоподтверждений нет вовсе — это уже живой диалог.
   if (rawText && chatId) {
     const from = update.message?.from;
     const who = from?.username ? `@${from.username}` : (from?.first_name ?? String(chatId));
@@ -143,12 +164,33 @@ export async function POST(request: Request) {
       `✉️ Сообщение боту от ${who} (id ${chatId}):\n\n${rawText.slice(0, 800)}` +
         "\n\nЧтобы ответить — «Ответить» на это сообщение.",
     );
-    await sendTelegramMessage(
-      String(chatId),
-      "Спасибо! Сообщение у нас — ответим здесь же или на сайте. " +
-        `Если вопрос про подписку, можно сразу написать напрямую: ${APP_URL}/help ` +
-        `или ${OWNER_CONTACT}`,
-    ).catch(() => {});
+
+    const id = String(chatId);
+    const now = new Date();
+    const state = await prisma.telegramChatState.findUnique({ where: { chatId: id } });
+    // Разговор «живой», пока с последней реплики любой стороны прошло
+    // меньше CONVERSATION_TTL_MS; вернувшемуся после паузы человеку
+    // подтверждение уместно снова — его вопрос наверняка новый.
+    const lastActivityMs = state
+      ? Math.max(state.lastUserMessageAt.getTime(), state.lastAdminReplyAt?.getTime() ?? 0)
+      : null;
+    const isNewConversation =
+      lastActivityMs === null || now.getTime() - lastActivityMs > CONVERSATION_TTL_MS;
+    await prisma.telegramChatState
+      .upsert({
+        where: { chatId: id },
+        create: { chatId: id, lastUserMessageAt: now },
+        update: { lastUserMessageAt: now },
+      })
+      .catch(() => {});
+    if (isNewConversation) {
+      await sendTelegramMessage(
+        id,
+        "Спасибо! Сообщение у нас — ответим здесь же или на сайте. " +
+          `Если вопрос про подписку, можно написать через форму: ${APP_URL}/help — ` +
+          `или сразу в личку: ${OWNER_CONTACT}`,
+      ).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -191,7 +233,7 @@ export async function POST(request: Request) {
       if (update.message?.from) {
         await sendTelegramMessage(
           String(update.message.from.id),
-          `✅ Подписка MyBLHub активна до ${until.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}. Спасибо!`,
+          `✅ Подписка MyBLHub активна до ${formatFullDate(until)}. Спасибо!`,
         ).catch(() => {});
       }
     } else {

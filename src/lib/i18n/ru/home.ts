@@ -1,4 +1,5 @@
 import type { Dict } from "../en";
+import { pluralized } from "@/lib/plural";
 
 export const home: Dict["home"] = {
     eyebrow: "Главная",
@@ -20,7 +21,7 @@ export const home: Dict["home"] = {
     shared: "совместная",
     countdownToday: "уже идёт",
     countdownTomorrow: "завтра",
-    countdownDays: (days: number) => `через ${days} дней`,
+    countdownDays: (days: number) => `через ${pluralized(days, ["день", "дня", "дней"])}`,
     countdownMonth: "через месяц",
     countdownMonths: (months: number) => `через ${months} мес.`,
     paywallTitle: "Афиша и отметки «иду» — по подписке",

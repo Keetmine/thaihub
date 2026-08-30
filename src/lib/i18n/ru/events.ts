@@ -1,4 +1,5 @@
 import type { Dict } from "../en";
+import { plural, pluralized } from "@/lib/plural";
 
 export const events: Dict["events"] = {
     list: {
@@ -34,7 +35,8 @@ export const events: Dict["events"] = {
         viewMine: "Мои события",
         viewBirthdays: "Дни рождения",
         viewSeries: "Сериалы",
-        birthdayTitle: (name: string, age: number) => `${name} — ${age} лет`,
+        birthdayTitle: (name: string, age: number) =>
+            `${name} — ${age} ${plural(age, ["год", "года", "лет"])}`,
         more: (count: number) => `+${count} ещё`,
         monthSelect: "Месяц",
         yearSelect: "Год",
@@ -73,7 +75,7 @@ export const events: Dict["events"] = {
         paywallFeature: "Страницы событий",
         addToCalendar: "Добавить в календарь",
         tickets: "Билеты",
-        venue: "Локация:",
+        venue: "Площадка:",
         dateAndTime: "Дата и время:",
         ticketPrice: "Цена билетов:",
         presale: "Препродажа билетов:",
@@ -136,9 +138,9 @@ export const events: Dict["events"] = {
         myTicket: "Мой билет",
         friend: "Друг",
         oneFriendGoing: (name: string) => `${name} идёт`,
-        manyFriendsGoing: (count: number) => `${count} друзей идут`,
-        extraDates: (count: number) =>
-            `+${count} ${count === 1 ? "дата" : count < 5 ? "даты" : "дат"}`,
+        manyFriendsGoing: (count: number) =>
+            `${pluralized(count, ["друг", "друга", "друзей"])} ${plural(count, ["идёт", "идут", "идут"])}`,
+        extraDates: (count: number) => `+${count} ${plural(count, ["дата", "даты", "дат"])}`,
         lockedAria: "Событие доступно по подписке",
         lockedBadge: "По подписке",
         thaiTime: (zone: string, time: string) => `Тайское время. ${zone}: ${time}`,

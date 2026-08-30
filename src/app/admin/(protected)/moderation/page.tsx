@@ -209,7 +209,7 @@ export default async function AdminModerationPage({
     `/admin/moderation?tab=${tab}&page=${p}` +
     (tab === "reports" ? `&state=${reportState}` : "") +
     qParam;
-  const nothingFound = q ? "Ничего не нашлось." : null;
+  const nothingFound = q ? "Ничего не найдено." : null;
 
   let body: React.ReactNode;
 

@@ -62,7 +62,7 @@ export const SETTING_KEYS = [
     key: "admin_notify_email",
     group: "notifications",
     label: "Почта для тех же уведомлений",
-    hint: "Работает только когда настроен SMTP (SMTP_HOST/SMTP_FROM). Пусто — не слать.",
+    hint: "Работает только когда настроен SMTP (SMTP_HOST/SMTP_FROM)",
   },
 ] as const;
 

@@ -48,7 +48,7 @@ export const landing = {
     step2Body: "Actors, groups, series — add them to your favourites in one click.",
     step3Title: "Follow the events",
     step3Body:
-      "Mark «I'm going», get an .ics for your calendar, catch presales with the bot.",
+      "Mark “I'm going”, get an .ics for your calendar, catch presales with the bot.",
 
     finalTitleUser: "Good to see you again",
     finalTitleGuest: "Ready to start?",

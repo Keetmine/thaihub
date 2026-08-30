@@ -49,7 +49,10 @@ export default async function AdminSettingsPage() {
                           placeholder={s.hint}
                           className="form-control"
                         />
-                        <p className="small text-secondary mb-0 mt-1">{s.hint}. Пусто — дефолт.</p>
+                        {/* У части хинтов своя точка на конце — срезаем, иначе «…совсем.. Пусто». */}
+                        <p className="small text-secondary mb-0 mt-1">
+                          {s.hint.replace(/\.$/, "")}. Пусто — дефолт.
+                        </p>
                       </div>
                     ))}
                   </div>

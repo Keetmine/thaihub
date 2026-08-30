@@ -37,6 +37,8 @@ const KIND_ICONS: Record<string, string> = {
   FRIEND_GOING: "👥",
   PREMIUM_GRANTED: "✨",
   ACHIEVEMENT: "🏆",
+  PERFORMER_BIRTHDAY: "🎂",
+  EPISODE_AIRED: "📺",
 };
 
 // Лента активностей: приглашения в поездки, заявки в друзья, ответы и

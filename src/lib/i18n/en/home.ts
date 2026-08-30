@@ -23,13 +23,13 @@ export const home = {
     countdownDays: (days: number) => `in ${days} days`,
     countdownMonth: "in a month",
     countdownMonths: (months: number) => `in ${months} months`,
-    paywallTitle: "The event feed and going marks are for subscribers",
+    paywallTitle: "The event feed and “going” marks are for subscribers",
     paywallHint:
       "The full feed with dates and presales, a calendar and Telegram reminders.",
     paywallCta: "Learn more",
     emptyGoingTitle: "Nothing planned yet",
     emptyGoingHint:
-      "Find an event in the feed and mark «I'm going» — it will show up here as a poster.",
+      "Find an event in the feed and mark “I'm going” — it will show up here as a poster.",
     emptyGoingCta: "Browse the feed",
     emptyNewsTitle: "Nothing here yet",
     emptyNewsHint: "Add artists to your favourites and their releases will appear here.",

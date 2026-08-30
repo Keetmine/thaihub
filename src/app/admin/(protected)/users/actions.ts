@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
-import { formatHumanDate } from "@/lib/dates";
+import { formatFullDate } from "@/lib/dates";
 import { softDeleteUser } from "@/lib/userDeletion";
 
 /** Продлить подписку на месяц (от конца текущей, если ещё активна). */
@@ -26,7 +26,7 @@ export async function grantPremiumMonth(userId: string) {
     userId,
     kind: "PREMIUM_GRANTED",
     // Функцией: язык получателя известен внутри notifyUser, а не тут.
-    body: (t, locale) => t.notifications.premiumBody(formatHumanDate(until, locale)),
+    body: (t, locale) => t.notifications.premiumBody(formatFullDate(until, locale)),
     href: "/",
   });
   revalidatePath("/admin/users");

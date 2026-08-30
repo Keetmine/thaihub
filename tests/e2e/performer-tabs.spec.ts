@@ -8,7 +8,7 @@ test.use({ storageState: ADMIN_STORAGE_STATE });
  *
  * Проверять это обязательно: обновление сносит связи `deleteMany` и
  * создаёт заново из присланного. Пока сохранялось всё разом, это было
- * безобидно; с раздельными кнопками сохранение «Евентов» могло бы
+ * безобидно; с раздельными кнопками сохранение «Событий» могло бы
  * стереть сериалы, агентства и ссылки, если сервер не разберёт, какой
  * раздел ему прислали.
  */
@@ -32,14 +32,14 @@ test("сохранение одной вкладки не трогает ост�
     name: (document.querySelector('input[name="name"]') as HTMLInputElement)?.value,
   }));
 
-  // Сохраняем ТОЛЬКО вкладку «Евенты».
-  const eventsTab = page.getByRole("button", { name: "Евенты", exact: true });
-  test.skip(!(await eventsTab.count()), "нет вкладки «Евенты»");
+  // Сохраняем ТОЛЬКО вкладку «События».
+  const eventsTab = page.getByRole("button", { name: "События", exact: true });
+  test.skip(!(await eventsTab.count()), "нет вкладки «События»");
   await eventsTab.click();
-  await page.getByRole("button", { name: "Сохранить евенты" }).click();
+  await page.getByRole("button", { name: "Сохранить события" }).click();
   // Сохранение вкладки НЕ уводит в список — остаёмся на форме, и кнопка
   // возвращается из «Сохранение…».
-  await expect(page.getByRole("button", { name: "Сохранить евенты" })).toBeEnabled({
+  await expect(page.getByRole("button", { name: "Сохранить события" })).toBeEnabled({
     timeout: 20_000,
   });
   expect(page.url()).toContain("/edit");

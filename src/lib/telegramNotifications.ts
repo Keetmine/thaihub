@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { formatHumanDate, formatTime } from "@/lib/dates";
 import { eventHref } from "@/lib/eventSlug";
+import { dramaHref } from "@/lib/dramaSlug";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
+import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n";
 import { isPremiumActive } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { notifyUser } from "@/lib/notifications";
@@ -220,6 +223,92 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
       href: eventHref(event),
     });
   }
+}
+
+// Час по Бангкоку, после которого серию считаем вышедшей: точного
+// времени эфира в расписании нет (DramaEpisode.airDate — только дата),
+// а тайские сериалы выходят вечером. Уведомление в утро дня эфира было
+// бы враньём — серии ещё нет.
+const EPISODE_OUT_HOUR_BKK = 22;
+// Сколько прошедших дней добираем: простой поезда/деплой в вечер эфира
+// не должен съесть уведомление, дальше трёх дней оно уже не новость.
+const EPISODE_CATCHUP_DAYS = 3;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Уведомления о новых сериях (З1): отметил «Смотрю сейчас» — получаешь
+ * «Вышла серия 5 из 10» в колокольчик и, по переключателю
+ * `tgNotifyEpisodes`, в Telegram.
+ *
+ * Идёт через `notifyUser` — по тем же причинам, что и дни рождения
+ * (язык получателя, его настройки, запись на сайте). Название сериала
+ * замораживается в subject на языке получателя ЗДЕСЬ: notifyUser
+ * локализует фразу, но не данные.
+ *
+ * Дедуп — EpisodeNotification (userId+episodeId): планировщик
+ * просыпается каждые полчаса, а серия одна. Отметка ставится ПЕРЕД
+ * отправкой, гонку тиков судит уникальный ключ.
+ */
+export async function sendEpisodeNotifications(): Promise<number> {
+  const now = new Date();
+  // Бангкокское настенное «сейчас», разложенное в UTC-компоненты — как
+  // хранятся все даты (см. lib/dates.ts).
+  const bkk = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const todayMs = Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth(), bkk.getUTCDate());
+  // До вечернего часа сегодняшние серии не трогаем — только добор
+  // прошлых дней.
+  const lastAiredMs = bkk.getUTCHours() >= EPISODE_OUT_HOUR_BKK ? todayMs : todayMs - DAY_MS;
+
+  const episodes = await prisma.dramaEpisode.findMany({
+    where: {
+      airDate: {
+        gte: new Date(lastAiredMs - EPISODE_CATCHUP_DAYS * DAY_MS),
+        lte: new Date(lastAiredMs),
+      },
+    },
+    include: {
+      drama: { select: { id: true, title: true, titleRu: true, slug: true, episodes: true } },
+    },
+  });
+  if (episodes.length === 0) return 0;
+
+  const watchers = await prisma.dramaWatchStatus.findMany({
+    where: { dramaId: { in: [...new Set(episodes.map((e) => e.dramaId))] }, status: "WATCHING" },
+    select: { userId: true, dramaId: true, episodesWatched: true, user: { select: { locale: true } } },
+  });
+  if (watchers.length === 0) return 0;
+  const watchersByDrama = new Map<string, typeof watchers>();
+  for (const w of watchers) {
+    watchersByDrama.set(w.dramaId, [...(watchersByDrama.get(w.dramaId) ?? []), w]);
+  }
+
+  let sent = 0;
+  for (const episode of episodes) {
+    for (const watcher of watchersByDrama.get(episode.dramaId) ?? []) {
+      // Уже отметил эту серию (или дальше) просмотренной — новость
+      // опоздала, человек и так в курсе.
+      if (watcher.episodesWatched != null && watcher.episodesWatched >= episode.number) continue;
+
+      try {
+        await prisma.episodeNotification.create({
+          data: { userId: watcher.userId, episodeId: episode.id },
+        });
+      } catch {
+        continue; // уже уведомляли (или выиграл параллельный тик)
+      }
+
+      const locale = isLocale(watcher.user.locale) ? watcher.user.locale : DEFAULT_LOCALE;
+      await notifyUser({
+        userId: watcher.userId,
+        kind: "EPISODE_AIRED",
+        subject: dramaTitleForLocale(episode.drama, locale),
+        body: (t) => t.notifications.episodeBody(episode.number, episode.drama.episodes),
+        href: dramaHref(episode.drama),
+      });
+      sent += 1;
+    }
+  }
+  return sent;
 }
 
 /**

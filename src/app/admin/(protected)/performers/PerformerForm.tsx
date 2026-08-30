@@ -208,7 +208,7 @@ export default function PerformerForm({
           </TabButton>
         )}
         <TabButton active={effectiveTab === "events"} onClick={() => switchTab("events")}>
-          Евенты
+          События
         </TabButton>
 
         {type === "SOLO" && (
@@ -675,7 +675,7 @@ export default function PerformerForm({
       )}
 
       <div style={{ display: effectiveTab === "events" ? undefined : "none" }}>
-        <label className="form-label d-block" htmlFor="performer-form-eventIds">Евенты</label>
+        <label className="form-label d-block" htmlFor="performer-form-eventIds">События</label>
         <EntityMultiSelect id="performer-form-eventIds"
           name="eventIds"
           selectedVariant="card"
@@ -691,7 +691,7 @@ export default function PerformerForm({
         {!isCreating && (
           <div className="admin-form-actions">
             <SubmitButton
-              label="Сохранить евенты"
+              label="Сохранить события"
               busyLabel="Сохранение…"
               className="btn btn-primary"
               onClick={setScope("events")}
@@ -759,7 +759,7 @@ export default function PerformerForm({
             ? "● Есть несохранённые изменения — они пропадут, если уйти со страницы."
             : isCreating
               ? "Всё, что заполнено на вкладках, сохранится вместе."
-              : "Сериалы и евенты сохраняются своими кнопками на их вкладках."}
+              : "Сериалы и события сохраняются своими кнопками на их вкладках."}
         </span>
       </div>
       </form>

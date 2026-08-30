@@ -600,6 +600,8 @@ model DramaEpisode {
   airDate DateTime?
   title   String?
 
+  notifications EpisodeNotification[]
+
   @@unique([dramaId, number])
   // Под запрос «что выходит сегодня» на главной.
   @@index([airDate])
@@ -702,6 +704,10 @@ model User {
   // общий с событиями: повод ежедневный и нравится далеко не всем, а
   // «друзья идут на события» человек может хотеть оставить.
   tgNotifyBirthdays        Boolean         @default(true)
+  // Новые серии отмеченных «Смотрю сейчас» сериалов (З1). Свой
+  // переключатель по той же причине, что и у дней рождения: у
+  // выходящего сериала повод еженедельный, а то и чаще.
+  tgNotifyEpisodes         Boolean         @default(true)
   // Новости проекта из /admin/broadcast — раньше рассылка игнорировала
   // настройки и уходила всем с привязанным Telegram.
   tgNotifyBroadcast        Boolean         @default(true)
@@ -767,6 +773,7 @@ model User {
   telegramNotifications        TelegramNotification[]
   telegramPresaleNotifications TelegramPresaleNotification[]
   birthdayNotifications        BirthdayNotification[]
+  episodeNotifications         EpisodeNotification[]
   friendMutes                  FriendNotificationMute[]      @relation("MuteOwner")
   mutedByFriends               FriendNotificationMute[]      @relation("MuteTarget")
   eventNotes                   EventNote[]
@@ -1045,6 +1052,36 @@ model BirthdayNotification {
 
   @@unique([userId, performerId, year])
   @@index([performerId])
+}
+
+// Дедуп уведомлений «вышла серия» (З1): одна серия — одно уведомление
+// человеку, сколько бы раз планировщик ни просыпался. Уникальный ключ
+// заодно судит гонку двух пересёкшихся тиков — как у дней рождения.
+model EpisodeNotification {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episodeId String
+  episode   DramaEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, episodeId])
+  @@index([episodeId])
+}
+
+// Состояние разговора с ботом (И7): по нему вебхук решает, отвечать ли
+// автоподтверждением. Ключ — telegram chat id, НЕ наш userId: боту
+// пишут и незарегистрированные. Записи не чистятся — их по одной на
+// человека, когда-либо писавшего боту.
+model TelegramChatState {
+  chatId            String    @id
+  // Когда человек последний раз писал боту — от этого считается
+  // «тишина», после которой разговор считается новым.
+  lastUserMessageAt DateTime
+  // Когда админ последний раз отвечал: после ответа разговор живой, и
+  // автоподтверждения молчат до следующей паузы.
+  lastAdminReplyAt  DateTime?
+  updatedAt         DateTime  @updatedAt
 }
 
 model TelegramPresaleNotification {
@@ -1538,6 +1575,7 @@ enum NotificationKind {
   PREMIUM_GRANTED
   ACHIEVEMENT
   PERFORMER_BIRTHDAY
+  EPISODE_AIRED
 }
 
 model Notification {

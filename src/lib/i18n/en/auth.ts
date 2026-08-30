@@ -2,7 +2,7 @@ export const auth = {
     login: {
       metaTitle: "Sign in",
       metaDescription:
-        "Sign in to your account: favourite artists, «going» marks, the calendar and your trips — all where you left them.",
+        "Sign in to your account: favourite artists, “going” marks, the calendar and your trips — all where you left them.",
       title: "Sign in",
       telegramError: "Couldn't sign you in with Telegram — please try again",
       googleError: "Couldn't sign you in with Google — please try again",
@@ -53,7 +53,7 @@ export const auth = {
       sent: "If an account like that exists, an email with the link is already on its way. Check your inbox (and the spam folder).",
       smtpDown: "Automatic reset is temporarily unavailable — write to us through the",
       smtpFormLink: "contact form",
-      smtpAfter: ", we'll sort it out by hand.",
+      smtpAfter: " — we'll sort it out by hand.",
       backToLogin: "← Back to sign in",
     },
     resetEmail: {
@@ -78,10 +78,10 @@ export const auth = {
     welcome: {
       metaTitle: "Who do you love?",
       metaDescription:
-        "Step two of the setup: mark your favourite artists so the «My artists» tab and your favourites work from day one.",
+        "Step two of the setup: mark your favourite artists so the “My artists” tab and your favourites work from day one.",
       eyebrow: "Welcome",
       title: "Who do you love?",
-      lead: "Pick your favourite artists — their events will show up in the «My artists» tab, and your favourites will fill up from day one. You can change this at any point.",
+      lead: "Pick your favourite artists — their events will show up in the “My artists” tab, and your favourites will fill up from day one. You can change this at any point.",
       searchLabel: "Can't find yours? Search by name:",
       searchPlaceholder: "Start typing a name…",
       submit: "Save and go to the feed",

@@ -1,4 +1,5 @@
 import type { Dict } from "../en";
+import { plural } from "@/lib/plural";
 
 export const common: Dict["common"] = {
     all: "все →",
@@ -12,7 +13,7 @@ export const common: Dict["common"] = {
     nothingFound: "Ничего не найдено.",
     searchByName: "Поиск по названию…",
   loading: "Загружаем…",
-  notificationsUnread: (n: number) => `Уведомления: ${n} новых`,
+  notificationsUnread: (n: number) => `Уведомления: ${n} ${plural(n, ["новое", "новых", "новых"])}`,
   userFallback: "Пользователь",
   deletedAccount: "Удалённый аккаунт",
     year: "год",

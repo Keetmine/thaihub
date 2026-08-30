@@ -211,9 +211,9 @@ export default async function AdminImportsPage({
           <div className="surface p-4 h-100">
             <h2 className="section-heading mb-2">YouTube Music: дискография</h2>
             <p className="small text-secondary mb-3">
-              Ссылка на канал артиста — и /channel/UC…, и с хендлом
-              (music.youtube.com/@FREEZEDROP): по хендлу сами найдём id
-              канала. Заберём
+              Ссылка на канал артиста — и вида /channel/UC…, и с хендлом
+              (music.youtube.com/@FREEZEDROP): по хендлу id канала найдём
+              сами. Заберём
               релизы с обложками и годами, песни и ссылки на них. Исполнителя
               выбираем руками: по имени сопоставлять нельзя, «JASP.ER» и
               «Jasper» — разные строки, и ошибка привяжет чужие альбомы.
@@ -361,7 +361,7 @@ export default async function AdminImportsPage({
       </div>
 
       <h2 className="eyebrow mt-4 mb-2">События</h2>
-      <p className="small text-secondary mb-3">Афиша: концерты и фан-миты.</p>
+      <p className="small text-secondary mb-3">Афиша: концерты и фанмиты.</p>
       <div className="row g-3 mb-4">
         <div className="col-12">
           <div className="surface p-4 h-100">

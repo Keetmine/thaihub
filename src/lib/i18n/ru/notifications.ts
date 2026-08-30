@@ -14,9 +14,13 @@ export const notifications: Dict["notifications"] = {
     ACHIEVEMENT: (name: string) => `Новая ачивка: ${name}`,
     PREMIUM_GRANTED: "Подписка активна",
     PERFORMER_BIRTHDAY: (name: string) => `Сегодня день рождения у ${name}`,
+    EPISODE_AIRED: (drama: string) => `Новая серия «${drama}»`,
   },
 
   birthdayBody: (turns: number) => `Исполняется ${turns}.`,
+
+  episodeBody: (n: number, total: number | null) =>
+    total ? `Вышла серия ${n} из ${total}.` : `Вышла серия ${n}.`,
 
   premiumBody: (until: string) => `Открыты афиша, календарь и поездки — до ${until}.`,
 };

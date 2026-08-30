@@ -30,7 +30,7 @@ export const social = {
     emptyHint:
       "Find people you know by name or handle in the search above — and see what they are going to.",
     remove: "Remove from friends",
-    removeConfirm: (name: string) => `Remove «${name}» from your friends?`,
+    removeConfirm: (name: string) => `Remove “${name}” from your friends?`,
     backToProfile: "← Back to your profile",
   },
 
@@ -67,7 +67,7 @@ export const social = {
       `🔒 ${n} ${n === 1 ? "event" : "events"} — event lists come with a subscription.`,
     goingEmptyTitle: "Not going anywhere yet",
     goingEmptyHint: (name: string) =>
-      `Once ${name} marks an event as «going», it will show up here.`,
+      `Once ${name} marks an event as “going”, it will show up here.`,
 
     trips: "Trips",
     visibility: {

@@ -205,7 +205,7 @@ export async function runMdlPerformerImport(formData: FormData): Promise<void> {
         (r.filled.length ? `, заполнено — ${r.filled.join(", ")}` : ", новых полей нет") +
         (r.linksAdded ? `, ссылок +${r.linksAdded}` : "") +
         (r.linkConflicts
-          ? `, сеть занята у ${r.linkConflicts} ссыл. (у артиста другой хэндл — проверьте руками)`
+          ? `, сеть занята у ${r.linkConflicts} ссыл. (у артиста другой хендл — проверьте руками)`
           : "") +
         (r.dramasLinked ? `, привязано сериалов ${r.dramasLinked}` : "") +
         (r.dramasCreated ? `, заведено сериалов ${r.dramasCreated}` : "") +
