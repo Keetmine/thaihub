@@ -25,66 +25,13 @@ import TicketSection, { type TicketRow } from "./TicketSection";
 import { getCoTravelerIds } from "@/lib/coTravelers";
 import { isPremiumActive } from "@/lib/premium";
 import { pageMetadata } from "@/lib/seo";
+import { cache } from "react";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { locale, t } = await getT();
-  const { id } = await params;
-  const event = await prisma.event.findFirst({
-    where: slugOrIdWhere(id),
-    select: {
-      title: true,
-      venue: true,
-      description: true,
-      posterUrl: true,
-      slug: true,
-      occurrences: { orderBy: { startsAt: "asc" }, take: 1, select: { startsAt: true } },
-    },
-  });
-  if (!event)
-    return pageMetadata({
-      title: t.events.detail.metaTitleUnknown,
-      description: t.events.detail.metaDescriptionUnknown,
-    });
-  const date = event.occurrences[0]?.startsAt;
-  const when = date ? formatHumanDate(date, locale) : null;
-  return pageMetadata({
-    title: event.title,
-    description:
-      event.description?.slice(0, 160) ??
-      t.events.detail.metaDescription(event.title, when, event.venue),
-    path: `/event/${event.slug ?? id}`,
-    image: event.posterUrl,
-    type: "article",
-  });
-}
-
-
-export const dynamic = "force-dynamic";
-
-/** Groups occurrences that share the same start/end time-of-day (e.g. a
- *  run of shows all at "18:00–20:00" on consecutive dates) so they render
- *  as one combined date line instead of one full date per occurrence —
- *  occurrences with a distinct time of their own stay in their own
- *  single-item group and keep the full weekday date format. */
-function groupOccurrencesByTime(occurrences: EventOccurrence[]): EventOccurrence[][] {
-  const groups = new Map<string, EventOccurrence[]>();
-  for (const occ of occurrences) {
-    const timeOfDay = (d: Date) => `${d.getHours()}:${d.getMinutes()}`;
-    const key = `${timeOfDay(occ.startsAt)}-${occ.endsAt ? timeOfDay(occ.endsAt) : ""}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(occ);
-  }
-  return Array.from(groups.values());
-}
-
-export default async function EventDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { locale, t } = await getT();
-  const { id: rawId } = await params;
-  const event = await prisma.event.findFirst({
+// React.cache: generateMetadata и страница делят ОДИН запрос на
+// HTTP-запрос (как getCurrentUser в lib/userAuth.ts) — раньше метадата
+// ходила в базу отдельным узким select.
+const getEvent = cache(async (rawId: string) =>
+  prisma.event.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
       performers: {
@@ -117,7 +64,63 @@ export default async function EventDetailPage({
         },
       },
     },
+  }),
+);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { locale, t } = await getT();
+  const { id } = await params;
+  const event = await getEvent(id);
+  // notFound() именно здесь: метадата считается до флаша ответа, и
+  // несуществующий slug получает настоящий HTTP 404 — иначе loading.tsx
+  // успевал отдать 200-shell до notFound() в самой странице (soft-404).
+  if (!event) notFound();
+  const date = event.occurrences[0]?.startsAt;
+  const when = date ? formatHumanDate(date, locale) : null;
+  return pageMetadata({
+    title: event.title,
+    description:
+      event.description?.slice(0, 160) ??
+      t.events.detail.metaDescription(event.title, when, event.venue),
+    path: `/event/${event.slug ?? id}`,
+    image: event.posterUrl,
+    type: "article",
+    // С-4: robots.txt закрывает /event от обхода, но по внешней ссылке
+    // Google всё равно мог показать «голый» URL — noindex убирает и это.
+    // (Открыть события поиску — отдельное продуктовое решение.)
+    noIndex: true,
   });
+}
+
+
+export const dynamic = "force-dynamic";
+
+/** Groups occurrences that share the same start/end time-of-day (e.g. a
+ *  run of shows all at "18:00–20:00" on consecutive dates) so they render
+ *  as one combined date line instead of one full date per occurrence —
+ *  occurrences with a distinct time of their own stay in their own
+ *  single-item group and keep the full weekday date format. */
+function groupOccurrencesByTime(occurrences: EventOccurrence[]): EventOccurrence[][] {
+  const groups = new Map<string, EventOccurrence[]>();
+  for (const occ of occurrences) {
+    const timeOfDay = (d: Date) => `${d.getHours()}:${d.getMinutes()}`;
+    const key = `${timeOfDay(occ.startsAt)}-${occ.endsAt ? timeOfDay(occ.endsAt) : ""}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(occ);
+  }
+  return Array.from(groups.values());
+}
+
+export default async function EventDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { locale, t } = await getT();
+  const { id: rawId } = await params;
+  // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
+  // дёргается один раз на HTTP-запрос.
+  const event = await getEvent(rawId);
 
   if (!event) notFound();
 
@@ -149,25 +152,28 @@ export default async function EventDetailPage({
   let friendNotes: FriendNote[] = [];
   let ticketRows: TicketRow[] = [];
   if (currentUser) {
-    const [favorite, attendances, friendIds, coTravelerIds] = await Promise.all([
-      prisma.favoriteEvent.findUnique({
-        where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
-      }),
-      prisma.eventAttendance.findMany({
-        where: { userId: currentUser.id, eventId: event.id },
-        select: { occurrenceId: true },
-      }),
-      getFriendIds(currentUser.id),
-      getCoTravelerIds(currentUser.id),
-    ]);
+    // Первая волна: всё, что зависит только от юзера и события, — включая
+    // билеты, раньше ждавшие отдельным await.
+    const [favorite, attendances, friendIds, coTravelerIds, myTickets] =
+      await Promise.all([
+        prisma.favoriteEvent.findUnique({
+          where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
+        }),
+        prisma.eventAttendance.findMany({
+          where: { userId: currentUser.id, eventId: event.id },
+          select: { occurrenceId: true },
+        }),
+        getFriendIds(currentUser.id),
+        getCoTravelerIds(currentUser.id),
+        // «Мои билеты»: строка на каждую дату с отметкой «иду». Сами билеты
+        // — из EventTicket: они живут отдельно от отметок и переживают их.
+        prisma.eventTicket.findMany({
+          where: { userId: currentUser.id, eventId: event.id },
+          select: { occurrenceId: true, fileUrl: true },
+        }),
+      ]);
     isEventFavorited = !!favorite;
     goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
-    // «Мои билеты»: строка на каждую дату с отметкой «иду». Сами билеты
-    // — из EventTicket: они живут отдельно от отметок и переживают их.
-    const myTickets = await prisma.eventTicket.findMany({
-      where: { userId: currentUser.id, eventId: event.id },
-      select: { occurrenceId: true, fileUrl: true },
-    });
     const ticketByOccurrence = new Map(
       myTickets.filter((t) => t.occurrenceId).map((t) => [t.occurrenceId!, t.fileUrl]),
     );
@@ -183,33 +189,38 @@ export default async function EventDetailPage({
           : null;
       })
       .filter((r): r is TicketRow => r !== null);
-    if (friendIds.length > 0) {
-      const attendances = await prisma.eventAttendance.findMany({
-        where: { eventId: event.id, userId: { in: friendIds } },
-        select: { user: { select: { id: true, name: true, photoUrl: true } } },
-      });
-      // «Иду» per-дата — у идущего на все 3 дня будет 3 строки; в блоке
-      // «Друзья идут» человек выводится один раз.
-      friendsGoing = Array.from(new Map(attendances.map((a) => [a.user.id, a.user])).values());
-    }
 
-    // Заметки (Г6): своя + друзей с видимостью FRIENDS + со-путешественников
-    // по совместным поездкам с видимостью TRIP.
-    const notes = await prisma.eventNote.findMany({
-      where: {
-        eventId: event.id,
-        OR: [
-          { userId: currentUser.id },
-          ...(friendIds.length > 0
-            ? [{ userId: { in: friendIds }, visibility: "FRIENDS" as const }]
-            : []),
-          ...(coTravelerIds.length > 0
-            ? [{ userId: { in: coTravelerIds }, visibility: "TRIP" as const }]
-            : []),
-        ],
-      },
-      include: { user: { select: { name: true, photoUrl: true } } },
-    });
+    // Вторая волна: обе ждут только списков друзей/попутчиков из первой.
+    const [friendAttendances, notes] = await Promise.all([
+      friendIds.length > 0
+        ? prisma.eventAttendance.findMany({
+            where: { eventId: event.id, userId: { in: friendIds } },
+            select: { user: { select: { id: true, name: true, photoUrl: true } } },
+          })
+        : [],
+      // Заметки (Г6): своя + друзей с видимостью FRIENDS + со-путешественников
+      // по совместным поездкам с видимостью TRIP.
+      prisma.eventNote.findMany({
+        where: {
+          eventId: event.id,
+          OR: [
+            { userId: currentUser.id },
+            ...(friendIds.length > 0
+              ? [{ userId: { in: friendIds }, visibility: "FRIENDS" as const }]
+              : []),
+            ...(coTravelerIds.length > 0
+              ? [{ userId: { in: coTravelerIds }, visibility: "TRIP" as const }]
+              : []),
+          ],
+        },
+        include: { user: { select: { name: true, photoUrl: true } } },
+      }),
+    ]);
+    // «Иду» per-дата — у идущего на все 3 дня будет 3 строки; в блоке
+    // «Друзья идут» человек выводится один раз.
+    friendsGoing = Array.from(
+      new Map(friendAttendances.map((a) => [a.user.id, a.user])).values(),
+    );
     const own = notes.find((n) => n.userId === currentUser.id);
     ownNote = own ? { text: own.text, visibility: own.visibility } : null;
     friendNotes = notes

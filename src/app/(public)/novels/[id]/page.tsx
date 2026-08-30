@@ -9,19 +9,26 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { UserIcon } from "@/components/icons";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
+import { cache } from "react";
+
+// React.cache: generateMetadata и страница делят ОДИН запрос на
+// HTTP-запрос (как getCurrentUser в lib/userAuth.ts) — раньше метадата
+// ходила в базу отдельным узким select.
+const getNovel = cache(async (rawId: string) =>
+  prisma.novel.findFirst({
+    where: slugOrIdWhere(rawId),
+    include: { links: true, dramas: true },
+  }),
+);
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { t } = await getT();
-  const novel = await prisma.novel.findFirst({
-    where: slugOrIdWhere(id),
-    select: { title: true, description: true, coverUrl: true, author: true, slug: true },
-  });
-  if (!novel)
-    return pageMetadata({
-      title: t.catalog.novel.metaTitle,
-      description: t.catalog.novel.metaNotFound,
-    });
+  const novel = await getNovel(id);
+  // notFound() именно здесь: метадата считается до флаша ответа, и
+  // несуществующий slug получает настоящий HTTP 404 — иначе loading.tsx
+  // успевал отдать 200-shell до notFound() в самой странице (soft-404).
+  if (!novel) notFound();
   return pageMetadata({
     title: novel.title,
     description:
@@ -45,10 +52,9 @@ export default async function NovelPage({
 }) {
   const { id: rawId } = await params;
   const { t } = await getT();
-  const novel = await prisma.novel.findFirst({
-    where: slugOrIdWhere(rawId),
-    include: { links: true, dramas: true },
-  });
+  // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
+  // дёргается один раз на HTTP-запрос.
+  const novel = await getNovel(rawId);
   if (!novel) notFound();
 
   return (

@@ -33,47 +33,15 @@ import { isPremiumActive } from "@/lib/premium";
 import SeenLiveButton from "@/components/SeenLiveButton";
 import { toggleSeenLive } from "@/app/(public)/artists/seenActions";
 import { performerPhoto } from "@/lib/performerPhoto";
+import { cache } from "react";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: rawId } = await params;
-  const { t } = await getT();
-  const performer = await prisma.performer.findFirst({
-    where: slugOrIdWhere(rawId),
-    select: { name: true, realName: true, bio: true, photoUrl: true },
-  });
-  if (!performer)
-    return pageMetadata({
-      title: t.catalog.artist.metaTitle,
-      description: t.catalog.artist.metaNotFound,
-    });
-  return pageMetadata({
-    title: `${performer.name}${performer.realName ? ` (${performer.realName})` : ""}`,
-    description:
-      performer.bio?.slice(0, 160) ?? t.catalog.artist.metaDescription(performer.name),
-    path: `/artists/${rawId}`,
-    image: performer.photoUrl,
-    type: "article",
-  });
-}
-
-export default async function PerformerPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ events?: string }>;
-}) {
-  const { id: rawId } = await params;
-  const { locale, t } = await getT();
-  const { events: eventsTab } = await searchParams;
-  const showPastEvents = eventsTab === "past";
-  const performer = await prisma.performer.findFirst({
+// React.cache: generateMetadata и страница делят ОДИН запрос на
+// HTTP-запрос (как getCurrentUser в lib/userAuth.ts) — раньше метадата
+// ходила в базу отдельным узким select.
+const getPerformer = cache(async (rawId: string) =>
+  prisma.performer.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
       links: true,
@@ -104,7 +72,45 @@ export default async function PerformerPage({
       },
       mascots: { include: { mascot: true } },
     },
+  }),
+);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: rawId } = await params;
+  const { t } = await getT();
+  const performer = await getPerformer(rawId);
+  // notFound() именно здесь: метадата считается до флаша ответа, и
+  // несуществующий slug получает настоящий HTTP 404 — иначе loading.tsx
+  // успевал отдать 200-shell до notFound() в самой странице (soft-404).
+  if (!performer) notFound();
+  return pageMetadata({
+    title: `${performer.name}${performer.realName ? ` (${performer.realName})` : ""}`,
+    description:
+      performer.bio?.slice(0, 160) ?? t.catalog.artist.metaDescription(performer.name),
+    path: `/artists/${rawId}`,
+    image: performer.photoUrl,
+    type: "article",
   });
+}
+
+export default async function PerformerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ events?: string }>;
+}) {
+  const { id: rawId } = await params;
+  const { locale, t } = await getT();
+  const { events: eventsTab } = await searchParams;
+  const showPastEvents = eventsTab === "past";
+  // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
+  // дёргается один раз на HTTP-запрос.
+  const performer = await getPerformer(rawId);
   if (!performer) notFound();
   const id = performer.id;
   // Фото, а если его нет — обложка последнего релиза (см.
@@ -124,15 +130,40 @@ export default async function PerformerPage({
   const isBand = performer.type === "BAND";
   const isMascot = performer.type === "MASCOT";
 
-  // Маскоты актёра: привязанные напрямую + маскоты его пейрингов.
-  const pairingMascotOwners = isMascot
-    ? []
-    : await prisma.mascotOwner.findMany({
-        where: {
-          pairing: { OR: [{ performerAId: id }, { performerBId: id }] },
+  // Первая волна: все запросы зависят только от id артиста — гоним их
+  // одним Promise.all вместо четырёх последовательных await.
+  const [pairingMascotOwners, eventLinks, pairings, currentUser] =
+    await Promise.all([
+      // Маскоты актёра: привязанные напрямую + маскоты его пейрингов.
+      isMascot
+        ? []
+        : prisma.mascotOwner.findMany({
+            where: {
+              pairing: { OR: [{ performerAId: id }, { performerBId: id }] },
+            },
+            include: { mascot: true },
+          }),
+      prisma.eventPerformer.findMany({
+        where: { performerId: id },
+        include: {
+          event: {
+            include: {
+              performers: { include: { performer: true } },
+              occurrences: { orderBy: { startsAt: "asc" } },
+            },
+          },
         },
-        include: { mascot: true },
-      });
+      }),
+      // Pairings this performer is part of — solo-only, nice-to-have, additive.
+      isBand
+        ? []
+        : prisma.pairing.findMany({
+            where: { OR: [{ performerAId: id }, { performerBId: id }] },
+            include: { performerA: true, performerB: true },
+            orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+          }),
+      getCurrentUser(),
+    ]);
   const mascotCards = new Map<
     string,
     { id: string; slug: string | null; name: string; photoUrl: string | null }
@@ -140,47 +171,39 @@ export default async function PerformerPage({
   for (const m of [...performer.mascots, ...pairingMascotOwners]) {
     mascotCards.set(m.mascot.id, m.mascot);
   }
-
-  const eventLinks = await prisma.eventPerformer.findMany({
-    where: { performerId: id },
-    include: {
-      event: {
-        include: {
-          performers: { include: { performer: true } },
-          occurrences: { orderBy: { startsAt: "asc" } },
-        },
-      },
-    },
-  });
   const performerEvents = eventLinks.flatMap((l) =>
     l.event.occurrences.map((occ) =>
       flattenOccurrence({ ...occ, event: l.event }),
     ),
   );
-
-  // Pairings this performer is part of — solo-only, nice-to-have, additive.
-  const pairings = isBand
-    ? []
-    : await prisma.pairing.findMany({
-        where: { OR: [{ performerAId: id }, { performerBId: id }] },
-        include: { performerA: true, performerB: true },
-        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      });
   const currentPairings = pairings.filter((p) => p.status === "CURRENT");
   const pastPairings = pairings.filter((p) => p.status === "PAST");
 
-  const currentUser = await getCurrentUser();
-  // Отметка «видела вживую» — ручная, не зависит от событий афиши.
-  const seenLive = currentUser
-    ? !!(await prisma.performerSeen.findUnique({
-        where: { userId_performerId: { userId: currentUser.id, performerId: performer.id } },
-        select: { id: true },
-      }))
-    : false;
-  // Списки пользователя для кнопки «+ в список» рядом с сердечком.
-  const myLists = currentUser
-    ? (
-        await prisma.performerList.findMany({
+  // Вторая волна: пользовательские отметки — все ждут только
+  // currentUser и уже загруженные события/сериалы, между собой не
+  // связаны.
+  const eventIds = performerEvents.map((ev) => ev.id);
+  const occIds = performerEvents.map((ev) => ev.occurrenceId);
+  const [
+    seenLiveRow,
+    myListsRaw,
+    favorite,
+    favoritedEventIds,
+    goingEventIds,
+    statusByDramaId,
+  ] = await Promise.all([
+    // Отметка «видела вживую» — ручная, не зависит от событий афиши.
+    currentUser
+      ? prisma.performerSeen.findUnique({
+          where: {
+            userId_performerId: { userId: currentUser.id, performerId: performer.id },
+          },
+          select: { id: true },
+        })
+      : null,
+    // Списки пользователя для кнопки «+ в список» рядом с сердечком.
+    currentUser
+      ? prisma.performerList.findMany({
           where: { userId: currentUser.id },
           select: {
             id: true,
@@ -189,17 +212,28 @@ export default async function PerformerPage({
           },
           orderBy: { title: "asc" },
         })
-      ).map((l) => ({ id: l.id, title: l.title, hasPerformer: l.items.length > 0 }))
-    : [];
-  let isFavorited = false;
-  if (currentUser) {
-    const favorite = await prisma.favoritePerformer.findUnique({
-      where: {
-        userId_performerId: { userId: currentUser.id, performerId: id },
-      },
-    });
-    isFavorited = !!favorite;
-  }
+      : [],
+    currentUser
+      ? prisma.favoritePerformer.findUnique({
+          where: {
+            userId_performerId: { userId: currentUser.id, performerId: id },
+          },
+        })
+      : null,
+    getFavoritedEventIds(eventIds, currentUser?.id),
+    getGoingOccurrenceIds(occIds, currentUser?.id),
+    getDramaWatchStatuses(
+      performer.dramas.map((pd) => pd.dramaId),
+      currentUser?.id,
+    ),
+  ]);
+  const seenLive = !!seenLiveRow;
+  const myLists = myListsRaw.map((l) => ({
+    id: l.id,
+    title: l.title,
+    hasPerformer: l.items.length > 0,
+  }));
+  const isFavorited = !!favorite;
 
   const now = new Date();
   // Многодневный фестиваль — ОДНА строка с «+N дат»: список событий
@@ -214,17 +248,6 @@ export default async function PerformerPage({
     performerEvents
       .filter((ev) => ev.startsAt < now)
       .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime()),
-  );
-  const eventIds = performerEvents.map((ev) => ev.id);
-  const occIds = performerEvents.map((ev) => ev.occurrenceId);
-  const [favoritedEventIds, goingEventIds] = await Promise.all([
-    getFavoritedEventIds(eventIds, currentUser?.id),
-    getGoingOccurrenceIds(occIds, currentUser?.id),
-  ]);
-
-  const statusByDramaId = await getDramaWatchStatuses(
-    performer.dramas.map((pd) => pd.dramaId),
-    currentUser?.id,
   );
 
   // Newest first by release year — dramas with no known year (yet to be

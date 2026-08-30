@@ -53,48 +53,18 @@ import {
   startOfDay,
 } from "@/lib/dates";
 import { getT } from "@/lib/i18n";
+import { cache } from "react";
 
 export const dynamic = "force-dynamic";
 
 // Сколько тегов видно до «ещё N» — примерно одна строка на десктопе.
 const TAGS_VISIBLE = 6;
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: rawId } = await params;
-  const { t, locale } = await getT();
-  const drama = await prisma.drama.findFirst({
-    where: slugOrIdWhere(rawId),
-    select: { title: true, titleRu: true, year: true, synopsis: true, synopsisRu: true, posterUrl: true },
-  });
-  if (!drama)
-    return pageMetadata({
-      title: t.catalog.drama.metaTitle,
-      description: t.catalog.drama.metaNotFound,
-    });
-  return pageMetadata({
-    title: `${dramaTitleForLocale(drama, locale)}${drama.year ? ` (${drama.year})` : ""}`,
-    description:
-      dramaSynopsisForLocale(drama, locale)?.slice(0, 160) ??
-      t.catalog.drama.metaDescription(dramaTitleForLocale(drama, locale)),
-    path: `/dramas/${rawId}`,
-    image: drama.posterUrl,
-    type: "article",
-  });
-}
-
-export default async function DramaDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: rawId } = await params;
-  const { locale, t } = await getT();
-
-  const drama = await prisma.drama.findFirst({
+// React.cache: generateMetadata и страница делят ОДИН запрос на
+// HTTP-запрос (как getCurrentUser в lib/userAuth.ts) — раньше метадата
+// ходила в базу отдельным узким select.
+const getDrama = cache(async (rawId: string) =>
+  prisma.drama.findFirst({
     where: slugOrIdWhere(rawId),
     include: {
       // _count.events — маркер популярности актёра для сортировки каста
@@ -117,52 +87,46 @@ export default async function DramaDetailPage({
       relatedTo: { include: { drama: true } },
       episodeList: { orderBy: { number: "asc" } },
     },
+  }),
+);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: rawId } = await params;
+  const { t, locale } = await getT();
+  const drama = await getDrama(rawId);
+  // notFound() именно здесь: метадата считается до флаша ответа, и
+  // несуществующий slug получает настоящий HTTP 404 — иначе loading.tsx
+  // успевал отдать 200-shell до notFound() в самой странице (soft-404).
+  if (!drama) notFound();
+  return pageMetadata({
+    title: `${dramaTitleForLocale(drama, locale)}${drama.year ? ` (${drama.year})` : ""}`,
+    description:
+      dramaSynopsisForLocale(drama, locale)?.slice(0, 160) ??
+      t.catalog.drama.metaDescription(dramaTitleForLocale(drama, locale)),
+    path: `/dramas/${rawId}`,
+    image: drama.posterUrl,
+    type: "article",
   });
+}
+
+export default async function DramaDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: rawId } = await params;
+  const { locale, t } = await getT();
+
+  // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
+  // дёргается один раз на HTTP-запрос.
+  const drama = await getDrama(rawId);
 
   if (!drama) notFound();
-
-  // Средняя оценка из наших отзывов — в шапку, рядом с MDL.
-  const ratingAgg = await prisma.review.aggregate({
-    where: { dramaId: drama.id },
-    _avg: { rating: true },
-    _count: { rating: true },
-  });
-  const ourRating = ratingAgg._count.rating > 0 ? ratingAgg._avg.rating : null;
-  const ourRatingCount = ratingAgg._count.rating;
   const id = drama.id;
-
-  const dramaEvents = await prisma.event.findMany({
-    where: { dramaId: id },
-    include: {
-      performers: { include: { performer: true } },
-      occurrences: { orderBy: { startsAt: "asc" } },
-    },
-  });
-  const eventsRows = groupByEvent(
-    dramaEvents
-      .flatMap((ev) =>
-        ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })),
-      )
-      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
-  );
-  const events = eventsRows.map((e) => e.row);
-
-  const currentUser = await getCurrentUser();
-  let watchStatus = null as Awaited<
-    ReturnType<typeof prisma.dramaWatchStatus.findUnique>
-  >;
-  if (currentUser) {
-    watchStatus = await prisma.dramaWatchStatus.findUnique({
-      where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
-    });
-  }
-
-  const eventIds = events.map((ev) => ev.id);
-  const occIds = events.map((ev) => ev.occurrenceId);
-  const [favoritedEventIds, goingEventIds] = await Promise.all([
-    getFavoritedEventIds(eventIds, currentUser?.id),
-    getGoingOccurrenceIds(occIds, currentUser?.id),
-  ]);
 
   // Related Content с MDL: связь направленная, показываем обе стороны.
   const relatedItems = [
@@ -175,33 +139,75 @@ export default async function DramaDetailPage({
       .map((r) => ({ drama: r.drama, relation: r.relation })),
   ];
 
-  // «Понравился этот — посмотрите ещё» (З4): по общему касту и жанрам;
-  // сиквелы и прочий Related сюда не попадают — они выше своим блоком.
-  const similarDramas = await findSimilarDramas({
-    id: drama.id,
-    genres: drama.genres,
-    tags: drama.tags,
-    performerIds: drama.performers.map((pd) => pd.performerId),
-    excludeIds: relatedItems.map((r) => r.drama.id),
-  });
-  // Кнопка статуса на карточках рекомендаций — как у сериалов на
-  // странице артиста.
-  const similarStatuses = await getDramaWatchStatuses(
-    similarDramas.map((s) => s.id),
-    currentUser?.id,
+  // Первая волна: всё, что зависит только от самого сериала, — одним
+  // Promise.all вместо четырёх последовательных await.
+  const [ratingAgg, dramaEvents, currentUser, similarDramas] =
+    await Promise.all([
+      // Средняя оценка из наших отзывов — в шапку, рядом с MDL.
+      prisma.review.aggregate({
+        where: { dramaId: id },
+        _avg: { rating: true },
+        _count: { rating: true },
+      }),
+      prisma.event.findMany({
+        where: { dramaId: id },
+        include: {
+          performers: { include: { performer: true } },
+          occurrences: { orderBy: { startsAt: "asc" } },
+        },
+      }),
+      getCurrentUser(),
+      // «Понравился этот — посмотрите ещё» (З4): по общему касту и жанрам;
+      // сиквелы и прочий Related сюда не попадают — они выше своим блоком.
+      findSimilarDramas({
+        id,
+        genres: drama.genres,
+        tags: drama.tags,
+        performerIds: drama.performers.map((pd) => pd.performerId),
+        excludeIds: relatedItems.map((r) => r.drama.id),
+      }),
+    ]);
+  const ourRating = ratingAgg._count.rating > 0 ? ratingAgg._avg.rating : null;
+  const ourRatingCount = ratingAgg._count.rating;
+  const eventsRows = groupByEvent(
+    dramaEvents
+      .flatMap((ev) =>
+        ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })),
+      )
+      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
   );
+  const events = eventsRows.map((e) => e.row);
+  const eventIds = events.map((ev) => ev.id);
+  const occIds = events.map((ev) => ev.occurrenceId);
 
-  const visitedLocationIds = new Set<string>();
-  if (currentUser && drama.locations.length > 0) {
-    const visits = await prisma.locationVisit.findMany({
-      where: {
-        userId: currentUser.id,
-        locationId: { in: drama.locations.map((dl) => dl.locationId) },
-      },
-      select: { locationId: true },
-    });
-    for (const v of visits) visitedLocationIds.add(v.locationId);
-  }
+  // Вторая волна: пользовательские отметки — ждут только currentUser и
+  // результаты первой волны, между собой не связаны.
+  const [watchStatus, favoritedEventIds, goingEventIds, similarStatuses, visits] =
+    await Promise.all([
+      currentUser
+        ? prisma.dramaWatchStatus.findUnique({
+            where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
+          })
+        : null,
+      getFavoritedEventIds(eventIds, currentUser?.id),
+      getGoingOccurrenceIds(occIds, currentUser?.id),
+      // Кнопка статуса на карточках рекомендаций — как у сериалов на
+      // странице артиста.
+      getDramaWatchStatuses(
+        similarDramas.map((s) => s.id),
+        currentUser?.id,
+      ),
+      currentUser && drama.locations.length > 0
+        ? prisma.locationVisit.findMany({
+            where: {
+              userId: currentUser.id,
+              locationId: { in: drama.locations.map((dl) => dl.locationId) },
+            },
+            select: { locationId: true },
+          })
+        : [],
+    ]);
+  const visitedLocationIds = new Set(visits.map((v) => v.locationId));
 
   // У сериала может быть несколько студий (DramaAgency); легаси-поле
   // agency подставляется, если связей ещё нет.

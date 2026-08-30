@@ -20,6 +20,29 @@ import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { categoryEmoji } from "@/lib/locationCategories";
 import { getT } from "@/lib/i18n";
+import { cache } from "react";
+
+// React.cache: generateMetadata и страница делят ОДИН запрос на
+// HTTP-запрос (как getCurrentUser в lib/userAuth.ts) — раньше метадата
+// ходила в базу отдельным узким select.
+const getLocation = cache(async (rawId: string) =>
+  prisma.location.findFirst({
+    where: slugOrIdWhere(rawId),
+    include: {
+      links: { orderBy: { createdAt: "asc" } },
+      dramas: {
+        include: { drama: true },
+        orderBy: { drama: { title: "asc" } },
+      },
+      events: {
+        include: {
+          performers: { include: { performer: true } },
+          occurrences: { orderBy: { startsAt: "asc" } },
+        },
+      },
+    },
+  }),
+);
 
 export async function generateMetadata({
   params,
@@ -28,15 +51,11 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const { t } = await getT();
-  const location = await prisma.location.findFirst({
-    where: slugOrIdWhere(id),
-    select: { name: true, description: true, photoUrl: true, slug: true },
-  });
-  if (!location)
-    return pageMetadata({
-      title: t.catalog.location.metaTitle,
-      description: t.catalog.location.metaNotFound,
-    });
+  const location = await getLocation(id);
+  // notFound() именно здесь: метадата считается до флаша ответа, и
+  // несуществующий slug получает настоящий HTTP 404 — иначе loading.tsx
+  // успевал отдать 200-shell до notFound() в самой странице (soft-404).
+  if (!location) notFound();
   return pageMetadata({
     title: location.name,
     description:
@@ -57,33 +76,33 @@ export default async function LocationDetailPage({
   const { id: rawParam } = await params;
   const { t } = await getT();
 
-  const location = await prisma.location.findFirst({
-    where: slugOrIdWhere(rawParam),
-    include: {
-      links: { orderBy: { createdAt: "asc" } },
-      dramas: {
-        include: { drama: true },
-        orderBy: { drama: { title: "asc" } },
-      },
-      events: {
-        include: {
-          performers: { include: { performer: true } },
-          occurrences: { orderBy: { startsAt: "asc" } },
-        },
-      },
-    },
-  });
+  // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
+  // дёргается один раз на HTTP-запрос.
+  const location = await getLocation(rawParam);
 
   if (!location) notFound();
   const id = location.id;
 
-  // Другие места съёмок тех же сериалов: с одной локации логично уйти
-  // смотреть соседние — фанаты обходят их одной поездкой.
   const dramaIds = location.dramas.map((dl) => dl.dramaId);
-  const relatedLocations =
+  const locationEventsRows = groupByEvent(
+    location.events
+      .flatMap((ev) =>
+        ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })),
+      )
+      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
+  );
+  const locationEvents = locationEventsRows.map((e) => e.row);
+  const eventIds = locationEvents.map((ev) => ev.id);
+  const occIds = locationEvents.map((ev) => ev.occurrenceId);
+
+  // Первая волна: соседние локации зависят только от самой локации, а
+  // текущий пользователь — вообще ни от чего; раньше шли друг за другом.
+  const [relatedLocations, currentUser] = await Promise.all([
+    // Другие места съёмок тех же сериалов: с одной локации логично уйти
+    // смотреть соседние — фанаты обходят их одной поездкой.
     dramaIds.length === 0
       ? []
-      : await prisma.location.findMany({
+      : prisma.location.findMany({
           where: {
             id: { not: id },
             createdByUserId: null,
@@ -102,48 +121,42 @@ export default async function LocationDetailPage({
           },
           orderBy: { name: "asc" },
           take: 12,
-        });
-
-  const currentUser = await getCurrentUser();
-  let isVisited = false;
-  if (currentUser) {
-    const visit = await prisma.locationVisit.findUnique({
-      where: { userId_locationId: { userId: currentUser.id, locationId: id } },
-    });
-    isVisited = !!visit;
-  }
-  // Списки мест пользователя для «+ в список» рядом с «была здесь».
-  // Кнопку показываем только при наличии списков: пустое состояние
-  // AddToListButton написано про списки актёров.
-  const myPlaceLists = currentUser
-    ? (
-        await prisma.placeList.findMany({
-          where: { userId: currentUser.id },
-          select: {
-            id: true,
-            title: true,
-            items: { where: { locationId: id }, select: { locationId: true }, take: 1 },
-          },
-          orderBy: { title: "asc" },
-        })
-      ).map((l) => ({ id: l.id, title: l.title, hasPerformer: l.items.length > 0 }))
-    : [];
-
-  const locationEventsRows = groupByEvent(
-    location.events
-      .flatMap((ev) =>
-        ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })),
-      )
-      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
-  );
-  const locationEvents = locationEventsRows.map((e) => e.row);
-  const eventIds = locationEvents.map((ev) => ev.id);
-  const occIds = locationEvents.map((ev) => ev.occurrenceId);
-  const [favoritedIds, goingIds, friendIds] = await Promise.all([
-    getFavoritedEventIds(eventIds, currentUser?.id),
-    getGoingOccurrenceIds(occIds, currentUser?.id),
-    getFriendIds(currentUser?.id),
+        }),
+    getCurrentUser(),
   ]);
+
+  // Вторая волна: пользовательские отметки — все ждут только currentUser.
+  const [visit, myPlaceListsRaw, favoritedIds, goingIds, friendIds] =
+    await Promise.all([
+      currentUser
+        ? prisma.locationVisit.findUnique({
+            where: { userId_locationId: { userId: currentUser.id, locationId: id } },
+          })
+        : null,
+      // Списки мест пользователя для «+ в список» рядом с «была здесь».
+      // Кнопку показываем только при наличии списков: пустое состояние
+      // AddToListButton написано про списки актёров.
+      currentUser
+        ? prisma.placeList.findMany({
+            where: { userId: currentUser.id },
+            select: {
+              id: true,
+              title: true,
+              items: { where: { locationId: id }, select: { locationId: true }, take: 1 },
+            },
+            orderBy: { title: "asc" },
+          })
+        : [],
+      getFavoritedEventIds(eventIds, currentUser?.id),
+      getGoingOccurrenceIds(occIds, currentUser?.id),
+      getFriendIds(currentUser?.id),
+    ]);
+  const isVisited = !!visit;
+  const myPlaceLists = myPlaceListsRaw.map((l) => ({
+    id: l.id,
+    title: l.title,
+    hasPerformer: l.items.length > 0,
+  }));
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(
     occIds,
     friendIds,
