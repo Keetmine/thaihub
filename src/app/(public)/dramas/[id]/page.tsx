@@ -764,52 +764,52 @@ export default async function DramaDetailPage({
         <ReviewsAndComments kind="drama" id={drama.id} />
       </div>
 
-      {/* «Понравился этот — посмотрите ещё» (З4) — в самом низу, после
-          отзывов (просьба владельца): дочитал страницу — вот куда идти
-          дальше. Карточки те же, что у сериалов на странице артиста:
-          постер 2:3, название, год и кнопка статуса просмотра. */}
+      {/* «Вам может понравиться» (З4) — в самом низу, после отзывов
+          (просьба владельца): дочитал страницу — вот куда идти дальше.
+          Карточки как у сериалов на странице артиста (постер 2:3,
+          название, год, кнопка статуса), но сеткой на всю ширину, без
+          горизонтального скролла: шесть штук и так помещаются. Причину
+          рекомендации не показываем — тоже просьба владельца. */}
       {similarDramas.length > 0 && (
-        <div className="mt-4">
-          <h2 className="section-heading mb-2">{t.catalog.drama.similar}</h2>
-          <div className="poster-row thin-scroll">
+        <div className="mt-5">
+          <h2 className="section-heading mb-3">{t.catalog.drama.similar}</h2>
+          <div className="row g-3">
             {similarDramas.map((sim) => (
-              <div key={sim.id} style={{ position: "relative" }}>
-                <AppLink href={dramaHref(sim)} className="text-decoration-none d-block">
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      aspectRatio: "2 / 3",
-                      borderRadius: "0.5rem",
-                      background: "var(--bs-secondary-bg)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {sim.posterUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        loading="lazy"
-                        decoding="async"
-                        src={sim.posterUrl}
-                        alt=""
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
+              <div key={sim.id} className="col-4 col-md-2">
+                <div style={{ position: "relative" }}>
+                  <AppLink href={dramaHref(sim)} className="text-decoration-none d-block">
+                    <div
+                      style={{
+                        position: "relative",
+                        width: "100%",
+                        aspectRatio: "2 / 3",
+                        borderRadius: "0.5rem",
+                        background: "var(--bs-secondary-bg)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {sim.posterUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          loading="lazy"
+                          decoding="async"
+                          src={sim.posterUrl}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </div>
+                    <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                      {dramaTitleForLocale(sim, locale)}
+                    </p>
+                    {sim.year && <p className="small text-secondary mb-0">{sim.year}</p>}
+                  </AppLink>
+                  <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                    <DramaStatusButton
+                      dramaId={sim.id}
+                      status={similarStatuses.get(sim.id)?.status ?? null}
+                    />
                   </div>
-                  <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
-                    {dramaTitleForLocale(sim, locale)}
-                  </p>
-                  <p className="small text-secondary mb-0">
-                    {sim.sharedCast > 0
-                      ? t.catalog.drama.similarCast(sim.sharedCast)
-                      : (sim.year ?? sim.sharedGenres.slice(0, 2).join(", "))}
-                  </p>
-                </AppLink>
-                <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
-                  <DramaStatusButton
-                    dramaId={sim.id}
-                    status={similarStatuses.get(sim.id)?.status ?? null}
-                  />
                 </div>
               </div>
             ))}
