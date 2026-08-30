@@ -34,22 +34,36 @@ export default function EventPhotosField({
 
   async function uploadFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+
+    // Лимит проверяем ДО похода на сервер: раньше файл сначала
+    // загружался, а лишний просто не попадал в rows — на диске оставался
+    // сирота. Лишние отрезаем сразу и говорим об этом.
+    const remaining = EVENT_PHOTOS_MAX - rows.length;
+    const batch = Array.from(files).slice(0, Math.max(0, remaining));
+    setError(
+      batch.length < files.length ? `Не больше ${EVENT_PHOTOS_MAX} фото — лишние не загружались` : null,
+    );
+    if (batch.length === 0) {
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
     setUploading(true);
-    setError(null);
     try {
-      for (const file of Array.from(files)) {
-        const body = new FormData();
-        body.set("file", file);
-        const res = await fetch("/api/upload", { method: "POST", body });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(uploadErrorMessage(t, data, t.widgets.file.failed));
-          continue;
-        }
-        setRows((prev) =>
-          prev.length >= EVENT_PHOTOS_MAX ? prev : [...prev, { url: data.url }],
-        );
+      // Одна пачка — один запрос: серверная ручка принимает до трёх
+      // файлов за раз и сама держит тот же потолок (см. /api/upload).
+      const body = new FormData();
+      for (const file of batch) body.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(uploadErrorMessage(t, data, t.widgets.file.failed));
+        return;
       }
+      const urls: string[] = Array.isArray(data.urls) ? data.urls : [data.url];
+      setRows((prev) =>
+        [...prev, ...urls.map((url) => ({ url }))].slice(0, EVENT_PHOTOS_MAX),
+      );
     } catch {
       setError(t.widgets.file.failed);
     } finally {

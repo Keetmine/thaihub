@@ -2,8 +2,31 @@ import { access, mkdir, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import { IMAGE_WIDTHS, variantName } from "@/lib/imageVariants";
+import { fetchPublicUrl } from "@/lib/urlGuard";
 
 const UPLOADS_ROOT = path.join(process.cwd(), "public", "uploads");
+
+/**
+ * Имя файла из ЧУЖОГО URL нельзя пускать в path.join как есть: после
+ * decodeURIComponent из "%2e%2e%2f" вылезает "../", и writeFile уехал
+ * бы за пределы public/uploads (вплоть до перезаписи кода). Поэтому:
+ * только последний сегмент (basename), только безобидные символы,
+ * без ведущих точек. Пустой остаток — значит имя было мусором.
+ */
+function sanitizeRemoteName(raw: string): string {
+  const base = path.basename(raw);
+  return base.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^\.+/, "");
+}
+
+/** Финальный пояс: собранный путь обязан остаться внутри root. Бросает,
+ *  если санитизация выше каким-то образом не справилась. */
+function resolveInside(root: string, ...segments: string[]): string {
+  const full = path.resolve(root, ...segments);
+  if (full !== path.resolve(root) && !full.startsWith(path.resolve(root) + path.sep)) {
+    throw new Error(`path escapes uploads root: ${segments.join("/")}`);
+  }
+  return full;
+}
 
 // Same allowlist as the manual admin upload endpoint (src/app/api/upload/
 // route.ts) — no image/svg+xml, which can carry an executable <script>
@@ -45,7 +68,11 @@ export async function writeWebpVariants(
       // обещает браузеру файл по имени, а не по выгоде: не найдя его,
       // браузер не возьмёт `src`, а покажет дыру. Лишний килобайт на
       // диске дешевле пропавшего постера.
-      await writeFile(path.join(dir, variantName(filename, width)), resized);
+      //
+      // resolveInside: filename у вызывающих либо randomUUID, либо уже
+      // санитизирован, но копия не должна уметь выйти из dir ни при
+      // каком будущем вызове.
+      await writeFile(resolveInside(dir, variantName(filename, width)), resized);
     } catch (err) {
       console.warn(`writeWebpVariants: ${filename} @${width} — ${err instanceof Error ? err.message : err}`);
     }
@@ -80,20 +107,22 @@ export async function downloadRemoteImage(url: string | null, folder: string): P
 
   let remoteName: string;
   try {
-    remoteName = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "");
+    // decode ДО санитизации: "%2e%2e%2f" разворачивается в "../" уже
+    // после split по "/", и без sanitizeRemoteName ушёл бы в path.join.
+    remoteName = sanitizeRemoteName(decodeURIComponent(new URL(url).pathname.split("/").pop() ?? ""));
   } catch {
     return url;
   }
   if (!remoteName) return url;
 
   const base = remoteName.replace(/\.[a-zA-Z0-9]+$/, "");
-  const dir = path.join(UPLOADS_ROOT, folder);
+  const dir = resolveInside(UPLOADS_ROOT, folder);
 
   // Проверяем обе возможные локальные версии: сконвертированную .webp и
   // (для гифок) исходное расширение.
   for (const name of [`${base}.webp`, remoteName]) {
     try {
-      await access(path.join(dir, name));
+      await access(resolveInside(dir, name));
       return `/uploads/${folder}/${name}`;
     } catch {
       // not on disk under this name — keep checking / fall through
@@ -101,7 +130,9 @@ export async function downloadRemoteImage(url: string | null, folder: string): P
   }
 
   try {
-    const res = await fetch(url);
+    // fetchPublicUrl: адрес картинки приходит из чужого HTML (blscene,
+    // фандом-вики, og:image) — без проверки это готовый SSRF в свою сеть.
+    const res = await fetchPublicUrl(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const contentType = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
     if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
@@ -113,7 +144,7 @@ export async function downloadRemoteImage(url: string | null, folder: string): P
     const filename = ext === ".webp" ? `${base}.webp` : remoteName;
 
     await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, filename), buffer);
+    await writeFile(resolveInside(dir, filename), buffer);
     await writeWebpVariants(dir, filename, buffer);
     return `/uploads/${folder}/${filename}`;
   } catch (err) {

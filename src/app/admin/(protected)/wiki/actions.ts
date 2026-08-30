@@ -6,13 +6,17 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
 import { logAudit, diffRecords } from "@/lib/audit";
+import { sanitizeWikiHtml } from "./wikiSanitize";
 
 function getFields(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("Укажите заголовок статьи");
   return {
     title,
-    content: String(formData.get("content") ?? ""),
+    // Чистим на входе, а не только на рендере: в базе не должно лежать
+    // ничего, что нельзя отдать наружу (см. wikiSanitize.ts — почему
+    // «только админы» не аргумент).
+    content: sanitizeWikiHtml(String(formData.get("content") ?? "")),
     published: String(formData.get("published") ?? "") === "on",
   };
 }

@@ -4,6 +4,7 @@ import BackLink from "@/components/BackLink";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
+import { sanitizeWikiHtml } from "@/app/admin/(protected)/wiki/wikiSanitize";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -33,8 +34,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export const dynamic = "force-dynamic";
 
-// Вики-статья: контент — HTML из админ-редактора (пишут только админы,
-// поэтому dangerouslySetInnerHTML безопасен по построению).
+// Вики-статья: контент — HTML из админ-редактора. Санитизируется и на
+// сохранении (admin/wiki/actions.ts), и здесь на рендере: второй пояс
+// прикрывает статьи, записанные в базу до появления санитайзера, — им
+// не нужна миграция, чтобы стать безопасными.
 export default async function WikiArticlePage({
   params,
 }: {
@@ -53,7 +56,7 @@ export default async function WikiArticlePage({
       <h1 className="display-1-tight mt-3 mb-4" style={{ fontSize: "2.25rem" }}>
         {article.title}
       </h1>
-      <div className="wiki-content" dangerouslySetInnerHTML={{ __html: article.content }} />
+      <div className="wiki-content" dangerouslySetInnerHTML={{ __html: sanitizeWikiHtml(article.content) }} />
     </div>
   );
 }

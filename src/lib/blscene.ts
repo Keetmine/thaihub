@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import type { Browser } from "playwright";
+import { assertPublicHttpUrl, fetchPublicUrl } from "@/lib/urlGuard";
 
 // Scraper for blscene.com's "where was X filmed" pages — a public,
 // straightforward-HTML WordPress site listing BL drama filming locations.
@@ -32,7 +33,10 @@ export type BlsceneDrama = {
 };
 
 async function fetchHtml(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
+  // Сюда приходят только адреса blscene.com (индекс и ссылки с него),
+  // но провалидированный fetch ничего не стоит — а если однажды сюда
+  // протечёт чужой адрес, он не сможет увести нас во внутреннюю сеть.
+  const res = await fetchPublicUrl(url, { headers: { "User-Agent": UA } });
   if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
   return res.text();
 }
@@ -105,6 +109,32 @@ export async function scrapeBlsceneDrama(url: string): Promise<BlsceneDrama> {
   return { title, year, posterUrl, synopsis, mydramalistUrl, sourceUrl: url, locations };
 }
 
+/**
+ * Хосты, на которые вообще имеет смысл ходить за координатами Google
+ * Maps. Ссылку сюда вставляет ПОЛЬЗОВАТЕЛЬ (места в списках/поездках),
+ * поэтому одного запрета приватных адресов мало: без allowlist сервер
+ * можно было бы гонять по любым публичным URL (и даже открывать их в
+ * headless-браузере в resolveMapsCoords). Не-Google ссылка координат в
+ * гугловском формате всё равно не даст — extractCoordsFromText ищет
+ * только !3d!4d и @lat,lng, — так что allowlist ничего легального не
+ * ломает: и blscene-импорт, и ручной ввод несут именно эти хосты.
+ */
+function isAllowedMapsHost(parsed: URL): boolean {
+  const host = parsed.hostname.toLowerCase();
+  const suffixes = ["google.com", "goo.gl", "g.co"];
+  return suffixes.some((s) => host === s || host.endsWith(`.${s}`));
+}
+
+/** null вместо броска: контракт резолверов — «координат нет», и
+ *  вызывающие (импорт, экшен списков) продолжают без координат. */
+function checkMapsUrl(url: string): boolean {
+  try {
+    return isAllowedMapsHost(assertPublicHttpUrl(url));
+  } catch {
+    return false;
+  }
+}
+
 function extractCoordsFromText(text: string): { lat: number; lng: number } | null {
   let decoded = text;
   try {
@@ -136,6 +166,10 @@ export async function resolveMapsCoordsViaHttp(
 
   let current = url;
   for (let hop = 0; hop < 5; hop++) {
+    // Каждый хоп — под проверкой: и первый (пользовательский) адрес, и
+    // адреса из Location-заголовков. Иначе безобидный goo.gl мог бы
+    // отредиректить на http://10.0.0.1/… — и мы бы туда сходили.
+    if (!checkMapsUrl(current)) return null;
     let res: Response;
     try {
       res = await fetch(current, {
@@ -182,6 +216,10 @@ export async function resolveMapsCoords(
 ): Promise<{ lat: number; lng: number } | null> {
   const direct = extractCoordsFromText(url);
   if (direct) return direct;
+
+  // Браузерный fallback опаснее голого fetch (goto исполняет JS и сам
+  // ходит по редиректам), поэтому НИКУДА, кроме Google, не навигируемся.
+  if (!checkMapsUrl(url)) return null;
 
   const page = await browser.newPage();
   try {

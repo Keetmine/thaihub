@@ -2,9 +2,21 @@
 
 - **`/wiki`** — публичный индекс всех опубликованных статей
   (`WikiArticle.published`), **`/wiki/[slug]`** — сама статья
-  (HTML из rich-text редактора админки, `dangerouslySetInnerHTML` —
-  контент только от админов). Оба пути открыты без логина (см.
+  (HTML из rich-text редактора админки через
+  `dangerouslySetInnerHTML`). Оба пути открыты без логина (см.
   [auth.md](auth.md)); ссылки живут в футере.
+- **Санитизация**: HTML статьи прогоняется через `sanitize-html`
+  (`sanitizeWikiHtml` в `src/app/admin/(protected)/wiki/wikiSanitize.ts`)
+  **дважды** — при сохранении в экшенах и при рендере `/wiki/[slug]`.
+  Второй пояс делает безопасными статьи, записанные до появления
+  санитайзера, без миграции по базе. Allowlist собран по тому, что
+  реально генерит `RichTextEditor` (p/div/br, h2–h4, списки, b/i/u,
+  ссылки http/https, картинки только `/uploads/…` или https, цвет и
+  фон через ограниченный `style`, `font[color]` переводится в
+  `span[style]`); `on*`-атрибуты, `javascript:`, скрипты и посторонний
+  CSS вычищаются. «Пишут только админы» — не защита: угнанная сессия
+  или вставленный в contenteditable чужой HTML доехали бы до публичной
+  страницы как есть.
 - **Админка** (`/admin/wiki`) — CRUD статей с `RichTextEditor`
   (contenteditable + execCommand: заголовки, начертания, цвета,
   картинки через /api/upload), флаг «опубликовано»; список — с поиском

@@ -6,6 +6,7 @@
 // «Оригинал», «Размер», «Метки» — из блока инфо.
 
 import { chromium } from "playwright";
+import { fetchPublicUrl } from "@/lib/urlGuard";
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
@@ -129,12 +130,15 @@ export async function fetchFicbookHtml(url: string): Promise<string> {
   );
 }
 
-/** og:image со страницы оригинала — фикбук своих обложек не отдаёт. */
+/** og:image со страницы оригинала — фикбук своих обложек не отдаёт.
+ *  Адрес «оригинала» берётся из /away?url=… на странице фанфика, то есть
+ *  фактически произвольный: ходим только через fetchPublicUrl (проверка
+ *  каждого редирект-хопа), иначе это SSRF по любому адресу. */
 export async function fetchOriginalCover(originalUrl: string): Promise<string | null> {
   try {
-    const res = await fetch(originalUrl, {
+    const res = await fetchPublicUrl(originalUrl, {
       headers: { "User-Agent": UA },
-      signal: AbortSignal.timeout(15000),
+      timeoutMs: 15000,
     });
     if (!res.ok) return null;
     const html = await res.text();

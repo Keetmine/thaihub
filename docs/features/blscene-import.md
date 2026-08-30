@@ -117,6 +117,16 @@ existing ones.
 
 **Google Maps link resolution:**
 
+- Оба резолвера (`resolveMapsCoordsViaHttp` и браузерный
+  `resolveMapsCoords`) ходят ТОЛЬКО на google.com (с поддоменами),
+  goo.gl и g.co — allowlist в `src/lib/blscene.ts` поверх общей
+  SSRF-защиты `src/lib/urlGuard.ts`. Это важно, потому что те же
+  функции резолвят maps-ссылки, введённые пользователем (см.
+  [place-lists.md](place-lists.md)): без allowlist сервер можно было бы
+  гонять по произвольным адресам, включая внутреннюю сеть. HTTP-резолв
+  перепроверяет **каждый** редирект-хоп; чужой хост даёт `null`
+  («координат нет»), импорт продолжается.
+
 - Long-form `google.com/maps/place/...` URLs already carry coordinates in
   the URL itself (`!3d{lat}!4d{lng}` or `@{lat},{lng},{zoom}z` patterns) —
   resolved via plain regex, no browser needed.

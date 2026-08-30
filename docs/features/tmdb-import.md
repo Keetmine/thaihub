@@ -254,6 +254,20 @@ tpop.fandom.com (`tpopFandomImport` → `performers/`) and the Wikipedia
 agency importer (`wikipediaAgencyImport` → `agencies/`) — each with its
 own folder under `public/uploads/`.
 
+- **Безопасность скачивания**: адрес картинки приходит из чужого HTML,
+  поэтому `downloadRemoteImage` ходит через `fetchPublicUrl`
+  (`src/lib/urlGuard.ts`) — http/https only, приватные/loopback-адреса
+  запрещены, каждый редирект-хоп перепроверяется. Имя файла после
+  `decodeURIComponent` санитизируется (`basename` + допустимые символы,
+  без ведущих точек), и итоговый путь проверяется на принадлежность
+  `public/uploads` — `%2e%2e%2f` в имени не выведет запись за корень.
+- **Файлы-сироты** (загруженные, но так и не привязанные ни к одной
+  записи — загрузка идёт до сабмита формы) вычищает
+  `scripts/cleanup-orphan-uploads.ts`: без флагов печатает список,
+  `--apply` удаляет. Ссылки ищет сканом всех текстовых колонок БД (в
+  т.ч. HTML вики-статей), уменьшенные копии (`-20/-200/-400`) живы,
+  пока жив оригинал; файлы моложе суток и любой сбой чтения БД —
+  ничего не удаляем.
 - **Filename = the remote URL's own last path segment** (TMDB's image
   paths are already unique, content-addressed-looking ids like
   `kL8HP4KyRl0AmSg0MMhcnJhpX78.jpg`), so re-syncing the same person/show
