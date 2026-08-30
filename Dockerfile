@@ -10,6 +10,32 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
+# Тонкий node_modules для рантайма: полный (~1 ГБ) в образ не тащим.
+# --omit=dev выкидывает dev-обвязку (eslint + @typescript-eslint,
+# @types/*-мусор), но НАМЕРЕННО оставляет всё, что нужно проду:
+#   - prisma CLI + @prisma/engines — `prisma migrate deploy` на старте
+#     контейнера (docker-entrypoint.sh) и его транзитивные deps
+#     (dotenv для prisma.config.ts, c12 через @prisma/config);
+#   - playwright — рантайм-скрейперы (src/lib/mdlClient.ts, blscene/GMMTV
+#     в админке) делают chromium.launch() при обработке запроса;
+#   - sharp, next, react и остальные прод-зависимости.
+# tsx (разовые скрипты: `docker compose exec app npx tsx scripts/...`) —
+# devDependency, доставляем отдельно, версию пиним из lockfile. Ставим под
+# alias-именем (tsx-cli@npm:tsx): прямое `npm install tsx --omit=dev` пакет
+# НЕ ставит — npm видит его в devDependencies и omit съедает даже явный
+# аргумент. Бинарь всё равно линкуется как node_modules/.bin/tsx, так что
+# `npx tsx` работает как раньше.
+# typescript и @playwright/test npm ставит даже с --omit=dev (опциональные
+# peer-deps prisma/@prisma/client и next) — рантайму они не нужны:
+# prisma.config.ts грузится через c12/jiti без tsc, тестов в образе нет.
+FROM node:22-slim AS prod-deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev \
+  && npm install --no-save --no-audit --no-fund --omit=dev \
+    "tsx-cli@npm:tsx@$(node -p "require('./package-lock.json').packages['node_modules/tsx'].version")" \
+  && rm -rf node_modules/typescript node_modules/@playwright
+
 FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -29,9 +55,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Prisma CLI (used below to run migrations on container start) isn't one of
 # them, and neither are its own transitive deps (e.g. dotenv, c12 — verified
 # by testing a `prisma migrate deploy` run with those missing, which fails).
-# Copying the full node_modules is simpler and safer than chasing every
-# transitive dep by hand.
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+# So on top of the standalone output we lay the prod-only node_modules from
+# the prod-deps stage (same lockfile → same versions as the traced files it
+# overwrites; a full superset of them, minus dev tooling).
+COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Chromium для рантайм-Playwright: blscene/GMMTV-кнопки админки делают
 # chromium.launch() при обработке запроса — без браузера в образе они

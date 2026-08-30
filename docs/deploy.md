@@ -9,7 +9,10 @@
 ## Первичная установка
 
 1. **DNS**: у регистратора A-запись `myblhub.com` → IP сервера
-   (+ при желании `www` → CNAME на `myblhub.com`).
+   **и** запись для `www` (CNAME на `myblhub.com` или такая же A-запись) —
+   Caddy отдаёт `www.myblhub.com` → permanent-редирект на apex и для этого
+   выпускает www-сертификат Let's Encrypt; без DNS-записи выпуск будет
+   вечно ретраиться (сам apex при этом работает).
 2. **Сервер** (Ubuntu, под root):
    ```bash
    bash <(curl -fsSL https://raw.githubusercontent.com/Keetmine/thaihub/main/deploy/setup-server.sh)
@@ -52,6 +55,12 @@
    иначе Login Widget не отрисуется.
 
 ## .env на сервере
+
+`POSTGRES_PASSWORD` **обязателен**: у compose больше нет дефолтного пароля,
+без переменной любой `docker compose ...` падает с ошибкой
+`set POSTGRES_PASSWORD in .env` (это намеренно — слабый дефолт `thaitrack`
+убран). Менять пароль после инициализации тома БД нельзя без ручного
+`ALTER USER` в Postgres.
 
 ```
 POSTGRES_PASSWORD=<длинный случайный>
@@ -103,6 +112,31 @@ SMTP_FROM=admin@myblhub.com
 
 Локально `docker compose up --build` по-прежнему собирает из исходников —
 переменная `APP_IMAGE` не задана, и compose берёт локальный тег.
+
+В образ едет не полный `node_modules` (~1 ГБ), а тонкий прод-слой
+(стадия `prod-deps` в Dockerfile, `npm ci --omit=dev`): dev-обвязка
+(eslint, `@playwright/test`, typescript) выброшена, но prisma CLI
+(миграции на старте), tsx (разовые скрипты), playwright+chromium
+(скрейперы) и `src/generated` (prisma-клиент) на месте — детали и
+причины в комментариях Dockerfile.
+
+## Лимиты памяти
+
+Сервер — 4 ГБ, у каждого сервиса в docker-compose.yml стоит `mem_limit`
+(app 2g, db 1g, caddy/backup по 256m), чтобы один контейнер не утащил
+всю память и не уронил остальных. Если app начнёт упираться в лимит
+(OOM-kill в `docker inspect`), сначала смотреть на chromium-скрейперы.
+
+## Security-заголовки
+
+HSTS (без preload), nosniff, `X-Frame-Options: DENY`, Referrer-Policy и
+Permissions-Policy отдаёт Next на все маршруты (`headers()` в
+next.config.ts). Там же — `Content-Security-Policy-Report-Only`:
+черновая политика, которая ничего не блокирует, а только пишет нарушения
+в консоль браузера. Боевой enforcing CSP — отдельная задача: сначала
+обкатать report-only на проде (Метрика, GTM/GA4, Sentry, телеграм-виджет,
+инлайн-скрипты Next). `/uploads/*` раздаёт Caddy мимо Next, поэтому
+nosniff для них продублирован в Caddyfile.
 
 ## Автодеплой (GitHub Actions)
 

@@ -2,9 +2,14 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Сервер 4 ГБ: лимиты не дают одному контейнеру (обычно next-сборке
+    # или разбушевавшемуся chromium) утащить всю память и уронить соседей.
+    mem_limit: 1g
     environment:
       POSTGRES_USER: thaitrack
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-thaitrack}
+      # Дефолта нет намеренно: без POSTGRES_PASSWORD в .env compose падает
+      # с внятной ошибкой, а не молча поднимает базу со слабым паролем.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: thaitrack
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -22,6 +27,7 @@ services:
     image: ${APP_IMAGE:-myblhub-app:local}
     build: .
     restart: unless-stopped
+    mem_limit: 2g
     depends_on:
       db:
         condition: service_healthy
@@ -31,7 +37,7 @@ services:
       # — «зарегистрирован 18 авг», «оплачено» — должны совпадать с тем,
       # что видит аудитория, иначе вечерние отметки уезжали на сутки.
       TZ: Europe/Moscow
-      DATABASE_URL: postgresql://thaitrack:${POSTGRES_PASSWORD:-thaitrack}@db:5432/thaitrack?schema=public
+      DATABASE_URL: postgresql://thaitrack:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/thaitrack?schema=public
       # Счётчик Яндекс.Метрики: без переменной он не рендерится вовсе,
       # поэтому локальная разработка не попадает в статистику.
       YANDEX_METRIKA_ID: ${YANDEX_METRIKA_ID:-}
@@ -77,6 +83,7 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    mem_limit: 256m
     depends_on:
       - app
     ports:
@@ -100,11 +107,12 @@ services:
   backup:
     image: postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 256m
     depends_on:
       db:
         condition: service_healthy
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD:-thaitrack}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - ./backups:/backups
       - uploads_data:/uploads:ro

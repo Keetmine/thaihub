@@ -33,6 +33,9 @@
 	# агрессивно — имена контентно-стабильные (uuid / TMDB-id).
 	handle /uploads/* {
 		header Cache-Control "public, max-age=2592000, immutable"
+		# Эти ответы идут мимо Next (и его security-заголовков из
+		# next.config.ts), поэтому nosniff дублируем здесь.
+		header X-Content-Type-Options "nosniff"
 		root * /srv
 		file_server
 	}
@@ -40,4 +43,14 @@
 	handle {
 		reverse_proxy app:3000
 	}
+}
+
+# www → apex: один канонический адрес. Для www.{$DOMAIN} Caddy выпускает
+# отдельный сертификат Let's Encrypt — в DNS обязана быть запись
+# www → сервер (A или CNAME на apex), иначе Caddy будет безуспешно
+# ретраить выпуск (apex-сайт при этом работает как работал). При
+# DOMAIN=localhost имя www.localhost Caddy считает локальным и выдаёт
+# self-signed от внутреннего CA — локальный запуск не ломается.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
 }
