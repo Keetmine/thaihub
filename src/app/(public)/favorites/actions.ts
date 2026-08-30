@@ -84,16 +84,37 @@ export async function setDramaWatchStatus(dramaId: string, status: DramaWatchSta
   // «Просмотрено» вручную — значит просмотрено всё: досчитывать серии
   // после этого человек не должен. Если число серий неизвестно, оставляем
   // счётчик как есть — врать нечем.
-  const total =
+  const [total, current] = await Promise.all([
     status === "COMPLETED"
-      ? (await prisma.drama.findUnique({ where: { id: dramaId }, select: { episodes: true } }))
-          ?.episodes ?? null
-      : null;
+      ? prisma.drama
+          .findUnique({ where: { id: dramaId }, select: { episodes: true } })
+          .then((d) => d?.episodes ?? null)
+      : Promise.resolve(null),
+    prisma.dramaWatchStatus.findUnique({
+      where: { userId_dramaId: { userId: user.id, dramaId } },
+      select: { status: true },
+    }),
+  ]);
 
+  // Колокольчик серий (З1): при ПЕРЕХОДЕ в «Смотрю сейчас» включается,
+  // при уходе из него — гаснет. Только при смене статуса: повторный клик
+  // по тому же статусу не должен перебивать выключенный руками
+  // колокольчик.
+  const statusChanged = current?.status !== status;
   await prisma.dramaWatchStatus.upsert({
     where: { userId_dramaId: { userId: user.id, dramaId } },
-    update: { status, ...(total ? { episodesWatched: total } : {}) },
-    create: { userId: user.id, dramaId, status, episodesWatched: total },
+    update: {
+      status,
+      ...(total ? { episodesWatched: total } : {}),
+      ...(statusChanged ? { notifyEpisodes: status === "WATCHING" } : {}),
+    },
+    create: {
+      userId: user.id,
+      dramaId,
+      status,
+      episodesWatched: total,
+      notifyEpisodes: status === "WATCHING",
+    },
   });
 
   revalidatePath("/");
@@ -160,14 +181,52 @@ export async function setDramaEpisodesWatched(
 
   await prisma.dramaWatchStatus.upsert({
     where: { userId_dramaId: { userId: user.id, dramaId } },
-    update: { episodesWatched: watched, status },
-    create: { userId: user.id, dramaId, status, episodesWatched: watched },
+    update: {
+      episodesWatched: watched,
+      status,
+      // Автосмена статуса двигает и колокольчик (как в setDramaWatchStatus);
+      // при том же статусе не трогаем — выключенный руками не включаем.
+      ...(current?.status !== status ? { notifyEpisodes: status === "WATCHING" } : {}),
+    },
+    create: {
+      userId: user.id,
+      dramaId,
+      status,
+      episodesWatched: watched,
+      notifyEpisodes: status === "WATCHING",
+    },
   });
 
   revalidatePath("/");
   revalidatePath("/account");
   revalidatePath(`/dramas/${dramaId}`);
   return { watched, status };
+}
+
+/**
+ * Колокольчик «уведомлять о новых сериях» на странице сериала (З1):
+ * переключает подписку per-сериал. Без статуса просмотра подписка
+ * заводит «Смотрю сейчас» — хотеть новости серий и значит смотреть.
+ */
+export async function toggleEpisodeNotifications(
+  dramaId: string,
+): Promise<{ enabled: boolean }> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const current = await prisma.dramaWatchStatus.findUnique({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    select: { notifyEpisodes: true },
+  });
+  const enabled = !(current?.notifyEpisodes ?? false);
+  await prisma.dramaWatchStatus.upsert({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    update: { notifyEpisodes: enabled },
+    create: { userId: user.id, dramaId, status: "WATCHING", notifyEpisodes: true },
+  });
+
+  revalidatePath(`/dramas/${dramaId}`);
+  return { enabled };
 }
 
 export async function clearDramaWatchStatus(dramaId: string) {

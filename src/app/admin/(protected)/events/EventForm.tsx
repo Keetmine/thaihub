@@ -7,6 +7,7 @@ import FormSection from "@/components/admin/FormSection";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
+import EventPhotosField, { type EventPhotoRow } from "./EventPhotosField";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { searchDramaOptions } from "../dramas/actions";
 import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
@@ -64,6 +65,8 @@ export default function EventForm({
     presaleUrl: string;
     ticketPrice: string;
     posterUrl: string;
+    seatingPhotos: EventPhotoRow[];
+    benefitPhotos: EventPhotoRow[];
   };
   submitLabel: string;
 }) {
@@ -153,6 +156,26 @@ export default function EventForm({
       </div>
 
       <FileDropzone name="posterUrl" label="Постер" defaultValue={v?.posterUrl} />
+      </FormSection>
+
+      {/* Ж9: типизированные фото, не общая галерея — на странице события
+          каждый список выводится своим блоком внизу, перед описанием. */}
+      <FormSection
+        title="Схема зала и бенефиты"
+        hint="картинки для покупающих билеты — выводятся внизу страницы события"
+      >
+        <EventPhotosField
+          name="seatingPhotos"
+          label="Схема зала и цены"
+          hint="Рассадка и стоимость секций — блок «Схема зала и цены»."
+          defaultValue={v?.seatingPhotos}
+        />
+        <EventPhotosField
+          name="benefitPhotos"
+          label="Бенефиты билетов"
+          hint="Что дают за какой билет — блок «Бенефиты билетов»."
+          defaultValue={v?.benefitPhotos}
+        />
       </FormSection>
 
       <FormSection title="Даты и время" hint="многодневное событие — несколько дней в одной записи">

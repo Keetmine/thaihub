@@ -161,21 +161,26 @@ export default async function DramasPage({
           ))}
         </div>
         {/* И10: из каталога сериалов в их расписание раньше было не
-            попасть — иконка ведёт на вкладку «Сериалы» календаря. */}
-        <AppLink
-          href="/calendar?view=series"
-          className="btn btn-ghost btn-sm flex-shrink-0"
-          aria-label={t.catalog.dramas.calendarLink}
-          title={t.catalog.dramas.calendarLink}
-        >
-          <CalendarIcon />
-        </AppLink>
-        <NameSearchBox
-          action="/dramas"
-          q={q}
-          placeholder={t.catalog.searchByTitle}
-          className=""
-        />
+            попасть — иконка ведёт на вкладку «Сериалы» календаря.
+            Календарь и поиск — одной группой у правого края: врозь
+            space-between ронял иконку в центр ряда (жалоба владельца —
+            она должна стоять чуть левее поиска). */}
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <AppLink
+            href="/calendar?view=series"
+            className="btn btn-ghost btn-sm flex-shrink-0"
+            aria-label={t.catalog.dramas.calendarLink}
+            title={t.catalog.dramas.calendarLink}
+          >
+            <CalendarIcon />
+          </AppLink>
+          <NameSearchBox
+            action="/dramas"
+            q={q}
+            placeholder={t.catalog.searchByTitle}
+            className=""
+          />
+        </div>
       </div>
 
       {/* Список строками, а не постерная сетка: сериалов много одиночных,

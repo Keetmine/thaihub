@@ -33,6 +33,8 @@ export const catalog = {
         minus: "One episode back",
     },
     watchStatusSet: "Set a watch status",
+    episodeBellOn: "New-episode notifications are on",
+    episodeBellOff: "Notify me about new episodes",
     watchStatusIs: (label: string) => `Status: ${label}`,
 
     // Статус производства сериала — бейджем у названия и на постерах.

@@ -47,6 +47,10 @@ model Event {
   // per day in listings/calendar, but editing or deleting it acts on the
   // whole thing at once. See docs/features/events.md.
   occurrences          EventOccurrence[]
+  // Ж9: схемы зала с ценами и картинки бенефитов билетов — типизированные
+  // фото, а не общая галерея. Постер остаётся отдельным полем: он идёт в
+  // OG-картинку и карточки.
+  photos               EventPhoto[]
   performers           EventPerformer[]
   pairings             EventPairing[]
   favoritedBy          FavoriteEvent[]
@@ -58,6 +62,27 @@ model Event {
   reviews              Review[]
   comments             Comment[]
   tickets              EventTicket[]
+}
+
+// Ж9: тип решает, в каком блоке страницы события фото выводится —
+// «Схема зала и цены» или «Бенефиты билетов». Владелец просил именно
+// раздельные блоки, а не карусель: этой инфой пользуются при покупке.
+enum EventPhotoKind {
+  SEATING
+  BENEFITS
+}
+
+model EventPhoto {
+  id      String         @id @default(cuid())
+  eventId String
+  event   Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  kind    EventPhotoKind
+  url     String
+  caption String?
+  // Порядок внутри своего блока — порядок списка в форме админки.
+  sort    Int            @default(0)
+
+  @@index([eventId])
 }
 
 model EventOccurrence {
@@ -617,6 +642,11 @@ model DramaWatchStatus {
   // Drama.episodes и тоже бывает неизвестным — тогда счётчик работает
   // без верхней границы.
   episodesWatched Int?
+  // Колокольчик «уведомлять о новых сериях» на странице сериала (З1):
+  // подписка per-сериал. Включается сам при переходе в «Смотрю сейчас»
+  // и гаснет при уходе из него; руками переключается независимо от
+  // статуса. Дефолт false: строка может завестись любым статусом.
+  notifyEpisodes  Boolean     @default(false)
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   drama           Drama       @relation(fields: [dramaId], references: [id], onDelete: Cascade)
   updatedAt       DateTime    @updatedAt

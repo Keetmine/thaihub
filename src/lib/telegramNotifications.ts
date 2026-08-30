@@ -272,8 +272,11 @@ export async function sendEpisodeNotifications(): Promise<number> {
   });
   if (episodes.length === 0) return 0;
 
+  // Кому: по колокольчику per-сериал (notifyEpisodes), а не по статусу.
+  // «Смотрю сейчас» включает его сам, но руками подписку можно держать
+  // и на отложенном сериале — или выключить у смотримого.
   const watchers = await prisma.dramaWatchStatus.findMany({
-    where: { dramaId: { in: [...new Set(episodes.map((e) => e.dramaId))] }, status: "WATCHING" },
+    where: { dramaId: { in: [...new Set(episodes.map((e) => e.dramaId))] }, notifyEpisodes: true },
     select: { userId: true, dramaId: true, episodesWatched: true, user: { select: { locale: true } } },
   });
   if (watchers.length === 0) return 0;

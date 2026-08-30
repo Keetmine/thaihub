@@ -27,6 +27,35 @@ function getPresaleAt(formData: FormData): Date | null {
   return combineDateTime(presaleDate, presaleTime);
 }
 
+/** Фото схем зала и бенефитов (Ж9) из двух JSON-полей формы
+ *  (EventPhotosField). sort — порядок в списке; чужие поля и мусорный
+ *  JSON молча пропускаются — фото необязательны. */
+function getEventPhotoInputs(
+  formData: FormData,
+): { kind: "SEATING" | "BENEFITS"; url: string; caption: string | null; sort: number }[] {
+  const out: { kind: "SEATING" | "BENEFITS"; url: string; caption: string | null; sort: number }[] =
+    [];
+  for (const [field, kind] of [
+    ["seatingPhotos", "SEATING"],
+    ["benefitPhotos", "BENEFITS"],
+  ] as const) {
+    let rows: unknown;
+    try {
+      rows = JSON.parse(String(formData.get(field) ?? "[]"));
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(rows)) continue;
+    rows.forEach((row, i) => {
+      const url = typeof row?.url === "string" ? row.url.trim() : "";
+      if (!url) return;
+      const caption = typeof row?.caption === "string" ? row.caption.trim() : "";
+      out.push({ kind, url, caption: caption || null, sort: i });
+    });
+  }
+  return out;
+}
+
 function getPresaleUrl(formData: FormData): string | null {
   const presaleEnabled = String(formData.get("presaleEnabled") ?? "") === "on";
   if (!presaleEnabled) return null;
@@ -128,6 +157,7 @@ export async function createEvent(formData: FormData) {
       pairings: {
         create: pairingIds.map((pairingId) => ({ pairingId })),
       },
+      photos: { create: getEventPhotoInputs(formData) },
     },
   });
 
@@ -220,6 +250,8 @@ export async function updateEvent(id: string, formData: FormData) {
   await prisma.$transaction(async (tx) => {
     await tx.eventPerformer.deleteMany({ where: { eventId: id } });
     await tx.eventPairing.deleteMany({ where: { eventId: id } });
+    // Фото пересобираются целиком из присланного (Ж9) — как связи выше.
+    await tx.eventPhoto.deleteMany({ where: { eventId: id } });
     await syncOccurrences(tx, id, occurrences);
     await tx.event.update({
       where: { id },
@@ -239,6 +271,7 @@ export async function updateEvent(id: string, formData: FormData) {
         pairings: {
           create: pairingIds.map((pairingId) => ({ pairingId })),
         },
+        photos: { create: getEventPhotoInputs(formData) },
       },
     });
   });

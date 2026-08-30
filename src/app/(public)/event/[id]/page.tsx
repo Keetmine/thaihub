@@ -108,6 +108,7 @@ export default async function EventDetailPage({
       },
       pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
       drama: true,
+      photos: { orderBy: { sort: "asc" } },
       occurrences: {
         orderBy: { startsAt: "asc" },
         include: {
@@ -425,6 +426,50 @@ export default async function EventDetailPage({
           </div>
       </div>
 
+      {/* Ж9: схема зала с ценами и бенефиты билетов — двумя блоками В
+          РЯД над «Моими билетами», без подложки (просьбы владельца).
+          Не карусель: этой инфой пользуются при покупке, её находят по
+          заголовку. Среднее превью, клик — оригинал в новой вкладке. */}
+      {event.photos.length > 0 && (
+        <div className="row g-4 mb-3">
+          {(["SEATING", "BENEFITS"] as const).map((kind) => {
+            const photos = event.photos.filter((p) => p.kind === kind);
+            if (photos.length === 0) return null;
+            return (
+              <div key={kind} className="col-12 col-lg-6">
+                <h2 className="section-heading mb-3">
+                  {kind === "SEATING" ? (
+                    <>
+                      <TicketIcon className="icon-inline" /> {t.events.detail.seatingTitle}
+                    </>
+                  ) : (
+                    <>🎁 {t.events.detail.benefitsTitle}</>
+                  )}
+                </h2>
+                <div className="d-flex flex-wrap gap-3">
+                  {photos.map((p) => (
+                    <a
+                      key={p.id}
+                      href={p.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="event-photo-preview text-decoration-none"
+                      title={t.events.detail.photoFullSize}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img loading="lazy" decoding="async" src={p.url} alt={p.caption ?? ""} />
+                      {p.caption && (
+                        <span className="small text-secondary d-block mt-1">{p.caption}</span>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Э2ф: билеты — сразу под датами, состав — фото-сеткой ниже,
           описание и отзывы в конце. */}
       <TicketSection rows={ticketRows} />
@@ -515,8 +560,9 @@ export default async function EventDetailPage({
 
       <EventNoteSection eventId={event.id} ownNote={ownNote} friendNotes={friendNotes} />
 
+      {/* Описание — без подложки-surface (просьба владельца). */}
       {event.description && (
-        <div id="description" className="anchor-target surface p-4 mb-3">
+        <div id="description" className="anchor-target mb-4">
           <h2 className="section-heading mb-2">
             <InfoIcon className="icon-inline" /> {t.events.detail.description}
           </h2>

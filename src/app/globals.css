@@ -4560,6 +4560,25 @@ body::after {
   }
 }
 
+/* Фото схем зала и бенефитов на странице события (Ж9): среднее превью,
+   клик открывает оригинал в новой вкладке — схему всё равно
+   рассматривают в полном размере, а страница не раздувается. */
+.event-photo-preview {
+  display: block;
+  max-width: 26rem;
+  width: 100%;
+}
+.event-photo-preview img {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-secondary-bg);
+  transition: border-color 0.15s ease;
+}
+.event-photo-preview:hover img {
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
 /* Свёрнутые прошедшие дни поездки (И18): строка «Прошло N дней ▸» над
    лентой, раскрывается штатным details — истории не пропадают, но во
    время поездки лента начинается с сегодняшнего. */

@@ -12,6 +12,7 @@ import EpisodeProgress from "@/components/EpisodeProgress";
 import { episodeProgress } from "@/lib/watchStatus";
 import { dramaSynopsisForLocale, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { findSimilarDramas } from "@/lib/similarDramas";
+import EpisodeBellButton from "./EpisodeBellButton";
 import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
@@ -336,11 +337,12 @@ export default async function DramaDetailPage({
           )}
         </div>
         {currentUser && (
-          <DramaStatusButton
-            dramaId={drama.id}
-            status={watchStatus?.status ?? null}
-            className="flex-shrink-0"
-          />
+          <div className="d-flex align-items-center gap-2 flex-shrink-0">
+            {/* Колокольчик серий — вплотную слева от кнопки статуса
+                (просьба владельца). */}
+            <EpisodeBellButton dramaId={drama.id} enabled={watchStatus?.notifyEpisodes ?? false} />
+            <DramaStatusButton dramaId={drama.id} status={watchStatus?.status ?? null} />
+          </div>
         )}
       </div>
 

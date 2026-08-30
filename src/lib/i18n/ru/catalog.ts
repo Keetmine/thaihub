@@ -29,6 +29,8 @@ export const catalog: Dict["catalog"] = {
         minus: "На серию назад",
     },
     watchStatusSet: "Добавить статус просмотра",
+    episodeBellOn: "Уведомления о новых сериях включены",
+    episodeBellOff: "Уведомлять о новых сериях",
     watchStatusIs: (label: string) => `Статус: ${label}`,
 
     dramaStatus: {
