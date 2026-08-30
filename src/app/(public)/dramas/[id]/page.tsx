@@ -56,6 +56,9 @@ import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
+// Сколько тегов видно до «ещё N» — примерно одна строка на десктопе.
+const TAGS_VISIBLE = 6;
+
 export async function generateMetadata({
   params,
 }: {
@@ -428,16 +431,18 @@ export default async function DramaDetailPage({
             </p>
           )}
 
-          {/* Теги — обычным текстом в цвет .tag-chip, одной строкой со
-              свёрткой «показать все» (просьба владельца): у MDL тегов
-              десятки, и чипы раздували карточку на пол-экрана. */}
+          {/* Теги — обычным текстом в цвет .tag-chip, короткой строкой
+              со свёрткой «ещё N» (просьба владельца): у MDL тегов
+              десятки, и чипы раздували карточку на пол-экрана. Первые
+              TAGS_VISIBLE рендерит сервер — без замеров и мигания. */}
           {drama.tags.length > 0 && (
             <div className="small text-secondary mb-2 d-flex align-items-baseline gap-2">
               <span className="d-inline-flex align-items-center gap-1 flex-shrink-0">
                 <TagIcon /> <span className="text-secondary">{t.catalog.drama.tags}</span>
               </span>
-              <TagRowFold moreLabel={t.catalog.tagsShowAll}>
-                {drama.tags.map((tag) => (
+              <TagRowFold
+                moreLabel={t.catalog.tagsShowAll(drama.tags.length - TAGS_VISIBLE)}
+                visible={drama.tags.slice(0, TAGS_VISIBLE).map((tag) => (
                   <AppLink
                     key={tag}
                     href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
@@ -446,7 +451,20 @@ export default async function DramaDetailPage({
                     {tag}
                   </AppLink>
                 ))}
-              </TagRowFold>
+                rest={
+                  drama.tags.length > TAGS_VISIBLE
+                    ? drama.tags.slice(TAGS_VISIBLE).map((tag) => (
+                        <AppLink
+                          key={tag}
+                          href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
+                          className="tag-link"
+                        >
+                          {tag}
+                        </AppLink>
+                      ))
+                    : null
+                }
+              />
             </div>
           )}
 
@@ -728,18 +746,6 @@ export default async function DramaDetailPage({
         </div>
       )}
 
-      {/* Атрибуция: постер/синопсис пришли с MDL и blscene, русские
-          название и описание — с dorama.land (см. /terms: источники
-          обещаны на страницах записей). Подписи строк — hostname из
-          ссылки, doramalandUrl есть только у сериалов с переводом. */}
-      <SourcesBlock
-        links={[
-          { url: drama.mydramalistUrl },
-          { url: drama.blsceneUrl },
-          { url: drama.doramalandUrl },
-        ]}
-      />
-
       <div id="reviews" className="anchor-target mt-4">
         <ReviewsAndComments kind="drama" id={drama.id} />
       </div>
@@ -796,6 +802,19 @@ export default async function DramaDetailPage({
           </div>
         </div>
       )}
+      {/* Атрибуция — ВСЕГДА самым нижним блоком страницы (просьба
+          владельца), после отзывов и рекомендаций.
+          Постер/синопсис пришли с MDL и blscene, русские
+          название и описание — с dorama.land (см. /terms: источники
+          обещаны на страницах записей). Подписи строк — hostname из
+          ссылки, doramalandUrl есть только у сериалов с переводом. */}
+      <SourcesBlock
+        links={[
+          { url: drama.mydramalistUrl },
+          { url: drama.blsceneUrl },
+          { url: drama.doramalandUrl },
+        ]}
+      />
       <JsonLd data={tvSeriesJsonLd(drama)} />
     </div>
   );

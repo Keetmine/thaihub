@@ -10,7 +10,7 @@ export const catalog: Dict["catalog"] = {
     letterIndex: "Быстрый переход по буквам",
     showAll: (n: number) => `Показать всех (${n})`,
     sources: "Источники",
-    tagsShowAll: "показать все",
+    tagsShowAll: (n: number) => `ещё ${n}`,
 
     watchStatus: {
         WATCHING: "Смотрю сейчас",

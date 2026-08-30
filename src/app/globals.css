@@ -2348,6 +2348,23 @@ svg[aria-hidden="true"] {
   text-decoration: underline;
 }
 
+/* «ещё N» в строке тегов: неброская, стоит сразу за последним тегом. */
+.tag-more-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: inherit;
+  color: var(--bs-secondary-color);
+  opacity: 0.75;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  white-space: nowrap;
+}
+.tag-more-link:hover {
+  color: var(--bs-body-color);
+  opacity: 1;
+}
+
 .tag-chip {
   display: inline-block;
   padding: 0.15rem 0.6rem;

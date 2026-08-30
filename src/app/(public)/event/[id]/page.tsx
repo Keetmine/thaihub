@@ -511,11 +511,13 @@ export default async function EventDetailPage({
         </div>
       )}
 
-      <SourcesBlock links={[{ url: event.sourceUrl }]} />
-
       <div id="reviews" className="anchor-target">
         <ReviewsAndComments kind="event" id={event.id} />
       </div>
+
+      {/* Атрибуция — всегда самым нижним блоком страницы (просьба
+          владельца). */}
+      <SourcesBlock links={[{ url: event.sourceUrl }]} />
     </div>
   );
 }
