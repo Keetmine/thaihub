@@ -13,7 +13,7 @@ import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -47,7 +47,7 @@ export default async function AgencyDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tab?: string; q?: string }>;
 }) {
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const [{ id: rawParam }, { tab: rawTab, q: rawQ }] = await Promise.all([
     params,
     searchParams,
@@ -311,6 +311,24 @@ export default async function AgencyDetailPage({
       {/* Атрибуция: состав/описание агентства пришли из открытых
           источников (Wikipedia/fandom/сайт агентства) — см. /terms. */}
       <SourcesBlock links={[{ url: agency.sourceUrl }]} />
+      {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
+          страницы — агентства живут вкладкой в каталоге артистов. */}
+      <JsonLd
+        data={breadcrumbJsonLd(
+          [
+            { name: t.catalog.breadcrumb.home, path: "/" },
+            {
+              name: t.catalog.breadcrumb.agencies,
+              path: "/artists?view=agencies",
+            },
+            {
+              name: agency.name,
+              path: `/agencies/${agency.slug ?? rawParam}`,
+            },
+          ],
+          locale,
+        )}
+      />
     </div>
   );
 }

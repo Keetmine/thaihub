@@ -7,7 +7,7 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { UserIcon } from "@/components/icons";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
 import { cache } from "react";
 
@@ -51,7 +51,7 @@ export default async function NovelPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawId } = await params;
-  const { t } = await getT();
+  const { t, locale } = await getT();
   // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
   // дёргается один раз на HTTP-запрос.
   const novel = await getNovel(rawId);
@@ -156,6 +156,21 @@ export default async function NovelPage({
       <div className="mt-4">
         <ReviewsAndComments kind="novel" id={novel.id} />
       </div>
+      {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
+          страницы (адрес и подпись), последняя ступень — сама запись. */}
+      <JsonLd
+        data={breadcrumbJsonLd(
+          [
+            { name: t.catalog.breadcrumb.home, path: "/" },
+            { name: t.catalog.breadcrumb.novels, path: "/novels" },
+            {
+              name: novel.title,
+              path: `/novels/${novel.slug ?? rawId}`,
+            },
+          ],
+          locale,
+        )}
+      />
     </div>
   );
 }

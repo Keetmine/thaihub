@@ -21,6 +21,21 @@ export const catalog = {
     sources: "Sources",
     tagsShowAll: (n: number) => `+${n} more`,
 
+    // Хлебные крошки (BreadcrumbList) на детальных страницах каталога.
+    // Названия ступеней НАМЕРЕННО повторяют видимый текст ссылки-возврата
+    // вверху страницы, только без стрелки: Google просит, чтобы разметка
+    // крошек совпадала с тем, что человек реально видит. Меняете `back` —
+    // поменяйте и здесь.
+    breadcrumb: {
+        home: "Home",
+        dramas: "All series",
+        artists: "All artists",
+        mascots: "All mascots",
+        novels: "All novels",
+        agencies: "All agencies",
+        locations: "All locations",
+    },
+
     // Отметка просмотра: подписи статусов и кнопка-переключатель.
     watchStatus: {
         WATCHING: "Watching now",

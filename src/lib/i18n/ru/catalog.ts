@@ -15,6 +15,16 @@ export const catalog: Dict["catalog"] = {
     sources: "Источники",
     tagsShowAll: (n: number) => `ещё ${n}`,
 
+    breadcrumb: {
+        home: "Главная",
+        dramas: "Все сериалы",
+        artists: "Все артисты",
+        mascots: "Все маскоты",
+        novels: "Все новеллы",
+        agencies: "Все агентства",
+        locations: "Все локации",
+    },
+
     watchStatus: {
         WATCHING: "Смотрю сейчас",
         COMPLETED: "Просмотрено",

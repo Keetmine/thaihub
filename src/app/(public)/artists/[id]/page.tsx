@@ -1,4 +1,4 @@
-import { JsonLd, pageMetadata, personJsonLd } from "@/lib/seo";
+import { JsonLd, pageMetadata, personJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -1032,6 +1032,23 @@ export default async function PerformerPage({
         </div>
       )}
       <JsonLd data={personJsonLd(performer)} />
+      {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
+          страницы — у маскотов она ведёт в свою вкладку каталога. */}
+      <JsonLd
+        data={breadcrumbJsonLd(
+          [
+            { name: t.catalog.breadcrumb.home, path: "/" },
+            isMascot
+              ? {
+                  name: t.catalog.breadcrumb.mascots,
+                  path: "/artists?view=mascots",
+                }
+              : { name: t.catalog.breadcrumb.artists, path: "/artists" },
+            { name: performer.name, path: `/artists/${rawId}` },
+          ],
+          locale,
+        )}
+      />
     </div>
   );
 }

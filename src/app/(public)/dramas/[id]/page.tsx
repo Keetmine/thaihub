@@ -1,5 +1,5 @@
 import UploadImage from "@/components/UploadImage";
-import { pageMetadata, JsonLd, tvSeriesJsonLd } from "@/lib/seo";
+import { pageMetadata, JsonLd, tvSeriesJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import ReviewsAndComments from "@/components/ReviewsAndComments";
 import SourcesBlock from "@/components/SourcesBlock";
 import AppLink from "@/components/AppLink";
@@ -822,6 +822,21 @@ export default async function DramaDetailPage({
         ]}
       />
       <JsonLd data={tvSeriesJsonLd(drama)} />
+      {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
+          страницы (адрес и подпись), последняя ступень — сама запись. */}
+      <JsonLd
+        data={breadcrumbJsonLd(
+          [
+            { name: t.catalog.breadcrumb.home, path: "/" },
+            { name: t.catalog.breadcrumb.dramas, path: "/dramas" },
+            {
+              name: dramaTitleForLocale(drama, locale),
+              path: `/dramas/${rawId}`,
+            },
+          ],
+          locale,
+        )}
+      />
     </div>
   );
 }

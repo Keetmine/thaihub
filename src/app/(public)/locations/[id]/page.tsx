@@ -17,7 +17,7 @@ import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
 import { isPremiumActive } from "@/lib/premium";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { categoryEmoji } from "@/lib/locationCategories";
 import { getT } from "@/lib/i18n";
 import { cache } from "react";
@@ -74,7 +74,7 @@ export default async function LocationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: rawParam } = await params;
-  const { t } = await getT();
+  const { t, locale } = await getT();
 
   // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
   // дёргается один раз на HTTP-запрос.
@@ -382,6 +382,21 @@ export default async function LocationDetailPage({
             </div>
           )}
       </div>
+      {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
+          страницы (адрес и подпись), последняя ступень — сама запись. */}
+      <JsonLd
+        data={breadcrumbJsonLd(
+          [
+            { name: t.catalog.breadcrumb.home, path: "/" },
+            { name: t.catalog.breadcrumb.locations, path: "/locations" },
+            {
+              name: location.name,
+              path: `/locations/${location.slug ?? rawParam}`,
+            },
+          ],
+          locale,
+        )}
+      />
     </div>
   );
 }
