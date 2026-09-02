@@ -187,6 +187,7 @@ export const catalog: Dict["catalog"] = {
         agency: "Агентство:",
         agencies: "Агентства:",
         members: "Участники",
+        brands: "Личные бренды",
         mascotOf: "Чей маскот",
         pairedWith: "В паре с",
         pastPairings: "Бывшие пары",

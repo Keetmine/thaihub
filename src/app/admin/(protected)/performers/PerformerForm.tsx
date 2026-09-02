@@ -19,7 +19,7 @@ import type { PairingStatus } from "@/generated/prisma/client";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import DatePickerInput from "@/components/DatePickerInput";
 
-export type PerformerLinkInput = { label: string; url: string };
+export type PerformerLinkInput = { label: string; url: string; kind?: "OTHER" | "BRAND" };
 export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 
 type Tab = "general" | "dramas" | "events" | "pairing" | (string & {});
@@ -153,7 +153,15 @@ export default function PerformerForm({
   // not label) — everything else stays in the free-form list.
   const socialDefaults: Partial<Record<SocialPlatform, string>> = {};
   const genericLinkDefaults: PerformerLinkInput[] = [];
+  // Личные бренды живут своим списком: у них есть имя, и оно важнее
+  // адреса, поэтому в соцсети их разбирать нельзя — даже если бренд
+  // ведёт на инстаграм.
+  const brandDefaults: PerformerLinkInput[] = [];
   for (const l of v?.links ?? []) {
+    if (l.kind === "BRAND") {
+      brandDefaults.push(l);
+      continue;
+    }
     const platform = detectSocialPlatform(l.url);
     if (platform && socialDefaults[platform] === undefined) {
       socialDefaults[platform] = l.url;
@@ -181,6 +189,24 @@ export default function PerformerForm({
   function updateLink(index: number, field: "label" | "url", value: string) {
     setLinks((prev) =>
       prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)),
+    );
+  }
+
+  // Бренды: пустой строки по умолчанию нет — блок обычно не нужен, и
+  // пустая пара полей у каждого артиста только мозолила бы глаза.
+  const [brands, setBrands] = useState<PerformerLinkInput[]>(brandDefaults);
+
+  function addBrand() {
+    setBrands((prev) => [...prev, { label: "", url: "", kind: "BRAND" }]);
+  }
+
+  function removeBrand(index: number) {
+    setBrands((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateBrand(index: number, field: "label" | "url", value: string) {
+    setBrands((prev) =>
+      prev.map((b, i) => (i === index ? { ...b, [field]: value } : b)),
     );
   }
 
@@ -617,6 +643,64 @@ export default function PerformerForm({
             onClick={addLink}
           >
             + Добавить ссылку
+          </button>
+        </div>
+
+        <div>
+          {/* Заголовок группы, а не подпись поля: строк может не быть
+              вовсе (у нового исполнителя их ноль), и htmlFor указывал бы
+              в пустоту — см. tests/e2e/form-labels.spec.ts. Подписи несут
+              сами поля через aria-label. */}
+          <div className="form-label d-block">Личные бренды</div>
+          <p className="text-secondary small mb-2">
+            Своё дело артиста: марка одежды, кафе, косметика. Показывается
+            отдельным блоком под описанием на странице артиста — название
+            обязательно, без него строка не сохранится.
+          </p>
+          <div className="d-flex flex-column gap-2">
+            {brands.map((brand, i) => (
+              <div key={i} className="row g-2 align-items-center">
+                <div className="col-4">
+                  <input
+                    type="text"
+                    name="brandLabel"
+                    placeholder="Название бренда"
+                    value={brand.label}
+                    onChange={(e) => updateBrand(i, "label", e.target.value)}
+                    className="form-control"
+                    aria-label="Название бренда"
+                  />
+                </div>
+                <div className="col-7">
+                  <input
+                    type="url"
+                    name="brandUrl"
+                    placeholder="https://…"
+                    value={brand.url}
+                    onChange={(e) => updateBrand(i, "url", e.target.value)}
+                    className="form-control"
+                    aria-label="Ссылка на бренд"
+                  />
+                </div>
+                <div className="col-1">
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => removeBrand(i)}
+                    aria-label="Удалить бренд"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm mt-2"
+            onClick={addBrand}
+          >
+            + Добавить бренд
           </button>
         </div>
         </FormSection>

@@ -276,7 +276,13 @@ export default async function PerformerPage({
     return t.catalog.artist.age(age);
   };
 
-  const recognizedLinks = performer.links
+  // Бренды вынуты из общей кучи первыми: бренд может вести на инстаграм,
+  // и без этого он превратился бы в безымянную иконку соцсети — то есть
+  // потерял бы ровно то, ради чего заведён, своё название.
+  const brandLinks = performer.links.filter((l) => l.kind === "BRAND");
+  const nonBrandLinks = performer.links.filter((l) => l.kind !== "BRAND");
+
+  const recognizedLinks = nonBrandLinks
     .map((l) => {
       const platform = detectSocialPlatform(l.url);
       return platform ? { platform, url: l.url } : null;
@@ -290,9 +296,7 @@ export default async function PerformerPage({
       ? [{ platform: "mydramalist" as const, url: performer.mydramalistUrl }]
       : []),
   ];
-  const otherLinks = performer.links.filter(
-    (l) => !detectSocialPlatform(l.url),
-  );
+  const otherLinks = nonBrandLinks.filter((l) => !detectSocialPlatform(l.url));
 
   // Все строки блока фактов условные — пустую панель не рисуем (как на
   // странице сериала): у записи без анкетных данных шапка сразу
@@ -314,6 +318,7 @@ export default async function PerformerPage({
     performer.agencies.length > 0 ||
     !!performer.bio ||
     otherLinks.length > 0 ||
+    brandLinks.length > 0 ||
     (isBand && performer.bandMembers.length > 0) ||
     (isMascot && performer.mascotOwners.length > 0) ||
     (!displayPhoto && socialItems.length > 0);
@@ -526,6 +531,29 @@ export default async function PerformerPage({
                 {performer.bio}
               </p>
             ))}
+
+          {/* Личные бренды — под описанием и своим заголовком: это не
+              «ещё одна ссылка», а своё дело артиста, и у него есть имя,
+              которое нужно показать. Соседние otherLinks остаются просто
+              кнопками. */}
+          {brandLinks.length > 0 && (
+            <div className="mt-3">
+              <h2 className="section-heading mb-2">{t.catalog.artist.brands}</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {brandLinks.map((l) => (
+                  <a
+                    key={l.id}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chip-link"
+                  >
+                    {l.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
 
           {otherLinks.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-1">

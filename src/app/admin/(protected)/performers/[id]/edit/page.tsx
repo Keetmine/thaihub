@@ -157,7 +157,10 @@ export default async function EditPerformerPage({
             weight: performer.weight ?? "",
             mvAppearances: performer.mvAppearances.join("\n"),
             trivia: performer.trivia.join("\n"),
-            links: performer.links.map((l) => ({ label: l.label, url: l.url })),
+            // kind обязателен: по нему форма раскладывает ссылки на
+            // соцсети, прочие и бренды. Без него бренд приезжал бы в
+            // «другие ссылки» и сохранением превращался в обычную.
+            links: performer.links.map((l) => ({ label: l.label, url: l.url, kind: l.kind })),
           }}
           extraTabs={[
             {

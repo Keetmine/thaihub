@@ -308,15 +308,28 @@ model BandMember {
   @@index([performerId])
 }
 
+// Чем ссылка является для страницы артиста. Соцсети отдельным видом не
+// выделены: их узнают по адресу (detectSocialPlatform) и рисуют
+// иконками, а вид нужен там, где по адресу не догадаться.
+enum PerformerLinkKind {
+  // Прочее: показывается кнопкой в блоке фактов, как было всегда.
+  OTHER
+  // Личный бренд артиста — марка одежды, кафе, косметика. Показывается
+  // отдельным блоком под описанием: у бренда есть своё имя, и оно важнее
+  // адреса, поэтому иконкой его не заменить.
+  BRAND
+}
+
 // Arbitrary "extra info" links per performer — personal brand, café,
 // social media, etc. Free-form label so the admin can add whatever's
 // relevant without a schema change.
 model PerformerLink {
-  id          String    @id @default(cuid())
+  id          String            @id @default(cuid())
   performerId String
   label       String
   url         String
-  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  kind        PerformerLinkKind @default(OTHER)
+  performer   Performer         @relation(fields: [performerId], references: [id], onDelete: Cascade)
 
   @@index([performerId])
 }

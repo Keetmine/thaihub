@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma, PerformerLinkKind } from "@/generated/prisma/client";
 import { socialLinkKey, SOCIAL_PLATFORM_LABELS, type SocialPlatform } from "@/lib/socialLinks";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
@@ -160,7 +160,7 @@ export async function deletePerformer(id: string) {
   redirect("/admin/performers");
 }
 
-type LinkInput = { label: string; url: string };
+type LinkInput = { label: string; url: string; kind: PerformerLinkKind };
 
 // Instagram/TikTok/Twitter get their own named fields in the form
 // (SOCIAL_PLATFORM_LABELS gives each its display label) — merged back into
@@ -180,7 +180,7 @@ function getLinks(formData: FormData): LinkInput[] {
 
   for (const platform of Object.keys(SOCIAL_FIELD_NAMES) as SocialPlatform[]) {
     const url = String(formData.get(SOCIAL_FIELD_NAMES[platform]) ?? "").trim();
-    if (url) links.push({ label: SOCIAL_PLATFORM_LABELS[platform], url });
+    if (url) links.push({ label: SOCIAL_PLATFORM_LABELS[platform], url, kind: "OTHER" });
   }
 
   const labels = formData.getAll("linkLabel").map(String);
@@ -189,13 +189,29 @@ function getLinks(formData: FormData): LinkInput[] {
     const label = (labels[i] ?? "").trim();
     const url = (urls[i] ?? "").trim();
     if (!url) continue; // skip empty rows / rows missing a url
-    links.push({ label: label || url, url });
+    links.push({ label: label || url, url, kind: "OTHER" });
   }
+
+  // Личные бренды — свой список в форме: у бренда есть имя, и на
+  // странице он показывается им, а не иконкой. Строка без названия
+  // бессмысленна (кнопка «https://…» ничего не говорит), поэтому такие
+  // пропускаем — в отличие от прочих ссылок, где адрес идёт в подпись.
+  const brandLabels = formData.getAll("brandLabel").map(String);
+  const brandUrls = formData.getAll("brandUrl").map(String);
+  for (let i = 0; i < Math.max(brandLabels.length, brandUrls.length); i++) {
+    const label = (brandLabels[i] ?? "").trim();
+    const url = (brandUrls[i] ?? "").trim();
+    if (!url || !label) continue;
+    links.push({ label, url, kind: "BRAND" });
+  }
+
   // Один и тот же профиль мог прийти и из отдельного поля Instagram, и
-  // из общего списка ссылок — храним по одной записи на адрес.
+  // из общего списка ссылок — храним по одной записи на адрес. Ключ
+  // включает вид: бренд и соцсеть по одному адресу — разные строки,
+  // иначе бренд молча пропадал бы, если его инстаграм уже в соцсетях.
   const seen = new Set<string>();
   return links.filter((l) => {
-    const key = socialLinkKey(l.url);
+    const key = `${l.kind}:${socialLinkKey(l.url)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -295,7 +311,7 @@ export async function createPerformer(formData: FormData) {
       photoUrl: photoUrl || null,
       ...getMusicProfileFields(formData),
       links: {
-        create: links.map((l) => ({ label: l.label, url: l.url })),
+        create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind })),
       },
       agencies: {
         create: agencyIds.map((agencyId) => ({ agencyId })),
@@ -446,7 +462,7 @@ export async function updatePerformer(id: string, formData: FormData) {
               mydramalistUrl: mydramalistUrl || null,
               ...getMusicProfileFields(formData),
               links: {
-                create: links.map((l) => ({ label: l.label, url: l.url })),
+                create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind })),
               },
               bandMembers: {
                 create: memberIds.map((performerId) => ({ performerId })),

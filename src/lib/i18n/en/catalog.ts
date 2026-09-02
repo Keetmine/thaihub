@@ -208,6 +208,7 @@ export const catalog = {
         agency: "Agency:",
         agencies: "Agencies:",
         members: "Members",
+        brands: "Personal brands",
         mascotOf: "Mascot of",
         pairedWith: "Paired with",
         pastPairings: "Former pairings",
