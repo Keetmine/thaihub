@@ -14,7 +14,17 @@ export default function useUnsavedGuard(formRef: React.RefObject<HTMLFormElement
   useEffect(() => {
     const form = formRef.current;
     if (!form) return;
-    const onInput = () => setDirty(true);
+    // Флаг ставим ОТДЕЛЬНОЙ задачей, а не прямо в обработчике.
+    // Слушатель висит на самой форме и в фазе всплытия срабатывает
+    // РАНЬШЕ корневого слушателя React. Ввод — «дискретное» событие,
+    // и React применяет setDirty синхронно тут же: перерисовка
+    // возвращает в контролируемое поле старое (пустое) значение и
+    // затирает только что набранный символ, а React-обработчик
+    // onChange получает уже пустую строку. Отсюда терялась первая
+    // буква во всех списочных полях админки (ссылки у артиста,
+    // локации, новеллы), при этом обычные поля с defaultValue не
+    // страдали. Отложенный setState рендерит уже после onChange.
+    const onInput = () => setTimeout(() => setDirty(true), 0);
     const onSubmit = () => setDirty(false);
     form.addEventListener("input", onInput);
     form.addEventListener("change", onInput);
