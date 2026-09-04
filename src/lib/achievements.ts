@@ -174,7 +174,10 @@ export async function syncAchievements(userId: string, stats?: UserStats): Promi
           // Название ачивки — содержимое базы, его не переводим.
           subject: `${def.emoji} ${def.title}`,
           body: def.hint,
-          href: "/account",
+          // Прямо на профиль владельца (кабинет /account остался лишь
+          // редиректом). По id, а не нику: ника здесь нет, а /users/<id>
+          // страница принимает наравне с ником — лишний запрос не нужен.
+          href: `/users/${userId}`,
         });
       }
     })();

@@ -23,7 +23,6 @@ export const nav: Dict["nav"] = {
     home: "Главная",
     profile: "Профиль",
     myProfile: "Мой профиль",
-    account: "Кабинет",
     myEvents: "Мои события",
     myTrips: "Мои поездки",
     myPlaces: "Мои места",

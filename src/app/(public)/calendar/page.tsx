@@ -287,7 +287,12 @@ export default async function CalendarPage({
         />
       ) : (
         <>
-          <div className="d-none d-sm-grid calendar-grid mb-2" style={{ gap: "0.5rem" }}>
+          {/* Ряд дней недели виден и на телефоне: без него семь колонок
+              на 390px было не к чему привязать глазом (кегль на мобиле
+              поджимает globals.css). Гэп — из .calendar-grid, а не
+              инлайном: на узких экранах он меньше, и инлайновый ломал
+              совпадение колонок с сеткой месяца. */}
+          <div className="calendar-grid mb-2">
             {weekdayNames(locale).map((d) => (
               <div key={d} className="calendar-weekday">
                 {d}
@@ -314,7 +319,7 @@ export default async function CalendarPage({
                         <AppLink
                           key={p.id}
                           href={performerHref(p)}
-                          className="event-chip d-inline-flex align-items-center gap-1 text-decoration-none"
+                          className="event-chip event-chip-birthday d-inline-flex align-items-center gap-1 text-decoration-none"
                           title={t.events.calendar.birthdayTitle(
                             p.name,
                             day.getFullYear() - p.birthDate.getFullYear(),
@@ -340,10 +345,13 @@ export default async function CalendarPage({
                   <div key={key} className={`calendar-cell ${inMonth ? "" : "outside-month"}`}>
                     {/* И8: чипы заняты ссылками на сериалы, целиком ячейку
                         ссылкой не сделать (вложенные <a>) — днём-ссылкой
-                        служит само число. */}
+                        служит само число. На телефоне чипы схлопываются в
+                        точки, и .calendar-day-link растягивается на всю
+                        ячейку (::after в globals.css): тап по дню ведёт на
+                        /day/…, где серии выписаны списком. */}
                     <AppLink
                       href={`/day/${key}`}
-                      className={`calendar-day-num text-decoration-none ${isToday ? "today" : ""}`}
+                      className={`calendar-day-num calendar-day-link text-decoration-none ${isToday ? "today" : ""}`}
                     >
                       {day.getDate()}
                     </AppLink>

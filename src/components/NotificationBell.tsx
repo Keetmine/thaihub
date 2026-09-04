@@ -134,6 +134,7 @@ export default function NotificationBell() {
       prefetch={false}
       className="icon-btn position-relative"
       aria-label={unread > 0 ? t.common.notificationsUnread(unread) : t.nav.notifications}
+      data-tooltip={t.nav.notifications}
     >
       <BellIcon />
       {unread > 0 && (

@@ -1,7 +1,16 @@
 // Единый список пунктов главной публичной навигации: раньше он был
 // задублирован в layout.tsx (десктопный ряд и мобильное меню отдельно)
 // и при правках разъезжался.
+import type { ReactNode } from "react";
 import type { Dict } from "@/lib/i18n";
+import {
+  BookIcon,
+  PinIcon,
+  PlaneIcon,
+  TicketIcon,
+  TvIcon,
+  UsersIcon,
+} from "@/components/icons";
 
 export type PublicNavItem = {
   href: string;
@@ -15,20 +24,38 @@ export type PublicNavItem = {
   tourId?: string;
   /** Показывать только залогиненным. */
   requiresUser?: boolean;
+  /** Иконка пункта — рисуется только в мобильной шторке: десктопному
+   *  ряду из шести ссылок иконки не влезают, а в шторке без них плоский
+   *  список читался стеной текста (фидбек владельца). */
+  icon: (props: { className?: string }) => ReactNode;
 };
 
 export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
-  { href: "/events", labelKey: "events", matchPrefixes: ["/event/"] },
+  { href: "/events", labelKey: "events", matchPrefixes: ["/event/"], icon: TicketIcon },
   {
     href: "/artists",
     labelKey: "artists",
     matchPrefixes: ["/artists/", "/agencies"],
     tourId: "artists",
+    icon: UsersIcon,
   },
-  { href: "/dramas", labelKey: "series", matchPrefixes: ["/dramas/"], tourId: "series" },
-  { href: "/novels", labelKey: "novels", matchPrefixes: ["/novels/"] },
-  { href: "/locations", labelKey: "locations", matchPrefixes: ["/locations/"], tourId: "locations" },
-  { href: "/trips", labelKey: "trips", matchPrefixes: ["/trips/"], tourId: "trips", requiresUser: true },
+  { href: "/dramas", labelKey: "series", matchPrefixes: ["/dramas/"], tourId: "series", icon: TvIcon },
+  { href: "/novels", labelKey: "novels", matchPrefixes: ["/novels/"], icon: BookIcon },
+  {
+    href: "/locations",
+    labelKey: "locations",
+    matchPrefixes: ["/locations/"],
+    tourId: "locations",
+    icon: PinIcon,
+  },
+  {
+    href: "/trips",
+    labelKey: "trips",
+    matchPrefixes: ["/trips/"],
+    tourId: "trips",
+    requiresUser: true,
+    icon: PlaneIcon,
+  },
 ];
 
 /**

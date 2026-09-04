@@ -16,23 +16,44 @@ import NavDepthTracker from "@/components/NavDepthTracker";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
 import { getCurrentUser } from "@/lib/userAuth";
-import { GridIcon, HeartIcon, SearchIcon } from "@/components/icons";
+import { CalendarIcon, GridIcon, HeartIcon, InfoIcon, SearchIcon } from "@/components/icons";
 import NotificationBell, { NotificationBellProvider } from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
-import MobileProfileSection from "@/components/MobileProfileSection";
+import MobileProfileSection, { MobileProfileHead } from "@/components/MobileProfileSection";
 import ProductTour from "@/components/ProductTour";
 import { getT, type Dict } from "@/lib/i18n";
 import SearchOverlay from "@/components/SearchOverlay";
 
 // Общий список ссылок для десктопного ряда и мобильной шторки —
-// источник один (publicNavItems), рендер в двух местах.
-function MainNavLinks({ loggedIn, t }: { loggedIn: boolean; t: Dict }) {
+// источник один (publicNavItems), рендер в двух местах. В шторке —
+// с иконками и только каталог: «Поездки» (requiresUser) там живут в
+// личной группе (MobileProfileSection), а не вперемешку с каталогом.
+function MainNavLinks({
+  loggedIn,
+  t,
+  drawer = false,
+}: {
+  loggedIn: boolean;
+  t: Dict;
+  drawer?: boolean;
+}) {
+  const items = PUBLIC_NAV_ITEMS.filter((item) =>
+    drawer ? !item.requiresUser : !item.requiresUser || loggedIn,
+  );
   return (
     <>
-      {PUBLIC_NAV_ITEMS.filter((item) => !item.requiresUser || loggedIn).map((item) => {
+      {items.map((item) => {
+        const Icon = item.icon;
         const link = (
           <NavLink href={item.href} matchPrefixes={item.matchPrefixes}>
-            {t.nav[item.labelKey]}
+            {drawer ? (
+              <>
+                <Icon />
+                <span>{t.nav[item.labelKey]}</span>
+              </>
+            ) : (
+              t.nav[item.labelKey]
+            )}
           </NavLink>
         );
         return item.tourId ? (
@@ -174,14 +195,38 @@ export default async function PublicLayout({ children }: { children: React.React
 
           {/* Мобильная шторка и таб-бар — вне .pill-nav: его backdrop-filter
               сделал бы position:fixed панелей относительным навбара. */}
+          {/* Шторка: юзер-блок (или «Войти») наверху, ниже поиск и две
+              группы с подзаголовками — каталог и «моё». Раньше всё это
+              лежало одним плоским списком, где Account и Notifications
+              шли вперемешку с разделами каталога. */}
           <MobileDrawer>
-            <MainNavLinks loggedIn={!!user} t={t} />
-            <SearchOverlay variant="drawer" />
             {user ? (
-              <MobileProfileSection user={user} />
+              <MobileProfileHead user={user} />
             ) : (
-              <NavLink href="/login">{t.nav.signIn}</NavLink>
+              <Link href="/login" prefetch={false} className="btn btn-primary drawer-signin">
+                {t.nav.signIn}
+              </Link>
             )}
+            <SearchOverlay variant="drawer" />
+            <div className="drawer-group">
+              <p className="drawer-group-label">{t.footer.catalogue}</p>
+              <MainNavLinks loggedIn={!!user} t={t} drawer />
+              {/* Календарь есть в таб-баре, но шторка — полное меню, и
+                  без него каталог тут выглядел бы неполным (в футере он
+                  тоже в каталоге). В десктопный ряд не добавляем — семь
+                  ссылок туда не влезают (см. docs/design-system.md). */}
+              <NavLink href="/calendar" matchPrefixes={["/day/"]}>
+                <CalendarIcon />
+                <span>{t.nav.calendar}</span>
+              </NavLink>
+            </div>
+            {user && <MobileProfileSection user={user} />}
+            <div className="drawer-group">
+              <NavLink href="/help">
+                <InfoIcon />
+                <span>{t.nav.help}</span>
+              </NavLink>
+            </div>
           </MobileDrawer>
           <MobileTabBar />
 

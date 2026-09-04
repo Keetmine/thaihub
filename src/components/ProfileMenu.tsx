@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "@/components/AppLink";
 import { logout } from "@/app/(public)/login/actions";
 import { useT } from "@/components/LocaleProvider";
+import { userHref } from "@/lib/userProfile";
 import { UserIcon } from "./icons";
 
 export type ProfileMenuUser = {
@@ -50,18 +51,24 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
 
       {open && (
         <div className="profile-menu-panel">
-          {/* Публичная страница — ссылкой на неё делятся с друзьями
-              («добавь меня»), поэтому «Мой профиль» ведёт именно туда, а
-              настройки и статистика живут в кабинете. */}
+          {/* Кабинет объединён с публичным профилем: «Профиль» ведёт
+              сразу на /users/… (ссылкой делятся — «добавь меня»), а
+              пункта «Кабинет» больше нет — /account остался только
+              308-редиректом для старых ссылок, прямые пункты меню на
+              него не ведут. */}
           <Link
-            href={user.username ? `/users/${user.username}` : "/account"}
+            href={userHref(user)}
             className="profile-menu-item"
             onClick={() => setOpen(false)}
           >
-            {t.nav.myProfile}
+            {t.nav.profile}
           </Link>
-          <Link href="/account" className="profile-menu-item" onClick={() => setOpen(false)}>
-            {t.nav.account}
+          <Link
+            href={`${userHref(user)}?tab=events`}
+            className="profile-menu-item"
+            onClick={() => setOpen(false)}
+          >
+            {t.nav.myEvents}
           </Link>
           <Link
             href="/friends"
@@ -69,13 +76,6 @@ export default function ProfileMenu({ user }: { user: ProfileMenuUser }) {
             onClick={() => setOpen(false)}
           >
             {t.nav.friends}
-          </Link>
-          <Link
-            href="/account?tab=events"
-            className="profile-menu-item"
-            onClick={() => setOpen(false)}
-          >
-            {t.nav.myEvents}
           </Link>
           <Link
             href="/trips"

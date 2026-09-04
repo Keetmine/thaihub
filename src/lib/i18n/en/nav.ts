@@ -21,7 +21,6 @@ export const nav = {
     home: "Home",
     profile: "Profile",
     myProfile: "My profile",
-    account: "Account",
     myEvents: "My events",
     myTrips: "My trips",
     myPlaces: "My places",

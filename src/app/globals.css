@@ -5195,3 +5195,185 @@ body::after {
     display: none;
   }
 }
+
+/* ==================================================================
+   Мобильная навигация, редизайн 2026-09 (шторка группами, таб-бар,
+   календарь на узких экранах). Секция целиком — этого захода: правки
+   к ней добавлять сюда же, а не размазывать по файлу.
+   ================================================================== */
+
+/* --- Шторка: юзер-блок, группы, иконки у пунктов --- */
+
+/* Юзер-блок наверху шторки: большая ссылка на свой профиль + отдельная
+   кнопка настроек справа. */
+.mobile-drawer .mobile-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0 0.6rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 0.5rem;
+}
+
+.mobile-profile-head-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.9rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.mobile-profile-head-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Подзаголовок группы («Каталог» / «Моё»): тем же голосом, что
+   .section-heading футера, но мельче — это навигация, а не контент. */
+.drawer-group {
+  margin-top: 0.35rem;
+}
+
+.drawer-group + .drawer-group {
+  border-top: 1px solid var(--bs-border-color);
+  padding-top: 0.5rem;
+}
+
+.drawer-group-label {
+  margin: 0.25rem 0 0.15rem;
+  padding: 0 0.85rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+
+/* Пункты шторки — строка «иконка + подпись»; иконки приглушены и
+   подкрашиваются вместе с текстом. Селектор повторяет базовый
+   .mobile-drawer .nav-link выше по файлу и добивает flex поверх его
+   display: block. */
+.mobile-drawer .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.75rem; /* тап-таргет ≥44px */
+}
+
+.mobile-drawer .nav-link svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.mobile-drawer .nav-link.active svg {
+  opacity: 1;
+}
+
+/* Кнопка «Войти» для гостя — наверху шторки, на месте юзер-блока. */
+.drawer-signin {
+  margin: 0.15rem 0.6rem 0.6rem;
+}
+
+/* Кнопки-иконки в шторке (закрыть, настройки) — тоже до 44px. */
+.mobile-drawer .icon-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+/* --- Шапка: тап-таргеты на тач-экранах --- */
+/* .icon-btn (2.15rem) и .burger-btn (2.3rem) меньше 44px; на ширинах
+   таб-бара доращиваем их до 2.75rem — иконки внутри те же, растёт
+   только «мишень». Только в шапке: инлайновые иконки-действия в
+   карточках трогать нельзя, они стоят в плотных рядах. */
+@media (max-width: 991.98px) {
+  .pill-nav .icon-btn,
+  .pill-nav .burger-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  /* Логотип-ссылка была 40px высотой: расширяем мишень паддингом и
+     компенсируем его отрицательным margin — раскладка не меняется. */
+  .pill-nav .navbar-brand {
+    padding-block: 0.3rem;
+    margin-block: -0.3rem;
+  }
+
+  /* Куки-плашка стояла на bottom: 1rem поверх таб-бара (z-index у неё
+     выше) и закрывала навигацию целиком — поднимаем над таб-баром. */
+  .cookie-consent {
+    bottom: calc(4.6rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Таб-бар: гарантированный тап-таргет ≥44px (набегало ~43px на мелких
+   шрифтах). */
+.mobile-tab {
+  min-height: 2.75rem;
+}
+
+/* --- Календарь на узких экранах --- */
+/* База выше по файлу уже схлопывает чипы в точки; здесь — читаемость
+   и попадаемость: точки заметнее и в ряд, дни недели видны, тап по
+   дню работает и на вкладке сериалов. */
+@media (max-width: 575.98px) {
+  /* Точки were 0.4rem на едва отличимом от фона subtle-фоне. */
+  .calendar-cell .event-chip {
+    width: 0.45rem;
+    height: 0.45rem;
+    border: 0;
+    background: rgba(var(--accent-rgb), 0.45);
+  }
+
+  .calendar-cell .event-chip-going {
+    background: rgb(var(--accent-rgb));
+  }
+
+  /* Точки в ряд под числом, а не столбиком (столбик ел высоту ячейки).
+     !important — против bootstrap-утилит flex-column/gap-1 в разметке. */
+  .calendar-cell > .d-flex.flex-column {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 0.3rem !important;
+  }
+
+  /* Вкладка «Сериалы»: чипы-ссылки на сериалы в виде точек не нажать —
+     выключаем их, а ссылку-число растягиваем на всю ячейку: тап по дню
+     ведёт на /day/…, где серии выписаны списком. На ≥576px ::after не
+     рисуется и чипы снова кликабельны. */
+  .calendar-cell {
+    position: relative;
+  }
+
+  .calendar-cell:has(.calendar-day-link) .event-chip {
+    pointer-events: none;
+  }
+
+  .calendar-day-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Дни рождения: точки-обмылки с расплющенным аватаром внутри →
+     чистый круглый аватар-ссылка на артиста (эти чипы не отключаем:
+     своей страницы дня у дней рождения нет). */
+  .calendar-cell .event-chip-birthday {
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+    border-radius: 50%;
+  }
+
+  .calendar-cell .event-chip-birthday > :first-child {
+    width: 1.35rem !important;
+    height: 1.35rem !important;
+  }
+}
