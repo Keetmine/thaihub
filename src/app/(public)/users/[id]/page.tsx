@@ -8,6 +8,8 @@ import {
   formatCombinedDateList,
   formatDateWithYear,
   formatHumanDate,
+  formatLongDate,
+  formatRelativeTime,
   formatShortDate,
   formatTime,
 } from "@/lib/dates";
@@ -18,6 +20,7 @@ import FriendActionButton from "@/components/FriendActionButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { CalendarIcon, CheckIcon, PinIcon, StarIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
+import { ONLINE_WINDOW_MS } from "@/lib/lastSeen";
 import { sendFriendRequest } from "../../friends/actions";
 import { logout } from "../../login/actions";
 import FriendNotifyToggle from "./FriendNotifyToggle";
@@ -997,12 +1000,43 @@ export default async function UserProfilePage({
           )}
         </div>
 
+        {/* Инфо-блок подписями (правка владельца, образец MDL):
+            Онлайн / Локация / Дата рождения / Роль / Дата регистрации.
+            Пустые строки не рисуются. Почты здесь нет вовсе (даже
+            своей — она в настройках), био — сразу ниже. */}
         <div className="profile-side-meta">
           {user.username && <span className="text-secondary">@{user.username}</span>}
-          {country && <span className="text-secondary">{country}</span>}
-          {/* «На MyBLHub с …» убрано решением владельца (2026-09-04). */}
-          {/* Почты в профиле нет вовсе — решение владельца (2026-09-04):
-              даже своей. Она живёт в настройках. */}
+          {user.lastSeenAt && (
+            <span className="text-secondary">
+              {p.metaOnline}:{" "}
+              <span className="text-body">
+                {Date.now() - user.lastSeenAt.getTime() < ONLINE_WINDOW_MS
+                  ? p.metaOnlineNow
+                  : formatRelativeTime(user.lastSeenAt, locale)}
+              </span>
+            </span>
+          )}
+          {country && (
+            <span className="text-secondary">
+              {p.metaLocation}: <span className="text-body">{country}</span>
+            </span>
+          )}
+          {user.birthDate && (
+            <span className="text-secondary">
+              {p.metaBirthday}:{" "}
+              <span className="text-body">{formatLongDate(user.birthDate, locale)}</span>
+            </span>
+          )}
+          <span className="text-secondary">
+            {p.metaRole}:{" "}
+            <span className="text-body">
+              {user.isAdmin ? p.roleTeam : ownerPremium ? p.roleSuperfan : p.roleFan}
+            </span>
+          </span>
+          <span className="text-secondary">
+            {p.metaJoined}:{" "}
+            <span className="text-body">{formatLongDate(user.createdAt, locale)}</span>
+          </span>
         </div>
 
         {user.bio && showActivity && <p className="profile-side-bio">{user.bio}</p>}
@@ -1086,7 +1120,8 @@ export default async function UserProfilePage({
             себя (/friends): чужого списка друзей как страницы нет. */}
         {showActivity && (
           <div className="profile-side-block">
-            <h2 className="section-heading mb-2">
+            {/* mb-3: заголовок не липнет к сетке (правка владельца). */}
+            <h2 className="section-heading mb-3">
               {p.friendsTitle}
               <span className="text-secondary ms-2" style={{ letterSpacing: 0 }}>
                 {friends.length}
@@ -1120,7 +1155,7 @@ export default async function UserProfilePage({
                   ))}
                 </div>
                 {isSelf && (
-                  <AppLink href="/friends" className="small link-body-emphasis d-inline-block mt-2">
+                  <AppLink href="/friends" className="small link-body-emphasis d-inline-block mt-3">
                     {p.friendsAll} →
                   </AppLink>
                 )}

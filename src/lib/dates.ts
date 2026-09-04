@@ -118,6 +118,35 @@ export function formatShortDate(d: Date, locale: Locale = "ru"): string {
  *  Отзывы и комментарии живут годами, и «24 окт» там врёт: непонятно,
  *  этого года или позапрошлого. Считается в UTC, как остальные даты в
  *  этом модуле. */
+/** «25 января 2026» / "January 25, 2026" — длинный формат для
+ *  инфо-строк профиля (образец владельца именно с полным месяцем). */
+export function formatLongDate(d: Date, locale: Locale = "ru"): string {
+  return d.toLocaleDateString(INTL_TAG[locale], {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: UTC,
+  });
+}
+
+/** «4 часа назад» / "4 hours ago" — для строки «Онлайн» в профиле.
+ *  Intl.RelativeTimeFormat сам склоняет единицы в обеих локалях; единица
+ *  выбирается по величине. Случай «прямо сейчас» (окно ONLINE_WINDOW_MS)
+ *  решает вызывающий — сюда приходят только протухшие отметки. */
+export function formatRelativeTime(d: Date, locale: Locale = "ru"): string {
+  const rtf = new Intl.RelativeTimeFormat(INTL_TAG[locale], { numeric: "always" });
+  const diffMs = Date.now() - d.getTime();
+  const minutes = Math.max(1, Math.round(diffMs / 60_000));
+  if (minutes < 60) return rtf.format(-minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return rtf.format(-hours, "hour");
+  const days = Math.round(hours / 24);
+  if (days < 30) return rtf.format(-days, "day");
+  const months = Math.round(days / 30);
+  if (months < 12) return rtf.format(-months, "month");
+  return rtf.format(-Math.round(months / 12), "year");
+}
+
 export function formatDateWithYear(d: Date, locale: Locale = "ru"): string {
   return (
     d

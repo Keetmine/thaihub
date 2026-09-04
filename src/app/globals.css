@@ -370,7 +370,8 @@ body {
   color: #100613;
   background-color: var(--bs-primary);
   border-color: var(--bs-primary);
-  box-shadow: 0 8px 24px -8px rgba(var(--accent-rgb), 0.55);
+  /* Свечение приглушено — правка владельца (2026-09-04). */
+  box-shadow: 0 6px 18px -8px rgba(var(--accent-rgb), 0.4);
 }
 
 .btn-primary:hover,
@@ -450,7 +451,7 @@ body {
 
 .form-check-input:focus {
   border-color: rgba(var(--accent-rgb), 0.5);
-  box-shadow: 0 0 0 0.25rem rgba(var(--accent-rgb), 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(var(--accent-rgb), 0.18);
 }
 
 .form-check-input {
@@ -519,8 +520,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .surface-hover:hover {
   transform: translateY(-3px);
-  border-color: rgba(var(--accent-rgb), 0.45);
-  box-shadow: 0 16px 38px -16px rgba(var(--accent-rgb), 0.5);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  /* Свечение приглушено — правка владельца (2026-09-04). */
+  box-shadow: 0 14px 32px -16px rgba(var(--accent-rgb), 0.32);
 }
 
 .card {
@@ -855,8 +857,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .event-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(var(--accent-rgb), 0.35);
-  box-shadow: 0 0.6rem 1.6rem rgba(0, 0, 0, 0.35);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  box-shadow: 0 0.6rem 1.4rem rgba(0, 0, 0, 0.28);
 }
 
 .event-card-date {
@@ -3530,8 +3532,8 @@ button.hero-stat-toggle.is-open {
 
 .cast-card:hover .cast-card-photo {
   transform: translateY(-2px);
-  border-color: rgba(var(--accent-rgb), 0.55);
-  box-shadow: 0 0.6rem 1.4rem rgba(0, 0, 0, 0.4);
+  border-color: rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 0.5rem 1.2rem rgba(0, 0, 0, 0.3);
 }
 
 .cast-card-photo img {
@@ -3661,8 +3663,8 @@ button.hero-stat-toggle.is-open {
 }
 .trip-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(var(--accent-rgb), 0.4);
-  box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.6);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  box-shadow: 0 12px 26px -16px rgba(0, 0, 0, 0.45);
 }
 .trip-card-past {
   padding: 0.7rem 1.35rem;
@@ -5025,7 +5027,8 @@ body::after {
 .profile-friend-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(2.8rem, 1fr));
-  gap: 0.5rem;
+  /* Чуть больше воздуха — правка владельца: «всё слипшееся». */
+  gap: 0.65rem;
 }
 
 .profile-friend {
@@ -5099,6 +5102,11 @@ body::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Единый стиль с постерами (правка владельца): эмодзи-строки (ачивка,
+     поездка) сидят на таком же тихом круге, что и аватарки, — колонка
+     иконок ровная. Аватар внутри перекрывает подложку целиком. */
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
   font-size: 1rem;
   background: rgba(var(--accent-rgb), 0.09);
   border: 1px solid rgba(var(--accent-rgb), 0.18);
@@ -5340,20 +5348,22 @@ body::after {
    плотный акцент #ff6a3d изнутри, светлее #ff9e5e снаружи, тёплое
    свечение следом. */
 /* На мелких аватарках (сетка друзей) кольцо намного тоньше — правка
-   владельца: толстое на миниатюре выглядело хомутом. Двухтонник
-   остаётся только у крупного фото профиля ниже. */
+   владельца: толстое на миниатюре выглядело хомутом. Тона — из
+   фирменного градиента (.text-warm-gradient): оранжевый акцент внутри,
+   розовое #e8467c свечение следом — «розово-оранжевый» по просьбе
+   владельца. */
 .premium-ring {
   box-shadow:
     0 0 0 1px rgba(var(--accent-rgb), 0.9),
-    0 0 0.3rem rgba(var(--accent-rgb), 0.25);
+    0 0 0.3rem rgba(232, 70, 124, 0.4);
 }
 
 .profile-side-photo-premium {
   border-color: rgba(var(--accent-rgb), 0.7);
   box-shadow:
     0 0 0 1px rgba(var(--accent-rgb), 0.5),
-    0 0 0 2.5px rgba(255, 158, 94, 0.35),
-    0 0 1.2rem rgba(var(--accent-rgb), 0.25);
+    0 0 0 2.5px rgba(232, 70, 124, 0.4),
+    0 0 1.1rem rgba(232, 70, 124, 0.22);
 }
 
 /* --- Ачивки иконками (правка владельца п.3): монета без подписи,

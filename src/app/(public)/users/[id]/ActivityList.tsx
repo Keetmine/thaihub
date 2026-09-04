@@ -95,7 +95,7 @@ export default function ActivityList({
                 <LetterAvatar
                   name={item.title}
                   photoUrl={item.imageUrl}
-                  size={2.25}
+                  size={1.9}
                   rounded={item.type === "favoritePerformer"}
                 />
               ) : item.type === "achievement" ? (

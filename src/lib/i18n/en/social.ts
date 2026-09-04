@@ -50,6 +50,18 @@ export const social = {
     // чипов в блоке с фото больше нет.
     memberSince: (date: string) => `On MyBLHub since ${date}`,
 
+    /* Labelled info rows (owner request, MDL-style). Role names decided
+       2026-09-04: Fan / Superfan / Team — change here and in ru. */
+    metaOnline: "Last online",
+    metaOnlineNow: "online now",
+    metaLocation: "Location",
+    metaRole: "Role",
+    roleFan: "Fan",
+    roleSuperfan: "Superfan",
+    roleTeam: "Team",
+    metaBirthday: "Birthday",
+    metaJoined: "Join date",
+
     // Вкладки правой колонки единого профиля (свой и чужой).
     tabs: {
       overview: "Overview",
