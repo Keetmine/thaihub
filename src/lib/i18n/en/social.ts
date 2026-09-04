@@ -45,7 +45,6 @@ export const social = {
     metaDescription: (name: string) => `${name}'s profile on MyBLHub.`,
     metaDescriptionAnonymous: "A user profile on MyBLHub.",
     fallbackName: "User",
-    back: "← Friends",
 
     chipFriends: (n: number) => `friends: ${n}`,
     chipEvents: (n: number) => `events: ${n}`,
@@ -53,7 +52,63 @@ export const social = {
     chipDramas: (n: number) => `series: ${n}`,
     memberSince: (date: string) => `On MyBLHub since ${date}`,
 
-    itsYou: "This is you · to your account",
+    // Вкладки правой колонки единого профиля (свой и чужой).
+    tabs: {
+      overview: "Overview",
+      stats: "Statistics",
+      reviews: "Reviews",
+      dramas: "Series",
+      events: "Events",
+      trips: "Trips",
+      places: "Places & lists",
+      tickets: (n: number) => `Tickets (${n})`,
+    },
+
+    // «Последние обновления»: лента активности из существующих таблиц
+    // (см. src/lib/activityFeed.ts) — иконка, действие, ссылка, дата.
+    activity: {
+      title: "Latest updates",
+      emptyTitle: "No updates yet",
+      emptyHintSelf:
+        "Mark series, add favourite artists, plan events — your updates will show up here.",
+      emptyHintViewer: (name: string) => `${name} has no visible updates yet.`,
+      watch: (status: string) => `watch status — ${status.toLowerCase()}`,
+      episodes: (n: number, total: number | null) =>
+        total ? `episode ${n} of ${total}` : `episode ${n}`,
+      favorite: "now a favourite artist",
+      going: "going to the event",
+      trip: "new trip",
+      review: (rating: number) => `review — ${rating}/10`,
+      achievement: "achievement unlocked",
+    },
+
+    friendsTitle: "Friends",
+    friendsAll: "All friends",
+    friendsEmptySelf: "Find people you know on the friends page.",
+    friendsEmpty: "No friends yet.",
+
+    dramasTab: {
+      emptyTitle: "No series on the list yet",
+      emptyHintSelf: "Set a watch status on a series page — the list will live here.",
+      emptyHintViewer: (name: string) => `${name} has not marked any series yet.`,
+      emptyCta: "Browse the series",
+      all: "All series",
+    },
+
+    tripsTab: {
+      emptyTitle: "No trips yet",
+      emptyHintSelf: "Plan your first trip — events, places and days in one plan.",
+      emptyCtaSelf: "Open trips",
+      emptyHintViewer: (name: string) => `${name} has no trips visible to you.`,
+      manage: "All trips",
+    },
+
+    placesTab: {
+      emptyTitle: "Nothing here yet",
+      emptyHintSelf: "Place lists and visited filming locations will be collected here.",
+      emptyHintViewer: (name: string) => `${name} has no visible lists or places yet.`,
+      emptyCtaSelf: "My places",
+    },
     yourFriend: "Your friend",
     requestSent: "Request sent",
     answerRequest: "Answer the request",

@@ -6,8 +6,9 @@ import { useLocale, useT } from "@/components/LocaleProvider";
 import { formatDateWithYear } from "@/lib/dates";
 
 /** Одна строка вкладки: ссылка/обложка считаются на сервере
- *  (dramaHref/novelHref/eventHref — см. account/page.tsx), клиенту
- *  приходит уже плоская запись. */
+ *  (dramaHref/novelHref/eventHref — см. users/[id]/page.tsx), клиенту
+ *  приходит уже плоская запись. Зрителю страница передаёт ТОЛЬКО
+ *  публичные отзывы — фильтр в серверной выборке, не здесь. */
 export type MyReviewRow = {
   id: string;
   rating: number;
@@ -33,7 +34,15 @@ function ratingColor(r: number): string {
  * ссылка ведёт на страницу записи, где форма уже есть, — вкладка
  * остаётся простой.
  */
-export default function ReviewsTab({ reviews }: { reviews: MyReviewRow[] }) {
+export default function ReviewsTab({
+  reviews,
+  viewer = false,
+}: {
+  reviews: MyReviewRow[];
+  /** Чужой профиль: пустое состояние без CTA «напишите отзыв» — призыв
+   *  адресован владельцу, а не зрителю. */
+  viewer?: boolean;
+}) {
   const t = useT();
   const locale = useLocale();
 
@@ -42,8 +51,8 @@ export default function ReviewsTab({ reviews }: { reviews: MyReviewRow[] }) {
       <EmptyState
         emoji="⭐"
         title={t.account.reviews.emptyTitle}
-        hint={t.account.reviews.emptyHint}
-        cta={{ href: "/dramas", label: t.account.reviews.emptyCta }}
+        hint={viewer ? undefined : t.account.reviews.emptyHint}
+        cta={viewer ? undefined : { href: "/dramas", label: t.account.reviews.emptyCta }}
         compact
       />
     );

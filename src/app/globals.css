@@ -2399,16 +2399,6 @@ svg[aria-hidden="true"] {
   background: var(--bs-primary);
 }
 
-/* ---------- Шапка профиля ---------- */
-.profile-hero {
-  padding: 1.25rem 1.4rem;
-  border-radius: var(--bs-border-radius-lg, 1rem);
-  border: 1px solid var(--bs-border-color);
-  background:
-    radial-gradient(38rem 12rem at 0% 0%, rgba(var(--accent-rgb), 0.14), transparent 70%),
-    rgba(255, 255, 255, 0.025);
-}
-
 /* ---------- Воздух между секциями ---------- */
 /* Заголовки секций разделяют крупные блоки — без отступа сверху списки
    «слипались» друг с другом (список песен и карточка наград и т.п.).
@@ -3719,39 +3709,6 @@ button.hero-stat-toggle.is-open {
   margin-left: 0.5em;
 }
 
-/* Шапка публичного профиля: .detail-hero, но фото юзера — круглый
-   аватар вместо карточки 3/4 (аватарки квадратные, 3/4 их режет). */
-.profile-hero .detail-hero-photo {
-  width: 8.5rem;
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-}
-/* Фолбэк без фото: первая буква тёплым цветом (правило дизайн-системы). */
-.profile-hero-fallback {
-  width: 8.5rem;
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
-  font-size: 3rem;
-  font-weight: 700;
-  color: rgba(255, 154, 114, 0.6);
-  background: var(--bs-secondary-bg);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-@media (max-width: 575.98px) {
-  .profile-hero .detail-hero-photo,
-  .profile-hero-fallback {
-    width: 6.5rem;
-  }
-  .profile-hero-fallback {
-    font-size: 2.2rem;
-  }
-}
-
 /* Кнопка-капсула вкл/выкл (уведомления о друге): вид .chip-link,
    но <button>. Выключено — приглушённая пунктирная капсула. */
 .chip-toggle {
@@ -4986,4 +4943,255 @@ body::after {
 
 .episode-progress-input:focus {
   outline: none;
+}
+
+/* ---------- Э3: единый профиль (/users/[id]) ----------
+   Редизайн по референсу владельца: слева колонка (фото, имя, бейджи,
+   краткая инфа, ачивки, друзья), справа вкладки. Кабинет /account —
+   permanent redirect сюда. Разметка — users/[id]/page.tsx. */
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: 17.5rem minmax(0, 1fr);
+  gap: 2.25rem;
+  align-items: start;
+}
+
+.profile-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  min-width: 0;
+}
+
+/* min-width: 0 обязателен: без него min-content ряда вкладок (8 штук,
+   nowrap) распирает грид-колонку, и вся страница получает
+   горизонтальную прокрутку (та же грабля, что у plain 1fr — см.
+   комментарий про minmax в architecture.md). */
+.profile-main {
+  min-width: 0;
+}
+
+/* Фото — главный визуал колонки (правило дизайн-системы): портретная
+   карточка на всю ширину, фолбэк — первая буква тёплым цветом. */
+.profile-side-photo {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--bs-border-radius-lg, 1rem);
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  background:
+    radial-gradient(24rem 16rem at 20% 0%, rgba(var(--accent-rgb), 0.18), transparent 70%),
+    var(--bs-secondary-bg);
+}
+
+.profile-side-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-side-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-size: 4.5rem;
+  font-weight: 700;
+  color: rgba(255, 154, 114, 0.6);
+}
+
+.profile-side-name {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  font-size: 1.7rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.profile-side-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.profile-side-bio {
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+  margin-bottom: 0;
+  white-space: pre-line;
+}
+
+.profile-side-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* Сетка друзей: круглые аватарки, фолбэк — буква на тёплом фоне. */
+.profile-friend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.8rem, 1fr));
+  gap: 0.5rem;
+}
+
+.profile-friend {
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bs-secondary-bg);
+  border: 1px solid var(--bs-border-color);
+  color: rgba(255, 154, 114, 0.7);
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.profile-friend:hover {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  transform: translateY(-2px);
+}
+
+.profile-friend img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Ряд вкладок профиля: вкладок до восьми — на узких экранах ряд
+   скроллится горизонтально, а не заворачивается в три строки. */
+.profile-tab-row {
+  flex-wrap: nowrap;
+}
+
+.profile-tab-row .tab-bar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 1.25rem;
+}
+
+.profile-tab-row .tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Полоска активной вкладки рисуется на bottom: -1px — контейнеру
+   прокрутки нужен нижний просвет, иначе она обрезается. */
+.profile-tab-row .tab-bar-item {
+  overflow: visible;
+}
+
+/* Строка ленты «Последние обновления»: иконка в круге, название-ссылка,
+   действие тише, дата справа. */
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--bs-border-radius);
+  border: 1px solid var(--bs-border-color);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.activity-row-icon {
+  flex-shrink: 0;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  background: rgba(var(--accent-rgb), 0.09);
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+}
+
+.activity-row-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-row-title {
+  color: #fff;
+  font-weight: 500;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-row-title:hover {
+  color: var(--bs-primary-text-emphasis);
+}
+
+.activity-row-action {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+}
+
+.activity-row-date {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+}
+
+/* Адаптив: на телефоне колонки складываются, левая сверху компактно —
+   фото уменьшается и встаёт рядом с именем/инфой, друзья и ачивки идут
+   ниже во всю ширину. */
+@media (max-width: 991.98px) {
+  .profile-layout {
+    /* minmax(0, 1fr), не plain 1fr — иначе auto-минимум колонки берёт
+       min-content самого широкого блока и страница едет вбок. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .profile-side {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.9rem 1.1rem;
+    align-items: start;
+  }
+
+  .profile-side-photo {
+    grid-row: span 3;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+  }
+
+  .profile-side-fallback {
+    font-size: 2.6rem;
+  }
+
+  /* Всё, кроме фото/имени/меты/кнопок, — на всю ширину под ними. */
+  .profile-side > * {
+    grid-column: 2;
+  }
+
+  .profile-side > .profile-side-photo {
+    grid-column: 1;
+  }
+
+  .profile-side > .profile-side-chips,
+  .profile-side > .profile-side-block,
+  .profile-side > .profile-side-bio {
+    grid-column: 1 / -1;
+  }
+
+  .activity-row-date {
+    display: none;
+  }
 }

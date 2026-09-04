@@ -186,52 +186,106 @@ Friend mini-cards on the event detail page link to `/friends` — there's
 no individual public user-profile page to deep-link to, so this is
 intentionally the closest existing destination rather than a dead link.
 
-## Public user profiles
+## Единая страница профиля (/users/[id])
 
-`/users/[id]` (`(public)/users/[id]/page.tsx`) — any logged-in user can
-open anyone's profile. Свой профиль по **id** редиректит на `/account`,
-а по **нику** открывается как есть — именно так ведёт пункт «Мой
-профиль» в меню, это предпросмотр своей публичной страницы. В этом
-случае вместо дружеских действий показывается ссылка «Это вы · в
-кабинет» (Ж7: раньше на своей же странице висела кнопка «В друзья», и
-заявку можно было отправить самому себе — сервер её отбивал, но кнопка
-сбивала с толку). The header is a
-DetailHero-style hero on the `.detail-hero` classes (Э2ф, `.profile-hero`
-in `globals.css`): the user's photo as a blurred backdrop plus a round
-avatar (letter fallback on the warm gradient when there's no photo), the
-name large, «На MyBLHub с …» as subtitle, and the friends/events/
-actors/series counts as a `.date-chip` row (hidden with the rest of the
-activity for private profiles). Actions sit on the right: for friends a
-«Ваш друг» chip plus the notification bell toggle
-(`FriendNotifyToggle` — a `.chip-link`-style capsule with the
-`BellIcon`/`BellOffIcon` SVGs); for everyone else a «В друзья» button
-(`FriendActionButton` → `sendFriendRequest`), which turns into a «Заявка
-отправлена» chip once a request is pending (an *incoming* pending
-request shows «Ответить на заявку» linking to `/friends`).
-Ошибки `sendFriendRequest` («сам себе», «заявка уже есть») приходят
-значением `{ ok: false, error }` — текст исключения из server action в
-проде до клиента не доезжает — и `FriendActionButton` показывает их
-под кнопкой.
-«Пожаловаться» (`ReportButton`) deliberately lives as a small gray link
-at the very bottom of the page, not in the header. Below the hero:
-the trips this *viewer* is allowed to see (PUBLIC always, FRIENDS only
-for the owner's accepted friends — same rules as the trip page itself),
-favorite performers as `EntityMiniCard`s, and the upcoming events the
-person is going to — the latter only when the **viewer** has premium
-(events are subscription-gated; non-premium viewers see just the
-count). Linked from every `UserRow` on `/friends` (avatar+name are the
-link) and from the "Поездка пользователя X" note on a shared trip page.
-A friend's shared trips are shown *only* here — `/friends` itself no
-longer lists them.
+`/users/[id]` (`(public)/users/[id]/page.tsx`) — **одна страница и для
+себя, и для зрителей** (редизайн по референсу владельца). Кабинета как
+отдельной страницы больше нет: `/account` — permanent redirect на свой
+профиль (`/users/<ник-или-id>`), с сохранением сохранённых ссылок —
+`/account?tab=stats|events|reviews|tickets|profile` переписывается в
+`?tab=` профиля (маппинг `TAB_MAP` в `account/page.tsx`; `profile` →
+`overview`). Аноним с `/account` — на `/login`, как раньше.
+`/account/settings` остаётся отдельным адресом. Редиректа своего
+профиля в кабинет больше нет: свой профиль по id и по нику открывается
+как обычная страница (жалоба владельца — «свой профиль глазами других
+вообще не открыть»).
 
-## Account page event grouping
+Раскладка (`.profile-layout`, секция «Э3» в `globals.css`):
 
-The account tabs show a multi-day event as **one row with a combined
-date list** («16, 17, 18 октября 2026», `formatCombinedDateList`) —
-`AccountEventEntry` in `AccountTabs.tsx`, built per *event* rather than
-per occurrence. Per-date splitting stays only where lists are sorted by
-date (the home афиша, day view, calendar, trip pages). An event counts
-as upcoming until its **last** date has passed.
+- **Левая колонка** (`.profile-side`): портретное фото карточкой
+  (фолбэк — буква тёплым цветом), имя + бейдж подписки (бейдж «Базовый»
+  видит только владелец), @ник/страна/«На MyBLHub с…», bio, свой
+  email — **только себе**; действия: себе «Настройки» и «Выйти»
+  (переехали из шапки кабинета), чужому — дружеские кнопки (как раньше:
+  «В друзья» → «Заявка отправлена» / «Ответить на заявку», друзьям —
+  чип «Ваш друг» + `FriendNotifyToggle`). Ниже — чипы-счётчики
+  (друзья/события/актёры/сериалы), ачивки-медали (compact
+  `AchievementBadge`; себе — со счётчиком «N из M») и **блок друзей**:
+  сетка круглых аватарок `.profile-friend-grid` + счётчик, себе —
+  ссылка «Все друзья» на `/friends` (у чужого списка друзей своей
+  страницы нет, поэтому зрителю ссылки нет).
+- **Правая колонка**: вкладки (`ProfileTabs.tsx` — клиентское
+  переключение, панели рендерит серверная страница и передаёт готовыми
+  ReactNode; панели остаются смонтированными через `display:none`; на
+  узких экранах ряд вкладок скроллится горизонтально). Набор вкладок:
+  - **Обзор** — себе `ProfileOverview` (герои-плитки только при
+    подписке + чипы-ссылки, нулевые чипы скрываются) + лента
+    «Последние обновления» (`ActivityList` ← `src/lib/activityFeed.ts`,
+    см. ниже) + любимые актёры (`EntityMiniCard`, до 18);
+  - **Статистика** — `StatsTab` (см.
+    [gamification.md](gamification.md)); у бесплатного владельца вместо
+    неё ОДИН компактный апселл (`StatsUpsell` → `PremiumTeaser`), а не
+    два гигантских пейволла, как в старом кабинете; зрителю вкладка
+    видна только когда у владельца подписка и активность не скрыта —
+    тогда сверху четыре hero-плитки и тот же StatsTab;
+  - **Отзывы** — `ReviewsTab`; зрителю в выборку попадают только
+    `isPrivate: false` (фильтр в server-запросе);
+  - **Сериалы** — статусы просмотра, сгруппированные по
+    `WATCH_STATUS_ORDER`: постер, название (`dramaTitleForLocale`),
+    прогресс (`episodeProgress`), дата отметки;
+  - **События** — себе прежний набор кабинета (иду/прошедшие/избранное
+    строками `EventAgendaRow`, за подпиской — `t.account.events.locked`
+    без данных); зрителю — будущие «иду», и только если у **зрителя**
+    подписка (лента событий платная; без неё — счётчик);
+  - **Поездки** — по правилам видимости trips (себе все, друзьям
+    PUBLIC+FRIENDS, остальным PUBLIC);
+  - **Места и списки** — списки мест и списки актёров (та же модель
+    видимости; себе — кнопка создания списка при подписке) + посещённые
+    места (chips, до 24, гейт `hideVisitedPlaces`);
+  - **Билеты** — ТОЛЬКО себе и только когда билеты есть.
+
+Ссылки-возврата у профиля больше нет: своему профилю она не нужна, а у
+чужого «← Друзья» врала о том, откуда пришли (на профиль ведут и
+/friends, и страница события, и чужая поездка) — назад ведут браузер и
+навигация. «Пожаловаться» (`ReportButton`) — серая ссылка в самом низу,
+только на чужом профиле. Ошибки `sendFriendRequest` («сам себе»,
+«заявка уже есть») приходят значением `{ ok: false, error }` и
+показываются под кнопкой. Linked from every `UserRow` on `/friends`
+(avatar+name are the link) and from the "Поездка пользователя X" note
+on a shared trip page. A friend's shared trips are shown *only* here —
+`/friends` itself no longer lists them.
+
+Футер зовёт этот адрес «Профиль» (`SiteFooter` берёт
+`getCurrentUser()` и строит `/users/<ник-или-id>`; аноним получает
+`/account`, который отправит его на `/login`).
+
+## Лента «Последние обновления» (activity feed)
+
+`src/lib/activityFeed.ts` — БЕЗ новой модели: деривация последних ~20
+событий из существующих таблиц: статус/прогресс сериала
+(`DramaWatchStatus.updatedAt`), избранный артист
+(`FavoritePerformer.createdAt`), «иду» на событие
+(`EventAttendance.createdAt`, отметки одного события склеиваются),
+новая поездка (`Trip.createdAt`), отзыв (`Review.createdAt`), ачивка
+(`UserAchievement.unlockedAt`, только включённые в админке). Каждый
+источник ограничен лимитом, всё сливается и сортируется по дате.
+
+Приватность решается в выборках через `ActivityFeedAccess`, который
+собирает страница: приватные отзывы — только себе; «иду» — себе или
+зрителю с подпиской (лента событий платная); избранные артисты и
+ачивки — по переключателям Г8; поездки — по их правилам видимости.
+Рендер — `users/[id]/ActivityList.tsx` (строка: иконка типа, название
+со ссылкой, подпись действия без глаголов прошедшего времени — пол
+автора неизвестен, дата `formatDateWithYear`; свой приватный отзыв
+помечен бейджем и в ленте).
+
+## Events tab grouping
+
+Вкладка «События» профиля показывает избранное событие **одной строкой
+со списком дат** («+N дат», `extraDates` у `EventAgendaRow`), а «иду» —
+строкой на отмеченную дату. Per-date splitting stays where lists are
+sorted by date (the home афиша, day view, calendar, trip pages). An
+event counts as upcoming until its **last** date has passed.
 
 ## Приватные отзывы и вкладка «Отзывы» в кабинете
 
@@ -255,20 +309,32 @@ as upcoming until its **last** date has passed.
   `publicReviews`, а `review.aggregate` в шапке страницы сериала
   (`dramas/[id]/page.tsx`) берёт `isPrivate: false`.
 
-**Вкладка «Отзывы» в /account** (`ReviewsTab.tsx`, данные грузит
-`account/page.tsx` по образцу билетов): все отзывы текущего юзера по
-всем трём типам, новые сверху — обложка и название со ссылкой на
-страницу записи, оценка в цветах Кинопоиска, дата, бейдж приватности,
-первые строки текста (line-clamp). Редактирования во вкладке нет
+**Вкладка «Отзывы» в профиле** (`users/[id]/ReviewsTab.tsx`, данные
+грузит `users/[id]/page.tsx`): отзывы по всем трём типам, новые
+сверху — обложка и название со ссылкой на страницу записи, оценка в
+цветах Кинопоиска, дата, бейдж приватности, первые строки текста
+(line-clamp). Себе видны и приватные; **зрителю в выборку попадают
+только публичные** (`isPrivate: false` в where — приватный текст не
+попадает даже в HTML чужой страницы). Редактирования во вкладке нет
 намеренно — ссылка ведёт на страницу записи, где форма уже есть.
-Пустое состояние — `EmptyState` с CTA в каталог сериалов. E2e:
+Пустое состояние — `EmptyState` (CTA только себе). E2e:
 `tests/e2e/review-privacy.spec.ts` (фикстуры
-`create/delete-review-fixtures.ts`).
+`create/delete-review-fixtures.ts`) и
+`tests/e2e/profile-privacy.spec.ts` (фикстуры
+`create/delete-profile-fixtures.ts` — зритель не видит чужого
+приватного даже в page.content()).
 
 ## Приватность профиля (гранулярная)
 
 Друзья видят всё всегда. Для остальных — четыре переключателя в
-настройках аккаунта: `hideProfileActivity` (мастер: только имя/фото),
-`hideAchievements`, `hideFavoritePerformers`, `hideVisitedPlaces`.
-Публичный профиль (/users/[id]) гейтит соответствующие секции; там же
-появилась секция «Посещённые места» (chips, последние 24).
+настройках аккаунта: `hideProfileActivity` (мастер: зрителю остаются
+только левая колонка без активности и сообщение «профиль скрывает
+активность», вкладок нет), `hideAchievements`, `hideFavoritePerformers`,
+`hideVisitedPlaces`. Все гейты стоят **в серверных выборках** страницы
+`/users/[id]` (и в `ActivityFeedAccess` ленты), а не при отрисовке:
+зрительские вкладки не получают чужих приватных данных даже в пропсах.
+Сверх переключателей: email виден только себе, билеты — только себе,
+приватные отзывы — только себе, поездки/списки — по своим правилам
+видимости, а чужая статистика показывается только когда владелец с
+подпиской (при `hideVisitedPlaces` из свода зрителя вычищаются пины
+карты и счётчик локаций). Покрыто `tests/e2e/profile-privacy.spec.ts`.

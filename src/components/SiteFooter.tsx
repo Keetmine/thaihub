@@ -4,11 +4,17 @@ import { NAV_PREFIXES } from "@/components/publicNavItems";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Logo from "@/components/Logo";
 import { getT } from "@/lib/i18n";
+import { getCurrentUser } from "@/lib/userAuth";
 
 // Футер публичного сайта: ссылки по разделам; вики и «О нас» (лендинг)
 // доступны отсюда и без логина.
 export default async function SiteFooter() {
   const { t } = await getT();
+  // «Профиль» ведёт на единую страницу профиля (/users/…); кабинет
+  // /account остался только редиректом туда — анонима он, как и раньше,
+  // отправит на /login.
+  const user = await getCurrentUser();
+  const profileHref = user ? `/users/${user.username ?? user.id}` : "/account";
   const col = "d-flex flex-column gap-1";
   const link = "small text-secondary text-decoration-none footer-link";
 
@@ -34,7 +40,7 @@ export default async function SiteFooter() {
           <div className="col-6 col-md-3">
             <p className="section-heading mb-2">{t.footer.personal}</p>
             <div className={col}>
-              <NavLink href="/account" matchPrefixes={NAV_PREFIXES["/account"]} className={link}>{t.nav.profile}</NavLink>
+              <NavLink href={profileHref} matchPrefixes={["/users/", "/account/"]} className={link}>{t.nav.profile}</NavLink>
               <NavLink href="/trips" matchPrefixes={NAV_PREFIXES["/trips"]} className={link}>{t.nav.trips}</NavLink>
               <NavLink href="/lists" matchPrefixes={NAV_PREFIXES["/lists"]} className={link}>{t.nav.myPlaces}</NavLink>
               <NavLink href="/friends" matchPrefixes={NAV_PREFIXES["/friends"]} className={link}>{t.nav.friends}</NavLink>

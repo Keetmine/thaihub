@@ -3,17 +3,10 @@
  * уведомлений. Названия и описания ачивок сюда не попадают — они лежат
  * в базе (модель Achievement) и правятся из админки.
  */
+// Ключи шапки и вкладок старого кабинета (eyebrow, metaTitle, tab*)
+// удалены: /account теперь permanent redirect на единую страницу
+// профиля, её вкладки живут в social.profile.tabs.
 export const account = {
-  eyebrow: "Account",
-  metaTitle: "Profile",
-  metaDescription:
-    "Your account: favourite artists, upcoming events, watch statuses, achievements and subscription.",
-
-  tabProfile: "Profile",
-  tabEvents: "Events",
-  tabTickets: (n: number) => `Tickets (${n})`,
-  tabReviews: "Reviews",
-
   planPremium: "Subscribed",
   planFree: "Free",
   telegramSignIn: "Signed in with Telegram",
@@ -76,7 +69,8 @@ export const account = {
     // строковых литералов, и русский перевод в него не укладывается.
     chipFriends: (n: number): string => (n === 1 ? "friend" : "friends"),
     chipTrips: (n: number): string => (n === 1 ? "trip" : "trips"),
-    chipVenues: (n: number): string => (n === 1 ? "venue" : "venues"),
+    // chipVenues удалён: площадки из статистики профиля убраны (правка
+    // владельца).
     chipLocations: (n: number) => `filming ${n === 1 ? "location" : "locations"}`,
 
     lockedTitle: "Your own stats come with a subscription",
@@ -96,6 +90,8 @@ export const account = {
 
     byYear: "Events by year",
     visitedMap: "Map of where you've been",
+    // На чужом профиле «вы» неуместно — своя подпись для зрителя.
+    visitedMapViewer: "Map of visited places",
 
     achievements: "Achievements",
     achievementsProgress: (unlocked: number, total: number) => `${unlocked} of ${total}`,

@@ -23,7 +23,10 @@ export async function loginAsAdminKeepingProfileLocale(page: Page) {
   await page.fill('input[name="email"]', ADMIN_EMAIL);
   await page.fill('input[name="password"]', ADMIN_TEST_PASSWORD);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/account/);
+  // Вход ведёт на /account, но тот теперь permanent redirect на единую
+  // страницу профиля /users/<ник-или-id> — браузер коммитит только
+  // конечный адрес, /account в истории не появляется.
+  await page.waitForURL(/\/users\//);
 }
 
 export async function loginAsAdmin(page: Page) {
@@ -64,5 +67,6 @@ export async function loginTestUser(page: Page, email: string, password: string)
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/account/);
+  // /account — permanent redirect на профиль (см. loginAsAdmin выше).
+  await page.waitForURL(/\/users\//);
 }

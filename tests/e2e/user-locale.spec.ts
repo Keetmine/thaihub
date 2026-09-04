@@ -62,7 +62,8 @@ test("вход на новом устройстве поднимает язык 
   await fresh.fill('input[name="email"]', ADMIN_EMAIL);
   await fresh.fill('input[name="password"]', ADMIN_TEST_PASSWORD);
   await fresh.click('button[type="submit"]');
-  await fresh.waitForURL(/\/account/);
+  // /account — permanent redirect на профиль /users/… (в т.ч. под /ru).
+  await fresh.waitForURL(/\/users\//);
 
   await fresh.goto("/events");
   expect(new URL(fresh.url()).pathname).toBe("/ru/events");

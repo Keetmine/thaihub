@@ -43,7 +43,6 @@ export const social: Dict["social"] = {
     metaDescription: (name: string) => `Профиль пользователя ${name} на MyBLHub.`,
     metaDescriptionAnonymous: "Профиль пользователя на MyBLHub.",
     fallbackName: "Пользователь",
-    back: "← Друзья",
 
     chipFriends: (n: number) => `друзей: ${n}`,
     chipEvents: (n: number) => `событий: ${n}`,
@@ -51,7 +50,64 @@ export const social: Dict["social"] = {
     chipDramas: (n: number) => `сериалов: ${n}`,
     memberSince: (date: string) => `На MyBLHub с ${date}`,
 
-    itsYou: "Это вы · в кабинет",
+    // Вкладки правой колонки единого профиля (свой и чужой).
+    tabs: {
+      overview: "Обзор",
+      stats: "Статистика",
+      reviews: "Отзывы",
+      dramas: "Сериалы",
+      events: "События",
+      trips: "Поездки",
+      places: "Места и списки",
+      tickets: (n: number) => `Билеты (${n})`,
+    },
+
+    // «Последние обновления»: лента активности из существующих таблиц
+    // (см. src/lib/activityFeed.ts) — иконка, действие, ссылка, дата.
+    // Формулировки без глаголов прошедшего времени: пол автора неизвестен.
+    activity: {
+      title: "Последние обновления",
+      emptyTitle: "Обновлений пока нет",
+      emptyHintSelf:
+        "Отмечайте сериалы, добавляйте любимых артистов, планируйте события — обновления появятся здесь.",
+      emptyHintViewer: (name: string) => `У ${name} пока нет видимых обновлений.`,
+      watch: (status: string) => `статус просмотра — «${status.toLowerCase()}»`,
+      episodes: (n: number, total: number | null) =>
+        total ? `серия ${n} из ${total}` : `серия ${n}`,
+      favorite: "теперь в любимых артистах",
+      going: "отметка «иду» на событие",
+      trip: "новая поездка",
+      review: (rating: number) => `отзыв — ${rating}/10`,
+      achievement: "новая ачивка",
+    },
+
+    friendsTitle: "Друзья",
+    friendsAll: "Все друзья",
+    friendsEmptySelf: "Найдите знакомых на странице друзей.",
+    friendsEmpty: "Пока нет друзей.",
+
+    dramasTab: {
+      emptyTitle: "В списке пока нет сериалов",
+      emptyHintSelf: "Поставьте статус просмотра на странице сериала — список соберётся здесь.",
+      emptyHintViewer: (name: string) => `${name} пока не отмечает сериалы.`,
+      emptyCta: "Посмотреть сериалы",
+      all: "Все сериалы",
+    },
+
+    tripsTab: {
+      emptyTitle: "Поездок пока нет",
+      emptyHintSelf: "Спланируйте первую поездку — события, места и дни в одном плане.",
+      emptyCtaSelf: "Открыть поездки",
+      emptyHintViewer: (name: string) => `У ${name} нет видимых вам поездок.`,
+      manage: "Все поездки",
+    },
+
+    placesTab: {
+      emptyTitle: "Пока пусто",
+      emptyHintSelf: "Здесь соберутся списки мест и посещённые локации съёмок.",
+      emptyHintViewer: (name: string) => `У ${name} пока нет видимых списков и мест.`,
+      emptyCtaSelf: "Мои места",
+    },
     yourFriend: "Ваш друг",
     requestSent: "Заявка отправлена",
     answerRequest: "Ответить на заявку",

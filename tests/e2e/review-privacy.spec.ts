@@ -31,7 +31,8 @@ async function login(page: Page, email: string) {
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', REVIEW_TEST_PASSWORD);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/account/);
+  // /account — permanent redirect на единую страницу профиля.
+  await page.waitForURL(/\/users\//);
 }
 
 test("приватный отзыв виден только автору и не двигает средний рейтинг", async ({ page }) => {
@@ -57,10 +58,14 @@ test("приватный отзыв виден только автору и не
   await expect(heading).toContainText("(1)");
   await expect(heading).not.toContainText("6");
 
-  // --- Вкладка «Отзывы» в кабинете автора ---
+  // --- Вкладка «Отзывы» в профиле автора (/account редиректит туда) ---
   await page.goto("/account?tab=reviews");
   await expect(page.getByText(marker)).toBeVisible();
-  await expect(page.getByText("only visible to you")).toBeVisible();
+  // Бейдж приватности теперь встречается и в скрытой панели «Обзора»
+  // (лента активности) — проверяем именно видимый.
+  await expect(
+    page.locator("span.badge:visible", { hasText: "only visible to you" }),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: REVIEW_DRAMA.title })).toBeVisible();
 
   // --- Второй пользователь: отзыва нет нигде, рейтинг не сдвинут ---

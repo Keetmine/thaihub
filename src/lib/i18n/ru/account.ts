@@ -2,16 +2,6 @@ import { plural, pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
 export const account: Dict["account"] = {
-  eyebrow: "Аккаунт",
-  metaTitle: "Профиль",
-  metaDescription:
-    "Личный кабинет: избранные артисты, ближайшие события, статусы просмотра, ачивки и подписка.",
-
-  tabProfile: "Профиль",
-  tabEvents: "События",
-  tabTickets: (n: number) => `Билеты (${n})`,
-  tabReviews: "Отзывы",
-
   planPremium: "Подписка",
   planFree: "Базовый",
   telegramSignIn: "Вход через Telegram",
@@ -67,7 +57,6 @@ export const account: Dict["account"] = {
     chipDramas: (n: number) => `${plural(n, ["сериал", "сериала", "сериалов"])} в списке`,
     chipFriends: (n: number) => plural(n, ["друг", "друга", "друзей"]),
     chipTrips: (n: number) => plural(n, ["поездка", "поездки", "поездок"]),
-    chipVenues: (n: number) => plural(n, ["площадка", "площадки", "площадок"]),
     chipLocations: (n: number) => `${plural(n, ["локация", "локации", "локаций"])} съёмок`,
 
     lockedTitle: "Личная статистика — по подписке",
@@ -87,6 +76,8 @@ export const account: Dict["account"] = {
 
     byYear: "События по годам",
     visitedMap: "Карта посещённого",
+    // На чужом профиле — без обращения к владельцу.
+    visitedMapViewer: "Карта посещённых мест",
 
     achievements: "Ачивки",
     achievementsProgress: (unlocked: number, total: number) => `${unlocked} из ${total}`,

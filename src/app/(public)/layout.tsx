@@ -135,7 +135,15 @@ export default async function PublicLayout({ children }: { children: React.React
                     <HeartIcon />
                   </Link>
                 )}
-                {user && <NotificationBell />}
+                {/* Метка тура и на десктопном колокольчике: раньше она
+                    была только в мобильном блоке, querySelector находил
+                    скрытый элемент — и шаг «уведомления» на десктопе
+                    молча пропускался. */}
+                {user && (
+                  <span data-tour="notifications">
+                    <NotificationBell />
+                  </span>
+                )}
                 {isAdmin && (
                   <Link
                     href="/admin"

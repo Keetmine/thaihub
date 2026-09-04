@@ -4,15 +4,16 @@ import { useState } from "react";
 import AppLink from "@/components/AppLink";
 import type { StatsForTab } from "./StatsTab";
 import { useLocale, useT } from "@/components/LocaleProvider";
-import PremiumTeaser from "@/components/PremiumTeaser";
 import { formatDateWithYear } from "@/lib/dates";
 import { eventHref, performerHref } from "@/lib/slugHelpers";
 
-/** Счётчики профиля, но с иерархией вместо двух одинаковых рядов плиток:
- *  сверху — крупные «герои» (то, чем фанат гордится: события, актёры
- *  вживую, дни в Таиланде, досмотренные сериалы), ниже — компактные
- *  чипы-ссылки в разделы (иду, избранное, друзья…). Раньше оба ряда
- *  выглядели одинаково, хотя первый — навигация, второй — достижения. */
+/** Счётчики СВОЕГО профиля (вкладка «Обзор»): сверху — крупные «герои»
+ *  (то, чем фанат гордится: события, актёры вживую, дни в Таиланде,
+ *  досмотренные сериалы), ниже — компактные чипы-ссылки в разделы (иду,
+ *  избранное, друзья…). У бесплатного аккаунта героев нет (личная
+ *  статистика платная — см. features/gamification.md), но чипы остаются:
+ *  это навигация, а не достижения. Гигантского пейволла здесь больше
+ *  нет — компактный апселл живёт один, во вкладке «Статистика». */
 export default function ProfileOverview({
   stats,
   nav,
@@ -27,9 +28,6 @@ export default function ProfileOverview({
     friends: number;
     trips: number;
   };
-  /** Счётчики «вживую» и «дни в Таиланде» — часть платной статистики
-   *  (см. features/gamification.md): без подписки вместо цифр показываем,
-   *  что за ней. Навигационные чипы остаются всем. */
   isPremium: boolean;
 }) {
   const t = useT();
@@ -97,7 +95,8 @@ export default function ProfileOverview({
     },
     { label: o.chipFriends(nav.friends), value: nav.friends, href: "/friends" },
     { label: o.chipTrips(nav.trips), value: nav.trips, href: "/trips" },
-    { label: o.chipVenues(stats.uniqueVenues), value: stats.uniqueVenues },
+    // Площадок (venues) в счётчиках больше нет — правка владельца:
+    // информация о площадках из статистики профиля убрана целиком.
     {
       label: o.chipLocations(stats.visitedLocations),
       value: stats.visitedLocations,
@@ -105,75 +104,50 @@ export default function ProfileOverview({
     },
   ];
 
-  if (!isPremium) {
-    return (
-      <div className="mb-4">
-        <PremiumTeaser title={o.lockedTitle} description={o.lockedDescription} />
-        <div className="d-flex flex-wrap gap-2">
-          {chips.map((c) => {
+  return (
+    <div className="mb-4">
+      {isPremium && (
+        <div className="row g-2 mb-3">
+          {heroes.map((h) => {
             const inner = (
               <>
-                <span className="nav-chip-value">{c.value}</span>
-                <span className="nav-chip-label">{c.label}</span>
+                <span className="hero-stat-value">{h.value}</span>
+                <span className="hero-stat-label">
+                  <span className="hero-stat-icon">{h.icon}</span> {h.label}
+                </span>
+                <span className="hero-stat-hint">
+                  {h.hint}
+                  {h.expandKey && (
+                    <span aria-hidden> {expanded === h.expandKey ? "▴" : "▾"}</span>
+                  )}
+                </span>
               </>
             );
-            return c.href ? (
-              <AppLink key={c.label} href={c.href} className="nav-chip">
-                {inner}
-              </AppLink>
-            ) : (
-              <span key={c.label} className="nav-chip">
-                {inner}
-              </span>
+            return (
+              <div key={h.label} className="col-6 col-xl-3">
+                {h.expandKey ? (
+                  <button
+                    type="button"
+                    className={`hero-stat hero-stat-toggle h-100 w-100${expanded === h.expandKey ? " is-open" : ""}`}
+                    aria-expanded={expanded === h.expandKey}
+                    onClick={() =>
+                      setExpanded((cur) => (cur === h.expandKey ? null : h.expandKey!))
+                    }
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div className="hero-stat h-100">{inner}</div>
+                )}
+              </div>
             );
           })}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-4">
-      <div className="row g-2 mb-3">
-        {heroes.map((h) => {
-          const inner = (
-            <>
-              <span className="hero-stat-value">{h.value}</span>
-              <span className="hero-stat-label">
-                <span className="hero-stat-icon">{h.icon}</span> {h.label}
-              </span>
-              <span className="hero-stat-hint">
-                {h.hint}
-                {h.expandKey && (
-                  <span aria-hidden> {expanded === h.expandKey ? "▴" : "▾"}</span>
-                )}
-              </span>
-            </>
-          );
-          return (
-            <div key={h.label} className="col-6 col-lg-3">
-              {h.expandKey ? (
-                <button
-                  type="button"
-                  className={`hero-stat hero-stat-toggle h-100 w-100${expanded === h.expandKey ? " is-open" : ""}`}
-                  aria-expanded={expanded === h.expandKey}
-                  onClick={() =>
-                    setExpanded((cur) => (cur === h.expandKey ? null : h.expandKey!))
-                  }
-                >
-                  {inner}
-                </button>
-              ) : (
-                <div className="hero-stat h-100">{inner}</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      )}
 
       {/* Раскрытый список под плиткой: события — строками с датой,
           артисты — теми же чипами, что «Чаще всего видела вживую». */}
-      {expanded === "events" && (
+      {isPremium && expanded === "events" && (
         <div className="surface p-3 mb-3">
           <div className="d-flex flex-column gap-1">
             {stats.attendedEventsList.map((ev) => (
@@ -191,7 +165,7 @@ export default function ProfileOverview({
           </div>
         </div>
       )}
-      {expanded === "artists" && (
+      {isPremium && expanded === "artists" && (
         <div className="surface p-3 mb-3 d-flex flex-wrap gap-2">
           {stats.seenPerformers.map((p) => (
             <AppLink
@@ -222,7 +196,10 @@ export default function ProfileOverview({
       )}
 
       <div className="d-flex flex-wrap gap-2">
-        {chips.map((c) => {
+        {/* Нулевые чипы не показываем: у нового бесплатного аккаунта ряд
+            «0 иду · 0 в избранном · …» выглядел уродливо (жалоба
+            владельца), а навигация в эти разделы и так есть в шапке. */}
+        {chips.filter((c) => c.value > 0).map((c) => {
           const inner = (
             <>
               <span className="nav-chip-value">{c.value}</span>
