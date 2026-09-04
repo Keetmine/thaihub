@@ -36,6 +36,11 @@ test.describe("очередь черновиков событий", () => {
     await expect(card.getByRole("link", { name: /TTMDRAFT_E2E Smoke Concert/ })).toBeVisible();
     await expect(card.getByText("E2E Arena")).toBeVisible();
     await expect(card.getByRole("link", { name: "TTMDRAFT_E2E Nick" })).toBeVisible();
+    // Чип «Возможный дубль» из пометки possibleDuplicateOf в payload —
+    // ссылкой на наше событие, рядом с кнопками.
+    await expect(
+      card.getByRole("link", { name: /Возможный дубль: TTMDRAFT_E2E Existing Event/ }),
+    ).toBeVisible();
     await expect(card.getByRole("button", { name: "Одобрить" })).toBeVisible();
 
     // «Отклонить» — с подтверждением (ConfirmForm), после него карточка

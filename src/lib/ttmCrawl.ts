@@ -7,6 +7,7 @@ import {
   type TtmListingCard,
 } from "@/lib/thaiticketmajor";
 import { matchArtistsByNickname } from "@/lib/performerMatching";
+import { findCatalogDuplicate } from "@/lib/eventDedupe";
 import { checkImportCancelled } from "@/lib/importRun";
 import { notifyAdmins } from "@/lib/adminNotify";
 
@@ -50,6 +51,11 @@ export type TtmCrawlResult = {
   rechecked: number;
   /** Пропущено уже известных URL (событие в каталоге или черновик). */
   skippedKnown: number;
+  /** Сильных дублей: событие уже в каталоге под другим/пустым sourceUrl —
+   *  черновик не создан, sourceUrl бэкфилнут (см. eventDedupe.ts). */
+  duplicates: number;
+  /** Черновиков с пометкой «возможный дубль» (слабое совпадение). */
+  possibleDupes: number;
   /** Страниц, не скачавшихся/не разобравшихся (прогон не роняют). */
   failed: number;
   /** Ники совпавших артистов — в сводку прогона. */
@@ -140,6 +146,8 @@ export async function runTtmCrawl(
     noMatch: 0,
     rechecked: 0,
     skippedKnown,
+    duplicates: 0,
+    possibleDupes: 0,
     failed: 0,
     matchedNames: [],
     listingErrors,
@@ -161,17 +169,73 @@ export async function runTtmCrawl(
     }
     if (draftByUrl.has(card.url)) result.rechecked++;
 
+    // Название с самой страницы события надёжнее карточки списка, но
+    // бывает пустым при смене вёрстки — тогда берём карточку.
+    if (!scraped.title) scraped = { ...scraped, title: card.title };
+
+    // Дедуп по СОДЕРЖИМОМУ, не только по sourceUrl: у событий,
+    // импортированных до того, как ссылка-источник начала сохраняться,
+    // sourceUrl пуст (roadmap Э1.8), и по URL они «новые». Сильное
+    // совпадение (название+даты, см. eventDedupe.ts) — событие уже в
+    // каталоге: черновик владельцу не показываем, sourceUrl бэкфилим
+    // (если пуст) — дальше быстрый путь по URL работает сам, — а URL
+    // запоминаем черновиком APPROVED с eventId: тот же смысл, что у
+    // «Одобрить» при уже существующем событии, и краулер такие URL
+    // больше не трогает.
+    const dupe = await findCatalogDuplicate(scraped);
+    if (dupe && dupe.strength === "strong") {
+      if (!dupe.eventSourceUrl) {
+        await prisma.event.update({
+          where: { id: dupe.eventId },
+          data: { sourceUrl: card.url },
+        });
+      }
+      const dupePayload = JSON.parse(JSON.stringify({ ...scraped, sourceUrl: card.url }));
+      await prisma.eventDraft.upsert({
+        where: { sourceUrl: card.url },
+        create: {
+          sourceUrl: card.url,
+          payload: dupePayload,
+          matchedPerformers: [],
+          status: "APPROVED",
+          eventId: dupe.eventId,
+          reviewedAt: new Date(),
+        },
+        update: {
+          payload: dupePayload,
+          status: "APPROVED",
+          eventId: dupe.eventId,
+          reviewedAt: new Date(),
+          checkedAt: new Date(),
+        },
+      });
+      result.duplicates++;
+      continue;
+    }
+
     const matched: EventDraftMatch[] = (await matchArtistsByNickname(scraped.artists))
       .filter((a) => a.matchedPerformerId !== null)
       .map((a) => ({ performerId: a.matchedPerformerId!, nickname: a.nickname }));
 
-    // Название с самой страницы события надёжнее карточки списка, но
-    // бывает пустым при смене вёрстки — тогда берём карточку.
-    if (!scraped.title) scraped = { ...scraped, title: card.title };
+    // Слабое совпадение — решает владелец: черновик создаётся, но с
+    // пометкой possibleDuplicateOf в payload — очередь рисует по ней
+    // чип «Возможный дубль» со ссылкой на наше событие. В счётчик идут
+    // только PENDING: NO_MATCH-черновик в очереди не виден, и сводка не
+    // должна обещать чип, которого там нет (пометка при этом пишется и
+    // ему — пригодится, если ожив на re-check).
+    if (dupe && matched.length > 0) result.possibleDupes++;
     // Ключ дедупа — канонический адрес карточки, а не то, что вернул
     // парсер (он отдаёт URL, который дали ему, — он и так канонический,
     // но пусть это гарантирует одна точка).
-    const payload = JSON.parse(JSON.stringify({ ...scraped, sourceUrl: card.url }));
+    const payload = JSON.parse(
+      JSON.stringify({
+        ...scraped,
+        sourceUrl: card.url,
+        ...(dupe
+          ? { possibleDuplicateOf: { eventId: dupe.eventId, eventTitle: dupe.eventTitle } }
+          : {}),
+      }),
+    );
 
     if (matched.length > 0) {
       const draft = await prisma.eventDraft.upsert({
@@ -226,6 +290,8 @@ export function summarizeTtmCrawl(r: TtmCrawlResult): string {
   return (
     `карточек ${r.cardsFound}, скачано страниц ${r.fetched}, черновиков +${r.newPending}` +
     (names.length ? ` (${names.slice(0, 8).join(", ")})` : "") +
+    (r.duplicates ? `, дублей закрыто ${r.duplicates}` : "") +
+    (r.possibleDupes ? `, возможных дублей ${r.possibleDupes}` : "") +
     `, без совпадений ${r.noMatch}` +
     (r.rechecked ? `, перепроверено ${r.rechecked}` : "") +
     `, знакомых пропущено ${r.skippedKnown}` +

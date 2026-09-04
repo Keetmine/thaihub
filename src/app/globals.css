@@ -647,6 +647,15 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   text-overflow: ellipsis;
 }
 
+/* Предупреждающий чип «Возможный дубль» в очереди черновиков TTM
+   (/admin/imports?tab=events) — тот же силуэт, но warning-палитра, чтобы
+   выделяться среди чипов артистов. */
+.event-chip-warning {
+  background: var(--bs-warning-bg-subtle);
+  color: var(--bs-warning-text-emphasis);
+  border-color: var(--bs-warning-border-subtle);
+}
+
 /* "Going" events on the calendar's "Все события" view — a bolder, more
    saturated orange so they visually stand out from the rest. */
 .event-chip-going {

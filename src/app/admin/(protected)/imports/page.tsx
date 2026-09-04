@@ -20,6 +20,7 @@ import { approveEventDraft, rejectEventDraft } from "./eventDraftActions";
 import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
 import type { TtmEvent } from "@/lib/thaiticketmajor";
 import type { EventDraftMatch } from "@/lib/ttmCrawl";
+import type { PossibleDuplicate } from "@/lib/eventDedupe";
 import { adminListHref } from "@/lib/adminListHref";
 import { pluralized } from "@/lib/plural";
 import RunningImportsWatcher from "./RunningImportsWatcher";
@@ -553,8 +554,11 @@ export default async function AdminImportsPage({
                 ) : (
                   <div className="d-flex flex-column gap-2">
                     {eventDrafts.map((draft) => {
-                      const payload = draft.payload as Partial<TtmEvent>;
+                      const payload = draft.payload as Partial<TtmEvent> & {
+                        possibleDuplicateOf?: PossibleDuplicate;
+                      };
                       const matched = (draft.matchedPerformers as EventDraftMatch[] | null) ?? [];
+                      const dupe = payload.possibleDuplicateOf;
                       const dates =
                         payload.dateRangeText ??
                         [payload.date, ...(payload.extraDates ?? [])].filter(Boolean).join(", ");
@@ -606,6 +610,22 @@ export default async function AdminImportsPage({
                           <span className="small text-secondary flex-shrink-0">
                             {fmt(draft.createdAt)}
                           </span>
+                          {/* Слабое совпадение матчинга дублей (см.
+                              eventDedupe.ts): похоже на событие, которое
+                              уже есть в каталоге. Чип — рядом с кнопками,
+                              чтобы отклонять в один взгляд; название
+                              лежит в самой пометке — удалённое событие
+                              карточку не роняет. */}
+                          {dupe && (
+                            <Link
+                              href={`/admin/events/${dupe.eventId}/edit`}
+                              className="event-chip event-chip-warning flex-shrink-0"
+                              style={{ maxWidth: "16rem" }}
+                              title="Похоже на событие, которое уже есть в каталоге, — откройте и сравните перед решением"
+                            >
+                              Возможный дубль: {dupe.eventTitle}
+                            </Link>
+                          )}
                           <form action={approveEventDraft} className="d-inline">
                             <input type="hidden" name="draftId" value={draft.id} />
                             <SubmitButton

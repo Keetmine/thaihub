@@ -31,6 +31,14 @@ async function main() {
         ticketPrice: "1,000 baht",
         artists: [{ fullName: "Full Name", nickname: "TTMDRAFT_E2E Nick" }],
         sourceUrl: SOURCE_URL,
+        // Пометка слабого совпадения матчинга дублей (eventDedupe.ts) —
+        // спек проверяет чип «Возможный дубль». Событие с таким id не
+        // существует нарочно: чип рисуется из самой пометки и битой
+        // ссылки не боится.
+        possibleDuplicateOf: {
+          eventId: "ttmdraft-e2e-missing-event",
+          eventTitle: "TTMDRAFT_E2E Existing Event",
+        },
       },
       matchedPerformers: [{ performerId: performer.id, nickname: "TTMDRAFT_E2E Nick" }],
     },
