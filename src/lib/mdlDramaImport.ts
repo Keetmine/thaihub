@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { MdlRunFetcher } from "@/lib/mdlClient";
+import { resolveMdlDramaRequests } from "@/lib/mdlDramaRequests";
 import {
   canonicalMdlUrl,
   fetchMdlDrama,
@@ -367,6 +368,11 @@ export async function upsertDramaFromMdl(
         mdlAutoUpdate: opts.autoUpdate ?? false,
       },
     });
+    // Сериал с этой страницей появился в каталоге — закрываем заявки
+    // пользователей «добавьте сериал» (статус + уведомление). Здесь, а
+    // не в вызывающих: upsertDramaFromMdl — единственная точка, через
+    // которую сериал с mydramalistUrl попадает в каталог любым путём.
+    await resolveMdlDramaRequests(created, sourceUrl);
     return {
       id: created.id,
       title: created.title,
@@ -431,6 +437,10 @@ export async function upsertDramaFromMdl(
   }
 
   const updated = await prisma.drama.update({ where: { id: existing.id }, data });
+  // И на обновлении тоже: заявка могла завестись, пока запись каталога
+  // существовала БЕЗ ссылки на MDL (матчинг импорта списка идёт только
+  // по mdl-id) — первый же импорт, приклеивший ссылку, её закрывает.
+  await resolveMdlDramaRequests(updated, sourceUrl);
   const schedule = parsedSchedule ? await syncDramaEpisodes(updated.id, parsedSchedule) : null;
   // В `filled` — чтобы прогон посчитал такой сериал изменившимся: ради
   // уточнённых дат ночное обновление и ходит.

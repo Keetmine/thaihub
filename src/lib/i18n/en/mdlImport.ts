@@ -19,9 +19,9 @@ export const mdlImport = {
   doneTitle: "Import finished",
   doneMatched: (n: number) => `Matched and saved: ${n}`,
   doneNotFound: (n: number) => `Not found: ${n}`,
+  // Без обещаний сроков: заявки видит владелец и импортирует руками.
   notFoundIntro:
-    "We don't have these titles in the catalog yet — drop us a line and we'll add them:",
-  helpLink: "Write to us",
+    "We don't have these titles in the catalog yet — we saved your list and will add them. Once a title appears, you'll get a notification with a link to it.",
   repeatHint:
     "You can re-run the import any time — it just refreshes the same statuses, no duplicates. Statuses you set here for titles that are not on your MDL list stay untouched.",
   errors: {

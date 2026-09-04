@@ -23,6 +23,10 @@ const TELEGRAM_KINDS: Partial<Record<NotificationKind, keyof TelegramPrefs>> = {
   PREMIUM_GRANTED: "tgNotifyInvites",
   PERFORMER_BIRTHDAY: "tgNotifyBirthdays",
   EPISODE_AIRED: "tgNotifyEpisodes",
+  // «Просимый сериал теперь в каталоге» — той же ручкой, что серии:
+  // отдельный тумблер ради редкого повода только загромоздил бы
+  // настройки, а тематически это тот же «мой список сериалов».
+  DRAMA_ADDED: "tgNotifyEpisodes",
 };
 
 type TelegramPrefs = {

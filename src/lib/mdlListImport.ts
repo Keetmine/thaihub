@@ -1,6 +1,7 @@
 import type { WatchStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { MdlRunFetcher } from "@/lib/mdlClient";
+import { upsertMdlDramaRequests, type MdlRequestRow } from "@/lib/mdlDramaRequests";
 import { absMdlUrl, mdlIdFromUrl, MdlHttpError } from "@/lib/mydramalist";
 
 // Пользовательский импорт списка просмотра с MyDramaList
@@ -173,7 +174,9 @@ export type MdlListImportReport = {
   /** Совпало с каталогом и записано. */
   matched: number;
   byStatus: Partial<Record<WatchStatus, number>>;
-  /** Кого у нас нет — названия со ссылками на MDL, для «напишите нам». */
+  /** Кого у нас нет — названия со ссылками на MDL. Эти же строки ушли
+   *  заявками в MdlDramaRequest: владелец импортирует их из админки, и
+   *  просившему допишется статус и придёт уведомление DRAMA_ADDED. */
   notFound: MdlListNotFoundRow[];
 };
 
@@ -310,6 +313,9 @@ export async function runMdlListImport(
   type Write = { dramaId: string; status: WatchStatus; episodesWatched: number | null };
   const writes = new Map<string, Write>(); // dramaId → запись
   const seenMdlIds = new Set<string>();
+  // Ненайденное уходит заявками в MdlDramaRequest — вместе с желаемым
+  // статусом и прогрессом, чтобы при появлении сериала дописать их юзеру.
+  const missing: MdlRequestRow[] = [];
 
   for (const section of MDL_STATUS_SECTIONS) {
     for (const row of rowsByStatus.get(section.status) ?? []) {
@@ -321,6 +327,12 @@ export async function runMdlListImport(
       const drama = byMdlId.get(mdlId);
       if (!drama) {
         report.notFound.push({ title: row.title, url: absMdlUrl(row.mdlPath) });
+        missing.push({
+          mdlUrl: row.mdlPath,
+          title: row.title,
+          status: section.status,
+          seen: row.seen,
+        });
         continue;
       }
       const episodesOk =
@@ -364,6 +376,13 @@ export async function runMdlListImport(
         notifyEpisodes: w.status === "WATCHING",
       },
     });
+  }
+
+  // Заявки «добавьте сериал»: дедуп по mdlUrl, юзер добавляется к
+  // существующей. Владелец импортирует их из /admin/imports, и заявка
+  // резолвится сама (см. mdlDramaRequests.ts).
+  if (missing.length > 0) {
+    await upsertMdlDramaRequests(userId, missing);
   }
 
   return report;

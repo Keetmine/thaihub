@@ -470,6 +470,7 @@ model Drama {
 
   performers    PerformerDrama[]
   watchStatuses DramaWatchStatus[]
+  mdlRequests   MdlDramaRequest[]
   episodeList   DramaEpisode[]
   events        Event[]
   locations     DramaLocation[]
@@ -818,6 +819,7 @@ model User {
   telegramNotifications        TelegramNotification[]
   telegramPresaleNotifications TelegramPresaleNotification[]
   birthdayNotifications        BirthdayNotification[]
+  mdlDramaRequests             MdlDramaRequestUser[]
   episodeNotifications         EpisodeNotification[]
   friendMutes                  FriendNotificationMute[]      @relation("MuteOwner")
   mutedByFriends               FriendNotificationMute[]      @relation("MuteTarget")
@@ -1625,6 +1627,9 @@ enum NotificationKind {
   ACHIEVEMENT
   PERFORMER_BIRTHDAY
   EPISODE_AIRED
+  // «Сериал, который вы просили, теперь в каталоге» — резолв заявки
+  // MdlDramaRequest после пользовательского импорта списка MDL.
+  DRAMA_ADDED
 }
 
 model Notification {
@@ -1809,4 +1814,56 @@ model ScheduledJobTarget {
 
   @@unique([jobKey, performerId])
   @@index([jobKey])
+}
+
+// Заявка «добавьте сериал»: ненайденная строка пользовательского импорта
+// списка MDL (см. features/mydramalist-import.md). Одна заявка на
+// страницу MDL — дедуп по каноническому mdlUrl, просившие юзеры копятся
+// в MdlDramaRequestUser. Владелец видит открытые заявки в /admin/imports
+// и запускает точечный импорт; когда сериал с этой страницей появляется
+// в каталоге ЛЮБЫМ путём (хук в upsertDramaFromMdl), заявка резолвится:
+// просившим дописывается их статус (не перетирая уже заведённый) и
+// уходит уведомление DRAMA_ADDED. notifiedAt — защита от повторной
+// рассылки; резолвим только открытые (resolvedAt == null).
+model MdlDramaRequest {
+  id     String @id @default(cuid())
+  // Канонический адрес страницы MDL (canonicalMdlUrl) — ключ дедупа,
+  // как Drama.mdlUrl.
+  mdlUrl String @unique
+  // Название с MDL — замороженное: сериала у нас ещё нет, а админке
+  // нужно что-то показать.
+  title      String
+  createdAt  DateTime  @default(now())
+  // Проставлены разом при появлении сериала в каталоге.
+  resolvedAt      DateTime?
+  resolvedDramaId String?
+  resolvedDrama   Drama?    @relation(fields: [resolvedDramaId], references: [id], onDelete: SetNull)
+  notifiedAt      DateTime?
+  // «Отклонить» в админке: мусорная ссылка. Запись остаётся, чтобы
+  // повторный импорт списка не воскрешал заявку; но если сериал всё же
+  // появится в каталоге, хук её резолвит и уведомит просивших.
+  rejectedAt DateTime?
+
+  users MdlDramaRequestUser[]
+
+  @@index([resolvedAt, rejectedAt])
+}
+
+// Кто просил и с каким статусом/прогрессом в своём списке MDL: при
+// резолве заявки статус дописывается юзеру автоматически — он просил
+// импорт именно статусов. Повторный импорт списка освежает статус в
+// заявке (последняя просьба — актуальная).
+model MdlDramaRequestUser {
+  requestId       String
+  request         MdlDramaRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          WatchStatus
+  // Прогресс из списка; валидируется против Drama.episodes при резолве,
+  // не при записи — числа серий у нас в этот момент ещё нет.
+  episodesWatched Int?
+  createdAt       DateTime        @default(now())
+
+  @@id([requestId, userId])
+  @@index([userId])
 }

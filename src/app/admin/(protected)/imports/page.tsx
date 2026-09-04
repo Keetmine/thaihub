@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { importDoramaLandTranslation,
   runMdlDramaImport,
   runMdlDramaImportAndSchedule,
+  runMdlRequestImport,
+  rejectMdlRequest,
   runMdlSearchImport,
   runMdlSearchImportAndSchedule,
   runMdlPerformerImport,
@@ -11,6 +13,8 @@ import { importDoramaLandTranslation,
   runYoutubeMusicImport,
   runYoutubeMusicImportAndSchedule,
 } from "./actions";
+import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
+import { pluralized } from "@/lib/plural";
 import RunningImportsWatcher from "./RunningImportsWatcher";
 import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import StopImportButton from "./StopImportButton";
@@ -106,6 +110,17 @@ export default async function AdminImportsPage({
     `/admin/imports?log=${tab}&page=${p}` + (tab === "runs" && status ? `&status=${status}` : "");
 
   const runningRun = await hasRunningPromise;
+  // Заявки «добавьте сериал» из пользовательского импорта списка MDL:
+  // открытые, самые просимые сверху. Резолвятся не кнопкой, а хуком в
+  // upsertDramaFromMdl — как только сериал с этой страницей появился в
+  // каталоге любым путём. Потолок 100: заявок больше сотни — сигнал
+  // разобрать очередь, а не листать её.
+  const mdlRequests = await prisma.mdlDramaRequest.findMany({
+    where: OPEN_MDL_REQUEST_WHERE,
+    orderBy: [{ users: { _count: "desc" } }, { createdAt: "asc" }],
+    include: { _count: { select: { users: true } } },
+    take: 100,
+  });
   // Ключ для форм с выбором исполнителя: поле ссылки сбрасывается само
   // при перерисовке, а выбранный артист живёт в состоянии EntitySelect
   // и оставался после импорта. Появился новый прогон — ключ сменился,
@@ -358,6 +373,70 @@ export default async function AdminImportsPage({
             </form>
           </div>
         </div>
+
+        {mdlRequests.length > 0 && (
+          <div className="col-12">
+            <div className="surface p-4 h-100">
+              <h2 className="section-heading mb-2">
+                Заявки пользователей{" "}
+                <span className="admin-nav-badge">{mdlRequests.length}</span>
+              </h2>
+              <p className="small text-secondary mb-3">
+                Сериалы, которых не нашлось при импорте пользовательских
+                списков с MyDramaList. «Импортировать» — обычный точечный
+                импорт по ссылке из заявки; когда сериал появится в каталоге
+                (этой кнопкой или любым другим импортом), просившим
+                допишется их статус из списка и придёт уведомление со
+                ссылкой на сериал. «Отклонить» — для мусорных ссылок:
+                повторный импорт списка такую заявку не воскресит.
+              </p>
+              <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
+                {mdlRequests.map((req) => (
+                  <li
+                    key={req.id}
+                    className="d-flex flex-wrap align-items-center gap-2 border-top pt-2"
+                  >
+                    <div className="flex-grow-1" style={{ minWidth: "14rem" }}>
+                      <a
+                        href={req.mdlUrl}
+                        target="_blank"
+                        rel="external nofollow noreferrer"
+                        className="fw-medium"
+                      >
+                        {req.title} ↗
+                      </a>
+                      <div className="small text-secondary">
+                        {pluralized(req._count.users, [
+                          "человек просил",
+                          "человека просили",
+                          "человек просили",
+                        ])}{" "}
+                        · {fmt(req.createdAt)}
+                      </div>
+                    </div>
+                    <form action={runMdlRequestImport} className="d-inline">
+                      <input type="hidden" name="requestId" value={req.id} />
+                      <SubmitButton
+                        label={runningRun ? "Импорт идёт…" : "Импортировать"}
+                        busyLabel="Запускаем…"
+                        className="btn btn-primary btn-sm"
+                        disabled={!!runningRun}
+                      />
+                    </form>
+                    <form action={rejectMdlRequest} className="d-inline">
+                      <input type="hidden" name="requestId" value={req.id} />
+                      <SubmitButton
+                        label="Отклонить"
+                        busyLabel="Отклоняем…"
+                        className="btn btn-ghost btn-sm"
+                      />
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       <h2 className="eyebrow mt-4 mb-2">События</h2>

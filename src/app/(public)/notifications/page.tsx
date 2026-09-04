@@ -39,6 +39,7 @@ const KIND_ICONS: Record<string, string> = {
   ACHIEVEMENT: "🏆",
   PERFORMER_BIRTHDAY: "🎂",
   EPISODE_AIRED: "📺",
+  DRAMA_ADDED: "🎬",
 };
 
 // Лента активностей: приглашения в поездки, заявки в друзья, ответы и

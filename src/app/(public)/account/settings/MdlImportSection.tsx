@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import AppLink from "@/components/AppLink";
 import { useT } from "@/components/LocaleProvider";
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import type { MdlListRunState } from "@/lib/mdlListImport";
@@ -161,10 +160,7 @@ export default function MdlImportSection() {
           <p className="small mb-2">{s.doneNotFound(run.report.notFound.length)}</p>
           {run.report.notFound.length > 0 && (
             <>
-              <p className="small text-secondary mb-1">
-                {s.notFoundIntro}{" "}
-                <AppLink href="/help">{s.helpLink}</AppLink>
-              </p>
+              <p className="small text-secondary mb-1">{s.notFoundIntro}</p>
               <ul className="small mb-2" style={{ maxHeight: 220, overflowY: "auto" }}>
                 {run.report.notFound.map((row) => (
                   <li key={row.url}>

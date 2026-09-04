@@ -252,7 +252,16 @@ async function importMdlDrama(formData: FormData, autoUpdate: boolean): Promise<
   if (!mdlIdFromUrl(url)) {
     throw new Error("Не похоже на ссылку сериала MyDramaList");
   }
+  launchMdlDramaImport(url, autoUpdate);
 
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin/dramas");
+  revalidatePath("/admin/performers");
+}
+
+/** Сам фоновый прогон импорта сериала — общий для формы со ссылкой и
+ *  кнопки «Импортировать» у заявки пользователя. */
+function launchMdlDramaImport(url: string, autoUpdate: boolean): void {
   // В фоне, как импорт с tpop: теперь прогон дозаполняет ещё и карточки
   // актёров, а это отдельная страница MDL на каждого — форма не должна
   // висеть всё это время. Ход виден в журнале, там же кнопка
@@ -304,10 +313,48 @@ async function importMdlDrama(formData: FormData, autoUpdate: boolean): Promise<
       // Падение уже записано в журнал самим logImportRun.
     });
   })();
+}
+
+/**
+ * «Импортировать» у заявки пользователя (MdlDramaRequest): тот же
+ * точечный импорт сериала по ссылке, что и в форме выше, — просто адрес
+ * берётся из заявки. Резолвит заявку не экшен, а хук в
+ * upsertDramaFromMdl: сериал появился с этой страницей — заявка
+ * закрылась, просившим дописались статусы и ушли уведомления. Поэтому
+ * заявка исчезает из списка после УСПЕШНОГО завершения фонового
+ * прогона, а не по клику.
+ */
+export async function runMdlRequestImport(formData: FormData): Promise<void> {
+  await requireCatalogEditor();
+  const id = String(formData.get("requestId") ?? "");
+  const request = await prisma.mdlDramaRequest.findUnique({
+    where: { id },
+    select: { mdlUrl: true, resolvedAt: true },
+  });
+  if (!request) throw new Error("Заявка не найдена");
+  if (request.resolvedAt) throw new Error("Заявка уже закрыта");
+  launchMdlDramaImport(request.mdlUrl, false);
 
   revalidatePath("/admin/imports");
   revalidatePath("/admin/dramas");
   revalidatePath("/admin/performers");
+}
+
+/** «Отклонить» заявку: мусорная ссылка. Запись остаётся с rejectedAt —
+ *  повторный импорт списка не воскресит её и не добавит юзеров; если
+ *  сериал всё же появится в каталоге, хук резолва её закроет и
+ *  просившие узнают. */
+export async function rejectMdlRequest(formData: FormData): Promise<void> {
+  await requireCatalogEditor();
+  const id = String(formData.get("requestId") ?? "");
+  await prisma.mdlDramaRequest.updateMany({
+    // updateMany, а не update: заявка могла резолвнуться, пока владелец
+    // смотрел на список, — тогда молча ничего не делаем.
+    where: { id, resolvedAt: null },
+    data: { rejectedAt: new Date() },
+  });
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin");
 }
 
 /**

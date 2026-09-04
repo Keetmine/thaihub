@@ -47,6 +47,8 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return subject ? titles.PERFORMER_BIRTHDAY(subject) : n.title;
     case "EPISODE_AIRED":
       return subject ? titles.EPISODE_AIRED(subject) : n.title;
+    case "DRAMA_ADDED":
+      return subject ? titles.DRAMA_ADDED(subject) : n.title;
     default:
       return n.title;
   }

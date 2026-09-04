@@ -21,6 +21,7 @@ export const notifications = {
     PREMIUM_GRANTED: "Your subscription is active",
     PERFORMER_BIRTHDAY: (name: string) => `It's ${name}'s birthday today`,
     EPISODE_AIRED: (drama: string) => `New episode of "${drama}"`,
+    DRAMA_ADDED: (drama: string) => `"${drama}" is now in our catalog`,
   },
 
   birthdayBody: (turns: number) => `Turning ${turns}.`,

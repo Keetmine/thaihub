@@ -123,18 +123,23 @@ export function notifyAdminsAboutSignup(user: {
 /** Счётчики-бейджи для сайдбара админки: всё, что ждёт разбора. */
 export async function adminBadgeCounts(): Promise<Record<string, number>> {
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [feedback, reports, failedImports, errors] = await Promise.all([
+  const [feedback, reports, failedImports, mdlRequests, errors] = await Promise.all([
     prisma.feedback.count({ where: { status: "NEW" } }),
     prisma.report.count({ where: { status: "NEW" } }),
     // Только неразобранное: у записей есть отметка reviewedAt, иначе
     // счётчик горел бы вечно и его переставали замечать.
     prisma.importRun.count({ where: { status: "FAILED", reviewedAt: null } }),
+    // Заявки «добавьте сериал» из пользовательского импорта списка MDL —
+    // открытые (не резолвнутые и не отклонённые). Живут на той же
+    // странице импортов, поэтому складываются в её бейдж с упавшими
+    // запусками: и то и другое — «в импортах что-то ждёт разбора».
+    prisma.mdlDramaRequest.count({ where: { resolvedAt: null, rejectedAt: null } }),
     prisma.errorLog.count({ where: { createdAt: { gte: dayAgo }, reviewedAt: null } }),
   ]);
   return {
     "/admin/feedback": feedback,
     "/admin/moderation": reports,
-    "/admin/imports": failedImports,
+    "/admin/imports": failedImports + mdlRequests,
     "/admin/errors": errors,
   };
 }
