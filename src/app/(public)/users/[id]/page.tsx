@@ -1033,10 +1033,8 @@ export default async function UserProfilePage({
           )}
           {/* Строка «Роль» убрана — владельцу не понравилось, как звучат
               названия; подписку и так показывает звёздочка у имени. */}
-          <span className="text-secondary">
-            {p.metaJoined}:{" "}
-            <span className="text-body">{formatLongDate(user.createdAt, locale)}</span>
-          </span>
+          {/* «Дата регистрации» показана и убрана в один день — решение
+              владельца. */}
         </div>
 
         {user.bio && showActivity && <p className="profile-side-bio">{user.bio}</p>}

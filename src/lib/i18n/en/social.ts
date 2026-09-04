@@ -48,7 +48,6 @@ export const social = {
 
     // chip*-счётчики левой колонки удалены — правка владельца: ряда
     // чипов в блоке с фото больше нет.
-    memberSince: (date: string) => `On MyBLHub since ${date}`,
 
     /* Labelled info rows (owner request, MDL-style). The Role row was
        added and removed the same day — naming didn't land. */
@@ -56,7 +55,6 @@ export const social = {
     metaOnlineNow: "online now",
     metaLocation: "Location",
     metaBirthday: "Birthday",
-    metaJoined: "Join date",
 
     // Вкладки правой колонки единого профиля (свой и чужой).
     tabs: {

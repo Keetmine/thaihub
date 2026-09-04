@@ -3443,15 +3443,16 @@ button.hero-stat-toggle.is-open {
   height: 0.45rem;
   border-radius: 50%;
   background: #3ddc84;
-  box-shadow: 0 0 0.3rem rgba(61, 220, 132, 0.6);
+  box-shadow: 0 0 0.3rem rgba(61, 220, 132, 0.5);
   vertical-align: middle;
   margin-left: 0.1rem;
-  animation: online-pulse 1.6s ease-in-out infinite;
+  /* Пульс едва заметный — правка владельца: «чуууть-чуть». */
+  animation: online-pulse 2.8s ease-in-out infinite;
 }
 
 @keyframes online-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  50% { opacity: 0.78; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5391,6 +5392,11 @@ body::after {
 /* Оранжевый, а не жёлтый — правка владельца (2026-09-04): подписка в
    цвет сайта. Тон в тон с кольцами ниже. */
 .premium-badge-icon {
+  /* Оптически по центру строки имени (правка владельца): flex-центровка
+     родителя ставит значок по геометрии бокса h1, а крупный дисплейный
+     шрифт смещает текст вверх — капелька top возвращает на глаз. */
+  position: relative;
+  top: 0.08em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5454,7 +5460,10 @@ body::after {
 .profile-side-photo-premium {
   border: none;
   padding: 3px;
-  background: conic-gradient(from 210deg, #ff9a72, #ff6a3d 40%, #e8467c 75%, #ff9a72);
+  /* Линейный градиент, не conic: конус хорош на круге (друзья ниже), а
+     на прямоугольном фото его секторы давали швы по периметру — та
+     самая «кривая» обводка из фидбека владельца. */
+  background: linear-gradient(135deg, #ff9a72, #ff6a3d 45%, #e8467c);
 }
 
 .profile-side-photo-premium img,
@@ -5487,7 +5496,10 @@ body::after {
   cursor: default;
 }
 
-.achv-medal-icon .achv-medal-coin {
+.achv-medal-icon .achv-coin {
+  /* Размер монетки в блоке ачивок. Селектор был про старый
+     .achv-medal-coin — после перехода на .achv-coin монета осталась без
+     размеров и схлопывалась (баг, пойманный владельцем). */
   width: 2.5rem;
   height: 2.5rem;
   font-size: 1.15rem;
