@@ -36,7 +36,9 @@ export default function ProfileSetupForm({
         setError(result.error);
         return;
       }
-      router.push(localeHref("/welcome"));
+      // Дальше — шаг «перенесите список с MyDramaList» (welcome/import),
+      // потом выбор артистов на /welcome.
+      router.push(localeHref("/welcome/import"));
     } catch {
       setError(t.auth.profileSetup.saveFailed);
     } finally {

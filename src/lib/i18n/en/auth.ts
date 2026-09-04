@@ -81,7 +81,7 @@ export const auth = {
     welcome: {
       metaTitle: "Who do you love?",
       metaDescription:
-        "Step two of the setup: mark your favourite artists so the “My artists” tab and your favourites work from day one.",
+        "Step three of the setup: mark your favourite artists so the “My artists” tab and your favourites work from day one.",
       eyebrow: "Welcome",
       title: "Who do you love?",
       lead: "Pick your favourite artists — their events will show up in the “My artists” tab, and your favourites will fill up from day one. You can change this at any point.",
@@ -94,7 +94,7 @@ export const auth = {
       metaTitle: "A little about you",
       metaDescription:
         "First step after signing up: pick a handle — it doubles as your profile address — and tell us about yourself if you feel like it. You can change it whenever.",
-      eyebrow: "Step 1 of 2",
+      eyebrow: "Step 1 of 3",
       title: "A little about you",
       lead: "The handle is what your profile link is built from — that's how people add you as a friend. The rest is up to you.",
       usernameLabel: "Handle *",
