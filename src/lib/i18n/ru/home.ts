@@ -2,7 +2,7 @@ import type { Dict } from "../en";
 import { pluralized } from "@/lib/plural";
 
 export const home: Dict["home"] = {
-    metaTitle: "Тайские BL-сериалы, актёры и события: фан-трекер",
+    metaTitle: "Тайские сериалы, артисты и события: фан-трекер",
     eyebrow: "Главная",
     greeting: (name: string) => `Привет, ${name}`,
     upcoming: "Что впереди",

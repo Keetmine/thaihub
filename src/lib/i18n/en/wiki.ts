@@ -5,7 +5,7 @@
 export const wiki = {
   metaTitle: "Wiki",
   metaDescription:
-    "Guides and useful articles for fans of Thai actors: tickets, trips, fan meets.",
+    "Guides and useful articles for fans of the actors: tickets, trips, fan meets.",
   eyebrow: "Useful",
   title: "Wiki",
   intro:
@@ -16,7 +16,7 @@ export const wiki = {
   article: {
     metaTitle: "Article",
     metaNotFound: "Article not found.",
-    metaDescription: (title: string) => `${title}: a step-by-step guide for fans of Thai actors.`,
+    metaDescription: (title: string) => `${title}: a step-by-step guide for fans of the actors.`,
     back: "← Help",
   },
 };

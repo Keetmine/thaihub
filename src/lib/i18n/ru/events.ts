@@ -5,7 +5,7 @@ export const events: Dict["events"] = {
     list: {
         metaTitle: "Афиша",
         metaDescription:
-            "Афиша концертов, фанмитов и других событий тайских актёров: даты, площадки, составы.",
+            "Афиша концертов, фанмитов и других событий актёров: даты, площадки, составы.",
         eyebrow: "События",
         title: "Афиша",
         paywallFeature: "Афиша событий",
@@ -27,7 +27,7 @@ export const events: Dict["events"] = {
     calendar: {
         metaTitle: "Календарь событий",
         metaDescription:
-            "Календарь концертов и фанмитов тайских актёров, включая дни рождения и даты выхода серий.",
+            "Календарь концертов и фанмитов актёров, включая дни рождения и даты выхода серий.",
         backToEvents: "← Все события",
         title: "Календарь",
         paywallFeature: "Календарь",
@@ -57,7 +57,7 @@ export const events: Dict["events"] = {
     day: {
         metaTitle: (date: string) => `События ${date}`,
         metaDescription: (date: string) =>
-            `Концерты и фанмиты тайских актёров ${date}: расписание дня.`,
+            `Концерты и фанмиты актёров ${date}: расписание дня.`,
         metaTitleUnknown: "События дня",
         metaDescriptionUnknown: "Страница не найдена.",
         backToCalendar: "← К календарю",

@@ -6,7 +6,7 @@ export const legal = {
     about: {
       metaTitle: "About",
       metaDescription:
-        "MyBLHub — a tracker of concerts and fan events for Thai actors: the event feed, artist and series profiles, favourites and watch statuses.",
+        "MyBLHub — a tracker of the actors' concerts and fan events: the event feed, artist and series profiles, favourites and watch statuses.",
     },
     terms: {
       metaTitle: "Terms of use",
@@ -132,7 +132,7 @@ export const legal = {
 
       whatTitle: "What is this site?",
       whatText:
-        "MyBLHub is a tracker of concerts and fan events for Thai actors: a schedule of events, artist and series profiles, favourites and watch statuses.",
+        "MyBLHub is a tracker of the actors' concerts and fan events: a schedule of events, artist and series profiles, favourites and watch statuses.",
 
       favouritesTitle: "How do I add someone to favourites?",
       favouritesText:
