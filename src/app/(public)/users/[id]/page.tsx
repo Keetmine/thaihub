@@ -607,8 +607,10 @@ export default async function UserProfilePage({
             узнаваема обложкой, а дата читается вместе с названием, а не
             отдельной колонкой справа. */}
         <LetterAvatar name={event.title} photoUrl={event.posterUrl} size={3.25} rounded={false} />
-        <div style={{ minWidth: 0 }}>
-          <p className="font-display fw-medium text-white mb-0">{event.title}</p>
+        <div style={{ minWidth: 0 }} className="flex-grow-1">
+          {/* Одна строка с многоточием — правка владельца: длинное
+              название не ломает строку события. */}
+          <p className="font-display fw-medium text-white mb-0 text-truncate">{event.title}</p>
           <p className="small text-secondary mb-0 text-capitalize">
             {dates.length === 1
               ? formatHumanDate(dates[0], locale)

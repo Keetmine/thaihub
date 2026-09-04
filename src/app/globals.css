@@ -3505,7 +3505,7 @@ button.hero-stat-toggle.is-open {
 
 /* Та же пропорция эмодзи в ленте обновлений. */
 .activity-row-icon .achv-coin {
-  font-size: 0.9rem;
+  font-size: 1.15rem;
 }
 
 .achv-coin-fg {
@@ -5164,7 +5164,7 @@ body::after {
   gap: 0.85rem;
   padding: 0.65rem 0.9rem;
   border-radius: var(--bs-border-radius);
-  border: 1px solid var(--bs-border-color);
+  /* Бордеров в блоке обновлений нет — правка владельца. */
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -5182,8 +5182,9 @@ body::after {
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
   font-size: 1rem;
-  background: rgba(var(--accent-rgb), 0.09);
-  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  /* Акцентные фон и бордер исходного дизайна стояли здесь ниже
+     нейтральной подложки и перебивали её каскадом — те самые «оранжевые
+     бордеры» на ачивках в ленте из фидбека владельца. Убраны. */
 }
 
 .activity-row-body {
@@ -5282,9 +5283,10 @@ body::after {
 }
 
 .profile-overview-feed .activity-row-icon {
-  width: 1.9rem;
-  height: 1.9rem;
-  font-size: 0.9rem;
+  /* 2.4rem — правка владельца: «картинки в обновлениях чуть больше». */
+  width: 2.4rem;
+  height: 2.4rem;
+  font-size: 1.1rem;
 }
 
 @media (max-width: 1199.98px) {
@@ -5467,35 +5469,37 @@ body::after {
     0 0 0.3rem rgba(232, 70, 124, 0.4);
 }
 
-/* Крупное фото — тот же инстаграм-приём, что у миниатюр друзей:
-   паддинг с коническим градиентом вместо рамки-тени. */
+/* Кольцо крупного фото — оверлеем с маской, как у миниатюр друзей:
+   приём с паддингом терял нижнюю грань (скриншот владельца) — img и
+   контейнер округлялись в разных боксах. Оверлей живёт в том же боксе,
+   пропадать граням не с чего. Градиент линейный: конус на
+   прямоугольнике давал секторные швы. */
 .profile-side-photo-premium {
+  position: relative;
   border: none;
+}
+
+.profile-side-photo-premium::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--bs-border-radius-lg, 1rem);
   padding: 3px;
-  /* Линейный градиент, не conic: конус хорош на круге (друзья ниже), а
-     на прямоугольном фото его секторы давали швы по периметру — та
-     самая «кривая» обводка из фидбека владельца. */
   background: linear-gradient(135deg, #ff9a72, #ff6a3d 45%, #e8467c);
-}
-
-.profile-side-photo-premium img,
-.profile-side-photo-premium .profile-side-fallback {
-  border-radius: calc(var(--bs-border-radius-lg, 1rem) - 3px);
-}
-
-.profile-side-photo-premium .profile-side-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bs-secondary-bg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 @media (max-width: 767.98px) {
-  /* На мобиле фото — круг: скругление внутренностей следует за ним. */
-  .profile-side-photo-premium img,
-  .profile-side-photo-premium .profile-side-fallback {
+  /* На мобиле фото — круг: кольцо следует за ним. */
+  .profile-side-photo-premium::after {
     border-radius: 50%;
   }
 }

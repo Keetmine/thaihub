@@ -5,6 +5,7 @@ import EmptyState from "@/components/EmptyState";
 import { formatDateWithYear } from "@/lib/dates";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import type { ActivityItem } from "@/lib/activityFeed";
+import type { ReactNode } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
 
 const TYPE_EMOJI: Record<ActivityItem["type"], string> = {
@@ -57,15 +58,23 @@ export default function ActivityList({
             ? dramaTitleForLocale({ title: item.title, titleRu: item.titleRu }, locale)
             : item.title;
 
-        let action: string;
+        let action: ReactNode;
         switch (item.type) {
           case "watch": {
             const status = t.catalog.watchStatus[item.status];
-            const progress =
-              item.episodesWatched != null && item.episodesWatched > 0
-                ? ` · ${a.episodes(item.episodesWatched, item.episodesTotal)}`
-                : "";
-            action = `${a.watch(status)}${progress}`;
+            // «серия 6 из 10» не разрывается изнутри (правка владельца):
+            // перенос разрешён только после « · », хвост цельным куском.
+            action =
+              item.episodesWatched != null && item.episodesWatched > 0 ? (
+                <>
+                  {a.watch(status)} ·{" "}
+                  <span className="text-nowrap">
+                    {a.episodes(item.episodesWatched, item.episodesTotal)}
+                  </span>
+                </>
+              ) : (
+                a.watch(status)
+              );
             break;
           }
           case "favoritePerformer":
@@ -96,7 +105,7 @@ export default function ActivityList({
                 <LetterAvatar
                   name={item.title}
                   photoUrl={item.imageUrl}
-                  size={1.9}
+                  size={2.4}
                   rounded={item.type === "favoritePerformer"}
                 />
               ) : item.type === "achievement" ? (
