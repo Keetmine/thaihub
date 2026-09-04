@@ -11,6 +11,9 @@ import { useT } from "@/components/LocaleProvider";
 // открытой вкладки.
 const POLL_MS = 60_000;
 
+/** Имя window-события «число непрочитанных изменилось, перепроси». */
+export const NOTIFICATIONS_CHANGED_EVENT = "myblhub:notifications-changed";
+
 // Запрос один на всех: пока он в полёте, следующие вызовы ждут тот же
 // промис. Иначе совпавшие поводы уходили бы на сервер по отдельности —
 // тик таймера вместе с возвратом на вкладку, а в dev ещё и двойной
@@ -87,10 +90,16 @@ export function NotificationBellProvider({
       if (!document.hidden) refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
+    // «Отметить все прочитанными» шлёт это событие: pathname при этом
+    // не меняется, а серверный layout после server action не
+    // перерендеривается (проверено вживую) — без пинка бейдж висел бы
+    // до минутного тика поллинга.
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
     return () => {
       cancelled = true;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
     };
   }, [enabled]);
 

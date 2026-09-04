@@ -10,7 +10,7 @@ import LetterAvatar from "@/components/LetterAvatar";
 import Pagination from "@/components/Pagination";
 import { formatShortDate, formatTime } from "@/lib/dates";
 import { getT, localeHref } from "@/lib/i18n";
-import { markAllNotificationsRead } from "./actions";
+import MarkAllReadButton from "./MarkAllReadButton";
 
 export const dynamic = "force-dynamic";
 
@@ -78,11 +78,7 @@ export default async function NotificationsPage({
         className="mb-4"
         action={
           unread > 0 ? (
-            <form action={markAllNotificationsRead}>
-              <button type="submit" className="btn btn-ghost btn-sm">
-                {t.account.notifications.markAllRead(unread)}
-              </button>
-            </form>
+            <MarkAllReadButton label={t.account.notifications.markAllRead(unread)} />
           ) : undefined
         }
       />
@@ -114,8 +110,23 @@ export default async function NotificationsPage({
                 </div>
               </div>
             );
-            return n.href ? (
-              <AppLink key={n.id} href={n.href} className="text-decoration-none">
+            // Непрочитанная строка идёт через /notifications/go/[id]:
+            // тот отметит её прочитанной и передаст дальше по href, так
+            // что пометка не требует JS. Прочитанная — прямой ссылкой,
+            // без лишнего захода. Непрочитанная БЕЗ href тоже кликабельна:
+            // go вернёт обратно в ленту, уже с пометкой; прочитанная без
+            // href — просто строка.
+            const rowHref = n.readAt ? n.href : `/notifications/go/${n.id}`;
+            return rowHref ? (
+              // prefetch выключен: go-страница помечает при РЕНДЕРЕ, и
+              // префетч (Link префетчит из вьюпорта) прочитал бы всю
+              // ленту без единого клика.
+              <AppLink
+                key={n.id}
+                href={rowHref}
+                prefetch={false}
+                className="text-decoration-none"
+              >
                 {inner}
               </AppLink>
             ) : (

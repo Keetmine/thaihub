@@ -39,7 +39,10 @@ test("вышедшая серия появляется в ленте и на с�
   // (body) записан один раз, на языке профиля получателя, — поэтому
   // оба ожидания устойчивы к обоим языкам.
   const n = EPISODE_DRAMA.episodeNumber;
-  const row = page.locator(`a[href$="/dramas/${EPISODE_DRAMA.slug}"]`).filter({
+  // Непрочитанная строка ведёт через /notifications/go/<id> (клик =
+  // прочитано), поэтому ищем её по тексту, а не по прямому href на
+  // сериал — прямой появляется только у уже прочитанных.
+  const row = page.locator("a").filter({
     hasText: new RegExp(
       `New episode of "${EPISODE_DRAMA.title}"|Новая серия «${EPISODE_DRAMA.title}»`,
     ),
