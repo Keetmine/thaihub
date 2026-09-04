@@ -7,7 +7,9 @@ import ConfirmForm from "@/components/ConfirmForm";
 export type BulkOption = { id: string; name: string };
 
 /** Действие над выделенными строками. `delete` спрашивает подтверждение,
- *  `select` сначала требует выбрать значение (агентство, статус…). */
+ *  `confirm` — то же самое для неразрушающих действий (своя подпись и
+ *  вид кнопки), `select` сначала требует выбрать значение (агентство,
+ *  статус…). */
 export type BulkAction =
   | {
       kind: "delete";
@@ -16,6 +18,19 @@ export type BulkAction =
        *  Именно шаблон, а не функция: действия приезжают из серверного
        *  компонента, а туда можно передать только данные и server actions. */
       confirmTemplate: string;
+      run: (ids: string[]) => Promise<void>;
+    }
+  | {
+      kind: "confirm";
+      label: string;
+      /** Как у `delete`: {n} — число выбранных. */
+      confirmTemplate: string;
+      /** Подпись кнопки в модалке и её busy-состояния: «Удалить/Удаляем…»
+       *  для неудаляющего действия были бы неправдой. */
+      confirmLabel?: string;
+      busyLabel?: string;
+      /** Классы кнопки-триггера; по умолчанию btn-ghost. */
+      buttonClassName?: string;
       run: (ids: string[]) => Promise<void>;
     }
   | {
@@ -62,10 +77,11 @@ export default function BulkList({
     setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
   }
 
-  /** Удаление: подтверждение спрашивает общий ConfirmForm (модалка),
-   *  сюда попадаем уже после «Удалить» — ошибка возвращается в модалку. */
-  async function performDelete(
-    action: Extract<BulkAction, { kind: "delete" }>,
+  /** Удаление и confirm-действия: подтверждение спрашивает общий
+   *  ConfirmForm (модалка), сюда попадаем уже после подтверждения —
+   *  ошибка возвращается в модалку. */
+  async function performConfirmed(
+    action: Extract<BulkAction, { kind: "delete" | "confirm" }>,
   ): Promise<{ error?: string } | undefined> {
     const ids = [...selected];
     if (ids.length === 0) return;
@@ -147,21 +163,29 @@ export default function BulkList({
         <div className="bulk-bar">
           <span className="small text-white">Выбрано: {selected.size}</span>
           {actions.map((action) =>
-            action.kind === "delete" ? (
+            action.kind === "delete" || action.kind === "confirm" ? (
               <ConfirmForm
                 key={action.label}
-                action={() => performDelete(action)}
+                action={() => performConfirmed(action)}
                 confirmMessage={action.confirmTemplate.replace(
                   "{n}",
                   String(selected.size),
                 )}
-                confirmLabel={action.label}
-                busyLabel="Удаляем…"
+                confirmLabel={
+                  action.kind === "confirm" ? (action.confirmLabel ?? action.label) : action.label
+                }
+                busyLabel={
+                  action.kind === "confirm" ? (action.busyLabel ?? "Выполняем…") : "Удаляем…"
+                }
                 className="d-inline-flex"
               >
                 <button
                   type="button"
-                  className="btn btn-outline-danger btn-sm"
+                  className={
+                    action.kind === "confirm"
+                      ? (action.buttonClassName ?? "btn btn-ghost btn-sm")
+                      : "btn btn-outline-danger btn-sm"
+                  }
                   disabled={pending}
                 >
                   {action.label}

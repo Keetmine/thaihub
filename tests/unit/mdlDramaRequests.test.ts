@@ -5,6 +5,7 @@ import {
   upsertMdlDramaRequests,
   resolveMdlDramaRequests,
 } from "../../src/lib/mdlDramaRequests";
+import { importMdlRequestsBatch } from "../../src/app/admin/(protected)/imports/mdlRequestsBatch";
 
 // Интеграционные проверки заявок «добавьте сериал» (MdlDramaRequest) —
 // без сети: работаем напрямую с функциями и базой на фикстурных
@@ -28,8 +29,12 @@ async function cleanup() {
   await prisma.dramaWatchStatus.deleteMany({
     where: { user: { email: { contains: MARK } } },
   });
-  await prisma.mdlDramaRequest.deleteMany({ where: { mdlUrl: { contains: MDL_ID } } });
-  await prisma.drama.deleteMany({ where: { mdlUrl: { contains: MDL_ID } } });
+  // Все фикстурные адреса и названия содержат MARK — и одиночные, и
+  // пачечные (99900002…4); лента спарсенного и журнал — по своим меткам.
+  await prisma.importedItem.deleteMany({ where: { label: { contains: "MdlReq" } } });
+  await prisma.importRun.deleteMany({ where: { kind: { contains: MARK } } });
+  await prisma.mdlDramaRequest.deleteMany({ where: { mdlUrl: { contains: MARK } } });
+  await prisma.drama.deleteMany({ where: { mdlUrl: { contains: MARK } } });
   await prisma.user.deleteMany({ where: { email: { contains: MARK } } });
 }
 
@@ -152,6 +157,69 @@ async function main() {
     include: { users: true },
   });
   assert.equal(junkAfter.users.length, 0, "к отклонённой заявке юзеры не добавляются");
+
+  // ---------- пачка: ошибка в середине не роняет остальных ----------
+
+  // Импорт пачки — importMdlRequestsBatch с подсунутыми страницами
+  // вместо похода на MDL (тестовый шов fetchHtml): три заявки, средняя
+  // «не открывается». Успешные должны завестись сериалами и закрыться
+  // хуком резолва, упавшая — остаться открытой на следующий заход.
+  const B2 = `https://mydramalist.com/99900002-${MARK}-batch-two`;
+  const B3 = `https://mydramalist.com/99900003-${MARK}-batch-three`;
+  const B4 = `https://mydramalist.com/99900004-${MARK}-batch-four`;
+  await upsertMdlDramaRequests(userA.id, [
+    { mdlUrl: B2, title: "MdlReq Batch Two", status: "WATCHING", seen: null },
+    { mdlUrl: B3, title: "MdlReq Batch Three", status: "COMPLETED", seen: null },
+    { mdlUrl: B4, title: "MdlReq Batch Four", status: "PLAN_TO_WATCH", seen: null },
+  ]);
+  // Журналу нужен настоящий ImportRun: ImportedItem.runId — внешний ключ.
+  const batchRun = await prisma.importRun.create({ data: { kind: `${MARK}-batch` } });
+
+  // Минимальная страница тайтла: parseMdlDramaPage требует только
+  // JSON-LD с типом и именем; каст и детали не обязательны.
+  const pageHtml = (title: string) =>
+    `<html><head><script type="application/ld+json">{"@type":"TVSeries","name":"${title}"}</script></head><body></body></html>`;
+  const fetchHtml = async (url: string): Promise<string> => {
+    // Подстраницы /episodes «не открываются» — импорт карточки это
+    // глотает (у фильмов их нет вовсе), расписание просто не пишется.
+    if (url.endsWith("/episodes")) throw new Error("нет расписания");
+    if (url.includes("99900003")) throw new Error("MDL не отдал страницу");
+    if (url.includes("99900002")) return pageHtml("MdlReq Batch Two");
+    if (url.includes("99900004")) return pageHtml("MdlReq Batch Four");
+    throw new Error(`неожиданный адрес в тесте: ${url}`);
+  };
+
+  const batch = await importMdlRequestsBatch(
+    [
+      { mdlUrl: B2, title: "MdlReq Batch Two" },
+      { mdlUrl: B3, title: "MdlReq Batch Three" },
+      { mdlUrl: B4, title: "MdlReq Batch Four" },
+    ],
+    { runId: batchRun.id, fetchHtml, delayMs: 0 },
+  );
+  assert.equal(batch.total, 3);
+  assert.equal(batch.imported, 2, "упавшая середина не помешала следующему");
+  assert.equal(batch.failed, 1);
+  assert.deepEqual(batch.failedTitles, ["MdlReq Batch Three"]);
+  assert.equal(batch.abortedAfter, null, "одна ошибка — не повод сдаваться");
+
+  const req2 = await prisma.mdlDramaRequest.findUniqueOrThrow({ where: { mdlUrl: B2 } });
+  const req3 = await prisma.mdlDramaRequest.findUniqueOrThrow({ where: { mdlUrl: B3 } });
+  const req4 = await prisma.mdlDramaRequest.findUniqueOrThrow({ where: { mdlUrl: B4 } });
+  assert.ok(req2.resolvedAt, "успешный импорт закрыл заявку хуком");
+  assert.ok(req4.resolvedAt, "и после упавшей середины тоже");
+  assert.equal(req3.resolvedAt, null, "упавшая заявка осталась открытой");
+  assert.equal(req3.rejectedAt, null, "и не отклонённой — доберём следующей пачкой");
+
+  const created2 = await prisma.drama.findFirst({ where: { mdlUrl: B2 } });
+  assert.ok(created2, "сериал из пачки завёлся");
+  const statusBatch = await prisma.dramaWatchStatus.findUnique({
+    where: { userId_dramaId: { userId: userA.id, dramaId: created2!.id } },
+  });
+  assert.equal(statusBatch?.status, "WATCHING", "просившему дописан статус из заявки");
+
+  const batchItems = await prisma.importedItem.findMany({ where: { runId: batchRun.id } });
+  assert.equal(batchItems.length, 2, "в ленту спарсенного попали только удавшиеся");
 
   console.log("mdlDramaRequests.test.ts: ok");
 }

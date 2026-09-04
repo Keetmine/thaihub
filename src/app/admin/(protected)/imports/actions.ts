@@ -13,6 +13,8 @@ import { mdlIdFromUrl } from "@/lib/mydramalist";
 import { upsertDramaFromMdl, summarizeSchedule } from "@/lib/mdlDramaImport";
 import { linkMdlCast } from "@/lib/mdlCastLink";
 import { importMdlSearch, parseMdlSearchInput, summarizeMdlSearch } from "@/lib/mdlSearchImport";
+import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
+import { importMdlRequestsBatch, summarizeMdlRequestsBatch } from "./mdlRequestsBatch";
 
 /**
  * Пишет ход длинного прогона в `run.summary` — страница импортов
@@ -338,6 +340,80 @@ export async function runMdlRequestImport(formData: FormData): Promise<void> {
   revalidatePath("/admin/imports");
   revalidatePath("/admin/dramas");
   revalidatePath("/admin/performers");
+}
+
+/** Общий запуск пачки заявок: ОДИН фоновый прогон с одной карточкой в
+ *  журнале («Заявки: импорт сериалов»), сериалы идут последовательно с
+ *  паузой (см. mdlRequestsBatch.ts) — а не N параллельных запусков.
+ *  Прогресс и кнопка «Остановить» — в журнале, как у остальных. */
+function launchMdlRequestsBatch(requests: { mdlUrl: string; title: string }[]): void {
+  void (async () => {
+    await logImportRun(
+      "mdl-requests",
+      (runId) =>
+        importMdlRequestsBatch(requests, { runId, onProgress: progressWriter(runId) }),
+      summarizeMdlRequestsBatch,
+    ).catch(() => {
+      // Падение уже записано в журнал самим logImportRun.
+    });
+  })();
+}
+
+/** Порядок пачки — как у списка на странице: самые просимые вперёд,
+ *  чтобы при остановке на середине успелось самое нужное. */
+const REQUEST_BATCH_ORDER = [
+  { users: { _count: "desc" } },
+  { createdAt: "asc" },
+] as const;
+
+/** «Импортировать выбранные» из bulk-панели заявок. Берём только ещё
+ *  открытые: заявка могла резолвнуться или быть отклонённой, пока
+ *  владелец собирал выделение. */
+export async function importSelectedMdlRequests(ids: string[]): Promise<void> {
+  await requireCatalogEditor();
+  const requests = await prisma.mdlDramaRequest.findMany({
+    where: { id: { in: ids }, ...OPEN_MDL_REQUEST_WHERE },
+    orderBy: [...REQUEST_BATCH_ORDER],
+    select: { mdlUrl: true, title: true },
+  });
+  if (requests.length === 0) throw new Error("Среди выбранных не осталось открытых заявок");
+  launchMdlRequestsBatch(requests);
+
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin/dramas");
+  revalidatePath("/admin/performers");
+}
+
+/** «Импортировать все» — по всем открытым заявкам разом. Потолок тот
+ *  же, что у списка на странице: сто за прогон; больше сотни — сигнал
+ *  разобрать очередь по частям, а не держать MDL занятым часами. */
+export async function importAllOpenMdlRequests(): Promise<void> {
+  await requireCatalogEditor();
+  const requests = await prisma.mdlDramaRequest.findMany({
+    where: OPEN_MDL_REQUEST_WHERE,
+    orderBy: [...REQUEST_BATCH_ORDER],
+    select: { mdlUrl: true, title: true },
+    take: 100,
+  });
+  if (requests.length === 0) throw new Error("Открытых заявок нет");
+  launchMdlRequestsBatch(requests);
+
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin/dramas");
+  revalidatePath("/admin/performers");
+}
+
+/** «Отклонить выбранные» из bulk-панели: то же, что точечное
+ *  «Отклонить», но одним updateMany — резолвнутые по дороге заявки
+ *  фильтр молча пропускает. */
+export async function rejectSelectedMdlRequests(ids: string[]): Promise<void> {
+  await requireCatalogEditor();
+  await prisma.mdlDramaRequest.updateMany({
+    where: { id: { in: ids }, resolvedAt: null },
+    data: { rejectedAt: new Date() },
+  });
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin");
 }
 
 /** «Отклонить» заявку: мусорная ссылка. Запись остаётся с rejectedAt —

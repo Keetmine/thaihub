@@ -18,17 +18,24 @@ test.describe("страницы после перестройки импорто
     await page.goto("/admin/imports");
     await expect(page.getByRole("heading", { name: "Импорты" })).toBeVisible();
 
-    // Карточки импортов: MDL добавлена, агентство tpop убрано.
+    // Дефолтная вкладка — «Сериалы и актёры»: карточки MDL на месте,
+    // мёртвых TMDB-синков нет.
     await expect(page.getByText("MyDramaList: импорт актёра")).toBeVisible();
-    await expect(page.getByText("tpop.fandom: импорт артиста")).toBeVisible();
+    await expect(page.getByText("MyDramaList: импорт сериала")).toBeVisible();
     await expect(page.getByText("tpop.fandom: импорт агентства")).toHaveCount(0);
-    await expect(page.getByText("YouTube Music: дискография")).toBeVisible();
-
-    // Массовые синки убраны из быстрых ссылок.
     await expect(page.getByText("TMDB-синк сериалов")).toHaveCount(0);
     await expect(page.getByText("TMDB/GMMTV актёры")).toHaveCount(0);
 
-    // Вкладка «спарсенное» открыта по умолчанию, запуски — по клику.
+    // Музыкальные импорты переехали на свою вкладку. Клики — внутри
+    // таб-бара: «События» и прочие названия есть и в сайдбаре.
+    const tabBar = page.locator(".tab-bar");
+    await tabBar.getByRole("link", { name: /Музыка и артисты/ }).click();
+    await expect(page.getByText("tpop.fandom: импорт артиста")).toBeVisible();
+    await expect(page.getByText("YouTube Music: дискография")).toBeVisible();
+
+    // Журналы — на вкладке «Журнал»: «спарсенное» открыто по умолчанию,
+    // запуски — по клику.
+    await tabBar.getByRole("link", { name: /^Журнал/ }).click();
     const runsTab = page.getByRole("link", { name: /Последние запуски/ });
     await expect(runsTab).toBeVisible();
     await runsTab.click();
@@ -36,22 +43,46 @@ test.describe("страницы после перестройки импорто
     // Фильтр по статусу живёт на вкладке запусков и сохраняет её.
     await page.getByRole("link", { name: "Упавшие", exact: true }).click();
     await expect(page).toHaveURL(/log=runs.*status=FAILED/);
+    // Прямая ссылка старого вида (с дашборда) открывает журнал и без ?tab.
+    await page.goto("/admin/imports?status=FAILED");
+    await expect(page.getByRole("link", { name: /Последние запуски/ })).toBeVisible();
   });
 
   test("импорт события по ссылке живёт на странице импортов", async ({ page }) => {
-    // Раньше это была отдельная страница /admin/imports/ttm; форму
-    // встроили в общий список, а поле стало одним на пять сайтов
-    // (распознавание по домену — см. lib/eventTicketSites.ts).
+    // Раньше это была отдельная страница /admin/imports/ttm; теперь
+    // форма — на вкладке «События» общей страницы, а поле одно на пять
+    // сайтов (распознавание по домену — см. lib/eventTicketSites.ts).
     await page.goto("/admin/imports");
+    // Вкладки: импорты разложены по тому, что они заводят. Ищем внутри
+    // таб-бара — «События» есть и в сайдбаре.
+    const tabBar = page.locator(".tab-bar");
+    for (const tabName of ["Сериалы и актёры", "Музыка и артисты", "События"]) {
+      await expect(tabBar.getByRole("link", { name: new RegExp(tabName) })).toBeVisible();
+    }
+    await tabBar.getByRole("link", { name: "События", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Событие по ссылке" })).toBeVisible();
     await expect(
       page.getByPlaceholder(/thaiticketmajor\.com \/ eventpop\.me/),
     ).toBeVisible();
-    // Заголовки-группы: импорты разложены по тому, что они заводят.
-    for (const group of ["Актёры и артисты", "Сериалы", "События", "Локации"]) {
-      // exact: заголовок группы «События» иначе совпадает и с
-      // «ThaiTicketMajor: импорт события».
-      await expect(page.getByRole("heading", { name: group, exact: true })).toBeVisible();
+  });
+
+  test("заявки пользователей: вкладка с массовым выбором", async ({ page }) => {
+    await page.goto("/admin/imports?tab=requests");
+    // Заявки живут на своей вкладке; при наличии открытых — паттерн
+    // BulkList: чекбоксы, «выбрать все», bulk-бар с массовыми кнопками.
+    // Ничего не запускаем и не отклоняем — только выделение.
+    const selectAll = page.getByText("Выбрать все на странице");
+    if (await selectAll.count()) {
+      const firstCheck = page.locator(".bulk-row-check").first();
+      await firstCheck.check();
+      await expect(page.getByRole("button", { name: "Импортировать выбранные" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Отклонить выбранные" })).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: /Импортировать все \(\d+\)|Импорт идёт…/ }),
+      ).toBeVisible();
+      await firstCheck.uncheck();
+    } else {
+      await expect(page.getByText("Открытых заявок нет.")).toBeVisible();
     }
   });
 
