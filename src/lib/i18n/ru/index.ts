@@ -9,6 +9,7 @@ import { home } from "./home";
 import { landing } from "./landing";
 import { legal } from "./legal";
 import { lists } from "./lists";
+import { mdlImport } from "./mdlImport";
 import { nav } from "./nav";
 import { notifications } from "./notifications";
 import { social } from "./social";
@@ -20,4 +21,4 @@ import type { Dict } from "../en";
 import { widgets } from "./widgets";
 
 /** Русский словарь; структура проверяется типом Dict. */
-export const ru: Dict = { widgets, reviews, account, auth, catalog, common, events, filters, footer, home, landing, legal, lists, nav, notifications, social, trips, ui, wiki };
+export const ru: Dict = { widgets, reviews, account, auth, catalog, common, events, filters, footer, home, landing, legal, lists, mdlImport, nav, notifications, social, trips, ui, wiki };

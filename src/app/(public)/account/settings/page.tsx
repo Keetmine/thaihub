@@ -14,6 +14,7 @@ import {
 import { restartTour } from "../tourActions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
+import MdlImportSection from "./MdlImportSection";
 import SettingsTabs from "./SettingsTabs";
 import { pageMetadata } from "@/lib/seo";
 import TelegramLinkButton from "./TelegramLinkButton";
@@ -325,6 +326,7 @@ export default async function SettingsPage({
             <IcsFeedSection token={icsToken} />
           </div>
         }
+        mdlImport={<MdlImportSection />}
       />
     </div>
   );

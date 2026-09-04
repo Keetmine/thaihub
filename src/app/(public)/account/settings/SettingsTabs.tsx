@@ -5,18 +5,20 @@ import { useT } from "@/components/LocaleProvider";
 
 // Вкладки настроек: контент шире не нужен, но пустой правой половины
 // больше нет — вкладки + две колонки внутри разделов, где уместно.
-type Tab = "profile" | "privacy" | "security" | "calendar";
+type Tab = "profile" | "privacy" | "security" | "calendar" | "mdlImport";
 
 export default function SettingsTabs({
   profile,
   privacy,
   security,
   calendar,
+  mdlImport,
 }: {
   profile: React.ReactNode;
   privacy: React.ReactNode;
   security: React.ReactNode;
   calendar: React.ReactNode;
+  mdlImport: React.ReactNode;
 }) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("profile");
@@ -28,6 +30,9 @@ export default function SettingsTabs({
     // подсказки на странице уже ссылались на вкладку по этому имени.
     { id: "security", label: t.account.settings.tabSecurity },
     { id: "calendar", label: t.account.settings.tabCalendar },
+    // Импорт списка с MyDramaList — подписи у него в своём разделе
+    // словаря (t.mdlImport), а не в account.settings.
+    { id: "mdlImport", label: t.mdlImport.tab },
   ];
 
   return (
@@ -50,6 +55,7 @@ export default function SettingsTabs({
       <div style={{ display: tab === "privacy" ? undefined : "none" }}>{privacy}</div>
       <div style={{ display: tab === "security" ? undefined : "none" }}>{security}</div>
       <div style={{ display: tab === "calendar" ? undefined : "none" }}>{calendar}</div>
+      <div style={{ display: tab === "mdlImport" ? undefined : "none" }}>{mdlImport}</div>
     </div>
   );
 }

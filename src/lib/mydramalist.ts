@@ -661,6 +661,83 @@ export async function fetchMdlHtmlPlain(
 }
 
 /**
+ * POST к MDL обычным fetch'ем — JSON-запрос «как из их же скрипта».
+ *
+ * Нужен пользовательскому импорту списка (`src/lib/mdlListImport.ts`):
+ * страница /dramalist/<ник> отдаёт первые 100 строк GET'ом, а дальше их
+ * же Vue-виджет докачивает POST'ом на тот же адрес с телом
+ * `{"page":N,"filters":{"list":"<код статуса>"}}` — ответ приходит
+ * HTML-фрагментом таблицы. Заголовки повторяют виджет
+ * (X-Requested-With, Accept), UA — тот же честный браузерный.
+ *
+ * Обработка 429/403/челленджа — как у fetchMdlHtmlPlain; при
+ * Cloudflare-заглушке бросает MdlHttpError(403), и вызывающий решает,
+ * поднимать ли браузер (MdlRunFetcher.postHtml в mdlClient.ts).
+ */
+export async function postMdlHtmlPlain(
+  url: string,
+  body: unknown,
+  opts: { attempts?: number; onWait?: (message: string) => void } = {},
+): Promise<string> {
+  assertMdlUrl(url);
+  const attempts = opts.attempts ?? 3;
+  let lastError: Error = new Error("MyDramaList не отдал страницу");
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "User-Agent": MDL_UA,
+          "Accept-Language": "en-US,en;q=0.9",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "text/html, */*; q=0.01",
+          Referer: url,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20000),
+      });
+    } catch (e) {
+      lastError = new Error(
+        `не удалось открыть страницу MyDramaList (${e instanceof Error ? e.message.split("\n")[0] : String(e)})`,
+      );
+      if (attempt === attempts) break;
+      await sleep(3000 * attempt);
+      continue;
+    }
+
+    if (res.status === 429) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 30000 * attempt;
+      lastError = new MdlHttpError(429, "MyDramaList ограничил частоту запросов (429)");
+      if (attempt === attempts) break;
+      opts.onWait?.(`MyDramaList просит подождать ${Math.round(wait / 1000)} с`);
+      await sleep(Math.min(wait, 120000));
+      continue;
+    }
+
+    if (!res.ok) {
+      lastError = new MdlHttpError(
+        res.status,
+        res.status === 403 ? MDL_BLOCKED_MESSAGE : `MyDramaList ответил ${res.status}`,
+      );
+      break;
+    }
+
+    const html = await res.text();
+    if (MDL_CHALLENGE.test(html.slice(0, 3000))) {
+      lastError = new MdlHttpError(403, MDL_BLOCKED_MESSAGE);
+      break;
+    }
+    return html;
+  }
+
+  throw lastError;
+}
+
+/**
  * Страница MyDramaList в обход Cloudflare.
  *
  * Обычный fetch на весь сайт отвечает 403 — челлендж решается только в

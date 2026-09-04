@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, Page } from "playwright";
-import { fetchMdlHtmlPlain, MdlHttpError, MDL_UA } from "@/lib/mydramalist";
+import { fetchMdlHtmlPlain, postMdlHtmlPlain, MdlHttpError, MDL_UA } from "@/lib/mydramalist";
 
 // HTTP-клиент для массовых прогонов по MyDramaList. Раздел /people/ (и
 // временами всё остальное) закрыт Cloudflare-челленджем, который
@@ -133,6 +133,40 @@ export class MdlClient {
     throw new Error(`Не удалось получить ${url}`);
   }
 
+  /** POST с JSON-телом (подгрузка страниц пользовательского dramalist —
+   *  их Vue-виджет докачивает список именно так). Ответ — HTML-фрагмент.
+   *
+   *  При челлендже решаем его навигацией на страницу-referer (фрагмент
+   *  навигацией не откроешь) и повторяем POST: свежие cookies после
+   *  solveChallenge достаются context.request. */
+  async postHtml(url: string, body: unknown, refererUrl: string): Promise<string> {
+    if (!this.ctx) throw new Error("MdlClient не инициализирован");
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await this.ctx.request.post(url, {
+        timeout: 45000,
+        headers: {
+          Referer: refererUrl,
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "text/html, */*; q=0.01",
+        },
+        data: body as Record<string, unknown>,
+      });
+      const status = res.status();
+      const text = await res.text();
+      if (status === 200 && !CHALLENGE_MARKER.test(text.slice(0, 3000))) {
+        return text;
+      }
+      if (status === 404) throw new MdlHttpError(404, "MyDramaList ответил 404");
+      if (status === 429) {
+        await new Promise((r) => setTimeout(r, 30000 * (attempt + 1)));
+        continue;
+      }
+      await this.solveChallenge(refererUrl);
+      // после решённого челленджа — на следующий круг, повторить POST
+    }
+    throw new Error(`Не удалось получить ${url}`);
+  }
+
   async close(): Promise<void> {
     const browser = this.browser;
     this.browser = null;
@@ -167,6 +201,27 @@ export class MdlRunFetcher {
 
   constructor(private readonly opts: { onNotice?: (message: string) => void } = {}) {}
 
+  /** Ленивый подъём ОДНОГО браузера на прогон — общий для GET и POST.
+   *  `cause` — Cloudflare-ошибка голой попытки: если браузер не встал,
+   *  она уходит наружу с дописанной причиной. */
+  private async raiseClient(cause: MdlHttpError): Promise<MdlClient> {
+    this.opts.onNotice?.(
+      "MyDramaList закрылся Cloudflare-проверкой — поднимаем браузер на прогон",
+    );
+    const client = new MdlClient();
+    try {
+      await client.init();
+    } catch (browserError) {
+      this.browserFailed = true;
+      await client.close().catch(() => {});
+      const reason =
+        browserError instanceof Error ? browserError.message.split("\n")[0] : String(browserError);
+      throw new MdlHttpError(403, `${cause.message} (браузер не поднялся: ${reason})`);
+    }
+    this.client = client;
+    return client;
+  }
+
   readonly fetchHtml = async (
     url: string,
     fetchOpts: { onWait?: (message: string) => void } = {},
@@ -178,22 +233,29 @@ export class MdlRunFetcher {
     } catch (e) {
       const blocked = e instanceof MdlHttpError && e.status === 403;
       if (!blocked || this.browserFailed) throw e;
-
-      this.opts.onNotice?.(
-        "MyDramaList закрылся Cloudflare-проверкой — поднимаем браузер на прогон",
-      );
-      const client = new MdlClient();
-      try {
-        await client.init();
-      } catch (browserError) {
-        this.browserFailed = true;
-        await client.close().catch(() => {});
-        const reason =
-          browserError instanceof Error ? browserError.message.split("\n")[0] : String(browserError);
-        throw new MdlHttpError(403, `${(e as MdlHttpError).message} (браузер не поднялся: ${reason})`);
-      }
-      this.client = client;
+      const client = await this.raiseClient(e as MdlHttpError);
       return client.fetchHtml(url);
+    }
+  };
+
+  /** POST c JSON-телом тем же порядком, что fetchHtml: голая попытка,
+   *  на 403 — ленивый подъём того же одного браузера на прогон. Нужен
+   *  подгрузке страниц пользовательского dramalist (mdlListImport). */
+  readonly postHtml = async (
+    url: string,
+    body: unknown,
+    refererUrl: string,
+    fetchOpts: { onWait?: (message: string) => void } = {},
+  ): Promise<string> => {
+    if (this.client) return this.client.postHtml(url, body, refererUrl);
+
+    try {
+      return await postMdlHtmlPlain(url, body, fetchOpts);
+    } catch (e) {
+      const blocked = e instanceof MdlHttpError && e.status === 403;
+      if (!blocked || this.browserFailed) throw e;
+      const client = await this.raiseClient(e as MdlHttpError);
+      return client.postHtml(url, body, refererUrl);
     }
   };
 
