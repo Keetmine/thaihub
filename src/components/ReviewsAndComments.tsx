@@ -158,7 +158,12 @@ export default async function ReviewsAndComments({
 
   const [reviews, comments] = await Promise.all([
     prisma.review.findMany({
-      where,
+      // Приватность фильтруется в where, а не при отрисовке: чужой
+      // приватный текст не должен попадать даже в HTML страницы.
+      where: {
+        ...where,
+        OR: [{ isPrivate: false }, ...(currentUser ? [{ userId: currentUser.id }] : [])],
+      },
       include: { user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } } },
       orderBy: { createdAt: "desc" },
     }),
@@ -181,8 +186,14 @@ export default async function ReviewsAndComments({
   ]);
 
   const ownReview = currentUser ? reviews.find((r) => r.user.id === currentUser.id) : undefined;
-  const avg = reviews.length
-    ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length) * 10) / 10
+  // Средний рейтинг и счётчик — только по публичным отзывам: рейтинг —
+  // публичный сигнал, невидимая оценка, двигающая среднее, вызывала бы
+  // вопросы (то же правило в review.aggregate на страницах записей).
+  const publicReviews = reviews.filter((r) => !r.isPrivate);
+  const avg = publicReviews.length
+    ? Math.round(
+        (publicReviews.reduce((sum, r) => sum + r.rating, 0) / publicReviews.length) * 10,
+      ) / 10
     : null;
 
   const boundSaveReview = saveReview.bind(null, kind, id);
@@ -201,8 +212,8 @@ export default async function ReviewsAndComments({
                 {avg}
               </span>
             )}
-            {reviews.length > 0 && (
-              <span className="small text-secondary fw-normal">({reviews.length})</span>
+            {publicReviews.length > 0 && (
+              <span className="small text-secondary fw-normal">({publicReviews.length})</span>
             )}
           </h2>
         </div>
@@ -240,6 +251,15 @@ export default async function ReviewsAndComments({
                 aria-label={t.reviews.reviewAria}
                 className="form-control"
               />
+              <label className="form-check small text-secondary mb-0">
+                <input
+                  type="checkbox"
+                  name="isPrivate"
+                  defaultChecked={ownReview?.isPrivate ?? false}
+                  className="form-check-input"
+                />{" "}
+                {t.reviews.privateLabel}
+              </label>
               <div className="d-flex gap-2">
                 <button type="submit" className="btn btn-primary btn-sm">
                   {ownReview ? t.reviews.save : t.reviews.publish}
@@ -279,6 +299,16 @@ export default async function ReviewsAndComments({
                         {r.rating}
                       </span>
                       <span className="text-secondary"> · {formatDateWithYear(r.createdAt, locale)}</span>
+                      {/* Бейдж только у своего приватного отзыва — чужие
+                          в выборку не попадают вовсе. */}
+                      {r.isPrivate && (
+                        <span
+                          className="badge rounded-pill text-bg-secondary ms-2 align-middle"
+                          style={{ fontSize: "0.65rem" }}
+                        >
+                          {t.reviews.privateBadge}
+                        </span>
+                      )}
                     </p>
                     <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
                       {r.text}

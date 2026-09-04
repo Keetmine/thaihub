@@ -12,6 +12,9 @@ export const reviews: Dict["reviews"] = {
   outOf10: "из 10",
   publish: "Опубликовать",
   save: "Сохранить",
+  // Приватный отзыв: чекбокс в форме и бейдж у своего отзыва в списке.
+  privateLabel: "Виден только мне",
+  privateBadge: "виден только вам",
   deleteReview: "Удалить отзыв",
   deleteReviewConfirm: "Удалить ваш отзыв?",
   noReviews: "Пока нет отзывов — будьте первыми.",

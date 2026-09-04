@@ -10,6 +10,8 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { isPremiumActive } from "@/lib/premium";
 import { pageMetadata } from "@/lib/seo";
 import { getT, localeHref } from "@/lib/i18n";
+import { dramaHref, eventHref, novelHref } from "@/lib/slugHelpers";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 
 export async function generateMetadata() {
   const { locale, t } = await getT();
@@ -25,10 +27,11 @@ export async function generateMetadata() {
 
 export const dynamic = "force-dynamic";
 
-// Вкладок всего две: профиль и события. Избранные актёры и сериалы из
-// кабинета убраны — те же списки и так живут на /performers и /dramas
-// (вид по умолчанию без поиска — именно избранное/со статусом).
-const VALID_TABS: AccountTab[] = ["profile", "events"];
+// Вкладки: профиль, события и отзывы (плюс «Билеты», когда они есть, —
+// без своего ?tab=). Избранные актёры и сериалы из кабинета убраны — те
+// же списки и так живут на /performers и /dramas (вид по умолчанию без
+// поиска — именно избранное/со статусом).
+const VALID_TABS: AccountTab[] = ["profile", "events", "reviews"];
 
 export default async function AccountPage({
   searchParams,
@@ -137,6 +140,49 @@ export default async function AccountPage({
     }))
     .sort((a, b) => (a.startsAt?.getTime() ?? 0) - (b.startsAt?.getTime() ?? 0));
 
+  // Вкладка «Отзывы»: все отзывы пользователя по всем трём типам записей,
+  // новые сверху. Ссылка/обложка считаются здесь (slugHelpers серверные),
+  // клиентской вкладке уходит плоская строка. Свои приватные видны —
+  // это же кабинет автора.
+  const reviewRows = await prisma.review.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      rating: true,
+      text: true,
+      isPrivate: true,
+      createdAt: true,
+      drama: { select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true } },
+      novel: { select: { id: true, slug: true, title: true, coverUrl: true } },
+      event: { select: { id: true, slug: true, title: true, posterUrl: true } },
+    },
+  });
+  const myReviews = reviewRows.flatMap((r) => {
+    const target = r.drama
+      ? {
+          href: dramaHref(r.drama),
+          title: dramaTitleForLocale(r.drama, locale),
+          imageUrl: r.drama.posterUrl,
+        }
+      : r.novel
+        ? { href: novelHref(r.novel), title: r.novel.title, imageUrl: r.novel.coverUrl }
+        : r.event
+          ? { href: eventHref(r.event), title: r.event.title, imageUrl: r.event.posterUrl }
+          : null;
+    if (!target) return []; // осиротевший отзыв без записи — не показываем
+    return [
+      {
+        id: r.id,
+        rating: r.rating,
+        text: r.text,
+        isPrivate: r.isPrivate,
+        createdAt: r.createdAt,
+        ...target,
+      },
+    ];
+  });
+
   // Статистика и ачивки (Д1/Д2): считаются при открытии кабинета; новые
   // ачивки фиксируются и поздравляются ботом внутри syncAchievements.
   // В кабинет уходят ТОЛЬКО полученные — неполученные остаются сюрпризом,
@@ -200,6 +246,7 @@ export default async function AccountPage({
           eventsByYear: fullStats.eventsByYear,
         }}
         tickets={tickets}
+        myReviews={myReviews}
         achievements={unlockedAchievements.map((a) => ({
           key: a.key,
           emoji: a.emoji,

@@ -47,12 +47,17 @@ export async function saveReview(
   }
   if (!text) return { ok: false, error: t.reviews.errors.textRequired };
 
+  // Чекбокс «Виден только мне»: приватный отзыв видит только автор, в
+  // средний рейтинг он не входит. Автор проверяется самой выборкой —
+  // update идёт только в свою строку (existing ищется по userId).
+  const isPrivate = formData.get("isPrivate") === "on";
+
   const where = targetWhere(kind, id);
   const existing = await prisma.review.findFirst({ where: { userId: user.id, ...where } });
   if (existing) {
-    await prisma.review.update({ where: { id: existing.id }, data: { rating, text } });
+    await prisma.review.update({ where: { id: existing.id }, data: { rating, text, isPrivate } });
   } else {
-    await prisma.review.create({ data: { userId: user.id, ...where, rating, text } });
+    await prisma.review.create({ data: { userId: user.id, ...where, rating, text, isPrivate } });
   }
   revalidatePath(pagePath(kind, id));
   return { ok: true };

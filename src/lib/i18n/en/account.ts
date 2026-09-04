@@ -12,6 +12,7 @@ export const account = {
   tabProfile: "Profile",
   tabEvents: "Events",
   tabTickets: (n: number) => `Tickets (${n})`,
+  tabReviews: "Reviews",
 
   planPremium: "Subscribed",
   planFree: "Free",
@@ -29,6 +30,15 @@ export const account = {
     emptyHint:
       "Mark yourself as going to events and add them to your favourites — they will show up here.",
     emptyCta: "Browse the schedule",
+  },
+
+  // Вкладка «Отзывы»: все отзывы пользователя по сериалам, новеллам и
+  // событиям — правка на странице самой записи, вкладка только показывает.
+  reviews: {
+    emptyTitle: "No reviews yet",
+    emptyHint:
+      "Rate a series, novel or event on its page — your reviews will be collected here.",
+    emptyCta: "Browse the series",
   },
 
   tickets: {

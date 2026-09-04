@@ -144,8 +144,10 @@ export default async function DramaDetailPage({
   const [ratingAgg, dramaEvents, currentUser, similarDramas] =
     await Promise.all([
       // Средняя оценка из наших отзывов — в шапку, рядом с MDL.
+      // Только публичные: приватный отзыв не двигает средний рейтинг
+      // (см. docs/features/social.md#отзывы).
       prisma.review.aggregate({
-        where: { dramaId: id },
+        where: { dramaId: id, isPrivate: false },
         _avg: { rating: true },
         _count: { rating: true },
       }),

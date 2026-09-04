@@ -11,8 +11,9 @@ import EmptyState from "@/components/EmptyState";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import type { EventWithPerformers } from "@/lib/types";
 import TicketsTab, { type TicketRow } from "./TicketsTab";
+import ReviewsTab, { type MyReviewRow } from "./ReviewsTab";
 
-export type AccountTab = "profile" | "events" | "tickets";
+export type AccountTab = "profile" | "events" | "reviews" | "tickets";
 
 /** Одно событие кабинета целиком, со всеми его датами — многодневный
  *  концерт здесь одна строка, а не строка на дату. */
@@ -44,6 +45,7 @@ export default function AccountTabs({
   achievements,
   achievementsTotal,
   tickets,
+  myReviews,
   artistLists,
   upcomingAttendances,
   pastAttendances,
@@ -58,6 +60,8 @@ export default function AccountTabs({
   achievements: AchievementForTab[];
   achievementsTotal: number;
   tickets: TicketRow[];
+  /** Отзывы пользователя для вкладки «Отзывы», новые сверху. */
+  myReviews: MyReviewRow[];
   initialTab: AccountTab;
   user: {
     name: string | null;
@@ -117,6 +121,11 @@ export default function AccountTabs({
           </TabButton>
           <TabButton active={activeTab === "events"} onClick={() => setActiveTab("events")}>
             {t.account.tabEvents}
+          </TabButton>
+          {/* Отзывы по всем типам записей в одном месте; вкладка видна и
+              пустой — внутри EmptyState со ссылкой в каталог. */}
+          <TabButton active={activeTab === "reviews"} onClick={() => setActiveTab("reviews")}>
+            {t.account.tabReviews}
           </TabButton>
           {/* Билеты отдельной вкладкой: раньше файл был виден только на
               странице своего события. */}
@@ -275,6 +284,10 @@ export default function AccountTabs({
               compact
             />
           )}
+      </div>
+
+      <div style={{ display: activeTab === "reviews" ? undefined : "none" }}>
+        <ReviewsTab reviews={myReviews} />
       </div>
 
       <div style={{ display: activeTab === "tickets" ? undefined : "none" }}>

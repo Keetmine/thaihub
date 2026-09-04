@@ -204,10 +204,13 @@ export default async function DramasPage({
     currentUser?.id,
   );
 
-  // Средние оценки из отзывов — бейджем в строке каталога.
+  // Средние оценки из отзывов — бейджем в строке каталога. Приватные
+  // отзывы не участвуют: рейтинг — публичный сигнал, и невидимая оценка,
+  // двигающая среднее, вызывала бы вопросы (то же правило, что на
+  // странице сериала).
   const ratings = await prisma.review.groupBy({
     by: ["dramaId"],
-    where: { dramaId: { in: dramas.map((d) => d.id) } },
+    where: { dramaId: { in: dramas.map((d) => d.id) }, isPrivate: false },
     _avg: { rating: true },
   });
   const ratingByDramaId = new Map(

@@ -1363,6 +1363,10 @@ model Review {
   event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   rating    Int
   text      String
+  // Приватный отзыв видит только автор: в чужих списках его нет, в
+  // средний рейтинг и счётчик он не входит (невидимая оценка, двигающая
+  // среднее, вызывала бы вопросы). Общий флаг для всех трёх типов.
+  isPrivate Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
