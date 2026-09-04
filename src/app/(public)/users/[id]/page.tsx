@@ -6,14 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import {
   formatCombinedDateList,
-  formatDateWithYear,
   formatHumanDate,
   formatLongDate,
   formatRelativeTime,
   formatShortDate,
   formatTime,
 } from "@/lib/dates";
-import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
 import LetterAvatar from "@/components/LetterAvatar";
 import FriendActionButton from "@/components/FriendActionButton";
@@ -584,7 +582,6 @@ export default async function UserProfilePage({
 
   const displayName = user.name || p.fallbackName;
   const country = user.country ? countryName(user.country, locale) : null;
-  const memberSince = `${formatShortDate(user.createdAt, locale)} ${user.createdAt.getFullYear()}`;
 
   // ---------- Сборка вкладок ----------
   const favoriteEventsCount = isSelf
@@ -1012,7 +1009,7 @@ export default async function UserProfilePage({
             <span className="text-secondary">
               {p.metaOnline}:{" "}
               <span className="text-body">
-                {Date.now() - user.lastSeenAt.getTime() < ONLINE_WINDOW_MS ? (
+                {now.getTime() - user.lastSeenAt.getTime() < ONLINE_WINDOW_MS ? (
                   <>
                     {p.metaOnlineNow} <span className="online-dot" aria-hidden />
                   </>

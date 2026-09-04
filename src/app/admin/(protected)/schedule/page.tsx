@@ -6,7 +6,6 @@ import { adminListHref } from "@/lib/adminListHref";
 import { DENSE_PAGE_SIZE } from "@/lib/pagination";
 import ConfirmForm from "@/components/ConfirmForm";
 import Pagination from "@/components/Pagination";
-import SubmitButton from "@/components/admin/SubmitButton";
 import JobTargets from "./JobTargets";
 import ImportedItemsFeed from "./ImportedItemsFeed";
 import { saveJobSchedule, runJobNow } from "./actions";
