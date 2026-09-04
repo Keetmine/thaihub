@@ -13,6 +13,12 @@ export type JobDefinition = {
   description: string;
   /** Задача умеет работать по списку артистов (иначе — только «все»). */
   supportsTargets: boolean;
+  /** `kind` в журнале ImportRun, куда задача пишет свои прогоны, —
+   *  по нему вкладка задачи на /admin/schedule показывает историю. */
+  logKind: string;
+  /** Пишет ли задача спарсенные строки (ImportedItem) — тогда на её
+   *  вкладке есть лента «что именно спарсено», а не только сводки. */
+  logsItems: boolean;
   run: (targetIds: string[] | null) => Promise<string>;
 };
 
@@ -31,6 +37,10 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     description:
       "Обходит артистов со ссылкой на канал и подтягивает новые релизы, песни и обложки. Появившееся попадает в «Что нового» на главной.",
     supportsTargets: true,
+    // Тот же kind у ручного импорта дискографии из /admin/imports:
+    // журнал общий, на вкладке задачи видны и ночные, и ручные прогоны.
+    logKind: "youtube-music",
+    logsItems: true,
     run: async (targetIds) => {
       const { refreshAllYoutubeMusic } = await import("@/lib/youtubeMusicImport");
       const { logImportRun } = await import("@/lib/importRun");
@@ -69,6 +79,10 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     // Отбор идёт по флагу в карточке сериала, а список выбираемых
     // целей на /admin/schedule — про исполнителей.
     supportsTargets: false,
+    logKind: "mdl-auto-update",
+    // Прогон пишет только сводки: refreshMdlAutoUpdateDramas берёт runId
+    // лишь для кнопки «Остановить», ImportedItem не создаёт.
+    logsItems: false,
     run: async () => {
       const { refreshMdlAutoUpdateDramas } = await import("@/lib/mdlDramaImport");
       const { logImportRun } = await import("@/lib/importRun");
@@ -106,58 +120,76 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
       "старый аудит, прочитанные уведомления, историю импортов, разобранные ошибки и " +
       "отработавшие дедуп-отметки телеграм-напоминаний. Без чистки всё это копилось бессрочно.",
     supportsTargets: false,
+    logKind: "cleanup",
+    // Чистка ничего не парсит — на её вкладке только карточки прогонов.
+    logsItems: false,
     run: async () => {
-      const now = new Date();
-      const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-
-      const [sessions, tokens] = await Promise.all([
-        prisma.userSession.deleteMany({ where: { expiresAt: { lt: now } } }),
-        prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: now } } }),
-      ]);
-
-      // Журналы. ImportedItem чистим сами: связь с ImportRun — SetNull,
-      // а не Cascade (см. schema.prisma), удаление прогона элементы не
-      // уносит.
-      const [audit, notifications, importedItems, importRuns, errors] = await Promise.all([
-        prisma.auditLog.deleteMany({ where: { createdAt: { lt: daysAgo(AUDIT_LOG_RETENTION_DAYS) } } }),
-        prisma.notification.deleteMany({
-          where: { readAt: { not: null }, createdAt: { lt: daysAgo(READ_NOTIFICATION_RETENTION_DAYS) } },
-        }),
-        prisma.importedItem.deleteMany({ where: { createdAt: { lt: daysAgo(IMPORT_LOG_RETENTION_DAYS) } } }),
-        prisma.importRun.deleteMany({ where: { startedAt: { lt: daysAgo(IMPORT_LOG_RETENTION_DAYS) } } }),
-        prisma.errorLog.deleteMany({
-          where: { reviewedAt: { not: null }, createdAt: { lt: daysAgo(REVIEWED_ERROR_RETENTION_DAYS) } },
-        }),
-      ]);
-
-      // Дедуп-отметки напоминаний: нужны, только пока повод может
-      // повториться (событие в ближайшие сутки, серия в окне добора,
-      // день рождения в этом году) — дальше строки лишь занимают место.
-      const [birthdays, episodes, eventReminders, presales] = await Promise.all([
-        prisma.birthdayNotification.deleteMany({
-          where: { createdAt: { lt: daysAgo(BIRTHDAY_DEDUPE_RETENTION_DAYS) } },
-        }),
-        prisma.episodeNotification.deleteMany({
-          where: { createdAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
-        }),
-        prisma.telegramNotification.deleteMany({
-          where: { sentAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
-        }),
-        prisma.telegramPresaleNotification.deleteMany({
-          where: { sentAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
-        }),
-      ]);
-
-      const dedupe = birthdays.count + episodes.count + eventReminders.count + presales.count;
-      return (
-        `сессий удалено ${sessions.count}, токенов сброса ${tokens.count}, ` +
-        `аудита ${audit.count}, уведомлений ${notifications.count}, ` +
-        `импортов ${importRuns.count} (+элементов ${importedItems.count}), ` +
-        `ошибок ${errors.count}, дедуп-отметок ${dedupe}`
-      );
+      const { logImportRun } = await import("@/lib/importRun");
+      // Через журнал импортов, как соседи: раньше от чистки оставалась
+      // только строка «последний результат» в расписании — истории «что
+      // и когда удалялось» не было вовсе. Своя свежая запись ротации не
+      // мешает: строка журнала создаётся ДО удаления, а удаляется только
+      // то, что старше IMPORT_LOG_RETENTION_DAYS.
+      const summary = await logImportRun("cleanup", () => runCleanupExpired(), (s) => s);
+      // null — «остановлено кнопкой»; у чистки нет точек остановки, но
+      // контракт logImportRun общий.
+      return summary ?? "остановлено вручную";
     },
   },
 ];
+
+/** Тело чистки — вынесено из JOB_DEFINITIONS, чтобы обёртка журнала не
+ *  раздувала сам список задач. Возвращает готовую сводку. */
+async function runCleanupExpired(): Promise<string> {
+  const now = new Date();
+  const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+  const [sessions, tokens] = await Promise.all([
+    prisma.userSession.deleteMany({ where: { expiresAt: { lt: now } } }),
+    prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: now } } }),
+  ]);
+
+  // Журналы. ImportedItem чистим сами: связь с ImportRun — SetNull,
+  // а не Cascade (см. schema.prisma), удаление прогона элементы не
+  // уносит.
+  const [audit, notifications, importedItems, importRuns, errors] = await Promise.all([
+    prisma.auditLog.deleteMany({ where: { createdAt: { lt: daysAgo(AUDIT_LOG_RETENTION_DAYS) } } }),
+    prisma.notification.deleteMany({
+      where: { readAt: { not: null }, createdAt: { lt: daysAgo(READ_NOTIFICATION_RETENTION_DAYS) } },
+    }),
+    prisma.importedItem.deleteMany({ where: { createdAt: { lt: daysAgo(IMPORT_LOG_RETENTION_DAYS) } } }),
+    prisma.importRun.deleteMany({ where: { startedAt: { lt: daysAgo(IMPORT_LOG_RETENTION_DAYS) } } }),
+    prisma.errorLog.deleteMany({
+      where: { reviewedAt: { not: null }, createdAt: { lt: daysAgo(REVIEWED_ERROR_RETENTION_DAYS) } },
+    }),
+  ]);
+
+  // Дедуп-отметки напоминаний: нужны, только пока повод может
+  // повториться (событие в ближайшие сутки, серия в окне добора,
+  // день рождения в этом году) — дальше строки лишь занимают место.
+  const [birthdays, episodes, eventReminders, presales] = await Promise.all([
+    prisma.birthdayNotification.deleteMany({
+      where: { createdAt: { lt: daysAgo(BIRTHDAY_DEDUPE_RETENTION_DAYS) } },
+    }),
+    prisma.episodeNotification.deleteMany({
+      where: { createdAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+    }),
+    prisma.telegramNotification.deleteMany({
+      where: { sentAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+    }),
+    prisma.telegramPresaleNotification.deleteMany({
+      where: { sentAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+    }),
+  ]);
+
+  const dedupe = birthdays.count + episodes.count + eventReminders.count + presales.count;
+  return (
+    `сессий удалено ${sessions.count}, токенов сброса ${tokens.count}, ` +
+    `аудита ${audit.count}, уведомлений ${notifications.count}, ` +
+    `импортов ${importRuns.count} (+элементов ${importedItems.count}), ` +
+    `ошибок ${errors.count}, дедуп-отметок ${dedupe}`
+  );
+}
 
 // Сроки хранения журналов (cleanup-expired). Числа — компромисс «есть к
 // чему вернуться при разборе» против бессрочного роста таблиц.

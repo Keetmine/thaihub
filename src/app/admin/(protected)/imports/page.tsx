@@ -41,6 +41,7 @@ const KIND_LABELS: Record<string, string> = {
   "mdl-search": "MyDramaList: страница поиска",
   "mdl-requests": "Заявки: импорт сериалов",
   "youtube-music": "YouTube Music: дискография",
+  cleanup: "Расписание: чистка просроченного",
   blscene: "blscene: локации",
   "ttm-event": "ThaiTicketMajor: событие",
   "tpop-agency": "tpop.fandom: агентство",
