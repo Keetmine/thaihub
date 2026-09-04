@@ -10,9 +10,11 @@ export const reviews = {
   outOf10: "out of 10",
   publish: "Publish",
   save: "Save",
-  // Приватный отзыв: чекбокс в форме и бейдж у своего отзыва в списке.
-  privateLabel: "Only visible to me",
-  privateBadge: "only visible to you",
+  // Приватный отзыв: чекбокс в форме (с подсказкой) и бейдж у своего
+  // отзыва в списке.
+  privateLabel: "Private review",
+  privateBadge: "Private",
+  privateHint: "Hidden from others and excluded from the rating",
   deleteReview: "Delete review",
   deleteReviewConfirm: "Delete your review?",
   noReviews: "No reviews yet — be the first.",

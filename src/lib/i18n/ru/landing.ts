@@ -1,7 +1,7 @@
 import type { Dict } from "../en";
 
 export const landing: Dict["landing"] = {
-    heroEyebrow: "Фан-трекер тайских BL-событий",
+    heroEyebrow: "Фан-трекер сериалов и событий",
     heroTitle: "Концерты, сериалы и артисты —",
     heroTitleAccent: "в одном месте",
     heroLead:

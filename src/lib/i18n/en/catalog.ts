@@ -112,7 +112,7 @@ export const catalog = {
         calendarLink: "Episode calendar",
         metaTitle: "Series",
         metaDescription:
-            "Thai BL series: what they are about, who stars in them, when they aired and where they were filmed.",
+            "Series: what they are about, who stars in them, when they aired and where they were filmed.",
         title: "Series",
         empty: "Nothing marked yet. Use the search to find a series.",
         // Подпись справа от заголовка идёт тремя строками, и переносы
@@ -230,7 +230,7 @@ export const catalog = {
     novels: {
         metaTitle: "Novels",
         metaDescription:
-            "The novels behind Thai BL series: authors, plots and the adaptations they inspired.",
+            "The novels behind the series: authors, plots and the adaptations they inspired.",
         title: "Novels",
         search: "Search by title or author…",
         empty: "Novels are on the way.",
@@ -267,7 +267,7 @@ export const catalog = {
     locations: {
         metaTitle: "Filming locations",
         metaDescription:
-            "Places where Thai BL series were filmed: addresses, a map and the series shot there.",
+            "Places where series were filmed: addresses, a map and the series shot there.",
         title: "Locations",
         onMap: "On the map",
         myPlacesLink: "My places and lists →",
@@ -291,7 +291,7 @@ export const catalog = {
         metaTitle: "Location",
         metaNotFound: "This location is not in the catalogue.",
         metaDescription: (name: string) =>
-            `${name}: a filming spot from Thai BL series — how to get there and what was shot here.`,
+            `${name}: a series filming spot — how to get there and what was shot here.`,
         back: "← All locations",
         filmedHere: (n: number) => `${n} series filmed here`,
         series: "Series",
@@ -303,7 +303,7 @@ export const catalog = {
     map: {
         metaTitle: "Locations map",
         metaDescription:
-            "A map of Thai BL filming spots: where scenes were shot, what is nearby and how to get there.",
+            "A map of series filming spots: where scenes were shot, what is nearby and how to get there.",
         title: "Locations map",
         back: "← All locations",
     },

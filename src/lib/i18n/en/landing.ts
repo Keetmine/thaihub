@@ -1,5 +1,5 @@
 export const landing = {
-    heroEyebrow: "A fan tracker for Thai BL events",
+    heroEyebrow: "A fan tracker for series and events",
     heroTitle: "Concerts, series and artists —",
     heroTitleAccent: "all in one place",
     heroLead:

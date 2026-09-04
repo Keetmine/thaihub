@@ -12,7 +12,7 @@ import type { MetadataRoute } from "next";
 // Поэтому берём язык сайта по умолчанию.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "MyBLHub — Thai BL events tracker",
+    name: "MyBLHub — fan events tracker",
     short_name: "MyBLHub",
     description: "Concerts and fan events with the actors, all on one schedule",
     start_url: "/",

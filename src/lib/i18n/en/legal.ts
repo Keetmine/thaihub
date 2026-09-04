@@ -16,7 +16,7 @@ export const legal = {
 
       whatTitle: "What MyBLHub is",
       whatText:
-        "MyBLHub is a service for fans of Thai BL series: a feed of concerts and fan meets, a catalogue of actors and series, filming locations, trip planning and reminders in Telegram. Part of the catalogue is open to everyone; the event feed and the personal sections are available with a subscription.",
+        "MyBLHub is a service for fans of series and their artists: a feed of concerts and fan meets, a catalogue of actors and series, filming locations, trip planning and reminders in Telegram. Part of the catalogue is open to everyone; the event feed and the personal sections are available with a subscription.",
 
       subscriptionTitle: "Subscription and payment",
       subscriptionAccess:

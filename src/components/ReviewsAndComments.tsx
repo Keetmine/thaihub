@@ -259,6 +259,7 @@ export default async function ReviewsAndComments({
                   className="form-check-input"
                 />{" "}
                 {t.reviews.privateLabel}
+                <span className="form-text d-block">{t.reviews.privateHint}</span>
               </label>
               <div className="d-flex gap-2">
                 <button type="submit" className="btn btn-primary btn-sm">

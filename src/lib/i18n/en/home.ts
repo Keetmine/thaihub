@@ -1,7 +1,7 @@
 export const home = {
     // С-1: заголовок главной с ключевыми словами — уходит в <title> и
     // в выдачу (суффикс « — MyBLHub» дописывает title.template).
-    metaTitle: "Thai series, actors and events: fan tracker",
+    metaTitle: "Series, actors and events: fan tracker",
     eyebrow: "Home",
     greeting: (name: string) => `Hi, ${name}`,
     upcoming: "What's next",
