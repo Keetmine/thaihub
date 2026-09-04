@@ -29,6 +29,19 @@ export type AchievementBadgeProps = {
   locale: Locale;
 };
 
+/** «Монетка» ачивки: сам эмодзи размытым фоном + плёночное зерно +
+ *  чёткий эмодзи сверху — тот же приём, что у DetailHero с постером
+ *  (правка владельца). Общая для блока ачивок и ленты обновлений:
+ *  размер задаёт контейнер через font-size/width. */
+export function AchievementCoin({ emoji }: { emoji: string }) {
+  return (
+    <span className="achv-coin" aria-hidden>
+      <span className="achv-coin-bg">{emoji}</span>
+      <span className="achv-coin-fg">{emoji}</span>
+    </span>
+  );
+}
+
 export default function AchievementBadge({
   emoji,
   title,
@@ -51,9 +64,7 @@ export default function AchievementBadge({
         role="img"
         tabIndex={0}
       >
-        <span className="achv-medal-coin" aria-hidden>
-          {emoji}
-        </span>
+        <AchievementCoin emoji={emoji} />
       </span>
     );
   }
@@ -61,9 +72,7 @@ export default function AchievementBadge({
   if (compact) {
     return (
       <span className={`achv-medal-compact ${stateClass}`} title={hint}>
-        <span className="achv-medal-coin" aria-hidden>
-          {emoji}
-        </span>
+        <AchievementCoin emoji={emoji} />
         <span className="achv-medal-title">{title}</span>
       </span>
     );

@@ -3432,11 +3432,78 @@ button.hero-stat-toggle.is-open {
   border-radius: 50%;
   font-size: 1.65rem;
   line-height: 1;
-  /* Нейтральная подложка — правка владельца (2026-09-04, третья
-     итерация): ни оранжевого фона, ни оранжевого кольца — просто
-     эмодзи на тихом кругу. Историю упрощения (глоу → кольцо → ничего)
-     оставляем зафиксированной здесь, чтобы не вернуть по памяти. */
   background: rgba(255, 255, 255, 0.06);
+}
+
+/* Зелёная мигающая точка у «сейчас на сайте» (правка владельца).
+   Мягкий пульс прозрачностью, под reduced-motion — просто точка. */
+.online-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #3ddc84;
+  box-shadow: 0 0 0.3rem rgba(61, 220, 132, 0.6);
+  vertical-align: middle;
+  margin-left: 0.1rem;
+  animation: online-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes online-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .online-dot { animation: none; }
+}
+
+/* «Монетка» ачивки (AchievementCoin): сам эмодзи размытым фоном +
+   плёночное зерно + чёткий эмодзи сверху — тот же приём, что фон
+   DetailHero с постером (правка владельца, четвёртая итерация ачивок:
+   глоу → кольцо → тихий круг → блюр-подложка). Размер наследуется от
+   контейнера: в блоке ачивок это .achv-medal-coin, в ленте —
+   .activity-row-icon. */
+.achv-coin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  isolation: isolate;
+}
+
+.achv-coin-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.9em;
+  filter: blur(7px) saturate(1.5);
+  transform: scale(1.2);
+  opacity: 0.6;
+}
+
+/* Зерно — тот же feTurbulence-шум, что у плёнки body::after, только
+   статичный и погуще: на пятне размытого эмодзи он даёт фактуру. */
+.achv-coin::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+.achv-coin-fg {
+  position: relative;
+  z-index: 1;
 }
 
 .achv-medal-locked {
@@ -5347,23 +5414,69 @@ body::after {
    собственным фоном — поэтому градиент имитирован двумя тонами:
    плотный акцент #ff6a3d изнутри, светлее #ff9e5e снаружи, тёплое
    свечение следом. */
-/* На мелких аватарках (сетка друзей) кольцо намного тоньше — правка
-   владельца: толстое на миниатюре выглядело хомутом. Тона — из
-   фирменного градиента (.text-warm-gradient): оранжевый акцент внутри,
-   розовое #e8467c свечение следом — «розово-оранжевый» по просьбе
-   владельца. */
-.premium-ring {
+/* Обводка подписчика — инстаграм-стайл (уточнение владельца): сама
+   обводка градиентная, кусочек оранжевый переходит в розовый. Приём —
+   не box-shadow (он одноцветный), а паддинг контейнера с коническим
+   градиентом фоном; внутренняя картинка/буква скругляется сама и
+   оставляет градиенту тонкое кольцо. Тона — из .text-warm-gradient. */
+.profile-friend.premium-ring {
+  border: none;
+  padding: 2px;
+  background: conic-gradient(from 210deg, #ff9a72, #ff6a3d 40%, #e8467c 75%, #ff9a72);
+}
+
+.profile-friend.premium-ring img,
+.profile-friend.premium-ring span {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+/* Буквенный фолбэк внутри кольца: своя тёмная подложка, иначе буква
+   лежала бы прямо на градиенте. */
+.profile-friend.premium-ring span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bs-secondary-bg);
+}
+
+/* Общий .premium-ring (проп LetterAvatar, задел) остаётся тонким
+   двуцветным свечением — для мест, где паддинг-приём не применим. */
+.premium-ring:not(.profile-friend) {
   box-shadow:
     0 0 0 1px rgba(var(--accent-rgb), 0.9),
     0 0 0.3rem rgba(232, 70, 124, 0.4);
 }
 
+/* Крупное фото — тот же инстаграм-приём, что у миниатюр друзей:
+   паддинг с коническим градиентом вместо рамки-тени. */
 .profile-side-photo-premium {
-  border-color: rgba(var(--accent-rgb), 0.7);
-  box-shadow:
-    0 0 0 1px rgba(var(--accent-rgb), 0.5),
-    0 0 0 2.5px rgba(232, 70, 124, 0.4),
-    0 0 1.1rem rgba(232, 70, 124, 0.22);
+  border: none;
+  padding: 3px;
+  background: conic-gradient(from 210deg, #ff9a72, #ff6a3d 40%, #e8467c 75%, #ff9a72);
+}
+
+.profile-side-photo-premium img,
+.profile-side-photo-premium .profile-side-fallback {
+  border-radius: calc(var(--bs-border-radius-lg, 1rem) - 3px);
+}
+
+.profile-side-photo-premium .profile-side-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bs-secondary-bg);
+}
+
+@media (max-width: 767.98px) {
+  /* На мобиле фото — круг: скругление внутренностей следует за ним. */
+  .profile-side-photo-premium img,
+  .profile-side-photo-premium .profile-side-fallback {
+    border-radius: 50%;
+  }
 }
 
 /* --- Ачивки иконками (правка владельца п.3): монета без подписи,

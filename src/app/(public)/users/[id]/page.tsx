@@ -1010,9 +1010,13 @@ export default async function UserProfilePage({
             <span className="text-secondary">
               {p.metaOnline}:{" "}
               <span className="text-body">
-                {Date.now() - user.lastSeenAt.getTime() < ONLINE_WINDOW_MS
-                  ? p.metaOnlineNow
-                  : formatRelativeTime(user.lastSeenAt, locale)}
+                {Date.now() - user.lastSeenAt.getTime() < ONLINE_WINDOW_MS ? (
+                  <>
+                    {p.metaOnlineNow} <span className="online-dot" aria-hidden />
+                  </>
+                ) : (
+                  formatRelativeTime(user.lastSeenAt, locale)
+                )}
               </span>
             </span>
           )}
@@ -1027,12 +1031,8 @@ export default async function UserProfilePage({
               <span className="text-body">{formatLongDate(user.birthDate, locale)}</span>
             </span>
           )}
-          <span className="text-secondary">
-            {p.metaRole}:{" "}
-            <span className="text-body">
-              {user.isAdmin ? p.roleTeam : ownerPremium ? p.roleSuperfan : p.roleFan}
-            </span>
-          </span>
+          {/* Строка «Роль» убрана — владельцу не понравилось, как звучат
+              названия; подписку и так показывает звёздочка у имени. */}
           <span className="text-secondary">
             {p.metaJoined}:{" "}
             <span className="text-body">{formatLongDate(user.createdAt, locale)}</span>

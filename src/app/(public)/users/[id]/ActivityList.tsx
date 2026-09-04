@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import LetterAvatar from "@/components/LetterAvatar";
+import { AchievementCoin } from "@/components/AchievementBadge";
 import EmptyState from "@/components/EmptyState";
 import { formatDateWithYear } from "@/lib/dates";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
@@ -99,7 +100,9 @@ export default function ActivityList({
                   rounded={item.type === "favoritePerformer"}
                 />
               ) : item.type === "achievement" ? (
-                item.emoji
+                // Тот же чип, что в блоке «Ачивки» (правка владельца) —
+                // размер подхватывается от контейнера строки.
+                <AchievementCoin emoji={item.emoji} />
               ) : (
                 TYPE_EMOJI[item.type]
               )}
