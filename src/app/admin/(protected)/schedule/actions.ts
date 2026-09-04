@@ -13,8 +13,14 @@ export async function saveJobSchedule(key: string, formData: FormData): Promise<
 
   const enabled = formData.get("enabled") === "on";
   const hourRaw = Number(formData.get("hour"));
-  const hour = Number.isInteger(hourRaw) && hourRaw >= 0 && hourRaw <= 23 ? hourRaw : 4;
+  const hourOk = Number.isInteger(hourRaw) && hourRaw >= 0 && hourRaw <= 23;
   const targetMode = formData.get("targetMode") === "SELECTED" ? "SELECTED" : "ALL";
+
+  // Кривой/пропавший час НЕ подменяем дефолтной четвёркой молча: у
+  // владельца на проде такой фолбэк однажды «съел» выбранное время, и
+  // сохранение выглядело сломанным. Не распарсили — оставляем прежнее.
+  const existing = await prisma.scheduledJob.findUnique({ where: { key } });
+  const hour = hourOk ? hourRaw : (existing?.hour ?? 4);
 
   await prisma.scheduledJob.upsert({
     where: { key },

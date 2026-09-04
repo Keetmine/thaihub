@@ -10,6 +10,10 @@ import SubmitButton from "@/components/admin/SubmitButton";
 import JobTargets from "./JobTargets";
 import ImportedItemsFeed from "./ImportedItemsFeed";
 import { saveJobSchedule, runJobNow } from "./actions";
+// «Сохраняем… → Сохранено» — тот же клиентский каркас, что в настройках
+// пользователя: молчаливое сохранение выглядело как несохранение
+// (владелица дважды сохранила час на проде и не поверила, что вышло).
+import SettingsForm from "@/app/(public)/account/settings/SettingsForm";
 
 export const metadata = { title: "Расписание" };
 
@@ -175,8 +179,9 @@ export default async function AdminSchedulePage({
           </p>
         )}
 
-        <form
+        <SettingsForm
           action={saveJobSchedule.bind(null, job.key)}
+          submitLabel="Сохранить"
           className="d-flex flex-wrap align-items-end gap-3 mb-3"
         >
           <div className="form-check">
@@ -185,6 +190,7 @@ export default async function AdminSchedulePage({
               className="form-check-input"
               id={`enabled-${job.key}`}
               name="enabled"
+              key={`en-${String(job.enabled)}`}
               defaultChecked={job.enabled}
             />
             <label className="form-check-label small" htmlFor={`enabled-${job.key}`}>
@@ -199,6 +205,7 @@ export default async function AdminSchedulePage({
             <select
               id={`job-${job.key}-hour`}
               name="hour"
+              key={`h-${job.hour}`}
               defaultValue={String(job.hour)}
               className="form-select form-select-sm"
             >
@@ -227,8 +234,11 @@ export default async function AdminSchedulePage({
             </div>
           )}
 
-          <SubmitButton label="Сохранить" busyLabel="Сохранение…" />
+        </SettingsForm>
 
+        {/* «Запустить сейчас» — вне формы сохранения: раньше жил внутри
+            неё, и кнопки визуально сливались в один ряд действий. */}
+        <div className="mb-3">
           <ConfirmForm
             action={runJobNow.bind(null, job.key)}
             confirmMessage={`Запустить «${job.title}» сейчас? Прогон может занять несколько минут.`}
@@ -240,7 +250,7 @@ export default async function AdminSchedulePage({
               Запустить сейчас
             </button>
           </ConfirmForm>
-        </form>
+        </div>
 
         {job.supportsTargets && (
           <JobTargets
