@@ -106,12 +106,22 @@ export function formatTimeRangeWithZone(start: Date, end: Date | null, tz: strin
 }
 
 // Compact "24 окт" / "24 Oct" form, for flat (non day-grouped) event lists
+/** Месяцы дат-строк («25 июл», «4 сент») — СВОИ таблицы, а не Intl.
+ *  Вывод Intl для ru различается между Node на сервере и ICU браузера
+ *  («июл.» против «июля»), и клиентский EventAgendaRow ловил hydration
+ *  mismatch (пойман владельцем при сборке). Русские формы повторяют
+ *  прежний серверный вывод без точки — витрина не поменялась; в
+ *  formatDateWithYear точка после месяца ушла заодно (была «22 июл.
+ *  2025») — теперь все короткие даты едины. */
+const DATE_MONTHS: Record<Locale, string[]> = {
+  ru: ["янв", "февр", "мар", "апр", "мая", "июн", "июл", "авг", "сент", "окт", "нояб", "дек"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+};
+
 // where the row itself has to carry the date since there's no day heading
 // above it.
 export function formatShortDate(d: Date, locale: Locale = "ru"): string {
-  return d
-    .toLocaleDateString(INTL_TAG[locale], { day: "numeric", month: "short", timeZone: UTC })
-    .replace(/\.$/, "");
+  return `${d.getUTCDate()} ${DATE_MONTHS[locale][d.getUTCMonth()]}`;
 }
 
 /** «24 окт 2025» / «24 Oct 2025» — для подписей, где важен год.
@@ -148,27 +158,15 @@ export function formatRelativeTime(d: Date, locale: Locale = "ru"): string {
 }
 
 export function formatDateWithYear(d: Date, locale: Locale = "ru"): string {
-  return (
-    d
-      .toLocaleDateString(INTL_TAG[locale], {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: UTC,
-      })
-      // Русский Intl отдаёт «22 июл. 2025 г.» — убираем хвост целиком.
-      // Срезать одну последнюю точку, как в formatShortDate, тут нельзя:
-      // там она принадлежит сокращению месяца и есть только когда месяц
-      // последний, а с годом остаётся сиротское «2025 г».
-      .replace(/\s*г\.?$/, "")
-  );
+  return `${d.getUTCDate()} ${DATE_MONTHS[locale][d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 /** Короткий месяц («окт» / «Oct») и день недели («пн» / «Mon») для
  *  дата-блока карточки события. Считаются по локальным компонентам даты
  *  — ровно как раньше делали сами карточки, логика не менялась. */
 export function shortMonthName(d: Date, locale: Locale = "ru"): string {
-  return d.toLocaleDateString(INTL_TAG[locale], { month: "short" }).replace(/\.$/, "");
+  // Локальный месяц (не UTC) — как и раньше у дата-блока карточки.
+  return DATE_MONTHS[locale][d.getMonth()];
 }
 
 const WEEKDAYS_SHORT_SUNDAY_FIRST: Record<Locale, string[]> = {
