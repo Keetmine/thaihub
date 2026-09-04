@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 
 // Компактный каталог /dramas (2026-09-04): строка ~50px вместо ~100px,
+// буква группы — не заголовком над строками, а тихой литерой в ЛЕВОМ
+// жёлобе на уровне первой строки группы (список визуально сплошной);
 // на мобиле вместо вертикальной рейки — горизонтальная липкая полоска
 // букв над списком. Всё гостевое — без входа (лимит логинов душит
 // повторные прогоны, а список гостя рендерит те же строки).
@@ -16,6 +18,20 @@ test("строка каталога компактная, буквы рейки 
   const box = await firstRow.boundingBox();
   // Прежняя «карточка» была ~100px; компактная строка держится под 60.
   expect(box!.height).toBeLessThan(60);
+
+  // Буква группы — слева ОТ строк и на уровне ПЕРВОЙ строки, а не
+  // заголовком над ними.
+  const firstSection = page.locator(".performers-letter-section").first();
+  const headBox = (await firstSection.locator(".performers-letter-heading").boundingBox())!;
+  const rowBox = (await firstSection.locator(".surface").first().boundingBox())!;
+  expect(headBox.x + headBox.width).toBeLessThanOrEqual(rowBox.x + 1);
+  expect(Math.abs(headBox.y - rowBox.y)).toBeLessThan(8);
+
+  // Рейка прижата к верху зоны списка (правка владельца: раньше буквы
+  // центрировались по экрану и при коротком списке висели в пустоте).
+  const railBox = (await page.locator(".performers-index").boundingBox())!;
+  const firstLetter = (await page.locator(".performers-index-link").first().boundingBox())!;
+  expect(firstLetter.y - railBox.y).toBeLessThan(40);
 
   // С-5: краулабельные буквы — href остаётся серверной страницей буквы.
   const letterLink = page.locator('.performers-index a[href^="/dramas?letter="]').first();

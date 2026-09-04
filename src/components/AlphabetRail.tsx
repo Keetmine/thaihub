@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
+import styles from "./AlphabetRail.module.css";
 
 /**
  * Буквенная рейка у правого края каталога — ОДНА на все списки.
@@ -40,7 +41,7 @@ export default function AlphabetRail({
   letterHrefBase?: string;
 }) {
   return (
-    <nav className="performers-index" aria-label={ariaLabel}>
+    <nav className={`performers-index ${styles.rail}`} aria-label={ariaLabel}>
       {pinned && (
         <>
           <a
