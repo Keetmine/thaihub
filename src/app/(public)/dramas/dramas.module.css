@@ -1,0 +1,160 @@
+/* Компактный каталог сериалов (жалоба владельца: строки и рейка ели
+ * место). Всё скопом висит на обёртке `.compact`, которую /dramas
+ * передаёт в AlphabetIndexList пропом `className`, — артисты и локации
+ * остаются на общих правилах globals.css. Селекторы через
+ * `.compact :global(...)` заведомо специфичнее одиночных классов
+ * globals, чтобы не зависеть от порядка чанков CSS. */
+
+/* ---------- строка сериала ---------- */
+
+.rows {
+  /* вместо gap-2 (0.5rem) у обёртки строк буквы */
+  gap: 0.3rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  /* было p-3 (1rem по кругу) — строка выходила ~100px */
+  padding: 0.25rem 0.6rem 0.25rem 0.4rem;
+}
+
+.rowLink {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.poster {
+  width: 1.7rem;
+  height: 2.3rem;
+  border-radius: 0.4rem;
+  background: var(--bs-secondary-bg);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.posterFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 0.85rem;
+  color: rgba(255, 154, 114, 0.45);
+}
+
+/* Название и «2026 · ★ 8.2» — одним потоком текста: короткое название
+ * остаётся однострочным, длинное переносится, но не глубже двух строк
+ * (задача «одна-полторы строки» против прежних двух ярусов). */
+.titleWrap {
+  min-width: 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.title {
+  font-size: 0.95rem;
+}
+
+.meta {
+  white-space: nowrap;
+  margin-left: 0.55rem;
+}
+
+/* ---------- заголовки букв и зазоры между секциями ---------- */
+
+.compact :global(.performers-list) {
+  gap: 1.1rem;
+}
+
+.compact :global(.performers-letter-heading) {
+  font-size: 1.05rem;
+  margin-bottom: 0.4rem;
+}
+
+/* ---------- буквенная рейка ---------- */
+
+/* Десктоп: тоньше колонка, мельче кегль — на /ru в рейке два алфавита
+ * (плюс «0-9»), и с прежним шагом 20.4px она не влезала в экран. */
+.compact:global(.performers-layout) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1rem);
+  gap: 0.75rem;
+}
+
+.compact :global(.performers-index) {
+  gap: 0.05rem;
+}
+
+.compact :global(.performers-index-link) {
+  font-size: 0.6rem;
+  line-height: 1.35;
+}
+
+.compact :global(.performers-index-sep) {
+  font-size: 0.45rem;
+  line-height: 1.1;
+}
+
+/* Мобильный каталог: вертикальная рейка справа съедала ~42px из 390 и
+ * прижимала карточки. Вместо неё — горизонтальная липкая полоска букв
+ * НАД списком (те же <a href="?letter=X"> — SEO-перелинковка на месте),
+ * скроллится пальцем по горизонтали. Порядок задаёт grid: в DOM рейка
+ * после списка, grid-row поднимает её наверх. */
+@media (max-width: 767.98px) {
+  .compact:global(.performers-layout) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .compact :global(.performers-list) {
+    grid-row: 2;
+  }
+
+  .compact :global(.performers-index) {
+    grid-row: 1;
+    position: sticky;
+    /* под низ пилюли навбара (padding-top 0.75rem + ~59px) */
+    top: 4.6rem;
+    z-index: 5;
+    height: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0;
+    margin-bottom: 0.9rem;
+    padding: 0.1rem 0.45rem;
+    /* как у .pill-nav — полоска липкая и едет над строками */
+    background: rgba(22, 22, 26, 0.85);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 1rem;
+    backdrop-filter: blur(10px);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .compact :global(.performers-index-link) {
+    font-size: 0.75rem;
+    line-height: 1;
+    /* тап-таргет пальцу: высота строки полоски ~2rem */
+    padding: 0.55rem 0.4rem;
+  }
+
+  .compact :global(.performers-index-sep) {
+    font-size: 0.5rem;
+    padding: 0 0.15rem;
+  }
+
+  /* Якорь #letter-X должен вставать ПОД липкой полоской, а не под ней
+   * прятаться (в globals запас 6rem считан под один навбар). */
+  .compact :global(.performers-letter-section) {
+    scroll-margin-top: 8.25rem;
+  }
+}

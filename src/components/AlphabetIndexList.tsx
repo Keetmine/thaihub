@@ -27,6 +27,7 @@ export default async function AlphabetIndexList<T extends NamedItem>({
   // постерных каталогов — «poster-grid».
   itemsWrapperClassName = "d-flex flex-column gap-2",
   letterHrefBase,
+  className,
 }: {
   items: T[];
   renderItem: (item: T) => React.ReactNode;
@@ -36,6 +37,10 @@ export default async function AlphabetIndexList<T extends NamedItem>({
   /** С-5: делает буквы рейки настоящими ссылками `${base}X` на
    *  серверные страницы буквы (клик зрителя остаётся скроллом). */
   letterHrefBase?: string;
+  /** Добавка к `.performers-layout` на корне — раздел может уплотнить
+   *  свои строки/рейку своим module.css (`/dramas`), не трогая общие
+   *  правила остальных каталогов. */
+  className?: string;
 }) {
   const { t } = await getT();
   if (items.length === 0 && !trailingSection) {
@@ -59,7 +64,7 @@ export default async function AlphabetIndexList<T extends NamedItem>({
   const indexLetters = sortedLetters;
 
   return (
-    <div className="performers-layout">
+    <div className={className ? `performers-layout ${className}` : "performers-layout"}>
       <div className="performers-list">
         {sortedLetters.map((letter) => (
           <section

@@ -21,6 +21,7 @@ import { getT } from "@/lib/i18n";
 import { unstable_cache } from "next/cache";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
+import styles from "./dramas.module.css";
 
 export async function generateMetadata({
   searchParams,
@@ -293,13 +294,18 @@ export default async function DramasPage({
       </div>
 
       {/* Список строками, а не постерная сетка: сериалов много одиночных,
-          карточки съедали место, а длинные названия обрезались. Строка как
-          в списках друзей/админки: миниатюра постера, название целиком
-          (с переносом), год и рейтинг в подстроке. */}
+          карточки съедали место, а длинные названия обрезались. Строка
+          КОМПАКТНАЯ (жалоба владельца — прежняя ~100px карточка):
+          мелкая миниатюра постера, название и «год · ★ рейтинг» одним
+          потоком текста (длинное название переносится, но не глубже двух
+          строк), справа прогресс серий и кнопка статуса. Геометрия — в
+          dramas.module.css, там же уплотнение заголовков букв и рейки. */}
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: dramaTitleForLocale(d, locale), drama: d }))}
         letterHrefBase="/dramas?letter="
         emptyMessage={q ? t.common.nothingFound : t.catalog.dramas.empty}
+        className={styles.compact}
+        itemsWrapperClassName={`d-flex flex-column ${styles.rows}`}
         renderItem={({ drama: d }) => {
           const rating = ratingByDramaId.get(d.id);
           const entry = statusByDramaId.get(d.id) ?? null;
@@ -308,25 +314,9 @@ export default async function DramasPage({
             .filter(Boolean)
             .join(" · ");
           return (
-            <div
-              key={d.id}
-              className="surface surface-hover d-flex flex-wrap align-items-center justify-content-between gap-2 gap-sm-3 p-3"
-            >
-              <AppLink
-                href={dramaHref(d)}
-                className="text-decoration-none d-flex align-items-center gap-3 flex-fill"
-                style={{ minWidth: "10rem" }}
-              >
-                <div
-                  style={{
-                    width: "2.75rem",
-                    height: "3.75rem",
-                    borderRadius: "0.5rem",
-                    background: "var(--bs-secondary-bg)",
-                    flexShrink: 0,
-                    overflow: "hidden",
-                  }}
-                >
+            <div key={d.id} className={`surface surface-hover ${styles.row}`}>
+              <AppLink href={dramaHref(d)} className={`text-decoration-none ${styles.rowLink}`}>
+                <div className={styles.poster}>
                   {d.posterUrl ? (
                     <UploadImage
                       src={d.posterUrl}
@@ -335,23 +325,18 @@ export default async function DramasPage({
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   ) : (
-                    <span
-                      className="d-flex align-items-center justify-content-center h-100 font-display fw-bold"
-                      style={{ fontSize: "1.1rem", color: "rgba(255,154,114,0.45)" }}
-                      aria-hidden
-                    >
+                    <span className={`font-display fw-bold ${styles.posterFallback}`} aria-hidden>
                       {dramaTitleForLocale(d, locale).trim().charAt(0).toUpperCase()}
                     </span>
                   )}
                 </div>
-                <span className="flex-fill" style={{ minWidth: 0 }}>
-                  {/* Обрезаем, а не переносим: справа теперь счётчик
-                      серий, и на телефоне длинное название иначе рвётся
-                      на три строки и раздувает всю строку каталога. */}
-                  <span className="font-display fw-medium text-white d-block text-truncate">
+                <span className={styles.titleWrap}>
+                  <span className={`font-display fw-medium text-white ${styles.title}`}>
                     {dramaTitleForLocale(d, locale)}
                   </span>
-                  {subline && <span className="small text-secondary">{subline}</span>}
+                  {subline && (
+                    <span className={`small text-secondary ${styles.meta}`}>{subline}</span>
+                  )}
                 </span>
               </AppLink>
               <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
