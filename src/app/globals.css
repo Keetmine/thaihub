@@ -5431,29 +5431,32 @@ body::after {
    не box-shadow (он одноцветный), а паддинг контейнера с коническим
    градиентом фоном; внутренняя картинка/буква скругляется сама и
    оставляет градиенту тонкое кольцо. Тона — из .text-warm-gradient. */
+/* Кольцо подписчика — ОВЕРЛЕЕМ, а не паддингом. С паддингом внутренний
+   круг (img) и внешний (контейнер) живут в разных боксах, и на дробных
+   ширинах грид-ячейки браузер округляет их по-разному — кольцо рвалось
+   полумесяцами на 12 и 6 часах (скриншоты владельца). Оверлей с маской
+   рисует кольцо в ТОМ ЖЕ боксе: округляться нечему. */
 .profile-friend.premium-ring {
+  position: relative;
   border: none;
-  padding: 2px;
-  /* Без бледного #ff9a72: на 2px-кольце светлый сегмент тускнел до фона,
-     и кольцо выглядело разорванным — та «кривизна» из фидбека (замер
-     геометрии дал ровно 2.00px со всех сторон, дело было в цвете). */
-  background: conic-gradient(from 220deg, #ff6a3d, #e8467c 55%, #ff6a3d);
 }
 
-.profile-friend.premium-ring img,
-.profile-friend.premium-ring span {
-  width: 100%;
-  height: 100%;
+.profile-friend.premium-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-}
-
-/* Буквенный фолбэк внутри кольца: своя тёмная подложка, иначе буква
-   лежала бы прямо на градиенте. */
-.profile-friend.premium-ring span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bs-secondary-bg);
+  padding: 2px;
+  background: conic-gradient(from 220deg, #ff6a3d, #e8467c 55%, #ff6a3d);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 /* Общий .premium-ring (проп LetterAvatar, задел) остаётся тонким
