@@ -15,6 +15,7 @@ import { restartTour } from "../tourActions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
 import MdlImportSection from "./MdlImportSection";
+import SettingsForm, { SettingsSubmitRow } from "./SettingsForm";
 import SettingsTabs from "./SettingsTabs";
 import { pageMetadata } from "@/lib/seo";
 import TelegramLinkButton from "./TelegramLinkButton";
@@ -74,6 +75,9 @@ export default async function SettingsPage({
 }) {
   const { locale, t } = await getT();
   const s = t.account.settings;
+  // Новые строки редизайна — в своём разделе словаря (settings.ts):
+  // account.ts правится параллельно и чужие ключи туда не добавляем.
+  const ts = t.settings;
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
   const icsToken = await getOrCreateIcsToken();
@@ -91,123 +95,128 @@ export default async function SettingsPage({
 
       <SettingsTabs
         profile={
-          <div className="surface p-4">
-            <form action={updateProfile} className="row g-3">
-              <div className="col-12 col-md-6 d-flex flex-column gap-3">
-                <div>
-                  <label className="form-label" htmlFor="settings-username">{s.username}</label>
-                  {/* Он же адрес профиля — ссылкой делятся с друзьями. */}
-                  <div className="input-group">
-                    <span className="input-group-text small text-secondary">/users/</span>
-                    <input id="settings-username"
-                      name="username"
-                      defaultValue={user.username ?? ""}
-                      className="form-control"
-                    />
-                  </div>
-                  <p className="small text-secondary mb-0 mt-1">{s.usernameHint}</p>
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="settings-name">{s.name}</label>
-                  <input id="settings-name" name="name" defaultValue={user.name ?? ""} className="form-control" />
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="settings-locale">{s.language}</label>
-                  <select id="settings-locale"
-                    name="locale"
-                    defaultValue={user.locale ?? locale}
-                    className="form-select"
-                  >
-                    {LOCALES.map((code) => (
-                      <option key={code} value={code}>
-                        {s.languageNames[code]}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="small text-secondary mb-0 mt-1">{s.languageHint}</p>
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="settings-timezone">{s.timezone}</label>
-                  <select id="settings-timezone" name="timezone" defaultValue={user.timezone} className="form-select">
-                    {TIMEZONES.map((zone) => (
-                      <option key={zone.value} value={zone.value}>
-                        {zone.label[locale]}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="small text-secondary mb-0 mt-1">{s.timezoneHint}</p>
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="settings-country">{s.country}</label>
-                  <select id="settings-country" name="country" defaultValue={user.country ?? ""} className="form-select">
-                    <option value="">{s.countryEmpty}</option>
-                    {countryOptions(locale).map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <p className="small text-secondary mb-0">{s.nameVisible}</p>
-              </div>
-              <div className="col-12 col-md-6 d-flex flex-column gap-3">
-                <FileDropzone name="photoUrl" label={s.photo} defaultValue={user.photoUrl ?? ""} />
+          <div className="d-flex flex-column gap-3">
+            {/* Одна форма на две карточки: у updateProfile единый
+                контракт (имя и язык сохраняются вместе), поэтому
+                секции разделены визуально, а сабмит общий. */}
+            <SettingsForm action={updateProfile} submitLabel={s.save} ownSubmitRow>
+              <div className="surface p-4">
+                <h2 className="section-heading mb-1">{ts.profileSection}</h2>
+                <p className="small text-secondary mb-3">{ts.profileSectionHint}</p>
                 <div className="row g-3">
-                  <div className="col-6">
-                    <label className="form-label" htmlFor="settings-gender">{s.gender}</label>
-                    <select id="settings-gender" name="gender" defaultValue={user.gender ?? ""} className="form-select">
-                      <option value="">{s.genderEmpty}</option>
-                      <option value="female">{s.genderFemale}</option>
-                      <option value="male">{s.genderMale}</option>
-                      <option value="other">{s.genderOther}</option>
+                  <div className="col-12 col-md-6 d-flex flex-column gap-3">
+                    <div>
+                      <label className="form-label" htmlFor="settings-name">{s.name}</label>
+                      <input id="settings-name" name="name" defaultValue={user.name ?? ""} className="form-control" />
+                      {/* Подсказка про видимость — у самого поля имени,
+                          а не в конце колонки под «Страной». */}
+                      <p className="small text-secondary mb-0 mt-1">{s.nameVisible}</p>
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor="settings-username">{s.username}</label>
+                      {/* Он же адрес профиля — ссылкой делятся с друзьями. */}
+                      <div className="input-group">
+                        <span className="input-group-text small text-secondary">/users/</span>
+                        <input id="settings-username"
+                          name="username"
+                          defaultValue={user.username ?? ""}
+                          className="form-control"
+                        />
+                      </div>
+                      <p className="small text-secondary mb-0 mt-1">{s.usernameHint}</p>
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor="settings-bio">{s.bio}</label>
+                      <textarea id="settings-bio"
+                        name="bio"
+                        rows={3}
+                        defaultValue={user.bio ?? ""}
+                        placeholder={s.bioPlaceholder}
+                        className="form-control"
+                      />
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-6 d-flex flex-column gap-3">
+                    <FileDropzone name="photoUrl" label={s.photo} defaultValue={user.photoUrl ?? ""} />
+                    <div className="row g-3">
+                      <div className="col-6">
+                        <label className="form-label" htmlFor="settings-gender">{s.gender}</label>
+                        <select id="settings-gender" name="gender" defaultValue={user.gender ?? ""} className="form-select">
+                          <option value="">{s.genderEmpty}</option>
+                          <option value="female">{s.genderFemale}</option>
+                          <option value="male">{s.genderMale}</option>
+                          <option value="other">{s.genderOther}</option>
+                        </select>
+                      </div>
+                      <div className="col-6">
+                        <label className="form-label" htmlFor="settings-birthDate">{s.birthDate}</label>
+                        <DatePickerInput id="settings-birthDate"
+                          name="birthDate"
+                          defaultValue={user.birthDate ? dateKey(user.birthDate) : ""}
+                          yearsBack={100}
+                          yearsForward={0}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="surface p-4 mt-3">
+                <h2 className="section-heading mb-1">{ts.regionalSection}</h2>
+                <p className="small text-secondary mb-3">{ts.regionalSectionHint}</p>
+                <div className="row g-3">
+                  <div className="col-12 col-md-4">
+                    <label className="form-label" htmlFor="settings-locale">{s.language}</label>
+                    <select id="settings-locale"
+                      name="locale"
+                      defaultValue={user.locale ?? locale}
+                      className="form-select"
+                    >
+                      {LOCALES.map((code) => (
+                        <option key={code} value={code}>
+                          {s.languageNames[code]}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="small text-secondary mb-0 mt-1">{s.languageHint}</p>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <label className="form-label" htmlFor="settings-timezone">{s.timezone}</label>
+                    <select id="settings-timezone" name="timezone" defaultValue={user.timezone} className="form-select">
+                      {TIMEZONES.map((zone) => (
+                        <option key={zone.value} value={zone.value}>
+                          {zone.label[locale]}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="small text-secondary mb-0 mt-1">{s.timezoneHint}</p>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <label className="form-label" htmlFor="settings-country">{s.country}</label>
+                    <select id="settings-country" name="country" defaultValue={user.country ?? ""} className="form-select">
+                      <option value="">{s.countryEmpty}</option>
+                      {countryOptions(locale).map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
-                  <div className="col-6">
-                    <label className="form-label" htmlFor="settings-birthDate">{s.birthDate}</label>
-                    <DatePickerInput id="settings-birthDate"
-                      name="birthDate"
-                      defaultValue={user.birthDate ? dateKey(user.birthDate) : ""}
-                      yearsBack={100}
-                      yearsForward={0}
-                    />
-                  </div>
                 </div>
-                <div>
-                  <label className="form-label" htmlFor="settings-bio">{s.bio}</label>
-                  <textarea id="settings-bio"
-                    name="bio"
-                    rows={3}
-                    defaultValue={user.bio ?? ""}
-                    placeholder={s.bioPlaceholder}
-                    className="form-control"
-                  />
-                </div>
+                {/* Сабмит внутри последней карточки, а не сиротой между
+                    блоками, — на скриншоте «до» Save висел посреди. */}
+                <SettingsSubmitRow className="mt-4" />
               </div>
-              <div className="col-12">
-                <button type="submit" className="btn btn-primary btn-sm">
-                  {s.save}
-                </button>
-              </div>
-            </form>
-
-            {/* Тур по интерфейсу — пройти заново. Полезно и когда
-                появляются новые разделы. */}
-            <div className="border-top pt-3 mt-4" style={{ borderColor: "var(--bs-border-color)" }}>
-              <p className="fw-medium text-white mb-1">{s.tourTitle}</p>
-              <p className="small text-secondary mb-2">{s.tourHint}</p>
-              <form action={restartTour}>
-                <button type="submit" className="btn btn-ghost btn-sm">
-                  {user.tourCompletedAt ? s.tourRestart : s.tourStart}
-                </button>
-              </form>
-            </div>
+            </SettingsForm>
 
             {/* Привязка Telegram: без неё уведомления слать некуда, а
                 telegramId раньше появлялся только у тех, кто входил
                 через Telegram или платил в боте. */}
             {botUsername && (
-              <div className="border-top pt-3 mt-4" style={{ borderColor: "var(--bs-border-color)" }}>
-                <p className="fw-medium text-white mb-1">{s.telegram}</p>
+              <div className="surface p-4">
+                <h2 className="section-heading mb-1">{s.telegram}</h2>
+                <p className="small text-secondary mb-3">{ts.telegramSectionHint}</p>
                 {telegramStatus === "linked" && (
                   <p className="small text-success mb-2">{s.telegramLinked}</p>
                 )}
@@ -240,7 +249,7 @@ export default async function SettingsPage({
 
                   {/* Что слать в бота. На сайте уведомления приходят
                       всегда — настройка только про Telegram. */}
-                  <form action={updateNotificationPrefs} className="mt-3">
+                  <SettingsForm action={updateNotificationPrefs} submitLabel={s.save} className="mt-3">
                     <p className="small text-secondary mb-2">{s.telegramSendTitle}</p>
                     <div className="d-flex flex-column gap-1">
                       {telegramNotifyToggles(s).map((toggle) => (
@@ -258,10 +267,7 @@ export default async function SettingsPage({
                         </div>
                       ))}
                     </div>
-                    <button type="submit" className="btn btn-ghost btn-sm mt-2">
-                      {s.save}
-                    </button>
-                  </form>
+                  </SettingsForm>
                   </>
                 ) : (
                   <>
@@ -271,38 +277,50 @@ export default async function SettingsPage({
                 )}
               </div>
             )}
+
+            {/* Тур по интерфейсу — пройти заново. Полезно и когда
+                появляются новые разделы. */}
+            <div className="surface p-4">
+              <h2 className="section-heading mb-1">{s.tourTitle}</h2>
+              <p className="small text-secondary mb-3">{s.tourHint}</p>
+              <form action={restartTour}>
+                <button type="submit" className="btn btn-ghost btn-sm">
+                  {user.tourCompletedAt ? s.tourRestart : s.tourStart}
+                </button>
+              </form>
+            </div>
           </div>
         }
         privacy={
           <div className="surface p-4">
+            <h2 className="section-heading mb-1">{ts.privacySection}</h2>
             <p className="small text-secondary mb-3">{s.privacyIntro}</p>
-            <form action={updatePrivacy} className="d-flex flex-column gap-2">
-              {privacyToggles(s).map((toggle) => (
-                <div className="form-check" key={toggle.name}>
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id={toggle.name}
-                    name={toggle.name}
-                    defaultChecked={Boolean(user[toggle.name])}
-                  />
-                  <label className="form-check-label small" htmlFor={toggle.name}>
-                    {toggle.label}
-                    {toggle.hint && <span className="text-secondary d-block">{toggle.hint}</span>}
-                  </label>
-                </div>
-              ))}
-              <div className="mt-2">
-                <button type="submit" className="btn btn-primary btn-sm">
-                  {s.save}
-                </button>
+            <SettingsForm action={updatePrivacy} submitLabel={s.save}>
+              <div className="d-flex flex-column gap-2">
+                {privacyToggles(s).map((toggle) => (
+                  <div className="form-check" key={toggle.name}>
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id={toggle.name}
+                      name={toggle.name}
+                      defaultChecked={Boolean(user[toggle.name])}
+                    />
+                    <label className="form-check-label small" htmlFor={toggle.name}>
+                      {toggle.label}
+                      {toggle.hint && <span className="text-secondary d-block">{toggle.hint}</span>}
+                    </label>
+                  </div>
+                ))}
               </div>
-            </form>
+            </SettingsForm>
           </div>
         }
         security={
           <>
             <div className="surface p-4">
+              <h2 className="section-heading mb-1">{ts.passwordSection}</h2>
+              <p className="small text-secondary mb-3">{ts.passwordSectionHint}</p>
               <ChangePasswordForm />
             </div>
             <div className="surface p-4 mt-3">
@@ -323,6 +341,7 @@ export default async function SettingsPage({
         }
         calendar={
           <div className="surface p-4">
+            <h2 className="section-heading mb-1">{ts.calendarSection}</h2>
             <IcsFeedSection token={icsToken} />
           </div>
         }

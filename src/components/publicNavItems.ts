@@ -25,7 +25,7 @@ export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
     matchPrefixes: ["/artists/", "/agencies"],
     tourId: "artists",
   },
-  { href: "/dramas", labelKey: "series", matchPrefixes: ["/dramas/"] },
+  { href: "/dramas", labelKey: "series", matchPrefixes: ["/dramas/"], tourId: "series" },
   { href: "/novels", labelKey: "novels", matchPrefixes: ["/novels/"] },
   { href: "/locations", labelKey: "locations", matchPrefixes: ["/locations/"], tourId: "locations" },
   { href: "/trips", labelKey: "trips", matchPrefixes: ["/trips/"], tourId: "trips", requiresUser: true },

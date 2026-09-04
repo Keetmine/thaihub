@@ -53,7 +53,9 @@ export default function ChangePasswordForm() {
       {success && (
         <p className="small text-success mb-0">{t.account.settings.passwordChanged}</p>
       )}
-      <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+      {/* align-self-start: в flex-колонке кнопка иначе растягивается на
+          всю ширину карточки и выглядит баннером. */}
+      <button type="submit" className="btn btn-primary align-self-start" disabled={isSubmitting}>
         {isSubmitting ? t.account.settings.passwordSaving : t.account.settings.passwordSubmit}
       </button>
     </form>
