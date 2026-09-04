@@ -59,7 +59,9 @@ test.describe("страницы после перестройки импорто
     for (const tabName of ["Сериалы и актёры", "Музыка и артисты", "События"]) {
       await expect(tabBar.getByRole("link", { name: new RegExp(tabName) })).toBeVisible();
     }
-    await tabBar.getByRole("link", { name: "События", exact: true }).click();
+    // Не exact: у вкладки бывает бейдж с числом ждущих черновиков
+    // краулера афиши («События 2») — см. docs/features/ttm-crawl.md.
+    await tabBar.getByRole("link", { name: /^События/ }).click();
     await expect(page.getByRole("heading", { name: "Событие по ссылке" })).toBeVisible();
     await expect(
       page.getByPlaceholder(/thaiticketmajor\.com \/ eventpop\.me/),

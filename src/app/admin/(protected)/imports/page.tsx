@@ -16,7 +16,10 @@ import { importDoramaLandTranslation,
   runYoutubeMusicImport,
   runYoutubeMusicImportAndSchedule,
 } from "./actions";
+import { approveEventDraft, rejectEventDraft } from "./eventDraftActions";
 import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
+import type { TtmEvent } from "@/lib/thaiticketmajor";
+import type { EventDraftMatch } from "@/lib/ttmCrawl";
 import { adminListHref } from "@/lib/adminListHref";
 import { pluralized } from "@/lib/plural";
 import RunningImportsWatcher from "./RunningImportsWatcher";
@@ -44,6 +47,7 @@ const KIND_LABELS: Record<string, string> = {
   cleanup: "Расписание: чистка просроченного",
   blscene: "blscene: локации",
   "ttm-event": "ThaiTicketMajor: событие",
+  "ttm-crawl": "ThaiTicketMajor: обход афиши",
   "tpop-agency": "tpop.fandom: агентство",
   "tpop-artist": "tpop.fandom: артист",
 };
@@ -55,12 +59,16 @@ const ITEM_EDIT_HREF: Record<string, (id: string) => string> = {
   event: (id) => `/admin/events/${id}/edit`,
   drama: (id) => `/admin/dramas/${id}/edit`,
   album: () => `/admin/performers`,
+  // У черновика нет своей страницы — ведём в очередь на вкладке
+  // «События» (разобранный там уже не висит, но идти больше некуда).
+  "event-draft": () => `/admin/imports?tab=events`,
 };
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
   performer: "исполнитель",
   agency: "агентство",
   event: "событие",
+  "event-draft": "черновик события",
   drama: "сериал",
   album: "альбом",
   song: "песня",
@@ -103,10 +111,11 @@ export default async function AdminImportsPage({
     status?: string;
     log?: string;
     dl?: string;
+    draftError?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const { page: rawPage, status: rawStatus, log: rawLog, tab: rawTab, dl } = sp;
+  const { page: rawPage, status: rawStatus, log: rawLog, tab: rawTab, dl, draftError } = sp;
   const page = Math.max(1, Number(rawPage) || 1);
   // Фильтр по статусу: с дашборда «упавшие импорты» ведут сразу сюда,
   // иначе пришлось бы искать их глазами в общем журнале. Он же решает,
@@ -152,6 +161,18 @@ export default async function AdminImportsPage({
     prisma.mdlDramaRequest.count({ where: OPEN_MDL_REQUEST_WHERE }),
     prisma.importRun.findFirst({ where: { status: "RUNNING" } }),
   ]);
+  // Черновики краулера афиши TTM: счётчик — всегда (бейдж вкладки
+  // «События», третья часть бейджа сайдбара), сами карточки — только
+  // на своей вкладке.
+  const pendingDraftCount = await prisma.eventDraft.count({ where: { status: "PENDING" } });
+  const eventDrafts =
+    tab === "events"
+      ? await prisma.eventDraft.findMany({
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+        })
+      : [];
   const totalPages = Math.max(
     1,
     Math.ceil((logTab === "runs" ? totalRuns : totalItems) / DENSE_PAGE_SIZE),
@@ -185,9 +206,15 @@ export default async function AdminImportsPage({
   // в «Журнал», а «Упавшие» стоят как стояли. `dl` (результат разового
   // dorama.land-импорта) при навигации вычищаем — сообщение одноразовое.
   const tabHref = (t: Tab) =>
-    adminListHref("/admin/imports", sp, { tab: t, page: null, dl: null });
+    adminListHref("/admin/imports", sp, { tab: t, page: null, dl: null, draftError: null });
   const logHref = (t: LogTab, p = 1) =>
-    adminListHref("/admin/imports", sp, { tab: "log", log: t, page: p === 1 ? null : p, dl: null });
+    adminListHref("/admin/imports", sp, {
+      tab: "log",
+      log: t,
+      page: p === 1 ? null : p,
+      dl: null,
+      draftError: null,
+    });
 
   const fmt = (d: Date) =>
     d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -211,6 +238,9 @@ export default async function AdminImportsPage({
               {t.label}
               {/* Счётчики — только там, где что-то ждёт разбора: вместе
                   они и есть бейдж «Импорты» в сайдбаре. */}
+              {t.key === "events" && pendingDraftCount > 0 && (
+                <span className="admin-nav-badge ms-2">{pendingDraftCount}</span>
+              )}
               {t.key === "requests" && openRequests > 0 && (
                 <span className="admin-nav-badge ms-2">{openRequests}</span>
               )}
@@ -496,6 +526,109 @@ export default async function AdminImportsPage({
                   theconcert.com не парсится (Cloudflare) — такие заводим руками.
                 </p>
                 <TtmImportFlow performers={[]} dramas={[]} />
+              </div>
+            </div>
+
+            {/* Очередь краулера афиши TTM (задача «ttm-crawl», см.
+                docs/features/ttm-crawl.md): черновики с совпавшими
+                артистами ждут решения владельца. Массовых действий нет
+                намеренно — каждый черновик смотрится глазами. */}
+            <div className="col-12">
+              <div className="surface p-4 h-100">
+                <h2 className="section-heading mb-2">
+                  Черновики событий ({pendingDraftCount})
+                </h2>
+                <p className="small text-secondary mb-3">
+                  Найдены обходом афиши ThaiTicketMajor: в составе есть кто-то из
+                  нашего каталога. «Одобрить» — событие создастся с постером и
+                  совпавшими артистами (остальной состав добирается руками в
+                  карточке события); «Отклонить» — событие больше не предложится.
+                </p>
+                {draftError && <p className="alert alert-warning small py-2">{draftError}</p>}
+                {eventDrafts.length === 0 ? (
+                  <p className="small text-secondary mb-0">
+                    Очередь пуста — новые черновики появятся после ближайшего обхода
+                    афиши (задача «ThaiTicketMajor: обход афиши» в расписании).
+                  </p>
+                ) : (
+                  <div className="d-flex flex-column gap-2">
+                    {eventDrafts.map((draft) => {
+                      const payload = draft.payload as Partial<TtmEvent>;
+                      const matched = (draft.matchedPerformers as EventDraftMatch[] | null) ?? [];
+                      const dates =
+                        payload.dateRangeText ??
+                        [payload.date, ...(payload.extraDates ?? [])].filter(Boolean).join(", ");
+                      return (
+                        <div
+                          key={draft.id}
+                          className="surface d-flex flex-wrap align-items-center gap-3 p-3"
+                        >
+                          {/* Постер — через наш прокси (./ttm-poster):
+                              прямой hotlink с TTM браузер не грузит,
+                              их Akamai режет кросс-сайтовые картинки.
+                              В базу чужая ссылка не пишется, скачивание
+                              к нам — только при одобрении. */}
+                          {payload.posterUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`/admin/imports/ttm-poster?draft=${draft.id}`}
+                              alt=""
+                              loading="lazy"
+                              style={{ width: "3.5rem", borderRadius: "0.375rem" }}
+                            />
+                          )}
+                          <div className="flex-grow-1" style={{ minWidth: "16rem" }}>
+                            <a
+                              href={draft.sourceUrl}
+                              target="_blank"
+                              rel="external nofollow noreferrer"
+                              className="fw-medium"
+                            >
+                              {payload.title || draft.sourceUrl} ↗
+                            </a>
+                            <div className="small text-secondary">
+                              {[dates, payload.startTime, payload.venue]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </div>
+                            <div className="d-flex flex-wrap gap-1 mt-1">
+                              {matched.map((m) => (
+                                <Link
+                                  key={m.performerId}
+                                  href={`/admin/performers/${m.performerId}/edit`}
+                                  className="event-chip"
+                                >
+                                  {m.nickname}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                          <span className="small text-secondary flex-shrink-0">
+                            {fmt(draft.createdAt)}
+                          </span>
+                          <form action={approveEventDraft} className="d-inline">
+                            <input type="hidden" name="draftId" value={draft.id} />
+                            <SubmitButton
+                              label="Одобрить"
+                              busyLabel="Создаём…"
+                              className="btn btn-primary btn-sm"
+                            />
+                          </form>
+                          <ConfirmForm
+                            action={rejectEventDraft.bind(null, draft.id)}
+                            confirmMessage={`Отклонить черновик «${payload.title || draft.sourceUrl}»? Обход афиши больше не предложит это событие.`}
+                            confirmLabel="Отклонить"
+                            busyLabel="Отклоняем…"
+                          >
+                            <button type="button" className="btn btn-ghost btn-sm">
+                              Отклонить
+                            </button>
+                          </ConfirmForm>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -45,6 +45,10 @@ copy — read the schema file for exact field types/nullability.
   Cascade-deletes with its `Event`.
 - **`EventPerformer`** / **`EventPairing`** — join tables, event ↔
   performer / event ↔ pairing.
+- **`EventDraft`** — черновик события из краулера афиши ThaiTicketMajor
+  и заодно память краулера (PENDING/APPROVED/REJECTED/NO_MATCH); своя
+  таблица, а не флаг на `Event` — до одобрения владельцем публичная
+  таблица не трогается. См. [ttm-crawl.md](features/ttm-crawl.md).
 
 ## Locations
 

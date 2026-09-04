@@ -22,6 +22,7 @@ something changes, edit the doc in place rather than appending a note.
 - [testing.md](testing.md) — the Playwright smoke suite, how to run it
 - Features:
   - [events.md](features/events.md) — events, multi-day, presale, ICS export + subscribe feed, location linkage
+  - [ttm-crawl.md](features/ttm-crawl.md) — краулер афиши ThaiTicketMajor: черновики событий с артистами из каталога, очередь на одобрение
   - [catalog.md](features/catalog.md) — performers/bands, pairings, dramas, agencies
   - [locations.md](features/locations.md) — filming/venue locations, map, visited tracking
   - [blscene-import.md](features/blscene-import.md) — the blscene.com drama/location scraper

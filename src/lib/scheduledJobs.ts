@@ -113,6 +113,35 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "ttm-crawl",
+    title: "ThaiTicketMajor: обход афиши",
+    description:
+      "Обходит афишу концертов и шоу на thaiticketmajor.com и ищет в составе каждого " +
+      "события артистов из нашего каталога. Совпало — событие становится черновиком " +
+      "в очереди на проверку (вкладка «События» в импортах): владелец одобряет или " +
+      "отклоняет каждое, само в афишу ничего не попадает. События без совпадений " +
+      "запоминаются и перепроверяются раз в неделю — артист мог появиться в каталоге " +
+      "позже. За прогон скачивается до 40 страниц событий, с паузой между ними.",
+    // Отбор — афиша целиком; выбирать артистов тут нечего: матчинг
+    // и есть фильтр.
+    supportsTargets: false,
+    logKind: "ttm-crawl",
+    // Каждый созданный черновик — строка ImportedItem: на вкладке
+    // задачи видно, что именно нашлось, а не только сводки.
+    logsItems: true,
+    run: async () => {
+      const { runTtmCrawl, summarizeTtmCrawl } = await import("@/lib/ttmCrawl");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "ttm-crawl",
+        (runId) => runTtmCrawl({ runId }),
+        summarizeTtmCrawl,
+      );
+      // null — прогон остановили кнопкой в /admin/imports.
+      return result ? summarizeTtmCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "cleanup-expired",
     title: "Чистка просроченного",
     description:

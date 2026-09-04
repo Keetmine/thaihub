@@ -166,6 +166,61 @@ function findLabeledRow($: cheerio.CheerioAPI, label: string) {
   });
 }
 
+// ------------------------------------------------------- списочные страницы
+
+/** Карточка события на списочной странице (/concert/, /performance/). */
+export type TtmListingCard = { url: string; title: string };
+
+/**
+ * Канонический адрес страницы события: абсолютный, без utm-хвостов и
+ * прочих query-параметров — ключ дедупа краулера (EventDraft.sourceUrl)
+ * и сравнения с Event.sourceUrl. null — ссылка не на страницу события
+ * TTM (внешние Ticketmaster-карточки, /sport/, служебные страницы).
+ */
+export function canonicalTtmEventUrl(href: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(href, "https://www.thaiticketmajor.com/");
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+  if (host !== "thaiticketmajor.com") return null;
+  // Только две категории владельца: концерты и performance (мюзиклы,
+  // фанмиты). Разметка списка подмешивает и /sport/, и внешние сайты.
+  if (!/^\/(concert|performance)\/[^/]+\.html$/.test(parsed.pathname)) return null;
+  return `https://www.thaiticketmajor.com${parsed.pathname}`;
+}
+
+/**
+ * Разбирает списочную страницу категории. Карточка — `.event-item`, в
+ * ней `.box-txt a.title` с адресом и названием (живая разметка на
+ * 2026-09: template v3, есть и блок RECOMMENDED с чужими категориями и
+ * внешними ссылками — их отсеивает canonicalTtmEventUrl). Ссылки из
+ * шапки/уведомлений (`.noti-item`) в `.event-item` не попадают.
+ */
+export function parseTtmListing(html: string): TtmListingCard[] {
+  const $ = cheerio.load(html);
+  const seen = new Set<string>();
+  const cards: TtmListingCard[] = [];
+  $(".event-item a.title").each((_, el) => {
+    const href = $(el).attr("href");
+    const title = $(el).text().replace(/\s+/g, " ").trim();
+    if (!href || !title) return;
+    const url = canonicalTtmEventUrl(href);
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    cards.push({ url, title });
+  });
+  return cards;
+}
+
+/** Скачивает и разбирает списочную страницу (тот же UA/кука/таймаут,
+ *  что у страниц событий). */
+export async function scrapeTtmListing(url: string): Promise<TtmListingCard[]> {
+  return parseTtmListing(await fetchEnglishHtml(url));
+}
+
 export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
   const html = await fetchEnglishHtml(url);
   const $ = cheerio.load(html);

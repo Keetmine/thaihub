@@ -6,12 +6,9 @@ import { scrapeEventByUrl } from "@/lib/eventTicketSites";
 import { combineDateTime } from "@/lib/dates";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
+import { matchArtistsByNickname, type MatchedArtist } from "@/lib/performerMatching";
 
-export type TtmImportArtist = {
-  fullName: string;
-  nickname: string;
-  matchedPerformerId: string | null;
-};
+export type TtmImportArtist = MatchedArtist;
 
 export type TtmImportPreview = {
   title: string;
@@ -51,16 +48,8 @@ export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPrevi
     select: { id: true },
   });
 
-  const existingPerformers = await prisma.performer.findMany({
-    select: { id: true, name: true },
-  });
-  const byNickname = new Map(existingPerformers.map((p) => [p.name.toLowerCase().trim(), p.id]));
-
-  const artists: TtmImportArtist[] = scraped.artists.map((a) => ({
-    fullName: a.fullName,
-    nickname: a.nickname,
-    matchedPerformerId: byNickname.get(a.nickname.toLowerCase().trim()) ?? null,
-  }));
+  // Матчинг по нику — общий с краулером афиши (см. performerMatching.ts).
+  const artists: TtmImportArtist[] = await matchArtistsByNickname(scraped.artists);
 
   return {
     title: scraped.title,

@@ -1,0 +1,235 @@
+import { prisma } from "@/lib/prisma";
+import {
+  canonicalTtmEventUrl,
+  scrapeTtmEvent,
+  scrapeTtmListing,
+  type TtmEvent,
+  type TtmListingCard,
+} from "@/lib/thaiticketmajor";
+import { matchArtistsByNickname } from "@/lib/performerMatching";
+import { checkImportCancelled } from "@/lib/importRun";
+import { notifyAdmins } from "@/lib/adminNotify";
+
+// Краулер афиши ThaiTicketMajor (задача "ttm-crawl" в расписании, см.
+// docs/features/ttm-crawl.md). Обходит две категории владельца —
+// концерты и performance, — и для каждого нового события смотрит,
+// есть ли в составе кто-то из нашего каталога. Совпало — черновик
+// EventDraft PENDING в очередь на /admin/imports (вкладка «События»);
+// публичной таблицы Event краулер не касается вовсе, событие создаёт
+// только владелец кнопкой «Одобрить».
+
+const LISTING_URLS = [
+  "https://www.thaiticketmajor.com/concert/?lang=en",
+  "https://www.thaiticketmajor.com/performance/?lang=en",
+];
+
+/** Потолок страниц событий за прогон: свежих карточек в категориях
+ *  меньше сотни, и суточная задача с паузами не должна висеть часами. */
+const MAX_EVENT_PAGES_PER_RUN = 40;
+
+/** Пауза между страницами событий — вежливость к чужому сайту. */
+const PAGE_PAUSE_MS = 1700;
+
+/** NO_MATCH перепроверяется, когда прошлая проверка старше этого:
+ *  артисты появляются в каталоге позже, чем событие в афише. */
+const NO_MATCH_RECHECK_DAYS = 7;
+
+/** Совпавший артист в EventDraft.matchedPerformers. */
+export type EventDraftMatch = { performerId: string; nickname: string };
+
+export type TtmCrawlResult = {
+  /** Карточек на обеих списочных страницах (после дедупа). */
+  cardsFound: number;
+  /** Страниц событий реально скачано в этот прогон. */
+  fetched: number;
+  /** Новых черновиков PENDING (включая ожившие NO_MATCH). */
+  newPending: number;
+  /** Событий без совпадений с каталогом (запомнены как NO_MATCH). */
+  noMatch: number;
+  /** Сколько из скачанного — недельная перепроверка старых NO_MATCH. */
+  rechecked: number;
+  /** Пропущено уже известных URL (событие в каталоге или черновик). */
+  skippedKnown: number;
+  /** Страниц, не скачавшихся/не разобравшихся (прогон не роняют). */
+  failed: number;
+  /** Ники совпавших артистов — в сводку прогона. */
+  matchedNames: string[];
+  /** Списочная страница не открылась (вторая при этом обходится). */
+  listingErrors: string[];
+};
+
+function pause(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function runTtmCrawl(
+  opts: { runId?: string | null; maxEventPages?: number } = {},
+): Promise<TtmCrawlResult> {
+  const runId = opts.runId ?? null;
+  const maxEventPages = opts.maxEventPages ?? MAX_EVENT_PAGES_PER_RUN;
+
+  // 1. Списочные страницы — по разу за прогон, не чаще. Упавшая
+  // категория не отменяет вторую; упали обе — прогон падает честно.
+  const cards = new Map<string, TtmListingCard>();
+  const listingErrors: string[] = [];
+  for (const url of LISTING_URLS) {
+    try {
+      for (const card of await scrapeTtmListing(url)) {
+        if (!cards.has(card.url)) cards.set(card.url, card);
+      }
+    } catch (e) {
+      listingErrors.push(e instanceof Error ? e.message : String(e));
+    }
+  }
+  if (cards.size === 0 && listingErrors.length > 0) {
+    throw new Error(`списочные страницы не открылись: ${listingErrors.join("; ")}`);
+  }
+
+  // 2. Память краулера: что из увиденного уже знаем.
+  //  - URL уже в каталоге событий (Event.sourceUrl, включая события,
+  //    заведённые руками через «событие по ссылке») — пропуск навсегда;
+  //  - черновик PENDING/APPROVED/REJECTED — пропуск (REJECTED — вечная
+  //    память, повторный обход решение владельца не воскрешает);
+  //  - NO_MATCH старше недели — на перепроверку.
+  const knownEvents = await prisma.event.findMany({
+    where: { sourceUrl: { contains: "thaiticketmajor.com" } },
+    select: { sourceUrl: true },
+  });
+  const knownEventUrls = new Set(
+    knownEvents
+      .map((e) => (e.sourceUrl ? canonicalTtmEventUrl(e.sourceUrl) : null))
+      .filter((u): u is string => u !== null),
+  );
+  const drafts = await prisma.eventDraft.findMany({
+    where: { sourceUrl: { in: [...cards.keys()] } },
+    select: { sourceUrl: true, status: true, checkedAt: true },
+  });
+  const draftByUrl = new Map(drafts.map((d) => [d.sourceUrl, d]));
+
+  const recheckBefore = new Date(Date.now() - NO_MATCH_RECHECK_DAYS * 24 * 60 * 60 * 1000);
+  const fresh: TtmListingCard[] = [];
+  const recheck: TtmListingCard[] = [];
+  let skippedKnown = 0;
+  for (const card of cards.values()) {
+    if (knownEventUrls.has(card.url)) {
+      skippedKnown++;
+      continue;
+    }
+    const draft = draftByUrl.get(card.url);
+    if (!draft) {
+      fresh.push(card);
+    } else if (draft.status === "NO_MATCH" && draft.checkedAt < recheckBefore) {
+      recheck.push(card);
+    } else {
+      skippedKnown++;
+    }
+  }
+  // Новые вперёд: при потолке перепроверка старых NO_MATCH подождёт до
+  // следующего прогона, а свежее событие — нет.
+  recheck.sort(
+    (a, b) =>
+      draftByUrl.get(a.url)!.checkedAt.getTime() - draftByUrl.get(b.url)!.checkedAt.getTime(),
+  );
+  const queue = [...fresh, ...recheck].slice(0, Math.max(0, maxEventPages));
+
+  // 3. Страницы событий — существующим парсером, с паузой между ними.
+  const result: TtmCrawlResult = {
+    cardsFound: cards.size,
+    fetched: 0,
+    newPending: 0,
+    noMatch: 0,
+    rechecked: 0,
+    skippedKnown,
+    failed: 0,
+    matchedNames: [],
+    listingErrors,
+  };
+
+  for (const card of queue) {
+    await checkImportCancelled(runId);
+    if (result.fetched > 0) await pause(PAGE_PAUSE_MS);
+
+    let scraped: TtmEvent;
+    try {
+      scraped = await scrapeTtmEvent(card.url);
+      result.fetched++;
+    } catch (e) {
+      result.fetched++;
+      result.failed++;
+      console.warn(`ttm-crawl: ${card.url} ->`, e instanceof Error ? e.message : e);
+      continue;
+    }
+    if (draftByUrl.has(card.url)) result.rechecked++;
+
+    const matched: EventDraftMatch[] = (await matchArtistsByNickname(scraped.artists))
+      .filter((a) => a.matchedPerformerId !== null)
+      .map((a) => ({ performerId: a.matchedPerformerId!, nickname: a.nickname }));
+
+    // Название с самой страницы события надёжнее карточки списка, но
+    // бывает пустым при смене вёрстки — тогда берём карточку.
+    if (!scraped.title) scraped = { ...scraped, title: card.title };
+    // Ключ дедупа — канонический адрес карточки, а не то, что вернул
+    // парсер (он отдаёт URL, который дали ему, — он и так канонический,
+    // но пусть это гарантирует одна точка).
+    const payload = JSON.parse(JSON.stringify({ ...scraped, sourceUrl: card.url }));
+
+    if (matched.length > 0) {
+      const draft = await prisma.eventDraft.upsert({
+        where: { sourceUrl: card.url },
+        create: { sourceUrl: card.url, payload, matchedPerformers: matched, status: "PENDING" },
+        // Оживший NO_MATCH: распарс и совпадения свежие, решения
+        // владельца по нему ещё не было.
+        update: { payload, matchedPerformers: matched, status: "PENDING", checkedAt: new Date() },
+      });
+      result.newPending++;
+      result.matchedNames.push(...matched.map((m) => m.nickname));
+      if (runId) {
+        // След в журнале «последнего спарсенного» — история задачи на
+        // вкладке расписания собирается из этих же строк (logsItems).
+        await prisma.importedItem.create({
+          data: {
+            runId,
+            entityType: "event-draft",
+            entityId: draft.id,
+            action: "created",
+            label: scraped.title || card.url,
+          },
+        });
+      }
+    } else {
+      await prisma.eventDraft.upsert({
+        where: { sourceUrl: card.url },
+        create: { sourceUrl: card.url, payload, matchedPerformers: [], status: "NO_MATCH" },
+        update: { payload, checkedAt: new Date() },
+      });
+      result.noMatch++;
+    }
+  }
+
+  // 4. Одно уведомление на прогон, не по сообщению на черновик.
+  if (result.newPending > 0) {
+    const appUrl = process.env.APP_URL || "";
+    await notifyAdmins(
+      "import",
+      `Черновики событий: +${result.newPending}, ждут проверки` +
+        (appUrl ? `\n${appUrl}/admin/imports?tab=events` : ""),
+      { dedupKey: runId ?? "ttm-crawl" },
+    );
+  }
+
+  return result;
+}
+
+/** Сводка прогона — общая для журнала импортов и строки расписания. */
+export function summarizeTtmCrawl(r: TtmCrawlResult): string {
+  const names = [...new Set(r.matchedNames)];
+  return (
+    `карточек ${r.cardsFound}, скачано страниц ${r.fetched}, черновиков +${r.newPending}` +
+    (names.length ? ` (${names.slice(0, 8).join(", ")})` : "") +
+    `, без совпадений ${r.noMatch}` +
+    (r.rechecked ? `, перепроверено ${r.rechecked}` : "") +
+    `, знакомых пропущено ${r.skippedKnown}` +
+    (r.failed ? `, не открылось ${r.failed}` : "") +
+    (r.listingErrors.length ? ` · листинг: ${r.listingErrors.join("; ")}` : "")
+  );
+}
