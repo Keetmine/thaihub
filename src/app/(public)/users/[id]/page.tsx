@@ -16,7 +16,7 @@ import { eventHref } from "@/lib/eventSlug";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import FriendActionButton from "@/components/FriendActionButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
-import { CalendarIcon, CheckIcon, HeartIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
+import { CalendarIcon, CheckIcon, PinIcon, StarIcon } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
 import { sendFriendRequest } from "../../friends/actions";
 import { logout } from "../../login/actions";
@@ -37,9 +37,12 @@ import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
 import ActivityList from "./ActivityList";
 import ProfileTabs, { type ProfileTabKey } from "./ProfileTabs";
 import ProfileOverview from "./ProfileOverview";
+import StatsHero from "./StatsHero";
 import StatsTab, { type StatsForTab } from "./StatsTab";
 import ReviewsTab, { type MyReviewRow } from "./ReviewsTab";
+import CommentsTab, { type MyCommentRow } from "./CommentsTab";
 import TicketsTab from "./TicketsTab";
+import SubTabs from "./SubTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +82,7 @@ const VALID_TABS: ProfileTabKey[] = [
   "overview",
   "stats",
   "reviews",
+  "comments",
   "dramas",
   "events",
   "trips",
@@ -146,8 +150,10 @@ export default async function UserProfilePage({
   const friendships = await prisma.friendship.findMany({
     where: { status: "ACCEPTED", OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
     include: {
-      requester: { select: { id: true, username: true, name: true, photoUrl: true } },
-      addressee: { select: { id: true, username: true, name: true, photoUrl: true } },
+      // premiumUntil — для цветной обводки аватарок подписчиков в сетке
+      // друзей (правка владельца п.6).
+      requester: { select: { id: true, username: true, name: true, photoUrl: true, premiumUntil: true } },
+      addressee: { select: { id: true, username: true, name: true, photoUrl: true, premiumUntil: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -219,6 +225,7 @@ export default async function UserProfilePage({
     artistLists,
     visitedPlaces,
     reviewRows,
+    commentRows,
   ] = await Promise.all([
     // «Иду»: себе — полный список для вкладки «События», зрителю — только
     // для блока будущих событий и счётчика.
@@ -287,6 +294,24 @@ export default async function UserProfilePage({
           },
         })
       : [],
+    // Комментарии публичны (приватности у модели Comment нет), но
+    // подчиняются мастер-выключателю hideProfileActivity — как и все
+    // вкладки: при скрытой активности зритель не получает ни одной.
+    showActivity
+      ? prisma.comment.findMany({
+          where: { userId: user.id },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: {
+            id: true,
+            text: true,
+            createdAt: true,
+            drama: { select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true } },
+            novel: { select: { id: true, slug: true, title: true, coverUrl: true } },
+            event: { select: { id: true, slug: true, title: true, posterUrl: true } },
+          },
+        })
+      : [],
   ]);
 
   const now = new Date();
@@ -297,14 +322,20 @@ export default async function UserProfilePage({
   // src/lib/activityFeed.ts): приватные отзывы — только себе, «иду» —
   // платная лента событий, ачивки/избранные — переключатели приватности,
   // поездки — их собственные правила видимости.
+  // 10 записей, не 20: лента ужалась в узкую правую колонку обзора
+  // (правка владельца п.1).
   const activityItems = showActivity
-    ? await getActivityFeed(user.id, {
-        privateReviews: isSelf,
-        going: isSelf || viewerPremium,
-        favoritePerformers: showFavorites,
-        achievements: showAchievements,
-        tripVisibilities,
-      })
+    ? await getActivityFeed(
+        user.id,
+        {
+          privateReviews: isSelf,
+          going: isSelf || viewerPremium,
+          favoritePerformers: showFavorites,
+          achievements: showAchievements,
+          tripVisibilities,
+        },
+        10,
+      )
     : [];
 
   // ---------- Статистика ----------
@@ -389,70 +420,83 @@ export default async function UserProfilePage({
     const showPast = eventsLocked ? [] : pastAttendances;
     const showFavoriteEvents = eventsLocked ? [] : favoriteEvents;
 
+    // Под-табы «Предстоящие / Прошедшие / Избранное» вместо трёх
+    // секций-простыней (правка владельца п.4). Пилюли — SubTabs, нарочно
+    // другой стиль, чем основной ряд вкладок; пустые группы пилюль не
+    // получают.
+    const eventSubTabs = [
+      showUpcoming.length > 0 && {
+        key: "upcoming",
+        label: t.account.events.tabUpcoming,
+        count: showUpcoming.length,
+        content: (
+          <div className="d-flex flex-column gap-3 mb-4">
+            {showUpcoming.map((ev) => (
+              <EventAgendaRow
+                key={ev.occurrenceId}
+                event={ev}
+                isFavorited={favoritedSet.has(ev.id)}
+                isGoing={goingSet.has(ev.occurrenceId)}
+                showDate
+              />
+            ))}
+          </div>
+        ),
+      },
+      showPast.length > 0 && {
+        key: "past",
+        label: t.account.events.tabPast,
+        count: showPast.length,
+        content: (
+          <div className="d-flex flex-column gap-3 opacity-50 mb-4">
+            {showPast.map((ev) => (
+              <EventAgendaRow
+                key={ev.occurrenceId}
+                event={ev}
+                isFavorited={favoritedSet.has(ev.id)}
+                isGoing={goingSet.has(ev.occurrenceId)}
+                showDate
+              />
+            ))}
+          </div>
+        ),
+      },
+      showFavoriteEvents.length > 0 && {
+        key: "favorites",
+        label: t.account.events.tabFavorites,
+        count: showFavoriteEvents.length,
+        content: (
+          <div className="d-flex flex-column gap-3 mb-4">
+            {showFavoriteEvents.map(({ row, extraDates }) => (
+              <EventAgendaRow
+                key={row.id}
+                event={row}
+                isFavorited={favoritedSet.has(row.id)}
+                isGoing={goingSet.has(row.occurrenceId)}
+                showDate
+                extraDates={extraDates}
+              />
+            ))}
+          </div>
+        ),
+      },
+    ].filter((tab) => tab !== false);
+
     selfEventsPanel = (
       <div>
         {eventsLocked && <p className="small text-secondary mb-3">{t.account.events.locked}</p>}
-        {showUpcoming.length > 0 && (
-          <>
-            <h2 className="section-heading mb-2">{t.account.events.upcoming}</h2>
-            <div className="d-flex flex-column gap-3 mb-5">
-              {showUpcoming.map((ev) => (
-                <EventAgendaRow
-                  key={ev.occurrenceId}
-                  event={ev}
-                  isFavorited={favoritedSet.has(ev.id)}
-                  isGoing={goingSet.has(ev.occurrenceId)}
-                  showDate
-                />
-              ))}
-            </div>
-          </>
+        {eventSubTabs.length > 0 && (
+          <SubTabs tabs={eventSubTabs} ariaLabel={p.tabs.events} />
         )}
-        {showPast.length > 0 && (
-          <>
-            <h2 className="section-heading mb-2">{t.account.events.past}</h2>
-            <div className="d-flex flex-column gap-3 opacity-50 mb-5">
-              {showPast.map((ev) => (
-                <EventAgendaRow
-                  key={ev.occurrenceId}
-                  event={ev}
-                  isFavorited={favoritedSet.has(ev.id)}
-                  isGoing={goingSet.has(ev.occurrenceId)}
-                  showDate
-                />
-              ))}
-            </div>
-          </>
+        {!eventsLocked && eventSubTabs.length === 0 && (
+          <EmptyState
+            emoji="🎫"
+            title={t.account.events.emptyTitle}
+            hint={t.account.events.emptyHint}
+            cta={{ href: "/events", label: t.account.events.emptyCta }}
+            compact
+          />
         )}
-        {showFavoriteEvents.length > 0 && (
-          <>
-            <h2 className="section-heading mb-2 mt-4">{t.account.events.favorites}</h2>
-            <div className="d-flex flex-column gap-3 mb-5">
-              {showFavoriteEvents.map(({ row, extraDates }) => (
-                <EventAgendaRow
-                  key={row.id}
-                  event={row}
-                  isFavorited={favoritedSet.has(row.id)}
-                  isGoing={goingSet.has(row.occurrenceId)}
-                  showDate
-                  extraDates={extraDates}
-                />
-              ))}
-            </div>
-          </>
-        )}
-        {!eventsLocked &&
-          upcomingAttendances.length === 0 &&
-          pastAttendances.length === 0 &&
-          favoriteEvents.length === 0 && (
-            <EmptyState
-              emoji="🎫"
-              title={t.account.events.emptyTitle}
-              hint={t.account.events.emptyHint}
-              cta={{ href: "/events", label: t.account.events.emptyCta }}
-              compact
-            />
-          )}
       </div>
     );
 
@@ -525,6 +569,25 @@ export default async function UserProfilePage({
     ];
   });
 
+  // ---------- Вкладка «Комментарии» ----------
+  // Своего адреса у комментария нет — ссылка ведёт на страницу записи,
+  // где живёт тред (тот же принцип, что у отзывов).
+  const comments: MyCommentRow[] = commentRows.flatMap((row) => {
+    const target = row.drama
+      ? {
+          href: dramaHref(row.drama),
+          title: dramaTitleForLocale(row.drama, locale),
+          imageUrl: row.drama.posterUrl,
+        }
+      : row.novel
+        ? { href: novelHref(row.novel), title: row.novel.title, imageUrl: row.novel.coverUrl }
+        : row.event
+          ? { href: eventHref(row.event), title: row.event.title, imageUrl: row.event.posterUrl }
+          : null;
+    if (!target) return []; // осиротевший комментарий без записи
+    return [{ id: row.id, text: row.text, createdAt: row.createdAt, ...target }];
+  });
+
   const displayName = user.name || p.fallbackName;
   const country = user.country ? countryName(user.country, locale) : null;
   const memberSince = `${formatShortDate(user.createdAt, locale)} ${user.createdAt.getFullYear()}`;
@@ -535,7 +598,51 @@ export default async function UserProfilePage({
     : 0;
   const tabs: { key: ProfileTabKey; label: string; content: React.ReactNode }[] = [];
 
+  // Строка будущего «иду» — одна и та же в обзоре и на вкладке «События»
+  // зрителя.
+  const goingRow = (event: (typeof upcomingGoing)[number]) => {
+    const dates = event.occurrences.map((o) => o.startsAt);
+    const first = event.occurrences[0];
+    return (
+      <AppLink
+        key={event.id}
+        href={eventHref(event)}
+        className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3 profile-going-row"
+      >
+        <div>
+          <p className="font-display fw-medium text-white mb-0">{event.title}</p>
+          <p className="small text-secondary mb-0">
+            <PinIcon /> {event.venue}
+          </p>
+        </div>
+        <span className="small text-secondary text-end flex-shrink-0 text-capitalize">
+          {dates.length === 1
+            ? formatHumanDate(dates[0], locale)
+            : formatCombinedDateList(dates, locale)}
+          {first && ` · ${formatTime(first.startsAt)}`}
+        </span>
+      </AppLink>
+    );
+  };
+
   if (showActivity) {
+    // ---------- Вкладка «Обзор»: две колонки (правка владельца п.1 по
+    // референсу MyDramaList) — справа узкая лента «Последние обновления»
+    // (10 записей), слева содержательная колонка: «Смотрю сейчас»,
+    // ближайшие «иду», свежие отзывы; любимые актёры — компактным
+    // раскрывашкой внизу (блок-список убран, п.2, но путь к ним
+    // сохранён). ----------
+    const watchingNow = watchRows.filter((w) => w.status === "WATCHING").slice(0, 6);
+    // «Иду» — платная лента для зрителя, тот же гейт, что у вкладки
+    // «События».
+    const overviewGoing = isSelf || viewerPremium ? upcomingGoing.slice(0, 3) : [];
+    const overviewReviews = reviews.slice(0, 3);
+    const hasOverviewLeft =
+      watchingNow.length > 0 ||
+      overviewGoing.length > 0 ||
+      overviewReviews.length > 0 ||
+      favoritePerformerRows.length > 0;
+
     tabs.push({
       key: "overview",
       label: p.tabs.overview,
@@ -543,7 +650,6 @@ export default async function UserProfilePage({
         <div>
           {isSelf && statsForTab && (
             <ProfileOverview
-              stats={statsForTab}
               nav={{
                 going: goingEventIds.size,
                 favoriteEvents: favoriteEventsCount,
@@ -551,33 +657,68 @@ export default async function UserProfilePage({
                 dramas: watchCount,
                 friends: friends.length,
                 trips: trips.length,
+                locations: statsForTab.visitedLocations,
               }}
-              isPremium={ownerPremium}
             />
           )}
-          <h2 className="section-heading mb-2">{p.activity.title}</h2>
-          <ActivityList
-            items={activityItems}
-            t={t}
-            locale={locale}
-            isSelf={isSelf}
-            ownerName={displayName}
-          />
-          {favoritePerformerRows.length > 0 && (
-            <>
-              <h2 className="section-heading mb-2">{p.favoritePerformers}</h2>
-              <div className="d-flex flex-wrap gap-2 mb-4">
-                {favoritePerformerRows.map((f) => (
-                  <EntityMiniCard
-                    key={f.performerId}
-                    href={performerHref(f.performer)}
-                    photoUrl={f.performer.photoUrl}
-                    name={f.performer.name}
-                  />
-                ))}
+          {/* Пустому профилю двухколонник не нужен: лента с её
+              EmptyState занимает всю ширину, как раньше. */}
+          <div className={hasOverviewLeft ? "profile-overview-grid" : undefined}>
+            {hasOverviewLeft && (
+              <div className="profile-overview-main">
+                {watchingNow.length > 0 && (
+                  <section className="mb-4">
+                    <h2 className="section-heading mb-2">{p.overviewWatching}</h2>
+                    <div className="d-flex flex-column gap-1">
+                      {watchingNow.map((w) => (
+                        <DramaRow key={w.drama.id} w={w} t={t} locale={locale} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {overviewGoing.length > 0 && (
+                  <section className="mb-4">
+                    <h2 className="section-heading mb-2">{p.overviewGoing}</h2>
+                    <div className="d-flex flex-column gap-2">{overviewGoing.map(goingRow)}</div>
+                  </section>
+                )}
+                {overviewReviews.length > 0 && (
+                  <section className="mb-4">
+                    <h2 className="section-heading mb-2">{p.overviewReviews}</h2>
+                    <ReviewsTab reviews={overviewReviews} viewer={!isSelf} />
+                  </section>
+                )}
+                {favoritePerformerRows.length > 0 && (
+                  <details className="profile-fav-disclosure mb-4">
+                    <summary>
+                      {p.favoritePerformers}
+                      <span className="text-secondary ms-2">{favoritePerformersCount}</span>
+                    </summary>
+                    <div className="d-flex flex-wrap gap-2 mt-2">
+                      {favoritePerformerRows.map((f) => (
+                        <EntityMiniCard
+                          key={f.performerId}
+                          href={performerHref(f.performer)}
+                          photoUrl={f.performer.photoUrl}
+                          name={f.performer.name}
+                        />
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
-            </>
-          )}
+            )}
+            <aside className="profile-overview-feed">
+              <h2 className="section-heading mb-2">{p.activity.title}</h2>
+              <ActivityList
+                items={activityItems}
+                t={t}
+                locale={locale}
+                isSelf={isSelf}
+                ownerName={displayName}
+              />
+            </aside>
+          </div>
         </div>
       ),
     });
@@ -597,41 +738,10 @@ export default async function UserProfilePage({
             />
           ) : statsForTab ? (
             <div>
-              {!isSelf && (
-                <div className="row g-2 mb-4">
-                  {[
-                    {
-                      icon: "🎤",
-                      value: statsForTab.attendedEvents,
-                      label: t.account.overview.heroEvents(statsForTab.attendedEvents),
-                    },
-                    {
-                      icon: "👀",
-                      value: statsForTab.performersSeenLive,
-                      label: t.account.overview.heroArtists(statsForTab.performersSeenLive),
-                    },
-                    {
-                      icon: "🌴",
-                      value: statsForTab.daysInThailand,
-                      label: t.account.overview.heroDays(statsForTab.daysInThailand),
-                    },
-                    {
-                      icon: "📺",
-                      value: statsForTab.completedDramas,
-                      label: t.account.overview.heroDramas(statsForTab.completedDramas),
-                    },
-                  ].map((h) => (
-                    <div key={h.label} className="col-6 col-xl-3">
-                      <div className="hero-stat h-100">
-                        <span className="hero-stat-value">{h.value}</span>
-                        <span className="hero-stat-label">
-                          <span className="hero-stat-icon">{h.icon}</span> {h.label}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Hero-плитки — одни и те же у владельца и зрителя
+                  (правка владельца п.8): раньше владелец видел их в
+                  «Обзоре», а зритель — здесь, и вкладки разъезжались. */}
+              <StatsHero stats={statsForTab} />
               <StatsTab stats={statsForTab} viewer={!isSelf} />
             </div>
           ) : null,
@@ -642,6 +752,22 @@ export default async function UserProfilePage({
       key: "reviews",
       label: p.tabs.reviews,
       content: <ReviewsTab reviews={reviews} viewer={!isSelf} />,
+    });
+
+    // Комментарии публичны — вкладку видит и зритель; гейт только
+    // мастер-выключатель hideProfileActivity (мы внутри showActivity).
+    tabs.push({
+      key: "comments",
+      label: p.tabs.comments,
+      content: (
+        <CommentsTab
+          comments={comments}
+          t={t}
+          locale={locale}
+          isSelf={isSelf}
+          ownerName={displayName}
+        />
+      ),
     });
 
     tabs.push({
@@ -679,32 +805,7 @@ export default async function UserProfilePage({
               compact
             />
           ) : (
-            <div className="d-flex flex-column gap-2 mb-4">
-              {upcomingGoing.map((event) => {
-                const dates = event.occurrences.map((o) => o.startsAt);
-                const first = event.occurrences[0];
-                return (
-                  <AppLink
-                    key={event.id}
-                    href={eventHref(event)}
-                    className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3"
-                  >
-                    <div>
-                      <p className="font-display fw-medium text-white mb-0">{event.title}</p>
-                      <p className="small text-secondary mb-0">
-                        <PinIcon /> {event.venue}
-                      </p>
-                    </div>
-                    <span className="small text-secondary text-end flex-shrink-0 text-capitalize">
-                      {dates.length === 1
-                        ? formatHumanDate(dates[0], locale)
-                        : formatCombinedDateList(dates, locale)}
-                      {first && ` · ${formatTime(first.startsAt)}`}
-                    </span>
-                  </AppLink>
-                );
-              })}
-            </div>
+            <div className="d-flex flex-column gap-2 mb-4">{upcomingGoing.map(goingRow)}</div>
           )}
         </div>
       ),
@@ -879,7 +980,9 @@ export default async function UserProfilePage({
           своему она не нужна вовсе, а чужому «← Друзья» врала о том,
           откуда пришли, — назад ведут браузер и навигация. */}
       <aside className="profile-side">
-        <div className="profile-side-photo">
+        {/* Цветная обводка фото у подписчика (правка владельца п.6);
+            тот же визуал у мини-аватарок — .premium-ring. */}
+        <div className={`profile-side-photo${ownerPremium ? " profile-side-photo-premium" : ""}`}>
           {user.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={user.photoUrl} alt={displayName} loading="eager" decoding="async" />
@@ -892,9 +995,18 @@ export default async function UserProfilePage({
 
         <div className="d-flex flex-wrap align-items-center gap-2">
           <h1 className="profile-side-name mb-0">{displayName}</h1>
+          {/* Подписка — иконкой со всплывающей расшифровкой, а не
+              текстовым бейджем (правка владельца п.6). tabIndex — чтобы
+              title/aria были достижимы и с клавиатуры. */}
           {ownerPremium ? (
-            <span className="badge rounded-pill text-bg-warning" style={{ fontSize: "0.65rem" }}>
-              {t.account.planPremium}
+            <span
+              className="premium-badge-icon"
+              title={t.account.planPremiumHint}
+              aria-label={t.account.planPremiumHint}
+              role="img"
+              tabIndex={0}
+            >
+              <StarIcon />
             </span>
           ) : (
             isSelf && (
@@ -950,31 +1062,22 @@ export default async function UserProfilePage({
               </AppLink>
             )
           ) : (
-            <FriendActionButton
-              action={sendFriendRequest}
-              id={user.id}
-              label={p.addFriend}
-              pendingLabel={p.adding}
-            />
+            // Обёртка растягивает кнопку «В друзья» на всю ширину блока
+            // под фото (правка владельца п.5) — стили в globals.css.
+            <div className="profile-side-friend-cta">
+              <FriendActionButton
+                action={sendFriendRequest}
+                id={user.id}
+                label={p.addFriend}
+                pendingLabel={p.adding}
+              />
+            </div>
           )}
         </div>
 
-        {showActivity && (
-          <div className="detail-hero-chips profile-side-chips">
-            <span className="date-chip">
-              <UsersIcon className="icon-inline" /> {p.chipFriends(friends.length)}
-            </span>
-            <span className="date-chip">
-              <TicketIcon className="icon-inline" /> {p.chipEvents(goingEventIds.size)}
-            </span>
-            <span className="date-chip">
-              <HeartIcon className="icon-inline" /> {p.chipPerformers(favoritePerformersCount)}
-            </span>
-            <span className="date-chip">
-              <TvIcon className="icon-inline" /> {p.chipDramas(watchCount)}
-            </span>
-          </div>
-        )}
+        {/* Ряда чипов-счётчиков (друзья/события/актёры/сериалы) в левой
+            колонке больше нет — правка владельца п.7; те же числа живут
+            чипами-ссылками в «Обзоре» и на вкладках. */}
 
         {unlockedBadges.length > 0 && (
           <div className="profile-side-block">
@@ -986,6 +1089,9 @@ export default async function UserProfilePage({
                 </span>
               )}
             </h2>
+            {/* Только иконки; название и описание — в title/aria-label
+                медали (правка владельца п.3). Строки «остальные пока
+                секрет» больше нет. */}
             <div className="d-flex flex-wrap gap-2">
               {unlockedBadges.map((b) => (
                 <AchievementBadge
@@ -993,14 +1099,11 @@ export default async function UserProfilePage({
                   emoji={b.emoji}
                   title={b.title}
                   hint={b.hint}
-                  compact
+                  iconOnly
                   locale={locale}
                 />
               ))}
             </div>
-            {isSelf && unlockedBadges.length < achievementsTotal && (
-              <p className="small text-secondary mt-2 mb-0">{t.account.stats.achievementsSecret.trim()}</p>
-            )}
           </div>
         )}
 
@@ -1025,7 +1128,9 @@ export default async function UserProfilePage({
                     <AppLink
                       key={f.id}
                       href={`/users/${f.username ?? f.id}`}
-                      className="profile-friend"
+                      // Подписчики — с цветной обводкой (п.6, тот же
+                      // .premium-ring, что у LetterAvatar premiumRing).
+                      className={`profile-friend${isPremiumActive(f) ? " premium-ring" : ""}`}
                       title={f.name ?? undefined}
                     >
                       {f.photoUrl ? (
@@ -1048,6 +1153,14 @@ export default async function UserProfilePage({
             )}
           </div>
         )}
+
+        {/* «Пожаловаться» — тихая мелкая ссылка внизу ЛЕВОЙ колонки
+            (правка владельца п.10), только на чужом профиле. */}
+        {!isSelf && (
+          <p className="profile-side-report mb-0">
+            <ReportButton targetType="profile" targetId={user.id} />
+          </p>
+        )}
       </aside>
 
       {/* ПРАВАЯ КОЛОНКА: вкладки. */}
@@ -1057,24 +1170,68 @@ export default async function UserProfilePage({
         ) : (
           <p className="small text-secondary">{p.hidden}</p>
         )}
-
-        {/* «Пожаловаться» — неприметная серая ссылка в самом низу, только
-            на чужом профиле. */}
-        {!isSelf && (
-          <p className="mt-5 mb-0">
-            <ReportButton targetType="profile" targetId={user.id} />
-          </p>
-        )}
       </div>
     </div>
   );
 }
 
-/** Вкладка «Сериалы»: текущие статусы просмотра, сгруппированные в
- *  порядке WATCH_STATUS_ORDER, — постер, название, прогресс, дата
- *  отметки. Готового блока для этого не было (на главной — только
- *  «Смотрю сейчас» из 4 постеров), поэтому собрано из тех же строк
- *  .surface, что остальные вкладки. */
+type ProfileWatchRow = {
+  status: (typeof WATCH_STATUS_ORDER)[number];
+  episodesWatched: number | null;
+  updatedAt: Date;
+  drama: {
+    id: string;
+    slug: string | null;
+    title: string;
+    titleRu: string | null;
+    posterUrl: string | null;
+    episodes: number | null;
+  };
+};
+
+/** Компактная строка сериала — та же плотность, что у каталога /dramas
+ *  (мелкая миниатюра, прогресс одним потоком с названием); используется
+ *  вкладкой «Сериалы» и блоком «Смотрю сейчас» в обзоре. Геометрия —
+ *  .profile-drama-row в globals.css. */
+function DramaRow({ w, t, locale }: { w: ProfileWatchRow; t: Dict; locale: Locale }) {
+  const p = t.social.profile;
+  const progress = episodeProgress(
+    { status: w.status, episodesWatched: w.episodesWatched },
+    w.drama.episodes,
+  );
+  return (
+    <AppLink
+      href={dramaHref(w.drama)}
+      className="surface surface-hover text-decoration-none profile-drama-row"
+    >
+      <span className="profile-drama-poster" aria-hidden={!w.drama.posterUrl}>
+        {w.drama.posterUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img loading="lazy" decoding="async" src={w.drama.posterUrl} alt="" />
+        ) : (
+          <span className="profile-drama-poster-fallback font-display fw-bold" aria-hidden>
+            {dramaTitleForLocale(w.drama, locale).trim().charAt(0).toUpperCase()}
+          </span>
+        )}
+      </span>
+      <span className="profile-drama-title">
+        <span className="text-white fw-medium">{dramaTitleForLocale(w.drama, locale)}</span>
+        {progress && (
+          <span className="small text-secondary profile-drama-progress">
+            {p.activity.episodes(progress.watched, progress.total)}
+          </span>
+        )}
+      </span>
+      <span className="small text-secondary flex-shrink-0 ms-auto">
+        {formatDateWithYear(w.updatedAt, locale)}
+      </span>
+    </AppLink>
+  );
+}
+
+/** Вкладка «Сериалы»: под-табы по статусам (Смотрю/Просмотрено/…)
+ *  вместо простыни всех групп, строки компактные — как в каталоге
+ *  /dramas (правка владельца п.4). Пустые статусы пилюль не получают. */
 function DramasPanel({
   watchRows,
   t,
@@ -1082,19 +1239,7 @@ function DramasPanel({
   isSelf,
   ownerName,
 }: {
-  watchRows: {
-    status: (typeof WATCH_STATUS_ORDER)[number];
-    episodesWatched: number | null;
-    updatedAt: Date;
-    drama: {
-      id: string;
-      slug: string | null;
-      title: string;
-      titleRu: string | null;
-      posterUrl: string | null;
-      episodes: number | null;
-    };
-  }[];
+  watchRows: ProfileWatchRow[];
   t: Dict;
   locale: Locale;
   isSelf: boolean;
@@ -1113,75 +1258,28 @@ function DramasPanel({
     );
   }
 
+  const statusTabs = WATCH_STATUS_ORDER.flatMap((status) => {
+    const rows = watchRows.filter((w) => w.status === status);
+    if (rows.length === 0) return [];
+    return [
+      {
+        key: status,
+        label: t.catalog.watchStatus[status],
+        count: rows.length,
+        content: (
+          <div className="d-flex flex-column gap-1 mb-4">
+            {rows.map((w) => (
+              <DramaRow key={w.drama.id} w={w} t={t} locale={locale} />
+            ))}
+          </div>
+        ),
+      },
+    ];
+  });
+
   return (
     <div>
-      {WATCH_STATUS_ORDER.map((status) => {
-        const rows = watchRows.filter((w) => w.status === status);
-        if (rows.length === 0) return null;
-        return (
-          <section key={status}>
-            <h2 className="section-heading mb-2">
-              {t.catalog.watchStatus[status]}
-              <span className="text-secondary ms-2" style={{ letterSpacing: 0 }}>
-                {rows.length}
-              </span>
-            </h2>
-            <div className="d-flex flex-column gap-2 mb-4">
-              {rows.map((w) => {
-                const progress = episodeProgress(
-                  { status: w.status, episodesWatched: w.episodesWatched },
-                  w.drama.episodes,
-                );
-                return (
-                  <AppLink
-                    key={w.drama.id}
-                    href={dramaHref(w.drama)}
-                    className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-2 pe-3"
-                  >
-                    {w.drama.posterUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        loading="lazy"
-                        decoding="async"
-                        src={w.drama.posterUrl}
-                        alt=""
-                        className="rounded flex-shrink-0"
-                        style={{ width: "2.6rem", height: "3.6rem", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <span
-                        className="rounded flex-shrink-0 d-inline-flex align-items-center justify-content-center"
-                        style={{
-                          width: "2.6rem",
-                          height: "3.6rem",
-                          background: "var(--bs-secondary-bg)",
-                          color: "var(--bs-secondary-color)",
-                        }}
-                        aria-hidden
-                      >
-                        📺
-                      </span>
-                    )}
-                    <span style={{ minWidth: 0, flex: 1 }}>
-                      <span className="d-block text-white fw-medium text-truncate">
-                        {dramaTitleForLocale(w.drama, locale)}
-                      </span>
-                      {progress && (
-                        <span className="small text-secondary">
-                          {p.activity.episodes(progress.watched, progress.total)}
-                        </span>
-                      )}
-                    </span>
-                    <span className="small text-secondary flex-shrink-0">
-                      {formatDateWithYear(w.updatedAt, locale)}
-                    </span>
-                  </AppLink>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+      <SubTabs tabs={statusTabs} ariaLabel={p.tabs.dramas} />
       {isSelf && (
         <AppLink href="/dramas" className="small link-body-emphasis">
           {p.dramasTab.all} →

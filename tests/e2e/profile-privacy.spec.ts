@@ -86,10 +86,13 @@ test("свой профиль открывается по прямой ссыл�
   // вкладку отзывов профиля.
   await page.goto("/account?tab=reviews", { waitUntil: "domcontentloaded" });
   await page.waitForURL(/\/users\/.*tab=reviews/);
-  await expect(page.getByText(PRIVATE_REVIEW_TEXT)).toBeVisible();
+  // Текст отзыва есть и в скрытой панели «Обзора» (блок «Свежие
+  // отзывы») — проверяем именно видимый экземпляр.
+  await expect(page.locator("p:visible", { hasText: PRIVATE_REVIEW_TEXT })).toBeVisible();
   // Бейдж приватности есть и в ленте «Обзора» (панель смонтирована, но
-  // скрыта display:none), поэтому ищем именно видимый.
+  // скрыта display:none), поэтому ищем именно видимый. Текст бейджа —
+  // «Private» (переименование этой же волны в reviews-словаре).
   await expect(
-    page.locator("span.badge:visible", { hasText: "only visible to you" }),
+    page.locator("span.badge:visible", { hasText: "Private" }).first(),
   ).toBeVisible();
 });

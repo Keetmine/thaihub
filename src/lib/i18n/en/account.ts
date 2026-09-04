@@ -7,7 +7,9 @@
 // удалены: /account теперь permanent redirect на единую страницу
 // профиля, её вкладки живут в social.profile.tabs.
 export const account = {
-  planPremium: "Subscribed",
+  // Подписка на профиле — иконкой (правка владельца), текст живёт в
+  // подсказке title/aria-label.
+  planPremiumHint: "Active subscription",
   planFree: "Free",
   telegramSignIn: "Signed in with Telegram",
   memberSince: (date: string) => `On MyBLHub since ${date}`,
@@ -16,9 +18,10 @@ export const account = {
 
   events: {
     locked: "🔒 Event lists come with a subscription.",
-    upcoming: "My events — upcoming",
-    past: "My events — past",
-    favorites: "Favourite events",
+    // Под-табы вкладки «События» профиля (pill-чипы, счётчик рядом).
+    tabUpcoming: "Upcoming",
+    tabPast: "Past",
+    tabFavorites: "Favourites",
     emptyTitle: "Nothing here yet",
     emptyHint:
       "Mark yourself as going to events and add them to your favourites — they will show up here.",
@@ -95,7 +98,8 @@ export const account = {
 
     achievements: "Achievements",
     achievementsProgress: (unlocked: number, total: number) => `${unlocked} of ${total}`,
-    achievementsSecret: " — the rest are a surprise 😉",
+    // achievementsSecret удалён — правка владельца: строки про «секрет»
+    // на профиле больше нет.
     achievementsEmpty: "None yet — the first one is waiting at your first event.",
     achievementsLockedTitle: "Achievements come with a subscription",
     achievementsLockedDescription: (total: number) =>

@@ -6,6 +6,7 @@ export type ProfileTabKey =
   | "overview"
   | "stats"
   | "reviews"
+  | "comments"
   | "dramas"
   | "events"
   | "trips"

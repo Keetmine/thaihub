@@ -44,10 +44,8 @@ export const social: Dict["social"] = {
     metaDescriptionAnonymous: "Профиль пользователя на MyBLHub.",
     fallbackName: "Пользователь",
 
-    chipFriends: (n: number) => `друзей: ${n}`,
-    chipEvents: (n: number) => `событий: ${n}`,
-    chipPerformers: (n: number) => `актёров: ${n}`,
-    chipDramas: (n: number) => `сериалов: ${n}`,
+    // chip*-счётчики левой колонки удалены — правка владельца: ряда
+    // чипов в блоке с фото больше нет.
     memberSince: (date: string) => `На MyBLHub с ${date}`,
 
     // Вкладки правой колонки единого профиля (свой и чужой).
@@ -55,12 +53,20 @@ export const social: Dict["social"] = {
       overview: "Обзор",
       stats: "Статистика",
       reviews: "Отзывы",
+      comments: "Комментарии",
       dramas: "Сериалы",
       events: "События",
       trips: "Поездки",
       places: "Места и списки",
       tickets: (n: number) => `Билеты (${n})`,
     },
+
+    // Заголовки левой колонки «Обзора» (лента ужалась вправо, слева —
+    // содержательные блоки).
+    // Нейтрально, без первого лица: блок виден и на чужом профиле.
+    overviewWatching: "Сейчас в просмотре",
+    overviewGoing: "Ближайшие события",
+    overviewReviews: "Свежие отзывы",
 
     // «Последние обновления»: лента активности из существующих таблиц
     // (см. src/lib/activityFeed.ts) — иконка, действие, ссылка, дата.
@@ -92,6 +98,13 @@ export const social: Dict["social"] = {
       emptyHintViewer: (name: string) => `${name} пока не отмечает сериалы.`,
       emptyCta: "Посмотреть сериалы",
       all: "Все сериалы",
+    },
+
+    commentsTab: {
+      emptyTitle: "Комментариев пока нет",
+      emptyHintSelf:
+        "Присоединяйтесь к обсуждению на странице сериала, новеллы или события — комментарии соберутся здесь.",
+      emptyHintViewer: (name: string) => `${name} пока ничего не комментирует.`,
     },
 
     tripsTab: {

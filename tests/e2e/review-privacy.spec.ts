@@ -47,9 +47,10 @@ test("приватный отзыв виден только автору и не
   await page.check('section input[name="isPrivate"]');
   await page.locator('button:has-text("Publish"), button:has-text("Save")').first().click();
 
-  // Свой приватный — в общем списке, с бейджем
+  // Свой приватный — в общем списке, с бейджем. Именно span.badge:
+  // getByText("Private") зацепил бы и лейбл чекбокса "Private review".
   await expect(page.locator("p", { hasText: marker })).toBeVisible();
-  await expect(page.getByText("only visible to you").first()).toBeVisible();
+  await expect(page.locator("span.badge", { hasText: "Private" }).first()).toBeVisible();
 
   // Среднее и счётчик — только по публичному отзыву зрителя (10, одна
   // штука); приватная двойка дала бы 6.
@@ -60,11 +61,13 @@ test("приватный отзыв виден только автору и не
 
   // --- Вкладка «Отзывы» в профиле автора (/account редиректит туда) ---
   await page.goto("/account?tab=reviews");
-  await expect(page.getByText(marker)).toBeVisible();
+  // Текст отзыва теперь есть и в скрытой панели «Обзора» (блок «Свежие
+  // отзывы») — проверяем именно видимый экземпляр.
+  await expect(page.locator("p:visible", { hasText: marker })).toBeVisible();
   // Бейдж приватности теперь встречается и в скрытой панели «Обзора»
   // (лента активности) — проверяем именно видимый.
   await expect(
-    page.locator("span.badge:visible", { hasText: "only visible to you" }),
+    page.locator("span.badge:visible", { hasText: "Private" }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: REVIEW_DRAMA.title })).toBeVisible();
 
@@ -83,5 +86,5 @@ test("приватный отзыв виден только автору и не
   // Именно абзац: textarea своей формы держит тот же текст как
   // defaultValue (см. shared-trips.spec.ts).
   await expect(page.locator("p", { hasText: "E2E public baseline review" })).toBeVisible();
-  await expect(page.getByText("only visible to you")).toHaveCount(0);
+  await expect(page.locator("span.badge", { hasText: "Private" })).toHaveCount(0);
 });

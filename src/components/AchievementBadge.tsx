@@ -2,9 +2,9 @@ import { formatShortDate } from "@/lib/dates";
 import type { Locale } from "@/lib/i18n/config";
 
 // Бейдж-«медаль» ачивки (Э2ф) — единый вид для кабинета и публичного
-// профиля. Серверный компонент без состояния: крупное эмодзи в круге с
-// тёплым свечением, название display-шрифтом, подсказка мелко; у
-// полученных — мягкое кольцо-глоу и дата получения. Прогресс-баров нет
+// профиля. Серверный компонент без состояния: крупное эмодзи в круге,
+// название display-шрифтом, подсказка мелко; у полученных — тонкое
+// кольцо (свечение убрано — правка владельца) и дата. Прогресс-баров нет
 // намеренно: неполученные ачивки в кабинете вообще не показываются
 // («чтобы было сюрпризом»), поэтому locked-вид почти не используется, но
 // поддержан (приглушённая медаль без глоу) на будущее.
@@ -19,6 +19,10 @@ export type AchievementBadgeProps = {
   /** Компактный вариант для горизонтальных рядов (публичный профиль):
    *  медаль поменьше + название, подсказка уходит в title-атрибут. */
   compact?: boolean;
+  /** Только иконка-«монета» (правка владельца: ачивки в профиле —
+   *  иконками): название и описание живут в title/aria-label, элемент
+   *  фокусируемый — текст доступен и с клавиатуры. */
+  iconOnly?: boolean;
   /** Язык — пропом, а не хуком: компонент рендерят и сервер (публичный
    *  профиль), и клиент (кабинет), а useLocale с сервера не зовётся —
    *  профиль падал с «Attempted to call useLocale() from the server». */
@@ -32,9 +36,27 @@ export default function AchievementBadge({
   unlocked = true,
   unlockedAt = null,
   compact = false,
+  iconOnly = false,
   locale,
 }: AchievementBadgeProps) {
   const stateClass = unlocked ? "achv-medal-unlocked" : "achv-medal-locked";
+
+  if (iconOnly) {
+    const label = hint ? `${title} — ${hint}` : title;
+    return (
+      <span
+        className={`achv-medal-icon ${stateClass}`}
+        title={label}
+        aria-label={label}
+        role="img"
+        tabIndex={0}
+      >
+        <span className="achv-medal-coin" aria-hidden>
+          {emoji}
+        </span>
+      </span>
+    );
+  }
 
   if (compact) {
     return (

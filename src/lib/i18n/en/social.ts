@@ -46,10 +46,8 @@ export const social = {
     metaDescriptionAnonymous: "A user profile on MyBLHub.",
     fallbackName: "User",
 
-    chipFriends: (n: number) => `friends: ${n}`,
-    chipEvents: (n: number) => `events: ${n}`,
-    chipPerformers: (n: number) => `actors: ${n}`,
-    chipDramas: (n: number) => `series: ${n}`,
+    // chip*-счётчики левой колонки удалены — правка владельца: ряда
+    // чипов в блоке с фото больше нет.
     memberSince: (date: string) => `On MyBLHub since ${date}`,
 
     // Вкладки правой колонки единого профиля (свой и чужой).
@@ -57,12 +55,19 @@ export const social = {
       overview: "Overview",
       stats: "Statistics",
       reviews: "Reviews",
+      comments: "Comments",
       dramas: "Series",
       events: "Events",
       trips: "Trips",
       places: "Places & lists",
       tickets: (n: number) => `Tickets (${n})`,
     },
+
+    // Заголовки левой колонки «Обзора» (лента ужалась вправо, слева —
+    // содержательные блоки).
+    overviewWatching: "Watching now",
+    overviewGoing: "Coming up",
+    overviewReviews: "Recent reviews",
 
     // «Последние обновления»: лента активности из существующих таблиц
     // (см. src/lib/activityFeed.ts) — иконка, действие, ссылка, дата.
@@ -93,6 +98,12 @@ export const social = {
       emptyHintViewer: (name: string) => `${name} has not marked any series yet.`,
       emptyCta: "Browse the series",
       all: "All series",
+    },
+
+    commentsTab: {
+      emptyTitle: "No comments yet",
+      emptyHintSelf: "Join a discussion on a series, novel or event page — your comments will be collected here.",
+      emptyHintViewer: (name: string) => `${name} has not commented on anything yet.`,
     },
 
     tripsTab: {

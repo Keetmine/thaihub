@@ -2,7 +2,9 @@ import { plural, pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
 export const account: Dict["account"] = {
-  planPremium: "Подписка",
+  // Подписка на профиле — иконкой (правка владельца), текст живёт в
+  // подсказке title/aria-label.
+  planPremiumHint: "Действующая подписка",
   planFree: "Базовый",
   telegramSignIn: "Вход через Telegram",
   memberSince: (date: string) => `На MyBLHub с ${date}`,
@@ -11,9 +13,10 @@ export const account: Dict["account"] = {
 
   events: {
     locked: "🔒 Списки событий доступны по подписке.",
-    upcoming: "Мои события — предстоящие",
-    past: "Мои события — прошедшие",
-    favorites: "Избранные события",
+    // Под-табы вкладки «События» профиля (pill-чипы, счётчик рядом).
+    tabUpcoming: "Предстоящие",
+    tabPast: "Прошедшие",
+    tabFavorites: "Избранное",
     emptyTitle: "Пока пусто",
     emptyHint:
       "Отмечайте «иду» на событиях и добавляйте их в избранное — они появятся здесь.",
@@ -81,7 +84,8 @@ export const account: Dict["account"] = {
 
     achievements: "Ачивки",
     achievementsProgress: (unlocked: number, total: number) => `${unlocked} из ${total}`,
-    achievementsSecret: " — остальные пока секрет 😉",
+    // achievementsSecret удалён — правка владельца: строки про «секрет»
+    // на профиле больше нет.
     achievementsEmpty: "Пока ни одной — первая ждёт на первом же событии.",
     achievementsLockedTitle: "Ачивки — по подписке",
     achievementsLockedDescription: (total: number) =>

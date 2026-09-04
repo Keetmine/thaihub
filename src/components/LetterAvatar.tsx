@@ -6,6 +6,7 @@ export default function LetterAvatar({
   size = 2.5,
   height,
   rounded = true,
+  premiumRing = false,
 }: {
   name: string | null;
   photoUrl: string | null;
@@ -13,9 +14,14 @@ export default function LetterAvatar({
   /** Высота в rem, если не квадрат (постеры) — по умолчанию size. */
   height?: number;
   rounded?: boolean;
+  /** Цветная обводка подписчика (.premium-ring в globals.css). Opt-in:
+   *  включена пока только на странице профиля (сам аватар + сетка
+   *  друзей) — задел на остальной сайт, по умолчанию выключена. */
+  premiumRing?: boolean;
 }) {
   const radius = rounded ? "50%" : "0.5rem";
   const h = height ?? size;
+  const ringClass = premiumRing ? " premium-ring" : "";
   if (photoUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -24,14 +30,14 @@ export default function LetterAvatar({
         decoding="async"
         src={photoUrl}
         alt=""
-        className="flex-shrink-0"
+        className={`flex-shrink-0${ringClass}`}
         style={{ width: `${size}rem`, height: `${h}rem`, borderRadius: radius, objectFit: "cover" }}
       />
     );
   }
   return (
     <span
-      className="flex-shrink-0 d-inline-flex align-items-center justify-content-center fw-semibold"
+      className={`flex-shrink-0 d-inline-flex align-items-center justify-content-center fw-semibold${ringClass}`}
       style={{
         width: `${size}rem`,
         height: `${h}rem`,
