@@ -13,7 +13,7 @@ import {
 } from "@/lib/dates";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
-import EntityMiniCard from "@/components/EntityMiniCard";
+import LetterAvatar from "@/components/LetterAvatar";
 import FriendActionButton from "@/components/FriendActionButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { CalendarIcon, CheckIcon, PinIcon, StarIcon } from "@/components/icons";
@@ -216,7 +216,6 @@ export default async function UserProfilePage({
 
   const [
     attendances,
-    favoritePerformerRows,
     favoritePerformersCount,
     watchRows,
     watchCount,
@@ -233,14 +232,6 @@ export default async function UserProfilePage({
       where: { userId: user.id },
       include: { event: eventWithOccurrences, occurrence: true },
     }),
-    showFavorites
-      ? prisma.favoritePerformer.findMany({
-          where: { userId: user.id },
-          include: { performer: true },
-          orderBy: { createdAt: "desc" },
-          take: 18,
-        })
-      : [],
     prisma.favoritePerformer.count({ where: { userId: user.id } }),
     showActivity
       ? prisma.dramaWatchStatus.findMany({
@@ -607,20 +598,24 @@ export default async function UserProfilePage({
       <AppLink
         key={event.id}
         href={eventHref(event)}
-        className="surface surface-hover text-decoration-none d-flex align-items-baseline justify-content-between gap-3 p-3 profile-going-row"
+        className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-2 profile-going-row"
       >
-        <div>
+        {/* Постер + дата под названием — правка владельца: строка
+            узнаваема обложкой, а дата читается вместе с названием, а не
+            отдельной колонкой справа. */}
+        <LetterAvatar name={event.title} photoUrl={event.posterUrl} size={3.25} rounded={false} />
+        <div style={{ minWidth: 0 }}>
           <p className="font-display fw-medium text-white mb-0">{event.title}</p>
+          <p className="small text-secondary mb-0 text-capitalize">
+            {dates.length === 1
+              ? formatHumanDate(dates[0], locale)
+              : formatCombinedDateList(dates, locale)}
+            {first && ` · ${formatTime(first.startsAt)}`}
+          </p>
           <p className="small text-secondary mb-0">
             <PinIcon /> {event.venue}
           </p>
         </div>
-        <span className="small text-secondary text-end flex-shrink-0 text-capitalize">
-          {dates.length === 1
-            ? formatHumanDate(dates[0], locale)
-            : formatCombinedDateList(dates, locale)}
-          {first && ` · ${formatTime(first.startsAt)}`}
-        </span>
       </AppLink>
     );
   };
@@ -640,8 +635,7 @@ export default async function UserProfilePage({
     const hasOverviewLeft =
       watchingNow.length > 0 ||
       overviewGoing.length > 0 ||
-      overviewReviews.length > 0 ||
-      favoritePerformerRows.length > 0;
+      overviewReviews.length > 0;
 
     tabs.push({
       key: "overview",
@@ -688,24 +682,10 @@ export default async function UserProfilePage({
                     <ReviewsTab reviews={overviewReviews} viewer={!isSelf} />
                   </section>
                 )}
-                {favoritePerformerRows.length > 0 && (
-                  <details className="profile-fav-disclosure mb-4">
-                    <summary>
-                      {p.favoritePerformers}
-                      <span className="text-secondary ms-2">{favoritePerformersCount}</span>
-                    </summary>
-                    <div className="d-flex flex-wrap gap-2 mt-2">
-                      {favoritePerformerRows.map((f) => (
-                        <EntityMiniCard
-                          key={f.performerId}
-                          href={performerHref(f.performer)}
-                          photoUrl={f.performer.photoUrl}
-                          name={f.performer.name}
-                        />
-                      ))}
-                    </div>
-                  </details>
-                )}
+                {/* Блока «Любимые актёры» здесь больше нет — решение
+                    владельца (2026-09-04, вторая итерация): к любимым
+                    ведёт бейдж/чип «любимые артисты», дублировать
+                    списком незачем. */}
               </div>
             )}
             <aside className="profile-overview-feed">
@@ -1020,7 +1000,7 @@ export default async function UserProfilePage({
         <div className="profile-side-meta">
           {user.username && <span className="text-secondary">@{user.username}</span>}
           {country && <span className="text-secondary">{country}</span>}
-          <span className="text-secondary">{p.memberSince(memberSince)}</span>
+          {/* «На MyBLHub с …» убрано решением владельца (2026-09-04). */}
           {/* Email — ТОЛЬКО себе: зрителям он не показывается нигде. */}
           {isSelf && (user.email || user.telegramUsername) && (
             <span className="text-secondary">
@@ -1216,15 +1196,15 @@ function DramaRow({ w, t, locale }: { w: ProfileWatchRow; t: Dict; locale: Local
       </span>
       <span className="profile-drama-title">
         <span className="text-white fw-medium">{dramaTitleForLocale(w.drama, locale)}</span>
-        {progress && (
-          <span className="small text-secondary profile-drama-progress">
-            {p.activity.episodes(progress.watched, progress.total)}
-          </span>
-        )}
       </span>
-      <span className="small text-secondary flex-shrink-0 ms-auto">
-        {formatDateWithYear(w.updatedAt, locale)}
-      </span>
+      {/* Справа — прогресс, а не дата (правка владельца): «когда
+          отметил» ничего не говорит, «сколько просмотрено» — говорит.
+          Без прогресса (нет числа серий, «в планах») правый край пуст. */}
+      {progress && (
+        <span className="small text-secondary flex-shrink-0 ms-auto">
+          {p.activity.episodes(progress.watched, progress.total)}
+        </span>
+      )}
     </AppLink>
   );
 }

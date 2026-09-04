@@ -5264,18 +5264,6 @@ body::after {
   opacity: 0.7;
 }
 
-/* Строка «иду»: на телефоне дата переносится под название, иначе она
-   зажимает заголовок в столбик из букв. */
-@media (max-width: 575.98px) {
-  .profile-going-row {
-    flex-wrap: wrap;
-  }
-
-  .profile-going-row > span {
-    text-align: start !important;
-  }
-}
-
 /* --- Компактная строка сериала (вкладка «Сериалы» и «Сейчас в
    просмотре» обзора) — та же плотность, что каталог /dramas
    (dramas.module.css). --- */
@@ -5332,6 +5320,8 @@ body::after {
    бейджа + цветная обводка аватарок подписчиков. .premium-ring вешается
    и пропом LetterAvatar (premiumRing) — задел на остальной сайт, пока
    включён только на профиле (сетка друзей). --- */
+/* Оранжевый, а не жёлтый — правка владельца (2026-09-04): подписка в
+   цвет сайта. Тон в тон с кольцами ниже. */
 .premium-badge-icon {
   display: inline-flex;
   align-items: center;
@@ -5339,9 +5329,9 @@ body::after {
   width: 1.35rem;
   height: 1.35rem;
   border-radius: 50%;
-  color: #ffc107;
-  border: 1px solid rgba(255, 193, 7, 0.55);
-  background: rgba(255, 193, 7, 0.12);
+  color: rgb(var(--accent-rgb));
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.12);
   flex-shrink: 0;
 }
 
@@ -5350,17 +5340,25 @@ body::after {
   height: 0.8rem;
 }
 
+/* Кольца подписки — оранжевый «градиент» (правка владельца 2026-09-04:
+   не жёлтый, а в цвет сайта). Настоящий CSS-градиент на box-shadow не
+   ложится, а кольцо вешается и на <img>, и на дивы LetterAvatar с
+   собственным фоном — поэтому градиент имитирован двумя тонами:
+   плотный акцент #ff6a3d изнутри, светлее #ff9e5e снаружи, тёплое
+   свечение следом. */
 .premium-ring {
   box-shadow:
-    0 0 0 2px rgba(255, 193, 7, 0.85),
-    0 0 0.55rem rgba(255, 193, 7, 0.3);
+    0 0 0 2px rgba(var(--accent-rgb), 0.95),
+    0 0 0 3.5px rgba(255, 158, 94, 0.55),
+    0 0 0.6rem rgba(var(--accent-rgb), 0.35);
 }
 
 .profile-side-photo-premium {
-  border-color: rgba(255, 193, 7, 0.65);
+  border-color: rgba(var(--accent-rgb), 0.7);
   box-shadow:
-    0 0 0 1px rgba(255, 193, 7, 0.45),
-    0 0 1.2rem rgba(255, 193, 7, 0.22);
+    0 0 0 1px rgba(var(--accent-rgb), 0.5),
+    0 0 0 2.5px rgba(255, 158, 94, 0.35),
+    0 0 1.2rem rgba(var(--accent-rgb), 0.25);
 }
 
 /* --- Ачивки иконками (правка владельца п.3): монета без подписи,
@@ -5406,22 +5404,6 @@ body::after {
 
 .profile-side-report .btn:hover {
   opacity: 1;
-}
-
-/* --- Любимые актёры — компактная раскрывашка в обзоре (п.2: блок-список
-   убран, путь к любимым остался). --- */
-.profile-fav-disclosure summary {
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--bs-secondary-color);
-  list-style-position: inside;
-}
-
-.profile-fav-disclosure summary:hover {
-  color: var(--bs-body-color);
 }
 
 /* ==================================================================
