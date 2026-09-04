@@ -24,10 +24,11 @@ export type ActivityItem =
       status: WatchStatus;
       episodesWatched: number | null;
       episodesTotal: number | null;
+      imageUrl: string | null;
     }
-  | { type: "favoritePerformer"; date: Date; href: string; title: string; titleRu: null }
-  | { type: "going"; date: Date; href: string; title: string; titleRu: null }
-  | { type: "trip"; date: Date; href: string; title: string; titleRu: null }
+  | { type: "favoritePerformer"; date: Date; href: string; title: string; titleRu: null; imageUrl: string | null }
+  | { type: "going"; date: Date; href: string; title: string; titleRu: null; imageUrl: string | null }
+  | { type: "trip"; date: Date; href: string; title: string; titleRu: null; imageUrl: null }
   | {
       type: "review";
       date: Date;
@@ -36,8 +37,9 @@ export type ActivityItem =
       titleRu: string | null;
       rating: number;
       isPrivate: boolean;
+      imageUrl: string | null;
     }
-  | { type: "achievement"; date: Date; href: null; title: string; titleRu: null; emoji: string };
+  | { type: "achievement"; date: Date; href: null; title: string; titleRu: null; emoji: string; imageUrl: null };
 
 /**
  * Что этому зрителю можно видеть — считает страница (ей известны
@@ -75,7 +77,7 @@ export async function getActivityFeed(
         status: true,
         episodesWatched: true,
         updatedAt: true,
-        drama: { select: { id: true, slug: true, title: true, titleRu: true, episodes: true } },
+        drama: { select: { id: true, slug: true, title: true, titleRu: true, episodes: true, posterUrl: true } },
       },
     }),
     access.favoritePerformers
@@ -85,7 +87,7 @@ export async function getActivityFeed(
           take: limit,
           select: {
             createdAt: true,
-            performer: { select: { id: true, slug: true, name: true } },
+            performer: { select: { id: true, slug: true, name: true, photoUrl: true } },
           },
         })
       : [],
@@ -99,7 +101,7 @@ export async function getActivityFeed(
           select: {
             createdAt: true,
             eventId: true,
-            event: { select: { id: true, slug: true, title: true } },
+            event: { select: { id: true, slug: true, title: true, posterUrl: true } },
           },
         })
       : [],
@@ -121,9 +123,9 @@ export async function getActivityFeed(
         rating: true,
         isPrivate: true,
         createdAt: true,
-        drama: { select: { id: true, slug: true, title: true, titleRu: true } },
-        novel: { select: { id: true, slug: true, title: true } },
-        event: { select: { id: true, slug: true, title: true } },
+        drama: { select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true } },
+        novel: { select: { id: true, slug: true, title: true, coverUrl: true } },
+        event: { select: { id: true, slug: true, title: true, posterUrl: true } },
       },
     }),
     access.achievements
@@ -147,6 +149,7 @@ export async function getActivityFeed(
       status: w.status,
       episodesWatched: w.episodesWatched,
       episodesTotal: w.drama.episodes,
+      imageUrl: w.drama.posterUrl,
     });
   }
 
@@ -157,6 +160,7 @@ export async function getActivityFeed(
       href: performerHref(f.performer),
       title: f.performer.name,
       titleRu: null,
+      imageUrl: f.performer.photoUrl,
     });
   }
 
@@ -173,6 +177,7 @@ export async function getActivityFeed(
       href: eventHref(a.event),
       title: a.event.title,
       titleRu: null,
+      imageUrl: a.event.posterUrl,
     });
   }
 
@@ -183,16 +188,17 @@ export async function getActivityFeed(
       href: tripHref(trip),
       title: trip.title,
       titleRu: null,
+      imageUrl: null,
     });
   }
 
   for (const r of reviews) {
     const target = r.drama
-      ? { href: dramaHref(r.drama), title: r.drama.title, titleRu: r.drama.titleRu }
+      ? { href: dramaHref(r.drama), title: r.drama.title, titleRu: r.drama.titleRu, imageUrl: r.drama.posterUrl }
       : r.novel
-        ? { href: novelHref(r.novel), title: r.novel.title, titleRu: null }
+        ? { href: novelHref(r.novel), title: r.novel.title, titleRu: null, imageUrl: r.novel.coverUrl }
         : r.event
-          ? { href: eventHref(r.event), title: r.event.title, titleRu: null }
+          ? { href: eventHref(r.event), title: r.event.title, titleRu: null, imageUrl: r.event.posterUrl }
           : null;
     if (!target) continue; // осиротевший отзыв без записи
     items.push({
@@ -219,6 +225,7 @@ export async function getActivityFeed(
         title: def.title,
         titleRu: null,
         emoji: def.emoji,
+        imageUrl: null,
       });
     }
   }

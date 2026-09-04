@@ -1001,13 +1001,8 @@ export default async function UserProfilePage({
           {user.username && <span className="text-secondary">@{user.username}</span>}
           {country && <span className="text-secondary">{country}</span>}
           {/* «На MyBLHub с …» убрано решением владельца (2026-09-04). */}
-          {/* Email — ТОЛЬКО себе: зрителям он не показывается нигде. */}
-          {isSelf && (user.email || user.telegramUsername) && (
-            <span className="text-secondary">
-              {user.email ??
-                (user.telegramUsername ? `Telegram: @${user.telegramUsername}` : null)}
-            </span>
-          )}
+          {/* Почты в профиле нет вовсе — решение владельца (2026-09-04):
+              даже своей. Она живёт в настройках. */}
         </div>
 
         {user.bio && showActivity && <p className="profile-side-bio">{user.bio}</p>}

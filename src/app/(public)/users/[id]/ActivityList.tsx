@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import LetterAvatar from "@/components/LetterAvatar";
 import EmptyState from "@/components/EmptyState";
 import { formatDateWithYear } from "@/lib/dates";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
@@ -85,8 +86,23 @@ export default function ActivityList({
 
         return (
           <div key={`${item.type}-${i}`} className="activity-row">
+            {/* Постер записи вместо эмодзи-иконки (правка владельца):
+                строка узнаваема обложкой; у людей — круглая фотка, как
+                везде на сайте. Без картинки (поездка, ачивка, запись без
+                постера) — прежний эмодзи. */}
             <span className="activity-row-icon" aria-hidden>
-              {item.type === "achievement" ? item.emoji : TYPE_EMOJI[item.type]}
+              {item.imageUrl ? (
+                <LetterAvatar
+                  name={item.title}
+                  photoUrl={item.imageUrl}
+                  size={2.25}
+                  rounded={item.type === "favoritePerformer"}
+                />
+              ) : item.type === "achievement" ? (
+                item.emoji
+              ) : (
+                TYPE_EMOJI[item.type]
+              )}
             </span>
             <span className="activity-row-body">
               {item.href ? (
