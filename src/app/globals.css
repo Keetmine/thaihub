@@ -3485,9 +3485,10 @@ button.hero-stat-toggle.is-open {
   align-items: center;
   justify-content: center;
   font-size: 1.9em;
-  filter: blur(7px) saturate(1.5);
-  transform: scale(1.2);
-  opacity: 0.6;
+  /* Блюр усилен по просьбе владельца. */
+  filter: blur(11px) saturate(1.55);
+  transform: scale(1.3);
+  opacity: 0.65;
 }
 
 /* Зерно — тот же feTurbulence-шум, что у плёнки body::after, только
@@ -3500,6 +3501,11 @@ button.hero-stat-toggle.is-open {
   opacity: 0.28;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+/* Та же пропорция эмодзи в ленте обновлений. */
+.activity-row-icon .achv-coin {
+  font-size: 0.9rem;
 }
 
 .achv-coin-fg {
@@ -5428,7 +5434,10 @@ body::after {
 .profile-friend.premium-ring {
   border: none;
   padding: 2px;
-  background: conic-gradient(from 210deg, #ff9a72, #ff6a3d 40%, #e8467c 75%, #ff9a72);
+  /* Без бледного #ff9a72: на 2px-кольце светлый сегмент тускнел до фона,
+     и кольцо выглядело разорванным — та «кривизна» из фидбека (замер
+     геометрии дал ровно 2.00px со всех сторон, дело было в цвете). */
+  background: conic-gradient(from 220deg, #ff6a3d, #e8467c 55%, #ff6a3d);
 }
 
 .profile-friend.premium-ring img,
@@ -5499,9 +5508,12 @@ body::after {
 .achv-medal-icon .achv-coin {
   /* Размер монетки в блоке ачивок. Селектор был про старый
      .achv-medal-coin — после перехода на .achv-coin монета осталась без
-     размеров и схлопывалась (баг, пойманный владельцем). */
+     размеров и схлопывалась (баг, пойманный владельцем). font-size —
+     чтобы эмодзи занимал ~половину диаметра, как в ленте: без этого
+     блок и лента выглядели по-разному (фидбек владельца). */
   width: 2.5rem;
   height: 2.5rem;
+  font-size: 1.25rem;
   font-size: 1.15rem;
 }
 
