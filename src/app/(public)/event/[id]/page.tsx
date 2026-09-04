@@ -449,6 +449,20 @@ export default async function EventDetailPage({
           </div>
       </div>
 
+      {/* Описание — НАД тремя фото (правка владельца 2026-09-05); без
+          подложки-surface (прежняя просьба). */}
+      {event.description && (
+        <div id="description" className="anchor-target mb-4">
+          <h2 className="section-heading mb-2">
+            <InfoIcon className="icon-inline" /> {t.events.detail.description}
+          </h2>
+          {/* pre-line: описания приходят с абзацами (и из формы, и из
+              импорта по ссылке) — без него переносы схлопывались в
+              сплошной текст (жалоба владельца). */}
+          <p className="mb-0" style={{ whiteSpace: "pre-line" }}>{event.description}</p>
+        </div>
+      )}
+
       {/* Ж9: до трёх фото для покупающих билеты (схема зала, цены,
           бенефиты) одним рядом над «Моими билетами» — без заголовков и
           подписей, клик поднимает фото попапом (правки владельца). */}
@@ -526,19 +540,6 @@ export default async function EventDetailPage({
       {/* Заметки — личный блок (свои + друзей/попутчиков), по подписке. */}
       {isPremium && (
         <EventNoteSection eventId={event.id} ownNote={ownNote} friendNotes={friendNotes} />
-      )}
-
-      {/* Описание — без подложки-surface (просьба владельца). */}
-      {event.description && (
-        <div id="description" className="anchor-target mb-4">
-          <h2 className="section-heading mb-2">
-            <InfoIcon className="icon-inline" /> {t.events.detail.description}
-          </h2>
-          {/* pre-line: описания приходят с абзацами (и из формы, и из
-              импорта по ссылке) — без него переносы схлопывались в
-              сплошной текст (жалоба владельца). */}
-          <p className="mb-0" style={{ whiteSpace: "pre-line" }}>{event.description}</p>
-        </div>
       )}
 
       <div id="reviews" className="anchor-target">
