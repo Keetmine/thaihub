@@ -7,7 +7,7 @@ import FileDropzone from "@/components/FileDropzone";
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createDramaAndReturn, searchDramaOptions } from "../dramas/actions";
 import { searchEventOptions } from "../events/actions";
-import { searchSoloPerformerOptions } from "./actions";
+import { searchSoloPerformerOptions, searchMascotOwnerOptions } from "./actions";
 import { createPerformerAndReturn, findSimilarPerformers } from "./actions";
 import FormSection from "@/components/admin/FormSection";
 import SubmitButton from "@/components/admin/SubmitButton";
@@ -402,13 +402,13 @@ export default function PerformerForm({
               />
             </div>
             <div className="col-12 col-sm-6">
-              <label className="form-label d-block" htmlFor="performer-form-mascotPerformerIds">Чей маскот — актёры</label>
+              <label className="form-label d-block" htmlFor="performer-form-mascotPerformerIds">Чей маскот — актёры и группы</label>
               <EntityMultiSelect id="performer-form-mascotPerformerIds"
                 name="mascotPerformerIds"
                 options={mascotOwnerOptions ?? []}
                 defaultSelectedIds={defaultMascotPerformerIds}
                 placeholder="Начните вводить имя актёра…"
-                searchOptions={searchSoloPerformerOptions}
+                searchOptions={searchMascotOwnerOptions}
               />
             </div>
             <div className="col-12">

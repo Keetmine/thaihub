@@ -82,6 +82,18 @@ export async function searchPerformerOptions(
   return rankedPerformerSearch(q, {});
 }
 
+/** Кандидаты во владельцы маскота: актёры И группы (правка владельца
+ *  2026-09-05 — маскоты бывают и у муз. групп). Маскоты исключены:
+ *  маскот не владеет маскотом. */
+export async function searchMascotOwnerOptions(
+  query: string,
+): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
+  await requireCatalogEditor();
+  const q = query.trim();
+  if (q.length < 2) return [];
+  return rankedPerformerSearch(q, { type: { in: ["SOLO", "BAND"] } });
+}
+
 /** То же, но только SOLO — для выбора участников группы и пейрингов. */
 export async function searchSoloPerformerOptions(
   query: string,
@@ -111,13 +123,24 @@ function parseType(raw: string): "SOLO" | "BAND" | "MASCOT" {
   return raw === "BAND" ? "BAND" : raw === "MASCOT" ? "MASCOT" : "SOLO";
 }
 
-function getMascotOwnerData(formData: FormData) {
-  const performerIds = Array.from(
+async function getMascotOwnerData(formData: FormData, selfId?: string) {
+  const rawPerformerIds = Array.from(
     new Set(formData.getAll("mascotPerformerIds").map(String).filter(Boolean)),
   );
   const pairingIds = Array.from(
     new Set(formData.getAll("mascotPairingIds").map(String).filter(Boolean)),
   );
+  // Владельцем может быть актёр или группа — но не маскот и не сам
+  // маскот-о-себе: пикер это и так не предлагает, серверный фильтр —
+  // на случай прямого POST или устаревшей формы.
+  const owners =
+    rawPerformerIds.length > 0
+      ? await prisma.performer.findMany({
+          where: { id: { in: rawPerformerIds }, type: { in: ["SOLO", "BAND"] } },
+          select: { id: true },
+        })
+      : [];
+  const performerIds = owners.map((o) => o.id).filter((id) => id !== selfId);
   return [
     ...performerIds.map((performerId) => ({ performerId })),
     ...pairingIds.map((pairingId) => ({ pairingId })),
@@ -344,7 +367,7 @@ export async function createPerformer(formData: FormData) {
     }
   } else {
     // MASCOT: привязка к «хозяевам» — актёрам и/или пейрингам.
-    const owners = getMascotOwnerData(formData);
+    const owners = await getMascotOwnerData(formData);
     if (owners.length > 0) {
       await prisma.mascotOwner.createMany({
         data: owners.map((o) => ({ mascotId: performer.id, ...o })),
@@ -468,7 +491,7 @@ export async function updatePerformer(id: string, formData: FormData) {
                 create: memberIds.map((performerId) => ({ performerId })),
               },
               mascotOwners: {
-                create: effectiveType === "MASCOT" ? getMascotOwnerData(formData) : [],
+                create: effectiveType === "MASCOT" ? await getMascotOwnerData(formData, id) : [],
               },
               agencies: {
                 create: agencyIds.map((agencyId) => ({ agencyId })),
