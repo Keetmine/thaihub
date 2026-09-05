@@ -89,7 +89,11 @@ following the same shape:
   дате; `occurrenceId` nullable, `SetNull` — пересборка дат события не
   убивает билет). Своя модель, а не поле на `EventAttendance`: билет
   должен переживать снятое «иду». Легаси-колонка `ticketUrl` на
-  отметке закомментирована в схеме до отката. См.
+  отметке закомментирована в схеме до отката. `onlineBookingAt` /
+  `onlineBookingUrl` — когда и где открывается онлайн-бронирование по
+  этому билету (время — тайское настенное в UTC-слоте, как
+  `Event.presaleAt`); `onlineBookingNotifiedAt` — дедуп напоминания «за
+  час», ставится прогоном и сбрасывается при смене времени. См.
   [events.md](features/events.md#билеты-мои-билеты).
 - **`DramaWatchStatus`** — MyDramaList-style status
   (`WATCHING`/`COMPLETED`/`ON_HOLD`/`PLAN_TO_WATCH`/`DROPPED`).

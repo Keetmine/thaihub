@@ -147,7 +147,7 @@ export const account: Dict["account"] = {
     telegramNotifyInvites: "Приглашения в поездки и подписка",
     telegramNotifyFriends: "Заявки в друзья",
     telegramNotifyReplies: "Ответы на мои комментарии",
-    telegramNotifyEvents: "Друзья идут на события",
+    telegramNotifyEvents: "События: друзья идут, открытие онлайн-бронирования",
     telegramNotifyBirthdays: "Дни рождения избранных артистов",
     telegramNotifyEpisodes: "Новые серии сериалов, которые смотрю",
     telegramNotifyBroadcast: "Новости проекта",

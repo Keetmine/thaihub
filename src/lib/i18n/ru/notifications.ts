@@ -16,7 +16,10 @@ export const notifications: Dict["notifications"] = {
     PERFORMER_BIRTHDAY: (name: string) => `Сегодня день рождения у ${name}`,
     EPISODE_AIRED: (drama: string) => `Новая серия «${drama}»`,
     DRAMA_ADDED: (drama: string) => `Сериал «${drama}» теперь в каталоге`,
+    ONLINE_BOOKING: (event: string) => `Скоро откроется онлайн-бронирование на «${event}»`,
   },
+
+  onlineBookingBody: (time: string) => `Откроется примерно через час — в ${time} (тайское время).`,
 
   birthdayBody: (turns: number) => `Исполняется ${turns}.`,
 

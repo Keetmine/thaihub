@@ -124,6 +124,27 @@ export const events = {
         uploadFailedLong: "We couldn't upload the ticket",
         badFile: "The ticket file didn't pass the check — please upload it again",
         goFirst: "Mark yourself as going to this date first",
+        /** Онлайн-бронирование мест/бенефитов, которое открывается после
+         *  покупки билета в назначенное время — владелец записывает его
+         *  у своего билета и получает напоминание за час. */
+        onlineBooking: {
+            add: "+ Online booking",
+            edit: "Edit online booking",
+            remove: "Remove online booking",
+            /** «Онлайн-бронирование откроется 12 Sep · 10:00 (MSK 06:00)» */
+            opensAt: (when: string) => `Online booking opens ${when}`,
+            /** Ссылка есть, а времени нет */
+            linkOnly: "Online booking",
+            open: "Open",
+            date: "Date",
+            time: "Time",
+            url: "Link (optional)",
+            save: "Save",
+            cancel: "Cancel",
+            reminderHint: "We'll remind you an hour before it opens — in the bell and in Telegram.",
+            needDateTime: "Enter both the date and the time",
+            badUrl: "The link must start with http:// or https://",
+        },
     },
 
     /** Выгрузка в календарь: ответы маршрута /event/[id]/ics и

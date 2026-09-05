@@ -1344,11 +1344,22 @@ model EventTicket {
   occurrenceId String?
   occurrence   EventOccurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
   fileUrl      String
+  // Онлайн-бронирование (мест/бенефитов), которое у тайских событий
+  // открывается после покупки билета в назначенное время. Владелец
+  // билета записывает его сам. Время — тайское настенное в UTC-слоте,
+  // как Event.presaleAt (см. lib/dates.ts); ссылка — только http(s).
+  onlineBookingAt         DateTime?
+  onlineBookingUrl        String?
+  // Дедуп напоминания «через час откроется» (sendOnlineBookingReminders):
+  // отметка ставится атомарно перед отправкой, а смена времени
+  // бронирования сбрасывает её — новое время напоминается заново.
+  onlineBookingNotifiedAt DateTime?
   createdAt    DateTime         @default(now())
 
   @@index([userId])
   @@index([eventId])
   @@index([occurrenceId])
+  @@index([onlineBookingAt])
 }
 
 model EventAttendance {
@@ -1649,6 +1660,9 @@ enum NotificationKind {
   // «Сериал, который вы просили, теперь в каталоге» — резолв заявки
   // MdlDramaRequest после пользовательского импорта списка MDL.
   DRAMA_ADDED
+  // «Через час откроется онлайн-бронирование» — по времени, которое
+  // владелец записал у своего билета (EventTicket.onlineBookingAt).
+  ONLINE_BOOKING
 }
 
 model Notification {

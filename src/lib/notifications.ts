@@ -27,6 +27,10 @@ const TELEGRAM_KINDS: Partial<Record<NotificationKind, keyof TelegramPrefs>> = {
   // отдельный тумблер ради редкого повода только загромоздил бы
   // настройки, а тематически это тот же «мой список сериалов».
   DRAMA_ADDED: "tgNotifyEpisodes",
+  // «Через час откроется онлайн-бронирование» по своему билету — той же
+  // ручкой, что остальные поводы про события; подпись переключателя в
+  // настройках упоминает и его.
+  ONLINE_BOOKING: "tgNotifyEvents",
 };
 
 type TelegramPrefs = {

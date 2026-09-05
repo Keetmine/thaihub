@@ -22,7 +22,12 @@ export const notifications = {
     PERFORMER_BIRTHDAY: (name: string) => `It's ${name}'s birthday today`,
     EPISODE_AIRED: (drama: string) => `New episode of "${drama}"`,
     DRAMA_ADDED: (drama: string) => `"${drama}" is now in our catalog`,
+    ONLINE_BOOKING: (event: string) => `Online booking for "${event}" opens soon`,
   },
+
+  /** Body of the online-booking reminder: the time is Thai wall-clock,
+   *  exactly as the ticket owner entered it. */
+  onlineBookingBody: (time: string) => `Opens in about an hour — at ${time} (Thai time).`,
 
   birthdayBody: (turns: number) => `Turning ${turns}.`,
 

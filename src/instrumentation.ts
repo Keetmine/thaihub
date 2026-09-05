@@ -29,6 +29,7 @@ export async function register() {
     sendPresaleReminders,
     sendBirthdayNotifications,
     sendEpisodeNotifications,
+    sendOnlineBookingReminders,
   } = await import("@/lib/telegramNotifications");
 
   // Защита от наложения прогонов: mdl-auto-update может идти дольше
@@ -65,6 +66,8 @@ export async function register() {
       if (birthdays > 0) console.log(`birthday notifications: sent ${birthdays}`);
       const episodes = await sendEpisodeNotifications();
       if (episodes > 0) console.log(`episode notifications: sent ${episodes}`);
+      const bookings = await sendOnlineBookingReminders();
+      if (bookings > 0) console.log(`online booking reminders: sent ${bookings}`);
     } catch (err) {
       console.warn(`telegram reminders failed: ${err instanceof Error ? err.message : err}`);
     } finally {

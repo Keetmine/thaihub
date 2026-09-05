@@ -49,6 +49,8 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return subject ? titles.EPISODE_AIRED(subject) : n.title;
     case "DRAMA_ADDED":
       return subject ? titles.DRAMA_ADDED(subject) : n.title;
+    case "ONLINE_BOOKING":
+      return subject ? titles.ONLINE_BOOKING(subject) : n.title;
     default:
       return n.title;
   }

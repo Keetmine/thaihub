@@ -40,6 +40,7 @@ const KIND_ICONS: Record<string, string> = {
   PERFORMER_BIRTHDAY: "🎂",
   EPISODE_AIRED: "📺",
   DRAMA_ADDED: "🎬",
+  ONLINE_BOOKING: "🎟",
 };
 
 // Лента активностей: приглашения в поездки, заявки в друзья, ответы и

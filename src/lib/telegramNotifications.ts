@@ -444,3 +444,68 @@ export async function sendBirthdayNotifications(): Promise<number> {
   }
   return sent;
 }
+
+const ONLINE_BOOKING_LOOKAHEAD_MINUTES = 60;
+const ICT_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/**
+ * «Через час откроется онлайн-бронирование» — по времени, которое
+ * владелец записал у своего билета (EventTicket.onlineBookingAt). Это
+ * личный билет, поэтому подписка не проверяется, а получатель один —
+ * владелец. Идёт через notifyUser: колокольчик + Telegram по
+ * переключателю tgNotifyEvents, на языке получателя.
+ *
+ * Время бронирования лежит тайским настенным в UTC-слоте (как
+ * presaleAt, см. lib/dates.ts), поэтому окно строится от бангкокского
+ * «сейчас», разложенного в те же UTC-компоненты, — иначе напоминание
+ * ушло бы на 7 часов позже, уже после открытия.
+ *
+ * Дедуп — onlineBookingNotifiedAt на самом билете: отметка ставится
+ * атомарным updateMany ДО отправки, и его условие WHERE разнимает гонку
+ * двух тиков; смена времени бронирования сбрасывает отметку (см.
+ * ticketActions.ts), так что новое время напоминается заново. Прошедшее
+ * время не напоминаем: окно начинается строго после «сейчас».
+ */
+export async function sendOnlineBookingReminders(): Promise<number> {
+  const now = new Date();
+  const bkkNow = new Date(now.getTime() + ICT_OFFSET_MS);
+  const until = new Date(bkkNow.getTime() + ONLINE_BOOKING_LOOKAHEAD_MINUTES * 60 * 1000);
+
+  const tickets = await prisma.eventTicket.findMany({
+    where: { onlineBookingAt: { gt: bkkNow, lte: until }, onlineBookingNotifiedAt: null },
+    select: {
+      id: true,
+      userId: true,
+      onlineBookingAt: true,
+      onlineBookingUrl: true,
+      event: { select: { id: true, slug: true, title: true } },
+      user: { select: NOTIFY_RECIPIENT_SELECT },
+    },
+  });
+
+  let sent = 0;
+  for (const ticket of tickets) {
+    if (!ticket.onlineBookingAt) continue;
+    const claimed = await prisma.eventTicket.updateMany({
+      where: { id: ticket.id, onlineBookingNotifiedAt: null },
+      data: { onlineBookingNotifiedAt: now },
+    });
+    if (claimed.count === 0) continue; // выиграл параллельный тик
+
+    const timeStr = formatTime(ticket.onlineBookingAt);
+    const url = ticket.onlineBookingUrl;
+    await notifyUser({
+      userId: ticket.userId,
+      user: ticket.user,
+      kind: "ONLINE_BOOKING",
+      subject: ticket.event.title,
+      // Ссылка на бронирование — в теле: href уведомления должен быть
+      // внутренним (go-маршрут колокольчика во внешний редирект не
+      // ходит), а в Telegram адрес в тексте и так кликабелен.
+      body: (t) => t.notifications.onlineBookingBody(timeStr) + (url ? `\n${url}` : ""),
+      href: eventHref(ticket.event),
+    });
+    sent += 1;
+  }
+  return sent;
+}

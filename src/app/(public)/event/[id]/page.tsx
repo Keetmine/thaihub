@@ -4,7 +4,7 @@ import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { formatCombinedDateList, formatHumanDate, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
+import { dateKey, formatCombinedDateList, formatHumanDate, formatTime, formatTimeRangeWithZone, formatTimeWithZone } from "@/lib/dates";
 import { getT, localeHref } from "@/lib/i18n";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import type { EventOccurrence } from "@/generated/prisma/client";
@@ -167,24 +167,45 @@ export default async function EventDetailPage({
         // — из EventTicket: они живут отдельно от отметок и переживают их.
         prisma.eventTicket.findMany({
           where: { userId: currentUser.id, eventId: event.id },
-          select: { occurrenceId: true, fileUrl: true },
+          select: {
+            occurrenceId: true,
+            fileUrl: true,
+            onlineBookingAt: true,
+            onlineBookingUrl: true,
+          },
         }),
       ]);
     isEventFavorited = !!favorite;
     goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
     const ticketByOccurrence = new Map(
-      myTickets.filter((t) => t.occurrenceId).map((t) => [t.occurrenceId!, t.fileUrl]),
+      myTickets.filter((t) => t.occurrenceId).map((t) => [t.occurrenceId!, t]),
     );
     ticketRows = attendances
       .map((a) => {
         const occ = event.occurrences.find((o) => o.id === a.occurrenceId);
-        return occ
-          ? {
-              occurrenceId: a.occurrenceId,
-              dateLabel: formatHumanDate(occ.startsAt, locale),
-              ticketUrl: ticketByOccurrence.get(a.occurrenceId) ?? null,
-            }
-          : null;
+        if (!occ) return null;
+        const ticket = ticketByOccurrence.get(a.occurrenceId);
+        // Онлайн-бронирование: подпись собираем здесь, как у препродажи
+        // (дата + тайское время + время зрителя в скобках), а сырые
+        // дата/время отдаём для формы редактирования.
+        const bookingAt = ticket?.onlineBookingAt ?? null;
+        const onlineBooking =
+          ticket && (bookingAt || ticket.onlineBookingUrl)
+            ? {
+                date: bookingAt ? dateKey(bookingAt) : "",
+                time: bookingAt ? formatTime(bookingAt) : "",
+                url: ticket.onlineBookingUrl ?? "",
+                label: bookingAt
+                  ? `${formatHumanDate(bookingAt, locale)} · ${formatTimeWithZone(bookingAt, viewerTz, locale)}`
+                  : null,
+              }
+            : null;
+        return {
+          occurrenceId: a.occurrenceId,
+          dateLabel: formatHumanDate(occ.startsAt, locale),
+          ticketUrl: ticket?.fileUrl ?? null,
+          onlineBooking,
+        };
       })
       .filter((r): r is TicketRow => r !== null);
 
@@ -362,7 +383,7 @@ export default async function EventDetailPage({
                       locale,
                     )
                   )}
-                  {first.hasTime && <> · {formatTimeRangeWithZone(first.startsAt, first.endsAt, viewerTz)}</>}
+                  {first.hasTime && <> · {formatTimeRangeWithZone(first.startsAt, first.endsAt, viewerTz, locale)}</>}
                 </p>
               );
             })}
@@ -391,7 +412,7 @@ export default async function EventDetailPage({
                       <span className="text-capitalize">
                         {formatHumanDate(event.presaleAt, locale)}
                       </span>{" "}
-                      · {formatTimeWithZone(event.presaleAt, viewerTz)}
+                      · {formatTimeWithZone(event.presaleAt, viewerTz, locale)}
                     </>
                   ) : (
                     t.events.detail.presaleTba

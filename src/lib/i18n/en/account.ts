@@ -161,7 +161,7 @@ export const account = {
     telegramNotifyInvites: "Trip invitations and subscription",
     telegramNotifyFriends: "Friend requests",
     telegramNotifyReplies: "Replies to my comments",
-    telegramNotifyEvents: "Friends going to events",
+    telegramNotifyEvents: "Events: friends going, online booking opening",
     telegramNotifyBirthdays: "Birthdays of artists I follow",
     telegramNotifyEpisodes: "New episodes of series I'm watching",
     telegramNotifyBroadcast: "Project news",

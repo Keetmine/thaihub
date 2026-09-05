@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { privateUploadsDir } from "@/lib/privateUploads";
 import { canAttachPrivateFile } from "@/lib/privateFiles";
 import { getT } from "@/lib/i18n";
+import { combineDateTime } from "@/lib/dates";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action (см. promoActions.ts). */
@@ -78,4 +79,76 @@ export async function removeAttendanceTicket(occurrenceId: string): Promise<void
   if (!ticket) return;
   await prisma.eventTicket.delete({ where: { id: ticket.id } });
   await unlinkTicketFile(ticket.fileUrl);
+}
+
+/** Ссылка на онлайн-бронирование — только http(s): значение уходит в
+ *  href кнопки и в текст Telegram-сообщения, javascript: там не место. */
+function normalizeBookingUrl(raw: string): string | null | undefined {
+  const url = raw.trim();
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+/** Записать у своего билета онлайн-бронирование: когда открывается
+ *  (дата «YYYY-MM-DD» + время «HH:mm», тайское настенное — хранится как
+ *  Event.presaleAt, через combineDateTime) и ссылку. Дата и время идут
+ *  вместе; без них можно оставить одну ссылку. Смена времени сбрасывает
+ *  отметку «напомнили» — новое время напоминается заново. */
+export async function setTicketOnlineBooking(
+  occurrenceId: string,
+  input: { date: string; time: string; url: string },
+): Promise<TicketActionResult> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const { t } = await getT();
+  const date = input.date.trim();
+  const time = input.time.trim();
+  if ((date && !time) || (!date && time)) {
+    return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
+  }
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
+  }
+  if (time && !/^\d{2}:\d{2}$/.test(time)) {
+    return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
+  }
+  const url = normalizeBookingUrl(input.url);
+  if (url === undefined) return { ok: false, error: t.events.tickets.onlineBooking.badUrl };
+  if (!date && !url) return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
+
+  const ticket = await prisma.eventTicket.findFirst({
+    where: { userId: user.id, occurrenceId },
+    select: { id: true, onlineBookingAt: true },
+  });
+  if (!ticket) return { ok: false, error: t.events.tickets.goFirst };
+
+  const onlineBookingAt = date ? combineDateTime(date, time) : null;
+  const timeChanged = (ticket.onlineBookingAt?.getTime() ?? null) !== (onlineBookingAt?.getTime() ?? null);
+  await prisma.eventTicket.update({
+    where: { id: ticket.id },
+    data: {
+      onlineBookingAt,
+      onlineBookingUrl: url,
+      ...(timeChanged ? { onlineBookingNotifiedAt: null } : {}),
+    },
+  });
+  revalidatePath("/event");
+  return { ok: true };
+}
+
+/** Убрать онлайн-бронирование у своего билета (сам билет остаётся). */
+export async function removeTicketOnlineBooking(occurrenceId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  await prisma.eventTicket.updateMany({
+    where: { userId: user.id, occurrenceId },
+    data: { onlineBookingAt: null, onlineBookingUrl: null, onlineBookingNotifiedAt: null },
+  });
+  revalidatePath("/event");
 }
