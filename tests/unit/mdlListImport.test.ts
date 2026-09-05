@@ -62,6 +62,23 @@ const DOC = `<script> window.dramalist_json = {"username":"keetmine","vip":"0","
     () => parseMdlListDoc("<html><body>This profile is private</body></html>"),
     MdlListUnavailableError,
   );
+
+  // «Классический» вид списка (настройка профиля на MDL): таблица
+  // mdl-style-table, без dramalist_json и подгрузки, прогресс в
+  // episode-seen. Дословный фрагмент живой страницы (сентябрь 2026).
+  const CLASSIC = `<html><body><table id="list_2" class="mdl-style-table table table-striped m-b-0"><tbody>
+<tr id="ml809270"> <th class="mdl-style-col-num order hidden-sm-down" width="30" align="center">1</th> <td class="mdl-style-col-title sort1"> <a title="A Winter Sun Wakes the Wind in Spring Hills' Dream" class="title text-primary _600" data-info="title:809270" target="_blank" href="/809270-a-winter-sun-wakes-the-wind-in-spring-hills-dream"><span>A Winter Sun Wakes the Wind in Spring Hills' Dream</span></a> <div class="hidden-md-up text-muted">Chinese Drama</div> </td> <td class="mdl-style-col-country sort2 hidden-sm-down" abbr="2" width="90" align="center">China</td> <td class="mdl-style-col-year sort3 hidden-sm-down" abbr="2026" width="45" align="center">2026</td> <td class="mdl-style-col-type sort4 hidden-sm-down" abbr="68" width="50" align="center">Drama</td> <td class="mdl-style-col-score sort5" abbr="0" align="center"> <span class="rating"><span class="fill" style="width:0%;"></span></span> <span class="score">0.0</span></td> <td class="mdl-style-col-progress sort6" abbr="315" width="80" align="center"> <span class="episode-seen">7</span>/<span class="episode-total">16</span> </td> </tr>
+</tbody></table></body></html>`;
+  const classic = parseMdlListDoc(CLASSIC);
+  assert.equal(classic.listId, null);
+  assert.equal(classic.loadMore, false);
+  assert.deepEqual(classic.rows, [
+    {
+      mdlPath: "/809270-a-winter-sun-wakes-the-wind-in-spring-hills-dream",
+      title: "A Winter Sun Wakes the Wind in Spring Hills' Dream",
+      seen: 7,
+    },
+  ]);
 }
 
 // ---------- parseMdlListInput ----------

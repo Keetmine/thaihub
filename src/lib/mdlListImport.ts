@@ -94,7 +94,9 @@ export function parseMdlListRows(html: string): MdlListRow[] {
       row.match(/<a\b[^>]*\bclass="[^"]*\btitle\b[^"]*"[^>]*>\s*(?:<span[^>]*>)?([^<]+)/)?.[1]?.trim() ||
       "";
     if (!title) continue;
-    const seenRaw = row.match(/class="num-seen[^"]*">\s*(\d+)\s*</)?.[1];
+    // Прогресс: «новый» вид списка — num-seen, «классический» (настройка
+    // профиля на MDL, см. parseMdlListDoc) — episode-seen.
+    const seenRaw = row.match(/class="(?:num-seen|episode-seen)[^"]*">\s*(\d+)\s*</)?.[1];
     out.push({
       mdlPath: href,
       title: title.replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"'),
@@ -115,10 +117,18 @@ export type MdlListDoc = {
 
 /** Полная страница /dramalist/<ник>/<статус>: строки + параметры
  *  подгрузки. Бросает, если на странице нет ни таблицы, ни конфига —
- *  так выглядят приватный список и неожиданная вёрстка. */
+ *  так выглядят приватный список и неожиданная вёрстка.
+ *
+ *  У MDL два вида списка — настройка профиля владельца списка, не наша:
+ *  - «новый» Vue-виджет: window.dramalist_json + <table class="msv2-table">,
+ *    100 строк на страницу, хвост докачивается POST'ом;
+ *  - «классический»: <table class="mdl-style-table">, без конфига и без
+ *    подгрузки — все строки вкладки сразу, прогресс в episode-seen.
+ *  Реальный случай: список подруги владельца в классическом виде
+ *  отбивался как «приватный». */
 export function parseMdlListDoc(html: string): MdlListDoc {
   const hasConfig = html.includes("dramalist_json");
-  const hasTable = /<table class="msv2-table/.test(html);
+  const hasTable = /<table[^>]*class="(?:msv2-table|mdl-style-table)/.test(html);
   if (!hasConfig && !hasTable) {
     throw new MdlListUnavailableError();
   }
