@@ -4,8 +4,11 @@ import { CalendarIcon } from "@/components/icons";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
-import AlphabetIndexList from "@/components/AlphabetIndexList";
-import DramaStatusButton from "@/components/DramaStatusButton";
+// Собирает адрес от текущих параметров страницы (назван по месту
+// рождения — админским спискам, но логика общая): сортировка не должна
+// терять ни поиск, ни вкладку статуса.
+import { adminListHref } from "@/lib/adminListHref";
+import DramaStatusSelect from "@/components/DramaStatusSelect";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import { episodeProgress } from "@/lib/watchStatus";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -114,13 +117,28 @@ const getDramasByLetter = unstable_cache(
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
+/** Колонки таблицы, по которым можно сортировать. Ключ уезжает в адрес
+ *  (`?sort=year&dir=desc`) — сортировка серверная, как и сам список:
+ *  ссылка-колонка работает без JS и переживает перезагрузку. */
+const SORT_KEYS = ["title", "status", "type", "year", "country", "episodes"] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
 export default async function DramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; letter?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    letter?: string;
+    sort?: string;
+    dir?: string;
+  }>;
 }) {
-  const { q: rawQ, status: rawStatus, letter: rawLetter } = await searchParams;
+  const sp = await searchParams;
+  const { q: rawQ, status: rawStatus, letter: rawLetter, sort: rawSort, dir: rawDir } = sp;
   const q = (rawQ ?? "").trim();
+  const sortKey = SORT_KEYS.includes(rawSort as SortKey) ? (rawSort as SortKey) : null;
+  const sortDir: "asc" | "desc" = rawDir === "desc" ? "desc" : "asc";
 
   // С-5: серверная страница буквы — полный список сериалов на букву
   // обычными ссылками, для краулера (буквы рейки ведут сюда по href;
@@ -230,6 +248,96 @@ export default async function DramasPage({
   // него нет). Популярность одна на всех — из кэша.
   const watermarkNames = await getDramasWatermarkNames();
 
+  // ---------- сортировка по колонке таблицы ----------
+  //
+  // Считаем в JS, а не в запросе: две колонки из шести — «мои» (статус
+  // просмотра и просмотренные серии), они живут в отдельной таблице и
+  // приезжают картой statusByDramaId. Список тут в сотни строк, не в
+  // тысячи (гостю — свежие 60, своему — только отмеченные, поиску —
+  // предел выдачи), так что сортировка памяти стоит копейки.
+  const collator = new Intl.Collator(locale);
+  const sortValue = (d: (typeof dramas)[number]): string | number | null => {
+    const entry = statusByDramaId.get(d.id) ?? null;
+    switch (sortKey) {
+      case "title":
+        return dramaTitleForLocale(d, locale);
+      case "status":
+        // По порядку из WATCH_STATUS_ORDER (смотрю → просмотрено → …),
+        // а не по алфавиту подписи; без отметки — пусто, вниз.
+        return entry ? WATCH_STATUS_ORDER.indexOf(entry.status) : null;
+      case "type":
+        return d.type ? t.catalog.dramaType(d.type) : null;
+      case "year":
+        return d.year;
+      case "country":
+        return d.country ? t.catalog.dramaCountry(d.country) : null;
+      case "episodes":
+        return episodeProgress(entry, d.episodes)?.watched ?? null;
+      default:
+        return null;
+    }
+  };
+  const sortedDramas = sortKey
+    ? [...dramas].sort((a, b) => {
+        const av = sortValue(a);
+        const bv = sortValue(b);
+        const byTitle = () =>
+          collator.compare(dramaTitleForLocale(a, locale), dramaTitleForLocale(b, locale));
+        // Пустые ячейки всегда внизу — и по возрастанию, и по убыванию:
+        // иначе разворот показывал бы полтаблицы пустых строк (то же
+        // правило, что в таблице профиля).
+        if (av === null && bv === null) return byTitle();
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        const cmp =
+          typeof av === "number" && typeof bv === "number"
+            ? av - bv
+            : collator.compare(String(av), String(bv));
+        return cmp === 0 ? byTitle() : cmp * (sortDir === "asc" ? 1 : -1);
+      })
+    : dramas;
+
+  /** Адрес колонки-заголовка. Цикл из трёх состояний: по возрастанию →
+   *  по убыванию → без сортировки (обратно к алфавитному списку с
+   *  буквами в жёлобе). Адрес собирается от ТЕКУЩИХ параметров, поэтому
+   *  поиск и вкладка статуса не теряются. */
+  const sortHref = (key: SortKey) =>
+    adminListHref(
+      "/dramas",
+      sp,
+      sortKey !== key
+        ? { sort: key, dir: null }
+        : sortDir === "asc"
+          ? { sort: key, dir: "desc" }
+          : { sort: null, dir: null },
+    );
+
+  // Класс колонки — тот же, что у ячейки строки: подпись встаёт в свою
+  // колонку сетки, а на узком экране прячется тем же правилом, что и
+  // сама колонка (иначе пять подписей сложились бы столбиком).
+  const HEAD_COLUMN_CLASS: Record<SortKey, string> = {
+    title: "",
+    status: styles.colStatus,
+    type: styles.colType,
+    year: styles.colYear,
+    country: styles.colCountry,
+    episodes: styles.colProgress,
+  };
+
+  const columnHead = (key: SortKey) => (
+    <AppLink
+      key={key}
+      href={sortHref(key)}
+      prefetch={false}
+      className={`${styles.headCell} ${HEAD_COLUMN_CLASS[key]} ${
+        sortKey === key ? styles.headCellActive : ""
+      }`}
+    >
+      {t.catalog.dramaColumns[key]}
+      {sortKey === key && <span aria-hidden> {sortDir === "asc" ? "▲" : "▼"}</span>}
+    </AppLink>
+  );
+
 
   return (
     <div>
@@ -304,25 +412,51 @@ export default async function DramasPage({
           карточки съедали место, а длинные названия обрезались. Строка
           «аля таблица» (правка владельца 2026-09-05): миниатюра постера,
           название (без года — он ушёл в свою колонку; у выходящих —
-          бейдж «Выходит», карандаш статуса прячется до ховера строки),
-          справа колонки статус просмотра · тип · год · страна ·
-          прогресс «2/10». Прогресс-бара в списке больше нет. Геометрия —
-          в dramas.module.css, там же уплотнение рейки. Буквы-разделители
-          — не над группами, а в левом жёлобе: тихая литера на уровне
-          первой строки группы, список визуально сплошной (на мобиле —
-          маленькая строка-метка). */}
-      <AlphabetIndexList
-        items={dramas.map((d) => ({ id: d.id, name: dramaTitleForLocale(d, locale), drama: d }))}
-        letterHrefBase="/dramas?letter="
-        emptyMessage={q ? t.common.nothingFound : t.catalog.dramas.empty}
-        className={styles.compact}
-        itemsWrapperClassName={`d-flex flex-column ${styles.rows}`}
-        renderItem={({ drama: d }) => {
-          const rating = ratingByDramaId.get(d.id);
-          const entry = statusByDramaId.get(d.id) ?? null;
-          const progress = episodeProgress(entry, d.episodes);
-          const airing = d.status === "RETURNING_SERIES";
-          return (
+          бейдж «Выходит»), справа колонки статус просмотра · тип · год ·
+          страна · прогресс «2/10». Прогресс-бара в списке больше нет.
+          Геометрия — в dramas.module.css, там же уплотнение рейки.
+          Буквы-разделители — не над группами, а в левом жёлобе: тихая
+          литера на уровне первой строки группы, список визуально
+          сплошной (на мобиле — маленькая строка-метка). */}
+
+      {/* Шапка таблицы (правка владельца 2026-09-06): названия колонок —
+          ссылки, они же переключатели сортировки. Сетка та же, что у
+          колонок строки, поэтому подписи стоят ровно над своими
+          ячейками. */}
+      <div className={styles.head}>
+        <span className={styles.headTitleCell}>{columnHead("title")}</span>
+        <div className={styles.cols}>
+          {columnHead("status")}
+          {columnHead("type")}
+          {columnHead("year")}
+          {columnHead("country")}
+          {columnHead("episodes")}
+        </div>
+      </div>
+
+      {/* Буквы убраны совсем (правка владельца 2026-09-06): ни жёлоба
+          слева, ни рейки справа — таблица читается сплошным списком, а
+          порядок задаёт шапка. Серверные страницы буквы (?letter=X)
+          живы: они нужны краулеру для перелинковки, туда ведут ссылки
+          из карты сайта. */}
+      {sortedDramas.length === 0 ? (
+        <p className="text-secondary">{q ? t.common.nothingFound : t.catalog.dramas.empty}</p>
+      ) : (
+        <div className={`d-flex flex-column ${styles.rows}`}>
+          {sortedDramas.map((d) => renderRow(d))}
+        </div>
+      )}
+    </div>
+  );
+
+  /** Одна строка таблицы. Вынесена из renderItem: её рисуют обе ветки —
+   *  и алфавитный список, и плоский отсортированный. */
+  function renderRow(d: (typeof dramas)[number]) {
+    const rating = ratingByDramaId.get(d.id);
+    const entry = statusByDramaId.get(d.id) ?? null;
+    const progress = episodeProgress(entry, d.episodes);
+    const airing = d.status === "RETURNING_SERIES";
+    return (
             <div key={d.id} className={`surface surface-hover ${styles.row}`}>
               <div className={styles.titleCell}>
                 <AppLink href={dramaHref(d)} className={`text-decoration-none ${styles.rowLink}`}>
@@ -354,17 +488,19 @@ export default async function DramasPage({
                 {airing && (
                   <span className={styles.airingBadge}>{t.catalog.dramaStatus.RETURNING_SERIES}</span>
                 )}
-                {/* Карандаш статуса — сразу за названием (за бейджем,
-                    если он есть) и виден только на ховере строки. */}
-                <DramaStatusButton
-                  dramaId={d.id}
-                  status={entry?.status ?? null}
-                  className={styles.rowPencil}
-                />
               </div>
               <div className={styles.cols}>
+                {/* Статус правится прямо в своей колонке (правка
+                    владельца 2026-09-06): карандаш у названия убран —
+                    он дублировал колонку, ради которой таблица и
+                    затевалась. Гостю селект не показываем: он всё равно
+                    уедет на страницу входа. */}
                 <span className={styles.colStatus}>
-                  {entry ? t.catalog.watchStatus[entry.status] : ""}
+                  {currentUser ? (
+                    <DramaStatusSelect dramaId={d.id} status={entry?.status ?? null} />
+                  ) : (
+                    ""
+                  )}
                 </span>
                 <span className={styles.colType}>{d.type ? t.catalog.dramaType(d.type) : ""}</span>
                 <span className={styles.colYear}>{d.year ?? ""}</span>
@@ -385,9 +521,6 @@ export default async function DramasPage({
                 </span>
               </div>
             </div>
-          );
-        }}
-      />
-    </div>
-  );
+    );
+  }
 }

@@ -1,14 +1,13 @@
-/* Компактный каталог сериалов (жалоба владельца: строки и рейка ели
- * место). Всё скопом висит на обёртке `.compact`, которую /dramas
- * передаёт в AlphabetIndexList пропом `className`, — артисты и локации
- * остаются на общих правилах globals.css. Селекторы через
- * `.compact :global(...)` заведомо специфичнее одиночных классов
- * globals, чтобы не зависеть от порядка чанков CSS. */
+/* Каталог сериалов — компактная таблица: шапка с сортировкой, строки в
+ * одну линию. Буквенный жёлоб и рейка убраны (правка владельца
+ * 2026-09-06), поэтому обёртки `.compact` и правил под AlphabetIndexList
+ * здесь больше нет — артисты и локации остались на своих общих
+ * правилах в globals.css. Серверные страницы буквы (?letter=X) живы для
+ * краулера и рисуются прямо на странице. */
 
 /* ---------- строка сериала ---------- */
 
 .rows {
-  /* вместо gap-2 (0.5rem) у обёртки строк буквы */
   gap: 0.3rem;
 }
 
@@ -21,8 +20,7 @@
   padding: 0.25rem 0.6rem 0.25rem 0.4rem;
 }
 
-/* Название + бейдж «Выходит» + карандаш — одной ячейкой слева, чтобы
- * карандаш стоял сразу за названием, а не у правого края строки. */
+/* Название и бейдж «Выходит» — одной ячейкой слева. */
 .titleCell {
   display: flex;
   align-items: center;
@@ -38,21 +36,8 @@
   min-width: 0;
 }
 
-/* Карандаш статуса — только на ховере строки (и на фокусе с клавиатуры);
- * без ховера (палец) виден всегда, иначе до него не добраться. */
-.rowPencil {
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.row:hover .rowPencil,
-.rowPencil:focus-within {
-  opacity: 1;
-}
-@media (hover: none) {
-  .rowPencil {
-    opacity: 1;
-  }
-}
+/* Карандаш у названия убран (правка владельца 2026-09-06) — статус
+ * правится селектом в своей колонке, см. .colStatus ниже. */
 
 .airingBadge {
   flex-shrink: 0;
@@ -63,6 +48,46 @@
   color: rgb(var(--accent-rgb));
   background: rgba(var(--accent-rgb), 0.14);
   white-space: nowrap;
+}
+
+/* ---------- шапка таблицы ----------
+ *
+ * Правка владельца 2026-09-06: сортировка «не отдельным фильтром, а на
+ * самой таблице». Названия колонок — ссылки (сортировка серверная, в
+ * адресе), поэтому работают без JS и переживают перезагрузку. Сетка
+ * правой части повторяет .cols строки — подписи стоят над своими
+ * ячейками. */
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.6rem 0.35rem 0.4rem;
+}
+
+.headTitleCell {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.headCell {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s ease;
+}
+
+.headCell:hover,
+.headCell:focus-visible {
+  color: var(--bs-body-color);
+}
+
+.headCellActive {
+  color: rgb(var(--accent-rgb));
 }
 
 /* ---------- табличные колонки справа ----------
@@ -89,6 +114,78 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Статус — тихая подпись-триггер (правка владельца: «не сильно
+ * ярким», а нативный список выпадал из оформления сайта). В покое
+ * читается как обычный текст колонки; рамка, фон и стрелка проявляются
+ * под курсором и на фокусе. Само меню — общий .performer-select-dropdown
+ * порталом в body, оформление у него своё. */
+.colStatus :global(.drama-status-select) {
+  min-width: 0;
+}
+
+.colStatus :global(.drama-status-select-trigger) {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  text-align: left;
+  color: var(--bs-secondary-color);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.colStatus :global(.drama-status-select-label) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Стрелка — только когда со строкой работают: в покое колонка должна
+ * читаться текстом, а не рядом виджетов. */
+.colStatus :global(.drama-status-select-caret) {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.row:hover .colStatus :global(.drama-status-select-trigger),
+.colStatus :global(.drama-status-select-trigger):focus-visible,
+.colStatus :global(.drama-status-select-trigger)[aria-expanded="true"] {
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+  background: var(--bs-secondary-bg);
+  outline: none;
+}
+
+.row:hover .colStatus :global(.drama-status-select-caret),
+.colStatus :global(.drama-status-select-trigger):focus-visible :global(.drama-status-select-caret),
+.colStatus :global(.drama-status-select-trigger)[aria-expanded="true"] :global(.drama-status-select-caret) {
+  opacity: 0.7;
+}
+
+.colStatus :global(.drama-status-select-trigger):disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (hover: none) {
+  .colStatus :global(.drama-status-select-caret) {
+    opacity: 0.7;
+  }
 }
 
 .colProgress {
@@ -145,143 +242,4 @@
 .meta {
   white-space: nowrap;
   margin-left: 0.55rem;
-}
-
-/* ---------- буква — в левом жёлобе, список сплошной ----------
- *
- * Правка владельца (2026-09-04, вторая за день): буквы-заголовки НАД
- * группами убраны — сериалы идут одним непрерывным списком, а буква
- * стоит СЛЕВА от первой строки своей группы, крупной тихой литерой:
- * не заголовок, а указатель «начался раздел на такую-то букву».
- *
- * Разметка не менялась: section.performers-letter-section (h2 + строки)
- * становится грид-строкой «жёлоб + строки». Заголовок h2 остаётся в DOM
- * (a11y и якорь #letter-X живут как жили) — меняется только геометрия.
- * Зазор между секциями = зазору между строками (0.3rem), поэтому шва
- * между группами не видно.
- *
- * Литера липкая В ПРЕДЕЛАХ группы задаром: sticky у грид-элемента
- * ограничен его грид-областью, а область жёлоба тянется на всю высоту
- * секции — буква едет вниз вместе со скроллом и останавливается на
- * последней строке своей группы. */
-
-.compact :global(.performers-list) {
-  gap: 0.3rem;
-}
-
-.compact :global(.performers-letter-section) {
-  display: grid;
-  /* 2.5rem вмещает самую широкую метку «0-9»; одиночные литеры стоят
-   * по левому краю жёлоба. */
-  grid-template-columns: 2.5rem minmax(0, 1fr);
-  column-gap: 0.35rem;
-  align-items: start;
-}
-
-.compact :global(.performers-letter-heading) {
-  position: sticky;
-  /* как scroll-margin-top секций — под навбаром */
-  top: 6rem;
-  margin: 0;
-  /* 0.95rem — правка владельца (2026-09-04): 1.3rem показалась крупной.
-   * Литера — тихий указатель, а не заголовок. */
-  font-size: 0.95rem;
-  /* высота одной компактной строки (~45px) — литера стоит по центру
-   * ПЕРВОЙ строки группы, а не по верхнему краю плашки */
-  line-height: 2.8rem;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  color: var(--bs-secondary-color);
-}
-
-/* ---------- буквенная рейка ---------- */
-
-/* Десктоп: тоньше колонка, мельче кегль — на /ru в рейке два алфавита
- * (плюс «0-9»), и с прежним шагом 20.4px она не влезала в экран. */
-.compact:global(.performers-layout) {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1rem);
-  gap: 0.75rem;
-}
-
-.compact :global(.performers-index) {
-  gap: 0.05rem;
-}
-
-.compact :global(.performers-index-link) {
-  font-size: 0.6rem;
-  line-height: 1.35;
-}
-
-.compact :global(.performers-index-sep) {
-  font-size: 0.45rem;
-  line-height: 1.1;
-}
-
-/* Мобильный каталог: вертикальная рейка справа съедала ~42px из 390 и
- * прижимала карточки. Вместо неё — горизонтальная липкая полоска букв
- * НАД списком (те же <a href="?letter=X"> — SEO-перелинковка на месте),
- * скроллится пальцем по горизонтали. Порядок задаёт grid: в DOM рейка
- * после списка, grid-row поднимает её наверх. */
-@media (max-width: 767.98px) {
-  .compact:global(.performers-layout) {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-
-  .compact :global(.performers-list) {
-    grid-row: 2;
-  }
-
-  .compact :global(.performers-index) {
-    grid-row: 1;
-    position: sticky;
-    /* под низ пилюли навбара (padding-top 0.75rem + ~59px) */
-    top: 4.6rem;
-    z-index: 5;
-    height: auto;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 0;
-    margin-bottom: 0.9rem;
-    padding: 0.1rem 0.45rem;
-    /* как у .pill-nav — полоска липкая и едет над строками */
-    background: rgba(22, 22, 26, 0.85);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 1rem;
-    backdrop-filter: blur(10px);
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .compact :global(.performers-index-link) {
-    font-size: 0.75rem;
-    line-height: 1;
-    /* тап-таргет пальцу: высота строки полоски ~2rem */
-    padding: 0.55rem 0.4rem;
-  }
-
-  .compact :global(.performers-index-sep) {
-    font-size: 0.5rem;
-    padding: 0 0.15rem;
-  }
-
-  /* Якорь #letter-X должен вставать ПОД липкой полоской, а не под ней
-   * прятаться (в globals запас 6rem считан под один навбар). */
-  .compact :global(.performers-letter-section) {
-    scroll-margin-top: 8.25rem;
-    /* Жёлоб на 390px съедал бы ~46px ширины строк — на мобиле буква
-     * остаётся маленьким заголовком-строкой над своей группой. */
-    display: block;
-  }
-
-  .compact :global(.performers-letter-heading) {
-    position: static;
-    font-size: 0.95rem;
-    line-height: 1.3;
-    /* сверху чуть больше зазора, чем между строками, — иначе при
-     * сплошном зазоре 0.3rem метка липла бы к чужой группе */
-    margin: 0.45rem 0 0.35rem;
-  }
 }

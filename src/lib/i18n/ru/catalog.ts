@@ -76,6 +76,18 @@ export const catalog: Dict["catalog"] = {
             } as Record<string, string>
         )[raw] ?? raw),
 
+    /** Подписи колонок таблицы сериалов. Общие для каталога /dramas и
+     *  вкладки «Сериалы» в профиле: таблицы задуманы роднёй, и два
+     *  словаря разъехались бы («Статус просмотра» против «Статус»). */
+    dramaColumns: {
+        title: "Название",
+        status: "Статус",
+        type: "Тип",
+        year: "Год",
+        country: "Страна",
+        episodes: "Серии",
+    },
+
     /** Страна производства (`Drama.country`, строка с MDL). */
     dramaCountry: (raw: string): string =>
         ((

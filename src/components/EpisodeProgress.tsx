@@ -107,24 +107,31 @@ export default function EpisodeProgress({
           </button>
           {/* Число — инпут (правка владельца): ввести «9» сразу быстрее,
               чем девять раз нажать плюс. Черновик локальный, в базу
-              уходит по Enter или уходу из поля, с обрезкой в границы. */}
-          <input
-            type="number"
-            className="episode-progress-input"
-            min={0}
-            max={total ?? undefined}
-            value={draft}
-            disabled={isPending}
-            aria-label={t.catalog.episodes.label}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => commitDraft()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                commitDraft();
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-          />
+              уходит по Enter или уходу из поля, с обрезкой в границы.
+              В таблице каталога (`inline`) — наоборот, просто текст:
+              рамка поля посреди строки «3/10» смотрелась криво (правка
+              владельца 2026-09-06), и число там меняют кнопками. */}
+          {variant === "inline" ? (
+            <span className="episode-progress-value">{value}</span>
+          ) : (
+            <input
+              type="number"
+              className="episode-progress-input"
+              min={0}
+              max={total ?? undefined}
+              value={draft}
+              disabled={isPending}
+              aria-label={t.catalog.episodes.label}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={() => commitDraft()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  commitDraft();
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+          )}
           {total !== null && (
             <span className="episode-progress-count">
               {/* В таблице каталога — «/10» вплотную к числу; в полном

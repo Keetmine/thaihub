@@ -89,6 +89,18 @@ export const catalog = {
     /** Страна производства — MDL и так пишет по-английски. */
     dramaCountry: (raw: string): string => raw,
 
+    /** Подписи колонок таблицы сериалов. Общие для каталога /dramas и
+     *  вкладки «Сериалы» в профиле: таблицы задуманы роднёй, и два
+     *  словаря разъехались бы («Статус просмотра» против «Статус»). */
+    dramaColumns: {
+        title: "Title",
+        status: "Status",
+        type: "Type",
+        year: "Year",
+        country: "Country",
+        episodes: "Episodes",
+    },
+
     albumType: {
         ALBUM: "Album",
         EP: "EP",

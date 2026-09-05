@@ -131,17 +131,17 @@ test("прогресс правится из списка и с главной",
 
     await page.goto(`/dramas?q=${encodeURIComponent(TEST_DRAMAS.ended.title)}`);
     const row = page.locator(".surface", { hasText: TEST_DRAMAS.ended.title }).first();
-    await expect(row.locator(".episode-progress-input")).toHaveValue(String(TEST_DRAMAS.ended.episodes));
+    await expect(row.locator(".episode-progress-value")).toHaveText(String(TEST_DRAMAS.ended.episodes));
 
     // И правится не уходя со страницы списка.
     await row.getByRole("button", { name: "One episode back" }).click();
-    await expect(row.locator(".episode-progress-input")).toHaveValue(String(TEST_DRAMAS.ended.episodes - 1));
+    await expect(row.locator(".episode-progress-value")).toHaveText(String(TEST_DRAMAS.ended.episodes - 1));
     // Дожидаемся серверного признака: счётчик рисуется оптимистично, и
     // без этого мы ушли бы со страницы раньше, чем запись долетит.
-    await expect(row.locator(".drama-status-btn button")).toHaveAttribute(
-      "aria-label",
-      /Watching now/,
-    );
+    // Признак — подпись статуса в своей колонке (карандаш из строки
+    // убран правкой владельца 2026-09-06): досмотренный минус серия
+    // возвращается в «смотрю».
+    await expect(row.locator(".drama-status-select-trigger")).toContainText("Watching now");
   });
 
   await test.step("главная: тот же счётчик на карточке", async () => {
