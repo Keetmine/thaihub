@@ -323,11 +323,17 @@ export function eventJsonLd(e: {
  * языкового префикса (русская версия — та же организация и тот же
  * поиск, /ru/search — рерайт на него же).
  */
+/** Как ещё называют сайт — для поисковиков. Бренд пишется одним словом
+ *  «MyBLHub», и запрос «bl hub» с ним не совпадает (для поисковика это
+ *  один токен); alternateName подсказывает варианты написания. */
+export const SITE_ALTERNATE_NAMES = ["BL Hub", "My BL Hub"];
+
 export function websiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
+    alternateName: SITE_ALTERNATE_NAMES,
     url: SITE_URL,
     potentialAction: {
       "@type": "SearchAction",
@@ -347,6 +353,7 @@ export function organizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
+    alternateName: SITE_ALTERNATE_NAMES,
     url: SITE_URL,
     logo: `${SITE_URL}/icons/icon-512.png`,
   };
