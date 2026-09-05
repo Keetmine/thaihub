@@ -251,6 +251,22 @@ export function InstagramIcon() {
   );
 }
 
+export function FacebookIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      {/* Классическая «f» — заливкой, как TikTok: контуром она не
+          узнаётся. */}
+      <path d="M13.5 21v-7h2.4l.45-3H13.5V9.1c0-.87.28-1.6 1.66-1.6h1.34V4.85c-.3-.04-1.3-.13-2.44-.13-2.4 0-4.06 1.47-4.06 4.16V11H7.5v3H10v7h3.5z" />
+    </svg>
+  );
+}
+
 export function TikTokIcon() {
   return (
     <svg

@@ -568,6 +568,16 @@ export default function PerformerForm({
             />
           </div>
           <div className="col-12 col-md-4">
+            <label className="form-label" htmlFor="performer-form-facebookUrl">Facebook</label>
+            <input id="performer-form-facebookUrl"
+              type="url"
+              name="facebookUrl"
+              defaultValue={socialDefaults.facebook}
+              placeholder="https://facebook.com/…"
+              className="form-control"
+            />
+          </div>
+          <div className="col-12 col-md-4">
             <label className="form-label" htmlFor="performer-form-spotifyUrl">Spotify</label>
             <input id="performer-form-spotifyUrl"
               type="url"

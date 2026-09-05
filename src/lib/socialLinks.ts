@@ -2,6 +2,7 @@ export type SocialPlatform =
   | "instagram"
   | "tiktok"
   | "twitter"
+  | "facebook"
   | "spotify"
   | "applemusic"
   | "youtube";
@@ -10,6 +11,7 @@ const PLATFORM_PATTERNS: Record<SocialPlatform, RegExp> = {
   instagram: /instagram\.com/i,
   tiktok: /tiktok\.com/i,
   twitter: /twitter\.com|x\.com/i,
+  facebook: /facebook\.com|fb\.com/i,
   spotify: /open\.spotify\.com/i,
   applemusic: /music\.apple\.com/i,
   youtube: /youtube\.com|youtu\.be/i,
@@ -19,6 +21,7 @@ export const SOCIAL_PLATFORM_LABELS: Record<SocialPlatform, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   twitter: "Twitter",
+  facebook: "Facebook",
   spotify: "Spotify",
   applemusic: "Apple Music",
   youtube: "YouTube",

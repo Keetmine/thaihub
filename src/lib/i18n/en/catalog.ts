@@ -76,6 +76,19 @@ export const catalog = {
         PILOT: "Pilot",
     },
 
+    /** Тип записи из MDL (`Drama.type` — свободная строка, не enum). */
+    dramaType: (raw: string): string =>
+        ((
+            {
+                Drama: "Series",
+                "TV Show": "Show",
+                "TV Program": "Show",
+            } as Record<string, string>
+        )[raw] ?? raw),
+
+    /** Страна производства — MDL и так пишет по-английски. */
+    dramaCountry: (raw: string): string => raw,
+
     albumType: {
         ALBUM: "Album",
         EP: "EP",

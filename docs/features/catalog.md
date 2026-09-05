@@ -63,14 +63,16 @@ bar).
 - `PerformerLink` is a free-form label+URL list per performer (social
   media, personal café, whatever) — no schema change needed to add a new
   kind of link. `src/lib/socialLinks.ts`'s `detectSocialPlatform(url)`
-  recognizes Instagram/TikTok/Twitter by host regardless of what label an
-  import or admin gave the row — used to (a) show those three (plus
+  recognizes Instagram/TikTok/Twitter/Facebook (плюс музплощадки и
+  YouTube) by host regardless of what label an
+  import or admin gave the row — used to (a) show those (plus
   `mydramalistUrl`) as branded icon buttons under a performer's photo via
   `SocialLinkIcons`, everything else still a plain labeled pill, and (b)
-  give `PerformerForm` three dedicated Instagram/TikTok/Twitter fields
+  give `PerformerForm` dedicated per-platform fields
   instead of lumping them into the generic add-a-link list — purely a
   form-UI split, `getLinks` in `performers/actions.ts` merges them back
   into the same `PerformerLink` rows on save, no separate schema field.
+  The same detection drives agency links on the public agency page.
 - The admin performers list (`/admin/performers`) is a flat, paginated
   list (see "Catalog scale" below) with a `NameSearchBox` search and a
   photo per row, edit/delete icon buttons instead of a favorite toggle.
@@ -194,13 +196,22 @@ scrollIntoView) — UX не меняется, роботы идут по href. �
 
 `/dramas` рендерит записи **строками** — не постерной сеткой: в
 каталоге много одиночных сериалов, карточки ели место, а длинные
-названия обрезались. Строка **компактная** (жалоба владельца
-2026-09-04: прежняя ~100px «карточка» с подстрокой давала 5 строк на
-экран 900px): мелкая миниатюра постера 1.7×2.3rem с фолбэк-буквой,
-название и «год · ★ рейтинг» одним потоком текста (короткое название —
-одна строка; длинное переносится, но клампится на двух), справа
-`EpisodeProgress variant="inline"` (у отмеченных) и `DramaStatusButton`.
-Высота строки ~50px — на 900px влезает ~16 строк. Вся геометрия — в
+названия обрезались. Строка **компактная, «аля таблица»** (правка
+владельца 2026-09-05 поверх компактной строки 2026-09-04): мелкая
+миниатюра постера 1.7×2.3rem с фолбэк-буквой, название и «★ рейтинг»
+одним потоком текста (год из подстроки убран — у него своя колонка;
+короткое название — одна строка; длинное клампится на двух), у
+выходящих (`Drama.status === RETURNING_SERIES`) — бейдж «Выходит»
+сразу за названием, следом `DramaStatusButton` (карандаш), видимый
+только на ховере строки/фокусе (`@media (hover: none)` — всегда).
+Справа жёсткие колонки: статус просмотра · тип
+(`t.catalog.dramaType`, перевод свободной строки `Drama.type` с MDL) ·
+год · страна (`t.catalog.dramaCountry`) · прогресс «2/10»
+(`EpisodeProgress variant="inline"`: тихий счётчик без плашки, кнопки
+−/+ проявляются на ховере строки, прогресс-бара в списке нет — бар
+остался только у `variant="full"` на странице сериала). На <992px
+колонки, кроме прогресса, скрыты. Гостевой кэш выборки —
+`dramas-guest-list-v2` (ключ сменён вместе с составом полей). Вся геометрия — в
 co-located `src/app/(public)/dramas/dramas.module.css`. Скоуп — класс
 `.compact` на корне списка: `AlphabetIndexList` получил проп
 `className`, добавляющийся к `.performers-layout`, и разделы без него

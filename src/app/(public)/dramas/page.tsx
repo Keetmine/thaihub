@@ -58,6 +58,11 @@ const DRAMA_ROW_SELECT = {
   posterUrl: true,
   year: true,
   episodes: true,
+  // Табличные колонки строки (правка владельца 2026-09-05): тип,
+  // страна; статус — для бейджа «Выходит» у названия.
+  type: true,
+  country: true,
+  status: true,
 } as const;
 
 /** Гостевой список без поиска: свежие по дате эфира. */
@@ -69,7 +74,9 @@ const getGuestDramas = unstable_cache(
       orderBy: { airedFrom: "desc" },
       take: 60,
     }),
-  ["dramas-guest-list"],
+  // v2: ключ сменён вместе с составом полей (тип/страна/статус в
+  // строке) — иначе до истечения кэша строки шли без новых колонок.
+  ["dramas-guest-list-v2"],
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
@@ -295,14 +302,15 @@ export default async function DramasPage({
 
       {/* Список строками, а не постерная сетка: сериалов много одиночных,
           карточки съедали место, а длинные названия обрезались. Строка
-          КОМПАКТНАЯ (жалоба владельца — прежняя ~100px карточка):
-          мелкая миниатюра постера, название и «год · ★ рейтинг» одним
-          потоком текста (длинное название переносится, но не глубже двух
-          строк), справа прогресс серий и кнопка статуса. Геометрия — в
-          dramas.module.css, там же уплотнение рейки. Буквы-разделители — не над группами, а в
-          левом жёлобе: тихая литера на уровне первой строки группы,
-          список визуально сплошной (на мобиле — маленькая
-          строка-метка). */}
+          «аля таблица» (правка владельца 2026-09-05): миниатюра постера,
+          название (без года — он ушёл в свою колонку; у выходящих —
+          бейдж «Выходит», карандаш статуса прячется до ховера строки),
+          справа колонки статус просмотра · тип · год · страна ·
+          прогресс «2/10». Прогресс-бара в списке больше нет. Геометрия —
+          в dramas.module.css, там же уплотнение рейки. Буквы-разделители
+          — не над группами, а в левом жёлобе: тихая литера на уровне
+          первой строки группы, список визуально сплошной (на мобиле —
+          маленькая строка-метка). */}
       <AlphabetIndexList
         items={dramas.map((d) => ({ id: d.id, name: dramaTitleForLocale(d, locale), drama: d }))}
         letterHrefBase="/dramas?letter="
@@ -313,49 +321,68 @@ export default async function DramasPage({
           const rating = ratingByDramaId.get(d.id);
           const entry = statusByDramaId.get(d.id) ?? null;
           const progress = episodeProgress(entry, d.episodes);
-          const subline = [d.year, rating != null ? `★ ${rating.toFixed(1)}` : null]
-            .filter(Boolean)
-            .join(" · ");
+          const airing = d.status === "RETURNING_SERIES";
           return (
             <div key={d.id} className={`surface surface-hover ${styles.row}`}>
-              <AppLink href={dramaHref(d)} className={`text-decoration-none ${styles.rowLink}`}>
-                <div className={styles.poster}>
-                  {d.posterUrl ? (
-                    <UploadImage
-                      src={d.posterUrl}
-                      alt=""
-                      sizes="(max-width: 575.98px) 30vw, 10rem"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <span className={`font-display fw-bold ${styles.posterFallback}`} aria-hidden>
-                      {dramaTitleForLocale(d, locale).trim().charAt(0).toUpperCase()}
+              <div className={styles.titleCell}>
+                <AppLink href={dramaHref(d)} className={`text-decoration-none ${styles.rowLink}`}>
+                  <div className={styles.poster}>
+                    {d.posterUrl ? (
+                      <UploadImage
+                        src={d.posterUrl}
+                        alt=""
+                        sizes="(max-width: 575.98px) 30vw, 10rem"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <span className={`font-display fw-bold ${styles.posterFallback}`} aria-hidden>
+                        {dramaTitleForLocale(d, locale).trim().charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className={styles.titleWrap}>
+                    <span className={`font-display fw-medium text-white ${styles.title}`}>
+                      {dramaTitleForLocale(d, locale)}
                     </span>
-                  )}
-                </div>
-                <span className={styles.titleWrap}>
-                  <span className={`font-display fw-medium text-white ${styles.title}`}>
-                    {dramaTitleForLocale(d, locale)}
+                    {rating != null && (
+                      <span className={`small text-secondary ${styles.meta}`}>
+                        ★ {rating.toFixed(1)}
+                      </span>
+                    )}
                   </span>
-                  {subline && (
-                    <span className={`small text-secondary ${styles.meta}`}>{subline}</span>
+                </AppLink>
+                {airing && (
+                  <span className={styles.airingBadge}>{t.catalog.dramaStatus.RETURNING_SERIES}</span>
+                )}
+                {/* Карандаш статуса — сразу за названием (за бейджем,
+                    если он есть) и виден только на ховере строки. */}
+                <DramaStatusButton
+                  dramaId={d.id}
+                  status={entry?.status ?? null}
+                  className={styles.rowPencil}
+                />
+              </div>
+              <div className={styles.cols}>
+                <span className={styles.colStatus}>
+                  {entry ? t.catalog.watchStatus[entry.status] : ""}
+                </span>
+                <span className={styles.colType}>{d.type ? t.catalog.dramaType(d.type) : ""}</span>
+                <span className={styles.colYear}>{d.year ?? ""}</span>
+                <span className={styles.colCountry}>
+                  {d.country ? t.catalog.dramaCountry(d.country) : ""}
+                </span>
+                <span className={styles.colProgress}>
+                  {/* Ж6: править серии — прямо отсюда, не заходя на
+                      страницу сериала. */}
+                  {entry && (
+                    <EpisodeProgress
+                      dramaId={d.id}
+                      total={d.episodes}
+                      watched={progress ? progress.watched : null}
+                      variant="inline"
+                    />
                   )}
                 </span>
-              </AppLink>
-              <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
-                {/* Ж6: править серии хочется прямо отсюда, не заходя на
-                    страницу сериала. Компактный вариант и справа, у
-                    кнопки статуса: отдельной строкой под названием он
-                    делал каждую строку каталога вдвое выше. */}
-                {entry && (
-                  <EpisodeProgress
-                    dramaId={d.id}
-                    total={d.episodes}
-                    watched={progress ? progress.watched : null}
-                    variant="inline"
-                  />
-                )}
-                <DramaStatusButton dramaId={d.id} status={entry?.status ?? null} />
               </div>
             </div>
           );

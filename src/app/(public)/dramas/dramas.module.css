@@ -21,12 +21,91 @@
   padding: 0.25rem 0.6rem 0.25rem 0.4rem;
 }
 
+/* Название + бейдж «Выходит» + карандаш — одной ячейкой слева, чтобы
+ * карандаш стоял сразу за названием, а не у правого края строки. */
+.titleCell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .rowLink {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Карандаш статуса — только на ховере строки (и на фокусе с клавиатуры);
+ * без ховера (палец) виден всегда, иначе до него не добраться. */
+.rowPencil {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.row:hover .rowPencil,
+.rowPencil:focus-within {
+  opacity: 1;
+}
+@media (hover: none) {
+  .rowPencil {
+    opacity: 1;
+  }
+}
+
+.airingBadge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  color: rgb(var(--accent-rgb));
+  background: rgba(var(--accent-rgb), 0.14);
+  white-space: nowrap;
+}
+
+/* ---------- табличные колонки справа ----------
+ *
+ * Правка владельца (2026-09-05): строка читается «аля таблица» —
+ * статус просмотра · тип · год · страна · прогресс. Ширины жёсткие,
+ * чтобы колонки стояли в линию по всем строкам; выравнивание по левому
+ * краю, прогресс — по правому. На мобиле остаётся только прогресс:
+ * пять колонок в 390px не живут. */
+.cols {
+  display: grid;
+  grid-template-columns: 7.5rem 4.2rem 3rem 6.5rem 5.2rem;
+  align-items: center;
+  column-gap: 0.5rem;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.colStatus,
+.colType,
+.colYear,
+.colCountry {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.colProgress {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 991.98px) {
+  .cols {
+    grid-template-columns: 5.2rem;
+  }
+  .colStatus,
+  .colType,
+  .colYear,
+  .colCountry {
+    display: none;
+  }
 }
 
 .poster {

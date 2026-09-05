@@ -63,6 +63,34 @@ export const catalog: Dict["catalog"] = {
         PILOT: "Пилот",
     },
 
+    /** Тип записи из MDL (`Drama.type` — свободная строка, не enum):
+     *  переводим известные значения, незнакомое показываем как есть. */
+    dramaType: (raw: string): string =>
+        ((
+            {
+                Drama: "Сериал",
+                Movie: "Фильм",
+                "TV Show": "Шоу",
+                "TV Program": "Шоу",
+                Special: "Спешл",
+            } as Record<string, string>
+        )[raw] ?? raw),
+
+    /** Страна производства (`Drama.country`, строка с MDL). */
+    dramaCountry: (raw: string): string =>
+        ((
+            {
+                Thailand: "Таиланд",
+                "South Korea": "Южная Корея",
+                Japan: "Япония",
+                China: "Китай",
+                Taiwan: "Тайвань",
+                "Hong Kong": "Гонконг",
+                Philippines: "Филиппины",
+                Singapore: "Сингапур",
+            } as Record<string, string>
+        )[raw] ?? raw),
+
     albumType: {
         ALBUM: "Альбом",
         EP: "EP",

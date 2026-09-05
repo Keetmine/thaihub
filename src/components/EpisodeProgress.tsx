@@ -15,9 +15,9 @@ import { useT } from "@/components/LocaleProvider";
  *
  * Три вида по месту:
  * - `full` — с подписью «Серии» и полосой (страница сериала);
- * - `inline` — без подписи, узкий, полоса под счётчиком (строка
- *   каталога: там он стоит справа, у кнопки статуса, и лишнюю ширину
- *   отнимать не должен);
+ * - `inline` — тихий счётчик «2/10» без полосы и без плашки (колонка
+ *   прогресса в таблице каталога, правка владельца 2026-09-05: кнопки
+ *   не должны бросаться в глаза, полосе в списке не место);
  * - `card` — без подписи и без полосы, во всю ширину карточки: полосу
  *   карточка рисует у себя внутри, поверх постера, а две полосы в
  *   четырёх сантиметрах друг от друга выглядели бы небрежно.
@@ -89,8 +89,6 @@ export default function EpisodeProgress({
     set(parsed);
   }
 
-  const card = variant === "card";
-
   return (
     <div className={`episode-progress is-${variant}`}>
       <div className="d-flex align-items-center gap-2">
@@ -128,7 +126,11 @@ export default function EpisodeProgress({
             }}
           />
           {total !== null && (
-            <span className="episode-progress-count">{t.catalog.episodes.ofTotal(total)}</span>
+            <span className="episode-progress-count">
+              {/* В таблице каталога — «/10» вплотную к числу; в полном
+                  виде остаётся словесное «из 10». */}
+              {variant === "inline" ? `/${total}` : t.catalog.episodes.ofTotal(total)}
+            </span>
           )}
           <button
             type="button"
@@ -141,7 +143,7 @@ export default function EpisodeProgress({
           </button>
         </div>
       </div>
-      {!card && total !== null && total > 0 && (
+      {variant === "full" && total !== null && total > 0 && (
         <EpisodeProgressBar
           watched={value}
           total={total}

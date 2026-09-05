@@ -2967,15 +2967,41 @@ button.hero-stat-toggle.is-open {
 /* Вариант для строки каталога: стоит справа, у кнопки статуса, поэтому
    ужимаем всё, что можно — цифры мельче, кнопки меньше. Ширина по
    содержимому, чтобы название сериала слева не сжималось зря. */
+/* Тихий счётчик «2/10» в таблице каталога (правка владельца
+   2026-09-05): без плашки-пилюли, кнопки −/+ приглушены и оживают
+   только на ховере самой строки — прогресс читается как текст, а не
+   как виджет. */
 .episode-progress.is-inline {
   gap: 0.25rem;
 }
+.episode-progress.is-inline .episode-progress-controls {
+  background: transparent;
+  padding: 0;
+  gap: 0.1rem;
+}
 .episode-progress.is-inline .episode-progress-step {
-  width: 1.5rem;
-  height: 1.5rem;
-  font-size: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.surface-hover:hover .episode-progress.is-inline .episode-progress-step,
+.episode-progress.is-inline .episode-progress-step:focus-visible {
+  opacity: 1;
+}
+/* Без ховера (палец) кнопки видны всегда — иначе до них не добраться. */
+@media (hover: none) {
+  .episode-progress.is-inline .episode-progress-step {
+    opacity: 1;
+  }
 }
 .episode-progress.is-inline .episode-progress-count {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+.episode-progress.is-inline .episode-progress-input {
   font-size: 0.8rem;
 }
 

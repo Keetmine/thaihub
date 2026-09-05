@@ -193,6 +193,7 @@ const SOCIAL_FIELD_NAMES: Record<SocialPlatform, string> = {
   instagram: "instagramUrl",
   tiktok: "tiktokUrl",
   twitter: "twitterUrl",
+  facebook: "facebookUrl",
   spotify: "spotifyUrl",
   applemusic: "applemusicUrl",
   youtube: "youtubeUrl",
