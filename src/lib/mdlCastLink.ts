@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
+import { logAudit } from "@/lib/audit";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
 import { absMdlUrl, type MdlCastMember } from "@/lib/mydramalist";
 
@@ -125,6 +126,15 @@ export async function linkMdlCast(
       const created = await prisma.performer.create({
         data: { name: member.name, mydramalistUrl: mdlUrl },
         select: { id: true },
+      });
+      // История правок: карточка-заготовка появилась из каста сериала
+      // (потом её дозаполнит импорт актёра — у того своя запись).
+      await logAudit({
+        action: "CREATE",
+        entityType: "Performer",
+        entityId: created.id,
+        entityLabel: member.name,
+        note: "каст сериала с MyDramaList",
       });
       performer = {
         id: created.id,

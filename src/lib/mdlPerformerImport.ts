@@ -4,6 +4,7 @@ import { oneProfilePlatformOf, socialLinkKey } from "@/lib/socialLinks";
 import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
+import { logAudit, diffRecords, fieldLabel, type AuditChange } from "@/lib/audit";
 
 export type MdlPerformerSummary = {
   performerId: string;
@@ -93,6 +94,11 @@ export async function importMdlPerformer(
   let performer: { id: string; name: string };
   let created = false;
 
+  // Что парсер поменял — для истории правок карточки (просьба
+  // владельца 2026-09-05): пишем одной записью после блока соцссылок,
+  // чтобы «+N ссылок» попало туда же.
+  const auditChanges: AuditChange[] = [];
+
   if (existing) {
     const data: Record<string, unknown> = {};
     if (!existing.realName && realName) {
@@ -114,6 +120,9 @@ export async function importMdlPerformer(
     if (!existing.mydramalistUrl) data.mydramalistUrl = person.url;
     if (Object.keys(data).length > 0) {
       await prisma.performer.update({ where: { id: existing.id }, data });
+      auditChanges.push(
+        ...diffRecords(existing as unknown as Record<string, unknown>, data, Object.keys(data)),
+      );
     }
     performer = existing;
   } else {
@@ -168,6 +177,34 @@ export async function importMdlPerformer(
     linksAdded += 1;
   }
 
+  // Одна запись в историю на весь импорт карточки: поля + «+N ссылок».
+  if (linksAdded > 0) {
+    auditChanges.push({
+      field: "links",
+      label: fieldLabel("links"),
+      from: null,
+      to: `+${linksAdded}`,
+    });
+  }
+  if (created) {
+    await logAudit({
+      action: "CREATE",
+      entityType: "Performer",
+      entityId: performer.id,
+      entityLabel: person.name,
+      note: "импорт с MyDramaList",
+    });
+  } else {
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Performer",
+      entityId: performer.id,
+      entityLabel: person.name,
+      changes: auditChanges,
+      note: "импорт с MyDramaList",
+    });
+  }
+
   // Фильмография. По умолчанию связываем только с тем, что уже есть в
   // каталоге: заводить сериалы пачкой — как раз то, чем массовый синк
   // засорял базу. С галочкой «парсить фильмографию» недостающие
@@ -213,6 +250,14 @@ export async function importMdlPerformer(
       await prisma.drama.update({
         where: { id: drama.id },
         data: { type: row.section },
+      });
+      await logAudit({
+        action: "UPDATE",
+        entityType: "Drama",
+        entityId: drama.id,
+        entityLabel: row.title,
+        changes: [{ field: "type", label: fieldLabel("type"), from: null, to: row.section }],
+        note: "секция фильмографии MyDramaList",
       });
     }
 

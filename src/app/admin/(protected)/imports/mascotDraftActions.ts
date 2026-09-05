@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { normalizeMascotName, type MascotDraftPayload } from "@/lib/gmmtvMascots";
+import { logAudit } from "@/lib/audit";
 import type { MatchedMascotOwner } from "@/lib/performerMatching";
 
 // Очередь черновиков маскотов с вики GMMTV (вкладка «Маскоты» в
@@ -74,6 +75,15 @@ export async function approveMascotDraft(formData: FormData): Promise<void> {
           },
         });
         performerId = created.id;
+        // История правок: карточка маскота пришла из вики-краулера
+        // (одобрена админом — его имя запишется автором).
+        await logAudit({
+          action: "CREATE",
+          entityType: "Performer",
+          entityId: created.id,
+          entityLabel: draft.name,
+          note: "черновик маскота с вики GMMTV",
+        });
       }
       await prisma.mascotDraft.update({
         where: { id },

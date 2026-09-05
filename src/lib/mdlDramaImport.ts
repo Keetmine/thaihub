@@ -4,6 +4,7 @@ import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { MdlRunFetcher } from "@/lib/mdlClient";
 import { resolveMdlDramaRequests } from "@/lib/mdlDramaRequests";
+import { logAudit, diffRecords, fieldLabel } from "@/lib/audit";
 import {
   canonicalMdlUrl,
   fetchMdlDrama,
@@ -359,6 +360,12 @@ export async function upsertDramaFromMdl(
     mdlSyncedAt: new Date(),
   };
 
+  // Подпись источника в истории правок: страницы каталога показывают,
+  // что именно поменял парсер (просьба владельца 2026-09-05).
+  const auditNote = opts.autoUpdate
+    ? "автообновление с MyDramaList"
+    : "импорт с MyDramaList";
+
   if (!existing) {
     const created = await prisma.drama.create({
       data: {
@@ -367,6 +374,13 @@ export async function upsertDramaFromMdl(
         mdlUrl: sourceUrl,
         mdlAutoUpdate: opts.autoUpdate ?? false,
       },
+    });
+    await logAudit({
+      action: "CREATE",
+      entityType: "Drama",
+      entityId: created.id,
+      entityLabel: created.title,
+      note: auditNote,
     });
     // Сериал с этой страницей появился в каталоге — закрываем заявки
     // пользователей «добавьте сериал» (статус + уведомление). Здесь, а
@@ -451,6 +465,41 @@ export async function upsertDramaFromMdl(
   // заводится в тот прогон, когда в каталог попал второй её конец.
   const relationsLinked = await syncDramaRelations(updated.id, mdl.related);
   if (relationsLinked > 0) filled.push("связанные сериалы");
+
+  // История правок: что именно дозаполнил парсер. mdlSyncedAt и mdlScore
+  // в диф не идут — отметка времени меняется каждым прогоном, а дрейф
+  // рейтинга на 0.1 засорял бы историю ночного обновления. Расписание и
+  // связи — псевдо-полями: у них нет одного «до/после», но в истории
+  // они важнее прочего.
+  const auditChanges = diffRecords(
+    existing as unknown as Record<string, unknown>,
+    data,
+    Object.keys(data).filter((k) => k !== "mdlSyncedAt" && k !== "mdlScore"),
+  );
+  if (schedule && (schedule.added || schedule.changed || schedule.removed)) {
+    auditChanges.push({
+      field: "schedule",
+      label: fieldLabel("schedule"),
+      from: null,
+      to: summarizeSchedule(schedule).replace(/^, расписание серий: /, "") || "обновлено",
+    });
+  }
+  if (relationsLinked > 0) {
+    auditChanges.push({
+      field: "related",
+      label: fieldLabel("related"),
+      from: null,
+      to: `+${relationsLinked}`,
+    });
+  }
+  await logAudit({
+    action: "UPDATE",
+    entityType: "Drama",
+    entityId: updated.id,
+    entityLabel: updated.title,
+    changes: auditChanges,
+    note: auditNote,
+  });
 
   return {
     id: updated.id,

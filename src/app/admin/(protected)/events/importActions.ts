@@ -6,6 +6,7 @@ import { scrapeEventByUrl } from "@/lib/eventTicketSites";
 import { combineDateTime } from "@/lib/dates";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { matchArtistsByNickname, type MatchedArtist } from "@/lib/performerMatching";
 
 export type TtmImportArtist = MatchedArtist;
@@ -174,6 +175,19 @@ export async function createEventFromTtmImport(
         },
       },
     });
+  });
+
+  // История правок: событие пришло из парсера билетного сайта (по
+  // ссылке из админки или одобрением черновика обхода афиши) — на
+  // странице события видно, откуда оно взялось.
+  await logAudit({
+    action: "CREATE",
+    entityType: "Event",
+    entityId: event.id,
+    entityLabel: title,
+    note: data.sourceUrl.trim()
+      ? `импорт события: ${data.sourceUrl.trim()}`
+      : "импорт события с билетного сайта",
   });
 
   if (opts.revalidate !== false) {
