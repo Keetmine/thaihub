@@ -790,6 +790,7 @@ export default async function PerformerPage({
         <div className="mb-4">
           <SubTabs
             ariaLabel={t.catalog.artist.series}
+            variant="bar"
             tabs={(
               [
                 ["series", t.catalog.artist.series, seriesDramas],
