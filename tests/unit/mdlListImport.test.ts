@@ -67,8 +67,9 @@ const DOC = `<script> window.dramalist_json = {"username":"keetmine","vip":"0","
 // ---------- parseMdlListInput ----------
 
 {
-  assert.equal(parseMdlListInput("keetmine"), "keetmine");
-  assert.equal(parseMdlListInput("  Kee_t-9  "), "Kee_t-9");
+  // Голый ник больше не принимаем — только ссылка (см. parseMdlListInput).
+  assert.equal(parseMdlListInput("keetmine"), null);
+  assert.equal(parseMdlListInput("  Kee_t-9  "), null);
   assert.equal(
     parseMdlListInput("https://mydramalist.com/dramalist/keetmine"),
     "keetmine",

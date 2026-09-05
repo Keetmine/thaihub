@@ -36,16 +36,18 @@ import { absMdlUrl, mdlIdFromUrl, MdlHttpError } from "@/lib/mydramalist";
 const NICK_RE = /^[A-Za-z0-9_-]+$/;
 
 /**
- * Ник из пользовательского ввода: голый ник или ссылка на список
- * (`https://mydramalist.com/dramalist/<ник>[/...]`, можно без схемы).
- * null — не разобрали. Валидация жёсткая (^[A-Za-z0-9_-]+$ и только
- * хост mydramalist.com): из ника строится URL запроса, и ничего, кроме
- * страницы списка на MDL, из этой формы запросить нельзя (SSRF).
+ * Ник из ссылки на список (`https://mydramalist.com/dramalist/<ник>[/...]`,
+ * можно без схемы). null — не разобрали. Голый ник больше не принимаем:
+ * отображаемое имя на MDL и ник в адресе часто не совпадают, и люди
+ * вставляли имя профиля — импорт падал на «список не найден». Ссылку
+ * человек копирует из адресной строки, там ник всегда верный.
+ * Валидация жёсткая (^[A-Za-z0-9_-]+$ и только хост mydramalist.com):
+ * из ника строится URL запроса, и ничего, кроме страницы списка на MDL,
+ * из этой формы запросить нельзя (SSRF).
  */
 export function parseMdlListInput(raw: string): string | null {
   const s = raw.trim();
   if (!s) return null;
-  if (NICK_RE.test(s)) return s;
   try {
     const u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`);
     if (u.hostname !== "mydramalist.com" && u.hostname !== "www.mydramalist.com") return null;
@@ -141,7 +143,7 @@ export class MdlListUnavailableError extends Error {
 export class MdlListNotFoundError extends Error {
   readonly kind = "not-found";
   constructor() {
-    super("Список не найден — проверьте ник");
+    super("Список не найден — проверьте ссылку");
     this.name = "MdlListNotFoundError";
   }
 }
@@ -408,7 +410,10 @@ const runs = new Map<string, MdlListRunState>();
 const lastStartAt = new Map<string, number>();
 
 /** Не чаще одного запуска в 10 минут на пользователя — импорт ходит по
- *  чужому сайту десятком запросов, и кнопка не должна это умножать. */
+ *  чужому сайту десятком запросов, и кнопка не должна это умножать.
+ *  Считается только для прогонов, которые дошли до конца: упавший
+ *  (не та ссылка, приватный список, MDL не ответил) окно не занимает,
+ *  иначе человек после опечатки ждал бы 10 минут, чтобы её исправить. */
 const USER_COOLDOWN_MS = 10 * 60 * 1000;
 
 // Глобальная очередь на ОДИН прогон за раз (как mapsBrowserQueue в
@@ -465,6 +470,8 @@ export function startMdlListImport(userId: string, nick: string): StartMdlListIm
         errorKey,
         message: e instanceof Error ? e.message : String(e),
       });
+      // Упавший прогон окно не занимает — можно сразу исправить ссылку.
+      lastStartAt.delete(userId);
     }
   });
   importQueue = task.catch(() => {});
