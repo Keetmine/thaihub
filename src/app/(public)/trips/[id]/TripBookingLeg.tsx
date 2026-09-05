@@ -12,14 +12,18 @@ import { ItemVisibilityBadge } from "../TripItemVisibility";
 import type { TripItemVisibilityValue } from "../itemVisibility";
 
 /** Одна сторона брони в ленте плана: заселение ИЛИ выселение, вылет ИЛИ
- *  прилёт. Подписи даты приходят готовыми со страницы — даты проекта
- *  считаются в UTC (см. lib/dates.ts), и локальные геттеры в браузере
- *  зрителя дали бы другой день. */
+ *  прилёт — либо обе сразу (`side: "both"`), когда между ними в ленте
+ *  ничего нет и страница схлопнула их в одну строку. Подписи даты
+ *  приходят готовыми со страницы — даты проекта считаются в UTC (см.
+ *  lib/dates.ts), и локальные геттеры в браузере зрителя дали бы другой
+ *  день. */
 export type BookingLegData = {
   key: string;
   bookingId: string;
   kind: "HOTEL" | "FLIGHT";
-  side: "start" | "end";
+  /** "both" — схлопнутая строка: дата-колонка показывает начало, чип
+   *  времени — «10:20 → 21:40», вторая дата живёт в spanLabel. */
+  side: "start" | "end" | "both";
   /** Номер цвета линии стоянки в палитре --stay-line-1..N — тем же
    *  цветом красится иконка, чтобы линия читалась принадлежащей своим
    *  карточкам заезда/выезда. null — линии у брони нет (перелёт или не
@@ -28,12 +32,15 @@ export type BookingLegData = {
   dayLabel: string;
   monthLabel: string;
   weekdayLabel: string;
-  /** null — время не указано (в базе ровно 00:00). */
+  /** null — время не указано (в базе ровно 00:00). У схлопнутой строки —
+   *  оба времени через стрелку («10:20 → 21:40», «14:00 →», «→ 12:00»). */
   timeLabel: string | null;
   name: string;
   /** Адрес отеля или маршрут перелёта «Москва → Бангкок». */
   place: string | null;
-  /** «до 5 сен · 6 ночей» у заезда, «с 29 авг» у выезда. */
+  /** «до 5 сен · 6 ночей» у заезда, «с 29 авг» у выезда; у схлопнутой
+   *  строки — «12–15 мар · 3 ночи» у отеля и «прилёт 11 мар» у перелёта
+   *  через ночь (в один день — ничего). */
   spanLabel: string | null;
   note: string | null;
   url: string | null;
@@ -58,13 +65,18 @@ export default function TripBookingLeg({
   const isFlight = leg.kind === "FLIGHT";
   const isStart = leg.side === "start";
 
-  const label = isFlight
-    ? isStart
-      ? t.trips.bookings.departure
-      : t.trips.bookings.arrival
-    : isStart
-      ? t.trips.bookings.checkIn
-      : t.trips.bookings.checkOut;
+  const label =
+    leg.side === "both"
+      ? isFlight
+        ? t.trips.bookings.flightSpan
+        : t.trips.bookings.staySpan
+      : isFlight
+        ? isStart
+          ? t.trips.bookings.departure
+          : t.trips.bookings.arrival
+        : isStart
+          ? t.trips.bookings.checkIn
+          : t.trips.bookings.checkOut;
 
   const subline = [leg.place, leg.spanLabel, leg.note].filter(Boolean).join(" · ");
 

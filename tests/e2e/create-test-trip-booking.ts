@@ -62,6 +62,16 @@ async function main() {
           endAt: new Date(start.getTime() + 3 * DAY + 12 * 3600_000),
         },
       },
+      // Запись МЕЖДУ заездом и выездом: без неё лента схлопнула бы обе
+      // стороны брони в одну строку (см. docs/features/trips.md), и
+      // маркеров stay-open / stay-close в разметке не было бы вовсе.
+      personalEvents: {
+        create: {
+          title: "Dinner",
+          startsAt: new Date(start.getTime() + DAY + 19 * 3600_000),
+          createdById: owner.id,
+        },
+      },
     },
     select: { id: true },
   });

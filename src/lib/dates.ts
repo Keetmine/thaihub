@@ -124,6 +124,17 @@ export function formatShortDate(d: Date, locale: Locale = "ru"): string {
   return `${d.getUTCDate()} ${DATE_MONTHS[locale][d.getUTCMonth()]}`;
 }
 
+/** «12–15 мар» / "12–15 Mar" — диапазон двумя короткими датами; на
+ *  стыке месяцев «28 февр – 2 мар», один и тот же день — просто дата.
+ *  Считается в UTC, как всё в этом модуле. */
+export function formatShortDateRange(from: Date, to: Date, locale: Locale = "ru"): string {
+  if (dateKey(from) === dateKey(to)) return formatShortDate(from, locale);
+  if (from.getUTCFullYear() === to.getUTCFullYear() && from.getUTCMonth() === to.getUTCMonth()) {
+    return `${from.getUTCDate()}–${to.getUTCDate()} ${DATE_MONTHS[locale][from.getUTCMonth()]}`;
+  }
+  return `${formatShortDate(from, locale)} – ${formatShortDate(to, locale)}`;
+}
+
 /** «24 окт 2025» / «24 Oct 2025» — для подписей, где важен год.
  *  Отзывы и комментарии живут годами, и «24 окт» там врёт: непонятно,
  *  этого года или позапрошлого. Считается в UTC, как остальные даты в

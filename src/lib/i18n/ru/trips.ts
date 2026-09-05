@@ -260,6 +260,9 @@ export const trips: Dict["trips"] = {
             if (last >= 2 && last <= 4) return `${n} ночи`;
             return `${n} ночей`;
         },
+        flightSpan: "Перелёт",
+        staySpan: "Отель",
+        arrivesOn: (date: string) => `прилёт ${date}`,
         ticketUrl: "Ссылка на билет",
         bookingUrl: "Ссылка на бронь",
         ticketFile: "Файл билета",

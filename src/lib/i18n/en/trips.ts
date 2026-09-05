@@ -261,6 +261,12 @@ export const trips = {
         stayUntil: (date: string) => `until ${date}`,
         stayFrom: (date: string) => `from ${date}`,
         nights: (n: number) => (n === 1 ? "1 night" : `${n} nights`),
+        /** Схлопнутая строка — обе стороны брони одной записью, когда
+         *  между ними в ленте ничего нет: подпись вместо «Check-in» /
+         *  «Departure» и пометка о прилёте другим днём. */
+        flightSpan: "Flight",
+        staySpan: "Hotel",
+        arrivesOn: (date: string) => `arrives ${date}`,
         ticketUrl: "Ticket link",
         bookingUrl: "Booking link",
         ticketFile: "Ticket file",
