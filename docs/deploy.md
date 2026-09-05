@@ -174,6 +174,31 @@ docker compose exec app npx tsx scripts/mdl-sync-performers.ts
 означает их потерю. Обратное направление (прод → локаль) наоборот
 нормально и желательно: разработка идёт на свежей копии прод-базы.
 
+## Свежая копия прода на локали
+
+`scripts/pull-prod-db.sh` снимает `pg_dump` с прод-контейнера `db` по SSH
+и заливает его в локальную базу из `DATABASE_URL` (`.env`), **дропая её
+целиком** — направление только прод → локаль. Хост по умолчанию
+`root@<A-запись myblhub.com>`, путь `/opt/myblhub`; переопределяются
+через `PROD_HOST` / `PROD_PATH`. `PULL_UPLOADS=1` дополнительно
+rsync-ает `public/uploads` (~850 МБ). После заливки скрипт гонит
+`prisma migrate deploy` — если локальный код обогнал прод, новые
+миграции накатятся поверх дампа.
+
+```bash
+scripts/pull-prod-db.sh
+PULL_UPLOADS=1 scripts/pull-prod-db.sh
+```
+
+Пароли в дампе — scrypt-хеши, на локали ими не войти. Чтобы попасть в
+админку, `scripts/set-admin-password.ts` ставит пользователю новый
+пароль и `isAdmin` (создаёт, если такого нет; в production отказывается
+работать):
+
+```bash
+npx tsx scripts/set-admin-password.ts keetmine@gmail.com <пароль>
+```
+
 ## Место на диске
 
 19.08.2026 сайт лёг с ENOSPC: кеш сборок Docker дорос до 37 ГБ и занял
