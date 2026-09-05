@@ -59,12 +59,25 @@ export default function AchievementBadge({
     return (
       <span
         className={`achv-medal-icon ${stateClass}`}
-        title={label}
         aria-label={label}
         role="img"
         tabIndex={0}
       >
         <AchievementCoin emoji={emoji} />
+        {/* Кастомный тултип вместо браузерного title (правка владельца:
+            тот появляется с секундной задержкой и выглядит чужеродно).
+            Разметкой, а не data-tooltip: у ачивки две строки разного
+            веса — название и описание. aria-hidden: текст уже целиком
+            в aria-label самой медали. */}
+        <span className="achv-tip" aria-hidden>
+          <span className="achv-tip-title">{title}</span>
+          {hint && <span className="achv-tip-hint">{hint}</span>}
+          {unlocked && unlockedAt && (
+            <span className="achv-tip-date">
+              {formatShortDate(unlockedAt, locale)} {unlockedAt.getFullYear()}
+            </span>
+          )}
+        </span>
       </span>
     );
   }

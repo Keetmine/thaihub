@@ -1105,6 +1105,7 @@ export default async function UserProfilePage({
                   emoji={b.emoji}
                   title={b.title}
                   hint={b.hint}
+                  unlockedAt={b.unlockedAt}
                   iconOnly
                   locale={locale}
                 />
