@@ -7,11 +7,15 @@ export const metadata = { title: "Дашборд" };
 
 export const dynamic = "force-dynamic";
 
+/** Сколько последних записей показывать в списках «недавно добавленные». */
+const RECENT_LIMIT = 5;
+
 // Админ-дашборд (Г10): состояние продукта одним экраном — пользователи и
 // подписки, объём каталога, свежие регистрации и события.
 export default async function AdminStatsPage() {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const [
     usersTotal,
@@ -25,6 +29,12 @@ export default async function AdminStatsPage() {
     tripsTotal,
     recentUsers,
     recentEvents,
+    dramasThisWeek,
+    dramasThisMonth,
+    performersThisWeek,
+    performersThisMonth,
+    recentDramas,
+    recentPerformers,
     newFeedback,
     openReports,
     failedImports,
@@ -46,6 +56,24 @@ export default async function AdminStatsPage() {
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } },
+    }),
+    // Пополнение каталога: сериалы и исполнители появляются в основном из
+    // импортов и парсеров (MDL, TMDB, вахта новинок), поэтому «что
+    // добавилось за неделю/месяц» — быстрый способ увидеть, что они живы,
+    // а список последних — проверить, что заехало не мусор.
+    prisma.drama.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.drama.count({ where: { createdAt: { gte: monthAgo } } }),
+    prisma.performer.count({ where: { createdAt: { gte: weekAgo } } }),
+    prisma.performer.count({ where: { createdAt: { gte: monthAgo } } }),
+    prisma.drama.findMany({
+      orderBy: { createdAt: "desc" },
+      take: RECENT_LIMIT,
+      select: { id: true, title: true, createdAt: true },
+    }),
+    prisma.performer.findMany({
+      orderBy: { createdAt: "desc" },
+      take: RECENT_LIMIT,
+      select: { id: true, name: true, createdAt: true },
     }),
     // «Требует внимания»: очереди, о которых иначе узнаёшь случайно.
     prisma.feedback.count({ where: { status: "NEW" } }),
@@ -124,6 +152,16 @@ export default async function AdminStatsPage() {
         <StatTile value={tripsTotal} label="поездок" />
       </div>
 
+      <h2 className="section-heading mb-2">
+        Новое в каталоге
+      </h2>
+      <div className="d-flex flex-wrap gap-2 mb-4">
+        <StatTile value={dramasThisWeek} label="сериалов за 7 дней" href="/admin/dramas" />
+        <StatTile value={dramasThisMonth} label="сериалов за 30 дней" href="/admin/dramas" />
+        <StatTile value={performersThisWeek} label="исполнителей за 7 дней" href="/admin/performers" />
+        <StatTile value={performersThisMonth} label="исполнителей за 30 дней" href="/admin/performers" />
+      </div>
+
       <div className="row g-4">
         <div className="col-12 col-md-6">
           <h2 className="section-heading mb-2">
@@ -165,7 +203,60 @@ export default async function AdminStatsPage() {
             ))}
           </div>
         </div>
+        <div className="col-12 col-md-6">
+          <h2 className="section-heading mb-2">
+            Недавно добавленные сериалы
+          </h2>
+          <RecentList
+            items={recentDramas.map((d) => ({
+              id: d.id,
+              title: d.title,
+              href: `/admin/dramas/${d.id}/edit`,
+              createdAt: d.createdAt,
+            }))}
+          />
+        </div>
+        <div className="col-12 col-md-6">
+          <h2 className="section-heading mb-2">
+            Недавно добавленные исполнители
+          </h2>
+          <RecentList
+            items={recentPerformers.map((p) => ({
+              id: p.id,
+              title: p.name,
+              href: `/admin/performers/${p.id}/edit`,
+              createdAt: p.createdAt,
+            }))}
+          />
+        </div>
       </div>
+    </div>
+  );
+}
+
+/** Список «недавно добавленные»: название ссылкой на карточку в админке и
+ *  дата создания справа — та же строка-surface, что у новых пользователей
+ *  и событий выше. Пустой список — фраза, а не пустое место. */
+function RecentList({
+  items,
+}: {
+  items: { id: string; title: string; href: string; createdAt: Date }[];
+}) {
+  if (items.length === 0) {
+    return <p className="small text-secondary mb-0">Пока пусто.</p>;
+  }
+  return (
+    <div className="d-flex flex-column gap-2">
+      {items.map((item) => (
+        <Link
+          key={item.id}
+          href={item.href}
+          className="surface surface-hover text-decoration-none d-flex justify-content-between gap-3 p-3"
+        >
+          <span className="text-truncate text-white">{item.title}</span>
+          <span className="small text-secondary flex-shrink-0">{formatShortDate(item.createdAt)}</span>
+        </Link>
+      ))}
     </div>
   );
 }
