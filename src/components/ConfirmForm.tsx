@@ -47,7 +47,17 @@ export default function ConfirmForm({
         return;
       }
       setOpen(false);
-    } catch {
+    } catch (e) {
+      // redirect()/notFound() в экшене бросают своё исключение с digest
+      // «NEXT_REDIRECT»/«NEXT_HTTP_ERROR_FALLBACK». Это НЕ ошибка, а
+      // штатная навигация — пробрасываем дальше, чтобы её обработал Next.
+      // Иначе удаление с redirect на список показывало «не удалось»,
+      // хотя запись удалилась и переход происходил (жалоба владельца).
+      const digest =
+        typeof e === "object" && e !== null && "digest" in e ? String(e.digest) : "";
+      if (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_HTTP_ERROR_FALLBACK")) {
+        throw e;
+      }
       setError(t.ui.actionFailed);
     } finally {
       setIsSubmitting(false);
