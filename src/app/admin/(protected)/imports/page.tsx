@@ -62,8 +62,8 @@ const KIND_LABELS: Record<string, string> = {
   "event-drafts": "Черновики событий: одобрение",
   "gmmtv-mascots": "GMMTV: маскоты с вики",
   "musicfestival-crawl": "musicfestival.in.th: фестивали",
-  "tpop-agency": "tpop.fandom: агентство",
-  "tpop-artist": "tpop.fandom: артист",
+  "tpop-agency": "fandom.com: агентство",
+  "tpop-artist": "fandom.com: артист",
 };
 
 // Куда вести из ленты «последнего спарсенного» — на админ-редактирование.
@@ -485,18 +485,19 @@ export default async function AdminImportsPage({
           <div className="row g-3 mb-4">
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">tpop.fandom: импорт артиста</h2>
+                <h2 className="section-heading mb-2">Fandom: импорт артиста</h2>
                 <p className="small text-secondary mb-3">
-                  Страница артиста или группы (например,
-                  https://tpop.fandom.com/wiki/TYTAN): создаст/обновит с полным
-                  профилем, дискографией и концертами; агентство возьмётся из поля
-                  Agency его страницы.
+                  Страница артиста или группы на ЛЮБОЙ вики Fandom
+                  (tpop.fandom.com/wiki/TYTAN, thiphop.fandom.com/wiki/1MILL и
+                  так далее — движок и вёрстка у них одинаковые): создаст или
+                  обновит карточку с полным профилем, дискографией и концертами;
+                  агентство возьмётся из поля Agency его страницы.
                 </p>
                 <form action={runTpopArtistImport} className="d-flex gap-2">
                   <input
                     name="url"
                     required
-                    placeholder="https://tpop.fandom.com/wiki/…"
+                    placeholder="https://<вики>.fandom.com/wiki/…"
                     className="form-control"
                   />
                   <SubmitButton

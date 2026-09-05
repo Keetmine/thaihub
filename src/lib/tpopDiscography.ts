@@ -1,4 +1,8 @@
-import { parseTpopPageTitle } from "@/lib/tpopFandom";
+import {
+  DEFAULT_FANDOM_HOST,
+  fandomApiBase,
+  parseFandomTarget,
+} from "@/lib/fandomWiki";
 
 // Парсер секции ==Discography== статьи tpop.fandom.com (см.
 // tpopFandom.ts про доступ через api.php). В отличие от остального
@@ -13,7 +17,6 @@ import { parseTpopPageTitle } from "@/lib/tpopFandom";
 // в parseDiscographyLine).
 
 const UA = "MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
-const API_BASE = "https://tpop.fandom.com/api.php";
 
 export type TpopAlbumEntry = {
   title: string;
@@ -35,8 +38,8 @@ export type TpopDiscography = {
   songs: TpopSongEntry[];
 };
 
-async function fetchWikitext(pageTitle: string): Promise<string> {
-  const url = `${API_BASE}?action=parse&page=${encodeURIComponent(pageTitle)}&prop=wikitext&format=json`;
+async function fetchWikitext(pageTitle: string, host: string): Promise<string> {
+  const url = `${fandomApiBase(host)}?action=parse&page=${encodeURIComponent(pageTitle)}&prop=wikitext&format=json`;
   const res = await fetch(url, { headers: { "User-Agent": UA } });
   if (!res.ok) throw new Error(`tpop.fandom.com ответил ${res.status}`);
   const data = (await res.json()) as {
@@ -49,8 +52,11 @@ async function fetchWikitext(pageTitle: string): Promise<string> {
 }
 
 /** Главная картинка вики-статьи (обложка альбома) через prop=pageimages. */
-export async function fetchTpopPageImage(pageTitle: string): Promise<string | null> {
-  const url = `${API_BASE}?action=query&prop=pageimages&piprop=original&titles=${encodeURIComponent(pageTitle)}&format=json`;
+export async function fetchTpopPageImage(
+  pageTitle: string,
+  host: string = DEFAULT_FANDOM_HOST,
+): Promise<string | null> {
+  const url = `${fandomApiBase(host)}?action=query&prop=pageimages&piprop=original&titles=${encodeURIComponent(pageTitle)}&format=json`;
   const res = await fetch(url, { headers: { "User-Agent": UA } });
   if (!res.ok) return null;
   const data = (await res.json()) as {
@@ -141,9 +147,12 @@ function classifySection(heading: string): "ALBUM" | "EP" | "SONG" | null {
   return null;
 }
 
-export async function fetchTpopDiscography(pageTitleOrUrl: string): Promise<TpopDiscography> {
-  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
-  const wikitext = await fetchWikitext(pageTitle);
+export async function fetchTpopDiscography(
+  pageTitleOrUrl: string,
+  fallbackHost: string = DEFAULT_FANDOM_HOST,
+): Promise<TpopDiscography> {
+  const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
+  const wikitext = await fetchWikitext(pageTitle, host);
 
   // Секция ==Discography== до следующего заголовка второго уровня.
   const sectionMatch = wikitext.match(/^==\s*Discography\s*==\s*$([\s\S]*?)(?=^==[^=]|(?![\s\S]))/m);
@@ -184,8 +193,8 @@ export async function fetchTpopDiscography(pageTitleOrUrl: string): Promise<Tpop
 }
 
 /** Прямой URL файла викии по его имени («NuNew_Kata_promotional_image.png»). */
-async function fetchTpopFileUrl(fileName: string): Promise<string | null> {
-  const url = `${API_BASE}?action=query&titles=${encodeURIComponent(`File:${fileName}`)}&prop=imageinfo&iiprop=url&format=json`;
+async function fetchTpopFileUrl(fileName: string, host: string): Promise<string | null> {
+  const url = `${fandomApiBase(host)}?action=query&titles=${encodeURIComponent(`File:${fileName}`)}&prop=imageinfo&iiprop=url&format=json`;
   const res = await fetch(url, { headers: { "User-Agent": UA } });
   if (!res.ok) return null;
   const data = (await res.json()) as {
@@ -207,8 +216,9 @@ function normForMatch(s: string): string {
 export async function fetchTpopAlbumImageFromArtistPage(
   artistPageTitle: string,
   albumTitle: string,
+  host: string = DEFAULT_FANDOM_HOST,
 ): Promise<string | null> {
-  const url = `${API_BASE}?action=parse&page=${encodeURIComponent(artistPageTitle)}&prop=images&format=json`;
+  const url = `${fandomApiBase(host)}?action=parse&page=${encodeURIComponent(artistPageTitle)}&prop=images&format=json`;
   const res = await fetch(url, { headers: { "User-Agent": UA } });
   if (!res.ok) return null;
   const data = (await res.json()) as { parse?: { images?: string[] } };
@@ -216,5 +226,5 @@ export async function fetchTpopAlbumImageFromArtistPage(
   const needle = normForMatch(albumTitle);
   if (needle.length < 3) return null;
   const hit = files.find((f) => normForMatch(f).includes(needle));
-  return hit ? fetchTpopFileUrl(hit) : null;
+  return hit ? fetchTpopFileUrl(hit, host) : null;
 }

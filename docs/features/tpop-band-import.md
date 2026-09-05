@@ -1,10 +1,37 @@
-# tpop.fandom.com band importer
+# Fandom band/artist importer (tpop, thiphop и любые другие вики)
 
 [tpop.fandom.com](https://tpop.fandom.com/) is a Fandom wiki covering
 Thai idol groups (e.g. [BUS](https://tpop.fandom.com/wiki/BUS),
 [DICE](https://tpop.fandom.com/wiki/DICE)) — a much better source for
 this content than TMDB/Wikipedia, neither of which reliably tracks
-idol-group lineups, birth names, or labels. Fandom wikis are CC BY-SA
+idol-group lineups, birth names, or labels.
+
+**Вики — любая на fandom.com** (правка владельца 2026-09-06). Импорт
+начинался с одной tpop, и хост был зашит константой в трёх модулях, но
+у Fandom тысячи вики на поддоменах, а движок и вёрстка у всех
+одинаковые: тот же MediaWiki с `action=parse` и та же
+portable-infobox. Сверено на `tpop.fandom.com/wiki/BUS` и
+`thiphop.fandom.com/wiki/1MILL` — совпадают `pi-item`,
+`pi-data-label`, `pi-data-value`, `pi-image`, `wikitable`,
+`mw-headline`; разница только в наборе подписей полей, а нужные нам
+(Birth name / Birth date / Birth place / Agency / Other name(s)) есть
+на обеих. Теперь хост берётся ИЗ ССЫЛКИ (`src/lib/fandomWiki.ts`:
+`parseFandomTarget` возвращает `{ host, title }`), проверяется по
+`^[a-z0-9-]+\.fandom\.com$` (это ещё и защита от SSRF — по адресу из
+формы ходим мы сами) и протягивается через весь прогон: ссылки внутри
+статьи относительные, и дочерние страницы (участники группы,
+альбомы, концерты) обязаны браться с ТОЙ ЖЕ вики. Голое название
+статьи без адреса по-прежнему означает tpop — `DEFAULT_FANDOM_HOST`.
+
+Живая проверка на thiphop: `1MILL` завёлся с настоящим именем
+(Anawat Tripong), датой и местом рождения, фото, агентством
+(Def Jam Thailand), 8 альбомами и 58 песнями; `sourceUrl` карточки
+указывает на thiphop, а не на tpop.
+
+Побочно поймано на том же прогоне: поле «Other name(s)» бывает
+СПИСКОМ («dek1millionbaht» + «1MILL»), и склейка давала имя-мусор
+«dek1millionbaht, 1MILL». Из нескольких значений берём совпадающее с
+названием статьи (каноничное имя вики), иначе первое. Fandom wikis are CC BY-SA
 licensed, same as Wikipedia, and run the same MediaWiki software with an
 official `action=parse` API — see
 [wikipedia-agency-import.md](wikipedia-agency-import.md), whose shared

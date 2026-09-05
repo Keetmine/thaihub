@@ -2,9 +2,17 @@ import * as cheerio from "cheerio";
 import type { CheerioAPI, Cheerio } from "cheerio";
 import type { AnyNode } from "domhandler";
 import { fetchMediaWikiParsedHtml, textWithBreaks } from "@/lib/mediawikiParse";
+import {
+  DEFAULT_FANDOM_HOST,
+  FANDOM_UA,
+  fandomApiBase,
+  parseFandomTarget,
+} from "@/lib/fandomWiki";
 
-// Scraper for tpop.fandom.com band/member articles (e.g.
-// tpop.fandom.com/wiki/BUS) — Fandom wikis are CC BY-SA licensed, same
+// Scraper for Fandom band/member articles (e.g. tpop.fandom.com/wiki/BUS,
+// thiphop.fandom.com/wiki/1MILL) — вики берётся из самой ссылки, движок
+// и вёрстка у всех поддоменов одинаковые (см. lib/fandomWiki.ts).
+// Fandom wikis are CC BY-SA licensed, same
 // as Wikipedia (see wikipediaAgency.ts), and run the same MediaWiki
 // software with an official `action=parse` API, so this reuses the same
 // shared parsing helpers rather than re-scraping raw HTML. Pure
@@ -16,23 +24,13 @@ import { fetchMediaWikiParsedHtml, textWithBreaks } from "@/lib/mediawikiParse";
 // for an API endpoint (as opposed to working around the challenge on
 // the rendered page, which this does not attempt).
 
-const UA = "MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
-const API_BASE = "https://tpop.fandom.com/api.php";
+const UA = FANDOM_UA;
 
-/** Extracts the page title from either a bare title or a full
- *  tpop.fandom.com/wiki/{Title} URL. */
+/** Название статьи из адреса или голого названия. Хост при этом
+ *  теряется — там, где он важен, берите `parseFandomTarget`
+ *  (src/lib/fandomWiki.ts): вики Fandom у нас теперь любая. */
 export function parseTpopPageTitle(input: string): string {
-  const trimmed = input.trim();
-  const match = trimmed.match(/\/wiki\/([^?#]+)/);
-  const raw = match ? match[1] : trimmed;
-  // Названия вида «100%» — голый процент не декодируется (URI malformed).
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(raw);
-  } catch {
-    decoded = raw;
-  }
-  return decoded.replace(/_/g, " ");
+  return parseFandomTarget(input).title;
 }
 
 function infoboxValue($: CheerioAPI, infobox: Cheerio<AnyNode>, label: string): Cheerio<AnyNode> | null {
@@ -114,9 +112,14 @@ export type TpopBandData = {
   members: TpopBandMemberLink[];
 };
 
-export async function fetchTpopBandPage(pageTitleOrUrl: string): Promise<TpopBandData> {
-  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
-  const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
+export async function fetchTpopBandPage(
+  pageTitleOrUrl: string,
+  /** Вики, с которой берём статью. Относительные ссылки внутри статьи
+   *  хоста не несут — его передаёт вызывающий. */
+  fallbackHost: string = DEFAULT_FANDOM_HOST,
+): Promise<TpopBandData> {
+  const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
+  const html = await fetchMediaWikiParsedHtml(fandomApiBase(host), pageTitle, UA);
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
 
@@ -169,14 +172,29 @@ export type TpopMemberData = {
   photoUrl: string | null;
 };
 
-export async function fetchTpopMemberPage(pageTitleOrUrl: string): Promise<TpopMemberData> {
-  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
-  const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
+export async function fetchTpopMemberPage(
+  pageTitleOrUrl: string,
+  fallbackHost: string = DEFAULT_FANDOM_HOST,
+): Promise<TpopMemberData> {
+  const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
+  const html = await fetchMediaWikiParsedHtml(fandomApiBase(host), pageTitle, UA);
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
 
+  // «Other name(s)» бывает СПИСКОМ: у 1MILL на thiphop.fandom.com там
+  // «dek1millionbaht» и «1MILL» — склеенные, они давали имя-мусор
+  // «dek1millionbaht, 1MILL». Из нескольких значений берём то, что
+  // совпадает с названием статьи (это каноничное имя вики), иначе
+  // первое; одиночное значение работает как раньше.
   const otherName = infoboxText($, infobox, "Other name(s)");
-  const stageName = (otherName ? stripParenthetical(otherName) : null) ?? pageTitle;
+  const otherNames = (otherName ?? "")
+    .split(/\s*,\s*|\n+/)
+    .map((n) => stripParenthetical(n.trim()))
+    .filter((n): n is string => !!n);
+  const stageName =
+    otherNames.find((n) => n.toLowerCase() === pageTitle.toLowerCase()) ??
+    otherNames[0] ??
+    pageTitle;
 
   // A "Legal name" (current legal name, after any change) takes priority
   // over "Birth name" (name at birth) when a page has both — hit for

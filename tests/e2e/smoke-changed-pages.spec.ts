@@ -30,7 +30,9 @@ test.describe("страницы после перестройки импорто
     // таб-бара: «События» и прочие названия есть и в сайдбаре.
     const tabBar = page.locator(".tab-bar");
     await tabBar.getByRole("link", { name: /Музыка и артисты/ }).click();
-    await expect(page.getByText("tpop.fandom: импорт артиста")).toBeVisible();
+    // Заголовок карточки сменился на «Fandom», когда импорт научился
+    // работать с любой вики fandom.com (правка владельца 2026-09-06).
+    await expect(page.getByText("Fandom: импорт артиста")).toBeVisible();
     await expect(page.getByText("YouTube Music: дискография")).toBeVisible();
 
     // Журналы — на вкладке «Журнал»: «спарсенное» открыто по умолчанию,

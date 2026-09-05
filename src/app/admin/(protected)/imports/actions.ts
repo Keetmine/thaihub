@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireCatalogEditor } from "@/lib/auth";
 import { importTpopArtist } from "@/lib/tpopAgencyImport";
+import { parseFandomTarget } from "@/lib/fandomWiki";
 import { importYtmForPerformer } from "@/lib/youtubeMusicImport";
 import { logImportRun, isImportCancelledError } from "@/lib/importRun";
 import { resolveChannelInput, parseChannelHandle } from "@/lib/youtubeMusic";
@@ -21,15 +22,18 @@ import { importMdlRequestsBatch, summarizeMdlRequestsBatch } from "./mdlRequests
 import { progressWriter } from "./progressWriter";
 
 
-/** Одиночный импорт артиста/группы с tpop.fandom (та же фоновая схема
- *  с прогрессом в run.summary, что и у агентского импорта). */
+/** Одиночный импорт артиста/группы с вики Fandom — любой поддомен
+ *  (tpop, thiphop и прочие: движок и вёрстка у них одинаковые, см.
+ *  lib/fandomWiki.ts). Та же фоновая схема с прогрессом в run.summary,
+ *  что и у агентского импорта. */
 export async function runTpopArtistImport(formData: FormData): Promise<void> {
   await requireCatalogEditor();
   const url = String(formData.get("url") ?? "").trim();
   if (!url) throw new Error("Укажите ссылку на страницу артиста");
-  if (!/tpop\.fandom\.com/.test(url) && /\//.test(url)) {
-    throw new Error("Ожидается ссылка вида https://tpop.fandom.com/wiki/…");
-  }
+  // Разбор адреса заодно проверяет хост (только *.fandom.com — защита
+  // от SSRF: по этой ссылке мы ходим сами) и бросает человеческую
+  // ошибку до ухода в фон.
+  if (/\//.test(url)) parseFandomTarget(url);
 
   const run = await prisma.importRun.create({
     data: { kind: "tpop-artist", summary: "Запускается…" },

@@ -8,7 +8,13 @@ import {
   parseTableGrid,
   textWithBreaks,
 } from "@/lib/mediawikiParse";
-import { parseTpopPageTitle } from "@/lib/tpopFandom";
+import {
+  DEFAULT_FANDOM_HOST,
+  FANDOM_UA,
+  fandomApiBase,
+  fandomPageUrl,
+  parseFandomTarget,
+} from "@/lib/fandomWiki";
 
 // Расширенный профиль артиста/группы со страницы tpop.fandom.com —
 // всё, чего не берёт базовый fetchTpopMemberPage/fetchTpopBandPage:
@@ -16,8 +22,7 @@ import { parseTpopPageTitle } from "@/lib/tpopFandom";
 // награды, факты, источники и список концертов (для сверки с событиями).
 // Чистые функции без БД, доступ — через api.php (см. tpopFandom.ts).
 
-const UA = "MyBLHubImporter/1.0 (personal fan-tracker, contact via site)";
-const API_BASE = "https://tpop.fandom.com/api.php";
+const UA = FANDOM_UA;
 
 export type TpopAwardRow = {
   year: string;
@@ -196,9 +201,12 @@ function parseReferences($: CheerioAPI): TpopReference[] {
   return out;
 }
 
-export async function fetchTpopArtistExtras(pageTitleOrUrl: string): Promise<TpopArtistExtras> {
-  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
-  const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
+export async function fetchTpopArtistExtras(
+  pageTitleOrUrl: string,
+  fallbackHost: string = DEFAULT_FANDOM_HOST,
+): Promise<TpopArtistExtras> {
+  const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
+  const html = await fetchMediaWikiParsedHtml(fandomApiBase(host), pageTitle, UA);
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
 
@@ -215,15 +223,18 @@ export async function fetchTpopArtistExtras(pageTitleOrUrl: string): Promise<Tpo
     awards: parseAwards($),
     references: parseReferences($),
     concerts: parseConcerts($),
-    sourceUrl: `https://tpop.fandom.com/wiki/${encodeURIComponent(pageTitle.replace(/ /g, "_"))}`,
+    sourceUrl: fandomPageUrl(host, pageTitle),
   };
 }
 
 /** Внешние ссылки страницы песни/альбома (официальный API
  *  action=parse&prop=externallinks) — берём первую «площадочную». */
-export async function fetchTpopPageStreamingLink(pageTitleOrUrl: string): Promise<string | null> {
-  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
-  const url = `${API_BASE}?action=parse&page=${encodeURIComponent(pageTitle)}&format=json&prop=externallinks`;
+export async function fetchTpopPageStreamingLink(
+  pageTitleOrUrl: string,
+  fallbackHost: string = DEFAULT_FANDOM_HOST,
+): Promise<string | null> {
+  const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
+  const url = `${fandomApiBase(host)}?action=parse&page=${encodeURIComponent(pageTitle)}&format=json&prop=externallinks`;
   const res = await fetch(url, { headers: { "User-Agent": UA } });
   if (!res.ok) return null;
   const data = (await res.json()) as { parse?: { externallinks?: string[] } };
@@ -269,9 +280,12 @@ function sectionArtistLinks($: CheerioAPI, headingText: string): { name: string;
 }
 
 /** Страница агентства: название, лого, списки артистов по секциям. */
-export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopAgencyPage> {
-  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
-  const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
+export async function fetchTpopAgencyPage(
+  pageTitleOrUrl: string,
+  fallbackHost: string = DEFAULT_FANDOM_HOST,
+): Promise<TpopAgencyPage> {
+  const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
+  const html = await fetchMediaWikiParsedHtml(fandomApiBase(host), pageTitle, UA);
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
   const photoRaw = infobox.find(".pi-image img").first().attr("src") ?? null;
@@ -329,7 +343,7 @@ export async function fetchTpopAgencyPage(pageTitleOrUrl: string): Promise<TpopA
     soloists,
     former: sectionArtistLinks($, "Former artists"),
     references: parseReferences($),
-    sourceUrl: `https://tpop.fandom.com/wiki/${encodeURIComponent(pageTitle.replace(/ /g, "_"))}`,
+    sourceUrl: fandomPageUrl(host, pageTitle),
   };
 }
 
@@ -388,9 +402,12 @@ export function parseConcertDates(text: string): string[] {
 }
 
 /** Вики-страница концерта: инфобокс name/image/artist/date/venue. */
-export async function fetchTpopConcertPage(pageTitleOrUrl: string): Promise<TpopConcertPage> {
-  const pageTitle = parseTpopPageTitle(pageTitleOrUrl);
-  const html = await fetchMediaWikiParsedHtml(API_BASE, pageTitle, UA);
+export async function fetchTpopConcertPage(
+  pageTitleOrUrl: string,
+  fallbackHost: string = DEFAULT_FANDOM_HOST,
+): Promise<TpopConcertPage> {
+  const { host, title: pageTitle } = parseFandomTarget(pageTitleOrUrl, fallbackHost);
+  const html = await fetchMediaWikiParsedHtml(fandomApiBase(host), pageTitle, UA);
   const $ = cheerio.load(html);
   const infobox = $(".portable-infobox").first();
   const photoRaw2 = infobox.find(".pi-image img").first().attr("src") ?? null;

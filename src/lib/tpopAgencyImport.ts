@@ -7,7 +7,8 @@ import {
   fetchTpopConcertPage,
   type TpopConcertEntry,
 } from "@/lib/tpopArtistExtras";
-import { fetchTpopBandPage, fetchTpopMemberPage, parseTpopPageTitle } from "@/lib/tpopFandom";
+import { fetchTpopBandPage, fetchTpopMemberPage } from "@/lib/tpopFandom";
+import { DEFAULT_FANDOM_HOST, fandomPageUrl, parseFandomTarget } from "@/lib/fandomWiki";
 import { importTpopBand } from "@/lib/tpopFandomImport";
 import {
   fetchTpopDiscography,
@@ -45,14 +46,21 @@ type Ctx = {
   runId: string | null;
   log: (m: string) => void;
   summary: TpopAgencyImportSummary;
+  /** Вики, с которой идёт прогон: ссылки внутри статей относительные,
+   *  и все дочерние страницы надо брать с ТОЙ ЖЕ вики, а не с той, с
+   *  которой импорт начинался исторически (tpop). */
+  host: string;
 };
 
 /** Дозаполняет пустые поля агентства (лого, описание) с его страницы на
  *  tpop.fandom, если она существует. Занятые поля не трогает. */
-export async function enrichAgencyFromTpop(agencyId: string): Promise<boolean> {
+export async function enrichAgencyFromTpop(
+  agencyId: string,
+  host: string = DEFAULT_FANDOM_HOST,
+): Promise<boolean> {
   const agency = await prisma.agency.findUnique({ where: { id: agencyId } });
   if (!agency || (agency.logoUrl && agency.description)) return false;
-  const page = await fetchTpopAgencyPage(agency.name).catch(() => null);
+  const page = await fetchTpopAgencyPage(agency.name, host).catch(() => null);
   if (!page) return false;
   const data: Record<string, unknown> = {};
   if (!agency.logoUrl && page.photoUrl) {
@@ -60,7 +68,7 @@ export async function enrichAgencyFromTpop(agencyId: string): Promise<boolean> {
   }
   if (!agency.description && page.description) data.description = page.description;
   if (!agency.sourceUrl) {
-    data.sourceUrl = `https://tpop.fandom.com/wiki/${encodeURIComponent(agency.name.replace(/ /g, "_"))}`;
+    data.sourceUrl = fandomPageUrl(host, agency.name);
   }
   if (Object.keys(data).length === 0) return false;
   await prisma.agency.update({ where: { id: agencyId }, data });
@@ -82,7 +90,7 @@ async function recordItem(
 /** Расширенный профиль поверх Performer: перезаписываем только
  *  спарсенные поля (пустые массивы не затирают вручную занесённое). */
 async function applyArtistExtras(ctx: Ctx, performerId: string, page: string): Promise<void> {
-  const extras = await fetchTpopArtistExtras(page);
+  const extras = await fetchTpopArtistExtras(page, ctx.host);
   const current = await prisma.performer.findUnique({ where: { id: performerId } });
   if (!current) return;
   await prisma.performer.update({
@@ -108,7 +116,7 @@ async function applyArtistExtras(ctx: Ctx, performerId: string, page: string): P
 async function importDiscography(ctx: Ctx, performerId: string, page: string): Promise<void> {
   let disco;
   try {
-    disco = await fetchTpopDiscography(page);
+    disco = await fetchTpopDiscography(page, ctx.host);
   } catch {
     return; // нет секции Discography — не ошибка
   }
@@ -120,13 +128,13 @@ async function importDiscography(ctx: Ctx, performerId: string, page: string): P
     let coverUrl: string | null = null;
     let url: string | null = null;
     if (album.pageTitle) {
-      coverUrl = await downloadRemoteImage(await fetchTpopPageImage(album.pageTitle), "albums");
-      url = await fetchTpopPageStreamingLink(album.pageTitle);
+      coverUrl = await downloadRemoteImage(await fetchTpopPageImage(album.pageTitle, ctx.host), "albums");
+      url = await fetchTpopPageStreamingLink(album.pageTitle, ctx.host);
     }
     if (!coverUrl) {
       // Своей страницы у сингла нет — ищем промо-файл в статье артиста.
       coverUrl = await downloadRemoteImage(
-        await fetchTpopAlbumImageFromArtistPage(page, album.title),
+        await fetchTpopAlbumImageFromArtistPage(page, album.title, ctx.host),
         "albums",
       );
     }
@@ -155,7 +163,7 @@ async function importDiscography(ctx: Ctx, performerId: string, page: string): P
   for (const song of disco.songs) {
     await checkImportCancelled(ctx.runId);
     const key = `${song.title}|${song.note ?? ""}`;
-    const url = song.pageTitle ? await fetchTpopPageStreamingLink(song.pageTitle) : null;
+    const url = song.pageTitle ? await fetchTpopPageStreamingLink(song.pageTitle, ctx.host) : null;
     const existing = byKey.get(key);
     if (existing) {
       if (url && !existing.url) {
@@ -368,7 +376,7 @@ async function importConcerts(
     // текущие — через поиск).
     try {
       const wiki = concert.wikiHref
-        ? await fetchTpopConcertPage(concert.wikiHref).catch(() => null)
+        ? await fetchTpopConcertPage(concert.wikiHref, ctx.host).catch(() => null)
         : null;
 
       let ttm: TtmEvent | null = await guessTtmEvent(wiki?.title ?? concert.title);
@@ -413,13 +421,13 @@ async function importArtist(
   agencyId: string | null,
   linkAgency: boolean,
 ): Promise<void> {
-  const page = parseTpopPageTitle(link.href);
+  const page = parseFandomTarget(link.href, ctx.host).title;
   ctx.log(`— ${link.name}`);
 
   let performerId: string | null = null;
-  const band = await fetchTpopBandPage(page).catch(() => null);
+  const band = await fetchTpopBandPage(page, ctx.host).catch(() => null);
   if (band && band.members.length > 0) {
-    const result = await importTpopBand(page, (m) => ctx.log(`  ${m}`));
+    const result = await importTpopBand(page, (m) => ctx.log(`  ${m}`), ctx.host);
     const row = await prisma.performer.findFirst({
       where: { name: { equals: band.name, mode: "insensitive" }, type: "BAND" },
     });
@@ -433,7 +441,7 @@ async function importArtist(
       await recordItem(ctx, "performer", performerId, result.bandCreated ? "created" : "updated", band.name);
     }
   } else {
-    const member = await fetchTpopMemberPage(page).catch(() => null);
+    const member = await fetchTpopMemberPage(page, ctx.host).catch(() => null);
     // Дизамбиг из заголовка статьи («Fourth (soloist)») — не имя.
     const displayName = (member?.stageName || link.name)
       .replace(/\s*\((soloist|singer|actor|rapper|group|duo)\)$/i, "")
@@ -510,9 +518,13 @@ export async function importTpopArtist(
   pageUrlOrTitle: string,
   options?: { runId?: string | null; onProgress?: (m: string) => void },
 ): Promise<TpopAgencyImportSummary> {
+  // Вики — из самой ссылки: работает любой поддомен fandom.com, а не
+  // только тот, с которого импорт начинался.
+  const { host, title: page } = parseFandomTarget(pageUrlOrTitle);
   const ctx: Ctx = {
     runId: options?.runId ?? null,
     log: options?.onProgress ?? (() => {}),
+    host,
     summary: {
       agencyName: "",
       performersCreated: 0,
@@ -524,11 +536,10 @@ export async function importTpopArtist(
       concertsNotFound: [],
     },
   };
-  const page = parseTpopPageTitle(pageUrlOrTitle);
 
   // Агентство — из личной страницы (у групп importTpopBand возьмёт Label сам).
   let agencyId: string | null = null;
-  const member = await fetchTpopMemberPage(page).catch(() => null);
+  const member = await fetchTpopMemberPage(page, ctx.host).catch(() => null);
   if (member?.agency) {
     const agency = await prisma.agency.upsert({
       where: { name: member.agency },
@@ -538,7 +549,7 @@ export async function importTpopArtist(
     agencyId = agency.id;
     ctx.summary.agencyName = agency.name;
     // описание/лого агентства с его собственной tpop-страницы (если есть)
-    if (await enrichAgencyFromTpop(agency.id)) {
+    if (await enrichAgencyFromTpop(agency.id, ctx.host)) {
       ctx.log(`  [агентство] ${agency.name}: дозаполнено с tpop`);
     }
   }
@@ -558,9 +569,11 @@ export async function importTpopAgency(
     onlyGroups?: string[];
   },
 ): Promise<TpopAgencyImportSummary> {
+  const { host } = parseFandomTarget(pageUrlOrTitle);
   const ctx: Ctx = {
     runId: options?.runId ?? null,
     log: options?.onProgress ?? (() => {}),
+    host,
     summary: {
       agencyName: "",
       performersCreated: 0,
@@ -573,7 +586,7 @@ export async function importTpopAgency(
     },
   };
 
-  const pageData = await fetchTpopAgencyPage(pageUrlOrTitle);
+  const pageData = await fetchTpopAgencyPage(pageUrlOrTitle, host);
   ctx.summary.agencyName = pageData.name;
   ctx.log(`Агентство: ${pageData.name}`);
 

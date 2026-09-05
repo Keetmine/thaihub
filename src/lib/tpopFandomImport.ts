@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { fetchTpopBandPage, fetchTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
+import { DEFAULT_FANDOM_HOST } from "@/lib/fandomWiki";
 import { addPerformerAgency } from "@/lib/performerAgency";
 import { downloadRemoteImage } from "@/lib/localImage";
 
@@ -22,6 +23,7 @@ function synthesizeBandBio(band: TpopBandData): string | null {
 async function findOrCreateBandMemberPerformer(
   memberLink: { name: string; href: string },
   fallbackAgencyId: string | null,
+  host: string,
 ): Promise<{ performerId: string; created: boolean }> {
   // «Красная» ссылка — своей страницы у участника нет: ищем/создаём по
   // имени из списка, без фетча.
@@ -43,7 +45,7 @@ async function findOrCreateBandMemberPerformer(
     return { performerId: created.id, created: true };
   }
 
-  const member = await fetchTpopMemberPage(memberLink.href);
+  const member = await fetchTpopMemberPage(memberLink.href, host);
 
   const existing = await prisma.performer.findFirst({
     where: {
@@ -121,9 +123,12 @@ export type TpopBandImportSummary = {
 export async function importTpopBand(
   pageUrlOrTitle: string,
   onProgress?: (message: string) => void,
+  /** С какой вики Fandom берём страницы. Ссылки на участников внутри
+   *  статьи относительные — хост им передаём мы. */
+  host: string = DEFAULT_FANDOM_HOST,
 ): Promise<TpopBandImportSummary> {
   const log = onProgress ?? (() => {});
-  const band = await fetchTpopBandPage(pageUrlOrTitle);
+  const band = await fetchTpopBandPage(pageUrlOrTitle, host);
   log(`Группа: ${band.name}`);
 
   const agency = band.label
@@ -167,7 +172,7 @@ export async function importTpopBand(
   let membersCreated = 0;
   let membersMatched = 0;
   for (const [i, memberLink] of band.members.entries()) {
-    const { performerId, created } = await findOrCreateBandMemberPerformer(memberLink, agency?.id ?? null);
+    const { performerId, created } = await findOrCreateBandMemberPerformer(memberLink, agency?.id ?? null, host);
     if (created) membersCreated += 1;
     else membersMatched += 1;
 
