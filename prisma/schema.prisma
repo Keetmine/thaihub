@@ -274,9 +274,23 @@ model Agency {
   dramas      Drama[]
   dramaLinks  DramaAgency[]
   favoritedBy FavoriteAgency[]
+  links       AgencyLink[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Ссылки агентства — соцсети и сайт (правка владельца 2026-09-05).
+// Та же форма, что у PerformerLink/LocationLink: свободная подпись,
+// соцсети на странице узнаются по адресу (detectSocialPlatform).
+model AgencyLink {
+  id       String @id @default(cuid())
+  agencyId String
+  agency   Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  label    String
+  url      String
+
+  @@index([agencyId])
 }
 
 // A performer<->agency association — many-to-many since a performer can

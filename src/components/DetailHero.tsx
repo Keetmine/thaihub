@@ -5,6 +5,7 @@
 export default function DetailHero({
   photoUrl,
   photoAlt,
+  photoShape = "portrait",
   title,
   subtitle,
   chips,
@@ -13,6 +14,10 @@ export default function DetailHero({
 }: {
   photoUrl?: string | null;
   photoAlt?: string;
+  /** «circle» — для логотипов (агентства): портретная карточка 3/4
+   *  режет квадратное лого по бокам (у GMMTV «GMM» превращалось в
+   *  «MM»), круг 1/1 повторяет кружок из списков и ничего не теряет. */
+  photoShape?: "portrait" | "circle";
   title: React.ReactNode;
   /** Строка под титулом (реальное имя, год, площадка…). */
   subtitle?: React.ReactNode;
@@ -34,7 +39,9 @@ export default function DetailHero({
       <div className="detail-hero-scrim" aria-hidden />
       <div className="detail-hero-content">
         {photoUrl && (
-          <div className="detail-hero-photo">
+          <div
+            className={`detail-hero-photo ${photoShape === "circle" ? "detail-hero-photo--circle" : ""}`}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoUrl} alt={photoAlt ?? ""} loading="eager" decoding="async" />
           </div>

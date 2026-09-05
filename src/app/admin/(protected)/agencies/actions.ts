@@ -10,6 +10,22 @@ function getIds(formData: FormData, key: string): string[] {
   return Array.from(new Set(formData.getAll(key).map(String).filter(Boolean)));
 }
 
+/** Ссылки агентства из формы — тот же разбор, что у исполнителей:
+ *  строки без адреса пропускаем, пустая подпись подменяется адресом
+ *  (на странице такая ссылка всё равно станет иконкой соцсети). */
+function getLinks(formData: FormData): { label: string; url: string }[] {
+  const labels = formData.getAll("linkLabel").map(String);
+  const urls = formData.getAll("linkUrl").map(String);
+  const links: { label: string; url: string }[] = [];
+  for (let i = 0; i < Math.max(labels.length, urls.length); i++) {
+    const label = (labels[i] ?? "").trim();
+    const url = (urls[i] ?? "").trim();
+    if (!url) continue;
+    links.push({ label: label || url, url });
+  }
+  return links;
+}
+
 function isUniqueNameError(error: unknown): boolean {
   return (
     !!error &&
@@ -63,9 +79,15 @@ export async function createAgency(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const performerIds = getIds(formData, "performerIds");
   const dramaIds = getIds(formData, "dramaIds");
+  const links = getLinks(formData);
 
   const agency = await createAgencyRecord(name, logoUrl, description);
 
+  if (links.length > 0) {
+    await prisma.agencyLink.createMany({
+      data: links.map((l) => ({ ...l, agencyId: agency.id })),
+    });
+  }
   if (performerIds.length > 0) {
     await prisma.performerAgency.createMany({
       data: performerIds.map((performerId) => ({ performerId, agencyId: agency.id })),
@@ -98,6 +120,7 @@ export async function updateAgency(id: string, formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const performerIds = getIds(formData, "performerIds");
   const dramaIds = getIds(formData, "dramaIds");
+  const links = getLinks(formData);
 
   if (!name) throw new Error("Укажите название агентства");
 
@@ -125,6 +148,16 @@ export async function updateAgency(id: string, formData: FormData) {
             prisma.drama.updateMany({
               where: { id: { in: dramaIds } },
               data: { agencyId: id },
+            }),
+          ]
+        : []),
+      // Ссылки, как и состав, целиком описаны формой: снести и
+      // пересоздать проще и надёжнее, чем вычислять диф по строкам.
+      prisma.agencyLink.deleteMany({ where: { agencyId: id } }),
+      ...(links.length > 0
+        ? [
+            prisma.agencyLink.createMany({
+              data: links.map((l) => ({ ...l, agencyId: id })),
             }),
           ]
         : []),

@@ -29,6 +29,7 @@ export default async function EditAgencyPage({
         select: { performer: { select: { id: true, name: true, photoUrl: true } } },
       },
       dramas: { select: { id: true, title: true, posterUrl: true } },
+      links: { select: { label: true, url: true } },
     },
   });
 
@@ -69,6 +70,7 @@ export default async function EditAgencyPage({
           dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
           defaultPerformerIds={performers.map((p) => p.id)}
           defaultDramaIds={agency.dramas.map((d) => d.id)}
+          defaultLinks={agency.links}
           defaultValues={{
             name: agency.name,
             logoUrl: agency.logoUrl ?? "",

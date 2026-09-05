@@ -15,7 +15,9 @@ copy — read the schema file for exact field types/nullability.
   dramas/pairings, only their members do.
 - **`Agency`** — a talent/management agency (or, for `Drama`, a
   production/distribution studio — see below). Has a roster
-  (`PerformerAgency[]`, many-to-many).
+  (`PerformerAgency[]`, many-to-many) and arbitrary `AgencyLink`s
+  (label+url, same shape as `LocationLink` — socials render as icons on
+  the public page).
 - **`PerformerAgency`** — join table, performer ↔ agency. Many-to-many
   because a performer can be signed to more than one at once — a
   co-produced drama's cast may formally belong to a different studio

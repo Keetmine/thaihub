@@ -667,6 +667,17 @@ redirects there; the «Агентства» tab in `AdminPerformerTabs.tsx` is n
 a plain link to `/admin/agencies`. The public site still consolidates
 agencies under `/artists?view=agencies`.
 
+**Agency links** (`AgencyLink`, same shape as `LocationLink`): free-form
+label+url rows in `AgencyForm.tsx`'s «Ссылки» section (`linkLabel`/
+`linkUrl` arrays; saving clears and recreates the agency's rows, same as
+the roster). The public agency page splits them like the performer page:
+URLs recognized by `detectSocialPlatform` render as `SocialLinkIcons`,
+the rest as labeled buttons — both in the `DetailHero` footer. The
+agency hero uses the immersive novel-style backdrop (logo blurred as
+background) with `photoShape="circle"` — the portrait 3/4 photo card
+cropped square logos (GMMTV's «GMM» read as «MM»), the 1/1 circle
+matches the logo circle used in lists.
+
 ### A performer can belong to more than one agency
 
 `Performer` ↔ `Agency` is many-to-many (`PerformerAgency`), not a single

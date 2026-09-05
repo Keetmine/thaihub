@@ -31,6 +31,8 @@ function TabButton({
   );
 }
 
+type LinkRow = { label: string; url: string };
+
 export default function AgencyForm({
   action,
   submitLabel,
@@ -39,6 +41,7 @@ export default function AgencyForm({
   defaultValues,
   defaultPerformerIds,
   defaultDramaIds,
+  defaultLinks,
 }: {
   action: (formData: FormData) => void;
   submitLabel: string;
@@ -47,9 +50,28 @@ export default function AgencyForm({
   defaultValues?: { name: string; logoUrl: string; description: string };
   defaultPerformerIds?: string[];
   defaultDramaIds?: string[];
+  defaultLinks?: LinkRow[];
 }) {
   const v = defaultValues;
   const [activeTab, setActiveTab] = useState<Tab>("general");
+
+  const [links, setLinks] = useState<LinkRow[]>(
+    defaultLinks && defaultLinks.length > 0 ? defaultLinks : [{ label: "", url: "" }],
+  );
+
+  function addLink() {
+    setLinks((prev) => [...prev, { label: "", url: "" }]);
+  }
+
+  function removeLink(index: number) {
+    setLinks((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateLink(index: number, field: "label" | "url", value: string) {
+    setLinks((prev) =>
+      prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)),
+    );
+  }
 
   const formRef = useRef<HTMLFormElement>(null);
   const { dirty } = useUnsavedGuard(formRef);
@@ -93,6 +115,62 @@ export default function AgencyForm({
               <div className="col-12 col-md-4">
                 <FileDropzone name="logoUrl" label="Логотип" defaultValue={v?.logoUrl} compact />
               </div>
+            </div>
+          </FormSection>
+          <FormSection
+            title="Ссылки"
+            hint="сайт и соцсети — известные соцсети покажутся иконками"
+          >
+            <div>
+              {/* Заголовок группы, а не подпись поля: строки можно удалить
+                  все до одной, и htmlFor указывал бы в пустоту (см.
+                  tests/e2e/form-labels.spec.ts). Подписи несут сами поля
+                  через aria-label. */}
+              <div className="d-flex flex-column gap-2">
+                {links.map((link, i) => (
+                  <div key={i} className="row g-2 align-items-center">
+                    <div className="col-4">
+                      <input
+                        type="text"
+                        name="linkLabel"
+                        aria-label="Название ссылки"
+                        placeholder="Название (Instagram, X…)"
+                        value={link.label}
+                        onChange={(e) => updateLink(i, "label", e.target.value)}
+                        className="form-control"
+                      />
+                    </div>
+                    <div className="col-7">
+                      <input
+                        type="url"
+                        name="linkUrl"
+                        aria-label="Адрес ссылки"
+                        placeholder="https://…"
+                        value={link.url}
+                        onChange={(e) => updateLink(i, "url", e.target.value)}
+                        className="form-control"
+                      />
+                    </div>
+                    <div className="col-1">
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger btn-sm"
+                        onClick={() => removeLink(i)}
+                        aria-label="Удалить ссылку"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm mt-2"
+                onClick={addLink}
+              >
+                + Добавить ссылку
+              </button>
             </div>
           </FormSection>
         </div>

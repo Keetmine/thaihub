@@ -15,6 +15,8 @@ import { dramaHref } from "@/lib/dramaSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata, JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
+import SocialLinkIcons from "@/components/SocialLinkIcons";
+import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -60,6 +62,7 @@ export default async function AgencyDetailPage({
     include: {
       performers: { include: { performer: true }, orderBy: { performer: { name: "asc" } } },
       dramas: { orderBy: { title: "asc" } },
+      links: true,
     },
   });
 
@@ -108,6 +111,16 @@ export default async function AgencyDetailPage({
     currentUser?.id,
   );
 
+  // Ссылки агентства делятся так же, как у артистов: узнанные соцсети —
+  // иконками, остальное — кнопками с подписью.
+  const socialItems = agency.links
+    .map((l) => {
+      const platform = detectSocialPlatform(l.url);
+      return platform ? { platform, url: l.url } : null;
+    })
+    .filter((item): item is { platform: SocialPlatform; url: string } => !!item);
+  const otherLinks = agency.links.filter((l) => !detectSocialPlatform(l.url));
+
   return (
     <div>
       <BackLink
@@ -115,13 +128,34 @@ export default async function AgencyDetailPage({
         fallbackLabel={t.catalog.agency.back}
       />
 
-      {/* Иммерсивный hero (Э2) вместо плоской шапки. Без photoUrl —
-          осознанно: квадратное лого в карточке 3/4 обрезается по бокам
-          (проверено на GMMTV: «GMM» превращается в «MM»), поэтому hero
-          рисует тёплый градиент, а лого остаётся кружком в контенте. */}
+      {/* Иммерсивный hero как у новелл (просьба владельца): лого фоном
+          с блюром и зерном, а рядом с названием — круглой карточкой
+          (photoShape="circle": портретная 3/4 резала квадратное лого,
+          у GMMTV «GMM» превращалось в «MM»). */}
       <div className="mt-3">
         <DetailHero
+          photoUrl={agency.logoUrl}
+          photoAlt={agency.name}
+          photoShape="circle"
           title={agency.name}
+          footer={
+            (socialItems.length > 0 || otherLinks.length > 0) && (
+              <div className="d-flex flex-wrap align-items-center gap-2 mt-1">
+                <SocialLinkIcons items={socialItems} />
+                {otherLinks.map((l) => (
+                  <a
+                    key={l.id}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline-secondary btn-sm"
+                  >
+                    {l.label}
+                  </a>
+                ))}
+              </div>
+            )
+          }
           chips={
             <>
               {allPerformers.length > 0 && (
@@ -142,25 +176,11 @@ export default async function AgencyDetailPage({
         />
       </div>
 
-      {(agency.logoUrl || agency.description) && (
-        <div className="d-flex align-items-start gap-4 mb-4">
-          {agency.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              loading="lazy"
-              decoding="async"
-              src={agency.logoUrl}
-              alt={agency.name}
-              className="rounded-circle flex-shrink-0"
-              style={{ width: "5rem", height: "5rem", objectFit: "cover" }}
-            />
-          )}
-          {agency.description && (
-            <p className="text-secondary mb-0" style={{ maxWidth: "40rem" }}>
-              {agency.description}
-            </p>
-          )}
-        </div>
+      {/* Лого переехало в hero — тут осталось только описание. */}
+      {agency.description && (
+        <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>
+          {agency.description}
+        </p>
       )}
 
       <div className="tab-bar-row">

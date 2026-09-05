@@ -3361,6 +3361,15 @@ button.hero-stat-toggle.is-open {
   display: block;
 }
 
+/* Круглая карточка для логотипов (агентства): портретная 3/4 режет
+   квадратное лого по бокам, круг 1/1 повторяет кружок из списков. */
+/* Двойной класс — чтобы перебить мобильное правило ширины ниже. */
+.detail-hero-photo.detail-hero-photo--circle {
+  width: 7rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+}
+
 .detail-hero-title {
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
