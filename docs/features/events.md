@@ -581,6 +581,10 @@ never visually changed (a real bug, not hypothetical).
 сайтов, сайт распознаётся по домену (`detectEventSite` /
 `scrapeEventByUrl` в `src/lib/eventTicketSites.ts`); дальше тот же
 экран проверки, что был у TTM: правишь всё найденное и подтверждаешь.
+Тот же поток доступен попапом прямо на `/admin/events` — кнопка
+«Импортировать по ссылке» (`ImportEventButton.tsx`, широкая `Modal`
+с тем же `TtmImportFlow`; после импорта модалка закрывается и список
+обновляется через `onDone` вместо перехода на `/admin/events`).
 **Nothing is written to the database until that confirm step** — the
 scrape itself is read-only. Если событие с этим sourceUrl уже есть,
 экран предупреждает и даёт ссылку на него (создать дубль всё ещё

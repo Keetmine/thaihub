@@ -9,11 +9,15 @@ export default function Modal({
   onClose,
   title,
   children,
+  wide,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /** Широкая панель (52rem вместо 32rem) — для форм с колонками,
+   *  например импорт события по ссылке на /admin/events. */
+  wide?: boolean;
 }) {
   const t = useT();
   useEffect(() => {
@@ -36,7 +40,7 @@ export default function Modal({
   return createPortal(
     <div className="modal-overlay" onMouseDown={onClose}>
       <div
-        className="modal-panel surface"
+        className={`modal-panel surface ${wide ? "modal-panel--wide" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

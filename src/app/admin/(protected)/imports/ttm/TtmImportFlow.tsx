@@ -20,9 +20,14 @@ type ArtistRow = TtmImportArtist & { include: boolean };
 export default function TtmImportFlow({
   performers,
   dramas,
+  onDone,
 }: {
   performers: EntityOption[];
   dramas: EntityOption[];
+  /** Куда деваться после успешного импорта. Без колбэка — переход на
+   *  /admin/events (со страницы импортов); из модалки на самих
+   *  /admin/events переходить некуда, там закрываем попап и refresh. */
+  onDone?: () => void;
 }) {
   const uid = useId();
   const router = useRouter();
@@ -104,7 +109,8 @@ export default function TtmImportFlow({
           })),
         extraPerformerIds,
       });
-      router.push("/admin/events");
+      if (onDone) onDone();
+      else router.push("/admin/events");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Не удалось создать событие");
     } finally {

@@ -1595,6 +1595,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6);
 }
 
+/* Широкая модалка — формы с колонками (импорт события по ссылке). */
+.modal-panel--wide {
+  max-width: 52rem;
+}
+
 /* ---------- Custom performer listbox (replaces native <select>) ---------- */
 .performer-select {
   position: relative;

@@ -12,6 +12,7 @@ import AdminFilters from "@/components/admin/AdminFilters";
 import { adminEventFilterDefs, adminEventFilterWhere, type FilterParams } from "@/lib/catalogFilters";
 import { getDict } from "@/lib/i18n";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
+import ImportEventButton from "./ImportEventButton";
 
 export const metadata = { title: "События" };
 
@@ -114,9 +115,7 @@ export default async function AdminEventsPage({
           </h1>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/admin/imports" className="btn btn-ghost btn-sm">
-            Импортировать с ThaiTicketMajor
-          </Link>
+          <ImportEventButton />
           <Link href="/admin/events/new" className="btn btn-primary btn-sm">
             + Добавить событие
           </Link>
