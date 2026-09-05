@@ -16,7 +16,12 @@ import { importDoramaLandTranslation,
   runYoutubeMusicImport,
   runYoutubeMusicImportAndSchedule,
 } from "./actions";
-import { approveEventDraft, rejectEventDraft } from "./eventDraftActions";
+import {
+  approveEventDraft,
+  rejectEventDraft,
+  approveSelectedEventDrafts,
+  rejectSelectedEventDrafts,
+} from "./eventDraftActions";
 import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
 import type { TtmEvent } from "@/lib/thaiticketmajor";
 import type { EventDraftMatch } from "@/lib/ttmCrawl";
@@ -49,6 +54,7 @@ const KIND_LABELS: Record<string, string> = {
   blscene: "blscene: локации",
   "ttm-event": "ThaiTicketMajor: событие",
   "ttm-crawl": "ThaiTicketMajor: обход афиши",
+  "event-drafts": "Черновики событий: одобрение",
   "tpop-agency": "tpop.fandom: агентство",
   "tpop-artist": "tpop.fandom: артист",
 };
@@ -532,8 +538,12 @@ export default async function AdminImportsPage({
 
             {/* Очередь краулера афиши TTM (задача «ttm-crawl», см.
                 docs/features/ttm-crawl.md): черновики с совпавшими
-                артистами ждут решения владельца. Массовых действий нет
-                намеренно — каждый черновик смотрится глазами. */}
+                артистами ждут решения владельца. Массовые действия —
+                только по явно выбранным (BulkList, как у заявок);
+                кнопки «одобрить все» нет намеренно — владелец смотрит
+                каждый черновик. Черновики с чипом «возможный дубль»
+                массовое одобрение пропускает, отклоняются они как
+                обычные. */}
             <div className="col-12">
               <div className="surface p-4 h-100">
                 <h2 className="section-heading mb-2">
@@ -544,6 +554,9 @@ export default async function AdminImportsPage({
                   нашего каталога. «Одобрить» — событие создастся с постером и
                   совпавшими артистами (остальной состав добирается руками в
                   карточке события); «Отклонить» — событие больше не предложится.
+                  Массовое одобрение выбранных идёт одним фоновым прогоном — ход
+                  и «Остановить» в журнале; черновики с пометкой «возможный
+                  дубль» оно пропускает, такие одобряйте точечно.
                 </p>
                 {draftError && <p className="alert alert-warning small py-2">{draftError}</p>}
                 {eventDrafts.length === 0 ? (
@@ -552,8 +565,8 @@ export default async function AdminImportsPage({
                     афиши (задача «ThaiTicketMajor: обход афиши» в расписании).
                   </p>
                 ) : (
-                  <div className="d-flex flex-column gap-2">
-                    {eventDrafts.map((draft) => {
+                  <BulkList
+                    rows={eventDrafts.map((draft) => {
                       const payload = draft.payload as Partial<TtmEvent> & {
                         possibleDuplicateOf?: PossibleDuplicate;
                       };
@@ -562,11 +575,8 @@ export default async function AdminImportsPage({
                       const dates =
                         payload.dateRangeText ??
                         [payload.date, ...(payload.extraDates ?? [])].filter(Boolean).join(", ");
-                      return (
-                        <div
-                          key={draft.id}
-                          className="surface d-flex flex-wrap align-items-center gap-3 p-3"
-                        >
+                      const node = (
+                        <div className="surface d-flex flex-wrap align-items-center gap-3 p-3">
                           {/* Постер — через наш прокси (./ttm-poster):
                               прямой hotlink с TTM браузер не грузит,
                               их Akamai режет кросс-сайтовые картинки.
@@ -646,8 +656,30 @@ export default async function AdminImportsPage({
                           </ConfirmForm>
                         </div>
                       );
+                      return { id: draft.id, node };
                     })}
-                  </div>
+                    actions={[
+                      {
+                        kind: "confirm",
+                        label: "Одобрить выбранные",
+                        confirmTemplate:
+                          "Одобрить выбранные черновики ({n})? События создадутся по очереди одним фоновым прогоном — ход и «Остановить» в журнале. Черновики с пометкой «возможный дубль» пачка пропустит: их одобряют точечно.",
+                        confirmLabel: "Одобрить",
+                        busyLabel: "Запускаем…",
+                        buttonClassName: "btn btn-primary btn-sm",
+                        run: approveSelectedEventDrafts,
+                      },
+                      {
+                        kind: "confirm",
+                        label: "Отклонить выбранные",
+                        confirmTemplate:
+                          "Отклонить выбранные черновики ({n})? Обход афиши больше не предложит эти события.",
+                        confirmLabel: "Отклонить",
+                        busyLabel: "Отклоняем…",
+                        run: rejectSelectedEventDrafts,
+                      },
+                    ]}
+                  />
                 )}
               </div>
             </div>

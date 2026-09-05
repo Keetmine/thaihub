@@ -15,34 +15,10 @@ import { linkMdlCast } from "@/lib/mdlCastLink";
 import { importMdlSearch, parseMdlSearchInput, summarizeMdlSearch } from "@/lib/mdlSearchImport";
 import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
 import { importMdlRequestsBatch, summarizeMdlRequestsBatch } from "./mdlRequestsBatch";
-
-/**
- * Пишет ход длинного прогона в `run.summary` — страница импортов
- * перечитывает его раз в 4 секунды, пока есть RUNNING.
- *
- * Не чаще раза в две секунды: на обходе в тысячу страниц апдейт на
- * каждый шаг — это тысяча лишних запросов в БД. И только пока прогон
- * идёт (`updateMany` со статусом): последняя запись прогресса может
- * уйти в БД уже после того, как logImportRun поставил итоговую
- * сводку, и без фильтра затёрла бы её обратно на «импортируем 998
- * из 1000».
- */
-function progressWriter(runId: string): (message: string) => void {
-  let lastWrite = 0;
-  return (message: string) => {
-    const now = Date.now();
-    if (now - lastWrite < 2000) return;
-    lastWrite = now;
-    void prisma.importRun
-      .updateMany({
-        where: { id: runId, status: "RUNNING" },
-        data: { summary: message.slice(0, 500) },
-      })
-      // Без .catch отклонённый промис ронял бы процесс unhandledRejection;
-      // молча глотать тоже нельзя — иначе про отвалившуюся БД не узнать.
-      .catch(console.error);
-  };
-}
+// Прогресс длинных прогонов в run.summary — вынесен в свой модуль
+// (progressWriter.ts): им же пользуется пачка одобрения черновиков
+// событий, а экспортировать sync-функцию из "use server"-файла нельзя.
+import { progressWriter } from "./progressWriter";
 
 
 /** Одиночный импорт артиста/группы с tpop.fandom (та же фоновая схема

@@ -100,6 +100,14 @@ export type TtmImportSubmission = {
  */
 export async function createEventFromTtmImport(
   data: TtmImportSubmission,
+  // Минимальный шов для ФОНОВОЙ пачки одобрения черновиков
+  // (imports/eventDraftsBatch.ts): revalidatePath в отвязанном от
+  // запроса промисе Next не разрешает («during render which is
+  // unsupported») и БРОСАЕТ — событие создавалось, а черновик оставался
+  // PENDING. Пачке ревалидация и не нужна: витрина force-dynamic, а
+  // фоновые импорты расписания и так ничего не ревалидируют. Поведение
+  // по умолчанию не меняется.
+  opts: { revalidate?: boolean } = {},
 ): Promise<{ id: string }> {
   await requireAdmin();
   const title = data.title.trim();
@@ -168,10 +176,12 @@ export async function createEventFromTtmImport(
     });
   });
 
-  revalidatePath("/");
-  revalidatePath("/admin/events");
-  revalidatePath("/admin/performers");
-  revalidatePath("/artists");
+  if (opts.revalidate !== false) {
+    revalidatePath("/");
+    revalidatePath("/admin/events");
+    revalidatePath("/admin/performers");
+    revalidatePath("/artists");
+  }
 
   return { id: event.id };
 }
