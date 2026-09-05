@@ -140,13 +140,18 @@ gates:
   and `/events` shows a guest the two nearest events for real, followed
   by `PremiumUpsell` (see
   [events.md](events.md#афиша-без-подписки-тизер-и-публичная-карточка)).
-  Search shows events to everyone too: hiding in search what is open by
-  link and in Google only loses the reader on a placeholder. What the
-  subscription still gates is the **feed and the personal layer**: the
-  full list with filters/archive, the "going" chips, my tickets, notes,
-  friends-going and the presale reminder. Embedded lists on
-  performer/drama/location pages still render `EventCardLocked` — the
-  real date plus blurred bars. Masking stays **server-side** (locked
+  Search, however, locks event rows for non-premium viewers (reversed
+  2026-09-05 by the owner): searching an artist's name is a filtered
+  feed, and the open results were a legal paywall bypass. SEO loses
+  nothing — every `?q=` page canonicalises to bare `/search`, so query
+  results were never indexed; crawlers find events via the sitemap shard
+  and the public cards. The live search palette skips the events section
+  for non-premium viewers entirely. What the subscription gates is the
+  **listing and the personal layer**: the feed with filters/archive,
+  search results, the "going" chips, my tickets, notes, friends-going
+  and the presale reminder. Embedded lists on performer/drama/location
+  pages and search render `EventCardLocked` — the real date plus
+  blurred bars. Masking stays **server-side** (locked
   cards receive nothing but a date; `fetchEventListPage` blanks
   title/venue/performers/poster before the payload leaves the server),
   so the blur cannot be removed via devtools. Single-event ICS export

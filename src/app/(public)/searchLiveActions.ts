@@ -1,5 +1,7 @@
 "use server";
 
+import { getCurrentUser } from "@/lib/userAuth";
+import { isPremiumActive } from "@/lib/premium";
 import { prisma } from "@/lib/prisma";
 import { dramaTitleWhere, performerNameWhere, rankedMerge } from "@/lib/searchWhere";
 import { performerHref } from "@/lib/performerSlug";
@@ -39,6 +41,9 @@ const PER_KIND_ALL = 3;
 const PER_KIND_ONE = 8;
 
 export async function searchLive(rawQuery: string, section: LiveSection): Promise<LiveHit[]> {
+  const viewer = await getCurrentUser();
+  const viewerPremium = isPremiumActive(viewer);
+
   const query = rawQuery.trim();
   if (query.length < 2) return [];
   // Язык зрителя — из заголовка запроса (server actions его видят):
@@ -98,7 +103,11 @@ export async function searchLive(rawQuery: string, section: LiveSection): Promis
           return rankedMerge([exact, prefix, rest], take);
         })()
       : [],
-    want("events")
+    // События в подсказках — только с подпиской: живой поиск это тоже
+    // список, и без гейта он раздавал всю афишу артиста по имени
+    // (обход пейволла, пойман владельцем 2026-09-05). Карточка события
+    // по прямой ссылке публична — но подсказки её не раздают.
+    want("events") && viewerPremium
       ? prisma.event.findMany({
           where: {
             OR: [

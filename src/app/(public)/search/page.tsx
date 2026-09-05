@@ -5,6 +5,8 @@ import PageHeader from "@/components/PageHeader";
 import { SearchIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
 import EventAgendaRow from "@/components/EventAgendaRow";
+import EventCardLocked from "@/components/EventCardLocked";
+import { isPremiumActive } from "@/lib/premium";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
@@ -422,10 +424,12 @@ function DramaTile({
 }
 
 /** События в выдаче показываются честно и всем: карточка события
- *  публична (что, когда, где, кто), и прятать в поиске то, что открыто
- *  по ссылке и в поисковиках, значило бы просто терять человека на
- *  заглушке. За подпиской остались лента афиши целиком и личные блоки
- *  события — сюда они не попадают. */
+ *  публична по ПРЯМОЙ ссылке (SEO-решение), но СПИСКИ событий — платные:
+ *  поиск по артисту это отфильтрованная лента, и открытая выдача была
+ *  легальным обходом подписки (поймано владельцем 2026-09-05: гость
+ *  ищет «lykn» и получает всю его афишу). Без подписки — запертые
+ *  карточки с настоящей датой: сервер не передаёт в разметку ничего,
+ *  кроме даты, снять блюр девтулзами нечем. */
 async function EventResults({
   events,
 }: {
@@ -447,6 +451,15 @@ async function EventResults({
   );
   const rows = eventRows.map((e) => e.row);
   const currentUser = await getCurrentUser();
+  if (!isPremiumActive(currentUser)) {
+    return (
+      <div className="d-flex flex-column gap-3">
+        {eventRows.map(({ row }) => (
+          <EventCardLocked key={row.occurrenceId} startsAt={row.startsAt} />
+        ))}
+      </div>
+    );
+  }
   const [favoritedIds, goingIds, friendIds] = await Promise.all([
     getFavoritedEventIds(rows.map((r) => r.id), currentUser?.id),
     getGoingOccurrenceIds(rows.map((r) => r.occurrenceId), currentUser?.id),
