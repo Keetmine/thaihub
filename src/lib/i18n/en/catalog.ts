@@ -233,6 +233,8 @@ export const catalog = {
         noPast: "No past events.",
         noUpcoming: "No upcoming events.",
         series: "Series",
+        movies: "Movies",
+        shows: "Shows",
         albums: "Albums",
         songs: "Songs and singles",
         mvAppearances: "Music video appearances",

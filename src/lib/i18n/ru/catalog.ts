@@ -227,6 +227,8 @@ export const catalog: Dict["catalog"] = {
         noPast: "Прошедших событий нет.",
         noUpcoming: "Нет предстоящих событий.",
         series: "Сериалы",
+        movies: "Фильмы",
+        shows: "Шоу",
         albums: "Альбомы",
         songs: "Песни и синглы",
         mvAppearances: "Появления в клипах",

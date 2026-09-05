@@ -13,6 +13,7 @@ import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import SocialLinkIcons from "@/components/SocialLinkIcons";
+import SubTabs from "@/components/SubTabs";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
@@ -276,6 +277,18 @@ export default async function PerformerPage({
     if (tB == null) return -1;
     return annA ? tA - tB : tB - tA;
   });
+
+  // Три раздела вместо одного (просьба владельца): под сериалами —
+  // фильмы, под ними шоу. Делим по Drama.type (свободная строка с MDL);
+  // запись без типа считается сериалом — их большинство, и это почти
+  // всегда правда.
+  const movieDramas = sortedDramas.filter((pd) => pd.drama.type === "Movie");
+  const showDramas = sortedDramas.filter(
+    (pd) => pd.drama.type === "TV Show" || pd.drama.type === "TV Program",
+  );
+  const seriesDramas = sortedDramas.filter(
+    (pd) => !movieDramas.includes(pd) && !showDramas.includes(pd),
+  );
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
@@ -770,11 +783,30 @@ export default async function PerformerPage({
         </>
       )}
 
-      {!isBand && performer.dramas.length > 0 && (
+      {/* Сериалы / Фильмы / Шоу — под-табами, а не тремя лентами друг
+          под другом (правка владельца: компактнее). Пустые типы пилюль
+          не получают; запись без Drama.type считается сериалом. */}
+      {!isBand && sortedDramas.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">{t.catalog.artist.series}</h2>
+          <SubTabs
+            ariaLabel={t.catalog.artist.series}
+            tabs={(
+              [
+                ["series", t.catalog.artist.series, seriesDramas],
+                ["movies", t.catalog.artist.movies, movieDramas],
+                ["shows", t.catalog.artist.shows, showDramas],
+              ] as const
+            ).flatMap(([key, label, rows]) =>
+              rows.length === 0
+                ? []
+                : [
+                    {
+                      key,
+                      label,
+                      count: rows.length,
+                      content: (
           <div className="poster-row thin-scroll">
-            {sortedDramas.map((pd) => {
+            {rows.map((pd) => {
               return (
               <div key={pd.dramaId} style={{ position: "relative" }}>
                 <AppLink
@@ -842,6 +874,11 @@ export default async function PerformerPage({
               );
             })}
           </div>
+                      ),
+                    },
+                  ],
+            )}
+          />
         </div>
       )}
       {performer.albums.length > 0 && (

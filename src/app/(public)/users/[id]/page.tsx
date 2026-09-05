@@ -43,7 +43,7 @@ import StatsTab, { type StatsForTab } from "./StatsTab";
 import ReviewsTab, { type MyReviewRow } from "./ReviewsTab";
 import CommentsTab, { type MyCommentRow } from "./CommentsTab";
 import TicketsTab from "./TicketsTab";
-import SubTabs from "./SubTabs";
+import SubTabs from "@/components/SubTabs";
 
 export const dynamic = "force-dynamic";
 

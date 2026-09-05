@@ -463,6 +463,12 @@ export type MdlPersonFilmRow = {
   episodes: number | null;
   role: string | null;
   roleType: string | null; // "Main Role" | "Support Role" | …
+  /** Из какой таблицы фильмографии строка: заголовок `<h5>` над ней —
+   *  «Drama», «Movie», «TV Show» (null — не распознали). Импорт актёра
+   *  дозаполняет этим пустой `Drama.type`: у записей, заведённых не с
+   *  MDL (TMDB, blscene), тип неизвестен, и фильмы с шоу иначе не
+   *  отделить от сериалов на странице артиста. */
+  section: "Drama" | "Movie" | "TV Show" | null;
 };
 
 export type MdlPerson = {
@@ -541,6 +547,22 @@ export function parseMdlPersonPage(html: string, url: string): MdlPerson {
   }
 
   // Фильмография: строки tr.mdl-<id> из таблиц Drama/TV Show/Movie.
+  // Секцию строки определяет ближайший заголовок `<h5 class="header">`
+  // выше неё (проверено на живой странице 2026-09-05: Drama → 22 строки,
+  // Movie → 1, TV Show → 47; заголовков «Drama» бывает два — основная
+  // таблица и добивка, обе считаются сериалами).
+  const sectionHeaders = [
+    ...html.matchAll(/<h5 class="header">\s*(Drama|Movie|TV Show)\s*<\/h5>/g),
+  ].map((m) => ({ pos: m.index ?? 0, name: m[1] as "Drama" | "Movie" | "TV Show" }));
+  const sectionAt = (pos: number): MdlPersonFilmRow["section"] => {
+    let current: MdlPersonFilmRow["section"] = null;
+    for (const h of sectionHeaders) {
+      if (h.pos > pos) break;
+      current = h.name;
+    }
+    return current;
+  };
+
   const filmography: MdlPersonFilmRow[] = [];
   for (const row of html.matchAll(/<tr class="mdl-\d+">([\s\S]*?)<\/tr>/g)) {
     const r = row[1];
@@ -557,6 +579,7 @@ export function parseMdlPersonPage(html: string, url: string): MdlPerson {
       episodes: epsRaw ? Number(epsRaw) : null,
       role: roleName ? stripTags(roleName) || null : null,
       roleType: roleType ? decodeEntities(roleType).trim() || null : null,
+      section: sectionAt(row.index ?? 0),
     });
   }
 
