@@ -13,6 +13,7 @@ export const notifications: Dict["notifications"] = {
     FRIEND_GOING: (who: string, event: string) => `${who} идёт на «${event}»`,
     ACHIEVEMENT: (name: string) => `Новая ачивка: ${name}`,
     PREMIUM_GRANTED: "Подписка активна",
+    PREMIUM_LIFETIME: "🎉 Вам открыт доступ навсегда!",
     PERFORMER_BIRTHDAY: (name: string) => `Сегодня день рождения у ${name}`,
     EPISODE_AIRED: (drama: string) => `Новая серия «${drama}»`,
     DRAMA_ADDED: (drama: string) => `Сериал «${drama}» теперь в каталоге`,
@@ -27,5 +28,6 @@ export const notifications: Dict["notifications"] = {
     total ? `Вышла серия ${n} из ${total}.` : `Вышла серия ${n}.`,
 
   premiumBody: (until: string) => `Открыты афиша, календарь и поездки — до ${until}.`,
-  premiumLifetimeBody: "Открыты афиша, календарь и поездки — бессрочно, продлевать не нужно.",
+  premiumLifetimeBody:
+    "Вы супер-дупер-пупер крутые, поэтому афиша, календарь и поездки теперь ваши бессрочно. Продлевать ничего не нужно — никогда 💜",
 };

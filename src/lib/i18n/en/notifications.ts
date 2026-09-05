@@ -19,6 +19,8 @@ export const notifications = {
     FRIEND_GOING: (who: string, event: string) => `${who} is going to "${event}"`,
     ACHIEVEMENT: (name: string) => `New achievement: ${name}`,
     PREMIUM_GRANTED: "Your subscription is active",
+    // Бессрочная выдача из админки — праздничный тон по просьбе владельца.
+    PREMIUM_LIFETIME: "🎉 You've got access forever!",
     PERFORMER_BIRTHDAY: (name: string) => `It's ${name}'s birthday today`,
     EPISODE_AIRED: (drama: string) => `New episode of "${drama}"`,
     DRAMA_ADDED: (drama: string) => `"${drama}" is now in our catalog`,
@@ -35,5 +37,6 @@ export const notifications = {
     total ? `Episode ${n} of ${total} is out.` : `Episode ${n} is out.`,
 
   premiumBody: (until: string) => `The feed, the calendar and trips are open — until ${until}.`,
-  premiumLifetimeBody: "The feed, the calendar and trips are open — for good, no renewal needed.",
+  premiumLifetimeBody:
+    "You're super-duper-mega awesome, so the feed, the calendar and trips are yours for good. No renewals — ever 💜",
 };

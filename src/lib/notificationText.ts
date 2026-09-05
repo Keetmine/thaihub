@@ -42,7 +42,9 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
     case "ACHIEVEMENT":
       return subject ? titles.ACHIEVEMENT(subject) : n.title;
     case "PREMIUM_GRANTED":
-      return titles.PREMIUM_GRANTED;
+      // subject "lifetime" — бессрочная выдача из админки: свой,
+      // праздничный заголовок вместо сухого «Подписка активна».
+      return subject === "lifetime" ? titles.PREMIUM_LIFETIME : titles.PREMIUM_GRANTED;
     case "PERFORMER_BIRTHDAY":
       return subject ? titles.PERFORMER_BIRTHDAY(subject) : n.title;
     case "EPISODE_AIRED":

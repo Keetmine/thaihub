@@ -45,6 +45,9 @@ export async function setPremiumLifetime(userId: string, lifetime: boolean) {
     await notifyUser({
       userId,
       kind: "PREMIUM_GRANTED",
+      // Маркер для заголовка (см. notificationTitle): бессрочная выдача
+      // получает праздничную фразу, а не «Подписка активна».
+      subject: "lifetime",
       body: (t) => t.notifications.premiumLifetimeBody,
       href: "/",
     });
