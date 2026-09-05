@@ -149,6 +149,14 @@ export default function PerformerForm({
       : activeTab;
   const activeExtra = extraTabs.find((t) => t.key === effectiveTab) ?? null;
 
+  // Счётчики в подписях вкладок — сколько записей уже привязано в базе
+  // (те же строки, что рисуются на вкладке; отдельного запроса нет).
+  // Именно сохранённое, а не текущий выбор: мультиселекты
+  // неконтролируемые, и до нажатия «Сохранить» число в базе не меняется.
+  // При создании исполнителя привязок ещё нет — скобки не показываем,
+  // чтобы не шуметь «(0)» на каждой вкладке.
+  const tabCount = (n: number) => (isCreating ? "" : ` (${n})`);
+
   // Instagram/TikTok/Twitter get their own fields below (recognized by URL,
   // not label) — everything else stays in the free-form list.
   const socialDefaults: Partial<Record<SocialPlatform, string>> = {};
@@ -230,16 +238,16 @@ export default function PerformerForm({
         </TabButton>
         {type === "SOLO" && (
           <TabButton active={effectiveTab === "dramas"} onClick={() => switchTab("dramas")}>
-            Сериалы
+            Сериалы{tabCount(defaultDramaIds?.length ?? 0)}
           </TabButton>
         )}
         <TabButton active={effectiveTab === "events"} onClick={() => switchTab("events")}>
-          События
+          События{tabCount(defaultEventIds?.length ?? 0)}
         </TabButton>
 
         {type === "SOLO" && (
           <TabButton active={effectiveTab === "pairing"} onClick={() => switchTab("pairing")}>
-            Пейринг
+            Пейринг{tabCount(currentPairings?.length ?? 0)}
           </TabButton>
         )}
         {extraTabs.map((t) => (
