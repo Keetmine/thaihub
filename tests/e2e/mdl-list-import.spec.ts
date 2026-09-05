@@ -19,10 +19,10 @@ test("settings has the MDL import block and rejects bad input", async ({ page })
   // Чужой хост — не список MDL: ошибка валидации, никакой сети.
   await page.fill("#mdl-import-input", "https://evil.com/dramalist/x");
   await page.click('form:has(#mdl-import-input) button[type="submit"]');
-  await expect(page.getByText("Enter a nickname")).toBeVisible();
+  await expect(page.getByText("Paste a link to your list")).toBeVisible();
 
-  // Кириллица тоже мимо ^[A-Za-z0-9_-]+$.
+  // Кириллица тоже мимо: ник в адресе только латиницей.
   await page.fill("#mdl-import-input", "ник со пробелами");
   await page.click('form:has(#mdl-import-input) button[type="submit"]');
-  await expect(page.getByText("Enter a nickname")).toBeVisible();
+  await expect(page.getByText("Paste a link to your list")).toBeVisible();
 });

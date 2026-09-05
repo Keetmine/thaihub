@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { countryOptions } from "@/lib/countries";
-import { useLocale, useLocaleHref, useT } from "@/components/LocaleProvider";
+import { useLocaleHref, useT } from "@/components/LocaleProvider";
 import { saveProfileSetup } from "./actions";
 import DatePickerInput from "@/components/DatePickerInput";
 
@@ -15,13 +14,20 @@ import DatePickerInput from "@/components/DatePickerInput";
 export default function ProfileSetupForm({
   suggestedUsername,
   defaultName,
+  countries,
 }: {
   suggestedUsername: string;
   defaultName: string;
+  /** Список стран считает СЕРВЕР и передаёт готовым. Своими силами
+   *  (countryOptions(locale) прямо здесь) форма разъезжалась при
+   *  гидрации: и названия стран, и порядок сортировки берутся из ICU, а
+   *  у Node и браузера версии ICU разные — React ругался «server
+   *  rendered text didn't match the client» и перерисовывал форму. Та
+   *  же причина, по которой у нас свои таблицы месяцев в lib/dates.ts. */
+  countries: { code: string; label: string }[];
 }) {
   const router = useRouter();
   const t = useT();
-  const locale = useLocale();
   const localeHref = useLocaleHref();
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -78,7 +84,7 @@ export default function ProfileSetupForm({
           <label className="form-label" htmlFor="profile-setup-form-country">{t.auth.profileSetup.countryLabel}</label>
           <select id="profile-setup-form-country" name="country" defaultValue="" className="form-select">
             <option value="">{t.auth.profileSetup.countryEmpty}</option>
-            {countryOptions(locale).map((c) => (
+            {countries.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.label}
               </option>

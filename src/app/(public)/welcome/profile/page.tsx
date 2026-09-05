@@ -5,6 +5,7 @@ import { suggestUsername } from "@/lib/userProfile";
 import { pageMetadata } from "@/lib/seo";
 import { getT, localeHref } from "@/lib/i18n";
 import ProfileSetupForm from "./ProfileSetupForm";
+import { countryOptions } from "@/lib/countries";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,11 @@ export default async function ProfileSetupPage() {
         {t.auth.profileSetup.title}
       </h1>
       <p className="text-secondary mb-4">{t.auth.profileSetup.lead}</p>
-      <ProfileSetupForm suggestedUsername={suggestion} defaultName={user.name ?? ""} />
+      <ProfileSetupForm
+        suggestedUsername={suggestion}
+        defaultName={user.name ?? ""}
+        countries={countryOptions(locale)}
+      />
     </div>
   );
 }
