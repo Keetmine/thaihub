@@ -243,7 +243,7 @@ export default async function AdminUsersPage({
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-shrink-0">
-                  <PremiumToggle userId={u.id} premiumUntil={u.premiumUntil} />
+                  <PremiumToggle userId={u.id} premiumUntil={u.premiumUntil} premiumLifetime={u.premiumLifetime} />
                   <ConfirmForm
                     action={boundDelete}
                     confirmMessage={`Удалить пользователя «${displayName}» со всеми его данными?`}

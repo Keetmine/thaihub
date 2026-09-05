@@ -153,7 +153,11 @@ export default async function AdminUserPage({
         </div>
         <div>
           <p className="small text-secondary mb-1">Подписка</p>
-          <PremiumToggle userId={user.id} premiumUntil={user.premiumUntil} />
+          <PremiumToggle
+            userId={user.id}
+            premiumUntil={user.premiumUntil}
+            premiumLifetime={user.premiumLifetime}
+          />
         </div>
         <div className="ms-auto">
           <ConfirmForm

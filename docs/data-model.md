@@ -118,7 +118,11 @@ See [social.md](features/social.md) for how these surface in the UI.
 ## Users & auth
 
 - **`User`** — real account (email/password), separate from the single
-  shared admin password. `icsToken` (unique, nullable) backs the
+  shared admin password. Подписка: `premiumUntil` (срок, активна пока
+  дата в будущем) и `premiumLifetime` (бессрочная, выдаёт админ; активна
+  независимо от срока, `premiumUntil` при этом не трогается),
+  `premiumExpiryNotifiedFor` — дедуп напоминания об истечении; см.
+  [auth.md](features/auth.md#подписка). `icsToken` (unique, nullable) backs the
   "subscribe to my calendar" feed — see
   [events.md](features/events.md#ics-subscribe-feed). `lastSeenAt`
   (nullable) — последняя активность, обновляется не чаще раза в 10

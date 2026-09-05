@@ -5,6 +5,7 @@ export const account: Dict["account"] = {
   // Подписка на профиле — иконкой (правка владельца), текст живёт в
   // подсказке title/aria-label.
   planPremiumHint: "Действующая подписка",
+  planLifetimeHint: "Бессрочная подписка",
   planFree: "Базовый",
   telegramSignIn: "Вход через Telegram",
   memberSince: (date: string) => `На MyBLHub с ${date}`,

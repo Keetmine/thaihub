@@ -800,6 +800,11 @@ model User {
   // Для какого premiumUntil уже отправлено телеграм-напоминание об
   // истечении — дедуп напоминалки «подписка кончается через 3 дня».
   premiumExpiryNotifiedFor DateTime?
+  // Бессрочная подписка: админ выдаёт друзьям и команде, чтобы не
+  // продлевать каждый месяц. Пока true — подписка активна независимо от
+  // premiumUntil, напоминание об истечении не шлётся. Снятие флага
+  // возвращает обычный срок: premiumUntil при выдаче не трогается.
+  premiumLifetime          Boolean         @default(false)
   // Opaque token for the read-only "subscribe to my calendar" ICS feed —
   // generated on first request since calendar apps fetch it without a
   // session cookie, so it needs its own unguessable credential.

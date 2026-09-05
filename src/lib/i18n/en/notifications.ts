@@ -35,4 +35,5 @@ export const notifications = {
     total ? `Episode ${n} of ${total} is out.` : `Episode ${n} is out.`,
 
   premiumBody: (until: string) => `The feed, the calendar and trips are open — until ${until}.`,
+  premiumLifetimeBody: "The feed, the calendar and trips are open — for good, no renewal needed.",
 };

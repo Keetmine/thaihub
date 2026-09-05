@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { premiumActiveWhere } from "@/lib/premium";
 import { formatShortDate } from "@/lib/dates";
 import { getPremiumPriceStars } from "@/lib/siteSettings";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -37,9 +38,10 @@ export default async function AdminFinancePage({
       }),
       prisma.payment.count(),
       prisma.user.findMany({
-        where: { premiumUntil: { gt: now } },
-        select: { id: true, name: true, email: true, premiumUntil: true },
-        orderBy: { premiumUntil: "asc" },
+        where: premiumActiveWhere(now),
+        select: { id: true, name: true, email: true, premiumUntil: true, premiumLifetime: true },
+        // Бессрочные — первыми, дальше по сроку окончания.
+        orderBy: [{ premiumLifetime: "desc" }, { premiumUntil: "asc" }],
       }),
       getPremiumPriceStars(),
       prisma.payment.aggregate({ _sum: { amount: true }, where: { refundedAt: null } }),
@@ -126,7 +128,9 @@ export default async function AdminFinancePage({
                     {u.name || u.email}
                   </Link>
                   <span className="small text-secondary flex-shrink-0">
-                    до {formatShortDate(u.premiumUntil!)} {u.premiumUntil!.getFullYear()}
+                    {u.premiumLifetime
+                      ? "бессрочно"
+                      : `до ${formatShortDate(u.premiumUntil!)} ${u.premiumUntil!.getFullYear()}`}
                   </span>
                 </div>
               ))}

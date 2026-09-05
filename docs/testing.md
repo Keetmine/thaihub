@@ -1,8 +1,10 @@
 # Testing
 
 A small Playwright Test smoke suite (`tests/e2e/`) covering the critical
-paths, not comprehensive coverage. No unit tests exist elsewhere in the
-project.
+paths, not comprehensive coverage. Plus a handful of plain-script unit
+tests in `tests/unit/` (`node:assert`, no runner — `npx tsx
+tests/unit/<name>.test.ts`; e.g. `premium.test.ts` covers
+`isPremiumActive` incl. the lifetime flag).
 
 ## Running
 

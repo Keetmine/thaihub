@@ -10,6 +10,8 @@ export const account = {
   // Подписка на профиле — иконкой (правка владельца), текст живёт в
   // подсказке title/aria-label.
   planPremiumHint: "Active subscription",
+  // Бессрочная подписка (выдаёт админ) — та же иконка, другая подсказка.
+  planLifetimeHint: "Lifetime subscription",
   planFree: "Free",
   telegramSignIn: "Signed in with Telegram",
   memberSince: (date: string) => `On MyBLHub since ${date}`,

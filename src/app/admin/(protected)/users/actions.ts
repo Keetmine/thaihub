@@ -32,6 +32,27 @@ export async function grantPremiumMonth(userId: string) {
   revalidatePath("/admin/users");
 }
 
+/** Выдать или снять бессрочную подписку (просьба владельца: «кнопочка
+ *  для бессрочной вип-подписки, чтобы не обновлять каждый месяц»).
+ *  premiumUntil не трогаем: после снятия человек остаётся с тем сроком,
+ *  какой у него был. */
+export async function setPremiumLifetime(userId: string, lifetime: boolean) {
+  await requireAdmin();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || user.premiumLifetime === lifetime) return;
+  await prisma.user.update({ where: { id: userId }, data: { premiumLifetime: lifetime } });
+  if (lifetime) {
+    await notifyUser({
+      userId,
+      kind: "PREMIUM_GRANTED",
+      body: (t) => t.notifications.premiumLifetimeBody,
+      href: "/",
+    });
+  }
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${userId}`);
+}
+
 /** Досрочно отключить подписку. */
 export async function revokePremium(userId: string) {
   await requireAdmin();

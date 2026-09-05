@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { premiumActiveWhere } from "@/lib/premium";
 import { performerHref, eventHref } from "@/lib/slugHelpers";
 
 export const metadata = { title: "Аналитика" };
@@ -30,7 +31,7 @@ export default async function AdminAnalyticsPage() {
         where: { createdAt: { gte: from } },
         select: { createdAt: true },
       }),
-      prisma.user.count({ where: { premiumUntil: { gt: now } } }),
+      prisma.user.count({ where: premiumActiveWhere(now) }),
       prisma.user.count(),
       prisma.event.findMany({
         include: {

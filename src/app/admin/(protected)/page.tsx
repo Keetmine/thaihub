@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { premiumActiveWhere } from "@/lib/premium";
 import { formatShortDate } from "@/lib/dates";
 import StatTile from "@/components/StatTile";
 
@@ -43,7 +44,7 @@ export default async function AdminStatsPage() {
     eventsWithoutPerformers,
   ] = await Promise.all([
     prisma.user.count(),
-    prisma.user.count({ where: { premiumUntil: { gt: now } } }),
+    prisma.user.count({ where: premiumActiveWhere(now) }),
     prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.user.count({ where: { telegramId: { not: null } } }),
     prisma.event.count(),

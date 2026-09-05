@@ -65,7 +65,8 @@ The same half-hourly job also sends: **presale reminders** («продажа
 with Telegram *and an active subscription*, dedup in
 `TelegramPresaleNotification` per (user, event)) and **premium expiry
 reminders** (3 days before `premiumUntil`, dedup via
-`premiumExpiryNotifiedFor`). Separately, `notifyFriendsAboutGoing` fires
+`premiumExpiryNotifiedFor`; бессрочные (`premiumLifetime`) пропускаются —
+им нечего продлевать). Separately, `notifyFriendsAboutGoing` fires
 from `toggleGoing` (fire-and-forget) — «X идёт на …» to the actor's
 friends, unless a friend muted them (`FriendNotificationMute`, toggled
 by the bell button on the friend's profile page); receivers also need
@@ -134,6 +135,9 @@ payments: `pre_checkout_query` is confirmed if the payload (our userId,
 embedded by `createPremiumInvoiceLink`) resolves to a user;
 `successful_payment` extends `premiumUntil` by 30 days
 (`extendPremium`), links `telegramId` if missing, and thanks the payer.
+Бессрочный подписчик (`premiumLifetime`) до кнопки оплаты не доходит —
+пейволл активным не показывается; если оплата всё же пришла, срок
+копится как обычно.
 The paywall (`PremiumUpsell` → `BuyPremiumButton` →
 `getPremiumInvoiceLink`) opens the invoice link in Telegram.
 

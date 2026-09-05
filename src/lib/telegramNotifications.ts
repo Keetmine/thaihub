@@ -5,7 +5,7 @@ import { eventHref } from "@/lib/eventSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n";
-import { isPremiumActive } from "@/lib/premium";
+import { isPremiumActive, type PremiumFields } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { notifyUser } from "@/lib/notifications";
 
@@ -117,6 +117,8 @@ export async function sendPremiumExpiryReminders(): Promise<number> {
   const expiring = await prisma.user.findMany({
     where: {
       telegramId: { not: null },
+      // Бессрочным напоминать нечего — их подписка не истекает.
+      premiumLifetime: false,
       premiumUntil: { gt: now, lte: warnBefore },
     },
   });
@@ -158,11 +160,11 @@ export async function sendPresaleReminders(): Promise<number> {
   const now = new Date();
   const until = new Date(now.getTime() + PRESALE_LOOKAHEAD_MINUTES * 60 * 1000);
 
-  // От получателя нужны только id, telegramId и premiumUntil (по нему
+  // От получателя нужны только id, telegramId и поля подписки (по ним
   // isPremiumActive решает, положен ли пресейл-пинг) — полные строки
   // User каждые полчаса на каждого идущего/избравшего тянуть незачем.
   const recipientSelect = {
-    user: { select: { id: true, telegramId: true, premiumUntil: true } },
+    user: { select: { id: true, telegramId: true, premiumUntil: true, premiumLifetime: true } },
   } as const;
   const events = await prisma.event.findMany({
     where: { presaleAt: { gt: now, lte: until } },
@@ -180,7 +182,7 @@ export async function sendPresaleReminders(): Promise<number> {
     // списках, напоминание всё равно одно.
     const recipients = new Map<
       string,
-      { id: string; telegramId: string | null; premiumUntil: Date | null }
+      { id: string; telegramId: string | null } & PremiumFields
     >();
     for (const a of event.attendees) recipients.set(a.user.id, a.user);
     for (const f of event.favoritedBy) {

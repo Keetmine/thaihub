@@ -27,4 +27,5 @@ export const notifications: Dict["notifications"] = {
     total ? `Вышла серия ${n} из ${total}.` : `Вышла серия ${n}.`,
 
   premiumBody: (until: string) => `Открыты афиша, календарь и поездки — до ${until}.`,
+  premiumLifetimeBody: "Открыты афиша, календарь и поездки — бессрочно, продлевать не нужно.",
 };

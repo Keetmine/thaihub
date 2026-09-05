@@ -32,6 +32,31 @@ E2e tests upsert a dedicated admin user via
 
 Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
 
+## Подписка
+
+`User.premiumUntil` — срок; подписка активна, пока дата в будущем.
+Продлевается из админки («+1 мес»), промокодом или оплатой Stars —
+всегда через `extendPremium` (месяц к концу текущего срока, если он
+ещё идёт, иначе от сегодня). `User.premiumLifetime` — бессрочная,
+выдаётся кнопкой «Бессрочно» на `/admin/users` (см.
+[admin-panel.md](admin-panel.md)): активна независимо от срока, о
+скором окончании не напоминает (`sendPremiumExpiryReminders` её
+пропускает), Stars-продление и промокод для неё бессмысленны, но не
+вредят — `premiumUntil` просто копится на случай снятия флага.
+
+Проверка активности — **только** через `src/lib/premium.ts`:
+`isPremiumActive(user)` в коде (тип требует оба поля — выборка с одним
+`premiumUntil` не соберётся) и `premiumActiveWhere(now)` /
+`premiumInactiveWhere(now)` в Prisma `where` (счётчики дашборда и
+аналитики, аудитория рассылок, фильтр «подписка» в списке
+пользователей, «активные подписки» в финансах). Голого
+`premiumUntil: { gt: now }` в коде быть не должно — оно теряет
+бессрочных. Публично подписка показывается иконкой на профиле с
+подсказкой «Active subscription» / «Lifetime subscription»
+(`account.planPremiumHint` / `planLifetimeHint`); пейволл
+(`PremiumUpsell`) активным — в том числе бессрочным — не рендерится
+вовсе. Юнит-тест: `tests/unit/premium.test.ts`.
+
 **Promo codes**: одноразовый `PromoCode` (+1 месяц подписки) —
 генерация/удаление в блоке на `/admin/users`, активация полем
 «Промокод» на пейволле (`PromoCodeRedeem` → `redeemPromoCode`,

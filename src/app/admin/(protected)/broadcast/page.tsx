@@ -1,5 +1,6 @@
 import { requireAdminPage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { premiumActiveWhere } from "@/lib/premium";
 import { formatShortDate } from "@/lib/dates";
 import Pagination from "@/components/Pagination";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
@@ -21,7 +22,7 @@ export default async function AdminBroadcastPage({
     await Promise.all([
       prisma.user.count({ where: { telegramId: { not: null } } }),
       prisma.user.count({
-        where: { telegramId: { not: null }, premiumUntil: { gt: new Date() } },
+        where: { telegramId: { not: null }, ...premiumActiveWhere() },
       }),
       prisma.broadcast.findMany({
         orderBy: { createdAt: "desc" },

@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import type { Prisma } from "@/generated/prisma/client";
+import { premiumActiveWhere, premiumInactiveWhere } from "@/lib/premium";
 import type { Dict } from "@/lib/i18n";
 
 /**
@@ -634,8 +635,8 @@ export function adminUserFilterWhere(p: FilterParams, now = new Date()): Prisma.
   if (role === "manager") w.push({ isManager: true, isAdmin: false });
   if (role === "user") w.push({ isAdmin: false, isManager: false });
   const premium = one(p.premium);
-  if (premium === "active") w.push({ premiumUntil: { gt: now } });
-  if (premium === "none") w.push({ OR: [{ premiumUntil: null }, { premiumUntil: { lte: now } }] });
+  if (premium === "active") w.push(premiumActiveWhere(now));
+  if (premium === "none") w.push(premiumInactiveWhere(now));
   const loc = one(p.userLocale);
   if (loc === "en" || loc === "ru") w.push({ locale: loc });
   const regFrom = dateOrNull(p.registeredFrom);

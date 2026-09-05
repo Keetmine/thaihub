@@ -151,10 +151,14 @@ export default async function UserProfilePage({
   const friendships = await prisma.friendship.findMany({
     where: { status: "ACCEPTED", OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
     include: {
-      // premiumUntil — для цветной обводки аватарок подписчиков в сетке
+      // Поля подписки — для цветной обводки аватарок подписчиков в сетке
       // друзей (правка владельца п.6).
-      requester: { select: { id: true, username: true, name: true, photoUrl: true, premiumUntil: true } },
-      addressee: { select: { id: true, username: true, name: true, photoUrl: true, premiumUntil: true } },
+      requester: {
+        select: { id: true, username: true, name: true, photoUrl: true, premiumUntil: true, premiumLifetime: true },
+      },
+      addressee: {
+        select: { id: true, username: true, name: true, photoUrl: true, premiumUntil: true, premiumLifetime: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -983,8 +987,8 @@ export default async function UserProfilePage({
           {ownerPremium ? (
             <span
               className="premium-badge-icon"
-              title={t.account.planPremiumHint}
-              aria-label={t.account.planPremiumHint}
+              title={user.premiumLifetime ? t.account.planLifetimeHint : t.account.planPremiumHint}
+              aria-label={user.premiumLifetime ? t.account.planLifetimeHint : t.account.planPremiumHint}
               role="img"
               tabIndex={0}
             >

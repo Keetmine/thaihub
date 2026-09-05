@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { premiumActiveWhere } from "@/lib/premium";
 import { requireAdmin } from "@/lib/auth";
 import { sendTelegramMessage } from "@/lib/telegram";
 
@@ -23,7 +24,7 @@ export async function sendBroadcast(formData: FormData): Promise<BroadcastResult
       telegramId: { not: null },
       // Уважаем тумблер «Новости проекта» из настроек пользователя.
       tgNotifyBroadcast: true,
-      ...(audience === "premium" ? { premiumUntil: { gt: new Date() } } : {}),
+      ...(audience === "premium" ? premiumActiveWhere() : {}),
     },
     select: { telegramId: true },
   });
