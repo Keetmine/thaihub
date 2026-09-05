@@ -5,7 +5,7 @@ import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
-import type { Performer } from "@/generated/prisma/client";
+import type { Performer, Prisma } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
 import FavoriteButton from "@/components/FavoriteButton";
 import { HeartIcon } from "@/components/icons";
@@ -69,15 +69,30 @@ const getAllPerformersOfType = unstable_cache(
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
-/** Гостевой список актёров без поиска: только у кого есть события. */
+/**
+ * «Есть чем показать» — условие на картинку строки (правка владельца
+ * 2026-09-06): карточка без фото — это пустая плитка с буквой, и
+ * событие само по себе не повод её показывать. Проверяем ровно то, что
+ * рисует `performerPhoto`: своё фото ИЛИ обложка релиза (у групп фото
+ * часто нет вовсе, но обложка узнаётся не хуже).
+ */
+// Без `as const`: Prisma не принимает readonly-массив в OR (та же
+// причина, что у FALLBACK_COVER_SELECT в lib/performerPhoto.ts).
+const HAS_PHOTO_WHERE: Prisma.PerformerWhereInput = {
+  OR: [{ photoUrl: { not: null } }, { albums: { some: { coverUrl: { not: null } } } }],
+};
+
+/** Гостевой список актёров без поиска: у кого есть события И фото. */
 const getPerformersWithEvents = unstable_cache(
   async (type: "SOLO" | "BAND" | "MASCOT") =>
     prisma.performer.findMany({
-      where: { type, events: { some: {} } },
+      where: { type, events: { some: {} }, ...HAS_PHOTO_WHERE },
       select: PERFORMER_ROW_SELECT,
       orderBy: { name: "asc" },
     }),
-  ["artists-with-events"],
+  // v2: ключ сменён вместе с условием (добавилось требование фото) —
+  // иначе до конца TTL список шёл бы по-старому.
+  ["artists-with-events-v2"],
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
@@ -500,14 +515,16 @@ export default async function PerformersPage({
             // биографии и профильные списки в перечне не нужны).
             await getAllPerformersOfType(typeOfView(view))
           : // Без поиска: избранные юзера + все, у кого есть хотя бы
-            // одно событие (анониму — только событийные, из кэша).
+            // одно событие И фото (анониму — только такие, из кэша).
             // Полный каталог в тысячи актёров — через поиск.
+            // Избранное показывается независимо от фото: это явный
+            // выбор человека, а не автоподбор по событиям.
             currentUser
             ? await prisma.performer.findMany({
                 where: {
                   type: typeOfView(view),
                   OR: [
-                    { events: { some: {} } },
+                    { AND: [{ events: { some: {} } }, HAS_PHOTO_WHERE] },
                     { favoritedBy: { some: { userId: currentUser.id } } },
                   ],
                 },
