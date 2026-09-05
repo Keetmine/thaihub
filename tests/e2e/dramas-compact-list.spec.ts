@@ -1,64 +1,61 @@
 import { test, expect } from "@playwright/test";
 
-// Компактный каталог /dramas (2026-09-04): строка ~50px вместо ~100px,
-// буква группы — не заголовком над строками, а тихой литерой в ЛЕВОМ
-// жёлобе на уровне первой строки группы (список визуально сплошной);
-// на мобиле вместо вертикальной рейки — горизонтальная липкая полоска
-// букв над списком. Всё гостевое — без входа (лимит логинов душит
-// повторные прогоны, а список гостя рендерит те же строки).
+// Каталог /dramas — компактная ТАБЛИЦА: строка ~50px вместо прежней
+// ~100px «карточки», над строками шапка с названиями колонок, и она же
+// сортирует. Букв больше нет вовсе (правка владельца 2026-09-06): ни
+// литеры в левом жёлобе, ни рейки справа — порядок задаёт шапка.
+// Серверные страницы буквы (?letter=X) при этом живы: они нужны
+// краулеру. Всё гостевое — без входа (лимит логинов душит повторные
+// прогоны, а список гостя рендерит те же строки).
 
-test("строка каталога компактная, буквы рейки — настоящие ссылки ?letter=", async ({
-  page,
-}) => {
+test("строка компактная, букв и рейки нет", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/dramas");
 
-  const firstRow = page.locator(".performers-list .surface").first();
+  const firstRow = page.locator(".surface-hover").first();
   await expect(firstRow).toBeVisible();
   const box = await firstRow.boundingBox();
   // Прежняя «карточка» была ~100px; компактная строка держится под 60.
   expect(box!.height).toBeLessThan(60);
 
-  // Буква группы — слева ОТ строк и на уровне ПЕРВОЙ строки, а не
-  // заголовком над ними.
-  const firstSection = page.locator(".performers-letter-section").first();
-  const headBox = (await firstSection.locator(".performers-letter-heading").boundingBox())!;
-  const rowBox = (await firstSection.locator(".surface").first().boundingBox())!;
-  expect(headBox.x + headBox.width).toBeLessThanOrEqual(rowBox.x + 1);
-  expect(Math.abs(headBox.y - rowBox.y)).toBeLessThan(8);
-
-  // Рейка прижата к верху зоны списка (правка владельца: раньше буквы
-  // центрировались по экрану и при коротком списке висели в пустоте).
-  const railBox = (await page.locator(".performers-index").boundingBox())!;
-  const firstLetter = (await page.locator(".performers-index-link").first().boundingBox())!;
-  expect(firstLetter.y - railBox.y).toBeLessThan(40);
-
-  // С-5: краулабельные буквы — href остаётся серверной страницей буквы.
-  const letterLink = page.locator('.performers-index a[href^="/dramas?letter="]').first();
-  await expect(letterLink).toBeVisible();
-
-  // Клик живого зрителя — скролл по якорю, БЕЗ навигации на ?letter=.
-  await letterLink.click();
-  await expect(page).toHaveURL(/\/dramas$/);
+  // Ни жёлоба с буквой, ни вертикальной рейки.
+  await expect(page.locator(".performers-letter-heading")).toHaveCount(0);
+  await expect(page.locator(".performers-index")).toHaveCount(0);
 });
 
-test("на мобиле рейка — горизонтальная полоска над списком", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test("шапка таблицы сортирует и возвращает исходный порядок", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/dramas");
 
-  const rail = page.locator(".performers-index");
-  const firstSection = page.locator(".performers-letter-section").first();
-  await expect(rail).toBeVisible();
-  await expect(firstSection).toBeVisible();
+  const head = page.locator('[class*="headCell"]');
+  // Шесть колонок: название, статус, тип, год, страна, серии.
+  expect(await head.count()).toBe(6);
 
-  const railBox = (await rail.boundingBox())!;
-  const sectionBox = (await firstSection.boundingBox())!;
-  // Полоска лежит НАД первой буквой списка и вытянута по горизонтали.
-  expect(railBox.y).toBeLessThan(sectionBox.y);
-  expect(railBox.width).toBeGreaterThan(railBox.height);
-  // И не съедает ширину строк: строка занимает почти весь вьюпорт.
-  const rowBox = (await page.locator(".performers-list .surface").first().boundingBox())!;
-  expect(rowBox.width).toBeGreaterThan(340);
+  const titlesNow = async () =>
+    (await page.locator('[class*="titleWrap"]').allInnerTexts()).slice(0, 3).join("|");
+  const before = await titlesNow();
+
+  // Первый клик — по возрастанию, адрес несёт состояние сортировки.
+  const yearHead = page.getByRole("link", { name: /Год|Year/ }).first();
+  await yearHead.click();
+  await expect(page).toHaveURL(/sort=year/);
+  await expect(page).not.toHaveURL(/dir=desc/);
+
+  // Второй — по убыванию.
+  await page.getByRole("link", { name: /Год|Year/ }).first().click();
+  await expect(page).toHaveURL(/dir=desc/);
+
+  // Третий — сортировки нет, и порядок тот же, что был вначале.
+  await page.getByRole("link", { name: /Год|Year/ }).first().click();
+  await expect(page).not.toHaveURL(/sort=/);
+  expect(await titlesNow()).toBe(before);
+});
+
+test("сортировка не теряет поиск", async ({ page }) => {
+  await page.goto("/dramas?q=love");
+  await page.getByRole("link", { name: /Год|Year/ }).first().click();
+  await expect(page).toHaveURL(/q=love/);
+  await expect(page).toHaveURL(/sort=year/);
 });
 
 test("серверная страница буквы отдаёт полный список ссылками", async ({ page }) => {
