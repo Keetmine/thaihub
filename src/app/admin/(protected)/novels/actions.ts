@@ -30,6 +30,7 @@ function getFields(formData: FormData) {
   if (!title) throw new Error("Укажите название новеллы");
   return {
     title,
+    ficbookUrl: String(formData.get("ficbookUrl") ?? "").trim() || null,
     author: String(formData.get("author") ?? "").trim() || null,
     coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
     description: String(formData.get("description") ?? "").trim() || null,
@@ -42,6 +43,20 @@ function getFields(formData: FormData) {
   };
 }
 
+/**
+ * Адрес на Фикбуке уникален: одна их страница — одна наша новелла (как
+ * doramalandUrl у сериала). Без этой проверки повтор ронялся бы сырым
+ * P2002, из которого причину не прочитать.
+ */
+async function ficbookUrlConflict(url: string | null, selfId?: string): Promise<void> {
+  if (!url) return;
+  const taken = await prisma.novel.findFirst({
+    where: { ficbookUrl: url, ...(selfId ? { id: { not: selfId } } : {}) },
+    select: { title: true },
+  });
+  if (taken) throw new Error(`Эта ссылка на Фикбук уже стоит у новеллы «${taken.title}»`);
+}
+
 function revalidateNovelPaths(id?: string) {
   revalidatePath("/novels");
   revalidatePath("/admin/novels");
@@ -51,6 +66,7 @@ function revalidateNovelPaths(id?: string) {
 export async function createNovel(formData: FormData) {
   await requireCatalogEditor();
   const fields = getFields(formData);
+  await ficbookUrlConflict(fields.ficbookUrl);
   const created = await prisma.novel.create({
     data: {
       ...fields,
@@ -71,6 +87,7 @@ export async function createNovel(formData: FormData) {
 export async function updateNovel(id: string, formData: FormData) {
   await requireCatalogEditor();
   const fields = getFields(formData);
+  await ficbookUrlConflict(fields.ficbookUrl, id);
   const before = await prisma.novel.findUnique({ where: { id } });
   await prisma.$transaction([
     prisma.novelLink.deleteMany({ where: { novelId: id } }),
@@ -151,12 +168,15 @@ export async function createNovelAndReturn(
  * (переводчик), автор оригинала, ссылка на оригинал, бейджи+метки,
  * размер; обложка — og:image со страницы оригинала (у Фикбука своих
  * нет). Создаёт новеллу с двумя ссылками (Фикбук, Оригинал) и ведёт на
- * редактирование. Сайт за JS-проверкой — см. src/lib/ficbook.ts.
+ * редактирование. Адрес страницы ложится и в `ficbookUrl` — источник
+ * записи для блока «Источники». Сайт за JS-проверкой — см.
+ * src/lib/ficbook.ts.
  */
 export async function importNovelFromFicbook(url: string): Promise<{ id: string }> {
   await requireCatalogEditor();
   const trimmed = url.trim();
   if (!trimmed) throw new Error("Вставьте ссылку на Фикбук");
+  await ficbookUrlConflict(trimmed);
 
   const fic = await logImportRun(
     "ficbook-novel",
@@ -181,6 +201,7 @@ export async function importNovelFromFicbook(url: string): Promise<{ id: string 
       tags: fic.tags,
       size: fic.size,
       coverUrl,
+      ficbookUrl: trimmed,
       links: {
         create: [
           { label: "Фикбук", url: trimmed },

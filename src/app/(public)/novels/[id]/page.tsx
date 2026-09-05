@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BackLink from "@/components/BackLink";
 import DetailHero from "@/components/DetailHero";
+import SourcesBlock from "@/components/SourcesBlock";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { UserIcon } from "@/components/icons";
 import { pageMetadata, JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
@@ -144,7 +146,7 @@ export default async function NovelPage({
                 key={d.id}
                 href={dramaHref(d)}
                 photoUrl={d.posterUrl}
-                name={d.title}
+                name={dramaTitleForLocale(d, locale)}
                 subtitle={d.year ? String(d.year) : undefined}
                 round={false}
               />
@@ -156,6 +158,12 @@ export default async function NovelPage({
       <div className="mt-4">
         <ReviewsAndComments kind="novel" id={novel.id} />
       </div>
+      {/* Атрибуция — ВСЕГДА самым нижним блоком страницы (просьба
+          владельца), после отзывов и комментариев. Описание, автор,
+          теги и размер пришли со страницы на Фикбуке (см. /terms:
+          источники обещаны на страницах записей); подпись — hostname.
+          У новелл, заведённых вручную без ссылки, блок не рисуется. */}
+      <SourcesBlock links={[{ url: novel.ficbookUrl }]} />
       {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
           страницы (адрес и подпись), последняя ступень — сама запись. */}
       <JsonLd

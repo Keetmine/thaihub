@@ -52,6 +52,7 @@ export default async function EditNovelPage({
         defaultDramaIds={novel.dramas.map((d) => d.id)}
         defaultValues={{
           title: novel.title,
+          ficbookUrl: novel.ficbookUrl ?? "",
           author: novel.author ?? "",
           originalAuthor: novel.originalAuthor ?? "",
           size: novel.size ?? "",

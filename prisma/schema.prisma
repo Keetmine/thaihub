@@ -385,6 +385,11 @@ model Novel {
   originalAuthor String?
   tags           String[]    @default([])
   size           String?
+  // Адрес страницы на ficbook.net, откуда взята запись (описание, автор,
+  // теги, размер). Пишется импортом с Фикбука; показывается читателю в
+  // блоке «Источники» — по образцу Drama.doramalandUrl. Уникален: одна
+  // их страница — одна наша новелла.
+  ficbookUrl     String?     @unique
   links          NovelLink[]
   dramas         Drama[]
   createdAt      DateTime    @default(now())

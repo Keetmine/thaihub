@@ -24,6 +24,7 @@ export default function NovelForm({
   defaultDramaIds?: string[];
   defaultValues?: {
     title: string;
+    ficbookUrl: string;
     author: string;
     originalAuthor: string;
     size: string;
@@ -91,6 +92,34 @@ export default function NovelForm({
         </div>
         <div className="col-12 col-md-4">
           <FileDropzone name="coverUrl" label="Обложка" defaultValue={v?.coverUrl} compact />
+        </div>
+      </div>
+      </FormSection>
+
+      {/* Источник записи — по образцу «Страница на dorama.land» у
+          сериала: показывается читателю в блоке «Источники». */}
+      <FormSection title="Источник" hint="откуда взята запись">
+      <div className="row g-3">
+        <div className="col-12 col-md-8">
+          <label className="form-label" htmlFor="novel-form-ficbookUrl">Страница на Фикбуке</label>
+          <input
+            id="novel-form-ficbookUrl"
+            name="ficbookUrl"
+            type="url"
+            defaultValue={v?.ficbookUrl}
+            placeholder="https://ficbook.net/readfic/…"
+            className="form-control"
+          />
+          {v?.ficbookUrl && (
+            <a
+              href={v.ficbookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="small"
+            >
+              Открыть источник ↗
+            </a>
+          )}
         </div>
       </div>
       </FormSection>

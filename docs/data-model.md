@@ -32,6 +32,13 @@ copy — read the schema file for exact field types/nullability.
 - **`Pairing`** — a named "ship" of two performers
   (`performerAId`/`performerBId`, unique together). Selectable on events
   alongside or instead of individual performers.
+- **`Novel`** — the source novel a drama is adapted from (`Drama.novelId`,
+  optional). Title, author (translator, for Ficbook imports),
+  `originalAuthor`, cover, description, `tags`, `size`, plus free-form
+  "where to read" links (`NovelLink`, label+url). `ficbookUrl` (unique,
+  nullable) is the ficbook.net page the record was imported from — the
+  novel's counterpart of `Drama.doramalandUrl`, shown in the public
+  "Sources" block. See [catalog.md](features/catalog.md#novels).
 
 ## Events
 
