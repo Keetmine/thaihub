@@ -19,6 +19,28 @@ export async function register() {
     await import("../sentry.edge.config");
   }
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  // Прогоны импортов живут в памяти процесса: перезапуск контейнера
+  // (деплой, OOM) убивает их, а строка ImportRun остаётся RUNNING
+  // навсегда — и пока она есть, /admin/imports держит все кнопки
+  // «Импортировать» заблокированными с подписью «Импорт идёт…».
+  // Реальный случай 2026-09-05: после серии деплоев владелец не мог
+  // импортировать заявки подруги. На старте закрываем такие хвосты.
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const stale = await prisma.importRun.updateMany({
+      where: { status: "RUNNING" },
+      data: {
+        status: "FAILED",
+        finishedAt: new Date(),
+        summary: "Прерван перезапуском сервера — запустите заново",
+      },
+    });
+    if (stale.count > 0) console.log(`import runs: закрыто зависших после перезапуска: ${stale.count}`);
+  } catch (err) {
+    console.warn(`stale import runs cleanup failed: ${err instanceof Error ? err.message : err}`);
+  }
+
   if (!process.env.TELEGRAM_BOT_TOKEN) return;
 
   // Динамический импорт — чтобы Prisma и её цепочка не тянулись в
