@@ -238,6 +238,34 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "musicfestival-crawl",
+    title: "musicfestival.in.th: фестивали",
+    description:
+      "Раз в день открывает список будущих фестивалей на musicfestival.in.th и заводит " +
+      "события по новым адресам: название, даты (многодневные — одним событием), описание, " +
+      "площадка, цены и ссылка на билеты, постер, ВЕСЬ лайнап. Артисты, которых нет в " +
+      "каталоге, заводятся заготовками (одно имя и фото) — их список: Исполнители → фильтр " +
+      "«Заготовки парсеров». Уже известные адреса не перечитываются — обходятся только новые, " +
+      "до 20 фестивалей за прогон. Прошедшие фестивали заводятся разово скриптом.",
+    supportsTargets: false,
+    logKind: "musicfestival-crawl",
+    // Каждое созданное событие и каждая заготовка — строка ImportedItem.
+    logsItems: true,
+    run: async () => {
+      const { runMusicFestivalCrawl, summarizeMusicFestivalCrawl } = await import(
+        "@/lib/musicFestivalCrawl"
+      );
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "musicfestival-crawl",
+        (runId) => runMusicFestivalCrawl({ runId, listing: "upcoming" }),
+        summarizeMusicFestivalCrawl,
+      );
+      // null — прогон остановили кнопкой в /admin/imports.
+      return result ? summarizeMusicFestivalCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "cleanup-expired",
     title: "Чистка просроченного",
     description:

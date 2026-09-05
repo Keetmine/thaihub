@@ -61,6 +61,7 @@ const KIND_LABELS: Record<string, string> = {
   "ttm-crawl": "ThaiTicketMajor: обход афиши",
   "event-drafts": "Черновики событий: одобрение",
   "gmmtv-mascots": "GMMTV: маскоты с вики",
+  "musicfestival-crawl": "musicfestival.in.th: фестивали",
   "tpop-agency": "tpop.fandom: агентство",
   "tpop-artist": "tpop.fandom: артист",
 };
@@ -187,6 +188,9 @@ export default async function AdminImportsPage({
   // «События», третья часть бейджа сайдбара), сами карточки — только
   // на своей вкладке.
   const pendingDraftCount = await prisma.eventDraft.count({ where: { status: "PENDING" } });
+  // Заготовки исполнителей из лайнапов musicfestival.in.th — ждут, когда
+  // владелец дополнит карточки (docs/features/musicfestival-import.md).
+  const stubPerformerCount = await prisma.performer.count({ where: { stub: true } });
   const eventDrafts =
     tab === "events"
       ? await prisma.eventDraft.findMany({
@@ -568,6 +572,34 @@ export default async function AdminImportsPage({
                   theconcert.com не парсится (Cloudflare) — такие заводим руками.
                 </p>
                 <TtmImportFlow performers={[]} dramas={[]} />
+              </div>
+            </div>
+
+            {/* Краулер фестивалей musicfestival.in.th (задача
+                «musicfestival-crawl», см. docs/features/musicfestival-import.md):
+                очереди нет — события создаются сразу, здесь только
+                счётчик заготовок исполнителей и ссылки. */}
+            <div className="col-12">
+              <div className="surface p-4 h-100">
+                <h2 className="section-heading mb-2">Фестивали musicfestival.in.th</h2>
+                <p className="small text-secondary mb-3">
+                  Суточная задача заводит события по новым фестивалям сразу, без
+                  очереди: название, даты, описание, площадка, цены, постер и весь
+                  лайнап. Артисты, которых не было в каталоге, заведены
+                  заготовками — одно имя и фото — и ждут, когда вы их дополните;
+                  после сохранения профиля запись из списка выпадает.
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  <Link
+                    href="/admin/performers?stub=1"
+                    className={`btn btn-sm ${stubPerformerCount > 0 ? "btn-primary" : "btn-outline-secondary"}`}
+                  >
+                    Заготовки исполнителей: {stubPerformerCount}
+                  </Link>
+                  <Link href="/admin/schedule?tab=musicfestival-crawl" className="btn btn-sm btn-outline-secondary">
+                    Задача в расписании
+                  </Link>
+                </div>
               </div>
             </div>
 

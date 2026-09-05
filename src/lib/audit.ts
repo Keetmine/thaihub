@@ -47,6 +47,8 @@ const FIELD_LABELS: Record<string, string> = {
   presaleUrl: "Ссылка на продажи",
   ticketPrice: "Цена билета",
   mydramalistUrl: "MyDramaList",
+  musicFestivalUrl: "musicfestival.in.th",
+  stub: "Заготовка",
   mdlUrl: "MyDramaList (канонический)",
   mdlScore: "Рейтинг MDL",
   mdlAutoUpdate: "Автообновление MDL",

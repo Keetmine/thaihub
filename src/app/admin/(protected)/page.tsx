@@ -42,6 +42,7 @@ export default async function AdminStatsPage() {
     recentErrors,
     dramasWithoutPoster,
     eventsWithoutPerformers,
+    stubPerformers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: premiumActiveWhere(now) }),
@@ -83,6 +84,9 @@ export default async function AdminStatsPage() {
     prisma.errorLog.count({ where: { createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } }),
     prisma.drama.count({ where: { posterUrl: null } }),
     prisma.event.count({ where: { performers: { none: {} } } }),
+    // Заготовки исполнителей из лайнапов фестивалей — ждут заполнения
+    // (docs/features/musicfestival-import.md).
+    prisma.performer.count({ where: { stub: true } }),
   ]);
 
   const attention = [
@@ -103,6 +107,12 @@ export default async function AdminStatsPage() {
       count: eventsWithoutPerformers,
       label: "событий без состава",
       href: "/admin/events?issue=no-lineup",
+      urgent: false,
+    },
+    {
+      count: stubPerformers,
+      label: "заготовок исполнителей с фестивалей",
+      href: "/admin/performers?stub=1",
       urgent: false,
     },
   ].filter((a) => a.count > 0);

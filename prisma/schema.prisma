@@ -124,6 +124,17 @@ model Performer {
   // TMDB (see tmdb-import.md), lets re-imports and cast matching key off
   // a stable id instead of a fuzzy name match.
   tmdbId         String?           @unique
+  // Страница артиста на musicfestival.in.th, с которой запись заведена
+  // краулером фестивалей (см. docs/features/musicfestival-import.md):
+  // ключ повторного матчинга лайнапов (тёзки по имени не разводятся —
+  // адрес разводит) и строка в «Источниках». Уникален: одна их
+  // страница — один наш исполнитель.
+  musicFestivalUrl String?         @unique
+  // Заготовка: заведён парсером с одним именем (и фото, если было) и
+  // ждёт, когда владелец дополнит карточку. Список — фильтр
+  // «Заготовки парсеров» на /admin/performers; снимается сохранением
+  // профиля в форме.
+  stub             Boolean         @default(false)
 
   events                EventPerformer[]
   dramas                PerformerDrama[]

@@ -117,3 +117,79 @@ export async function matchMascotOwners(
 
   return { matched, unmatched };
 }
+
+// ---------------------------------------------------------------------------
+// Лайнап фестиваля (краулер musicfestival.in.th, см. src/lib/musicFestivalCrawl.ts
+// и docs/features/musicfestival-import.md). Своя функция, а не
+// matchArtistsByNickname: у артиста с сайта есть постоянный адрес страницы
+// (Performer.musicFestivalUrl) — по нему уже заведённые нами заготовки
+// находятся без всякого сравнения имён, — а по имени, как и у маскотов,
+// тёзки не разводятся: «New» в каталоге не один, и привязать фестиваль к
+// чужому человеку хуже, чем завести ещё одну заготовку (её видно в списке
+// заготовок и можно слить инструментом дублей).
+
+/** Артист лайнапа: имя и канонический адрес его страницы на сайте. */
+export type FestivalArtistCandidate = { name: string; url: string };
+
+export type MatchedFestivalArtist = FestivalArtistCandidate & {
+  /** Найденный исполнитель; null — совпадений нет (или тёзки). */
+  performerId: string | null;
+  /** «by-url» — по сохранённому адресу источника, «by-name» — по имени,
+   *  «ambiguous» — по имени нашлось несколько (не привязан), null — никого. */
+  via: "by-url" | "by-name" | "ambiguous" | null;
+};
+
+/**
+ * Матчит артистов фестиваля с каталогом:
+ *  1. по `Performer.musicFestivalUrl` — точное совпадение адреса
+ *     (заготовки прошлых прогонов и записи, где владелец поставил ссылку);
+ *  2. по имени — точное case-insensitive совпадение с `name` или
+ *     `musicAlias` у SOLO/BAND (маскоты не выступают). Ровно один
+ *     кандидат — привязка; несколько — `ambiguous`, привязки нет.
+ * Никакого фаззи: ложная привязка хуже пропуска (как везде в матчинге).
+ */
+export async function matchFestivalArtists(
+  artists: FestivalArtistCandidate[],
+): Promise<MatchedFestivalArtist[]> {
+  if (artists.length === 0) return [];
+  const urls = [...new Set(artists.map((a) => a.url))];
+  const names = [...new Set(artists.map((a) => a.name.trim()).filter(Boolean))];
+
+  const [byUrlRows, byNameRows] = await Promise.all([
+    prisma.performer.findMany({
+      where: { musicFestivalUrl: { in: urls } },
+      select: { id: true, musicFestivalUrl: true },
+    }),
+    prisma.performer.findMany({
+      where: {
+        type: { in: ["SOLO", "BAND"] },
+        OR: [
+          { name: { in: names, mode: "insensitive" } },
+          { musicAlias: { in: names, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, name: true, musicAlias: true },
+    }),
+  ]);
+
+  const byUrl = new Map(byUrlRows.map((p) => [p.musicFestivalUrl!, p.id]));
+  const key = (s: string) => s.toLowerCase().trim();
+  const byName = new Map<string, Set<string>>();
+  for (const p of byNameRows) {
+    for (const n of [p.name, p.musicAlias]) {
+      if (!n) continue;
+      const k = key(n);
+      if (!byName.has(k)) byName.set(k, new Set());
+      byName.get(k)!.add(p.id);
+    }
+  }
+
+  return artists.map((a) => {
+    const viaUrl = byUrl.get(a.url);
+    if (viaUrl) return { ...a, performerId: viaUrl, via: "by-url" };
+    const ids = byName.get(key(a.name));
+    if (!ids || ids.size === 0) return { ...a, performerId: null, via: null };
+    if (ids.size > 1) return { ...a, performerId: null, via: "ambiguous" };
+    return { ...a, performerId: [...ids][0], via: "by-name" };
+  });
+}

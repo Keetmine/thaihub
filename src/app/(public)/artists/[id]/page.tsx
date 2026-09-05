@@ -1057,6 +1057,7 @@ export default async function PerformerPage({
 
       {(performer.sourceUrl ||
         performer.mydramalistUrl ||
+        performer.musicFestivalUrl ||
         ytmSource ||
         (Array.isArray(performer.references) &&
           performer.references.length > 0)) && (
@@ -1104,6 +1105,17 @@ export default async function PerformerPage({
                   rel="noopener noreferrer"
                 >
                   MyDramaList
+                </a>
+              </li>
+            )}
+            {performer.musicFestivalUrl && (
+              <li>
+                <a
+                  href={performer.musicFestivalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  musicfestival.in.th
                 </a>
               </li>
             )}

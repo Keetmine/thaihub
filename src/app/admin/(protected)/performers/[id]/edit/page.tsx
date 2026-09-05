@@ -150,6 +150,7 @@ export default async function EditPerformerPage({
             agencyIds: performer.agencies.map((pa) => pa.agencyId),
             photoUrl: performer.photoUrl ?? "",
             mydramalistUrl: performer.mydramalistUrl ?? "",
+            musicFestivalUrl: performer.musicFestivalUrl,
             occupation: performer.occupation.join(", "),
             instruments: performer.instruments.join(", "),
             soloDebut: performer.soloDebut ?? "",

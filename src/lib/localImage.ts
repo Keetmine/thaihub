@@ -36,6 +36,10 @@ const ALLOWED_CONTENT_TYPES = new Set([
   "image/png",
   "image/webp",
   "image/gif",
+  // musicfestival.in.th отдаёт часть фото и постеров в AVIF; sharp его
+  // читает, на диск всё равно ложится WebP. Только для скачивания
+  // импортами — в ручной upload (/api/upload) тип не добавлен.
+  "image/avif",
 ]);
 
 const WEBP_QUALITY = 82;
@@ -101,8 +105,19 @@ export async function toWebp(buffer: Buffer, contentType: string): Promise<{ buf
  * image paths are already unique, content-addressed-looking ids), so a
  * second call for the same remote asset is a cheap fs.access check
  * instead of a re-download — safe to call on every sync, not just once.
+ *
+ * `opts.localBase` — своё имя файла (без расширения) вместо последнего
+ * сегмента чужого URL. Нужно источникам, у которых имя картинки НЕ
+ * уникально: на musicfestival.in.th постер каждого фестиваля лежит как
+ * `/media/festivals/<слаг>/thumbnail.jpg`, и по умолчанию второй
+ * фестиваль получил бы файл первого (проверка «уже на диске» — по
+ * имени). Санитизируется так же, как чужое имя.
  */
-export async function downloadRemoteImage(url: string | null, folder: string): Promise<string | null> {
+export async function downloadRemoteImage(
+  url: string | null,
+  folder: string,
+  opts: { localBase?: string } = {},
+): Promise<string | null> {
   if (!url) return null;
 
   let remoteName: string;
@@ -114,6 +129,12 @@ export async function downloadRemoteImage(url: string | null, folder: string): P
     return url;
   }
   if (!remoteName) return url;
+
+  if (opts.localBase) {
+    const ext = remoteName.match(/\.[a-zA-Z0-9]+$/)?.[0] ?? "";
+    const custom = sanitizeRemoteName(opts.localBase).replace(/\.[a-zA-Z0-9]+$/, "");
+    if (custom) remoteName = `${custom}${ext}`;
+  }
 
   const base = remoteName.replace(/\.[a-zA-Z0-9]+$/, "");
   const dir = resolveInside(UPLOADS_ROOT, folder);

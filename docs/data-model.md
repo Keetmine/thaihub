@@ -12,7 +12,12 @@ copy — read the schema file for exact field types/nullability.
   arbitrary `PerformerLink`s (social media, personal brand, etc.). A
   `BAND` performer's members are other `Performer` rows linked via
   `BandMember` (`bandId` ↔ `performerId`) — bands don't get their own
-  dramas/pairings, only their members do.
+  dramas/pairings, only their members do. `musicFestivalUrl` (unique,
+  nullable) — страница артиста на musicfestival.in.th, с которой запись
+  заведена краулером фестивалей (ключ повторного матчинга лайнапов,
+  строка в «Источниках»); `stub` — заготовка: заведён парсером с одним
+  именем и ждёт заполнения владельцем, снимается сохранением профиля —
+  см. [musicfestival-import.md](features/musicfestival-import.md).
 - **`Agency`** — a talent/management agency (or, for `Drama`, a
   production/distribution studio — see below). Has a roster
   (`PerformerAgency[]`, many-to-many) and arbitrary `AgencyLink`s
@@ -46,7 +51,9 @@ copy — read the schema file for exact field types/nullability.
   below. See [events.md](features/events.md) for the full picture
   (multi-day creation, presale, ICS export). Optionally linked to a
   `Drama` (`dramaId`) and/or a `Location` (`locationId`) — both nullable,
-  independent of each other.
+  independent of each other. `sourceUrl` — страница-источник (импорт по
+  ссылке с билетных сайтов, обход афиши TTM, краулер фестивалей
+  musicfestival.in.th); ключ дедупа краулеров и блок «Источники».
 - **`EventOccurrence`** — one date/time an `Event` happens on
   (`eventId`, `startsAt`, `endsAt?`). A multi-day concert is one `Event`
   with several of these, not several `Event` rows — see
@@ -58,6 +65,9 @@ copy — read the schema file for exact field types/nullability.
   и заодно память краулера (PENDING/APPROVED/REJECTED/NO_MATCH); своя
   таблица, а не флаг на `Event` — до одобрения владельцем публичная
   таблица не трогается. См. [ttm-crawl.md](features/ttm-crawl.md).
+  Краулер фестивалей musicfestival.in.th черновиков не создаёт, но той
+  же таблицей (строка APPROVED с `eventId`) запоминает адреса фестивалей,
+  оказавшихся дублями уже существующих событий.
 - **`MascotDraft`** — черновик маскота из недельного краулера вики GMMTV
   и заодно память краулера (PENDING/APPROVED/REJECTED); дедуп по
   нормализованному имени (`nameKey` @unique), совпавшие владельцы —

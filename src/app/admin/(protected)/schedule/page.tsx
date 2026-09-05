@@ -32,6 +32,9 @@ const TAB_LABELS: Record<string, string> = {
   "mdl-auto-update": "Обновление MDL",
   "mdl-new-searches": "Новинки MDL",
   "doramaland-sync": "dorama.land",
+  "ttm-crawl": "Афиша TTM",
+  "gmmtv-mascots": "Маскоты GMMTV",
+  "musicfestival-crawl": "Фестивали",
   "cleanup-expired": "Чистка",
 };
 

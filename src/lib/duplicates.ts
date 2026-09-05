@@ -317,8 +317,13 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
           "nationality", "gender", "musicAlias", "alsoKnownAs",
           "occupation", "instruments", "soloDebut", "height", "weight",
           "mvAppearances", "trivia", "awards", "references", "sourceUrl",
-          "mydramalistUrl",
+          "mydramalistUrl", "musicFestivalUrl",
         ] as (keyof typeof keeper)[]);
+        // musicFestivalUrl уникален: пока проигравший жив, адрес нельзя
+        // повторить у выжившего — сначала снимаем его с проигравшего.
+        if ("musicFestivalUrl" in data) {
+          await tx.performer.update({ where: { id: loserId }, data: { musicFestivalUrl: null } });
+        }
         if (Object.keys(data).length > 0) {
           // Json-поля (awards/references): в data попадают только не-null
           // значения (fillBlanks), каст безопасен.

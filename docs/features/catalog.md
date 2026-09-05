@@ -80,6 +80,10 @@ bar).
 - The admin performers list (`/admin/performers`) is a flat, paginated
   list (see "Catalog scale" below) with a `NameSearchBox` search and a
   photo per row, edit/delete icon buttons instead of a favorite toggle.
+  Флаг «Заготовки парсеров (без данных)» в панели фильтров (`?stub=1`)
+  показывает записи, заведённые краулером фестивалей с одним именем
+  (`Performer.stub`); сохранение профиля снимает флаг — см.
+  [musicfestival-import.md](musicfestival-import.md).
 
 ## Карточка сериала: блок фактов
 
@@ -799,7 +803,9 @@ MDL) и в строках каталога /dramas — «★ N.N» серым т
 сериалы (`mydramalistUrl` + `blsceneUrl` + `doramalandUrl` — ссылка
 на dorama.land есть только у сериалов с русским переводом, см.
 [doramaland-import.md](doramaland-import.md)), события (`Event.sourceUrl`,
-проставляется TTM-импортом) и агентства (`Agency.sourceUrl`,
+проставляется TTM-импортом и краулером фестивалей musicfestival.in.th;
+у артиста то же — `Performer.musicFestivalUrl`, см.
+[musicfestival-import.md](musicfestival-import.md)) и агентства (`Agency.sourceUrl`,
 проставляется всеми импортёрами агентств; у созданных руками блока
 нет). Обещание «источники указаны на страницах записей» — в /terms.
 

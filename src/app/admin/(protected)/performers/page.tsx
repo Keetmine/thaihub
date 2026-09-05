@@ -221,6 +221,18 @@ export default async function AdminPerformersPage({
         quickKind="performer"
       />
 
+      {/* Список заготовок парсера фестивалей (docs/features/musicfestival-import.md):
+          подсказка, что это за записи и как они отсюда выпадают. */}
+      {sp.stub === "1" && (
+        <p className="alert alert-secondary small py-2 mb-3">
+          Заготовки: заведены парсером лайнапов musicfestival.in.th с одним именем
+          (и фото, если было на сайте), тип «актёр» по умолчанию. Откройте запись,
+          дополните и сохраните профиль — после сохранения она из этого списка
+          выпадает. Тёзки не привязывались нарочно: если это уже известный артист,
+          слейте записи через «Дубли».
+        </p>
+      )}
+
       {performers.length === 0 ? (
         <p className="text-secondary">
           {q

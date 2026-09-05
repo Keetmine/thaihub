@@ -89,6 +89,9 @@ export default function PerformerForm({
     agencyIds: string[];
     photoUrl: string;
     mydramalistUrl: string;
+    /** Страница артиста на musicfestival.in.th (пишет краулер
+     *  фестивалей; в форме только показывается). */
+    musicFestivalUrl?: string | null;
     occupation?: string;
     instruments?: string;
     soloDebut?: string;
@@ -543,6 +546,15 @@ export default function PerformerForm({
             className="form-control"
           />
         </div>
+        {v?.musicFestivalUrl && (
+          <p className="small text-secondary mb-0">
+            Источник записи — страница артиста на{" "}
+            <a href={v.musicFestivalUrl} target="_blank" rel="noopener noreferrer">
+              musicfestival.in.th ↗
+            </a>{" "}
+            (проставлена краулером фестивалей, руками не правится).
+          </p>
+        )}
 
         <div className="row g-3">
           <div className="col-12 col-md-4">

@@ -24,6 +24,7 @@ something changes, edit the doc in place rather than appending a note.
   - [events.md](features/events.md) — events, multi-day, presale, ICS export + subscribe feed, location linkage
   - [ttm-crawl.md](features/ttm-crawl.md) — краулер афиши ThaiTicketMajor: черновики событий с артистами из каталога, очередь на одобрение
   - [gmmtv-mascots-import.md](features/gmmtv-mascots-import.md) — недельный краулер маскотов с вики GMMTV (официальный MediaWiki API): черновики маскотов с владельцами из каталога, очередь на одобрение
+  - [musicfestival-import.md](features/musicfestival-import.md) — суточный краулер фестивалей musicfestival.in.th: события создаются сразу со всем лайнапом, неизвестные артисты — заготовками; разовый импорт прошедших
   - [catalog.md](features/catalog.md) — performers/bands, pairings, dramas, agencies
   - [locations.md](features/locations.md) — filming/venue locations, map, visited tracking
   - [blscene-import.md](features/blscene-import.md) — the blscene.com drama/location scraper

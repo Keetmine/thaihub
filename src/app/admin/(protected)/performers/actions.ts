@@ -484,6 +484,10 @@ export async function updatePerformer(id: string, formData: FormData) {
               bio: bio || null,
               photoUrl: photoUrl || null,
               mydramalistUrl: mydramalistUrl || null,
+              // Заготовка парсера (лайнапы musicfestival.in.th) считается
+              // заполненной, как только владелец сохранил профиль: список
+              // заготовок — про «не открывали ни разу», а не про полноту полей.
+              stub: false,
               ...getMusicProfileFields(formData),
               links: {
                 create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind })),

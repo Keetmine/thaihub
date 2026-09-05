@@ -491,6 +491,9 @@ export function adminPerformerFilterDefs(t: Dict, o: PerformerFilterOptions): Fi
     },
     { key: "noPhoto", title: "Без фото", kind: "flag" },
     { key: "noBirthDate", title: "Без даты рождения", kind: "flag" },
+    // Заведены парсером с одним именем (лайнапы musicfestival.in.th) и
+    // ждут заполнения — см. docs/features/musicfestival-import.md.
+    { key: "stub", title: "Заготовки парсеров (без данных)", kind: "flag" },
   ];
 }
 
@@ -500,6 +503,7 @@ export function adminPerformerFilterWhere(p: FilterParams): Prisma.PerformerWher
   if (nationalities.length) w.push({ nationality: { in: nationalities } });
   if (one(p.noPhoto) === "1") w.push({ OR: [{ photoUrl: null }, { photoUrl: "" }] });
   if (one(p.noBirthDate) === "1") w.push({ birthDate: null });
+  if (one(p.stub) === "1") w.push({ stub: true });
   return w;
 }
 
