@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { dateKey } from "@/lib/dates";
+import { tripDayStats } from "@/lib/tripDays";
 
 // Общий подсчёт статистики пользователя — питает и вкладку «Статистика»
 // (Д1), и условия ачивок (Д2). Всё считается из уже собираемых данных:
@@ -67,7 +68,16 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
           drama: { select: { episodes: true, duration: true } },
         },
       }),
-      prisma.trip.findMany({ where: { userId } }),
+      // Поездки — свои И совместные, где инвайт принят: тот же критерий,
+      // что у списка /trips и главной (жалоба владельца: подругу добавили
+      // в поездку, а «дней в Таиланде» у неё 0). PENDING не считается —
+      // приглашение ещё не значит, что человек поехал.
+      prisma.trip.findMany({
+        where: {
+          OR: [{ userId }, { members: { some: { userId, status: "ACCEPTED" } } }],
+        },
+        select: { startDate: true, endDate: true },
+      }),
       prisma.friendship.count({
         where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
       }),
@@ -221,12 +231,10 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     (a) => a.event.presaleAt && a.createdAt < a.event.presaleAt,
   );
 
-  const tripDays = (t: (typeof trips)[number]) =>
-    Math.round((t.endDate.getTime() - t.startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-  // «Дней в Таиланде» — только по ЗАВЕРШЁННЫМ поездкам: текущая
-  // засчитается целиком после возвращения, будущие не считаются вовсе
-  // (иначе метрика прожитого опыта показывала бы ещё не прожитые дни).
-  const completedTrips = trips.filter((t) => t.endDate < now);
+  // Поездки/дни — в src/lib/tripDays.ts: дни только по завершённым,
+  // перекрывающиеся диапазоны (своя поездка + совместная на те же даты)
+  // считаются один раз.
+  const tripStats = tripDayStats(trips, now);
 
   return {
     attendedEvents: attendedEventIds.size,
@@ -249,9 +257,9 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     anyStatusDramas: watchRows.length,
     episodesWatched,
     hoursWatched,
-    trips: trips.length,
-    longestTripDays: trips.length ? Math.max(...trips.map(tripDays)) : 0,
-    daysInThailand: completedTrips.reduce((sum, t) => sum + tripDays(t), 0),
+    trips: tripStats.trips,
+    longestTripDays: tripStats.longestTripDays,
+    daysInThailand: tripStats.daysInThailand,
     friends: friendships,
     eventsByYear: Array.from(byYear.entries())
       .map(([year, count]) => ({ year, count }))
