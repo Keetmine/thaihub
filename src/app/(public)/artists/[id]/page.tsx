@@ -23,6 +23,7 @@ import { getT } from "@/lib/i18n";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import {
   CakeIcon,
   BuildingIcon,
@@ -856,7 +857,7 @@ export default async function PerformerPage({
                     className="small text-white mb-0 mt-2"
                     style={{ lineHeight: 1.3 }}
                   >
-                    {pd.drama.title}
+                    {dramaTitleForLocale(pd.drama, locale)}
                   </p>
                   {pd.drama.year && (
                     <p className="small text-secondary mb-0">{pd.drama.year}</p>

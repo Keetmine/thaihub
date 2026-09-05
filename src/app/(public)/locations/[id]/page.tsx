@@ -15,6 +15,7 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
+import { DRAMA_TITLE_SELECT, compareDramaTitles, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { isPremiumActive } from "@/lib/premium";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata, JsonLd, breadcrumbJsonLd } from "@/lib/seo";
@@ -115,7 +116,7 @@ export default async function LocationDetailPage({
             photoUrl: true,
             dramas: {
               where: { dramaId: { in: dramaIds } },
-              select: { drama: { select: { id: true, title: true, slug: true } } },
+              select: { drama: { select: { id: true, ...DRAMA_TITLE_SELECT, slug: true } } },
               take: 1,
             },
           },
@@ -230,7 +231,9 @@ export default async function LocationDetailPage({
             <>
               <h2 className="section-heading mb-2">{t.catalog.location.series}</h2>
               <div className="d-flex flex-wrap gap-2">
-                {location.dramas.map(({ drama }) => (
+                {[...location.dramas]
+                  .sort((a, b) => compareDramaTitles(a.drama, b.drama, locale))
+                  .map(({ drama }) => (
                   <AppLink
                     key={drama.id}
                     href={dramaHref(drama)}
@@ -263,7 +266,7 @@ export default async function LocationDetailPage({
                       )}
                     </div>
                     <span className="font-display fw-medium text-white text-truncate">
-                      {drama.title}
+                      {dramaTitleForLocale(drama, locale)}
                     </span>
                   </AppLink>
                 ))}
@@ -351,7 +354,7 @@ export default async function LocationDetailPage({
                       </span>
                       {rel.dramas[0] && (
                         <span className="small text-secondary d-block text-truncate">
-                          {rel.dramas[0].drama.title}
+                          {dramaTitleForLocale(rel.dramas[0].drama, locale)}
                         </span>
                       )}
                     </span>

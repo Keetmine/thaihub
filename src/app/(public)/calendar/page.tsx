@@ -19,6 +19,7 @@ import { isPremiumActive } from "@/lib/premium";
 import LetterAvatar from "@/components/LetterAvatar";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
+import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
@@ -122,7 +123,7 @@ export default async function CalendarPage({
           number: true,
           airDate: true,
           title: true,
-          drama: { select: { id: true, title: true, slug: true } },
+          drama: { select: { id: true, ...DRAMA_TITLE_SELECT, slug: true } },
         },
         // Внутри дня — по времени, потом по сериалу; номер серии последним
         // условием, иначе две серии одного сериала в один день встают в
@@ -361,7 +362,7 @@ export default async function CalendarPage({
                           key={ep.id}
                           href={dramaHref(ep.drama)}
                           className="event-chip text-decoration-none"
-                          title={t.events.calendar.episodeTitle(ep.drama.title, ep.number, ep.title)}
+                          title={t.events.calendar.episodeTitle(dramaTitleForLocale(ep.drama, locale), ep.number, ep.title)}
                         >
                           {/* Номер серии первым и жирным: в узкой клетке
                               название обрезается многоточием, и обрезаться
@@ -369,7 +370,7 @@ export default async function CalendarPage({
                           <span className="fw-semibold">
                             {t.events.calendar.episodeShort(ep.number)}
                           </span>{" "}
-                          {ep.drama.title}
+                          {dramaTitleForLocale(ep.drama, locale)}
                         </AppLink>
                       ))}
                       {dayEpisodes.length > 3 && (

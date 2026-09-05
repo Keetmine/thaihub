@@ -13,10 +13,15 @@ import type { Locale } from "@/lib/i18n/config";
  * страницы, и клиентские компоненты.
  */
 
-export function dramaTitleForLocale(
-  d: { title: string; titleRu?: string | null },
-  locale: Locale,
-): string {
+/** Поля, без которых `dramaTitleForLocale` молча отдаст английское:
+ *  узкий `select` в Prisma обязан брать оба. Кладите `...DRAMA_TITLE_SELECT`
+ *  в select сериала вместо голого `title: true`. */
+export const DRAMA_TITLE_SELECT = { title: true, titleRu: true } as const;
+
+/** Тот же набор полей типом — для пропсов и сигнатур. */
+export type DramaTitleFields = { title: string; titleRu?: string | null };
+
+export function dramaTitleForLocale(d: DramaTitleFields, locale: Locale): string {
   return locale === "ru" && d.titleRu ? d.titleRu : d.title;
 }
 
@@ -26,4 +31,17 @@ export function dramaSynopsisForLocale(
 ): string | null {
   const en = d.synopsis ?? null;
   return locale === "ru" && d.synopsisRu ? d.synopsisRu : en;
+}
+
+/** Сравнение для сортировки по названию на языке зрителя: у Prisma
+ *  `orderBy: { title }` — английский порядок, и на /ru русские названия
+ *  вставали бы вразнобой. Латиница идёт перед кириллицей и в ICU, и в
+ *  алфавитных рейках (сортировка букв по коду), так что группы по буквам
+ *  не рассыпаются. */
+export function compareDramaTitles(
+  a: DramaTitleFields,
+  b: DramaTitleFields,
+  locale: Locale,
+): number {
+  return dramaTitleForLocale(a, locale).localeCompare(dramaTitleForLocale(b, locale), locale);
 }

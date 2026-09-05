@@ -12,6 +12,7 @@ import { getDramaWatchStatuses } from "@/lib/favorites";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
+import { compareDramaTitles, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { pageMetadata, JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
@@ -81,9 +82,13 @@ export default async function AgencyDetailPage({
           (p.realName ?? "").toLowerCase().includes(needle),
       )
     : allPerformers;
+  // Название — на языке зрителя (русское с dorama.land, если есть):
+  // порядок и поиск тоже по нему, иначе на /ru «Узел» искался бы только
+  // как «Knot» и стоял бы под «K».
+  const allDramas = [...agency.dramas].sort((a, b) => compareDramaTitles(a, b, locale));
   const dramas = q
-    ? agency.dramas.filter((d) => d.title.toLowerCase().includes(needle))
-    : agency.dramas;
+    ? allDramas.filter((d) => dramaTitleForLocale(d, locale).toLowerCase().includes(needle))
+    : allDramas;
 
   const currentUser = await getCurrentUser();
   let isFavorited = false;
@@ -313,7 +318,7 @@ export default async function AgencyDetailPage({
                   )}
                 </div>
                 <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
-                  {d.title}
+                  {dramaTitleForLocale(d, locale)}
                 </p>
                 {d.year && <p className="small text-secondary mb-0">{d.year}</p>}
               </AppLink>

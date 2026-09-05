@@ -7,6 +7,7 @@ import DramaLocationGroups from "@/components/DramaLocationGroups";
 import { getCurrentUser } from "@/lib/userAuth";
 import { PinIcon } from "@/components/icons";
 import { dramaHref } from "@/lib/dramaSlug";
+import { DRAMA_TITLE_SELECT, compareDramaTitles, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { locationHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { LOCATION_CATEGORIES, isLocationCategory } from "@/lib/locationCategories";
@@ -405,7 +406,7 @@ async function LocationsByDrama({
   q: string;
   currentUser: { id: string } | null;
 }) {
-  const { t } = await getT();
+  const { t, locale } = await getT();
   const locationNameFilter = q
     ? { name: { contains: q, mode: "insensitive" as const } }
     : {};
@@ -415,7 +416,7 @@ async function LocationsByDrama({
       where: { locations: { some: { location: locationNameFilter } } },
       select: {
         id: true,
-        title: true,
+        ...DRAMA_TITLE_SELECT,
         slug: true,
         locations: {
           where: { location: locationNameFilter },
@@ -453,9 +454,13 @@ async function LocationsByDrama({
 
   return (
     <DramaLocationGroups
-      groups={dramas.map((d) => ({
+      // Группы — по названию на языке зрителя, и порядок тоже по нему:
+      // рейка букв ждёт отсортированный список.
+      groups={[...dramas]
+        .sort((a, b) => compareDramaTitles(a, b, locale))
+        .map((d) => ({
         id: d.id,
-        title: d.title,
+        title: dramaTitleForLocale(d, locale),
         href: dramaHref(d),
         locations: d.locations.map(({ location: l }) => ({
           id: l.id,

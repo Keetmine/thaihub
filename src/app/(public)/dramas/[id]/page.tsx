@@ -368,7 +368,7 @@ export default async function DramaDetailPage({
               loading="eager"
               blur
               src={drama.posterUrl}
-              alt={drama.title}
+              alt={dramaTitleForLocale(drama, locale)}
               sizes="15rem"
               className="rounded-4"
               style={{ width: "15rem", aspectRatio: "2 / 3", objectFit: "cover" }}
@@ -667,7 +667,7 @@ export default async function DramaDetailPage({
                 key={rel.id}
                 href={dramaHref(rel)}
                 photoUrl={rel.posterUrl}
-                name={rel.title}
+                name={dramaTitleForLocale(rel, locale)}
                 subtitle={relation}
                 round={false}
               />
@@ -823,7 +823,15 @@ export default async function DramaDetailPage({
           { url: drama.doramalandUrl },
         ]}
       />
-      <JsonLd data={tvSeriesJsonLd(drama)} />
+      <JsonLd
+        data={tvSeriesJsonLd({
+          ...drama,
+          // Разметка повторяет видимую страницу: на /ru — русские
+          // название и описание, если они есть.
+          title: dramaTitleForLocale(drama, locale),
+          synopsis: dramaSynopsisForLocale(drama, locale),
+        })}
+      />
       {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
           страницы (адрес и подпись), последняя ступень — сама запись. */}
       <JsonLd

@@ -16,6 +16,7 @@ import CastGrid from "@/components/CastGrid";
 import { CalendarIcon, ClockIcon, InfoIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
@@ -282,7 +283,12 @@ export default async function EventDetailPage({
   // всех» через CastGrid chips, отдельной секции больше нет.
   const castInCard = castCards.length > 0;
 
-  const eventLd = eventJsonLd(event);
+  // В разметке сериал зовётся так же, как на видимой странице: на /ru —
+  // русским названием, если оно есть.
+  const eventLd = eventJsonLd({
+    ...event,
+    drama: event.drama ? { ...event.drama, title: dramaTitleForLocale(event.drama, locale) } : null,
+  });
 
   return (
     <div>
@@ -412,7 +418,7 @@ export default async function EventDetailPage({
                 <TvIcon className="icon-inline" />{" "}
                 <span className="text-secondary">{t.events.detail.series}</span>{" "}
                 <AppLink href={dramaHref(event.drama)} className="link-body-emphasis">
-                  {event.drama.title}
+                  {dramaTitleForLocale(event.drama, locale)}
                 </AppLink>
               </p>
             )}
