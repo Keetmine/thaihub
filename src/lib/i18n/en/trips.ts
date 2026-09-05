@@ -267,6 +267,10 @@ export const trips = {
         flightSpan: "Flight",
         staySpan: "Hotel",
         arrivesOn: (date: string) => `arrives ${date}`,
+        /** Цепочка перелётов одной строкой: «2 layovers (Moscow 5 h
+         *  20 min, …)» и подпись раскрывашки с сегментами. */
+        layovers: (n: number) => (n === 1 ? "1 layover" : `${n} layovers`),
+        segments: (n: number) => `${n} segments`,
         ticketUrl: "Ticket link",
         bookingUrl: "Booking link",
         ticketFile: "Ticket file",

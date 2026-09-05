@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import {
   dateKey,
   endOfDay,
+  formatDuration,
   formatShortDate,
   formatShortDateRange,
   formatTime,
@@ -41,6 +42,7 @@ import TripBookings from "./TripBookings";
 import AddBookingButton from "./AddBookingButton";
 import AddTripPlaceButton from "../AddTripPlaceButton";
 import TripBookingLeg, { type BookingLegData } from "./TripBookingLeg";
+import TripFlightChain, { type FlightChainData } from "./TripFlightChain";
 import type { TripBookingRow } from "./BookingForm";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +65,18 @@ function labelDate(d: Date): Date {
  *  не должен превращать три ночи в две с половиной. */
 function nightsBetween(from: Date, to: Date): number {
   return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / 86_400_000);
+}
+
+/** Чип времени схлопнутой строки: обе стороны через стрелку. Когда время
+ *  известно только с одной стороны, стрелка остаётся — видно, какое из
+ *  двух это («14:00 →» заезд, «→ 12:00» выезд). Без времён чипа нет. */
+function timeSpanLabel(startAt: Date, endAt: Date): string | null {
+  const startTime = hasTime(startAt) ? formatTime(startAt) : null;
+  const endTime = hasTime(endAt) ? formatTime(endAt) : null;
+  if (startTime && endTime) return `${startTime} → ${endTime}`;
+  if (startTime) return `${startTime} →`;
+  if (endTime) return `→ ${endTime}`;
+  return null;
 }
 
 /** Куда встаёт в дне запись без времени. День должен читаться
@@ -127,7 +141,14 @@ function bookingLegs(
   t: Dict,
   canEdit: boolean,
   stayColor: number | null,
-): { leg: BookingLegData; sortAt: Date; isStay: boolean; span: BookingLegData | null }[] {
+): {
+  leg: BookingLegData;
+  sortAt: Date;
+  isStay: boolean;
+  span: BookingLegData | null;
+  /** Сырые даты обеих сторон — цепочке перелётов нужны они, а не подписи. */
+  spanAt: { startAt: Date; endAt: Date } | null;
+}[] {
   const isFlight = b.kind === "FLIGHT";
   const row: TripBookingRow = {
     id: b.id,
@@ -175,17 +196,9 @@ function bookingLegs(
   // в подписи: у отеля диапазон и ночи, у перелёта — «прилёт 11 мар»,
   // если сел не в день вылета.
   let span: BookingLegData | null = null;
+  const spanAt = b.startAt && b.endAt ? { startAt: b.startAt, endAt: b.endAt } : null;
   if (b.startAt && b.endAt) {
-    const startTime = hasTime(b.startAt) ? formatTime(b.startAt) : null;
-    const endTime = hasTime(b.endAt) ? formatTime(b.endAt) : null;
-    const timeLabel =
-      startTime && endTime
-        ? `${startTime} → ${endTime}`
-        : startTime
-          ? `${startTime} →`
-          : endTime
-            ? `→ ${endTime}`
-            : null;
+    const timeLabel = timeSpanLabel(b.startAt, b.endAt);
     let spanLabel: string | null;
     if (isFlight) {
       spanLabel =
@@ -215,10 +228,7 @@ function bookingLegs(
     };
   }
 
-  const make = (
-    at: Date,
-    side: "start" | "end",
-  ): { leg: BookingLegData; sortAt: Date; isStay: boolean; span: BookingLegData | null } => {
+  const make = (at: Date, side: "start" | "end"): ReturnType<typeof bookingLegs>[number] => {
     // Подпись «до 5 сен · 6 ночей» / «с 29 авг» — вторая половина
     // брони словами: на экране она может оказаться далеко.
     let spanLabel: string | null = null;
@@ -237,6 +247,7 @@ function bookingLegs(
       sortAt: legSortAt(at, side),
       isStay,
       span,
+      spanAt,
       leg: {
         ...base,
         key: `booking-${b.id}-${side}`,
@@ -525,23 +536,27 @@ export default async function TripPage({
       visibility: b.visibility,
     }));
 
-  const timeline: (
+  type BookingEntry = {
+    kind: "booking";
+    startsAt: Date;
+    /** У схлопнутой строки — момент второй стороны: по нему строка
+     *  решает, прошедшая ли она (заезд вчера, выезд завтра — ещё нет). */
+    endsAt?: Date;
+    key: string;
+    leg: BookingLegData;
+    isStay: boolean;
+    /** Обе стороны одной строкой — на случай, если рядом ничего нет. */
+    span: BookingLegData | null;
+    spanAt: { startAt: Date; endAt: Date } | null;
+  };
+  type TimelineItem =
     | { kind: "public"; startsAt: Date; key: string; event: (typeof events)[number] }
     | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData }
     | { kind: "todo"; startsAt: Date; key: string; todo: (typeof todoData)[number] }
-    | {
-        kind: "booking";
-        startsAt: Date;
-        /** У схлопнутой строки — момент второй стороны: по нему строка
-         *  решает, прошедшая ли она (заезд вчера, выезд завтра — ещё нет). */
-        endsAt?: Date;
-        key: string;
-        leg: BookingLegData;
-        isStay: boolean;
-        /** Обе стороны одной строкой — на случай, если рядом ничего нет. */
-        span: BookingLegData | null;
-      }
-  )[] = [
+    | BookingEntry
+    | { kind: "flightChain"; startsAt: Date; endsAt: Date; key: string; chain: FlightChainData };
+
+  const timeline: TimelineItem[] = [
     ...events.map((ev) => ({ kind: "public" as const, startsAt: ev.startsAt, key: `pub-${ev.occurrenceId}`, event: ev })),
     // Вкладка «Афиша» — только события афиши: личные записи и дела там
     // мешали (просьба владельца). Они живут в «Плане».
@@ -554,13 +569,14 @@ export default async function TripPage({
       : todoData
           .filter((t) => t.date)
           .map((t) => ({ kind: "todo" as const, startsAt: new Date(t.date!), key: `todo-${t.id}`, todo: t }))),
-    ...legs.map(({ leg, sortAt, isStay, span }) => ({
+    ...legs.map(({ leg, sortAt, isStay, span, spanAt }) => ({
       kind: "booking" as const,
       startsAt: sortAt,
       key: leg.key,
       leg,
       isStay,
       span,
+      spanAt,
     })),
   ].sort(
     (a, b) =>
@@ -578,7 +594,7 @@ export default async function TripPage({
   // событий между вылетом и прилётом тоже схлопывается. Порядок сторон
   // не важен (стоянка в один день без времён сортируется выездом раньше
   // заезда — см. closedEarly ниже): важно только, что они рядом.
-  const entries: typeof timeline = [];
+  const paired: TimelineItem[] = [];
   for (let i = 0; i < timeline.length; i += 1) {
     const cur = timeline[i];
     const next = timeline[i + 1];
@@ -589,7 +605,7 @@ export default async function TripPage({
       next.leg.bookingId === cur.leg.bookingId &&
       next.leg.side !== cur.leg.side
     ) {
-      entries.push({
+      paired.push({
         kind: "booking",
         startsAt: cur.startsAt,
         endsAt: next.startsAt,
@@ -598,11 +614,101 @@ export default async function TripPage({
         // Линию рисовать не между чем: обе стороны в одной карточке.
         isStay: false,
         span: null,
+        spanAt: cur.spanAt,
       });
       i += 1;
       continue;
     }
-    entries.push(cur);
+    paired.push(cur);
+  }
+
+  // Цепочка перелётов (выбор владельца — «вариант A»): схлопнутые
+  // перелёты, идущие в ленте подряд без единой записи между ними и с
+  // пересадкой короче суток, складываются в ОДНУ строку — «Минск →
+  // Москва → Хайкоу → Бангкок · 2 пересадки (…)». Совпадения мест
+  // сегментов не требуем: поля свободные, опечатка («Гайку») не должна
+  // рвать цепочку. Общее время в пути не считаем намеренно: времена
+  // местные для каждого аэропорта, без зон, и разница между Минском и
+  // Бангкоком врала бы на часы. А пересадка — прилёт и следующий вылет в
+  // ОДНОМ аэропорту, там разница честная. Без времени у одной из сторон
+  // пересадку считаем днями (вылет в день прилёта или назавтра) и
+  // показываем без длительности.
+  const LAYOVER_MAX_MS = 24 * 3600_000;
+  const isChainable = (e: TimelineItem): e is BookingEntry & { spanAt: { startAt: Date; endAt: Date } } =>
+    e.kind === "booking" && e.leg.side === "both" && e.leg.kind === "FLIGHT" && !!e.spanAt;
+  const layoverMinutes = (arriveAt: Date, departAt: Date): number | null =>
+    hasTime(arriveAt) && hasTime(departAt)
+      ? Math.round((departAt.getTime() - arriveAt.getTime()) / 60_000)
+      : null;
+  const layoverOk = (arriveAt: Date, departAt: Date): boolean => {
+    const minutes = layoverMinutes(arriveAt, departAt);
+    if (minutes != null) return minutes >= 0 && minutes * 60_000 < LAYOVER_MAX_MS;
+    const days = nightsBetween(arriveAt, departAt);
+    return days >= 0 && days <= 1;
+  };
+  const samePlace = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const buildChain = (group: (BookingEntry & { spanAt: { startAt: Date; endAt: Date } })[]): TimelineItem => {
+    const first = group[0];
+    const last = group[group.length - 1];
+    // Маршрут — все места по порядку без повторов подряд: «Москва →
+    // Москва» на стыке сегментов схлопывается в одну точку.
+    const stops: string[] = [];
+    for (const e of group) {
+      for (const place of [e.leg.booking.fromPlace, e.leg.booking.toPlace]) {
+        if (place && (stops.length === 0 || !samePlace(stops[stops.length - 1], place))) stops.push(place);
+      }
+    }
+    const layovers = group.slice(0, -1).map((e, i) => {
+      const next = group[i + 1];
+      const place = e.leg.booking.toPlace ?? next.leg.booking.fromPlace;
+      const minutes = layoverMinutes(e.spanAt.endAt, next.spanAt.startAt);
+      return [place, minutes != null ? formatDuration(minutes, locale) : null].filter(Boolean).join(" ");
+    });
+    const layoverDetails = layovers.filter(Boolean);
+    const spanLabel = [
+      `${t.trips.bookings.layovers(layovers.length)}${layoverDetails.length > 0 ? ` (${layoverDetails.join(", ")})` : ""}`,
+      dateKey(first.spanAt.startAt) === dateKey(last.spanAt.endAt)
+        ? null
+        : t.trips.bookings.arrivesOn(formatShortDate(last.spanAt.endAt, locale)),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return {
+      kind: "flightChain",
+      startsAt: first.startsAt,
+      endsAt: last.spanAt.endAt,
+      key: `chain-${group.map((e) => e.leg.bookingId).join("-")}`,
+      chain: {
+        key: `chain-${first.leg.bookingId}`,
+        dayLabel: first.leg.dayLabel,
+        monthLabel: first.leg.monthLabel,
+        weekdayLabel: first.leg.weekdayLabel,
+        timeLabel: timeSpanLabel(first.spanAt.startAt, last.spanAt.endAt),
+        names: group.map((e) => e.leg.name).join(" · "),
+        route: stops.join(" → ") || null,
+        spanLabel,
+        legs: group.map((e) => e.leg),
+      },
+    };
+  };
+  const entries: TimelineItem[] = [];
+  for (let i = 0; i < paired.length; ) {
+    const cur = paired[i];
+    if (!isChainable(cur)) {
+      entries.push(cur);
+      i += 1;
+      continue;
+    }
+    const group = [cur];
+    let j = i + 1;
+    while (j < paired.length) {
+      const next = paired[j];
+      if (!isChainable(next) || !layoverOk(group[group.length - 1].spanAt.endAt, next.spanAt.startAt)) break;
+      group.push(next);
+      j += 1;
+    }
+    entries.push(group.length >= 2 ? buildChain(group) : cur);
+    i = j;
   }
 
   // Линии жилья: заезд и выезд каждой стоянки соединяет вертикальная
@@ -614,7 +720,7 @@ export default async function TripPage({
   // сегмент в зазоре рисует нижняя из двух строк, поэтому заезд попадает
   // в активные ПОСЛЕ своего снимка (его линия начинается ниже него), а
   // выезд выбывает тоже после снимка (его сегмент над ним — последний).
-  const rows: { item: (typeof timeline)[number]; lines: StayLine[] }[] = [];
+  const rows: { item: TimelineItem; lines: StayLine[] }[] = [];
   const activeStays: StayLine[] = [];
   // Стоянка в одну ночёвку без времён сортируется выездом РАНЬШЕ заезда
   // (выезд прижат к началу дня, заезд — к концу). Такую не открываем
@@ -651,11 +757,11 @@ export default async function TripPage({
   bkkNow.setUTCHours(bkkNow.getUTCHours() + 7);
   const bkkTodayKey = dateKey(bkkNow);
   const tripFinished = dateKey(trip.endDate) < bkkTodayKey;
-  // Схлопнутая бронь прошла, только когда прошла её вторая сторона:
-  // заезд позавчера с выездом завтра — это текущее жильё, а не история.
+  // Схлопнутая бронь и цепочка перелётов прошли, только когда прошла
+  // их вторая сторона: заезд позавчера с выездом завтра — это текущее
+  // жильё, а не история.
   const isPastRow = (r: (typeof rows)[number]) =>
-    dateKey(r.item.kind === "booking" && r.item.endsAt ? r.item.endsAt : r.item.startsAt) <
-    bkkTodayKey;
+    dateKey("endsAt" in r.item && r.item.endsAt ? r.item.endsAt : r.item.startsAt) < bkkTodayKey;
   const pastRows = tripFinished ? [] : rows.filter(isPastRow);
   const visibleRows = tripFinished ? rows : rows.filter((r) => !isPastRow(r));
   const pastDayCount = new Set(pastRows.map((r) => dateKey(r.item.startsAt))).size;
@@ -748,6 +854,8 @@ export default async function TripPage({
           />
         ) : item.kind === "booking" ? (
           <TripBookingLeg tripId={trip.id} leg={item.leg} visibilityOptions={visibilityOptions} />
+        ) : item.kind === "flightChain" ? (
+          <TripFlightChain tripId={trip.id} chain={item.chain} visibilityOptions={visibilityOptions} />
         ) : (
           <TodoRow
             todo={item.todo}

@@ -4330,6 +4330,52 @@ body::after {
   border-style: solid;
 }
 
+/* Цепочка перелётов одной строкой (TripFlightChain): шапка — обычная
+   строка брони внутри <summary>, клик по ней раскрывает сегменты с их
+   кнопками билета/правки/удаления. Маркер браузера прячем — вместо него
+   подпись «N сегментов» с шевроном справа, шеврон переворачивается по
+   [open]. Вложенные строки сегментов — те же .surface, поэтому им
+   гасится фон: карточка в карточке одного тона читалась бы как ошибка. */
+.booking-chain > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.booking-chain > summary::-webkit-details-marker {
+  display: none;
+}
+
+.booking-chain-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}
+
+.booking-chain-toggle svg {
+  transition: transform 0.18s ease;
+}
+
+.booking-chain > summary:hover .booking-chain-toggle {
+  color: var(--bs-body-color);
+}
+
+.booking-chain[open] .booking-chain-toggle svg {
+  transform: rotate(180deg);
+}
+
+.booking-chain-segments > .booking-leg {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booking-chain-toggle svg {
+    transition: none;
+  }
+}
+
 /* ============================================================
    Ряды популярных имён за шапкой раздела (замена одного гигантского
    слова .page-watermark). Четыре ряда, слева срезаны по колонке

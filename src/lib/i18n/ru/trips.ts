@@ -263,6 +263,24 @@ export const trips: Dict["trips"] = {
         flightSpan: "Перелёт",
         staySpan: "Отель",
         arrivesOn: (date: string) => `прилёт ${date}`,
+        layovers: (n: number) => {
+            // 1 пересадка, 2–4 пересадки, 5–20 пересадок — те же правила,
+            // что у ночей выше.
+            const tail = n % 100;
+            const last = n % 10;
+            if (tail >= 11 && tail <= 14) return `${n} пересадок`;
+            if (last === 1) return `${n} пересадка`;
+            if (last >= 2 && last <= 4) return `${n} пересадки`;
+            return `${n} пересадок`;
+        },
+        segments: (n: number) => {
+            const tail = n % 100;
+            const last = n % 10;
+            if (tail >= 11 && tail <= 14) return `${n} сегментов`;
+            if (last === 1) return `${n} сегмент`;
+            if (last >= 2 && last <= 4) return `${n} сегмента`;
+            return `${n} сегментов`;
+        },
         ticketUrl: "Ссылка на билет",
         bookingUrl: "Ссылка на бронь",
         ticketFile: "Файл билета",

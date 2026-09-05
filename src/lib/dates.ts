@@ -135,6 +135,19 @@ export function formatShortDateRange(from: Date, to: Date, locale: Locale = "ru"
   return `${formatShortDate(from, locale)} – ${formatShortDate(to, locale)}`;
 }
 
+/** «5 ч 20 мин» / "5 h 20 min" — длительность в минутах. Ровные часы —
+ *  без минут («3 ч»), меньше часа — только минуты («45 мин»). Единицы
+ *  живут здесь, а не в словарях, по той же логике, что названия
+ *  месяцев: это формат, а не фраза интерфейса. */
+export function formatDuration(minutes: number, locale: Locale = "ru"): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const [hourUnit, minuteUnit] = locale === "ru" ? ["ч", "мин"] : ["h", "min"];
+  return [h > 0 ? `${h} ${hourUnit}` : null, m > 0 || h === 0 ? `${m} ${minuteUnit}` : null]
+    .filter(Boolean)
+    .join(" ");
+}
+
 /** «24 окт 2025» / «24 Oct 2025» — для подписей, где важен год.
  *  Отзывы и комментарии живут годами, и «24 окт» там врёт: непонятно,
  *  этого года или позапрошлого. Считается в UTC, как остальные даты в
