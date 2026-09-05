@@ -32,9 +32,17 @@ export type BookingLegData = {
   dayLabel: string;
   monthLabel: string;
   weekdayLabel: string;
+  /** Строка на несколько дней (схлопнутый перелёт через ночь, отель
+   *  одной строкой): дата-колонка показывает диапазон вместо дня начала.
+   *  null — один день, колонка обычная. */
+  dateRange: DateRangeLabels | null;
   /** null — время не указано (в базе ровно 00:00). У схлопнутой строки —
    *  оба времени через стрелку («10:20 → 21:40», «14:00 →», «→ 12:00»). */
   timeLabel: string | null;
+  /** Схлопнутый перелёт, севший не в день вылета: дата прилёта для
+   *  чипа — «19:20 → 13:45, 20 апр». null — тот же день; у отелей всегда
+   *  null (у них диапазон дат и ночи в подписи). */
+  arrivalDateLabel: string | null;
   name: string;
   /** Адрес отеля или маршрут перелёта «Москва → Бангкок». */
   place: string | null;
@@ -49,6 +57,81 @@ export type BookingLegData = {
   /** Значения для формы правки — она правит бронь целиком, обе даты. */
   booking: TripBookingRow;
 };
+
+/** Чип времени строки брони. У перелёта, севшего не в день вылета,
+ *  после времени прилёта — его дата приглушённым цветом: «19:20 →
+ *  13:45, 20 апр» читается без раскрытия строки (владелец отверг «+1»
+ *  — непонятно, что это следующий день). Без времени прилёта дата
+ *  встаёт сразу за стрелкой: «19:20 → 20 апр»; без времён вовсе —
+ *  «→ 20 апр». */
+export function TimeChip({
+  timeLabel,
+  arrivalDateLabel,
+}: {
+  timeLabel: string | null;
+  arrivalDateLabel: string | null;
+}) {
+  if (!timeLabel && !arrivalDateLabel) return null;
+  const time = timeLabel ?? "→";
+  // Чип — inline-flex с gap: текст и span дата — два флекс-элемента, и
+  // зазор между ними служит пробелом. Поэтому запятая остаётся в
+  // тексте времени, а не уходит в span — иначе перед ней появлялся
+  // просвет.
+  const comma = arrivalDateLabel && !time.endsWith("→") ? "," : "";
+  return (
+    <span className="date-chip event-row-time">
+      {`${time}${comma}`}
+      {arrivalDateLabel && <span className="time-chip-date">{arrivalDateLabel}</span>}
+    </span>
+  );
+}
+
+/** Диапазон для дата-колонки двумя строками: в одном месяце — «4–5»
+ *  крупно и «апр» под ним; на стыке месяцев — «28 февр –» и «2 мар»
+ *  мелко (в 3.1rem колонки крупно не влезает). Дня недели у диапазона
+ *  нет — на две даты он один не подходит. */
+export type DateRangeLabels = { top: string; bottom: string; sameMonth: boolean };
+
+/** Дата-колонка строки брони — та же, что у карточек событий
+ *  (`.event-card-date`), плюс режим диапазона для многодневных строк. */
+export function BookingDateColumn({
+  dayLabel,
+  monthLabel,
+  weekdayLabel,
+  dateRange,
+}: {
+  dayLabel: string;
+  monthLabel: string;
+  weekdayLabel: string;
+  dateRange: DateRangeLabels | null;
+}) {
+  return (
+    <div className="event-card-date flex-shrink-0">
+      {dateRange ? (
+        <>
+          <span
+            className={
+              dateRange.sameMonth
+                ? "event-card-day event-card-day-range"
+                : "event-card-month event-card-month-range"
+            }
+          >
+            {dateRange.top}
+          </span>
+          <span className={`event-card-month${dateRange.sameMonth ? "" : " event-card-month-range"}`}>
+            {dateRange.bottom}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="event-card-day">{dayLabel}</span>
+          <span className="event-card-month">{monthLabel}</span>
+          <span className="event-card-weekday">{weekdayLabel}</span>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function TripBookingLeg({
   tripId,
@@ -82,11 +165,12 @@ export default function TripBookingLeg({
 
   return (
     <div className="surface booking-leg d-flex align-items-center gap-3 p-3">
-      <div className="event-card-date flex-shrink-0">
-        <span className="event-card-day">{leg.dayLabel}</span>
-        <span className="event-card-month">{leg.monthLabel}</span>
-        <span className="event-card-weekday">{leg.weekdayLabel}</span>
-      </div>
+      <BookingDateColumn
+        dayLabel={leg.dayLabel}
+        monthLabel={leg.monthLabel}
+        weekdayLabel={leg.weekdayLabel}
+        dateRange={leg.dateRange}
+      />
 
       <span
         className="booking-leg-icon flex-shrink-0"
@@ -105,7 +189,7 @@ export default function TripBookingLeg({
 
       <div className="flex-fill" style={{ minWidth: 0 }}>
         <div className="d-flex flex-wrap align-items-baseline gap-2">
-          {leg.timeLabel && <span className="date-chip event-row-time">{leg.timeLabel}</span>}
+          <TimeChip timeLabel={leg.timeLabel} arrivalDateLabel={leg.arrivalDateLabel} />
           <span className="booking-leg-label">{label}</span>
           <span className="text-white text-truncate">{leg.name}</span>
           <ItemVisibilityBadge visibility={leg.booking.visibility} />

@@ -263,13 +263,14 @@ export const trips = {
         nights: (n: number) => (n === 1 ? "1 night" : `${n} nights`),
         /** Схлопнутая строка — обе стороны брони одной записью, когда
          *  между ними в ленте ничего нет: подпись вместо «Check-in» /
-         *  «Departure» и пометка о прилёте другим днём. */
+         *  «Departure». */
         flightSpan: "Flight",
         staySpan: "Hotel",
-        arrivesOn: (date: string) => `arrives ${date}`,
-        /** Цепочка перелётов одной строкой: «2 layovers (Moscow 5 h
-         *  20 min, …)» и подпись раскрывашки с сегментами. */
-        layovers: (n: number) => (n === 1 ? "1 layover" : `${n} layovers`),
+        /** Цепочка перелётов одной строкой: пересадка в скобках прямо в
+         *  маршруте — «Moscow (layover 5 h 20 min) → …», без длительности,
+         *  когда у сегмента нет времени; и подпись раскрывашки. */
+        layover: "layover",
+        layoverFor: (duration: string) => `layover ${duration}`,
         segments: (n: number) => `${n} segments`,
         ticketUrl: "Ticket link",
         bookingUrl: "Booking link",

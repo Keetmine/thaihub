@@ -2,7 +2,12 @@
 
 import { ChevronDownIcon, PlaneIcon } from "@/components/icons";
 import { useT } from "@/components/LocaleProvider";
-import TripBookingLeg, { type BookingLegData } from "./TripBookingLeg";
+import TripBookingLeg, {
+  BookingDateColumn,
+  TimeChip,
+  type BookingLegData,
+  type DateRangeLabels,
+} from "./TripBookingLeg";
 import type { TripItemVisibilityValue } from "../itemVisibility";
 
 /** Цепочка перелётов одной строкой — несколько схлопнутых сегментов
@@ -13,14 +18,17 @@ export type FlightChainData = {
   dayLabel: string;
   monthLabel: string;
   weekdayLabel: string;
+  /** Диапазон для дата-колонки, если цепочка не уложилась в день. */
+  dateRange: DateRangeLabels | null;
   /** «07:40 → 10:00» — первый вылет и последний прилёт. */
   timeLabel: string | null;
+  /** Дата последнего прилёта для чипа, если не в день первого вылета. */
+  arrivalDateLabel: string | null;
   /** Номера рейсов через « · ». */
   names: string;
-  /** «Минск → Москва → Хайкоу → Бангкок» без повторов подряд. */
+  /** «Минск → Москва (пересадка 5 ч 20 мин) → Хайкоу (пересадка 3 ч
+   *  40 мин) → Бангкок» — без повторов подряд, пересадки прямо в пути. */
   route: string | null;
-  /** «2 пересадки (Москва 5 ч 20 мин, Хайкоу 3 ч 40 мин) · прилёт 5 апр». */
-  spanLabel: string | null;
   /** Сегменты — обычные схлопнутые строки перелётов со своими кнопками. */
   legs: BookingLegData[];
 };
@@ -35,7 +43,7 @@ export default function TripFlightChain({
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
-  const subline = [chain.route, chain.spanLabel].filter(Boolean).join(" · ");
+  const subline = chain.route;
 
   // Билет, правка и удаление у каждого сегмента свои, и в одну строку
   // они не помещаются — сегменты раскрываются кликом по строке
@@ -44,11 +52,12 @@ export default function TripFlightChain({
   return (
     <details className="surface booking-leg booking-chain">
       <summary className="d-flex align-items-center gap-3 p-3">
-        <div className="event-card-date flex-shrink-0">
-          <span className="event-card-day">{chain.dayLabel}</span>
-          <span className="event-card-month">{chain.monthLabel}</span>
-          <span className="event-card-weekday">{chain.weekdayLabel}</span>
-        </div>
+        <BookingDateColumn
+          dayLabel={chain.dayLabel}
+          monthLabel={chain.monthLabel}
+          weekdayLabel={chain.weekdayLabel}
+          dateRange={chain.dateRange}
+        />
 
         <span className="booking-leg-icon flex-shrink-0" aria-hidden>
           <PlaneIcon />
@@ -56,7 +65,7 @@ export default function TripFlightChain({
 
         <div className="flex-fill" style={{ minWidth: 0 }}>
           <div className="d-flex flex-wrap align-items-baseline gap-2">
-            {chain.timeLabel && <span className="date-chip event-row-time">{chain.timeLabel}</span>}
+            <TimeChip timeLabel={chain.timeLabel} arrivalDateLabel={chain.arrivalDateLabel} />
             <span className="booking-leg-label">{t.trips.bookings.flightSpan}</span>
             <span className="text-white text-truncate">{chain.names}</span>
           </div>

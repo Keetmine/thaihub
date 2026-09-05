@@ -7,7 +7,6 @@ import {
   endOfDay,
   formatDuration,
   formatShortDate,
-  formatShortDateRange,
   formatTime,
   shortMonthName,
   shortWeekdayName,
@@ -41,7 +40,7 @@ import { userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
 import AddBookingButton from "./AddBookingButton";
 import AddTripPlaceButton from "../AddTripPlaceButton";
-import TripBookingLeg, { type BookingLegData } from "./TripBookingLeg";
+import TripBookingLeg, { type BookingLegData, type DateRangeLabels } from "./TripBookingLeg";
 import TripFlightChain, { type FlightChainData } from "./TripFlightChain";
 import type { TripBookingRow } from "./BookingForm";
 
@@ -77,6 +76,31 @@ function timeSpanLabel(startAt: Date, endAt: Date): string | null {
   if (startTime) return `${startTime} →`;
   if (endTime) return `→ ${endTime}`;
   return null;
+}
+
+/** Дата-колонка многодневной строки: «4–5» + «апр» в одном месяце,
+ *  «28 февр –» + «2 мар» на стыке (см. BookingDateColumn). null — один
+ *  день, колонка обычная. */
+function dateRangeLabels(from: Date, to: Date, locale: Locale): DateRangeLabels | null {
+  if (dateKey(from) === dateKey(to)) return null;
+  if (from.getUTCFullYear() === to.getUTCFullYear() && from.getUTCMonth() === to.getUTCMonth()) {
+    return {
+      top: `${from.getUTCDate()}–${to.getUTCDate()}`,
+      bottom: shortMonthName(labelDate(from), locale),
+      sameMonth: true,
+    };
+  }
+  return {
+    top: `${formatShortDate(from, locale)} –`,
+    bottom: formatShortDate(to, locale),
+    sameMonth: false,
+  };
+}
+
+/** Дата прилёта для чипа перелёта — только если сел не в день вылета;
+ *  тем же коротким форматом, что и остальные даты строк. */
+function arrivalDateLabel(startAt: Date, endAt: Date, locale: Locale): string | null {
+  return dateKey(startAt) === dateKey(endAt) ? null : formatShortDate(endAt, locale);
 }
 
 /** Куда встаёт в дне запись без времени. День должен читаться
@@ -192,27 +216,23 @@ function bookingLegs(
 
   // Схлопнутая строка: дата-колонка — по началу, чип времени — обе
   // стороны через стрелку (одна сторона без времени — стрелка остаётся,
-  // чтобы было видно, какое из двух известно), а вторая дата — словами
-  // в подписи: у отеля диапазон и ночи, у перелёта — «прилёт 11 мар»,
-  // если сел не в день вылета.
+  // чтобы было видно, какое из двух известно), а вторая дата — словами:
+  // у отеля диапазон и ночи в подписи, у перелёта — дата прилёта прямо
+  // в чипе, если сел не в день вылета.
   let span: BookingLegData | null = null;
   const spanAt = b.startAt && b.endAt ? { startAt: b.startAt, endAt: b.endAt } : null;
   if (b.startAt && b.endAt) {
     const timeLabel = timeSpanLabel(b.startAt, b.endAt);
     let spanLabel: string | null;
     if (isFlight) {
-      spanLabel =
-        dateKey(b.startAt) === dateKey(b.endAt)
-          ? null
-          : t.trips.bookings.arrivesOn(formatShortDate(b.endAt, locale));
+      // Дата прилёта живёт в чипе (arrivalDateLabel ниже), подпись под
+      // строкой — только маршрут.
+      spanLabel = null;
     } else {
+      // Диапазон дат у отеля — в дата-колонке (dateRange), в подписи
+      // остаются только ночи.
       const nights = nightsBetween(b.startAt, b.endAt);
-      spanLabel = [
-        formatShortDateRange(b.startAt, b.endAt, locale),
-        nights > 0 ? t.trips.bookings.nights(nights) : null,
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      spanLabel = nights > 0 ? t.trips.bookings.nights(nights) : null;
     }
     span = {
       ...base,
@@ -222,7 +242,11 @@ function bookingLegs(
       // одной карточке, — поэтому и иконка остаётся акцентной.
       stayColor: null,
       ...dateLabels(b.startAt),
+      dateRange: dateRangeLabels(b.startAt, b.endAt, locale),
       timeLabel,
+      // Дата прилёта в чипе — только у перелёта: у отеля ночи и
+      // диапазон дат уже в подписи (решение владельца).
+      arrivalDateLabel: isFlight ? arrivalDateLabel(b.startAt, b.endAt, locale) : null,
       spanLabel,
       note: b.note,
     };
@@ -254,7 +278,9 @@ function bookingLegs(
         side,
         stayColor: isStay ? stayColor : null,
         ...dateLabels(at),
+        dateRange: null,
         timeLabel: hasTime(at) ? formatTime(at) : null,
+        arrivalDateLabel: null,
         spanLabel,
         // Заметка у брони одна на обе стороны, поэтому показываем её
         // только на первой записи — иначе «код брони 4412» повторялся бы
@@ -625,7 +651,7 @@ export default async function TripPage({
   // Цепочка перелётов (выбор владельца — «вариант A»): схлопнутые
   // перелёты, идущие в ленте подряд без единой записи между ними и с
   // пересадкой короче суток, складываются в ОДНУ строку — «Минск →
-  // Москва → Хайкоу → Бангкок · 2 пересадки (…)». Совпадения мест
+  // Москва (пересадка 5 ч 20 мин) → Хайкоу (…) → Бангкок». Совпадения мест
   // сегментов не требуем: поля свободные, опечатка («Гайку») не должна
   // рвать цепочку. Общее время в пути не считаем намеренно: времена
   // местные для каждого аэропорта, без зон, и разница между Минском и
@@ -650,29 +676,32 @@ export default async function TripPage({
   const buildChain = (group: (BookingEntry & { spanAt: { startAt: Date; endAt: Date } })[]): TimelineItem => {
     const first = group[0];
     const last = group[group.length - 1];
-    // Маршрут — все места по порядку без повторов подряд: «Москва →
-    // Москва» на стыке сегментов схлопывается в одну точку.
-    const stops: string[] = [];
-    for (const e of group) {
-      for (const place of [e.leg.booking.fromPlace, e.leg.booking.toPlace]) {
-        if (place && (stops.length === 0 || !samePlace(stops[stops.length - 1], place))) stops.push(place);
-      }
-    }
-    const layovers = group.slice(0, -1).map((e, i) => {
-      const next = group[i + 1];
-      const place = e.leg.booking.toPlace ?? next.leg.booking.fromPlace;
-      const minutes = layoverMinutes(e.spanAt.endAt, next.spanAt.startAt);
-      return [place, minutes != null ? formatDuration(minutes, locale) : null].filter(Boolean).join(" ");
+    // Маршрут — все места по порядку без повторов подряд («Москва →
+    // Москва» на стыке сегментов схлопывается в одну точку), а пересадка
+    // пишется в скобках прямо у своего места (просьба владельца), не
+    // отдельным списком. На стыке без известного места скобки встают
+    // самостоятельным пунктом — пересадка была, просто неизвестно где.
+    // Место и пометка держатся порознь до самого конца: повтор ищется
+    // по месту, иначе «Москва (пересадка …)» не совпала бы с «Москва».
+    const stops: { place: string | null; layover: string | null }[] = [];
+    const pushStop = (place: string | null) => {
+      const prev = stops[stops.length - 1];
+      if (place && (!prev?.place || !samePlace(prev.place, place))) stops.push({ place, layover: null });
+    };
+    group.forEach((e, i) => {
+      pushStop(e.leg.booking.fromPlace);
+      pushStop(e.leg.booking.toPlace);
+      if (i === group.length - 1) return;
+      const minutes = layoverMinutes(e.spanAt.endAt, group[i + 1].spanAt.startAt);
+      const layover = `(${
+        minutes != null
+          ? t.trips.bookings.layoverFor(formatDuration(minutes, locale))
+          : t.trips.bookings.layover
+      })`;
+      const prev = stops[stops.length - 1];
+      if (prev?.place && !prev.layover) prev.layover = layover;
+      else stops.push({ place: null, layover });
     });
-    const layoverDetails = layovers.filter(Boolean);
-    const spanLabel = [
-      `${t.trips.bookings.layovers(layovers.length)}${layoverDetails.length > 0 ? ` (${layoverDetails.join(", ")})` : ""}`,
-      dateKey(first.spanAt.startAt) === dateKey(last.spanAt.endAt)
-        ? null
-        : t.trips.bookings.arrivesOn(formatShortDate(last.spanAt.endAt, locale)),
-    ]
-      .filter(Boolean)
-      .join(" · ");
     return {
       kind: "flightChain",
       startsAt: first.startsAt,
@@ -683,10 +712,11 @@ export default async function TripPage({
         dayLabel: first.leg.dayLabel,
         monthLabel: first.leg.monthLabel,
         weekdayLabel: first.leg.weekdayLabel,
+        dateRange: dateRangeLabels(first.spanAt.startAt, last.spanAt.endAt, locale),
         timeLabel: timeSpanLabel(first.spanAt.startAt, last.spanAt.endAt),
+        arrivalDateLabel: arrivalDateLabel(first.spanAt.startAt, last.spanAt.endAt, locale),
         names: group.map((e) => e.leg.name).join(" · "),
-        route: stops.join(" → ") || null,
-        spanLabel,
+        route: stops.map((s) => [s.place, s.layover].filter(Boolean).join(" ")).join(" → ") || null,
         legs: group.map((e) => e.leg),
       },
     };

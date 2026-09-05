@@ -899,6 +899,22 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 0.7;
 }
 
+/* Дата-колонка многодневной строки брони (BookingDateColumn): «4–5»
+   вместо числа — мельче, иначе «28–31» шире 3.1rem колонки; на стыке
+   месяцев обе строки мелкие («28 февр –» / «2 мар»), с поджатым
+   трекингом, чтобы уложиться в ту же ширину. */
+.event-card-day-range {
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.event-card-month-range {
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .event-card-poster {
   display: block;
   width: 3.9rem;
@@ -4008,6 +4024,13 @@ body::after {
   padding: 0.15rem 0.5rem;
   font-size: 0.72rem;
   line-height: 1.35;
+}
+
+/* Дата прилёта после времени в чипе схлопнутого перелёта и цепочки
+   («19:20 → 13:45, 20 апр», TimeChip в TripBookingLeg) — приглушённым:
+   это уточнение к времени, а не само время. */
+.time-chip-date {
+  color: var(--bs-secondary-color);
 }
 
 /* Второй чип строки («+2 даты») — тише первого: это уточнение, а не само

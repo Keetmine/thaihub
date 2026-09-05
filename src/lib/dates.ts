@@ -124,17 +124,6 @@ export function formatShortDate(d: Date, locale: Locale = "ru"): string {
   return `${d.getUTCDate()} ${DATE_MONTHS[locale][d.getUTCMonth()]}`;
 }
 
-/** «12–15 мар» / "12–15 Mar" — диапазон двумя короткими датами; на
- *  стыке месяцев «28 февр – 2 мар», один и тот же день — просто дата.
- *  Считается в UTC, как всё в этом модуле. */
-export function formatShortDateRange(from: Date, to: Date, locale: Locale = "ru"): string {
-  if (dateKey(from) === dateKey(to)) return formatShortDate(from, locale);
-  if (from.getUTCFullYear() === to.getUTCFullYear() && from.getUTCMonth() === to.getUTCMonth()) {
-    return `${from.getUTCDate()}–${to.getUTCDate()} ${DATE_MONTHS[locale][from.getUTCMonth()]}`;
-  }
-  return `${formatShortDate(from, locale)} – ${formatShortDate(to, locale)}`;
-}
-
 /** «5 ч 20 мин» / "5 h 20 min" — длительность в минутах. Ровные часы —
  *  без минут («3 ч»), меньше часа — только минуты («45 мин»). Единицы
  *  живут здесь, а не в словарях, по той же логике, что названия
