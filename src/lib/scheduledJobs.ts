@@ -146,6 +146,38 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "doramaland-sync",
+    title: "dorama.land: русские переводы",
+    description:
+      "Раз в день сверяет их каталог с нашим. Из sitemap dorama.land берутся только " +
+      "незнакомые страницы сериалов (ещё не разобранные и не привязанные к нашим " +
+      "записям) — до 300 за прогон, остаток дочитывается в следующие дни. Нашим сериалам " +
+      "без русского названия дописываются перевод и варианты названий (сведение по " +
+      "названию + году, однозначно); сериалы с переводом не трогаются, и на их страницы " +
+      "никто не ходит. Их сериалы, которых у нас нет (Таиланд или яой/BL), сначала " +
+      "ищутся на MDL и заводятся обычным импортом с пометкой «обновлять по расписанию», " +
+      "потом получают перевод — до 40 MDL-поисков за прогон; не нашедшиеся на MDL " +
+      "попадают в сводку, запись для них не создаётся.",
+    // Отбор — их каталог целиком против нашего; артистов тут выбирать
+    // нечего.
+    supportsTargets: false,
+    logKind: "doramaland-sync",
+    // Каждый дописанный перевод и каждый заведённый сериал — строка
+    // ImportedItem: на вкладке задачи видно, что именно нашлось.
+    logsItems: true,
+    run: async () => {
+      const { runDoramaLandDaily, summarizeDoramaLandDaily } = await import("@/lib/doramalandSync");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "doramaland-sync",
+        (runId) => runDoramaLandDaily({ runId }),
+        summarizeDoramaLandDaily,
+      );
+      // null — прогон остановили кнопкой в /admin/imports.
+      return result ? summarizeDoramaLandDaily(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "ttm-crawl",
     title: "ThaiTicketMajor: обход афиши",
     description:

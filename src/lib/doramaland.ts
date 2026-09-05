@@ -153,8 +153,13 @@ export async function fetchDoramaLandPage(url: string): Promise<DoramaLandPage> 
 }
 
 /**
- * Все страницы СЕРИАЛОВ из их sitemap-ов. Страницы серий («…-N-seriya»)
- * и тегов отсеиваются; порядок — как в карте.
+ * Все страницы СЕРИАЛОВ из их sitemap-ов. Страницы серий («…-N-seriya»,
+ * а также с хвостом — «…-8-seriya-2025», «…-2-seriya-a») и тегов
+ * отсеиваются; порядок — как в карте.
+ *
+ * `lastmod` из карты не берём: у страниц сериалов это время генерации
+ * самой карты (одна секунда на все), а не правки страницы — отличать
+ * по нему новое от старого нельзя.
  */
 export async function collectDoramaLandSeriesUrls(): Promise<string[]> {
   // res.ok проверяем обязательно: страница ошибки (500/503) молча
@@ -174,7 +179,11 @@ export async function collectDoramaLandSeriesUrls(): Promise<string[]> {
     for (const m of xml.matchAll(/<loc>(https:\/\/dorama\.land\/[^<]+)<\/loc>/g)) {
       const url = m[1];
       if (url.includes("/tags/")) continue;
-      if (/-\d+-seriya$/.test(url)) continue;
+      const slug = url.slice(url.lastIndexOf("/") + 1);
+      if (/(?:^|-)\d+-seriya(?:-[^/]*)?$/.test(slug)) continue;
+      // Служебные страницы (privacy_policy, about_us, terms_of_use…) — с
+      // подчёркиванием; слаги сериалов — только через дефис.
+      if (slug.includes("_")) continue;
       if (/\/(?:all-new-dramas|sitemap)/.test(url) || url === "https://dorama.land/") continue;
       if (seen.has(url)) continue;
       seen.add(url);

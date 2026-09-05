@@ -52,6 +52,7 @@ const KIND_LABELS: Record<string, string> = {
   "mdl-drama": "MyDramaList: сериал",
   "mdl-search": "MyDramaList: страница поиска",
   "mdl-new-searches": "MyDramaList: новинки по поискам",
+  "doramaland-sync": "dorama.land: русские переводы",
   "mdl-requests": "Заявки: импорт сериалов",
   "youtube-music": "YouTube Music: дискография",
   cleanup: "Расписание: чистка просроченного",

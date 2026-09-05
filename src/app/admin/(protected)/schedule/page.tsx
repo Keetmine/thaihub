@@ -31,6 +31,7 @@ const TAB_LABELS: Record<string, string> = {
   "youtube-music": "YouTube Music",
   "mdl-auto-update": "Обновление MDL",
   "mdl-new-searches": "Новинки MDL",
+  "doramaland-sync": "dorama.land",
   "cleanup-expired": "Чистка",
 };
 
