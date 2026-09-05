@@ -28,6 +28,32 @@ export async function saveJobSchedule(key: string, formData: FormData): Promise<
     update: { enabled, hour, targetMode },
   });
 
+  // Список отслеживаемых поисков MDL — вместе с остальными настройками
+  // задачи (поле есть только во вкладке «mdl-new-searches»). Каждая
+  // строка проверяется как ссылка на /search: про кривой адрес нужно
+  // узнать при сохранении, а не из упавшего ночного прогона.
+  const watchRaw = formData.get("watchSearches");
+  if (typeof watchRaw === "string") {
+    const { parseMdlSearchInput, MDL_WATCH_SEARCHES_KEY } = await import(
+      "@/lib/mdlSearchImport"
+    );
+    const { setSetting } = await import("@/lib/siteSettings");
+    const lines = watchRaw
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const normalized = lines.map((line) => {
+      try {
+        return parseMdlSearchInput(line);
+      } catch (e) {
+        throw new Error(
+          `Строка «${line}»: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    });
+    await setSetting(MDL_WATCH_SEARCHES_KEY, Array.from(new Set(normalized)).join("\n"));
+  }
+
   revalidatePath("/admin/schedule");
 }
 

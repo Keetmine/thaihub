@@ -13,6 +13,8 @@ import { saveJobSchedule, runJobNow } from "./actions";
 // пользователя: молчаливое сохранение выглядело как несохранение
 // (владелица дважды сохранила час на проде и не поверила, что вышло).
 import SettingsForm from "@/app/(public)/account/settings/SettingsForm";
+import { getSetting } from "@/lib/siteSettings";
+import { MDL_WATCH_SEARCHES_KEY } from "@/lib/mdlSearchImport";
 
 export const metadata = { title: "Расписание" };
 
@@ -28,6 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 const TAB_LABELS: Record<string, string> = {
   "youtube-music": "YouTube Music",
   "mdl-auto-update": "Обновление MDL",
+  "mdl-new-searches": "Новинки MDL",
   "cleanup-expired": "Чистка",
 };
 
@@ -64,6 +67,11 @@ export default async function AdminSchedulePage({
 
   // Вкладка — ключ задачи; прямые старые ссылки без ?tab открывают первую.
   const job = jobs.find((j) => j.key === sp.tab) ?? jobs[0];
+  // Сохранённые ссылки поиска — настройка только вахты новинок MDL.
+  const watchSearches =
+    job.key === "mdl-new-searches"
+      ? ((await getSetting(MDL_WATCH_SEARCHES_KEY)) ?? "")
+      : null;
   const hist: HistTab = job.logsItems && sp.hist === "items" ? "items" : "runs";
   const page = Math.max(1, Number(sp.page) || 1);
   const skip = (page - 1) * DENSE_PAGE_SIZE;
@@ -216,6 +224,31 @@ export default async function AdminSchedulePage({
               ))}
             </select>
           </div>
+
+          {watchSearches !== null && (
+            <div className="w-100">
+              <label
+                className="form-label small text-secondary mb-1"
+                htmlFor={`job-${job.key}-watchSearches`}
+              >
+                Ссылки на поиски MDL — по строке на ссылку
+              </label>
+              <textarea
+                id={`job-${job.key}-watchSearches`}
+                name="watchSearches"
+                rows={4}
+                key={watchSearches}
+                defaultValue={watchSearches}
+                placeholder="https://mydramalist.com/search?adv=titles&…&so=newest&or=desc"
+                className="form-control form-control-sm font-monospace"
+              />
+              <p className="small text-secondary mb-0 mt-1">
+                Наберите фильтры на MDL (сортировка — «сначала новые»),
+                скопируйте адрес выдачи и вставьте сюда. Кривая строка не
+                даст сохранить форму.
+              </p>
+            </div>
+          )}
 
           {job.supportsTargets && (
             <div>

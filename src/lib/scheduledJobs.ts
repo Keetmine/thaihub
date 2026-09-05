@@ -118,6 +118,34 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "mdl-new-searches",
+    title: "MyDramaList: новинки по поискам",
+    description:
+      "Раз в день проверяет сохранённые ссылки на страницы поиска MDL (задаются ниже, " +
+      "по строке на ссылку; в ссылке должна стоять сортировка «сначала новые» — so=newest). " +
+      "Смотрит только верх выдачи: тайтлы, которых ещё нет в каталоге, импортируются " +
+      "обычным путём с урезанным кастом и помечаются «обновлять по расписанию», а как " +
+      "только встретился знакомый тайтл, обход этой ссылки заканчивается. Это не " +
+      "переимпорт списка: уже известные сериалы не трогаются вовсе — их освежает " +
+      "«MyDramaList: обновление сериалов».",
+    supportsTargets: false,
+    logKind: "mdl-new-searches",
+    // Каждый заведённый тайтл — строка ImportedItem: на вкладке задачи
+    // видно, какие новинки нашлись.
+    logsItems: true,
+    run: async () => {
+      const { runMdlWatchSearches, summarizeMdlWatch } = await import("@/lib/mdlSearchImport");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "mdl-new-searches",
+        (runId) => runMdlWatchSearches({ runId }),
+        summarizeMdlWatch,
+      );
+      // null — прогон остановили кнопкой в /admin/imports.
+      return result ? summarizeMdlWatch(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "ttm-crawl",
     title: "ThaiTicketMajor: обход афиши",
     description:

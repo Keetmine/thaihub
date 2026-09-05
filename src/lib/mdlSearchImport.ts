@@ -279,6 +279,193 @@ export async function importMdlSearch(
   }
 }
 
+// ---------- вахта по сохранённым поискам (задача расписания) ----------
+
+/** Ключ SiteSetting со списком отслеживаемых ссылок поиска (по строке
+ *  на ссылку). Правится на /admin/schedule во вкладке задачи. */
+export const MDL_WATCH_SEARCHES_KEY = "mdl_watch_searches";
+
+/** Сколько страниц выдачи смотрим за прогон одной ссылки. Сортировку
+ *  «сначала новые» задаёт сама сохранённая ссылка (`so=newest`) —
+ *  новое сверху, и глубже пары страниц ходить незачем: страница, где
+ *  встретился знакомый тайтл, становится последней. */
+const WATCH_MAX_PAGES = 5;
+
+export type MdlWatchResult = {
+  searches: number;
+  pagesScanned: number;
+  found: number;
+  created: number;
+  failed: number;
+  castLinked: number;
+  performersCreated: number;
+  /** Названия заведённых — в сводку прогона. */
+  newTitles: string[];
+  /** Ссылки, чей обход упал (целиком), — с причиной. */
+  brokenSearches: string[];
+};
+
+/**
+ * Ежедневная вахта: не переимпорт всего списка, а проверка «появилось
+ * ли новое» (просьба владельца 2026-09-05). По каждой сохранённой
+ * ссылке поиска листаем выдачу СВЕРХУ и собираем только тайтлы,
+ * которых нет в каталоге (точный матч по mdl-id, как в импорте списка
+ * пользователя); страница, где встретился хоть один знакомый тайтл, —
+ * последняя: при сортировке «сначала новые» дальше идёт уже
+ * импортированное. Найденное заводится обычным путём (upsertDramaFromMdl
+ * + урезанный каст) с пометкой «обновлять по расписанию» — новинки
+ * обычно ещё выходят, и ночное обновление им нужнее всех.
+ */
+export async function runMdlWatchSearches(opts: {
+  runId: string;
+  onProgress?: (message: string) => void;
+}): Promise<MdlWatchResult> {
+  const { getSetting } = await import("@/lib/siteSettings");
+  const raw = (await getSetting(MDL_WATCH_SEARCHES_KEY)) ?? "";
+  const searches = raw
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const result: MdlWatchResult = {
+    searches: searches.length,
+    pagesScanned: 0,
+    found: 0,
+    created: 0,
+    failed: 0,
+    castLinked: 0,
+    performersCreated: 0,
+    newTitles: [],
+    brokenSearches: [],
+  };
+  if (searches.length === 0) return result;
+
+  // Каталог одним проходом, как в mdlListImport: known-набор mdl-id.
+  const { mdlIdFromUrl } = await import("@/lib/mydramalist");
+  const catalog = await prisma.drama.findMany({
+    where: { OR: [{ mdlUrl: { not: null } }, { mydramalistUrl: { not: null } }] },
+    select: { mdlUrl: true, mydramalistUrl: true },
+  });
+  const knownIds = new Set<string>();
+  for (const d of catalog) {
+    for (const u of [d.mdlUrl, d.mydramalistUrl]) {
+      const id = u ? mdlIdFromUrl(u) : null;
+      if (id) knownIds.add(id);
+    }
+  }
+
+  const fetcher = new MdlRunFetcher({ onNotice: opts.onProgress });
+  try {
+    for (const rawUrl of searches) {
+      await checkImportCancelled(opts.runId);
+      let base: string;
+      try {
+        base = parseMdlSearchInput(rawUrl);
+      } catch (e) {
+        result.brokenSearches.push(
+          `${rawUrl}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        continue;
+      }
+
+      // Собираем незнакомое с верхних страниц этой ссылки.
+      const fresh: MdlSearchTitle[] = [];
+      try {
+        for (let page = 1; page <= WATCH_MAX_PAGES; page++) {
+          await checkImportCancelled(opts.runId);
+          if (result.pagesScanned > 0) await sleep(REQUEST_DELAY_MS);
+          let html: string;
+          try {
+            html = await fetcher.fetchHtml(searchPageUrl(base, page));
+          } catch (e) {
+            if (e instanceof MdlHttpError && e.status === 404) break; // конец выдачи
+            throw e;
+          }
+          result.pagesScanned += 1;
+          const titles = parseMdlSearchTitles(html);
+          if (titles.length === 0) break;
+          let sawKnown = false;
+          for (const t of titles) {
+            const id = mdlIdFromUrl(t.path);
+            if (!id) continue;
+            if (knownIds.has(id)) {
+              sawKnown = true;
+              continue;
+            }
+            knownIds.add(id); // одна и та же новинка в двух ссылках — один импорт
+            fresh.push(t);
+          }
+          opts.onProgress?.(
+            `Проверяем ${base} — страница ${page}, новых пока ${fresh.length}`,
+          );
+          if (sawKnown) break;
+        }
+      } catch (e) {
+        if (isImportCancelledError(e)) throw e;
+        result.brokenSearches.push(
+          `${base}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        continue;
+      }
+
+      result.found += fresh.length;
+
+      for (const title of fresh) {
+        await checkImportCancelled(opts.runId);
+        await sleep(REQUEST_DELAY_MS);
+        opts.onProgress?.(`Заводим новинку: ${title.title}`);
+        try {
+          const res = await upsertDramaFromMdl(absMdlUrl(title.path), {
+            fetchHtml: fetcher.fetchHtml,
+            autoUpdate: true,
+          });
+          if (res.created) {
+            result.created += 1;
+            result.newTitles.push(res.title);
+          }
+          const cast = await linkMdlCast(res.id, res.mdl.cast, {
+            runId: opts.runId,
+            scope: "main-and-known-support",
+            enrich: false,
+          });
+          result.castLinked += cast.linked;
+          result.performersCreated += cast.createdPerformers;
+          await prisma.importedItem.create({
+            data: {
+              runId: opts.runId,
+              entityType: "drama",
+              entityId: res.id,
+              action: res.created ? "created" : "updated",
+              label: res.title,
+            },
+          });
+        } catch (e) {
+          if (isImportCancelledError(e)) throw e;
+          result.failed += 1;
+        }
+      }
+    }
+  } finally {
+    await fetcher.close();
+  }
+  return result;
+}
+
+/** Сводка вахты для журнала и строки «последний результат». */
+export function summarizeMdlWatch(r: MdlWatchResult): string {
+  if (r.searches === 0) {
+    return "ссылок поиска не задано — добавьте их в настройках задачи";
+  }
+  return (
+    `ссылок ${r.searches}, страниц ${r.pagesScanned}, новых ${r.found}` +
+    (r.created ? `, заведено ${r.created}: ${r.newTitles.slice(0, 5).join(", ")}` : "") +
+    (r.failed ? `, с ошибкой ${r.failed}` : "") +
+    (r.castLinked ? `, каст +${r.castLinked}` : "") +
+    (r.performersCreated ? ` (заведено актёров ${r.performersCreated})` : "") +
+    (r.brokenSearches.length ? ` · не обошлись: ${r.brokenSearches.join("; ")}` : "")
+  );
+}
+
 /** Сводка для журнала импортов. Отдельной функцией, потому что нужна и
  *  в `summarize` у logImportRun, и в тексте про потолок. */
 export function summarizeMdlSearch(r: MdlSearchImportResult): string {
