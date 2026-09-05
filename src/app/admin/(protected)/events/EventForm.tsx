@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
-import EntitySelect from "@/components/EntitySelect";
+import EntitySelect, { OpenEntityLink } from "@/components/EntitySelect";
+import LetterAvatar from "@/components/LetterAvatar";
 import FormSection from "@/components/admin/FormSection";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
@@ -12,12 +13,14 @@ import { createPerformerAndReturn, searchPerformerOptions } from "../performers/
 import { searchDramaOptions } from "../dramas/actions";
 import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
 import DatePickerInput from "@/components/DatePickerInput";
+import { adminEntityHref } from "@/app/admin/entityHref";
+
 
 type PairingOption = {
   id: string;
   name: string | null;
-  performerA: { id: string; name: string };
-  performerB: { id: string; name: string };
+  performerA: { id: string; name: string; photoUrl?: string | null };
+  performerB: { id: string; name: string; photoUrl?: string | null };
 };
 
 function pairingLabel(pairing: PairingOption): string {
@@ -71,8 +74,17 @@ export default function EventForm({
 }) {
   const v = defaultValues;
 
+  // У пейринга своей картинки нет — миниатюрой берём фото первого
+  // участника, чтобы вид опции был тот же, что у остальных сущностей.
+  // Своей страницы в админке у пейрингов тоже нет, так что и ссылки
+  // «открыть» здесь не будет (adminEntityHref вернул бы null).
   const pairingOptions: EntityOption[] = useMemo(
-    () => pairings.map((p) => ({ id: p.id, name: pairingLabel(p) })),
+    () =>
+      pairings.map((p) => ({
+        id: p.id,
+        name: pairingLabel(p),
+        photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl ?? null,
+      })),
     [pairings],
   );
 
@@ -141,6 +153,7 @@ export default function EventForm({
             defaultValue={v?.locationId}
             placeholder="Не выбрано"
             createLabel="Создать локацию"
+            hrefKind="Location"
             searchOptions={searchLocationOptions}
             onCreateNew={async (name) => {
               const created = await createLocationAndReturn(name);
@@ -237,7 +250,15 @@ export default function EventForm({
                       <div className="d-flex flex-wrap gap-2 mb-2">
                         {o.lineup.map((p) => (
                           <span key={p.id} className="event-chip performer-chip">
+                            {/* Тот же вид, что у чипов мультиселекта:
+                                миниатюра + имя + «открыть». */}
+                            <LetterAvatar name={p.name} photoUrl={p.photoUrl ?? null} size={1.15} />
                             {p.name}
+                            <OpenEntityLink
+                              href={adminEntityHref("Performer", p.id)!}
+                              name={p.name}
+                              compact
+                            />
                             <button
                               type="button"
                               className="performer-chip-remove"
@@ -307,6 +328,7 @@ export default function EventForm({
         options={dramas}
         defaultValue={v?.dramaId}
         placeholder="Не выбрано"
+        hrefKind="Drama"
         searchOptions={searchDramaOptions}
       />
 
@@ -318,6 +340,7 @@ export default function EventForm({
           defaultSelectedIds={v?.performerIds}
           placeholder="Начните вводить имя исполнителя…"
           createLabel="Создать исполнителя"
+          hrefKind="Performer"
           searchOptions={searchPerformerOptions}
           onCreateNew={async (query) => {
             const created = await createPerformerAndReturn(query);

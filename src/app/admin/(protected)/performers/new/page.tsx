@@ -36,6 +36,8 @@ export default async function NewPerformerPage() {
         pairingOptions={pairings.map((p) => ({
           id: p.id,
           name: p.name || `${p.performerA.name} × ${p.performerB.name}`,
+          // Картинки у пейринга нет — берём фото первого участника.
+          photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl,
         }))}
         agencies={agencies.map((a) => ({ id: a.id, name: a.name, photoUrl: a.logoUrl }))}
         dramas={[]}

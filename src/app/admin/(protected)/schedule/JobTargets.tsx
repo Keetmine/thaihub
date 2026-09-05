@@ -41,6 +41,7 @@ export default function JobTargets({
           name={`target-${jobKey}`}
           options={[]}
           placeholder="Добавить артиста…"
+          hrefKind="Performer"
           searchOptions={searchPerformerOptions}
           onChange={(id) => {
             if (!id) return;

@@ -127,6 +127,7 @@ export default function LocationForm({
           options={dramas ?? []}
           defaultSelectedIds={v?.dramaIds}
           placeholder="Начните вводить название сериала…"
+          hrefKind="Drama"
           searchOptions={searchDramaOptions}
         />
       </FormSection>

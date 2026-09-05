@@ -423,6 +423,7 @@ export default async function AdminImportsPage({
                     name="performerId"
                     options={[]}
                     placeholder="Исполнитель из каталога (необязательно)…"
+                    hrefKind="Performer"
                     searchOptions={searchPerformerOptions}
                   />
                   <div className="d-flex flex-wrap gap-2">
@@ -524,6 +525,7 @@ export default async function AdminImportsPage({
                     name="performerId"
                     options={[]}
                     placeholder="Исполнитель из каталога…"
+                    hrefKind="Performer"
                     searchOptions={searchPerformerOptions}
                   />
                   <div className="d-flex flex-wrap gap-2">

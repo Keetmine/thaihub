@@ -19,6 +19,7 @@ import type { PairingStatus } from "@/generated/prisma/client";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import DatePickerInput from "@/components/DatePickerInput";
 
+
 export type PerformerLinkInput = { label: string; url: string; kind?: "OTHER" | "BRAND" };
 export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 
@@ -388,6 +389,7 @@ export default function PerformerForm({
                 defaultSelectedIds={v?.agencyIds}
                 placeholder="Начните вводить название агентства…"
                 createLabel="Создать агентство"
+                hrefKind="Agency"
                 onCreateNew={async (query) => {
                   const created = await createAgencyAndReturn(query);
                   return { id: created.id, name: created.name, photoUrl: created.logoUrl };
@@ -419,6 +421,7 @@ export default function PerformerForm({
                 options={mascotOwnerOptions ?? []}
                 defaultSelectedIds={defaultMascotPerformerIds}
                 placeholder="Начните вводить имя актёра…"
+                hrefKind="Performer"
                 searchOptions={searchMascotOwnerOptions}
               />
             </div>
@@ -444,6 +447,7 @@ export default function PerformerForm({
               defaultSelectedIds={v?.agencyIds}
               placeholder="Начните вводить название агентства…"
               createLabel="Создать агентство"
+              hrefKind="Agency"
               onCreateNew={async (query) => {
                 const created = await createAgencyAndReturn(query);
                 return { id: created.id, name: created.name, photoUrl: created.logoUrl };
@@ -746,6 +750,7 @@ export default function PerformerForm({
               placeholder="Начните вводить имя участника…"
               createLabel="Создать исполнителя"
               emptyMessage="Нет соло-исполнителей, которых можно добавить как участников."
+              hrefKind="Performer"
               searchOptions={searchSoloPerformerOptions}
               onCreateNew={async (query) => {
                 const created = await createPerformerAndReturn(query);
@@ -768,6 +773,7 @@ export default function PerformerForm({
             defaultSelectedIds={defaultDramaIds}
             placeholder="Начните вводить название сериала…"
             createLabel="Создать сериал"
+            hrefKind="Drama"
             searchOptions={searchDramaOptions}
             onCreateNew={async (query) => {
               const created = await createDramaAndReturn(query);
@@ -797,6 +803,7 @@ export default function PerformerForm({
           defaultSelectedIds={defaultEventIds}
           placeholder="Начните вводить название события…"
           externalAdditions={createdEvents}
+          hrefKind="Event"
           searchOptions={searchEventOptions}
         />
         <QuickCreateEventButton
@@ -830,6 +837,7 @@ export default function PerformerForm({
                     options={allSoloPerformers}
                     placeholder="Не создавать пейринг"
                     createLabel="Создать исполнителя"
+                    hrefKind="Performer"
                     searchOptions={searchSoloPerformerOptions}
                     onCreateNew={async (query) => {
                       const created = await createPerformerAndReturn(query);

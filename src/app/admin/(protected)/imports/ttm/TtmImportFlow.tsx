@@ -254,6 +254,7 @@ export default function TtmImportFlow({
         label="Связанный сериал"
         options={dramas}
         placeholder="Не выбрано"
+        hrefKind="Drama"
         searchOptions={searchDramaOptions}
       />
 
@@ -345,6 +346,7 @@ export default function TtmImportFlow({
           name="extraPerformerIds"
           options={performers}
           placeholder="Начните вводить имя исполнителя…"
+          hrefKind="Performer"
           searchOptions={searchPerformerOptions}
         />
       </div>

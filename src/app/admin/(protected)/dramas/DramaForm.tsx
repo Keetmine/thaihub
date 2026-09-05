@@ -5,14 +5,16 @@ import FormSection from "@/components/admin/FormSection";
 import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import FileDropzone from "@/components/FileDropzone";
-import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import EntitySelect, { type EntityOption, OpenEntityLink } from "@/components/EntitySelect";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
+import { adminEntityHref } from "@/app/admin/entityHref";
 import { createPerformerAndReturn, searchPerformerOptions } from "../performers/actions";
 import { createAgencyAndReturn } from "../agencies/actions";
 import { createLocationAndReturn, searchLocationOptions } from "../locations/actions";
 import { searchNovelOptions, createNovelAndReturn } from "../novels/actions";
 import { findSimilarDramas, type DramaFormState } from "./actions";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
+
 
 type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 type CastEntry = { id: string; name: string; photoUrl?: string | null; role: string };
@@ -197,6 +199,7 @@ export default function DramaForm({
             defaultValue={v?.novelId}
             placeholder="Не выбрано"
             createLabel="Создать новеллу"
+            hrefKind="Novel"
             searchOptions={searchNovelOptions}
             onCreateNew={async (title) => {
               const created = await createNovelAndReturn(title);
@@ -212,6 +215,7 @@ export default function DramaForm({
             defaultSelectedIds={v?.agencyIds}
             placeholder="Начните вводить название студии…"
             createLabel="Создать агентство"
+            hrefKind="Agency"
             onCreateNew={async (name) => {
               const created = await createAgencyAndReturn(name);
               return { id: created.id, name: created.name, photoUrl: created.logoUrl };
@@ -419,6 +423,7 @@ export default function DramaForm({
                   value={c.role}
                   onChange={(e) => updateCastRole(c.id, e.target.value)}
                 />
+                <OpenEntityLink href={adminEntityHref("Performer", c.id)!} name={c.name} compact />
                 <button
                   type="button"
                   className="performer-chip-remove"
@@ -443,6 +448,7 @@ export default function DramaForm({
           searchOptions={searchPerformerOptions}
           excludeIds={cast.map((c) => c.id)}
           onPick={addCastMember}
+          hrefKind="Performer"
           placeholder="Начните вводить имя исполнителя…"
           createLabel="Создать исполнителя"
           createNameLabel="Имя"
@@ -463,6 +469,7 @@ export default function DramaForm({
           placeholder="Начните вводить название локации…"
           createLabel="Создать локацию"
           emptyMessage="Нет локаций. Начните вводить название, чтобы создать новую."
+          hrefKind="Location"
           searchOptions={searchLocationOptions}
           onCreateNew={async (name) => {
             const created = await createLocationAndReturn(name);

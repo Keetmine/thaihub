@@ -185,6 +185,7 @@ export default function NovelForm({
           options={dramas}
           defaultSelectedIds={defaultDramaIds}
           placeholder="Начните вводить название сериала…"
+          hrefKind="Drama"
           searchOptions={searchDramaOptions}
         />
       </FormSection>

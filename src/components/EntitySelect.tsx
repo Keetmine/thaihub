@@ -1,10 +1,20 @@
 "use client";
 
+import { adminEntityHref, type AdminEntityType } from "@/app/admin/entityHref";
 import { useId, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon } from "./icons";
 import Modal from "./Modal";
 
-export type EntityOption = { id: string; name: string; photoUrl?: string | null };
+export type EntityOption = {
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+  /** Адрес карточки записи в админке — рядом с выбранным значением
+   *  появится «открыть ↗». Обычно проще задать один раз пропом
+   *  `hrefKind` (см. src/app/admin/entityHref.ts), но у смешанных
+   *  списков ссылка может приезжать с самой опцией. */
+  href?: string | null;
+};
 
 function Avatar({ option }: { option: EntityOption }) {
   if (option.photoUrl) {
@@ -17,6 +27,36 @@ function Avatar({ option }: { option: EntityOption }) {
     <span className="performer-select-avatar performer-select-avatar-placeholder">
       {option.name.charAt(0).toUpperCase()}
     </span>
+  );
+}
+
+/** «Открыть ↗» рядом с выбранной записью: отдельная цель клика, вне
+ *  кнопки-триггера (ссылка внутри кнопки — невалидный HTML, и клик по
+ *  ней открывал бы выпадашку). */
+export function OpenEntityLink({
+  href,
+  name,
+  compact = false,
+}: {
+  href: string;
+  name: string;
+  compact?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="entity-open-link"
+      title="Открыть карточку в новой вкладке"
+      aria-label={`Открыть карточку: ${name}`}
+      // Клик по ссылке не должен ни открывать выпадашку, ни ронять
+      // фокус комбобокса до перехода.
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {compact ? "↗" : "Открыть ↗"}
+    </a>
   );
 }
 
@@ -39,6 +79,7 @@ export default function EntitySelect({
   createLabel = "Создать",
   searchOptions,
   onChange,
+  hrefKind,
 }: {
   /** Ложится на кнопку-триггер: button — подписываемый элемент, так что
    *  htmlFor рядом сработает. */
@@ -58,6 +99,15 @@ export default function EntitySelect({
    *  (e.g. excluding this value from a sibling select's options). The
    *  hidden input is still the source of truth for plain form submission. */
   onChange?: (id: string) => void;
+  /** Как построить ссылку на карточку записи в админке — у выбранного
+   *  значения появляется «Открыть ↗» в новой вкладке. Маршруты у разных
+   *  сущностей разные, поэтому вызывающий говорит, ЧТО выбирается
+   *  (`hrefKind="Drama"`), а адрес компонент строит сам через
+   *  adminEntityHref. Именно строкой, а не функцией: селекты стоят и в
+   *  серверных компонентах (/admin/imports), а функцию через границу
+   *  RSC не передать — страница падала в «Раздел не открылся». Без
+   *  пропа (публичные страницы) ссылки просто нет. */
+  hrefKind?: AdminEntityType;
 }) {
   // `options` can change from the parent (e.g. excluding a sibling select's
   // current value) — merge with locally-created-this-session options rather
@@ -120,6 +170,7 @@ export default function EntitySelect({
 
   const selected =
     allOptions.find((o) => o.id === value) ?? searchResults.find((o) => o.id === value);
+  const selectedHref = selected ? selected.href ?? (hrefKind ? adminEntityHref(hrefKind, selected.id) : null) : null;
 
   const filtered = useMemo(() => {
     if (searchOptions) return searchResults;
@@ -163,21 +214,26 @@ export default function EntitySelect({
       {label && <label className="form-label d-block" htmlFor={`${uid}-input`}>{label}</label>}
       <input id={`${uid}-input`} type="hidden" name={name} value={value} />
       <div className="performer-select" ref={ref}>
-        <button
-          id={id}
-          type="button"
-          className="performer-select-trigger"
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((v) => !v)}
-        >
-          <span className="d-flex align-items-center gap-2 min-w-0">
-            {selected && <Avatar option={selected} />}
-            <span className={`text-truncate ${selected ? "" : "text-secondary"}`}>
-              {selected?.name ?? placeholder}
+        <div className="entity-select-row">
+          <button
+            id={id}
+            type="button"
+            className="performer-select-trigger"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((v) => !v)}
+          >
+            <span className="d-flex align-items-center gap-2 min-w-0">
+              {selected && <Avatar option={selected} />}
+              <span className={`text-truncate ${selected ? "" : "text-secondary"}`}>
+                {selected?.name ?? placeholder}
+              </span>
             </span>
-          </span>
-          <ChevronDownIcon />
-        </button>
+            <ChevronDownIcon />
+          </button>
+          {selected && selectedHref && (
+            <OpenEntityLink href={selectedHref} name={selected.name} />
+          )}
+        </div>
 
         {isOpen && (
           <div className="performer-select-dropdown">

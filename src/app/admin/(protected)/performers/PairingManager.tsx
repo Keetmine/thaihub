@@ -129,6 +129,7 @@ export default function PairingManager({
               defaultValue=""
               placeholder="Выберите партнёра"
               createLabel="Создать исполнителя"
+              hrefKind="Performer"
               searchOptions={searchSoloPerformerOptions}
               onChange={setPartnerId}
               onCreateNew={async (query) => {

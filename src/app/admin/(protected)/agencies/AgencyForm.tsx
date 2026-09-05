@@ -185,6 +185,7 @@ export default function AgencyForm({
           placeholder="Начните вводить имя исполнителя…"
           createLabel="Создать исполнителя"
           emptyMessage="Нет исполнителей."
+          hrefKind="Performer"
           searchOptions={searchPerformerOptions}
           onCreateNew={async (query) => {
             const created = await createPerformerAndReturn(query);
@@ -202,6 +203,7 @@ export default function AgencyForm({
           placeholder="Начните вводить название сериала…"
           createLabel="Создать сериал"
           emptyMessage="Нет сериалов."
+          hrefKind="Drama"
           searchOptions={searchDramaOptions}
           onCreateNew={async (query) => {
             const created = await createDramaAndReturn(query);

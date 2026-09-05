@@ -1,9 +1,39 @@
 "use client";
 
+import { adminEntityHref, type AdminEntityType } from "@/app/admin/entityHref";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "./Modal";
 
-export type EntityOption = { id: string; name: string; photoUrl?: string | null };
+export type EntityOption = {
+  id: string;
+  name: string;
+  photoUrl?: string | null;
+  /** Адрес карточки записи в админке — у выбранного значения появится
+   *  «↗». Обычно задаётся один раз пропом `hrefKind`. */
+  href?: string | null;
+};
+
+/** «Открыть ↗» у выбранной записи. Близнец такого же в EntitySelect —
+ *  как и Avatar ниже: компоненты живут отдельными бандлами, и общий
+ *  импорт затащил бы один в другой. */
+function OpenEntityLink({ href, name }: { href: string; name: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="entity-open-link"
+      title="Открыть карточку в новой вкладке"
+      aria-label={`Открыть карточку: ${name}`}
+      // Чип стоит рядом с полем ввода: гасим всплытие, чтобы клик по
+      // ссылке не считался кликом по чипу/полю.
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      ↗
+    </a>
+  );
+}
 
 function Avatar({ option }: { option: EntityOption }) {
   if (option.photoUrl) {
@@ -42,6 +72,7 @@ export default function EntityMultiSelect({
   onPick,
   excludeIds,
   inputClassName,
+  hrefKind,
 }: {
   /** Ложится на видимое поле ввода — туда, куда встаёт фокус, — чтобы
    *  подпись рядом могла сослаться через htmlFor. Скрытые инпуты
@@ -79,6 +110,14 @@ export default function EntityMultiSelect({
   excludeIds?: string[];
   /** Доп. классы поля ввода (например, `form-control-sm`). */
   inputClassName?: string;
+  /** Что именно выбирается — у каждого выбранного чипа/карточки
+   *  появляется «↗» на карточку записи в админке. Адрес компонент
+   *  строит сам через adminEntityHref; вызывающий передаёт ВИД записи
+   *  строкой, а не функцию: селекты стоят и в серверных компонентах
+   *  (/admin/imports), а функцию через границу RSC не передать —
+   *  страница падала в «Раздел не открылся». Без пропа (публичные
+   *  страницы) ссылок нет. */
+  hrefKind?: AdminEntityType;
 }) {
   const [createdOptions, setCreatedOptions] = useState<EntityOption[]>([]);
   const allOptions = useMemo(
@@ -104,6 +143,8 @@ export default function EntityMultiSelect({
     ),
     [selectedIds, allOptions],
   );
+
+  const optionHref = (option: EntityOption) => option.href ?? (hrefKind ? adminEntityHref(hrefKind, option.id) : null);
 
   function handleQueryChange(next: string) {
     setQuery(next);
@@ -213,6 +254,7 @@ export default function EntityMultiSelect({
               <input type="hidden" name={name} value={o.id} />
               <Avatar option={o} />
               <span className="selected-card-name">{o.name}</span>
+              {optionHref(o) && <OpenEntityLink href={optionHref(o)!} name={o.name} />}
               <button
                 type="button"
                 className="performer-chip-remove"
@@ -231,7 +273,12 @@ export default function EntityMultiSelect({
           {selected.map((o) => (
             <span key={o.id} className="event-chip performer-chip">
               <input type="hidden" name={name} value={o.id} />
+              {/* Миниатюра и в чипе тоже: вид выбранной записи один и
+                  тот же во всей админке — фото/постер/логотип + название
+                  (просьба владельца). */}
+              <Avatar option={o} />
               {o.name}
+              {optionHref(o) && <OpenEntityLink href={optionHref(o)!} name={o.name} />}
               <button
                 type="button"
                 className="performer-chip-remove"

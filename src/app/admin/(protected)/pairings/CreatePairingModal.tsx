@@ -82,6 +82,7 @@ export default function CreatePairingModal({ performers }: { performers: EntityO
               (await searchSoloPerformerOptions(q)).filter((p) => p.id !== performerBId)
             }
             onChange={setPerformerAId}
+            hrefKind="Performer"
             createLabel="Создать исполнителя"
             onCreateNew={handleCreatePerformer}
           />
@@ -94,6 +95,7 @@ export default function CreatePairingModal({ performers }: { performers: EntityO
               (await searchSoloPerformerOptions(q)).filter((p) => p.id !== performerAId)
             }
             onChange={setPerformerBId}
+            hrefKind="Performer"
             createLabel="Создать исполнителя"
             onCreateNew={handleCreatePerformer}
           />

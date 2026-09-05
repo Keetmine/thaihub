@@ -37,7 +37,7 @@ export default async function EditPerformerPage({
             performer: { select: { id: true, name: true, realName: true, photoUrl: true } },
           },
         },
-        events: { select: { event: { select: { id: true, title: true } } } },
+        events: { select: { event: { select: { id: true, title: true, posterUrl: true } } } },
         albums: { orderBy: [{ year: "desc" }, { title: "asc" }] },
         songs: { orderBy: [{ year: "desc" }, { title: "asc" }] },
         agencies: { select: { agencyId: true } },
@@ -110,6 +110,9 @@ export default async function EditPerformerPage({
           pairingOptions={allPairings.map((p) => ({
             id: p.id,
             name: p.name || `${p.performerA.name} × ${p.performerB.name}`,
+            // Своей картинки у пейринга нет — миниатюрой берём фото
+            // первого участника (вид опции един для всех сущностей).
+            photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl,
           }))}
           mascotOwnerOptions={performer.mascotOwners
             .filter((o) => o.performer)
@@ -130,7 +133,11 @@ export default async function EditPerformerPage({
             name: pd.drama.title,
             photoUrl: pd.drama.posterUrl,
           }))}
-          events={performer.events.map((pe) => ({ id: pe.event.id, name: pe.event.title }))}
+          events={performer.events.map((pe) => ({
+            id: pe.event.id,
+            name: pe.event.title,
+            photoUrl: pe.event.posterUrl,
+          }))}
           defaultMemberIds={performer.bandMembers.map((m) => m.performer.id)}
           defaultDramaIds={performer.dramas.map((pd) => pd.drama.id)}
           defaultEventIds={performer.events.map((pe) => pe.event.id)}
