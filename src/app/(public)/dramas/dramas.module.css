@@ -99,7 +99,10 @@
  * пять колонок в 390px не живут. */
 .cols {
   display: grid;
-  grid-template-columns: 7.5rem 4.2rem 3rem 6.5rem 5.2rem;
+  /* Страна ужата с 6.5rem: самая длинная подпись — «Южная
+     Корея», а лишняя ширина читалась дырой перед сериями
+     (правка владельца 2026-09-06). */
+  grid-template-columns: 7.5rem 4.2rem 3rem 5rem 5.2rem;
   align-items: center;
   column-gap: 0.5rem;
   flex-shrink: 0;
@@ -157,7 +160,9 @@
  * читаться текстом, а не рядом виджетов. */
 .colStatus :global(.drama-status-select-caret) {
   flex-shrink: 0;
-  font-size: 0.6rem;
+  /* Было 0.6rem — владелец не разглядел стрелку. */
+  font-size: 0.8rem;
+  line-height: 1;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -190,7 +195,17 @@
 
 .colProgress {
   display: flex;
-  justify-content: flex-end;
+  /* По левому краю колонки, а не по правому (правка владельца): цифры
+     должны начинаться под своей подписью, а не улетать к краю строки. */
+  justify-content: flex-start;
+}
+
+/* Подпись «Серии» — над самими цифрами, а не над кнопкой «−»: в покое
+   кнопки прозрачные, но место занимают, и счётчик начинается на ~23px
+   правее края колонки (замерено). Сдвигаем подпись на ту же величину —
+   ширина кнопки (1.25rem) плюс зазор. */
+.headCell.colProgress {
+  padding-left: 1.4rem;
 }
 
 @media (max-width: 991.98px) {
