@@ -62,7 +62,8 @@ export const social = {
       stats: "Statistics",
       reviews: "Reviews",
       comments: "Comments",
-      dramas: "Series",
+      // Со счётчиком — как у билетов (правка владельца 2026-09-06).
+      dramas: (n: number) => `Series (${n})`,
       events: "Events",
       trips: "Trips",
       places: "Places & lists",
@@ -104,6 +105,9 @@ export const social = {
       emptyHintViewer: (name: string) => `${name} has not marked any series yet.`,
       emptyCta: "Browse the series",
       all: "All series",
+      // Первая пилюля под-табов (правка владельца 2026-09-06): без неё
+      // сортировка по колонке «Статус просмотра» бессмысленна.
+      allTab: "All",
     },
 
     commentsTab: {

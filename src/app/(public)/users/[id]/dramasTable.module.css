@@ -1,0 +1,177 @@
+/* Таблица вкладки «Сериалы» в профиле (правка владельца 2026-09-06).
+ *
+ * Родня каталогу /dramas: те же жёсткие ширины колонок, тот же мелкий
+ * приглушённый текст, та же плотность строки — две таблицы должны
+ * выглядеть одной семьёй (см. dramas.module.css, секция «табличные
+ * колонки справа»). Отличие одно: колонка профиля уже страницы
+ * каталога, поэтому ширины чуть меньше.
+ *
+ * Модуль co-located со страницей профиля намеренно: в globals.css
+ * общих правил для этой таблицы нет — она живёт в одном месте.
+ */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  /* как .rows каталога — плотнее, чем gap-2 */
+  gap: 0.3rem;
+}
+
+/* ---------- шапка с сортировкой ----------
+ *
+ * Владелец просила сортировку «не отдельным фильтром, а как на самой
+ * таблице»: ряд названий колонок над строками, клик по названию
+ * сортирует, повторный — разворачивает порядок. Геометрия шапки в
+ * точности повторяет строку (тот же .cols), иначе колонки разъедутся. */
+.head {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  /* по горизонтали — как у строки, чтобы подписи стояли над своими
+     колонками; сверху пусто, снизу — отбивка от первой строки */
+  padding: 0 0.6rem 0.4rem 0.4rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 0.4rem;
+}
+
+.headTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bs-secondary-color);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.sortButton:hover {
+  color: var(--bs-body-color);
+}
+
+.sortActive {
+  color: #fff;
+  font-weight: 600;
+}
+
+.sortArrow {
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+/* ---------- строка ---------- */
+
+.row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.4rem;
+}
+
+.titleCell {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rowLink {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.poster {
+  width: 1.7rem;
+  height: 2.3rem;
+  border-radius: 0.4rem;
+  background: var(--bs-secondary-bg);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.posterFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 0.85rem;
+  color: rgba(255, 154, 114, 0.45);
+}
+
+.title {
+  min-width: 0;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* ---------- табличные колонки справа ----------
+ *
+ * Ширины жёсткие — колонки обязаны стоять в линию по всем строкам и
+ * под своими подписями. На экранах уже 992px остаётся только прогресс:
+ * профиль там уже схлопнулся в одну колонку, и пять колонок в неё не
+ * влезают (то же правило, что в каталоге). */
+.cols {
+  display: grid;
+  grid-template-columns: 7rem 4rem 2.8rem 5.6rem 4.4rem;
+  align-items: center;
+  column-gap: 0.5rem;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.colStatus,
+.colType,
+.colYear,
+.colCountry {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.colProgress {
+  display: flex;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+@media (max-width: 991.98px) {
+  .cols {
+    grid-template-columns: 4.4rem;
+  }
+  .colStatus,
+  .colType,
+  .colYear,
+  .colCountry {
+    display: none;
+  }
+}

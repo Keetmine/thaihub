@@ -43,6 +43,7 @@ import StatsTab, { type StatsForTab } from "./StatsTab";
 import ReviewsTab, { type MyReviewRow } from "./ReviewsTab";
 import CommentsTab, { type MyCommentRow } from "./CommentsTab";
 import TicketsTab from "./TicketsTab";
+import DramasTable from "./DramasTable";
 import SubTabs from "@/components/SubTabs";
 
 export const dynamic = "force-dynamic";
@@ -243,11 +244,30 @@ export default async function UserProfilePage({
           where: { userId: user.id },
           include: {
             drama: {
-              select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true, episodes: true },
+              select: {
+                id: true,
+                slug: true,
+                title: true,
+                titleRu: true,
+                posterUrl: true,
+                episodes: true,
+                // Колонки таблицы вкладки «Сериалы» (правка владельца
+                // 2026-09-06) — те же, что в каталоге /dramas.
+                type: true,
+                country: true,
+                year: true,
+              },
             },
           },
           orderBy: { updatedAt: "desc" },
-          take: 60,
+          // Раньше стояло take: 60 — и «Смотрю сейчас» в обзоре брался
+          // из этих шестидесяти ПОСЛЕ фильтра по статусу: у владелицы
+          // после импорта списка с MDL (около двухсот статусов) в срез
+          // попадало что попало, а половина реально смотримых терялась
+          // (жалоба владельца). Счётчики вкладки по той же причине
+          // врали. Берём все статусы человека; потолок — защита от
+          // абсурдного списка, а не рабочее ограничение.
+          take: 2000,
         })
       : [],
     prisma.dramaWatchStatus.count({ where: { userId: user.id } }),
@@ -758,15 +778,12 @@ export default async function UserProfilePage({
 
     tabs.push({
       key: "dramas",
-      label: p.tabs.dramas,
+      // Счётчик в подписи вкладки — как у билетов (правка владельца).
+      // watchCount — все отметки человека, ровно столько строк и в
+      // пилюле «Все» внутри вкладки.
+      label: p.tabs.dramas(watchCount),
       content: (
-        <DramasPanel
-          watchRows={watchRows}
-          t={t}
-          locale={locale}
-          isSelf={isSelf}
-          ownerName={displayName}
-        />
+        <DramasPanel watchRows={watchRows} t={t} isSelf={isSelf} ownerName={displayName} />
       ),
     });
 
@@ -1198,6 +1215,10 @@ type ProfileWatchRow = {
     titleRu: string | null;
     posterUrl: string | null;
     episodes: number | null;
+    // Колонки таблицы вкладки «Сериалы» — те же, что в каталоге.
+    type: string | null;
+    country: string | null;
+    year: number | null;
   };
 };
 
@@ -1241,19 +1262,19 @@ function DramaRow({ w, t, locale }: { w: ProfileWatchRow; t: Dict; locale: Local
   );
 }
 
-/** Вкладка «Сериалы»: под-табы по статусам (Смотрю/Просмотрено/…)
- *  вместо простыни всех групп, строки компактные — как в каталоге
- *  /dramas (правка владельца п.4). Пустые статусы пилюль не получают. */
+/** Вкладка «Сериалы»: под-табы по статусам (Все/Смотрю/Просмотрено/…)
+ *  и ТАБЛИЦА с сортируемой шапкой — правка владельца 2026-09-06
+ *  («не отдельным фильтром, а как на самой таблице»). Сортировка
+ *  клиентская, поэтому сами строки рисует DramasTable; страница только
+ *  готовит сериализуемые данные (без Date) и пустое состояние. */
 function DramasPanel({
   watchRows,
   t,
-  locale,
   isSelf,
   ownerName,
 }: {
   watchRows: ProfileWatchRow[];
   t: Dict;
-  locale: Locale;
   isSelf: boolean;
   ownerName: string;
 }) {
@@ -1270,28 +1291,15 @@ function DramasPanel({
     );
   }
 
-  const statusTabs = WATCH_STATUS_ORDER.flatMap((status) => {
-    const rows = watchRows.filter((w) => w.status === status);
-    if (rows.length === 0) return [];
-    return [
-      {
-        key: status,
-        label: t.catalog.watchStatus[status],
-        count: rows.length,
-        content: (
-          <div className="d-flex flex-column gap-1 mb-4">
-            {rows.map((w) => (
-              <DramaRow key={w.drama.id} w={w} t={t} locale={locale} />
-            ))}
-          </div>
-        ),
-      },
-    ];
-  });
-
   return (
     <div>
-      <SubTabs tabs={statusTabs} ariaLabel={p.tabs.dramas} />
+      <DramasTable
+        rows={watchRows.map((w) => ({
+          ...w.drama,
+          status: w.status,
+          episodesWatched: w.episodesWatched,
+        }))}
+      />
       {isSelf && (
         <AppLink href="/dramas" className="small link-body-emphasis">
           {p.dramasTab.all} →
