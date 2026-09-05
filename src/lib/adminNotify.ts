@@ -123,7 +123,7 @@ export function notifyAdminsAboutSignup(user: {
 /** Счётчики-бейджи для сайдбара админки: всё, что ждёт разбора. */
 export async function adminBadgeCounts(): Promise<Record<string, number>> {
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [feedback, reports, failedImports, mdlRequests, eventDrafts, errors] = await Promise.all([
+  const [feedback, reports, failedImports, mdlRequests, eventDrafts, mascotDrafts, errors] = await Promise.all([
     prisma.feedback.count({ where: { status: "NEW" } }),
     prisma.report.count({ where: { status: "NEW" } }),
     // Только неразобранное: у записей есть отметка reviewedAt, иначе
@@ -137,12 +137,15 @@ export async function adminBadgeCounts(): Promise<Record<string, number>> {
     // Черновики событий из краулера афиши TTM (вкладка «События» там
     // же) — ждут «Одобрить»/«Отклонить» владельца.
     prisma.eventDraft.count({ where: { status: "PENDING" } }),
+    // Черновики маскотов из недельного обхода вики GMMTV (вкладка
+    // «Маскоты» там же) — тоже ждут «Одобрить»/«Отклонить» владельца.
+    prisma.mascotDraft.count({ where: { status: "PENDING" } }),
     prisma.errorLog.count({ where: { createdAt: { gte: dayAgo }, reviewedAt: null } }),
   ]);
   return {
     "/admin/feedback": feedback,
     "/admin/moderation": reports,
-    "/admin/imports": failedImports + mdlRequests + eventDrafts,
+    "/admin/imports": failedImports + mdlRequests + eventDrafts + mascotDrafts,
     "/admin/errors": errors,
   };
 }

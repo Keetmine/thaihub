@@ -1910,3 +1910,45 @@ enum EventDraftStatus {
   // не перекачивать; перепроверяется раз в неделю.
   NO_MATCH
 }
+
+// Черновики маскотов GMMTV со страницы Mascots фан-вики (задача
+// "gmmtv-mascots", см. docs/features/gmmtv-mascots-import.md). Своя
+// таблица по тем же соображениям, что EventDraft: до одобрения владельцем
+// краулер публичной таблицы Performer не касается вовсе. Таблица заодно
+// и память краулера: REJECTED повторный обход не воскрешает.
+model MascotDraft {
+  id     String @id @default(cuid())
+  // Нормализованное имя маскота (NFKC + casefold + схлопнутые пробелы,
+  // см. normalizeMascotName) — ключ дедупа. Именно имя, а не адрес: у
+  // маскота нет своей страницы на вики, только якорь-секция общей
+  // Mascots, и якорь — производная того же имени; а дедуп против
+  // каталога (Performer type MASCOT, в т.ч. заведённые руками) всё
+  // равно возможен только по имени.
+  nameKey String @unique
+  // Имя как на вики — для карточки очереди и создаваемого Performer.
+  name String
+  // Ссылка на секцию маскота (…/wiki/Mascots#Якорь) — «открыть на вики».
+  sourceUrl String
+  // Весь распарс секции (GmmtvMascot: описание, картинка, владельцы,
+  // соцсети) — Json, а не колонки: черновик живёт до решения владельца.
+  payload Json
+  // Совпавшие с каталогом владельцы: [{performerId, name, type}] —
+  // Json, а не join-таблица, как matchedPerformers у EventDraft: нужны
+  // только чипы в очереди и привязка MascotOwner при одобрении.
+  // Несовпавшие имена лежат в payload.unmatchedOwners.
+  matchedOwners Json
+  status        MascotDraftStatus @default(PENDING)
+  // Performer типа MASCOT, созданный одобрением (или найденный по имени,
+  // если маскота успели завести руками, пока черновик ждал).
+  performerId String?
+  createdAt   DateTime  @default(now())
+  reviewedAt  DateTime?
+
+  @@index([status])
+}
+
+enum MascotDraftStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

@@ -22,9 +22,12 @@ import {
   approveSelectedEventDrafts,
   rejectSelectedEventDrafts,
 } from "./eventDraftActions";
+import { approveMascotDraft, rejectMascotDraft } from "./mascotDraftActions";
 import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
 import type { TtmEvent } from "@/lib/thaiticketmajor";
 import type { EventDraftMatch } from "@/lib/ttmCrawl";
+import type { MascotDraftPayload } from "@/lib/gmmtvMascots";
+import type { MatchedMascotOwner } from "@/lib/performerMatching";
 import type { PossibleDuplicate } from "@/lib/eventDedupe";
 import { adminListHref } from "@/lib/adminListHref";
 import { pluralized } from "@/lib/plural";
@@ -55,6 +58,7 @@ const KIND_LABELS: Record<string, string> = {
   "ttm-event": "ThaiTicketMajor: событие",
   "ttm-crawl": "ThaiTicketMajor: обход афиши",
   "event-drafts": "Черновики событий: одобрение",
+  "gmmtv-mascots": "GMMTV: маскоты с вики",
   "tpop-agency": "tpop.fandom: агентство",
   "tpop-artist": "tpop.fandom: артист",
 };
@@ -69,6 +73,8 @@ const ITEM_EDIT_HREF: Record<string, (id: string) => string> = {
   // У черновика нет своей страницы — ведём в очередь на вкладке
   // «События» (разобранный там уже не висит, но идти больше некуда).
   "event-draft": () => `/admin/imports?tab=events`,
+  // То же для черновиков маскотов — их очередь на вкладке «Маскоты».
+  "mascot-draft": () => `/admin/imports?tab=mascots`,
 };
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
@@ -76,6 +82,7 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   agency: "агентство",
   event: "событие",
   "event-draft": "черновик события",
+  "mascot-draft": "черновик маскота",
   drama: "сериал",
   album: "альбом",
   song: "песня",
@@ -92,6 +99,11 @@ const TABS = [
   { key: "series", label: "Сериалы и актёры" },
   { key: "music", label: "Музыка и артисты" },
   { key: "events", label: "События" },
+  // Своя вкладка, а не хвост «Сериалов и актёров»: по правилу «что
+  // заводится» маскот — не сериал и не событие, а карточка-Performer
+  // своего типа; к тому же это очередь со счётчиком, как «События», и
+  // среди форм импортов она бы потерялась.
+  { key: "mascots", label: "Маскоты" },
   { key: "requests", label: "Заявки" },
   { key: "log", label: "Журнал" },
 ] as const;
@@ -119,10 +131,11 @@ export default async function AdminImportsPage({
     log?: string;
     dl?: string;
     draftError?: string;
+    mascotError?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const { page: rawPage, status: rawStatus, log: rawLog, tab: rawTab, dl, draftError } = sp;
+  const { page: rawPage, status: rawStatus, log: rawLog, tab: rawTab, dl, draftError, mascotError } = sp;
   const page = Math.max(1, Number(rawPage) || 1);
   // Фильтр по статусу: с дашборда «упавшие импорты» ведут сразу сюда,
   // иначе пришлось бы искать их глазами в общем журнале. Он же решает,
@@ -180,6 +193,17 @@ export default async function AdminImportsPage({
           take: 100,
         })
       : [];
+  // Черновики маскотов из недельного обхода вики GMMTV: счётчик — всегда
+  // (бейдж вкладки «Маскоты», четвёртая часть бейджа сайдбара), сами
+  // карточки — только на своей вкладке. Без потолка: маскотов единицы.
+  const pendingMascotCount = await prisma.mascotDraft.count({ where: { status: "PENDING" } });
+  const mascotDrafts =
+    tab === "mascots"
+      ? await prisma.mascotDraft.findMany({
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
   const totalPages = Math.max(
     1,
     Math.ceil((logTab === "runs" ? totalRuns : totalItems) / DENSE_PAGE_SIZE),
@@ -213,7 +237,13 @@ export default async function AdminImportsPage({
   // в «Журнал», а «Упавшие» стоят как стояли. `dl` (результат разового
   // dorama.land-импорта) при навигации вычищаем — сообщение одноразовое.
   const tabHref = (t: Tab) =>
-    adminListHref("/admin/imports", sp, { tab: t, page: null, dl: null, draftError: null });
+    adminListHref("/admin/imports", sp, {
+      tab: t,
+      page: null,
+      dl: null,
+      draftError: null,
+      mascotError: null,
+    });
   const logHref = (t: LogTab, p = 1) =>
     adminListHref("/admin/imports", sp, {
       tab: "log",
@@ -247,6 +277,9 @@ export default async function AdminImportsPage({
                   они и есть бейдж «Импорты» в сайдбаре. */}
               {t.key === "events" && pendingDraftCount > 0 && (
                 <span className="admin-nav-badge ms-2">{pendingDraftCount}</span>
+              )}
+              {t.key === "mascots" && pendingMascotCount > 0 && (
+                <span className="admin-nav-badge ms-2">{pendingMascotCount}</span>
               )}
               {t.key === "requests" && openRequests > 0 && (
                 <span className="admin-nav-badge ms-2">{openRequests}</span>
@@ -685,6 +718,112 @@ export default async function AdminImportsPage({
             </div>
           </div>
         </>
+      )}
+
+      {tab === "mascots" && (
+        <div className="surface p-4 mb-4">
+          <h2 className="section-heading mb-2">Черновики маскотов ({pendingMascotCount})</h2>
+          <p className="small text-secondary mb-3">
+            Найдены недельным обходом страницы Mascots фан-вики GMMTV (задача
+            «GMMTV: маскоты с вики» в расписании). «Одобрить» — маскот появится
+            в каталоге исполнителей с картинкой, описанием и совпавшими
+            владельцами (несовпавших добирайте руками в карточке);
+            «Отклонить» — маскот больше не предложится. Массовых действий нет:
+            маскотов единицы, владелец смотрит каждый.
+          </p>
+          {mascotError && <p className="alert alert-warning small py-2">{mascotError}</p>}
+          {mascotDrafts.length === 0 ? (
+            <p className="small text-secondary mb-0">
+              Очередь пуста — новые черновики появятся, когда на вики-странице
+              Mascots что-то изменится (проверяется раз в неделю по ревизии
+              страницы).
+            </p>
+          ) : (
+            <div className="d-flex flex-column gap-2">
+              {mascotDrafts.map((draft) => {
+                const payload = draft.payload as Partial<MascotDraftPayload>;
+                const matched = (draft.matchedOwners as MatchedMascotOwner[] | null) ?? [];
+                const unmatched = payload.unmatchedOwners ?? [];
+                return (
+                  <div
+                    key={draft.id}
+                    className="surface d-flex flex-wrap align-items-center gap-3 p-3"
+                  >
+                    {/* Картинка — прямой хотлинк со static.wikia.nocookie.net:
+                        в отличие от постеров TTM, фандомный CDN отдаёт
+                        картинки кросс-сайтово, прокси не нужен. В базу
+                        чужой хост не пишется — скачивание к нам только
+                        при одобрении. */}
+                    {payload.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={payload.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        style={{ width: "3.5rem", borderRadius: "0.375rem" }}
+                      />
+                    )}
+                    <div className="flex-grow-1" style={{ minWidth: "16rem" }}>
+                      <a
+                        href={draft.sourceUrl}
+                        target="_blank"
+                        rel="external nofollow noreferrer"
+                        className="fw-medium"
+                      >
+                        {draft.name} ↗
+                      </a>
+                      {payload.description && (
+                        <div className="small text-secondary text-truncate" style={{ maxWidth: "36rem" }}>
+                          {payload.description}
+                        </div>
+                      )}
+                      <div className="d-flex flex-wrap align-items-center gap-1 mt-1">
+                        {matched.map((m) => (
+                          <Link
+                            key={m.performerId}
+                            href={`/admin/performers/${m.performerId}/edit`}
+                            className="event-chip"
+                          >
+                            {m.name}
+                          </Link>
+                        ))}
+                        {/* Владельцы с вики, которых не нашлось в каталоге, —
+                            серым: привязать некого, добираются руками. */}
+                        {unmatched.length > 0 && (
+                          <span className="small text-secondary">
+                            не нашли: {unmatched.join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="small text-secondary flex-shrink-0">
+                      {fmt(draft.createdAt)}
+                    </span>
+                    <form action={approveMascotDraft} className="d-inline">
+                      <input type="hidden" name="draftId" value={draft.id} />
+                      <SubmitButton
+                        label="Одобрить"
+                        busyLabel="Создаём…"
+                        className="btn btn-primary btn-sm"
+                      />
+                    </form>
+                    <ConfirmForm
+                      action={rejectMascotDraft.bind(null, draft.id)}
+                      confirmMessage={`Отклонить черновик «${draft.name}»? Обход вики больше не предложит этого маскота.`}
+                      confirmLabel="Отклонить"
+                      busyLabel="Отклоняем…"
+                    >
+                      <button type="button" className="btn btn-ghost btn-sm">
+                        Отклонить
+                      </button>
+                    </ConfirmForm>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {tab === "requests" && (

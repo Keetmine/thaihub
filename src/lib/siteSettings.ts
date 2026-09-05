@@ -71,6 +71,18 @@ export async function getSetting(key: string): Promise<string | null> {
   return row?.value ?? null;
 }
 
+/** Пишет значение по ключу. Ключи не из SETTING_KEYS на /admin/settings
+ *  не показываются — так хранится и служебное состояние вроде последней
+ *  обработанной ревизии вики-страницы маскотов (gmmtvMascots.ts):
+ *  строка одна, и отдельная таблица ради неё не нужна. */
+export async function setSetting(key: string, value: string): Promise<void> {
+  await prisma.siteSetting.upsert({
+    where: { key },
+    update: { value },
+    create: { key, value },
+  });
+}
+
 export async function getPremiumPriceStars(): Promise<number> {
   const raw = await getSetting("premium_price_stars");
   const n = raw ? Number(raw) : NaN;

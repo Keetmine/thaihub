@@ -19,6 +19,11 @@ export type JobDefinition = {
   /** Пишет ли задача спарсенные строки (ImportedItem) — тогда на её
    *  вкладке есть лента «что именно спарсено», а не только сводки. */
   logsItems: boolean;
+  /** Раз в сколько дней запускать. Не задано — раз в сутки, как все
+   *  задачи до появления недельного обхода маскотов ("gmmtv-mascots").
+   *  Минимальная недельность: без «дня недели» — неделя отсчитывается
+   *  от последнего прогона (см. isDue), в БД ничего не добавляется. */
+  intervalDays?: number;
   run: (targetIds: string[] | null) => Promise<string>;
 };
 
@@ -139,6 +144,37 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
       );
       // null — прогон остановили кнопкой в /admin/imports.
       return result ? summarizeTtmCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
+    key: "gmmtv-mascots",
+    title: "GMMTV: маскоты с вики",
+    description:
+      "Раз в неделю проверяет страницу Mascots фан-вики GMMTV (официальный MediaWiki API). " +
+      "Сначала сверяется ревизия страницы: ничего не менялось — прогон на этом и заканчивается. " +
+      "Появились новые маскоты — каждый становится черновиком в очереди на проверку (вкладка " +
+      "«Маскоты» в импортах) с совпавшими по имени владельцами из каталога: владелец одобряет " +
+      "или отклоняет, само в каталог ничего не попадает. Маскоты, которые уже есть в каталоге " +
+      "или уже были отклонены, повторно не предлагаются.",
+    // Отбор — страница целиком; матчинг владельцев и есть фильтр.
+    supportsTargets: false,
+    logKind: "gmmtv-mascots",
+    // Каждый созданный черновик — строка ImportedItem: на вкладке
+    // задачи видно, что именно нашлось.
+    logsItems: true,
+    // Раз в неделю: страница меняется редко, а дешёвая проверка ревизии
+    // всё равно отсекает пустые прогоны.
+    intervalDays: 7,
+    run: async () => {
+      const { runGmmtvMascotsCrawl, summarizeGmmtvMascots } = await import("@/lib/gmmtvMascots");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "gmmtv-mascots",
+        (runId) => runGmmtvMascotsCrawl({ runId }),
+        summarizeGmmtvMascots,
+      );
+      // null — прогон остановили кнопкой в /admin/imports.
+      return result ? summarizeGmmtvMascots(result) : "остановлено вручную";
     },
   },
   {
@@ -268,18 +304,24 @@ export async function listJobs() {
 }
 
 /**
- * Пора ли запускать: наступил нужный час и сегодня ещё не запускались.
- * Сравнение по календарному дню в зоне процесса (TZ=Europe/Moscow) —
- * «раз в сутки в 4 утра» должно означать местные 4 утра.
+ * Пора ли запускать: наступил нужный час и с последнего прогона прошло
+ * не меньше intervalDays календарных дней (по умолчанию 1 — «сегодня ещё
+ * не запускались», как и было). Сравнение по календарному дню в зоне
+ * процесса (TZ=Europe/Moscow) — «раз в сутки в 4 утра» должно означать
+ * местные 4 утра; Math.round гасит сдвиг перехода на летнее время.
+ * Экспортирована ради юнит-теста недельного интервала.
  */
-function isDue(hour: number, lastRunAt: Date | null, now: Date): boolean {
+export function isDue(
+  hour: number,
+  lastRunAt: Date | null,
+  now: Date,
+  intervalDays = 1,
+): boolean {
   if (now.getHours() < hour) return false;
   if (!lastRunAt) return true;
-  return (
-    lastRunAt.getFullYear() !== now.getFullYear() ||
-    lastRunAt.getMonth() !== now.getMonth() ||
-    lastRunAt.getDate() !== now.getDate()
-  );
+  const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const daysSince = Math.round((dayStart(now) - dayStart(lastRunAt)) / (24 * 60 * 60 * 1000));
+  return daysSince >= intervalDays;
 }
 
 /**
@@ -332,7 +374,7 @@ async function runDueJobsInner(now: Date): Promise<string[]> {
   const started: string[] = [];
 
   for (const job of jobs) {
-    if (!job.enabled || !isDue(job.hour, job.lastRunAt, now)) continue;
+    if (!job.enabled || !isDue(job.hour, job.lastRunAt, now, job.intervalDays ?? 1)) continue;
     // Отметку ставим ДО запуска: прогон длинный, и при перезапуске
     // приложения задача не должна стартовать второй раз за сутки.
     if (!(await claimJob(job.key, job.hour, job.lastRunAt, now))) continue;

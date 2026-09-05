@@ -49,6 +49,11 @@ copy — read the schema file for exact field types/nullability.
   и заодно память краулера (PENDING/APPROVED/REJECTED/NO_MATCH); своя
   таблица, а не флаг на `Event` — до одобрения владельцем публичная
   таблица не трогается. См. [ttm-crawl.md](features/ttm-crawl.md).
+- **`MascotDraft`** — черновик маскота из недельного краулера вики GMMTV
+  и заодно память краулера (PENDING/APPROVED/REJECTED); дедуп по
+  нормализованному имени (`nameKey` @unique), совпавшие владельцы —
+  Json. Та же логика «своя таблица, публичный `Performer` не трогается».
+  См. [gmmtv-mascots-import.md](features/gmmtv-mascots-import.md).
 
 ## Locations
 
