@@ -95,19 +95,29 @@ export default async function NotificationsPage({
         <div className="d-flex flex-column gap-2">
           {items.map((n) => {
             const inner = (
+              // Компактная строка (правка владельца: страница была очень длинной). Один этаж: иконка,
+              // аватар, заголовок с датой в линию, текст одной строкой с
+              // многоточием — полный текст открывается по клику на цели
+              // уведомления.
               <div
-                className={`surface d-flex align-items-start gap-3 p-3 ${n.readAt ? "" : "notification-unread"}`}
+                className={`surface d-flex align-items-center gap-2 p-2 ${n.readAt ? "" : "notification-unread"}`}
               >
-                <span style={{ fontSize: "1.25rem", lineHeight: 1.2 }} aria-hidden="true">
+                <span style={{ fontSize: "1rem", lineHeight: 1 }} aria-hidden="true">
                   {KIND_ICONS[n.kind] ?? "🔔"}
                 </span>
                 {n.actor && (
-                  <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={2} />
+                  <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={1.75} />
                 )}
                 <div style={{ minWidth: 0 }} className="flex-grow-1">
-                  <span className="text-white d-block">{notificationTitle(n, t)}</span>
-                  {n.body && <span className="small text-secondary d-block">{n.body}</span>}
-                  <span className="small text-secondary">{fmt(n.createdAt)}</span>
+                  <span className="d-flex align-items-baseline gap-2">
+                    <span className="text-white text-truncate">{notificationTitle(n, t)}</span>
+                    <span className="small text-secondary flex-shrink-0 ms-auto">
+                      {fmt(n.createdAt)}
+                    </span>
+                  </span>
+                  {n.body && (
+                    <span className="small text-secondary d-block text-truncate">{n.body}</span>
+                  )}
                 </div>
               </div>
             );
