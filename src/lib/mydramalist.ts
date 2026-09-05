@@ -384,7 +384,8 @@ export type MdlCastMember = {
   name: string;
   /** Имя персонажа, если указано. */
   role: string | null;
-  /** «Main Role» / «Support Role» / «Guest Role». */
+  /** У сериалов «Main Role» / «Support Role» / «Guest Role», у шоу
+   *  (Type: TV Program) — «Main Host» / «Regular Member» / «Guest». */
   roleType: string | null;
 };
 
@@ -419,17 +420,27 @@ export function parseMdlDramaCast(html: string): MdlCastMember[] {
     if (seen.has(mdlPath)) continue;
 
     const tail = m[3];
-    const roleMatch = tail.match(/(Main Role|Support Role|Guest Role)/);
+    // Вторая половина списка — подписи шоу (Type: TV Program): у них
+    // каст размечен не ролями, а участием — «Regular Member» и т.п.
+    // (проверено на /774297-high-season-rainy: 12 человек, все Regular
+    // Member — без этих подписей каст шоу не распознавался вовсе).
+    // «Guest Role» стоит раньше голого «Guest», иначе матч короче.
+    const roleMatch = tail.match(
+      /(Main Role|Support Role|Guest Role|Main Host|Regular Member|Guest\b)/,
+    );
     // Без подписи роли это не карточка актёра, а ссылка на человека в
     // другом блоке (режиссёр, сценарист, «похожие люди»).
     if (!roleMatch) continue;
     seen.add(mdlPath);
 
     // Имя персонажа — то, что стоит между ссылкой и подписью роли.
+    // У шоу вместо персонажа там номера выпусков («(Ep. 1-2)») — это
+    // не роль, в базу такое не кладём.
     const between = decodeEntities(stripTags(tail.slice(0, roleMatch.index ?? 0)))
       .replace(/\s+/g, " ")
       .trim();
-    const role = between && between.length <= 80 ? between : null;
+    const role =
+      between && between.length <= 80 && !/^\(?Ep\.?\s/i.test(between) ? between : null;
 
     out.push({ mdlPath, name, role, roleType: roleMatch[1] });
   }

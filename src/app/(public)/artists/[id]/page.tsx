@@ -250,12 +250,31 @@ export default async function PerformerPage({
       .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime()),
   );
 
-  // Newest first by release year — dramas with no known year (yet to be
-  // enriched/matched) sort last rather than interleaving arbitrarily.
+  // Порядок сериалов (просьба владельца): анонсы — первыми (ближайшая
+  // премьера сверху, анонсы без даты — в конце своего блока), дальше
+  // вышедшие в порядке выхода, свежие сверху. Сортируем по полной дате
+  // старта (airedFrom), а не по голому году — два сериала одного года
+  // раньше вставали по алфавиту. Записи без дат и года (ещё не
+  // дозаполненные импортом) — в самом низу, как и раньше.
+  const dramaAirTime = (d: (typeof performer.dramas)[number]["drama"]) =>
+    d.airedFrom?.getTime() ?? (d.year != null ? Date.UTC(d.year, 0, 1) : null);
+  const nowMs = now.getTime();
+  // Анонс — это и PLANNED, и IN_PRODUCTION/PILOT (снимается, даты пока
+  // нет), и любой сериал с датой старта в будущем.
+  const isAnnounced = (d: (typeof performer.dramas)[number]["drama"]) =>
+    d.status === "PLANNED" ||
+    d.status === "IN_PRODUCTION" ||
+    d.status === "PILOT" ||
+    (dramaAirTime(d) ?? -Infinity) > nowMs;
   const sortedDramas = [...performer.dramas].sort((a, b) => {
-    if (a.drama.year == null) return b.drama.year == null ? 0 : 1;
-    if (b.drama.year == null) return -1;
-    return b.drama.year - a.drama.year;
+    const annA = isAnnounced(a.drama);
+    const annB = isAnnounced(b.drama);
+    if (annA !== annB) return annA ? -1 : 1;
+    const tA = dramaAirTime(a.drama);
+    const tB = dramaAirTime(b.drama);
+    if (tA == null) return tB == null ? 0 : 1;
+    if (tB == null) return -1;
+    return annA ? tA - tB : tB - tA;
   });
 
   const formatBirthDate = (d: Date) =>

@@ -32,6 +32,8 @@ export type MdlCastLinkOptions = {
    * - `main-and-known-support` — главные роли целиком (незнакомых
    *   заводим), второй план ТОЛЬКО если актёр у нас уже есть и привязан
    *   хотя бы к одному агентству, гостевые роли не берём вовсе.
+   *   У шоу (Type: TV Program) свои подписи — «Main Host» и «Regular
+   *   Member» считаются главным составом, «Guest» — гостевым.
    *   Правило про агентство — ради стоимости прогона: незнакомого актёра
    *   второго плана пришлось бы заводить со страницы MDL, а это
    *   отдельный поход на чужой сайт на каждого, и на сотне сериалов
@@ -50,6 +52,10 @@ export type MdlCastLinkOptions = {
 const ENRICH_LIMIT = 20;
 
 const STALE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Подписи «главного состава» в селективном отборе: роли сериалов плюс
+ *  участие в шоу (у TV Program каст размечен не ролями). */
+const MAIN_TIER = new Set(["Main Role", "Main Host", "Regular Member"]);
 
 /**
  * Привязка каста со страницы сериала. Актёра ищем сначала по ссылке на
@@ -78,8 +84,8 @@ export async function linkMdlCast(
     await checkImportCancelled(opts.runId);
 
     // Гостевые роли отсекаем до запроса в БД — их не берём ни при каких
-    // условиях.
-    if (selective && member.roleType !== "Main Role" && member.roleType !== "Support Role") {
+    // условиях. «Main Host» и «Regular Member» — главный состав шоу.
+    if (selective && !MAIN_TIER.has(member.roleType ?? "") && member.roleType !== "Support Role") {
       skipped += 1;
       continue;
     }
