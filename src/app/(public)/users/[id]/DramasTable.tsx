@@ -2,6 +2,7 @@
 
 import DramaStatusSelect from "@/components/DramaStatusSelect";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import DramaRatingSelect from "@/components/DramaRatingSelect";
 import { useMemo, useState } from "react";
 import AppLink from "@/components/AppLink";
 import SubTabs from "@/components/SubTabs";
@@ -28,9 +29,11 @@ export type ProfileDramaRow = {
   year: number | null;
   status: DramaWatchStatusValue;
   episodesWatched: number | null;
+  /** Своя оценка 1-10 (АА2); null — не оценивал. */
+  rating: number | null;
 };
 
-type SortKey = "title" | "status" | "type" | "year" | "country" | "episodes";
+type SortKey = "title" | "status" | "type" | "year" | "country" | "rating" | "episodes";
 type Sort = { key: SortKey; dir: "asc" | "desc" };
 
 /**
@@ -151,6 +154,8 @@ function sortValue(row: ProfileDramaRow, key: SortKey, t: Dict, locale: Locale):
       return row.year;
     case "country":
       return row.country ? t.catalog.dramaCountry(row.country) : null;
+    case "rating":
+      return row.rating;
     case "episodes": {
       // Через episodeProgress — чтобы число совпадало с показанным (у
       // «Просмотрено» пустой счётчик читается как n из n).
@@ -198,6 +203,7 @@ function Head({
         <span className={styles.colType}>{button("type", c.type)}</span>
         <span className={styles.colYear}>{button("year", c.year)}</span>
         <span className={styles.colCountry}>{button("country", c.country)}</span>
+        <span className={styles.colRating}>{button("rating", c.rating)}</span>
         <span className={styles.colProgress}>{button("episodes", c.episodes)}</span>
       </div>
     </div>
@@ -251,6 +257,19 @@ function Row({
         <span className={styles.colYear}>{row.year ?? ""}</span>
         <span className={styles.colCountry}>
           {row.country ? t.catalog.dramaCountry(row.country) : ""}
+        </span>
+        <span className={`${styles.colRating} table-status-cell`}>
+          {/* Своя оценка (АА2): в своём профиле её тут же и ставят —
+              компактным списком, как статус слева. В чужом — просто
+              «★ 9», а у неоценённого пусто: прочерк в каждой второй
+              строке зарябил бы. */}
+          {editable ? (
+            <DramaRatingSelect dramaId={row.id} rating={row.rating} />
+          ) : row.rating != null ? (
+            `★ ${row.rating}`
+          ) : (
+            ""
+          )}
         </span>
         <span className={styles.colProgress}>
           {/* В своём профиле — рабочий счётчик «− 2/10 +», как в

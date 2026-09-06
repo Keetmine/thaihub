@@ -66,6 +66,10 @@ export type MdlListRow = {
   title: string;
   /** Сколько серий отмечено («7» из «7/10»); null — не разобрали. */
   seen: number | null;
+  /** Своя оценка из колонки со звёздами, 1-10 (АА2); null — не
+   *  поставлена или не разобрали. У MDL шкала с половинками («8.5»), у
+   *  нас целая — округляем к ближайшему целому. */
+  rating: number | null;
 };
 
 /**
@@ -97,10 +101,18 @@ export function parseMdlListRows(html: string): MdlListRow[] {
     // Прогресс: «новый» вид списка — num-seen, «классический» (настройка
     // профиля на MDL, см. parseMdlListDoc) — episode-seen.
     const seenRaw = row.match(/class="(?:num-seen|episode-seen)[^"]*">\s*(\d+)\s*</)?.[1];
+    // Оценка: в обоих видах списка это <span class="score">, отличается
+    // только ячейка вокруг (msv2-i-score / mdl-style-col-score).
+    // Непоставленная приезжает нулём — это «не оценил», а не «ноль
+    // баллов», поэтому ниже отсекаем всё вне 1-10. Половинки MDL
+    // («8.5») округляем: у нас шкала целая.
+    const ratingRaw = row.match(/class="[^"]*\bscore\b[^"]*"[^>]*>\s*(\d+(?:\.\d+)?)\s*</)?.[1];
+    const rating = ratingRaw != null ? Math.round(Number(ratingRaw)) : null;
     out.push({
       mdlPath: href,
       title: title.replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"'),
       seen: seenRaw != null ? Number(seenRaw) : null,
+      rating: rating != null && rating >= 1 && rating <= 10 ? rating : null,
     });
   }
   return out;
@@ -322,7 +334,12 @@ export async function runMdlListImport(
     notFound: [],
   };
 
-  type Write = { dramaId: string; status: WatchStatus; episodesWatched: number | null };
+  type Write = {
+    dramaId: string;
+    status: WatchStatus;
+    episodesWatched: number | null;
+    rating: number | null;
+  };
   const writes = new Map<string, Write>(); // dramaId → запись
   const seenMdlIds = new Set<string>();
   // Ненайденное уходит заявками в MdlDramaRequest — вместе с желаемым
@@ -356,6 +373,7 @@ export async function runMdlListImport(
         dramaId: drama.id,
         status: section.status,
         episodesWatched: episodesOk ? row.seen : null,
+        rating: row.rating,
       });
       report.matched += 1;
       report.byStatus[section.status] = (report.byStatus[section.status] ?? 0) + 1;
@@ -366,9 +384,13 @@ export async function runMdlListImport(
 
   const current = await prisma.dramaWatchStatus.findMany({
     where: { userId, dramaId: { in: [...writes.keys()] } },
-    select: { dramaId: true, status: true },
+    select: { dramaId: true, status: true, rating: true },
   });
   const currentStatus = new Map(current.map((c) => [c.dramaId, c.status]));
+  // Уже проставленную у нас оценку не трогаем: человек мог поменять её
+  // здесь, и импорт не должен возвращать старую. А вот пустую
+  // дозаполняем — за этим повторный прогон и запускают (АА2).
+  const hasRating = new Set(current.filter((c) => c.rating != null).map((c) => c.dramaId));
 
   for (const w of writes.values()) {
     const statusChanged = currentStatus.get(w.dramaId) !== w.status;
@@ -378,6 +400,7 @@ export async function runMdlListImport(
         status: w.status,
         // Прогресс без верхней границы не пишем: «иначе просто статус».
         ...(w.episodesWatched != null ? { episodesWatched: w.episodesWatched } : {}),
+        ...(w.rating != null && !hasRating.has(w.dramaId) ? { rating: w.rating } : {}),
         ...(statusChanged ? { notifyEpisodes: w.status === "WATCHING" } : {}),
       },
       create: {
@@ -385,6 +408,7 @@ export async function runMdlListImport(
         dramaId: w.dramaId,
         status: w.status,
         episodesWatched: w.episodesWatched,
+        rating: w.rating,
         notifyEpisodes: w.status === "WATCHING",
       },
     });

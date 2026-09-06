@@ -144,7 +144,7 @@
   /* Ширины — как в каталоге (dramas.module.css): статус тут стал
      таким же выпадающим списком, и в 7rem подпись «Смотрю сейчас»
      обрезалась многоточием (правка владельца 2026-09-06). */
-  grid-template-columns: 7.5rem 4.2rem 3rem 5rem 5.2rem;
+  grid-template-columns: 7.5rem 4.2rem 3rem 5rem 3.4rem 5.2rem;
   align-items: center;
   column-gap: 0.5rem;
   flex-shrink: 0;
@@ -155,7 +155,8 @@
 .colStatus,
 .colType,
 .colYear,
-.colCountry {
+.colCountry,
+.colRating {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -174,7 +175,8 @@
   .colStatus,
   .colType,
   .colYear,
-  .colCountry {
+  .colCountry,
+  .colRating {
     display: none;
   }
 }

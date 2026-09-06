@@ -76,11 +76,12 @@ async function buildCsv(kind: Kind, userId: string): Promise<string> {
       });
       return toCsv(
         ["Название", "Русское название", "Оригинальное название", "Год", "Страна", "Тип",
-         "Статус", "Просмотрено серий", "Всего серий", "Оценка MDL", "Ссылка на сайте", "MyDramaList"],
+         "Статус", "Просмотрено серий", "Всего серий", "Моя оценка", "Оценка MDL",
+         "Ссылка на сайте", "MyDramaList"],
         rows.map((r) => [
           r.drama.title, r.drama.titleRu, r.drama.nativeTitle, r.drama.year, r.drama.country,
           r.drama.type, t.catalog.watchStatus[r.status] ?? r.status,
-          r.episodesWatched, r.drama.episodes, r.drama.mdlScore,
+          r.episodesWatched, r.drama.episodes, r.rating, r.drama.mdlScore,
           `https://myblhub.com/dramas/${r.drama.slug ?? r.drama.id}`, r.drama.mydramalistUrl,
         ]),
       );

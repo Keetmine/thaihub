@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import DramaRating from "@/components/DramaRating";
 import { episodeProgress } from "@/lib/watchStatus";
 import { dramaSynopsisForLocale, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { findSimilarDramas } from "@/lib/similarDramas";
@@ -637,6 +638,17 @@ export default async function DramaDetailPage({
                 // серий), и сырой NULL показывал 0 из 10 у досмотренного.
                 watched={episodeProgress(watchStatus, drama.episodes)?.watched ?? null}
               />
+            </div>
+          )}
+
+          {/* Своя оценка (АА2) — рядом с прогрессом, где человек и так
+              отмечает своё. Показываем всем вошедшим, а не только
+              отметившим сериал: оценку ставят как раз досмотрев, и
+              просить сначала выбрать статус было бы лишним шагом —
+              экшен заведёт отметку сам. */}
+          {currentUser && (
+            <div className="mb-3">
+              <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} />
             </div>
           )}
 

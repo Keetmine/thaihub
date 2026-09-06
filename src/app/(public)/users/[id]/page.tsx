@@ -1215,6 +1215,8 @@ export default async function UserProfilePage({
 type ProfileWatchRow = {
   status: (typeof WATCH_STATUS_ORDER)[number];
   episodesWatched: number | null;
+  /** Своя оценка 1-10 (АА2). */
+  rating: number | null;
   updatedAt: Date;
   drama: {
     id: string;
@@ -1341,6 +1343,7 @@ function DramasPanel({
           ...w.drama,
           status: w.status,
           episodesWatched: w.episodesWatched,
+          rating: w.rating,
         }))}
       />
       {isSelf && (

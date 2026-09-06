@@ -3302,6 +3302,73 @@ button.hero-stat-toggle.is-open {
   color: var(--bs-secondary-color);
 }
 
+/* Своя оценка сериалу — десять звёзд (АА2, DramaRating.tsx). Звёзды
+   контурные и загораются заливкой: пустая звезда читается как «можно
+   поставить», закрашенная — как «поставил». */
+.drama-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.drama-rating-stars {
+  display: inline-flex;
+  align-items: center;
+  /* Без зазора: десять звёзд с промежутками расползались бы на
+     полстроки, а сплошной ряд читается одной шкалой. */
+  gap: 0;
+}
+.drama-rating-star {
+  border: none;
+  background: transparent;
+  padding: 0.05rem;
+  line-height: 0;
+  font-size: 1.15rem;
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+.drama-rating-star.is-on {
+  color: rgb(var(--accent-rgb));
+}
+.drama-rating-star.is-on svg {
+  fill: currentColor;
+}
+.drama-rating-star:hover:not(:disabled),
+.drama-rating-star:focus-visible {
+  transform: scale(1.15);
+}
+.drama-rating-star:disabled {
+  cursor: default;
+}
+.drama-rating-value {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color);
+}
+
+/* В строке таблицы профиля звёзды мельче, а цифра прячется: место в
+   колонке дорого, и «9/10» дублировало бы то, что и так видно. */
+.drama-rating.is-inline {
+  gap: 0.25rem;
+}
+.drama-rating.is-inline .drama-rating-star {
+  font-size: 0.95rem;
+  padding: 0;
+}
+.drama-rating.is-inline .drama-rating-value {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drama-rating-star {
+    transition: none;
+  }
+  .drama-rating-star:hover:not(:disabled),
+  .drama-rating-star:focus-visible {
+    transform: none;
+  }
+}
+
 /* Фолбэк без постера: крупная первая буква на тёплом градиенте. */
 .poster-tile-fallback {
   position: absolute;

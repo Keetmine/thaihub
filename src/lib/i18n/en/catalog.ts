@@ -53,7 +53,18 @@ export const catalog = {
     errors: {
         badStatus: "Unknown watch status",
         badEpisodes: "Invalid episode count",
+        badRating: "Invalid rating",
         dramaNotFound: "Series not found",
+    },
+
+    /** АА2: своя оценка сериалу — отдельно от общей оценки MyDramaList. */
+    rating: {
+        label: "My rating",
+        none: "Rate",
+        set: (n: number) => `My rating: ${n} out of 10`,
+        choose: (n: number) => `Rate ${n} out of 10`,
+        clear: "Remove rating",
+        hint: "Your rating shows in your profile",
     },
 
     /** Ж6: на какой серии человек остановился. */
@@ -102,6 +113,7 @@ export const catalog = {
         year: "Year",
         country: "Country",
         episodes: "Episodes",
+        rating: "Rating",
     },
 
     albumType: {

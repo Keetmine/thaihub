@@ -243,6 +243,44 @@ export async function toggleEpisodeNotifications(
   return { enabled };
 }
 
+/**
+ * Своя оценка сериалу, 1-10 (АА2).
+ *
+ * Живёт на строке просмотра, а не в отзыве: `Drama.mdlScore` — ОБЩАЯ
+ * оценка с MyDramaList, а личную поставить было негде, кроме отзыва, и
+ * ради «поставить 9» приходилось писать текст.
+ *
+ * Оценка подразумевает, что человек сериал смотрел: если строки
+ * просмотра ещё нет, заводим её со статусом «Смотрю сейчас» — это
+ * мягче, чем объявить сериал просмотренным за человека. `null` —
+ * снять оценку; сама отметка просмотра при этом остаётся.
+ */
+export async function setDramaRating(
+  dramaId: string,
+  rating: number | null,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  let value: number | null = null;
+  if (rating !== null) {
+    if (!Number.isFinite(rating)) {
+      return { ok: false, error: (await getT()).t.catalog.errors.badRating };
+    }
+    value = Math.max(1, Math.min(10, Math.round(rating)));
+  }
+
+  await prisma.dramaWatchStatus.upsert({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    update: { rating: value },
+    create: { userId: user.id, dramaId, status: "WATCHING", rating: value },
+  });
+
+  revalidatePath("/account");
+  revalidatePath(`/dramas/${dramaId}`);
+  return { ok: true };
+}
+
 export async function clearDramaWatchStatus(dramaId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");

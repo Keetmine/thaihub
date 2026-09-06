@@ -13,10 +13,11 @@ import {
 //   npx tsx tests/unit/mdlListImport.test.ts
 //
 // Разметка строк в фикстуре — дословный фрагмент живой страницы
-// (сентябрь 2026): <tr id="ml<id>"> со ссылкой class="title" и
-// счётчиком num-seen/num-total; конфиг — window.dramalist_json.
+// (сентябрь 2026): <tr id="ml<id>"> со ссылкой class="title",
+// счётчиком num-seen/num-total и оценкой в span.score; конфиг —
+// window.dramalist_json.
 
-const ROW_RELATIVE = `<tr id="ml801612">  <td class="msv2-i-num msv2-item--pos">1</td>  <td class="msv2-i-title text-justify-left"> <div class="msv2-item-content">  <div class="msv2-item--cover"><img data-src="https://i.mydramalist.com/l0zJxx_4t.jpg" src="https://i.mydramalist.com/l0zJxx_4t.jpg" class="img-responsive lazy"></div>  <div class="msv2-item--title"><a title="Be My Player Two" class="title" data-info="title:801612" target="_blank" href="/801612-be-my-player-two"><span>Be My Player Two</span></a> <span class="airing">airing</span></div>  </div> </td>  <td class="msv2-i-status">Watching</td>   <td class="msv2-i-progress"> <div class="msv2-item--progress"> <div data-id="801612"> <div class="msv2-item--quickupdate"><span>−</span></div> <div><span class="num-seen episode-seen">7</span>/<span class="num-total">10</span></div> <div class="msv2-item--quickupdate"><span>+</span></div> </div> </div> </td> </tr>`;
+const ROW_RELATIVE = `<tr id="ml801612">  <td class="msv2-i-num msv2-item--pos">1</td>  <td class="msv2-i-title text-justify-left"> <div class="msv2-item-content">  <div class="msv2-item--cover"><img data-src="https://i.mydramalist.com/l0zJxx_4t.jpg" src="https://i.mydramalist.com/l0zJxx_4t.jpg" class="img-responsive lazy"></div>  <div class="msv2-item--title"><a title="Be My Player Two" class="title" data-info="title:801612" target="_blank" href="/801612-be-my-player-two"><span>Be My Player Two</span></a> <span class="airing">airing</span></div>  </div> </td>  <td class="msv2-i-status">Watching</td> <td class="msv2-i-score"> <div class="msv2-item-content msv2-item--rating"> <span class="rating"> <span class="fill" style="width:85%;"></span></span> <span class="score">8.5</span> </div> </td>  <td class="msv2-i-progress"> <div class="msv2-item--progress"> <div data-id="801612"> <div class="msv2-item--quickupdate"><span>−</span></div> <div><span class="num-seen episode-seen">7</span>/<span class="num-total">10</span></div> <div class="msv2-item--quickupdate"><span>+</span></div> </div> </div> </td> </tr>`;
 
 // Абсолютный href, сущности в названии, счётчик отсутствует вовсе.
 const ROW_ABSOLUTE = `<tr id="ml27681"><td class="msv2-i-title"><div class="msv2-item--title"><a title="&#39;Cause You&#39;re My Boy &amp; Co" class="title" href="https://mydramalist.com/27681-my-tee"><span>…</span></a></div></td></tr>`;
@@ -37,6 +38,8 @@ const DOC = `<script> window.dramalist_json = {"username":"keetmine","vip":"0","
     mdlPath: "/801612-be-my-player-two",
     title: "Be My Player Two",
     seen: 7,
+    // Половинки MDL («8.5») округляем — у нас шкала целая.
+    rating: 9,
   });
 
   // Абсолютная ссылка сводится к пути, сущности в названии decoded,
@@ -45,6 +48,7 @@ const DOC = `<script> window.dramalist_json = {"username":"keetmine","vip":"0","
     mdlPath: "/27681-my-tee",
     title: "'Cause You're My Boy & Co",
     seen: null,
+    rating: null,
   });
 }
 
@@ -77,6 +81,8 @@ const DOC = `<script> window.dramalist_json = {"username":"keetmine","vip":"0","
       mdlPath: "/809270-a-winter-sun-wakes-the-wind-in-spring-hills-dream",
       title: "A Winter Sun Wakes the Wind in Spring Hills' Dream",
       seen: 7,
+      // Ноль в «классическом» виде — «не оценил», а не ноль баллов.
+      rating: null,
     },
   ]);
 }

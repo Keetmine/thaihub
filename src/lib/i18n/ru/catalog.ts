@@ -39,7 +39,18 @@ export const catalog: Dict["catalog"] = {
     errors: {
         badStatus: "Некорректный статус",
         badEpisodes: "Некорректное число серий",
+        badRating: "Некорректная оценка",
         dramaNotFound: "Сериал не найден",
+    },
+
+    /** АА2: своя оценка сериалу — отдельно от общей оценки MyDramaList. */
+    rating: {
+        label: "Моя оценка",
+        none: "Оценить",
+        set: (n: number) => `Моя оценка: ${n} из 10`,
+        choose: (n: number) => `Поставить ${n} из 10`,
+        clear: "Убрать оценку",
+        hint: "Оценка видна в вашем профиле",
     },
 
     /** Ж6: на какой серии человек остановился. */
@@ -87,6 +98,7 @@ export const catalog: Dict["catalog"] = {
         year: "Год",
         country: "Страна",
         episodes: "Серии",
+        rating: "Оценка",
     },
 
     /** Страна производства (`Drama.country`, строка с MDL). */
