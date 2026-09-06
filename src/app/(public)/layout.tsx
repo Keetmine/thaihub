@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { telegramBotUsername } from "@/lib/telegram";
 import TelegramPrompt from "@/components/TelegramPrompt";
 import { Fragment } from "react";
@@ -72,34 +71,23 @@ function MainNavLinks({
 }
 
 /**
- * Показывать ли предложение привязать Telegram. Условия все сразу:
+ * Показывать ли предложение привязать Telegram:
  *
  * - человек зарегистрирован ПОЧТОЙ и телеграма у него нет (у пришедших
  *   через Telegram он есть по определению);
  * - мы ещё не спрашивали: попап показывается один раз, отказ помним;
  * - тур уже пройден или закрыт: два окна разом — это не забота, а
- *   осада (поймано на проверке: тур перекрывал попап собой);
- * - аккаунт не первого дня — новичку хватает и тура;
- * - ему ЕСТЬ о чём писать: он смотрит сериал, куда-то идёт или с кем-то
- *   дружит. Предлагать уведомления тому, кто ещё ничего не отметил, —
- *   значит рекламировать пустоту.
+ *   осада (поймано на проверке: тур перекрывал попап собой).
+ *
+ * Возраста аккаунта в условиях нет (правка владельца 2026-09-06):
+ * предложить можно и новичку — важно не «сколько дней назад он
+ * зарегистрировался», а что он прямо сейчас сидит на сайте. Это и
+ * считает сам попап: пять минут ЖИВОГО времени на страницах, а не
+ * таймер с момента загрузки.
  */
-const TELEGRAM_PROMPT_MIN_AGE_MS = 3 * 24 * 60 * 60 * 1000;
-
-async function shouldPromptTelegram(
-  user: Awaited<ReturnType<typeof getCurrentUser>>,
-): Promise<boolean> {
+function shouldPromptTelegram(user: Awaited<ReturnType<typeof getCurrentUser>>): boolean {
   if (!user || user.telegramId || user.telegramPromptedAt) return false;
-  if (!user.tourCompletedAt) return false;
-  if (Date.now() - user.createdAt.getTime() < TELEGRAM_PROMPT_MIN_AGE_MS) return false;
-  const [watching, going, friends] = await Promise.all([
-    prisma.dramaWatchStatus.count({ where: { userId: user.id, status: "WATCHING" } }),
-    prisma.eventAttendance.count({ where: { userId: user.id } }),
-    prisma.friendship.count({
-      where: { status: "ACCEPTED", OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
-    }),
-  ]);
-  return watching + going + friends > 0;
+  return Boolean(user.tourCompletedAt);
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -115,7 +103,7 @@ export default async function PublicLayout({ children }: { children: React.React
   // Предложение привязать Telegram — тем, кто зарегистрировался почтой
   // (правка владельца 2026-09-06). Условия нарочно строгие: попап в
   // лицо новичку — худшее, что можно сделать со свежим аккаунтом.
-  const showTelegramPrompt = await shouldPromptTelegram(fullUser);
+  const showTelegramPrompt = shouldPromptTelegram(fullUser);
   // Без настроенного бота привязывать нечем — виджета Telegram просто
   // нет, и попап был бы пустым окном.
   const botUsername = showTelegramPrompt ? telegramBotUsername() : null;

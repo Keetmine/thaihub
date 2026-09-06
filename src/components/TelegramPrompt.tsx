@@ -22,10 +22,19 @@ import { useRouter } from "next/navigation";
  * больше; отметка живёт у пользователя, а не в браузере, иначе попап
  * всплывал бы на каждом новом устройстве.
  *
- * Появляется с задержкой: выскочить в лицо в момент открытия страницы —
- * ровно то, за что попапы и не любят.
+ * Появляется не сразу, а после пяти минут ЖИВОГО времени на сайте
+ * (правка владельца 2026-09-06). Именно накопленного, а не таймера с
+ * загрузки страницы: человек ходит по разделам, компонент при каждом
+ * переходе монтируется заново, и обычный setTimeout не сработал бы
+ * никогда. Поэтому секунды копятся в localStorage и только пока
+ * вкладка на виду — свёрнутое окно не считается «сидит на сайте».
+ *
+ * `?tgprompt=1` в адресе показывает окно сразу — чтобы посмотреть, как
+ * оно выглядит, не досиживая пять минут.
  */
-const DELAY_MS = 12_000;
+const NEEDED_SECONDS = 5 * 60;
+const TICK_SECONDS = 10;
+const STORAGE_KEY = "myblhub:tg-prompt-seconds";
 
 export default function TelegramPrompt({ botUsername }: { botUsername: string }) {
   const t = useT();
@@ -36,8 +45,32 @@ export default function TelegramPrompt({ botUsername }: { botUsername: string })
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setOpen(true), DELAY_MS);
-    return () => clearTimeout(timer);
+    // Показ по ссылке `?tgprompt=1` — через таймер, а не сразу: setState
+    // прямо в теле эффекта тянет за собой лишний каскад рендеров (и
+    // ругается линтер).
+    if (new URLSearchParams(window.location.search).get("tgprompt") === "1") {
+      const now = setTimeout(() => setOpen(true), 0);
+      return () => clearTimeout(now);
+    }
+    // Счётчик в localStorage переживает переходы между страницами;
+    // читаем его каждый тик заново, чтобы соседние вкладки не
+    // затирали друг друга своим стартовым значением.
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      let seconds = TICK_SECONDS;
+      try {
+        seconds = (Number(window.localStorage.getItem(STORAGE_KEY)) || 0) + TICK_SECONDS;
+        window.localStorage.setItem(STORAGE_KEY, String(seconds));
+      } catch {
+        // Приватный режим и «блокировать данные сайтов»: считаем в
+        // памяти — окно тогда всплывёт за пять минут одной страницы.
+      }
+      if (seconds >= NEEDED_SECONDS) {
+        setOpen(true);
+        clearInterval(timer);
+      }
+    }, TICK_SECONDS * 1000);
+    return () => clearInterval(timer);
   }, []);
 
   /** Закрытие в любом виде (крестик, «потом», клик мимо) — это ответ
@@ -45,6 +78,12 @@ export default function TelegramPrompt({ botUsername }: { botUsername: string })
   function close() {
     setOpen(false);
     void dismissTelegramPrompt();
+    // Счётчик больше не нужен: второй раз мы не спросим.
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // см. выше — хранилище может быть недоступно
+    }
   }
 
   async function handleAuth(user: TelegramAuthResult) {
