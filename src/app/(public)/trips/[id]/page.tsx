@@ -469,7 +469,21 @@ export default async function TripPage({
   const authorLabel = (createdById: string | null): string | null =>
     isShared ? (nameById.get(createdById ?? trip.userId) ?? null) : null;
 
-  const rangeWhere = { startsAt: { gte: trip.startDate, lte: endOfDay(trip.endDate) } };
+  // Рамка поездки — ОБЪЕДИНЕНИЕ её дат и всех окон присутствия (АА17):
+  // подруга прилетает позже и улетает позже, и её последний день обязан
+  // попасть в ленту — иначе событие, на которое идёт она одна, просто
+  // не показывалось бы никому (поймано проверкой 2026-09-06). Обычно
+  // рамку раздвигает уже сам setTripStay; здесь — на случай окон,
+  // заведённых другим путём, и поездок, которые потом сузили.
+  const rangeStart = trip.stays.reduce(
+    (min, stay) => (stay.startDate < min ? stay.startDate : min),
+    trip.startDate,
+  );
+  const rangeEnd = trip.stays.reduce(
+    (max, stay) => (stay.endDate > max ? stay.endDate : max),
+    trip.endDate,
+  );
+  const rangeWhere = { startsAt: { gte: rangeStart, lte: endOfDay(rangeEnd) } };
   // Отдельного счётчика плана больше нет (у вкладки убрана цифра), так
   // что и запрос под него не нужен — остался только счётчик «Афиши».
   const [occurrences, totalCount] = await Promise.all([
@@ -619,7 +633,10 @@ export default async function TripPage({
   ): T => (isParticipant ? b : { ...b, address: null, note: null, url: null, fileUrl: null });
   const visibleBookings = trip.bookings
     .map((b) => ({ ...b, visibility: effectiveVisibility(b.visibility) }))
-    .filter((b) => canSeeItem(b.visibility, null))
+    // Автор брони, а не «владелец поездки по умолчанию»: приватная
+    // бронь участницы принадлежит ЕЙ (см. TripBooking.createdById).
+    .filter((b) => canSeeItem(b.visibility, b.createdById))
+    .filter((b) => !onlyMine || isMine(b.createdById))
     .map(bookingForViewer);
   // Цвет линии — на бронь: палитра по кругу в порядке начала броней
   // (visibleBookings уже отсортированы по startAt). Так два отеля подряд
@@ -691,7 +708,11 @@ export default async function TripPage({
     // Прилёты и отъезды участников со своими датами (АА17): строкой в
     // своём дне, чтобы было видно, с какого числа мы вместе. На
     // «Афише» их нет — там только события.
-    ...(showAll
+    //
+    // Показываем ТОЛЬКО участникам: кто когда прилетает — это про
+    // людей, а постороннему в публичной поездке не виден даже список
+    // участников (поймано проверкой совместной поездки 2026-09-06).
+    ...(showAll || !isParticipant
       ? []
       : [...stayByDay].flatMap(([date, marks]) =>
           marks.map((mark) => {
@@ -905,7 +926,7 @@ export default async function TripPage({
   const bkkNow = new Date();
   bkkNow.setUTCHours(bkkNow.getUTCHours() + 7);
   const bkkTodayKey = dateKey(bkkNow);
-  const tripFinished = dateKey(trip.endDate) < bkkTodayKey;
+  const tripFinished = dateKey(rangeEnd) < bkkTodayKey;
   // Схлопнутая бронь и цепочка перелётов прошли, только когда прошла
   // их вторая сторона: заезд позавчера с выездом завтра — это текущее
   // жильё, а не история.
@@ -1043,15 +1064,15 @@ export default async function TripPage({
                 trip={{
                   id: trip.id,
                   title: trip.title,
-                  startKey: dateKey(trip.startDate),
-                  endKey: dateKey(trip.endDate),
+                  startKey: dateKey(rangeStart),
+                  endKey: dateKey(rangeEnd),
                 }}
               />
             )}
           </h1>
           <p className="text-secondary mb-0">
-            {formatShortDate(trip.startDate, locale)} – {formatShortDate(trip.endDate, locale)}{" "}
-            {trip.endDate.getFullYear()}
+            {formatShortDate(rangeStart, locale)} – {formatShortDate(rangeEnd, locale)}{" "}
+            {rangeEnd.getFullYear()}
           </p>
         </div>
         {isParticipant ? (

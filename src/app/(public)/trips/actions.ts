@@ -844,6 +844,9 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
       data: {
         tripId,
         ...data,
+        // Автор — тот, кто завёл: без него приватная бронь участницы
+        // считалась приватной бронью ВЛАДЕЛЬЦА и пропадала у автора.
+        createdById: access.user.id,
         // По умолчанию бронь видят участники: адрес проживания и номер
         // брони — не то, что показывают всем подряд.
         visibility: parseItemVisibility(formData.get("visibility"), access.trip.visibility),
