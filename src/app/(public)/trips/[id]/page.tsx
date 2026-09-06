@@ -24,7 +24,7 @@ import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
-import TripTodos, { TodoRow } from "../TripTodos";
+import TripTodos, { AddTripTodoButton, TodoRow } from "../TripTodos";
 import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
@@ -971,7 +971,8 @@ export default async function TripPage({
           «Что посетить» добавить событие было нельзя, не вернувшись
           назад. Кнопок нет вовсе у тех, кому нечего вносить, — у гостя
           и у участника без подписки. «+ Событие» акцентная: её жмут
-          чаще всего. */}
+          чаще всего. «+ Дело» стоит здесь же и внутри вкладки «Дела»
+          больше не дублируется (просьба владельца). */}
       {canContribute && (
         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
           <AddPersonalEventButton
@@ -983,6 +984,11 @@ export default async function TripPage({
           />
           <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
           <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
+          <AddTripTodoButton
+            tripId={trip.id}
+            showShareToggle={isShared}
+            visibilityOptions={visibilityOptions}
+          />
           <AddTripPlaceButton tripId={trip.id} />
         </div>
       )}
@@ -1049,7 +1055,6 @@ export default async function TripPage({
 
       {showTodos ? (
         <TripTodos
-          tripId={trip.id}
           todos={todoData}
           canAdd={canContribute}
           showShareToggle={isShared}
@@ -1077,7 +1082,7 @@ export default async function TripPage({
           />
         ) : (
           <>
-            {/* Поиск места и «своё место» переехали в кнопку «+ Место»
+            {/* Поиск места и «своё место» переехали в кнопку «+ Что посетить»
                 над вкладками — здесь остался только тот способ, которого
                 там нет: прикрепить готовый список. */}
             {canContribute && (

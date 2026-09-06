@@ -224,10 +224,12 @@ export function TodoRow({
   );
 }
 
-/** Кнопка «+ Дело» с модалкой — на вкладке дел и в общем ряду действий.
- *  Раньше форма висела на вкладке развёрнутой и занимала первый экран
- *  ещё до того, как человек решил что-то добавить (просьба владельца:
- *  «добавлять дело тоже по кнопке»). */
+/** Кнопка «+ Дело» с модалкой — живёт в общем ряду действий над
+ *  вкладками (страница поездки), а не внутри вкладки «Дела»: добавить
+ *  дело можно с любой вкладки, и второй такой кнопки на странице нет
+ *  (просьба владельца). Раньше форма и вовсе висела на вкладке
+ *  развёрнутой и занимала первый экран ещё до того, как человек решил
+ *  что-то добавить. */
 export function AddTripTodoButton({
   tripId,
   showShareToggle = false,
@@ -315,17 +317,17 @@ export function AddTripTodoButton({
   );
 }
 
-/** Вкладка «Дела»: кнопка добавления + список (невыполненные сверху). */
+/** Вкладка «Дела»: список (невыполненные сверху). Кнопка добавления
+ *  живёт в общем ряду действий над вкладками — здесь её нет. */
 export default function TripTodos({
-  tripId,
   todos,
   canAdd,
   showShareToggle = false,
   visibilityOptions,
 }: {
-  tripId: string;
   todos: TodoData[];
-  /** Может ли текущий юзер добавлять дела (участник с подпиской). */
+  /** Может ли текущий юзер добавлять дела (участник с подпиской) —
+   *  от этого зависит только подсказка в пустом состоянии. */
   canAdd: boolean;
   showShareToggle?: boolean;
   visibilityOptions: readonly TripItemVisibilityValue[];
@@ -342,16 +344,6 @@ export default function TripTodos({
 
   return (
     <div style={{ maxWidth: "44rem" }}>
-      {canAdd && (
-        <div className="mb-3">
-          <AddTripTodoButton
-            tripId={tripId}
-            showShareToggle={showShareToggle}
-            visibilityOptions={visibilityOptions}
-          />
-        </div>
-      )}
-
       {sorted.length === 0 ? (
         <EmptyState
           emoji="📝"
