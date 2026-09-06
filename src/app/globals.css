@@ -366,7 +366,13 @@ body {
 .btn-primary,
 .btn-primary:hover,
 .btn-primary:focus,
-.btn-primary:active {
+.btn-primary:active,
+/* И выключенная тоже: у Bootstrap :disabled красится тем же литеральным
+   SASS-цветом, и кнопка «Добавить» с пустым полем светилась синим —
+   единственное синее пятно на всём сайте (поймано владельцем
+   2026-09-06). */
+.btn-primary:disabled,
+.btn-primary.disabled {
   color: #100613;
   background-color: var(--bs-primary);
   border-color: var(--bs-primary);

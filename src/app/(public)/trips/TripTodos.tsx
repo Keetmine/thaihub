@@ -1,7 +1,7 @@
 "use client";
 
 import type { TripTodoKind } from "@/generated/prisma/client";
-import { useId, useState } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 import Modal from "@/components/Modal";
@@ -201,26 +201,38 @@ export function TodoRow({
             <label className="form-label small text-secondary" htmlFor={`${uid}-text`}>{t.trips.todos.text}</label>
             <input id={`${uid}-text`} name="text" required defaultValue={todo.text} className="form-control" />
           </div>
-          <div className="row g-2">
-            <div className="col-7">
-              <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>
-                {t.trips.todos.dateOptional}
-              </label>
-              <DatePickerInput id={`${uid}-date`}
-                name="date"
-                defaultValue={todo.date ? todo.date.slice(0, 10) : ""}
-              />
+          {/* Даты — только у дел: датированное дело уходит в ленту
+              плана, а «взять переходник» на число не назначают (правка
+              владельца 2026-09-06). У старых записей чемодана дата
+              могла остаться — форма её не показывает, но и не стирает:
+              скрытые поля сохраняют, что было. */}
+          {todo.kind === "TODO" ? (
+            <div className="row g-2">
+              <div className="col-7">
+                <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>
+                  {t.trips.todos.dateOptional}
+                </label>
+                <DatePickerInput id={`${uid}-date`}
+                  name="date"
+                  defaultValue={todo.date ? todo.date.slice(0, 10) : ""}
+                />
+              </div>
+              <div className="col-5">
+                <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>{t.trips.todos.time}</label>
+                <input id={`${uid}-time`}
+                  type="time"
+                  name="time"
+                  defaultValue={timeLabel ?? ""}
+                  className="form-control"
+                />
+              </div>
             </div>
-            <div className="col-5">
-              <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>{t.trips.todos.time}</label>
-              <input id={`${uid}-time`}
-                type="time"
-                name="time"
-                defaultValue={timeLabel ?? ""}
-                className="form-control"
-              />
-            </div>
-          </div>
+          ) : (
+            <>
+              <input type="hidden" name="date" value={todo.date ? todo.date.slice(0, 10) : ""} />
+              <input type="hidden" name="time" value={timeLabel ?? ""} />
+            </>
+          )}
           <ItemVisibilityField defaultValue={todo.visibility} options={visibilityOptions} />
           {showShareToggle ? (
             <label className="form-check d-flex align-items-center gap-2 mb-0">
@@ -333,18 +345,21 @@ export function AddTripTodoButton({
               className="form-control"
             />
           </div>
-          <div className="row g-2">
-            <div className="col-7">
-              <label className="form-label small text-secondary" htmlFor={`${uid}-date2`}>
-                {t.trips.todos.dateOptional}
-              </label>
-              <DatePickerInput id={`${uid}-date2`} name="date" />
+          {/* См. выше: дата есть только у дел. */}
+          {kind === "TODO" && (
+            <div className="row g-2">
+              <div className="col-7">
+                <label className="form-label small text-secondary" htmlFor={`${uid}-date2`}>
+                  {t.trips.todos.dateOptional}
+                </label>
+                <DatePickerInput id={`${uid}-date2`} name="date" />
+              </div>
+              <div className="col-5">
+                <label className="form-label small text-secondary" htmlFor={`${uid}-time2`}>{t.trips.todos.time}</label>
+                <input id={`${uid}-time2`} type="time" name="time" className="form-control" />
+              </div>
             </div>
-            <div className="col-5">
-              <label className="form-label small text-secondary" htmlFor={`${uid}-time2`}>{t.trips.todos.time}</label>
-              <input id={`${uid}-time2`} type="time" name="time" className="form-control" />
-            </div>
-          </div>
+          )}
           {/* Чемодан по умолчанию приватный: в совместной поездке он у
               каждого свой, и «мои лекарства» соседке по номеру не
               нужны. Покупками, наоборот, делятся. */}
@@ -372,6 +387,112 @@ export function AddTripTodoButton({
 
 /** Вкладка «Дела»: список (невыполненные сверху). Кнопка добавления
  *  живёт в общем ряду действий над вкладками — здесь её нет. */
+/**
+ * Быстрый ввод для чемодана и покупок: название, «кто это видит»
+ * селектом и «+». Enter добавляет и оставляет фокус на месте — такие
+ * списки набивают десятком строк подряд (правки владельца 2026-09-06).
+ *
+ * Даты здесь нет намеренно: «взять переходник» и «купить магниты» — это
+ * не дела на число, и поле только мешало бы. У списка ДЕЛ дата
+ * осталась: датированное дело уходит в ленту плана.
+ *
+ * Видимость — select, а не радио-группа как в модалке: в одну строку с
+ * полем ввода четыре варианта с подсказками не поместятся, а выбирают
+ * здесь между «только я» и «участники» на автомате.
+ */
+function TripTodoQuickAdd({
+  tripId,
+  kind,
+  visibilityOptions,
+}: {
+  tripId: string;
+  kind: TripTodoKind;
+  visibilityOptions: readonly TripItemVisibilityValue[];
+}) {
+  const t = useT();
+  const l = t.trips.todos.lists;
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState("");
+  // Чемодан у каждого свой, покупками делятся — но выбранное человеком
+  // держится до конца сессии ввода: подряд заводят однотипные строки.
+  const preferred: TripItemVisibilityValue = kind === "PACKING" ? "PRIVATE" : "PARTICIPANTS";
+  const [visibility, setVisibility] = useState<TripItemVisibilityValue>(
+    visibilityOptions.includes(preferred) ? preferred : (visibilityOptions[0] ?? "PARTICIPANTS"),
+  );
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function add() {
+    const value = text.trim();
+    if (!value || pending) return;
+    setError(null);
+    // Поле очищаем сразу: строка появится после refresh, а вводить
+    // следующую вещь можно уже сейчас.
+    setText("");
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("text", value);
+      fd.set("kind", kind);
+      fd.set("visibility", visibility);
+      const result = await createTripTodo(tripId, fd);
+      if (!result.ok) {
+        setError(result.error);
+        setText(value);
+        return;
+      }
+      router.refresh();
+      inputRef.current?.focus();
+    });
+  }
+
+  return (
+    <div className="mb-3">
+      <div className="d-flex flex-wrap flex-sm-nowrap align-items-center gap-2">
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          className="form-control flex-fill"
+          style={{ minWidth: "12rem" }}
+          placeholder={kind === "PACKING" ? l.quickAddPacking : l.quickAddShopping}
+          aria-label={l.quickAddAria}
+        />
+        {visibilityOptions.length > 1 && (
+          <select
+            className="form-select flex-shrink-0"
+            style={{ width: "auto" }}
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value as TripItemVisibilityValue)}
+            aria-label={t.trips.itemVisibility.label}
+          >
+            {visibilityOptions.map((option) => (
+              <option key={option} value={option}>
+                {t.trips.itemVisibility.options[option]}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          type="button"
+          className="btn btn-primary flex-shrink-0"
+          onClick={add}
+          disabled={pending || !text.trim()}
+        >
+          {t.common.add}
+        </button>
+      </div>
+      {error && <p className="small text-danger mb-0 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 export default function TripTodos({
   todos,
   tripId,
@@ -413,27 +534,26 @@ export default function TripTodos({
     // Во всю ширину колонки (правка владельца 2026-09-06): у чемодана
     // строки короткие, и узкая колонка гнала список в длинную простыню.
     <div>
-      {/* Сколько собрано — только у чемодана и покупок: в списке дел
-          «собрано 2 из 5» звучало бы про вещи, а не про дела. */}
+      {/* Сколько готово — только у чемодана и покупок: в списке дел
+          «собрано 2 из 5» звучало бы про вещи. Слово тоже по списку:
+          вещи собирают, покупки покупают. */}
       {activeList !== "TODO" && sorted.length > 0 && (
         <p className="small text-secondary mb-3">
-          {l.progress(sorted.filter((item) => item.done).length, sorted.length)}
+          {(activeList === "PACKING" ? l.progressPacking : l.progressShopping)(
+            sorted.filter((item) => item.done).length,
+            sorted.length,
+          )}
         </p>
       )}
-      {/* Чемодан и покупки добавляют здесь же, своей кнопкой: у списка
-          дел она осталась в общем ряду над вкладками — дело заводят и с
-          плана, и из «Что посетить» (правки владельца 2026-09-06).
-          Быстрый ввод строкой был и убран по её же просьбе: одна
-          понятная кнопка вместо поля с неявным Enter. */}
+      {/* Чемодан и покупки набиваются прямо здесь; у списка дел
+          добавление осталось общей кнопкой над вкладками — дело заводят
+          и с плана, и из «Что посетить» (правки владельца 2026-09-06). */}
       {canAdd && activeList !== "TODO" && (
-        <div className="mb-3">
-          <AddTripTodoButton
-            tripId={tripId}
-            kind={activeList}
-            showShareToggle={showShareToggle}
-            visibilityOptions={visibilityOptions}
-          />
-        </div>
+        <TripTodoQuickAdd
+          tripId={tripId}
+          kind={activeList}
+          visibilityOptions={visibilityOptions}
+        />
       )}
 
       {sorted.length === 0 ? (

@@ -225,9 +225,14 @@ export const trips: Dict["trips"] = {
         emptyHintGuest: "Участники пока ничего не добавили.",
 
         lists: {
+            /** Быстрый ввод во вкладках чемодана и покупок. */
+            quickAddPacking: "Что взять…",
+            quickAddShopping: "Что купить…",
+            quickAddAria: "Добавить в список",
             /** Кнопка добавления внутри вкладки чемодана и покупок. */
             addButton: "+ Добавить",
-            progress: (done: number, total: number) => `собрано ${done} из ${total}`,
+            progressPacking: (done: number, total: number) => `собрано ${done} из ${total}`,
+            progressShopping: (done: number, total: number) => `куплено ${done} из ${total}`,
             addPackingTitle: "Что взять с собой",
             addShoppingTitle: "Что купить",
             packingPlaceholder: "Переходник, санскрин, лекарства…",
