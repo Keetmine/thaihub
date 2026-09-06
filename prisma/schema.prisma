@@ -892,6 +892,8 @@ model User {
   placeLists                   PlaceList[]
   performerLists               PerformerList[]
   tripMemberships              TripMember[]
+  // Свои даты в общих поездках (АА17).
+  tripStays                    TripStay[]
   reviews                      Review[]
   comments                     Comment[]
   commentLikes                 CommentLike[]
@@ -939,6 +941,8 @@ model Trip {
   places         TripPlace[]
   todos          TripTodo[]
   members        TripMember[]
+  // Свои даты участников — см. TripStay.
+  stays          TripStay[]
   bookings       TripBooking[]
 
   @@index([userId])
@@ -968,6 +972,29 @@ enum TripVisibility {
 enum TripMemberStatus {
   PENDING
   ACCEPTED
+}
+
+/**
+ * Свои даты участника в общей поездке (АА17): подруги едут вместе, но
+ * летят разными рейсами — одна с 18 октября по 2 ноября, другая с 22 по
+ * 6. Поездка при этом ОДНА: общий отель, общий план, одна страница;
+ * разъезжается только присутствие.
+ *
+ * Строки нет — «как вся поездка», поэтому ничего не надо ни
+ * бэкфиллить, ни заводить владельцу; свои даты он задаёт так же, как
+ * участник, и отдельной строкой в TripMember для этого не становится.
+ */
+model TripStay {
+  tripId    String
+  userId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  @@id([tripId, userId])
+  @@index([userId])
 }
 
 model TripMember {

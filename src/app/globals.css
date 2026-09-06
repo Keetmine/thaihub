@@ -6305,3 +6305,13 @@ body::after {
     height: 1.35rem !important;
   }
 }
+
+/* АА17: отметка «прилетает/улетает» в ленте поездки — веха дня, а не
+   карточка: без подложки и рамки, чтобы не спорить с событиями рядом. */
+.trip-stay-mark {
+  padding: 0.35rem 0;
+  color: var(--bs-secondary-color);
+  font-size: 0.86rem;
+  letter-spacing: 0.01em;
+}
+

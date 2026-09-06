@@ -27,6 +27,7 @@ import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import TripTodos, { AddTripTodoButton, TodoRow } from "../TripTodos";
 import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
+import TripStayButton from "../TripStayButton";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
 import LocationMapLoader from "@/components/LocationMapLoader";
@@ -384,6 +385,8 @@ export default async function TripPage({
         },
       },
       user: { select: { id: true, name: true, username: true, deletedAt: true } },
+      // Свои даты участников (АА17): нет строки — едет на всю поездку.
+      stays: { select: { userId: true, startDate: true, endDate: true } },
       // Брони жилья: показываются на вкладке плана рядом с событиями —
       // в день заселения не приходится искать письмо в почте.
       bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
@@ -428,6 +431,30 @@ export default async function TripPage({
   // обход пейволла уже ловили). Участникам поездки план виден целиком:
   // это их собственные отметки «иду».
   const canSeeEvents = isParticipant || isPremiumActive(user);
+
+  const myStay = viewerId ? trip.stays.find((stay) => stay.userId === viewerId) ?? null : null;
+  /** «22 окт – 6 нояб» для чужого окна присутствия; null — вся поездка. */
+  const stayLabelOf = (userId: string): string | null => {
+    const stay = trip.stays.find((row) => row.userId === userId);
+    return stay
+      ? `${formatShortDate(stay.startDate, locale)} – ${formatShortDate(stay.endDate, locale)}`
+      : null;
+  };
+  // Кто в какой день прилетает и улетает — бейджами в ленте (АА17).
+  // Владелец и участники равны: у каждого либо своё окно, либо вся
+  // поездка (тогда стрелок нет — прилёт совпадает с началом поездки, и
+  // подписывать его нечем).
+  const stayByDay = new Map<string, { userId: string; kind: "arrive" | "leave" }[]>();
+  for (const stay of trip.stays) {
+    for (const [date, kind] of [
+      [dateKey(stay.startDate), "arrive" as const],
+      [dateKey(stay.endDate), "leave" as const],
+    ] as const) {
+      const day = stayByDay.get(date);
+      if (day) day.push({ userId: stay.userId, kind });
+      else stayByDay.set(date, [{ userId: stay.userId, kind }]);
+    }
+  }
 
   const participantIds = [trip.userId, ...acceptedMembers.map((m) => m.userId)];
   const nameById = new Map<string, string>([
@@ -643,6 +670,8 @@ export default async function TripPage({
     | { kind: "public"; startsAt: Date; key: string; event: (typeof events)[number] }
     | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData }
     | { kind: "todo"; startsAt: Date; key: string; todo: (typeof todoData)[number] }
+    // АА17: «прилетает Аня» / «вы улетаете» — отметка в своём дне.
+    | { kind: "stay"; startsAt: Date; key: string; label: string }
     | BookingEntry
     | { kind: "flightChain"; startsAt: Date; endsAt: Date; key: string; chain: FlightChainData };
 
@@ -659,6 +688,32 @@ export default async function TripPage({
       : todoData
           .filter((t) => t.date)
           .map((t) => ({ kind: "todo" as const, startsAt: new Date(t.date!), key: `todo-${t.id}`, todo: t }))),
+    // Прилёты и отъезды участников со своими датами (АА17): строкой в
+    // своём дне, чтобы было видно, с какого числа мы вместе. На
+    // «Афише» их нет — там только события.
+    ...(showAll
+      ? []
+      : [...stayByDay].flatMap(([date, marks]) =>
+          marks.map((mark) => {
+            const isMe = mark.userId === viewerId;
+            const name = nameById.get(mark.userId) ?? t.trips.list.someFriend;
+            return {
+              kind: "stay" as const,
+              // Полдень: отметка дня стоит между утренними и вечерними
+              // делами ровно так же, как бронь без времени.
+              startsAt: new Date(`${date}T12:00:00.000Z`),
+              key: `stay-${mark.userId}-${mark.kind}`,
+              label:
+                mark.kind === "arrive"
+                  ? isMe
+                    ? t.trips.stay.arrivesYou
+                    : t.trips.stay.arrives(name)
+                  : isMe
+                    ? t.trips.stay.leavesYou
+                    : t.trips.stay.leaves(name),
+            };
+          }),
+        )),
     ...legs.map(({ leg, sortAt, isStay, span, spanAt }) => ({
       kind: "booking" as const,
       startsAt: sortAt,
@@ -953,6 +1008,10 @@ export default async function TripPage({
             showShareToggle={isShared}
             visibilityOptions={visibilityOptions}
           />
+        ) : item.kind === "stay" ? (
+          // Тихая строка-отметка: не карточка — у неё нет ни своей
+          // страницы, ни действий, это просто веха дня.
+          <p className="trip-stay-mark mb-0">{item.label}</p>
         ) : item.kind === "booking" ? (
           <TripBookingLeg tripId={trip.id} leg={item.leg} visibilityOptions={visibilityOptions} />
         ) : item.kind === "flightChain" ? (
@@ -1000,15 +1059,29 @@ export default async function TripPage({
             {canManage && (
               <VisibilitySelect tripId={trip.id} visibility={trip.visibility} />
             )}
+            {/* Своё окно присутствия — у каждого участника, включая
+                владельца (АА17). */}
+            <TripStayButton
+              tripId={trip.id}
+              startDate={myStay ? dateKey(myStay.startDate) : null}
+              endDate={myStay ? dateKey(myStay.endDate) : null}
+              label={viewerId ? stayLabelOf(viewerId) : null}
+            />
             <TripMembersButton
               tripId={trip.id}
               isOwner={isOwner}
-              owner={{ id: trip.userId, name: trip.user.name, deletedAt: trip.user.deletedAt }}
+              owner={{
+                id: trip.userId,
+                name: trip.user.name,
+                deletedAt: trip.user.deletedAt,
+                stay: stayLabelOf(trip.userId),
+              }}
               members={trip.members.map((m) => ({
                 id: m.userId,
                 name: m.user.name,
                 deletedAt: m.user.deletedAt,
                 pending: m.status === "PENDING",
+                stay: stayLabelOf(m.userId),
               }))}
               availableFriends={availableFriends}
             />

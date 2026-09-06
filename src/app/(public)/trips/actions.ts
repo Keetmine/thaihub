@@ -223,6 +223,62 @@ function canTouchItem(
   return item.editableByOthers;
 }
 
+/**
+ * Свои даты участника в общей поездке (АА17): «я лечу 18-го, а ты
+ * 22-го». Ставит их КАЖДЫЙ СЕБЕ — и владелец тоже, отдельной строкой в
+ * участниках он для этого не становится.
+ *
+ * Пустые даты — «еду как вся поездка»: строка удаляется, а не
+ * заполняется датами поездки, иначе при сдвиге самой поездки чужое
+ * присутствие молча осталось бы на старых числах.
+ *
+ * Рамка поездки при этом расширяется: если человек прилетает раньше
+ * или улетает позже, лента дней обязана его дни вместить, иначе его
+ * прилёт некуда показать. Сужать поездку по чужим датам, наоборот,
+ * нельзя — она общая.
+ */
+export async function setTripStay(tripId: string, formData: FormData): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const { t } = await getT();
+
+  const startRaw = String(formData.get("startDate") ?? "").trim();
+  const endRaw = String(formData.get("endDate") ?? "").trim();
+
+  if (!startRaw && !endRaw) {
+    await prisma.tripStay.deleteMany({ where: { tripId, userId: access.user.id } });
+    revalidatePath(`/trips/${tripId}`);
+    return { ok: true };
+  }
+  if (!startRaw || !endRaw) return { ok: false, error: t.trips.errors.stayBothDates };
+
+  const startDate = new Date(`${startRaw}T00:00:00.000Z`);
+  const endDate = new Date(`${endRaw}T00:00:00.000Z`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return { ok: false, error: t.trips.errors.stayBothDates };
+  }
+  if (endDate < startDate) return { ok: false, error: t.trips.errors.stayOrder };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.tripStay.upsert({
+      where: { tripId_userId: { tripId, userId: access.user.id } },
+      create: { tripId, userId: access.user.id, startDate, endDate },
+      update: { startDate, endDate },
+    });
+    // Рамку двигаем только наружу — см. комментарий выше.
+    const widen: { startDate?: Date; endDate?: Date } = {};
+    if (startDate < access.trip.startDate) widen.startDate = startDate;
+    if (endDate > access.trip.endDate) widen.endDate = endDate;
+    if (Object.keys(widen).length > 0) {
+      await tx.trip.update({ where: { id: tripId }, data: widen });
+    }
+  });
+
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath("/trips");
+  return { ok: true };
+}
+
 // ---------- Участники поездки ----------
 
 /** Телеграм приглашённому о новом инвайте (fire-and-forget). */

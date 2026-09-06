@@ -93,6 +93,23 @@ export const trips = {
 
     /** Кто видит отдельную запись поездки — дело, личное событие, бронь.
      *  Не путать с `visibility` выше: та про саму поездку. */
+    /** Свои даты участника в общей поездке (АА17): «я лечу 18-го, а
+     *  ты 22-го». Поездка одна, разъезжается только присутствие. */
+    stay: {
+        button: "My dates",
+        title: "My dates on this trip",
+        hint: "Flying for only part of the trip? Set your own dates. Empty means the whole trip.",
+        from: "Arrival",
+        to: "Departure",
+        save: "Save",
+        clear: "Whole trip",
+        whole: "whole trip",
+        arrives: (name: string) => `✈ ${name} arrives`,
+        arrivesYou: "✈ you arrive",
+        leaves: (name: string) => `✈ ${name} leaves`,
+        leavesYou: "✈ you leave",
+    },
+
     itemVisibility: {
         label: "Who can see this",
         options: {
@@ -317,6 +334,8 @@ export const trips = {
 
     /** Ответы серверных экшенов — их показывают формы поездки. */
     errors: {
+        stayBothDates: "Set both dates — arrival and departure",
+        stayOrder: "The departure date is before the arrival",
         premium: "Trips are part of the subscription",
         fillTitleAndDates: "Fill in the title and both dates",
         endBeforeStart: "The end date is before the start date",

@@ -150,7 +150,14 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
         where: {
           OR: [{ userId }, { members: { some: { userId, status: "ACCEPTED" } } }],
         },
-        select: { startDate: true, endDate: true },
+        select: {
+          startDate: true,
+          endDate: true,
+          // Своё окно присутствия, если человек летел не на все дни
+          // (АА17): по нему и считаем, иначе подруга, прилетевшая на
+          // четыре дня позже, получала бы чужие дни в Таиланде.
+          stays: { where: { userId }, select: { startDate: true, endDate: true } },
+        },
       }),
       prisma.friendship.count({
         where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
@@ -345,7 +352,13 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
   // Поездки/дни — в src/lib/tripDays.ts: дни только по завершённым,
   // перекрывающиеся диапазоны (своя поездка + совместная на те же даты)
   // считаются один раз.
-  const tripStats = tripDayStats(trips, now);
+  // Считаем по СВОИМ датам: у общей поездки участники могут прилетать и
+  // улетать вразнобой (АА17). Нет своего окна — человек ехал на всю
+  // поездку, и это её собственные даты.
+  const tripStats = tripDayStats(
+    trips.map((trip) => trip.stays[0] ?? { startDate: trip.startDate, endDate: trip.endDate }),
+    now,
+  );
 
   return {
     attendedEvents: attendedEventIds.size,

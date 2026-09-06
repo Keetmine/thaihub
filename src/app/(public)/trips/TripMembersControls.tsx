@@ -22,6 +22,9 @@ export type TripMemberData = {
    *  языке зрителя, в базе лежит русская строка со дня удаления. */
   deletedAt: Date | null;
   pending?: boolean;
+  /** Свои даты в поездке, уже человеческой строкой («22 окт – 6 нояб»);
+   *  null — едет на всю поездку (АА17). */
+  stay?: string | null;
 };
 
 /** «Участники (N)» — модалка совместной поездки: владелец добавляет
@@ -53,6 +56,10 @@ export default function TripMembersButton({
   const label = (person: TripMemberData) =>
     person.name ? userDisplayName(person, locale) : t.trips.members.noName;
 
+  /** Даты рядом с именем: у кого своё окно — его, у остальных «вся
+   *  поездка». Так видно, кто когда с вами (АА17). */
+  const stayLabel = (person: TripMemberData) => person.stay ?? t.trips.stay.whole;
+
   async function handleAdd() {
     if (!friendId || pending) return;
     setPending(true);
@@ -81,7 +88,10 @@ export default function TripMembersButton({
       <Modal open={open} onClose={() => setOpen(false)} title={t.trips.members.title}>
         <div className="d-flex flex-column gap-2">
           <div className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3">
-            <span>{label(owner)}</span>
+            <span>
+              {label(owner)}
+              <span className="small text-secondary ms-2">{stayLabel(owner)}</span>
+            </span>
             <span className="small text-secondary flex-shrink-0">{t.trips.members.owner}</span>
           </div>
           {members.map((m) => (
@@ -91,8 +101,11 @@ export default function TripMembersButton({
             >
               <span>
                 {label(m)}
-                {m.pending && (
+                {/* Приглашённому даты не пишем: он ещё не едет. */}
+                {m.pending ? (
                   <span className="small text-secondary ms-2">{t.trips.members.pending}</span>
+                ) : (
+                  <span className="small text-secondary ms-2">{stayLabel(m)}</span>
                 )}
               </span>
               {isOwner && (
