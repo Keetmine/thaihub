@@ -1,3 +1,4 @@
+import { isPremiumActive } from "@/lib/premium";
 import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
@@ -5,6 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import CreateListButton from "./CreateListButton";
+import PremiumUpsell from "@/components/PremiumUpsell";
 import CreateOwnPlaceButton from "./[id]/CreateOwnPlaceButton";
 import { createStandalonePlace } from "./actions";
 import { listHref, locationHref } from "@/lib/slugHelpers";
@@ -60,6 +62,7 @@ export default async function ListsPage() {
   const places = ownPlaces.sort((a, b) => a.name.localeCompare(b.name, locale));
 
   const isEmpty = places.length === 0 && lists.length === 0;
+  const canCreate = isPremiumActive(user);
 
   return (
     <div>
@@ -72,12 +75,21 @@ export default async function ListsPage() {
 
       <div style={{ maxWidth: "44rem" }}>
         <p className="text-secondary mb-3">{t.lists.places.intro}</p>
-        <div className="mb-4">
-          <CreateOwnPlaceButton
-            action={createStandalonePlace}
-            label={t.lists.places.addPlace}
-          />
-        </div>
+        {/* Заводить своё — по подписке (правка владельца 2026-09-06);
+            уже созданные места и списки остаются на месте и работают,
+            платное тут только создание. */}
+        {canCreate ? (
+          <div className="mb-4">
+            <CreateOwnPlaceButton
+              action={createStandalonePlace}
+              label={t.lists.places.addPlace}
+            />
+          </div>
+        ) : (
+          <div className="mb-4">
+            <PremiumUpsell feature={t.lists.paywallFeature} />
+          </div>
+        )}
 
         {isEmpty ? (
           <EmptyState
@@ -149,7 +161,7 @@ export default async function ListsPage() {
 
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
               <h2 className="section-heading mb-0">{t.lists.places.listsHeading}</h2>
-              <CreateListButton />
+              {canCreate && <CreateListButton />}
             </div>
             <p className="small text-secondary mb-3">{t.lists.places.listsIntro}</p>
 

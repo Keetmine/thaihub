@@ -5,8 +5,6 @@
 export const settings = {
   // Заголовки и подводки секций-карточек.
   profileSection: "Profile",
-  profileSectionHint:
-    "How you appear to friends and on your public profile page.",
   regionalSection: "Language & region",
   regionalSectionHint:
     "The site language, your time zone and country — they shape dates, times and notifications.",

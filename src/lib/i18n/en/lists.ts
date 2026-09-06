@@ -4,6 +4,8 @@
  */
 export const lists = {
     eyebrow: "Planning",
+    /** Подпись на пейволле: «Подписка открывает …». */
+    paywallFeature: "adding your own places and lists",
 
     /** Раздел «Мои места»: /lists */
     places: {
@@ -135,6 +137,10 @@ export const lists = {
 
     /** Ответы серверных экшенов — их показывают формы раздела. */
     errors: {
+        /** Создание своего места или списка — платное (правка
+         *  владельца 2026-09-06); смотреть чужие публичные списки
+         *  можно и без подписки. */
+        premium: "Your own places and lists come with a subscription",
         listTitleRequired: "Give the list a title",
         listNotFound: "List not found",
         placeNameRequired: "Give the place a name",

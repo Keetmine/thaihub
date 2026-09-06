@@ -109,8 +109,10 @@ export default async function SettingsPage({
                   показывается в профиле: полоса дропзоны во всю ширину
                   колонки занимала полэкрана и обещала не тот кадр. */}
               <div className="surface p-4">
-                <h2 className="section-heading mb-1">{ts.profileSection}</h2>
-                <p className="small text-secondary mb-3">{ts.profileSectionHint}</p>
+                {/* Подписи под заголовком нет намеренно (правка
+                    владельца 2026-09-06): «как вы выглядите для друзей»
+                    ничего не объясняло — поля и так говорят за себя. */}
+                <h2 className="section-heading mb-3">{ts.profileSection}</h2>
                 <div className="row g-4">
                   <div className="col-12 col-sm-5 col-md-4 col-lg-3">
                     <FileDropzone

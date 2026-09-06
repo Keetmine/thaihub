@@ -1301,6 +1301,10 @@ function DramasPanel({
   return (
     <div>
       <DramasTable
+        // Свой профиль — счётчик серий рабочий (правка владельца
+        // 2026-09-06): отмечать серии прямо отсюда быстрее, чем
+        // заходить в каталог или на страницу сериала.
+        editable={isSelf}
         rows={watchRows.map((w) => ({
           ...w.drama,
           status: w.status,

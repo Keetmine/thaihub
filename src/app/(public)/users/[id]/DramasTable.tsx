@@ -1,5 +1,6 @@
 "use client";
 
+import EpisodeProgress from "@/components/EpisodeProgress";
 import { useMemo, useState } from "react";
 import AppLink from "@/components/AppLink";
 import SubTabs from "@/components/SubTabs";
@@ -47,7 +48,16 @@ type Sort = { key: SortKey; dir: "asc" | "desc" };
  * Клиентский компонент нужен ровно ради сортировки; словарь и язык
  * берутся хуками, а не пропсами (образец — StatsHero).
  */
-export default function DramasTable({ rows }: { rows: ProfileDramaRow[] }) {
+export default function DramasTable({
+  rows,
+  editable = false,
+}: {
+  rows: ProfileDramaRow[];
+  /** Свой профиль: счётчик серий не подпись, а рабочие «−/+» — те же,
+   *  что в каталоге и на странице сериала (правка владельца
+   *  2026-09-06: отмечать серии из профиля удобнее, чем ходить туда). */
+  editable?: boolean;
+}) {
   const t = useT();
   const locale = useLocale();
   const p = t.social.profile;
@@ -93,7 +103,7 @@ export default function DramasTable({ rows }: { rows: ProfileDramaRow[] }) {
       <Head sort={sort} onSort={toggle} t={t} />
       <div className={styles.rows}>
         {sortRows(list).map((row) => (
-          <Row key={row.id} row={row} t={t} locale={locale} />
+          <Row key={row.id} row={row} t={t} locale={locale} editable={editable} />
         ))}
       </div>
     </div>
@@ -192,7 +202,17 @@ function Head({
 
 /** Строка таблицы — плотность и колонки каталога /dramas: миниатюра +
  *  название слева, статус · тип · год · страна · серии справа. */
-function Row({ row, t, locale }: { row: ProfileDramaRow; t: Dict; locale: Locale }) {
+function Row({
+  row,
+  t,
+  locale,
+  editable,
+}: {
+  row: ProfileDramaRow;
+  t: Dict;
+  locale: Locale;
+  editable: boolean;
+}) {
   const progress = episodeProgress(row, row.episodes);
   const title = dramaTitleForLocale(row, locale);
   return (
@@ -220,9 +240,20 @@ function Row({ row, t, locale }: { row: ProfileDramaRow; t: Dict; locale: Locale
           {row.country ? t.catalog.dramaCountry(row.country) : ""}
         </span>
         <span className={styles.colProgress}>
-          {/* «2/10» — ровно как в колонке прогресса каталога; число
-              считает episodeProgress, а не сырое поле. */}
-          {progress ? (progress.total !== null ? `${progress.watched}/${progress.total}` : progress.watched) : ""}
+          {/* В своём профиле — рабочий счётчик «− 2/10 +», как в
+              каталоге; в чужом просто «2/10»: чужой прогресс не наш. */}
+          {editable ? (
+            <EpisodeProgress
+              dramaId={row.id}
+              total={row.episodes}
+              watched={progress ? progress.watched : null}
+              variant="inline"
+            />
+          ) : progress ? (
+            progress.total !== null ? `${progress.watched}/${progress.total}` : progress.watched
+          ) : (
+            ""
+          )}
         </span>
       </div>
     </div>

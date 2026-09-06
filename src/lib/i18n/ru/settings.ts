@@ -4,7 +4,6 @@ import type { settings as enSettings } from "../en/settings";
  *  английскую (см. en/index.ts). */
 export const settings: typeof enSettings = {
   profileSection: "Профиль",
-  profileSectionHint: "Как вы выглядите для друзей и на публичной странице профиля.",
   regionalSection: "Язык и регион",
   regionalSectionHint:
     "Язык сайта, часовой пояс и страна — от них зависят даты, время и уведомления.",

@@ -8,6 +8,7 @@ import type { TripVisibility } from "@/generated/prisma/client";
 import { isLocationCategory } from "@/lib/locationCategories";
 import { canUseLocation, createOwnLocation, resolveUserMapsCoords } from "@/lib/ownLocation";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
+import { isPremiumActive } from "@/lib/premium";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -21,6 +22,23 @@ function parseVisibility(raw: unknown): TripVisibility {
 export type ActionError = { ok: false; error: string };
 export type ActionResult = { ok: true } | ActionError;
 
+/**
+ * Кто может ЗАВОДИТЬ своё: списки мест и собственные места — часть
+ * платного (правка владельца 2026-09-06). Смотреть чужие публичные
+ * списки, ходить по местам съёмок и отмечать «была здесь» можно и без
+ * подписки — платное тут только создание.
+ *
+ * Возвращает пользователя или текст ошибки значением, как остальные
+ * экшены этого файла.
+ */
+async function requirePremiumUser() {
+  const { locale, t } = await getT();
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref("/login", locale));
+  if (!isPremiumActive(user)) return { ok: false as const, error: t.lists.errors.premium };
+  return { ok: true as const, user };
+}
+
 /** Список текущего юзера или null (нет/чужой) — вызывающий экшен
  *  превращает null в `{ ok: false, error: "Список не найден" }`. */
 async function requireOwnList(listId: string) {
@@ -33,8 +51,9 @@ async function requireOwnList(listId: string) {
 
 export async function createPlaceList(formData: FormData): Promise<ActionError | void> {
   const { locale, t } = await getT();
-  const user = await getCurrentUser();
-  if (!user) redirect(localeHref("/login", locale));
+  const access = await requirePremiumUser();
+  if (!access.ok) return access;
+  const user = access.user;
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -153,9 +172,9 @@ export async function searchLocationOptions(
 /** Своё место без всякой привязки — со страницы «Мои места». Список
  *  теперь необязателен: он просто способ сгруппировать места. */
 export async function createStandalonePlace(formData: FormData): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: (await getT()).t.lists.errors.signInToAddPlaces };
-  const created = await createOwnLocation(formData, user.id);
+  const access = await requirePremiumUser();
+  if (!access.ok) return access;
+  const created = await createOwnLocation(formData, access.user.id);
   if (!created.ok) return created;
   revalidatePath("/lists");
   return { ok: true };
@@ -167,9 +186,9 @@ export async function createStandalonePlace(formData: FormData): Promise<ActionR
 export async function createOwnPlaceAndReturn(
   formData: FormData,
 ): Promise<{ ok: true; location: { id: string; name: string } } | { ok: false; error: string }> {
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: (await getT()).t.lists.errors.signInToAddPlaces };
-  const created = await createOwnLocation(formData, user.id);
+  const access = await requirePremiumUser();
+  if (!access.ok) return access;
+  const created = await createOwnLocation(formData, access.user.id);
   if (!created.ok) return created;
   const location = await prisma.location.findUnique({
     where: { id: created.locationId },
@@ -181,6 +200,8 @@ export async function createOwnPlaceAndReturn(
 }
 
 export async function createOwnPlace(listId: string, formData: FormData): Promise<ActionResult> {
+  const access = await requirePremiumUser();
+  if (!access.ok) return access;
   const own = await requireOwnList(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   const { user, list } = own;
