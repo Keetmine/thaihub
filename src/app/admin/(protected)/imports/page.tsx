@@ -34,6 +34,7 @@ import { pluralized } from "@/lib/plural";
 import RunningImportsWatcher from "./RunningImportsWatcher";
 import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import StopImportButton from "./StopImportButton";
+import TabRunsJournal from "./TabRunsJournal";
 import TtmImportFlow from "./ttm/TtmImportFlow";
 import SubmitButton from "@/components/admin/SubmitButton";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -111,6 +112,26 @@ const TABS = [
   { key: "log", label: "Журнал" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
+
+// Какие виды прогонов принадлежат вкладке — по ним под её блоками
+// показывается свой журнал (просьба владельца 2026-09-06: «запустил
+// парсер — тут же видно, чем кончилось»). Список ведётся руками рядом
+// с KIND_LABELS: добавили импорт — добавьте его вид сюда, иначе он
+// будет виден только в общей вкладке «Журнал».
+const TAB_RUN_KINDS: Record<Exclude<Tab, "log">, readonly string[]> = {
+  series: [
+    "mdl-performer",
+    "mdl-drama",
+    "mdl-search",
+    "mdl-new-searches",
+    "doramaland-sync",
+    "blscene",
+  ],
+  music: ["youtube-music", "tpop-artist", "tpop-agency"],
+  events: ["ttm-event", "ttm-crawl", "event-drafts", "musicfestival-crawl"],
+  mascots: ["gmmtv-mascots"],
+  requests: ["mdl-requests"],
+};
 
 // Журнал запусков импортов из админки (пишется logImportRun) + быстрые
 // ссылки на места, откуда они запускаются. Массовые прогоны из консоли
@@ -474,6 +495,10 @@ export default async function AdminImportsPage({
               </div>
             </div>
           </div>
+
+          {/* Журнал прогонов этой вкладки — сразу под её блоками
+              импорта (просьба владельца 2026-09-06). */}
+          <TabRunsJournal kinds={TAB_RUN_KINDS.series} labels={KIND_LABELS} />
         </>
       )}
 
@@ -556,6 +581,10 @@ export default async function AdminImportsPage({
               </div>
             </div>
           </div>
+
+          {/* Журнал прогонов этой вкладки — сразу под её блоками
+              импорта (просьба владельца 2026-09-06). */}
+          <TabRunsJournal kinds={TAB_RUN_KINDS.music} labels={KIND_LABELS} />
         </>
       )}
 
@@ -754,10 +783,15 @@ export default async function AdminImportsPage({
               </div>
             </div>
           </div>
+
+          {/* Журнал прогонов этой вкладки — сразу под её блоками
+              импорта (просьба владельца 2026-09-06). */}
+          <TabRunsJournal kinds={TAB_RUN_KINDS.events} labels={KIND_LABELS} />
         </>
       )}
 
       {tab === "mascots" && (
+        <>
         <div className="surface p-4 mb-4">
           <h2 className="section-heading mb-2">Черновики маскотов ({pendingMascotCount})</h2>
           <p className="small text-secondary mb-3">
@@ -861,9 +895,15 @@ export default async function AdminImportsPage({
             </div>
           )}
         </div>
+
+          {/* Журнал прогонов этой вкладки — сразу под её блоками
+              импорта (просьба владельца 2026-09-06). */}
+          <TabRunsJournal kinds={TAB_RUN_KINDS.mascots} labels={KIND_LABELS} />
+        </>
       )}
 
       {tab === "requests" && (
+        <>
         <div className="surface p-4 mb-4">
           <p className="small text-secondary mb-3">
             Сериалы, которых не нашлось при импорте пользовательских
@@ -965,6 +1005,11 @@ export default async function AdminImportsPage({
             </>
           )}
         </div>
+
+          {/* Журнал прогонов этой вкладки — сразу под её блоками
+              импорта (просьба владельца 2026-09-06). */}
+          <TabRunsJournal kinds={TAB_RUN_KINDS.requests} labels={KIND_LABELS} />
+        </>
       )}
 
       <RunningImportsWatcher hasRunning={!!runningRun} />
