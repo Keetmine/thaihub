@@ -34,8 +34,10 @@ export const trips = {
         inviteBanner: (name: string) =>
             `${name} is inviting you on this trip — you will see the shared plan and can add your own events and to-dos.`,
         someone: "Someone",
-        tabPlan: (n: number) => `Plan (${n})`,
-        tabMyPlan: (n: number) => `My plan (${n})`,
+        tabPlan: () => "Plan",
+        /** Без счётчика: в ленте плана не только события (правка
+         *  владельца 2026-09-06). */
+        tabMyPlan: () => "My plan",
         tabEvents: (n: number) => `What's on (${n})`,
         tabTodos: (n: number) => `To-do list (${n})`,
         tabPacking: (n: number) => `Packing (${n})`,
@@ -213,7 +215,8 @@ export const trips = {
     todos: {
         markUndone: "Mark as not done",
         markDone: "Mark as done",
-        addButton: "+ To-do list",
+        /** Row-of-actions button: adds one to-do, not a list. */
+        addButton: "+ To-do",
         addTitle: "New to-do",
         editAria: "Edit to-do",
         deleteAria: "Delete to-do",

@@ -32,8 +32,10 @@ export const trips: Dict["trips"] = {
         inviteBanner: (name: string) =>
             `${name} приглашает вас в эту поездку — вы будете видеть общий план и сможете добавлять свои события и дела.`,
         someone: "Пользователь",
-        tabPlan: (n: number) => `План (${n})`,
-        tabMyPlan: (n: number) => `Мой план (${n})`,
+        tabPlan: () => "План",
+        /** Без счётчика: в ленте плана не только события (правка
+         *  владельца 2026-09-06). */
+        tabMyPlan: () => "Мой план",
         tabEvents: (n: number) => `Афиша (${n})`,
         tabTodos: (n: number) => `Список дел (${n})`,
         tabPacking: (n: number) => `Чемодан (${n})`,
@@ -207,7 +209,8 @@ export const trips: Dict["trips"] = {
     todos: {
         markUndone: "Отметить невыполненным",
         markDone: "Отметить выполненным",
-        addButton: "+ Список дел",
+        /** Кнопка в ряду действий: добавляет ОДНО дело, а не список. */
+        addButton: "+ Дело",
         addTitle: "Новое дело",
         editAria: "Редактировать дело",
         deleteAria: "Удалить дело",

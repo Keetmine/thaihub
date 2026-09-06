@@ -443,7 +443,9 @@ export default async function TripPage({
     isShared ? (nameById.get(createdById ?? trip.userId) ?? null) : null;
 
   const rangeWhere = { startsAt: { gte: trip.startDate, lte: endOfDay(trip.endDate) } };
-  const [occurrences, planCount, totalCount] = await Promise.all([
+  // Отдельного счётчика плана больше нет (у вкладки убрана цифра), так
+  // что и запрос под него не нужен — остался только счётчик «Афиши».
+  const [occurrences, totalCount] = await Promise.all([
     prisma.eventOccurrence.findMany({
       where: {
         ...rangeWhere,
@@ -459,9 +461,6 @@ export default async function TripPage({
       },
       include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
       orderBy: { startsAt: "asc" },
-    }),
-    prisma.eventOccurrence.count({
-      where: { ...rangeWhere, attendances: { some: { userId: { in: participantIds } } } },
     }),
     prisma.eventOccurrence.count({ where: rangeWhere }),
   ]);
@@ -1076,9 +1075,7 @@ export default async function TripPage({
             prefetch={false}
             className={`tab-bar-item ${!showAll && !showPlaces && !showTodos ? "active" : ""}`}
           >
-            {!isShared && isOwner
-              ? t.trips.detail.tabMyPlan(planCount)
-              : t.trips.detail.tabPlan(planCount)}
+            {!isShared && isOwner ? t.trips.detail.tabMyPlan() : t.trips.detail.tabPlan()}
           </AppLink>
           <AppLink
             href={`${tripHref(trip)}?view=all`}
