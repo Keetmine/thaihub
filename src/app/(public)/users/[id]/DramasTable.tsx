@@ -62,7 +62,11 @@ export default function DramasTable({
   const t = useT();
   const locale = useLocale();
   const p = t.social.profile;
-  const [sort, setSort] = useState<Sort | null>(null);
+  // По умолчанию — по названию (правка владельца 2026-09-06): раньше
+  // список шёл в порядке «когда я это последний раз трогала», и найти
+  // в нём сериал глазами было нечем. Колонки по-прежнему
+  // переключаются кликом.
+  const [sort, setSort] = useState<Sort>({ key: "title", dir: "asc" });
 
   // Порядок названий и переведённых подписей — по правилам языка
   // зрителя: на /ru кириллица иначе встала бы вразнобой (та же логика,
@@ -75,7 +79,6 @@ export default function DramasTable({
     collator.compare(dramaTitleForLocale(a, locale), dramaTitleForLocale(b, locale));
 
   const sortRows = (list: ProfileDramaRow[]): ProfileDramaRow[] => {
-    if (!sort) return list;
     const dir = sort.dir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
       const av = sortValue(a, sort.key, t, locale);
@@ -96,7 +99,7 @@ export default function DramasTable({
 
   const toggle = (key: SortKey) =>
     setSort((cur) =>
-      cur?.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+      cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
     );
 
   const table = (list: ProfileDramaRow[]) => (
