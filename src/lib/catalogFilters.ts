@@ -350,7 +350,21 @@ export function performerFilterWhere(p: FilterParams): Prisma.PerformerWhereInpu
 /* События                                                             */
 /* ------------------------------------------------------------------ */
 
-export function eventFilterDefs(t: Dict): FilterDef[] {
+/** Теги событий для фильтра — все, что есть в каталоге. Список редкий и
+ *  живёт долго, поэтому кэш такой же, как у сериальных вариантов. */
+export const loadEventFilterOptions = unstable_cache(
+  async () => {
+    const tags = await prisma.$queryRaw<{ v: string }[]>`
+      SELECT DISTINCT unnest(tags) AS v FROM "Event" ORDER BY v`;
+    return { tags: tags.map((r) => r.v) };
+  },
+  ["event-filter-options"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+export type EventFilterOptions = Awaited<ReturnType<typeof loadEventFilterOptions>>;
+
+export function eventFilterDefs(t: Dict, o: EventFilterOptions): FilterDef[] {
   return [
     {
       key: "when",
@@ -363,6 +377,20 @@ export function eventFilterDefs(t: Dict): FilterDef[] {
     },
     { key: "date", title: t.filters.date, kind: "dateRange", hint: t.filters.hints.date },
     { key: "venue", title: t.filters.venue, kind: "text", hint: t.filters.hints.venue },
+    // Теги события (жанры фестиваля, вид мероприятия): с ними чипы на
+    // странице события стали входом в поиск — как жанры у сериалов
+    // (правка владельца 2026-09-06).
+    ...(o.tags.length > 0
+      ? [
+          {
+            key: "tags",
+            title: t.filters.tags,
+            kind: "multi" as const,
+            options: o.tags.map((v) => ({ value: v, label: v })),
+            hint: t.filters.hints.tags,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -382,6 +410,9 @@ export function eventFilterWhere(p: FilterParams, now = new Date()): Prisma.Even
   }
   const venue = one(p.venue);
   if (venue) w.push({ venue: { contains: venue, mode: "insensitive" } });
+  // Как у сериалов: несколько тегов сужают выдачу, а не расширяют её.
+  const tags = csv(p.tags);
+  if (tags.length) w.push({ tags: { hasEvery: tags } });
   return w;
 }
 
@@ -507,10 +538,10 @@ export function adminPerformerFilterWhere(p: FilterParams): Prisma.PerformerWher
   return w;
 }
 
-export function adminEventFilterDefs(t: Dict): FilterDef[] {
+export function adminEventFilterDefs(t: Dict, o: EventFilterOptions): FilterDef[] {
   return [
     // «Когда» в админке уже выбрано вкладками «Текущие/Архив».
-    ...eventFilterDefs(t).filter((d) => d.key !== "when"),
+    ...eventFilterDefs(t, o).filter((d) => d.key !== "when"),
     { key: "noPoster", title: "Без постера", kind: "flag" },
     { key: "noCast", title: "Без состава", kind: "flag" },
   ];

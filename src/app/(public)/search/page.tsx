@@ -26,6 +26,7 @@ import {
   dramaSortOrder,
   eventFilterDefs,
   eventFilterWhere,
+  loadEventFilterOptions,
   loadDramaFilterOptions,
   loadNovelFilterOptions,
   loadPerformerFilterOptions,
@@ -210,7 +211,7 @@ async function SectionResults({
       </div>
     );
   } else if (section === "events") {
-    defs = eventFilterDefs(t);
+    defs = eventFilterDefs(t, await loadEventFilterOptions());
     const where = {
       AND: [
         ...(q

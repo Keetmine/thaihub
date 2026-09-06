@@ -9,7 +9,12 @@ import { deleteEvent } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import NameSearchBox from "@/components/NameSearchBox";
 import AdminFilters from "@/components/admin/AdminFilters";
-import { adminEventFilterDefs, adminEventFilterWhere, type FilterParams } from "@/lib/catalogFilters";
+import {
+  adminEventFilterDefs,
+  adminEventFilterWhere,
+  loadEventFilterOptions,
+  type FilterParams,
+} from "@/lib/catalogFilters";
 import { getDict } from "@/lib/i18n";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 import ImportEventButton from "./ImportEventButton";
@@ -273,7 +278,7 @@ export default async function AdminEventsPage({
         buildHref={(p) => adminListHref("/admin/events", sp, { page: p })}
       />
       </div>
-      <AdminFilters defs={adminEventFilterDefs(getDict("ru"))} params={sp} />
+      <AdminFilters defs={adminEventFilterDefs(getDict("ru"), await loadEventFilterOptions())} params={sp} />
       </div>
     </div>
   );
