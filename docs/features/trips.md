@@ -320,7 +320,21 @@ manually re-entering a date filter every time.
   not a 403 — the trip's existence isn't confirmed to outsiders).
 - **FRIENDS** — owner plus their ACCEPTED friends (checked via
   `getFriendIds(trip.userId)` on the trip page).
-- **PUBLIC** — any logged-in user with the link.
+- **PUBLIC** — кто угодно по ссылке, включая ГОСТЯ без входа (правка
+  владельца 2026-09-06: публичной поездкой делятся с подругами, и
+  половина из них на сайте не зарегистрирована). Страница написана
+  null-safe, гость идёт теми же ветками, что залогиненный посторонний;
+  `/trips/<id>` пропущен в `src/proxy.ts` (сам `/trips` — кабинетный
+  список своих — остаётся за логином).
+
+  Событий афиши посторонний БЕЗ ПОДПИСКИ (и гость, и залогиненный) не
+  видит: вместо карточек — заглушки `EventCardLocked` с одной датой, как
+  в поиске. План поездки — это список событий, а списки у нас под
+  подпиской, и через публичную поездку пейволл обходился бы (в живом
+  поиске такой обход уже ловили). Участникам поездки план виден целиком:
+  это их собственные отметки «иду».
+
+  В поиске поездке не место — страница уходит с `noindex`, как профиль.
 
 Chosen at creation (radio group in the create modal,
 `TripVisibilityControls.tsx`) and changeable later from the trip page's

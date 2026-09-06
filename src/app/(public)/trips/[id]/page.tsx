@@ -1,5 +1,5 @@
 import AppLink from "@/components/AppLink";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import {
@@ -12,7 +12,7 @@ import {
   shortWeekdayName,
   startOfDay,
 } from "@/lib/dates";
-import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
+import { getT, type Dict, type Locale } from "@/lib/i18n";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import type { TripItemVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, itemVisibilityChoices } from "../itemVisibility";
@@ -34,8 +34,10 @@ import {
   DetachListButton,
   RemoveTripPlaceButton,
 } from "../TripPlacesControls";
+import EventCardLocked from "@/components/EventCardLocked";
 import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
+import { pageMetadata } from "@/lib/seo";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
 import AddBookingButton from "./AddBookingButton";
@@ -296,6 +298,29 @@ function bookingLegs(
   ];
 }
 
+/**
+ * Поездка открыта по прямой ссылке, но в поиске ей не место: это личная
+ * страница человека — как и профиль, она уходит с `noindex` (правка
+ * владельца 2026-09-06). Закрытые поездки сюда даже не доходят —
+ * страница отдаёт им 404, — но заголовок в метаданных мы не показываем
+ * никому лишнему: он берётся только для публичной.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { locale, t } = await getT();
+  const trip = await prisma.trip.findFirst({
+    where: slugOrIdWhere(id),
+    select: { title: true, visibility: true },
+  });
+  return pageMetadata({
+    title: trip && trip.visibility === "PUBLIC" ? trip.title : t.trips.list.metaTitle,
+    description: t.trips.list.metaDescription,
+    path: `/trips/${id}`,
+    noIndex: true,
+    locale,
+  });
+}
+
 export default async function TripPage({
   params,
   searchParams,
@@ -304,8 +329,13 @@ export default async function TripPage({
   searchParams: Promise<{ view?: string; mine?: string }>;
 }) {
   const { locale, t } = await getT();
+  // Гостя со страницы больше не гоним: ПУБЛИЧНОЙ поездкой делятся
+  // ссылкой, и половина адресатов на сайте не зарегистрирована (правка
+  // владельца 2026-09-06). Дальше страница написана null-safe: гость
+  // идёт теми же ветками, что залогиненный посторонний, а закрытость
+  // считает видимость поездки — ровно как у профиля.
   const user = await getCurrentUser();
-  if (!user) redirect(localeHref("/login", locale));
+  const viewerId = user?.id ?? null;
 
   const { id: rawParam } = await params;
   const { view, mine } = await searchParams;
@@ -330,7 +360,10 @@ export default async function TripPage({
             },
           },
           // Только СВОЯ отметка «я там буду» — карточке хватает булева.
-          attendances: { where: { userId: user.id }, select: { userId: true } },
+          // Своя отметка «я там буду». У гостя её быть не может —
+          // подставляем заведомо несуществующий id, чтобы не городить
+          // две ветки запроса.
+          attendances: { where: { userId: viewerId ?? "" }, select: { userId: true } },
         },
       },
       user: { select: { id: true, name: true, username: true, deletedAt: true } },
@@ -348,12 +381,12 @@ export default async function TripPage({
   // Доступ по видимости: PRIVATE — только владелец, FRIENDS — владелец и
   // его принятые друзья, PUBLIC — любой залогиненный. Чужому 404, а не
   // 403 — не подтверждаем само существование поездки.
-  const isOwner = trip.userId === user.id;
+  const isOwner = trip.userId === viewerId;
   // Совместная поездка: принявшие инвайт участники (ACCEPTED) видят её
   // независимо от видимости и наравне с владельцем вносят события/дела.
   // PENDING — приглашение: видит страницу с баннером «принять/отклонить»,
   // но не личное/дела.
-  const myMembership = trip.members.find((m) => m.userId === user.id);
+  const myMembership = trip.members.find((m) => m.userId === viewerId);
   const isMember = myMembership?.status === "ACCEPTED";
   const isInvited = myMembership?.status === "PENDING";
   const acceptedMembers = trip.members.filter((m) => m.status === "ACCEPTED");
@@ -367,10 +400,17 @@ export default async function TripPage({
   if (!isParticipant && !isInvited) {
     if (trip.visibility === "PRIVATE") notFound();
     if (trip.visibility === "FRIENDS") {
+      // Гость другом быть не может — ему сюда нельзя, как и чужому.
+      if (!viewerId) notFound();
       const ownerFriendIds = await getFriendIds(trip.userId);
-      if (!ownerFriendIds.includes(user.id)) notFound();
+      if (!ownerFriendIds.includes(viewerId)) notFound();
     }
   }
+
+  // События афиши — список, а списки у нас под подпиской (в поиске этот
+  // обход пейволла уже ловили). Участникам поездки план виден целиком:
+  // это их собственные отметки «иду».
+  const canSeeEvents = isParticipant || isPremiumActive(user);
 
   const participantIds = [trip.userId, ...acceptedMembers.map((m) => m.userId)];
   const nameById = new Map<string, string>([
@@ -396,7 +436,7 @@ export default async function TripPage({
           ? {}
           : {
               attendances: {
-                some: { userId: onlyMine ? user.id : { in: participantIds } },
+                some: { userId: onlyMine && viewerId ? viewerId : { in: participantIds } },
               },
             }),
       },
@@ -412,18 +452,25 @@ export default async function TripPage({
 
   const eventIds = events.map((ev) => ev.id);
   const occIds = events.map((ev) => ev.occurrenceId);
-  const [favoritedIds, goingIds, friendIds] = await Promise.all([
-    getFavoritedEventIds(eventIds, user.id),
-    getGoingOccurrenceIds(occIds, user.id),
-    getFriendIds(user.id),
-  ]);
+  // Личное к событиям (избранное, «иду», кто из друзей идёт) есть
+  // только у залогиненного: гостю нечего показывать и не за кем ходить
+  // в базу.
+  const [favoritedIds, goingIds, friendIds] = viewerId
+    ? await Promise.all([
+        getFavoritedEventIds(eventIds, viewerId),
+        getGoingOccurrenceIds(occIds, viewerId),
+        getFriendIds(viewerId),
+      ])
+    : [new Set<string>(), new Set<string>(), [] as string[]];
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
 
   // Билеты юзера к датам плана — 🎫 прямо в карточке события.
-  const myTickets = await prisma.eventTicket.findMany({
-    where: { userId: user.id, occurrenceId: { in: occIds } },
-    select: { occurrenceId: true, fileUrl: true },
-  });
+  const myTickets = viewerId
+    ? await prisma.eventTicket.findMany({
+        where: { userId: viewerId, occurrenceId: { in: occIds } },
+        select: { occurrenceId: true, fileUrl: true },
+      })
+    : [];
   const ticketByOccurrence = new Map(myTickets.map((t) => [t.occurrenceId, t.fileUrl]));
 
   // Право менять конкретную запись: автор, владелец поездки или другой
@@ -431,10 +478,10 @@ export default async function TripPage({
   const canTouch = (item: { createdById: string | null; editableByOthers: boolean }): boolean => {
     if (!canContribute) return false;
     const authorId = item.createdById ?? trip.userId;
-    return authorId === user.id || isOwner || item.editableByOthers;
+    return authorId === viewerId || isOwner || item.editableByOthers;
   };
   const isMine = (createdById: string | null): boolean =>
-    (createdById ?? trip.userId) === user.id;
+    (createdById ?? trip.userId) === viewerId;
 
   // Кто видит конкретную запись поездки — дело, личное событие, бронь.
   // Решает поле `visibility` самой записи (у записей до этого поля —
@@ -456,7 +503,7 @@ export default async function TripPage({
     createdById: string | null,
   ): boolean => {
     const authorId = createdById ?? trip.userId;
-    if (authorId === user.id) return true;
+    if (authorId === viewerId) return true;
     const effective = effectiveVisibility(visibility);
     if (effective === "PRIVATE") return false;
     if (effective === "PUBLIC") return true;
@@ -808,9 +855,9 @@ export default async function TripPage({
           where: { tripId: trip.id },
           include: { location: true },
         }),
-        isParticipant
+        isParticipant && viewerId
           ? prisma.placeList.findMany({
-              where: { userId: user.id },
+              where: { userId: viewerId },
               select: { id: true, title: true },
               orderBy: { createdAt: "desc" },
             })
@@ -866,13 +913,20 @@ export default async function TripPage({
           />
         ))}
         {item.kind === "public" ? (
-          <EventCard
-            event={item.event}
-            isFavorited={favoritedIds.has(item.event.id)}
-            isGoing={goingIds.has(item.event.occurrenceId)}
-            friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
-            ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
-          />
+          canSeeEvents ? (
+            <EventCard
+              event={item.event}
+              isFavorited={favoritedIds.has(item.event.id)}
+              isGoing={goingIds.has(item.event.occurrenceId)}
+              friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
+              ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
+            />
+          ) : (
+            // Постороннему без подписки — дата и заглушка вместо
+            // названия: настоящие данные события в разметку не
+            // попадают вовсе (та же карточка, что в поиске).
+            <EventCardLocked startsAt={item.event.startsAt} />
+          )
         ) : item.kind === "personal" ? (
           <PersonalEventCard
             tripId={trip.id}
