@@ -364,13 +364,26 @@ export async function declineTripInvite(tripId: string): Promise<void> {
   await prisma.tripMember.deleteMany({
     where: { tripId, userId: user.id, status: "PENDING" },
   });
+  // Приглашённый окна ещё не заводил, но если он его когда-то ставил и
+  // вышел, а потом его позвали снова — чистим за собой (АА17).
+  await prisma.tripStay.deleteMany({ where: { tripId, userId: user.id } });
   revalidatePath("/trips");
+}
+
+/** Ушёл из поездки — уходит и его окно присутствия (АА17): даты «я тут
+ *  с 22-го» без самого участника не значат ничего, а строка-сирота
+ *  тянула бы за собой рамку поездки. Даты самой поездки при этом НЕ
+ *  сужаем: она могла быть расширена под чужой прилёт, но в этих днях
+ *  уже стоят чужие планы — решать, обрезать ли их, владельцу. */
+async function dropTripStay(tripId: string, userId: string): Promise<void> {
+  await prisma.tripStay.deleteMany({ where: { tripId, userId } });
 }
 
 export async function removeTripMember(tripId: string, userId: string): Promise<ActionResult> {
   const own = await requireOwnTrip(tripId);
   if (!own.ok) return { ok: false, error: own.error };
   await prisma.tripMember.deleteMany({ where: { tripId, userId } });
+  await dropTripStay(tripId, userId);
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }
@@ -380,6 +393,7 @@ export async function leaveTrip(tripId: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
   await prisma.tripMember.deleteMany({ where: { tripId, userId: user.id } });
+  await dropTripStay(tripId, user.id);
   revalidatePath("/trips");
   redirect(localeHref("/trips", locale));
 }
