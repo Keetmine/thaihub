@@ -12,6 +12,7 @@ import { HeartIcon } from "@/components/icons";
 import NameSearchBox from "@/components/NameSearchBox";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { performerHref } from "@/lib/performerSlug";
+import { fetchPairingsAmong, keepPairingsTogether, type PairingEdge } from "@/lib/castLineup";
 import { agencyHref } from "@/lib/slugHelpers";
 import { performerNameWhere, performerRealNameParen } from "@/lib/searchWhere";
 import AlphabetIndexList from "@/components/AlphabetIndexList";
@@ -334,6 +335,7 @@ async function AgenciesTab({ q }: { q: string }) {
 function PerformerAlphabetList({
   performers,
   favoritedIds,
+  favoritePairings,
   myLists,
   emptyMessage,
   favoritesLabel,
@@ -342,6 +344,8 @@ function PerformerAlphabetList({
 }: {
   performers: PerformerWithCount[];
   favoritedIds: Set<string>;
+  /** АА4: пары внутри избранного — их ставим рядом (см. ниже). */
+  favoritePairings: PairingEdge[];
   myLists: { id: string; title: string }[] | null;
   emptyMessage: string;
   /** Подпись закреплённой секции с избранными. */
@@ -369,7 +373,19 @@ function PerformerAlphabetList({
   // Избранные — отдельной пачкой перед алфавитом, но из самого алфавита
   // НЕ вырезаются (фидбек владельца): пусть дублируются, иначе человека
   // не найти на его букве.
-  const favorited = pinFavorites ? performers.filter((p) => favoritedIds.has(p.id)) : [];
+  //
+  // АА4 применяется ТОЛЬКО к этой закреплённой секции: она плоская, без
+  // букв, и там пара действительно может встать рядом. Сам алфавитный
+  // список остаётся алфавитным — в нём порядок задаёт буква, и
+  // переставленная пара выпала бы из своей секции, разойдясь с рейкой
+  // букв и с серверными страницами `?letter=X`.
+  const favorited = pinFavorites
+    ? keepPairingsTogether(
+        performers.filter((p) => favoritedIds.has(p.id)),
+        (p) => p.id,
+        favoritePairings,
+      )
+    : [];
   const rest = performers;
 
   const addToList =
@@ -548,6 +564,11 @@ export default async function PerformersPage({
     });
     for (const f of favorites) favoritedIds.add(f.performerId);
   }
+  // АА4: пары внутри избранного — чтобы в закреплённой секции они стояли
+  // рядом. Спрашиваем только по избранным: алфавитный список ниже
+  // остаётся алфавитным.
+  const favoritePairings =
+    favoritedIds.size > 1 ? await fetchPairingsAmong([...favoritedIds]) : [];
 
   // Имена за шапкой — самые популярные записи текущей вкладки по числу
   // добавлений в избранное. Популярность одна на всех — из кэша.
@@ -603,6 +624,7 @@ export default async function PerformersPage({
           <PerformerAlphabetList
             performers={performers}
             favoritedIds={favoritedIds}
+            favoritePairings={favoritePairings}
             myLists={myLists}
             pinFavorites
             letterHrefBase={

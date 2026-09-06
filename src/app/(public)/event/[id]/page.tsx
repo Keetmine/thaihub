@@ -15,6 +15,11 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
 import { CalendarIcon, ClockIcon, InfoIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
+import {
+  fetchPairingsAmong,
+  hideMembersOfListedBands,
+  keepPairingsTogether,
+} from "@/lib/castLineup";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
@@ -39,17 +44,12 @@ const getEvent = cache(async (rawId: string) =>
         include: {
           performer: {
             include: {
-              // Группа на событии → показываем и её участников (не
-              // дублируя тех, кто привязан к событию отдельно).
-              // _count.events (и у участников групп) — маркер
-              // популярности для сортировки каст-сетки (Э2ф).
-              bandMembers: {
-                include: {
-                  performer: {
-                    include: { _count: { select: { events: true } } },
-                  },
-                },
-              },
+              // Состав группы — чтобы убрать из списка её участников,
+              // если группа на событии стоит сама (АА14). Раньше здесь
+              // было наоборот: группа разворачивалась в участников.
+              bandMembers: { select: { performerId: true } },
+              // _count.events — маркер популярности для сортировки
+              // каст-сетки (Э2ф).
               _count: { select: { events: true } },
             },
           },
@@ -61,7 +61,20 @@ const getEvent = cache(async (rawId: string) =>
       occurrences: {
         orderBy: { startsAt: "asc" },
         include: {
-          lineup: { include: { performer: { select: { id: true, slug: true, name: true, photoUrl: true } } } },
+          lineup: {
+            include: {
+              performer: {
+                select: {
+                  id: true,
+                  slug: true,
+                  name: true,
+                  photoUrl: true,
+                  // Те же два правила, что и у общего состава (АА14/АА4).
+                  bandMembers: { select: { performerId: true } },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -126,7 +139,17 @@ export default async function EventDetailPage({
   if (!event) notFound();
 
   // --- own block: current user's favorite/attendance state for this event ---
-  const currentUser = await getCurrentUser();
+  // АА4: пары среди тех, кто на событии (общий состав + лайнапы дней) —
+  // одним запросом на страницу, чтобы поставить их рядом в списках.
+  const [currentUser, castPairings] = await Promise.all([
+    getCurrentUser(),
+    fetchPairingsAmong([
+      ...new Set([
+        ...event.performers.map((ep) => ep.performer.id),
+        ...event.occurrences.flatMap((o) => o.lineup.map((l) => l.performer.id)),
+      ]),
+    ]),
+  ]);
   const viewerTz = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
   // Карточка события ПУБЛИЧНАЯ: что, когда, где, кто выступает, постер,
@@ -251,51 +274,33 @@ export default async function EventDetailPage({
   // Э2ф: свой осмысленный порядок у состава события не хранится —
   // сортируем по популярности (числу событий у артиста), при равенстве
   // по имени; первые ~14 видимых в сетке — самые популярные.
-  const performersSorted = [...event.performers].sort(
-    (a, b) =>
-      b.performer._count.events - a.performer._count.events ||
-      a.performer.name.localeCompare(b.performer.name),
-  );
-
-  // Полный состав одним списком: артисты события + участники их групп
-  // (без дублей), ЕДИНОЙ сортировкой по популярности — самые известные
-  // лица первыми независимо от того, пришли они напрямую или из группы.
-  const directIds = new Set(event.performers.map((ep) => ep.performer.id));
-  const seenBandMembers = new Set<string>();
-  const castPool = [
-    ...performersSorted.map(({ performer }) => ({
-      id: performer.id,
-      href: performerHref(performer),
-      photoUrl: performer.photoUrl,
-      name: performer.name,
-      subtitle: null as string | null,
-      eventsCount: performer._count.events,
-    })),
-    ...performersSorted.flatMap(({ performer }) =>
-      [...performer.bandMembers]
-        .sort(
-          (a, b) =>
-            b.performer._count.events - a.performer._count.events ||
-            a.performer.name.localeCompare(b.performer.name),
-        )
-        .filter((bm) => {
-          if (directIds.has(bm.performer.id) || seenBandMembers.has(bm.performer.id)) return false;
-          seenBandMembers.add(bm.performer.id);
-          return true;
-        })
-        .map((bm) => ({
-          id: bm.performer.id,
-          href: performerHref(bm.performer),
-          photoUrl: bm.performer.photoUrl,
-          name: bm.performer.name,
-          subtitle: performer.name as string | null,
-          eventsCount: bm.performer._count.events,
-        })),
+  //
+  // Поверх сортировки — два общих правила списка исполнителей (см.
+  // src/lib/castLineup.ts):
+  //   АА14 — участники группы, которая и сама привязана к событию, из
+  //     списка убираются: группа их уже представляет. Раньше было ровно
+  //     наоборот — страница ДОРИСОВЫВАЛА участников группы подписью с её
+  //     названием; владелец попросил обратного. Связи в базе не
+  //     трогаются: на странице участника событие остаётся.
+  //   АА4 — пары стоят рядом, а не разъезжаются по популярности.
+  const castCards = keepPairingsTogether(
+    hideMembersOfListedBands(
+      [...event.performers].sort(
+        (a, b) =>
+          b.performer._count.events - a.performer._count.events ||
+          a.performer.name.localeCompare(b.performer.name),
+      ),
+      (ep) => ep.performer.id,
+      (ep) => ep.performer.bandMembers.map((bm) => bm.performerId),
     ),
-  ];
-  const castCards = [...castPool].sort(
-    (a, b) => b.eventsCount - a.eventsCount || a.name.localeCompare(b.name),
-  );
+    (ep) => ep.performer.id,
+    castPairings,
+  ).map(({ performer }) => ({
+    id: performer.id,
+    href: performerHref(performer),
+    photoUrl: performer.photoUrl,
+    name: performer.name,
+  }));
   // Обычный концерт (до 12 человек) — состав капсулами прямо в карточке
   // дат, как в первой версии страницы: всё важное в один экран. Большой
   // фестивальный состав — отдельной секцией сеткой со свёрткой.
@@ -458,7 +463,6 @@ export default async function EventDetailPage({
                       href={c.href}
                       photoUrl={c.photoUrl}
                       name={c.name}
-                      subtitle={c.subtitle ?? undefined}
                     />
                   ))}
                 </CastGrid>
@@ -548,7 +552,17 @@ export default async function EventDetailPage({
                     {formatHumanDate(o.startsAt, locale)}
                   </p>
                   <div className="cast-grid">
-                    {o.lineup.map((l) => (
+                    {/* Те же правила, что и у общего состава: группа
+                        вместо своих участников (АА14), пары рядом (АА4). */}
+                    {keepPairingsTogether(
+                      hideMembersOfListedBands(
+                        o.lineup,
+                        (l) => l.performer.id,
+                        (l) => l.performer.bandMembers.map((bm) => bm.performerId),
+                      ),
+                      (l) => l.performer.id,
+                      castPairings,
+                    ).map((l) => (
                       <EntityMiniCard
                         key={l.performer.id}
                         variant="grid"

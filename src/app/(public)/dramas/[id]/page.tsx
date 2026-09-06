@@ -38,6 +38,11 @@ import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
 import {
+  fetchPairingsAmong,
+  hideMembersOfListedBands,
+  keepPairingsTogether,
+} from "@/lib/castLineup";
+import {
   agencyHref,
   locationHref,
   novelHref,
@@ -69,10 +74,15 @@ const getDrama = cache(async (rawId: string) =>
     include: {
       // _count.events — маркер популярности актёра для сортировки каста
       // (EventPerformer.performerId проиндексирован, счётчик дёшев).
+      // bandMembers — состав группы: если в касте стоит и группа, и её
+      // участники, участники из списка убираются (АА14).
       performers: {
         include: {
           performer: {
-            include: { _count: { select: { events: true } } },
+            include: {
+              _count: { select: { events: true } },
+              bandMembers: { select: { performerId: true } },
+            },
           },
         },
       },
@@ -141,7 +151,7 @@ export default async function DramaDetailPage({
 
   // Первая волна: всё, что зависит только от самого сериала, — одним
   // Promise.all вместо четырёх последовательных await.
-  const [ratingAgg, dramaEvents, currentUser, similarDramas] =
+  const [ratingAgg, dramaEvents, currentUser, similarDramas, castPairings] =
     await Promise.all([
       // Средняя оценка из наших отзывов — в шапку, рядом с MDL.
       // Только публичные: приватный отзыв не двигает средний рейтинг
@@ -168,6 +178,8 @@ export default async function DramaDetailPage({
         performerIds: drama.performers.map((pd) => pd.performerId),
         excludeIds: relatedItems.map((r) => r.drama.id),
       }),
+      // АА4: пары внутри каста — чтобы поставить их рядом в сетке.
+      fetchPairingsAmong(drama.performers.map((pd) => pd.performerId)),
     ]);
   const ourRating = ratingAgg._count.rating > 0 ? ratingAgg._avg.rating : null;
   const ourRatingCount = ratingAgg._count.rating;
@@ -238,10 +250,21 @@ export default async function DramaDetailPage({
   // Э2ф: каст сортируем по популярности — числу событий у актёра
   // (чем больше фан-митингов/концертов, тем он заметнее), при равенстве
   // по имени. Первые ~14 видимых в сетке — самые популярные.
-  const castSorted = [...drama.performers].sort(
-    (a, b) =>
-      b.performer._count.events - a.performer._count.events ||
-      a.performer.name.localeCompare(b.performer.name),
+  // Поверх этого — два общих правила списка исполнителей (см.
+  // src/lib/castLineup.ts): участники группы, которая и сама в касте, из
+  // списка уходят (АА14), а пары встают рядом (АА4).
+  const castSorted = keepPairingsTogether(
+    hideMembersOfListedBands(
+      [...drama.performers].sort(
+        (a, b) =>
+          b.performer._count.events - a.performer._count.events ||
+          a.performer.name.localeCompare(b.performer.name),
+      ),
+      (pd) => pd.performer.id,
+      (pd) => pd.performer.bandMembers.map((bm) => bm.performerId),
+    ),
+    (pd) => pd.performer.id,
+    castPairings,
   );
 
   // График выхода серий. «Сегодня» и «уже вышла» сравниваем ключами дат
@@ -639,7 +662,7 @@ export default async function DramaDetailPage({
       {/* Каст — адаптивной фото-сеткой (Э2ф) вместо ряда одинаковых
           плашек; первые ~14, остальные за «Показать всех». Пустой
           раздел не рисуем — ни заголовка, ни «состав не указан». */}
-      {drama.performers.length > 0 && (
+      {castSorted.length > 0 && (
         <div id="cast" className="anchor-target mb-4">
           <h2 className="section-heading mb-3">{t.catalog.drama.cast}</h2>
           {/* Капсулы вместо фото-сетки: сетка выходила гигантской
