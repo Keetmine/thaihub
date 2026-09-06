@@ -190,13 +190,15 @@ export const trips = {
         owner: "organiser",
         pending: "invite sent",
         cancelInviteConfirm: (name: string) => `Cancel the invite for ${name}?`,
-        removeConfirm: (name: string) => `Remove ${name} from the trip?`,
+        removeConfirm: (name: string) =>
+            `Remove ${name} from the trip? They lose access to the plan, the lists and the bookings, and their entries stay here.`,
         removeAria: "Remove from trip",
         addFriend: "Add a friend…",
         addFailed: "Couldn't add them — try again",
         noFriendsLeft:
             "You can only invite friends — everyone on your list is already here, or you have not added anyone yet.",
-        leaveConfirm: "Leave this trip?",
+        leaveConfirm:
+            "Leave this trip? You lose access to its plan, lists and bookings, and your entries stay with the others. Your “going” marks on events stay yours.",
         leave: "Leave trip",
         hint:
             "Your friend gets an invite and joins once they accept it. Members see the plan, the to-dos and the personal entries, and can add their own. Someone else's entry can only be changed if its author ticked the box allowing it.",
