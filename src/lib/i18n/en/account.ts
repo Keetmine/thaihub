@@ -237,6 +237,18 @@ export const account = {
     icsRegenerateConfirm: "The old link will stop working. Refresh it?",
   },
 
+  /** Предложение привязать Telegram тем, кто зарегистрировался
+   *  почтой (правка владельца 2026-09-06). */
+  telegramPrompt: {
+      title: "Connect Telegram",
+      intro: "You signed up with an email, so notifications only live on the site and are easy to miss. Link Telegram and we will write to you when:",
+      pointEpisodes: "a new episode of a series you follow is out",
+      pointFriends: "someone adds you as a friend or invites you on a trip",
+      pointPresale: "tickets go on sale for an event you are going to",
+      privacy: "You choose what we send in settings, and you can unlink there too.",
+      later: "Later",
+      linkFailed: "Could not link — try from settings, there is more detail there",
+  },
   notifications: {
     metaTitle: "Notifications",
     metaDescription: "Trip invitations, friend requests and replies to your comments.",

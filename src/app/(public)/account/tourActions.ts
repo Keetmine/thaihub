@@ -33,3 +33,20 @@ export async function restartTour(): Promise<void> {
   const locale = await getLocale();
   redirect(`${localeHref("/", locale)}?tour=1`);
 }
+
+/**
+ * «Потом» в предложении привязать Telegram: отметка живёт у
+ * пользователя, а не в браузере — иначе попап всплывал бы на каждом
+ * новом устройстве (та же причина, что у тура).
+ *
+ * Показываем его ровно один раз: спрашивать повторно — навязчивость, а
+ * привязка никуда не девается, она в настройках.
+ */
+export async function dismissTelegramPrompt(): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) return;
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { telegramPromptedAt: new Date() },
+  });
+}
