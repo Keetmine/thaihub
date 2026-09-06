@@ -8,6 +8,10 @@ export const home = {
     // Блок «выходит сегодня» — над «Что нового».
     airingToday: "Airing today",
     airingTodayCalendar: "Calendar",
+    /** Переключатель «Выходит сегодня»: вся афиша или только
+     *  отмеченное человеком (просьба владельца 2026-09-06). */
+    airingAll: "All",
+    airingMine: "Mine",
     airingTodayEpisode: (n: number) => `Episode ${n}`,
     // Сдвоенный показ: одной карточкой с диапазоном.
     airingTodayEpisodes: (from: number, to: number) => `Episodes ${from}–${to}`,

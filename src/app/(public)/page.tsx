@@ -98,7 +98,16 @@ function newsSubtitle(item: NewsItem, t: Dict): string {
   return [kind, item.year].filter(Boolean).join(" · ");
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ airing?: string }>;
+}) {
+  // ?airing=mine — «Выходит сегодня» только по отмеченным сериалам
+  // (просьба владельца 2026-09-06). Состояние в адресе, а не в куке:
+  // ссылкой можно поделиться, и без JS переключатель тоже работает.
+  const { airing } = await searchParams;
+  const onlyMineAiring = airing === "mine";
   const user = await getCurrentUser();
   if (!user) return <LandingPage />;
 
@@ -290,14 +299,18 @@ export default async function HomePage() {
   // «Смотрю сейчас» ниже как раз про личное, а этот блок отвечает на
   // «что вообще выходит». Но отмеченное человеком идёт вперёд и
   // подписывается статусом: своё в общем ряду должно быть видно сразу.
-  const airingToday = [...airingTodayByDrama.values()]
-    .sort(
-      (a, b) =>
-        Number(airingTodayStatuses.has(b.drama.id)) -
-          Number(airingTodayStatuses.has(a.drama.id)) ||
-        a.drama.title.localeCompare(b.drama.title),
-    )
-    .slice(0, 12);
+  const airingTodayAll = [...airingTodayByDrama.values()].sort(
+    (a, b) =>
+      Number(airingTodayStatuses.has(b.drama.id)) -
+        Number(airingTodayStatuses.has(a.drama.id)) ||
+      a.drama.title.localeCompare(b.drama.title),
+  );
+  const airingTodayMineCount = airingTodayAll.filter((a) =>
+    airingTodayStatuses.has(a.drama.id),
+  ).length;
+  const airingToday = (
+    onlyMineAiring ? airingTodayAll.filter((a) => airingTodayStatuses.has(a.drama.id)) : airingTodayAll
+  ).slice(0, 8);
 
   const favoriteSet = new Set(favoriteIds.map((f) => f.performerId));
   const turns = (birthDate: Date) => now.getUTCFullYear() - birthDate.getUTCFullYear();
@@ -530,13 +543,39 @@ export default async function HomePage() {
           {/* И9: из блока должен быть выход в календарь серий — раньше
               человек видел сегодняшнее и не догадывался, что есть
               расписание на месяц. Тот же вид, что «Все» у соседей. */}
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
             <h2 className="section-heading mb-0">{dict.home.airingToday}</h2>
-            <Link href="/calendar?view=series" className="small text-secondary">
-              {dict.home.airingTodayCalendar}
-            </Link>
+            <span className="d-flex align-items-center gap-2 small">
+              {/* Переключатель «вся афиша / только моё» (просьба
+                  владельца). Показываем, только когда своё вообще есть:
+                  иначе «Мои» вело бы в заведомо пустой список. */}
+              {airingTodayMineCount > 0 && (
+                <>
+                  {/* Link здесь — это наш AppLink (см. импорт вверху):
+                      адрес сам получает префикс языка. */}
+                  <Link
+                    href="/"
+                    prefetch={false}
+                    className={onlyMineAiring ? "text-secondary" : "text-white fw-medium"}
+                  >
+                    {dict.home.airingAll}
+                  </Link>
+                  <Link
+                    href="/?airing=mine"
+                    prefetch={false}
+                    className={onlyMineAiring ? "text-white fw-medium" : "text-secondary"}
+                  >
+                    {dict.home.airingMine}
+                  </Link>
+                  <span className="text-secondary">·</span>
+                </>
+              )}
+              <Link href="/calendar?view=series" className="text-secondary">
+                {dict.home.airingTodayCalendar}
+              </Link>
+            </span>
           </div>
-          <div className="d-flex flex-column gap-2 stagger">
+          <div className="d-flex flex-column gap-1 stagger">
             {airingToday.map(({ drama, from, to }) => {
               const marked = airingTodayStatuses.get(drama.id);
               const subline = marked
@@ -548,9 +587,9 @@ export default async function HomePage() {
                 <Link
                   key={drama.id}
                   href={dramaHref(drama)}
-                  className="surface surface-hover d-flex align-items-center gap-3 p-3 text-decoration-none"
+                  className="surface surface-hover d-flex align-items-center gap-2 airing-row text-decoration-none"
                 >
-                  <span className="drama-row-poster">
+                  <span className="drama-row-poster airing-row-poster">
                     {drama.posterUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img

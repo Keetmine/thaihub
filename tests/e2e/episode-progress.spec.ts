@@ -157,7 +157,11 @@ test("прогресс правится из списка и с главной",
       "style",
       new RegExp(`width:\\s*${percent}%`),
     );
-    await expect(cell.locator(".episode-progress-input")).toHaveValue(String(TEST_DRAMAS.ended.episodes - 1));
+    // На карточке «Смотрю сейчас» число тоже стало текстом (правка
+    // владельца 2026-09-06): поля ввода там больше нет.
+    await expect(cell.locator(".episode-progress-value")).toHaveText(
+      String(TEST_DRAMAS.ended.episodes - 1),
+    );
 
     await cell.getByRole("button", { name: "One more episode" }).click();
     // 22 из 22 — сериал досмотрен и уходит из «Смотрю сейчас» целиком.

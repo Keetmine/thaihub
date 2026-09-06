@@ -8,6 +8,8 @@ export const home: Dict["home"] = {
     upcoming: "Что впереди",
     airingToday: "Выходит сегодня",
     airingTodayCalendar: "Календарь",
+    airingAll: "Все",
+    airingMine: "Мои",
     airingTodayEpisode: (n: number) => `${n} серия`,
     airingTodayEpisodes: (from: number, to: number) => `${from}–${to} серии`,
     watchingNow: "Смотрю сейчас",

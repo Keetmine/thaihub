@@ -3088,13 +3088,32 @@ button.hero-stat-toggle.is-open {
 /* Вариант для постерной карточки: без подписи «Серии» и без своей
    полосы, поэтому счётчик тянется на всю ширину карточки — иначе он
    болтался бы слева от пустоты. */
+/* Карточка «Смотрю сейчас»: тихая пилюля по центру под постером.
+   Раньше контролы растягивались во всю ширину, и между «−» и «+»
+   зияла пустота с одиноким полем ввода (правка владельца
+   2026-09-06). */
 .episode-progress.is-card {
   margin-top: 0.4rem;
   width: 100%;
+  align-items: center;
 }
 .episode-progress.is-card .episode-progress-controls {
-  width: 100%;
-  justify-content: space-between;
+  gap: 0.15rem;
+  padding: 0.1rem 0.35rem;
+}
+.episode-progress.is-card .episode-progress-step {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1rem;
+}
+.episode-progress.is-card .episode-progress-value,
+.episode-progress.is-card .episode-progress-count {
+  font-size: 0.8rem;
+  color: var(--bs-body-color);
+  font-variant-numeric: tabular-nums;
+}
+.episode-progress.is-card .episode-progress-count {
+  color: var(--bs-secondary-color);
 }
 
 /* Фолбэк без постера: крупная первая буква на тёплом градиенте. */
@@ -4781,6 +4800,19 @@ body::after {
 /* Строка сериала в списке — миниатюра постера как в каталоге /dramas
    (там те же размеры заданы инлайном). Буква вместо постера, когда
    картинки нет. */
+/* «Выходит сегодня» на главной — компактнее обычной строки сериала
+   (просьба владельца 2026-09-06: блок занимал слишком много места).
+   Строка ~62px вместо ~100px: меньше отступы и миниатюра. */
+.airing-row {
+  padding: 0.3rem 0.6rem 0.3rem 0.4rem;
+}
+
+.airing-row-poster {
+  width: 2rem;
+  height: 2.7rem;
+  border-radius: 0.4rem;
+}
+
 .drama-row-poster {
   flex-shrink: 0;
   width: 2.75rem;
