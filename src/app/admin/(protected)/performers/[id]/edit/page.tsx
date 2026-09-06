@@ -68,11 +68,20 @@ export default async function EditPerformerPage({
 
   if (!performer) notFound();
 
-  const currentPairings = pairings.map((pair) => ({
-    id: pair.id,
-    label: pair.name || `${pair.performerA.name} × ${pair.performerB.name}`,
-    status: pair.status,
-  }));
+  // В строке пейринга показываем ПАРТНЁРА карточкой (фото + имя +
+  // ссылка), а имя пары — плашкой рядом со статусом (правка владельца
+  // 2026-09-06). label остаётся для подтверждения удаления: там нужна
+  // одна строка.
+  const currentPairings = pairings.map((pair) => {
+    const partner = pair.performerAId === id ? pair.performerB : pair.performerA;
+    return {
+      id: pair.id,
+      label: pair.name || `${pair.performerA.name} × ${pair.performerB.name}`,
+      name: pair.name,
+      status: pair.status,
+      partner: { id: partner.id, name: partner.name, photoUrl: partner.photoUrl },
+    };
+  });
 
   const boundUpdate = updatePerformer.bind(null, id);
   const boundDelete = deletePerformer.bind(null, id);

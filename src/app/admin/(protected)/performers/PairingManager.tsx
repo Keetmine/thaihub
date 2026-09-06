@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import LetterAvatar from "@/components/LetterAvatar";
+import { adminEntityHref } from "@/app/admin/entityHref";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect from "@/components/EntitySelect";
@@ -17,7 +20,16 @@ export default function PairingManager({
   soloPerformers,
 }: {
   performerId: string;
-  currentPairings: { id: string; label: string; status: PairingStatus }[];
+  currentPairings: {
+    id: string;
+    /** Одной строкой — только для подтверждения удаления. */
+    label: string;
+    /** Своё имя пары («GhostSheep») — плашкой рядом со статусом. */
+    name: string | null;
+    status: PairingStatus;
+    /** Второй в паре: его и показываем карточкой. */
+    partner: { id: string; name: string; photoUrl: string | null };
+  }[];
   soloPerformers: PerformerOption[];
 }) {
   const uid = useId();
@@ -70,8 +82,21 @@ export default function PairingManager({
               key={pair.id}
               className="surface d-flex align-items-center justify-content-between gap-3 p-3"
             >
-              <span className="font-display fw-medium text-white d-flex align-items-center gap-2">
-                {pair.label}
+              <span className="font-display fw-medium text-white d-flex align-items-center flex-wrap gap-2">
+                {/* Партнёр карточкой: имя пары его не заменяет — по
+                    строке должно быть видно, с кем пара. */}
+                <Link
+                  href={adminEntityHref("Performer", pair.partner.id)!}
+                  className="event-chip performer-chip text-decoration-none"
+                >
+                  <LetterAvatar name={pair.partner.name} photoUrl={pair.partner.photoUrl} size={1.5} />
+                  {pair.partner.name}
+                </Link>
+                {pair.name && (
+                  <span className="badge rounded-pill text-bg-primary" style={{ fontSize: "0.65rem" }}>
+                    {pair.name}
+                  </span>
+                )}
                 <span
                   className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
                   style={{ fontSize: "0.65rem" }}

@@ -113,7 +113,9 @@ export default function PerformerForm({
   defaultDramaIds?: string[];
   defaultEventIds?: string[];
   /** Existing pairings this performer is part of — edit mode only. */
-  currentPairings?: { id: string; label: string; status: PairingStatus }[];
+  /** Строки менеджера пейрингов — форма их только прокидывает, состав
+   *  полей держит PairingManager. */
+  currentPairings?: React.ComponentProps<typeof PairingManager>["currentPairings"];
   /** Вкладки вне формы (см. ExtraTab) — сейчас это «Музыка». */
   extraTabs?: ExtraTab[];
 }) {

@@ -22,6 +22,9 @@ import Pagination from "@/components/Pagination";
 import { TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
+import Link from "next/link";
+import LetterAvatar from "@/components/LetterAvatar";
+import { adminEntityHref } from "@/app/admin/entityHref";
 
 export const metadata = { title: "Пейринги" };
 
@@ -106,24 +109,41 @@ export default async function AdminPairingsPage({
               pair.id,
               pair.status === "CURRENT" ? "PAST" : "CURRENT",
             );
+            // Для подтверждения удаления: там нужна одна строка.
             const fallbackLabel = `${pair.performerA.name} × ${pair.performerB.name}`;
             return {
               id: pair.id,
               node: (
                 <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
                   <div>
-                    <p className="font-display fw-medium text-white mb-0 d-flex align-items-center gap-2">
-                      {pair.name || fallbackLabel}
+                    {/* Кто в паре — карточками с фото и ссылкой на
+                        правку, а не строкой имён: пейринги правят,
+                        глядя на людей, и «Tay × New» текстом каждый раз
+                        приходилось искать глазами (правка владельца
+                        2026-09-06). Имя пары стоит рядом со статусом
+                        такой же плашкой: это ярлык пары, а не её
+                        заголовок. */}
+                    <div className="d-flex align-items-center flex-wrap gap-2">
+                      <PerformerChip performer={pair.performerA} />
+                      <span className="text-secondary">×</span>
+                      <PerformerChip performer={pair.performerB} />
+                      {pair.name && (
+                        <span
+                          className="badge rounded-pill text-bg-primary"
+                          style={{ fontSize: "0.65rem" }}
+                        >
+                          {pair.name}
+                        </span>
+                      )}
                       <span
                         className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
                         style={{ fontSize: "0.65rem" }}
                       >
                         {PAIRING_STATUS_LABELS[pair.status]}
                       </span>
-                    </p>
-                    <p className="small text-secondary mb-0">
-                      {pair.name ? fallbackLabel : "Без названия"} · {pair._count.events}{" "}
-                      событ.
+                    </div>
+                    <p className="small text-secondary mb-0 mt-1">
+                      {pair._count.events} событ.
                     </p>
                   </div>
                   <div className="d-flex align-items-center gap-2 flex-shrink-0">
@@ -196,5 +216,23 @@ export default async function AdminPairingsPage({
       <AdminFilters defs={adminPairingFilterDefs()} params={sp} />
       </div>
     </div>
+  );
+}
+
+/** Участник пары в списке: фото, имя и ссылка на его правку — тем же
+ *  чипом, что в форме события (`.event-chip.performer-chip`). */
+function PerformerChip({
+  performer,
+}: {
+  performer: { id: string; name: string; photoUrl: string | null };
+}) {
+  return (
+    <Link
+      href={adminEntityHref("Performer", performer.id)!}
+      className="event-chip performer-chip text-decoration-none"
+    >
+      <LetterAvatar name={performer.name} photoUrl={performer.photoUrl} size={1.5} />
+      {performer.name}
+    </Link>
   );
 }
