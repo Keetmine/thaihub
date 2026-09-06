@@ -8,6 +8,7 @@ import {
 } from "@/lib/blscene";
 import { checkImportCancelled } from "@/lib/importRun";
 import { downloadRemoteImage } from "@/lib/localImage";
+import { mdlIdFromUrl } from "@/lib/mydramalist";
 
 /** Фото локаций и постеры сериалов с blscene лежат у нас — одна плоская
  *  папка на источник, как у tmdb/mdl (см. «Local image storage» в
@@ -36,6 +37,48 @@ export type BlsceneLocationRefreshResult = {
   refreshed: { title: string; newLocations: number }[];
   errors: { title: string; message: string }[];
 };
+
+/**
+ * Название для сопоставления: регистр, знаки и слово «сезон» роли не
+ * играют. У blscene «GELBOYS 2», у нас «Gelboys Season 2» — один и тот
+ * же сериал, и до этой нормализации он не совпадал ни по чему (жалоба
+ * владельца 2026-09-06, «и там ещё много таких»).
+ */
+function normalizeDramaTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/\bseasons?\b|\bсезон\b/g, " ")
+    .replace(/[^a-z0-9а-яё]+/gi, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Последняя, самая надёжная попытка узнать сериал: по ссылке на
+ * MyDramaList со страницы blscene. Названия расходятся сплошь и рядом,
+ * а числовой id MDL — точный ключ; наши записи знают его из MDL-импорта
+ * (`mdlUrl` / `mydramalistUrl`).
+ *
+ * Нужна именно ТРЕТЬЕЙ ступенью: ссылка видна только на скачанной
+ * странице, а первые две (адрес blscene и название) обходятся индексом,
+ * без единого лишнего запроса.
+ */
+async function findDramaByMdlUrl(mdlUrl: string | null): Promise<{ id: string } | null> {
+  if (!mdlUrl) return null;
+  const id = mdlIdFromUrl(mdlUrl);
+  if (!id) return null;
+  const rows = await prisma.drama.findMany({
+    where: {
+      OR: [
+        { mdlUrl: { contains: `/${id}-` } },
+        { mydramalistUrl: { contains: `/${id}-` } },
+      ],
+    },
+    select: { id: true },
+    take: 1,
+  });
+  return rows[0] ?? null;
+}
 
 /**
  * Links `dramaId` to every scraped location, creating Location rows (+
@@ -204,10 +247,10 @@ export async function syncNewDramasFromBlscene(
   // Title is kept as a fallback so manually-added dramas (no blsceneUrl
   // yet) still don't get duplicated.
   const byUrl = new Map(existingDramas.filter((d) => d.blsceneUrl).map((d) => [d.blsceneUrl!, d]));
-  const existingTitles = new Set(existingDramas.map((d) => d.title.toLowerCase().trim()));
+  const existingTitles = new Set(existingDramas.map((d) => normalizeDramaTitle(d.title)));
 
   const toImport = index.filter(
-    (d) => !byUrl.has(d.url) && !existingTitles.has(d.title.toLowerCase().trim()),
+    (d) => !byUrl.has(d.url) && !existingTitles.has(normalizeDramaTitle(d.title)),
   );
   // Everything else that's already linked by URL gets a light refresh pass
   // — blscene may have updated the poster/synopsis or added a location
@@ -220,10 +263,10 @@ export async function syncNewDramasFromBlscene(
   // сериалов нашлось шесть). Теперь они обновляются, и refresh заодно
   // проставляет им ссылку — со следующего прогона они обычные.
   const byTitle = new Map(
-    existingDramas.filter((d) => !d.blsceneUrl).map((d) => [d.title.toLowerCase().trim(), d]),
+    existingDramas.filter((d) => !d.blsceneUrl).map((d) => [normalizeDramaTitle(d.title), d]),
   );
   const existingBy = (entry: { url: string; title: string }) =>
-    byUrl.get(entry.url) ?? byTitle.get(entry.title.toLowerCase().trim());
+    byUrl.get(entry.url) ?? byTitle.get(normalizeDramaTitle(entry.title));
   const toRefresh = index.filter((d) => !!existingBy(d));
   log(
     `${index.length} shows on blscene, ${toImport.length} not yet in our database, ${toRefresh.length} to refresh`,
@@ -238,6 +281,18 @@ export async function syncNewDramasFromBlscene(
     log(`[${i + 1}/${toImport.length}] ${entry.title}`);
     try {
       const scraped = await scrapeBlsceneDrama(entry.url);
+      // Третья ступень поиска — по ссылке на MyDramaList со страницы.
+      // Без неё «GELBOYS 2» завёлся бы ВТОРОЙ записью рядом с нашим
+      // «Gelboys Season 2»: у blscene свои названия, и по ним сериал не
+      // узнаётся (жалоба владельца 2026-09-06). Нашли — не создаём, а
+      // связываем и подтягиваем локации.
+      const twin = await findDramaByMdlUrl(scraped.mydramalistUrl);
+      if (twin) {
+        const { newLocations } = await refreshScrapedDrama(twin.id, scraped, browser);
+        log(`  ↳ это наш «${scraped.title}» — связали, локаций +${newLocations}`);
+        result.refreshed.push({ title: scraped.title, newLocations });
+        continue;
+      }
       const { locationsImported, locationsWithCoords } = await importScrapedDrama(scraped, browser);
       result.imported.push({ title: scraped.title, locationsImported, locationsWithCoords });
     } catch (err) {
@@ -293,12 +348,15 @@ export async function refreshBlsceneLocations(
   // разу не открывалась — вместе с ней не приезжали и локации (см.
   // syncNewDramasFromBlscene).
   const byTitle = new Map(
-    existingDramas.filter((d) => !d.blsceneUrl).map((d) => [d.title.toLowerCase().trim(), d]),
+    existingDramas.filter((d) => !d.blsceneUrl).map((d) => [normalizeDramaTitle(d.title), d]),
   );
-  const toRefresh = index.filter(
-    (d) => byUrl.has(d.url) || byTitle.has(d.title.toLowerCase().trim()),
-  );
-  log(`${toRefresh.length} already-imported shows to check for new locations`);
+  // Идём по ВСЕМУ индексу: запись узнаётся по адресу, по названию, а
+  // если не вышло — по ссылке на MyDramaList уже со скачанной страницы
+  // (у blscene свои названия: «GELBOYS 2» против нашего «Gelboys
+  // Season 2»). Чего не узнали — пропускаем: заводить сериалы этот
+  // проход не имеет права, это работа синка.
+  const toRefresh = index;
+  log(`${toRefresh.length} shows on blscene to check for new locations`);
 
   const result: BlsceneLocationRefreshResult = { checked: toRefresh.length, refreshed: [], errors: [] };
 
@@ -306,11 +364,17 @@ export async function refreshBlsceneLocations(
     // Найденные локации уже связаны с сериалами — остановка их не
     // трогает, просто дальше не идём.
     await checkImportCancelled(runId);
-    const existing = byUrl.get(entry.url) ?? byTitle.get(entry.title.toLowerCase().trim());
-    if (!existing) continue;
+    const known = byUrl.get(entry.url) ?? byTitle.get(normalizeDramaTitle(entry.title));
     log(`[${i + 1}/${toRefresh.length}] ${entry.title}`);
     try {
       const scraped = await scrapeBlsceneDrama(entry.url);
+      // Не узнали по индексу — пробуем ссылку на MDL со страницы.
+      const existing = known ?? (await findDramaByMdlUrl(scraped.mydramalistUrl));
+      if (!existing) {
+        // Сериала у нас нет вовсе: локации ему привязывать не к чему,
+        // а заводить сериал этот проход не должен.
+        continue;
+      }
       const { newLocations } = await refreshScrapedDrama(existing.id, scraped, browser);
       if (newLocations > 0) {
         result.refreshed.push({ title: scraped.title, newLocations });
