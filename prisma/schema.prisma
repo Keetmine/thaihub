@@ -1732,6 +1732,10 @@ model AuditLog {
 enum NotificationKind {
   TRIP_INVITE
   TRIP_INVITE_ACCEPTED
+  // Владелец убрал человека из совместной поездки. Уведомление тут
+  // обязательно: копия его записей заводится автоматически, и без
+  // строки в колокольчике он не узнал бы ни о том, ни о другом.
+  TRIP_REMOVED
   FRIEND_REQUEST
   FRIEND_ACCEPTED
   COMMENT_REPLY

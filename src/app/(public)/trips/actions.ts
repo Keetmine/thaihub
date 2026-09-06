@@ -412,10 +412,53 @@ async function cleanupAfterLeaving(tripId: string, userId: string): Promise<void
 export async function removeTripMember(tripId: string, userId: string): Promise<ActionResult> {
   const own = await requireOwnTrip(tripId);
   if (!own.ok) return { ok: false, error: own.error };
+
+  // Копию заводим ЗА него и сразу (решение владельца 2026-09-06):
+  // спросить его в этот момент невозможно, а терять свои записи из-за
+  // чужого решения он не должен. Не нужна — удалит сам, это одна
+  // кнопка. Копия делается ДО уборки: после неё копировать будет
+  // нечего.
+  let copyId: string | null = null;
+  try {
+    copyId = await createTripCopyFor(tripId, userId);
+  } catch (e) {
+    // Не смогли скопировать — удаление всё равно доводим до конца:
+    // владелец попросил убрать человека, и повиснуть на полпути хуже.
+    console.error("копия поездки для убранного участника не завелась:", e);
+  }
+
   await prisma.tripMember.deleteMany({ where: { tripId, userId } });
   await cleanupAfterLeaving(tripId, userId);
+
+  // Уведомление обязательно: иначе человек не узнает ни что его убрали,
+  // ни что копия у него есть.
+  notifyTripRemoved(tripId, userId, copyId).catch(console.error);
+
   revalidatePath(`/trips/${tripId}`);
+  revalidatePath("/trips");
   return { ok: true };
+}
+
+/** «Вас убрали из поездки — ваша копия сохранена». Ведёт в КОПИЮ: в
+ *  исходную поездку человеку уже нельзя. */
+async function notifyTripRemoved(
+  tripId: string,
+  userId: string,
+  copyId: string | null,
+): Promise<void> {
+  const trip = await prisma.trip.findUnique({
+    where: { id: tripId },
+    select: { title: true, user: { select: { id: true, name: true } } },
+  });
+  if (!trip) return;
+  await notifyUser({
+    userId,
+    actorId: trip.user.id,
+    kind: "TRIP_REMOVED",
+    actorName: trip.user.name,
+    subject: trip.title,
+    href: copyId ? `/trips/${copyId}` : "/trips",
+  });
 }
 
 /**
@@ -435,8 +478,16 @@ export async function removeTripMember(tripId: string, userId: string): Promise<
 export async function copyTripForSelf(tripId: string): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
-  const userId = access.user.id;
+  await createTripCopyFor(tripId, access.user.id);
+  revalidatePath("/trips");
+  return { ok: true };
+}
 
+/** Сама копия. Отдельно от экшена, потому что её заводит и уходящий сам,
+ *  и владелец ЗА того, кого убирает: во втором случае проверять права
+ *  ушедшего негде и незачем — их уже проверил владелец. Возвращает id
+ *  копии, чтобы уведомление вело прямо в неё. */
+async function createTripCopyFor(tripId: string, userId: string): Promise<string> {
   const source = await prisma.trip.findUniqueOrThrow({
     where: { id: tripId },
     include: {
@@ -509,8 +560,7 @@ export async function copyTripForSelf(tripId: string): Promise<ActionResult> {
   // Слаг копии не заводим: createTrip его тоже не ставит, ссылки
   // спокойно откатываются на id (tripHref).
 
-  revalidatePath("/trips");
-  return { ok: true };
+  return copy.id;
 }
 
 export async function leaveTrip(tripId: string): Promise<void> {

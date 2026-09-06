@@ -30,6 +30,7 @@ const PAGE_SIZE = 30;
 const KIND_ICONS: Record<string, string> = {
   TRIP_INVITE: "✈️",
   TRIP_INVITE_ACCEPTED: "✅",
+  TRIP_REMOVED: "🧳",
   FRIEND_REQUEST: "👋",
   FRIEND_ACCEPTED: "🤝",
   COMMENT_REPLY: "💬",

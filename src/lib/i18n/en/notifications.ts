@@ -16,6 +16,7 @@ export const notifications = {
     COMMENT_LIKE: (who: string) => `${who} liked your comment`,
     TRIP_INVITE: (who: string, trip: string) => `${who} is inviting you on the trip "${trip}"`,
     TRIP_INVITE_ACCEPTED: (who: string) => `${who} accepted your trip invitation`,
+    TRIP_REMOVED: (trip: string) => `You were removed from “${trip}” — your copy is saved`,
     FRIEND_GOING: (who: string, event: string) => `${who} is going to "${event}"`,
     ACHIEVEMENT: (name: string) => `New achievement: ${name}`,
     PREMIUM_GRANTED: "Your subscription is active",

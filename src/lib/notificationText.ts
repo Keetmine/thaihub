@@ -35,6 +35,8 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return who ? titles[n.kind](who) : n.title;
     case "TRIP_INVITE_ACCEPTED":
       return who ? titles.TRIP_INVITE_ACCEPTED(who) : n.title;
+    case "TRIP_REMOVED":
+      return subject ? titles.TRIP_REMOVED(subject) : n.title;
     case "TRIP_INVITE":
       return who && subject ? titles.TRIP_INVITE(who, subject) : n.title;
     case "FRIEND_GOING":

@@ -10,6 +10,7 @@ export const notifications: Dict["notifications"] = {
     COMMENT_LIKE: (who: string) => `${who} оценил(а) ваш комментарий`,
     TRIP_INVITE: (who: string, trip: string) => `${who} приглашает в поездку «${trip}»`,
     TRIP_INVITE_ACCEPTED: (who: string) => `${who} принял(а) приглашение в поездку`,
+    TRIP_REMOVED: (trip: string) => `Вас убрали из поездки «${trip}» — ваша копия сохранена`,
     FRIEND_GOING: (who: string, event: string) => `${who} идёт на «${event}»`,
     ACHIEVEMENT: (name: string) => `Новая ачивка: ${name}`,
     PREMIUM_GRANTED: "Подписка активна",
