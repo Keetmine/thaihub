@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   MUSIC_FESTIVAL_PAGE_SIZE,
   MUSIC_FESTIVAL_PAST_URL,
@@ -16,7 +17,7 @@ import { matchFestivalArtists, type MatchedFestivalArtist } from "@/lib/performe
 import { findCatalogDuplicate } from "@/lib/eventDedupe";
 import { checkImportCancelled } from "@/lib/importRun";
 import { downloadRemoteImage } from "@/lib/localImage";
-import { combineDateTime } from "@/lib/dates";
+import { combineDateTime, dateKey } from "@/lib/dates";
 import { logAudit } from "@/lib/audit";
 import { notifyAdmins } from "@/lib/adminNotify";
 
@@ -344,6 +345,291 @@ export async function runMusicFestivalCrawl(
   return result;
 }
 
+/**
+ * Состав дней из ДВУХ источников, и подробное расписание главнее: оно
+ * знает день, время и сцену, а пометка «DAY 2» на карточке лайнапа —
+ * только день. Один артист может играть в день дважды (разные сцены), а
+ * строка в составе дня одна — остаётся первое выступление.
+ *
+ * Возвращает по массиву на каждый день фестиваля: исполнитель → слот.
+ */
+function buildDayLineups(
+  festival: MusicFestival,
+  showtime: MusicFestivalShowtimeSlot[],
+  performerIdByUrl: Map<string, string>,
+): Map<string, { timeText: string | null; stage: string | null }>[] {
+  const days: Map<string, { timeText: string | null; stage: string | null }>[] =
+    festival.dates.map(() => new Map());
+  for (const slot of showtime) {
+    const id = slot.artistUrl ? performerIdByUrl.get(slot.artistUrl) : undefined;
+    if (!id || slot.dayIndex < 0 || slot.dayIndex >= festival.dates.length) continue;
+    if (!days[slot.dayIndex].has(id)) {
+      days[slot.dayIndex].set(id, { timeText: slot.timeText, stage: slot.stage });
+    }
+  }
+  for (const a of festival.lineup) {
+    const id = performerIdByUrl.get(a.url);
+    if (!a.day || !id || a.day < 1 || a.day > festival.dates.length) continue;
+    if (!days[a.day - 1].has(id)) days[a.day - 1].set(id, { timeText: null, stage: null });
+  }
+  return days;
+}
+
+/** Расписание фестиваля, если сайт дал на него ссылку. Не открылось —
+ *  молча обходимся пометками «DAY N» с карточек лайнапа. */
+async function fetchShowtime(festival: MusicFestival): Promise<MusicFestivalShowtimeSlot[]> {
+  if (!festival.showtimeUrl) return [];
+  return scrapeMusicFestivalShowtime(festival.showtimeUrl)
+    .then((r) => r.slots)
+    .catch(() => []);
+}
+
+export type MusicFestivalRefreshResult = {
+  apply: boolean;
+  /** Событий взято в работу. */
+  events: number;
+  /** Страниц прочитано. */
+  fetched: number;
+  /** Событий, которым дозаполнили пустые поля. */
+  fieldsFilled: number;
+  /** Афиш расписания добавлено в фотоблоки. */
+  photosAdded: number;
+  /** Строк состава дня заведено. */
+  slotsCreated: number;
+  /** Строк, которым проставили время/сцену. */
+  slotsTimed: number;
+  /** Заготовок исполнителей заведено. */
+  performersCreated: number;
+  failed: number;
+  /** Что сделали (или сделали бы) по каждому событию — построчно. */
+  notes: string[];
+};
+
+/**
+ * Разовый прогон по УЖЕ заведённым событиям musicfestival.in.th: читает
+ * их страницы заново и дозаполняет то, чего у старых событий нет —
+ * организатора, адрес, карту, теги, афиши расписания и состав по дням
+ * со временем и сценами (просьба владельца 2026-09-06: «прогнать все
+ * события, что у нас есть, и починить разделение по дням»).
+ *
+ * Главное правило прогона: ТОЛЬКО ДОЗАПОЛНЯЕТ. Заполненное поле не
+ * перезаписывается, фотоблок не трогается, если в нём уже что-то есть,
+ * а у строки состава проставляются лишь пустые время и сцена — правки
+ * руками всегда сильнее. Удалять он не умеет вовсе.
+ *
+ * `apply: false` — сухой прогон: страницы читаются, план печатается,
+ * ничего не пишется и картинки не качаются.
+ */
+export async function refreshMusicFestivalEvents(
+  opts: { limit?: number; apply?: boolean; runId?: string | null; log?: (line: string) => void } = {},
+): Promise<MusicFestivalRefreshResult> {
+  const apply = opts.apply ?? false;
+  const runId = opts.runId ?? null;
+  const log = opts.log ?? (() => {});
+  const result: MusicFestivalRefreshResult = {
+    apply,
+    events: 0,
+    fetched: 0,
+    fieldsFilled: 0,
+    photosAdded: 0,
+    slotsCreated: 0,
+    slotsTimed: 0,
+    performersCreated: 0,
+    failed: 0,
+    notes: [],
+  };
+
+  const events = await prisma.event.findMany({
+    where: { sourceUrl: { contains: "musicfestival.in.th" } },
+    orderBy: { createdAt: "asc" },
+    take: opts.limit && opts.limit > 0 ? opts.limit : undefined,
+    select: {
+      id: true,
+      title: true,
+      sourceUrl: true,
+      organizer: true,
+      address: true,
+      mapsUrl: true,
+      tags: true,
+      photos: { select: { id: true } },
+      performers: { select: { performerId: true } },
+      occurrences: {
+        orderBy: { startsAt: "asc" },
+        select: {
+          id: true,
+          startsAt: true,
+          lineup: { select: { performerId: true, timeText: true, stage: true } },
+        },
+      },
+    },
+  });
+  result.events = events.length;
+
+  for (const event of events) {
+    await checkImportCancelled(runId);
+    const sourceUrl = event.sourceUrl ? canonicalMusicFestivalUrl(event.sourceUrl) : null;
+    if (!sourceUrl) continue;
+    if (result.fetched > 0) await pause(PAGE_PAUSE_MS);
+
+    let festival: MusicFestival;
+    try {
+      festival = await scrapeMusicFestivalPage(sourceUrl);
+      result.fetched++;
+    } catch (e) {
+      result.fetched++;
+      result.failed++;
+      log(`не открылась: ${event.title} (${sourceUrl}) — ${e instanceof Error ? e.message : e}`);
+      continue;
+    }
+
+    const done: string[] = [];
+
+    // 1. Пустые поля события. Заполненное не трогаем — там может быть
+    // правка руками.
+    const data: Prisma.EventUpdateInput = {};
+    if (!event.organizer && festival.organizer) data.organizer = festival.organizer;
+    if (!event.address && festival.venueCity) data.address = festival.venueCity;
+    if (!event.mapsUrl && festival.venueMapsUrl) data.mapsUrl = festival.venueMapsUrl;
+    if (event.tags.length === 0 && festival.genres.length > 0) data.tags = festival.genres;
+    if (Object.keys(data).length > 0) {
+      result.fieldsFilled++;
+      done.push(`поля: ${Object.keys(data).join(", ")}`);
+      if (apply) await prisma.event.update({ where: { id: event.id }, data });
+    }
+
+    // 2. Афиши расписания — только в ПУСТОЙ фотоблок: три места в нём
+    // владелец могла занять своими снимками.
+    const wantPhotos = festival.showtimeImages.slice(0, SHOWTIME_PHOTO_LIMIT);
+    if (event.photos.length === 0 && wantPhotos.length > 0) {
+      done.push(`афиши расписания: +${wantPhotos.length}`);
+      if (apply) {
+        const slug = slugFromUrl(sourceUrl);
+        let sort = 0;
+        for (const [i, url] of wantPhotos.entries()) {
+          const local = await downloadRemoteImage(url, "posters", {
+            localBase: `musicfestival-${slug}-showtime-${i + 1}`,
+          });
+          if (!local) continue;
+          await prisma.eventPhoto.create({ data: { eventId: event.id, url: local, sort: sort++ } });
+          result.photosAdded++;
+        }
+      } else {
+        result.photosAdded += wantPhotos.length;
+      }
+    }
+
+    // 3. Состав по дням. Дни события сопоставляем с датами фестиваля по
+    // самой дате: у события их могли поправить руками, и «второй день
+    // фестиваля» — это день с той же датой, а не второй по счёту.
+    const showtime = await fetchShowtime(festival);
+    const matched = await matchFestivalArtists(
+      festival.lineup.map((a) => ({ name: a.name, url: a.url })),
+    );
+    const performerIdByUrl = new Map<string, string>();
+    for (const m of matched) if (m.performerId) performerIdByUrl.set(m.url, m.performerId);
+    const unknown = matched.filter((m) => !m.performerId);
+    if (apply && unknown.length > 0) {
+      for (const artist of unknown) {
+        const existing = await prisma.performer.findUnique({
+          where: { musicFestivalUrl: artist.url },
+          select: { id: true },
+        });
+        if (existing) {
+          performerIdByUrl.set(artist.url, existing.id);
+          continue;
+        }
+        const photo = festival.lineup.find((a) => a.url === artist.url)?.photoUrl ?? null;
+        const photoUrl = await downloadRemoteImage(photo, "performers", {
+          localBase: `musicfestival-${slugFromUrl(artist.url)}`,
+        });
+        const created = await prisma.performer.create({
+          data: {
+            name: artist.name,
+            type: "SOLO",
+            photoUrl,
+            musicFestivalUrl: artist.url,
+            stub: true,
+          },
+          select: { id: true },
+        });
+        performerIdByUrl.set(artist.url, created.id);
+        result.performersCreated++;
+      }
+    } else {
+      result.performersCreated += unknown.length;
+    }
+
+    const dayLineups = buildDayLineups(festival, showtime, performerIdByUrl);
+    // Состав по дням имеет смысл там, где день отличается от события:
+    // многодневный фестиваль либо однодневный, но с расписанием по
+    // сценам (тогда день добавляет время и сцену, а не повторяет состав).
+    const worthDays = festival.dates.length > 1 || showtime.length > 0;
+    if (worthDays) {
+      const occurrenceByDate = new Map(event.occurrences.map((o) => [dateKey(o.startsAt), o]));
+      const eventPerformerIds = new Set(event.performers.map((p) => p.performerId));
+      let created = 0;
+      let timed = 0;
+      for (const [i, date] of festival.dates.entries()) {
+        const occurrence = occurrenceByDate.get(date);
+        if (!occurrence) continue;
+        const existing = new Map(occurrence.lineup.map((l) => [l.performerId, l]));
+        for (const [performerId, slot] of dayLineups[i]) {
+          const row = existing.get(performerId);
+          if (!row) {
+            created++;
+            if (apply) {
+              await prisma.occurrenceLineup.create({
+                data: {
+                  occurrenceId: occurrence.id,
+                  performerId,
+                  timeText: slot.timeText,
+                  stage: slot.stage,
+                },
+              });
+              // Артист из расписания, которого не было в общем составе
+              // события, — добавляем и туда: страницы артиста и события
+              // должны знать друг о друге.
+              if (!eventPerformerIds.has(performerId)) {
+                await prisma.eventPerformer.create({
+                  data: { eventId: event.id, performerId },
+                });
+                eventPerformerIds.add(performerId);
+              }
+            }
+            continue;
+          }
+          // Уже есть: проставляем только ПУСТЫЕ время и сцену.
+          const patch: { timeText?: string; stage?: string } = {};
+          if (!row.timeText && slot.timeText) patch.timeText = slot.timeText;
+          if (!row.stage && slot.stage) patch.stage = slot.stage;
+          if (Object.keys(patch).length === 0) continue;
+          timed++;
+          if (apply) {
+            await prisma.occurrenceLineup.update({
+              where: {
+                occurrenceId_performerId: { occurrenceId: occurrence.id, performerId },
+              },
+              data: patch,
+            });
+          }
+        }
+      }
+      result.slotsCreated += created;
+      result.slotsTimed += timed;
+      if (created > 0) done.push(`состав дней: +${created}`);
+      if (timed > 0) done.push(`время и сцена: ${timed}`);
+    }
+
+    if (done.length > 0) {
+      const note = `${event.title}: ${done.join("; ")}`;
+      result.notes.push(note);
+      log(`${apply ? "обновлено" : "план"}: ${note}`);
+    }
+  }
+
+  return result;
+}
+
 /** Чем закончился разовый импорт одного фестиваля по ссылке. */
 export type MusicFestivalSingleImport = {
   status: "created" | "exists" | "duplicate";
@@ -461,11 +747,7 @@ async function createFestivalEvent(
   // 2026-09-06). Отдельная страница — отдельный запрос, поэтому только
   // когда сайт дал на неё ссылку; не открылась — молча обходимся
   // пометками «DAY N» с карточек лайнапа, как раньше.
-  const showtime: MusicFestivalShowtimeSlot[] = festival.showtimeUrl
-    ? await scrapeMusicFestivalShowtime(festival.showtimeUrl)
-        .then((r) => r.slots)
-        .catch(() => [])
-    : [];
+  const showtime: MusicFestivalShowtimeSlot[] = await fetchShowtime(festival);
 
   // Афиши раздела Showtime — в фотоблок события (правка владельца
   // 2026-09-06). Своё имя файла, как у постера: у сайта они называются
@@ -547,29 +829,7 @@ async function createFestivalEvent(
         if (existing) performerIdByUrl.set(artist.url, existing.id);
       }
     }
-    // Состав дня собираем из ДВУХ источников, и подробное расписание
-    // главнее: у фестиваля с расписанием по сценам оно знает не только
-    // день, но и время со сценой, а пометка «DAY 2» на карточке лайнапа
-    // — только день. Слоты расписания идут первыми, пометки добирают
-    // тех, кого в расписании не оказалось.
-    const dayLineups: Map<string, { timeText: string | null; stage: string | null }>[] =
-      festival.dates.map(() => new Map());
-    for (const slot of showtime) {
-      const id = slot.artistUrl ? performerIdByUrl.get(slot.artistUrl) : undefined;
-      if (!id || slot.dayIndex < 0 || slot.dayIndex >= festival.dates.length) continue;
-      // Один артист может играть в этот день дважды (разные сцены) —
-      // строка в составе дня одна, оставляем первое выступление.
-      if (!dayLineups[slot.dayIndex].has(id)) {
-        dayLineups[slot.dayIndex].set(id, { timeText: slot.timeText, stage: slot.stage });
-      }
-    }
-    for (const a of festival.lineup) {
-      const id = performerIdByUrl.get(a.url);
-      if (!a.day || !id || a.day < 1 || a.day > festival.dates.length) continue;
-      if (!dayLineups[a.day - 1].has(id)) {
-        dayLineups[a.day - 1].set(id, { timeText: null, stage: null });
-      }
-    }
+    const dayLineups = buildDayLineups(festival, showtime, performerIdByUrl);
     const hasDayLineups = festival.dates.length > 1 && dayLineups.some((m) => m.size > 0);
 
     const event = await tx.event.create({
