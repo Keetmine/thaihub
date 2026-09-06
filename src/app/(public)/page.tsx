@@ -186,7 +186,9 @@ export default async function HomePage({
         },
       },
       orderBy: { updatedAt: "desc" },
-      take: 4,
+      // Шесть — это ровно два ряда по три (правка владельца
+      // 2026-09-06): сетка не оставляет дырок.
+      take: 6,
     }),
     // Ж11: личные события поездок с галочкой «показывать на главной» —
     // встали в общий блок «Вы идёте» рядом с событиями афиши. Только
@@ -310,7 +312,7 @@ export default async function HomePage({
   ).length;
   const airingToday = (
     onlyMineAiring ? airingTodayAll.filter((a) => airingTodayStatuses.has(a.drama.id)) : airingTodayAll
-  ).slice(0, 8);
+  ).slice(0, 6);
 
   const favoriteSet = new Set(favoriteIds.map((f) => f.performerId));
   const turns = (birthDate: Date) => now.getUTCFullYear() - birthDate.getUTCFullYear();
@@ -480,66 +482,15 @@ export default async function HomePage({
       )}
       </div>
 
-      {/* Ряд 2 с обратной пропорцией: узкое «смотрю» и широкие
-          новинки. */}
-      <div className="row g-4">
-      {watchingNow.length > 0 && (
-        <div className="col-12 col-lg-5">
-          <section>
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-              <h2 className="section-heading mb-0">{dict.home.watchingNow}</h2>
-              <Link href="/dramas" className="small text-secondary">
-                {dict.common.all}
-              </Link>
-            </div>
-            <div className="row g-3 stagger">
-              {watchingNow.map(({ drama, episodesWatched }) => (
-                <div key={drama.id} className="col-6">
-                  <PosterTile
-                    href={dramaHref(drama)}
-                    posterUrl={drama.posterUrl}
-                    title={dramaTitleForLocale(drama, locale)}
-                    subtitle={drama.year ? String(drama.year) : undefined}
-                    progress={
-                      drama.episodes && episodesWatched != null
-                        ? {
-                            watched: episodesWatched,
-                            total: drama.episodes,
-                            label: dict.catalog.episodes.of(episodesWatched, drama.episodes),
-                          }
-                        : null
-                    }
-                  />
-                  {/* Править серии — отсюда, без захода на страницу:
-                      ровно это человек и делает, досмотрев серию. Полоса
-                      рисуется внутри постера, поэтому у счётчика своей
-                      нет. Карточка здесь рабочая, а не витринная, — этим
-                      она и отличается от постеров в каталоге, где
-                      прогресса нет вовсе. */}
-                  <EpisodeProgress
-                    dramaId={drama.id}
-                    total={drama.episodes}
-                    watched={episodesWatched}
-                    variant="card"
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
-
-      {/* Правая колонка ряда: «Выходит сегодня», под ним новинки. Блок
-          серий переехал сюда с самого верха главной (просьба
-          владельца) — слева при этом остаётся «Смотрю сейчас». */}
-      <div className={watchingNow.length > 0 ? "col-12 col-lg-7" : "col-12"}>
-      {/* Список строками, а не постерами: ровно тот же вид, что и в
-          каталоге /dramas — миниатюра постера, название, подстрока, —
-          чтобы третьего стиля списка сериалов на сайте не заводить.
-          Номер серии — чипом справа, ради него блок и существует.
-          Никто сегодня не выходит — блока нет вовсе. */}
+      {/* Ряд 2 (правка владельца 2026-09-06): слева «Выходит сегодня»
+          и справа «Смотрю сейчас» — пополам, по col-6, оба одной высоты
+          (align-items-stretch + h-100 у секций). «Что нового» уехало
+          ПОД ряд, во всю ширину — раньше оно жило в правой колонке под
+          афишей и растягивало её. */}
+      <div className="row g-4 align-items-stretch">
+      <div className={watchingNow.length > 0 ? "col-12 col-lg-6" : "col-12"}>
       {airingToday.length > 0 && (
-        <section className="mb-4">
+        <section className="h-100 d-flex flex-column">
           {/* И9: из блока должен быть выход в календарь серий — раньше
               человек видел сегодняшнее и не догадывался, что есть
               расписание на месяц. Тот же вид, что «Все» у соседей. */}
@@ -621,9 +572,66 @@ export default async function HomePage({
           </div>
         </section>
       )}
+      </div>
 
-      {/* Новинки — то, ради чего сюда заходят между концертами. */}
-      <section>
+      {watchingNow.length > 0 && (
+        <div className="col-12 col-lg-6">
+          <section className="h-100 d-flex flex-column">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <h2 className="section-heading mb-0">{dict.home.watchingNow}</h2>
+              <Link href="/dramas" className="small text-secondary">
+                {dict.common.all}
+              </Link>
+            </div>
+            <div className="row g-3 stagger">
+              {watchingNow.map(({ drama, episodesWatched }) => (
+                <div key={drama.id} className="col-4 poster-tile-cell">
+                  <PosterTile
+                    href={dramaHref(drama)}
+                    posterUrl={drama.posterUrl}
+                    title={dramaTitleForLocale(drama, locale)}
+                    subtitle={drama.year ? String(drama.year) : undefined}
+                    progress={
+                      drama.episodes && episodesWatched != null
+                        ? {
+                            watched: episodesWatched,
+                            total: drama.episodes,
+                            label: dict.catalog.episodes.of(episodesWatched, drama.episodes),
+                          }
+                        : null
+                    }
+                  />
+                  {/* Править серии — отсюда, без захода на страницу:
+                      ровно это человек и делает, досмотрев серию. Полоса
+                      рисуется внутри постера, поэтому у счётчика своей
+                      нет. Карточка здесь рабочая, а не витринная, — этим
+                      она и отличается от постеров в каталоге, где
+                      прогресса нет вовсе.
+
+                      Счётчик лежит ПОВЕРХ постера (чипом в углу), но в
+                      разметке — рядом с плиткой, а не внутри: плитка
+                      целиком ссылка, а кнопку в ссылку класть нельзя.
+                      Позиционирует .poster-tile-cell в globals.css. */}
+                  <EpisodeProgress
+                    dramaId={drama.id}
+                    total={drama.episodes}
+                    watched={episodesWatched}
+                    variant="card"
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+      </div>
+
+      {/* Новинки — во всю ширину ПОД рядом (правка владельца
+          2026-09-06): раньше лента жила в правой колонке и растягивала
+          её сильно ниже соседа. mt-4 — тот же зазор, что между
+          колонками ряда: без него заголовок ленты липнул к последней
+          строке афиши. */}
+      <section className="mt-4">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
           <span className="small text-secondary">
@@ -638,7 +646,7 @@ export default async function HomePage({
         {locationNews.length > 0 && (
           <div className="row g-2 stagger mb-2">
             {locationNews.map((item) => (
-              <div key={`loc-${item.dramaId}`} className="col-12 col-md-6 col-xl-6">
+              <div key={`loc-${item.dramaId}`} className="col-12 col-md-6 col-xl-4">
                 <Link
                   href={dramaHref(item)}
                   className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
@@ -675,7 +683,7 @@ export default async function HomePage({
         ) : (
           <div className="row g-2 stagger">
             {news.map((item) => (
-              <div key={`${item.kind}-${item.id}`} className="col-12 col-md-6 col-xl-6">
+              <div key={`${item.kind}-${item.id}`} className="col-12 col-md-6 col-xl-4">
                 <div className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100">
                   <LetterAvatar
                     name={item.title}
@@ -709,8 +717,6 @@ export default async function HomePage({
           </div>
         )}
       </section>
-      </div>
-      </div>
     </div>
   );
 }

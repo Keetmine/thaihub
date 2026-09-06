@@ -3088,30 +3088,84 @@ button.hero-stat-toggle.is-open {
 /* Вариант для постерной карточки: без подписи «Серии» и без своей
    полосы, поэтому счётчик тянется на всю ширину карточки — иначе он
    болтался бы слева от пустоты. */
-/* Карточка «Смотрю сейчас»: тихая пилюля по центру под постером.
-   Раньше контролы растягивались во всю ширину, и между «−» и «+»
-   зияла пустота с одиноким полем ввода (правка владельца
-   2026-09-06). */
+/* Карточка «Смотрю сейчас»: счётчик серий ЧИПОМ НА ПОСТЕРЕ (выбор
+   владельца 2026-09-06 из трёх вариантов). В покое это тихое «3/9» в
+   правом верхнем углу; кнопки −/+ появляются, когда на карточку
+   наводят, — ряд карточек в покое остаётся чистым.
+
+   В разметке счётчик лежит РЯДОМ с плиткой, а не внутри: плитка
+   целиком — ссылка, а кнопку в ссылку класть нельзя. Поэтому ячейка
+   ряда (.poster-tile-cell) становится системой координат, а чип
+   позиционируется в ней абсолютно. */
+.poster-tile-cell {
+  position: relative;
+}
+
 .episode-progress.is-card {
-  margin-top: 0.4rem;
-  width: 100%;
-  align-items: center;
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  width: auto;
+  margin: 0;
 }
+
 .episode-progress.is-card .episode-progress-controls {
-  gap: 0.15rem;
-  padding: 0.1rem 0.35rem;
+  gap: 0.1rem;
+  padding: 0.1rem 0.4rem;
+  background: rgba(10, 10, 12, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
 }
-.episode-progress.is-card .episode-progress-step {
-  width: 1.5rem;
-  height: 1.5rem;
-  font-size: 1rem;
-}
+
 .episode-progress.is-card .episode-progress-value,
 .episode-progress.is-card .episode-progress-count {
-  font-size: 0.8rem;
-  color: var(--bs-body-color);
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+  color: #fff;
 }
+
+.episode-progress.is-card .episode-progress-count {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* В покое кнопки схлопнуты по ширине, а не спрятаны через display:none:
+   так чип остаётся узким («3/13»), но кнопки живут в разметке — до них
+   можно добраться табом (по фокусу они разворачиваются), и скринридер
+   их видит. С display:none они выпадали и из дерева доступности. */
+.episode-progress.is-card .episode-progress-step {
+  width: 0;
+  height: 1.4rem;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: 0.95rem;
+  color: #fff;
+  /* Анимируем только проявление. Плавная ШИРИНА оказалась вредной: чип
+     разворачивается влево, кнопка уезжает из-под курсора, тот теряет
+     наведение — и всё начинает мигать (поймано на клике в тестах). */
+  transition: opacity 0.15s ease;
+}
+
+.poster-tile-cell:hover .episode-progress.is-card .episode-progress-step,
+.episode-progress.is-card .episode-progress-step:focus-visible {
+  width: 1.4rem;
+  opacity: 1;
+}
+
+.episode-progress.is-card .episode-progress-step:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* Без ховера (палец) кнопки видны всегда — иначе до них не добраться. */
+@media (hover: none) {
+  .episode-progress.is-card .episode-progress-step {
+    width: 1.4rem;
+    opacity: 1;
+  }
+}
+
 .episode-progress.is-card .episode-progress-count {
   color: var(--bs-secondary-color);
 }

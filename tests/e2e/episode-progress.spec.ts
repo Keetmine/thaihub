@@ -146,6 +146,14 @@ test("прогресс правится из списка и с главной",
 
   await test.step("главная: тот же счётчик на карточке", async () => {
     await page.goto("/");
+    // Куки-плашка висит внизу экрана и перекрывает нижний ряд карточек:
+    // клик по счётчику до неё просто не доходит. Живой человек решает
+    // это один раз выбором в плашке — делаем то же.
+    const consent = page.getByRole("dialog", { name: /cookies|куки/i });
+    if (await consent.isVisible().catch(() => false)) {
+      await consent.getByRole("button").first().click();
+      await expect(consent).toBeHidden();
+    }
     // Именно своя карточка: в «Смотрю сейчас» лежит и другое.
     const cell = page.locator(".poster-tile", { hasText: TEST_DRAMAS.ended.title }).locator("..");
     // Процент считаем от фикстуры, а не пишем числом: поменяется число
@@ -163,7 +171,15 @@ test("прогресс правится из списка и с главной",
       String(TEST_DRAMAS.ended.episodes - 1),
     );
 
-    await cell.getByRole("button", { name: "One more episode" }).click();
+    // Кнопки чипа появляются по наведению на карточку (правка
+    // владельца 2026-09-06). Наводим и жмём В ОДНОЙ попытке с
+    // повтором: пока грузятся постеры выше, страница ещё «дышит», и
+    // карточка успевает уехать из-под курсора — тогда чип схлопывается
+    // обратно. Живой человек в этот момент просто ведёт мышь ещё раз.
+    await expect(async () => {
+      await cell.hover();
+      await cell.getByRole("button", { name: "One more episode" }).click({ timeout: 1500 });
+    }).toPass({ timeout: 15000 });
     // 22 из 22 — сериал досмотрен и уходит из «Смотрю сейчас» целиком.
     await expect(page.locator(".poster-tile", { hasText: TEST_DRAMAS.ended.title })).toHaveCount(0);
   });
