@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import { UploadIcon } from "@/components/icons";
+import ImageCropDialog from "@/components/ImageCropDialog";
 import { useT } from "@/components/LocaleProvider";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
 
@@ -17,6 +18,12 @@ export default function FileDropzone({
   // размером с миниатюру постера, а не полоса на всю колонку — рядом
   // помещаются другие поля, и форму не приходится мотать.
   compact = false,
+  // Кадрирование перед отправкой — только там, где человек ставит СВОЁ
+  // фото: аватарка круглая, и без рамки вертикальный снимок обрезается
+  // как попало. Каталожным картинкам админки (постеры, фото артистов)
+  // квадрат не нужен и лишний шаг только мешает, поэтому по умолчанию
+  // выключено.
+  crop = false,
 }: {
   name: string;
   label: string;
@@ -24,6 +31,7 @@ export default function FileDropzone({
   accept?: string;
   endpoint?: string;
   compact?: boolean;
+  crop?: boolean;
 }) {
   const uid = useId();
   const t = useT();
@@ -31,7 +39,19 @@ export default function FileDropzone({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /** Выбранный файл: с кропом сначала показываем рамку, без кропа —
+   *  сразу на сервер. Отмена в окне кропа не грузит ничего. */
+  function pick(file: File) {
+    setError(null);
+    if (crop && file.type.startsWith("image/")) {
+      setCropFile(file);
+      return;
+    }
+    upload(file);
+  }
 
   async function upload(file: File) {
     setIsUploading(true);
@@ -69,7 +89,7 @@ export default function FileDropzone({
           e.preventDefault();
           setIsDragging(false);
           const file = e.dataTransfer.files?.[0];
-          if (file) upload(file);
+          if (file) pick(file);
         }}
         onClick={() => inputRef.current?.click()}
         role="button"
@@ -111,11 +131,29 @@ export default function FileDropzone({
           className="d-none"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) upload(file);
+            // Сбрасываем значение поля: без этого повторный выбор ТОГО
+            // ЖЕ файла (отменил кроп — передумал) не поднимает change, и
+            // окно кропа больше не открывается.
+            e.target.value = "";
+            if (file) pick(file);
           }}
         />
       </div>
       {error && <p className="small text-danger mt-2 mb-0">{error}</p>}
+
+      {/* Окно кропа живёт СНАРУЖИ дропзоны: события портала всплывают
+          по дереву React, а не по DOM, и внутри дропзоны любой клик в
+          окне снова открывал бы выбор файла. */}
+      {cropFile && (
+        <ImageCropDialog
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onDone={(cropped) => {
+            setCropFile(null);
+            upload(cropped);
+          }}
+        />
+      )}
     </div>
   );
 }

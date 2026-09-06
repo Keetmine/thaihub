@@ -137,7 +137,9 @@ export default async function SettingsPage({
                     </div>
                   </div>
                   <div className="col-12 col-md-6 d-flex flex-column gap-3">
-                    <FileDropzone name="photoUrl" label={s.photo} defaultValue={user.photoUrl ?? ""} />
+                    {/* crop: аватарка круглая, поэтому свой снимок
+                        человек кадрирует сам — см. ImageCropDialog. */}
+                    <FileDropzone name="photoUrl" label={s.photo} defaultValue={user.photoUrl ?? ""} crop />
                     <div className="row g-3">
                       <div className="col-6">
                         <label className="form-label" htmlFor="settings-gender">{s.gender}</label>

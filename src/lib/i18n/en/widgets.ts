@@ -31,6 +31,16 @@ export const widgets = {
     hintImage: "Image, up to 8MB",
     remove: "Remove",
   },
+  /** Окно кадрирования своей фотографии — см. ImageCropDialog. */
+  crop: {
+    title: "Adjust your photo",
+    hint: "Drag the photo to move it and use the slider to zoom. What's inside the circle becomes your picture.",
+    preview: "Photo preview inside the frame",
+    zoom: "Zoom",
+    apply: "Use this photo",
+    applying: "Preparing…",
+    failed: "We couldn't process this image, try another file",
+  },
   /** Подписи к машинным кодам ошибок из /api/upload* — см.
    *  src/lib/uploadErrors.ts. Предел размера и список форматов у ручек
    *  разные, поэтому приезжают в ответе и подставляются здесь. */
