@@ -178,6 +178,32 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "asiapoisk-sync",
+    title: "asiapoisk: русские названия и страны",
+    description:
+      "Раз в день сверяет их каталог с нашим и дописывает то, чего у нас нет: русское " +
+      "название и страну. Список карточек берётся из карты сайта (постраничная листалка " +
+      "закрыта их robots.txt), а сведение идёт ПО АДРЕСАМ — в их слаге лежит английское " +
+      "название, и открывать страницу ради сравнения не нужно. Читаются только совпавшие, " +
+      "до 200 за прогон, с паузой 2 секунды, как просит сайт. Каждое совпадение " +
+      "проверяется по стране и году из заголовка карточки: не сошлось — пропускаем, " +
+      "иначе тайскому сериалу досталось бы название корейского ремейка. Пишем только " +
+      "пустое: проставленные руками название и страна не трогаются.",
+    supportsTargets: false,
+    logKind: "asiapoisk-sync",
+    logsItems: true,
+    run: async () => {
+      const { runAsiapoiskSync, summarizeAsiapoiskSync } = await import("@/lib/asiapoiskSync");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "asiapoisk-sync",
+        (runId) => runAsiapoiskSync({ runId }),
+        summarizeAsiapoiskSync,
+      );
+      return result ? summarizeAsiapoiskSync(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "blscene-locations",
     title: "blscene: новые места съёмок",
     description:

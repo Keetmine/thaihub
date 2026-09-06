@@ -46,6 +46,7 @@ something changes, edit the doc in place rather than appending a note.
   - [seo.md](features/seo.md) — заголовки, превью ссылок в мессенджерах, robots и sitemap
   - [search.md](features/search.md) — cross-entity search
   - [doramaland-import.md](features/doramaland-import.md) — русские названия и описания сериалов
+  - [asiapoisk-import.md](features/asiapoisk-import.md) — второй источник русских названий и стран
   - [duplicates.md](features/duplicates.md) — duplicate-name warnings + the admin merge tool
   - [admin-notifications.md](features/admin-notifications.md) — бейджи очередей + уведомления админам в Telegram
   - [audit-log.md](features/audit-log.md) — история правок каталога + массовые действия в списках

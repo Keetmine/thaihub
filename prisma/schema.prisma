@@ -460,6 +460,11 @@ model Drama {
   titleRu        String?
   synopsisRu     String?
   doramalandUrl  String?       @unique
+  // Второй источник русских названий — asiapoisk.com (решение владельца
+  // 2026-09-06): он покрывает то, до чего не дотянулся dorama.land, и
+  // заодно знает страну, которой у трёх тысяч наших записей нет.
+  // Уникален по той же причине: одна карточка — один наш сериал.
+  asiapoiskUrl   String?       @unique
   posterUrl      String?
   synopsis       String?
   year           Int?
