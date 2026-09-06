@@ -2,7 +2,7 @@
 
 import AppLink from "@/components/AppLink";
 import type { TripTodoKind } from "@/generated/prisma/client";
-import { useId, useState } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 import Modal from "@/components/Modal";
@@ -273,11 +273,9 @@ export function AddTripTodoButton({
   return (
     <>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
-        {kind === "PACKING"
-          ? t.trips.todos.lists.addPacking
-          : kind === "SHOPPING"
-            ? t.trips.todos.lists.addShopping
-            : t.trips.todos.addButton}
+        {/* Подпись постоянная: раньше она менялась вслед за сегментом
+            («+ Дело» / «+ Вещь»), и кнопка «дёргалась» под курсором. */}
+        {t.trips.todos.lists.withDate}
       </button>
 
       <Modal
@@ -369,14 +367,97 @@ export function AddTripTodoButton({
 
 /** Вкладка «Дела»: список (невыполненные сверху). Кнопка добавления
  *  живёт в общем ряду действий над вкладками — здесь её нет. */
+/**
+ * Быстрый ввод прямо в списке: поле и «+», Enter добавляет и оставляет
+ * фокус на месте — чемодан набивают десятком строк подряд, и открывать
+ * ради каждой модалку было мучением (правка владельца 2026-09-06).
+ * Дата, видимость и «могут править другие» остаются в правке пункта и
+ * в кнопке «С датой…» рядом.
+ */
+function TripTodoQuickAdd({
+  tripId,
+  kind,
+}: {
+  tripId: string;
+  kind: TripTodoKind;
+}) {
+  const t = useT();
+  const l = t.trips.todos.lists;
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const placeholder =
+    kind === "PACKING" ? l.quickAddPacking : kind === "SHOPPING" ? l.quickAddShopping : l.quickAddTodo;
+
+  function add() {
+    const value = text.trim();
+    if (!value || pending) return;
+    setError(null);
+    // Список очищаем сразу: строка появится после refresh, а поле
+    // должно быть готово к следующей вещи немедленно.
+    setText("");
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("text", value);
+      fd.set("kind", kind);
+      // Чемодан у каждого свой; остальное — как обычные записи.
+      fd.set("visibility", kind === "PACKING" ? "PRIVATE" : "PARTICIPANTS");
+      const result = await createTripTodo(tripId, fd);
+      if (!result.ok) {
+        setError(result.error);
+        setText(value);
+        return;
+      }
+      router.refresh();
+      inputRef.current?.focus();
+    });
+  }
+
+  return (
+    <div className="trip-quick-add">
+      <div className="d-flex align-items-center gap-2">
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          className="form-control"
+          placeholder={placeholder}
+          aria-label={l.quickAddAria}
+        />
+        <button
+          type="button"
+          className="btn btn-primary flex-shrink-0"
+          onClick={add}
+          disabled={pending || !text.trim()}
+          aria-label={l.quickAddAria}
+        >
+          +
+        </button>
+      </div>
+      {error && <p className="small text-danger mb-0 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 export default function TripTodos({
   todos,
+  tripId,
   activeList = "TODO",
   segments = [],
   canAdd,
   showShareToggle = false,
   visibilityOptions,
 }: {
+  tripId: string;
   todos: TodoData[];
   /** Открытый список — он же решает вид пустого состояния. */
   activeList?: TripTodoKind;
@@ -412,6 +493,10 @@ export default function TripTodos({
 
   return (
     <div style={{ maxWidth: "44rem" }}>
+      {/* Что это за вкладка вообще — одной строкой: «Списки» ни о чём
+          не говорили (правка владельца 2026-09-06). */}
+      <p className="small text-secondary mb-3">{l.hint}</p>
+
       {/* Три списка одной вкладки — сегментами, а не тремя вкладками
           верхнего ряда: там уже четыре, и «Чемодан» с «Покупками»
           рядом с «Афишей» смотрелись бы как равные ей разделы. У
@@ -430,15 +515,30 @@ export default function TripTodos({
               {segmentLabel(segment.kind)}
               {segment.total > 0 && (
                 <span className="ms-2 small opacity-75">
-                  {segment.kind === "TODO"
-                    ? segment.total
-                    : l.progress(segment.done, segment.total)}
+                  {l.progress(segment.done, segment.total)}
                 </span>
               )}
             </AppLink>
           ))}
         </div>
       )}
+      {/* Добавление живёт ВНУТРИ списка, а не в ряду над вкладками:
+          там кнопка «+ Дело» стояла в отрыве от того, куда добавляет, и
+          меняла подпись при переключении сегментов. */}
+      {canAdd && (
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <div className="flex-fill" style={{ minWidth: "16rem" }}>
+            <TripTodoQuickAdd tripId={tripId} kind={activeList} />
+          </div>
+          <AddTripTodoButton
+            tripId={tripId}
+            kind={activeList}
+            showShareToggle={showShareToggle}
+            visibilityOptions={visibilityOptions}
+          />
+        </div>
+      )}
+
       {sorted.length === 0 ? (
         <EmptyState
           emoji={empty.emoji}

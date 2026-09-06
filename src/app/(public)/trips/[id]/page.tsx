@@ -25,7 +25,7 @@ import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
-import TripTodos, { AddTripTodoButton, TodoRow } from "../TripTodos";
+import TripTodos, { TodoRow } from "../TripTodos";
 import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
@@ -1050,14 +1050,6 @@ export default async function TripPage({
           />
           <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
           <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
-          {/* Добавляет в ТОТ список, который сейчас открыт: на вкладке
-              «Чемодан» кнопка так и зовётся «+ Вещь». */}
-          <AddTripTodoButton
-            tripId={trip.id}
-            kind={showTodos ? activeList : "TODO"}
-            showShareToggle={isShared}
-            visibilityOptions={visibilityOptions}
-          />
           <AddTripPlaceButton tripId={trip.id} />
         </div>
       )}
@@ -1124,6 +1116,7 @@ export default async function TripPage({
 
       {showTodos ? (
         <TripTodos
+          tripId={trip.id}
           todos={todoData.filter((item) => item.kind === activeList)}
           activeList={activeList}
           segments={TODO_KINDS.map((kind) => {

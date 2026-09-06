@@ -230,7 +230,15 @@ export const trips = {
 
         /** Три списка одной вкладки: дела, чемодан, покупки (АА10/АА11). */
         lists: {
-            tab: (n: number) => (n > 0 ? `Lists (${n})` : "Lists"),
+            /** Вкладка: три списка «не забыть» — сделать, взять, купить. */
+            tab: (n: number) => (n > 0 ? `Don't forget (${n})` : "Don't forget"),
+            /** Что за списки — строкой под сегментами. */
+            hint: "Three checklists for the trip: things to do, things to pack, things to buy.",
+            quickAddTodo: "Add a thing to do…",
+            quickAddPacking: "Add a thing to pack…",
+            quickAddShopping: "Add a thing to buy…",
+            quickAddAria: "Add to the list",
+            withDate: "With a date…",
             todo: "To-do",
             packing: "Packing",
             shopping: "Shopping",

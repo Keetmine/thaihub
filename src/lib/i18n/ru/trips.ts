@@ -223,7 +223,13 @@ export const trips: Dict["trips"] = {
         emptyHintGuest: "Участники пока ничего не добавили.",
 
         lists: {
-            tab: (n: number) => (n > 0 ? `Списки (${n})` : "Списки"),
+            tab: (n: number) => (n > 0 ? `Не забыть (${n})` : "Не забыть"),
+            hint: "Три списка на поездку: что сделать, что взять с собой и что купить.",
+            quickAddTodo: "Что сделать…",
+            quickAddPacking: "Что взять…",
+            quickAddShopping: "Что купить…",
+            quickAddAria: "Добавить в список",
+            withDate: "С датой…",
             todo: "Дела",
             packing: "Чемодан",
             shopping: "Покупки",
