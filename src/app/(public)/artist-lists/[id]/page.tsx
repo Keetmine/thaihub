@@ -111,11 +111,11 @@ export default async function ArtistListPage({
             href={userHref(list.user)}
             className="small text-secondary text-decoration-none"
           >
-            {list.user.name
-              ? list.user.deletedAt
-                ? t.lists.artists.ofDeleted
-                : t.lists.artists.ofUser(userDisplayName(list.user, locale))
-              : t.lists.artists.ofFriend}
+            {/* Имя из аккаунта, без «друга»: отношений между людьми мы
+                не знаем (правка владельца 2026-09-06). */}
+            {list.user.deletedAt
+              ? t.lists.artists.ofDeleted
+              : t.lists.artists.ofUser(userDisplayName(list.user, locale))}
           </AppLink>
         )}
       </div>

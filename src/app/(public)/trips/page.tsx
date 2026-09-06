@@ -119,11 +119,9 @@ export default async function TripsPage() {
                     {formatShortDate(inv.trip.startDate, locale)} –{" "}
                     {formatShortDate(inv.trip.endDate, locale)}{" "}
                     {inv.trip.endDate.getFullYear()} ·{" "}
-                    {t.trips.list.invitedBy(
-                      inv.trip.user.name
-                        ? userDisplayName(inv.trip.user, locale)
-                        : t.trips.list.someFriend,
-                    )}
+                    {/* Имя приглашающего — из аккаунта, без «друга»:
+                        отношений между людьми мы не знаем. */}
+                    {t.trips.list.invitedBy(userDisplayName(inv.trip.user, locale))}
                   </p>
                 </div>
                 <TripInviteActions tripId={inv.tripId} />

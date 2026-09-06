@@ -119,12 +119,13 @@ export default function TripMembersButton({
                   }}
                   confirmMessage={
                     m.pending
-                      ? t.trips.members.cancelInviteConfirm(
-                          m.name ? userDisplayName(m, locale) : t.trips.members.someFriend,
-                        )
-                      : t.trips.members.removeConfirm(
-                          m.name ? userDisplayName(m, locale) : t.trips.members.someMember,
-                        )
+                      // Имя — как в аккаунте: «друг» и «участница» —
+                      // догадки об отношениях, а мы их не знаем (правка
+                      // владельца 2026-09-06). Безымянный аккаунт
+                      // userDisplayName назовёт ником или нейтральным
+                      // «Пользователь».
+                      ? t.trips.members.cancelInviteConfirm(userDisplayName(m, locale))
+                      : t.trips.members.removeConfirm(userDisplayName(m, locale))
                   }
                 >
                   <button

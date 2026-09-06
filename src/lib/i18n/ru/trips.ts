@@ -13,7 +13,6 @@ export const trips: Dict["trips"] = {
             "Поездка — это даты, когда вы в Таиланде: на её странице собраны все события, попадающие в этот период.",
         invites: "Приглашения",
         invitedBy: (name: string) => `приглашает ${name}`,
-        someFriend: "друг",
         emptyTitle: "Пока нет ни одной поездки",
         emptyHint:
             "Создайте поездку с датами — события, отели и списки мест соберутся в один план.",
@@ -28,7 +27,6 @@ export const trips: Dict["trips"] = {
     detail: {
         back: "← Все поездки",
         ofUser: (name: string) => `Поездка пользователя ${name} →`,
-        ofFriend: "Поездка друга →",
         inviteBanner: (name: string) =>
             `${name} приглашает вас в эту поездку — вы будете видеть общий план и сможете добавлять свои события и дела.`,
         someone: "Пользователь",
@@ -187,8 +185,6 @@ export const trips: Dict["trips"] = {
         pending: "приглашение отправлено",
         cancelInviteConfirm: (name: string) => `Отменить приглашение для ${name}?`,
         removeConfirm: (name: string) => `Убрать ${name} из поездки?`,
-        someFriend: "друга",
-        someMember: "участника",
         removeAria: "Убрать из поездки",
         addFriend: "Добавить друга…",
         addFailed: "Не удалось добавить — попробуйте ещё раз",

@@ -391,7 +391,10 @@ export default async function TripPage({
       // в день заселения не приходится искать письмо в почте.
       bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
       members: {
-        include: { user: { select: { id: true, name: true, deletedAt: true } } },
+        // username — не для ссылки, а для ПОДПИСИ: userDisplayName без
+        // него не может откатиться на ник и зовёт человека безликим
+        // «Пользователем» (поймано на проверке имён 2026-09-06).
+        include: { user: { select: { id: true, name: true, username: true, deletedAt: true } } },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -715,9 +718,15 @@ export default async function TripPage({
     ...(showAll || !isParticipant
       ? []
       : [...stayByDay].flatMap(([date, marks]) =>
-          marks.map((mark) => {
+          marks.flatMap((mark) => {
             const isMe = mark.userId === viewerId;
-            const name = nameById.get(mark.userId) ?? t.trips.list.someFriend;
+            // Только имя из аккаунта (userDisplayName в nameById): «друг»,
+            // «подруга» и прочие догадки о родстве недопустимы — мы не
+            // знаем, кто кому кто (правка владельца 2026-09-06). Кого нет
+            // среди участников (вышел из поездки, а окно осталось) —
+            // отметку не рисуем вовсе, называть его нечем.
+            const name = nameById.get(mark.userId);
+            if (!name) return [];
             return {
               kind: "stay" as const,
               // Полдень: отметка дня стоит между утренними и вечерними
@@ -1112,9 +1121,9 @@ export default async function TripPage({
             href={userHref(trip.user)}
             className="small text-secondary text-decoration-none"
           >
-            {trip.user.name
-              ? t.trips.detail.ofUser(userDisplayName(trip.user, locale))
-              : t.trips.detail.ofFriend}
+            {/* Всегда «поездка <имя>»: «поездка друга» — догадка об
+                отношениях (правка владельца 2026-09-06). */}
+            {t.trips.detail.ofUser(userDisplayName(trip.user, locale))}
           </AppLink>
         )}
       </div>

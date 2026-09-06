@@ -15,7 +15,6 @@ export const trips = {
             "A trip is the dates you are in Thailand: its page gathers every event that falls inside them.",
         invites: "Invitations",
         invitedBy: (name: string) => `invited by ${name}`,
-        someFriend: "a friend",
         emptyTitle: "No trips yet",
         emptyHint:
             "Start one with your dates — events, hotels and place lists come together into a single plan.",
@@ -30,7 +29,6 @@ export const trips = {
     detail: {
         back: "← All trips",
         ofUser: (name: string) => `${name}'s trip →`,
-        ofFriend: "A friend's trip →",
         inviteBanner: (name: string) =>
             `${name} is inviting you on this trip — you will see the shared plan and can add your own events and to-dos.`,
         someone: "Someone",
@@ -193,8 +191,6 @@ export const trips = {
         pending: "invite sent",
         cancelInviteConfirm: (name: string) => `Cancel the invite for ${name}?`,
         removeConfirm: (name: string) => `Remove ${name} from the trip?`,
-        someFriend: "your friend",
-        someMember: "this member",
         removeAria: "Remove from trip",
         addFriend: "Add a friend…",
         addFailed: "Couldn't add them — try again",
