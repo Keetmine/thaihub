@@ -44,6 +44,7 @@ import StatsTab, { type StatsForTab } from "./StatsTab";
 import ReviewsTab, { type MyReviewRow } from "./ReviewsTab";
 import CommentsTab, { type MyCommentRow } from "./CommentsTab";
 import TicketsTab from "./TicketsTab";
+import EpisodeProgress from "@/components/EpisodeProgress";
 import DramasTable from "./DramasTable";
 import SubTabs from "@/components/SubTabs";
 
@@ -698,7 +699,7 @@ export default async function UserProfilePage({
                     <h2 className="section-heading mb-2">{p.overviewWatching}</h2>
                     <div className="d-flex flex-column gap-1">
                       {watchingNow.map((w) => (
-                        <DramaRow key={w.drama.id} w={w} t={t} locale={locale} />
+                        <DramaRow key={w.drama.id} w={w} t={t} locale={locale} editable={isSelf} />
                       ))}
                     </div>
                   </section>
@@ -1233,39 +1234,70 @@ type ProfileWatchRow = {
  *  (мелкая миниатюра, прогресс одним потоком с названием); используется
  *  вкладкой «Сериалы» и блоком «Смотрю сейчас» в обзоре. Геометрия —
  *  .profile-drama-row в globals.css. */
-function DramaRow({ w, t, locale }: { w: ProfileWatchRow; t: Dict; locale: Locale }) {
+function DramaRow({
+  w,
+  t,
+  locale,
+  editable = false,
+}: {
+  w: ProfileWatchRow;
+  t: Dict;
+  locale: Locale;
+  /** Свой профиль: серии отмечаются прямо здесь (правка владельца
+   *  2026-09-06). У чужого — просто «3/10». */
+  editable?: boolean;
+}) {
   const p = t.social.profile;
   const progress = episodeProgress(
     { status: w.status, episodesWatched: w.episodesWatched },
     w.drama.episodes,
   );
   return (
-    <AppLink
-      href={dramaHref(w.drama)}
-      className="surface surface-hover text-decoration-none profile-drama-row"
-    >
-      <span className="profile-drama-poster" aria-hidden={!w.drama.posterUrl}>
-        {w.drama.posterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img loading="lazy" decoding="async" src={w.drama.posterUrl} alt="" />
-        ) : (
-          <span className="profile-drama-poster-fallback font-display fw-bold" aria-hidden>
-            {dramaTitleForLocale(w.drama, locale).trim().charAt(0).toUpperCase()}
-          </span>
-        )}
-      </span>
-      <span className="profile-drama-title">
-        <span className="text-white fw-medium">{dramaTitleForLocale(w.drama, locale)}</span>
-      </span>
+    // Строка — контейнер, а не одна большая ссылка: счётчик серий
+    // интерактивный, и внутри ссылки каждый его «плюс» уводил бы на
+    // страницу сериала. Ссылка осталась на постере с названием.
+    <div className="surface surface-hover profile-drama-row">
+      <AppLink
+        href={dramaHref(w.drama)}
+        className="text-decoration-none d-flex align-items-center gap-2 flex-fill"
+        style={{ minWidth: 0 }}
+      >
+        <span className="profile-drama-poster" aria-hidden={!w.drama.posterUrl}>
+          {w.drama.posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img loading="lazy" decoding="async" src={w.drama.posterUrl} alt="" />
+          ) : (
+            <span className="profile-drama-poster-fallback font-display fw-bold" aria-hidden>
+              {dramaTitleForLocale(w.drama, locale).trim().charAt(0).toUpperCase()}
+            </span>
+          )}
+        </span>
+        <span className="profile-drama-title">
+          <span className="text-white fw-medium">{dramaTitleForLocale(w.drama, locale)}</span>
+        </span>
+      </AppLink>
       {/* Справа — прогресс, а не дата (правка владельца): «когда
           отметил» ничего не говорит, «сколько просмотрено» — говорит.
-          Без прогресса (нет числа серий, «в планах») правый край пуст. */}
-      {progress && (
-        <span className="small text-secondary flex-shrink-0 ms-auto">
-          {p.activity.episodes(progress.watched, progress.total)}
+          Себе это рабочий счётчик: «Смотрю сейчас» — ровно то место,
+          где отмечают серию, и ради этого не должно приходиться
+          открывать сериал. */}
+      {editable ? (
+        <span className="flex-shrink-0 ms-auto">
+          <EpisodeProgress
+            dramaId={w.drama.id}
+            total={w.drama.episodes}
+            watched={w.episodesWatched}
+            variant="inline"
+          />
         </span>
+      ) : (
+        progress && (
+          <span className="small text-secondary flex-shrink-0 ms-auto">
+            {p.activity.episodes(progress.watched, progress.total)}
+          </span>
+        )
       )}
-    </AppLink>
+    </div>
   );
 }
 
