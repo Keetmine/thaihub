@@ -122,8 +122,12 @@ export default async function UserProfilePage({
 }) {
   const { locale, t } = await getT();
   const p = t.social.profile;
+  // Профиль открыт и БЕЗ входа (правка владельца 2026-09-06): ссылкой
+  // на себя делятся снаружи, и упираться в форму логина она не должна.
+  // Гость — это «чужой, который никому не друг»: ниже он проходит по
+  // тем же веткам, что залогиненный незнакомец, и видит ровно то, что
+  // владелец профиля открыл посторонним.
   const viewer = await getCurrentUser();
-  if (!viewer) redirect(localeHref("/login", locale));
 
   const { id } = await params;
   const { tab } = await searchParams;
@@ -143,9 +147,9 @@ export default async function UserProfilePage({
   // Свой профиль по любому адресу (id или ник) открывается как обычная
   // страница — редиректа в кабинет больше нет (жалоба владельца: «свой
   // профиль глазами других вообще не открыть»).
-  const isSelf = viewer.id === user.id;
+  const isSelf = viewer?.id === user.id;
   const ownerPremium = isPremiumActive(user);
-  const viewerPremium = isPremiumActive(viewer);
+  const viewerPremium = viewer ? isPremiumActive(viewer) : false;
 
   // Друзья владельца — и счётчик, и сетка аватарок в левой колонке
   // (жалоба владельца: «друзей на профиле не видно»).
@@ -164,7 +168,7 @@ export default async function UserProfilePage({
     orderBy: { createdAt: "desc" },
   });
   const friends = friendships.map((f) => (f.requesterId === user.id ? f.addressee : f.requester));
-  const isFriend = !isSelf && friends.some((f) => f.id === viewer.id);
+  const isFriend = !!viewer && !isSelf && friends.some((f) => f.id === viewer.id);
 
   // Приватный профиль (Г8): друзья и сам владелец видят всё; остальным —
   // мастер-выключатель + точечные блоки.
@@ -176,20 +180,22 @@ export default async function UserProfilePage({
   const muteRow =
     isFriend
       ? await prisma.friendNotificationMute.findUnique({
-          where: { userId_mutedFriendId: { userId: viewer.id, mutedFriendId: user.id } },
+          where: { userId_mutedFriendId: { userId: viewer!.id, mutedFriendId: user.id } },
         })
       : null;
   // Не-друзьям в шапке нужна кнопка «В друзья» — а если заявка уже висит
   // (в любую сторону), показываем её состояние вместо кнопки.
+  // Гостю заявку искать не по кому: у него нет своей учётки, а без
+  // проверки запрос уходил с пустым идентификатором и ронял страницу.
   const pendingFriendship =
-    isSelf || isFriend
+    !viewer || isSelf || isFriend
       ? null
       : await prisma.friendship.findFirst({
           where: {
             status: "PENDING",
             OR: [
-              { requesterId: viewer.id, addresseeId: user.id },
-              { requesterId: user.id, addresseeId: viewer.id },
+              { requesterId: viewer!.id, addresseeId: user.id },
+              { requesterId: user.id, addresseeId: viewer!.id },
             ],
           },
         });
@@ -1081,7 +1087,7 @@ export default async function UserProfilePage({
               <FriendNotifyToggle friendId={user.id} muted={!!muteRow} />
             </>
           ) : pendingFriendship ? (
-            pendingFriendship.requesterId === viewer.id ? (
+            pendingFriendship.requesterId === viewer?.id ? (
               <span className="date-chip">{p.requestSent}</span>
             ) : (
               <AppLink href="/friends" className="btn btn-primary btn-sm">
