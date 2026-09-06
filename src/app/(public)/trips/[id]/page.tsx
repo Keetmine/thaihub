@@ -25,7 +25,7 @@ import EventCard from "@/components/EventCard";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
-import TripTodos, { TodoRow } from "../TripTodos";
+import TripTodos, { AddTripTodoButton, TodoRow } from "../TripTodos";
 import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
 import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
@@ -322,15 +322,23 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   });
 }
 
-/** Порядок сегментов вкладки «Списки»: дела, чемодан, покупки. */
-const TODO_KINDS = ["TODO", "PACKING", "SHOPPING"] as const satisfies readonly TripTodoKind[];
+/** Три вкладки списков подряд: дела, чемодан, покупки. */
+const TODO_TABS: {
+  kind: TripTodoKind;
+  view: string;
+  label: (t: Dict, n: number) => string;
+}[] = [
+  { kind: "TODO", view: "todos", label: (t, n) => t.trips.detail.tabTodos(n) },
+  { kind: "PACKING", view: "packing", label: (t, n) => t.trips.detail.tabPacking(n) },
+  { kind: "SHOPPING", view: "shopping", label: (t, n) => t.trips.detail.tabShopping(n) },
+];
 
 export default async function TripPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string; mine?: string; list?: string }>;
+  searchParams: Promise<{ view?: string; mine?: string }>;
 }) {
   const { locale, t } = await getT();
   // Гостя со страницы больше не гоним: ПУБЛИЧНОЙ поездкой делятся
@@ -342,7 +350,7 @@ export default async function TripPage({
   const viewerId = user?.id ?? null;
 
   const { id: rawParam } = await params;
-  const { view, mine, list } = await searchParams;
+  const { view, mine } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
   // поездки; ?view=all — вкладка «Афиша», все события этих дат из
   // афиши (без личных записей и дел); ?view=places — «что
@@ -350,13 +358,12 @@ export default async function TripPage({
   // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
   const showPlaces = view === "places";
-  const showTodos = view === "todos";
-  // Какой из трёх списков вкладки открыт: дела (по умолчанию), чемодан
-  // или покупки (АА10/АА11). В адресе, а не в состоянии компонента:
-  // ссылкой на «покупки» удобно кинуть попутчице, и кнопка добавления
-  // (она живёт в ряду над вкладками) должна знать, куда добавлять.
+  // У каждого списка своя вкладка: дела, чемодан, покупки (АА10/АА11 +
+  // правка владельца 2026-09-06 — сегменты внутри одной вкладки читались
+  // хуже, чем три честные вкладки).
+  const showTodos = view === "todos" || view === "packing" || view === "shopping";
   const activeList: TripTodoKind =
-    list === "packing" ? "PACKING" : list === "shopping" ? "SHOPPING" : "TODO";
+    view === "packing" ? "PACKING" : view === "shopping" ? "SHOPPING" : "TODO";
   const trip = await prisma.trip.findFirst({
     where: slugOrIdWhere(rawParam),
     include: {
@@ -1050,6 +1057,14 @@ export default async function TripPage({
           />
           <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
           <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
+          {/* Дело заводят и с плана, и из «Что посетить» — его кнопка
+              живёт в общем ряду и всегда зовётся одинаково. У чемодана и
+              покупок добавление своё, внутри их вкладок. */}
+          <AddTripTodoButton
+            tripId={trip.id}
+            showShareToggle={isShared}
+            visibilityOptions={visibilityOptions}
+          />
           <AddTripPlaceButton tripId={trip.id} />
         </div>
       )}
@@ -1075,15 +1090,17 @@ export default async function TripPage({
           {/* Вкладка дел есть у тех, кто вносит, и у того, кому хоть одно
               дело видно: с появлением видимости у записи дело может быть
               открыто друзьям или всем. */}
-          {(isParticipant || todoData.length > 0) && (
-            <AppLink
-              href={`${tripHref(trip)}?view=todos`}
-              prefetch={false}
-              className={`tab-bar-item ${showTodos ? "active" : ""}`}
-            >
-              {t.trips.todos.lists.tab(todoData.length)}
-            </AppLink>
-          )}
+          {(isParticipant || todoData.length > 0) &&
+            TODO_TABS.map(({ kind, view: tabView, label }) => (
+              <AppLink
+                key={kind}
+                href={`${tripHref(trip)}?view=${tabView}`}
+                prefetch={false}
+                className={`tab-bar-item ${showTodos && activeList === kind ? "active" : ""}`}
+              >
+                {label(t, todoData.filter((item) => item.kind === kind).length)}
+              </AppLink>
+            ))}
           <AppLink
             href={`${tripHref(trip)}?view=places`}
             prefetch={false}
@@ -1094,7 +1111,7 @@ export default async function TripPage({
         </div>
         {isShared && isParticipant && !showAll && !showPlaces && (
           <AppLink
-            href={`${tripHref(trip)}${showTodos ? "?view=todos" : ""}${onlyMine ? "" : showTodos ? "&mine=1" : "?mine=1"}`}
+            href={`${tripHref(trip)}${showTodos ? `?view=${TODO_TABS.find((tab) => tab.kind === activeList)!.view}` : ""}${onlyMine ? "" : showTodos ? "&mine=1" : "?mine=1"}`}
             prefetch={false}
             className={`btn btn-sm ${onlyMine ? "btn-primary" : "btn-ghost"}`}
           >
@@ -1119,17 +1136,6 @@ export default async function TripPage({
           tripId={trip.id}
           todos={todoData.filter((item) => item.kind === activeList)}
           activeList={activeList}
-          segments={TODO_KINDS.map((kind) => {
-            const rows = todoData.filter((item) => item.kind === kind);
-            return {
-              kind,
-              href: `${tripHref(trip)}?view=todos${
-                kind === "TODO" ? "" : `&list=${kind === "PACKING" ? "packing" : "shopping"}`
-              }${onlyMine ? "&mine=1" : ""}`,
-              total: rows.length,
-              done: rows.filter((item) => item.done).length,
-            };
-          })}
           canAdd={canContribute}
           showShareToggle={isShared}
           visibilityOptions={visibilityOptions}

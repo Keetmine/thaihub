@@ -1,6 +1,5 @@
 "use client";
 
-import AppLink from "@/components/AppLink";
 import type { TripTodoKind } from "@/generated/prisma/client";
 import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -126,7 +125,11 @@ export function TodoRow({
         {showKind && todo.kind !== "TODO" && (
           <span
             className="me-1"
-            title={todo.kind === "PACKING" ? t.trips.todos.lists.packing : t.trips.todos.lists.shopping}
+            title={
+              todo.kind === "PACKING"
+                ? t.trips.detail.tabPacking(0).replace(/\s*\(0\)$/, "")
+                : t.trips.detail.tabShopping(0).replace(/\s*\(0\)$/, "")
+            }
           >
             {todo.kind === "PACKING" ? "🧳" : "🛍️"}
           </span>
@@ -273,9 +276,11 @@ export function AddTripTodoButton({
   return (
     <>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
-        {/* Подпись постоянная: раньше она менялась вслед за сегментом
-            («+ Дело» / «+ Вещь»), и кнопка «дёргалась» под курсором. */}
-        {t.trips.todos.lists.withDate}
+        {/* В общем ряду над вкладками эта кнопка — единственный способ
+            завести ДЕЛО, и зовётся она по своему списку. Внутри
+            чемодана и покупок рядом уже стоит быстрый ввод, и кнопка
+            там — про то, чего он не умеет: дату и остальные поля. */}
+        {kind === "TODO" ? t.trips.todos.addButton : t.trips.todos.lists.withDate}
       </button>
 
       <Modal
@@ -452,7 +457,6 @@ export default function TripTodos({
   todos,
   tripId,
   activeList = "TODO",
-  segments = [],
   canAdd,
   showShareToggle = false,
   visibilityOptions,
@@ -461,9 +465,6 @@ export default function TripTodos({
   todos: TodoData[];
   /** Открытый список — он же решает вид пустого состояния. */
   activeList?: TripTodoKind;
-  /** Переключатель списков: адрес, сколько всего и сколько собрано.
-   *  Считает страница — она видит все три списка сразу. */
-  segments?: { kind: TripTodoKind; href: string; total: number; done: number }[];
   /** Может ли текущий юзер добавлять дела (участник с подпиской) —
    *  от этого зависит только подсказка в пустом состоянии. */
   canAdd: boolean;
@@ -472,8 +473,6 @@ export default function TripTodos({
 }) {
   const t = useT();
   const l = t.trips.todos.lists;
-  const segmentLabel = (kind: TripTodoKind) =>
-    kind === "PACKING" ? l.packing : kind === "SHOPPING" ? l.shopping : l.todo;
   // Пустая вкладка говорит про СВОЙ список: «чемодан пуст» вместо
   // общего «дел пока нет».
   const empty =
@@ -493,39 +492,18 @@ export default function TripTodos({
 
   return (
     <div style={{ maxWidth: "44rem" }}>
-      {/* Что это за вкладка вообще — одной строкой: «Списки» ни о чём
-          не говорили (правка владельца 2026-09-06). */}
-      <p className="small text-secondary mb-3">{l.hint}</p>
-
-      {/* Три списка одной вкладки — сегментами, а не тремя вкладками
-          верхнего ряда: там уже четыре, и «Чемодан» с «Покупками»
-          рядом с «Афишей» смотрелись бы как равные ей разделы. У
-          чемодана и покупок в сегменте видно, сколько собрано. */}
-      {segments.length > 1 && (
-        <div className="d-flex flex-wrap gap-2 mb-3">
-          {segments.map((segment) => (
-            <AppLink
-              key={segment.kind}
-              href={segment.href}
-              prefetch={false}
-              className={`btn btn-sm ${
-                segment.kind === activeList ? "btn-primary" : "btn-ghost"
-              }`}
-            >
-              {segmentLabel(segment.kind)}
-              {segment.total > 0 && (
-                <span className="ms-2 small opacity-75">
-                  {l.progress(segment.done, segment.total)}
-                </span>
-              )}
-            </AppLink>
-          ))}
-        </div>
+      {/* Сколько собрано — только у чемодана и покупок: в списке дел
+          «собрано 2 из 5» звучало бы про вещи, а не про дела. */}
+      {activeList !== "TODO" && sorted.length > 0 && (
+        <p className="small text-secondary mb-3">
+          {l.progress(sorted.filter((item) => item.done).length, sorted.length)}
+        </p>
       )}
-      {/* Добавление живёт ВНУТРИ списка, а не в ряду над вкладками:
-          там кнопка «+ Дело» стояла в отрыве от того, куда добавляет, и
-          меняла подпись при переключении сегментов. */}
-      {canAdd && (
+      {/* Чемодан и покупки набивают прямо здесь: поле, Enter, следующая
+          строка. У списка дел добавление осталось общей кнопкой в ряду
+          над вкладками — дело заводят и с плана, и из «Что посетить»
+          (правки владельца 2026-09-06). */}
+      {canAdd && activeList !== "TODO" && (
         <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
           <div className="flex-fill" style={{ minWidth: "16rem" }}>
             <TripTodoQuickAdd tripId={tripId} kind={activeList} />

@@ -37,7 +37,9 @@ export const trips = {
         tabPlan: (n: number) => `Plan (${n})`,
         tabMyPlan: (n: number) => `My plan (${n})`,
         tabEvents: (n: number) => `What's on (${n})`,
-        tabTodos: (n: number) => `To-do (${n})`,
+        tabTodos: (n: number) => `To-do list (${n})`,
+        tabPacking: (n: number) => `Packing (${n})`,
+        tabShopping: (n: number) => `Shopping (${n})`,
         tabPlaces: "Places to go",
         onlyMine: "Only mine",
         deleteTrip: "Delete trip",
@@ -211,7 +213,7 @@ export const trips = {
     todos: {
         markUndone: "Mark as not done",
         markDone: "Mark as done",
-        addButton: "+ To-do",
+        addButton: "+ To-do list",
         addTitle: "New to-do",
         editAria: "Edit to-do",
         deleteAria: "Delete to-do",
@@ -230,22 +232,13 @@ export const trips = {
 
         /** Три списка одной вкладки: дела, чемодан, покупки (АА10/АА11). */
         lists: {
-            /** Вкладка: три списка «не забыть» — сделать, взять, купить. */
-            tab: (n: number) => (n > 0 ? `Don't forget (${n})` : "Don't forget"),
-            /** Что за списки — строкой под сегментами. */
-            hint: "Three checklists for the trip: things to do, things to pack, things to buy.",
             quickAddTodo: "Add a thing to do…",
             quickAddPacking: "Add a thing to pack…",
             quickAddShopping: "Add a thing to buy…",
             quickAddAria: "Add to the list",
             withDate: "With a date…",
-            todo: "To-do",
-            packing: "Packing",
-            shopping: "Shopping",
-            /** Счётчик на сегменте: сделано из всего. */
-            progress: (done: number, total: number) => `${done}/${total}`,
-            addPacking: "+ Item",
-            addShopping: "+ Purchase",
+            /** Сколько собрано — строкой над списком чемодана/покупок. */
+            progress: (done: number, total: number) => `${done}/${total} packed`,
             addPackingTitle: "New item to pack",
             addShoppingTitle: "New purchase",
             packingPlaceholder: "Adapter, sunscreen, meds…",
