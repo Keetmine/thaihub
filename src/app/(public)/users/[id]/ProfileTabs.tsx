@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 export type ProfileTabKey =
   | "overview"
@@ -23,6 +24,14 @@ export type ProfileTabKey =
  * (раскрытые списки, карта) не терялось при переключении — тот же
  * паттерн, что был в кабинете. На узких экранах ряд вкладок скроллится
  * горизонтально (.profile-tab-row в globals.css).
+ *
+ * Вкладки — НАСТОЯЩИЕ ссылки на `?tab=…` (просьба владельца
+ * 2026-09-06: «хочу скинуть ссылку на сериалы в профиле»). Обычный клик
+ * мы перехватываем и правим адрес через history.pushState: страницу
+ * перерисовывать незачем, панели уже смонтированы, — зато адресная
+ * строка показывает открытую вкладку, её можно скопировать, а «назад»
+ * возвращает к предыдущей. Ctrl/⌘-клик и средняя кнопка работают сами
+ * собой, потому что это ссылка, а не кнопка.
  */
 export default function ProfileTabs({
   initialTab,
@@ -32,6 +41,7 @@ export default function ProfileTabs({
   /** Только те вкладки, что положены этому зрителю, в порядке показа. */
   tabs: { key: ProfileTabKey; label: string; content: ReactNode }[];
 }) {
+  const pathname = usePathname();
   const firstKey = tabs[0]?.key ?? "overview";
   const validInitial = tabs.some((t) => t.key === initialTab) ? initialTab : firstKey;
   const [activeTab, setActiveTab] = useState<ProfileTabKey>(validInitial);
@@ -46,19 +56,46 @@ export default function ProfileTabs({
     setActiveTab(validInitial);
   }
 
+  // «Назад» после переключения вкладок: адрес меняли мимо роутера, и
+  // сам он о нём не узнает — слушаем popstate и подхватываем вкладку из
+  // адреса. Без этого кнопка «назад» меняла бы адрес, оставляя открытой
+  // прежнюю вкладку.
+  useEffect(() => {
+    function syncFromUrl() {
+      const fromUrl = new URLSearchParams(window.location.search).get("tab");
+      const next = tabs.find((t) => t.key === fromUrl)?.key ?? firstKey;
+      setActiveTab(next);
+    }
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, [firstKey, tabs]);
+
   return (
     <div>
       <div className="tab-bar-row profile-tab-row">
         <div className="tab-bar">
           {tabs.map((tab) => (
-            <button
+            <a
               key={tab.key}
-              type="button"
+              // Первая вкладка — это сам профиль без параметра: адрес
+              // /users/keetmine должен оставаться чистым.
+              href={tab.key === firstKey ? pathname : `${pathname}?tab=${tab.key}`}
               className={`tab-bar-item ${activeTab === tab.key ? "active" : ""}`}
-              onClick={() => setActiveTab(tab.key)}
+              aria-current={activeTab === tab.key ? "page" : undefined}
+              onClick={(e) => {
+                // Открыть в новой вкладке — пусть браузер делает своё.
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                e.preventDefault();
+                setActiveTab(tab.key);
+                window.history.pushState(
+                  null,
+                  "",
+                  tab.key === firstKey ? pathname : `${pathname}?tab=${tab.key}`,
+                );
+              }}
             >
               {tab.label}
-            </button>
+            </a>
           ))}
         </div>
       </div>
