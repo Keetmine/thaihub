@@ -165,6 +165,19 @@ cd /opt/myblhub
 docker compose exec app npx tsx scripts/mdl-sync-performers.ts
 ```
 
+**Если `npx tsx` вдруг отвечает «tsx: not found»**, значит образ собран
+без симлинка `node_modules/.bin/tsx` (npm не всегда создаёт его для
+пакета, поставленного под alias-именем — см. Dockerfile). Пересборка
+починит: теперь симлинк ставится руками, а `tsx --version` проверяет его
+прямо в сборке, так что сломанный образ до прода не доедет. Разовый
+обход без пересборки:
+
+```bash
+docker compose exec app sh -c \
+  'for p in node_modules/tsx-cli/dist/cli.mjs node_modules/tsx/dist/cli.mjs; do \
+     [ -f "$p" ] && exec node "$p" scripts/<name>.ts; done; echo "tsx в образе нет"'
+```
+
 Образ для этого несёт `scripts/`, `src/` и `tsconfig.json` (см. Dockerfile):
 скрипты импортируют `../src/lib` напрямую, а standalone-сборка исходников
 не содержит.

@@ -23,8 +23,8 @@ RUN npm run build
 # devDependency, доставляем отдельно, версию пиним из lockfile. Ставим под
 # alias-именем (tsx-cli@npm:tsx): прямое `npm install tsx --omit=dev` пакет
 # НЕ ставит — npm видит его в devDependencies и omit съедает даже явный
-# аргумент. Бинарь всё равно линкуется как node_modules/.bin/tsx, так что
-# `npx tsx` работает как раньше.
+# аргумент. Симлинк .bin/tsx под alias-именем npm создаёт не всегда,
+# поэтому ниже он ставится руками и тут же проверяется запуском.
 # typescript и @playwright/test npm ставит даже с --omit=dev (опциональные
 # peer-deps prisma/@prisma/client и next) — рантайму они не нужны:
 # prisma.config.ts грузится через c12/jiti без tsc, тестов в образе нет.
@@ -34,6 +34,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev \
   && npm install --no-save --no-audit --no-fund --omit=dev \
     "tsx-cli@npm:tsx@$(node -p "require('./package-lock.json').packages['node_modules/tsx'].version")" \
+  && ln -sf ../tsx-cli/dist/cli.mjs node_modules/.bin/tsx \
+  && chmod +x node_modules/tsx-cli/dist/cli.mjs \
+  && node node_modules/.bin/tsx --version \
   && rm -rf node_modules/typescript node_modules/@playwright \
   && rm -f node_modules/.bin/playwright
 
