@@ -3141,16 +3141,23 @@ button.hero-stat-toggle.is-open {
   opacity: 0;
   font-size: 0.95rem;
   color: #fff;
-  /* Анимируем только проявление. Плавная ШИРИНА оказалась вредной: чип
-     разворачивается влево, кнопка уезжает из-под курсора, тот теряет
-     наведение — и всё начинает мигать (поймано на клике в тестах). */
-  transition: opacity 0.15s ease;
+  /* Разворачивается плавно (просьба владельца: «слишком резко»):
+     ширина и проявление вместе, с лёгким выездом из-под числа.
+     Чип прибит к ПРАВОМУ краю постера, поэтому растёт он влево, а
+     «+» — самый правый — с места не двигается: курсор, подведённый к
+     плюсу, его не теряет. «−» выезжает слева, где курсора ещё нет. */
+  transform: scale(0.7);
+  transition:
+    width 0.18s ease,
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .poster-tile-cell:hover .episode-progress.is-card .episode-progress-step,
 .episode-progress.is-card .episode-progress-step:focus-visible {
   width: 1.4rem;
   opacity: 1;
+  transform: scale(1);
 }
 
 .episode-progress.is-card .episode-progress-step:hover:not(:disabled) {
@@ -3163,6 +3170,15 @@ button.hero-stat-toggle.is-open {
   .episode-progress.is-card .episode-progress-step {
     width: 1.4rem;
     opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Уважаем системную просьбу «поменьше движения»: разворот мгновенный. */
+@media (prefers-reduced-motion: reduce) {
+  .episode-progress.is-card .episode-progress-step {
+    transition: none;
+    transform: none;
   }
 }
 
