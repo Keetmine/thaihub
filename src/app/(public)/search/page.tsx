@@ -8,6 +8,7 @@ import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import { isPremiumActive } from "@/lib/premium";
 import EntityMiniCard from "@/components/EntityMiniCard";
+import EntityPosterCard from "@/components/EntityPosterCard";
 import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
 import FilterDisclosure from "@/components/filters/FilterDisclosure";
@@ -19,7 +20,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { agencyHref, locationHref, novelHref } from "@/lib/slugHelpers";
-import { dramaTitleWhere, performerNameWhere } from "@/lib/searchWhere";
+import { dramaTitleWhere, performerNameWhere, performerRealNameParen } from "@/lib/searchWhere";
 import {
   dramaFilterDefs,
   dramaFilterWhere,
@@ -203,10 +204,19 @@ async function SectionResults({
       prisma.performer.count({ where }),
     ]);
     total = count;
+    // Карточками, как на /artists (АА22): один и тот же человек в двух
+    // списках должен выглядеть одинаково, а плашка-строка теряла лицо —
+    // фото в ней было с ноготь. Настоящее имя — тихой строкой под ником.
     results = (
-      <div className="d-flex flex-wrap gap-2">
+      <div className="poster-grid">
         {rows.map((p) => (
-          <EntityMiniCard key={p.id} href={performerHref(p)} photoUrl={performerPhoto(p)} name={p.name} />
+          <EntityPosterCard
+            key={p.id}
+            href={performerHref(p)}
+            name={p.name}
+            photoUrl={performerPhoto(p)}
+            subtitle={performerRealNameParen(p)}
+          />
         ))}
       </div>
     );
@@ -593,9 +603,16 @@ async function AllSections({ q, t, locale }: { q: string; t: Dict; locale: Local
       </Section>
 
       <Section title={t.events.search.sectionArtists} count={performers.length}>
-        <div className="d-flex flex-wrap gap-2">
+        {/* Карточками, как на /artists и на вкладке «Артисты» (АА22). */}
+        <div className="poster-grid">
           {performers.map((p) => (
-            <EntityMiniCard key={p.id} href={performerHref(p)} photoUrl={performerPhoto(p)} name={p.name} />
+            <EntityPosterCard
+              key={p.id}
+              href={performerHref(p)}
+              name={p.name}
+              photoUrl={performerPhoto(p)}
+              subtitle={performerRealNameParen(p)}
+            />
           ))}
         </div>
       </Section>

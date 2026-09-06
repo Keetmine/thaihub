@@ -3,7 +3,12 @@
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
 import { prisma } from "@/lib/prisma";
-import { dramaTitleWhere, performerNameWhere, rankedMerge } from "@/lib/searchWhere";
+import {
+  dramaTitleWhere,
+  performerNameWhere,
+  performerRealNameParen,
+  rankedMerge,
+} from "@/lib/searchWhere";
 import { performerHref } from "@/lib/performerSlug";
 import { dramaHref } from "@/lib/dramaSlug";
 import { eventHref } from "@/lib/eventSlug";
@@ -34,6 +39,10 @@ export type LiveHit = {
   photoUrl: string | null;
   /** Круглая миниатюра — у людей; у постеров и мест — скруглённый квадрат. */
   round: boolean;
+  /** Настоящее имя артиста — рисуется серым в скобках сразу за ником
+   *  (АА21). Отдельным полем, а не внутри `name`: скобки должны быть
+   *  тише имени, а не одной с ним строкой в цвет. */
+  nameSuffix?: string | null;
 };
 
 /** По сколько строк на раздел в режиме «везде» и в одном разделе. */
@@ -158,6 +167,11 @@ export async function searchLive(rawQuery: string, section: LiveSection): Promis
       (p): LiveHit => ({
         kind: "performers",
         name: p.name,
+        // «Babe (Tanatat Phanviriyakool)»: ник и настоящее имя часто
+        // помнят вразнобой, и без подсказки человек не уверен, что нашёл
+        // того самого (АА21). Совпадающее с ником имя помощник не
+        // вернёт.
+        nameSuffix: performerRealNameParen(p),
         subtitle: null,
         href: performerHref(p),
         photoUrl: performerPhoto(p),

@@ -221,6 +221,12 @@ export default function SearchOverlay({ variant = "header" }: { variant?: "heade
                     )}
                     <span className="text-truncate">
                       <span className="text-white">{hit.name}</span>
+                      {/* Настоящее имя артиста серым в скобках (АА21):
+                          ник и паспортное имя помнят вразнобой, и без
+                          подсказки не понять, тот ли это человек. */}
+                      {hit.nameSuffix && (
+                        <span className="small text-secondary"> ({hit.nameSuffix})</span>
+                      )}
                       {hit.subtitle && (
                         <span className="small text-secondary"> · {hit.subtitle}</span>
                       )}

@@ -8,6 +8,7 @@ import AlphabetRail from "./AlphabetRail";
 import VisitedButton from "@/components/VisitedButton";
 import FavoriteButton from "@/components/FavoriteButton";
 import AddToListButton from "@/components/AddToListButton";
+import EntityPosterCard from "@/components/EntityPosterCard";
 
 export type AlphabetRow = {
   id: string;
@@ -129,59 +130,17 @@ export default function AlphabetDataList({
   );
 
   const renderCardCell = (row: AlphabetRow) => (
-    <div key={row.id} className="position-relative">
-      <AppLink href={row.href} className="text-decoration-none d-block">
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            aspectRatio: cardAspect,
-            borderRadius: "0.9rem",
-            background: "var(--bs-secondary-bg)",
-            overflow: "hidden",
-          }}
-        >
-          {row.photoUrl ? (
-            <UploadImage
-              src={row.photoUrl}
-              alt=""
-              sizes="(max-width: 575.98px) 45vw, 12rem"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <span
-              className="d-flex align-items-center justify-content-center h-100 font-display fw-bold"
-              style={{ fontSize: "2rem", color: "rgba(255,154,114,0.45)" }}
-              aria-hidden
-            >
-              {row.name.trim().charAt(0).toUpperCase()}
-            </span>
-          )}
-          {row.meta && (
-            <span
-              className="date-chip position-absolute"
-              style={{ left: "0.5rem", bottom: "0.5rem" }}
-            >
-              {row.meta}
-            </span>
-          )}
-        </div>
-        <p className="small text-white mb-0 mt-2 text-truncate" style={{ lineHeight: 1.3 }}>
-          {row.name}
-        </p>
-        {(row.nameSuffix || row.subtitle) && (
-          <p className="small text-secondary mb-0 text-truncate">
-            {row.nameSuffix ?? row.subtitle}
-          </p>
-        )}
-      </AppLink>
-      <div
-        className="position-absolute d-flex align-items-center gap-1"
-        style={{ top: "0.375rem", right: "0.375rem" }}
-      >
-        {actionButtons(row)}
-      </div>
-    </div>
+    <EntityPosterCard
+      key={row.id}
+      href={row.href}
+      name={row.name}
+      photoUrl={row.photoUrl}
+      subtitle={row.nameSuffix ?? row.subtitle}
+      meta={row.meta}
+      aspect={cardAspect}
+    >
+      {actionButtons(row)}
+    </EntityPosterCard>
   );
 
   const renderRowCell = (row: AlphabetRow) => (
