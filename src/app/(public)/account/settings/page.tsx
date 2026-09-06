@@ -113,8 +113,13 @@ export default async function SettingsPage({
                     владельца 2026-09-06): «как вы выглядите для друзей»
                     ничего не объясняло — поля и так говорят за себя. */}
                 <h2 className="section-heading mb-3">{ts.profileSection}</h2>
-                <div className="row g-4">
-                  <div className="col-12 col-sm-5 col-md-4 col-lg-3">
+                {/* Не сетка, а флекс: колонка-сетка была втрое шире
+                    самой рамки фото (она 11rem), и между фото и полями
+                    зияла пустота (правка владельца 2026-09-06). Здесь
+                    фото занимает ровно свою ширину, поля начинаются
+                    сразу за ним. */}
+                <div className="d-flex flex-column flex-sm-row gap-3">
+                  <div style={{ width: "11rem", flexShrink: 0 }}>
                     <FileDropzone
                       name="photoUrl"
                       label={s.photo}
@@ -124,7 +129,7 @@ export default async function SettingsPage({
                     />
                   </div>
 
-                  <div className="col-12 col-sm-7 col-md-8 col-lg-9 d-flex flex-column gap-3">
+                  <div className="flex-fill d-flex flex-column gap-3" style={{ minWidth: 0 }}>
                     <div className="row g-3">
                       <div className="col-12 col-lg-6">
                         <label className="form-label" htmlFor="settings-name">{s.name}</label>

@@ -1,5 +1,6 @@
 "use client";
 
+import DramaStatusSelect from "@/components/DramaStatusSelect";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import { useMemo, useState } from "react";
 import AppLink from "@/components/AppLink";
@@ -233,7 +234,16 @@ function Row({
         </AppLink>
       </div>
       <div className={styles.cols}>
-        <span className={styles.colStatus}>{t.catalog.watchStatus[row.status]}</span>
+        <span className={styles.colStatus}>
+          {/* В своём профиле статус меняется тут же — тем же выпадающим
+              списком, что в каталоге (правка владельца 2026-09-06).
+              В чужом это просто подпись. */}
+          {editable ? (
+            <DramaStatusSelect dramaId={row.id} status={row.status} />
+          ) : (
+            t.catalog.watchStatus[row.status]
+          )}
+        </span>
         <span className={styles.colType}>{row.type ? t.catalog.dramaType(row.type) : ""}</span>
         <span className={styles.colYear}>{row.year ?? ""}</span>
         <span className={styles.colCountry}>
