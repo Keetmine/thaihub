@@ -232,11 +232,8 @@ export const trips = {
 
         /** Три списка одной вкладки: дела, чемодан, покупки (АА10/АА11). */
         lists: {
-            quickAddTodo: "Add a thing to do…",
-            quickAddPacking: "Add a thing to pack…",
-            quickAddShopping: "Add a thing to buy…",
-            quickAddAria: "Add to the list",
-            withDate: "With a date…",
+            /** Кнопка добавления внутри вкладки чемодана и покупок. */
+            addButton: "+ Add",
             /** Сколько собрано — строкой над списком чемодана/покупок. */
             progress: (done: number, total: number) => `${done}/${total} packed`,
             addPackingTitle: "New item to pack",

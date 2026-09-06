@@ -1,7 +1,7 @@
 "use client";
 
 import type { TripTodoKind } from "@/generated/prisma/client";
-import { useId, useRef, useState, useTransition } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
 import Modal from "@/components/Modal";
@@ -280,7 +280,7 @@ export function AddTripTodoButton({
             завести ДЕЛО, и зовётся она по своему списку. Внутри
             чемодана и покупок рядом уже стоит быстрый ввод, и кнопка
             там — про то, чего он не умеет: дату и остальные поля. */}
-        {kind === "TODO" ? t.trips.todos.addButton : t.trips.todos.lists.withDate}
+        {kind === "TODO" ? t.trips.todos.addButton : t.trips.todos.lists.addButton}
       </button>
 
       <Modal
@@ -372,87 +372,6 @@ export function AddTripTodoButton({
 
 /** Вкладка «Дела»: список (невыполненные сверху). Кнопка добавления
  *  живёт в общем ряду действий над вкладками — здесь её нет. */
-/**
- * Быстрый ввод прямо в списке: поле и «+», Enter добавляет и оставляет
- * фокус на месте — чемодан набивают десятком строк подряд, и открывать
- * ради каждой модалку было мучением (правка владельца 2026-09-06).
- * Дата, видимость и «могут править другие» остаются в правке пункта и
- * в кнопке «С датой…» рядом.
- */
-function TripTodoQuickAdd({
-  tripId,
-  kind,
-}: {
-  tripId: string;
-  kind: TripTodoKind;
-}) {
-  const t = useT();
-  const l = t.trips.todos.lists;
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [text, setText] = useState("");
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  const placeholder =
-    kind === "PACKING" ? l.quickAddPacking : kind === "SHOPPING" ? l.quickAddShopping : l.quickAddTodo;
-
-  function add() {
-    const value = text.trim();
-    if (!value || pending) return;
-    setError(null);
-    // Список очищаем сразу: строка появится после refresh, а поле
-    // должно быть готово к следующей вещи немедленно.
-    setText("");
-    startTransition(async () => {
-      const fd = new FormData();
-      fd.set("text", value);
-      fd.set("kind", kind);
-      // Чемодан у каждого свой; остальное — как обычные записи.
-      fd.set("visibility", kind === "PACKING" ? "PRIVATE" : "PARTICIPANTS");
-      const result = await createTripTodo(tripId, fd);
-      if (!result.ok) {
-        setError(result.error);
-        setText(value);
-        return;
-      }
-      router.refresh();
-      inputRef.current?.focus();
-    });
-  }
-
-  return (
-    <div className="trip-quick-add">
-      <div className="d-flex align-items-center gap-2">
-        <input
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
-          className="form-control"
-          placeholder={placeholder}
-          aria-label={l.quickAddAria}
-        />
-        <button
-          type="button"
-          className="btn btn-primary flex-shrink-0"
-          onClick={add}
-          disabled={pending || !text.trim()}
-          aria-label={l.quickAddAria}
-        >
-          +
-        </button>
-      </div>
-      {error && <p className="small text-danger mb-0 mt-1">{error}</p>}
-    </div>
-  );
-}
-
 export default function TripTodos({
   todos,
   tripId,
@@ -491,7 +410,9 @@ export default function TripTodos({
   });
 
   return (
-    <div style={{ maxWidth: "44rem" }}>
+    // Во всю ширину колонки (правка владельца 2026-09-06): у чемодана
+    // строки короткие, и узкая колонка гнала список в длинную простыню.
+    <div>
       {/* Сколько собрано — только у чемодана и покупок: в списке дел
           «собрано 2 из 5» звучало бы про вещи, а не про дела. */}
       {activeList !== "TODO" && sorted.length > 0 && (
@@ -499,15 +420,13 @@ export default function TripTodos({
           {l.progress(sorted.filter((item) => item.done).length, sorted.length)}
         </p>
       )}
-      {/* Чемодан и покупки набивают прямо здесь: поле, Enter, следующая
-          строка. У списка дел добавление осталось общей кнопкой в ряду
-          над вкладками — дело заводят и с плана, и из «Что посетить»
-          (правки владельца 2026-09-06). */}
+      {/* Чемодан и покупки добавляют здесь же, своей кнопкой: у списка
+          дел она осталась в общем ряду над вкладками — дело заводят и с
+          плана, и из «Что посетить» (правки владельца 2026-09-06).
+          Быстрый ввод строкой был и убран по её же просьбе: одна
+          понятная кнопка вместо поля с неявным Enter. */}
       {canAdd && activeList !== "TODO" && (
-        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-          <div className="flex-fill" style={{ minWidth: "16rem" }}>
-            <TripTodoQuickAdd tripId={tripId} kind={activeList} />
-          </div>
+        <div className="mb-3">
           <AddTripTodoButton
             tripId={tripId}
             kind={activeList}
