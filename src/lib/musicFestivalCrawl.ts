@@ -8,6 +8,8 @@ import {
   scrapeMusicFestivalListing,
   scrapeMusicFestivalPage,
   type MusicFestival,
+  type MusicFestivalShowtimeSlot,
+  scrapeMusicFestivalShowtime,
   type MusicFestivalCard,
 } from "@/lib/musicFestival";
 import { matchFestivalArtists, type MatchedFestivalArtist } from "@/lib/performerMatching";
@@ -96,17 +98,17 @@ function slugFromUrl(url: string): string {
   return url.split("/").filter(Boolean).pop() ?? "festival";
 }
 
-/** Описание для Event.description: текст со страницы + жанры и
- *  организатор строками в конце (своих полей у Event нет). */
+/** Описание для Event.description — ТОЛЬКО текст со страницы. Жанры и
+ *  организатор раньше дописывались сюда строками, потому что своих
+ *  полей у Event не было; теперь они лежат в `tags` и `organizer`
+ *  (правка владельца 2026-09-06). */
 function buildDescription(f: MusicFestival): string | null {
-  const parts: string[] = [];
-  if (f.description) parts.push(f.description);
-  const meta: string[] = [];
-  if (f.genres.length) meta.push(`Genres: ${f.genres.join(", ")}`);
-  if (f.organizer) meta.push(`Organizer: ${f.organizer}`);
-  if (meta.length) parts.push(meta.join("\n"));
-  return parts.join("\n\n") || null;
+  return f.description || null;
 }
+
+/** Сколько афиш расписания забираем в фотоблок события. Их на странице
+ *  бывает больше, а форма события рассчитана на три снимка. */
+const SHOWTIME_PHOTO_LIMIT = 3;
 
 /**
  * Обходит один список (будущие или прошедшие), заводит события по новым
@@ -361,6 +363,28 @@ async function createFestivalEvent(
     localBase: `musicfestival-${slug}`,
   });
 
+  // Подробное расписание по сценам, если у фестиваля оно есть: из него
+  // берутся день, время и сцена каждого выступления (правка владельца
+  // 2026-09-06). Отдельная страница — отдельный запрос, поэтому только
+  // когда сайт дал на неё ссылку; не открылась — молча обходимся
+  // пометками «DAY N» с карточек лайнапа, как раньше.
+  const showtime: MusicFestivalShowtimeSlot[] = festival.showtimeUrl
+    ? await scrapeMusicFestivalShowtime(festival.showtimeUrl)
+        .then((r) => r.slots)
+        .catch(() => [])
+    : [];
+
+  // Афиши раздела Showtime — в фотоблок события (правка владельца
+  // 2026-09-06). Своё имя файла, как у постера: у сайта они называются
+  // showtime-1.jpg у каждого фестиваля.
+  const showtimePhotos: string[] = [];
+  for (const [i, url] of festival.showtimeImages.slice(0, SHOWTIME_PHOTO_LIMIT).entries()) {
+    const local = await downloadRemoteImage(url, "posters", {
+      localBase: `musicfestival-${slug}-showtime-${i + 1}`,
+    });
+    if (local) showtimePhotos.push(local);
+  }
+
   const photos = new Map<string, string | null>();
   for (const artist of toCreate) {
     const photo = festival.lineup.find((a) => a.url === artist.url)?.photoUrl ?? null;
@@ -430,12 +454,30 @@ async function createFestivalEvent(
         if (existing) performerIdByUrl.set(artist.url, existing.id);
       }
     }
-    const dayLineups = festival.dates.map(() => new Set<string>());
+    // Состав дня собираем из ДВУХ источников, и подробное расписание
+    // главнее: у фестиваля с расписанием по сценам оно знает не только
+    // день, но и время со сценой, а пометка «DAY 2» на карточке лайнапа
+    // — только день. Слоты расписания идут первыми, пометки добирают
+    // тех, кого в расписании не оказалось.
+    const dayLineups: Map<string, { timeText: string | null; stage: string | null }>[] =
+      festival.dates.map(() => new Map());
+    for (const slot of showtime) {
+      const id = slot.artistUrl ? performerIdByUrl.get(slot.artistUrl) : undefined;
+      if (!id || slot.dayIndex < 0 || slot.dayIndex >= festival.dates.length) continue;
+      // Один артист может играть в этот день дважды (разные сцены) —
+      // строка в составе дня одна, оставляем первое выступление.
+      if (!dayLineups[slot.dayIndex].has(id)) {
+        dayLineups[slot.dayIndex].set(id, { timeText: slot.timeText, stage: slot.stage });
+      }
+    }
     for (const a of festival.lineup) {
       const id = performerIdByUrl.get(a.url);
-      if (a.day && id && a.day >= 1 && a.day <= festival.dates.length) dayLineups[a.day - 1].add(id);
+      if (!a.day || !id || a.day < 1 || a.day > festival.dates.length) continue;
+      if (!dayLineups[a.day - 1].has(id)) {
+        dayLineups[a.day - 1].set(id, { timeText: null, stage: null });
+      }
     }
-    const hasDayLineups = festival.dates.length > 1 && dayLineups.some((s) => s.size > 0);
+    const hasDayLineups = festival.dates.length > 1 && dayLineups.some((m) => m.size > 0);
 
     const event = await tx.event.create({
       data: {
@@ -447,6 +489,15 @@ async function createFestivalEvent(
         presaleUrl: ticketLink,
         posterUrl,
         locationId: location?.id ?? null,
+        // Отдельными полями, а не строками в описании (правка
+        // владельца 2026-09-06).
+        organizer: festival.organizer,
+        address: festival.venueCity,
+        mapsUrl: festival.venueMapsUrl,
+        tags: festival.genres,
+        photos: {
+          create: showtimePhotos.map((url, sort) => ({ url, sort })),
+        },
         occurrences: {
           // Времени сайт не даёт: 00:00 + hasTime=false, как пустое
           // «Начало» в форме события.
@@ -455,7 +506,11 @@ async function createFestivalEvent(
             hasTime: false,
             lineup: {
               create: hasDayLineups
-                ? [...dayLineups[i]].map((performerId) => ({ performerId }))
+                ? [...dayLineups[i]].map(([performerId, slot]) => ({
+                    performerId,
+                    timeText: slot.timeText,
+                    stage: slot.stage,
+                  }))
                 : [],
             },
           })),

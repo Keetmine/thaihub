@@ -32,6 +32,20 @@ model Event {
   // ThaiTicketMajor list several tiers as one string.
   ticketPrice          String?
   posterUrl            String?
+  // Кто проводит (GMM Show, Eventpop…). Отдельным полем, а не строкой в
+  // описании: по нему видно организатора в карточке и его можно
+  // показывать/фильтровать (правка владельца 2026-09-06).
+  organizer            String?
+  // Адрес площадки текстом — район и город со страницы источника;
+  // `venue` остаётся отображаемым названием.
+  address              String?
+  // Ссылка «посмотреть на карте». Ведёт в Google Maps (источники дают
+  // короткие maps.app.goo.gl) — на странице события название площадки
+  // становится ссылкой.
+  mapsUrl              String?
+  // Жанры/теги события: у фестивалей источник отдаёт их списком, и
+  // раньше они уходили в описание текстом.
+  tags                 String[]
   // Optional tie-in to a drama this event is about (premiere screening,
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
   dramaId              String?
@@ -365,6 +379,15 @@ model OccurrenceLineup {
   performerId  String
   occurrence   EventOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
   performer    Performer       @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  // Когда выступает — строкой, как на афише («16:00-16:45»). Не
+  // датой-временем намеренно: источники дают диапазон текстом, у части
+  // артистов время не объявлено вовсе, а витрине хватает первого
+  // «ЧЧ:ММ» из строки, чтобы выстроить день по порядку (правка
+  // владельца 2026-09-06, расписание фестиваля по сценам).
+  timeText     String?
+  // Сцена фестиваля («Monster Stage»): в один час на разных сценах
+  // играют разные артисты, и без неё расписание дня читается неверно.
+  stage        String?
 
   @@id([occurrenceId, performerId])
   @@index([performerId])

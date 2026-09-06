@@ -240,6 +240,8 @@ export function eventJsonLd(e: {
   slug: string | null;
   title: string;
   venue: string;
+  address?: string | null;
+  organizer?: string | null;
   description: string | null;
   posterUrl: string | null;
   presaleAt: Date | null;
@@ -271,10 +273,18 @@ export function eventJsonLd(e: {
       "@type": "Place",
       name: e.venue,
       // Площадка в базе — свободная строка («Impact Arena, Muang Thong
-      // Thani»), отдельных полей города/улицы нет; страна известна
-      // всегда — весь каталог тайский.
-      address: { "@type": "PostalAddress", streetAddress: e.venue, addressCountry: "TH" },
+      // Thani»); отдельный адрес есть не у всех событий, тогда в
+      // streetAddress идёт та же строка. Страна известна всегда — весь
+      // каталог тайский.
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: e.address || e.venue,
+        addressCountry: "TH",
+      },
     },
+    ...(e.organizer
+      ? { organizer: { "@type": "Organization", name: e.organizer } }
+      : {}),
     ...(e.posterUrl ? { image: absoluteImage(e.posterUrl) } : {}),
     ...(e.description ? { description: e.description.slice(0, 500) } : {}),
     ...(e.performers?.length

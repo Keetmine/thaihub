@@ -1450,6 +1450,29 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   font-size: 0.6rem;
 }
 
+/* Время и сцена прямо в чипе лайнапа дня (админка событий): поле должно
+   читаться как часть чипа, а не как ещё один form-control — иначе
+   тридцать участников фестиваля превращают блок в частокол рамок. */
+.performer-chip-input {
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0 0.15rem;
+  min-width: 0;
+}
+
+.performer-chip-input::placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 0.6;
+}
+
+.performer-chip-input:focus {
+  outline: none;
+  border-bottom-color: var(--bs-primary);
+}
+
 .performer-chip-remove {
   border: none;
   background: transparent;

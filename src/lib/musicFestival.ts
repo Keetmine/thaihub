@@ -18,7 +18,9 @@ import type { AnyNode } from "domhandler";
 //    «12–13 December 2026»), описание (либо один `<p>` с переносами,
 //    либо HTML-блок с абзацами), секция Lineup (карточки-ссылки
 //    /en/artists/<слаг> с фото и именем; на странице лежит ВЕСЬ состав,
-//    кнопка «See all» лишь меняет ленту на сетку), боковая колонка:
+//    кнопка «See all» лишь меняет ленту на сетку), секции-галереи с
+//    h2 «Showtime» (афиши расписания, `…/<слаг>/showtime/…`), «Gallery»
+//    и «Previous» (прошлые годы), боковая колонка:
 //    Venue (название, город, ссылка на Google Maps), Organizer, Tickets
 //    (тарифы с ценой в THB + кнопки продавцов), постер — og:image;
 //  - страница артиста /en/artists/<слаг> — имя, фото, жанры и списки
@@ -95,6 +97,9 @@ export type MusicFestival = {
   lineup: MusicFestivalLineupArtist[];
   /** Расписание по дням (/en/showtime/…), если у фестиваля есть. */
   showtimeUrl: string | null;
+  /** Картинки-афиши из секции «Showtime» (абсолютные адреса, в порядке
+   *  страницы). Галереи нет — пустой массив. */
+  showtimeImages: string[];
   venueName: string | null;
   venueCity: string | null;
   venueMapsUrl: string | null;
@@ -473,6 +478,40 @@ export function parseMusicFestivalPage(html: string, url: string): MusicFestival
     });
   }
 
+  // Галерея Showtime — расписание, выложенное картинками (у Monster два
+  // дня — две афиши). Признак составной, из двух независимых опор:
+  //  1) секция, чей h2 — «Showtime» (та же опора, что у Lineup);
+  //  2) путь картинки `/media/festivals/<слаг>/showtime/…` — в этой папке
+  //     сайт держит только афиши расписания.
+  // По одной опоре было бы хрупко: заголовок секции сайт может
+  // переименовать или перевести, а имена файлов внутри папки
+  // произвольные («showtime-1.jpg» у Monster, «rock-showtime-update.jpeg»
+  // у GFest) — цепляться за них нельзя. Совпало любое — картинка наша.
+  // Это важно, потому что рядом на той же странице лежат ЧУЖИЕ картинки,
+  // которые нельзя перепутать: обложка `/cover.jpg` и логотип шапки,
+  // `/highlight.jpg` между описанием и лайнапом, соседняя секция
+  // «Gallery» (`/gallery/…`, `/show.jpg`), галерея прошлых лет
+  // `/previous/…` и десятки фото артистов лайнапа `/media/artists/…`.
+  const showtimeSection = $("main h2")
+    .filter((_, el) => cleanText($(el).text()).toLowerCase() === "showtime")
+    .first()
+    .closest("section");
+  const showtimeNode = showtimeSection.get(0) ?? null;
+  const showtimeImages: string[] = [];
+  const seenShowtimeImages = new Set<string>();
+  $("main img").each((_, el) => {
+    const img = $(el);
+    const src = img.attr("src") ?? "";
+    if (!src) return;
+    const inSection = showtimeNode !== null && img.closest("section").get(0) === showtimeNode;
+    const inFolder = /\/media\/festivals\/[^/]+\/showtime\//i.test(src);
+    if (!inSection && !inFolder) return;
+    const abs = absoluteMediaUrl(src);
+    if (!abs || seenShowtimeImages.has(abs)) return;
+    seenShowtimeImages.add(abs);
+    showtimeImages.push(abs);
+  });
+
   // Боковая колонка.
   let venueName: string | null = null;
   let venueCity: string | null = null;
@@ -525,6 +564,7 @@ export function parseMusicFestivalPage(html: string, url: string): MusicFestival
     lineupCount,
     lineup,
     showtimeUrl,
+    showtimeImages,
     venueName,
     venueCity,
     venueMapsUrl,
@@ -556,6 +596,211 @@ export function formatTicketPrice(tickets: MusicFestivalTicketTier[]): string | 
   const sameCurrency = currencies.size === 1 && parts.length === tickets.length;
   const allParsed = tickets.every((t) => /^([\d.,]+)\s*([A-Za-z฿]+)$/.test(t.price));
   return sameCurrency && allParsed ? `${parts.join(" / ")} ${[...currencies][0]}` : parts.join(" / ");
+}
+
+// ------------------------------------------------------ страница расписания
+
+/** Один выход на сцену в сетке /en/showtime/<слаг>. */
+export type MusicFestivalShowtimeSlot = {
+  /** Подпись дня, как на странице («25 Jul»). */
+  dayLabel: string;
+  /** Порядок дня в сетке, 0-based. */
+  dayIndex: number;
+  /** Название сцены («Monster Stage»). */
+  stage: string;
+  artistName: string;
+  /** Канонический адрес страницы артиста; null — ссылка не на артиста. */
+  artistUrl: string | null;
+  /** Слот, как на карточке («16:00-16:45»); null — времени на ней нет. */
+  timeText: string | null;
+};
+
+export type MusicFestivalShowtime = {
+  sourceUrl: string;
+  /** Подписи дней в порядке сетки. */
+  dayLabels: string[];
+  slots: MusicFestivalShowtimeSlot[];
+};
+
+/** Инлайновая ширина элемента в px: `width:150px`. `min-width` не
+ *  считается — перед `width:` должно быть начало строки или `;`. */
+function inlineWidthPx($: CheerioAPI, el: AnyNode): number | null {
+  const style = $(el).attr("style");
+  if (!style) return null;
+  const m = style.match(/(?:^|;)\s*width:\s*([\d.]+)px/i);
+  return m ? parseFloat(m[1]) : null;
+}
+
+function isInside($: CheerioAPI, el: AnyNode, ancestor: AnyNode): boolean {
+  return $(el)
+    .parents()
+    .toArray()
+    .some((p) => p === ancestor);
+}
+
+/** Разбивает элементы на группы по общему родителю, порядок сохраняется. */
+function groupByParent($: CheerioAPI, els: AnyNode[]): AnyNode[][] {
+  const groups = new Map<AnyNode, AnyNode[]>();
+  for (const el of els) {
+    const parent = $(el).parent().get(0);
+    if (!parent) continue;
+    const group = groups.get(parent);
+    if (group) group.push(el);
+    else groups.set(parent, [el]);
+  }
+  return [...groups.values()];
+}
+
+function mostCommonNumber(values: (number | null)[]): number | null {
+  const counts = new Map<number, number>();
+  for (const v of values) {
+    if (v === null) continue;
+    counts.set(v, (counts.get(v) ?? 0) + 1);
+  }
+  let best: number | null = null;
+  let bestCount = 0;
+  for (const [v, c] of counts) {
+    if (c > bestCount) {
+      best = v;
+      bestCount = c;
+    }
+  }
+  return best;
+}
+
+/**
+ * Разбирает сетку расписания /en/showtime/<слаг> (адрес отдаёт
+ * `parseMusicFestivalPage` полем `showtimeUrl`): кто, на какой сцене, в
+ * какой день и во сколько выступает.
+ *
+ * Разметка — не таблица, а три ряда абсолютно спозиционированных
+ * колонок с инлайновыми стилями: ряд подписей дней («25 Jul», «26 Jul»),
+ * ряд названий сцен («Monster Stage», …, по четыре на день) и сам грид,
+ * где в каждой колонке-сцене лежат карточки-ссылки на артистов со
+ * временем. У всех трёх рядов первая ячейка — узкая линейка времени
+ * слева, её надо пропускать.
+ *
+ * Как связываем колонку со сценой и днём. Напрашивается «в документе
+ * шестнадцать блоков width:150px, первые восемь — шапки, последние
+ * восемь — колонки», но это держится на глобальном порядке: любой
+ * лишний блок той же ширины (второй, мобильный вариант шапки; блок в
+ * футере) всё сдвинет. Поэтому опираемся на структуру и на арифметику
+ * самой вёрстки:
+ *  - колонка — прямой родитель карточки, а ряд колонок — их общий
+ *    родитель; ширина колонки берётся с страницы (не константа 150),
+ *    и по ней в ряду добираются ПУСТЫЕ колонки — сцена, на которой в
+ *    этот день никто не играет, иначе сдвинула бы всё соответствие;
+ *  - ряд сцен — группа блоков той же ширины с общим родителем ВНЕ
+ *    грида, где ячеек ровно столько же, сколько колонок;
+ *  - ряд дней — группа блоков с общим родителем, ширина каждого кратна
+ *    ширине колонки, а сумма ширин равна ширине всего грида. Ширина
+ *    подписи дня — это и есть число его сцен (600 = 4 × 150), так что
+ *    раскладка переживёт фестиваль, где в первый день три сцены, а во
+ *    второй пять: делить колонки поровну между днями было бы неверно.
+ *
+ * Ничего не достраиваем: колонка без сцены или без дня — слот
+ * пропускается (лучше меньше, чем не в тот день), карточка без времени —
+ * `timeText: null`.
+ */
+export function parseMusicFestivalShowtime(html: string, url: string): MusicFestivalShowtime {
+  const $ = cheerio.load(html);
+  const sourceUrl = absoluteMediaUrl(url) ?? url;
+  const empty: MusicFestivalShowtime = { sourceUrl, dayLabels: [], slots: [] };
+
+  const cardEls = $('main a[href*="/artists/"]').toArray();
+  if (cardEls.length === 0) return empty;
+
+  // Колонки, в которых что-то стоит: уникальные родители карточек.
+  const cardColumns: AnyNode[] = [];
+  const seenColumns = new Set<AnyNode>();
+  for (const card of cardEls) {
+    const parent = $(card).parent().get(0);
+    if (!parent || seenColumns.has(parent)) continue;
+    seenColumns.add(parent);
+    cardColumns.push(parent);
+  }
+  const bodyRow = $(cardColumns[0]).parent();
+  const bodyRowNode = bodyRow.get(0) ?? null;
+  if (!bodyRowNode) return empty;
+
+  const colWidth = mostCommonNumber(cardColumns.map((c) => inlineWidthPx($, c)));
+  if (colWidth === null || colWidth <= 0) return empty;
+
+  // Все колонки ряда, включая пустые.
+  let columns: AnyNode[] = bodyRow
+    .children()
+    .toArray()
+    .filter((el) => inlineWidthPx($, el) === colWidth);
+  if (!cardColumns.every((c) => columns.includes(c))) columns = cardColumns;
+
+  const outside = $("main div[style]")
+    .toArray()
+    .filter((el) => el !== bodyRowNode && !isInside($, el, bodyRowNode));
+
+  const stageRow =
+    groupByParent(
+      $,
+      outside.filter((el) => inlineWidthPx($, el) === colWidth),
+    ).find((group) => group.length === columns.length) ?? null;
+
+  const gridWidth = colWidth * columns.length;
+  const dayRow =
+    groupByParent(
+      $,
+      outside.filter((el) => {
+        const w = inlineWidthPx($, el);
+        return w !== null && w > colWidth && Math.abs(w % colWidth) < 0.001;
+      }),
+    ).find(
+      (group) =>
+        Math.abs(group.reduce((sum, el) => sum + (inlineWidthPx($, el) ?? 0), 0) - gridWidth) < 0.001,
+    ) ?? null;
+
+  const dayLabels = dayRow ? dayRow.map((el) => cleanText($(el).text())) : [];
+  // Колонка → день: подпись дня накрывает столько колонок, во сколько
+  // раз она шире колонки.
+  const dayOfColumn: number[] = [];
+  if (dayRow) {
+    dayRow.forEach((el, dayIndex) => {
+      const span = Math.round((inlineWidthPx($, el) ?? 0) / colWidth);
+      for (let i = 0; i < span; i += 1) dayOfColumn.push(dayIndex);
+    });
+  }
+
+  const slots: MusicFestivalShowtimeSlot[] = [];
+  for (const card of cardEls) {
+    const a = $(card);
+    const columnNode = a.parent().get(0);
+    const column = columnNode ? columns.indexOf(columnNode) : -1;
+    if (column < 0) continue;
+    const stage = stageRow ? cleanText($(stageRow[column]).text()) : "";
+    const dayIndex = dayOfColumn[column] ?? -1;
+    const dayLabel = dayIndex >= 0 ? dayLabels[dayIndex] ?? "" : "";
+    if (!stage || !dayLabel) continue;
+
+    // На карточке два span'а: слот времени и имя; у части карточек
+    // времени нет — тогда единственный span это имя.
+    const texts = a
+      .find("span")
+      .map((_, el) => cleanText($(el).text()))
+      .get()
+      .filter(Boolean);
+    const timeText = texts.find((t) => /^\d{1,2}:\d{2}/.test(t)) ?? null;
+    const artistName =
+      texts.find((t) => t !== timeText) || cleanText(a.find("img").first().attr("alt") ?? "");
+    if (!artistName) continue;
+
+    slots.push({
+      dayLabel,
+      dayIndex,
+      stage,
+      artistName,
+      artistUrl: canonicalMusicFestivalArtistUrl(a.attr("href") ?? ""),
+      timeText,
+    });
+  }
+
+  return { sourceUrl, dayLabels, slots };
 }
 
 // --------------------------------------------------------- страница артиста
@@ -638,4 +883,8 @@ export async function scrapeMusicFestivalPage(url: string): Promise<MusicFestiva
 
 export async function scrapeMusicFestivalArtist(url: string): Promise<MusicFestivalArtist> {
   return parseMusicFestivalArtist(await fetchHtml(url), url);
+}
+
+export async function scrapeMusicFestivalShowtime(url: string): Promise<MusicFestivalShowtime> {
+  return parseMusicFestivalShowtime(await fetchHtml(url), url);
 }

@@ -91,6 +91,10 @@ export default async function EditEventPage({
         defaultValues={{
           title: event.title,
           venue: event.venue,
+          organizer: event.organizer ?? "",
+          address: event.address ?? "",
+          mapsUrl: event.mapsUrl ?? "",
+          tags: event.tags.join(", "),
           description: event.description ?? "",
           occurrences: event.occurrences.map((o) => ({
             id: o.id,
@@ -101,6 +105,8 @@ export default async function EditEventPage({
               id: l.performer.id,
               name: performerOptionLabel(l.performer),
               photoUrl: l.performer.photoUrl,
+              timeText: l.timeText ?? "",
+              stage: l.stage ?? "",
             })),
           })),
           performerIds: event.performers.map((p) => p.performerId),

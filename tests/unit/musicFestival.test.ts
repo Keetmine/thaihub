@@ -10,12 +10,15 @@ import {
   parseMusicFestivalDates,
   parseMusicFestivalListing,
   parseMusicFestivalPage,
+  parseMusicFestivalShowtime,
 } from "../../src/lib/musicFestival";
 
 // Парсер musicfestival.in.th (docs/features/musicfestival-import.md) —
-// на сохранённых фрагментах живых страниц (2026-09-05; вырезаны только
-// <script>/<style>/<link> и футер, у «богатого» фестиваля лента лайнапа
-// обрезана до четырёх карточек). Без сети и без БД. Запуск:
+// на сохранённых фрагментах живых страниц (2026-09-05, галерея Showtime
+// — 2026-09-06; вырезаны только <script>/<style>/<link> и футер, у
+// «богатого» фестиваля лента лайнапа обрезана до четырёх карточек, у
+// Monster оставлены галереи и по паре соседних чужих картинок). Без сети
+// и без БД. Запуск:
 //
 //   npx tsx tests/unit/musicFestival.test.ts
 
@@ -156,6 +159,11 @@ assert.equal(bwl.venue, "Lan Ratchasiha-Ma, Pak Chong, Nakhon Ratchasima");
 assert.equal(bwl.organizer, null, "блока Organizer на этой странице нет");
 assert.equal(bwl.showtimeUrl, null);
 assert.deepEqual(
+  bwl.showtimeImages,
+  [],
+  "секции Showtime нет — пустой массив, картинки соседней «Gallery» в него не попадают",
+);
+assert.deepEqual(
   bwl.tickets.map((t) => [t.name, t.price]),
   [["Pre Early Bird", "690 THB"], ["Early Bird", "990 THB"], ["General", "1,800 THB"]],
 );
@@ -191,6 +199,15 @@ assert.deepEqual(
 );
 assert.ok(gfest.lineup.every((a) => !/^\d{1,2}:\d{2}/.test(a.name) && !/^day/i.test(a.name)));
 assert.equal(gfest.showtimeUrl, "https://www.musicfestival.in.th/en/showtime/gfest-marathon-2026");
+assert.deepEqual(
+  gfest.showtimeImages,
+  [
+    "https://www.musicfestival.in.th/media/festivals/gfest-marathon-2026/showtime/pop-showtime.jpg",
+    "https://www.musicfestival.in.th/media/festivals/gfest-marathon-2026/showtime/rock-showtime-update.jpeg",
+    "https://www.musicfestival.in.th/media/festivals/gfest-marathon-2026/showtime/rock-showtime.jpg",
+  ],
+  "имена файлов афиш произвольные — опора на папку showtime/ и заголовок секции, а не на «showtime-N»",
+);
 assert.equal(gfest.organizer, "GMM Show");
 assert.equal(gfest.venue, "IMPACT Arena, Pak Kret, Nonthaburi");
 assert.equal(gfest.tickets[0].name, "Zone A");
@@ -199,6 +216,103 @@ assert.deepEqual(
   gfest.ticketLinks,
   [{ label: "Thai Ticket Major", url: null }],
   "у прошедшего фестиваля кнопка продавца отключена: название есть, ссылки нет",
+);
+
+// --- страница фестиваля: галерея Showtime среди чужих картинок ---
+
+const monster = parseMusicFestivalPage(
+  fixture("musicfestival-festival-showtime.html"),
+  "https://www.musicfestival.in.th/en/festivals/monster-music-festival-2026",
+);
+assert.equal(monster.title, "Monster Music Festival 2026");
+assert.deepEqual(monster.dates, ["2026-07-25", "2026-07-26"]);
+assert.equal(monster.showtimeUrl, "https://www.musicfestival.in.th/en/showtime/monster-music-festival-2026");
+assert.deepEqual(
+  monster.showtimeImages,
+  [
+    "https://www.musicfestival.in.th/media/festivals/monster-music-festival-2026/showtime/showtime-1.jpg",
+    "https://www.musicfestival.in.th/media/festivals/monster-music-festival-2026/showtime/showtime-2.jpg",
+  ],
+  "две афиши секции Showtime, абсолютными адресами и в порядке страницы",
+);
+// Ловушки — соседние картинки той же страницы: обложка, логотип шапки,
+// highlight между описанием и лайнапом, фото артиста из лайнапа,
+// картинка секции «Gallery» и галерея прошлых лет «Previous».
+for (const trap of ["/cover.jpg", "/logo.png", "/highlight.jpg", "/media/artists/", "/show.jpg", "/previous/"]) {
+  assert.ok(
+    !monster.showtimeImages.some((u) => u.includes(trap)),
+    `чужая картинка ${trap} в галерею Showtime не попала`,
+  );
+}
+assert.equal(
+  monster.posterUrl,
+  "https://www.musicfestival.in.th/media/festivals/monster-music-festival-2026/thumbnail.jpg",
+  "постер по-прежнему из og:image, а не из галереи",
+);
+
+// --- страница расписания (/en/showtime/…) ---
+
+// Фикстура — честный фрагмент сетки Monster: обе шапки целиком (два дня
+// по четыре сцены) и все восемь колонок; карточки оставлены только в
+// четырёх колонках, остальные пустые — как у сцены, где в этот день
+// никто не играет.
+const showtime = parseMusicFestivalShowtime(
+  fixture("musicfestival-showtime.html"),
+  "/en/showtime/monster-music-festival-2026",
+);
+assert.equal(showtime.sourceUrl, "https://www.musicfestival.in.th/en/showtime/monster-music-festival-2026");
+assert.deepEqual(showtime.dayLabels, ["25 Jul", "26 Jul"]);
+assert.equal(showtime.slots.length, 5, "по карточке на каждую оставленную ссылку артиста");
+assert.deepEqual(
+  showtime.slots[0],
+  {
+    dayLabel: "25 Jul",
+    dayIndex: 0,
+    stage: "Monster Stage",
+    artistName: "Tattoo Colour",
+    artistUrl: "https://www.musicfestival.in.th/en/artists/tattoo-colour",
+    timeText: "15:00-15:45",
+  },
+  "первая колонка — первый день и своя сцена, время разобрано",
+);
+assert.deepEqual(
+  showtime.slots[2],
+  {
+    dayLabel: "25 Jul",
+    dayIndex: 0,
+    stage: "Play Stage",
+    artistName: "2Ectasy & Jeffy & Kakagoesbackhome",
+    artistUrl: "https://www.musicfestival.in.th/en/artists/2ectasy-jeffy-kakagoesbackhome",
+    timeText: null,
+  },
+  "карточка без времени — timeText null; пустая соседняя колонка сцену не сдвинула",
+);
+const secondDay = showtime.slots.find((s) => s.artistName === "Tilly Birds");
+assert.deepEqual(
+  secondDay,
+  {
+    dayLabel: "26 Jul",
+    dayIndex: 1,
+    stage: "Monster Stage",
+    artistName: "Tilly Birds",
+    artistUrl: "https://www.musicfestival.in.th/en/artists/tilly-birds",
+    timeText: "14:00-14:45",
+  },
+  "пятая колонка — уже второй день (подпись дня шире колонки ровно на число своих сцен)",
+);
+assert.equal(
+  showtime.slots.find((s) => s.artistName === "Fool Step")?.stage,
+  "Ground Stage",
+  "восьмая колонка — последняя сцена второго дня",
+);
+assert.ok(
+  showtime.slots.every((s) => s.dayLabel && s.stage && s.artistName),
+  "слот без дня, сцены или имени не возвращается",
+);
+assert.deepEqual(
+  parseMusicFestivalShowtime("<html><body><main><p>no grid</p></main></body></html>", "/en/showtime/x"),
+  { sourceUrl: "https://www.musicfestival.in.th/en/showtime/x", dayLabels: [], slots: [] },
+  "сетки нет — ничего не выдумываем",
 );
 
 // --- страница артиста ---
@@ -218,5 +332,6 @@ assert.equal(loso.festivals.length, 2);
 
 console.log(
   `ok: musicFestival (список ${listing.cards.length}, лайнап ${bwl.lineup.length}/${bwl.lineupCount}, ` +
-    `тарифов ${bwl.tickets.length}, артист ${loso.name})`,
+    `тарифов ${bwl.tickets.length}, афиш Showtime ${monster.showtimeImages.length}, ` +
+    `слотов расписания ${showtime.slots.length}, артист ${loso.name})`,
 );

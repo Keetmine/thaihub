@@ -90,6 +90,70 @@ export async function fetchPairingsAmong(performerIds: string[]): Promise<Pairin
   });
 }
 
+/** Слот расписания: когда и на какой сцене выступает исполнитель
+ *  (OccurrenceLineup.timeText/stage — обе строки свободные). */
+export type LineupSlot = { timeText?: string | null; stage?: string | null };
+
+/**
+ * Минуты от начала фестивального дня по строке времени с афиши
+ * («16:00-16:45», «00:30»). Ночные слоты — это ещё вчерашний день
+ * фестиваля, поэтому всё раньше шести утра уезжает за сутки: иначе
+ * последнее выступление вставало бы первым в списке.
+ */
+function slotMinutes(timeText: string | null | undefined): number | null {
+  const m = /(\d{1,2}):(\d{2})/.exec(timeText ?? "");
+  if (!m) return null;
+  const minutes = Number(m[1]) * 60 + Number(m[2]);
+  return minutes < 6 * 60 ? minutes + 24 * 60 : minutes;
+}
+
+/**
+ * Раскладывает состав дня по сценам и выстраивает по времени — так
+ * расписание фестиваля читается как афиша, а не как список имён.
+ *
+ * Сцены идут в порядке первого выступления, внутри сцены — по времени;
+ * у кого времени нет, тот в конце своей сцены, а группа без сцены —
+ * в конце дня. Если ни времени, ни сцен нет (обычный концерт), вернётся
+ * одна группа с `stage: null` и исходным порядком: страница нарисует её
+ * ровно так, как рисовала состав до расписаний.
+ */
+export function groupLineupByStage<T extends LineupSlot>(
+  items: T[],
+): { stage: string | null; items: T[] }[] {
+  const groups = new Map<string, { stage: string | null; items: T[] }>();
+  for (const item of items) {
+    const stage = item.stage?.trim() || null;
+    const key = stage ?? "";
+    const group = groups.get(key);
+    if (group) group.items.push(item);
+    else groups.set(key, { stage, items: [item] });
+  }
+
+  const order = new Map([...groups.keys()].map((key, i) => [key, i]));
+  const earliest = (rows: T[]) => {
+    const times = rows.map((r) => slotMinutes(r.timeText)).filter((v): v is number => v !== null);
+    return times.length > 0 ? Math.min(...times) : Number.POSITIVE_INFINITY;
+  };
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .map((item, i) => ({ item, i, at: slotMinutes(item.timeText) }))
+        .sort((a, b) => (a.at ?? Number.POSITIVE_INFINITY) - (b.at ?? Number.POSITIVE_INFINITY) || a.i - b.i)
+        .map((row) => row.item),
+    }))
+    .sort((a, b) => {
+      // Безымянная сцена — всегда последней: это «остальные», а не
+      // очередная площадка фестиваля.
+      if ((a.stage === null) !== (b.stage === null)) return a.stage === null ? 1 : -1;
+      const startA = earliest(a.items);
+      const startB = earliest(b.items);
+      if (startA !== startB) return startA - startB;
+      return (order.get(a.stage ?? "") ?? 0) - (order.get(b.stage ?? "") ?? 0);
+    });
+}
+
 /**
  * АА14. Убирает из списка участников тех групп, которые в этом же списке
  * стоят сами.

@@ -43,6 +43,8 @@ const FIELD_LABELS: Record<string, string> = {
   dramaId: "Сериал",
   locationId: "Локация",
   venue: "Площадка",
+  organizer: "Организатор",
+  mapsUrl: "Ссылка на карту",
   presaleAt: "Старт продаж",
   presaleUrl: "Ссылка на продажи",
   ticketPrice: "Цена билета",

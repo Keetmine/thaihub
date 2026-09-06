@@ -27,6 +27,15 @@ function pairingLabel(pairing: PairingOption): string {
   return pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`;
 }
 
+/** Строка лайнапа дня: кто выступает и когда. Время держим строкой, как
+ *  на афише («16:00-16:45», иногда «TBA»), — фестивали пишут слоты, а не
+ *  точные метки. Сцена тоже свободный текст («Monster Stage»). Оба поля
+ *  заполняет краулер musicfestival.in.th, руками их правят здесь же. */
+export type LineupRow = EntityOption & {
+  timeText?: string;
+  stage?: string;
+};
+
 /** One date/time this event happens on. `id` is the EventOccurrence id
  *  when editing an existing one, or "" for a row not saved yet. */
 export type OccurrenceRow = {
@@ -35,7 +44,7 @@ export type OccurrenceRow = {
   startTime: string;
   endTime: string;
   /** Лайнап дня (фестивали): выбранные исполнители. Пусто — общий состав. */
-  lineup: EntityOption[];
+  lineup: LineupRow[];
 };
 
 const EMPTY_OCCURRENCE: OccurrenceRow = { id: "", date: "", startTime: "", endTime: "", lineup: [] };
@@ -57,6 +66,14 @@ export default function EventForm({
   defaultValues?: {
     title: string;
     venue: string;
+    /** Кто проводит («GMM Show») — заполняет краулер фестивалей. */
+    organizer: string;
+    /** Адрес площадки текстом (район и город). */
+    address: string;
+    /** Ссылка на карту; бывает коротким maps.app.goo.gl/… */
+    mapsUrl: string;
+    /** Жанры/теги события — через запятую, как у сериалов и новелл. */
+    tags: string;
     description: string;
     occurrences: OccurrenceRow[];
     performerIds: string[];
@@ -111,6 +128,17 @@ export default function EventForm({
     setOccurrences((prev) => prev.map((o, i) => (i === index ? { ...o, ...patch } : o)));
   }
 
+  /** Правка времени/сцены одного участника дня. */
+  function updateLineupRow(index: number, performerId: string, patch: Partial<LineupRow>) {
+    setOccurrences((prev) =>
+      prev.map((o, i) =>
+        i === index
+          ? { ...o, lineup: o.lineup.map((p) => (p.id === performerId ? { ...p, ...patch } : p)) }
+          : o,
+      ),
+    );
+  }
+
   return (
     <form
       ref={formRef}
@@ -135,6 +163,56 @@ export default function EventForm({
             name="venue"
             required
             defaultValue={v?.venue}
+            className="form-control"
+          />
+        </div>
+      </div>
+
+      {/* Адрес и карта — про ту же площадку, что строкой выше: на
+          странице события название площадки становится ссылкой на
+          карту, а адрес встаёт рядом с ним. */}
+      <div className="row g-3">
+        <div className="col-12 col-lg-7">
+          <label className="form-label" htmlFor="event-form-address">Адрес</label>
+          <input id="event-form-address"
+            name="address"
+            defaultValue={v?.address}
+            placeholder="например: Хуайкхванг, Бангкок"
+            className="form-control"
+          />
+        </div>
+
+        <div className="col-12 col-lg-5">
+          <label className="form-label" htmlFor="event-form-mapsUrl">Ссылка на карту</label>
+          <input id="event-form-mapsUrl"
+            type="url"
+            name="mapsUrl"
+            defaultValue={v?.mapsUrl}
+            placeholder="https://maps.app.goo.gl/…"
+            className="form-control"
+          />
+        </div>
+      </div>
+
+      <div className="row g-3">
+        <div className="col-12 col-lg-7">
+          <label className="form-label" htmlFor="event-form-organizer">Организатор</label>
+          <input id="event-form-organizer"
+            name="organizer"
+            defaultValue={v?.organizer}
+            placeholder="например: GMM Show"
+            className="form-control"
+          />
+        </div>
+
+        <div className="col-12 col-lg-5">
+          {/* Теги — той же манерой, что у сериалов и новелл: одна
+              строка через запятую, а не отдельный виджет. */}
+          <label className="form-label" htmlFor="event-form-tags">Теги</label>
+          <input id="event-form-tags"
+            name="tags"
+            defaultValue={v?.tags}
+            placeholder="Через запятую"
             className="form-control"
           />
         </div>
@@ -235,10 +313,19 @@ export default function EventForm({
                   ×
                 </button>
               </div>
+              {/* Лайнап дня уезжает JSON-ом: кроме id в нём время и
+                  сцена, а они свободный текст — разделителем их не
+                  разнести. Старую csv-строку сервер тоже понимает. */}
               <input
                 type="hidden"
                 name="occurrenceLineup"
-                value={o.lineup.map((p) => p.id).join(",")}
+                value={JSON.stringify(
+                  o.lineup.map((p) => ({
+                    id: p.id,
+                    timeText: p.timeText ?? "",
+                    stage: p.stage ?? "",
+                  })),
+                )}
               />
               <div className="col-12">
                 <details open={o.lineup.length > 0}>
@@ -258,6 +345,29 @@ export default function EventForm({
                               href={adminEntityHref("Performer", p.id)!}
                               name={p.name}
                               compact
+                            />
+                            {/* Время и сцена — как на афише фестиваля:
+                                строкой, а не выбором времени, потому что
+                                бывает «16:00-16:45» и «TBA». */}
+                            <input
+                              type="text"
+                              className="performer-chip-input"
+                              style={{ width: "6rem" }}
+                              value={p.timeText ?? ""}
+                              placeholder="16:00-16:45"
+                              aria-label={`Время выступления: ${p.name}`}
+                              onChange={(e) =>
+                                updateLineupRow(i, p.id, { timeText: e.target.value })
+                              }
+                            />
+                            <input
+                              type="text"
+                              className="performer-chip-input"
+                              style={{ width: "7rem" }}
+                              value={p.stage ?? ""}
+                              placeholder="сцена"
+                              aria-label={`Сцена: ${p.name}`}
+                              onChange={(e) => updateLineupRow(i, p.id, { stage: e.target.value })}
                             />
                             <button
                               type="button"

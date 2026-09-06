@@ -13,10 +13,11 @@ import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
-import { CalendarIcon, ClockIcon, InfoIcon, PinIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
+import { BuildingIcon, CalendarIcon, ClockIcon, InfoIcon, PinIcon, TagIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
 import {
   fetchPairingsAmong,
+  groupLineupByStage,
   hideMembersOfListedBands,
   keepPairingsTogether,
 } from "@/lib/castLineup";
@@ -368,10 +369,37 @@ export default async function EventDetailPage({
         )}
         {/* Без подложки-surface (просьба владельца). */}
         <div className="flex-fill" style={{ minWidth: 0 }}>
+            {/* Площадка: при наличии mapsUrl её название — ссылка на
+                карту в новой вкладке (краулер фестивалей отдаёт короткие
+                maps.app.goo.gl). Адрес — тихой строкой рядом, отдельной
+                строки «Адрес: —» у пустого поля нет. */}
             <p className="mb-2">
               <PinIcon className="icon-inline" />{" "}
-              <span className="text-secondary">{t.events.detail.venue}</span> {event.venue}
+              <span className="text-secondary">{t.events.detail.venue}</span>{" "}
+              {event.mapsUrl ? (
+                <a
+                  href={event.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link-body-emphasis"
+                  title={t.events.detail.openOnMap}
+                >
+                  {event.venue}
+                </a>
+              ) : (
+                event.venue
+              )}
+              {event.address && (
+                <span className="text-secondary"> · {event.address}</span>
+              )}
             </p>
+            {event.organizer && (
+              <p className="mb-2">
+                <BuildingIcon className="icon-inline" />{" "}
+                <span className="text-secondary">{t.events.detail.organizer}</span>{" "}
+                {event.organizer}
+              </p>
+            )}
             {groupOccurrencesByTime(event.occurrences).map((group) => {
               const first = group[0];
               return (
@@ -446,6 +474,20 @@ export default async function EventDetailPage({
                 <AppLink href={dramaHref(event.drama)} className="link-body-emphasis">
                   {dramaTitleForLocale(event.drama, locale)}
                 </AppLink>
+              </p>
+            )}
+            {/* Жанры/теги события — чипами, как у сериала; своей ветки
+                поиска по тегам событий нет, поэтому чипы глухие. */}
+            {event.tags.length > 0 && (
+              <p className="small text-secondary mt-2 mb-0 d-flex flex-wrap align-items-center gap-2">
+                <span className="d-inline-flex align-items-center gap-1">
+                  <TagIcon /> <span className="text-secondary">{t.events.detail.tags}</span>
+                </span>
+                {event.tags.map((tag) => (
+                  <span key={tag} className="tag-chip">
+                    {tag}
+                  </span>
+                ))}
               </p>
             )}
             {castInCard && (
@@ -551,10 +593,13 @@ export default async function EventDetailPage({
                   <p className="small text-secondary mb-2 text-capitalize">
                     {formatHumanDate(o.startsAt, locale)}
                   </p>
-                  <div className="cast-grid">
-                    {/* Те же правила, что и у общего состава: группа
-                        вместо своих участников (АА14), пары рядом (АА4). */}
-                    {keepPairingsTogether(
+                  {/* Те же правила, что и у общего состава: группа
+                      вместо своих участников (АА14), пары рядом (АА4).
+                      Дальше — по сценам и по времени, если фестиваль их
+                      публикует: без расписания это одна безымянная
+                      группа, и день выглядит как прежде. */}
+                  {groupLineupByStage(
+                    keepPairingsTogether(
                       hideMembersOfListedBands(
                         o.lineup,
                         (l) => l.performer.id,
@@ -562,16 +607,28 @@ export default async function EventDetailPage({
                       ),
                       (l) => l.performer.id,
                       castPairings,
-                    ).map((l) => (
-                      <EntityMiniCard
-                        key={l.performer.id}
-                        variant="grid"
-                        href={performerHref(l.performer)}
-                        photoUrl={l.performer.photoUrl}
-                        name={l.performer.name}
-                      />
-                    ))}
-                  </div>
+                    ),
+                  ).map((group) => (
+                    <div key={group.stage ?? ""} className="mb-2">
+                      {group.stage && (
+                        <p className="small mb-2">
+                          <span className="tag-chip">{group.stage}</span>
+                        </p>
+                      )}
+                      <div className="cast-grid">
+                        {group.items.map((l) => (
+                          <EntityMiniCard
+                            key={l.performer.id}
+                            variant="grid"
+                            href={performerHref(l.performer)}
+                            photoUrl={l.performer.photoUrl}
+                            name={l.performer.name}
+                            subtitle={l.timeText}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
           </div>

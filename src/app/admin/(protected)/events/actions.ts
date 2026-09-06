@@ -16,6 +16,15 @@ function getPairingIds(formData: FormData): string[] {
   return formData.getAll("pairingIds").map(String).filter(Boolean);
 }
 
+/** Список строк из одного поля через запятую — та же манера, что у
+ *  жанров/тегов сериала и новеллы. */
+function getCsv(formData: FormData, field: string): string[] {
+  return String(formData.get(field) ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function getPresaleAt(formData: FormData): Date | null {
   const presaleEnabled = String(formData.get("presaleEnabled") ?? "") === "on";
   if (!presaleEnabled) return null;
@@ -53,21 +62,60 @@ function getPresaleUrl(formData: FormData): string | null {
   return presaleUrl || null;
 }
 
+/** Кто выступает в этот день: исполнитель, а при нём время и сцена
+ *  строками, как на афише фестиваля («16:00-16:45», «Monster Stage»). */
+type LineupInput = {
+  performerId: string;
+  timeText: string | null;
+  stage: string | null;
+};
+
 /** One row of the repeatable date/time picker — see EventForm.tsx. */
 type OccurrenceInput = {
   id: string;
   date: string;
   startTime: string;
   endTime: string;
-  lineup: string[];
+  lineup: LineupInput[];
 };
+
+/**
+ * Лайнап дня приходит JSON-ом (`[{id, timeText, stage}]`): время и сцена
+ * — свободный текст, csv-разделителем их не разнести. Строку из старых
+ * вкладок и голый csv из тестов понимаем по-прежнему.
+ */
+function parseLineup(raw: string): LineupInput[] {
+  const value = raw.trim();
+  if (!value) return [];
+  if (value.startsWith("[")) {
+    try {
+      const rows: unknown = JSON.parse(value);
+      if (!Array.isArray(rows)) return [];
+      return rows
+        .map((row) => {
+          const r = (row ?? {}) as { id?: unknown; timeText?: unknown; stage?: unknown };
+          const performerId = String(r.id ?? "").trim();
+          const timeText = String(r.timeText ?? "").trim();
+          const stage = String(r.stage ?? "").trim();
+          return { performerId, timeText: timeText || null, stage: stage || null };
+        })
+        .filter((r) => r.performerId);
+    } catch {
+      return [];
+    }
+  }
+  return value
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((performerId) => ({ performerId, timeText: null, stage: null }));
+}
 
 function getOccurrenceInputs(formData: FormData): OccurrenceInput[] {
   const ids = formData.getAll("occurrenceId").map(String);
   const dates = formData.getAll("occurrenceDate").map(String);
   const startTimes = formData.getAll("occurrenceStartTime").map(String);
   const endTimes = formData.getAll("occurrenceEndTime").map(String);
-  // Лайнап дня (фестивали) — csv в hidden-инпуте своей строки.
   const lineups = formData.getAll("occurrenceLineup").map(String);
 
   return dates
@@ -76,7 +124,7 @@ function getOccurrenceInputs(formData: FormData): OccurrenceInput[] {
       date,
       startTime: startTimes[i] ?? "",
       endTime: endTimes[i] ?? "",
-      lineup: (lineups[i] ?? "").split(",").map((x) => x.trim()).filter(Boolean),
+      lineup: parseLineup(lineups[i] ?? ""),
     }))
     // время теперь необязательно — достаточно даты
     .filter((row) => row.date);
@@ -106,6 +154,10 @@ export async function createEvent(formData: FormData) {
   await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const venue = String(formData.get("venue") ?? "").trim();
+  const organizer = String(formData.get("organizer") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
+  const tags = getCsv(formData, "tags");
   const description = String(formData.get("description") ?? "").trim();
   const occurrences = getOccurrenceInputs(formData);
   const performerIds = getPerformerIds(formData);
@@ -125,6 +177,10 @@ export async function createEvent(formData: FormData) {
     data: {
       title,
       venue,
+      organizer: organizer || null,
+      address: address || null,
+      mapsUrl: mapsUrl || null,
+      tags,
       description: description || null,
       dramaId: dramaId || null,
       locationId: locationId || null,
@@ -137,7 +193,13 @@ export async function createEvent(formData: FormData) {
           startsAt: combineDateTime(o.date, o.startTime || "00:00"),
           endsAt: o.endTime ? combineDateTime(o.date, o.endTime) : null,
           hasTime: Boolean(o.startTime),
-          lineup: { create: o.lineup.map((performerId) => ({ performerId })) },
+          lineup: {
+            create: o.lineup.map((l) => ({
+              performerId: l.performerId,
+              timeText: l.timeText,
+              stage: l.stage,
+            })),
+          },
         })),
       },
       performers: {
@@ -190,7 +252,11 @@ async function syncOccurrences(
           hasTime,
           lineup: {
             deleteMany: {},
-            create: o.lineup.map((performerId) => ({ performerId })),
+            create: o.lineup.map((l) => ({
+              performerId: l.performerId,
+              timeText: l.timeText,
+              stage: l.stage,
+            })),
           },
         },
       });
@@ -202,7 +268,13 @@ async function syncOccurrences(
           startsAt,
           endsAt,
           hasTime,
-          lineup: { create: o.lineup.map((performerId) => ({ performerId })) },
+          lineup: {
+            create: o.lineup.map((l) => ({
+              performerId: l.performerId,
+              timeText: l.timeText,
+              stage: l.stage,
+            })),
+          },
         },
       });
       keptIds.add(created.id);
@@ -219,6 +291,10 @@ export async function updateEvent(id: string, formData: FormData) {
   await requireCatalogEditor();
   const title = String(formData.get("title") ?? "").trim();
   const venue = String(formData.get("venue") ?? "").trim();
+  const organizer = String(formData.get("organizer") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const mapsUrl = String(formData.get("mapsUrl") ?? "").trim();
+  const tags = getCsv(formData, "tags");
   const description = String(formData.get("description") ?? "").trim();
   const occurrences = getOccurrenceInputs(formData);
   const performerIds = getPerformerIds(formData);
@@ -247,6 +323,10 @@ export async function updateEvent(id: string, formData: FormData) {
       data: {
         title,
         venue,
+        organizer: organizer || null,
+        address: address || null,
+        mapsUrl: mapsUrl || null,
+        tags,
         description: description || null,
         dramaId: dramaId || null,
         locationId: locationId || null,
@@ -273,8 +353,14 @@ export async function updateEvent(id: string, formData: FormData) {
       entityLabel: title,
       changes: diffRecords(
         before,
-        { title, venue, description, dramaId, locationId, ticketPrice, posterUrl, presaleAt, presaleUrl },
-        ["title", "venue", "description", "dramaId", "locationId", "ticketPrice", "posterUrl", "presaleAt", "presaleUrl"],
+        {
+          title, venue, organizer, address, mapsUrl, tags, description,
+          dramaId, locationId, ticketPrice, posterUrl, presaleAt, presaleUrl,
+        },
+        [
+          "title", "venue", "organizer", "address", "mapsUrl", "tags", "description",
+          "dramaId", "locationId", "ticketPrice", "posterUrl", "presaleAt", "presaleUrl",
+        ],
       ),
     });
   }

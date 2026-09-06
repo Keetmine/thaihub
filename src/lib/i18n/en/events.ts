@@ -88,6 +88,10 @@ export const events = {
         addToCalendar: "Add to calendar",
         tickets: "Tickets",
         venue: "Venue:",
+        /** Tooltip on the venue name when the event has a map link. */
+        openOnMap: "Open on the map",
+        organizer: "Organiser:",
+        tags: "Tags:",
         dateAndTime: "Date and time:",
         ticketPrice: "Ticket price:",
         presale: "Ticket presale:",
