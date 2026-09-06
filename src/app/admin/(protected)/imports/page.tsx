@@ -22,7 +22,12 @@ import {
   approveSelectedEventDrafts,
   rejectSelectedEventDrafts,
 } from "./eventDraftActions";
-import { approveMascotDraft, rejectMascotDraft } from "./mascotDraftActions";
+import {
+  approveMascotDraft,
+  rejectMascotDraft,
+  approveSelectedMascotDrafts,
+  rejectSelectedMascotDrafts,
+} from "./mascotDraftActions";
 import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
 import type { TtmEvent } from "@/lib/thaiticketmajor";
 import type { EventDraftMatch } from "@/lib/ttmCrawl";
@@ -803,8 +808,8 @@ export default async function AdminImportsPage({
             «GMMTV: маскоты с вики» в расписании). «Одобрить» — маскот появится
             в каталоге исполнителей с картинкой, описанием и совпавшими
             владельцами (несовпавших добирайте руками в карточке);
-            «Отклонить» — маскот больше не предложится. Массовых действий нет:
-            маскотов единицы, владелец смотрит каждый.
+            «Отклонить» — маскот больше не предложится. Можно и пачкой:
+            отметьте строки и примените действие к выбранным.
           </p>
           {mascotError && <p className="alert alert-warning small py-2">{mascotError}</p>}
           {mascotDrafts.length === 0 ? (
@@ -814,14 +819,34 @@ export default async function AdminImportsPage({
               страницы).
             </p>
           ) : (
-            <div className="d-flex flex-column gap-2">
-              {mascotDrafts.map((draft) => {
+            <BulkList
+              actions={[
+                {
+                  kind: "confirm",
+                  label: "Одобрить выбранные",
+                  confirmTemplate:
+                    "Одобрить {n} черновиков? Маскоты появятся в каталоге исполнителей с картинкой и совпавшими владельцами.",
+                  confirmLabel: "Одобрить",
+                  busyLabel: "Создаём…",
+                  buttonClassName: "btn btn-primary btn-sm",
+                  run: approveSelectedMascotDrafts,
+                },
+                {
+                  kind: "delete",
+                  label: "Отклонить выбранные",
+                  confirmTemplate:
+                    "Отклонить {n} черновиков? Обход вики больше не предложит этих маскотов.",
+                  run: rejectSelectedMascotDrafts,
+                },
+              ]}
+              rows={mascotDrafts.map((draft) => {
                 const payload = draft.payload as Partial<MascotDraftPayload>;
                 const matched = (draft.matchedOwners as MatchedMascotOwner[] | null) ?? [];
                 const unmatched = payload.unmatchedOwners ?? [];
-                return (
+                return {
+                  id: draft.id,
+                  node: (
                   <div
-                    key={draft.id}
                     className="surface d-flex flex-wrap align-items-center gap-3 p-3"
                   >
                     {/* Картинка — прямой хотлинк со static.wikia.nocookie.net:
@@ -894,9 +919,10 @@ export default async function AdminImportsPage({
                       </button>
                     </ConfirmForm>
                   </div>
-                );
+                  ),
+                };
               })}
-            </div>
+            />
           )}
         </div>
 

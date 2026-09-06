@@ -12,8 +12,10 @@ import type { MatchedMascotOwner } from "@/lib/performerMatching";
 // Очередь черновиков маскотов с вики GMMTV (вкладка «Маскоты» в
 // импортах, см. docs/features/gmmtv-mascots-import.md): владелец смотрит
 // каждый черновик и решает. До «Одобрить» в публичной таблице Performer
-// ничего нет. Массовых действий нет намеренно — маскотов единицы, а
-// каждое одобрение — это новая карточка каталога.
+// ничего нет. Кроме точечных кнопок есть массовые — по выделенным
+// строкам (просьба владельца 2026-09-06: «везде в админке, где списки,
+// нужен множественный выбор»); прогон синхронный, потому что маскотов
+// за раз единицы, а не сотни, как черновиков событий.
 
 /**
  * «Одобрить»: создаёт Performer типа MASCOT — картинка скачивается к
@@ -30,6 +32,23 @@ import type { MatchedMascotOwner } from "@/lib/performerMatching";
 export async function approveMascotDraft(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = String(formData.get("draftId") ?? "");
+  const error = await approveOneMascotDraft(id);
+
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin");
+  revalidatePath("/admin/performers");
+  revalidatePath("/artists");
+  // redirect бросает свой NEXT_REDIRECT — потому вне try/catch.
+  if (error) redirect(`/admin/imports?tab=mascots&mascotError=${encodeURIComponent(error)}`);
+}
+
+/**
+ * Одобрение одного черновика без переходов и revalidate — общая
+ * середина точечной кнопки и массового действия. Возвращает текст
+ * ошибки или null: у пачки на ошибке одного останавливаться нельзя,
+ * остальные должны разобраться.
+ */
+async function approveOneMascotDraft(id: string): Promise<string | null> {
   const draft = await prisma.mascotDraft.findUnique({ where: { id } });
 
   let error: string | null = null;
@@ -93,13 +112,54 @@ export async function approveMascotDraft(formData: FormData): Promise<void> {
       error = `Не удалось создать маскота: ${e instanceof Error ? e.message : e}`;
     }
   }
+  return error;
+}
+
+/**
+ * «Одобрить выбранные» из панели массовых действий. Идёт по очереди в
+ * том же порядке, что на странице, и НЕ падает на первом же спотыкании:
+ * что удалось — заведено, про остальное честно говорится в конце
+ * (текст исключения BulkList покажет в панели). Фонового прогона, как у
+ * черновиков событий, здесь нет намеренно: маскотов за раз единицы, и
+ * ждать десяток секунд понятнее, чем искать ход в журнале.
+ */
+export async function approveSelectedMascotDrafts(ids: string[]): Promise<void> {
+  await requireAdmin();
+  const drafts = await prisma.mascotDraft.findMany({
+    where: { id: { in: ids }, status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true },
+  });
+  if (drafts.length === 0) throw new Error("Среди выбранных не осталось черновиков в очереди");
+
+  const failed: string[] = [];
+  for (const draft of drafts) {
+    const error = await approveOneMascotDraft(draft.id);
+    if (error) failed.push(`${draft.name}: ${error}`);
+  }
 
   revalidatePath("/admin/imports");
   revalidatePath("/admin");
   revalidatePath("/admin/performers");
   revalidatePath("/artists");
-  // redirect бросает свой NEXT_REDIRECT — потому вне try/catch.
-  if (error) redirect(`/admin/imports?tab=mascots&mascotError=${encodeURIComponent(error)}`);
+
+  if (failed.length > 0) {
+    throw new Error(
+      `Заведено ${drafts.length - failed.length} из ${drafts.length}. Не получилось: ${failed.join("; ")}`,
+    );
+  }
+}
+
+/** «Отклонить выбранные»: то же, что точечное «Отклонить», одним
+ *  updateMany. Разобранные по дороге фильтр статуса молча пропускает. */
+export async function rejectSelectedMascotDrafts(ids: string[]): Promise<void> {
+  await requireAdmin();
+  await prisma.mascotDraft.updateMany({
+    where: { id: { in: ids }, status: "PENDING" },
+    data: { status: "REJECTED", reviewedAt: new Date() },
+  });
+  revalidatePath("/admin/imports");
+  revalidatePath("/admin");
 }
 
 /**
