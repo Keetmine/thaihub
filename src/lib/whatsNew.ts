@@ -100,3 +100,66 @@ export async function getMusicNews(options?: {
 
   return items.sort((a, b) => +b.addedAt - +a.addedAt).slice(0, limit);
 }
+
+/** «У сериала появились места съёмок» — вторая половина ленты «что
+ *  нового» (просьба владельца 2026-09-06). Считается по дате привязки
+ *  места к сериалу (`DramaLocation.createdAt`), а не по дате самой
+ *  локации: одно кафе переиспользуется разными сериалами, и новостью
+ *  становится именно привязка. Локации одного сериала за прогон
+ *  склеиваются в ОДНУ строку — иначе пятнадцать мест «You Maniac»
+ *  вытеснили бы из ленты всё остальное. */
+export type LocationNewsItem = {
+  /** Тот же id — под именем `id` его ждут помощники ссылок и локали
+   *  (dramaHref, dramaTitleForLocale). */
+  id: string;
+  dramaId: string;
+  title: string;
+  slug: string | null;
+  titleRu: string | null;
+  posterUrl: string | null;
+  /** Сколько мест привязано в этой пачке. */
+  count: number;
+  addedAt: Date;
+};
+
+/** Окно новизны: привязки старше месяца новостью уже не выглядят, а
+ *  без окна счётчик пачки склеивал бы места, добавленные в разные дни. */
+const LOCATION_NEWS_DAYS = 30;
+
+export async function getLocationNews(limit = 6): Promise<LocationNewsItem[]> {
+  const since = new Date(Date.now() - LOCATION_NEWS_DAYS * 24 * 60 * 60 * 1000);
+  // Берём хвост свежих привязок и группируем в памяти: групповых
+  // запросов с сортировкой по максимуму даты у Prisma нет, а строк тут
+  // десятки.
+  const rows = await prisma.dramaLocation.findMany({
+    where: { createdAt: { gte: since } },
+    orderBy: { createdAt: "desc" },
+    take: limit * 40,
+    select: {
+      createdAt: true,
+      drama: { select: { id: true, title: true, titleRu: true, slug: true, posterUrl: true } },
+    },
+  });
+
+  const byDrama = new Map<string, LocationNewsItem>();
+  for (const row of rows) {
+    const cur = byDrama.get(row.drama.id);
+    if (cur) {
+      cur.count += 1;
+      if (row.createdAt > cur.addedAt) cur.addedAt = row.createdAt;
+      continue;
+    }
+    byDrama.set(row.drama.id, {
+      id: row.drama.id,
+      dramaId: row.drama.id,
+      title: row.drama.title,
+      titleRu: row.drama.titleRu,
+      slug: row.drama.slug,
+      posterUrl: row.drama.posterUrl,
+      count: 1,
+      addedAt: row.createdAt,
+    });
+  }
+
+  return [...byDrama.values()].sort((a, b) => +b.addedAt - +a.addedAt).slice(0, limit);
+}

@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/seo";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
-import { getMusicNews, type NewsItem } from "@/lib/whatsNew";
+import { getMusicNews, getLocationNews, type NewsItem } from "@/lib/whatsNew";
 import { getFriendIds } from "@/lib/friends";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
@@ -115,6 +115,7 @@ export default async function HomePage() {
     watchingNow,
     myPersonalEvents,
     airingTodayEpisodes,
+    locationNews,
   ] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
     getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
@@ -209,6 +210,10 @@ export default async function HomePage() {
     // а у завершённого сегодняшних дат не бывает. Выборка общая для
     // всех — из кэша (см. getAiringTodayEpisodes выше).
     getAiringTodayEpisodes(startOfDay(now).toISOString(), endOfDay(now).toISOString()),
+    // «У сериала появились места съёмок» — вторая половина ленты «что
+    // нового» (просьба владельца): музыка приезжает обходом YouTube
+    // Music, локации — прогоном blscene.
+    getLocationNews(4),
   ]);
 
   // Сдвоенный показ — две строки на один сериал: карточка всё равно
@@ -586,6 +591,39 @@ export default async function HomePage() {
             {favoritePerformers > 0 ? dict.home.newsFromFavourites : dict.home.newsFromCatalogue}
           </span>
         </div>
+
+        {/* Места съёмок — первыми строками ленты: их приносит прогон
+            blscene, и это единственное место на витрине, где видно, что
+            у сериала появились новые точки (просьба владельца
+            2026-09-06). */}
+        {locationNews.length > 0 && (
+          <div className="row g-2 stagger mb-2">
+            {locationNews.map((item) => (
+              <div key={`loc-${item.dramaId}`} className="col-12 col-md-6 col-xl-6">
+                <Link
+                  href={dramaHref(item)}
+                  className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
+                >
+                  <LetterAvatar
+                    name={dramaTitleForLocale(item, locale)}
+                    photoUrl={item.posterUrl}
+                    size={4}
+                    rounded={false}
+                  />
+                  <div style={{ minWidth: 0 }} className="flex-grow-1">
+                    <span className="text-white d-block text-truncate">
+                      {dramaTitleForLocale(item, locale)}
+                    </span>
+                    <span className="small text-secondary d-block">{dict.home.newsLocations}</span>
+                    <span className="small text-secondary">
+                      {dict.home.newsLocationsCount(item.count)}
+                    </span>
+                  </div>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
 
         {news.length === 0 ? (
           <EmptyState

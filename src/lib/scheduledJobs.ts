@@ -178,6 +178,59 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "blscene-locations",
+    title: "blscene: новые места съёмок",
+    description:
+      "Раз в день обходит страницы сериалов на blscene.com и подтягивает места съёмок, " +
+      "появившиеся там с прошлой проверки. Сериалы ищутся и по сохранённой ссылке, и по " +
+      "названию — второе важно для сериалов, заведённых другим импортом: у них ссылки нет, " +
+      "и раньше их страницы не открывались вовсе. Новые места заводятся сразу в каталог " +
+      "(очереди на проверку тут нет — источник свой, проверенный), уже связанные не " +
+      "трогаются. Прогон открывает страницу каждого сериала, поэтому идёт несколько минут; " +
+      "найденное попадает в ленту «Что нового» на главной.",
+    supportsTargets: false,
+    // Тот же kind, что у ручной кнопки «проверить новые локации» на
+    // /admin/locations: журнал общий, на вкладке задачи видны и ночные
+    // прогоны, и ручные.
+    logKind: "blscene",
+    // Прогон пишет только сводки: refreshBlsceneLocations берёт runId
+    // ради кнопки «Остановить», ImportedItem не создаёт.
+    logsItems: false,
+    run: async () => {
+      const { chromium } = await import("playwright");
+      const { refreshBlsceneLocations } = await import("@/lib/blsceneImport");
+      const { logImportRun } = await import("@/lib/importRun");
+      const summarize = (r: {
+        checked: number;
+        refreshed: { title: string; newLocations: number }[];
+        errors: { title: string; message: string }[];
+      }) =>
+        `проверено ${r.checked}` +
+        (r.refreshed.length
+          ? `, новые локации у ${r.refreshed.length}: ${r.refreshed
+              .slice(0, 5)
+              .map((d) => `${d.title} +${d.newLocations}`)
+              .join(", ")}`
+          : ", новых локаций нет") +
+        (r.errors.length ? `, ошибок ${r.errors.length}` : "");
+
+      // Координаты мест снимаются с гугл-карт настоящим браузером —
+      // один на весь прогон, как у ручной кнопки.
+      const browser = await chromium.launch();
+      try {
+        const result = await logImportRun(
+          "blscene",
+          (runId) => refreshBlsceneLocations(browser, undefined, runId),
+          summarize,
+        );
+        // null — прогон остановили кнопкой в /admin/imports.
+        return result ? summarize(result) : "остановлено вручную";
+      } finally {
+        await browser.close();
+      }
+    },
+  },
+  {
     key: "ttm-crawl",
     title: "ThaiTicketMajor: обход афиши",
     description:

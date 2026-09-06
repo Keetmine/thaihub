@@ -1,5 +1,5 @@
 import type { Dict } from "../en";
-import { pluralized } from "@/lib/plural";
+import { plural, pluralized } from "@/lib/plural";
 
 export const home: Dict["home"] = {
     metaTitle: "Сериалы, артисты и события: фан-трекер",
@@ -12,6 +12,9 @@ export const home: Dict["home"] = {
     airingTodayEpisodes: (from: number, to: number) => `${from}–${to} серии`,
     watchingNow: "Смотрю сейчас",
     whatsNew: "Что нового",
+    newsLocations: "Места съёмок",
+    newsLocationsCount: (n: number) =>
+        `${n} ${plural(n, ["место", "места", "мест"])} на карте`,
     newsFromFavourites: "релизы ваших артистов",
     newsFromCatalogue: "свежее в каталоге",
     listen: "Слушать ↗",

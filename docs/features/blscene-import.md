@@ -105,6 +105,13 @@ cleanup tool.)*
 MDL, пустое значение затирало нашу ссылку — а по ней работает весь
 MDL-импорт.
 
+**Раз в день по расписанию** (просьба владельца 2026-09-06): задача
+`blscene-locations` на `/admin/schedule` («Локации blscene») запускает
+тот же второй проход, что и кнопка на `/admin/locations`, и пишет в тот
+же журнал (`kind: blscene`) — на вкладке задачи видны и ночные прогоны,
+и ручные. Новые места заводятся сразу в каталог: очереди на проверку
+тут нет, источник свой и проверенный.
+
 `refreshBlsceneLocations` (the admin button's sweep) is just pass 2 —
 same `refreshScrapedDrama` call, same re-fetch-every-page cost, but
 skipping pass 1 entirely so it can never create a new `Drama`.
@@ -167,3 +174,18 @@ OpenStreetMap's free Nominatim geocoder was evaluated as a
 browser-free alternative but found unreliable for small
 businesses/restaurants (found a university fine, found nothing for two
 tested restaurants) — not used.
+
+## Найденное видно на главной
+
+Лента «Что нового» на главной показывает не только музыкальные новинки,
+но и места съёмок: «у сериала появились локации, N мест на карте»
+(просьба владельца 2026-09-06). Считается по `DramaLocation.createdAt`
+— полю, добавленному тогда же (миграция
+`20260906T3_drama_location_created_at`, существующие связи заполнены
+датой самой локации, чтобы лента сразу после выкатки не выглядела так,
+будто каталог завели вчера). Именно по дате ПРИВЯЗКИ, а не создания
+места: одно кафе переиспользуется разными сериалами, и новостью
+становится связь. Места одного сериала склеиваются в одну строку —
+иначе пятнадцать точек «You Maniac» вытеснили бы из ленты всё
+остальное; окно новизны — месяц (`getLocationNews` в
+`src/lib/whatsNew.ts`).

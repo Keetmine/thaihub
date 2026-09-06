@@ -624,9 +624,15 @@ model DramaLocation {
   locationId String
   drama      Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  // Когда место привязали к сериалу — по этому полю строится лента «что
+  // нового» на главной. У самой Location даты мало: одно и то же кафе
+  // переиспользуется разными сериалами, и «новым» оно становится в день
+  // привязки, а не заведения.
+  createdAt  DateTime @default(now())
 
   @@id([dramaId, locationId])
   @@index([locationId])
+  @@index([createdAt])
 }
 
 // A user marking a location as visited — analogous to EventAttendance but

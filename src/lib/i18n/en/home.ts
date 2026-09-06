@@ -13,6 +13,10 @@ export const home = {
     airingTodayEpisodes: (from: number, to: number) => `Episodes ${from}–${to}`,
     watchingNow: "Watching now",
     whatsNew: "What's new",
+    /** Новость про места съёмок: у сериала появились локации
+     *  (просьба владельца 2026-09-06). */
+    newsLocations: "Filming locations",
+    newsLocationsCount: (n: number) => `${n} ${n === 1 ? "place" : "places"} added`,
     newsFromFavourites: "releases by your artists",
     newsFromCatalogue: "fresh in the catalogue",
     listen: "Listen ↗",
