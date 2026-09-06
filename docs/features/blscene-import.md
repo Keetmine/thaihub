@@ -79,7 +79,8 @@ cleanup tool.)*
 1. **Import** — index entries with no matching `Drama` (by URL or title)
    get scraped and created fresh via `importScrapedDrama`.
 2. **Refresh** — index entries that *do* already have a matching `Drama`
-   get re-scraped too, via `refreshScrapedDrama`: metadata fields
+   (по ссылке ИЛИ по названию) get re-scraped too, via
+   `refreshScrapedDrama`: metadata fields
    (title/year/poster/synopsis/MyDramaList link) are updated to whatever's
    on the page now, and any locations that have been added to that page
    since the last sync get linked (already-linked locations are left
@@ -87,6 +88,22 @@ cleanup tool.)*
    resolve to an existing `Location` row linked to that drama). This means
    a full sync run always re-fetches every drama's page, not just new
    ones — expect it to take a few minutes, not seconds.
+
+**Совпал по названию, но без ссылки — тоже обновляем** (баг, пойманный
+владельцем 2026-09-06 на «You Maniac»). Сериал, заведённый другим
+импортом (обычно MDL), проваливался между двумя списками: в «импорт» его
+не пускала защита от дублей по названию, в «обновление» — пустое
+`blsceneUrl`. Итог: страница blscene не открывалась ни разу, и локации
+не приезжали — таких сериалов нашлось шесть. Теперь оба прохода ищут
+запись и по названию тоже, а `refreshScrapedDrama` заодно проставляет
+`blsceneUrl`, так что со следующего прогона сериал обычный. Живая
+проверка: у «You Maniac» стало 15 локаций (12 заведено, 3 переиспользовано),
+плюс догнались Match Point, Unlucky Bae, Bad Buddy и ещё шесть.
+
+Там же поправлено: `mydramalistUrl` теперь только ДОБАВЛЯЕТСЯ. Раньше
+поле писалось со страницы blscene как есть, и у сериала, заведённого с
+MDL, пустое значение затирало нашу ссылку — а по ней работает весь
+MDL-импорт.
 
 `refreshBlsceneLocations` (the admin button's sweep) is just pass 2 —
 same `refreshScrapedDrama` call, same re-fetch-every-page cost, but

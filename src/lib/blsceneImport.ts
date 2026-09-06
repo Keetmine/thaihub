@@ -143,7 +143,7 @@ async function refreshScrapedDrama(
 ): Promise<{ newLocations: number }> {
   const current = await prisma.drama.findUnique({
     where: { id: dramaId },
-    select: { posterUrl: true, synopsis: true },
+    select: { posterUrl: true, synopsis: true, blsceneUrl: true, mydramalistUrl: true },
   });
   const mayReplacePoster = !current?.posterUrl || isBlscenePoster(current.posterUrl);
 
@@ -158,7 +158,16 @@ async function refreshScrapedDrama(
         ? { posterUrl: await downloadRemoteImage(scraped.posterUrl, FOLDER) }
         : {}),
       ...(current?.synopsis ? {} : { synopsis: scraped.synopsis }),
-      mydramalistUrl: scraped.mydramalistUrl,
+      // Ссылку на MDL только ДОБАВЛЯЕМ. Раньше писали как есть, и у
+      // сериала, заведённого импортом с MDL, пустое поле страницы
+      // blscene затирало нашу ссылку — а по ней идёт весь MDL-импорт.
+      ...(scraped.mydramalistUrl && !current?.mydramalistUrl
+        ? { mydramalistUrl: scraped.mydramalistUrl }
+        : {}),
+      // Сериал мог быть заведён другим импортом и до blscene-страницы
+      // не знать: привязываем, чтобы следующий прогон нашёл его сразу
+      // по ссылке.
+      ...(current?.blsceneUrl ? {} : { blsceneUrl: scraped.sourceUrl }),
     },
   });
 
@@ -202,8 +211,20 @@ export async function syncNewDramasFromBlscene(
   );
   // Everything else that's already linked by URL gets a light refresh pass
   // — blscene may have updated the poster/synopsis or added a location
-  // since we last imported it.
-  const toRefresh = index.filter((d) => byUrl.has(d.url));
+  // since we last imported it. Плюс сериалы, СОВПАВШИЕ ПО НАЗВАНИЮ, но
+  // без ссылки на blscene: они заведены другим импортом (обычно MDL), и
+  // раньше проваливались между двумя списками — в toImport их не
+  // пускала защита от дублей по названию, а в toRefresh не пускало
+  // пустое blsceneUrl. Итог: страница blscene не открывалась ни разу и
+  // локации не подтягивались (жалоба владельца на «You Maniac»; таких
+  // сериалов нашлось шесть). Теперь они обновляются, и refresh заодно
+  // проставляет им ссылку — со следующего прогона они обычные.
+  const byTitle = new Map(
+    existingDramas.filter((d) => !d.blsceneUrl).map((d) => [d.title.toLowerCase().trim(), d]),
+  );
+  const existingBy = (entry: { url: string; title: string }) =>
+    byUrl.get(entry.url) ?? byTitle.get(entry.title.toLowerCase().trim());
+  const toRefresh = index.filter((d) => !!existingBy(d));
   log(
     `${index.length} shows on blscene, ${toImport.length} not yet in our database, ${toRefresh.length} to refresh`,
   );
@@ -228,7 +249,8 @@ export async function syncNewDramasFromBlscene(
 
   for (const [i, entry] of toRefresh.entries()) {
     await checkImportCancelled(runId);
-    const existing = byUrl.get(entry.url)!;
+    const existing = existingBy(entry);
+    if (!existing) continue;
     log(`[refresh ${i + 1}/${toRefresh.length}] ${entry.title}`);
     try {
       const scraped = await scrapeBlsceneDrama(entry.url);
@@ -266,7 +288,16 @@ export async function refreshBlsceneLocations(
     select: { id: true, title: true, blsceneUrl: true },
   });
   const byUrl = new Map(existingDramas.filter((d) => d.blsceneUrl).map((d) => [d.blsceneUrl!, d]));
-  const toRefresh = index.filter((d) => byUrl.has(d.url));
+  // Не только привязанные по ссылке, но и совпавшие по названию: сериал
+  // мог быть заведён другим импортом, и тогда его страница blscene ни
+  // разу не открывалась — вместе с ней не приезжали и локации (см.
+  // syncNewDramasFromBlscene).
+  const byTitle = new Map(
+    existingDramas.filter((d) => !d.blsceneUrl).map((d) => [d.title.toLowerCase().trim(), d]),
+  );
+  const toRefresh = index.filter(
+    (d) => byUrl.has(d.url) || byTitle.has(d.title.toLowerCase().trim()),
+  );
   log(`${toRefresh.length} already-imported shows to check for new locations`);
 
   const result: BlsceneLocationRefreshResult = { checked: toRefresh.length, refreshed: [], errors: [] };
@@ -275,7 +306,8 @@ export async function refreshBlsceneLocations(
     // Найденные локации уже связаны с сериалами — остановка их не
     // трогает, просто дальше не идём.
     await checkImportCancelled(runId);
-    const existing = byUrl.get(entry.url)!;
+    const existing = byUrl.get(entry.url) ?? byTitle.get(entry.title.toLowerCase().trim());
+    if (!existing) continue;
     log(`[${i + 1}/${toRefresh.length}] ${entry.title}`);
     try {
       const scraped = await scrapeBlsceneDrama(entry.url);
