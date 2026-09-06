@@ -495,7 +495,7 @@ export default async function DramasPage({
                     он дублировал колонку, ради которой таблица и
                     затевалась. Гостю селект не показываем: он всё равно
                     уедет на страницу входа. */}
-                <span className={styles.colStatus}>
+                <span className={`${styles.colStatus} table-status-cell`}>
                   {currentUser ? (
                     <DramaStatusSelect dramaId={d.id} status={entry?.status ?? null} />
                   ) : (

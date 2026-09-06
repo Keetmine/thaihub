@@ -234,7 +234,7 @@ function Row({
         </AppLink>
       </div>
       <div className={styles.cols}>
-        <span className={styles.colStatus}>
+        <span className={`${styles.colStatus} table-status-cell`}>
           {/* В своём профиле статус меняется тут же — тем же выпадающим
               списком, что в каталоге (правка владельца 2026-09-06).
               В чужом это просто подпись. */}

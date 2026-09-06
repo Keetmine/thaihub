@@ -141,7 +141,10 @@
  * влезают (то же правило, что в каталоге). */
 .cols {
   display: grid;
-  grid-template-columns: 7rem 4rem 2.8rem 5.6rem 4.4rem;
+  /* Ширины — как в каталоге (dramas.module.css): статус тут стал
+     таким же выпадающим списком, и в 7rem подпись «Смотрю сейчас»
+     обрезалась многоточием (правка владельца 2026-09-06). */
+  grid-template-columns: 7.5rem 4.2rem 3rem 5rem 5.2rem;
   align-items: center;
   column-gap: 0.5rem;
   flex-shrink: 0;
