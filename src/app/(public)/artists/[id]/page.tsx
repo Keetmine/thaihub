@@ -667,8 +667,10 @@ export default async function PerformerPage({
                     />
                   ) : o.pairing ? (
                     <span key={o.id} className="event-chip">
-                      {o.pairing.name ||
-                        `${o.pairing.performerA.name} × ${o.pairing.performerB.name}`}
+                      {`${o.pairing.performerA.name} × ${o.pairing.performerB.name}`}
+                      {o.pairing.name && (
+                        <span className="small text-secondary"> · {o.pairing.name}</span>
+                      )}
                     </span>
                   ) : null,
                 )}
@@ -688,6 +690,10 @@ export default async function PerformerPage({
           {currentPairings.length > 0 && (
             <div>
               <h2 className="section-heading mb-2">{t.catalog.artist.pairedWith}</h2>
+              {/* АА3: в карточке главный — ЧЕЛОВЕК, а имя пейринга
+                  («встречались 1 год», GhostSheep) — тихой подписью под
+                  ним. Раньше имя заменяло партнёра, и по карточке было
+                  не понять, с кем пара. */}
               <div className="d-flex flex-wrap gap-2">
                 {currentPairings.map((pair) => {
                   const other =
@@ -699,8 +705,8 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={pair.name || other.name}
-                      subtitle={pair.name ? other.name : undefined}
+                      name={other.name}
+                      subtitle={pair.name || undefined}
                     />
                   );
                 })}
@@ -722,8 +728,8 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={pair.name || other.name}
-                      subtitle={pair.name ? other.name : undefined}
+                      name={other.name}
+                      subtitle={pair.name || undefined}
                     />
                   );
                 })}

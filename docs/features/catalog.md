@@ -541,8 +541,17 @@ Zomvivor NuNew стоял вторым, Zee — четырнадцатым; по
 ## Pairings
 
 A `Pairing` names a two-performer "ship" (`performerAId`/`performerBId`,
-unique together, optional display `name` — falls back to "A × B" when
-unset). Selectable on events alongside/instead of individual performers.
+unique together, optional display `name`).
+Selectable on events alongside/instead of individual performers.
+
+**Имя пейринга — ПОДПИСЬ, а не замена людей** (АА3, правка владельца
+2026-09-06). На витрине главными всегда выводятся участники: в
+карточках «В паре с»/«Бывшие пары» на странице артиста имя партнёра —
+заголовок, а имя пейринга («GhostSheep», «встречались 1 год») — тихая
+строка под ним; в чипах события и «чей маскот» — «A × B · имя». Раньше
+имя заменяло людей целиком, и по карточке было не понять, с кем пара.
+В админке (комбобоксы, список пейрингов) имя остаётся первым — там по
+нему ищут.
 Admin: `src/app/admin/(protected)/pairings/` +
 `PairingManager.tsx`/`CreatePairingModal.tsx` inside the performer form
 for inline creation.

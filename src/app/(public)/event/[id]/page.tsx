@@ -548,9 +548,14 @@ export default async function EventDetailPage({
                 </CastGrid>
                 {event.pairings.length > 0 && (
                   <div className="d-flex flex-wrap gap-2 mt-2">
+                    {/* АА3: сначала кто в паре, имя пейринга — тихой
+                        добавкой. Одно имя вместо людей не читалось. */}
                     {event.pairings.map(({ pairing }) => (
                       <span key={pairing.id} className="event-chip">
-                        {pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`}
+                        {`${pairing.performerA.name} × ${pairing.performerB.name}`}
+                        {pairing.name && (
+                          <span className="small text-secondary"> · {pairing.name}</span>
+                        )}
                       </span>
                     ))}
                   </div>
