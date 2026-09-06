@@ -5,29 +5,55 @@ import type { Prisma } from "@/generated/prisma/client";
 // по настоящему имени / «также известен как» / муз. псевдониму.
 // Используются и на публичных каталогах, и в админских комбобоксах.
 
+/**
+ * Слова запроса. Ищем ПО КАЖДОМУ отдельно, потому что имя человека
+ * разложено по разным полям: у «Babe (Tanatat Phanviriyakool)» ник в
+ * `name`, а настоящее имя в `realName`, и запрос «Babe Tanatat» целиком
+ * не совпадал ни с одним полем — находился только «Babe» (жалоба
+ * владельца 2026-09-06). Теперь каждое слово должно найтись хоть
+ * где-нибудь, а вместе они дают пересечение: «Babe Tanatat» и «Babe
+ * Tanatat Phanviriyakool» приводят к той же карточке.
+ *
+ * Потолок в шесть слов — от бессмысленно длинных запросов: каждое слово
+ * это отдельное условие в SQL.
+ */
+function queryWords(q: string): string[] {
+  return q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+}
+
 export function dramaTitleWhere(q: string): Prisma.DramaWhereInput {
-  return {
+  const fieldsFor = (w: string): Prisma.DramaWhereInput => ({
     OR: [
-      { title: { contains: q, mode: "insensitive" } },
+      { title: { contains: w, mode: "insensitive" } },
       // Русское название — отдельным полем, а не через alsoKnownAs:
       // при слиянии вариантов titleRu из alsoKnownAs сознательно
       // исключается, чтобы не дублировать данные.
-      { titleRu: { contains: q, mode: "insensitive" } },
-      { alsoKnownAs: { contains: q, mode: "insensitive" } },
-      { nativeTitle: { contains: q, mode: "insensitive" } },
+      { titleRu: { contains: w, mode: "insensitive" } },
+      { alsoKnownAs: { contains: w, mode: "insensitive" } },
+      { nativeTitle: { contains: w, mode: "insensitive" } },
     ],
-  };
+  });
+
+  const words = queryWords(q);
+  // Пустой запрос сюда доходит редко (вызывающие проверяют сами), но
+  // вести себя должен как раньше — «подходит всё».
+  if (words.length <= 1) return fieldsFor(words[0] ?? q);
+  return { AND: words.map(fieldsFor) };
 }
 
 export function performerNameWhere(q: string): Prisma.PerformerWhereInput {
-  return {
+  const fieldsFor = (w: string): Prisma.PerformerWhereInput => ({
     OR: [
-      { name: { contains: q, mode: "insensitive" } },
-      { realName: { contains: q, mode: "insensitive" } },
-      { alsoKnownAs: { contains: q, mode: "insensitive" } },
-      { musicAlias: { contains: q, mode: "insensitive" } },
+      { name: { contains: w, mode: "insensitive" } },
+      { realName: { contains: w, mode: "insensitive" } },
+      { alsoKnownAs: { contains: w, mode: "insensitive" } },
+      { musicAlias: { contains: w, mode: "insensitive" } },
     ],
-  };
+  });
+
+  const words = queryWords(q);
+  if (words.length <= 1) return fieldsFor(words[0] ?? q);
+  return { AND: words.map(fieldsFor) };
 }
 
 /** Подпись варианта в комбобоксах: ник + настоящее имя в скобках,

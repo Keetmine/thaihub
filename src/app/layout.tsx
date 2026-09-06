@@ -106,6 +106,18 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang={locale}
       data-bs-theme="dark"
+      // Обязательный для Next атрибут, раз на странице включена плавная
+      // прокрутка (её включает Bootstrap: `:root { scroll-behavior:
+      // smooth }` в reboot). Без него переход открывал страницу
+      // ПРОКРУЧЕННОЙ, и заголовок уходил под шапку (жалоба владельца):
+      // Next после навигации ставит scrollTop = 0, но с плавной
+      // прокруткой это анимация — он тут же меряет положение, видит
+      // содержимое «не на экране» и доводит scrollIntoView, оставляя
+      // страницу на ~120px ниже верха. С атрибутом Next на время
+      // перехода сам выключает плавность (см.
+      // node_modules/next/dist/shared/lib/router/utils/disable-smooth-scroll.js
+      // — он же в dev печатает предупреждение об этом).
+      data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-100`}
     >
       <body className="d-flex flex-column min-vh-100">
