@@ -8,7 +8,13 @@ import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
-import { setFeedbackStatus, deleteFeedback } from "./actions";
+import BulkList from "@/components/admin/BulkList";
+import {
+  setFeedbackStatus,
+  deleteFeedback,
+  bulkDeleteFeedback,
+  bulkSetFeedbackStatus,
+} from "./actions";
 
 export const metadata = { title: "Обращения" };
 
@@ -19,6 +25,14 @@ const KIND_LABELS: Record<string, string> = {
   SUGGESTION: "Предложение",
   CONTENT_REQUEST: "Запрос контента",
 };
+
+// Статусов всего два (FeedbackStatus), поэтому массовая смена — один
+// select с обоими вариантами, а не пара кнопок: так же, как «проставить
+// статус» у сериалов, и панель не разрастается.
+const STATUS_OPTIONS = [
+  { id: "DONE", name: "Обработано" },
+  { id: "NEW", name: "Новое" },
+];
 
 // Обращения из формы помощи/поиска (см. FeedbackForm). TODO: дублировать
 // новые обращения на почту, когда появятся SMTP-доступы.
@@ -69,11 +83,13 @@ export default async function AdminFeedbackPage({
       {items.length === 0 ? (
         <p className="text-secondary">Пока пусто.</p>
       ) : (
-        <div className="d-flex flex-column gap-2">
-          {items.map((f) => {
+        <BulkList
+          rows={items.map((f) => {
             const replyEmail = f.email || f.user?.email || null;
-            return (
-            <div key={f.id} className="surface d-flex flex-wrap justify-content-between gap-3 p-3">
+            return {
+              id: f.id,
+              node: (
+            <div className="surface d-flex flex-wrap justify-content-between gap-3 p-3">
               <div style={{ minWidth: 0, flex: 1 }}>
                 <p className="small mb-1">
                   <span className="event-chip me-2">{KIND_LABELS[f.kind] ?? f.kind}</span>
@@ -119,9 +135,28 @@ export default async function AdminFeedbackPage({
                 </ConfirmForm>
               </div>
             </div>
-          );
+              ),
+            };
           })}
-        </div>
+          actions={[
+            {
+              kind: "delete",
+              label: "Удалить выбранные",
+              // Это чужие письма, а не импортный мусор: подтверждение с
+              // числом обязательно, восстановить обращение неоткуда.
+              confirmTemplate:
+                "Удалить {n} обращений? Тексты и почта для ответа пропадут навсегда.",
+              run: bulkDeleteFeedback,
+            },
+            {
+              kind: "select",
+              label: "Проставить статус",
+              placeholder: "Статус…",
+              options: STATUS_OPTIONS,
+              run: bulkSetFeedbackStatus,
+            },
+          ]}
+        />
       )}
       <Pagination
         page={page}

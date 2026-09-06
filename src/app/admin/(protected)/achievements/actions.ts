@@ -150,3 +150,67 @@ export async function deleteAchievement(id: string) {
   });
   revalidateAchievementPages();
 }
+
+// Массовые действия списка (BulkList). Ачивок нет в общем
+// bulkActions.ts — там каталог под менеджером каталога, а этот раздел
+// админский, — но в историю пишем так же: одна строка BULK на действие.
+
+/** Короткая сводка для истории: первые пять названий и «ещё N» — как в
+ *  общем bulkActions.ts, история читается одинаково везде. */
+function summarize(labels: string[]): string {
+  const head = labels.slice(0, 5).join(", ");
+  return labels.length > 5 ? `${head} и ещё ${labels.length - 5}` : head;
+}
+
+export async function bulkDeleteAchievements(ids: string[]): Promise<void> {
+  await requireAdmin();
+  if (ids.length === 0) return;
+  const rows = await prisma.achievement.findMany({
+    where: { id: { in: ids } },
+    select: { emoji: true, title: true },
+  });
+  await prisma.achievement.deleteMany({ where: { id: { in: ids } } });
+
+  await logAudit({
+    action: "BULK",
+    entityType: "Achievement",
+    // У массового действия нет одной записи-владельца — id первой строки
+    // просто даёт ссылке куда указывать, смысл несёт note.
+    entityId: ids[0],
+    entityLabel: `${ids.length} ачивок`,
+    note: `удалено: ${summarize(rows.map((a) => `${a.emoji} ${a.title}`))}`,
+  });
+  revalidateAchievementPages();
+}
+
+/** Массовый тумблер `enabled` — то же, что точечный, только пачкой.
+ *  Уже стоящие в нужном положении не трогаем: иначе «Включить
+ *  выбранные» на включённых ачивках писало бы в историю правку,
+ *  которой не было. */
+export async function bulkSetAchievementsEnabled(
+  ids: string[],
+  enabled: boolean,
+): Promise<void> {
+  await requireAdmin();
+  if (ids.length === 0) return;
+  const rows = await prisma.achievement.findMany({
+    where: { id: { in: ids }, enabled: !enabled },
+    select: { id: true, emoji: true, title: true },
+  });
+  if (rows.length === 0) return;
+  await prisma.achievement.updateMany({
+    where: { id: { in: rows.map((a) => a.id) } },
+    data: { enabled },
+  });
+
+  await logAudit({
+    action: "BULK",
+    entityType: "Achievement",
+    entityId: rows[0].id,
+    entityLabel: `${rows.length} ачивок`,
+    note: `${enabled ? "включено" : "выключено"}: ${summarize(
+      rows.map((a) => `${a.emoji} ${a.title}`),
+    )}`,
+  });
+  revalidateAchievementPages();
+}

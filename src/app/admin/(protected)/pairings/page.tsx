@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { deletePairing, setPairingStatus, swapPairingOrder } from "./actions";
+import {
+  bulkDeletePairings,
+  bulkSetPairingStatus,
+  deletePairing,
+  setPairingStatus,
+  swapPairingOrder,
+} from "./actions";
+import { PAIRING_STATUS_LABELS } from "./pairingStatus";
+import BulkList from "@/components/admin/BulkList";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import CreatePairingModal from "./CreatePairingModal";
@@ -90,8 +98,8 @@ export default async function AdminPairingsPage({
           {q ? "Ничего не найдено." : "Пока нет пейрингов."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
-          {pairings.map((pair) => {
+        <BulkList
+          rows={pairings.map((pair) => {
             const boundDelete = deletePairing.bind(null, pair.id);
             const boundToggleStatus = setPairingStatus.bind(
               null,
@@ -99,60 +107,83 @@ export default async function AdminPairingsPage({
               pair.status === "CURRENT" ? "PAST" : "CURRENT",
             );
             const fallbackLabel = `${pair.performerA.name} × ${pair.performerB.name}`;
-            return (
-              <div
-                key={pair.id}
-                className="surface d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <div>
-                  <p className="font-display fw-medium text-white mb-0 d-flex align-items-center gap-2">
-                    {pair.name || fallbackLabel}
-                    <span
-                      className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
-                      style={{ fontSize: "0.65rem" }}
+            return {
+              id: pair.id,
+              node: (
+                <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
+                  <div>
+                    <p className="font-display fw-medium text-white mb-0 d-flex align-items-center gap-2">
+                      {pair.name || fallbackLabel}
+                      <span
+                        className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
+                        style={{ fontSize: "0.65rem" }}
+                      >
+                        {PAIRING_STATUS_LABELS[pair.status]}
+                      </span>
+                    </p>
+                    <p className="small text-secondary mb-0">
+                      {pair.name ? fallbackLabel : "Без названия"} · {pair._count.events}{" "}
+                      событ.
+                    </p>
+                  </div>
+                  <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                    <form action={swapPairingOrder.bind(null, pair.id)}>
+                      <SubmitButton
+                        label="⇄"
+                        busyLabel="…"
+                        className="btn btn-ghost btn-sm"
+                        title="Поменять A и B местами"
+                      />
+                    </form>
+                    <form action={boundToggleStatus}>
+                      <SubmitButton
+                        label={pair.status === "CURRENT" ? "Отметить бывшим" : "Отметить текущим"}
+                        busyLabel="Сохраняем…"
+                        className="btn btn-ghost btn-sm"
+                      />
+                    </form>
+                    <ConfirmForm
+                      action={boundDelete}
+                      confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
                     >
-                      {pair.status === "CURRENT" ? "Текущий" : "Бывший"}
-                    </span>
-                  </p>
-                  <p className="small text-secondary mb-0">
-                    {pair.name ? fallbackLabel : "Без названия"} · {pair._count.events}{" "}
-                    событ.
-                  </p>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        aria-label="Удалить"
+                        data-tooltip="Удалить"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </ConfirmForm>
+                  </div>
                 </div>
-                <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <form action={swapPairingOrder.bind(null, pair.id)}>
-                    <SubmitButton
-                      label="⇄"
-                      busyLabel="…"
-                      className="btn btn-ghost btn-sm"
-                      title="Поменять A и B местами"
-                    />
-                  </form>
-                  <form action={boundToggleStatus}>
-                    <SubmitButton
-                      label={pair.status === "CURRENT" ? "Отметить бывшим" : "Отметить текущим"}
-                      busyLabel="Сохраняем…"
-                      className="btn btn-ghost btn-sm"
-                    />
-                  </form>
-                  <ConfirmForm
-                    action={boundDelete}
-                    confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
-                  >
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn-danger"
-                      aria-label="Удалить"
-                      data-tooltip="Удалить"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </ConfirmForm>
-                </div>
-              </div>
-            );
+              ),
+            };
           })}
-        </div>
+          actions={[
+            {
+              kind: "delete",
+              label: "Удалить выбранные",
+              confirmTemplate: "Удалить {n} пейрингов? Действие необратимо.",
+              run: async (ids) => {
+                "use server";
+                await bulkDeletePairings(ids);
+              },
+            },
+            {
+              kind: "select",
+              label: "Проставить статус",
+              placeholder: "Статус…",
+              options: Object.entries(PAIRING_STATUS_LABELS).map(
+                ([id, name]) => ({ id, name }),
+              ),
+              run: async (ids, value) => {
+                "use server";
+                await bulkSetPairingStatus(ids, value);
+              },
+            },
+          ]}
+        />
       )}
       {/* Листание — от полного адреса: поиск и фильтры остаются на
           месте (И16), меняется только page. */}

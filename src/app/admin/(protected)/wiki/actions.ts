@@ -97,3 +97,69 @@ export async function deleteWikiArticle(id: string) {
   // свою же форму с отметкой «Сохранено».
   redirect(`/admin/wiki/${id}/edit?saved=1`);
 }
+
+// Массовые действия для BulkList в /admin/wiki. Точечные экшены пишут
+// историю правок — массовые тоже, но одной строкой BULK: иначе разом
+// снятые с публикации статьи не оставили бы следа.
+
+/** Короткая сводка для истории: первые пять заголовков и «ещё N».
+ *  Свой экземпляр, а не общий из bulkActions.ts: там таблица каталожных
+ *  сущностей, вики в неё не входит. */
+function summarize(titles: string[]): string {
+  const head = titles.slice(0, 5).join(", ");
+  return titles.length > 5 ? `${head} и ещё ${titles.length - 5}` : head;
+}
+
+async function wikiTitles(ids: string[]): Promise<string[]> {
+  const rows = await prisma.wikiArticle.findMany({
+    where: { id: { in: ids } },
+    select: { title: true },
+  });
+  return rows.map((r) => r.title);
+}
+
+export async function bulkDeleteWikiArticles(ids: string[]): Promise<void> {
+  await requireAdmin();
+  if (ids.length === 0) return;
+  const titles = await wikiTitles(ids);
+  await prisma.wikiArticle.deleteMany({ where: { id: { in: ids } } });
+  await logAudit({
+    action: "BULK",
+    entityType: "WikiArticle",
+    // У массового действия нет одной записи-владельца — id первой строки
+    // нужен только ссылке, смысл несёт note.
+    entityId: ids[0],
+    entityLabel: `${ids.length} статей`,
+    note: `удалено: ${summarize(titles)}`,
+  });
+  revalidateWiki();
+  revalidatePath("/wiki");
+}
+
+/** Опубликовать выбранные или вернуть их в черновики. Значение приходит
+ *  строкой из <select> панели, поэтому сверяем его сами. */
+export async function bulkSetWikiPublished(ids: string[], value: string): Promise<void> {
+  await requireAdmin();
+  if (ids.length === 0) return;
+  if (value !== "publish" && value !== "draft") throw new Error("Неизвестное действие");
+  const published = value === "publish";
+  const articles = await prisma.wikiArticle.findMany({
+    where: { id: { in: ids } },
+    select: { title: true, slug: true, id: true },
+  });
+  await prisma.wikiArticle.updateMany({ where: { id: { in: ids } }, data: { published } });
+  await logAudit({
+    action: "BULK",
+    entityType: "WikiArticle",
+    entityId: ids[0],
+    entityLabel: `${ids.length} статей`,
+    note: `${published ? "опубликовано" : "снято с публикации"}: ${summarize(
+      articles.map((a) => a.title),
+    )}`,
+  });
+  revalidatePath("/admin/wiki");
+  // Индекс /wiki показывает только опубликованные — его сбрасываем
+  // всегда, страницы самих статей поимённо.
+  revalidatePath("/wiki");
+  for (const a of articles) revalidatePath(`/wiki/${a.slug ?? a.id}`);
+}

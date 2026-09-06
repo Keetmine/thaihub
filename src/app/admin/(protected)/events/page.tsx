@@ -13,6 +13,8 @@ import { adminEventFilterDefs, adminEventFilterWhere, type FilterParams } from "
 import { getDict } from "@/lib/i18n";
 import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 import ImportEventButton from "./ImportEventButton";
+import BulkList from "@/components/admin/BulkList";
+import { bulkDelete } from "../bulkActions";
 
 export const metadata = { title: "События" };
 
@@ -180,24 +182,28 @@ export default async function AdminEventsPage({
           {q ? "Ничего не найдено." : "Событий пока нет."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
-          {events.map((ev) => {
+        <BulkList
+          rows={events.map((ev) => {
             const boundDeleteEvent = deleteEvent.bind(null, ev.id);
-            return (
-              <div
-                key={ev.id}
-                className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3"
-              >
-                <Link
-                  href={`/admin/events/${ev.id}/edit`}
-                  className="stretched-link text-decoration-none d-flex align-items-center gap-3"
-                  style={{ minWidth: 0 }}
-                >
+            return {
+              id: ev.id,
+              node: (
+              <div className="surface position-relative d-flex align-items-center justify-content-between gap-3 p-3">
+                {/* Ссылка-«растяжка» висит только на названии, а не на всей
+                    левой части строки: обёртка поверх аватарки и текста
+                    перехватывала бы клик по чекбоксу выделения. Так же
+                    устроены строки локаций и сериалов. */}
+                <div className="d-flex align-items-center gap-3" style={{ minWidth: 0 }}>
                   <LetterAvatar name={ev.title} photoUrl={ev.posterUrl} size={2.75} rounded={false} />
                   <div style={{ minWidth: 0 }}>
-                    <span className="font-display fw-medium text-white d-block text-truncate">
-                      {ev.title}
-                    </span>
+                    <Link
+                      href={`/admin/events/${ev.id}/edit`}
+                      className="stretched-link text-decoration-none"
+                    >
+                      <span className="font-display fw-medium text-white d-block text-truncate">
+                        {ev.title}
+                      </span>
+                    </Link>
                     <p className="small text-secondary mb-0">
                       {ev.occurrences
                         .map(
@@ -213,7 +219,7 @@ export default async function AdminEventsPage({
                       </p>
                     )}
                   </div>
-                </Link>
+                </div>
                 {/* position-relative + z-2 lifts these controls above the
                     row's stretched-link (::after has z-index: 1), so they
                     stay individually clickable instead of triggering the
@@ -242,9 +248,22 @@ export default async function AdminEventsPage({
                   </ConfirmForm>
                 </div>
               </div>
-            );
+              ),
+            };
           })}
-        </div>
+          actions={[
+            {
+              kind: "delete",
+              label: "Удалить выбранные",
+              confirmTemplate:
+                "Удалить {n} событий? Вместе с датами, составом и отметками пользователей.",
+              run: async (ids) => {
+                "use server";
+                await bulkDelete("event", ids);
+              },
+            },
+          ]}
+        />
       )}
       {/* Листание — от полного адреса: вкладка, сортировка, поиск,
           issue и фильтры остаются на месте (И16), меняется только page. */}

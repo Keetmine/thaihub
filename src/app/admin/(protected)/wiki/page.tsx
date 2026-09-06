@@ -7,7 +7,12 @@ import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
-import { deleteWikiArticle } from "./actions";
+import BulkList from "@/components/admin/BulkList";
+import {
+  deleteWikiArticle,
+  bulkDeleteWikiArticles,
+  bulkSetWikiPublished,
+} from "./actions";
 import { formatShortDate } from "@/lib/dates";
 
 export const metadata = { title: "Вики" };
@@ -64,9 +69,11 @@ export default async function AdminWikiPage({
             : "Пока нет статей. Идеи: как купить билеты на концерт, как искать дешёвые перелёты, виза в Таиланд."}
         </p>
       ) : (
-        <div className="d-flex flex-column gap-2">
-          {articles.map((a) => (
-            <div key={a.id} className="surface d-flex align-items-center justify-content-between gap-3 p-3">
+        <BulkList
+          rows={articles.map((a) => ({
+            id: a.id,
+            node: (
+            <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
               <div style={{ minWidth: 0 }}>
                 <p className="font-display fw-medium text-white mb-0 text-truncate">
                   {a.title}
@@ -104,8 +111,27 @@ export default async function AdminWikiPage({
                 </ConfirmForm>
               </div>
             </div>
-          ))}
-        </div>
+            ),
+          }))}
+          actions={[
+            {
+              kind: "delete",
+              label: "Удалить выбранные",
+              confirmTemplate: "Удалить {n} статей? Тексты не восстановить.",
+              run: bulkDeleteWikiArticles,
+            },
+            {
+              kind: "select",
+              label: "Сменить публикацию",
+              placeholder: "Публикация…",
+              options: [
+                { id: "publish", name: "Опубликовать" },
+                { id: "draft", name: "Вернуть в черновики" },
+              ],
+              run: bulkSetWikiPublished,
+            },
+          ]}
+        />
       )}
       <Pagination
         page={page}
