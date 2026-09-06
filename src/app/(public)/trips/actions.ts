@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
 import { combineDateTime } from "@/lib/dates";
-import type { TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
+import type { TripTodoKind, TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, isItemVisibility } from "./itemVisibility";
 import { isPremiumActive } from "@/lib/premium";
 import { notifyUser } from "@/lib/notifications";
@@ -609,6 +609,14 @@ function parseTodoDate(formData: FormData): { date: Date | null; hasTime: boolea
   return { date, hasTime: Boolean(timeRaw) };
 }
 
+/** Какой это список: дела, чемодан или покупки (АА10/АА11). Мусор в
+ *  поле — обычное дело: список выбирается сегментом на вкладке, и чужой
+ *  запрос не должен создавать записи «в никуда». */
+function parseTodoKind(value: FormDataEntryValue | null): TripTodoKind {
+  const raw = String(value ?? "");
+  return raw === "PACKING" || raw === "SHOPPING" ? raw : "TODO";
+}
+
 export async function createTripTodo(tripId: string, formData: FormData): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
@@ -619,6 +627,7 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
     data: {
       tripId,
       text,
+      kind: parseTodoKind(formData.get("kind")),
       date,
       hasTime,
       createdById: access.user.id,

@@ -227,6 +227,26 @@ export const trips = {
         emptyTitle: "No to-dos yet",
         emptyHintOwn: "Add the first one with the button — buy tickets, change money, pick up merch.",
         emptyHintGuest: "No one has added anything yet.",
+
+        /** Три списка одной вкладки: дела, чемодан, покупки (АА10/АА11). */
+        lists: {
+            tab: (n: number) => (n > 0 ? `Lists (${n})` : "Lists"),
+            todo: "To-do",
+            packing: "Packing",
+            shopping: "Shopping",
+            /** Счётчик на сегменте: сделано из всего. */
+            progress: (done: number, total: number) => `${done}/${total}`,
+            addPacking: "+ Item",
+            addShopping: "+ Purchase",
+            addPackingTitle: "New item to pack",
+            addShoppingTitle: "New purchase",
+            packingPlaceholder: "Adapter, sunscreen, meds…",
+            shoppingPlaceholder: "Magnets for mum, sneakers, 7-Eleven snacks…",
+            packingEmptyTitle: "The suitcase is empty",
+            packingEmptyOwn: "Write down what you must not forget — the list carries over from trip to trip in your head anyway.",
+            shoppingEmptyTitle: "Nothing on the shopping list",
+            shoppingEmptyOwn: "Add what you want to bring home — you'll want it anyway, better not to forget.",
+        },
     },
 
     /** Жильё и перелёты. */

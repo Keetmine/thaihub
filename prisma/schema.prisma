@@ -944,6 +944,12 @@ model Trip {
   @@index([userId])
 }
 
+enum TripTodoKind {
+  TODO
+  PACKING
+  SHOPPING
+}
+
 enum TripVisibility {
   PRIVATE
   FRIENDS
@@ -1106,6 +1112,12 @@ model TripTodo {
   trip             Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
   text             String
   done             Boolean            @default(false)
+  // Какой это список: дела, чемодан («что взять») или покупки («что
+  // купить в Таиланде») — АА10/АА11. Отдельными моделями они не стали
+  // намеренно: галочка «готово», дата, видимость, автор и право правки
+  // у всех трёх одинаковые, и три копии этой механики разъехались бы с
+  // первой же правкой. Старые записи — дела.
+  kind             TripTodoKind       @default(TODO)
   date             DateTime?
   // Совместные поездки: автор и право правки другими участниками.
   createdById      String?

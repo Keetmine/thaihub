@@ -221,6 +221,24 @@ export const trips: Dict["trips"] = {
         emptyTitle: "Дел пока нет",
         emptyHintOwn: "Добавьте первое по кнопке — купить билеты, обменять деньги, собрать мерч.",
         emptyHintGuest: "Участники пока ничего не добавили.",
+
+        lists: {
+            tab: (n: number) => (n > 0 ? `Списки (${n})` : "Списки"),
+            todo: "Дела",
+            packing: "Чемодан",
+            shopping: "Покупки",
+            progress: (done: number, total: number) => `${done}/${total}`,
+            addPacking: "+ Вещь",
+            addShopping: "+ Покупка",
+            addPackingTitle: "Что взять с собой",
+            addShoppingTitle: "Что купить",
+            packingPlaceholder: "Переходник, санскрин, лекарства…",
+            shoppingPlaceholder: "Магниты маме, кроссовки, вкусняшки из 7-Eleven…",
+            packingEmptyTitle: "Чемодан пока пуст",
+            packingEmptyOwn: "Запишите, что нельзя забыть, — этот список всё равно живёт в голове от поездки к поездке.",
+            shoppingEmptyTitle: "Список покупок пуст",
+            shoppingEmptyOwn: "Добавьте, что хочется привезти: захочется всё равно, так пусть не забудется.",
+        },
     },
 
     /** Жильё и перелёты. */

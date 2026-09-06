@@ -1,5 +1,7 @@
 "use client";
 
+import AppLink from "@/components/AppLink";
+import type { TripTodoKind } from "@/generated/prisma/client";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
@@ -36,12 +38,15 @@ export type TodoData = {
   /** Кто видит дело: только автор, участники, друзья автора или все,
    *  кому видна поездка. */
   visibility: TripItemVisibilityValue;
+  /** Какой список: дела, чемодан, покупки (АА10/АА11). */
+  kind: TripTodoKind;
 };
 
 /** Строка дела: чекбокс + текст + дата + правка/удаление. Используется
  *  и во вкладке «Дела», и в хронологии «Мой план» (датированные,
  *  showDate — та же дата-колонка, что у событий). */
 export function TodoRow({
+  showKind = false,
   todo,
   showDate = false,
   showShareToggle = false,
@@ -53,6 +58,10 @@ export function TodoRow({
   /** Что можно выбрать в «кто это видит» — уже урезано видимостью
    *  поездки (см. `itemVisibilityChoices`). */
   visibilityOptions: readonly TripItemVisibilityValue[];
+  /** Показывать ли значок списка (чемодан/покупки). Нужен только в
+   *  ЛЕНТЕ плана, где строка стоит вперемешку с событиями; внутри
+   *  своего списка все строки и так одного вида. */
+  showKind?: boolean;
 }) {
   const uid = useId();
   const t = useT();
@@ -110,6 +119,18 @@ export function TodoRow({
         className={`flex-fill ${todo.done ? "text-secondary text-decoration-line-through" : ""}`}
         style={{ minWidth: 0 }}
       >
+        {/* В ленте плана датированная строка стоит вперемешку с
+            событиями и делами, и по тексту «магниты маме» не понять,
+            это дело или покупка — помечаем список значком (АА10/АА11).
+            Внутри своего списка значок не нужен: там и так все свои. */}
+        {showKind && todo.kind !== "TODO" && (
+          <span
+            className="me-1"
+            title={todo.kind === "PACKING" ? t.trips.todos.lists.packing : t.trips.todos.lists.shopping}
+          >
+            {todo.kind === "PACKING" ? "🧳" : "🛍️"}
+          </span>
+        )}
         {todo.text}
         <span className="ms-2">
           <ItemVisibilityBadge visibility={todo.visibility} />
@@ -232,10 +253,14 @@ export function TodoRow({
  *  что-то добавить. */
 export function AddTripTodoButton({
   tripId,
+  kind = "TODO",
   showShareToggle = false,
   visibilityOptions,
 }: {
   tripId: string;
+  /** В какой список добавляем — от него зависят подпись кнопки,
+   *  заголовок окна, подсказка в поле и видимость по умолчанию. */
+  kind?: TripTodoKind;
   showShareToggle?: boolean;
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
@@ -248,7 +273,11 @@ export function AddTripTodoButton({
   return (
     <>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
-        {t.trips.todos.addButton}
+        {kind === "PACKING"
+          ? t.trips.todos.lists.addPacking
+          : kind === "SHOPPING"
+            ? t.trips.todos.lists.addShopping
+            : t.trips.todos.addButton}
       </button>
 
       <Modal
@@ -257,7 +286,13 @@ export function AddTripTodoButton({
           setIsOpen(false);
           setError(null);
         }}
-        title={t.trips.todos.addTitle}
+        title={
+          kind === "PACKING"
+            ? t.trips.todos.lists.addPackingTitle
+            : kind === "SHOPPING"
+              ? t.trips.todos.lists.addShoppingTitle
+              : t.trips.todos.addTitle
+        }
       >
         {/* Форма живёт внутри модалки, поэтому после закрытия она
             размонтируется целиком — прежний ремоунт по ключу (иначе
@@ -278,11 +313,20 @@ export function AddTripTodoButton({
         >
           <div>
             <label className="form-label small text-secondary" htmlFor={`${uid}-text2`}>{t.trips.todos.newText}</label>
+            {/* Список едет полем формы: серверное действие не знает,
+                какая вкладка была открыта. */}
+            <input type="hidden" name="kind" value={kind} />
             <input id={`${uid}-text2`}
               name="text"
               required
               autoFocus
-              placeholder={t.trips.todos.newPlaceholder}
+              placeholder={
+                kind === "PACKING"
+                  ? t.trips.todos.lists.packingPlaceholder
+                  : kind === "SHOPPING"
+                    ? t.trips.todos.lists.shoppingPlaceholder
+                    : t.trips.todos.newPlaceholder
+              }
               className="form-control"
             />
           </div>
@@ -298,7 +342,13 @@ export function AddTripTodoButton({
               <input id={`${uid}-time2`} type="time" name="time" className="form-control" />
             </div>
           </div>
-          <ItemVisibilityField options={visibilityOptions} />
+          {/* Чемодан по умолчанию приватный: в совместной поездке он у
+              каждого свой, и «мои лекарства» соседке по номеру не
+              нужны. Покупками, наоборот, делятся. */}
+          <ItemVisibilityField
+            options={visibilityOptions}
+            defaultValue={kind === "PACKING" ? "PRIVATE" : "PARTICIPANTS"}
+          />
           {showShareToggle && (
             <label className="form-check d-flex align-items-center gap-2 mb-0">
               <input type="checkbox" name="editableByOthers" className="form-check-input m-0" />
@@ -321,11 +371,18 @@ export function AddTripTodoButton({
  *  живёт в общем ряду действий над вкладками — здесь её нет. */
 export default function TripTodos({
   todos,
+  activeList = "TODO",
+  segments = [],
   canAdd,
   showShareToggle = false,
   visibilityOptions,
 }: {
   todos: TodoData[];
+  /** Открытый список — он же решает вид пустого состояния. */
+  activeList?: TripTodoKind;
+  /** Переключатель списков: адрес, сколько всего и сколько собрано.
+   *  Считает страница — она видит все три списка сразу. */
+  segments?: { kind: TripTodoKind; href: string; total: number; done: number }[];
   /** Может ли текущий юзер добавлять дела (участник с подпиской) —
    *  от этого зависит только подсказка в пустом состоянии. */
   canAdd: boolean;
@@ -333,6 +390,17 @@ export default function TripTodos({
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
+  const l = t.trips.todos.lists;
+  const segmentLabel = (kind: TripTodoKind) =>
+    kind === "PACKING" ? l.packing : kind === "SHOPPING" ? l.shopping : l.todo;
+  // Пустая вкладка говорит про СВОЙ список: «чемодан пуст» вместо
+  // общего «дел пока нет».
+  const empty =
+    activeList === "PACKING"
+      ? { emoji: "🧳", title: l.packingEmptyTitle, own: l.packingEmptyOwn }
+      : activeList === "SHOPPING"
+        ? { emoji: "🛍️", title: l.shoppingEmptyTitle, own: l.shoppingEmptyOwn }
+        : { emoji: "📝", title: t.trips.todos.emptyTitle, own: t.trips.todos.emptyHintOwn };
 
   const sorted = [...todos].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
@@ -344,11 +412,38 @@ export default function TripTodos({
 
   return (
     <div style={{ maxWidth: "44rem" }}>
+      {/* Три списка одной вкладки — сегментами, а не тремя вкладками
+          верхнего ряда: там уже четыре, и «Чемодан» с «Покупками»
+          рядом с «Афишей» смотрелись бы как равные ей разделы. У
+          чемодана и покупок в сегменте видно, сколько собрано. */}
+      {segments.length > 1 && (
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          {segments.map((segment) => (
+            <AppLink
+              key={segment.kind}
+              href={segment.href}
+              prefetch={false}
+              className={`btn btn-sm ${
+                segment.kind === activeList ? "btn-primary" : "btn-ghost"
+              }`}
+            >
+              {segmentLabel(segment.kind)}
+              {segment.total > 0 && (
+                <span className="ms-2 small opacity-75">
+                  {segment.kind === "TODO"
+                    ? segment.total
+                    : l.progress(segment.done, segment.total)}
+                </span>
+              )}
+            </AppLink>
+          ))}
+        </div>
+      )}
       {sorted.length === 0 ? (
         <EmptyState
-          emoji="📝"
-          title={t.trips.todos.emptyTitle}
-          hint={canAdd ? t.trips.todos.emptyHintOwn : t.trips.todos.emptyHintGuest}
+          emoji={empty.emoji}
+          title={empty.title}
+          hint={canAdd ? empty.own : t.trips.todos.emptyHintGuest}
           compact
         />
       ) : (

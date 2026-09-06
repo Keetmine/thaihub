@@ -1,3 +1,4 @@
+import type { TripTodoKind } from "@/generated/prisma/client";
 import AppLink from "@/components/AppLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -321,12 +322,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   });
 }
 
+/** Порядок сегментов вкладки «Списки»: дела, чемодан, покупки. */
+const TODO_KINDS = ["TODO", "PACKING", "SHOPPING"] as const satisfies readonly TripTodoKind[];
+
 export default async function TripPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string; mine?: string }>;
+  searchParams: Promise<{ view?: string; mine?: string; list?: string }>;
 }) {
   const { locale, t } = await getT();
   // Гостя со страницы больше не гоним: ПУБЛИЧНОЙ поездкой делятся
@@ -338,7 +342,7 @@ export default async function TripPage({
   const viewerId = user?.id ?? null;
 
   const { id: rawParam } = await params;
-  const { view, mine } = await searchParams;
+  const { view, mine, list } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
   // поездки; ?view=all — вкладка «Афиша», все события этих дат из
   // афиши (без личных записей и дел); ?view=places — «что
@@ -347,6 +351,12 @@ export default async function TripPage({
   const showAll = view === "all";
   const showPlaces = view === "places";
   const showTodos = view === "todos";
+  // Какой из трёх списков вкладки открыт: дела (по умолчанию), чемодан
+  // или покупки (АА10/АА11). В адресе, а не в состоянии компонента:
+  // ссылкой на «покупки» удобно кинуть попутчице, и кнопка добавления
+  // (она живёт в ряду над вкладками) должна знать, куда добавлять.
+  const activeList: TripTodoKind =
+    list === "packing" ? "PACKING" : list === "shopping" ? "SHOPPING" : "TODO";
   const trip = await prisma.trip.findFirst({
     where: slugOrIdWhere(rawParam),
     include: {
@@ -549,6 +559,7 @@ export default async function TripPage({
     .map((t) => ({
       id: t.id,
       text: t.text,
+      kind: t.kind,
       done: t.done,
       date: t.date ? t.date.toISOString() : null,
       hasTime: t.hasTime,
@@ -942,6 +953,7 @@ export default async function TripPage({
           <TripFlightChain tripId={trip.id} chain={item.chain} visibilityOptions={visibilityOptions} />
         ) : (
           <TodoRow
+            showKind
             todo={item.todo}
             showDate
             showShareToggle={isShared}
@@ -1038,8 +1050,11 @@ export default async function TripPage({
           />
           <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
           <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
+          {/* Добавляет в ТОТ список, который сейчас открыт: на вкладке
+              «Чемодан» кнопка так и зовётся «+ Вещь». */}
           <AddTripTodoButton
             tripId={trip.id}
+            kind={showTodos ? activeList : "TODO"}
             showShareToggle={isShared}
             visibilityOptions={visibilityOptions}
           />
@@ -1074,7 +1089,7 @@ export default async function TripPage({
               prefetch={false}
               className={`tab-bar-item ${showTodos ? "active" : ""}`}
             >
-              {t.trips.detail.tabTodos(todoData.length)}
+              {t.trips.todos.lists.tab(todoData.length)}
             </AppLink>
           )}
           <AppLink
@@ -1109,7 +1124,19 @@ export default async function TripPage({
 
       {showTodos ? (
         <TripTodos
-          todos={todoData}
+          todos={todoData.filter((item) => item.kind === activeList)}
+          activeList={activeList}
+          segments={TODO_KINDS.map((kind) => {
+            const rows = todoData.filter((item) => item.kind === kind);
+            return {
+              kind,
+              href: `${tripHref(trip)}?view=todos${
+                kind === "TODO" ? "" : `&list=${kind === "PACKING" ? "packing" : "shopping"}`
+              }${onlyMine ? "&mine=1" : ""}`,
+              total: rows.length,
+              done: rows.filter((item) => item.done).length,
+            };
+          })}
           canAdd={canContribute}
           showShareToggle={isShared}
           visibilityOptions={visibilityOptions}
