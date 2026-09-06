@@ -1,3 +1,4 @@
+import { userHref } from "@/lib/userProfile";
 import { prisma } from "@/lib/prisma";
 import { computeUserStats, type UserStats } from "@/lib/userStats";
 import { notifyUser } from "@/lib/notifications";
@@ -167,6 +168,14 @@ export async function syncAchievements(userId: string, stats?: UserStats): Promi
   // только тем, у кого он привязан.
   if (newlyUnlocked.length > 0) {
     void (async () => {
+      // Ник для ссылки: страница принимает и id, но человек открывает
+      // уведомление и видит адрес — пусть это будет /users/keetmine, а
+      // не строка из букв и цифр (жалоба владельца 2026-09-06). Один
+      // короткий запрос на разблокировку ачивки — событие редкое.
+      const owner = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true },
+      });
       for (const def of newlyUnlocked) {
         await notifyUser({
           userId,
@@ -175,9 +184,8 @@ export async function syncAchievements(userId: string, stats?: UserStats): Promi
           subject: `${def.emoji} ${def.title}`,
           body: def.hint,
           // Прямо на профиль владельца (кабинет /account остался лишь
-          // редиректом). По id, а не нику: ника здесь нет, а /users/<id>
-          // страница принимает наравне с ником — лишний запрос не нужен.
-          href: `/users/${userId}`,
+          // редиректом).
+          href: owner ? userHref(owner) : `/users/${userId}`,
         });
       }
     })();

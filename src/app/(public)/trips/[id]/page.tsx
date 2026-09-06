@@ -36,7 +36,7 @@ import {
 } from "../TripPlacesControls";
 import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
-import { userDisplayName } from "@/lib/userProfile";
+import { userHref, userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
 import AddBookingButton from "./AddBookingButton";
 import AddTripPlaceButton from "../AddTripPlaceButton";
@@ -333,7 +333,7 @@ export default async function TripPage({
           attendances: { where: { userId: user.id }, select: { userId: true } },
         },
       },
-      user: { select: { id: true, name: true, deletedAt: true } },
+      user: { select: { id: true, name: true, username: true, deletedAt: true } },
       // Брони жилья: показываются на вкладке плана рядом с событиями —
       // в день заселения не приходится искать письмо в почте.
       bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
@@ -943,7 +943,7 @@ export default async function TripPage({
           </div>
         ) : (
           <AppLink
-            href={`/users/${trip.user.id}`}
+            href={userHref(trip.user)}
             className="small text-secondary text-decoration-none"
           >
             {trip.user.name

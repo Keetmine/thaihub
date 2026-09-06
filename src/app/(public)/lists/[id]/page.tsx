@@ -14,7 +14,7 @@ import EditListButton from "./EditListButton";
 import VisitedButton from "@/components/VisitedButton";
 import { locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { getT, localeHref } from "@/lib/i18n";
-import { userDisplayName } from "@/lib/userProfile";
+import { userHref, userDisplayName } from "@/lib/userProfile";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
   const list = await prisma.placeList.findFirst({
     where: slugOrIdWhere(rawParam),
     include: {
-      user: { select: { id: true, name: true, deletedAt: true } },
+      user: { select: { id: true, name: true, username: true, deletedAt: true } },
       items: {
         include: { location: true },
         orderBy: [{ position: "asc" }, { createdAt: "asc" }],
@@ -98,7 +98,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
         ) : (
           <div className="d-flex flex-column align-items-end gap-1">
             <AppLink
-              href={`/users/${list.user.id}`}
+              href={userHref(list.user)}
               className="small text-secondary text-decoration-none"
             >
               {list.user.name

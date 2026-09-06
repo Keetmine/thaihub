@@ -41,8 +41,13 @@ export function userDisplayName(
 }
 
 /** Адрес профиля: /users/keetmine, с откатом на id — ник может быть ещё
- *  не задан (старые аккаунты, регистрация не доведена до конца). */
-export function userHref(user: PublicUser): string {
+ *  не задан (старые аккаунты, регистрация не доведена до конца).
+ *
+ *  Имени тут не просим намеренно: ссылке оно не нужно, а лишнее поле в
+ *  сигнатуре заставляло вызывающих либо тащить его в select, либо
+ *  собирать адрес руками — так и расползлись ссылки по id.
+ */
+export function userHref(user: Pick<PublicUser, "id" | "username">): string {
   return `/users/${user.username ?? user.id}`;
 }
 

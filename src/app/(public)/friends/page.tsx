@@ -11,7 +11,7 @@ import { TrashIcon } from "@/components/icons";
 import { sendFriendRequest, acceptFriendRequest, removeFriendship } from "./actions";
 import { pageMetadata } from "@/lib/seo";
 import { getT, localeHref, type Locale } from "@/lib/i18n";
-import { userDisplayName } from "@/lib/userProfile";
+import { userHref, userDisplayName } from "@/lib/userProfile";
 
 export async function generateMetadata() {
   const { locale, t } = await getT();
@@ -46,7 +46,7 @@ function UserRow({
   noName: string;
   action: React.ReactNode;
 }) {
-  const { id: userId, name, username, photoUrl } = person;
+  const { name, username, photoUrl } = person;
   // У удалённого аккаунта в базе лежит подпись со дня удаления — её
   // переводит userDisplayName. Ник при этом не показываем: аккаунт
   // обезличен, и его профиль всё равно недоступен.
@@ -55,7 +55,7 @@ function UserRow({
     : name || (username ? `@${username}` : noName);
   return (
     <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
-      <AppLink href={`/users/${userId}`} className="text-decoration-none d-flex align-items-center gap-3">
+      <AppLink href={userHref(person)} className="text-decoration-none d-flex align-items-center gap-3">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

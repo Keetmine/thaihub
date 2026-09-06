@@ -1,7 +1,8 @@
+import { userHref } from "@/lib/userProfile";
 import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import ReportButton from "@/components/ReportButton";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import {
@@ -34,7 +35,7 @@ import { listHref, tripHref, locationHref, artistListHref, dramaHref, novelHref 
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { WATCH_STATUS_ORDER, episodeProgress } from "@/lib/watchStatus";
 import { pageMetadata } from "@/lib/seo";
-import { getT, localeHref, type Dict, type Locale } from "@/lib/i18n";
+import { getT, type Dict, type Locale } from "@/lib/i18n";
 import ActivityList from "./ActivityList";
 import ProfileTabs, { type ProfileTabKey } from "./ProfileTabs";
 import ProfileOverview from "./ProfileOverview";
@@ -1162,7 +1163,7 @@ export default async function UserProfilePage({
                   {friends.slice(0, 12).map((f) => (
                     <AppLink
                       key={f.id}
-                      href={`/users/${f.username ?? f.id}`}
+                      href={userHref(f)}
                       // Подписчики — с цветной обводкой (п.6, тот же
                       // .premium-ring, что у LetterAvatar premiumRing).
                       className={`profile-friend${isPremiumActive(f) ? " premium-ring" : ""}`}

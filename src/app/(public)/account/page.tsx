@@ -1,3 +1,4 @@
+import { userHref } from "@/lib/userProfile";
 import { permanentRedirect, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getT, localeHref } from "@/lib/i18n";
@@ -36,6 +37,6 @@ export default async function AccountPage({
 
   const { tab } = await searchParams;
   const mapped = tab ? TAB_MAP[tab] : undefined;
-  const target = `/users/${user.username ?? user.id}${mapped ? `?tab=${mapped}` : ""}`;
+  const target = `${userHref(user)}${mapped ? `?tab=${mapped}` : ""}`;
   permanentRedirect(localeHref(target, locale));
 }

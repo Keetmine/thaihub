@@ -1,3 +1,4 @@
+import { userHref } from "@/lib/userProfile";
 import Link from "@/components/AppLink";
 import NavLink from "@/components/NavLink";
 import { NAV_PREFIXES } from "@/components/publicNavItems";
@@ -14,7 +15,7 @@ export default async function SiteFooter() {
   // /account остался только редиректом туда — анонима он, как и раньше,
   // отправит на /login.
   const user = await getCurrentUser();
-  const profileHref = user ? `/users/${user.username ?? user.id}` : "/account";
+  const profileHref = user ? userHref(user) : "/account";
   const col = "d-flex flex-column gap-1";
   const link = "small text-secondary text-decoration-none footer-link";
 

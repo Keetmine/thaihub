@@ -14,7 +14,7 @@ import { tripHref, dramaHref } from "@/lib/slugHelpers";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { endOfDay, formatShortDate, startOfDay } from "@/lib/dates";
 import { getDramaWatchStatuses } from "@/lib/favorites";
-import { userDisplayName } from "@/lib/userProfile";
+import { userHref, userDisplayName } from "@/lib/userProfile";
 import LetterAvatar from "@/components/LetterAvatar";
 import PageHeader from "@/components/PageHeader";
 import PosterTile from "@/components/PosterTile";
@@ -446,7 +446,7 @@ export default async function HomePage({
               {birthdayFriends.map((f) => (
                 <Link
                   key={f.id}
-                  href={`/users/${f.username ?? f.id}`}
+                  href={userHref(f)}
                   className="d-flex align-items-center gap-3 text-decoration-none"
                 >
                   <LetterAvatar name={f.name} photoUrl={f.photoUrl} size={2.6} />
