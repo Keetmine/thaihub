@@ -99,6 +99,8 @@ export const events = {
         series: "Series:",
         lineup: "Who's performing",
         lineupByDay: "Line-up day by day",
+        /** How many performances that festival day has. */
+        performances: (n: number) => `${n} ${n === 1 ? "performance" : "performances"}`,
         description: "About the event",
         photoFullSize: "Open full size",
         friendGoing: "A friend is going",

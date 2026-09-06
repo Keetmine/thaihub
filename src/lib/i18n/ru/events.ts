@@ -90,6 +90,9 @@ export const events: Dict["events"] = {
         series: "Сериал:",
         lineup: "Кто выступает",
         lineupByDay: "Лайнап по дням",
+        /** Сколько выступлений в этот день фестиваля. */
+        performances: (n: number) =>
+          pluralized(n, ["выступление", "выступления", "выступлений"]),
         description: "Описание",
         photoFullSize: "Открыть в полном размере",
         friendGoing: "Друг идёт",

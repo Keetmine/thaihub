@@ -12,6 +12,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
+import EventDayLineup, { type LineupDay } from "@/components/EventDayLineup";
 import CastGrid from "@/components/CastGrid";
 import { BuildingIcon, CalendarIcon, ClockIcon, InfoIcon, PinIcon, TagIcon, TicketIcon, TvIcon, UsersIcon } from "@/components/icons";
 import { performerHref } from "@/lib/performerSlug";
@@ -302,13 +303,45 @@ export default async function EventDetailPage({
     photoUrl: performer.photoUrl,
     name: performer.name,
   }));
-  // Обычный концерт (до 12 человек) — состав капсулами прямо в карточке
-  // дат, как в первой версии страницы: всё важное в один экран. Большой
-  // фестивальный состав — отдельной секцией сеткой со свёрткой.
   // Состав ЛЮБОГО размера живёт плашками в инфо-блоке (просьба
   // владельца — как на сериалах): большой прячет хвост за «показать
   // всех» через CastGrid chips, отдельной секции больше нет.
-  const castInCard = castCards.length > 0;
+  //
+  // Но если у фестиваля есть расписание по дням, общий состав не
+  // показываем вовсе (правка владельца 2026-09-06): расписание и есть
+  // состав, только со временем и сценами, — а список тех же людей выше
+  // был бы их повтором без единой новой строчки.
+  const dayLineups = event.occurrences.filter((o) => o.lineup.length > 0);
+  const hasDayLineups = dayLineups.length > 0;
+  const castInCard = castCards.length > 0 && !hasDayLineups;
+
+  // Расписание к виду страницы: день → сцены → выступления по времени.
+  const lineupDays: LineupDay[] = dayLineups.map((o) => {
+    const rows = keepPairingsTogether(
+      hideMembersOfListedBands(
+        o.lineup,
+        (l) => l.performer.id,
+        (l) => l.performer.bandMembers.map((bm) => bm.performerId),
+      ),
+      (l) => l.performer.id,
+      castPairings,
+    );
+    return {
+      id: o.id,
+      dateLabel: formatHumanDate(o.startsAt, locale),
+      countLabel: t.events.detail.performances(rows.length),
+      stages: groupLineupByStage(rows).map((group) => ({
+        stage: group.stage,
+        items: group.items.map((l) => ({
+          id: l.performer.id,
+          href: performerHref(l.performer),
+          name: l.performer.name,
+          photoUrl: l.performer.photoUrl,
+          timeText: l.timeText,
+        })),
+      })),
+    };
+  });
 
   // В разметке сериал зовётся так же, как на видимой странице: на /ru —
   // русским названием, если оно есть.
@@ -522,6 +555,18 @@ export default async function EventDetailPage({
           </div>
       </div>
 
+      {/* Расписание — сразу под карточкой события, НАД описанием
+          (правка владельца 2026-09-06): у фестиваля это главное, ради
+          чего страницу открывают. */}
+      {hasDayLineups && (
+        <div className="surface p-4 mb-4">
+          <h2 className="section-heading mb-3">
+            <CalendarIcon className="icon-inline" /> {t.events.detail.lineupByDay}
+          </h2>
+          <EventDayLineup days={lineupDays} />
+        </div>
+      )}
+
       {/* Описание — НАД тремя фото (правка владельца 2026-09-05); без
           подложки-surface (прежняя просьба). */}
       {event.description && (
@@ -576,61 +621,6 @@ export default async function EventDetailPage({
                 name={f.name || t.events.detail.unnamedFriend}
               />
             ))}
-          </div>
-        </div>
-      )}
-
-      {event.occurrences.some((o) => o.lineup.length > 0) && (
-        <div className="surface p-4 mb-3">
-          <h2 className="section-heading mb-2">
-            <CalendarIcon className="icon-inline" /> {t.events.detail.lineupByDay}
-          </h2>
-          <div className="d-flex flex-column gap-3">
-            {event.occurrences
-              .filter((o) => o.lineup.length > 0)
-              .map((o) => (
-                <div key={o.id}>
-                  <p className="small text-secondary mb-2 text-capitalize">
-                    {formatHumanDate(o.startsAt, locale)}
-                  </p>
-                  {/* Те же правила, что и у общего состава: группа
-                      вместо своих участников (АА14), пары рядом (АА4).
-                      Дальше — по сценам и по времени, если фестиваль их
-                      публикует: без расписания это одна безымянная
-                      группа, и день выглядит как прежде. */}
-                  {groupLineupByStage(
-                    keepPairingsTogether(
-                      hideMembersOfListedBands(
-                        o.lineup,
-                        (l) => l.performer.id,
-                        (l) => l.performer.bandMembers.map((bm) => bm.performerId),
-                      ),
-                      (l) => l.performer.id,
-                      castPairings,
-                    ),
-                  ).map((group) => (
-                    <div key={group.stage ?? ""} className="mb-2">
-                      {group.stage && (
-                        <p className="small mb-2">
-                          <span className="tag-chip">{group.stage}</span>
-                        </p>
-                      )}
-                      <div className="cast-grid">
-                        {group.items.map((l) => (
-                          <EntityMiniCard
-                            key={l.performer.id}
-                            variant="grid"
-                            href={performerHref(l.performer)}
-                            photoUrl={l.performer.photoUrl}
-                            name={l.performer.name}
-                            subtitle={l.timeText}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
           </div>
         </div>
       )}

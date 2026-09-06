@@ -4106,6 +4106,95 @@ body::after {
   gap: 0.7rem 0.5rem;
 }
 
+/* «Лайнап по дням» на странице события — расписание фестиваля афишей
+   (правка владельца 2026-09-06: прежний вид «серая дата, серый чип
+   сцены, ряд одинаковых кружков» читался как список, а не как афиша).
+   День отбивается линией слева, сцена — точкой и разрядкой, начало
+   выступления — плашкой на фото. */
+.lineup-days {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.lineup-day {
+  border-left: 2px solid rgba(var(--accent-rgb), 0.45);
+  padding-left: 1rem;
+}
+
+.lineup-day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.lineup-day-date {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  text-transform: capitalize;
+}
+
+.lineup-day-count {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+}
+
+.lineup-stage + .lineup-stage {
+  margin-top: 1.25rem;
+}
+
+.lineup-stage-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+
+/* Линия за названием сцены: тянется до конца ряда и гаснет — иначе
+   четыре сцены подряд сливаются в один список. */
+.lineup-stage-name::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--bs-border-color), transparent);
+}
+
+.lineup-stage-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.9);
+  flex-shrink: 0;
+}
+
+.lineup-slot-time {
+  position: relative;
+  z-index: 1;
+  /* Налезает на низ фото — время читается как метка выступления, а не
+     как ещё одна подпись под именем. */
+  margin-top: -0.8rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(12, 12, 16, 0.86);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  color: #fff;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.lineup-slot .cast-card-name {
+  margin-top: 0.35rem;
+}
+
 .cast-grid-sm .cast-card-photo {
   max-width: 4.25rem;
 }
