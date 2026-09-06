@@ -52,6 +52,22 @@ to one record.
   each candidate's relation counts (events/dramas for performers;
   cast/locations/events for dramas) so the admin can judge which one has
   the richer data before picking, then a confirm-and-merge button.
+- **Слаг после слияния** (жалоба владельца 2026-09-06): если выживший
+  жил по нумерованному `nick-2`, а «чистый» `nick` был как раз у дубля,
+  выживший забирает `nick` — освободившийся адрес занять больше некому.
+  Делает `reclaimBaseSlug` (`src/lib/slugReclaim.ts`), в самом конце
+  транзакции слияния (для сериалов, исполнителей и агентств).
+  Правило намеренно узкое: слаг обязан выглядеть как `база-N`, база —
+  совпадать со `slugify(название)`, и быть свободной. Поэтому под него
+  не попадают ни переименованные записи (слаг у нас стабилен при
+  переименовании), ни названия, которые сами кончаются цифрой
+  («Blossom Campus 2» → `blossom-campus-2` — это не нумерация).
+  Накопившееся до этой правки разбирает разовый
+  `scripts/reclaim-slugs.ts` (сухой прогон по умолчанию, `--apply`
+  пишет; проходит по всем каталожным моделям со слагом). Учтите: смена
+  слага меняет публичный адрес, и ссылки на старый нумерованный
+  перестают открываться — истории слагов с редиректами у нас нет.
+  Проверки правила — `tests/unit/slugReclaim.test.ts`.
 - **Merge logic**: `mergePerformers` / `mergeDramas` in
   `src/lib/duplicates.ts`, each wrapped in one `prisma.$transaction` (all
   relations move or none do). Every relation table gets reassigned from

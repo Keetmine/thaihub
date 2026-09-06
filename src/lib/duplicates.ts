@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
+import { reclaimBaseSlug } from "@/lib/slugReclaim";
 
 function norm(s: string) {
   return s.trim().toLowerCase();
@@ -271,6 +272,10 @@ export async function mergeDramas(keeperId: string, loserIds: string[]) {
 
       await tx.drama.delete({ where: { id: loserId } });
     }
+    // Слаг проигравшего освободился: если выживший жил по `nick-2`, а
+    // «чистый» `nick` был как раз у дубля — забираем его (правка
+    // владельца 2026-09-06, см. slugReclaim.ts).
+    await reclaimBaseSlug(tx.drama as never, keeperId, "title");
   });
   await logMerge("Drama", keeperId, merged);
 }
@@ -297,6 +302,7 @@ export async function mergeAgencies(keeperId: string, loserIds: string[]) {
       await tx.drama.updateMany({ where: { agencyId: loserId }, data: { agencyId: keeperId } });
       await tx.agency.delete({ where: { id: loserId } });
     }
+    await reclaimBaseSlug(tx.agency as never, keeperId, "name");
   });
   await logMerge("Agency", keeperId, merged);
 }
@@ -368,6 +374,7 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
 
       await tx.performer.delete({ where: { id: loserId } });
     }
+    await reclaimBaseSlug(tx.performer as never, keeperId, "name");
   });
   await logMerge("Performer", keeperId, merged);
 }
