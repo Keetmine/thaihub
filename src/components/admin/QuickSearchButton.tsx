@@ -14,7 +14,7 @@ export default function QuickSearchButton({ compact = false }: { compact?: boole
       onClick={() => window.dispatchEvent(new CustomEvent(QUICK_SEARCH_EVENT))}
       className={`quick-search-trigger ${compact ? "is-compact" : ""}`}
       aria-label="Поиск по каталогу"
-      title="Поиск по каталогу (Ctrl/⌘ + K)"
+      data-tooltip="Поиск по каталогу (Ctrl/⌘ + K)"
     >
       <SearchIcon />
       {!compact && (

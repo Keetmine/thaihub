@@ -159,7 +159,7 @@ export default async function AdminSchedulePage({
                 <span
                   className="d-inline-block rounded-circle bg-danger ms-2"
                   style={{ width: "0.45rem", height: "0.45rem", verticalAlign: "middle" }}
-                  title="последний прогон упал"
+                  data-tooltip="последний прогон упал"
                 />
               )}
             </Link>

@@ -109,7 +109,7 @@ export default async function AdminLocationsPage({
                     href={`/admin/locations/${l.id}/edit`}
                     className="icon-btn"
                     aria-label="Редактировать"
-                    title="Редактировать"
+                    data-tooltip="Редактировать"
                   >
                     <PencilIcon />
                   </Link>
@@ -121,7 +121,7 @@ export default async function AdminLocationsPage({
                       type="button"
                       className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
-                      title="Удалить"
+                      data-tooltip="Удалить"
                     >
                       <TrashIcon />
                     </button>

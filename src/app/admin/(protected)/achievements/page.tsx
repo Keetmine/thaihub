@@ -90,7 +90,7 @@ export default async function AdminAchievementsPage() {
                 {/* position-relative + z-2: кнопки поверх stretched-link
                     строки, иначе клик уводил бы на редактирование. */}
                 <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
-                  <span className="small text-secondary d-none d-md-inline" title="Сколько пользователей получили">
+                  <span className="small text-secondary d-none d-md-inline" data-tooltip="Сколько пользователей получили">
                     получили: {got}
                   </span>
                   <form action={boundToggle}>
@@ -108,7 +108,7 @@ export default async function AdminAchievementsPage() {
                     href={`/admin/achievements/${a.id}/edit`}
                     className="icon-btn"
                     aria-label="Редактировать"
-                    title="Редактировать"
+                    data-tooltip="Редактировать"
                   >
                     <PencilIcon />
                   </Link>
@@ -120,7 +120,7 @@ export default async function AdminAchievementsPage() {
                       type="button"
                       className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
-                      title="Удалить"
+                      data-tooltip="Удалить"
                     >
                       <TrashIcon />
                     </button>

@@ -119,7 +119,7 @@ export default function MusicManager({
                   </div>
                   <div className="col-12 col-md-1 d-flex gap-1">
                     <SubmitButton label="✓" ariaLabel="Сохранить" />
-                    <button type="button" className="btn btn-ghost btn-sm" aria-label="Отменить правку" title="Отменить правку" onClick={() => setEditingAlbum(null)}>×</button>
+                    <button type="button" className="btn btn-ghost btn-sm" aria-label="Отменить правку" data-tooltip="Отменить правку" onClick={() => setEditingAlbum(null)}>×</button>
                   </div>
                 </form>
               ) : (
@@ -223,7 +223,7 @@ export default function MusicManager({
                   </div>
                   <div className="col-12 col-md-1 d-flex gap-1">
                     <SubmitButton label="✓" ariaLabel="Сохранить" />
-                    <button type="button" className="btn btn-ghost btn-sm" aria-label="Отменить правку" title="Отменить правку" onClick={() => setEditingSong(null)}>×</button>
+                    <button type="button" className="btn btn-ghost btn-sm" aria-label="Отменить правку" data-tooltip="Отменить правку" onClick={() => setEditingSong(null)}>×</button>
                   </div>
                 </form>
               ) : (

@@ -48,7 +48,7 @@ export function OpenEntityLink({
       target="_blank"
       rel="noopener noreferrer"
       className="entity-open-link"
-      title="Открыть карточку в новой вкладке"
+      data-tooltip="Открыть карточку в новой вкладке"
       aria-label={`Открыть карточку: ${name}`}
       // Клик по ссылке не должен ни открывать выпадашку, ни ронять
       // фокус комбобокса до перехода.

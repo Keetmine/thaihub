@@ -730,7 +730,7 @@ export default async function AdminImportsPage({
                               href={`/admin/events/${dupe.eventId}/edit`}
                               className="event-chip event-chip-warning flex-shrink-0"
                               style={{ maxWidth: "16rem" }}
-                              title="Похоже на событие, которое уже есть в каталоге, — откройте и сравните перед решением"
+                              data-tooltip="Похоже на событие, которое уже есть в каталоге, — откройте и сравните перед решением"
                             >
                               Возможный дубль: {dupe.eventTitle}
                             </Link>

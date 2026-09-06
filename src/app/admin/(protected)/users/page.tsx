@@ -173,7 +173,7 @@ export default async function AdminUsersPage({
                   <button
                     type="button"
                     className="btn btn-link btn-sm text-danger p-0"
-                    title="Удалить код"
+                    data-tooltip="Удалить код"
                   >
                     ×
                   </button>
@@ -252,7 +252,7 @@ export default async function AdminUsersPage({
                       type="button"
                       className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
-                      title="Удалить"
+                      data-tooltip="Удалить"
                     >
                       <TrashIcon />
                     </button>

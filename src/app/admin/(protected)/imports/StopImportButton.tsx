@@ -40,7 +40,7 @@ export default function StopImportButton({ runId }: { runId: string }) {
         className="btn btn-outline-secondary btn-sm"
         onClick={handleClick}
         disabled={busy}
-        title="Импорт остановится после текущего элемента — уже импортированное останется в каталоге"
+        data-tooltip="Импорт остановится после текущего элемента — уже импортированное останется в каталоге"
       >
         {busy ? "Останавливаем…" : "Остановить"}
       </button>

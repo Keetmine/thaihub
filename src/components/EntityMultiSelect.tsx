@@ -23,7 +23,7 @@ function OpenEntityLink({ href, name }: { href: string; name: string }) {
       target="_blank"
       rel="noopener noreferrer"
       className="entity-open-link"
-      title="Открыть карточку в новой вкладке"
+      data-tooltip="Открыть карточку в новой вкладке"
       aria-label={`Открыть карточку: ${name}`}
       // Чип стоит рядом с полем ввода: гасим всплытие, чтобы клик по
       // ссылке не считался кликом по чипу/полю.

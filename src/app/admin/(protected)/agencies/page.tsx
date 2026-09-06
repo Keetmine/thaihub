@@ -138,7 +138,7 @@ export default async function AdminAgenciesPage({
                       href={`/admin/agencies/${a.id}/edit`}
                       className="icon-btn"
                       aria-label="Редактировать"
-                      title="Редактировать"
+                      data-tooltip="Редактировать"
                     >
                       <PencilIcon />
                     </Link>
@@ -150,7 +150,7 @@ export default async function AdminAgenciesPage({
                         type="button"
                         className="icon-btn icon-btn-danger"
                         aria-label="Удалить"
-                        title="Удалить"
+                        data-tooltip="Удалить"
                       >
                         <TrashIcon />
                       </button>

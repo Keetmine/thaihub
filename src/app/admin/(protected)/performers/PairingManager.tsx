@@ -83,7 +83,7 @@ export default function PairingManager({
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  title="Поменять A и B местами"
+                  data-tooltip="Поменять A и B местами"
                   onClick={async () => {
                     await swapPairingOrder(pair.id);
                     router.refresh();
@@ -108,7 +108,7 @@ export default function PairingManager({
                     type="button"
                     className="icon-btn icon-btn-danger"
                     aria-label="Удалить"
-                    title="Удалить"
+                    data-tooltip="Удалить"
                   >
                     <TrashIcon />
                   </button>

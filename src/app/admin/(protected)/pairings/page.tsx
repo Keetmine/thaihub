@@ -143,7 +143,7 @@ export default async function AdminPairingsPage({
                       type="button"
                       className="icon-btn icon-btn-danger"
                       aria-label="Удалить"
-                      title="Удалить"
+                      data-tooltip="Удалить"
                     >
                       <TrashIcon />
                     </button>

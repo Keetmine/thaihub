@@ -73,7 +73,7 @@ function AdminPerformerRow({
           href={`/admin/performers/${performer.id}/edit`}
           className="icon-btn"
           aria-label="Редактировать"
-          title="Редактировать"
+          data-tooltip="Редактировать"
         >
           <PencilIcon />
         </Link>
@@ -85,7 +85,7 @@ function AdminPerformerRow({
             type="button"
             className="icon-btn icon-btn-danger"
             aria-label="Удалить"
-            title="Удалить"
+            data-tooltip="Удалить"
           >
             <TrashIcon />
           </button>

@@ -36,7 +36,7 @@ export default function PremiumToggle({
           type="button"
           className="btn btn-ghost btn-sm text-danger"
           disabled={isPending}
-          title="Снять бессрочность — останется срок, какой был до неё"
+          data-tooltip="Снять бессрочность — останется срок, какой был до неё"
           onClick={() =>
             startTransition(async () => {
               await setPremiumLifetime(userId, false);
@@ -67,7 +67,7 @@ export default function PremiumToggle({
             type="button"
             className="btn btn-ghost btn-sm"
             disabled={isPending}
-            title="Подписка навсегда, продлевать не нужно"
+            data-tooltip="Подписка навсегда, продлевать не нужно"
             onClick={() =>
               startTransition(async () => {
                 await setPremiumLifetime(userId, true);

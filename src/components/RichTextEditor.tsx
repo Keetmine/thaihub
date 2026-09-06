@@ -90,7 +90,7 @@ export default function RichTextEditor({
             {b.label}
           </button>
         ))}
-        <label className="btn btn-ghost btn-sm mb-0" title="Вставить картинку">
+        <label className="btn btn-ghost btn-sm mb-0" data-tooltip="Вставить картинку">
           {uploading ? "Загрузка…" : "Картинка"}
           <input
             type="file"
