@@ -58,8 +58,20 @@ export async function autoSeenLive(userId: string, performerId: string): Promise
     prisma.eventAttendance.count({
       where: {
         userId,
-        occurrence: { startsAt: { lt: now } },
-        event: { performers: { some: { performerId } } },
+        occurrence: {
+          startsAt: { lt: now },
+          // У дня фестиваля свой состав, и отметка «иду 25-го» не делает
+          // увиденными тех, кто играл 26-го (правка владельца
+          // 2026-09-06). Нет состава у дня — считаем по составу события,
+          // как было: у обычного концерта день и есть событие.
+          OR: [
+            { lineup: { some: { performerId } } },
+            {
+              lineup: { none: {} },
+              event: { performers: { some: { performerId } } },
+            },
+          ],
+        },
       },
     }),
     prisma.tripPersonalEventPerformer.count({
@@ -96,7 +108,18 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       prisma.eventAttendance.findMany({
         where: { userId },
         include: {
-          occurrence: { include: { attendances: { select: { userId: true } } } },
+          occurrence: {
+            include: {
+              attendances: { select: { userId: true } },
+              // Состав именно этого дня — по нему считаются увиденные
+              // артисты, если он у дня есть (см. ниже).
+              lineup: {
+                include: {
+                  performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
+                },
+              },
+            },
+          },
           event: {
             include: {
               performers: { include: { performer: { select: { id: true, name: true, slug: true, photoUrl: true } } } },
@@ -148,8 +171,32 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
   const venues = new Set(attended.map((a) => a.event.venue.trim().toLowerCase()));
 
   const performerCounts = new Map<string, { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }>();
-  for (const a of attended) {
-    for (const { performer } of a.event.performers) {
+  // Кого именно человек видел: у дня фестиваля свой состав, и отметка
+  // «иду 25-го» не приводит в увиденные тех, кто играл 26-го (правка
+  // владельца 2026-09-06). У дня без своего состава берётся состав
+  // события — у обычного концерта день и есть событие.
+  //
+  // Считаем по СОБЫТИЯМ, а не по отмеченным дням: сходил на оба дня
+  // фестиваля — артист, игравший там дважды, всё равно «видел один
+  // раз», как и было до расписаний.
+  const seenByEvent = new Map<
+    string,
+    Map<string, { id: string; name: string; slug: string | null; photoUrl: string | null }>
+  >();
+  for (const a of attendedRows) {
+    const dayCast =
+      a.occurrence.lineup.length > 0
+        ? a.occurrence.lineup.map((l) => l.performer)
+        : a.event.performers.map((ep) => ep.performer);
+    let bucket = seenByEvent.get(a.eventId);
+    if (!bucket) {
+      bucket = new Map();
+      seenByEvent.set(a.eventId, bucket);
+    }
+    for (const performer of dayCast) bucket.set(performer.id, performer);
+  }
+  for (const bucket of seenByEvent.values()) {
+    for (const performer of bucket.values()) {
       const cur = performerCounts.get(performer.id);
       if (cur) cur.count += 1;
       else performerCounts.set(performer.id, { ...performer, count: 1 });
