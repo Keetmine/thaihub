@@ -4,9 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import { useT } from "@/components/LocaleProvider";
 
-/** Сторона итогового квадрата. Больше не нужно: аватарка нигде не
- *  показывается крупнее, а лишние пиксели — вес файла и время загрузки
- *  с телефона. Меньше исходника картинку не растягиваем (см. drawCrop). */
+/** Пропорции кадра — те же, в которых фото профиля и показывается:
+ *  вертикальная карточка 3:4 со скруглением (`.profile-side-photo`).
+ *  Круглой рамки здесь нет намеренно (правка владельца 2026-09-06):
+ *  круглые только мелкие аватарки в шапке и списках, а они вырезают
+ *  середину этого же кадра сами. */
+const RATIO_W = 3;
+const RATIO_H = 4;
+/** Потолок ДЛИННОЙ стороны итогового файла. Больше не нужно: крупнее
+ *  фото нигде не показывается, а лишние пиксели — вес файла и время
+ *  загрузки с телефона. Меньше исходника не растягиваем (см. apply). */
 const MAX_OUTPUT = 1024;
 /** Верхняя граница ползунка: во сколько раз можно приблизить картинку
  *  относительно «вписать по короткой стороне». Четырёх хватает, чтобы
@@ -20,10 +27,11 @@ type Offset = { x: number; y: number };
 /**
  * Кадрирование СВОЕЙ фотографии перед отправкой на сервер.
  *
- * Зачем: аватарка круглая, а снимки с телефона вертикальные — без
- * кропа человек не управляет тем, что попадёт в круг, и голова уезжает
- * за край. Здесь он двигает и приближает картинку в круглой рамке, а
- * наверх уходит уже готовый квадрат.
+ * Зачем: карточка профиля вертикальная (3:4), а снимки приходят какие
+ * угодно — без кропа человек не управляет тем, что в неё попадёт, и
+ * голова уезжает за край. Здесь он двигает и приближает картинку в
+ * рамке ровно тех пропорций, в которых фото и будет показано, а наверх
+ * уходит уже готовый кадр.
  *
  * Всё считается сами, без библиотеки кропа: canvas + pointer events
  * закрывают и мышь, и палец, а новая зависимость ради одного окна
@@ -52,10 +60,11 @@ export default function ImageCropDialog({
   const [isReady, setIsReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-  /** Сторона рамки в CSS-пикселях. Рамка резиновая (на телефоне уже,
-   *  чем на десктопе), а вся арифметика ниже — в пикселях рамки,
-   *  поэтому её размер нужен состоянием, а не константой. */
+  /** Ширина рамки в CSS-пикселях; высота — из пропорций. Рамка
+   *  резиновая (на телефоне уже, чем на десктопе), а вся арифметика
+   *  ниже — в её пикселях, поэтому размер нужен состоянием. */
   const [frame, setFrame] = useState(0);
+  const frameH = (frame * RATIO_H) / RATIO_W;
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -102,13 +111,15 @@ export default function ImageCropDialog({
     return () => ro.disconnect();
   }, [isReady]);
 
-  /** Масштаб «вписать по короткой стороне»: при zoom=1 картинка ровно
-   *  закрывает рамку, и дырок по краям не бывает ни при каком сдвиге. */
+  /** Масштаб «накрыть рамку целиком»: при zoom=1 картинка ровно
+   *  закрывает кадр, и дырок по краям не бывает ни при каком сдвиге.
+   *  Считается по ОБЕИМ сторонам — у вертикальной рамки и вертикального
+   *  снимка узкое место разное. */
   const baseScale = useCallback(() => {
     const img = imageRef.current;
     if (!img || !frame) return 1;
-    return frame / Math.min(img.naturalWidth, img.naturalHeight);
-  }, [frame]);
+    return Math.max(frame / img.naturalWidth, frameH / img.naturalHeight);
+  }, [frame, frameH]);
 
   /** Не даём утащить картинку за край рамки: смещение зажимаем так,
    *  чтобы рамка всегда была полностью накрыта. */
@@ -121,10 +132,10 @@ export default function ImageCropDialog({
       const h = img.naturalHeight * s;
       return {
         x: Math.min(0, Math.max(frame - w, next.x)),
-        y: Math.min(0, Math.max(frame - h, next.y)),
+        y: Math.min(0, Math.max(frameH - h, next.y)),
       };
     },
-    [baseScale, frame],
+    [baseScale, frame, frameH],
   );
 
   // Первая укладка (и пересчёт, если рамка сменила размер): картинка по
@@ -136,9 +147,9 @@ export default function ImageCropDialog({
     setZoom(1);
     setOffset({
       x: (frame - img.naturalWidth * s) / 2,
-      y: (frame - img.naturalHeight * s) / 2,
+      y: (frameH - img.naturalHeight * s) / 2,
     });
-  }, [baseScale, frame, isReady]);
+  }, [baseScale, frame, frameH, isReady]);
 
   // Отрисовка предпросмотра. Канва в честных пикселях экрана
   // (devicePixelRatio), иначе на ретине лицо в рамке заметно мылит.
@@ -148,15 +159,15 @@ export default function ImageCropDialog({
     if (!canvas || !img || !frame) return;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(frame * dpr);
-    canvas.height = Math.round(frame * dpr);
+    canvas.height = Math.round(frameH * dpr);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, frame, frame);
+    ctx.clearRect(0, 0, frame, frameH);
     const s = baseScale() * zoom;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(img, offset.x, offset.y, img.naturalWidth * s, img.naturalHeight * s);
-  }, [baseScale, frame, isReady, offset, zoom]);
+  }, [baseScale, frame, frameH, isReady, offset, zoom]);
 
   /** Масштабирование ВОКРУГ точки (центра рамки для ползунка, пальцев
    *  для щипка): без этого приближение всегда тянет к левому верхнему
@@ -240,17 +251,19 @@ export default function ImageCropDialog({
     try {
       const s = baseScale() * zoom;
       // Что попало в рамку — в координатах ИСХОДНОГО файла.
-      const side = frame / s;
-      // Вверх не растягиваем: если в рамку попал кусок меньше 1024, то
-      // 1024 из него — это те же пиксели, только тяжелее.
-      const out = Math.max(1, Math.round(Math.min(MAX_OUTPUT, side)));
+      const srcW = frame / s;
+      const srcH = frameH / s;
+      // Вверх не растягиваем: если в рамку попал кусок меньше потолка,
+      // растянутый кадр — те же пиксели, только тяжелее.
+      const outH = Math.max(1, Math.round(Math.min(MAX_OUTPUT, srcH)));
+      const outW = Math.max(1, Math.round((outH * RATIO_W) / RATIO_H));
       const canvas = document.createElement("canvas");
-      canvas.width = out;
-      canvas.height = out;
+      canvas.width = outW;
+      canvas.height = outH;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, -offset.x / s, -offset.y / s, side, side, 0, 0, out, out);
+      ctx.drawImage(img, -offset.x / s, -offset.y / s, srcW, srcH, 0, 0, outW, outH);
       const blob = await new Promise<Blob | null>((resolve) =>
         // WebP — тот же формат, в который /api/upload всё равно
         // пережимает картинку. Браузер, который его не умеет, отдаст
@@ -282,7 +295,6 @@ export default function ImageCropDialog({
           onPointerCancel={handlePointerUp}
         >
           <canvas ref={canvasRef} aria-label={c.preview} role="img" />
-          <span className="image-crop-mask" aria-hidden="true" />
           <span className="image-crop-ring" aria-hidden="true" />
         </div>
 
@@ -299,7 +311,7 @@ export default function ImageCropDialog({
             step={0.01}
             value={zoom}
             disabled={!isReady}
-            onChange={(e) => zoomAround(Number(e.target.value), frame / 2, frame / 2)}
+            onChange={(e) => zoomAround(Number(e.target.value), frame / 2, frameH / 2)}
           />
         </div>
 

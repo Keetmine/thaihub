@@ -34,7 +34,7 @@ export const widgets = {
   /** Окно кадрирования своей фотографии — см. ImageCropDialog. */
   crop: {
     title: "Adjust your photo",
-    hint: "Drag the photo to move it and use the slider to zoom. What's inside the circle becomes your picture.",
+    hint: "Drag the photo to move it and use the slider to zoom. What's inside the frame becomes your picture.",
     preview: "Photo preview inside the frame",
     zoom: "Zoom",
     apply: "Use this photo",

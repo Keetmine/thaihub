@@ -2256,8 +2256,11 @@ svg[aria-hidden="true"] {
 .image-crop-stage {
   position: relative;
   width: 100%;
-  max-width: 18rem;
-  aspect-ratio: 1;
+  max-width: 15rem;
+  /* Те же пропорции, что у фото профиля (.profile-side-photo): человек
+     кадрирует ровно то, что увидит на странице (правка владельца
+     2026-09-06 — круглая рамка врала, круглые только мелкие аватарки). */
+  aspect-ratio: 3 / 4;
   margin: 0 auto;
   overflow: hidden;
   border-radius: var(--bs-border-radius-lg);
@@ -2278,23 +2281,14 @@ svg[aria-hidden="true"] {
   height: 100%;
 }
 
-/* Затемнение ВОКРУГ круга: маской вырезаем середину, чтобы человек
-   видел и будущую аватарку, и то, что в неё не влезло. */
-.image-crop-mask {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: rgba(4, 4, 6, 0.6);
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0 49.5%, #000 50%);
-  mask-image: radial-gradient(circle at 50% 50%, transparent 0 49.5%, #000 50%);
-}
-
+/* Обводка кадра: рамка и есть будущее фото, поэтому затемнять внутри
+   нечего — достаточно показать границу. */
 .image-crop-ring {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border: 1.5px solid rgba(255, 255, 255, 0.55);
-  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--bs-border-radius-lg);
 }
 
 .image-crop-zoom {
