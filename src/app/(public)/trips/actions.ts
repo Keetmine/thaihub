@@ -370,21 +370,146 @@ export async function declineTripInvite(tripId: string): Promise<void> {
   revalidatePath("/trips");
 }
 
-/** Ушёл из поездки — уходит и его окно присутствия (АА17): даты «я тут
- *  с 22-го» без самого участника не значат ничего, а строка-сирота
- *  тянула бы за собой рамку поездки. Даты самой поездки при этом НЕ
- *  сужаем: она могла быть расширена под чужой прилёт, но в этих днях
- *  уже стоят чужие планы — решать, обрезать ли их, владельцу. */
-async function dropTripStay(tripId: string, userId: string): Promise<void> {
-  await prisma.tripStay.deleteMany({ where: { tripId, userId } });
+/**
+ * Что убирается из поездки вместе с ушедшим (решение владельца
+ * 2026-09-06).
+ *
+ * Уходит:
+ * - окно присутствия (АА17): даты «я тут с 22-го» без самого участника
+ *   не значат ничего, а строка-сирота тянула бы за собой рамку поездки;
+ * - его ЧЕМОДАН и ПОКУПКИ целиком: это личные списки, чужой поездке они
+ *   не нужны ни в каком виде;
+ * - все его ПРИВАТНЫЕ записи — дела, личные события, брони: их и так не
+ *   видел никто, кроме автора, а без автора они просто мусор в базе.
+ *
+ * Остаётся то, что он открывал другим: общие дела, личные события и
+ * брони видимостью «участникам» и шире. Люди на них рассчитывают —
+ * «Лена забронировала ужин» не должно исчезнуть из общего плана оттого,
+ * что Лена вышла.
+ *
+ * Даты САМОЙ поездки не сужаем: она могла быть расширена под чужой
+ * прилёт, но в этих днях уже стоят чужие планы — решать владельцу.
+ */
+async function cleanupAfterLeaving(tripId: string, userId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.tripStay.deleteMany({ where: { tripId, userId } }),
+    prisma.tripTodo.deleteMany({
+      where: {
+        tripId,
+        createdById: userId,
+        OR: [{ kind: { in: ["PACKING", "SHOPPING"] } }, { visibility: "PRIVATE" }],
+      },
+    }),
+    prisma.tripPersonalEvent.deleteMany({
+      where: { tripId, createdById: userId, visibility: "PRIVATE" },
+    }),
+    prisma.tripBooking.deleteMany({
+      where: { tripId, createdById: userId, visibility: "PRIVATE" },
+    }),
+  ]);
 }
 
 export async function removeTripMember(tripId: string, userId: string): Promise<ActionResult> {
   const own = await requireOwnTrip(tripId);
   if (!own.ok) return { ok: false, error: own.error };
   await prisma.tripMember.deleteMany({ where: { tripId, userId } });
-  await dropTripStay(tripId, userId);
+  await cleanupAfterLeaving(tripId, userId);
   revalidatePath(`/trips/${tripId}`);
+  return { ok: true };
+}
+
+/**
+ * «Забрать свою копию» — личная поездка со своими записями, чтобы уход
+ * из совместной не заставлял переносить два десятка записей руками
+ * (решение владельца 2026-09-06: копию ВСЕГДА спрашиваем, сама она не
+ * заводится).
+ *
+ * Копируются только СВОИ записи: чужие человек видел, но они не его.
+ * Отметки «иду» не копируются вовсе — они живут на событиях и уже его,
+ * поэтому план новой поездки соберётся сам. Даты берутся из своего окна
+ * присутствия, если оно было: своя поездка — про свои дни.
+ *
+ * Места и списки мест — ссылки на общие сущности, копировать их дёшево
+ * и безобидно: сами списки остаются у их владельцев.
+ */
+export async function copyTripForSelf(tripId: string): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const userId = access.user.id;
+
+  const source = await prisma.trip.findUniqueOrThrow({
+    where: { id: tripId },
+    include: {
+      stays: { where: { userId }, select: { startDate: true, endDate: true } },
+      personalEvents: {
+        where: { createdById: userId },
+        include: { performers: { select: { performerId: true } } },
+      },
+      todos: { where: { createdById: userId } },
+      bookings: { where: { createdById: userId } },
+      places: { select: { locationId: true, note: true } },
+      placeLists: { select: { listId: true } },
+    },
+  });
+  const stay = source.stays[0];
+
+  const copy = await prisma.trip.create({
+    data: {
+      userId,
+      title: source.title,
+      startDate: stay?.startDate ?? source.startDate,
+      endDate: stay?.endDate ?? source.endDate,
+      // Копия — личная: делиться ею человек решит сам.
+      visibility: "PRIVATE",
+      personalEvents: {
+        create: source.personalEvents.map((e) => ({
+          title: e.title,
+          note: e.note,
+          startsAt: e.startsAt,
+          locationId: e.locationId,
+          createdById: userId,
+          visibility: e.visibility,
+          performers: { create: e.performers.map((p) => ({ performerId: p.performerId })) },
+        })),
+      },
+      todos: {
+        create: source.todos.map((todo) => ({
+          text: todo.text,
+          kind: todo.kind,
+          // Галочки переносим: заново отмечать собранный чемодан обидно.
+          done: todo.done,
+          date: todo.date,
+          hasTime: todo.hasTime,
+          createdById: userId,
+          visibility: todo.visibility,
+        })),
+      },
+      bookings: {
+        create: source.bookings.map((b) => ({
+          kind: b.kind,
+          name: b.name,
+          address: b.address,
+          fromPlace: b.fromPlace,
+          toPlace: b.toPlace,
+          url: b.url,
+          fileUrl: b.fileUrl,
+          note: b.note,
+          startAt: b.startAt,
+          endAt: b.endAt,
+          createdById: userId,
+          visibility: b.visibility,
+        })),
+      },
+      places: { create: source.places.map((p) => ({ locationId: p.locationId, note: p.note })) },
+      placeLists: { create: source.placeLists.map((l) => ({ listId: l.listId })) },
+    },
+    select: { id: true },
+  });
+
+  // Слаг копии не заводим: createTrip его тоже не ставит, ссылки
+  // спокойно откатываются на id (tripHref).
+
+  revalidatePath("/trips");
   return { ok: true };
 }
 
@@ -393,7 +518,7 @@ export async function leaveTrip(tripId: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
   await prisma.tripMember.deleteMany({ where: { tripId, userId: user.id } });
-  await dropTripStay(tripId, user.id);
+  await cleanupAfterLeaving(tripId, user.id);
   revalidatePath("/trips");
   redirect(localeHref("/trips", locale));
 }

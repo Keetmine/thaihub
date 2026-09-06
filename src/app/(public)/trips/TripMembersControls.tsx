@@ -10,6 +10,7 @@ import { userDisplayName } from "@/lib/userProfile";
 import {
   addTripMember,
   removeTripMember,
+  copyTripForSelf,
   leaveTrip,
   acceptTripInvite,
   declineTripInvite,
@@ -50,6 +51,32 @@ export default function TripMembersButton({
   const [friendId, setFriendId] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+
+  /** Выход с копией и без. Копию делаем ДО выхода: после него доступа к
+   *  поездке уже нет, и копировать будет нечего. */
+  async function leave(withCopy: boolean) {
+    if (leaving) return;
+    setLeaving(true);
+    setLeaveError(null);
+    try {
+      if (withCopy) {
+        const result = await copyTripForSelf(tripId);
+        if (!result.ok) {
+          setLeaveError(result.error || t.trips.members.copyFailed);
+          return;
+        }
+      }
+      await leaveTrip(tripId);
+    } catch {
+      // leaveTrip уводит редиректом — его «ошибка» это и есть успех.
+      setLeaveError(null);
+    } finally {
+      setLeaving(false);
+    }
+  }
 
   // Имя участника: у живого — как он себя назвал, у удалённого —
   // подпись на языке зрителя.
@@ -172,19 +199,53 @@ export default function TripMembersButton({
             )
           ) : (
             <div className="mt-2">
-              <ConfirmForm
-                action={async () => {
-                  await leaveTrip(tripId);
-                }}
-                confirmMessage={t.trips.members.leaveConfirm}
+              {/* Выход — не голое «точно?»: человек должен видеть, что
+                  именно исчезнет, и решить, забирать ли свою копию
+                  (решение владельца 2026-09-06 — копию всегда
+                  спрашиваем, сама она не заводится). */}
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => setLeaveOpen(true)}
               >
-                <button type="button" className="btn btn-outline-secondary btn-sm">
-                  {t.trips.members.leave}
-                </button>
-              </ConfirmForm>
+                {t.trips.members.leave}
+              </button>
             </div>
           )}
           {isOwner && <p className="small text-secondary mb-0">{t.trips.members.hint}</p>}
+        </div>
+      </Modal>
+
+      <Modal
+        open={leaveOpen}
+        onClose={() => {
+          setLeaveOpen(false);
+          setLeaveError(null);
+        }}
+        title={t.trips.members.leaveTitle}
+      >
+        <div className="d-flex flex-column gap-3">
+          <p className="small text-secondary mb-0">{t.trips.members.leaveWhatGoes}</p>
+          <p className="small text-secondary mb-0">{t.trips.members.leaveWithCopyHint}</p>
+          {leaveError && <p className="small text-danger mb-0">{leaveError}</p>}
+          <div className="d-flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={leaving}
+              onClick={() => leave(true)}
+            >
+              {t.trips.members.leaveWithCopy}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={leaving}
+              onClick={() => leave(false)}
+            >
+              {t.trips.members.leavePlain}
+            </button>
+          </div>
         </div>
       </Modal>
     </>

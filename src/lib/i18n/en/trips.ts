@@ -200,6 +200,13 @@ export const trips = {
         leaveConfirm:
             "Leave this trip? You lose access to its plan, lists and bookings, and your entries stay with the others. Your “going” marks on events stay yours.",
         leave: "Leave trip",
+        leaveTitle: "Leave the trip",
+        leaveWhatGoes: "Your packing list, shopping list and private entries in this trip will be deleted. What you shared with the others — to-dos, meetups, bookings — stays with them. Your “going” marks on events stay yours.",
+        leaveWithCopy: "Leave and keep a copy",
+        leaveWithCopyHint: "We will create a personal trip with your entries and your dates — nothing to move by hand.",
+        leavePlain: "Just leave",
+        leaveFailed: "Could not leave — please try again",
+        copyFailed: "Could not keep a copy — please try again",
         hint:
             "Your friend gets an invite and joins once they accept it. Members see the plan, the to-dos and the personal entries, and can add their own. Someone else's entry can only be changed if its author ticked the box allowing it.",
         accept: "Accept",
