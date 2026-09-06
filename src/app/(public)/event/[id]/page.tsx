@@ -433,6 +433,25 @@ export default async function EventDetailPage({
                 {event.organizer}
               </p>
             )}
+            {/* Теги — сразу под организатором (правка владельца
+                2026-09-06) и кликабельные: чип ведёт в поиск по событиям
+                с этим тегом, как жанр у сериала. */}
+            {event.tags.length > 0 && (
+              <p className="small text-secondary mb-2 d-flex flex-wrap align-items-center gap-2">
+                <span className="d-inline-flex align-items-center gap-1">
+                  <TagIcon /> <span className="text-secondary">{t.events.detail.tags}</span>
+                </span>
+                {event.tags.map((tag) => (
+                  <AppLink
+                    key={tag}
+                    href={`/search?section=events&tags=${encodeURIComponent(tag)}`}
+                    className="tag-chip text-decoration-none"
+                  >
+                    {tag}
+                  </AppLink>
+                ))}
+              </p>
+            )}
             {groupOccurrencesByTime(event.occurrences).map((group) => {
               const first = group[0];
               return (
@@ -507,20 +526,6 @@ export default async function EventDetailPage({
                 <AppLink href={dramaHref(event.drama)} className="link-body-emphasis">
                   {dramaTitleForLocale(event.drama, locale)}
                 </AppLink>
-              </p>
-            )}
-            {/* Жанры/теги события — чипами, как у сериала; своей ветки
-                поиска по тегам событий нет, поэтому чипы глухие. */}
-            {event.tags.length > 0 && (
-              <p className="small text-secondary mt-2 mb-0 d-flex flex-wrap align-items-center gap-2">
-                <span className="d-inline-flex align-items-center gap-1">
-                  <TagIcon /> <span className="text-secondary">{t.events.detail.tags}</span>
-                </span>
-                {event.tags.map((tag) => (
-                  <span key={tag} className="tag-chip">
-                    {tag}
-                  </span>
-                ))}
               </p>
             )}
             {castInCard && (

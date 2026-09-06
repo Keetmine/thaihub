@@ -4118,7 +4118,10 @@ body::after {
 }
 
 .lineup-day {
-  border-left: 2px solid rgba(var(--accent-rgb), 0.45);
+  /* Цвет дня приходит инлайном из EventDayLineup и красит все акцентные
+     элементы внутри; здесь — запасной, на случай дня без своего. */
+  --lineup-day-rgb: var(--accent-rgb);
+  border-left: 2px solid rgba(var(--lineup-day-rgb), 0.55);
   padding-left: 1rem;
 }
 
@@ -4134,7 +4137,7 @@ body::after {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #fff;
+  color: rgb(var(--lineup-day-rgb));
   text-transform: capitalize;
 }
 
@@ -4164,14 +4167,14 @@ body::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, var(--bs-border-color), transparent);
+  background: linear-gradient(90deg, rgba(var(--lineup-day-rgb), 0.4), transparent);
 }
 
 .lineup-stage-dot {
   width: 0.4rem;
   height: 0.4rem;
   border-radius: 50%;
-  background: rgba(var(--accent-rgb), 0.9);
+  background: rgba(var(--lineup-day-rgb), 0.95);
   flex-shrink: 0;
 }
 
@@ -4184,7 +4187,7 @@ body::after {
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   background: rgba(12, 12, 16, 0.86);
-  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border: 1px solid rgba(var(--lineup-day-rgb), 0.55);
   color: #fff;
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;

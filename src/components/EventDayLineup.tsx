@@ -31,11 +31,32 @@ export type LineupDay = {
  * выступает»: если расписание есть, оно и есть состав — второй список
  * тех же людей ниже был бы просто их повтором без времени.
  */
+/**
+ * Свой цвет каждому дню (правка владельца 2026-09-06): у двухдневного
+ * фестиваля оба дня были оранжевыми, и глазу не за что зацепиться. Цвет
+ * красит ВСЕ акцентные элементы дня — линию слева, точки сцен и плашки
+ * времени, — поэтому день узнаётся по любой из них. Первый оставлен
+ * фирменным оранжевым, дальше розовый, фиолетовый, бирюзовый, жёлтый;
+ * шестой день пойдёт по кругу — фестивалей длиннее не бывает, а
+ * повтор через пять честнее, чем блёклый шестой цвет.
+ */
+const DAY_COLORS = [
+  "var(--accent-rgb)",
+  "236, 72, 153",
+  "167, 139, 250",
+  "45, 212, 191",
+  "250, 204, 21",
+];
+
 export default function EventDayLineup({ days }: { days: LineupDay[] }) {
   return (
     <div className="lineup-days">
-      {days.map((day) => (
-        <section key={day.id} className="lineup-day">
+      {days.map((day, i) => (
+        <section
+          key={day.id}
+          className="lineup-day"
+          style={{ "--lineup-day-rgb": DAY_COLORS[i % DAY_COLORS.length] } as React.CSSProperties}
+        >
           <header className="lineup-day-head">
             <h3 className="lineup-day-date">{day.dateLabel}</h3>
             <span className="lineup-day-count">{day.countLabel}</span>
