@@ -180,8 +180,21 @@ export default async function PerformerPage({
       flattenOccurrence({ ...occ, event: l.event }),
     ),
   );
-  const currentPairings = pairings.filter((p) => p.status === "CURRENT");
-  const pastPairings = pairings.filter((p) => p.status === "PAST");
+  // АА3. Пара со СВОИМ именем («GhostSheep») получает отдельный блок, и
+  // заголовок ему — само имя: у названной пары имя и есть то, как её
+  // зовут фанаты, а «В паре с» про неё ничего не сказало бы. Безымянные
+  // раскладываются по статусу, как раньше.
+  const namedPairings = pairings.filter((p) => p.name);
+  const currentPairings = pairings.filter((p) => !p.name && p.status === "CURRENT");
+  const pastPairings = pairings.filter((p) => !p.name && p.status === "PAST");
+  // Два пейринга с одинаковым именем — один блок на двоих: заголовок
+  // повторялся бы, а список под ним читается как единое целое.
+  const pairingsByName = new Map<string, typeof namedPairings>();
+  for (const pair of namedPairings) {
+    const group = pairingsByName.get(pair.name!);
+    if (group) group.push(pair);
+    else pairingsByName.set(pair.name!, [pair]);
+  }
 
   // Вторая волна: пользовательские отметки — все ждут только
   // currentUser и уже загруженные события/сериалы, между собой не
@@ -684,16 +697,13 @@ export default async function PerformerPage({
 
       {(currentPairings.length > 0 ||
         pastPairings.length > 0 ||
+        namedPairings.length > 0 ||
         mascotCards.size > 0 ||
         (!isBand && performer.memberOfBands.length > 0)) && (
         <div className="d-flex flex-wrap gap-5 mb-4">
           {currentPairings.length > 0 && (
             <div>
               <h2 className="section-heading mb-2">{t.catalog.artist.pairedWith}</h2>
-              {/* АА3: в карточке главный — ЧЕЛОВЕК, а имя пейринга
-                  («встречались 1 год», GhostSheep) — тихой подписью под
-                  ним. Раньше имя заменяло партнёра, и по карточке было
-                  не понять, с кем пара. */}
               <div className="d-flex flex-wrap gap-2">
                 {currentPairings.map((pair) => {
                   const other =
@@ -706,7 +716,6 @@ export default async function PerformerPage({
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
                       name={other.name}
-                      subtitle={pair.name || undefined}
                     />
                   );
                 })}
@@ -729,13 +738,39 @@ export default async function PerformerPage({
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
                       name={other.name}
-                      subtitle={pair.name || undefined}
                     />
                   );
                 })}
               </div>
             </div>
           )}
+          {/* Названные пары — каждая своим блоком под своим именем
+              (АА3, правка владельца 2026-09-06). Бывшая названная пара
+              приглушена так же, как «Бывшие пары»: статус читается
+              видом, раз в заголовке теперь имя. */}
+          {[...pairingsByName].map(([pairName, group]) => (
+            <div key={pairName}>
+              <h2 className="section-heading mb-2">{pairName}</h2>
+              <div
+                className={`d-flex flex-wrap gap-2${
+                  group.every((pair) => pair.status === "PAST") ? " opacity-50" : ""
+                }`}
+              >
+                {group.map((pair) => {
+                  const other = pair.performerAId === id ? pair.performerB : pair.performerA;
+                  return (
+                    <EntityMiniCard
+                      key={pair.id}
+                      href={performerHref(other)}
+                      photoUrl={other.photoUrl}
+                      name={other.name}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
           {mascotCards.size > 0 && (
             <div>
               <h2 className="section-heading mb-2">{t.catalog.artist.mascots}</h2>
