@@ -39,13 +39,18 @@ export const SUPPORTED_EVENT_SITES_LABEL =
   "ThaiTicketMajor, Eventpop, Ticketmelon, AllTicket, Eventpass";
 
 /** Сайт по домену ссылки; null — домен не из известных. */
-export function detectEventSite(url: string): EventTicketSite | null {
-  let host: string;
+/** Хост ссылки без www — null у мусора вместо адреса. */
+function hostOf(url: string): string | null {
   try {
-    host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
     return null;
   }
+}
+
+export function detectEventSite(url: string): EventTicketSite | null {
+  const host = hostOf(url);
+  if (host === null) return null;
   if (host.endsWith("thaiticketmajor.com")) return "thaiticketmajor";
   if (host.endsWith("eventpop.me")) return "eventpop";
   if (host.endsWith("ticketmelon.com")) return "ticketmelon";
@@ -73,6 +78,16 @@ export async function scrapeEventByUrl(url: string): Promise<TtmEvent> {
         "theconcert.com закрыт Cloudflare-проверкой, которую не проходит даже браузер-автомат — это событие придётся завести руками",
       );
     default:
+      // У фестивалей musicfestival.in.th свой импорт — с составом,
+      // расписанием по сценам и заготовками исполнителей; экран
+      // билетных сайтов их не потянет, поэтому не «не узнаю сайт», а
+      // куда идти (жалоба владельца 2026-09-06).
+      if (/(^|\.)musicfestival\.in\.th$/.test(hostOf(url) ?? "")) {
+        throw new Error(
+          "Фестивали musicfestival.in.th импортируются своей карточкой на этой же " +
+            "странице — «Фестивали musicfestival.in.th», поле «Фестиваль по ссылке»",
+        );
+      }
       throw new Error(`Не узнаю сайт — поддерживаются: ${SUPPORTED_EVENT_SITES_LABEL}`);
   }
 }

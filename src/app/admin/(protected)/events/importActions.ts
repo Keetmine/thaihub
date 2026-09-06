@@ -8,6 +8,10 @@ import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { matchArtistsByNickname, type MatchedArtist } from "@/lib/performerMatching";
+import {
+  importMusicFestivalByUrl,
+  type MusicFestivalSingleImport,
+} from "@/lib/musicFestivalCrawl";
 
 export type TtmImportArtist = MatchedArtist;
 
@@ -198,4 +202,27 @@ export async function createEventFromTtmImport(
   }
 
   return { id: event.id };
+}
+
+/**
+ * Разовый импорт одного фестиваля musicfestival.in.th по ссылке
+ * (просьба владельца 2026-09-06): у этого источника своя механика —
+ * состав целиком, расписание по сценам, заготовки исполнителей, — и
+ * экран проверки, как у билетных сайтов, ей не подходит. Поэтому здесь
+ * не превью, а сразу импорт: тот же код, что у суточной задачи, просто
+ * по одному адресу и по кнопке.
+ */
+export async function importMusicFestivalEvent(
+  url: string,
+): Promise<MusicFestivalSingleImport> {
+  await requireAdmin();
+  const result = await importMusicFestivalByUrl(url.trim());
+
+  if (result.status === "created") {
+    revalidatePath("/");
+    revalidatePath("/admin/events");
+    revalidatePath("/admin/performers");
+    revalidatePath("/artists");
+  }
+  return result;
 }

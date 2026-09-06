@@ -36,6 +36,7 @@ import BlsceneLocationsSyncButton from "./BlsceneLocationsSyncButton";
 import StopImportButton from "./StopImportButton";
 import TabRunsJournal from "./TabRunsJournal";
 import TtmImportFlow from "./ttm/TtmImportFlow";
+import MusicFestivalUrlImport from "./MusicFestivalUrlImport";
 import SubmitButton from "@/components/admin/SubmitButton";
 import ConfirmForm from "@/components/ConfirmForm";
 import BulkList from "@/components/admin/BulkList";
@@ -632,6 +633,9 @@ export default async function AdminImportsPage({
                     Задача в расписании
                   </Link>
                 </div>
+                {/* Отдельный фестиваль по ссылке — когда ждать суточную
+                    задачу не хочется (просьба владельца 2026-09-06). */}
+                <MusicFestivalUrlImport />
               </div>
             </div>
 

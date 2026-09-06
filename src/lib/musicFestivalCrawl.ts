@@ -344,6 +344,99 @@ export async function runMusicFestivalCrawl(
   return result;
 }
 
+/** Чем закончился разовый импорт одного фестиваля по ссылке. */
+export type MusicFestivalSingleImport = {
+  status: "created" | "exists" | "duplicate";
+  eventId: string;
+  title: string;
+  /** У созданного: сколько дат, сколько привязано и сколько заготовок. */
+  dates: number;
+  performersLinked: number;
+  performersCreated: number;
+  /** У дубля — название события, которое уже есть в каталоге. */
+  existingTitle: string | null;
+};
+
+/**
+ * Разовый импорт ОДНОГО фестиваля по ссылке — не дожидаясь суточной
+ * задачи (просьба владельца 2026-09-06: «хочу вот этот спарсить
+ * отдельно»). Делает ровно то же, что обход: страница, лайнап,
+ * расписание по сценам, афиши, заготовки исполнителей.
+ *
+ * Отличия от обхода — все в сторону осторожности: событие по этому
+ * адресу уже есть — возвращаем его, ничего не трогая; фестиваль похож
+ * на событие из каталога — тоже не создаём, а показываем, на что похож
+ * (решает владелец). Никаких пометок в памяти обхода не оставляем: это
+ * ручной прогон, а не обход.
+ */
+export async function importMusicFestivalByUrl(
+  rawUrl: string,
+): Promise<MusicFestivalSingleImport> {
+  const sourceUrl = canonicalMusicFestivalUrl(rawUrl);
+  if (!sourceUrl) {
+    throw new Error(
+      "Это не ссылка на фестиваль musicfestival.in.th — нужен адрес вида " +
+        "https://www.musicfestival.in.th/en/festivals/<название>",
+    );
+  }
+
+  const existing = await prisma.event.findFirst({
+    where: { sourceUrl },
+    select: { id: true, title: true, occurrences: { select: { id: true } } },
+  });
+  if (existing) {
+    return {
+      status: "exists",
+      eventId: existing.id,
+      title: existing.title,
+      dates: existing.occurrences.length,
+      performersLinked: 0,
+      performersCreated: 0,
+      existingTitle: null,
+    };
+  }
+
+  const festival = await scrapeMusicFestivalPage(sourceUrl);
+  if (!festival.title) throw new Error("На странице нет названия фестиваля");
+  if (festival.dates.length === 0) {
+    throw new Error("На странице не разобрана дата — без неё событие не завести");
+  }
+
+  const dupe = await findCatalogDuplicate({
+    title: festival.title,
+    date: festival.dates[0],
+    extraDates: festival.dates.slice(1),
+  });
+  if (dupe && dupe.strength === "strong") {
+    return {
+      status: "duplicate",
+      eventId: dupe.eventId,
+      title: festival.title,
+      dates: festival.dates.length,
+      performersLinked: 0,
+      performersCreated: 0,
+      existingTitle: dupe.eventTitle,
+    };
+  }
+
+  const matched = await matchFestivalArtists(
+    festival.lineup.map((a) => ({ name: a.name, url: a.url })),
+  );
+  const linked = matched.filter((m) => m.performerId !== null);
+  const toCreate = matched.filter((m) => m.performerId === null);
+
+  const created = await createFestivalEvent(festival, sourceUrl, linked, toCreate, null);
+  return {
+    status: "created",
+    eventId: created.eventId,
+    title: festival.title,
+    dates: festival.dates.length,
+    performersLinked: linked.length,
+    performersCreated: created.performersCreated,
+    existingTitle: null,
+  };
+}
+
 /**
  * Создаёт событие и заготовки исполнителей. Картинки качаются к нам ДО
  * транзакции (сетевой поход не должен держать её открытой), запись — в
