@@ -6320,3 +6320,99 @@ body::after {
   letter-spacing: 0.01em;
 }
 
+
+/* ============================================================
+   Раздел помощи: вопросы-раскрывашки
+   ============================================================ */
+
+/* Свёртка нативная (details/summary): состояние и работа с клавиатуры
+   достаются от summary даром, а мерить тут нечего — в отличие от
+   .synopsis-fold клиентского кода вопрос не требует. */
+.faq-item {
+  border-top: 1px solid var(--bs-border-color);
+  /* Ссылка на конкретный вопрос проматывает страницу к нему, а сверху
+     висит липкая шапка — без запаса вопрос уезжал бы под неё. */
+  scroll-margin-top: 6rem;
+}
+
+.faq-section .faq-item:first-of-type {
+  border-top: 0;
+}
+
+.faq-item > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.7rem 0;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.faq-item > summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-caret {
+  color: var(--bs-secondary-color);
+  font-size: 0.8em;
+  transition: transform 0.15s ease;
+}
+
+.faq-item[open] .faq-caret {
+  transform: rotate(90deg);
+}
+
+.faq-question {
+  flex: 1;
+  font-weight: 500;
+}
+
+.faq-item > summary:hover .faq-question {
+  color: rgb(var(--accent-rgb));
+}
+
+/* Решётка — тихая: она нужна ровно тогда, когда вопрос хотят кому-то
+   переслать, и в спокойном состоянии не должна спорить с текстом. */
+.faq-anchor {
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.faq-item > summary:hover .faq-anchor,
+.faq-anchor:focus-visible {
+  opacity: 0.7;
+}
+
+.faq-answer {
+  /* Отступ слева равен ширине галочки с зазором — ответ встаёт под
+     текст вопроса, а не под маркер. */
+  padding: 0 0 0.9rem 1.35rem;
+  color: var(--bs-secondary-color);
+  max-width: 46rem;
+}
+
+/* Ссылки под ответом мельче навигационных капсул: это сноска к ответу,
+   а не отдельное действие страницы. */
+.faq-link {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* На телефоне капсулы оглавления встают по одной в ряд и отжимают
+   первый вопрос за экран — мельче они укладываются по две. */
+@media (max-width: 575.98px) {
+  .faq-toc .chip-link {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-caret,
+  .faq-anchor {
+    transition: none;
+  }
+}
