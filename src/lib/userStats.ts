@@ -37,6 +37,57 @@ export type UserStats = {
   marathonWeek: boolean;
 };
 
+/** Состояние глазика «видела вживую» у ОДНОГО артиста: то же правило,
+ *  что в своде, но без пересчёта всей статистики. */
+export type SeenLiveState = {
+  /** Итог, который показывает глазик. */
+  seen: boolean;
+  /** Даёт ли «видела» автоматика (событие афиши или личное событие
+   *  поездки) — от этого зависит, что делать по клику: завести
+   *  перекрывающую строку или, наоборот, удалить лишнюю. */
+  auto: boolean;
+};
+
+/** Считают ли артиста увиденным автоматические источники: артисты
+ *  ПРОШЕДШИХ событий афиши с отметкой «иду» и артисты прошедших личных
+ *  событий поездок со своей отметкой «я там буду» (те же условия, что в
+ *  computeUserStats). */
+export async function autoSeenLive(userId: string, performerId: string): Promise<boolean> {
+  const now = new Date();
+  const [fromEvents, fromPersonal] = await Promise.all([
+    prisma.eventAttendance.count({
+      where: {
+        userId,
+        occurrence: { startsAt: { lt: now } },
+        event: { performers: { some: { performerId } } },
+      },
+    }),
+    prisma.tripPersonalEventPerformer.count({
+      where: {
+        performerId,
+        personalEvent: { startsAt: { lt: now }, attendances: { some: { userId } } },
+      },
+    }),
+  ]);
+  return fromEvents > 0 || fromPersonal > 0;
+}
+
+/** Итоговое состояние глазика: ручное решение (PerformerSeen) сильнее
+ *  автоматики, а без него глазик просто следует за событиями. */
+export async function getSeenLiveState(
+  userId: string,
+  performerId: string,
+): Promise<SeenLiveState> {
+  const [auto, manual] = await Promise.all([
+    autoSeenLive(userId, performerId),
+    prisma.performerSeen.findUnique({
+      where: { userId_performerId: { userId, performerId } },
+      select: { seen: true },
+    }),
+  ]);
+  return { seen: manual ? manual.seen : auto, auto };
+}
+
 export async function computeUserStats(userId: string): Promise<UserStats> {
   const now = new Date();
 
@@ -104,17 +155,15 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       else performerCounts.set(performer.id, { ...performer, count: 1 });
     }
   }
-  const topPerformers = Array.from(performerCounts.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  // Ручные отметки «видела вживую»: концерты до регистрации на сайте,
-  // случайные встречи и события, которых нет в нашей афише. Считаем
-  // объединением с автоматическими — один и тот же артист, отмеченный
-  // и так и так, не должен удваивать счётчик.
-  const manuallySeen = await prisma.performerSeen.findMany({
+  // Ручные РЕШЕНИЯ «видела вживую» (PerformerSeen): перекрывают
+  // автоматику в обе стороны. seen=true — концерты до регистрации на
+  // сайте, случайные встречи и события вне нашей афиши; seen=false —
+  // «этого из состава я не видела» (на концерте пятеро, а разглядела
+  // двоих). Совпадающего с автоматикой решения в таблице не бывает —
+  // такую строку экшен удаляет.
+  const manualSeen = await prisma.performerSeen.findMany({
     where: { userId },
-    select: { performerId: true },
+    select: { performerId: true, seen: true },
   });
   // Третий источник — артисты на ЛИЧНЫХ событиях поездок (фанмит, ужин
   // с актёром: таких событий в нашей афише нет). Считаются только
@@ -132,11 +181,25 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     },
     select: { performerId: true },
   });
-  const seenPerformerIds = new Set([
-    ...performerCounts.keys(),
-    ...manuallySeen.map((m) => m.performerId),
-    ...personalEventSeen.map((m) => m.performerId),
-  ]);
+  const excludedIds = new Set(manualSeen.filter((m) => !m.seen).map((m) => m.performerId));
+  const seenPerformerIds = new Set(
+    [
+      ...performerCounts.keys(),
+      ...manualSeen.filter((m) => m.seen).map((m) => m.performerId),
+      ...personalEventSeen.map((m) => m.performerId),
+    ].filter((id) => !excludedIds.has(id)),
+  );
+
+  // Топ-5 «кого видели чаще» — по посещённым событиям, но снятые вручную
+  // артисты из него уходят: они больше не «вживую», а число посещений
+  // события у них при этом самое большое.
+  const countedPerformers = Array.from(performerCounts.values()).filter(
+    (p) => !excludedIds.has(p.id),
+  );
+  const topPerformers = countedPerformers
+    .slice()
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
 
   // Список «кого именно видели» под кликабельной плиткой профиля.
   // Карточки артистов с посещённых событий уже собраны в performerCounts;
@@ -149,7 +212,8 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       })
     : [];
   const seenPerformers = [
-    ...Array.from(performerCounts.values())
+    ...countedPerformers
+      .slice()
       .sort((a, b) => b.count - a.count)
       .map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl })),
     ...extraSeen.sort((a, b) => a.name.localeCompare(b.name)),

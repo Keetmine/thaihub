@@ -1813,12 +1813,20 @@ model DuplicateDismissal {
   @@unique([entityType, memberKey])
 }
 
+// Ручное РЕШЕНИЕ пользователя про «видела вживую» у конкретного артиста.
+// Строка перекрывает автоматические источники (артисты посещённых событий
+// афиши и личных событий поездок): seen=true — «видела», хотя автоматика
+// не знает; seen=false — «не видела», хотя артист был в составе события
+// (на концерте пятеро, а разглядела двоих). Согласное с автоматикой
+// решение строки не заводит — она удаляется, и глазик снова следует за
+// событиями. См. docs/features/gamification.md.
 model PerformerSeen {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   performerId String
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  seen        Boolean   @default(true)
   seenAt      DateTime?
   note        String?
   createdAt   DateTime  @default(now())

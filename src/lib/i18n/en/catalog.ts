@@ -18,6 +18,9 @@ export const catalog = {
     letterAll: "All letters:",
     letterBack: "← Full catalogue",
     showAll: (n: number) => `Show all (${n})`,
+    /** «Показать всех» годится составу актёров, но не песням —
+     *  в русском это разные слова (правка владельца 2026-09-06). */
+    showAllItems: (n: number) => `Show all (${n})`,
     sources: "Sources",
     tagsShowAll: (n: number) => `+${n} more`,
 
@@ -181,6 +184,8 @@ export const catalog = {
             noDate: "date not announced",
             today: "today",
             showAll: (n: number) => `Show all (${n})`,
+    /** «Показать всех» годится составу актёров, но не песням —
+     *  в русском это разные слова (правка владельца 2026-09-06). */
             // Переключатель свёртки в конце строки «Эфир».
             more: "Details",
             hide: "Hide",

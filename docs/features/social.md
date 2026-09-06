@@ -14,6 +14,16 @@ covers "how do I feel about this drama", and having both was redundant.
 `FavoriteKind` (`FavoriteButton.tsx`) only accepts `"performer" | "event"
 | "agency"`.
 
+## «Видела вживую» — глазик на странице артиста
+
+Рядом с сердечком в шапке `/artists/[id]` — глазик `SeenLiveButton`.
+Это не отдельная отметка, а **итог**: артисты посещённых событий афиши
+и личных событий поездок приходят с активным глазиком сами, а нажатие
+перекрывает автоматику в любую сторону (в том числе снимает — «на
+концерте пятеро, а разглядела двоих»); отметку «иду» на событии это не
+меняет. Модель (`PerformerSeen.seen`), правила и подсчёт —
+в [gamification.md](gamification.md#глазик-видела-вживую-на-странице-артиста-аа7).
+
 ## Watch status
 
 Per-drama, MyDramaList-style status (`DramaWatchStatus`, one of

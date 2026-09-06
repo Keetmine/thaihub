@@ -34,6 +34,8 @@ import {
 import { isPremiumActive } from "@/lib/premium";
 import SeenLiveButton from "@/components/SeenLiveButton";
 import { toggleSeenLive } from "@/app/(public)/artists/seenActions";
+import { getSeenLiveState } from "@/lib/userStats";
+import ListFold from "./ListFold";
 import { performerPhoto } from "@/lib/performerPhoto";
 import { cache } from "react";
 
@@ -187,22 +189,16 @@ export default async function PerformerPage({
   const eventIds = performerEvents.map((ev) => ev.id);
   const occIds = performerEvents.map((ev) => ev.occurrenceId);
   const [
-    seenLiveRow,
+    seenLiveState,
     myListsRaw,
     favorite,
     favoritedEventIds,
     goingEventIds,
     statusByDramaId,
   ] = await Promise.all([
-    // Отметка «видела вживую» — ручная, не зависит от событий афиши.
-    currentUser
-      ? prisma.performerSeen.findUnique({
-          where: {
-            userId_performerId: { userId: currentUser.id, performerId: performer.id },
-          },
-          select: { id: true },
-        })
-      : null,
+    // «Видела вживую» — ИТОГ: автоматика (посещённые события афиши и
+    // личные события поездок) плюс ручное решение поверх неё.
+    currentUser ? getSeenLiveState(currentUser.id, performer.id) : null,
     // Списки пользователя для кнопки «+ в список» рядом с сердечком.
     currentUser
       ? prisma.performerList.findMany({
@@ -229,7 +225,7 @@ export default async function PerformerPage({
       currentUser?.id,
     ),
   ]);
-  const seenLive = !!seenLiveRow;
+  const seenLive = seenLiveState?.seen ?? false;
   const myLists = myListsRaw.map((l) => ({
     id: l.id,
     title: l.title,
@@ -250,6 +246,41 @@ export default async function PerformerPage({
     performerEvents
       .filter((ev) => ev.startsAt < now)
       .sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime()),
+  );
+
+  // Дискография: у музыкантов она доходит до полусотни строк, и
+  // страница уезжала в бесконечность (жалоба владельца на
+  // /artists/1mill). Показываем начало, остальное — по кнопке. Хвост в
+  // одну-две строки прятать незачем, как и в графике серий: кнопка
+  // заняла бы столько же места, сколько экономит.
+  const SONGS_PREVIEW = 12;
+  const songsCollapsed = performer.songs.length - SONGS_PREVIEW > 2;
+  const songRow = (song: (typeof performer.songs)[number]) => (
+    <div
+      key={song.id}
+      className="surface d-flex align-items-baseline justify-content-between gap-3 px-3 py-2"
+    >
+      <span style={{ minWidth: 0 }}>
+        <span className="text-white">
+          {song.url ? (
+            <a
+              href={song.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-body-emphasis"
+            >
+              {song.title}
+            </a>
+          ) : (
+            song.title
+          )}
+        </span>
+        {song.note && <span className="small text-secondary"> · {song.note}</span>}
+      </span>
+      {song.year && (
+        <span className="small text-secondary flex-shrink-0">{song.year}</span>
+      )}
+    </div>
   );
 
   // Порядок сериалов (просьба владельца): анонсы — первыми (ближайшая
@@ -389,8 +420,9 @@ export default async function PerformerPage({
             isFavorited={isFavorited}
             variant="icon"
           />
-          {/* Ручная отметка «видела вживую»: автоматически считаются
-              только события из нашей афиши. */}
+          {/* «Видела вживую»: глазик показывает итог вместе с
+              автоматикой по событиям и умеет её снимать — на концерте
+              пятеро, а разглядела двоих. */}
           {currentUser && (
             <SeenLiveButton
               performerId={performer.id}
@@ -956,39 +988,17 @@ export default async function PerformerPage({
           <h2 className="section-heading mb-2">
             <MusicNoteIcon className="icon-inline" /> {t.catalog.artist.songs}
           </h2>
-          <div className="d-flex flex-column gap-2">
-            {performer.songs.map((song) => (
-              <div
-                key={song.id}
-                className="surface d-flex align-items-baseline justify-content-between gap-3 px-3 py-2"
-              >
-                <span style={{ minWidth: 0 }}>
-                  <span className="text-white">
-                    {song.url ? (
-                      <a
-                        href={song.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="link-body-emphasis"
-                      >
-                        {song.title}
-                      </a>
-                    ) : (
-                      song.title
-                    )}
-                  </span>
-                  {song.note && (
-                    <span className="small text-secondary"> · {song.note}</span>
-                  )}
-                </span>
-                {song.year && (
-                  <span className="small text-secondary flex-shrink-0">
-                    {song.year}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+          {/* Хвост дискографии свёрнут: у музыканта бывает под полсотни
+              песен, и страница уходила в бесконечность. */}
+          <ListFold
+            className="d-flex flex-column gap-2"
+            total={performer.songs.length}
+            visible={(songsCollapsed
+              ? performer.songs.slice(0, SONGS_PREVIEW)
+              : performer.songs
+            ).map(songRow)}
+            rest={songsCollapsed ? performer.songs.slice(SONGS_PREVIEW).map(songRow) : null}
+          />
         </div>
       )}
 

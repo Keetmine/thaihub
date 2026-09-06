@@ -193,7 +193,7 @@ export const trips = {
         attachOption: "+ Attach a list…",
         detach: "Detach",
         removeAria: "Remove place",
-        addButton: "+ Place",
+        addButton: "+ Place to go",
         addTitle: "Add a place",
         addPlaceholder: "+ Add a place…",
         searchLabel: "Find it in the catalogue or among your own places",

@@ -12,6 +12,7 @@ export const catalog: Dict["catalog"] = {
     letterAll: "Все буквы:",
     letterBack: "← Весь каталог",
     showAll: (n: number) => `Показать всех (${n})`,
+    showAllItems: (n: number) => `Показать все (${n})`,
     sources: "Источники",
     tagsShowAll: (n: number) => `ещё ${n}`,
 

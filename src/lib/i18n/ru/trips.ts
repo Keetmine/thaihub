@@ -187,7 +187,7 @@ export const trips: Dict["trips"] = {
         attachOption: "+ Прикрепить список…",
         detach: "Открепить",
         removeAria: "Убрать место",
-        addButton: "+ Место",
+        addButton: "+ Что посетить",
         addTitle: "Добавить место",
         addPlaceholder: "+ Добавить место…",
         searchLabel: "Найдите в каталоге или среди своих мест",
