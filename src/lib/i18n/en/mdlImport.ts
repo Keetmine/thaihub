@@ -3,7 +3,9 @@
  * (вкладка «Import», src/app/(public)/account/settings/).
  */
 export const mdlImport = {
-  tab: "Import",
+  /** Вкладка настроек: тут и импорт списка с MDL, и выгрузка своих
+   *  данных таблицей (правка владельца 2026-09-06). */
+  tab: "Import & export",
   title: "Import from MyDramaList",
   intro:
     "Paste a link to your public MyDramaList list — we will copy your watch statuses (Watching, Watched, On hold, Plan to watch, Dropped) and episode progress over here.",

@@ -2227,6 +2227,11 @@ svg[aria-hidden="true"] {
   max-width: 11rem;
   aspect-ratio: 3 / 4;
   padding: 1rem 0.75rem;
+  /* Подпись в узкой рамке иначе разъезжается на четыре строки и
+     распирает бокс (правка владельца 2026-09-06 — фото в настройках
+     переехало в такую же компактную рамку). */
+  font-size: 0.82rem;
+  line-height: 1.25;
 }
 .file-dropzone-compact .file-dropzone-preview img {
   /* Бокс 11×14.7rem минус паддинги и кнопка «Убрать». */

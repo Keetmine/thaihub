@@ -100,31 +100,51 @@ export default async function SettingsPage({
                 контракт (имя и язык сохраняются вместе), поэтому
                 секции разделены визуально, а сабмит общий. */}
             <SettingsForm action={updateProfile} submitLabel={s.save} ownSubmitRow>
+              {/* Профиль и «язык и регион» — ОДНА карточка (правка
+                  владельца 2026-09-06): это один и тот же рассказ о
+                  себе, и сохраняются они одной формой; двумя блоками
+                  форма выглядела длиннее, чем есть.
+
+                  Фото — слева и компактной рамкой 3:4, как оно и
+                  показывается в профиле: полоса дропзоны во всю ширину
+                  колонки занимала полэкрана и обещала не тот кадр. */}
               <div className="surface p-4">
                 <h2 className="section-heading mb-1">{ts.profileSection}</h2>
                 <p className="small text-secondary mb-3">{ts.profileSectionHint}</p>
-                <div className="row g-3">
-                  <div className="col-12 col-md-6 d-flex flex-column gap-3">
-                    <div>
-                      <label className="form-label" htmlFor="settings-name">{s.name}</label>
-                      <input id="settings-name" name="name" defaultValue={user.name ?? ""} className="form-control" />
-                      {/* Подсказка про видимость — у самого поля имени,
-                          а не в конце колонки под «Страной». */}
-                      <p className="small text-secondary mb-0 mt-1">{s.nameVisible}</p>
-                    </div>
-                    <div>
-                      <label className="form-label" htmlFor="settings-username">{s.username}</label>
-                      {/* Он же адрес профиля — ссылкой делятся с друзьями. */}
-                      <div className="input-group">
-                        <span className="input-group-text small text-secondary">/users/</span>
-                        <input id="settings-username"
-                          name="username"
-                          defaultValue={user.username ?? ""}
-                          className="form-control"
-                        />
+                <div className="row g-4">
+                  <div className="col-12 col-sm-5 col-md-4 col-lg-3">
+                    <FileDropzone
+                      name="photoUrl"
+                      label={s.photo}
+                      defaultValue={user.photoUrl ?? ""}
+                      compact
+                      crop
+                    />
+                  </div>
+
+                  <div className="col-12 col-sm-7 col-md-8 col-lg-9 d-flex flex-column gap-3">
+                    <div className="row g-3">
+                      <div className="col-12 col-lg-6">
+                        <label className="form-label" htmlFor="settings-name">{s.name}</label>
+                        <input id="settings-name" name="name" defaultValue={user.name ?? ""} className="form-control" />
+                        {/* Подсказка про видимость — у самого поля имени. */}
+                        <p className="small text-secondary mb-0 mt-1">{s.nameVisible}</p>
                       </div>
-                      <p className="small text-secondary mb-0 mt-1">{s.usernameHint}</p>
+                      <div className="col-12 col-lg-6">
+                        <label className="form-label" htmlFor="settings-username">{s.username}</label>
+                        {/* Он же адрес профиля — ссылкой делятся с друзьями. */}
+                        <div className="input-group">
+                          <span className="input-group-text small text-secondary">/users/</span>
+                          <input id="settings-username"
+                            name="username"
+                            defaultValue={user.username ?? ""}
+                            className="form-control"
+                          />
+                        </div>
+                        <p className="small text-secondary mb-0 mt-1">{s.usernameHint}</p>
+                      </div>
                     </div>
+
                     <div>
                       <label className="form-label" htmlFor="settings-bio">{s.bio}</label>
                       <textarea id="settings-bio"
@@ -135,13 +155,9 @@ export default async function SettingsPage({
                         className="form-control"
                       />
                     </div>
-                  </div>
-                  <div className="col-12 col-md-6 d-flex flex-column gap-3">
-                    {/* crop: аватарка круглая, поэтому свой снимок
-                        человек кадрирует сам — см. ImageCropDialog. */}
-                    <FileDropzone name="photoUrl" label={s.photo} defaultValue={user.photoUrl ?? ""} crop />
+
                     <div className="row g-3">
-                      <div className="col-6">
+                      <div className="col-6 col-lg-3">
                         <label className="form-label" htmlFor="settings-gender">{s.gender}</label>
                         <select id="settings-gender" name="gender" defaultValue={user.gender ?? ""} className="form-select">
                           <option value="">{s.genderEmpty}</option>
@@ -150,7 +166,7 @@ export default async function SettingsPage({
                           <option value="other">{s.genderOther}</option>
                         </select>
                       </div>
-                      <div className="col-6">
+                      <div className="col-6 col-lg-3">
                         <label className="form-label" htmlFor="settings-birthDate">{s.birthDate}</label>
                         <DatePickerInput id="settings-birthDate"
                           name="birthDate"
@@ -159,16 +175,29 @@ export default async function SettingsPage({
                           yearsForward={0}
                         />
                       </div>
+                      <div className="col-12 col-lg-6">
+                        <label className="form-label" htmlFor="settings-country">{s.country}</label>
+                        <select id="settings-country" name="country" defaultValue={user.country ?? ""} className="form-select">
+                          <option value="">{s.countryEmpty}</option>
+                          {countryOptions(locale).map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="surface p-4 mt-3">
-                <h2 className="section-heading mb-1">{ts.regionalSection}</h2>
-                <p className="small text-secondary mb-3">{ts.regionalSectionHint}</p>
+                {/* Язык и часовой пояс — той же карточкой, но отбиты
+                    линией: это уже не «о себе», а «как показывать». */}
+                <hr className="my-4" />
+                <h3 className="small text-uppercase text-secondary mb-3" style={{ letterSpacing: "0.08em" }}>
+                  {ts.regionalSection}
+                </h3>
                 <div className="row g-3">
-                  <div className="col-12 col-md-4">
+                  <div className="col-12 col-md-6">
                     <label className="form-label" htmlFor="settings-locale">{s.language}</label>
                     <select id="settings-locale"
                       name="locale"
@@ -183,7 +212,7 @@ export default async function SettingsPage({
                     </select>
                     <p className="small text-secondary mb-0 mt-1">{s.languageHint}</p>
                   </div>
-                  <div className="col-12 col-md-4">
+                  <div className="col-12 col-md-6">
                     <label className="form-label" htmlFor="settings-timezone">{s.timezone}</label>
                     <select id="settings-timezone" name="timezone" defaultValue={user.timezone} className="form-select">
                       {TIMEZONES.map((zone) => (
@@ -194,20 +223,8 @@ export default async function SettingsPage({
                     </select>
                     <p className="small text-secondary mb-0 mt-1">{s.timezoneHint}</p>
                   </div>
-                  <div className="col-12 col-md-4">
-                    <label className="form-label" htmlFor="settings-country">{s.country}</label>
-                    <select id="settings-country" name="country" defaultValue={user.country ?? ""} className="form-select">
-                      <option value="">{s.countryEmpty}</option>
-                      {countryOptions(locale).map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
-                {/* Сабмит внутри последней карточки, а не сиротой между
-                    блоками, — на скриншоте «до» Save висел посреди. */}
+
                 <SettingsSubmitRow className="mt-4" />
               </div>
             </SettingsForm>
@@ -282,34 +299,6 @@ export default async function SettingsPage({
 
             {/* Тур по интерфейсу — пройти заново. Полезно и когда
                 появляются новые разделы. */}
-            {/* Выгрузка своих данных таблицей (АА16). Ссылки, а не
-                кнопки-формы: браузер сам скачает файл по адресу, а
-                ссылку можно открыть в новой вкладке. Подписка не
-                требуется — забрать своё человек должен мочь всегда. */}
-            <div className="surface p-4 mb-3">
-              <h2 className="section-heading mb-1">{s.exportTitle}</h2>
-              <p className="small text-secondary mb-3">{s.exportHint}</p>
-              <div className="d-flex flex-wrap gap-2">
-                {[
-                  { kind: "dramas", label: s.exportDramas },
-                  { kind: "events", label: s.exportEvents },
-                  { kind: "trips", label: s.exportTrips },
-                  { kind: "trip-items", label: s.exportTripItems },
-                  { kind: "artists", label: s.exportArtists },
-                  { kind: "places", label: s.exportPlaces },
-                ].map((item) => (
-                  <a
-                    key={item.kind}
-                    href={`/api/export/${item.kind}`}
-                    className="btn btn-ghost btn-sm"
-                    download
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-
             <div className="surface p-4">
               <h2 className="section-heading mb-1">{s.tourTitle}</h2>
               <p className="small text-secondary mb-3">{s.tourHint}</p>
@@ -375,7 +364,38 @@ export default async function SettingsPage({
             <IcsFeedSection token={icsToken} />
           </div>
         }
-        mdlImport={<MdlImportSection />}
+        mdlImport={
+          <div className="d-flex flex-column gap-3">
+            <MdlImportSection />
+            {/* Выгрузка своих данных таблицей (АА16). Ссылки, а не
+                кнопки-формы: браузер сам скачает файл по адресу, а
+                ссылку можно открыть в новой вкладке. Подписка не
+                требуется — забрать своё человек должен мочь всегда. */}
+            <div className="surface p-4 mb-3">
+              <h2 className="section-heading mb-1">{s.exportTitle}</h2>
+              <p className="small text-secondary mb-3">{s.exportHint}</p>
+              <div className="d-flex flex-wrap gap-2">
+                {[
+                  { kind: "dramas", label: s.exportDramas },
+                  { kind: "events", label: s.exportEvents },
+                  { kind: "trips", label: s.exportTrips },
+                  { kind: "trip-items", label: s.exportTripItems },
+                  { kind: "artists", label: s.exportArtists },
+                  { kind: "places", label: s.exportPlaces },
+                ].map((item) => (
+                  <a
+                    key={item.kind}
+                    href={`/api/export/${item.kind}`}
+                    className="btn btn-ghost btn-sm"
+                    download
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        }
       />
     </div>
   );
