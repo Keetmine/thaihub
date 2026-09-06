@@ -282,6 +282,34 @@ export default async function SettingsPage({
 
             {/* Тур по интерфейсу — пройти заново. Полезно и когда
                 появляются новые разделы. */}
+            {/* Выгрузка своих данных таблицей (АА16). Ссылки, а не
+                кнопки-формы: браузер сам скачает файл по адресу, а
+                ссылку можно открыть в новой вкладке. Подписка не
+                требуется — забрать своё человек должен мочь всегда. */}
+            <div className="surface p-4 mb-3">
+              <h2 className="section-heading mb-1">{s.exportTitle}</h2>
+              <p className="small text-secondary mb-3">{s.exportHint}</p>
+              <div className="d-flex flex-wrap gap-2">
+                {[
+                  { kind: "dramas", label: s.exportDramas },
+                  { kind: "events", label: s.exportEvents },
+                  { kind: "trips", label: s.exportTrips },
+                  { kind: "trip-items", label: s.exportTripItems },
+                  { kind: "artists", label: s.exportArtists },
+                  { kind: "places", label: s.exportPlaces },
+                ].map((item) => (
+                  <a
+                    key={item.kind}
+                    href={`/api/export/${item.kind}`}
+                    className="btn btn-ghost btn-sm"
+                    download
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+
             <div className="surface p-4">
               <h2 className="section-heading mb-1">{s.tourTitle}</h2>
               <p className="small text-secondary mb-3">{s.tourHint}</p>
