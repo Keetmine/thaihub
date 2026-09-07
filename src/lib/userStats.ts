@@ -31,6 +31,29 @@ export type UserStats = {
   daysInThailand: number;
   friends: number;
   eventsByYear: { year: number; count: number }[];
+  /**
+   * Сообщества (АА25) — считаются ТОЛЬКО ради ачивок: во вкладке
+   * «Статистика» этих чисел нет. Сообщества бесплатны и не про афишу, а
+   * ачивка про них — самая дешёвая причина вернуться и что-то написать
+   * (сообщества умирают от тишины, а не от нехватки функций).
+   */
+  /** В скольких ЧУЖИХ сообществах человек состоит (ACTIVE). Свои не в
+   *  счёт: «вступить» — это про то, что тебя куда-то позвали или ты сам
+   *  пришёл, а за созданное есть отдельная ачивка. */
+  communitiesJoined: number;
+  /** Сколько сообществ создал. */
+  communitiesOwned: number;
+  /** Сколько тем завёл в обсуждениях (во всех сообществах). */
+  communityPosts: number;
+  /** Самое многолюдное СВОЁ сообщество: сколько в нём участников, КРОМЕ
+   *  самого владельца (иначе ачивка «собери троих» выдавалась бы за
+   *  двоих плюс себя). */
+  communityMembersGathered: number;
+  /** На скольких прошедших встречах сообществ человек отметился «иду».
+   *  Считаются только ЧУЖИЕ встречи — свою можно завести задним числом и
+   *  отметиться на ней самому (то же правило, по которому встречи вообще
+   *  не идут в статистику афиши, см. docs/features/communities.md). */
+  communityMeetups: number;
   // Флаги для ачивок
   wentWithThreeFriends: boolean;
   earlyBird: boolean;
@@ -109,8 +132,19 @@ export async function getSeenLiveState(
 export async function computeUserStats(userId: string): Promise<UserStats> {
   const now = new Date();
 
-  const [attendances, visits, completedDramas, watchRows, trips, friendships] =
-    await Promise.all([
+  const [
+    attendances,
+    visits,
+    completedDramas,
+    watchRows,
+    trips,
+    friendships,
+    memberships,
+    ownedCommunities,
+    communityPosts,
+    ownCommunityCrowd,
+    meetupAttendances,
+  ] = await Promise.all([
       prisma.eventAttendance.findMany({
         // Та же причина, что в autoSeenLive: статистика — про афишу.
         where: { userId, event: catalogEventsWhere() },
@@ -168,6 +202,41 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       }),
       prisma.friendship.count({
         where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
+      }),
+      // Дальше — только для ачивок про сообщества (АА25).
+      // Членства: владелец своего сообщества тоже лежит строкой
+      // CommunityMember, поэтому «вступил» и «завёл» различаем по
+      // владельцу сообщества, а не по роли (роль владельца можно и
+      // потерять при кривой строке в базе, ownerId — нет).
+      prisma.communityMember.findMany({
+        where: { userId, status: "ACTIVE" },
+        select: { community: { select: { ownerId: true } } },
+      }),
+      prisma.community.count({ where: { ownerId: userId } }),
+      prisma.communityPost.count({ where: { authorId: userId } }),
+      // Сколько людей собралось в каждом СВОЁМ сообществе. Себя не
+      // считаем прямо в запросе (`userId: { not: userId }`): ачивка
+      // обещает участников, а не строку владельца.
+      prisma.communityMember.groupBy({
+        by: ["communityId"],
+        where: {
+          status: "ACTIVE",
+          userId: { not: userId },
+          community: { ownerId: userId },
+        },
+        _count: { userId: true },
+      }),
+      // Отметки «иду» на прошедших встречах сообществ. Автора встречи
+      // тянем полем, а не условием `not`: у каталожных событий
+      // createdById = null, и фильтр по «не равно» на nullable-поле
+      // читается неоднозначно — тут лучше явное сравнение в коде.
+      prisma.eventAttendance.findMany({
+        where: {
+          userId,
+          event: { communityId: { not: null } },
+          occurrence: { startsAt: { lt: now } },
+        },
+        select: { eventId: true, event: { select: { createdById: true } } },
       }),
     ]);
 
@@ -362,6 +431,19 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
   // Считаем по СВОИМ датам: у общей поездки участники могут прилетать и
   // улетать вразнобой (АА17). Нет своего окна — человек ехал на всю
   // поездку, и это её собственные даты.
+  // Сообщества (АА25), всё — только для ачивок.
+  const communitiesJoined = memberships.filter((m) => m.community.ownerId !== userId).length;
+  const communityMembersGathered = ownCommunityCrowd.reduce(
+    (max, row) => Math.max(max, row._count.userId),
+    0,
+  );
+  // По СОБЫТИЯМ, а не по отметкам: у встречи дата одна, но правка её
+  // переносит, и лишняя строка отметки не должна считаться второй
+  // встречей. Свои встречи не в счёт — см. комментарий у поля типа.
+  const communityMeetups = new Set(
+    meetupAttendances.filter((a) => a.event.createdById !== userId).map((a) => a.eventId),
+  ).size;
+
   const tripStats = tripDayStats(
     trips.map((trip) => trip.stays[0] ?? { startDate: trip.startDate, endDate: trip.endDate }),
     now,
@@ -395,6 +477,11 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     eventsByYear: Array.from(byYear.entries())
       .map(([year, count]) => ({ year, count }))
       .sort((a, b) => a.year - b.year),
+    communitiesJoined,
+    communitiesOwned: ownedCommunities,
+    communityPosts,
+    communityMembersGathered,
+    communityMeetups,
     wentWithThreeFriends,
     earlyBird,
     doubleDay,

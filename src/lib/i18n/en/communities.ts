@@ -32,6 +32,7 @@ export const communities = {
     tabs: {
         discussions: "Discussions",
         meetups: "Meetups",
+        places: "Places",
         members: "Members",
         requests: "Requests",
     },
@@ -84,6 +85,47 @@ export const communities = {
     emptyMine: "You are not in any community yet.",
     myCommunities: "Mine",
     allCommunities: "All",
+
+    /**
+     * Привязки к каталогу и место (АА25). Свой подобъект: этот кусок
+     * словаря правится вместе с привязками, а не с витриной.
+     */
+    topics: {
+        title: "What this community is about",
+        hint: "The artists and series people come here for. These links show up on the artist and series pages — that is where new members come from.",
+        limitHint: (n: number) =>
+            `Up to ${n} links in total: a long list would turn the artist page into a dump.`,
+        performersLabel: "Artists",
+        performersPlaceholder: "Start typing a name",
+        dramasLabel: "Series",
+        dramasPlaceholder: "Start typing a title",
+
+        placeTitle: "Where the community lives",
+        placeHint:
+            "For communities people look for by place rather than by actor — “Lakorns Belarus”. The place is shown on the communities page and works as a filter there; it never appears on artist pages.",
+        countryLabel: "Country",
+        countryPlaceholder: "Belarus",
+        cityLabel: "City",
+        cityPlaceholder: "Minsk",
+        save: "Save",
+        loading: "Loading…",
+
+        /** Заголовок блока на странице артиста и сериала. */
+        blockHeading: "Communities",
+
+        /** Фильтр по месту на витрине. */
+        filterLabel: "Where",
+        anyPlace: "Anywhere",
+        wholeCountry: "The whole country",
+        emptyPlaceTitle: "Nobody here yet",
+        emptyPlaceHint: "Try another place — or start a community here yourself.",
+
+        errors: {
+            limit: (n: number) => `A community can be linked to at most ${n} catalog entries`,
+            cityWithoutCountry:
+                "A city needs a country — a community with a city alone would never be found",
+        },
+    },
 
     // Встречи сообщества (этап 3). Отдельный подобъект — этот кусок
     // словаря правится вместе с фичей встреч, а не с витриной.
@@ -146,6 +188,45 @@ export const communities = {
             dateRequired: "Pick a date for the meetup",
             notFound: "Meetup not found",
             forbidden: "A meetup can be edited by its author, the owner and the moderators",
+        },
+    },
+
+    // Общие места сообщества («куда сходить в Минске»). Отдельный
+    // подобъект по той же причине, что у встреч: этот кусок словаря
+    // правится вместе с фичей мест, а не с витриной.
+    places: {
+        heading: "Places",
+        intro: "Shared lists of the community: where to go together.",
+        create: "New list",
+        createTitle: "New community list",
+        titleLabel: "Name",
+        titlePlaceholder: "Where to go in Minsk",
+        descriptionLabel: "What this list is about",
+        descriptionPlaceholder: "Cafés and spots worth an evening together.",
+        publicLabel: "Show the list to everyone",
+        publicHint:
+            "By default a list stays inside the community — only members see it. A closed community shows nothing outside either way.",
+        creating: "Creating…",
+        submit: "Create the list",
+        createFailed: "Could not create the list — try again",
+
+        membersOnly: "Members only",
+        openToEveryone: "Open to everyone",
+        // Счёт мест берём из словаря списков (t.lists.places.placeCount):
+        // фраза одна и та же, а вторая копия склонений разъехалась бы.
+        morePlaces: (n: number) => `and ${n} more →`,
+        openList: "Open the list",
+        listEmpty: "No places in this list yet.",
+
+        emptyTitle: "No shared places yet",
+        emptyHint:
+            "Start a list — “where to go in Minsk”, “cafés from the series” — and fill it together.",
+        emptyHintReadOnly: "The owner and the moderators keep the lists of this community.",
+
+        errors: {
+            forbidden: "Community lists are kept by the owner and the moderators",
+            notFound: "Community not found",
+            titleRequired: "The list needs a name",
         },
     },
 
@@ -241,6 +322,31 @@ export const communities = {
             inviteBanned: "This person was removed from the community — lift the ban first",
             noInvite: "There is no such invitation any more",
             banned: "You were removed from this community",
+        },
+    },
+
+    /**
+     * "Together": где сообщество встречается с остальным сайтом — блок
+     * «из вашего сообщества идут» на странице события и «собрать
+     * поездку» в самом сообществе. Свой подобъект по той же причине, что
+     * и `meetups`/`people`: связки правятся вместе друг с другом, а не
+     * вместе с витриной.
+     */
+    together: {
+        going: "People from your communities are going",
+        goingOne: "Someone from your community is going",
+
+        tripButton: "Plan a trip",
+        tripTitle: "A trip with the community",
+        tripHint:
+            "We will set up a shared trip and invite the people you pick — everyone else will not even know about it. An invitation is not enrolment: each of them decides for themselves.",
+        tripMembers: "Who are you inviting",
+        tripMembersPlaceholder: "Pick members…",
+        tripNobody: "Nobody but you here yet — the trip will start out solo.",
+        tripSubmit: "Create the trip",
+
+        errors: {
+            notMember: "Only members of the community can plan a trip from it",
         },
     },
 

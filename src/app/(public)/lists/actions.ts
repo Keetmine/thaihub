@@ -8,7 +8,9 @@ import type { TripVisibility } from "@/generated/prisma/client";
 import { isLocationCategory } from "@/lib/locationCategories";
 import { canUseLocation, createOwnLocation, resolveUserMapsCoords } from "@/lib/ownLocation";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
+import { communityRights } from "@/lib/meetups";
 import { isPremiumActive } from "@/lib/premium";
+import { communityHref } from "@/lib/slugHelpers";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -39,14 +41,50 @@ async function requirePremiumUser() {
   return { ok: true as const, user };
 }
 
-/** Список текущего юзера или null (нет/чужой) — вызывающий экшен
- *  превращает null в `{ ok: false, error: "Список не найден" }`. */
-async function requireOwnList(listId: string) {
+/**
+ * Кто может править ЭТОТ список: возвращает пользователя со списком или
+ * null (списка нет / прав нет) — вызывающий экшен превращает null в
+ * `{ ok: false, error: "Список не найден" }`.
+ *
+ * Правило раздваивается по `PlaceList.communityId`:
+ *
+ * - **обычный список** — только его владелец (`userId`), как было;
+ * - **список сообщества** — право даёт РОЛЬ в сообществе (создатель или
+ *   модератор, `communityAccess.canManage`), и не даёт строка `userId`.
+ *   Список «куда сходить в Минске» ведёт сообщество, а не человек:
+ *   иначе тот, кто его завёл и потом ушёл из модераторов (или из
+ *   сообщества вовсе), навсегда сохранял бы над ним власть, а забрать
+ *   её было бы некому.
+ *
+ * Проверка стоит здесь, в экшенах, а не в разметке: страницу списка
+ * открывает и посторонний, а серверный экшен вызывается и мимо
+ * интерфейса — спрятанная кнопка правом не является.
+ */
+async function requireListRights(listId: string) {
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", await getLocale()));
   const list = await prisma.placeList.findUnique({ where: { id: listId } });
-  if (!list || list.userId !== user.id) return null;
-  return { user, list };
+  if (!list) return null;
+  if (list.communityId) {
+    // Тот же самый расчёт прав, что у встреч, — не вторая копия условий:
+    // `communityRights` читает сообщество и членство одним запросом и
+    // отдаёт готовый ответ `communityAccess` (см. src/lib/meetups.ts).
+    const rights = await communityRights(list.communityId, user.id);
+    return rights.canManage ? { user, list } : null;
+  }
+  return list.userId === user.id ? { user, list } : null;
+}
+
+/**
+ * Подписка нужна, чтобы завести СВОЁ — но не внутри сообщества: само
+ * сообщество уже завёл подписчик, а его модератор ведёт общий список
+ * бесплатно, как бесплатно и всё остальное участие (см.
+ * docs/features/communities.md). Иначе фича была бы мертворождённой:
+ * «куда сходить в Минске» состоит из собственных мест почти целиком —
+ * минских кафе в каталоге тайских локаций нет.
+ */
+function needsPremium(list: { communityId: string | null }) {
+  return !list.communityId;
 }
 
 export async function createPlaceList(formData: FormData): Promise<ActionError | void> {
@@ -73,10 +111,23 @@ export async function createPlaceList(formData: FormData): Promise<ActionError |
 
 export async function deletePlaceList(listId: string): Promise<ActionError | void> {
   const { locale, t } = await getT();
-  const own = await requireOwnList(listId);
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: t.lists.errors.listNotFound };
+  // Куда уходить после удаления, зависит от того, чей был список:
+  // раздел «Мои места» для списка сообщества — чужая страница, на
+  // которой удалённого списка и не было.
+  const community = own.list.communityId
+    ? await prisma.community.findUnique({
+        where: { id: own.list.communityId },
+        select: { id: true, slug: true },
+      })
+    : null;
   await prisma.placeList.delete({ where: { id: listId } });
   revalidatePath("/lists");
+  if (community) {
+    revalidatePath(communityHref(community));
+    redirect(localeHref(`${communityHref(community)}?tab=places`, locale));
+  }
   redirect(localeHref("/lists", locale));
 }
 
@@ -84,11 +135,17 @@ export async function setPlaceListVisibility(
   listId: string,
   visibility: string,
 ): Promise<ActionResult> {
-  const own = await requireOwnList(listId);
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
+  const parsed = parseVisibility(visibility);
+  // У списка сообщества состояний два, а не три: «для друзей» тут
+  // бессмысленно — дружба это про человека, а список принадлежит
+  // сообществу, и чужие друзья к нему отношения не имеют. FRIENDS с
+  // клиента сводим к «только участникам», а не к более открытому.
+  const next = own.list.communityId && parsed === "FRIENDS" ? "PRIVATE" : parsed;
   await prisma.placeList.update({
     where: { id: own.list.id },
-    data: { visibility: parseVisibility(visibility) },
+    data: { visibility: next },
   });
   revalidatePath(`/lists/${listId}`);
   revalidatePath("/lists");
@@ -96,7 +153,7 @@ export async function setPlaceListVisibility(
 }
 
 export async function addPlaceToList(listId: string, locationId: string): Promise<ActionResult> {
-  const own = await requireOwnList(listId);
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   // locationId приходит с клиента: чужое приватное место в свой список
   // не положить — иначе утекали бы его название и координаты.
@@ -116,7 +173,7 @@ export async function removePlaceFromList(
   listId: string,
   locationId: string,
 ): Promise<ActionResult> {
-  const own = await requireOwnList(listId);
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   await prisma.placeListItem.deleteMany({ where: { listId: own.list.id, locationId } });
   revalidatePath(`/lists/${listId}`);
@@ -128,7 +185,7 @@ export async function setPlaceNote(
   locationId: string,
   formData: FormData,
 ): Promise<ActionResult> {
-  const own = await requireOwnList(listId);
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   const note = String(formData.get("note") ?? "").trim();
   await prisma.placeListItem.updateMany({
@@ -200,11 +257,15 @@ export async function createOwnPlaceAndReturn(
 }
 
 export async function createOwnPlace(listId: string, formData: FormData): Promise<ActionResult> {
-  const access = await requirePremiumUser();
-  if (!access.ok) return access;
-  const own = await requireOwnList(listId);
+  // Права на список — ПЕРВЫМИ, до подписки: у списка сообщества гейт
+  // подписки не срабатывает вовсе (см. needsPremium), а порядок
+  // «сначала премиум» показывал бы модератору пейволл вместо места.
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   const { user, list } = own;
+  if (needsPremium(list) && !isPremiumActive(user)) {
+    return { ok: false, error: (await getT()).t.lists.errors.premium };
+  }
 
   const created = await createOwnLocation(formData, user.id);
   if (!created.ok) return created;
@@ -219,7 +280,7 @@ export async function createOwnPlace(listId: string, formData: FormData): Promis
 /** Редактирование названия/описания списка. */
 export async function updatePlaceList(listId: string, formData: FormData): Promise<ActionResult> {
   const { t } = await getT();
-  const own = await requireOwnList(listId);
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: t.lists.errors.listNotFound };
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -279,7 +340,7 @@ export async function movePlaceInList(
   locationId: string,
   direction: "up" | "down",
 ): Promise<ActionResult> {
-  const own = await requireOwnList(listId);
+  const own = await requireListRights(listId);
   if (!own) return { ok: false, error: (await getT()).t.lists.errors.listNotFound };
   const items = await prisma.placeListItem.findMany({
     where: { listId: own.list.id },

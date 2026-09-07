@@ -36,6 +36,14 @@ export const METRICS = {
   longestTripDays: { label: "Самая длинная поездка (дней)", kind: "counter", get: (s) => s.longestTripDays },
   daysInThailand: { label: "Дни в Таиланде", kind: "counter", get: (s) => s.daysInThailand },
   friends: { label: "Друзья", kind: "counter", get: (s) => s.friends },
+  // Сообщества (АА25). Отдельных флагов тут нет намеренно: «первое
+  // сообщество» — это тот же счётчик с порогом 1, и порог у него можно
+  // подкрутить в админке, не трогая код.
+  communitiesJoined: { label: "Сообщества, куда вступил", kind: "counter", get: (s) => s.communitiesJoined },
+  communitiesOwned: { label: "Свои сообщества", kind: "counter", get: (s) => s.communitiesOwned },
+  communityPosts: { label: "Темы в обсуждениях", kind: "counter", get: (s) => s.communityPosts },
+  communityMembersGathered: { label: "Участников в своём сообществе", kind: "counter", get: (s) => s.communityMembersGathered },
+  communityMeetups: { label: "Посещённые встречи сообществ", kind: "counter", get: (s) => s.communityMeetups },
   doubleDay: { label: "Флаг: два события в один день", kind: "flag", get: (s) => (s.doubleDay ? 1 : 0) },
   marathonWeek: { label: "Флаг: три события за неделю", kind: "flag", get: (s) => (s.marathonWeek ? 1 : 0) },
   earlyBird: { label: "Флаг: «иду» до старта продаж", kind: "flag", get: (s) => (s.earlyBird ? 1 : 0) },
@@ -55,9 +63,11 @@ export function metricValue(metric: string, s: UserStats): number {
   return isMetricKey(metric) ? METRICS[metric].get(s) : 0;
 }
 
-// Стартовый набор из 22 ачивок — то, что раньше было зашито в код.
+// Стартовый набор ачивок — то, что раньше было зашито в код.
 // Сидируется в БД скриптом scripts/seed-achievements.ts (идемпотентный
 // upsert по key); дальше источник правды — таблица Achievement.
+// Новая ачивка добавляется строкой сюда и попадает в базу прогоном
+// скрипта — второго механизма нет.
 export type AchievementSeed = {
   key: string;
   emoji: string;
@@ -97,6 +107,19 @@ export const ACHIEVEMENT_SEED: AchievementSeed[] = [
   // Соц
   { key: "first-friend", emoji: "🤝", title: "Первый друг", hint: "Добавить первого друга", metric: "friends", threshold: 1, sort: 210 },
   { key: "squad", emoji: "👯", title: "Компанией веселее", hint: "Событие, куда шли вчетвером+", metric: "squad", threshold: 1, sort: 220 },
+  // Сообщества (АА25). Пороги нарочно маленькие: сайт небольшой, и
+  // ачивка «100 участников» не будет получена никогда — она не мотивирует,
+  // а расстраивает. Всё, что тут награждается, — первые шаги, после
+  // которых в сообществе появляется жизнь: пришёл, завёл, написал,
+  // собрал людей, сходил.
+  { key: "community-join-1", emoji: "🫂", title: "Нашлись свои", hint: "Вступить в первое сообщество", metric: "communitiesJoined", threshold: 1, sort: 230 },
+  { key: "community-own-1", emoji: "🏡", title: "Свой дом", hint: "Создать своё сообщество", metric: "communitiesOwned", threshold: 1, sort: 240 },
+  { key: "community-post-1", emoji: "💬", title: "Слово за слово", hint: "Завести первую тему в обсуждениях", metric: "communityPosts", threshold: 1, sort: 250 },
+  { key: "community-posts-5", emoji: "📣", title: "Заводила", hint: "Завести 5 тем в обсуждениях", metric: "communityPosts", threshold: 5, sort: 260 },
+  { key: "community-members-3", emoji: "👥", title: "Компания собралась", hint: "Собрать 3 участников в своём сообществе", metric: "communityMembersGathered", threshold: 3, sort: 270 },
+  { key: "community-members-10", emoji: "🎪", title: "Клуб по интересам", hint: "Собрать 10 участников в своём сообществе", metric: "communityMembersGathered", threshold: 10, sort: 280 },
+  { key: "community-meetup-1", emoji: "🍿", title: "Первая встреча", hint: "Сходить на встречу сообщества", metric: "communityMeetups", threshold: 1, sort: 290 },
+  { key: "community-meetups-3", emoji: "🥳", title: "Свои люди", hint: "Сходить на 3 встречи сообществ", metric: "communityMeetups", threshold: 3, sort: 300 },
 ];
 
 export type AchievementState = {

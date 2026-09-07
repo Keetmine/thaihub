@@ -290,7 +290,11 @@ export default async function UserProfilePage({
       orderBy: { startDate: "desc" },
     }),
     prisma.placeList.findMany({
-      where: { userId: user.id, ...listVisibilityWhere },
+      // communityId: null — в профиле только ЛИЧНЫЕ списки. Список
+      // сообщества принадлежит сообществу, а не тому, кто его завёл, и
+      // название публичного списка ЗАКРЫТОГО сообщества светилось бы
+      // тут посторонним (АА25).
+      where: { userId: user.id, communityId: null, ...listVisibilityWhere },
       include: { _count: { select: { items: true } } },
       orderBy: { createdAt: "desc" },
     }),

@@ -100,6 +100,87 @@ export async function createTrip(formData: FormData): Promise<ActionError | void
   redirect(localeHref(`/trips/${trip.id}`, locale));
 }
 
+/**
+ * «Собрать поездку» из сообщества (АА25, связка сообществ с поездками).
+ *
+ * Близнец `createTrip`, и отличие ровно одно — откуда берётся круг
+ * приглашаемых: там друзья, здесь участники сообщества. Слить их в один
+ * экшен не вышло бы честно: проверка «а вправе ли зритель звать этих
+ * людей» у них разная, а именно она тут и держит приватность.
+ *
+ * Поездка — вещь личная, поэтому ВСЁ сообщество в неё не зачисляется:
+ * человек отмечает в форме, кого зовёт, и позванные получают обычное
+ * приглашение (`TripMember` в статусе PENDING) — участниками они станут,
+ * когда согласятся. Молча затащить в чужие планы нельзя ровно по той же
+ * причине, по какой нельзя молча добавить человека в сообщество.
+ *
+ * Присланные id проверяются по базе: форму видно, и без этого можно было
+ * бы позвать кого угодно, подменив значения. Пройдут только действующие
+ * (`ACTIVE`) участники того же сообщества.
+ */
+export async function createCommunityTrip(
+  communityId: string,
+  formData: FormData,
+): Promise<ActionError | void> {
+  const { locale, t } = await getT();
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref("/login", locale));
+  // Поездки целиком платные (см. auth.md) — гейт тот же, что у createTrip.
+  if (!isPremiumActive(user)) return { ok: false, error: t.trips.errors.premium };
+
+  // Звать из сообщества вправе только тот, кто в нём сам состоит:
+  // список участников — содержимое сообщества, а оно не для посторонних.
+  const membership = await prisma.communityMember.findFirst({
+    where: { communityId, userId: user.id, status: "ACTIVE" },
+    select: { userId: true },
+  });
+  if (!membership) return { ok: false, error: t.communities.together.errors.notMember };
+
+  const title = String(formData.get("title") ?? "").trim();
+  const startDate = String(formData.get("startDate") ?? "");
+  const endDate = String(formData.get("endDate") ?? "");
+  if (!title || !startDate || !endDate) {
+    return { ok: false, error: t.trips.errors.fillTitleAndDates };
+  }
+  const start = combineDateTime(startDate, "00:00");
+  const end = combineDateTime(endDate, "00:00");
+  if (end < start) return { ok: false, error: t.trips.errors.endBeforeStart };
+
+  const requested = [...new Set(formData.getAll("memberIds").map(String).filter(Boolean))];
+  const memberIds =
+    requested.length > 0
+      ? (
+          await prisma.communityMember.findMany({
+            where: {
+              communityId,
+              status: "ACTIVE",
+              // Себя в участники не зовём: владелец поездки и так в ней.
+              userId: { in: requested, not: user.id },
+              user: { deletedAt: null },
+            },
+            select: { userId: true },
+          })
+        ).map((m) => m.userId)
+      : [];
+
+  const trip = await prisma.trip.create({
+    data: {
+      userId: user.id,
+      title,
+      startDate: start,
+      endDate: end,
+      visibility: parseVisibility(formData.get("visibility")),
+      members: { create: memberIds.map((userId) => ({ userId })) },
+    },
+  });
+  // Fire-and-forget с .catch — как в createTrip: голый void оставлял бы
+  // отклонённый промис без обработчика.
+  for (const memberId of memberIds) notifyTripInvite(trip.id, memberId).catch(console.error);
+
+  revalidatePath("/trips");
+  redirect(localeHref(`/trips/${trip.id}`, locale));
+}
+
 /** Редактирование названия/дат/видимости поездки. */
 export async function updateTrip(tripId: string, formData: FormData): Promise<ActionResult> {
   const { locale, t } = await getT();
@@ -771,9 +852,11 @@ export async function deleteTripPersonalEvent(
 export async function attachListToTrip(tripId: string, listId: string): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
-  // Прикрепить можно только свой список.
+  // Прикрепить можно только свой ЛИЧНЫЙ список: список сообщества
+  // принадлежит сообществу, и через поездку он утёк бы тем, кого в
+  // сообщество не звали (АА25).
   const list = await prisma.placeList.findUnique({ where: { id: listId } });
-  if (!list || list.userId !== access.user.id) {
+  if (!list || list.communityId !== null || list.userId !== access.user.id) {
     return { ok: false, error: (await getT()).t.trips.errors.listNotFound };
   }
   await prisma.tripPlaceList.upsert({

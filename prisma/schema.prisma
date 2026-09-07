@@ -223,6 +223,7 @@ model Performer {
   updatedAt DateTime @updatedAt
 
   @@index([name])
+  communityTopics CommunityTopic[]
 }
 
 enum PerformerType {
@@ -564,6 +565,7 @@ model Drama {
   // Гостевой список /dramas: «свежие по дате эфира» (order by desc,
   // airedFrom not null, take 60).
   @@index([airedFrom])
+  communityTopics CommunityTopic[]
 }
 
 // «Related Content» с MyDramaList: drama → related с подписью
@@ -1125,6 +1127,10 @@ model PerformerListItem {
 model PlaceList {
   id          String          @id @default(cuid())
   userId      String
+  /// Список сообщества: «куда сходить в Минске» ведёт всё сообщество, а
+  /// не один человек. userId при этом остаётся — это тот, кто завёл.
+  communityId String?
+  community   Community?      @relation(fields: [communityId], references: [id], onDelete: Cascade)
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
@@ -2211,7 +2217,15 @@ model Community {
   coverUrl    String?
   visibility  CommunityVisibility @default(PUBLIC)
   joinMode    CommunityJoinMode   @default(OPEN)
+  // Где живёт сообщество (АА25). Городские и страновые сообщества
+  // («Лакорны Беларусь») любят ВСЕХ актёров и все сериалы — привязать их
+  // к каталогу нечем, и найти их можно только по месту. Поэтому у места
+  // свои поля и свой фильтр витрины, а не сотня привязок к артистам.
+  country     String?
+  city        String?
   links       CommunityLink[]
+  topics      CommunityTopic[]
+  placeLists  PlaceList[]
   members     CommunityMember[]
   invites     CommunityInvite[]
   posts       CommunityPost[]
@@ -2289,4 +2303,28 @@ model CommunityPost {
   updatedAt   DateTime  @updatedAt
 
   @@index([communityId, createdAt])
+}
+
+/// О ком или о чём сообщество: до трёх привязок к каталогу (правило —
+/// в коде, COMMUNITY_TOPIC_LIMIT). Ровно они показываются блоком
+/// «Сообщества» на страницах артиста и сериала.
+///
+/// Почему до трёх, а не сколько угодно: сообщество города любит всех
+/// подряд, и список из сотни привязок и вести невозможно, и на странице
+/// артиста он превратился бы в свалку. Такие сообщества находят по
+/// месту (`Community.country`/`city`), а не по актёру.
+model CommunityTopic {
+  id          String     @id @default(cuid())
+  communityId String
+  community   Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  performerId String?
+  performer   Performer? @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  dramaId     String?
+  drama       Drama?     @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@unique([communityId, performerId])
+  @@unique([communityId, dramaId])
+  @@index([performerId])
+  @@index([dramaId])
 }

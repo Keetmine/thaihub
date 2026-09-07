@@ -182,7 +182,8 @@ export default async function LocationsPage({
   // Списки мест пользователя — вкладками, со счётчиком в подписи.
   const myLists = currentUser
     ? await prisma.placeList.findMany({
-        where: { userId: currentUser.id },
+        // Только личные списки — см. locations/[id]/page.tsx (АА25).
+        where: { userId: currentUser.id, communityId: null },
         select: { id: true, title: true, _count: { select: { items: true } } },
         orderBy: { title: "asc" },
       })

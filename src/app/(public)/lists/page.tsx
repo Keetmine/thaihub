@@ -49,7 +49,12 @@ export default async function ListsPage() {
       orderBy: { name: "asc" },
     }),
     prisma.placeList.findMany({
-      where: { userId: user.id },
+      // Только личные списки: список сообщества (`communityId`) ведёт
+      // сообщество, а `userId` в нём — просто тот, кто его завёл.
+      // Здесь он был бы враньём («мой список», который в любой момент
+      // перейдёт другому модератору) и путал бы с личными; его место —
+      // на вкладке «Места» самого сообщества.
+      where: { userId: user.id, communityId: null },
       include: { _count: { select: { items: true } } },
       orderBy: { createdAt: "desc" },
     }),

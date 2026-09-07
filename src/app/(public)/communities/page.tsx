@@ -31,23 +31,61 @@ export const dynamic = "force-dynamic";
  *
  * Порядок — по числу участников, а не по дате: пустое сообщество,
  * заведённое вчера, наверху витрины выглядит хуже, чем его отсутствие.
+ *
+ * Здесь же — фильтр по МЕСТУ (`?country=…&city=…`). Это второй способ
+ * найти сообщество, и он существует ровно для тех, кого не привязать к
+ * каталогу: «Лакорны Беларусь» любит всех актёров сразу, и ищут его по
+ * стране, а не по имени (см. docs/features/communities.md, раздел
+ * «Связь с каталогом и место»). Значения живут в адресе, а не в
+ * состоянии: ссылкой на срез можно поделиться.
  */
-export default async function CommunitiesPage() {
+export default async function CommunitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ country?: string; city?: string }>;
+}) {
   const { t } = await getT();
+  const s = t.communities.topics;
   const user = await getCurrentUser();
 
-  const [publicCommunities, mine] = await Promise.all([
+  const { country: rawCountry, city: rawCity } = await searchParams;
+  const country = (rawCountry ?? "").trim() || null;
+  // Город без страны не бывает: фильтр устроен «страна → город», и
+  // одинокий ?city=Минск показал бы одноимённые города разных стран.
+  const city = country ? (rawCity ?? "").trim() || null : null;
+  const placeWhere = country ? { country, ...(city ? { city } : {}) } : {};
+
+  const [publicCommunities, mine, countryFacets, cityFacets] = await Promise.all([
     prisma.community.findMany({
-      where: { visibility: "PUBLIC" },
+      where: { visibility: "PUBLIC", ...placeWhere },
       include: { _count: { select: { members: { where: { status: "ACTIVE" } } } } },
       take: 100,
     }),
     user
       ? prisma.community.findMany({
           // Свои — и те, что завёл, и те, куда вступил, включая закрытые:
-          // человеку они видны всегда.
-          where: { members: { some: { userId: user.id, status: "ACTIVE" } } },
+          // человеку они видны всегда. Фильтр по месту действует и здесь:
+          // иначе выбранная страна молча не относилась бы к половине
+          // страницы.
+          where: { members: { some: { userId: user.id, status: "ACTIVE" } }, ...placeWhere },
           include: { _count: { select: { members: { where: { status: "ACTIVE" } } } } },
+        })
+      : Promise.resolve([]),
+    // Варианты фильтра считаем по ВСЕМ публичным сообществам, а не по
+    // выданной сотне: иначе страна пропадала бы из ряда ровно тогда,
+    // когда её сообщества не попали на первую страницу.
+    prisma.community.groupBy({
+      by: ["country"],
+      where: { visibility: "PUBLIC", country: { not: null } },
+      _count: { _all: true },
+    }),
+    // Города — только внутри выбранной страны: список городов мира
+    // одним рядом нечитаем, да и «Минск» без страны ничего не значит.
+    country
+      ? prisma.community.groupBy({
+          by: ["city"],
+          where: { visibility: "PUBLIC", country, city: { not: null } },
+          _count: { _all: true },
         })
       : Promise.resolve([]),
   ]);
@@ -59,11 +97,29 @@ export default async function CommunitiesPage() {
   const others = byMembers(publicCommunities.filter((c) => !mineIds.has(c.id)));
   const canCreate = isPremiumActive(user);
 
+  // Частые места вперёд, при равенстве — по алфавиту: ряд читается как
+  // «где сообществ больше всего».
+  const countries = countryFacets
+    .map((row) => ({ value: row.country!, count: row._count._all }))
+    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+  const cities = cityFacets
+    .map((row) => ({ value: row.city!, count: row._count._all }))
+    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+
+  const placeHref = (nextCountry: string | null, nextCity: string | null) => {
+    const params = new URLSearchParams();
+    if (nextCountry) params.set("country", nextCountry);
+    if (nextCountry && nextCity) params.set("city", nextCity);
+    return params.size ? `/communities?${params}` : "/communities";
+  };
+
   const card = (c: {
     id: string;
     slug: string | null;
     title: string;
     description: string | null;
+    country: string | null;
+    city: string | null;
     _count: { members: number };
   }) => (
     <AppLink
@@ -75,7 +131,12 @@ export default async function CommunitiesPage() {
       {c.description && (
         <span className="small text-secondary text-truncate">{c.description}</span>
       )}
-      <span className="small text-secondary">{t.communities.membersCount(c._count.members)}</span>
+      <span className="small text-secondary">
+        {t.communities.membersCount(c._count.members)}
+        {/* Место — прямо в карточке: человек, пришедший «а есть ли
+            кто-то у нас», должен видеть ответ, не открывая страницу. */}
+        {c.country && ` · ${[c.country, c.city].filter(Boolean).join(", ")}`}
+      </span>
     </AppLink>
   );
 
@@ -100,6 +161,62 @@ export default async function CommunitiesPage() {
           </div>
         )}
 
+        {/* Фильтр по месту. Ряда нет вовсе, пока ни одно сообщество не
+            назвало страну: пустая панель фильтров — это шум. */}
+        {countries.length > 0 && (
+          <nav aria-label={s.filterLabel} className="mb-3">
+            <div className="d-flex flex-wrap gap-3 tab-bar">
+              <AppLink
+                href={placeHref(null, null)}
+                className={`tab-bar-item ${country ? "" : "active"}`}
+                aria-current={country ? undefined : "page"}
+              >
+                {s.anyPlace}
+              </AppLink>
+              {countries.map((c) => (
+                <AppLink
+                  key={c.value}
+                  href={placeHref(c.value, null)}
+                  className={`tab-bar-item ${c.value === country ? "active" : ""}`}
+                  aria-current={c.value === country ? "page" : undefined}
+                >
+                  {c.value} ({c.count})
+                </AppLink>
+              ))}
+            </div>
+            {/* Города появляются, только когда страна выбрана и город у
+                кого-то заполнен: у сообщества «Лакорны Беларусь» города
+                нет, и второй пустой ряд ему не нужен. */}
+            {country && cities.length > 0 && (
+              <div className="d-flex flex-wrap gap-2 mt-2">
+                <AppLink
+                  href={placeHref(country, null)}
+                  className="chip-link"
+                  aria-current={city ? undefined : "page"}
+                  style={city ? undefined : { borderColor: "rgba(var(--accent-rgb), 0.55)" }}
+                >
+                  {s.wholeCountry}
+                </AppLink>
+                {cities.map((c) => (
+                  <AppLink
+                    key={c.value}
+                    href={placeHref(country, c.value)}
+                    className="chip-link"
+                    aria-current={c.value === city ? "page" : undefined}
+                    style={
+                      c.value === city
+                        ? { borderColor: "rgba(var(--accent-rgb), 0.55)" }
+                        : undefined
+                    }
+                  >
+                    {c.value} ({c.count})
+                  </AppLink>
+                ))}
+              </div>
+            )}
+          </nav>
+        )}
+
         {mine.length > 0 && (
           <section className="mb-4">
             <h2 className="section-heading mb-2">{t.communities.myCommunities}</h2>
@@ -117,10 +234,13 @@ export default async function CommunitiesPage() {
         )}
 
         {mine.length === 0 && others.length === 0 && (
+          // Пусто из-за фильтра и пусто вообще — разные беды: во втором
+          // случае звать заводить первое сообщество уместно, в первом
+          // человеку сначала надо сказать, что дело в выбранном месте.
           <EmptyState
             emoji="🫂"
-            title={t.communities.emptyTitle}
-            hint={t.communities.emptyHint}
+            title={country ? s.emptyPlaceTitle : t.communities.emptyTitle}
+            hint={country ? s.emptyPlaceHint : t.communities.emptyHint}
             compact
           />
         )}

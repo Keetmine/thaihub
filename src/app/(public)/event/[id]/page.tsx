@@ -26,6 +26,8 @@ import {
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { communityHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { getCommunityPeersGoing, type CommunityPeerGoing } from "@/lib/favorites";
+import { userDisplayName, userHref } from "@/lib/userProfile";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
 import EventPhotoGallery from "./EventPhotoGallery";
@@ -303,6 +305,28 @@ export default async function EventDetailPage({
     friendNotes = notes
       .filter((n) => n.userId !== currentUser.id)
       .map((n) => ({ id: n.id, text: n.text, userName: n.user.name, userPhotoUrl: n.user.photoUrl }));
+  }
+
+  // «Кто из вашего сообщества идёт» (АА25) — вне премиум-ветки нарочно:
+  // участие в сообществах бесплатно (решение владельца 2026-09-08), и
+  // блок, ради которого человек в сообщество и вступал, не может
+  // прятаться за подпиской. Гость сюда не доходит вовсе, посторонний
+  // (не состоящий ни в одном сообществе) получит пустой список — блока
+  // у него не будет.
+  //
+  // Только у каталожного события: на странице встречи сообщества «из
+  // вашего сообщества» — это вообще все, кто там отметился, и блок
+  // повторял бы счётчик «идут: N» соседней строкой.
+  //
+  // Друзей передаём в исключения: они уже показаны блоком выше, и одно
+  // лицо на странице дважды выглядит ошибкой, а не заботой.
+  let communityPeersGoing: CommunityPeerGoing[] = [];
+  if (currentUser && !isMeetup) {
+    communityPeersGoing = await getCommunityPeersGoing(
+      event.id,
+      currentUser.id,
+      friendsGoing.map((f) => f.id),
+    );
   }
   // --- end own block ---
 
@@ -677,6 +701,33 @@ export default async function EventDetailPage({
                 href="/friends"
                 photoUrl={f.photoUrl}
                 name={f.name || t.events.detail.unnamedFriend}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* «Из вашего сообщества идут» (АА25) — той же плашкой и в том же
+          месте, что и друзья: вопрос у человека один («кто из своих там
+          будет»), и два разных вида ответа читались бы как две разные
+          фичи. Подпись под именем — сообщество, через которое зритель с
+          человеком и знаком. */}
+      {communityPeersGoing.length > 0 && (
+        <div className="surface p-4 mb-3">
+          <h2 className="section-heading mb-2 d-flex align-items-center gap-2">
+            <UsersIcon />{" "}
+            {communityPeersGoing.length === 1
+              ? t.communities.together.goingOne
+              : t.communities.together.going}
+          </h2>
+          <div className="d-flex flex-wrap gap-2">
+            {communityPeersGoing.map((p) => (
+              <EntityMiniCard
+                key={p.id}
+                href={userHref(p)}
+                photoUrl={p.photoUrl}
+                name={userDisplayName(p, locale)}
+                subtitle={p.community?.title}
               />
             ))}
           </div>

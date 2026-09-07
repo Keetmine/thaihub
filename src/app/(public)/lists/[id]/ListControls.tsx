@@ -16,17 +16,39 @@ import { LOCATION_CATEGORIES } from "@/lib/locationCategories";
 import { useT } from "@/components/LocaleProvider";
 import { VISIBILITY_ORDER } from "@/app/(public)/trips/TripVisibilityControls";
 
-/** Селектор видимости списка (владельцу). */
-export function ListVisibilitySelect({ listId, visibility }: { listId: string; visibility: string }) {
+/**
+ * Селектор видимости списка — тому, кто вправе его менять.
+ *
+ * У списка СООБЩЕСТВА состояний два, а не три: «для друзей» здесь
+ * бессмысленно — дружба это про человека, а список принадлежит
+ * сообществу, и друзья заводившего к нему отношения не имеют. Сервер
+ * это же и подстраховывает: `setPlaceListVisibility` сводит присланный
+ * FRIENDS к «только участникам».
+ */
+export function ListVisibilitySelect({
+  listId,
+  visibility,
+  isCommunity = false,
+}: {
+  listId: string;
+  visibility: string;
+  isCommunity?: boolean;
+}) {
   const t = useT();
   const [current, setCurrent] = useState(visibility);
   const [isPending, startTransition] = useTransition();
+  const options = isCommunity
+    ? (["PRIVATE", "PUBLIC"] as const).map((value) => ({
+        value,
+        label: t.lists.communityVisibility[value],
+      }))
+    : VISIBILITY_ORDER.map((value) => ({ value, label: t.lists.visibility[value] }));
   return (
     <select
       className="form-select form-select-sm w-auto"
       value={current}
       disabled={isPending}
-      aria-label={t.lists.detail.visibilityAria}
+      aria-label={isCommunity ? t.lists.detail.communityVisibilityAria : t.lists.detail.visibilityAria}
       onChange={(e) => {
         const next = e.target.value;
         setCurrent(next);
@@ -40,9 +62,9 @@ export function ListVisibilitySelect({ listId, visibility }: { listId: string; v
         });
       }}
     >
-      {VISIBILITY_ORDER.map((value) => (
-        <option key={value} value={value}>
-          {t.lists.visibility[value]}
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
         </option>
       ))}
     </select>

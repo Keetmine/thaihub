@@ -19,6 +19,7 @@ import { findSimilarDramas } from "@/lib/similarDramas";
 import EpisodeBellButton from "./EpisodeBellButton";
 import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
+import CommunityTopicBlock from "@/components/CommunityTopicBlock";
 import CastGrid from "@/components/CastGrid";
 import type { ReactNode } from "react";
 import TagRowFold from "@/components/TagRowFold";
@@ -825,6 +826,11 @@ export default async function DramaDetailPage({
           </div>
         </div>
       )}
+
+      {/* Сообщества, привязавшие себя к этому сериалу (АА25). Блок сам
+          ходит в базу и сам отсекает закрытые — см.
+          CommunityTopicBlock; без сообществ возвращает null. */}
+      <CommunityTopicBlock dramaId={id} />
 
       {drama.locations.length > 0 && (
         <div id="locations" className="anchor-target mb-4">

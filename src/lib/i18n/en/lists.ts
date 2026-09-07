@@ -49,6 +49,11 @@ export const lists = {
         editPlaceAria: "Edit place",
         removeFromList: "Remove from list",
         noteSaveFailed: "Couldn't save the note",
+
+        /** Список сообщества: плашка «чей это список» вместо имени
+         *  человека — список ведёт сообщество, а не тот, кто завёл строку. */
+        ofCommunity: (title: string) => `A list of the “${title}” community →`,
+        communityVisibilityAria: "Who sees this community list",
     },
 
     /** Кто видит список мест. */
@@ -56,6 +61,14 @@ export const lists = {
         PRIVATE: "Private",
         FRIENDS: "Friends only",
         PUBLIC: "Public",
+    },
+
+    /** Видимость списка СООБЩЕСТВА — состояний два, а не три: «друзья»
+     *  здесь бессмысленны (друзья — это про человека, а список
+     *  принадлежит сообществу). */
+    communityVisibility: {
+        PRIVATE: "Members only",
+        PUBLIC: "Everyone",
     },
 
     /** Форма создания и редактирования списка мест. */

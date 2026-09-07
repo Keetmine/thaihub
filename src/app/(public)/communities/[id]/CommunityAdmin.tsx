@@ -4,10 +4,12 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import ConfirmForm from "@/components/ConfirmForm";
+import EntityMultiSelect from "@/components/EntityMultiSelect";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import UploadImage from "@/components/UploadImage";
 import { useT } from "@/components/LocaleProvider";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
+import { COMMUNITY_TOPIC_LIMIT } from "@/lib/communities";
 import {
   addCommunityLink,
   deleteCommunity,
@@ -15,12 +17,23 @@ import {
   updateCommunity,
 } from "../actions";
 import { loadCommunityCover, setCommunityCover } from "../coverActions";
+import {
+  loadCommunityTopics,
+  saveCommunityTopics,
+  searchTopicDramas,
+  searchTopicPerformers,
+  type CommunityTopicsState,
+} from "../topicActions";
 
 /** Пропорции обложки — те же, в которых она и рисуется в колонке
  *  сообщества (`.community-cover`, 3:2). Кадрируем ровно в них: рамка
  *  обязана показывать то, что окажется на странице. */
 const COVER_RATIO_W = 3;
 const COVER_RATIO_H = 2;
+
+/** Загруженные привязки и место — только успешная ветка ответа экшена:
+ *  ошибку окно показывает отдельной строкой, а не подставляет в поля. */
+type LoadedTopics = Extract<CommunityTopicsState, { ok: true }>;
 
 /**
  * Управление сообществом — для владельца и модераторов: обложка, правка
@@ -75,6 +88,36 @@ export default function CommunityAdmin({
       dropped = true;
     };
   }, [communityId, isOpen]);
+
+  // ---------- Привязки к каталогу и место ----------
+  // Текущий набор приезжает при открытии окна, как и обложка: страница
+  // сообщества его в пропсах не передаёт, а комбобокс обязан показать
+  // ИМЕНА уже выбранных, а не голые id.
+  const [topics, setTopics] = useState<LoadedTopics | null>(null);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let dropped = false;
+    loadCommunityTopics(communityId).then((result) => {
+      if (dropped || !result.ok) return;
+      setTopics(result);
+    });
+    return () => {
+      dropped = true;
+    };
+  }, [communityId, isOpen]);
+
+  async function saveTopics(formData: FormData) {
+    setTopicsError(null);
+    const result = await saveCommunityTopics(communityId, formData);
+    if (!result.ok) {
+      setTopicsError(result.error);
+      return;
+    }
+    setIsOpen(false);
+    router.refresh();
+  }
 
   /** Кадрированный файл — на общую ручку загрузки, её адрес — в базу.
    *  Порядок именно такой: пока обложка не записана, файл на диске
@@ -147,7 +190,18 @@ export default function CommunityAdmin({
   return (
     <>
       <div className="d-flex flex-wrap gap-2">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            // Привязки сбрасываем на открытии: комбобоксы читают
+            // выбранное ОДИН раз, при монтировании, и прошлый набор в
+            // состоянии показал бы во второй раз то, что было ДО
+            // сохранения. Загрузит их эффект ниже.
+            setTopics(null);
+            setIsOpen(true);
+          }}
+        >
           {s.edit}
         </button>
         {isOwner && (
@@ -281,6 +335,98 @@ export default function CommunityAdmin({
               {s.save}
             </button>
           </form>
+
+          {/* Привязки к каталогу и место — отдельной формой, не полями
+              формы настроек: их набор приезжает асинхронно (см. выше), и
+              «Сохранить» у настроек затирал бы ещё не приехавшее.
+              Смысл двух блоков разный: привязки — то, ЧЕМ сообщество
+              находят в каталоге, место — то, ГДЕ оно живёт; см.
+              docs/features/communities.md. */}
+          {topics ? (
+            <form action={saveTopics} className="d-flex flex-column gap-3">
+              <div className="d-flex flex-column gap-1">
+                <h3 className="section-heading mb-0">{s.topics.title}</h3>
+                <p className="small text-secondary mb-0">{s.topics.hint}</p>
+                <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
+                  {s.topics.limitHint(COMMUNITY_TOPIC_LIMIT)}
+                </p>
+              </div>
+
+              {/* Каталог пропсом не приезжает (тысячи артистов и
+                  сериалов) — общий комбобокс ищет на сервере по мере
+                  ввода, как выбор сериала в форме встречи. Уже
+                  привязанные приходят options'ом, чтобы их имена
+                  показались сразу. */}
+              <div>
+                <label className="form-label small text-secondary" htmlFor={`${uid}-performers`}>
+                  {s.topics.performersLabel}
+                </label>
+                <EntityMultiSelect
+                  id={`${uid}-performers`}
+                  name="performerId"
+                  options={topics.performers}
+                  defaultSelectedIds={topics.performers.map((p) => p.id)}
+                  placeholder={s.topics.performersPlaceholder}
+                  searchOptions={searchTopicPerformers}
+                />
+              </div>
+              <div>
+                <label className="form-label small text-secondary" htmlFor={`${uid}-dramas`}>
+                  {s.topics.dramasLabel}
+                </label>
+                <EntityMultiSelect
+                  id={`${uid}-dramas`}
+                  name="dramaId"
+                  options={topics.dramas}
+                  defaultSelectedIds={topics.dramas.map((d) => d.id)}
+                  placeholder={s.topics.dramasPlaceholder}
+                  searchOptions={searchTopicDramas}
+                />
+              </div>
+
+              <div className="d-flex flex-column gap-1">
+                <h3 className="section-heading mb-0">{s.topics.placeTitle}</h3>
+                <p className="small text-secondary mb-0">{s.topics.placeHint}</p>
+              </div>
+              <div className="row g-2">
+                <div className="col-6">
+                  <label className="form-label small text-secondary" htmlFor={`${uid}-country`}>
+                    {s.topics.countryLabel}
+                  </label>
+                  <input
+                    id={`${uid}-country`}
+                    type="text"
+                    name="country"
+                    maxLength={60}
+                    defaultValue={topics.country}
+                    placeholder={s.topics.countryPlaceholder}
+                    className="form-control"
+                  />
+                </div>
+                <div className="col-6">
+                  <label className="form-label small text-secondary" htmlFor={`${uid}-city`}>
+                    {s.topics.cityLabel}
+                  </label>
+                  <input
+                    id={`${uid}-city`}
+                    type="text"
+                    name="city"
+                    maxLength={60}
+                    defaultValue={topics.city}
+                    placeholder={s.topics.cityPlaceholder}
+                    className="form-control"
+                  />
+                </div>
+              </div>
+
+              {topicsError && <p className="small text-danger mb-0">{topicsError}</p>}
+              <button type="submit" className="btn btn-primary btn-sm">
+                {s.topics.save}
+              </button>
+            </form>
+          ) : (
+            <p className="small text-secondary mb-0">{s.topics.loading}</p>
+          )}
 
           {/* Ссылки — отдельной формой: они добавляются по одной, и
               перезаписывать вместе с названием их незачем. */}

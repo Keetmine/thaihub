@@ -12,7 +12,8 @@ import { AddPlaceBox, ListVisibilitySelect, PlaceRowControls } from "./ListContr
 import CreateOwnPlaceButton from "./CreateOwnPlaceButton";
 import EditListButton from "./EditListButton";
 import VisitedButton from "@/components/VisitedButton";
-import { locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { communityHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { communityRights } from "@/lib/meetups";
 import { getT, localeHref } from "@/lib/i18n";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 
@@ -30,6 +31,9 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
     where: slugOrIdWhere(rawParam),
     include: {
       user: { select: { id: true, name: true, username: true, deletedAt: true } },
+      // Список сообщества («куда сходить в Минске»): и права на него, и
+      // видимость считаются по сообществу, а не по человеку.
+      community: { select: { id: true, slug: true, title: true, visibility: true } },
       items: {
         include: { location: true },
         orderBy: [{ position: "asc" }, { createdAt: "asc" }],
@@ -38,14 +42,38 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
   });
   if (!list) notFound();
 
-  // Та же модель видимости, что у поездок: чужому 404, не 403.
-  const isOwner = !!user && list.userId === user.id;
-  if (!isOwner) {
-    if (list.visibility === "PRIVATE") notFound();
-    if (list.visibility === "FRIENDS") {
-      if (!user) redirect(localeHref("/login", locale));
-      const ownerFriendIds = await getFriendIds(list.userId);
-      if (!ownerFriendIds.includes(user.id)) notFound();
+  let canManage: boolean;
+  if (list.community) {
+    // ---- Список СООБЩЕСТВА ----
+    //
+    // Править может создатель или модератор — и только они: строка
+    // `userId` тут прав не даёт (тот же расчёт, что в
+    // `requireListRights` в lists/actions.ts).
+    const rights = await communityRights(list.community.id, user?.id);
+    canManage = rights.canManage;
+    if (!rights.isMember) {
+      // Наружу список сообщества выходит ровно в одном случае: он сам
+      // публичный И сообщество публичное. У ЗАКРЫТОГО сообщества наружу
+      // не уходит ничего — даже помеченное PUBLIC: закрытое прячется
+      // именно затем, чтобы о нём не узнавали со стороны, и утечь через
+      // список мест оно не должно (то же правило, что у вкладки
+      // «Сообщества» в чужом профиле).
+      //
+      // «Для друзей» у списка сообщества наружу не открывает никого:
+      // друзья заводившего — не участники сообщества.
+      if (list.visibility !== "PUBLIC" || list.community.visibility !== "PUBLIC") notFound();
+    }
+  } else {
+    // ---- Личный список: та же модель видимости, что у поездок ----
+    // Чужому 404, не 403.
+    canManage = !!user && list.userId === user.id;
+    if (!canManage) {
+      if (list.visibility === "PRIVATE") notFound();
+      if (list.visibility === "FRIENDS") {
+        if (!user) redirect(localeHref("/login", locale));
+        const ownerFriendIds = await getFriendIds(list.userId);
+        if (!ownerFriendIds.includes(user.id)) notFound();
+      }
     }
   }
 
@@ -75,9 +103,22 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
 
   return (
     <div>
-      <AppLink href="/lists" className="eyebrow text-decoration-none">
-        {t.lists.detail.back}
-      </AppLink>
+      {/* «Назад» ведёт туда, откуда список: в раздел «Мои места» или в
+          сообщество, которому он принадлежит. Для чужого списка
+          сообщества это ещё и единственный способ понять, куда он
+          относится. */}
+      {list.community ? (
+        <AppLink
+          href={`${communityHref(list.community)}?tab=places`}
+          className="eyebrow text-decoration-none"
+        >
+          ← {list.community.title}
+        </AppLink>
+      ) : (
+        <AppLink href="/lists" className="eyebrow text-decoration-none">
+          {t.lists.detail.back}
+        </AppLink>
+      )}
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-4">
         <div>
           <h1 className="display-1-tight mb-1" style={{ fontSize: "2.5rem" }}>
@@ -85,9 +126,13 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
           </h1>
           {list.description && <p className="text-secondary mb-0">{list.description}</p>}
         </div>
-        {isOwner ? (
+        {canManage ? (
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <ListVisibilitySelect listId={list.id} visibility={list.visibility} />
+            <ListVisibilitySelect
+              listId={list.id}
+              visibility={list.visibility}
+              isCommunity={!!list.community}
+            />
             <EditListButton list={{ id: list.id, title: list.title, description: list.description }} />
             <ConfirmForm action={boundDelete} confirmMessage={t.lists.detail.deleteConfirm(list.title)}>
               <button type="button" className="btn btn-outline-secondary btn-sm">
@@ -97,23 +142,46 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
           </div>
         ) : (
           <div className="d-flex flex-column align-items-end gap-1">
-            <AppLink
-              href={userHref(list.user)}
-              className="small text-secondary text-decoration-none"
-            >
-              {/* Имя из аккаунта, без «друга»: отношений между
-                  людьми мы не знаем (правка владельца 2026-09-06).
-                  Удалённый аккаунт подписан отдельно. */}
-              {list.user.deletedAt
-                ? t.lists.detail.ofDeleted
-                : t.lists.detail.ofUser(userDisplayName(list.user, locale))}
-            </AppLink>
+            {/* Чей это список. У списка сообщества — само сообщество со
+                ссылкой, а не тот, кто завёл строку: список ведёт
+                сообщество, и человек здесь ни при чём. */}
+            {list.community ? (
+              <AppLink
+                href={communityHref(list.community)}
+                className="small text-secondary text-decoration-none"
+              >
+                {t.lists.detail.ofCommunity(list.community.title)}
+              </AppLink>
+            ) : (
+              <AppLink
+                href={userHref(list.user)}
+                className="small text-secondary text-decoration-none"
+              >
+                {/* Имя из аккаунта, без «друга»: отношений между
+                    людьми мы не знаем (правка владельца 2026-09-06).
+                    Удалённый аккаунт подписан отдельно. */}
+                {list.user.deletedAt
+                  ? t.lists.detail.ofDeleted
+                  : t.lists.detail.ofUser(userDisplayName(list.user, locale))}
+              </AppLink>
+            )}
             {!!user && <ReportButton targetType="placeList" targetId={list.id} />}
           </div>
         )}
       </div>
 
-      {isOwner && (
+      {/* Списку сообщества плашка нужна и тому, кто им управляет: по
+          заголовку «Куда сходить в Минске» не видно, что это общий
+          список, а не личный. */}
+      {list.community && canManage && (
+        <p className="small text-secondary mb-4">
+          <AppLink href={communityHref(list.community)} className="link-body-emphasis">
+            {t.lists.detail.ofCommunity(list.community.title)}
+          </AppLink>
+        </p>
+      )}
+
+      {canManage && (
         <div className="mb-4 d-flex flex-wrap align-items-center gap-2">
           <AddPlaceBox listId={list.id} />
           <CreateOwnPlaceButton listId={list.id} />
@@ -130,7 +198,7 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
         <EmptyState
           emoji="📍"
           title={t.lists.detail.emptyTitle}
-          hint={isOwner ? t.lists.detail.emptyHintOwn : t.lists.detail.emptyHintGuest}
+          hint={canManage ? t.lists.detail.emptyHintOwn : t.lists.detail.emptyHintGuest}
           compact
         />
       ) : (
@@ -170,12 +238,16 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
                 {user && (
                   <VisitedButton locationId={i.locationId} isVisited={visitedIds.has(i.locationId)} />
                 )}
-                {isOwner && (
+                {/* Само МЕСТО правит только его создатель (canEditPlace):
+                    локация принадлежит человеку, даже когда лежит в
+                    общем списке сообщества, — модератор может убрать её
+                    из списка, но не переименовать чужое место. */}
+                {canManage && (
                   <PlaceRowControls
                     listId={list.id}
                     locationId={i.locationId}
                     note={i.note}
-                    canEditPlace={i.location.createdByUserId === user!.id}
+                    canEditPlace={!!user && i.location.createdByUserId === user.id}
                     place={{
                       name: i.location.name,
                       photoUrl: i.location.photoUrl,

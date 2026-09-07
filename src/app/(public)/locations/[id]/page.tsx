@@ -143,7 +143,10 @@ export default async function LocationDetailPage({
       // AddToListButton написано про списки актёров.
       currentUser
         ? prisma.placeList.findMany({
-            where: { userId: currentUser.id },
+            // Только личные списки: в список сообщества пишут по правам
+            // сообщества, и предлагать его тут значило бы звать в
+            // ошибку (АА25).
+            where: { userId: currentUser.id, communityId: null },
             select: {
               id: true,
               title: true,
