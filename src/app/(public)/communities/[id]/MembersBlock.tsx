@@ -41,7 +41,19 @@ const ROLE_ORDER = { OWNER: 0, MODERATOR: 1, MEMBER: 2 } as const;
  * правило, что у вкладки «Участники»). Своей проверки прав здесь нет
  * намеренно: два условия на один вопрос однажды разойдутся.
  */
-export default function MembersBlock({ members }: { members: CommunityMemberBrief[] }) {
+export default function MembersBlock({
+  members,
+  fullList,
+}: {
+  members: CommunityMemberBrief[];
+  /** Что показать в окне «Смотреть всех». Приходит готовым узлом со
+   *  страницы, потому что вместе со списком туда переехало управление —
+   *  роли, бан и приглашения (правка владельца 2026-09-09: вкладку
+   *  «Участники» убрали, и другого места у этих кнопок не осталось).
+   *  Узлом, а не пропсами: решать, кому что показать, должна страница —
+   *  только она знает, кто тут владелец. */
+  fullList?: React.ReactNode;
+}) {
   const t = useT();
   const locale = useLocale();
   const s = t.communities;
@@ -104,42 +116,44 @@ export default function MembersBlock({ members }: { members: CommunityMemberBrie
         })}
       </div>
 
-      {members.length > shown.length && (
+      {(members.length > shown.length || fullList) && (
         <button type="button" className="btn-link-accent mt-3" onClick={() => setOpen(true)}>
           {s.people.seeAll}
         </button>
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title={s.members}>
-        <div className="d-flex flex-column gap-2">
-          {ordered.map((m) => (
-            <AppLink
-              key={m.userId}
-              href={userHref({ id: m.userId, username: m.username })}
-              className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 px-3"
-            >
-              {m.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  loading="lazy"
-                  decoding="async"
-                  src={m.photoUrl}
-                  alt=""
-                  className="rounded-circle flex-shrink-0"
-                  style={{ width: "2rem", height: "2rem", objectFit: "cover" }}
-                />
-              ) : (
-                <span
-                  className="rounded-circle flex-shrink-0 d-inline-block"
-                  style={{ width: "2rem", height: "2rem", background: "var(--bs-secondary-bg)" }}
-                  aria-hidden
-                />
-              )}
-              <span className="text-white flex-fill">{labelOf(m)}</span>
-              {roleLabel(m) && <span className="small text-secondary">{roleLabel(m)}</span>}
-            </AppLink>
-          ))}
-        </div>
+        {fullList ?? (
+          <div className="d-flex flex-column gap-2">
+            {ordered.map((m) => (
+              <AppLink
+                key={m.userId}
+                href={userHref({ id: m.userId, username: m.username })}
+                className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 px-3"
+              >
+                {m.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    loading="lazy"
+                    decoding="async"
+                    src={m.photoUrl}
+                    alt=""
+                    className="rounded-circle flex-shrink-0"
+                    style={{ width: "2rem", height: "2rem", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span
+                    className="rounded-circle flex-shrink-0 d-inline-block"
+                    style={{ width: "2rem", height: "2rem", background: "var(--bs-secondary-bg)" }}
+                    aria-hidden
+                  />
+                )}
+                <span className="text-white flex-fill">{labelOf(m)}</span>
+                {roleLabel(m) && <span className="small text-secondary">{roleLabel(m)}</span>}
+              </AppLink>
+            ))}
+          </div>
+        )}
       </Modal>
     </div>
   );

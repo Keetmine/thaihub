@@ -9,7 +9,6 @@ export type CommunityTabKey =
   | "meetups"
   | "trips"
   | "places"
-  | "members"
   | "requests";
 
 /**

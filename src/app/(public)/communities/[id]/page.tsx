@@ -13,7 +13,7 @@ import JoinButton from "./JoinButton";
 import MemberRequests from "./MemberRequests";
 import CommunityAdmin from "./CommunityAdmin";
 import CommunityTabs, { type CommunityTabKey } from "./CommunityTabs";
-import MembersTab from "./MembersTab";
+import MembersList from "./MembersList";
 import MembersBlock from "./MembersBlock";
 import MemberRowActions from "./MemberRowActions";
 import InviteMemberButton from "./InviteMemberButton";
@@ -35,7 +35,11 @@ async function loadCommunity(param: string) {
       owner: { select: { id: true, name: true } },
       links: { orderBy: { createdAt: "asc" } },
       members: {
-        include: { user: { select: { id: true, name: true, photoUrl: true, username: true } } },
+        include: {
+          user: {
+            select: { id: true, name: true, photoUrl: true, username: true },
+          },
+        },
         orderBy: { createdAt: "asc" },
       },
       // Приглашения нужны и управляющим (кого уже позвали), и самому
@@ -43,7 +47,9 @@ async function loadCommunity(param: string) {
       // со всем остальным — их тут единицы.
       invites: {
         include: {
-          user: { select: { id: true, name: true, photoUrl: true, username: true } },
+          user: {
+            select: { id: true, name: true, photoUrl: true, username: true },
+          },
           invitedBy: { select: { id: true, name: true, username: true } },
         },
         orderBy: { createdAt: "asc" },
@@ -52,7 +58,11 @@ async function loadCommunity(param: string) {
   });
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const { t } = await getT();
   const community = await loadCommunity(id);
@@ -100,7 +110,9 @@ export default async function CommunityPage({
   if (!community) notFound();
 
   const viewer = await getCurrentUser();
-  const membership = viewer ? community.members.find((m) => m.userId === viewer.id) : undefined;
+  const membership = viewer
+    ? community.members.find((m) => m.userId === viewer.id)
+    : undefined;
   // Админ сайта видит содержимое любого сообщества, включая закрытое:
   // без этого модерация упиралась бы в заглушку «внутри для
   // участников». Участником он при этом не становится — см.
@@ -118,7 +130,9 @@ export default async function CommunityPage({
   // Их строки живут только затем, чтобы человек не вступил заново, и
   // видит их лишь тот, кто может запрет снять.
   const banned = community.members.filter((m) => m.status === "BANNED");
-  const myInvite = viewer ? community.invites.find((i) => i.userId === viewer.id) : undefined;
+  const myInvite = viewer
+    ? community.invites.find((i) => i.userId === viewer.id)
+    : undefined;
 
   const memberRow = (m: (typeof community.members)[number]) => ({
     userId: m.userId,
@@ -148,9 +162,14 @@ export default async function CommunityPage({
           prisma.event.count({ where: { communityId: community.id } }),
         ])
       : [0, 0];
-  const withCount = (label: string, n: number) => (n > 0 ? `${label} (${n})` : label);
+  const withCount = (label: string, n: number) =>
+    n > 0 ? `${label} (${n})` : label;
 
-  const tabs: { key: CommunityTabKey; label: string; content: React.ReactNode }[] = [];
+  const tabs: {
+    key: CommunityTabKey;
+    label: string;
+    content: React.ReactNode;
+  }[] = [];
   // Обсуждения и встречи видны и снаружи, но в закрытом виде (правка
   // владельца 2026-09-09): заголовки публичных тем и карточки встреч
   // без содержимого. Так человек с улицы понимает, ради чего вступать,
@@ -185,7 +204,9 @@ export default async function CommunityPage({
     tabs.push({
       key: "trips",
       label: s.tabs.trips,
-      content: <TripsTab communityId={community.id} canCreate={access.isMember} />,
+      content: (
+        <TripsTab communityId={community.id} canCreate={access.isMember} />
+      ),
     });
     tabs.push({
       key: "places",
@@ -194,64 +215,13 @@ export default async function CommunityPage({
       label: withCount(
         s.tabs.places,
         await prisma.location.count({
-          where: { listItems: { some: { list: { communityId: community.id } } } },
+          where: {
+            listItems: { some: { list: { communityId: community.id } } },
+          },
         }),
       ),
-      content: <PlacesTab communityId={community.id} canEdit={access.canManage} />,
-    });
-    tabs.push({
-      key: "members",
-      label: withCount(s.tabs.members, active.length),
       content: (
-        <MembersTab
-          members={active.map(memberRow)}
-          // Кнопки управления собирает страница: только она знает, кто
-          // тут владелец. Права всё равно перепроверяются в экшенах —
-          // спрятанная кнопка правом не является.
-          actions={
-            access.canManage
-              ? (m) =>
-                  // На своей строке кнопок нет: разжаловать и убрать
-                  // себя незачем, для ухода есть «покинуть сообщество».
-                  m.userId === viewer?.id ? null : (
-                    <MemberRowActions
-                      communityId={community.id}
-                      userId={m.userId}
-                      name={m.name ?? t.common.deletedAccount}
-                      role={m.role}
-                      viewerIsOwner={access.isOwner}
-                    />
-                  )
-              : undefined
-          }
-          inviteButton={
-            access.canManage ? <InviteMemberButton communityId={community.id} /> : undefined
-          }
-          invites={
-            access.canManage
-              ? community.invites.map((i) => ({
-                  userId: i.userId,
-                  name: i.user.name,
-                  username: i.user.username,
-                  photoUrl: i.user.photoUrl,
-                }))
-              : undefined
-          }
-          inviteActions={(userId) => (
-            <InviteCancelButton communityId={community.id} userId={userId} />
-          )}
-          banned={access.canManage ? banned.map(memberRow) : undefined}
-          bannedActions={(m) => (
-            <MemberRowActions
-              communityId={community.id}
-              userId={m.userId}
-              name={m.name ?? t.common.deletedAccount}
-              role={m.role}
-              banned
-              viewerIsOwner={access.isOwner}
-            />
-          )}
-        />
+        <PlacesTab communityId={community.id} canEdit={access.canManage} />
       ),
     });
     if (access.canManage && pending.length > 0) {
@@ -283,7 +253,12 @@ export default async function CommunityPage({
           <div className="community-cover">
             {community.coverUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={community.coverUrl} alt="" loading="eager" decoding="async" />
+              <img
+                src={community.coverUrl}
+                alt=""
+                loading="eager"
+                decoding="async"
+              />
             )}
           </div>
 
@@ -297,12 +272,16 @@ export default async function CommunityPage({
                   везде, кроме самой страницы сообщества. */}
               {community.country &&
                 ` · ${[community.country, community.city].filter(Boolean).join(", ")}`}
-              {community.visibility === "PRIVATE" && ` · ${s.visibility.PRIVATE}`}
+              {community.visibility === "PRIVATE" &&
+                ` · ${s.visibility.PRIVATE}`}
             </p>
           </div>
 
           {community.description && (
-            <p className="small text-secondary mb-0" style={{ whiteSpace: "pre-line" }}>
+            <p
+              className="small text-secondary mb-0"
+              style={{ whiteSpace: "pre-line" }}
+            >
               {community.description}
             </p>
           )}
@@ -318,7 +297,9 @@ export default async function CommunityPage({
             {/* Убранному говорим прямо, почему кнопки «Вступить» нет:
                 молча спрятать её значило бы притвориться поломкой. */}
             {access.isBanned && (
-              <span className="small text-secondary">{s.people.bannedNotice}</span>
+              <span className="small text-secondary">
+                {s.people.bannedNotice}
+              </span>
             )}
             {access.isMember && !access.isOwner && (
               <ConfirmForm
@@ -386,13 +367,79 @@ export default async function CommunityPage({
               колонке под самим сообществом. Видят их те же, кто видит
               содержимое: правило одно на страницу (`canSeeInside`), а
               не своя копия условий. */}
-          {access.canSeeInside && <AchievementsBlock communityId={community.id} />}
+          {access.canSeeInside && (
+            <AchievementsBlock communityId={community.id} />
+          )}
 
           {/* Участники — аватарками под медалями, как друзья в профиле
               (правка владельца 2026-09-09). Тот же `canSeeInside`, что и
               у вкладки «Участники»: снаружи блока нет вовсе — список
               людей это персональные данные. */}
-          {access.canSeeInside && <MembersBlock members={active.map(memberRow)} />}
+          {access.canSeeInside && (
+            <MembersBlock
+              members={active.map(memberRow)}
+              // Полный список — в окне «Смотреть всех» (правка владельца
+              // 2026-09-09: вкладку «Участники» убрали). Управление —
+              // роли, бан, разбан, приглашения — переехало вместе с ним:
+              // другого места у этих кнопок не осталось.
+              fullList={
+                <MembersList
+                  members={active.map(memberRow)}
+                  // Кнопки управления собирает страница: только она знает, кто
+                  // тут владелец. Права всё равно перепроверяются в экшенах —
+                  // спрятанная кнопка правом не является.
+                  actions={
+                    access.canManage
+                      ? (m) =>
+                          // На своей строке кнопок нет: разжаловать и убрать
+                          // себя незачем, для ухода есть «покинуть сообщество».
+                          m.userId === viewer?.id ? null : (
+                            <MemberRowActions
+                              communityId={community.id}
+                              userId={m.userId}
+                              name={m.name ?? t.common.deletedAccount}
+                              role={m.role}
+                              viewerIsOwner={access.isOwner}
+                            />
+                          )
+                      : undefined
+                  }
+                  inviteButton={
+                    access.canManage ? (
+                      <InviteMemberButton communityId={community.id} />
+                    ) : undefined
+                  }
+                  invites={
+                    access.canManage
+                      ? community.invites.map((i) => ({
+                          userId: i.userId,
+                          name: i.user.name,
+                          username: i.user.username,
+                          photoUrl: i.user.photoUrl,
+                        }))
+                      : undefined
+                  }
+                  inviteActions={(userId) => (
+                    <InviteCancelButton
+                      communityId={community.id}
+                      userId={userId}
+                    />
+                  )}
+                  banned={access.canManage ? banned.map(memberRow) : undefined}
+                  bannedActions={(m) => (
+                    <MemberRowActions
+                      communityId={community.id}
+                      userId={m.userId}
+                      name={m.name ?? t.common.deletedAccount}
+                      role={m.role}
+                      banned
+                      viewerIsOwner={access.isOwner}
+                    />
+                  )}
+                />
+              }
+            />
+          )}
         </aside>
 
         <div className="profile-main">

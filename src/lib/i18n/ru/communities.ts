@@ -36,7 +36,6 @@ export const communities: Dict["communities"] = {
         meetups: "Встречи",
         places: "Места",
         trips: "Поездки",
-        members: "Участники",
         requests: "Заявки",
     },
     soon: "Скоро будет.",

@@ -34,7 +34,6 @@ export const communities = {
         meetups: "Meetups",
         places: "Places",
         trips: "Trips",
-        members: "Members",
         requests: "Requests",
     },
     soon: "Coming soon.",
