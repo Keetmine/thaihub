@@ -7,9 +7,10 @@ import ConfirmForm from "@/components/ConfirmForm";
 import ActionResultForm from "@/components/ActionResultForm";
 import CommentLikeButton from "@/components/CommentLikeButton";
 import ReportButton from "@/components/ReportButton";
-import { TrashIcon, StarIcon, ChatIcon } from "@/components/icons";
+import { TrashIcon, StarIcon, ChatIcon, HelpIcon } from "@/components/icons";
 import ReviewRatingFields, { type ReviewRatingField } from "@/components/ReviewRatingFields";
 import { formatRating } from "@/components/StarRatingInput";
+import { ratingColor } from "@/lib/ratingColor";
 import {
   saveReview,
   deleteReview,
@@ -121,13 +122,6 @@ const RATING_FIELDS: Record<ReviewKind, ReviewRatingField[]> = {
   novel: ["story"],
   event: ["music"],
 };
-
-/** Кинопоиск-стайл цвет оценки: 7+ зелёная, 5–6 серая, ниже — красная. */
-function ratingColor(r: number): string {
-  if (r >= 7) return "#3bb33b";
-  if (r >= 5) return "var(--bs-secondary-color)";
-  return "#e5484d";
-}
 
 function Avatar({ name, photoUrl }: { name: string | null; photoUrl: string | null }) {
   if (photoUrl) {
@@ -258,15 +252,26 @@ export default async function ReviewsAndComments({
                 aria-label={t.reviews.reviewAria}
                 className="form-control"
               />
-              <label className="form-check small text-secondary mb-0">
+              {/* Что значит «приватный» — подсказкой на вопросике
+                  (правка владельца 2026-09-07): строчкой под чекбоксом
+                  это лишний текст в и без того длинной форме. */}
+              <label className="form-check small text-secondary mb-0 d-flex align-items-center gap-1">
                 <input
                   type="checkbox"
                   name="isPrivate"
                   defaultChecked={ownReview?.isPrivate ?? false}
-                  className="form-check-input"
-                />{" "}
-                {t.reviews.privateLabel}
-                <span className="form-text d-block">{t.reviews.privateHint}</span>
+                  className="form-check-input mt-0"
+                />
+                <span>{t.reviews.privateLabel}</span>
+                <span
+                  className="tooltip-wide d-inline-flex"
+                  data-tooltip={t.reviews.privateHint}
+                  tabIndex={0}
+                  role="note"
+                  aria-label={t.reviews.privateHint}
+                >
+                  <HelpIcon />
+                </span>
               </label>
               <div className="d-flex gap-2">
                 <button type="submit" className="btn btn-primary btn-sm">

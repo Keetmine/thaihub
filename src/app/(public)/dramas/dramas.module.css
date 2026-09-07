@@ -102,7 +102,7 @@
   /* Страна ужата с 6.5rem: самая длинная подпись — «Южная
      Корея», а лишняя ширина читалась дырой перед сериями
      (правка владельца 2026-09-06). */
-  grid-template-columns: 7.5rem 4.2rem 3rem 5rem 3.4rem 5.2rem;
+  grid-template-columns: 7.5rem 4.2rem 3rem 5rem 4.2rem 5.2rem;
   align-items: center;
   column-gap: 0.5rem;
   flex-shrink: 0;

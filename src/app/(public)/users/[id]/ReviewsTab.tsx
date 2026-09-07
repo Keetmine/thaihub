@@ -5,6 +5,7 @@ import EmptyState from "@/components/EmptyState";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { formatDateWithYear } from "@/lib/dates";
 import { formatRating } from "@/components/StarRatingInput";
+import { ratingColor } from "@/lib/ratingColor";
 
 /** Одна строка вкладки: ссылка/обложка считаются на сервере
  *  (dramaHref/novelHref/eventHref — см. users/[id]/page.tsx), клиенту
@@ -20,14 +21,6 @@ export type MyReviewRow = {
   title: string;
   imageUrl: string | null;
 };
-
-/** Тот же кинопоиск-стайл цвет оценки, что в ReviewsAndComments (у того
- *  функция серверная — сюда не импортировать). */
-function ratingColor(r: number): string {
-  if (r >= 7) return "#3bb33b";
-  if (r >= 5) return "var(--bs-secondary-color)";
-  return "#e5484d";
-}
 
 /**
  * «Мои отзывы» — все отзывы пользователя по сериалам, новеллам и

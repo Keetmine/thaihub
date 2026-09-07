@@ -15,6 +15,10 @@ html[data-bs-theme="dark"] {
   --bs-border-color-translucent: rgba(255, 255, 255, 0.09);
 
   --accent-rgb: 255, 106, 61;
+  /* Цвет оценки (см. src/lib/ratingColor.ts): золотой под стать
+     звёздам — зелёный рядом с ними выглядел чужим. */
+  --rating-good: #f0b429;
+  --rating-bad: #e5484d;
   --bs-primary: #ff6a3d;
   --bs-primary-rgb: var(--accent-rgb);
   --bs-primary-text-emphasis: #ff9a72;
@@ -3322,7 +3326,10 @@ button.hero-stat-toggle.is-open {
   /* Без зазора: десять звёзд с промежутками расползались бы на
      полстроки, а сплошной ряд читается одной шкалой. */
   gap: 0;
-  font-size: 1.15rem;
+  /* Компактно (правка владельца 2026-09-07): пять звёзд вместо десяти
+     и сами иконки мельче — шкала должна читаться одним взглядом, а не
+     занимать полстроки. */
+  font-size: 1rem;
   line-height: 1;
   color: var(--bs-secondary-color);
 }
@@ -3342,7 +3349,8 @@ button.hero-stat-toggle.is-open {
 }
 .star-rating-fill {
   overflow: hidden;
-  color: rgb(var(--accent-rgb));
+  /* Золотой, как и цифра оценки (см. src/lib/ratingColor.ts). */
+  color: var(--rating-good);
 }
 .star-rating-fill svg {
   fill: currentColor;
@@ -3421,7 +3429,7 @@ button.hero-stat-toggle.is-open {
   min-width: 0;
 }
 .rating-popover .star-rating {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
 }
 
 /* Фолбэк без постера: крупная первая буква на тёплом градиенте. */

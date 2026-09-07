@@ -11,6 +11,7 @@ import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import DramaRating from "@/components/DramaRating";
 import { fetchDramaScore } from "@/lib/dramaRating";
+import { ratingColor } from "@/lib/ratingColor";
 import { episodeProgress } from "@/lib/watchStatus";
 import { dramaSynopsisForLocale, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { findSimilarDramas } from "@/lib/similarDramas";
@@ -365,13 +366,6 @@ export default async function DramaDetailPage({
                 .join(" · ")}
             </p>
           )}
-          {score.combined != null && (
-            <div className="d-flex flex-wrap gap-2 mt-2">
-              <span className="date-chip tooltip-wide" data-tooltip={scoreTooltip} tabIndex={0}>
-                ★ {score.combined.toFixed(1)}
-              </span>
-            </div>
-          )}
         </div>
         {currentUser && (
           <div className="d-flex align-items-center gap-2 flex-shrink-0">
@@ -433,14 +427,7 @@ export default async function DramaDetailPage({
                     className="tooltip-wide"
                     data-tooltip={scoreTooltip}
                     tabIndex={0}
-                    style={{
-                      color:
-                        score.combined >= 7
-                          ? "#3bb33b"
-                          : score.combined >= 5
-                            ? "inherit"
-                            : "#e5484d",
-                    }}
+                    style={{ color: ratingColor(score.combined) }}
                   >
                     ★ {score.combined.toFixed(1)}
                   </span>

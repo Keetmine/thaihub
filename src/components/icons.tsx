@@ -210,6 +210,30 @@ export function ClockIcon({ className }: { className?: string } = {}) {
   );
 }
 
+/** Вопросик в кружке — для подсказок «а что это значит»
+ *  (`data-tooltip`). Отличается от InfoIcon намеренно: «i» рассказывает
+ *  факт, «?» обещает объяснение. */
+export function HelpIcon({ className }: { className?: string } = {}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="0.95em"
+      height="0.95em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4" />
+      <path d="M12 17.5h.01" />
+    </svg>
+  );
+}
+
 export function InfoIcon({ className }: { className?: string } = {}) {
   return (
     <svg

@@ -437,6 +437,7 @@ export default async function DramasPage({
           {columnHead("type")}
           {columnHead("year")}
           {columnHead("country")}
+          {columnHead("rating")}
           {columnHead("episodes")}
         </div>
       </div>

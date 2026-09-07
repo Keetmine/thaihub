@@ -264,8 +264,9 @@ export async function setDramaRating(
 
   let value: number | null = null;
   if (rating !== null) {
-    // Шкала с половинками (правка владельца 2026-09-07): округляем к
-    // ближайшей половине и держим в 0.5-10.
+    // Шкала десятибалльная (пять звёзд по два балла). Дробное сюда
+    // приходит только от импорта с MDL — его половинки не режем,
+    // округляем лишь к ближайшей половине балла.
     if (!Number.isFinite(rating)) {
       return { ok: false, error: (await getT()).t.catalog.errors.badRating };
     }

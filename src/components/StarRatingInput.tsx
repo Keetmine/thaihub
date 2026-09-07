@@ -4,24 +4,31 @@ import { useState } from "react";
 import { StarIcon } from "@/components/icons";
 
 /**
- * Десять звёзд с ПОЛОВИНКАМИ (правка владельца 2026-09-07).
+ * ПЯТЬ звёзд на шкалу 1-10 (правка владельца 2026-09-07: «звёздочки
+ * компактнее, не 10 а 5»).
  *
- * Шкала с шагом 0.5 — та же, что у MyDramaList: раньше их «8.5» при
- * импорте округлялась до девятки, и своя оценка не совпадала с тем, что
- * человек поставил там.
+ * Шкала в базе осталась десятибалльной — той же, что у MyDramaList:
+ * звезда стоит два балла, половина звезды — один. Кликом ставятся
+ * целые баллы (1-10); дробное значение, приехавшее импортом с MDL
+ * («8.5»), сохраняется и рисуется точно — заливка у звезды не обязана
+ * быть ровно половинной.
  *
- * Половинка ставится левой половиной звезды, целое — правой: два
- * прозрачных «клика» поверх одной иконки. Отдельного переключателя
- * «половинки» нет — он бы только мешал.
+ * Половина ставится левой половиной звезды, целая — правой: два
+ * прозрачных «клика» поверх одной иконки.
  *
  * Заливка — вторым слоем поверх контурной звезды, обрезанным по ширине
- * (`width: 50%` + `overflow: hidden`), а не полузакрашенной иконкой:
- * иконка одна, а вариантов заливки два, и SVG-градиенту тут пришлось бы
- * выдавать уникальный id на каждую звезду.
+ * (`overflow: hidden`), а не полузакрашенной иконкой: иконка одна, а
+ * заливка любая, и SVG-градиенту тут пришлось бы выдавать уникальный id
+ * на каждую звезду.
  *
  * Управление только мышью было бы недоступным, поэтому клавиатура
  * работает по самим кнопкам: Tab доводит до половинки, Enter ставит.
  */
+
+/** Сколько баллов в одной звезде: пять звёзд на десятибалльную шкалу. */
+const PER_STAR = 2;
+const STARS = 5;
+
 export default function StarRatingInput({
   value,
   onChange,
@@ -29,14 +36,15 @@ export default function StarRatingInput({
   size,
   labelFor,
 }: {
-  /** Текущая оценка 0.5-10 с шагом 0.5; null — не оценено. */
+  /** Текущая оценка 1-10; null — не оценено. Дробное значение с MDL
+   *  («8.5») рисуется как есть. */
   value: number | null;
   /** Кликнули по той же оценке — приходит null: «передумал». */
   onChange: (next: number | null) => void;
   disabled?: boolean;
   /** CSS-размер звезды (font-size); по умолчанию — из стилей. */
   size?: string;
-  /** Как назвать оценку скринридеру: «Поставить 8.5 из 10». */
+  /** Как назвать оценку скринридеру: «Поставить 9 из 10». */
   labelFor: (n: number) => string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -52,11 +60,16 @@ export default function StarRatingInput({
       style={size ? { fontSize: size } : undefined}
       onMouseLeave={() => setHover(null)}
     >
-      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
-        // Сколько этой звезды закрашено: целая, половина или ничего.
-        const fill = shown >= n ? 100 : shown >= n - 0.5 ? 50 : 0;
+      {Array.from({ length: STARS }, (_, i) => i + 1).map((star) => {
+        // Баллы, которые ставят половинки этой звезды: 1 и 2, 3 и 4, …
+        const half = star * PER_STAR - 1;
+        const full = star * PER_STAR;
+        // Насколько звезда закрашена. Считаем долей, а не тремя
+        // состояниями: «8.5» с MDL — это три четверти пятой звезды, и
+        // округлять её до половины значило бы врать про оценку.
+        const fill = Math.max(0, Math.min(1, (shown - (star - 1) * PER_STAR) / PER_STAR)) * 100;
         return (
-          <span key={n} className="star-rating-star">
+          <span key={star} className="star-rating-star">
             <span className="star-rating-base" aria-hidden>
               <StarIcon />
             </span>
@@ -70,21 +83,21 @@ export default function StarRatingInput({
               type="button"
               className="star-rating-half is-left"
               disabled={disabled}
-              aria-label={labelFor(n - 0.5)}
-              onMouseEnter={() => setHover(n - 0.5)}
-              onFocus={() => setHover(n - 0.5)}
+              aria-label={labelFor(half)}
+              onMouseEnter={() => setHover(half)}
+              onFocus={() => setHover(half)}
               onBlur={() => setHover(null)}
-              onClick={() => pick(n - 0.5)}
+              onClick={() => pick(half)}
             />
             <button
               type="button"
               className="star-rating-half is-right"
               disabled={disabled}
-              aria-label={labelFor(n)}
-              onMouseEnter={() => setHover(n)}
-              onFocus={() => setHover(n)}
+              aria-label={labelFor(full)}
+              onMouseEnter={() => setHover(full)}
+              onFocus={() => setHover(full)}
               onBlur={() => setHover(null)}
-              onClick={() => pick(n)}
+              onClick={() => pick(full)}
             />
           </span>
         );
