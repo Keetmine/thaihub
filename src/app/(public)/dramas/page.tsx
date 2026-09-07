@@ -12,7 +12,6 @@ import { adminListHref } from "@/lib/adminListHref";
 import DramaStatusSelect from "@/components/DramaStatusSelect";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import DramaRatingSelect from "@/components/DramaRatingSelect";
-import { fetchSiteScores } from "@/lib/dramaRating";
 import { episodeProgress } from "@/lib/watchStatus";
 import { getCurrentUser } from "@/lib/userAuth";
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
@@ -246,12 +245,11 @@ export default async function DramasPage({
     currentUser?.id,
   );
 
-  // Оценка бейджем у названия — ТОЛЬКО наша: звёздочки и публичные
-  // отзывы, один человек — один голос (src/lib/dramaRating.ts). Оценку
-  // MyDramaList тут не показываем (правка владельца 2026-09-07): в
-  // строке каталога подписи не разместить, и чужая цифра без пояснения
-  // читалась как наша. Никто не оценил — бейджа просто нет.
-  const siteScores = await fetchSiteScores(dramas.map((d) => d.id));
+  // Оценок у названия в списке нет вовсе (правка владельца
+  // 2026-09-09). Сначала убрали чужую цифру с MyDramaList, потом и нашу:
+  // в строке каталога подписи не разместить, а голая звёздочка рядом с
+  // названием читается как оценка неизвестно чего. Своя оценка правится
+  // в колонке «Оценка» — там она подписана.
 
   // Названия за шапкой — самые популярные сериалы по числу отметок
   // статуса просмотра (единственный «мой» сигнал у сериала, сердечка у
@@ -471,7 +469,6 @@ export default async function DramasPage({
   /** Одна строка таблицы. Вынесена из renderItem: её рисуют обе ветки —
    *  и алфавитный список, и плоский отсортированный. */
   function renderRow(d: (typeof dramas)[number]) {
-    const score = siteScores.get(d.id) ?? null;
     const entry = statusByDramaId.get(d.id) ?? null;
     const progress = episodeProgress(entry, d.episodes);
     const airing = d.status === "RETURNING_SERIES";
@@ -497,14 +494,6 @@ export default async function DramasPage({
                     <span className={`font-display fw-medium text-white ${styles.title}`}>
                       {dramaTitleForLocale(d, locale)}
                     </span>
-                    {score != null && (
-                      <span
-                        className={`small text-secondary ${styles.meta}`}
-                        data-tooltip={t.catalog.drama.ourScoreTip(score.siteCount)}
-                      >
-                        ★ {score.site.toFixed(1)}
-                      </span>
-                    )}
                   </span>
                 </AppLink>
                 {airing && (

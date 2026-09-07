@@ -24,6 +24,13 @@ export type StatsForTab = {
   completedDramas: number;
   episodesWatched: number;
   hoursWatched: number;
+  /** Пересмотры: сколько всего и что пересматривали чаще прочего.
+   *  Необязательные — свод отдаёт их не всегда, а плитка рисуется только
+   *  при ненулевом числе: пустая плитка с нулём — шум (правка
+   *  владельца). Название сериала приезжает на обоих языках, выбирает
+   *  его сама плитка (dramaTitleForLocale). */
+  rewatchTotal?: number;
+  mostRewatched?: { title: string; titleRu: string | null; count: number } | null;
   trips: number;
   daysInThailand: number;
   friends: number;

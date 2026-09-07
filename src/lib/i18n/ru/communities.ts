@@ -1,3 +1,5 @@
+import { pluralized } from "@/lib/plural";
+
 import type { Dict } from "../en";
 
 export const communities: Dict["communities"] = {
@@ -40,7 +42,7 @@ export const communities: Dict["communities"] = {
     },
     soon: "Скоро будет.",
     members: "Участники",
-    membersCount: (n: number) => `${n} участников`,
+    membersCount: (n: number) => pluralized(n, ["участник", "участника", "участников"]),
     requests: "Заявки на вступление",
     join: "Вступить",
     joinRequest: "Подать заявку",

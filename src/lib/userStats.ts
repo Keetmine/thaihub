@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { dateKey } from "@/lib/dates";
+import { DRAMA_TITLE_SELECT } from "@/lib/dramaLocale";
 import { tripDayStats } from "@/lib/tripDays";
 
 // Общий подсчёт статистики пользователя — питает и вкладку «Статистика»
@@ -23,9 +24,19 @@ export type UserStats = {
   completedDramas: number;
   anyStatusDramas: number;
   /** Серии и часы у экрана: по episodesWatched (у «просмотрено» без
-   *  прогресса — по числу серий сериала) и длительности серии с MDL. */
+   *  прогресса — по числу серий сериала) плюс пересмотры и длительности
+   *  серии с MDL. */
   episodesWatched: number;
   hoursWatched: number;
+  /** Сколько раз всего сериалы пересматривали — сумма rewatchCount, то
+   *  есть просмотры СВЕРХ первого. В «досмотрено сериалов» они не идут
+   *  намеренно: там счёт разным тайтлам, и один любимый сериал не должен
+   *  раздувать цифру. */
+  rewatchTotal: number;
+  /** Что пересматривали чаще прочего (название на обоих языках — плитка
+   *  профиля клиентская и выбирает язык сама). null — пересмотров нет,
+   *  тогда блока в профиле просто не будет. */
+  mostRewatched: { title: string; titleRu: string | null; count: number } | null;
   trips: number;
   longestTripDays: number;
   daysInThailand: number;
@@ -174,13 +185,14 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       }),
       prisma.dramaWatchStatus.count({ where: { userId, status: "COMPLETED" } }),
       // Все статусы целиком, а не count: из них же считаются серии и
-      // часы у экрана.
+      // часы у экрана и пересмотры.
       prisma.dramaWatchStatus.findMany({
         where: { userId },
         select: {
           status: true,
           episodesWatched: true,
-          drama: { select: { episodes: true, duration: true } },
+          rewatchCount: true,
+          drama: { select: { ...DRAMA_TITLE_SELECT, episodes: true, duration: true } },
         },
       }),
       // Поездки — свои И совместные, где инвайт принят: тот же критерий,
@@ -381,10 +393,38 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       // «Просмотрено» без прогресса — значит, все серии сериала.
       row.status === "COMPLETED" ? (row.drama.episodes ?? 0) : 0,
     );
-  const episodesWatched = watchRows.reduce((sum, r) => sum + watchedEpisodesOf(r), 0);
+  // Пересмотр — это те же серии, только ещё раз: человек эти часы правда
+  // просидел у экрана, поэтому они прибавляются к сериям и часам
+  // (решение владельца). У пересмотра нет своего прогресса — считаем по
+  // числу серий сериала; неизвестно оно (episodes = null) — прибавлять
+  // нечего, лучше недосчитать, чем выдумать.
+  const rewatchedEpisodesOf = (row: (typeof watchRows)[number]): number =>
+    row.rewatchCount * (row.drama.episodes ?? 0);
+  const episodesOf = (row: (typeof watchRows)[number]): number =>
+    watchedEpisodesOf(row) + rewatchedEpisodesOf(row);
+  const episodesWatched = watchRows.reduce((sum, r) => sum + episodesOf(r), 0);
   const hoursWatched = Math.round(
-    watchRows.reduce((sum, r) => sum + watchedEpisodesOf(r) * minutesOf(r.drama.duration), 0) / 60,
+    watchRows.reduce((sum, r) => sum + episodesOf(r) * minutesOf(r.drama.duration), 0) / 60,
   );
+
+  // Сами пересмотры — отдельными числами: сколько всего и что
+  // пересматривали чаще прочего. В «досмотрено сериалов»
+  // (completedDramas) они не попадают вовсе — это отдельный запрос-count
+  // по статусу, и трогать его не нужно.
+  const rewatchTotal = watchRows.reduce((sum, r) => sum + r.rewatchCount, 0);
+  const topRewatchRow = watchRows.reduce<(typeof watchRows)[number] | null>(
+    // Строго больше: при равенстве остаётся первый — так «чаще всего»
+    // не прыгает от порядка строк в ответе базы.
+    (best, r) => (r.rewatchCount > (best?.rewatchCount ?? 0) ? r : best),
+    null,
+  );
+  const mostRewatched = topRewatchRow
+    ? {
+        title: topRewatchRow.drama.title,
+        titleRu: topRewatchRow.drama.titleRu,
+        count: topRewatchRow.rewatchCount,
+      }
+    : null;
 
   const byYear = new Map<number, number>();
   const attendedDays: string[] = [];
@@ -470,6 +510,8 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     anyStatusDramas: watchRows.length,
     episodesWatched,
     hoursWatched,
+    rewatchTotal,
+    mostRewatched,
     trips: tripStats.trips,
     longestTripDays: tripStats.longestTripDays,
     daysInThailand: tripStats.daysInThailand,

@@ -142,6 +142,97 @@ export async function setDramaWatchStatus(
   return { ok: true };
 }
 
+/** Потолок пересмотров. Число заведомо больше любой правды и нужно
+ *  только затем, чтобы залипшая кнопка не записала в базу миллион. */
+const MAX_REWATCHES = 99;
+
+/**
+ * «Смотрела этот сериал ещё раз»: ±1 к счётчику пересмотров.
+ *
+ * Счётчик держит просмотры СВЕРХ первого, поэтому «смотрела 3 раза» —
+ * это `rewatchCount = 2`. Минус нужен не меньше плюса: промахнуться по
+ * соседней кнопке легко, а иначе цифру уже не поправить.
+ *
+ * Строка статуса должна существовать: пересмотр — это про сериал,
+ * который человек уже отметил у себя. Без строки не заводим её молча:
+ * непонятно, какой статус тогда ставить, а угаданный статус потом ищут
+ * глазами и не находят.
+ */
+export async function changeRewatchCount(
+  dramaId: string,
+  delta: 1 | -1,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const current = await prisma.dramaWatchStatus.findUnique({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    select: { rewatchCount: true },
+  });
+  if (!current) return { ok: false, error: (await getT()).t.catalog.errors.dramaNotFound };
+
+  const next = Math.min(MAX_REWATCHES, Math.max(0, current.rewatchCount + delta));
+  // Считаем от прочитанного значения, а не `increment`: так же ведёт
+  // себя счётчик серий, и клиент рисует ровно то, что окажется в базе.
+  if (next !== current.rewatchCount) {
+    await prisma.dramaWatchStatus.update({
+      where: { userId_dramaId: { userId: user.id, dramaId } },
+      data: { rewatchCount: next },
+    });
+  }
+
+  revalidatePath("/account");
+  revalidatePath(`/dramas/${dramaId}`);
+  return { ok: true };
+}
+
+/**
+ * «Смотреть заново»: начать пересмотр досмотренного сериала.
+ *
+ * Одной кнопкой делает всё, что человек иначе делал бы руками и в
+ * непонятном порядке: возвращает статус «Смотрю сейчас», обнуляет
+ * счётчик серий и добавляет просмотр к пересмотрам. Без неё начать
+ * пересмотр было негде — статус «Просмотрено» стоял, серии показывали
+ * «22 из 22», и на вопрос «я смотрю это заново» интерфейс не отвечал
+ * (замечание владельца 2026-09-09).
+ *
+ * Пересмотр считаем в момент НАЧАЛА, а не окончания: иначе пришлось бы
+ * держать скрытый признак «идёт пересмотр» и гадать, чем кончилось.
+ * Брошенный пересмотр человек снимет минусом у счётчика — он рядом.
+ *
+ * Колокольчик новых серий включаем, как и при обычном переходе в
+ * «Смотрю сейчас» (см. setDramaWatchStatus).
+ */
+export async function startRewatch(dramaId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const current = await prisma.dramaWatchStatus.findUnique({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    select: { rewatchCount: true, status: true },
+  });
+  // Заново смотрят то, что досмотрели. У остального кнопки нет, и
+  // прямой вызов экшена её себе не выпишет.
+  if (!current || current.status !== "COMPLETED") {
+    return { ok: false, error: (await getT()).t.catalog.errors.dramaNotFound };
+  }
+
+  await prisma.dramaWatchStatus.update({
+    where: { userId_dramaId: { userId: user.id, dramaId } },
+    data: {
+      status: "WATCHING",
+      episodesWatched: 0,
+      notifyEpisodes: true,
+      rewatchCount: Math.min(MAX_REWATCHES, current.rewatchCount + 1),
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/account");
+  revalidatePath(`/dramas/${dramaId}`);
+  return { ok: true };
+}
+
 /** Верхняя граница, когда число серий у сериала неизвестно: счётчик всё
  *  равно должен быть конечным, иначе форма примет любое число. */
 const MAX_EPISODES = 9999;

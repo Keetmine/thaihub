@@ -33,6 +33,16 @@ export const METRICS = {
   performersSeenLive: { label: "Актёры, увиденные вживую", kind: "counter", get: (s) => s.performersSeenLive },
   visitedLocations: { label: "Посещённые локации съёмок", kind: "counter", get: (s) => s.visitedLocations },
   completedDramas: { label: "Досмотренные сериалы", kind: "counter", get: (s) => s.completedDramas },
+  // Пересмотры считаются СВЕРХ первого просмотра (DramaWatchStatus.rewatchCount):
+  // порог 2 у «одного сериала» — это три просмотра. В подписках ачивок
+  // пишем по-человечески («посмотреть три раза»), а порог остаётся сырым
+  // числом из базы — иначе он врал бы админке.
+  rewatchTotal: { label: "Пересмотры, всего", kind: "counter", get: (s) => s.rewatchTotal },
+  topRewatchCount: {
+    label: "Пересмотры одного сериала",
+    kind: "counter",
+    get: (s) => s.mostRewatched?.count ?? 0,
+  },
   trips: { label: "Поездки", kind: "counter", get: (s) => s.trips },
   longestTripDays: { label: "Самая длинная поездка (дней)", kind: "counter", get: (s) => s.longestTripDays },
   daysInThailand: { label: "Дни в Таиланде", kind: "counter", get: (s) => s.daysInThailand },
@@ -108,6 +118,14 @@ export const ACHIEVEMENT_SEED: AchievementSeed<MetricKey>[] = [
   { key: "dramas-10", emoji: "📺", title: "Киноман", hint: "Досмотреть 10 сериалов", metric: "completedDramas", threshold: 10, sort: 150 },
   { key: "dramas-50", emoji: "🎬", title: "Синефил", hint: "Досмотреть 50 сериалов", metric: "completedDramas", threshold: 50, sort: 160 },
   { key: "dramas-100", emoji: "🏆", title: "Энциклопедия BL", hint: "Досмотреть 100 сериалов", metric: "completedDramas", threshold: 100, sort: 170 },
+  // Пересмотры. sort между 170 и 180 — чтобы стоять рядом с сериалами, а
+  // не в конце списка; шаг 2 вместо 10, потому что место между блоками
+  // уже занято. Пороги — в сырых пересмотрах (сверх первого просмотра):
+  // «три раза» — это threshold 2.
+  { key: "rewatch-1", emoji: "🔁", title: "Ещё разок", hint: "Пересмотреть сериал", metric: "rewatchTotal", threshold: 1, sort: 172 },
+  { key: "rewatch-same-3", emoji: "📼", title: "Знаю наизусть", hint: "Посмотреть один сериал три раза", metric: "topRewatchCount", threshold: 2, sort: 174 },
+  { key: "rewatch-same-5", emoji: "💿", title: "Пятый заход", hint: "Посмотреть один сериал пять раз", metric: "topRewatchCount", threshold: 4, sort: 176 },
+  { key: "rewatch-10", emoji: "🌀", title: "По второму кругу", hint: "Набрать 10 пересмотров", metric: "rewatchTotal", threshold: 10, sort: 178 },
   // Поездки
   { key: "first-trip", emoji: "✈️", title: "Первая поездка", hint: "Создать первую поездку", metric: "trips", threshold: 1, sort: 180 },
   { key: "trips-3", emoji: "🧳", title: "Частый гость", hint: "Три поездки", metric: "trips", threshold: 3, sort: 190 },

@@ -15,28 +15,68 @@ function escapeICSText(text: string): string {
     .replace(/\n/g, "\\n");
 }
 
+// Время события в базе — тайские «настенные» часы, разложенные по
+// UTC-полям (см. lib/dates.ts): 11:00 в Бангкоке лежит как 11:00Z.
+// Календарю же нужен НАСТОЯЩИЙ момент, поэтому перед выгрузкой снимаем
+// смещение Бангкока. Без этого календарь читал 11:00 как 11:00 UTC и
+// показывал москвичу 14:00 вместо 07:00 (правка 2026-09-09, находка
+// владельца на препродаже билетов).
+//
+// Константой, а не библиотекой зон: в Таиланде нет перехода на летнее
+// время, смещение +7 постоянно — как и четыре часа до Москвы, которые
+// вычитает formatTimeWithMsk.
+const BANGKOK_OFFSET_MINUTES = 7 * 60;
+
 function toICSDate(d: Date): string {
+  const utc = new Date(d.getTime() - BANGKOK_OFFSET_MINUTES * 60 * 1000);
+  return toICSInstant(utc);
+}
+
+/** Настоящий момент времени — без пересчёта. Для DTSTAMP: он про то,
+ *  когда собран файл, а не про тайское расписание. */
+function toICSInstant(d: Date): string {
   return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+/** Дата без времени — `20260912`, для событий с `hasTime = false`.
+ *  Их полночь настенная и никакому моменту не соответствует: сдвинув её
+ *  на -7 часов, мы бы увезли событие во вчерашний вечер. */
+function toICSDay(d: Date): string {
+  return d.toISOString().slice(0, 10).replace(/-/g, "");
 }
 
 type IcsEvent = {
   title: string;
   venue: string;
   description: string | null;
-  occurrences: { id: string; startsAt: Date; endsAt: Date | null }[];
+  occurrences: { id: string; startsAt: Date; endsAt: Date | null; hasTime?: boolean }[];
 };
+
+/** Дата на день позже — конец однодневного «весь день»: в iCalendar
+ *  DTEND у таких записей не входит в событие. */
+function nextDay(d: Date): Date {
+  return new Date(d.getTime() + 24 * 60 * 60 * 1000);
+}
 
 function buildVEvents(event: IcsEvent): string[] {
   return event.occurrences.flatMap((occ) => {
     const end = occ.endsAt ?? new Date(occ.startsAt.getTime() + 2 * 60 * 60 * 1000);
+    // У события без времени в базе стоит настенная полночь (hasTime =
+    // false). Такое отдаём датой, а не моментом: иначе в календаре оно
+    // встанет на конкретный час, которого мы не знаем.
+    const allDay = occ.hasTime === false;
     return [
       "BEGIN:VEVENT",
       // UID is per-occurrence (not per-Event) — a multi-day event is
       // still several distinct calendar entries, one per date.
       `UID:${occ.id}@thaitrack`,
-      `DTSTAMP:${toICSDate(new Date())}`,
-      `DTSTART:${toICSDate(occ.startsAt)}`,
-      `DTEND:${toICSDate(end)}`,
+      `DTSTAMP:${toICSInstant(new Date())}`,
+      ...(allDay
+        ? [
+            `DTSTART;VALUE=DATE:${toICSDay(occ.startsAt)}`,
+            `DTEND;VALUE=DATE:${toICSDay(nextDay(occ.endsAt ?? occ.startsAt))}`,
+          ]
+        : [`DTSTART:${toICSDate(occ.startsAt)}`, `DTEND:${toICSDate(end)}`]),
       `SUMMARY:${escapeICSText(event.title)}`,
       `LOCATION:${escapeICSText(event.venue)}`,
       ...(event.description ? [`DESCRIPTION:${escapeICSText(event.description)}`] : []),
@@ -113,7 +153,7 @@ export function buildPresaleICS(
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:${event.id}-presale@thaitrack`,
-    `DTSTAMP:${toICSDate(new Date())}`,
+    `DTSTAMP:${toICSInstant(new Date())}`,
     `DTSTART:${toICSDate(event.presaleAt)}`,
     `DTEND:${toICSDate(end)}`,
     `SUMMARY:${escapeICSText(EVENTS[locale].ics.presale(event.title))}`,

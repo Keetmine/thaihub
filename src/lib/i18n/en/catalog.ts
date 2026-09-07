@@ -75,6 +75,17 @@ export const catalog = {
         plus: "One more episode",
         minus: "One episode back",
     },
+    /** Пересмотры: сколько раз сериал смотрели целиком. Показываем
+     *  просмотры вместе с первым, а храним сверх него. */
+    rewatch: {
+        label: "Watched",
+        times: (n: number) =>
+            n === 1 ? "once" : n === 2 ? "twice" : `${n} times`,
+        plus: "One more rewatch",
+        minus: "One rewatch fewer",
+        start: "Watch again",
+        inProgress: (n: number) => `watching for the ${n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`} time`,
+    },
     watchStatusSet: "Set a watch status",
     episodeBellOn: "New-episode notifications are on",
     episodeBellOff: "Notify me about new episodes",

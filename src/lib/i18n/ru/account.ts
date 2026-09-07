@@ -53,6 +53,10 @@ export const account: Dict["account"] = {
     heroDramasHint: "статус «просмотрено»",
     heroDramasEpisodes: (episodes: number, hours: number) =>
       `${pluralized(episodes, ["серия", "серии", "серий"])} · ~${hours} ч`,
+    heroRewatches: (n: number) => plural(n, ["пересмотр", "пересмотра", "пересмотров"]),
+    heroRewatchesHint: "сериалы, которые смотрели не раз",
+    heroRewatchesTop: (title: string, count: number) =>
+      `Чаще всего пересматриваю: ${title} ×${count}`,
 
     chipGoing: "иду",
     chipFavoriteEvents: "в избранном",

@@ -5,6 +5,7 @@ import AppLink from "@/components/AppLink";
 import type { StatsForTab } from "./StatsTab";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { formatDateWithYear } from "@/lib/dates";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { eventHref, performerHref } from "@/lib/slugHelpers";
 
 /** Hero-плитки статистики (события/артисты вживую, дни в Таиланде,
@@ -56,6 +57,23 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
           : o.heroDramasHint,
     },
   ];
+
+  // Пересмотры — той же плиткой и только когда они есть: у большинства
+  // их нет вовсе, а плитка с нулём ничего не сообщает (правка
+  // владельца). Подпись — что пересматривали чаще прочего.
+  if (stats.rewatchTotal) {
+    heroes.push({
+      icon: "🔁",
+      value: stats.rewatchTotal,
+      label: o.heroRewatches(stats.rewatchTotal),
+      hint: stats.mostRewatched
+        ? o.heroRewatchesTop(
+            dramaTitleForLocale(stats.mostRewatched, locale),
+            stats.mostRewatched.count,
+          )
+        : o.heroRewatchesHint,
+    });
+  }
 
   return (
     <div className="mb-4">

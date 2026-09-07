@@ -1,5 +1,10 @@
 import UploadImage from "@/components/UploadImage";
-import { pageMetadata, JsonLd, tvSeriesJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import {
+  pageMetadata,
+  JsonLd,
+  tvSeriesJsonLd,
+  breadcrumbJsonLd,
+} from "@/lib/seo";
 import ReviewsAndComments from "@/components/ReviewsAndComments";
 import SourcesBlock from "@/components/SourcesBlock";
 import AppLink from "@/components/AppLink";
@@ -10,6 +15,7 @@ import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import RewatchCounter from "@/components/RewatchCounter";
 import DramaRating from "@/components/DramaRating";
 import { fetchDramaScore } from "@/lib/dramaRating";
 import { ratingColor } from "@/lib/ratingColor";
@@ -26,7 +32,8 @@ import SynopsisFold from "@/components/SynopsisFold";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import VisitedButton from "@/components/VisitedButton";
-import { PinIcon,
+import {
+  PinIcon,
   BuildingIcon,
   BookIcon,
   CalendarIcon,
@@ -238,31 +245,36 @@ export default async function DramaDetailPage({
 
   // Вторая волна: пользовательские отметки — ждут только currentUser и
   // результаты первой волны, между собой не связаны.
-  const [watchStatus, favoritedEventIds, goingEventIds, similarStatuses, visits] =
-    await Promise.all([
-      currentUser
-        ? prisma.dramaWatchStatus.findUnique({
-            where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
-          })
-        : null,
-      getFavoritedEventIds(eventIds, currentUser?.id),
-      getGoingOccurrenceIds(occIds, currentUser?.id),
-      // Кнопка статуса на карточках рекомендаций — как у сериалов на
-      // странице артиста.
-      getDramaWatchStatuses(
-        similarDramas.map((s) => s.id),
-        currentUser?.id,
-      ),
-      currentUser && drama.locations.length > 0
-        ? prisma.locationVisit.findMany({
-            where: {
-              userId: currentUser.id,
-              locationId: { in: drama.locations.map((dl) => dl.locationId) },
-            },
-            select: { locationId: true },
-          })
-        : [],
-    ]);
+  const [
+    watchStatus,
+    favoritedEventIds,
+    goingEventIds,
+    similarStatuses,
+    visits,
+  ] = await Promise.all([
+    currentUser
+      ? prisma.dramaWatchStatus.findUnique({
+          where: { userId_dramaId: { userId: currentUser.id, dramaId: id } },
+        })
+      : null,
+    getFavoritedEventIds(eventIds, currentUser?.id),
+    getGoingOccurrenceIds(occIds, currentUser?.id),
+    // Кнопка статуса на карточках рекомендаций — как у сериалов на
+    // странице артиста.
+    getDramaWatchStatuses(
+      similarDramas.map((s) => s.id),
+      currentUser?.id,
+    ),
+    currentUser && drama.locations.length > 0
+      ? prisma.locationVisit.findMany({
+          where: {
+            userId: currentUser.id,
+            locationId: { in: drama.locations.map((dl) => dl.locationId) },
+          },
+          select: { locationId: true },
+        })
+      : [],
+  ]);
   const visitedLocationIds = new Set(visits.map((v) => v.locationId));
 
   // У сериала может быть несколько студий (DramaAgency); легаси-поле
@@ -323,9 +335,12 @@ export default async function DramaDetailPage({
   // formatCombinedDateList, а не formatDateWithYear: второй по-русски
   // оставляет висящее «г» без точки, и в столбце дат это видно сразу.
   const scheduleYears = new Set(
-    drama.episodeList.flatMap((e) => (e.airDate ? [e.airDate.getUTCFullYear()] : [])),
+    drama.episodeList.flatMap((e) =>
+      e.airDate ? [e.airDate.getUTCFullYear()] : [],
+    ),
   );
-  const showYear = scheduleYears.size > 1 || !scheduleYears.has(today.getUTCFullYear());
+  const showYear =
+    scheduleYears.size > 1 || !scheduleYears.has(today.getUTCFullYear());
   const episodeRows = drama.episodeList.map((e) => ({
     number: e.number,
     title: e.title,
@@ -364,7 +379,8 @@ export default async function DramaDetailPage({
     );
     if (!next?.airDate) return null;
     const days = Math.round(
-      (parseDateKey(dateKey(next.airDate)).getTime() - today.getTime()) / 86_400_000,
+      (parseDateKey(dateKey(next.airDate)).getTime() - today.getTime()) /
+        86_400_000,
     );
     return { number: next.number, days };
   })();
@@ -408,10 +424,16 @@ export default async function DramaDetailPage({
               оставлен намеренно — он часть имени тайтла и в заголовке
               выдачи уместен. */}
           <div className="d-flex flex-wrap align-items-baseline gap-2 mb-1">
-            <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
+            <h1
+              className="display-1-tight mb-0"
+              style={{ fontSize: "2.25rem" }}
+            >
               {dramaTitleForLocale(drama, locale)}
               {drama.year && (
-                <span className="fs-5 fw-normal text-secondary"> ({drama.year})</span>
+                <span className="fs-5 fw-normal text-secondary">
+                  {" "}
+                  ({drama.year})
+                </span>
               )}
             </h1>
             {drama.status && (
@@ -425,10 +447,14 @@ export default async function DramaDetailPage({
           </div>
           {/* Когда заголовок русский, английское название уходит в
               строку альтернативных — искать сериал продолжают по нему. */}
-          {(drama.nativeTitle || drama.alsoKnownAs || dramaTitleForLocale(drama, locale) !== drama.title) && (
+          {(drama.nativeTitle ||
+            drama.alsoKnownAs ||
+            dramaTitleForLocale(drama, locale) !== drama.title) && (
             <p className="small text-secondary mb-0">
               {[
-                dramaTitleForLocale(drama, locale) !== drama.title ? drama.title : null,
+                dramaTitleForLocale(drama, locale) !== drama.title
+                  ? drama.title
+                  : null,
                 drama.nativeTitle,
                 drama.alsoKnownAs,
               ]
@@ -441,8 +467,14 @@ export default async function DramaDetailPage({
           <div className="d-flex align-items-center gap-2 flex-shrink-0">
             {/* Колокольчик серий — вплотную слева от кнопки статуса
                 (просьба владельца). */}
-            <EpisodeBellButton dramaId={drama.id} enabled={watchStatus?.notifyEpisodes ?? false} />
-            <DramaStatusButton dramaId={drama.id} status={watchStatus?.status ?? null} />
+            <EpisodeBellButton
+              dramaId={drama.id}
+              enabled={watchStatus?.notifyEpisodes ?? false}
+            />
+            <DramaStatusButton
+              dramaId={drama.id}
+              status={watchStatus?.status ?? null}
+            />
           </div>
         )}
       </div>
@@ -463,7 +495,11 @@ export default async function DramaDetailPage({
               alt={dramaTitleForLocale(drama, locale)}
               sizes="15rem"
               className="rounded-4"
-              style={{ width: "15rem", aspectRatio: "2 / 3", objectFit: "cover" }}
+              style={{
+                width: "15rem",
+                aspectRatio: "2 / 3",
+                objectFit: "cover",
+              }}
             />
             {/* Отсчёт до следующей серии — сразу под постером (просьба
                 владельца 2026-09-07). Крупно и акцентом: сначала сам
@@ -482,7 +518,12 @@ export default async function DramaDetailPage({
                 {drama.posterUrl && (
                   <span className="next-episode-backdrop" aria-hidden>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={drama.posterUrl} alt="" loading="lazy" decoding="async" />
+                    <img
+                      src={drama.posterUrl}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </span>
                 )}
                 <span className="next-episode-scrim" aria-hidden />
@@ -518,8 +559,11 @@ export default async function DramaDetailPage({
         {/* Без фона-карточки (фидбек владельца): факты и описание —
             просто текст в правой колонке, как у артиста. */}
         {hasFacts && (
-        <div className="flex-fill d-flex flex-column gap-1" style={{ minWidth: 0 }}>
-          {/* ВСЕ факты — одним списком с одинаковым отступом (правка
+          <div
+            className="flex-fill d-flex flex-column gap-1"
+            style={{ minWidth: 0 }}
+          >
+            {/* ВСЕ факты — одним списком с одинаковым отступом (правка
               владельца 2026-09-07: «поля с описаниями выглядят криво…
               надо всё выровнять»). Раньше каждая строка была
               самостоятельным абзацем со своим mb-2, часть строк жила во
@@ -528,146 +572,160 @@ export default async function DramaDetailPage({
               вдвое больше. Теперь отступ один на все строки, а чипы
               прижаты отрицательным полем, чтобы не растить строку.
               Компонент Fact — ниже в этом файле. */}
-          <div className="drama-facts small mb-3">
-            {currentUser && (
-              <Fact label={t.catalog.drama.myScore}>
-                <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} hideLabel />
-              </Fact>
-            )}
-            {/* Своя оценка сайта и оценка MyDramaList — РАЗНЫЕ строки
+            <div className="drama-facts small mb-3">
+              {currentUser && (
+                <Fact label={t.catalog.drama.myScore}>
+                  <DramaRating
+                    dramaId={drama.id}
+                    rating={watchStatus?.rating ?? null}
+                    hideLabel
+                  />
+                </Fact>
+              )}
+              {/* Своя оценка сайта и оценка MyDramaList — РАЗНЫЕ строки
                 (правка владельца 2026-09-07). Сводить их в одно число
                 оказалось затеей неудачной: чей это рейтинг, из подписи
                 не понять, а вес чужих тысяч голосов приходилось
                 выдумывать. Теперь наш рейтинг считается только по нашим
                 оценкам, рядом — сколько человек проголосовало. */}
-            {score.site != null && (
-              <Fact label={t.catalog.drama.ourScore}>
-                <StarIcon className="rating-star" filled />{" "}
-                <span style={{ color: ratingColor(score.site) }}>{score.site.toFixed(1)}</span>{" "}
-                <span className="drama-fact-votes">({score.siteCount})</span>
-              </Fact>
-            )}
-            {/* У MyDramaList цифра обычным цветом строки (правка
+              {score.site != null && (
+                <Fact label={t.catalog.drama.ourScore}>
+                  <StarIcon className="rating-star" filled />{" "}
+                  <span style={{ color: ratingColor(score.site) }}>
+                    {score.site.toFixed(1)}
+                  </span>{" "}
+                  <span className="drama-fact-votes">({score.siteCount})</span>
+                </Fact>
+              )}
+              {/* У MyDramaList цифра обычным цветом строки (правка
                 владельца 2026-09-07): цветная шкала — про НАШУ оценку,
                 чужая стоит рядом просто как справка. */}
-            {score.mdl != null && (
-              <Fact label={t.catalog.drama.mdlScore}>
-                <StarIcon filled /> {score.mdl.toFixed(1)}
-              </Fact>
-            )}
+              {score.mdl != null && (
+                <Fact label={t.catalog.drama.mdlScore}>
+                  <StarIcon filled /> {score.mdl.toFixed(1)}
+                </Fact>
+              )}
 
-            {studios.length > 0 && (
-              <Fact
-                icon={<BuildingIcon />}
-                label={studios.length > 1 ? t.catalog.drama.studios : t.catalog.drama.studio}
-              >
-                {studios.map((a, i) => (
-                  <span key={a.id}>
-                    {i > 0 && ", "}
-                    <AppLink href={agencyHref(a)}>
-                      {a.name}
-                    </AppLink>
-                  </span>
-                ))}
-              </Fact>
-            )}
+              {studios.length > 0 && (
+                <Fact
+                  icon={<BuildingIcon />}
+                  label={
+                    studios.length > 1
+                      ? t.catalog.drama.studios
+                      : t.catalog.drama.studio
+                  }
+                >
+                  {studios.map((a, i) => (
+                    <span key={a.id}>
+                      {i > 0 && ", "}
+                      <AppLink href={agencyHref(a)}>{a.name}</AppLink>
+                    </span>
+                  ))}
+                </Fact>
+              )}
 
-            {drama.novel && (
-              <Fact icon={<BookIcon className="icon-inline" />} label={t.catalog.drama.basedOn}>
-                <AppLink href={novelHref(drama.novel)}>
-                  {drama.novel.title}
-                </AppLink>
-                {drama.novel.author ? ` (${drama.novel.author})` : ""}
-              </Fact>
-            )}
+              {drama.novel && (
+                <Fact
+                  icon={<BookIcon className="icon-inline" />}
+                  label={t.catalog.drama.basedOn}
+                >
+                  <AppLink href={novelHref(drama.novel)}>
+                    {drama.novel.title}
+                  </AppLink>
+                  {drama.novel.author ? ` (${drama.novel.author})` : ""}
+                </Fact>
+              )}
 
-            {/* Жанр — вход в поиск с этим жанром в фильтре (И1): раньше
+              {/* Жанр — вход в поиск с этим жанром в фильтре (И1): раньше
                 чипы были глухие, и «ещё такое же» приходилось собирать
                 руками. */}
-            {drama.genres.length > 0 && (
-              <Fact icon={<TagIcon />} label={t.catalog.drama.genres}>
-                <span className="drama-facts-chips">
-                  {drama.genres.map((g) => (
-                    <AppLink
-                      key={g}
-                      href={`/search?section=dramas&genres=${encodeURIComponent(g)}`}
-                      className="tag-chip text-decoration-none"
-                    >
-                      {g}
-                    </AppLink>
-                  ))}
-                </span>
-              </Fact>
-            )}
+              {drama.genres.length > 0 && (
+                <Fact icon={<TagIcon />} label={t.catalog.drama.genres}>
+                  <span className="drama-facts-chips">
+                    {drama.genres.map((g) => (
+                      <AppLink
+                        key={g}
+                        href={`/search?section=dramas&genres=${encodeURIComponent(g)}`}
+                        className="tag-chip text-decoration-none"
+                      >
+                        {g}
+                      </AppLink>
+                    ))}
+                  </span>
+                </Fact>
+              )}
 
-            {/* Теги — обычным текстом в цвет .tag-chip, короткой строкой
+              {/* Теги — обычным текстом в цвет .tag-chip, короткой строкой
                 со свёрткой «ещё N» (просьба владельца): у MDL тегов
                 десятки, и чипы раздували карточку на пол-экрана. Первые
                 TAGS_VISIBLE рендерит сервер — без замеров и мигания. */}
-            {drama.tags.length > 0 && (
-              <Fact icon={<TagIcon />} label={t.catalog.drama.tags}>
-                <TagRowFold
-                  moreLabel={t.catalog.tagsShowAll(drama.tags.length - TAGS_VISIBLE)}
-                  visible={drama.tags.slice(0, TAGS_VISIBLE).map((tag) => (
-                    <AppLink
-                      key={tag}
-                      href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
-                      className="tag-link"
-                    >
-                      {tag}
-                    </AppLink>
-                  ))}
-                  rest={
-                    drama.tags.length > TAGS_VISIBLE
-                      ? drama.tags.slice(TAGS_VISIBLE).map((tag) => (
-                          <AppLink
-                            key={tag}
-                            href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
-                            className="tag-link"
-                          >
-                            {tag}
-                          </AppLink>
-                        ))
-                      : null
-                  }
-                />
-              </Fact>
-            )}
+              {drama.tags.length > 0 && (
+                <Fact icon={<TagIcon />} label={t.catalog.drama.tags}>
+                  <TagRowFold
+                    moreLabel={t.catalog.tagsShowAll(
+                      drama.tags.length - TAGS_VISIBLE,
+                    )}
+                    visible={drama.tags.slice(0, TAGS_VISIBLE).map((tag) => (
+                      <AppLink
+                        key={tag}
+                        href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
+                        className="tag-link"
+                      >
+                        {tag}
+                      </AppLink>
+                    ))}
+                    rest={
+                      drama.tags.length > TAGS_VISIBLE
+                        ? drama.tags.slice(TAGS_VISIBLE).map((tag) => (
+                            <AppLink
+                              key={tag}
+                              href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
+                              className="tag-link"
+                            >
+                              {tag}
+                            </AppLink>
+                          ))
+                        : null
+                    }
+                  />
+                </Fact>
+              )}
 
-            {/* Страна и тип (И4) — значения из данных, не переводятся;
+              {/* Страна и тип (И4) — значения из данных, не переводятся;
                 каждое ведёт в поиск с этим фильтром: фильтры появились в
                 И1, и «ещё такое же» в одном клике. Раньше они делили
                 одну строку через «·» — в сетке у каждого своя строка,
                 иначе значения не встают в колонку. */}
-            {drama.country && (
-              <Fact icon={<PinIcon />} label={t.catalog.drama.country}>
-                <AppLink
-                  href={`/search?section=dramas&country=${encodeURIComponent(drama.country)}`}
-                 
-                >
-                  {drama.country}
-                </AppLink>
-              </Fact>
-            )}
-            {drama.type && (
-              <Fact icon={<GridIcon />} label={t.catalog.drama.type}>
-                <AppLink
-                  href={`/search?section=dramas&type=${encodeURIComponent(drama.type)}`}
-                 
-                >
-                  {drama.type}
-                </AppLink>
-              </Fact>
-            )}
+              {drama.country && (
+                <Fact icon={<PinIcon />} label={t.catalog.drama.country}>
+                  <AppLink
+                    href={`/search?section=dramas&country=${encodeURIComponent(drama.country)}`}
+                  >
+                    {drama.country}
+                  </AppLink>
+                </Fact>
+              )}
+              {drama.type && (
+                <Fact icon={<GridIcon />} label={t.catalog.drama.type}>
+                  <AppLink
+                    href={`/search?section=dramas&type=${encodeURIComponent(drama.type)}`}
+                  >
+                    {drama.type}
+                  </AppLink>
+                </Fact>
+              )}
 
-            {(drama.episodes || drama.duration) && (
-              <Fact icon={<TvIcon className="icon-inline" />} label={t.catalog.drama.episodes}>
-                {drama.episodes ? `${drama.episodes}` : "?"}
-                {drama.duration ? ` × ${drama.duration}` : ""}
-              </Fact>
-            )}
+              {(drama.episodes || drama.duration) && (
+                <Fact
+                  icon={<TvIcon className="icon-inline" />}
+                  label={t.catalog.drama.episodes}
+                >
+                  {drama.episodes ? `${drama.episodes}` : "?"}
+                  {drama.duration ? ` × ${drama.duration}` : ""}
+                </Fact>
+              )}
 
-            {/* График выхода серий свёрнут под строку «Эфир» (просьба
+              {/* График выхода серий свёрнут под строку «Эфир» (просьба
                 владельца): в конце строки — «Подробнее», по нему
                 раскрывается поимённый список серий. Свёртка нативная,
                 на details/summary: график — не текст, мерить нечего,
@@ -675,17 +733,19 @@ export default async function DramaDetailPage({
                 (свёрнуто/раскрыто) и работа с клавиатуры достаются от
                 самого summary. Расписания нет — нет и переключателя,
                 остаётся обычная строка. */}
-            {/* График — НЕ внутри Fact: там значение стоит справа от
+              {/* График — НЕ внутри Fact: там значение стоит справа от
                 подписи, и раскрытый список серий уезжал вправо вместе с
                 ним (жалоба владельца 2026-09-07: «сместился, нужно
                 выравнивать по левому краю как раньше»). Поэтому подпись
                 уходит внутрь summary, а сама свёртка занимает всю
                 ширину строки. */}
-            {episodeRows.length > 0 ? (
-              <details className="schedule-fold drama-fact-block text-secondary">
+              {episodeRows.length > 0 ? (
+                <details className="schedule-fold drama-fact-block text-secondary">
                   <summary>
                     <CalendarIcon />{" "}
-                    <span className="drama-fact-label">{t.catalog.drama.aired}</span>{" "}
+                    <span className="drama-fact-label">
+                      {t.catalog.drama.aired}
+                    </span>{" "}
                     {airedLine ?? t.catalog.drama.schedule.title}{" "}
                     <span className="schedule-fold-toggle">
                       <span className="schedule-fold-more">
@@ -703,62 +763,89 @@ export default async function DramaDetailPage({
                       дата иначе разъезжаются по краям колонки. */}
                   <div className="schedule-fold-body">
                     <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                      <span className="text-white">{t.catalog.drama.schedule.title}</span>
+                      <span className="text-white">
+                        {t.catalog.drama.schedule.title}
+                      </span>
                       <span>
-                        {t.catalog.drama.schedule.aired(airedCount, episodeRows.length)}
+                        {t.catalog.drama.schedule.aired(
+                          airedCount,
+                          episodeRows.length,
+                        )}
                       </span>
                     </div>
                     <EpisodeSchedule rows={episodeRows} />
                   </div>
-              </details>
-            ) : (
-              airedLine && (
-                <Fact icon={<CalendarIcon />} label={t.catalog.drama.aired}>
-                  {airedLine}
+                </details>
+              ) : (
+                airedLine && (
+                  <Fact icon={<CalendarIcon />} label={t.catalog.drama.aired}>
+                    {airedLine}
+                  </Fact>
+                )
+              )}
+
+              {drama.contentRating && (
+                <Fact icon={<InfoIcon />} label={t.catalog.drama.contentRating}>
+                  {drama.contentRating}
                 </Fact>
-              )
-            )}
+              )}
+            </div>
 
-            {drama.contentRating && (
-              <Fact icon={<InfoIcon />} label={t.catalog.drama.contentRating}>
-                {drama.contentRating}
-              </Fact>
-            )}
-          </div>
-
-          {/* Ж6: счётчик серий — прямо над описанием, где человек и
+            {/* Ж6: счётчик серий — прямо над описанием, где человек и
               так задерживается. Появляется, только когда сериал уже
               отмечен: у того, что человек не смотрит, прогресс ничего
               не значит. */}
-          {currentUser && watchStatus && (
-            <div className="mb-3">
-              <EpisodeProgress
-                dramaId={drama.id}
-                total={drama.episodes}
-                // Через episodeProgress, а не сырое поле: у «Просмотрено»
-                // счётчик бывает пустым (статус ставили до подсчёта
-                // серий), и сырой NULL показывал 0 из 10 у досмотренного.
-                watched={episodeProgress(watchStatus, drama.episodes)?.watched ?? null}
-              />
-            </div>
-          )}
+            {currentUser && watchStatus && (
+              <div className="mb-3">
+                <EpisodeProgress
+                  dramaId={drama.id}
+                  total={drama.episodes}
+                  // Через episodeProgress, а не сырое поле: у «Просмотрено»
+                  // счётчик бывает пустым (статус ставили до подсчёта
+                  // серий), и сырой NULL показывал 0 из 10 у досмотренного.
+                  watched={
+                    episodeProgress(watchStatus, drama.episodes)?.watched ??
+                    null
+                  }
+                />
+                {/* Пересмотры — только у досмотренного (или у того, где
+                  их уже отмечали): тому, кто смотрит сериал впервые,
+                  кнопка «ещё раз» ничего не даёт и только шумит рядом
+                  со счётчиком серий. */}
+                {(watchStatus.status === "COMPLETED" ||
+                  watchStatus.rewatchCount > 0) && (
+                  <div className="mt-2">
+                    <RewatchCounter
+                      dramaId={drama.id}
+                      count={watchStatus.rewatchCount}
+                      status={watchStatus.status}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
-          {/* Длинный синопсис свёрнут до ~4 строк (Э2ф); SynopsisFold
+            {/* Длинный синопсис свёрнут до ~4 строк (Э2ф); SynopsisFold
               меряет реальное переполнение и не показывает «Читать
               дальше», когда текст влез целиком. Короткий рендерим
               обычным абзацем без клиентского кода. */}
-          {(() => {
-            const synopsis = dramaSynopsisForLocale(drama, locale);
-            if (!synopsis) return null;
-            // pre-line: русские описания с dorama.land многоабзацные,
-            // без него переносы схлопывались в сплошной текст.
-            return synopsis.length > 300 ? (
-              <SynopsisFold text={synopsis} preLine />
-            ) : (
-              <p className="text-secondary mb-0" style={{ whiteSpace: "pre-line" }}>{synopsis}</p>
-            );
-          })()}
-        </div>
+            {(() => {
+              const synopsis = dramaSynopsisForLocale(drama, locale);
+              if (!synopsis) return null;
+              // pre-line: русские описания с dorama.land многоабзацные,
+              // без него переносы схлопывались в сплошной текст.
+              return synopsis.length > 300 ? (
+                <SynopsisFold text={synopsis} preLine />
+              ) : (
+                <p
+                  className="text-secondary mb-0"
+                  style={{ whiteSpace: "pre-line" }}
+                >
+                  {synopsis}
+                </p>
+              );
+            })()}
+          </div>
         )}
       </div>
 
@@ -825,7 +912,6 @@ export default async function DramaDetailPage({
           </div>
         </div>
       )}
-
 
       {drama.locations.length > 0 && (
         <div id="locations" className="anchor-target mb-4">
@@ -898,7 +984,10 @@ export default async function DramaDetailPage({
             {similarDramas.map((sim) => (
               <div key={sim.id} className="col-4 col-md-2">
                 <div style={{ position: "relative" }}>
-                  <AppLink href={dramaHref(sim)} className="text-decoration-none d-block">
+                  <AppLink
+                    href={dramaHref(sim)}
+                    className="text-decoration-none d-block"
+                  >
                     <div
                       style={{
                         position: "relative",
@@ -916,16 +1005,28 @@ export default async function DramaDetailPage({
                           decoding="async"
                           src={sim.posterUrl}
                           alt=""
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
                         />
                       )}
                     </div>
-                    <p className="small text-white mb-0 mt-2" style={{ lineHeight: 1.3 }}>
+                    <p
+                      className="small text-white mb-0 mt-2"
+                      style={{ lineHeight: 1.3 }}
+                    >
                       {dramaTitleForLocale(sim, locale)}
                     </p>
-                    {sim.year && <p className="small text-secondary mb-0">{sim.year}</p>}
+                    {sim.year && (
+                      <p className="small text-secondary mb-0">{sim.year}</p>
+                    )}
                   </AppLink>
-                  <div className="position-absolute" style={{ top: "0.375rem", right: "0.375rem" }}>
+                  <div
+                    className="position-absolute"
+                    style={{ top: "0.375rem", right: "0.375rem" }}
+                  >
                     <DramaStatusButton
                       dramaId={sim.id}
                       status={similarStatuses.get(sim.id)?.status ?? null}

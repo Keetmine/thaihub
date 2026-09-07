@@ -414,6 +414,8 @@ export default async function UserProfilePage({
         completedDramas: fullStats.completedDramas,
         episodesWatched: fullStats.episodesWatched,
         hoursWatched: fullStats.hoursWatched,
+        rewatchTotal: fullStats.rewatchTotal,
+        mostRewatched: fullStats.mostRewatched,
         trips: fullStats.trips,
         daysInThailand: fullStats.daysInThailand,
         friends: fullStats.friends,

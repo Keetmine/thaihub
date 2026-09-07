@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
+import LetterAvatar from "@/components/LetterAvatar";
 import PageHeader from "@/components/PageHeader";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import ScrollableTabs from "@/components/ScrollableTabs";
@@ -119,6 +120,7 @@ export default async function CommunitiesPage({
     slug: string | null;
     title: string;
     description: string | null;
+    coverUrl: string | null;
     country: string | null;
     city: string | null;
     _count: { members: number };
@@ -126,17 +128,27 @@ export default async function CommunitiesPage({
     <AppLink
       key={c.id}
       href={communityHref(c)}
-      className="surface surface-hover text-decoration-none d-flex flex-column gap-1 p-3"
+      className="surface surface-hover text-decoration-none d-flex align-items-center gap-3 p-3"
     >
-      <span className="font-display fw-medium text-white">{c.title}</span>
-      {c.description && (
-        <span className="small text-secondary text-truncate">{c.description}</span>
-      )}
-      <span className="small text-secondary">
-        {t.communities.membersCount(c._count.members)}
-        {/* Место — прямо в карточке: человек, пришедший «а есть ли
-            кто-то у нас», должен видеть ответ, не открывая страницу. */}
-        {c.country && ` · ${[c.country, c.city].filter(Boolean).join(", ")}`}
+      {/* Обложка — та же картинка, что висит на странице сообщества, но
+          КВАДРАТОМ (правка владельца 2026-09-09): в строке списка
+          широкая полоса 3:2 съедала место у названия, а квадрат встаёт
+          в один ряд с аватарками остальных списков сайта. Без обложки —
+          первая буква названия общим LetterAvatar: своей заглушки тут
+          нет намеренно, иначе пустая карточка на витрине и пустая
+          аватарка в списках разъехались бы. */}
+      <LetterAvatar name={c.title} photoUrl={c.coverUrl} size={4} rounded={false} />
+      <span className="d-flex flex-column gap-1 flex-fill" style={{ minWidth: 0 }}>
+        <span className="font-display fw-medium text-white text-truncate">{c.title}</span>
+        {c.description && (
+          <span className="small text-secondary text-truncate">{c.description}</span>
+        )}
+        <span className="small text-secondary text-truncate">
+          {t.communities.membersCount(c._count.members)}
+          {/* Место — прямо в карточке: человек, пришедший «а есть ли
+              кто-то у нас», должен видеть ответ, не открывая страницу. */}
+          {c.country && ` · ${[c.country, c.city].filter(Boolean).join(", ")}`}
+        </span>
       </span>
     </AppLink>
   );
@@ -230,7 +242,7 @@ export default async function CommunitiesPage({
         {mine.length > 0 && (
           <section className="mb-4">
             <h2 className="section-heading mb-2">{t.communities.myCommunities}</h2>
-            <div className="community-grid">{byMembers(mine).map(card)}</div>
+            <div className="community-list">{byMembers(mine).map(card)}</div>
           </section>
         )}
 
@@ -239,7 +251,7 @@ export default async function CommunitiesPage({
             {mine.length > 0 && (
               <h2 className="section-heading mb-2">{t.communities.allCommunities}</h2>
             )}
-            <div className="community-grid">{others.map(card)}</div>
+            <div className="community-list">{others.map(card)}</div>
           </section>
         )}
 

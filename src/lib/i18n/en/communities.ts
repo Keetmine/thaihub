@@ -38,7 +38,7 @@ export const communities = {
     },
     soon: "Coming soon.",
     members: "Members",
-    membersCount: (n: number) => `${n} members`,
+    membersCount: (n: number) => `${n} ${n === 1 ? "member" : "members"}`,
     requests: "Join requests",
     join: "Join",
     joinRequest: "Ask to join",

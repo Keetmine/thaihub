@@ -64,6 +64,10 @@ export const account = {
     // Серии и часы у экрана — подпись той же плитки, когда есть что считать.
     heroDramasEpisodes: (episodes: number, hours: number) =>
       `${episodes} ${episodes === 1 ? "episode" : "episodes"} · ~${hours} h`,
+    // Пересмотры: плитка появляется, только когда они есть.
+    heroRewatches: (n: number): string => (n === 1 ? "rewatch" : "rewatches"),
+    heroRewatchesHint: "series watched more than once",
+    heroRewatchesTop: (title: string, count: number) => `Most rewatched: ${title} ×${count}`,
 
     chipGoing: "going",
     chipFavoriteEvents: "in favourites",
