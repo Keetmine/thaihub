@@ -328,15 +328,19 @@ export default function CreateCommunityButton() {
                   className="form-control form-control-sm"
                   style={{ maxWidth: "14rem" }}
                 />
-                {/* «Убрать ссылку» — та же кнопка и та же подпись, что у
-                    готовой ссылки в управлении: вещь одна, и второго
-                    способа её убрать быть не должно. */}
+                {/* Крестик в том же ряду, а не подписанная кнопка
+                    (правка владельца 2026-09-09): «Убрать ссылку»
+                    словами весила больше самих полей и перетягивала на
+                    себя весь ряд. Что делает крестик, говорит подсказка
+                    по наведению — как у остальных иконок сайта. */}
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="icon-btn"
+                  aria-label={s.deleteLink}
+                  data-tooltip={s.deleteLink}
                   onClick={() => removeLinkRow(row.key)}
                 >
-                  {s.deleteLink}
+                  ×
                 </button>
               </div>
             ))}
