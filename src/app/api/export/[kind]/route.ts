@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import { csvFileName, formatDate, formatDateTime, toCsv } from "@/lib/csv";
 import { getDict } from "@/lib/i18n";
@@ -91,12 +92,15 @@ async function buildCsv(kind: Kind, userId: string): Promise<string> {
       // таблицу с колонкой «что отмечено».
       const [going, favorites] = await Promise.all([
         prisma.eventAttendance.findMany({
-          where: { userId },
+          // Выгрузка «мои события» — про афишу, как и вкладка событий в
+          // профиле (см. src/lib/catalogEvents.ts): встречи сообществ
+          // живут на страницах сообществ и в CSV афиши не мешаются.
+          where: { userId, event: catalogEventsWhere() },
           include: { event: true, occurrence: true },
           orderBy: { occurrence: { startsAt: "asc" } },
         }),
         prisma.favoriteEvent.findMany({
-          where: { userId },
+          where: { userId, event: catalogEventsWhere() },
           include: { event: { include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } } } },
         }),
       ]);

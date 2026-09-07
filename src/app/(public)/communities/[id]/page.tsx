@@ -7,12 +7,16 @@ import { getT } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
 import { communityAccess } from "@/lib/communities";
+import { userDisplayName } from "@/lib/userProfile";
 import { leaveCommunity } from "../actions";
 import JoinButton from "./JoinButton";
 import MemberRequests from "./MemberRequests";
 import CommunityAdmin from "./CommunityAdmin";
 import CommunityTabs, { type CommunityTabKey } from "./CommunityTabs";
 import MembersTab from "./MembersTab";
+import MemberRowActions from "./MemberRowActions";
+import InviteMemberButton from "./InviteMemberButton";
+import InviteBanner, { InviteCancelButton } from "./InviteBanner";
 import DiscussionsTab from "./DiscussionsTab";
 import MeetupsTab from "./MeetupsTab";
 
@@ -28,6 +32,16 @@ async function loadCommunity(param: string) {
       links: { orderBy: { createdAt: "asc" } },
       members: {
         include: { user: { select: { id: true, name: true, photoUrl: true, username: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+      // Приглашения нужны и управляющим (кого уже позвали), и самому
+      // приглашённому (баннер «вас зовут»), поэтому едут одной выборкой
+      // со всем остальным — их тут единицы.
+      invites: {
+        include: {
+          user: { select: { id: true, name: true, photoUrl: true, username: true } },
+          invitedBy: { select: { id: true, name: true, username: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -76,7 +90,7 @@ export default async function CommunityPage({
 }) {
   const { id } = await params;
   const { tab } = await searchParams;
-  const { t } = await getT();
+  const { locale, t } = await getT();
   const s = t.communities;
   const community = await loadCommunity(id);
   if (!community) notFound();
@@ -91,6 +105,19 @@ export default async function CommunityPage({
 
   const active = community.members.filter((m) => m.status === "ACTIVE");
   const pending = community.members.filter((m) => m.status === "PENDING");
+  // Убранные (BANNED) не участники нигде: ни в списке, ни в счётчике.
+  // Их строки живут только затем, чтобы человек не вступил заново, и
+  // видит их лишь тот, кто может запрет снять.
+  const banned = community.members.filter((m) => m.status === "BANNED");
+  const myInvite = viewer ? community.invites.find((i) => i.userId === viewer.id) : undefined;
+
+  const memberRow = (m: (typeof community.members)[number]) => ({
+    userId: m.userId,
+    name: m.user.name,
+    username: m.user.username,
+    photoUrl: m.user.photoUrl,
+    role: m.role,
+  });
 
   // Вкладки собираются по правам: закрытое зрителю не попадает даже в
   // пропсы, потому что панели для него просто не создаются.
@@ -111,13 +138,53 @@ export default async function CommunityPage({
       label: s.tabs.members,
       content: (
         <MembersTab
-          members={active.map((m) => ({
-            userId: m.userId,
-            name: m.user.name,
-            username: m.user.username,
-            photoUrl: m.user.photoUrl,
-            role: m.role,
-          }))}
+          members={active.map(memberRow)}
+          // Кнопки управления собирает страница: только она знает, кто
+          // тут владелец. Права всё равно перепроверяются в экшенах —
+          // спрятанная кнопка правом не является.
+          actions={
+            access.canManage
+              ? (m) =>
+                  // На своей строке кнопок нет: разжаловать и убрать
+                  // себя незачем, для ухода есть «покинуть сообщество».
+                  m.userId === viewer?.id ? null : (
+                    <MemberRowActions
+                      communityId={community.id}
+                      userId={m.userId}
+                      name={m.name ?? t.common.deletedAccount}
+                      role={m.role}
+                      viewerIsOwner={access.isOwner}
+                    />
+                  )
+              : undefined
+          }
+          inviteButton={
+            access.canManage ? <InviteMemberButton communityId={community.id} /> : undefined
+          }
+          invites={
+            access.canManage
+              ? community.invites.map((i) => ({
+                  userId: i.userId,
+                  name: i.user.name,
+                  username: i.user.username,
+                  photoUrl: i.user.photoUrl,
+                }))
+              : undefined
+          }
+          inviteActions={(userId) => (
+            <InviteCancelButton communityId={community.id} userId={userId} />
+          )}
+          banned={access.canManage ? banned.map(memberRow) : undefined}
+          bannedActions={(m) => (
+            <MemberRowActions
+              communityId={community.id}
+              userId={m.userId}
+              name={m.name ?? t.common.deletedAccount}
+              role={m.role}
+              banned
+              viewerIsOwner={access.isOwner}
+            />
+          )}
         />
       ),
     });
@@ -176,6 +243,11 @@ export default async function CommunityPage({
               />
             )}
             {access.isPending && <span className="date-chip">{s.pending}</span>}
+            {/* Убранному говорим прямо, почему кнопки «Вступить» нет:
+                молча спрятать её значило бы притвориться поломкой. */}
+            {access.isBanned && (
+              <span className="small text-secondary">{s.people.bannedNotice}</span>
+            )}
             {access.isMember && !access.isOwner && (
               <ConfirmForm
                 action={leaveCommunity.bind(null, community.id)}
@@ -201,6 +273,16 @@ export default async function CommunityPage({
               />
             )}
           </div>
+
+          {/* Приглашение — в колонке, а не во вкладках: в закрытое
+              сообщество приглашённого ещё не пускают, вкладок у него
+              нет, а решение принимать надо. */}
+          {myInvite && !access.isMember && (
+            <InviteBanner
+              communityId={community.id}
+              invitedBy={userDisplayName(myInvite.invitedBy, locale)}
+            />
+          )}
 
           {/* Ссылки — только участникам: за ними обычно закрытый чат. */}
           {access.canSeeInside && community.links.length > 0 && (

@@ -156,6 +156,17 @@ export async function joinCommunity(communityId: string): Promise<ActionResult> 
     return { ok: false, error: t.communities.errors.notFound };
   }
 
+  // Убранного не пускаем обратно: ради этого строка со статусом BANNED
+  // и остаётся в базе (см. banCommunityMember в memberActions.ts).
+  // Проверка отдельная, а не молчаливый no-op в upsert: человек должен
+  // видеть причину, а не жать кнопку без всякого эффекта.
+  const existing = await prisma.communityMember.findUnique({
+    where: { communityId_userId: { communityId, userId: user.id } },
+  });
+  if (existing?.status === "BANNED") {
+    return { ok: false, error: t.communities.people.errors.banned };
+  }
+
   const status = community.joinMode === "APPROVAL" ? "PENDING" : "ACTIVE";
   await prisma.communityMember.upsert({
     where: { communityId_userId: { communityId, userId: user.id } },
@@ -241,19 +252,9 @@ export async function answerJoinRequest(
   return { ok: true };
 }
 
-/** Убрать участника (он же — бан на вступление обратно в сообщество по
- *  одобрению: заявку придётся подавать заново). */
-export async function removeMember(communityId: string, userId: string): Promise<ActionResult> {
-  const { t } = await getT();
-  const managed = await requireManaged(communityId);
-  if (!managed) return { ok: false, error: t.communities.errors.notFound };
-  if (managed.community.ownerId === userId) {
-    return { ok: false, error: t.communities.errors.ownerLeave };
-  }
-  await prisma.communityMember.deleteMany({ where: { communityId, userId } });
-  revalidatePath(`/communities/${communityId}`);
-  return { ok: true };
-}
+// Роли, бан и приглашения живут в соседнем memberActions.ts: это работа
+// с людьми, а не с самим сообществом, и вместе оба набора уже не
+// читались бы за один заход.
 
 // ---------- ссылки сообщества ----------
 

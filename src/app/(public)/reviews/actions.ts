@@ -176,6 +176,19 @@ export async function deleteComment(commentId: string): Promise<ReviewActionResu
     return { ok: false, error: (await getT()).t.reviews.errors.cannotDeleteOthers };
   }
   await prisma.comment.delete({ where: { id: commentId } });
+  // Комментарий к теме сообщества (АА25) живёт не на странице каталога:
+  // у него нет ни dramaId, ни novelId, ни eventId, и общий pagePath
+  // собрал бы путь из null. Обсуждения зовут свой deletePostComment
+  // (там ещё и права шире — чужое убирают хозяева сообщества), но этот
+  // экшен общий, и промахнуться путём он не должен.
+  if (comment.postId) {
+    const post = await prisma.communityPost.findUnique({
+      where: { id: comment.postId },
+      select: { community: { select: { id: true, slug: true } } },
+    });
+    if (post) revalidatePath(`/communities/${post.community.slug ?? post.community.id}`);
+    return { ok: true };
+  }
   const kind: ReviewKind = comment.dramaId ? "drama" : comment.novelId ? "novel" : "event";
   revalidatePath(pagePath(kind, (comment.dramaId ?? comment.novelId ?? comment.eventId)!));
   return { ok: true };

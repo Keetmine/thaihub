@@ -3,6 +3,7 @@
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import {
   dramaTitleWhere,
   performerNameWhere,
@@ -119,6 +120,8 @@ export async function searchLive(rawQuery: string, section: LiveSection): Promis
     want("events") && viewerPremium
       ? prisma.event.findMany({
           where: {
+            // Подсказки — по афише (см. src/lib/catalogEvents.ts).
+            ...catalogEventsWhere(),
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { venue: { contains: query, mode: "insensitive" } },

@@ -12,6 +12,7 @@ export type ProfileTabKey =
   | "events"
   | "trips"
   | "places"
+  | "communities"
   | "tickets";
 
 /**

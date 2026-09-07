@@ -30,6 +30,10 @@ export const notifications = {
         `${who} wants to join "${community}"`,
     COMMUNITY_JOIN_ACCEPTED: (community: string) => `You are now a member of "${community}"`,
     COMMUNITY_JOIN_DECLINED: (community: string) => `Your request to join "${community}" was declined`,
+    COMMUNITY_INVITE: (who: string, community: string) =>
+        `${who} is inviting you to the community "${community}"`,
+    COMMUNITY_POST: (who: string, community: string) =>
+        `${who} started a topic in "${community}"`,
   },
 
   /** Body of the online-booking reminder: the time is Thai wall-clock,

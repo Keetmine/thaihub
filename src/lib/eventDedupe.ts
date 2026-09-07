@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { dateKey, parseDateKey } from "@/lib/dates";
 
 // Матчинг «спарсенное TTM-событие ↔ существующий Event каталога» для
@@ -281,7 +282,10 @@ export async function findCatalogDuplicate(
   // базы, и клиент Prisma не должен создаваться от одного лишь импорта.
   const { prisma } = await import("@/lib/prisma");
   const events = await prisma.event.findMany({
-    where: { OR: or },
+    // Дедуп импорта сравнивает черновик с КАТАЛОГОМ: встреча сообщества
+    // с похожим названием не должна ни считаться дублем, ни тем более
+    // быть перезаписанной импортом (см. src/lib/catalogEvents.ts).
+    where: { ...catalogEventsWhere(), OR: or },
     select: {
       id: true,
       title: true,

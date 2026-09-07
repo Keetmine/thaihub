@@ -1,6 +1,7 @@
 import Link from "@/components/AppLink";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import { eventHref } from "@/lib/eventSlug";
 import PosterTile from "@/components/PosterTile";
@@ -35,7 +36,9 @@ const getLandingData = unstable_cache(
     const now = new Date();
     const [upcomingRaw, performersCount, dramasCount] = await Promise.all([
       prisma.eventOccurrence.findMany({
-        where: { startsAt: { gte: now } },
+        // Лендинг — витрина каталога: встречи сообществ сюда не идут
+        // (см. src/lib/catalogEvents.ts).
+        where: { ...catalogOccurrencesWhere(), startsAt: { gte: now } },
         orderBy: { startsAt: "asc" },
         take: 12,
         include: {

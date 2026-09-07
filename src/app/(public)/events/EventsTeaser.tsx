@@ -2,6 +2,7 @@ import AppLink from "@/components/AppLink";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere, catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import { startOfDay } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getFavoritedEventIds } from "@/lib/favorites";
@@ -58,7 +59,9 @@ export default async function EventsTeaser({
 
   const [occurrences, upcomingEvents] = await Promise.all([
     prisma.eventOccurrence.findMany({
-      where: { startsAt: { gte: today } },
+      // Тизер афиши — каталог (см. src/lib/catalogEvents.ts): встречу
+      // сообщества сюда нельзя ни строкой, ни числом.
+      where: { ...catalogOccurrencesWhere(), startsAt: { gte: today } },
       orderBy: { startsAt: "asc" },
       take: OCCURRENCE_POOL,
       include: {
@@ -73,7 +76,9 @@ export default async function EventsTeaser({
     }),
     // «Сколько ещё» — по СОБЫТИЯМ, а не датам: многодневный концерт для
     // читателя одно событие, тремя его считать нечестно.
-    prisma.event.count({ where: { occurrences: { some: { startsAt: { gte: today } } } } }),
+    prisma.event.count({
+      where: { ...catalogEventsWhere(), occurrences: { some: { startsAt: { gte: today } } } },
+    }),
   ]);
 
   // Многодневное событие показываем один раз — ближайшей датой.

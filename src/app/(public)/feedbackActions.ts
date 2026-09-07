@@ -68,7 +68,15 @@ export async function submitReport(
 
   // Только известные типы: targetType приходит с клиента, и произвольная
   // строка засоряла бы очередь модерации нерезолвящимися записями.
-  const KNOWN_TARGETS = ["placeList", "profile", "eventNote", "comment", "review"];
+  const KNOWN_TARGETS = [
+    "placeList",
+    "profile",
+    "eventNote",
+    "comment",
+    "review",
+    // Тема обсуждения в сообществе (АА25).
+    "communityPost",
+  ];
   if (!KNOWN_TARGETS.includes(targetType)) {
     return { ok: false, error: t.widgets.report.unknownType };
   }

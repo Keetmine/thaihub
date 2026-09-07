@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getEnabledAchievements } from "@/lib/achievements";
 import { dramaHref, eventHref, novelHref, performerHref, tripHref } from "@/lib/slugHelpers";
 import type { WatchStatus } from "@/generated/prisma/client";
@@ -93,7 +94,10 @@ export async function getActivityFeed(
       : [],
     access.going
       ? prisma.eventAttendance.findMany({
-          where: { userId },
+          // Лента активности видна друзьям (а по настройке — и всем):
+          // отметка на встречу сообщества в неё не идёт, иначе название
+          // домашних посиделок уехало бы наружу (см. lib/catalogEvents).
+          where: { userId, event: catalogEventsWhere() },
           orderBy: { createdAt: "desc" },
           // Отметки ставятся на конкретные даты: у двухдневного концерта
           // их две разом — берём с запасом и склеиваем по событию ниже.

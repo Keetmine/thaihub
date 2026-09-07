@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { dateKey } from "@/lib/dates";
 import { tripDayStats } from "@/lib/tripDays";
 
@@ -58,6 +59,11 @@ export async function autoSeenLive(userId: string, performerId: string): Promise
     prisma.eventAttendance.count({
       where: {
         userId,
+        // Только афишные события: «видела вживую» и статистика профиля
+        // считаются по концертам и фанмитам, а не по домашним встречам
+        // сообществ (см. src/lib/catalogEvents.ts) — иначе достижения
+        // накручивались бы собственными встречами.
+        event: catalogEventsWhere(),
         occurrence: {
           startsAt: { lt: now },
           // У дня фестиваля свой состав, и отметка «иду 25-го» не делает
@@ -106,7 +112,8 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
   const [attendances, visits, completedDramas, watchRows, trips, friendships] =
     await Promise.all([
       prisma.eventAttendance.findMany({
-        where: { userId },
+        // Та же причина, что в autoSeenLive: статистика — про афишу.
+        where: { userId, event: catalogEventsWhere() },
         include: {
           occurrence: {
             include: {

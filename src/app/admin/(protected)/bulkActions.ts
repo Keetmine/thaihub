@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import type { DramaStatus } from "@/generated/prisma/client";
@@ -33,7 +34,14 @@ async function labelsFor(entity: BulkEntity, ids: string[]): Promise<string[]> {
     case "drama":
       return (await prisma.drama.findMany({ where, select: { title: true } })).map((r) => r.title);
     case "event":
-      return (await prisma.event.findMany({ where, select: { title: true } })).map((r) => r.title);
+      // Массовые действия админки работают по каталогу: встречи
+      // сообществ ей не подчиняются (см. src/lib/catalogEvents.ts).
+      return (
+        await prisma.event.findMany({
+          where: { ...where, ...catalogEventsWhere() },
+          select: { title: true },
+        })
+      ).map((r) => r.title);
     case "location":
       return (await prisma.location.findMany({ where, select: { name: true } })).map((r) => r.name);
     case "novel":
@@ -64,7 +72,10 @@ export async function bulkDelete(entity: BulkEntity, ids: string[]): Promise<voi
       await prisma.drama.deleteMany({ where });
       break;
     case "event":
-      await prisma.event.deleteMany({ where });
+      // Встречу сообщества админской «галочкой в списке» не удалить: её
+      // и в списке нет, а массовое удаление по присланным id иначе
+      // сносило бы чужую встречу вместе с отметками участников.
+      await prisma.event.deleteMany({ where: { ...where, ...catalogEventsWhere() } });
       break;
     case "location":
       await prisma.location.deleteMany({ where });

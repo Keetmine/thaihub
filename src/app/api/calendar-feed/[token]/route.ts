@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { buildFeedICS } from "@/lib/ics";
 import { isLocale } from "@/lib/i18n/config";
 import { isPremiumActive } from "@/lib/premium";
@@ -24,7 +25,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   }
 
   const attendances = await prisma.eventAttendance.findMany({
-    where: { userId: user.id },
+    // Фид календаря отдаётся по токену в ссылке, без сессии: ссылку
+    // пересылают, кладут в общий календарь, вставляют в чужие
+    // приложения. Встречи сообществ туда не идут (см.
+    // src/lib/catalogEvents.ts) — вместе с ними уехал бы адрес.
+    where: { userId: user.id, event: catalogEventsWhere() },
     include: { event: true, occurrence: true },
   });
   // «Иду» per-дата: в фид попадают только отмеченные даты события.

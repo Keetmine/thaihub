@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { SITE_URL } from "@/lib/seo";
 import { LOCALES, localeHref } from "@/lib/i18n/config";
 import { CATALOG_TAG } from "@/lib/catalogCache";
@@ -78,7 +79,14 @@ const fetchers: Record<Section, () => Promise<Row[]>> = {
   // Маршрут карточки — /event/… в единственном числе (/events — лента).
   events: async () =>
     (
-      await prisma.event.findMany({ select: { slug: true }, where: { slug: { not: null } }, orderBy: BY_ID })
+      // Карта сайта — только каталог: встречу сообщества поисковику не
+      // отдают (см. src/lib/catalogEvents.ts). Слага у неё и так нет,
+      // но условие стоит явно: правило важнее совпадения.
+      await prisma.event.findMany({
+        select: { slug: true },
+        where: { ...catalogEventsWhere(), slug: { not: null } },
+        orderBy: BY_ID,
+      })
     ).map((e) => ({ path: `/event/${e.slug}` })),
   wiki: async () =>
     (
@@ -96,7 +104,8 @@ const counters: Record<Section, () => Promise<number>> = {
   novels: () => prisma.novel.count({ where: { slug: { not: null } } }),
   locations: () => prisma.location.count({ where: { slug: { not: null }, createdByUserId: null } }),
   agencies: () => prisma.agency.count({ where: { slug: { not: null } } }),
-  events: () => prisma.event.count({ where: { slug: { not: null } } }),
+  events: () =>
+    prisma.event.count({ where: { ...catalogEventsWhere(), slug: { not: null } } }),
   wiki: () => prisma.wikiArticle.count({ where: { published: true } }),
 };
 

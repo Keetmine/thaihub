@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { endOfDay, parseDateKey, startOfDay } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
@@ -50,6 +51,12 @@ export type EventListPage = {
 function occurrenceFilterWhere(userId: string | null, filters: EventListFilters) {
   const { filter, q } = filters;
   const eventWhere = {
+    // Афиша — только каталожные события: встречи сообществ живут на
+    // страницах своих сообществ, и «пью пиво и смотрю сериал» не должно
+    // стоять в ленте рядом с концертом в Impact Arena (см.
+    // src/lib/catalogEvents.ts). Открытые встречи попадают на /events
+    // ОТДЕЛЬНЫМ блоком, а не через это условие.
+    ...catalogEventsWhere(),
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
     ...(filter === "favorited" && userId ? { favoritedBy: { some: { userId } } } : {}),
     // «Мои артисты» — события, где выступает кто-то из избранных

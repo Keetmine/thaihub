@@ -26,6 +26,10 @@ export const notifications: Dict["notifications"] = {
         `${who} просится в сообщество «${community}»`,
     COMMUNITY_JOIN_ACCEPTED: (community: string) => `Вас приняли в сообщество «${community}»`,
     COMMUNITY_JOIN_DECLINED: (community: string) => `Заявку в «${community}» отклонили`,
+    COMMUNITY_INVITE: (who: string, community: string) =>
+        `${who} зовёт вас в сообщество «${community}»`,
+    COMMUNITY_POST: (who: string, community: string) =>
+        `${who} завёл(а) тему в сообществе «${community}»`,
   },
 
   onlineBookingBody: (time: string) => `Откроется примерно через час — в ${time} (тайское время).`,

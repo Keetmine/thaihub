@@ -4,6 +4,7 @@ import BackLink from "@/components/BackLink";
 import DetailHero from "@/components/DetailHero";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import VisitedButton from "@/components/VisitedButton";
 import AddToListButton from "@/components/AddToListButton";
@@ -36,6 +37,9 @@ const getLocation = cache(async (rawId: string) =>
         orderBy: { drama: { title: "asc" } },
       },
       events: {
+        // Страница локации публичная — встречи сообществ на ней не
+        // показываем (см. src/lib/catalogEvents.ts).
+        where: catalogEventsWhere(),
         include: {
           performers: { include: { performer: true } },
           occurrences: { orderBy: { startsAt: "asc" } },

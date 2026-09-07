@@ -6,6 +6,7 @@ import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
@@ -202,7 +203,10 @@ export default async function DramaDetailPage({
       // — один голос (см. src/lib/dramaRating.ts).
       fetchDramaScore(id, drama.mdlScore),
       prisma.event.findMany({
-        where: { dramaId: id },
+        // Только афишные события: встречу сообщества можно привязать к
+        // сериалу, но на его публичной странице ей не место — там она
+        // раздала бы адрес чужим (см. src/lib/catalogEvents.ts).
+        where: { ...catalogEventsWhere(), dramaId: id },
         include: {
           performers: { include: { performer: true } },
           occurrences: { orderBy: { startsAt: "asc" } },

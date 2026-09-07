@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import type { Prisma } from "@/generated/prisma/client";
 import { combineDateTime } from "@/lib/dates";
 import { requireCatalogEditor } from "@/lib/auth";
@@ -142,7 +143,9 @@ export async function searchEventOptions(
   if (q.length < 2) return [];
 
   const events = await prisma.event.findMany({
-    where: { title: { contains: q, mode: "insensitive" } },
+    // Комбобокс админки выбирает каталожное событие: встречи сообществ
+    // админка не ведёт (см. src/lib/catalogEvents.ts).
+    where: { ...catalogEventsWhere(), title: { contains: q, mode: "insensitive" } },
     select: { id: true, title: true, posterUrl: true },
     orderBy: { title: "asc" },
     take: 20,

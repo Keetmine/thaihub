@@ -42,13 +42,16 @@ export const dynamic = "force-dynamic";
 
 // Подписи переключателей приходят из словаря, поэтому списки собираются
 // функцией: сами наборы полей от языка не зависят.
-const telegramNotifyToggles = (s: Dict["account"]["settings"]) => [
+const telegramNotifyToggles = (s: Dict["account"]["settings"], c: Dict["communities"]) => [
   { name: "tgNotifyInvites" as const, label: s.telegramNotifyInvites },
   { name: "tgNotifyFriends" as const, label: s.telegramNotifyFriends },
   { name: "tgNotifyReplies" as const, label: s.telegramNotifyReplies },
   { name: "tgNotifyEvents" as const, label: s.telegramNotifyEvents },
   { name: "tgNotifyBirthdays" as const, label: s.telegramNotifyBirthdays },
   { name: "tgNotifyEpisodes" as const, label: s.telegramNotifyEpisodes },
+  // Подпись — из словаря сообществ: строка про сообщества и правится
+  // вместе с фичей, а account.ts трогают параллельно другие разделы.
+  { name: "tgNotifyCommunities" as const, label: c.people.tgToggle },
   { name: "tgNotifyBroadcast" as const, label: s.telegramNotifyBroadcast },
 ];
 
@@ -278,7 +281,7 @@ export default async function SettingsPage({
                   <SettingsForm action={updateNotificationPrefs} submitLabel={s.save} className="mt-3">
                     <p className="small text-secondary mb-2">{s.telegramSendTitle}</p>
                     <div className="d-flex flex-column gap-1">
-                      {telegramNotifyToggles(s).map((toggle) => (
+                      {telegramNotifyToggles(s, t.communities).map((toggle) => (
                         <div className="form-check" key={toggle.name}>
                           <input
                             type="checkbox"

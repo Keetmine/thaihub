@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { requireCatalogEditor } from "@/lib/auth";
 import { performerNameWhere, dramaTitleWhere, rankedMerge } from "@/lib/searchWhere";
 
@@ -75,7 +76,8 @@ export async function quickSearchAdmin(
       return rankedMerge([exact, prefix, rest], take);
     })() : [],
     want("event") ? prisma.event.findMany({
-      where: { title: { contains: q, mode: "insensitive" } },
+      // Быстрый поиск админки — по каталогу (см. lib/catalogEvents.ts).
+      where: { ...catalogEventsWhere(), title: { contains: q, mode: "insensitive" } },
       select: { id: true, title: true, venue: true },
       orderBy: { title: "asc" },
       take,

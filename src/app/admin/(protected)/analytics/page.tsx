@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/auth";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { premiumActiveWhere } from "@/lib/premium";
 import { performerHref, eventHref } from "@/lib/slugHelpers";
 
@@ -34,6 +35,10 @@ export default async function AdminAnalyticsPage() {
       prisma.user.count({ where: premiumActiveWhere(now) }),
       prisma.user.count(),
       prisma.event.findMany({
+        // Топ событий — про афишу: встреча сообщества с десятком «иду»
+        // легко обошла бы концерт и сбила бы картину (см.
+        // src/lib/catalogEvents.ts).
+        where: catalogEventsWhere(),
         include: {
           _count: { select: { favoritedBy: true, attendees: true } },
         },

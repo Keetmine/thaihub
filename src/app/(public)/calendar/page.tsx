@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import { prisma } from "@/lib/prisma";
+import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import {
   addMonths,
   dateKey,
@@ -142,6 +143,11 @@ export default async function CalendarPage({
 
   const occurrences = showBirthdays || showSeries ? [] : await prisma.eventOccurrence.findMany({
     where: {
+      // Календарь — про афишу: встречи сообществ в него не попадают ни
+      // в режиме «все», ни в «моих» (см. src/lib/catalogEvents.ts). Своё
+      // расписание встреч человек видит на странице сообщества — там
+      // рядом и адрес, и кто ещё идёт.
+      ...catalogOccurrencesWhere(),
       startsAt: { gte: rangeStart, lte: rangeEnd },
       // «Мои события» — по отметкам на конкретные даты.
       ...(!showAll && currentUser

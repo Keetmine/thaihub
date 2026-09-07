@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere, catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { formatHumanDate, formatTime } from "@/lib/dates";
 import { eventHref } from "@/lib/eventSlug";
@@ -42,7 +43,11 @@ export async function sendUpcomingEventReminders(): Promise<{ sent: number; skip
   // (все флаги, premium, даты) каждые полчаса тянуть незачем.
   const recipientSelect = { user: { select: { id: true, telegramId: true } } } as const;
   const occurrences = await prisma.eventOccurrence.findMany({
-    where: { startsAt: { gt: now, lte: until } },
+    // Напоминания — про афишу (см. src/lib/catalogEvents.ts). У встречи
+    // сообщества своё место: она видна на странице сообщества, и слать
+    // её название в Telegram тому, кто когда-то положил её в избранное,
+    // а потом вышел из сообщества, — уже утечка.
+    where: { ...catalogOccurrencesWhere(), startsAt: { gt: now, lte: until } },
     include: {
       // «Иду» — по конкретной дате (attendances на occurrence);
       // избранное остаётся событийным.
@@ -167,7 +172,9 @@ export async function sendPresaleReminders(): Promise<number> {
     user: { select: { id: true, telegramId: true, premiumUntil: true, premiumLifetime: true } },
   } as const;
   const events = await prisma.event.findMany({
-    where: { presaleAt: { gt: now, lte: until } },
+    // Препродажа бывает только у афишных событий, но условие ставим и
+    // здесь: одна общая калитка вместо «а тут не может протечь».
+    where: { ...catalogEventsWhere(), presaleAt: { gt: now, lte: until } },
     include: {
       attendees: { select: recipientSelect },
       favoritedBy: { select: recipientSelect },
@@ -227,6 +234,10 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
   ]);
   if (!actor || !occurrence) return;
   const event = occurrence.event;
+  // «X идёт на …» уходит ДРУЗЬЯМ, а они не обязаны быть в том же
+  // сообществе: название встречи (и её адрес в карточке по ссылке) им
+  // знать неоткуда. Про встречи друзьям не рассказываем вовсе.
+  if (event.communityId) return;
   if (friendIds.length === 0) return;
 
   // Кому это интересно: друзья, не заглушившие автора. Telegram есть не

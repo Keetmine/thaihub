@@ -1,6 +1,8 @@
 import AppLink from "@/components/AppLink";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
+import OpenMeetups from "../communities/OpenMeetups";
 import { dateKey, formatShortDate, startOfDay } from "@/lib/dates";
 import { getT, localeHref } from "@/lib/i18n";
 import InfiniteEventList from "@/components/InfiniteEventList";
@@ -53,6 +55,11 @@ export default async function HomePage({
           />
         </div>
         <EventsTeaser userId={user?.id ?? null} />
+        {/* Открытые встречи сообществ — и без подписки: участие в
+            сообществах бесплатное, за подпиской только сама афиша. */}
+        <div className="mt-4">
+          <OpenMeetups />
+        </div>
       </div>
     );
   }
@@ -85,8 +92,11 @@ export default async function HomePage({
       orderBy: { startDate: "asc" },
     }),
     // Названия за шапкой — события, на которые идёт больше всего народу.
+    // Каталожные: название встречи («Смотрим 5 серию у Кати») в подложке
+    // афиши читалось бы как чужой личный план (см. lib/catalogEvents.ts).
     prisma.event
       .findMany({
+        where: catalogEventsWhere(),
         select: { title: true },
         orderBy: [
           { attendees: { _count: "desc" } },
@@ -165,6 +175,10 @@ export default async function HomePage({
           }
         />
       </div>
+
+      {/* Встречи сообществ — отдельным блоком НАД лентой, а не строками
+          в ней: см. OpenMeetups и lib/catalogEvents.ts. */}
+      <OpenMeetups />
 
       <div className="tab-bar-row">
         <div className="tab-bar">

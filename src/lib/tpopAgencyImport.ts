@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import {
   fetchTpopAgencyPage,
   fetchTpopArtistExtras,
@@ -343,7 +344,13 @@ async function importConcerts(
   concerts: TpopConcertEntry[],
 ): Promise<void> {
   if (concerts.length === 0) return;
-  const allEvents = await prisma.event.findMany({ select: { id: true, title: true } });
+  // Только каталог: сопоставление идёт по НАЗВАНИЮ, и встреча
+  // сообщества с похожим заголовком иначе получила бы к себе артиста
+  // из импорта (см. src/lib/catalogEvents.ts).
+  const allEvents = await prisma.event.findMany({
+    where: catalogEventsWhere(),
+    select: { id: true, title: true },
+  });
   const normed = allEvents.map((e) => ({ id: e.id, norm: normTitle(e.title) }));
 
   for (const concert of concerts) {

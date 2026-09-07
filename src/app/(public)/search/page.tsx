@@ -4,6 +4,7 @@ import AppLink from "@/components/AppLink";
 import PageHeader from "@/components/PageHeader";
 import { SearchIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import { isPremiumActive } from "@/lib/premium";
@@ -224,6 +225,10 @@ async function SectionResults({
     defs = eventFilterDefs(t, await loadEventFilterOptions());
     const where = {
       AND: [
+        // Поиск ищет по афише: встречи сообществ в него не попадают —
+        // иначе название и площадка домашней встречи находились бы по
+        // одному слову (см. src/lib/catalogEvents.ts).
+        catalogEventsWhere(),
         ...(q
           ? [
               {
@@ -529,6 +534,8 @@ async function AllSections({ q, t, locale }: { q: string; t: Dict; locale: Local
     ? await Promise.all([
         prisma.event.findMany({
           where: {
+            // Общая выдача «всё сразу» — тоже поиск по каталогу.
+            ...catalogEventsWhere(),
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { venue: { contains: query, mode: "insensitive" } },

@@ -9,6 +9,7 @@ import { getT, localeHref } from "@/lib/i18n";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import type { EventOccurrence } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/userAuth";
+import { canSeeMeetup } from "@/lib/meetups";
 import { getFriendIds } from "@/lib/friends";
 import FavoriteButton from "@/components/FavoriteButton";
 import EntityMiniCard from "@/components/EntityMiniCard";
@@ -24,7 +25,7 @@ import {
 } from "@/lib/castLineup";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
-import { slugOrIdWhere } from "@/lib/slugHelpers";
+import { communityHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
 import EventPhotoGallery from "./EventPhotoGallery";
@@ -59,6 +60,9 @@ const getEvent = cache(async (rawId: string) =>
       },
       pairings: { include: { pairing: { include: { performerA: true, performerB: true } } } },
       drama: true,
+      // Встреча сообщества (АА25): по ней страница решает, кого сюда
+      // пускать и что писать в шапке. У афишного события тут null.
+      community: { select: { id: true, slug: true, title: true } },
       photos: { orderBy: { sort: "asc" } },
       occurrences: {
         orderBy: { startsAt: "asc" },
@@ -93,6 +97,19 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!event) notFound();
   const date = event.occurrences[0]?.startsAt;
   const when = date ? formatHumanDate(date, locale) : null;
+  // Закрытая встреча сообщества и в метадате отвечает 404: постороннему
+  // нельзя показывать даже заголовок («Смотрим 5 серию у Кати» в
+  // <title> — уже утечка), а участнику её всё равно не индексируют.
+  if (event.communityId) {
+    if (!(await canSeeMeetup(event, (await getCurrentUser())?.id))) notFound();
+    if (event.communityOnly) {
+      return pageMetadata({
+        title: event.title,
+        description: t.communities.meetups.eventNoticeMembers,
+        noIndex: true,
+      });
+    }
+  }
   return pageMetadata({
     title: event.title,
     description:
@@ -154,6 +171,12 @@ export default async function EventDetailPage({
   ]);
   const viewerTz = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
+  // Встреча сообщества (АА25). Закрытая — только участникам: посторонний
+  // получает честный 404, как будто страницы нет (см. lib/meetups.ts).
+  // Метадата выше проверяет то же самое и тем же способом.
+  const isMeetup = !!event.communityId;
+  if (isMeetup && !(await canSeeMeetup(event, currentUser?.id))) notFound();
+
   // Карточка события ПУБЛИЧНАЯ: что, когда, где, кто выступает, постер,
   // описание, цена и ссылка на билеты — видно всем, включая поисковики
   // (эти же поля уходят в Event-разметку ниже). За подпиской остались
@@ -173,6 +196,16 @@ export default async function EventDetailPage({
     isEventFavorited = !!(await prisma.favoriteEvent.findUnique({
       where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
     }));
+    // «Иду» на встрече сообщества — БЕСПЛАТНО: участие в сообществах не
+    // за подпиской (решение владельца 2026-09-08), а отметка здесь и
+    // есть весь смысл встречи — по ней видно, сколько народу придёт.
+    if (isMeetup) {
+      const attendances = await prisma.eventAttendance.findMany({
+        where: { userId: currentUser.id, eventId: event.id },
+        select: { occurrenceId: true },
+      });
+      goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
+    }
   }
   if (currentUser && isPremium) {
     // Первая волна: всё, что зависит только от юзера и события, — включая
@@ -355,6 +388,19 @@ export default async function EventDetailPage({
       <BackLink fallbackHref="/" fallbackLabel={t.events.detail.backToEvents} />
       {/* Классическая шапка (по просьбе владельца): заголовок сверху,
           постер слева с кнопкой «Билеты», инфо-карта справа. */}
+      {/* Плашка встречи — над заголовком: человек должен с первой
+          строки понимать, что это не афиша, а сбор сообщества, и куда
+          вернуться. Закрытой встрече тут же говорим, что страницу видят
+          только свои — иначе адрес в карточке выглядит опубликованным. */}
+      {event.community && (
+        <p className="small text-secondary mt-3 mb-0">
+          <UsersIcon className="icon-inline" />{" "}
+          <AppLink href={communityHref(event.community)} className="link-body-emphasis">
+            {t.communities.meetups.eventNotice(event.community.title)}
+          </AppLink>
+          {event.communityOnly && ` · ${t.communities.meetups.eventNoticeMembers}`}
+        </p>
+      )}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {event.title}
@@ -362,8 +408,10 @@ export default async function EventDetailPage({
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
           {/* Выгрузка в календарь — по подписке: маршрут /ics отвечает
-              403 без неё, кнопка-обманка была бы хуже её отсутствия. */}
-          {isPremium && (
+              403 без неё, кнопка-обманка была бы хуже её отсутствия. У
+              встречи сообщества доступ решает участие, а не подписка —
+              маршрут проверяет ровно это. */}
+          {(isPremium || isMeetup) && (
             <a
               href={localeHref(`/event/${event.id}/ics`, locale)}
               className="round-icon-btn"
@@ -472,7 +520,7 @@ export default async function EventDetailPage({
                 </p>
               );
             })}
-            {currentUser && isPremium && (
+            {currentUser && (isPremium || isMeetup) && (
               <div className="mb-2">
                 <GoingDateChips
                   occurrences={event.occurrences.map((o) => ({ id: o.id, startsAt: o.startsAt }))}
@@ -603,7 +651,7 @@ export default async function EventDetailPage({
       {/* Без подписки на месте личных блоков (иду / мои билеты / друзья
           / заметки / напоминание о препродаже) — объяснение, что они
           дают. Сама карточка события выше при этом открыта целиком. */}
-      {!isPremium && (
+      {!isPremium && !isMeetup && (
         <div className="mb-4">
           <PremiumUpsell
             feature={t.events.detail.paywallFeature}
@@ -651,7 +699,11 @@ export default async function EventDetailPage({
       {/* Event-разметка: только публичные поля страницы, и только когда
           у события есть хотя бы одна дата (без startDate разметка
           невалидна). Данные — из того же запроса, что и сама страница. */}
-      {eventLd && <JsonLd data={eventLd} />}
+      {/* Разметку Event закрытой встрече не отдаём вовсе: она собрана из
+          названия, адреса и дат — то есть ровно из того, что не должно
+          уехать в поиск (страница таким зрителям и не открывается, но
+          правило держим в одном месте с noIndex выше). */}
+      {eventLd && !(isMeetup && event.communityOnly) && <JsonLd data={eventLd} />}
     </div>
   );
 }

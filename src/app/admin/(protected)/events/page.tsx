@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { formatHumanDate, formatTimeRangeWithMsk } from "@/lib/dates";
 import { deleteEvent } from "./actions";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -53,6 +54,11 @@ export default async function AdminEventsPage({
   const eventsLight = await prisma.event.findMany({
     where: {
       AND: [
+        // Админка правит КАТАЛОГ: встречи сообществ заводят люди у себя
+        // на страницах, и в списке афиши их быть не должно — иначе
+        // массовое действие («удалить выбранные») снесло бы чужую
+        // встречу заодно (см. src/lib/catalogEvents.ts).
+        catalogEventsWhere(),
         {
           ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
           ...(issue === "no-lineup" ? { performers: { none: {} } } : {}),

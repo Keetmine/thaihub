@@ -4,11 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import { useT } from "@/components/LocaleProvider";
 
-/** Пропорции кадра — те же, в которых фото профиля и показывается:
- *  вертикальная карточка 3:4 со скруглением (`.profile-side-photo`).
- *  Круглой рамки здесь нет намеренно (правка владельца 2026-09-06):
- *  круглые только мелкие аватарки в шапке и списках, а они вырезают
- *  середину этого же кадра сами. */
+/** Пропорции кадра ПО УМОЛЧАНИЮ — те же, в которых фото профиля и
+ *  показывается: вертикальная карточка 3:4 со скруглением
+ *  (`.profile-side-photo`). Круглой рамки здесь нет намеренно (правка
+ *  владельца 2026-09-06): круглые только мелкие аватарки в шапке и
+ *  списках, а они вырезают середину этого же кадра сами.
+ *
+ *  Пропорции — проп, а не константа: обложка сообщества горизонтальная
+ *  (3:2, `.community-cover`), и кадрировать её в вертикальной рамке
+ *  значит врать о том, что попадёт на страницу. Вторая копия этого окна
+ *  ради одной цифры обошлась бы дороже двух необязательных пропсов. */
 const RATIO_W = 3;
 const RATIO_H = 4;
 /** Потолок ДЛИННОЙ стороны итогового файла. Больше не нужно: крупнее
@@ -45,10 +50,19 @@ export default function ImageCropDialog({
   file,
   onCancel,
   onDone,
+  ratioW = RATIO_W,
+  ratioH = RATIO_H,
+  stageMaxWidth,
 }: {
   file: File;
   onCancel: () => void;
   onDone: (cropped: File) => void;
+  /** Пропорции рамки. По умолчанию 3:4 — фото профиля. */
+  ratioW?: number;
+  ratioH?: number;
+  /** Ширина рамки, если 15rem из `.image-crop-stage` мало (горизонтальный
+   *  кадр в такой ширине выходит совсем низким). */
+  stageMaxWidth?: string;
 }) {
   const t = useT();
   const c = t.widgets.crop;
@@ -64,7 +78,7 @@ export default function ImageCropDialog({
    *  резиновая (на телефоне уже, чем на десктопе), а вся арифметика
    *  ниже — в её пикселях, поэтому размер нужен состоянием. */
   const [frame, setFrame] = useState(0);
-  const frameH = (frame * RATIO_H) / RATIO_W;
+  const frameH = (frame * ratioH) / ratioW;
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -254,9 +268,13 @@ export default function ImageCropDialog({
       const srcW = frame / s;
       const srcH = frameH / s;
       // Вверх не растягиваем: если в рамку попал кусок меньше потолка,
-      // растянутый кадр — те же пиксели, только тяжелее.
-      const outH = Math.max(1, Math.round(Math.min(MAX_OUTPUT, srcH)));
-      const outW = Math.max(1, Math.round((outH * RATIO_W) / RATIO_H));
+      // растянутый кадр — те же пиксели, только тяжелее. Потолок — на
+      // ДЛИННУЮ сторону, и какая она, зависит от пропорций: у фото
+      // профиля (3:4) длинная высота, у обложки сообщества (3:2) —
+      // ширина.
+      const shrink = Math.min(1, MAX_OUTPUT / Math.max(srcW, srcH));
+      const outW = Math.max(1, Math.round(srcW * shrink));
+      const outH = Math.max(1, Math.round((outW * ratioH) / ratioW));
       const canvas = document.createElement("canvas");
       canvas.width = outW;
       canvas.height = outH;
@@ -289,6 +307,10 @@ export default function ImageCropDialog({
         <div
           ref={stageRef}
           className={`image-crop-stage ${isDragging ? "is-dragging" : ""}`}
+          // Пропорции инлайном, а не классом: они приходят пропом, и
+          // заводить в общем globals.css по классу на каждый кадр
+          // (3:4, 3:2, …) — плодить правила ради одного числа.
+          style={{ aspectRatio: `${ratioW} / ${ratioH}`, maxWidth: stageMaxWidth }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}

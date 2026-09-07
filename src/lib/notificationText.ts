@@ -57,6 +57,12 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return subject ? titles.ONLINE_BOOKING(subject) : n.title;
     case "COMMUNITY_JOIN_REQUEST":
       return who && subject ? titles.COMMUNITY_JOIN_REQUEST(who, subject) : n.title;
+    case "COMMUNITY_INVITE":
+      return who && subject ? titles.COMMUNITY_INVITE(who, subject) : n.title;
+    case "COMMUNITY_POST":
+      // Новая тема в сообществе. Название сообщества, а не темы: у темы
+      // заголовок необязателен, а отрывок текста и так лежит в body.
+      return who && subject ? titles.COMMUNITY_POST(who, subject) : n.title;
     case "COMMUNITY_JOIN_ANSWER": {
       // Решение по заявке приезжает одним видом: «+название» — приняли,
       // «-название» — отказали. Отдельный вид уведомления ради одной

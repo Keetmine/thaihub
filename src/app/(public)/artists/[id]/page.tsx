@@ -3,6 +3,7 @@ import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import SynopsisFold from "@/components/SynopsisFold";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -148,7 +149,11 @@ export default async function PerformerPage({
             include: { mascot: true },
           }),
       prisma.eventPerformer.findMany({
-        where: { performerId: id },
+        // Афиша артиста — только каталожные события. Встречу к артисту
+        // сейчас не привязать, но условие стоит здесь на будущее: одна
+        // общая калитка вместо «а вот тут не может протечь»
+        // (см. src/lib/catalogEvents.ts).
+        where: { performerId: id, event: catalogEventsWhere() },
         include: {
           event: {
             include: {

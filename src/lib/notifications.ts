@@ -31,6 +31,16 @@ const TELEGRAM_KINDS: Partial<Record<NotificationKind, keyof TelegramPrefs>> = {
   // ручкой, что остальные поводы про события; подпись переключателя в
   // настройках упоминает и его.
   ONLINE_BOOKING: "tgNotifyEvents",
+  // Сообщества — одной ручкой на три повода: позвали, попросились,
+  // ответили по заявке. Все три редки и адресованы лично, поэтому
+  // дробить их на отдельные тумблеры незачем.
+  //
+  // COMMUNITY_POST (новая тема в обсуждениях) сюда НЕ входит намеренно
+  // (решение владельца): тем в живом сообществе много, и бот на каждой
+  // из них превратился бы в спамера. Темы остаются в колокольчике.
+  COMMUNITY_INVITE: "tgNotifyCommunities",
+  COMMUNITY_JOIN_REQUEST: "tgNotifyCommunities",
+  COMMUNITY_JOIN_ANSWER: "tgNotifyCommunities",
 };
 
 type TelegramPrefs = {
@@ -40,6 +50,13 @@ type TelegramPrefs = {
   tgNotifyEvents: boolean;
   tgNotifyBirthdays: boolean;
   tgNotifyEpisodes: boolean;
+  /** Сообщества. Поле необязательное: массовые рассылки (серии, дни
+   *  рождения, напоминания о событиях) собирают получателей одним
+   *  findMany и выбирают из User только свои тумблеры — требовать от них
+   *  ещё и этот значило бы тащить лишнюю колонку ради повода, который
+   *  они не шлют. Поводы сообществ идут поштучно, и там notifyUser
+   *  перечитывает пользователя сам, вместе с этим полем. */
+  tgNotifyCommunities?: boolean;
 };
 
 /** Всё, что notifyUser нужно знать о получателе. Отдельным типом, чтобы
@@ -100,6 +117,7 @@ export async function notifyUser(input: {
           tgNotifyEvents: true,
           tgNotifyBirthdays: true,
           tgNotifyEpisodes: true,
+          tgNotifyCommunities: true,
         },
       }));
     if (!user) return;

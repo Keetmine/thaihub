@@ -9,6 +9,7 @@ import {
   eventHref,
   dramaHref,
   novelHref,
+  communityHref,
 } from "@/lib/slugHelpers";
 import Pagination from "@/components/Pagination";
 import NameSearchBox from "@/components/NameSearchBox";
@@ -256,6 +257,23 @@ export default async function AdminModerationPage({
         })
       ).map((rv) => [rv.id, rv]),
     );
+    // Жалобы на темы обсуждений в сообществах (АА25). Само сообщество
+    // тянем вместе с темой: без него ссылка «открыть» вела бы в никуда —
+    // у темы нет своей страницы, она живёт вкладкой сообщества.
+    const postTargets = new Map(
+      (
+        await prisma.communityPost.findMany({
+          where: { id: { in: reports.filter((r) => r.targetType === "communityPost").map((r) => r.targetId) } },
+          select: {
+            id: true,
+            title: true,
+            text: true,
+            author: { select: { id: true, name: true, email: true } },
+            community: { select: { id: true, slug: true, title: true } },
+          },
+        })
+      ).map((p) => [p.id, p]),
+    );
     const reportsPerTarget = new Map<string, number>();
     for (const r of reports) {
       reportsPerTarget.set(r.targetId, (reportsPerTarget.get(r.targetId) ?? 0) + 1);
@@ -354,6 +372,33 @@ export default async function AdminModerationPage({
                 </>
               ) : (
                 <span className="text-secondary">отзыв удалён</span>
+              )
+            ) : r.targetType === "communityPost" ? (
+              postTargets.has(r.targetId) ? (
+                <>
+                  тема «
+                  {(postTargets.get(r.targetId)!.title ?? postTargets.get(r.targetId)!.text).slice(0, 80)}
+                  » в{" "}
+                  <a
+                    href={`${communityHref(postTargets.get(r.targetId)!.community)}?tab=discussions#post-${r.targetId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="link-body-emphasis"
+                  >
+                    «{postTargets.get(r.targetId)!.community.title}» ↗
+                  </a>{" "}
+                  —{" "}
+                  <Link
+                    href={`/admin/users/${postTargets.get(r.targetId)!.author.id}`}
+                    className="link-body-emphasis"
+                  >
+                    {postTargets.get(r.targetId)!.author.name ||
+                      postTargets.get(r.targetId)!.author.email ||
+                      "без имени"}
+                  </Link>
+                </>
+              ) : (
+                <span className="text-secondary">тема удалена</span>
               )
             ) : (
               <span>

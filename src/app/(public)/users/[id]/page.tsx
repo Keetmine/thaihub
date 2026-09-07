@@ -4,6 +4,7 @@ import EmptyState from "@/components/EmptyState";
 import ReportButton from "@/components/ReportButton";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import {
   formatCombinedDateList,
@@ -46,6 +47,7 @@ import CommentsTab, { type MyCommentRow } from "./CommentsTab";
 import TicketsTab from "./TicketsTab";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import DramasTable from "./DramasTable";
+import CommunitiesTab from "./CommunitiesTab";
 import SubTabs from "@/components/SubTabs";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +93,7 @@ const VALID_TABS: ProfileTabKey[] = [
   "events",
   "trips",
   "places",
+  "communities",
   "tickets",
 ];
 
@@ -243,7 +246,10 @@ export default async function UserProfilePage({
     // «Иду»: себе — полный список для вкладки «События», зрителю — только
     // для блока будущих событий и счётчика.
     prisma.eventAttendance.findMany({
-      where: { userId: user.id },
+      // Только афишные события: профиль открыт другим людям, и отметка
+      // «иду» на домашнюю встречу раздала бы её название и адрес тем,
+      // кого в сообщество не звали (см. src/lib/catalogEvents.ts).
+      where: { userId: user.id, event: catalogEventsWhere() },
       include: { event: eventWithOccurrences, occurrence: true },
     }),
     prisma.favoritePerformer.count({ where: { userId: user.id } }),
@@ -411,7 +417,8 @@ export default async function UserProfilePage({
   let ticketsCount = 0;
   if (isSelf) {
     const favoriteEventRows = await prisma.favoriteEvent.findMany({
-      where: { userId: user.id },
+      // Та же причина, что у «иду» выше: вкладка событий — про афишу.
+      where: { userId: user.id, event: catalogEventsWhere() },
       include: { event: eventWithOccurrences },
     });
     const attendanceRows = attendances
@@ -617,8 +624,59 @@ export default async function UserProfilePage({
 
   // ---------- Сборка вкладок ----------
   const favoriteEventsCount = isSelf
-    ? await prisma.favoriteEvent.count({ where: { userId: user.id } })
+    ? await prisma.favoriteEvent.count({
+        // Счётчик считает ровно то, что показано в списке выше.
+        where: { userId: user.id, event: catalogEventsWhere() },
+      })
     : 0;
+
+  // Сообщества человека (АА25). Приватность — прямо в where, как у
+  // поездок и списков: то, чего зрителю не положено, не доезжает даже
+  // до пропсов.
+  //
+  // ЗАКРЫТОЕ сообщество в ЧУЖОМ профиле не показывается вовсе — и
+  // друзьям тоже, в отличие от остальных блоков. «Друзья видят всё» —
+  // правило про данные ВЛАДЕЛЬЦА профиля, а состав закрытого сообщества
+  // принадлежит не ему, а сообществу: назвать его — значит выдать
+  // чужую тайну через профиль случайного участника. Само сообщество
+  // закрыто ровно за этим (см. docs/features/communities.md).
+  //
+  // Заявки (PENDING) сюда не попадают: человек ещё не участник, а
+  // «подавал заявку туда-то» — не то, что стоит показывать даже себе
+  // отдельным списком.
+  const communityMemberships = showActivity
+    ? await prisma.communityMember.findMany({
+        where: {
+          userId: user.id,
+          status: "ACTIVE",
+          ...(isSelf ? {} : { community: { visibility: "PUBLIC" as const } }),
+        },
+        include: {
+          community: {
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              description: true,
+              coverUrl: true,
+              visibility: true,
+              _count: { select: { members: { where: { status: "ACTIVE" } } } },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+  const myCommunities = communityMemberships.map((m) => ({
+    id: m.community.id,
+    slug: m.community.slug,
+    title: m.community.title,
+    description: m.community.description,
+    coverUrl: m.community.coverUrl,
+    isPrivate: m.community.visibility === "PRIVATE",
+    members: m.community._count.members,
+  }));
+
   const tabs: { key: ProfileTabKey; label: string; content: React.ReactNode }[] = [];
 
   // Строка будущего «иду» — одна и та же в обзоре и на вкладке «События»
@@ -970,6 +1028,22 @@ export default async function UserProfilePage({
             </>
           )}
         </div>
+      ),
+    });
+
+    // Вкладка есть всегда (как «Места и списки»): пустая она у зрителя
+    // выглядит ровно так же, как у человека без сообществ, — и по ней
+    // нельзя догадаться, что закрытые всё-таки есть.
+    tabs.push({
+      key: "communities",
+      label: p.tabs.communities,
+      content: (
+        <CommunitiesTab
+          communities={myCommunities}
+          isSelf={isSelf}
+          ownerName={displayName}
+          t={t}
+        />
       ),
     });
 

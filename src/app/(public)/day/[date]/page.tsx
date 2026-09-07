@@ -1,6 +1,7 @@
 import AppLink from "@/components/AppLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import {
   addDays,
   dateKey,
@@ -78,7 +79,12 @@ export default async function DayPage({
   // числу уводил в пустоту.
   const [occurrences, episodes] = await Promise.all([
     prisma.eventOccurrence.findMany({
-      where: { startsAt: { gte: startOfDay(day), lte: endOfDay(day) } },
+      // Страница дня — срез афиши, встречам сообществ тут не место
+      // (см. src/lib/catalogEvents.ts).
+      where: {
+        ...catalogOccurrencesWhere(),
+        startsAt: { gte: startOfDay(day), lte: endOfDay(day) },
+      },
       include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
       orderBy: { startsAt: "asc" },
     }),

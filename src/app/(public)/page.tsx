@@ -2,6 +2,7 @@ import Link from "@/components/AppLink";
 import { unstable_cache } from "next/cache";
 import { getT, type Dict } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
+import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import { pageMetadata } from "@/lib/seo";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -132,7 +133,12 @@ export default async function HomePage({
     ),
     premium
       ? prisma.eventAttendance.findMany({
-          where: { userId: user.id, occurrence: { startsAt: { gte: now } } },
+          // Блок «мои ближайшие» на главной — про афишу; встречи живут
+          // на страницах сообществ (см. src/lib/catalogEvents.ts).
+          where: {
+            userId: user.id,
+            occurrence: { ...catalogOccurrencesWhere(), startsAt: { gte: now } },
+          },
           select: {
             occurrence: { select: { startsAt: true } },
             event: {

@@ -68,6 +68,7 @@ export const social: Dict["social"] = {
       events: "События",
       trips: "Поездки",
       places: "Места и списки",
+      communities: "Сообщества",
       tickets: (n: number) => `Билеты (${n})`,
     },
 
@@ -135,6 +136,16 @@ export const social: Dict["social"] = {
       emptyHintSelf: "Здесь соберутся списки мест и посещённые локации съёмок.",
       emptyHintViewer: (name: string) => `У ${name} пока нет видимых списков и мест.`,
       emptyCtaSelf: "Мои места",
+    },
+    /** Вкладка «Сообщества». В чужом профиле здесь только публичные
+     *  сообщества — закрытые не показываются никому, кроме владельца
+     *  профиля (см. docs/features/communities.md). */
+    communitiesTab: {
+      emptyTitle: "Пока ни в одном сообществе",
+      emptyHintSelf: "Здесь появятся сообщества, в которые вы вступите.",
+      emptyHintViewer: (name: string) => `У ${name} нет сообществ, видимых со стороны.`,
+      emptyCtaSelf: "Посмотреть сообщества",
+      privateNote: "Это сообщество здесь видно только вам: оно закрытое.",
     },
     yourFriend: "Ваш друг",
     requestSent: "Заявка отправлена",

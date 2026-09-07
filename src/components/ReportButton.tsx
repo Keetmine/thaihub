@@ -12,7 +12,10 @@ export default function ReportButton({
   targetId,
   className,
 }: {
-  targetType: "placeList" | "profile" | "eventNote" | "comment" | "review";
+  // communityPost — тема обсуждения в сообществе (АА25): содержимое
+  // сообщества модерируют его хозяева, но и админам сайта жалоба должна
+  // доходить — сообщество может быть проблемой целиком.
+  targetType: "placeList" | "profile" | "eventNote" | "comment" | "review" | "communityPost";
   targetId: string;
   className?: string;
 }) {

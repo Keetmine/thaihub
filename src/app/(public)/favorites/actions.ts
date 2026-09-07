@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
+import { canSeeMeetup } from "@/lib/meetups";
 import { getT } from "@/lib/i18n";
 import type { DramaStatus } from "@/generated/prisma/client";
 
@@ -300,8 +301,17 @@ export async function toggleGoing(occurrenceId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const occurrence = await prisma.eventOccurrence.findUnique({ where: { id: occurrenceId } });
+  const occurrence = await prisma.eventOccurrence.findUnique({
+    where: { id: occurrenceId },
+    include: { event: { select: { communityId: true, communityOnly: true } } },
+  });
   if (!occurrence) return { ok: false, error: (await getT()).t.events.going.dateNotFound };
+  // Отметиться на встречу сообщества может только тот, кто вправе её
+  // видеть: id даты угадать нельзя, но и полагаться на это не станем —
+  // экшен вызывается напрямую, мимо любой страницы (см. lib/meetups.ts).
+  if (!(await canSeeMeetup(occurrence.event, user.id))) {
+    return { ok: false, error: (await getT()).t.events.going.dateNotFound };
+  }
 
   const existing = await prisma.eventAttendance.findUnique({
     where: { userId_occurrenceId: { userId: user.id, occurrenceId } },

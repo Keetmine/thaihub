@@ -67,6 +67,7 @@ export const social = {
       events: "Events",
       trips: "Trips",
       places: "Places & lists",
+      communities: "Communities",
       tickets: (n: number) => `Tickets (${n})`,
     },
 
@@ -129,6 +130,16 @@ export const social = {
       emptyHintSelf: "Place lists and visited filming locations will be collected here.",
       emptyHintViewer: (name: string) => `${name} has no visible lists or places yet.`,
       emptyCtaSelf: "My places",
+    },
+    /** Вкладка «Сообщества». В чужом профиле здесь только публичные
+     *  сообщества — закрытые не показываются никому, кроме владельца
+     *  профиля (см. docs/features/communities.md). */
+    communitiesTab: {
+      emptyTitle: "Not in any community yet",
+      emptyHintSelf: "Communities you join will show up here.",
+      emptyHintViewer: (name: string) => `${name} is not in any community you can see.`,
+      emptyCtaSelf: "Browse communities",
+      privateNote: "Only you can see this one here — it is a private community.",
     },
     yourFriend: "Your friend",
     requestSent: "Request sent",

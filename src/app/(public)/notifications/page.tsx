@@ -44,6 +44,7 @@ const KIND_ICONS: Record<string, string> = {
   ONLINE_BOOKING: "🎟",
   COMMUNITY_JOIN_REQUEST: "🙋",
   COMMUNITY_JOIN_ANSWER: "🫂",
+  COMMUNITY_POST: "📝",
 };
 
 // Лента активностей: приглашения в поездки, заявки в друзья, ответы и

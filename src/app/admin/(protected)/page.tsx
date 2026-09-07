@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { premiumActiveWhere } from "@/lib/premium";
 import { formatShortDate } from "@/lib/dates";
 import StatTile from "@/components/StatTile";
@@ -48,13 +49,17 @@ export default async function AdminStatsPage() {
     prisma.user.count({ where: premiumActiveWhere(now) }),
     prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.user.count({ where: { telegramId: { not: null } } }),
-    prisma.event.count(),
+    // Счётчики и списки дашборда — про КАТАЛОГ (см. lib/catalogEvents):
+    // «событий 88» должно значить афишу, а не афишу плюс чьи-то
+    // домашние посиделки.
+    prisma.event.count({ where: catalogEventsWhere() }),
     prisma.drama.count(),
     prisma.performer.count(),
     prisma.location.count(),
     prisma.trip.count(),
     prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     prisma.event.findMany({
+      where: catalogEventsWhere(),
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { occurrences: { orderBy: { startsAt: "asc" }, take: 1 } },
@@ -83,7 +88,9 @@ export default async function AdminStatsPage() {
     prisma.importRun.count({ where: { status: "FAILED" } }),
     prisma.errorLog.count({ where: { createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } }),
     prisma.drama.count({ where: { posterUrl: null } }),
-    prisma.event.count({ where: { performers: { none: {} } } }),
+    // «События без состава» — очередь работы по каталогу: у встречи
+    // сообщества состава и не бывает, в очередь ей не надо.
+    prisma.event.count({ where: { ...catalogEventsWhere(), performers: { none: {} } } }),
     // Заготовки исполнителей из лайнапов фестивалей — ждут заполнения
     // (docs/features/musicfestival-import.md).
     prisma.performer.count({ where: { stub: true } }),

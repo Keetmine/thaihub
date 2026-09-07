@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildEventICS, buildPresaleICS } from "@/lib/ics";
 import { getCurrentUser } from "@/lib/userAuth";
+import { canSeeMeetup } from "@/lib/meetups";
 import { isPremiumActive } from "@/lib/premium";
 import { getT } from "@/lib/i18n";
 
@@ -14,9 +15,6 @@ export async function GET(
   // login-гейта proxy.ts, но проверяет доступ сам).
   const { t, locale } = await getT();
   const user = await getCurrentUser();
-  if (!isPremiumActive(user)) {
-    return new NextResponse(t.events.ics.subscriptionOnly, { status: 403 });
-  }
 
   const { id } = await params;
   const event = await prisma.event.findUnique({
@@ -26,6 +24,17 @@ export async function GET(
 
   if (!event) {
     return new NextResponse(t.events.ics.notFound, { status: 404 });
+  }
+
+  // Встреча сообщества: доступ решает участие, а не подписка (участие в
+  // сообществах бесплатное), и закрытая встреча посторонним не
+  // отдаётся — в файле её адрес (см. src/lib/meetups.ts).
+  if (event.communityId) {
+    if (!(await canSeeMeetup(event, user?.id))) {
+      return new NextResponse(t.events.ics.notFound, { status: 404 });
+    }
+  } else if (!isPremiumActive(user)) {
+    return new NextResponse(t.events.ics.subscriptionOnly, { status: 403 });
   }
 
   const isPresale = new URL(request.url).searchParams.get("presale") === "1";

@@ -2,6 +2,7 @@ import type { TripTodoKind } from "@/generated/prisma/client";
 import AppLink from "@/components/AppLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import {
   dateKey,
@@ -486,7 +487,12 @@ export default async function TripPage({
     (max, stay) => (stay.endDate > max ? stay.endDate : max),
     trip.endDate,
   );
-  const rangeWhere = { startsAt: { gte: rangeStart, lte: endOfDay(rangeEnd) } };
+  // План поездки собирается из афиши: встречи сообществ в него не идут
+  // (см. src/lib/catalogEvents.ts) — у поездки свои личные события.
+  const rangeWhere = {
+    ...catalogOccurrencesWhere(),
+    startsAt: { gte: rangeStart, lte: endOfDay(rangeEnd) },
+  };
   // Отдельного счётчика плана больше нет (у вкладки убрана цифра), так
   // что и запрос под него не нужен — остался только счётчик «Афиши».
   const [occurrences, totalCount] = await Promise.all([

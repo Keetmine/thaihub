@@ -41,6 +41,9 @@ export type CommunityAccess = {
   isMember: boolean;
   /** Заявка подана и ждёт решения. */
   isPending: boolean;
+  /** Убран из сообщества. Строка участника при этом ОСТАЁТСЯ (статус
+   *  BANNED): удали её — и человек в ту же минуту вступит заново. */
+  isBanned: boolean;
   isOwner: boolean;
   /** Владелец или модератор — может править сообщество и решать по заявкам. */
   canManage: boolean;
@@ -58,6 +61,9 @@ export function communityAccess(
   const isOwner = !!viewerId && community.ownerId === viewerId;
   const isMember = isOwner || membership?.status === "ACTIVE";
   const isPending = membership?.status === "PENDING";
+  // Владельца забанить нельзя, но строку ему испортить теоретически
+  // можно — на всякий случай его статус тут не решает ничего.
+  const isBanned = !isOwner && membership?.status === "BANNED";
   const isPublic = community.visibility === "PUBLIC";
 
   return {
@@ -67,11 +73,15 @@ export function communityAccess(
     canSeeInside: isMember,
     isMember,
     isPending,
+    isBanned,
     isOwner,
-    canManage: isOwner || membership?.role === "MODERATOR",
+    // Модератор — только принятый участник: у забаненного роль в строке
+    // может остаться со времён, когда он ею был.
+    canManage: isOwner || (isMember && membership?.role === "MODERATOR"),
     // Гостю кнопку не рисуем: вступать некому, сначала вход. Приватное
     // сообщество заявок со стороны не принимает — туда зовёт владелец.
-    canJoin: !!viewerId && !isMember && !isPending && isPublic,
+    // Убранному не рисуем тоже: ради этого строка BANNED и живёт.
+    canJoin: !!viewerId && !isMember && !isPending && !isBanned && isPublic,
     indexable: isPublic,
   };
 }

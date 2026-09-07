@@ -205,6 +205,7 @@ export async function updateNotificationPrefs(formData: FormData) {
       tgNotifyEvents: String(formData.get("tgNotifyEvents") ?? "") === "on",
       tgNotifyBirthdays: String(formData.get("tgNotifyBirthdays") ?? "") === "on",
       tgNotifyEpisodes: String(formData.get("tgNotifyEpisodes") ?? "") === "on",
+      tgNotifyCommunities: String(formData.get("tgNotifyCommunities") ?? "") === "on",
       tgNotifyBroadcast: String(formData.get("tgNotifyBroadcast") ?? "") === "on",
     },
   });

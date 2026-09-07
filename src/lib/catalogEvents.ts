@@ -28,3 +28,22 @@ export function catalogEventsWhere(): Prisma.EventWhereInput {
 export function catalogOccurrencesWhere(): Prisma.EventOccurrenceWhereInput {
   return { event: { communityId: null } };
 }
+
+/**
+ * Обратная сторона фильтра: встречи, которые автор ОТКРЫЛ ВСЕМ
+ * (`communityOnly = false`).
+ *
+ * Такие встречи показываются в афише отдельным блоком, а не строкой в
+ * общей ленте, и вот почему:
+ *
+ * - в общей ленте «пью пиво и смотрю сериал у Кати» встало бы вровень с
+ *   концертом в Impact Arena — одинаковой карточкой, одинаковым весом;
+ * - чтобы пустить встречи в ленту, пришлось бы ослабить условие в общем
+ *   `fetchEventListPage` — то есть в том самом месте, где одна забытая
+ *   строчка выпускает наружу ВСЕ встречи, включая закрытые. Отдельный
+ *   запрос с явным `communityOnly: false` так сломаться не может: он
+ *   ничего не показывает по умолчанию.
+ */
+export function openMeetupsWhere(): Prisma.EventWhereInput {
+  return { communityId: { not: null }, communityOnly: false };
+}
