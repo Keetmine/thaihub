@@ -127,26 +127,55 @@ export default async function CommunityPage({
   // Счётчики в подписях вкладок (правка владельца 2026-09-08): по ним
   // сразу видно, живое ли сообщество. Ноль не показываем — пустые
   // скобки только шумят, как и на вкладках поездки.
-  const [postCount, meetupCount] = access.canSeeInside
-    ? await Promise.all([
-        prisma.communityPost.count({ where: { communityId: community.id } }),
-        prisma.event.count({ where: { communityId: community.id } }),
-      ])
-    : [0, 0];
+  const [postCount, meetupCount] =
+    access.canSeeInside || access.canBrowse
+      ? await Promise.all([
+          prisma.communityPost.count({
+            // Снаружи приватные темы не считаем: иначе счётчик выдавал
+            // бы их существование, а весь смысл приватной темы в том,
+            // чтобы её снаружи не было видно.
+            where: {
+              communityId: community.id,
+              ...(access.canSeeInside ? {} : { isPrivate: false }),
+            },
+          }),
+          prisma.event.count({ where: { communityId: community.id } }),
+        ])
+      : [0, 0];
   const withCount = (label: string, n: number) => (n > 0 ? `${label} (${n})` : label);
 
   const tabs: { key: CommunityTabKey; label: string; content: React.ReactNode }[] = [];
-  if (access.canSeeInside) {
+  // Обсуждения и встречи видны и снаружи, но в закрытом виде (правка
+  // владельца 2026-09-09): заголовки публичных тем и карточки встреч
+  // без содержимого. Так человек с улицы понимает, ради чего вступать,
+  // — пустая заглушка «внутри для участников» об этом молчала.
+  if (access.canSeeInside || access.canBrowse) {
     tabs.push({
       key: "discussions",
       label: withCount(s.tabs.discussions, postCount),
-      content: <DiscussionsTab communityId={community.id} canPost={access.isMember} />,
+      content: (
+        <DiscussionsTab
+          communityId={community.id}
+          canPost={access.isMember}
+          locked={!access.canSeeInside}
+        />
+      ),
     });
     tabs.push({
       key: "meetups",
       label: withCount(s.tabs.meetups, meetupCount),
-      content: <MeetupsTab communityId={community.id} canCreate={access.isMember} />,
+      content: (
+        <MeetupsTab
+          communityId={community.id}
+          canCreate={access.isMember}
+          locked={!access.canSeeInside}
+        />
+      ),
     });
+  }
+  // Всё остальное — только участникам: списки людей, поездки и места
+  // это уже содержимое, а не витрина.
+  if (access.canSeeInside) {
     tabs.push({
       key: "trips",
       label: s.tabs.trips,
@@ -249,6 +278,12 @@ export default async function CommunityPage({
             <h1 className="font-display h3 mb-1">{community.title}</h1>
             <p className="small text-secondary mb-0">
               {s.membersCount(active.length)}
+              {/* Где живёт сообщество — тут же, под названием (правка
+                  владельца 2026-09-09): его вводят в настройках, а
+                  видно оно было только в карточке на витрине, то есть
+                  везде, кроме самой страницы сообщества. */}
+              {community.country &&
+                ` · ${[community.country, community.city].filter(Boolean).join(", ")}`}
               {community.visibility === "PRIVATE" && ` · ${s.visibility.PRIVATE}`}
             </p>
           </div>
@@ -339,21 +374,17 @@ export default async function CommunityPage({
         </aside>
 
         <div className="profile-main">
-          {access.canSeeInside ? (
+          {tabs.length > 0 ? (
             <CommunityTabs
               initialTab={(tab as CommunityTabKey) ?? "discussions"}
               tabs={tabs}
             />
           ) : (
-            // Приватному сообществу не рассказываем даже, что внутри
-            // есть участники и ссылки: снаружи оно просто закрыто.
+            // Сюда попадает только ЗАКРЫТОЕ сообщество: у него нет и
+            // витрины — снаружи ему рассказывать о себе нечем.
             <div className="surface p-3">
-              <p className="fw-medium text-white mb-1">
-                {community.visibility === "PRIVATE" ? s.privateTitle : s.insideLockedTitle}
-              </p>
-              <p className="small text-secondary mb-0">
-                {community.visibility === "PRIVATE" ? s.privateHint : s.insideLockedHint}
-              </p>
+              <p className="fw-medium text-white mb-1">{s.privateTitle}</p>
+              <p className="small text-secondary mb-0">{s.privateHint}</p>
             </div>
           )}
         </div>

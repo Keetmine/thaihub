@@ -81,10 +81,17 @@ export default function PostForm({ communityId }: { communityId: string }) {
         className="form-control"
       />
       {/* Картинки темы: уезжают на сервер сразу при выборе, форме
-          остаются адреса скрытыми полями. В базе они лягут на служебный
-          первый комментарий — своей модели картинок у темы нет
- */}
+          остаются адреса скрытыми полями. Лежат они на самой теме, своей
+          таблицей (см. CommunityPostPhoto). */}
       <CommentPhotoPicker key={pickerKey} />
+      {/* Приватная тема не попадает в список, который видят посторонние
+          (правка владельца 2026-09-09). Умолчание — публичная:
+          сообщество заводят, чтобы его нашли, и по темам с улицы видно,
+          живое ли оно. */}
+      <label className="form-check small text-secondary mb-0 d-flex align-items-center gap-2">
+        <input type="checkbox" name="isPrivate" className="form-check-input mt-0" />
+        <span>{s.privateLabel}</span>
+      </label>
       <p className="small text-secondary mb-0">{s.newTopicHint}</p>
       {error && <p className="small text-danger mb-0">{error}</p>}
       <div className="d-flex gap-2">

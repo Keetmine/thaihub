@@ -17,11 +17,13 @@ import PostForm from "./PostForm";
  * владельца 2026-09-08). Сама тема открывается своей страницей
  * `/communities/<slug>/posts/<id>`.
  *
- * Вкладка рисуется только тем, кто внутри сообщества: наружу обсуждения
- * не уходят ни гостю, ни поисковику (правило «витрина — всем,
- * содержимое — участникам», `communityAccess`). Права на запись всё
- * равно перепроверяются в каждом экшене — скрытая кнопка правом не
- * является (см. postActions.ts).
+ * Посторонний тоже видит вкладку, но иначе (правка владельца
+ * 2026-09-09): в списке только ПУБЛИЧНЫЕ темы, строки не кликаются,
+ * формы нет. Смысл — показать, что сообщество живое и о чём в нём
+ * говорят; сам разговор остаётся внутри. Приватные темы наружу не
+ * выходят вовсе — их нет даже в выборке. Права на запись всё равно
+ * перепроверяются в каждом экшене: скрытая кнопка правом не является
+ * (см. postActions.ts).
  *
  * Роль зрителя читается здесь, а не приходит пропсом: страница отдаёт
  * вкладке только `canPost`, а закреп и удаление чужого зависят ещё и от
@@ -30,9 +32,12 @@ import PostForm from "./PostForm";
 export default async function DiscussionsTab({
   communityId,
   canPost,
+  /** Зритель снаружи: только публичные темы, без ссылок и без формы. */
+  locked = false,
 }: {
   communityId: string;
   canPost: boolean;
+  locked?: boolean;
 }) {
   const { t } = await getT();
   const s = t.communities.posts;
@@ -56,7 +61,9 @@ export default async function DiscussionsTab({
       },
     }),
     prisma.communityPost.findMany({
-      where: { communityId },
+      // Снаружи приватные темы не показываем — фильтр в ЗАПРОСЕ, а не в
+      // разметке: скрытое стилями всё равно уехало бы в HTML.
+      where: { communityId, ...(locked ? { isPrivate: false } : {}) },
       select: {
         id: true,
         title: true,
@@ -84,13 +91,17 @@ export default async function DiscussionsTab({
     canManage: isOwner || membership?.role === "MODERATOR",
     // Пропс страницы и наша собственная проверка должны сойтись: если
     // страница уже решила, что зритель не участник, форм не будет.
-    canPost: canPost && (isOwner || membership?.status === "ACTIVE"),
+    canPost: !locked && canPost && (isOwner || membership?.status === "ACTIVE"),
   };
   const base = community ? communityHref(community) : "";
 
   return (
     <div className="d-flex flex-column gap-2">
       {viewer.canPost && <PostForm communityId={communityId} />}
+
+      {locked && posts.length > 0 && (
+        <p className="small text-secondary mb-0">{t.communities.insideLockedHint}</p>
+      )}
 
       {posts.length === 0 ? (
         <EmptyState
@@ -104,7 +115,10 @@ export default async function DiscussionsTab({
           <PostCard
             key={post.id}
             post={{ ...post, commentCount: post._count.comments }}
-            href={`${base}/posts/${post.id}`}
+            // Снаружи строка не кликается: открыть тему может только
+            // участник, и ссылка, ведущая в 404, злит сильнее её
+            // отсутствия.
+            href={locked ? null : `${base}/posts/${post.id}`}
             viewer={viewer}
           />
         ))

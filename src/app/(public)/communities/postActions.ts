@@ -139,6 +139,10 @@ export async function createPost(
       authorId: member.user.id,
       title: title || null,
       text,
+      // Приватная тема не попадает в список, который видят посторонние
+      // (правка владельца 2026-09-09). Умолчание — публичная:
+      // сообщество заводят, чтобы его нашли.
+      isPrivate: formData.get("isPrivate") === "on",
       photos: { create: photoUrls.map((url, sort) => ({ url, sort })) },
     },
   });
@@ -213,6 +217,54 @@ async function notifyMembersAboutPost(
  * сайта: в чужом сообществе порядок наводят его хозяева, а админ — на
  * случай, когда хозяева и есть проблема.
  */
+/**
+ * Правка темы: заголовок, текст и приватность (правка владельца
+ * 2026-09-09 — до этого написанное нельзя было исправить вовсе).
+ *
+ * Правит автор; владелец и модератор сообщества — любую. Админ сайта
+ * тоже: у него уже есть право удалить, а править — меньшее из двух, и
+ * вычистить ссылку лучше, чем снести разговор целиком.
+ *
+ * Картинки тут не трогаем: их выбирают отдельным полем при создании, и
+ * переписывать набор задним числом — отдельная задача с загрузкой,
+ * которой в форме правки нет.
+ */
+export async function updatePost(postId: string, formData: FormData): Promise<ActionResult> {
+  const { t } = await getT();
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref("/login", await getLocale()));
+
+  const post = await prisma.communityPost.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      authorId: true,
+      communityId: true,
+      community: { select: { id: true, slug: true } },
+    },
+  });
+  if (!post) return { ok: false, error: t.communities.posts.errors.postNotFound };
+
+  const member = await requireMember(post.communityId);
+  const allowed = user.isAdmin || post.authorId === user.id || !!member?.canManage;
+  if (!allowed) return { ok: false, error: t.communities.posts.errors.cannotEdit };
+
+  const title = String(formData.get("title") ?? "").trim().slice(0, POST_TITLE_MAX);
+  const text = String(formData.get("text") ?? "").trim();
+  if (!text) return { ok: false, error: t.communities.posts.errors.textRequired };
+  if (text.length > POST_TEXT_MAX) {
+    return { ok: false, error: t.communities.posts.errors.textTooLong(POST_TEXT_MAX) };
+  }
+
+  await prisma.communityPost.update({
+    where: { id: postId },
+    data: { title: title || null, text, isPrivate: formData.get("isPrivate") === "on" },
+  });
+  revalidatePath(communityPath(post.community));
+  revalidatePath(postPath(post.community, postId));
+  return { ok: true };
+}
+
 export async function deletePost(
   postId: string,
   /** Удаляют со страницы самой темы — после удаления её больше нет, и

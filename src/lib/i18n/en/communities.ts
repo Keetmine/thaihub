@@ -76,8 +76,7 @@ export const communities = {
 
     /** The page is open, but the inside is not — see communities.ts. */
     insideLockedTitle: "Members only",
-    insideLockedHint:
-        "Members, links and meetups are visible after you join — meetups have addresses and private chats behind them.",
+    insideLockedHint: "Join to read the discussions and see meetup details.",
     privateTitle: "This community is private",
     privateHint: "You can get in by invitation from its owner.",
 
@@ -240,6 +239,11 @@ export const communities = {
     posts: {
         newTopic: "Start a topic",
         newTopicHint: "Members will see it in their notifications on the site.",
+        privateLabel: "Members only",
+        privateBadge: "Members only",
+        edit: "Edit",
+        editTitle: "Edit the topic",
+        save: "Save",
         titlePlaceholder: "Title (optional)",
         titleAria: "Topic title",
         textPlaceholder: "What do you want to talk about?",
@@ -276,6 +280,7 @@ export const communities = {
             commentTooLong: (n: number) => `The comment is too long — up to ${n} characters`,
             parentNotFound: "The comment you replied to is gone",
             cannotDelete: "You cannot delete this",
+            cannotEdit: "You cannot edit this topic",
             cannotPin: "Only the owner and moderators can pin topics",
         },
     },

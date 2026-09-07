@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import type { EventWithPerformers } from "@/lib/types";
 import { getCurrentUser } from "@/lib/userAuth";
 import MeetupCard from "./MeetupCard";
+import EventCardLocked from "@/components/EventCardLocked";
 import MeetupForm, { type MeetupFormValues } from "./MeetupForm";
 
 /**
@@ -30,9 +31,15 @@ import MeetupForm, { type MeetupFormValues } from "./MeetupForm";
 export default async function MeetupsTab({
   communityId,
   canCreate,
+  /** Зритель снаружи: карточки закрыты, как в афише без подписки —
+   *  видна только дата (правка владельца 2026-09-09). За встречей стоит
+   *  чей-то адрес, и показывать его человеку с улицы нельзя, а знать,
+   *  что сообщество собирается, — полезно. */
+  locked = false,
 }: {
   communityId: string;
   canCreate: boolean;
+  locked?: boolean;
 }) {
   const { locale, t } = await getT();
   const s = t.communities.meetups;
@@ -118,6 +125,10 @@ export default async function MeetupsTab({
       performers: [],
       community: null,
     };
+    // Снаружи — закрытая карточка: та же, что показывает афиша без
+    // подписки. Ни названия, ни площадки, ни адреса в разметку не
+    // попадает вовсе.
+    if (locked) return <EventCardLocked key={m.id} startsAt={occurrence.startsAt} />;
     return (
       <MeetupCard
         key={m.id}
@@ -137,7 +148,7 @@ export default async function MeetupsTab({
     <div className="d-flex flex-column gap-3">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h2 className="section-heading mb-0">{s.heading}</h2>
-        {canCreate && <MeetupForm communityId={communityId} />}
+        {canCreate && !locked && <MeetupForm communityId={communityId} />}
       </div>
 
       {rows.length === 0 ? (

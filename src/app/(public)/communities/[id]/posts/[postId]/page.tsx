@@ -3,6 +3,7 @@ import { cache } from "react";
 import BackLink from "@/components/BackLink";
 import ActionResultForm from "@/components/ActionResultForm";
 import CommentPhotos from "@/components/CommentPhotos";
+import PostEditForm from "../../PostEditForm";
 import ConfirmForm from "@/components/ConfirmForm";
 import LetterAvatar from "@/components/LetterAvatar";
 import ReportButton from "@/components/ReportButton";
@@ -191,6 +192,15 @@ export default async function CommunityPostPage({
               {post.text}
             </p>
             <CommentPhotos photos={post.photos} />
+            {/* Править может автор, владелец и модератор сообщества,
+                админ сайта. Право перепроверяется в экшене — кнопка
+                правом не является. */}
+            {canDelete && (
+              <PostEditForm
+                postId={post.id}
+                initial={{ title: post.title, text: post.text, isPrivate: post.isPrivate }}
+              />
+            )}
           </div>
           <div className="d-flex align-items-start gap-1 flex-shrink-0">
             {viewer.canManage && (

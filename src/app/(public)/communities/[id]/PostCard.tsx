@@ -43,7 +43,9 @@ export default async function PostCard({
   viewer,
 }: {
   post: PostListRow;
-  href: string;
+  /** null — зритель снаружи: заголовок виден, но не кликается (правка
+   *  владельца 2026-09-09). Ссылка в 404 злит сильнее её отсутствия. */
+  href: string | null;
   viewer: PostViewer;
 }) {
   const { t, locale } = await getT();
@@ -61,9 +63,13 @@ export default async function PostCard({
         <LetterAvatar name={authorName} photoUrl={post.author.photoUrl} size={2.25} />
         <div className="flex-fill" style={{ minWidth: 0 }}>
           <h3 className="h6 mb-1">
-            <AppLink href={href} className="text-white text-decoration-none">
-              {post.title ?? excerpt}
-            </AppLink>
+            {href ? (
+              <AppLink href={href} className="text-white text-decoration-none">
+                {post.title ?? excerpt}
+              </AppLink>
+            ) : (
+              <span className="text-white">{post.title ?? excerpt}</span>
+            )}
           </h3>
           <p className="small text-secondary mb-0">
             {authorName ?? t.reviews.noName} · {formatDateWithYear(post.createdAt, locale)} ·{" "}

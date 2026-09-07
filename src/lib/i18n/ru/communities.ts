@@ -77,8 +77,7 @@ export const communities: Dict["communities"] = {
     },
 
     insideLockedTitle: "Внутри — для участников",
-    insideLockedHint:
-        "Участники, ссылки и встречи видны после вступления: за встречами стоят адреса, за ссылками — закрытые чаты.",
+    insideLockedHint: "Вступите, чтобы читать обсуждения и видеть подробности встреч.",
     privateTitle: "Это закрытое сообщество",
     privateHint: "Попасть внутрь можно по приглашению создателя.",
 
@@ -245,6 +244,11 @@ export const communities: Dict["communities"] = {
     posts: {
         newTopic: "Завести тему",
         newTopicHint: "Участники увидят её в уведомлениях на сайте.",
+        privateLabel: "Только для участников",
+        privateBadge: "Для участников",
+        edit: "Изменить",
+        editTitle: "Правка темы",
+        save: "Сохранить",
         titlePlaceholder: "Заголовок (необязательно)",
         titleAria: "Заголовок темы",
         textPlaceholder: "О чём хотите поговорить?",
@@ -288,6 +292,7 @@ export const communities: Dict["communities"] = {
             commentTooLong: (n: number) => `Комментарий слишком длинный — не больше ${n} символов`,
             parentNotFound: "Комментария, на который вы отвечали, больше нет",
             cannotDelete: "Это удалить не получится",
+            cannotEdit: "Эту тему нельзя править",
             cannotPin: "Закреплять темы могут создатель и модераторы",
         },
     },
