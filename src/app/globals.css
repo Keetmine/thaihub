@@ -3375,10 +3375,11 @@ button.hero-stat-toggle.is-open {
 .drama-fact:has(.star-rating) {
   align-items: center;
 }
-/* В строке фактов шкала мельче обычного: рядом с текстом в 0.875rem
-   звёзды в 1rem задирали строку и подпись рядом смотрелась чужой. */
+/* Шкала в строке фактов: чуть крупнее текста рядом (правка владельца
+   2026-09-07), но не настолько, чтобы задирать строку — половинки
+   должны быть попадаемы пальцем. */
 .drama-fact .star-rating {
-  font-size: 0.95em;
+  font-size: 1.15em;
 }
 /* Звёздочка перед оценкой — закрашенная и золотая, независимо от того,
    какого цвета сама цифра. */
@@ -3390,16 +3391,18 @@ button.hero-stat-toggle.is-open {
 .drama-fact-votes {
   opacity: 0.7;
 }
-/* Ссылки в фактах — тем же приглушённым цветом, что и текст вокруг, и
-   без подчёркивания (правка владельца 2026-09-07): строка фактов
-   читается как текст, а не как список ссылок. Теги не трогаем — у них
-   своё оформление (.tag-link). */
+/* Ссылки в фактах (студия, новелла, страна, тип) оформлены РОВНО как
+   теги — правка владельца 2026-09-07: строка фактов читается как
+   текст, а не как список ссылок, и два разных вида ссылок в соседних
+   строках выглядели бы небрежно. Правила повторяют .tag-link, кроме
+   nowrap: название студии длиннее тега и должно переноситься. */
 .drama-fact a:not(.tag-link):not(.tag-chip) {
   color: var(--bs-secondary-color);
   text-decoration: none;
 }
 .drama-fact a:not(.tag-link):not(.tag-chip):hover {
   color: var(--bs-body-color);
+  text-decoration: underline;
 }
 /* Чипы жанров: собственные поля гасим отрицательным отступом, чтобы
    строка с ними не стала выше текстовых соседок. */
@@ -5259,7 +5262,6 @@ body::after {
   position: relative;
   overflow: hidden;
   border-radius: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.09);
   background: linear-gradient(165deg, #1a1412, #0e0c0b 65%);
   text-align: center;
 }
@@ -5283,14 +5285,16 @@ body::after {
 .next-episode-scrim {
   background: linear-gradient(180deg, rgba(10, 10, 12, 0.35), rgba(10, 10, 12, 0.82) 85%);
 }
+/* Ниже, чем было (правка владельца 2026-09-07): блок не должен
+   отжимать постер вверх. */
 .next-episode-body {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.7rem 0.75rem 0.75rem;
+  gap: 0;
+  padding: 0.45rem 0.75rem 0.5rem;
 }
 .next-episode-eyebrow {
   display: inline-flex;
@@ -5299,7 +5303,10 @@ body::after {
   font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(var(--accent-rgb), 0.95);
+  /* Приглушённый, а не акцентный: акцент тут заслуживает только сам
+     срок, надзаголовок его лишь называет (правка владельца
+     2026-09-07). */
+  color: var(--bs-secondary-color);
 }
 .next-episode-dot {
   width: 0.4rem;
@@ -5325,9 +5332,9 @@ body::after {
 }
 .next-episode-value {
   font-family: var(--font-display);
-  font-size: 1.75rem;
+  font-size: 1.55rem;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.2;
   color: rgb(var(--accent-rgb));
 }
 .next-episode-caption {

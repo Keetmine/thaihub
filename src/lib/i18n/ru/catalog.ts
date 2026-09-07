@@ -179,6 +179,7 @@ export const catalog: Dict["catalog"] = {
         director: "Режиссёр:",
         screenwriter: "Сценарий:",
         contentRating: "Рейтинг:",
+        myScore: "Моя оценка:",
         ourScore: "Оценка:",
         /** Оценка MyDramaList — своей строкой и своей подписью (правка
          *  владельца 2026-09-07): наш рейтинг считается только по нашим

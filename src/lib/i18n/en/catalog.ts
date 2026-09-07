@@ -181,6 +181,7 @@ export const catalog = {
         director: "Director:",
         screenwriter: "Writer:",
         contentRating: "Rating:",
+        myScore: "My rating:",
         ourScore: "Score:",
         mdlScore: "MyDramaList:",
         ourScoreTip: (n: number) => `MyBLHub viewers · ${n} votes`,

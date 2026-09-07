@@ -519,7 +519,7 @@ export default async function DramaDetailPage({
               Компонент Fact — ниже в этом файле. */}
           <div className="drama-facts small mb-3">
             {currentUser && (
-              <Fact label={t.catalog.rating.label}>
+              <Fact label={t.catalog.drama.myScore}>
                 <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} hideLabel />
               </Fact>
             )}
