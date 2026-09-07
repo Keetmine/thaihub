@@ -7,6 +7,9 @@ import { MdlRunFetcher } from "@/lib/mdlClient";
 import { absMdlUrl, mdlSearchUrl, parseMdlSearchTitles } from "@/lib/mydramalist";
 import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { linkMdlCast } from "@/lib/mdlCastLink";
+// Карта «их русская страна → наша английская» уже есть у asiapoisk —
+// вторая копия разъехалась бы с первой.
+import { normalizeCountry } from "@/lib/asiapoisk";
 import {
   collectDoramaLandSeriesUrls,
   doramaLandMatchTitles,
@@ -125,6 +128,9 @@ const DRAMA_SELECT = {
   titleRu: true,
   synopsisRu: true,
   doramalandUrl: true,
+  // Для проверки совпадения: их «Китай» против нашего «Thailand» —
+  // самый дешёвый способ поймать однофамильцев.
+  country: true,
 } as const;
 
 type DramaRow = {
@@ -137,6 +143,7 @@ type DramaRow = {
   titleRu: string | null;
   synopsisRu: string | null;
   doramalandUrl: string | null;
+  country: string | null;
 };
 
 /** Тайское «Оригинальное» с их страницы — ключ к нашему nativeTitle. */
@@ -150,7 +157,8 @@ function thaiOriginal(page: DoramaLandPage): string | null {
  * год обязателен (окно ±1: даты анонсов плавают), совпадение должно
  * быть однозначным (двое кандидатов — пропуск). Оригинальное тайское
  * название сверяем с нашим nativeTitle — у тайских сериалов это самый
- * надёжный ключ.
+ * надёжный ключ. Каждый кандидат из запроса проходит через
+ * `verifyDoramaLandMatch` — там страна и точное совпадение названия.
  */
 export async function findOurDramaForPage(page: DoramaLandPage): Promise<DramaRow | null> {
   const titles = doramaLandMatchTitles(page);
@@ -158,6 +166,10 @@ export async function findOurDramaForPage(page: DoramaLandPage): Promise<DramaRo
   if (titles.length === 0 && !thai) return null;
 
   const yearWhere = page.year ? { year: { gte: page.year - 1, lte: page.year + 1 } } : {};
+  // Запрос — только грубый отбор: `contains` по alsoKnownAs ловит и
+  // подстроки, поэтому каждый кандидат ниже проверяется как следует.
+  // take больше двух: раньше лишний однофамилец мог вытеснить настоящее
+  // совпадение из выборки ещё до проверки.
   const candidates = await prisma.drama.findMany({
     where: {
       OR: [
@@ -170,9 +182,52 @@ export async function findOurDramaForPage(page: DoramaLandPage): Promise<DramaRo
       ...yearWhere,
     },
     select: DRAMA_SELECT,
-    take: 2,
+    take: 10,
   });
-  return candidates.length === 1 ? candidates[0] : null;
+  const verified = candidates.filter((drama) => verifyDoramaLandMatch(drama, page));
+  return verified.length === 1 ? verified[0] : null;
+}
+
+/**
+ * Настоящая проверка совпадения — после грубого отбора запросом.
+ *
+ * Появилась после ложного совпадения (жалоба владельца 2026-09-07):
+ * нашему тайскому «Reset» (2025) досталось название и описание
+ * китайского «Возрождения из ледяного озера» (2026). Виноваты были две
+ * вещи сразу:
+ *
+ * 1. `alsoKnownAs` — это ОДНА строка через запятую, и `contains`
+ *    сравнивал подстроку: их «Rebirth» нашёлся внутри нашего «The
+ *    Rebirth of a Star». Теперь название обязано совпасть с ЦЕЛЫМ
+ *    элементом списка.
+ * 2. Страна не сверялась вовсе. Их «Китай» против нашего «Thailand»
+ *    отбрасывает совпадение сразу — то же правило, что у asiapoisk
+ *    (см. docs/features/asiapoisk-import.md).
+ */
+export function verifyDoramaLandMatch(
+  drama: Pick<DramaRow, "title" | "nativeTitle" | "alsoKnownAs" | "year" | "country">,
+  page: DoramaLandPage,
+): boolean {
+  // Страна сверяется, только когда известна у обоих: у части наших
+  // записей её нет, и это не повод отказываться от перевода.
+  const theirCountry = normalizeCountry(page.country);
+  if (theirCountry && drama.country && theirCountry !== drama.country) return false;
+
+  // Год: то же окно ±1, что в запросе (даты анонсов плавают). Дублируем
+  // здесь, чтобы проверка работала и в разовом перепрогоне.
+  if (page.year != null && drama.year != null && Math.abs(drama.year - page.year) > 1) {
+    return false;
+  }
+
+  const thai = thaiOriginal(page);
+  if (thai && drama.nativeTitle && drama.nativeTitle.trim() === thai) return true;
+
+  const ours = new Set(
+    [drama.title, ...(drama.alsoKnownAs ?? "").split(",")]
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return doramaLandMatchTitles(page).some((title) => ours.has(title.trim().toLowerCase()));
 }
 
 /**
