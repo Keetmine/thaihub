@@ -355,7 +355,6 @@ export const communities: Dict["communities"] = {
     // строки правятся вместе с блоком медалей, а не с витриной.
     achievements: {
         title: "Достижения",
-        progress: (n: number, total: number) => `${n} из ${total}`,
         emptyHint:
             "Пока ни одного — они приходят сами: за первую встречу, за первых участников, за живое обсуждение.",
     },

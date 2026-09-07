@@ -32,14 +32,11 @@ export default async function AchievementsBlock({ communityId }: { communityId: 
 
   return (
     <div>
-      <h2 className="section-heading mb-2">
-        {s.title}
-        {unlocked.length > 0 && (
-          <span className="text-secondary text-lowercase ms-2" style={{ letterSpacing: 0 }}>
-            {s.progress(unlocked.length, states.length)}
-          </span>
-        )}
-      </h2>
+      {/* Счётчика «N из N» тут нет (правка владельца 2026-09-09):
+          общее число ачивок — это список того, чего у сообщества ещё
+          нет, и рядом с полученными медалями он читался как недобор.
+          Сколько их всего, мы не показываем вовсе. */}
+      <h2 className="section-heading mb-2">{s.title}</h2>
       {unlocked.length === 0 ? (
         // Пустой блок не прячем, в отличие от профиля: про личные ачивки
         // человек уже знает, а про сообщественные — нет, и молчащий

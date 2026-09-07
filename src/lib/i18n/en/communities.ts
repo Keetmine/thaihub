@@ -350,7 +350,6 @@ export const communities = {
      */
     achievements: {
         title: "Achievements",
-        progress: (n: number, total: number) => `${n} of ${total}`,
         emptyHint:
             "None yet — they come on their own: for the first meetup, the first members, a lively thread.",
     },
