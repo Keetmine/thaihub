@@ -157,6 +157,13 @@ export default function MdlImportSection() {
               </span>
             )}
           </p>
+          {/* Сколько отметок мы НЕ тронули: импорт не откатывает
+              прогресс назад, и человек должен видеть, что его отметки
+              целы (жалоба владельца 2026-09-07 — прежний импорт их
+              затирал). */}
+          {run.report.kept > 0 && (
+            <p className="small text-secondary mb-1">{s.doneKept(run.report.kept)}</p>
+          )}
           <p className="small mb-2">{s.doneNotFound(run.report.notFound.length)}</p>
           {run.report.notFound.length > 0 && (
             <>

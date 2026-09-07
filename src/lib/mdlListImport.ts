@@ -197,12 +197,25 @@ export type MdlListImportReport = {
   totalRows: number;
   /** Совпало с каталогом и записано. */
   matched: number;
+  /** У скольких мы ОСТАВИЛИ своё, потому что на сайте отмечено больше
+   *  (см. «Прогресс назад не откатываем» в runMdlListImport). */
+  kept: number;
   byStatus: Partial<Record<WatchStatus, number>>;
   /** Кого у нас нет — названия со ссылками на MDL. Эти же строки ушли
    *  заявками в MdlDramaRequest: владелец импортирует их из админки, и
    *  просившему допишется статус и придёт уведомление DRAMA_ADDED. */
   notFound: MdlListNotFoundRow[];
 };
+
+/** «Насколько далеко зашёл просмотр» — чтобы импорт не откатывал статус
+ *  назад. Отложено и заброшено стоят рядом со «смотрю»: это не шаг
+ *  вперёд и не шаг назад, а решение, и оно у MDL такое же свежее, как у
+ *  нас. А вот «просмотрено» → «буду смотреть» — всегда откат. */
+export function statusRank(status: WatchStatus): number {
+  if (status === "COMPLETED") return 2;
+  if (status === "PLAN_TO_WATCH") return 0;
+  return 1;
+}
 
 const PAGE_SIZE = 100;
 /** Потолок подгрузки на один статус: 30 страниц = 3000 тайтлов. Больше —
@@ -330,6 +343,7 @@ export async function runMdlListImport(
     nick,
     totalRows: 0,
     matched: 0,
+    kept: 0,
     byStatus: {},
     notFound: [],
   };
@@ -384,32 +398,57 @@ export async function runMdlListImport(
 
   const current = await prisma.dramaWatchStatus.findMany({
     where: { userId, dramaId: { in: [...writes.keys()] } },
-    select: { dramaId: true, status: true, rating: true },
+    select: { dramaId: true, status: true, rating: true, episodesWatched: true },
   });
   const currentStatus = new Map(current.map((c) => [c.dramaId, c.status]));
+  const currentSeen = new Map(current.map((c) => [c.dramaId, c.episodesWatched]));
   // Уже проставленную у нас оценку не трогаем: человек мог поменять её
   // здесь, и импорт не должен возвращать старую. А вот пустую
   // дозаполняем — за этим повторный прогон и запускают (АА2).
   const hasRating = new Set(current.filter((c) => c.rating != null).map((c) => c.dramaId));
 
   for (const w of writes.values()) {
-    const statusChanged = currentStatus.get(w.dramaId) !== w.status;
+    // ---------- прогресс назад не откатываем ----------
+    //
+    // Жалоба владельца 2026-09-07: отмечала серии у нас, потом
+    // перезапустила импорт — и он затёр отметки тем, что лежало на MDL.
+    // Так и было: импорт писал ровно то, что видел в списке.
+    //
+    // Просмотр идёт только вперёд, поэтому берём БОЛЬШЕЕ из двух чисел.
+    // Где отметили позже — мы не знаем (в списке MDL дат нет), а вот
+    // что человек досмотрел до максимума из двух — знаем наверняка.
+    // Пересмотр «с нуля» правило ломает, но это редкий случай и он
+    // чинится руками, а потеря отметок чинилась только их повторным
+    // проставлением.
+    const ourSeen = currentSeen.get(w.dramaId) ?? null;
+    const seen = w.episodesWatched != null && (ourSeen == null || w.episodesWatched > ourSeen)
+      ? w.episodesWatched
+      : null;
+    // Тем же правилом и статус: «Просмотрено» не понижаем до «Смотрю» и
+    // тем более до «Буду смотреть» — на MDL просто не отметили.
+    const ourStatus = currentStatus.get(w.dramaId) ?? null;
+    const status = ourStatus && statusRank(ourStatus) > statusRank(w.status) ? ourStatus : w.status;
+    if (status !== w.status || (w.episodesWatched != null && seen === null && ourSeen != null)) {
+      report.kept += 1;
+    }
+    const statusChanged = ourStatus !== status;
     await prisma.dramaWatchStatus.upsert({
       where: { userId_dramaId: { userId, dramaId: w.dramaId } },
       update: {
-        status: w.status,
+        status,
         // Прогресс без верхней границы не пишем: «иначе просто статус».
-        ...(w.episodesWatched != null ? { episodesWatched: w.episodesWatched } : {}),
+        // И только вперёд — см. выше.
+        ...(seen != null ? { episodesWatched: seen } : {}),
         ...(w.rating != null && !hasRating.has(w.dramaId) ? { rating: w.rating } : {}),
-        ...(statusChanged ? { notifyEpisodes: w.status === "WATCHING" } : {}),
+        ...(statusChanged ? { notifyEpisodes: status === "WATCHING" } : {}),
       },
       create: {
         userId,
         dramaId: w.dramaId,
-        status: w.status,
+        status,
         episodesWatched: w.episodesWatched,
         rating: w.rating,
-        notifyEpisodes: w.status === "WATCHING",
+        notifyEpisodes: status === "WATCHING",
       },
     });
   }

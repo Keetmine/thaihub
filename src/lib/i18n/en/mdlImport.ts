@@ -20,6 +20,8 @@ export const mdlImport = {
   queued: "Waiting in line — another import is running…",
   doneTitle: "Import finished",
   doneMatched: (n: number) => `Matched and saved: ${n}`,
+  doneKept: (n: number) =>
+    `Kept your marks for ${n}: this site had more progress than MyDramaList`,
   doneNotFound: (n: number) => `Not found: ${n}`,
   // Без обещаний сроков: заявки видит владелец и импортирует руками.
   notFoundIntro:
