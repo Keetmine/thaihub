@@ -2,11 +2,9 @@
 
 import { useId, useRef, useState } from "react";
 import Modal from "@/components/Modal";
-import ImageCropDialog from "@/components/ImageCropDialog";
-import UploadImage from "@/components/UploadImage";
+import FileDropzone from "@/components/FileDropzone";
 import { createCommunity } from "./actions";
 import { useT } from "@/components/LocaleProvider";
-import { uploadErrorMessage } from "@/lib/uploadErrors";
 import {
   COMMUNITY_COVER_RATIO_H,
   COMMUNITY_COVER_RATIO_W,
@@ -46,10 +44,6 @@ export default function CreateCommunityButton() {
   // достаётся только адрес скрытым полем — так же сделаны обложка в
   // управлении и картинка встречи. Сообщества ещё нет, писать адрес
   // некуда, поэтому он просто ждёт сабмита в состоянии.
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [isCoverBusy, setIsCoverBusy] = useState(false);
-  const [cropFile, setCropFile] = useState<File | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // Ссылок при создании может быть несколько, но ряды показываем по
   // мере надобности: пять пустых пар полей в окне выглядят как
@@ -77,36 +71,7 @@ export default function CreateCommunityButton() {
     setLinkRows((rows) => rows.filter((row) => row.key !== key));
   }
 
-  async function uploadCover(file: File) {
-    setError(null);
-    setIsCoverBusy(true);
-    try {
-      const body = new FormData();
-      body.set("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body });
-      const data = await res.json();
-      // Ручка отдаёт код ошибки, а не фразу — язык страницы ей недоступен.
-      if (!res.ok) {
-        setError(uploadErrorMessage(t, data, t.widgets.file.failed));
-        return;
-      }
-      setCoverUrl(data.url as string);
-    } catch {
-      setError(t.widgets.file.failed);
-    } finally {
-      setIsCoverBusy(false);
-    }
-  }
-
   async function handleSubmit(formData: FormData) {
-    // Картинка ещё едет — сообщество сохранилось бы без обложки и молча
-    // (та же ловушка, что у картинки встречи): в форме сейчас пустой
-    // coverUrl. Кнопка на это время отключена, но Enter в текстовом поле
-    // отправляет форму мимо неё.
-    if (isCoverBusy) {
-      setError(s.cover.wait);
-      return;
-    }
     setIsSaving(true);
     setError(null);
     try {
@@ -174,52 +139,20 @@ export default function CreateCommunityButton() {
               Выше кнопки «Создать» она остаётся с запасом: пока человек
               дописывает остальное, файл успевает уехать, и запрет сабмита
               на время загрузки никого не задерживает. */}
-          <div className="d-flex flex-column gap-2">
-            <h3 className="section-heading mb-0">{s.cover.title}</h3>
-            {coverUrl && (
-              <div className="community-cover" style={{ maxWidth: "18rem" }}>
-                <UploadImage src={coverUrl} alt="" sizes="18rem" />
-              </div>
-            )}
-            <p className="small text-secondary mb-0">{s.cover.hint}</p>
-            <div className="d-flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={isCoverBusy}
-                onClick={() => fileRef.current?.click()}
-              >
-                {isCoverBusy ? s.cover.uploading : coverUrl ? s.cover.replace : s.cover.upload}
-              </button>
-              {coverUrl && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm text-danger"
-                  disabled={isCoverBusy}
-                  onClick={() => setCoverUrl(null)}
-                >
-                  {s.cover.remove}
-                </button>
-              )}
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="d-none"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                // Сбрасываем поле: иначе повторный выбор ТОГО ЖЕ файла
-                // (отменил кадрирование — передумал) не поднимает change.
-                e.target.value = "";
-                if (file) {
-                  setError(null);
-                  setCropFile(file);
-                }
-              }}
-            />
-            <input type="hidden" name="coverUrl" value={coverUrl ?? ""} />
-          </div>
+          {/* Обычное поле загрузки, как во всех формах админки (правка
+              владельца 2026-09-09): своя кнопка «Добавить обложку» со
+              своей загрузкой была вторым видом у одной и той же вещи.
+              Заголовка и пояснения над рамкой тоже нет — что это
+              картинка, видно по самой рамке. Кадрируем квадратом, как
+              обложка и показывается. */}
+          <FileDropzone
+            name="coverUrl"
+            defaultValue=""
+            compact
+            crop
+            ratioW={COMMUNITY_COVER_RATIO_W}
+            ratioH={COMMUNITY_COVER_RATIO_H}
+          />
 
           <div className="d-flex flex-column gap-3">
             <fieldset>
@@ -355,28 +288,13 @@ export default function CreateCommunityButton() {
 
           {error && <p className="small text-danger mb-0">{error}</p>}
           <div>
-            <button type="submit" className="btn btn-primary" disabled={isSaving || isCoverBusy}>
+            <button type="submit" className="btn btn-primary" disabled={isSaving}>
               {s.create}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Окно кадрирования — СНАРУЖИ окна создания: два модальных окна
-          друг в друге закрываются одним Esc, и отмена кропа унесла бы с
-          собой всю форму. */}
-      {cropFile && (
-        <ImageCropDialog
-          file={cropFile}
-          ratioW={COMMUNITY_COVER_RATIO_W}
-          ratioH={COMMUNITY_COVER_RATIO_H}
-          onCancel={() => setCropFile(null)}
-          onDone={(cropped) => {
-            setCropFile(null);
-            uploadCover(cropped);
-          }}
-        />
-      )}
     </>
   );
 }

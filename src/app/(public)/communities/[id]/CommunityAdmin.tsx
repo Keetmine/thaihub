@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
+import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
-import ImageCropDialog from "@/components/ImageCropDialog";
-import UploadImage from "@/components/UploadImage";
 import { useT } from "@/components/LocaleProvider";
-import { uploadErrorMessage } from "@/lib/uploadErrors";
 import {
   addCommunityLink,
   deleteCommunity,
@@ -67,9 +65,8 @@ export default function CommunityAdmin({
   // предпросмотре и не понять, есть ли что убирать.
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
-  const [isCoverBusy, setIsCoverBusy] = useState(false);
-  const [cropFile, setCropFile] = useState<File | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  // Пока адрес обложки пишется в базу — блокировать нечего: сама
+  // загрузка файла живёт в дропзоне, а запись идёт мгновенно.
 
   useEffect(() => {
     if (!isOpen) return;
@@ -113,24 +110,15 @@ export default function CommunityAdmin({
     router.refresh();
   }
 
-  /** Кадрированный файл — на общую ручку загрузки, её адрес — в базу.
-   *  Порядок именно такой: пока обложка не записана, файл на диске
-   *  просто лежит сиротой, а вот запись адреса до загрузки дала бы
-   *  битую картинку на публичной странице. */
-  async function uploadCover(file: File) {
+  /** Адрес загруженной картинки — в базу. Файл на общую ручку уже
+   *  отправила дропзона; порядок именно такой: пока обложка не
+   *  записана, файл просто лежит на диске сиротой, а запись адреса до
+   *  загрузки дала бы битую картинку на публичной странице.
+   *  Пустая строка означает «убрали обложку». */
+  async function saveCover(url: string) {
     setCoverError(null);
-    setIsCoverBusy(true);
     try {
-      const body = new FormData();
-      body.set("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body });
-      const data = await res.json();
-      // Ручка отдаёт код ошибки, а не фразу — язык страницы ей недоступен.
-      if (!res.ok) {
-        setCoverError(uploadErrorMessage(t, data, t.widgets.file.failed));
-        return;
-      }
-      const saved = await setCommunityCover(communityId, data.url);
+      const saved = await setCommunityCover(communityId, url || null);
       if (!saved.ok) {
         setCoverError(saved.error);
         return;
@@ -139,24 +127,6 @@ export default function CommunityAdmin({
       router.refresh();
     } catch {
       setCoverError(t.widgets.file.failed);
-    } finally {
-      setIsCoverBusy(false);
-    }
-  }
-
-  async function removeCover() {
-    setCoverError(null);
-    setIsCoverBusy(true);
-    try {
-      const saved = await setCommunityCover(communityId, null);
-      if (!saved.ok) {
-        setCoverError(saved.error);
-        return;
-      }
-      setCoverUrl(null);
-      router.refresh();
-    } finally {
-      setIsCoverBusy(false);
     }
   }
 
@@ -215,51 +185,20 @@ export default function CommunityAdmin({
         <div className="d-flex flex-column gap-4">
           {/* Обложка — отдельным блоком, не полем формы: она уезжает на
               сервер сразу после кадрирования, а не по «Сохранить»
-              (см. coverActions.ts). */}
+              (см. coverActions.ts). Поле — общая дропзона, как во всех
+              формах админки (правка владельца 2026-09-09): своя кнопка
+              со своей загрузкой была вторым видом у одной и той же вещи.
+              Ни заголовка, ни пояснения над рамкой нет — что это
+              картинка, видно по самой рамке. */}
           <div className="d-flex flex-column gap-2">
-            <h3 className="section-heading mb-0">{s.cover.title}</h3>
-            {/* Предпросмотр уже квадратный, поэтому и уже: 18rem, взятые
-                под полосу 3:2, квадратом заняли бы в окне правки целый
-                экран телефона и отодвинули бы за него саму форму. */}
-            <div className="community-cover" style={{ maxWidth: "12rem" }}>
-              {coverUrl && <UploadImage src={coverUrl} alt="" sizes="12rem" />}
-            </div>
-            <p className="small text-secondary mb-0">{s.cover.hint}</p>
-            <div className="d-flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={isCoverBusy}
-                onClick={() => fileRef.current?.click()}
-              >
-                {isCoverBusy ? s.cover.uploading : coverUrl ? s.cover.replace : s.cover.upload}
-              </button>
-              {coverUrl && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm text-danger"
-                  disabled={isCoverBusy}
-                  onClick={removeCover}
-                >
-                  {s.cover.remove}
-                </button>
-              )}
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="d-none"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                // Сбрасываем поле: иначе повторный выбор ТОГО ЖЕ файла
-                // (отменил кадрирование — передумал) не поднимает change.
-                e.target.value = "";
-                if (file) {
-                  setCoverError(null);
-                  setCropFile(file);
-                }
-              }}
+            <FileDropzone
+              name="coverUrl"
+              defaultValue={coverUrl ?? ""}
+              compact
+              crop
+              ratioW={COMMUNITY_COVER_RATIO_W}
+              ratioH={COMMUNITY_COVER_RATIO_H}
+              onUrlChange={saveCover}
             />
             {coverError && <p className="small text-danger mb-0">{coverError}</p>}
           </div>
@@ -436,21 +375,6 @@ export default function CommunityAdmin({
         </div>
       </Modal>
 
-      {/* Окно кадрирования — СНАРУЖИ окна правки: два модальных окна
-          друг в друге закрываются одним Esc, и отмена кропа уносила бы
-          с собой всю форму. */}
-      {cropFile && (
-        <ImageCropDialog
-          file={cropFile}
-          ratioW={COMMUNITY_COVER_RATIO_W}
-          ratioH={COMMUNITY_COVER_RATIO_H}
-          onCancel={() => setCropFile(null)}
-          onDone={(cropped) => {
-            setCropFile(null);
-            uploadCover(cropped);
-          }}
-        />
-      )}
     </>
   );
 }

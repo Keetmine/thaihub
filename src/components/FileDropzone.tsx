@@ -24,14 +24,28 @@ export default function FileDropzone({
   // квадрат не нужен и лишний шаг только мешает, поэтому по умолчанию
   // выключено.
   crop = false,
+  ratioW,
+  ratioH,
+  onUrlChange,
 }: {
   name: string;
-  label: string;
+  /** Подпись над полем. Необязательна: у обложки сообщества и картинки
+   *  встречи её нет — рядом и так стоит заголовок блока, а вторая
+   *  надпись над рамкой только шумела (правка владельца 2026-09-09). */
+  label?: string;
   defaultValue?: string;
   accept?: string;
   endpoint?: string;
   compact?: boolean;
   crop?: boolean;
+  /** Пропорции рамки кадрирования, если стандартные 3:4 не подходят
+   *  (обложка сообщества — квадрат). */
+  ratioW?: number;
+  ratioH?: number;
+  /** Для мест, где картинка сохраняется СРАЗУ, а не вместе с формой
+   *  (обложка сообщества в окне правки уезжает своим экшеном). Пустая
+   *  строка означает «убрали». */
+  onUrlChange?: (url: string) => void;
 }) {
   const uid = useId();
   const t = useT();
@@ -67,6 +81,7 @@ export default function FileDropzone({
         return;
       }
       setUrl(data.url);
+      onUrlChange?.(data.url as string);
     } catch {
       setError(t.widgets.file.failed);
     } finally {
@@ -76,7 +91,11 @@ export default function FileDropzone({
 
   return (
     <div>
-      <label className="form-label d-block" htmlFor={`${uid}-input`}>{label}</label>
+      {label && (
+        <label className="form-label d-block" htmlFor={`${uid}-input`}>
+          {label}
+        </label>
+      )}
       <input id={`${uid}-input`} type="hidden" name={name} value={url} />
       <div
         className={`file-dropzone ${compact ? "file-dropzone-compact" : ""} ${isDragging ? "is-dragging" : ""}`}
@@ -110,6 +129,7 @@ export default function FileDropzone({
               onClick={(e) => {
                 e.stopPropagation();
                 setUrl("");
+                onUrlChange?.("");
               }}
             >
               {t.widgets.file.remove}
@@ -147,6 +167,8 @@ export default function FileDropzone({
       {cropFile && (
         <ImageCropDialog
           file={cropFile}
+          ratioW={ratioW}
+          ratioH={ratioH}
           onCancel={() => setCropFile(null)}
           onDone={(cropped) => {
             setCropFile(null);

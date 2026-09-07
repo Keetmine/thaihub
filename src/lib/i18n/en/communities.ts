@@ -64,17 +64,6 @@ export const communities = {
     deleteConfirm: "Delete this community? Members and links will be gone for good.",
 
     /** Обложка: грузится и снимается сразу, отдельно от формы правки. */
-    cover: {
-        title: "Cover",
-        hint: "A square picture — you can move and zoom it before saving.",
-        upload: "Add a cover",
-        replace: "Replace the cover",
-        remove: "Remove the cover",
-        uploading: "Uploading…",
-        // Нужна ровно затем, чтобы «Создать сообщество» во время загрузки
-        // не выглядело сломанной кнопкой: см. CreateCommunityButton.
-        wait: "The cover is still uploading — one moment",
-    },
 
     /** The page is open, but the inside is not — see communities.ts. */
     insideLockedTitle: "Members only",
@@ -138,13 +127,6 @@ export const communities = {
         past: "Past meetups",
 
         titleLabel: "What is happening",
-        posterLabel: "Meetup picture",
-        posterHint: "It shows up on the meetup card. Without it we draw the first letter of the name.",
-        posterUpload: "Add a picture",
-        posterReplace: "Replace the picture",
-        posterRemove: "Remove",
-        posterUploading: "Uploading…",
-        posterWait: "The picture is still uploading — one moment",
         titlePlaceholder: "Watching episode 5 together",
         dateLabel: "Date",
         timeLabel: "Time",

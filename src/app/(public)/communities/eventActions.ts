@@ -8,7 +8,6 @@ import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import {
-  MEETUP_ADDRESS_MAX,
   MEETUP_DESCRIPTION_MAX,
   MEETUP_TITLE_MAX,
   MEETUP_VENUE_MAX,
@@ -52,7 +51,11 @@ function readForm(formData: FormData): MeetupInput {
     date: str("date"),
     time: str("time"),
     venue: str("venue").slice(0, MEETUP_VENUE_MAX),
-    address: str("address").slice(0, MEETUP_ADDRESS_MAX),
+    // Отдельного поля адреса в форме больше нет (правка владельца
+    // 2026-09-09) — всё живёт в venue. Старые значения форма склеивает
+    // при правке, поэтому здесь адрес всегда пуст: колонку не трогаем
+    // ради встреч, которые ещё не правили.
+    address: "",
     description: str("description").slice(0, MEETUP_DESCRIPTION_MAX),
     dramaId: str("dramaId"),
     posterUrl: str("posterUrl"),

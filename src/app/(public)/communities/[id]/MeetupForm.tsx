@@ -1,15 +1,14 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
+import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
 import DatePickerInput from "@/components/DatePickerInput";
 import TimeInput from "@/components/TimeInput";
 import EntitySelect from "@/components/EntitySelect";
 import { useT } from "@/components/LocaleProvider";
-import UploadImage from "@/components/UploadImage";
-import { uploadErrorMessage } from "@/lib/uploadErrors";
 import { createMeetup, deleteMeetup, searchMeetupDramas, updateMeetup } from "../eventActions";
 
 export type MeetupFormValues = {
@@ -70,43 +69,11 @@ export default function MeetupForm({
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [posterKey, setPosterKey] = useState(0);
   // Картинка встречи: адрес держим в состоянии и отдаём форме скрытым
   // полем. Без картинки карточка рисует первую букву названия — как у
   // обычных событий, отдельного «нет постера» не нужно.
-  const [posterUrl, setPosterUrl] = useState<string | null>(meetup?.posterUrl ?? null);
-  const [posterBusy, setPosterBusy] = useState(false);
-  const posterInputRef = useRef<HTMLInputElement>(null);
-
-  async function pickPoster(file: File) {
-    setError(null);
-    setPosterBusy(true);
-    try {
-      const body = new FormData();
-      body.set("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body });
-      const data = await res.json();
-      // Ручка отдаёт код ошибки, а не фразу: языка страницы она не знает.
-      if (!res.ok) {
-        setError(uploadErrorMessage(t, data, t.widgets.file.failed));
-        return;
-      }
-      setPosterUrl(data.url as string);
-    } catch {
-      setError(t.widgets.file.failed);
-    } finally {
-      setPosterBusy(false);
-    }
-  }
-
   async function save(formData: FormData) {
-    // Картинка ещё едет — сохранять нельзя: в форме сейчас пустой
-    // posterUrl, и встреча записалась бы без картинки, ничего об этом
-    // не сказав. Кнопка на это время отключена, но Enter в текстовом
-    // поле отправляет форму мимо неё.
-    if (posterBusy) {
-      setError(s.posterWait);
-      return;
-    }
     setError(null);
     setIsSaving(true);
     try {
@@ -121,7 +88,10 @@ export default function MeetupForm({
       // Новая встреча заведена — чистим картинку за собой: форма создания
       // живёт в шапке вкладки и не размонтируется, и следующая встреча
       // уехала бы с картинкой предыдущей.
-      if (!meetup) setPosterUrl(null);
+      // Новую дропзону пересоздаём ключом: своё состояние она держит
+      // внутри, и без этого следующая встреча уехала бы с картинкой
+      // предыдущей (тот же приём у формы темы — см. PostForm).
+      if (!meetup) setPosterKey((n) => n + 1);
       router.refresh();
     } finally {
       setIsSaving(false);
@@ -178,59 +148,18 @@ export default function MeetupForm({
               закончиться — и запрет сабмита ниже никого не задерживает.
               Сам запрет остаётся: заполнить остальное можно и за секунду,
               а Enter отправляет форму мимо кнопки. */}
-          <div className="d-flex flex-column gap-2">
-            <span className="form-label small text-secondary mb-0">{s.posterLabel}</span>
-            {posterUrl && (
-              <div style={{ width: "8rem" }}>
-                <UploadImage src={posterUrl} alt="" sizes="8rem" />
-              </div>
-            )}
-            <div className="d-flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={posterBusy}
-                onClick={() => posterInputRef.current?.click()}
-              >
-                {posterBusy ? s.posterUploading : posterUrl ? s.posterReplace : s.posterUpload}
-              </button>
-              {posterUrl && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm text-danger"
-                  disabled={posterBusy}
-                  onClick={() => setPosterUrl(null)}
-                >
-                  {s.posterRemove}
-                </button>
-              )}
-            </div>
-            <input
-              ref={posterInputRef}
-              type="file"
-              accept="image/*"
-              className="d-none"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                // Сбрасываем поле: повторный выбор ТОГО ЖЕ файла иначе не
-                // поднимает change.
-                e.target.value = "";
-                if (file) void pickPoster(file);
-              }}
-            />
-            <input type="hidden" name="posterUrl" value={posterUrl ?? ""} />
-            {/* Пока файл едет — говорим об этом прямо у поля: кнопка
-                «Сохранить» теперь далеко внизу, и надписи на кнопке
-                загрузки мало. Ошибка при попытке сохранить раньше
-                времени всё равно придёт этой же фразой (см. save). */}
-            {posterBusy ? (
-              <p className="small text-secondary mb-0">{s.posterWait}</p>
-            ) : (
-              <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
-                {s.posterHint}
-              </p>
-            )}
-          </div>
+          {/* Обычное поле загрузки, как во всех формах админки (правка
+              владельца 2026-09-09): раньше тут была кнопка «Добавить
+              картинку» со своей загрузкой и своим заголовком над ней —
+              второй вид у одной и той же вещи. Заголовка нет: поле стоит
+              первым в форме встречи, и что это картинка, видно по самой
+              рамке. */}
+          <FileDropzone
+            key={posterKey}
+            name="posterUrl"
+            defaultValue={meetup?.posterUrl ?? ""}
+            compact
+          />
 
           <div className="row g-2">
             <div className="col-7">
@@ -257,32 +186,24 @@ export default function MeetupForm({
             </div>
           </div>
 
+          {/* Одно поле вместо «Где» и «Адрес» (правка владельца
+              2026-09-09: «чем они отличаются? оставим один Адрес»). Их и
+              правда было не различить: обе строки показывались рядом
+              через точку на странице встречи.
+              У встречи, заведённой ещё двумя полями, значения склеиваем
+              в одно — иначе адрес остался бы в базе, но правкой его было
+              бы не достать. */}
           <div>
             <label className="form-label small text-secondary" htmlFor={`${uid}-venue`}>
-              {s.venueLabel}
+              {s.addressLabel}
             </label>
             <input
               id={`${uid}-venue`}
               type="text"
               name="venue"
               required
-              maxLength={120}
-              defaultValue={meetup?.venue}
-              placeholder={s.venuePlaceholder}
-              className="form-control"
-            />
-          </div>
-
-          <div>
-            <label className="form-label small text-secondary" htmlFor={`${uid}-address`}>
-              {s.addressLabel}
-            </label>
-            <input
-              id={`${uid}-address`}
-              type="text"
-              name="address"
               maxLength={200}
-              defaultValue={meetup?.address ?? ""}
+              defaultValue={[meetup?.venue, meetup?.address].filter(Boolean).join(", ")}
               placeholder={s.addressPlaceholder}
               className="form-control"
             />
@@ -322,7 +243,7 @@ export default function MeetupForm({
             <button
               type="submit"
               className="btn btn-primary btn-sm"
-              disabled={isSaving || posterBusy}
+              disabled={isSaving}
             >
               {s.save}
             </button>

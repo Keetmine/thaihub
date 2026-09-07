@@ -23,7 +23,12 @@ import { communityAccess } from "@/lib/communities";
 /** Название встречи: «Смотрим 5 серию у Кати» — длиннее заголовка
  *  каталожного события не бывает. */
 export const MEETUP_TITLE_MAX = 120;
-export const MEETUP_VENUE_MAX = 120;
+/** Адрес встречи. 200, а не прежние 120: поле теперь одно на «Где» и
+ *  «Адрес» (правка владельца 2026-09-09), и в него влезает вся строка
+ *  целиком — «У Кати дома, Ленина 12, кв. 5». Колонка `address`
+ *  осталась в базе ради встреч, заведённых двумя полями: форма склеит
+ *  их при первой правке. */
+export const MEETUP_VENUE_MAX = 200;
 export const MEETUP_ADDRESS_MAX = 200;
 export const MEETUP_DESCRIPTION_MAX = 2000;
 
