@@ -7,7 +7,18 @@ import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import type { ActivityItem } from "@/lib/activityFeed";
 import type { ReactNode } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
-import { formatRating } from "@/components/StarRatingInput";
+
+/**
+ * Оценка числом: «8.5», но «9» без лишнего нуля.
+ *
+ * Своя копия, а не импорт `formatRating` из StarRatingInput: тот модуль
+ * помечен "use client", а этот список рисуется НА СЕРВЕРЕ — вызвать
+ * функцию клиентского модуля из серверного компонента нельзя, и Next
+ * ронял профиль целиком («Attempted to call formatRating() from the
+ * server»), стоило отзыву попасть в первую десятку ленты. Формат должен
+ * совпадать с тем, что показывают звёздочки.
+ */
+const ratingText = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 const TYPE_EMOJI: Record<ActivityItem["type"], string> = {
   watch: "📺",
@@ -88,7 +99,7 @@ export default function ActivityList({
             action = a.trip;
             break;
           case "review":
-            action = a.review(formatRating(item.rating));
+            action = a.review(ratingText(item.rating));
             break;
           case "achievement":
             action = a.achievement;

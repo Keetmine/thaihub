@@ -143,6 +143,9 @@ export const communities: Dict["communities"] = {
         posterReplace: "Заменить афишу",
         posterRemove: "Убрать",
         posterUploading: "Загружаем…",
+        // Фраза нужна ровно затем, чтобы «Сохранить» во время загрузки
+        // не выглядело сломанной кнопкой: см. MeetupForm.
+        posterWait: "Афиша ещё загружается — секунду",
         titlePlaceholder: "Смотрим пятую серию вместе",
         dateLabel: "Дата",
         timeLabel: "Время",

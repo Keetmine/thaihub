@@ -40,6 +40,16 @@ export type MeetupFormValues = {
  * так же сделана обложка сообщества (`CommunityAdmin`) — картинка
  * уезжает на общую ручку /api/upload, а в форме остаётся только её
  * адрес скрытым полем.
+ *
+ * Отсюда же и запрет сохранять, пока файл ещё едет (жалоба владельца
+ * 2026-09-08 «фото не загружается»): «Афиша» — последнее поле формы,
+ * кнопка «Сохранить» стоит прямо под ним, а фотография с телефона
+ * уезжает на сервер и переживает пережатие в WebP несколько секунд. Кто
+ * нажимал «Сохранить», не дожидаясь, отправлял форму с ПУСТЫМ
+ * `posterUrl` — встреча сохранялась без картинки и молча, без единой
+ * ошибки. Поэтому сабмит на время загрузки закрыт и кнопкой, и
+ * проверкой в самом обработчике (форму отправляет ещё и Enter в любом
+ * текстовом поле, мимо кнопки).
  */
 export default function MeetupForm({
   communityId,
@@ -87,6 +97,14 @@ export default function MeetupForm({
   }
 
   async function save(formData: FormData) {
+    // Афиша ещё едет — сохранять нельзя: в форме сейчас пустой
+    // posterUrl, и встреча записалась бы без картинки, ничего об этом
+    // не сказав. Кнопка на это время отключена, но Enter в текстовом
+    // поле отправляет форму мимо неё.
+    if (posterBusy) {
+      setError(s.posterWait);
+      return;
+    }
     setError(null);
     setIsSaving(true);
     try {
@@ -98,6 +116,10 @@ export default function MeetupForm({
         return;
       }
       setIsOpen(false);
+      // Новая встреча заведена — чистим афишу за собой: форма создания
+      // живёт в шапке вкладки и не размонтируется, и следующая встреча
+      // уехала бы с картинкой предыдущей.
+      if (!meetup) setPosterUrl(null);
       router.refresh();
     } finally {
       setIsSaving(false);
@@ -275,12 +297,20 @@ export default function MeetupForm({
               }}
             />
             <input type="hidden" name="posterUrl" value={posterUrl ?? ""} />
+            {/* Пока файл едет — говорим об этом прямо у поля, а не
+                только надписью на кнопке загрузки: человек в этот
+                момент смотрит на «Сохранить». */}
+            {posterBusy && <p className="small text-secondary mb-0">{s.posterWait}</p>}
           </div>
 
           {error && <p className="small text-danger mb-0">{error}</p>}
 
           <div className="d-flex flex-wrap gap-2 align-items-center">
-            <button type="submit" className="btn btn-primary btn-sm" disabled={isSaving}>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={isSaving || posterBusy}
+            >
               {s.save}
             </button>
             {meetup && canDelete && (

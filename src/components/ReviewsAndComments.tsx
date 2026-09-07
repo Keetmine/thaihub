@@ -1,6 +1,6 @@
 import Link from "@/components/AppLink";
 import { getT } from "@/lib/i18n";
-import { formatDateWithYear } from "@/lib/dates";
+import { endOfDay, formatDateWithYear } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -189,7 +189,7 @@ export default async function ReviewsAndComments({
     kind === "drama" ? { dramaId: id } : kind === "novel" ? { novelId: id } : { eventId: id };
   const currentUser = await getCurrentUser();
 
-  const [reviews, comments] = await Promise.all([
+  const [reviews, comments, eventFinished] = await Promise.all([
     prisma.review.findMany({
       // Приватность фильтруется в where, а не при отрисовке: чужой
       // приватный текст не должен попадать даже в HTML страницы.
@@ -219,6 +219,34 @@ export default async function ReviewsAndComments({
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
+    // Отзыв о событии можно оставить только ПОСЛЕ него (правка
+    // владельца 2026-09-08): «понравилось» о концерте, который ещё не
+    // состоялся, — это не отзыв. Комментарии остаются открытыми: перед
+    // событием как раз и договариваются, кто во сколько идёт.
+    //
+    // Прошедшим считаем событие, у которого закончилась ПОСЛЕДНЯЯ дата:
+    // у двухдневного фестиваля второй день ещё впереди, и «уже
+    // прошедшим» он не стал. Дата без времени кончается вместе с днём —
+    // startsAt у неё 00:00, и сравнение с «сейчас» объявило бы её
+    // прошедшей в первую же минуту суток.
+    kind === "event"
+      ? prisma.eventOccurrence
+          .findFirst({
+            where: { eventId: id },
+            orderBy: { startsAt: "desc" },
+            select: { startsAt: true, endsAt: true, hasTime: true },
+          })
+          .then((last) => {
+            if (!last) return false;
+            const finishedAt = last.hasTime
+              ? (last.endsAt ?? last.startsAt)
+              : endOfDay(last.startsAt);
+            // new Date(), а не Date.now(): правило react-hooks
+            // запрещает второй в рендере как нестабильный вызов (тот же
+            // обход, что в admin/errors/page.tsx).
+            return finishedAt.getTime() < new Date().getTime();
+          })
+      : Promise.resolve(true),
   ]);
 
   const ownReview = currentUser ? reviews.find((r) => r.user.id === currentUser.id) : undefined;
@@ -254,7 +282,11 @@ export default async function ReviewsAndComments({
           </h2>
         </div>
 
-        {currentUser ? (
+        {currentUser && !eventFinished ? (
+          // Событие ещё не прошло: вместо формы — строка почему.
+          // Молча прятать кнопку нельзя, человек решит, что сломалось.
+          <p className="small text-secondary mb-3">{t.reviews.eventNotFinished}</p>
+        ) : currentUser ? (
           <details className="mb-3">
             <summary className="btn btn-ghost btn-sm d-inline-flex">
               {ownReview ? t.reviews.editReview : t.reviews.writeReview}
@@ -412,12 +444,7 @@ export default async function ReviewsAndComments({
             {/* Фото — только под событием (см. photosAllowed выше).
                 Пикер грузит файл сразу при выборе и оставляет форме
                 скрытые photoUrl, поэтому форма остаётся серверной. */}
-            {photosAllowed(kind) && (
-              <div className="d-flex flex-column gap-1">
-                <CommentPhotoPicker />
-                <span className="small text-secondary">{t.reviews.photos.hint}</span>
-              </div>
-            )}
+            {photosAllowed(kind) && <CommentPhotoPicker />}
             <button type="submit" className="btn btn-primary btn-sm align-self-start">
               {t.reviews.send}
             </button>

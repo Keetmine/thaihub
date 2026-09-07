@@ -2,18 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
+import { ChevronDownIcon } from "@/components/icons";
 
+/** Порядок — как в ряду (решение владельца 2026-09-08), см. VALID_TABS. */
 export type ProfileTabKey =
   | "overview"
   | "stats"
-  | "reviews"
-  | "comments"
   | "dramas"
   | "events"
+  | "communities"
   | "trips"
   | "places"
-  | "communities"
-  | "tickets";
+  | "tickets"
+  | "reviews"
+  | "comments";
 
 /**
  * Правая колонка единого профиля: ряд вкладок + панели. Контент панелей
@@ -44,6 +47,14 @@ export type ProfileTabKey =
  * Прокручиваем строго scrollLeft самого ряда, а не scrollIntoView:
  * последний умеет утянуть за собой и страницу целиком.
  *
+ * Кнопки «влево/вправо» (правка владельца 2026-09-08: растушёвки мало,
+ * «хочу ещё и кнопки») висят на ТЕХ ЖЕ признаках has-more-*: второго
+ * механизма для «есть ли куда крутить» не заводим, иначе кнопка и
+ * растушёвка рано или поздно разойдутся. Каждая кнопка появляется только
+ * со своей стороны и только на устройстве с курсором (`@media (hover:
+ * hover)` в CSS): пальцем ряд листается и так, а кнопка там лишь
+ * отнимала бы место у подписей.
+ *
  * Вкладки — НАСТОЯЩИЕ ссылки на `?tab=…` (просьба владельца
  * 2026-09-06: «хочу скинуть ссылку на сериалы в профиле»). Обычный клик
  * мы перехватываем и правим адрес через history.pushState: страницу
@@ -61,6 +72,7 @@ export default function ProfileTabs({
   tabs: { key: ProfileTabKey; label: string; content: ReactNode }[];
 }) {
   const pathname = usePathname();
+  const t = useT();
   const firstKey = tabs[0]?.key ?? "overview";
   const validInitial = tabs.some((t) => t.key === initialTab) ? initialTab : firstKey;
   const [activeTab, setActiveTab] = useState<ProfileTabKey>(validInitial);
@@ -114,13 +126,35 @@ export default function ProfileTabs({
     bar.addEventListener("scroll", syncMore, { passive: true });
     // Ряд меняет ширину не только с окном: слева от него грид-колонка,
     // а внутри — подписи со счётчиками, которые дорисовываются позже.
+    // Наблюдаем и сам ряд, и каждую вкладку: ширина РЯДА от подгрузки
+    // шрифта не меняется (он растянут на колонку), а вот подписи в нём
+    // разъезжаются — и без наблюдения за ними «есть куда крутить»
+    // осталось бы посчитанным по неготовому тексту.
     const observer = new ResizeObserver(syncMore);
     observer.observe(bar);
+    for (const item of bar.children) observer.observe(item);
     return () => {
       bar.removeEventListener("scroll", syncMore);
       observer.disconnect();
     };
   }, [syncMore, tabs.length]);
+
+  // Кнопки прокрутки: шаг — почти целый экран ряда, но с запасом, чтобы
+  // крайняя вкладка осталась видна и было понятно, что это продолжение
+  // того же ряда, а не другой набор. Нижняя граница в 120px — на случай
+  // очень узкой колонки, где 70% ширины меньше одной вкладки.
+  const scrollByPage = useCallback((direction: -1 | 1) => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const step = Math.max(120, bar.clientWidth * 0.7);
+    // «Плавно» — только тем, кто не просил обратного: при
+    // prefers-reduced-motion уезжаем мгновенно (matchMedia, а не CSS:
+    // behavior задаётся в JS и в медиазапрос не попадает).
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    bar.scrollBy({ left: direction * step, behavior: reduced ? "auto" : "smooth" });
+  }, []);
 
   // Активная вкладка — в видимую часть ряда (см. п.2 в шапке файла).
   useEffect(() => {
@@ -166,6 +200,33 @@ export default function ProfileTabs({
             </a>
           ))}
         </div>
+
+        {/* Кнопки лежат ПОВЕРХ края ряда, а не в потоке слева и справа
+            от него: в потоке их появление и исчезновение дёргало бы
+            ширину самого ряда на каждой прокрутке. Перекрывать подписи
+            им нечего — под кнопкой ровно та полоса, которую маска и так
+            растушёвывает в ноль (её ширину под кнопку CSS увеличивает).
+            Обе — обычные <button>: фокус, Enter и пробел бесплатно. */}
+        {more.start && (
+          <button
+            type="button"
+            className="profile-tab-scroll profile-tab-scroll-start"
+            aria-label={t.social.profile.tabsScrollPrev}
+            onClick={() => scrollByPage(-1)}
+          >
+            <ChevronDownIcon />
+          </button>
+        )}
+        {more.end && (
+          <button
+            type="button"
+            className="profile-tab-scroll profile-tab-scroll-end"
+            aria-label={t.social.profile.tabsScrollNext}
+            onClick={() => scrollByPage(1)}
+          >
+            <ChevronDownIcon />
+          </button>
+        )}
       </div>
 
       {tabs.map((tab) => (

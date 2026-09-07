@@ -147,6 +147,7 @@ export const communities = {
         posterReplace: "Replace the cover",
         posterRemove: "Remove",
         posterUploading: "Uploading…",
+        posterWait: "The cover is still uploading — one moment",
         titlePlaceholder: "Watching episode 5 together",
         dateLabel: "Date",
         timeLabel: "Time",

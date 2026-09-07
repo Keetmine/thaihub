@@ -159,8 +159,12 @@ export default async function CommunityPostPage({
   const authorName = post.author.deletedAt ? t.common.deletedAccount : post.author.name;
   const canDelete = viewer.isAdmin || viewer.canManage || post.author.id === viewer.id;
 
+  // Без потолка ширины (правка владельца 2026-09-08: «поля во всю
+  // ширину»): у темы бывают картинки и длинные обсуждения, а колонка в
+  // 46rem держала форму вдвое уже страницы. Ширину задаёт общий
+  // контейнер страницы.
   return (
-    <div style={{ maxWidth: "46rem" }}>
+    <div>
       <BackLink
         fallbackHref={`${communityHref(post.community)}?tab=discussions`}
         fallbackLabel={post.community.title}

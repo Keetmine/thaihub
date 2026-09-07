@@ -1,6 +1,10 @@
 import { plural } from "@/lib/plural";
 import type { Dict } from "../en";
 
+/** Подпись вкладки профиля со счётчиком; ноль не показываем — см.
+ *  такой же помощник в en/social.ts. */
+const withCount = (label: string, n: number) => (n > 0 ? `${label} (${n})` : label);
+
 export const social: Dict["social"] = {
   friends: {
     metaTitle: "Друзья",
@@ -57,20 +61,25 @@ export const social: Dict["social"] = {
     metaBirthday: "Дата рождения",
 
     // Вкладки правой колонки единого профиля (свой и чужой).
+    // Счётчик в скобках — у всех вкладок, где есть что считать (правка
+    // владельца 2026-09-08): сколько чего лежит внутри, видно до
+    // открытия вкладки. Без счётчика остались «Обзор» (сводка, а не
+    // список) и «Статистика» (там числа и есть содержимое).
     tabs: {
       overview: "Обзор",
       stats: "Статистика",
-      reviews: "Отзывы",
-      comments: "Комментарии",
-      // Со счётчиком — как у билетов (правка владельца 2026-09-06):
-      // сколько сериалов в списке, видно до открытия вкладки.
-      dramas: (n: number) => `Сериалы (${n})`,
-      events: "События",
-      trips: "Поездки",
-      places: "Места и списки",
-      communities: "Сообщества",
-      tickets: (n: number) => `Билеты (${n})`,
+      reviews: (n: number) => withCount("Отзывы", n),
+      comments: (n: number) => withCount("Комментарии", n),
+      dramas: (n: number) => withCount("Сериалы", n),
+      events: (n: number) => withCount("События", n),
+      trips: (n: number) => withCount("Поездки", n),
+      places: (n: number) => withCount("Места и списки", n),
+      communities: (n: number) => withCount("Сообщества", n),
+      tickets: (n: number) => withCount("Билеты", n),
     },
+    // Кнопки прокрутки ряда вкладок (правка владельца 2026-09-08).
+    tabsScrollPrev: "Прокрутить вкладки влево",
+    tabsScrollNext: "Прокрутить вкладки вправо",
 
     // Заголовки левой колонки «Обзора» (лента ужалась вправо, слева —
     // содержательные блоки).

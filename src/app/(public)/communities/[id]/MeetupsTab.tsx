@@ -1,15 +1,13 @@
-import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
-import GoingButton from "@/components/GoingButton";
-import { CalendarIcon, PinIcon, TvIcon, UsersIcon } from "@/components/icons";
-import { dateKey, formatHumanDate, formatTime } from "@/lib/dates";
-import { dramaHref } from "@/lib/dramaSlug";
+import { dateKey, formatTime } from "@/lib/dates";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { getT } from "@/lib/i18n";
-import { getGoingOccurrenceIds } from "@/lib/favorites";
+import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { canEditMeetup, communityRights } from "@/lib/meetups";
 import { prisma } from "@/lib/prisma";
+import type { EventWithPerformers } from "@/lib/types";
 import { getCurrentUser } from "@/lib/userAuth";
+import MeetupCard from "./MeetupCard";
 import MeetupForm, { type MeetupFormValues } from "./MeetupForm";
 
 /**
@@ -23,6 +21,11 @@ import MeetupForm, { type MeetupFormValues } from "./MeetupForm";
  * Вкладка целиком живёт за `access.canSeeInside` (см. page.tsx): за
  * встречей стоит чей-то домашний адрес, и постороннему его тут не
  * показывают, даже если он знает ссылку на сообщество.
+ *
+ * Рисуют встречи ТЕ ЖЕ карточки, что и афишу (`MeetupCard` → общий
+ * `EventCard`) — просьба владельца 2026-09-08. Отсюда и форма данных:
+ * карточке нужен `EventWithPerformers`, то есть плоская строка
+ * «событие + одна дата», какую в афише собирает `flattenOccurrence`.
  */
 export default async function MeetupsTab({
   communityId,
@@ -50,20 +53,29 @@ export default async function MeetupsTab({
     communityRights(communityId, viewer?.id),
   ]);
 
-  const goingIds = await getGoingOccurrenceIds(
-    meetups.flatMap((m) => m.occurrences.map((o) => o.id)),
-    viewer?.id,
-  );
+  // Избранное и «иду» — теми же общими выборками, что кормят афишу:
+  // карточка одна, и состояние её кнопок должно считаться одинаково.
+  const [goingIds, favoritedIds] = await Promise.all([
+    getGoingOccurrenceIds(
+      meetups.flatMap((m) => m.occurrences.map((o) => o.id)),
+      viewer?.id,
+    ),
+    getFavoritedEventIds(
+      meetups.map((m) => m.id),
+      viewer?.id,
+    ),
+  ]);
 
   const now = new Date();
   const rows = meetups
-    .map((m) => {
+    // Дата у встречи ровно одна: её заводит `createMeetup` вместе с
+    // событием, а `updateMeetup` правит ту же строку (см.
+    // eventActions.ts). Строки без даты не бывает — но карточке афиши
+    // нечего было бы показать в блоке дня, поэтому проверка явная.
+    .flatMap((m) => {
       const occurrence = m.occurrences[0];
-      return {
-        meetup: m,
-        occurrence,
-        startsAt: occurrence?.startsAt ?? m.createdAt,
-      };
+      if (!occurrence) return [];
+      return [{ meetup: m, occurrence, startsAt: occurrence.startsAt }];
     })
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
   const upcoming = rows.filter((r) => r.startsAt >= now);
@@ -84,74 +96,40 @@ export default async function MeetupsTab({
       // Дата и время в форму уходят строками, посчитанными на сервере:
       // в браузере зрителя своя зона, и «19:00» уехало бы на несколько
       // часов (то же правило, что в личных событиях поездки).
-      dateKey: occurrence ? dateKey(occurrence.startsAt) : "",
-      timeValue: occurrence?.hasTime ? formatTime(occurrence.startsAt) : "",
+      dateKey: dateKey(occurrence.startsAt),
+      timeValue: occurrence.hasTime ? formatTime(occurrence.startsAt) : "",
       drama: m.drama ? { id: m.drama.id, name: dramaTitleForLocale(m.drama, locale) } : null,
     };
+    // Ровно та же плоская строка, что везёт афиша (см.
+    // flattenOccurrence). Состав пустой — на домашней встрече артистов
+    // не бывает; сообщество пустое намеренно: чип с его названием на
+    // странице этого же сообщества повторял бы шапку.
+    const event: EventWithPerformers = {
+      id: m.id,
+      occurrenceId: occurrence.id,
+      title: m.title,
+      slug: m.slug,
+      venue: m.venue,
+      description: m.description,
+      posterUrl: m.posterUrl,
+      startsAt: occurrence.startsAt,
+      hasTime: occurrence.hasTime,
+      endsAt: occurrence.endsAt,
+      performers: [],
+      community: null,
+    };
     return (
-      <div key={m.id} className="surface p-3 d-flex flex-column gap-2">
-        <div className="d-flex flex-wrap align-items-start justify-content-between gap-2">
-          <h3 className="h6 font-display mb-0">
-            <AppLink href={`/event/${m.id}`} className="text-reset text-decoration-none">
-              {m.title}
-            </AppLink>
-          </h3>
-          <div className="d-flex align-items-center gap-2">
-            {occurrence && (
-              <GoingButton
-                occurrenceId={occurrence.id}
-                isGoing={goingIds.has(occurrence.id)}
-                isPast={row.startsAt < now}
-                variant="icon"
-              />
-            )}
-            {canEditMeetup(m, viewer?.id, rights) && (
-              <MeetupForm communityId={communityId} meetup={values} canDelete />
-            )}
-          </div>
-        </div>
-
-        <p className="small text-secondary mb-0 d-flex flex-wrap gap-3">
-          <span>
-            <CalendarIcon className="icon-inline" />{" "}
-            <span className="text-capitalize">{formatHumanDate(row.startsAt, locale)}</span>
-            {occurrence?.hasTime && ` · ${formatTime(occurrence.startsAt)}`}
-          </span>
-          <span>
-            <PinIcon className="icon-inline" /> {m.venue}
-            {m.address && ` · ${m.address}`}
-          </span>
-          {m._count.attendees > 0 && (
-            <span>
-              <UsersIcon className="icon-inline" /> {s.goingCount(m._count.attendees)}
-            </span>
-          )}
-          {m.drama && (
-            <span>
-              <TvIcon className="icon-inline" />{" "}
-              <AppLink href={dramaHref(m.drama)} className="link-body-emphasis">
-                {dramaTitleForLocale(m.drama, locale)}
-              </AppLink>
-            </span>
-          )}
-        </p>
-
-        {m.description && (
-          <p className="small mb-0" style={{ whiteSpace: "pre-line" }}>
-            {m.description}
-          </p>
-        )}
-
-        <p className="small text-secondary mb-0 d-flex flex-wrap align-items-center gap-2">
-          {/* Видимость видна всем участникам, а не только автору: по
-              открытой встрече люди должны понимать, что адрес уехал в
-              общую афишу. */}
-          {m.createdBy?.name && <span>{s.author(m.createdBy.name)}</span>}
-          <AppLink href={`/event/${m.id}`} className="link-body-emphasis">
-            {s.openPage} →
-          </AppLink>
-        </p>
-      </div>
+      <MeetupCard
+        key={m.id}
+        communityId={communityId}
+        event={event}
+        values={values}
+        isFavorited={favoritedIds.has(m.id)}
+        isGoing={goingIds.has(occurrence.id)}
+        authorName={m.createdBy?.name ?? null}
+        goingCount={m._count.attendees}
+        canEdit={canEditMeetup(m, viewer?.id, rights)}
+      />
     );
   };
 

@@ -219,11 +219,22 @@ body {
    поджато сильнее; если добавится восьмой пункт, поджимать дальше
    будет некуда — придётся прятать часть в «ещё». */
 @media (min-width: 992px) and (max-width: 1399.98px) {
+  /* Замерено (вошедший админ, /dramas): на 1280 содержимому шапки нужно
+     ~1148px при доступных 1115 — не хватало ~35, и ряд уходил во
+     вторую строку на ВСЕХ ширинах до 1400. Прошлая попытка мерила
+     гостем: у него нет ни «Поездок», ни половины иконок справа, и
+     проблема не воспроизводилась (жалоба владельца 2026-09-08,
+     повторно). */
   .pill-nav .nav-link {
-    padding: 0.4rem 0.62rem;
+    padding: 0.35rem 0.45rem;
+    font-size: 0.88rem;
   }
 
-  .pill-nav .search-box {
+  /* Поиск в шапке — это .search-palette-trigger (SearchOverlay), а не
+     .search-box: прежние правила поджимали и прятали чужой класс и не
+     делали ничего. Из-за этого ниже 1200 висели ОБА — поле на 115px и
+     иконка-замена рядом. */
+  .pill-nav .search-palette-trigger {
     max-width: 9rem;
   }
 }
@@ -238,10 +249,13 @@ body {
 @media (min-width: 992px) and (max-width: 1199.98px) {
   .pill-nav .nav-link {
     font-size: 0.85rem;
-    padding: 0.35rem 0.4rem;
+    /* Замерено на вошедшем админе: при 935px ширины шапки содержимому
+       не хватало ~16px. Дальше поджимать некуда — следующим шагом
+       придётся прятать часть пунктов под «ещё». */
+    padding: 0.35rem 0.26rem;
   }
 
-  .pill-nav .search-box {
+  .pill-nav .search-palette-trigger {
     display: none;
   }
 
@@ -6077,6 +6091,8 @@ body::after {
    горизонтально, а не заворачивается в три строки. */
 .profile-tab-row {
   flex-wrap: nowrap;
+  /* Якорь для кнопок прокрутки: они висят поверх краёв ряда (ниже). */
+  position: relative;
 }
 
 .profile-tab-row .tab-bar {
@@ -6134,6 +6150,93 @@ body::after {
    прокрутки нужен нижний просвет, иначе она обрезается. */
 .profile-tab-row .tab-bar-item {
   overflow: visible;
+}
+
+/* ---------- Кнопки прокрутки ряда вкладок ---------- */
+/* Правка владельца 2026-09-08: одной растушёвки края мало, «хочу ещё и
+   кнопки влево-вправо». Появление кнопки решает ProfileTabs по тем же
+   признакам has-more-*, что и растушёвку (второго механизма нет); здесь
+   решается только «на каком устройстве».
+
+   А устройство — с курсором. На тач-экране ряд листается пальцем, это
+   очевидно и без кнопок, зато кружок поверх края отнимал бы у подписей
+   самое дефицитное место — ширину на телефоне. */
+.profile-tab-scroll {
+  display: none;
+}
+
+@media (hover: hover) {
+  .profile-tab-scroll {
+    position: absolute;
+    top: 50%;
+    /* Вертикально по центру ряда, но выше линии-подчёркивания вкладок. */
+    transform: translateY(-50%);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--bs-border-color);
+    /* Полупрозрачная подложка с размытием, а не глухая заливка: под
+       кнопкой лежит ambient-wash с цветными пятнами, и непрозрачный
+       кружок «цветом body» читался бы на нём заплаткой — та же причина,
+       по которой край растушёван маской, а не залит. */
+    background: rgba(18, 18, 22, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .profile-tab-scroll:hover {
+    color: #fff;
+    border-color: var(--bs-primary);
+    background: rgba(18, 18, 22, 0.9);
+  }
+
+  .profile-tab-scroll:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+    color: #fff;
+  }
+
+  /* Стрелки — тот же шеврон, что и в остальном интерфейсе, повёрнутый:
+     заводить две иконки ради двух углов незачем. */
+  .profile-tab-scroll-start {
+    left: 0;
+  }
+
+  .profile-tab-scroll-start svg {
+    transform: rotate(90deg);
+  }
+
+  .profile-tab-scroll-end {
+    right: 0;
+  }
+
+  .profile-tab-scroll-end svg {
+    transform: rotate(-90deg);
+  }
+
+  /* Под кнопкой растушёвка шире обычной (2.25rem → 3.5rem): подпись
+     успевает уйти в прозрачность ДО того, как окажется под кружком, —
+     кнопка ничего читаемого не перекрывает. */
+  .profile-tab-row .tab-bar.has-more-start {
+    --tab-fade-start: 3.5rem;
+  }
+
+  .profile-tab-row .tab-bar.has-more-end {
+    --tab-fade-end: 3.5rem;
+  }
 }
 
 /* Строка ленты «Последние обновления»: иконка в круге, название-ссылка,

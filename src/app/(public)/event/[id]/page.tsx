@@ -29,6 +29,7 @@ import { communityHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { getCommunityPeersGoing, type CommunityPeerGoing } from "@/lib/favorites";
 import { userDisplayName, userHref } from "@/lib/userProfile";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import MeetupPoster from "@/app/(public)/communities/[id]/MeetupPoster";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
 import EventPhotoGallery from "./EventPhotoGallery";
 import GoingDateChips from "./GoingDateChips";
@@ -449,17 +450,14 @@ export default async function EventDetailPage({
       </div>
 
       <div className="d-flex flex-column flex-sm-row gap-4 mb-3">
-        {event.posterUrl && (
+        {/* У ВСТРЕЧИ колонка постера есть всегда: с картинкой — картинка,
+            без неё — фон с первой буквой названия (просьба владельца
+            2026-09-08). У каталожного события заглушки нет намеренно:
+            там пустой постер — это дырка в данных, которую заполнит
+            админка, а не осознанный выбор автора. */}
+        {(event.posterUrl || isMeetup) && (
           <div className="flex-shrink-0 d-flex flex-column gap-2" style={{ width: "15rem" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              loading="eager"
-              decoding="async"
-              src={event.posterUrl}
-              alt={event.title}
-              className="rounded-4 w-100"
-              style={{ aspectRatio: "3 / 4", objectFit: "cover" }}
-            />
+            <MeetupPoster title={event.title} posterUrl={event.posterUrl} />
             {event.presaleUrl && (
               <a
                 href={event.presaleUrl}
@@ -669,8 +667,14 @@ export default async function EventDetailPage({
       <EventPhotoGallery photos={event.photos.map((p) => ({ id: p.id, url: p.url }))} />
 
       {/* Э2ф: билеты — сразу под датами, состав — фото-сеткой ниже,
-          описание и отзывы в конце. */}
-      <TicketSection rows={ticketRows} />
+          описание и отзывы в конце.
+
+          На встрече сообщества блока «Мои билеты» нет вовсе (просьба
+          владельца 2026-09-08): это посиделки у кого-то дома, а не
+          концерт — билета туда не существует, и прикреплять к отметке
+          «иду» нечего. Пустая секция звала бы человека искать то, чего
+          нет. */}
+      {!isMeetup && <TicketSection rows={ticketRows} />}
 
       {/* Без подписки на месте личных блоков (иду / мои билеты / друзья
           / заметки / напоминание о препродаже) — объяснение, что они

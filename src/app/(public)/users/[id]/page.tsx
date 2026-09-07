@@ -84,17 +84,20 @@ export async function generateMetadata({
   });
 }
 
+// Порядок — как в ряду вкладок (решение владельца 2026-09-08); сам
+// список нужен только для проверки ?tab=, но держать его в том же
+// порядке дешевле, чем потом гадать, почему они разошлись.
 const VALID_TABS: ProfileTabKey[] = [
   "overview",
   "stats",
-  "reviews",
-  "comments",
   "dramas",
   "events",
+  "communities",
   "trips",
   "places",
-  "communities",
   "tickets",
+  "reviews",
+  "comments",
 ];
 
 /** Название страны на языке страницы: коды в базе, подписи из Intl —
@@ -242,6 +245,7 @@ export default async function UserProfilePage({
     visitedPlaces,
     reviewRows,
     commentRows,
+    commentCount,
   ] = await Promise.all([
     // «Иду»: себе — полный список для вкладки «События», зрителю — только
     // для блока будущих событий и счётчика.
@@ -346,6 +350,12 @@ export default async function UserProfilePage({
           },
         })
       : [],
+    // Счётчик в подписи вкладки «Комментарии» (правка владельца
+    // 2026-09-08). Отдельный count, а не длина строк выше: те срезаны
+    // потолком take: 30, и у активного комментатора подпись врала бы.
+    // Отзывам такой запрос не нужен — они выбираются без потолка, у них
+    // счётчик берётся из длины уже полученного массива.
+    showActivity ? prisma.comment.count({ where: { userId: user.id } }) : 0,
   ]);
 
   const now = new Date();
@@ -419,6 +429,11 @@ export default async function UserProfilePage({
   let selfEventsPanel: React.ReactNode = null;
   let ticketsPanel: React.ReactNode = null;
   let ticketsCount = 0;
+  // Счётчик в подписи вкладки «События» для СВОЕГО профиля: столько
+  // строк лежит во всех под-табах вместе (иду по датам + избранные
+  // события). Считается из уже выбранных массивов — лишних запросов
+  // вкладке не нужно.
+  let selfEventsCount = 0;
   if (isSelf) {
     const favoriteEventRows = await prisma.favoriteEvent.findMany({
       // Та же причина, что у «иду» выше: вкладка событий — про афишу.
@@ -439,6 +454,11 @@ export default async function UserProfilePage({
         extraDates: f.event.occurrences.length - 1,
       }))
       .sort((x, y) => x.row.startsAt.getTime() - y.row.startsAt.getTime());
+
+    // Считаем ДО платного гейта: у бесплатного владельца списки не
+    // рендерятся, но своё количество он видеть должен — это его данные,
+    // и число как раз объясняет, за что предлагается подписка.
+    selfEventsCount = attendanceRows.length + favoriteEvents.length;
 
     const allRows = [...attendanceRows, ...favoriteEvents.map((f) => f.row)];
     const [favoritedEventIds, goingOccurrenceIds] = await Promise.all([
@@ -521,7 +541,7 @@ export default async function UserProfilePage({
       <div>
         {eventsLocked && <p className="small text-secondary mb-3">{t.account.events.locked}</p>}
         {eventSubTabs.length > 0 && (
-          <SubTabs tabs={eventSubTabs} ariaLabel={p.tabs.events} />
+          <SubTabs tabs={eventSubTabs} ariaLabel={p.tabs.events(selfEventsCount)} />
         )}
         {!eventsLocked && eventSubTabs.length === 0 && (
           <EmptyState
@@ -824,28 +844,10 @@ export default async function UserProfilePage({
       });
     }
 
-    tabs.push({
-      key: "reviews",
-      label: p.tabs.reviews,
-      content: <ReviewsTab reviews={reviews} viewer={!isSelf} />,
-    });
-
-    // Комментарии публичны — вкладку видит и зритель; гейт только
-    // мастер-выключатель hideProfileActivity (мы внутри showActivity).
-    tabs.push({
-      key: "comments",
-      label: p.tabs.comments,
-      content: (
-        <CommentsTab
-          comments={comments}
-          t={t}
-          locale={locale}
-          isSelf={isSelf}
-          ownerName={displayName}
-        />
-      ),
-    });
-
+    // Порядок вкладок дальше — решение владельца (2026-09-08): сначала
+    // «что человек смотрит и куда ходит» (сериалы, события, сообщества,
+    // поездки, места, билеты), а «Отзывы» и «Комментарии» — в самый
+    // конец: это отклик на чужие записи, а не свой каталог.
     tabs.push({
       key: "dramas",
       // Счётчик в подписи вкладки — как у билетов (правка владельца).
@@ -859,7 +861,10 @@ export default async function UserProfilePage({
 
     tabs.push({
       key: "events",
-      label: p.tabs.events,
+      // Себе — все отметки вкладки (иду + избранное), зрителю — ровно
+      // то, что ему покажут: будущие «иду». Оба числа уже посчитаны из
+      // выбранных строк, отдельных запросов вкладке не нужно.
+      label: p.tabs.events(isSelf ? selfEventsCount : upcomingGoing.length),
       content: isSelf ? (
         selfEventsPanel
       ) : (
@@ -884,9 +889,30 @@ export default async function UserProfilePage({
       ),
     });
 
+    // Сообщества — сразу после событий (решение владельца 2026-09-08).
+    // Вкладка есть всегда (как «Места и списки»): пустая она у зрителя
+    // выглядит ровно так же, как у человека без сообществ, — и по ней
+    // нельзя догадаться, что закрытые всё-таки есть. По той же причине
+    // счётчик считает ровно показанные строки: у зрителя в myCommunities
+    // закрытых сообществ нет, и число их не выдаёт.
+    tabs.push({
+      key: "communities",
+      label: p.tabs.communities(myCommunities.length),
+      content: (
+        <CommunitiesTab
+          communities={myCommunities}
+          isSelf={isSelf}
+          ownerName={displayName}
+          t={t}
+        />
+      ),
+    });
+
     tabs.push({
       key: "trips",
-      label: p.tabs.trips,
+      // Поездки уже выбраны с учётом видимости — длина массива и есть
+      // то, что зритель увидит внутри.
+      label: p.tabs.trips(trips.length),
       content: (
         <div>
           {trips.length === 0 ? (
@@ -933,7 +959,11 @@ export default async function UserProfilePage({
 
     tabs.push({
       key: "places",
-      label: p.tabs.places,
+      // Считаем СПИСКИ (места + артисты), а посещённые места — нет:
+      // они срезаны потолком take: 24, и счётчик у человека с сотней
+      // отметок обещал бы больше, чем показывают чипсы. Списки же
+      // выбраны целиком и с учётом видимости.
+      label: p.tabs.places(placeLists.length + artistLists.length),
       content: (
         <div>
           {placeLists.length === 0 && artistLists.length === 0 && visitedPlaces.length === 0 ? (
@@ -1035,25 +1065,36 @@ export default async function UserProfilePage({
       ),
     });
 
-    // Вкладка есть всегда (как «Места и списки»): пустая она у зрителя
-    // выглядит ровно так же, как у человека без сообществ, — и по ней
-    // нельзя догадаться, что закрытые всё-таки есть.
-    tabs.push({
-      key: "communities",
-      label: p.tabs.communities,
-      content: (
-        <CommunitiesTab
-          communities={myCommunities}
-          isSelf={isSelf}
-          ownerName={displayName}
-          t={t}
-        />
-      ),
-    });
-
     if (isSelf && ticketsCount > 0 && ticketsPanel) {
       tabs.push({ key: "tickets", label: p.tabs.tickets(ticketsCount), content: ticketsPanel });
     }
+
+    // «Отзывы» и «Комментарии» — в конце ряда (решение владельца
+    // 2026-09-08).
+    tabs.push({
+      key: "reviews",
+      // reviews — уже отфильтрованный массив (осиротевшие отзывы без
+      // записи выброшены), поэтому считаем по нему, а не по reviewRows:
+      // счётчик обязан совпадать с числом строк во вкладке.
+      label: p.tabs.reviews(reviews.length),
+      content: <ReviewsTab reviews={reviews} viewer={!isSelf} />,
+    });
+
+    // Комментарии публичны — вкладку видит и зритель; гейт только
+    // мастер-выключатель hideProfileActivity (мы внутри showActivity).
+    tabs.push({
+      key: "comments",
+      label: p.tabs.comments(commentCount),
+      content: (
+        <CommentsTab
+          comments={comments}
+          t={t}
+          locale={locale}
+          isSelf={isSelf}
+          ownerName={displayName}
+        />
+      ),
+    });
   }
 
   // Сохранённые ссылки вида /account?tab=… приезжают сюда редиректом с

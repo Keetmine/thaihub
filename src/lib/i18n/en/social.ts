@@ -2,6 +2,17 @@
  * Друзья и публичный профиль другого пользователя. Названия ачивок сюда
  * не попадают — они данные из базы; здесь только интерфейс вокруг них.
  */
+
+/**
+ * Подпись вкладки профиля со счётчиком в скобках (правка владельца
+ * 2026-09-08: «в табах профиля тоже выводить в скобках количество, где у
+ * нас сколько чего»). Ноль НЕ показываем: пустые скобки у вкладки, в
+ * которой ничего нет, только шумят — вкладка и так откроется пустым
+ * состоянием. Помощник один на все вкладки, чтобы скобки, пробел и
+ * правило нуля не расползались по десяти строкам словаря.
+ */
+const withCount = (label: string, n: number) => (n > 0 ? `${label} (${n})` : label);
+
 export const social = {
   friends: {
     metaTitle: "Friends",
@@ -57,19 +68,24 @@ export const social = {
     metaBirthday: "Birthday",
 
     // Вкладки правой колонки единого профиля (свой и чужой).
+    // Счётчик в скобках — у всех вкладок, где есть что считать (правка
+    // владельца 2026-09-08). Без счётчика остались «Обзор» (сводка, а не
+    // список) и «Статистика» (там числа и есть содержимое).
     tabs: {
       overview: "Overview",
       stats: "Statistics",
-      reviews: "Reviews",
-      comments: "Comments",
-      // Со счётчиком — как у билетов (правка владельца 2026-09-06).
-      dramas: (n: number) => `Series (${n})`,
-      events: "Events",
-      trips: "Trips",
-      places: "Places & lists",
-      communities: "Communities",
-      tickets: (n: number) => `Tickets (${n})`,
+      reviews: (n: number) => withCount("Reviews", n),
+      comments: (n: number) => withCount("Comments", n),
+      dramas: (n: number) => withCount("Series", n),
+      events: (n: number) => withCount("Events", n),
+      trips: (n: number) => withCount("Trips", n),
+      places: (n: number) => withCount("Places & lists", n),
+      communities: (n: number) => withCount("Communities", n),
+      tickets: (n: number) => withCount("Tickets", n),
     },
+    // Кнопки прокрутки ряда вкладок (правка владельца 2026-09-08).
+    tabsScrollPrev: "Scroll tabs left",
+    tabsScrollNext: "Scroll tabs right",
 
     // Заголовки левой колонки «Обзора» (лента ужалась вправо, слева —
     // содержательные блоки).

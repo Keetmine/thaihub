@@ -191,13 +191,26 @@ export default async function DramasPage({
   // статуса на время поиска сбрасывается на «Все». Раньше запрос и
   // вкладка комбинировались, и поиск «внутри вкладки» выглядел как
   // сломанный (нашлось 0, хотя сериал в каталоге есть).
-  const status =
-    !q && WATCH_STATUS_ORDER.includes(rawStatus as DramaWatchStatusValue)
-      ? (rawStatus as DramaWatchStatusValue)
-      : null;
-
   const { t, locale } = await getT();
   const currentUser = await getCurrentUser();
+
+  // Вкладка по умолчанию — «Смотрю сейчас» (правка владельца
+  // 2026-09-08): в каталог заходят продолжить начатое, а не листать
+  // тысячи записей. «Все» стали отдельным адресом `?status=all` —
+  // без параметра теперь не «всё подряд», а именно смотримое.
+  //
+  // Гостю умолчание не подходит: своих отметок у него нет, и вкладка
+  // встретила бы его пустотой — ему по-прежнему открывается «Все».
+  // Поиск тоже всегда идёт по всему каталогу (Ж5): вкладка на время
+  // поиска сбрасывается, иначе «нашлось 0» при живом сериале в базе.
+  const status =
+    q || rawStatus === "all"
+      ? null
+      : WATCH_STATUS_ORDER.includes(rawStatus as DramaWatchStatusValue)
+        ? (rawStatus as DramaWatchStatusValue)
+        : currentUser
+          ? "WATCHING"
+          : null;
 
   // The catalog has grown into the thousands of dramas — loading and
   // rendering all of them by default made the page painfully slow.
@@ -367,13 +380,10 @@ export default async function DramasPage({
 
       <div className="tab-bar-row">
         <div className="tab-bar">
-          <AppLink
-            href={`/dramas?${q ? `q=${encodeURIComponent(q)}` : ""}`}
-            prefetch={false}
-            className={`tab-bar-item ${!status ? "active" : ""}`}
-          >
-            {t.catalog.all}
-          </AppLink>
+          {/* Статусы идут первыми, «Все» — последней справа (правка
+              владельца 2026-09-08): каталог открывается на «Смотрю
+              сейчас», и полный список стал не отправной точкой, а
+              соседней вкладкой. */}
           {currentUser && WATCH_STATUS_ORDER.map((s) => (
             <AppLink
               key={s}
@@ -384,6 +394,13 @@ export default async function DramasPage({
               {t.catalog.watchStatus[s]}
             </AppLink>
           ))}
+          <AppLink
+            href={`/dramas?status=all${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            prefetch={false}
+            className={`tab-bar-item ${!status ? "active" : ""}`}
+          >
+            {t.catalog.all}
+          </AppLink>
         </div>
         {/* И10: из каталога сериалов в их расписание раньше было не
             попасть — иконка ведёт на вкладку «Сериалы» календаря.
