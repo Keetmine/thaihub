@@ -152,7 +152,6 @@ export const communities: Dict["communities"] = {
         titlePlaceholder: "Смотрим пятую серию вместе",
         dateLabel: "Дата",
         timeLabel: "Время",
-        timeHint: "Пока время не назначено — оставьте пустым.",
         venueLabel: "Где",
         venuePlaceholder: "У Кати дома",
         addressLabel: "Адрес",

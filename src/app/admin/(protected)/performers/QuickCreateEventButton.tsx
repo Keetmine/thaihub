@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/Modal";
+import TimeInput from "@/components/TimeInput";
 import type { EntityOption } from "@/components/EntityMultiSelect";
 import { createEventMinimal } from "../events/actions";
 import DatePickerInput from "@/components/DatePickerInput";
@@ -68,7 +69,7 @@ export default function QuickCreateEventButton({
             </div>
             <div className="col-6">
               <label className="form-label" htmlFor="quick-create-event-button-startTime">Начало *</label>
-              <input id="quick-create-event-button-startTime" type="time" name="startTime" required className="form-control" />
+              <TimeInput id="quick-create-event-button-startTime" name="startTime" required />
             </div>
           </div>
           {error && <p className="small text-danger mb-0">{error}</p>}

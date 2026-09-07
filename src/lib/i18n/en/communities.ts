@@ -148,7 +148,6 @@ export const communities = {
         titlePlaceholder: "Watching episode 5 together",
         dateLabel: "Date",
         timeLabel: "Time",
-        timeHint: "Leave empty while the time is not settled.",
         venueLabel: "Where",
         venuePlaceholder: "At Katya's place",
         addressLabel: "Address",

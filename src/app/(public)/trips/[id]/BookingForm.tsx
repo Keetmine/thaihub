@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import FileDropzone from "@/components/FileDropzone";
+import TimeInput from "@/components/TimeInput";
 import DatePickerInput from "@/components/DatePickerInput";
 import { saveTripBooking } from "../actions";
 import { useT } from "@/components/LocaleProvider";
@@ -87,14 +88,11 @@ export default function BookingForm({
       </div>
       <div style={{ width: "6.4rem" }}>
         <label className="form-label small text-secondary" htmlFor={`${uid}-input`}>{t.trips.bookings.time}</label>
-        <input id={`${uid}-input`}
-          type="time"
+        <TimeInput
+          id={`${uid}-input`}
           name={side === "start" ? "startTime" : "endTime"}
-          // Нули вместо пустоты: пустое поле времени браузер рисует
-          // призрачным «12:30» (правка владельца 2026-09-09), а «00:00»
-          // на сервере значит «время не назначено».
-          defaultValue={(side === "start" ? booking?.startTime : booking?.endTime) ?? "00:00"}
-          aria-label={timeAria}
+          defaultValue={(side === "start" ? booking?.startTime : booking?.endTime) ?? ""}
+          ariaLabel={timeAria}
           className="form-control form-control-sm"
         />
       </div>

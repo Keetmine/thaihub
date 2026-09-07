@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClockIcon, PencilIcon, TicketIcon, TrashIcon } from "@/components/icons";
+import TimeInput from "@/components/TimeInput";
 import { useT } from "@/components/LocaleProvider";
 import DatePickerInput from "@/components/DatePickerInput";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
@@ -181,11 +182,7 @@ function OnlineBookingLine({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [date, setDate] = useState(booking?.date ?? "");
-  // Нули вместо пустоты: пустое поле времени браузер рисует призрачным
-  // «12:30» (правка владельца 2026-09-09). Сервер понимает «00:00» как
-  // «время не назначено» (optionalFormTime), а тут его всё равно
-  // спрашивают вместе с датой — обе половины проверяются парой.
-  const [time, setTime] = useState(booking?.time ?? "00:00");
+  const [time, setTime] = useState(booking?.time ?? "");
   const [url, setUrl] = useState(booking?.url ?? "");
 
   function openForm() {
@@ -292,12 +289,11 @@ function OnlineBookingLine({
             <label className="form-label small mb-1" htmlFor={fieldId("time")}>
               {ob.time}
             </label>
-            <input
+            <TimeInput
               id={fieldId("time")}
-              type="time"
               className="form-control form-control-sm"
               value={time}
-              onChange={(e) => setTime(e.target.value)}
+              onValueChange={setTime}
             />
           </div>
           <div className="col-12 col-sm-4">

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
+import TimeInput from "@/components/TimeInput";
 import EntitySelect, { OpenEntityLink } from "@/components/EntitySelect";
 import LetterAvatar from "@/components/LetterAvatar";
 import FormSection from "@/components/admin/FormSection";
@@ -47,17 +48,7 @@ export type OccurrenceRow = {
   lineup: LineupRow[];
 };
 
-// Время нулями, а не пустым (правка владельца 2026-09-09): пустое поле
-// браузер рисует призрачным «12:30», которого в форме нет, и правка
-// такого «значения» кончалась ошибкой про дату. «00:00» на сервере
-// значит «время не назначено» — см. optionalFormTime в lib/dates.ts.
-const EMPTY_OCCURRENCE: OccurrenceRow = {
-  id: "",
-  date: "",
-  startTime: "00:00",
-  endTime: "00:00",
-  lineup: [],
-};
+const EMPTY_OCCURRENCE: OccurrenceRow = { id: "", date: "", startTime: "", endTime: "", lineup: [] };
 
 export default function EventForm({
   action,
@@ -124,14 +115,7 @@ export default function EventForm({
   // pair. At least one row always stays present.
   const [occurrences, setOccurrences] = useState<OccurrenceRow[]>(
     v?.occurrences && v.occurrences.length > 0
-      ? // У события без времени в базе пусто — в поле подставляем нули,
-        // иначе браузер снова покажет призрачное «12:30» вместо
-        // пустоты. Смысл тот же: «00:00» = время не назначено.
-        v.occurrences.map((o) => ({
-          ...o,
-          startTime: o.startTime || "00:00",
-          endTime: o.endTime || "00:00",
-        }))
+      ? v.occurrences
       : [EMPTY_OCCURRENCE],
   );
 
@@ -303,22 +287,23 @@ export default function EventForm({
               </div>
               <div className="col-5 col-sm-3">
                 {i === 0 && <label className="form-label small text-secondary" htmlFor="event-form-occurrenceStartTime">Начало</label>}
-                <input id="event-form-occurrenceStartTime"
-                  type="time"
+                {/* Своё поле, а не type="time" (правка владельца
+                    2026-09-09): нативное пустое поле браузер рисовал
+                    подписью «12:30», которой в форме не было. */}
+                <TimeInput
+                  id="event-form-occurrenceStartTime"
                   name="occurrenceStartTime"
                   value={o.startTime}
-                  onChange={(e) => updateOccurrence(i, { startTime: e.target.value })}
-                  className="form-control"
+                  onValueChange={(startTime) => updateOccurrence(i, { startTime })}
                 />
               </div>
               <div className="col-5 col-sm-3">
                 {i === 0 && <label className="form-label small text-secondary" htmlFor="event-form-occurrenceEndTime">Конец</label>}
-                <input id="event-form-occurrenceEndTime"
-                  type="time"
+                <TimeInput
+                  id="event-form-occurrenceEndTime"
                   name="occurrenceEndTime"
                   value={o.endTime}
-                  onChange={(e) => updateOccurrence(i, { endTime: e.target.value })}
-                  className="form-control"
+                  onValueChange={(endTime) => updateOccurrence(i, { endTime })}
                 />
               </div>
               <div className="col-2 col-sm-2">
@@ -516,11 +501,10 @@ export default function EventForm({
             </div>
             <div className="col-12 col-sm-4">
               <label className="form-label" htmlFor="event-form-presaleTime">Время препродажи</label>
-              <input id="event-form-presaleTime"
-                type="time"
+              <TimeInput
+                id="event-form-presaleTime"
                 name="presaleTime"
-                defaultValue={v?.presaleTime || "00:00"}
-                className="form-control"
+                defaultValue={v?.presaleTime ?? ""}
               />
             </div>
             <div className="col-12 col-sm-4">

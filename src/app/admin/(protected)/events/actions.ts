@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { catalogEventsWhere } from "@/lib/catalogEvents";
 import type { Prisma } from "@/generated/prisma/client";
-import { combineDateTime, optionalFormTime } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
 
@@ -32,9 +32,9 @@ function getPresaleAt(formData: FormData): Date | null {
 
   const presaleDate = String(formData.get("presaleDate") ?? "");
   const presaleTime = String(formData.get("presaleTime") ?? "");
-  // «00:00» — это умолчание поля, то есть «время не указали», а не
-  // полночь (см. optionalFormTime): препродажи без часа не бывает.
-  const time = optionalFormTime(presaleTime);
+  // Время приводим к «ЧЧ:ММ» (см. normalizeTimeValue); пустое — значит
+  // часа не назвали, а препродажи без часа не бывает.
+  const time = normalizeTimeValue(presaleTime);
   if (!presaleDate || !time) return null;
 
   return combineDateTime(presaleDate, time);
@@ -196,11 +196,11 @@ export async function createEvent(formData: FormData) {
       presaleUrl,
       occurrences: {
         create: occurrences.map((o) => ({
-          startsAt: combineDateTime(o.date, optionalFormTime(o.startTime) ?? "00:00"),
-          endsAt: optionalFormTime(o.endTime)
-            ? combineDateTime(o.date, optionalFormTime(o.endTime)!)
+          startsAt: combineDateTime(o.date, normalizeTimeValue(o.startTime) ?? "00:00"),
+          endsAt: normalizeTimeValue(o.endTime)
+            ? combineDateTime(o.date, normalizeTimeValue(o.endTime)!)
             : null,
-          hasTime: Boolean(optionalFormTime(o.startTime)),
+          hasTime: Boolean(normalizeTimeValue(o.startTime)),
           lineup: {
             create: o.lineup.map((l) => ({
               performerId: l.performerId,
@@ -248,10 +248,10 @@ async function syncOccurrences(
   const keptIds = new Set<string>();
 
   for (const o of occurrences) {
-    const startsAt = combineDateTime(o.date, optionalFormTime(o.startTime) ?? "00:00");
-    const endTime = optionalFormTime(o.endTime);
+    const startsAt = combineDateTime(o.date, normalizeTimeValue(o.startTime) ?? "00:00");
+    const endTime = normalizeTimeValue(o.endTime);
     const endsAt = endTime ? combineDateTime(o.date, endTime) : null;
-    const hasTime = Boolean(optionalFormTime(o.startTime));
+    const hasTime = Boolean(normalizeTimeValue(o.startTime));
     if (o.id) {
       await tx.eventOccurrence.update({
         where: { id: o.id },

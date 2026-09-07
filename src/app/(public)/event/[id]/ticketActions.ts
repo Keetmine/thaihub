@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { privateUploadsDir } from "@/lib/privateUploads";
 import { canAttachPrivateFile } from "@/lib/privateFiles";
 import { getT } from "@/lib/i18n";
-import { combineDateTime, optionalFormTime } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action (см. promoActions.ts). */
@@ -109,10 +109,10 @@ export async function setTicketOnlineBooking(
   const { t } = await getT();
   const date = input.date.trim();
   // Время разбираем ПЕРВЫМ делом: «00:00» — это умолчание поля, то есть
-  // «время не назначено» (см. optionalFormTime), и парную проверку
+  // «время не назначено» (см. normalizeTimeValue), и парную проверку
   // «дата без времени» оно проходить не должно — иначе бронь по одной
   // ссылке, без даты, перестала бы сохраняться.
-  const time = optionalFormTime(input.time);
+  const time = normalizeTimeValue(input.time);
   if ((date && !time) || (!date && time)) {
     return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
   }

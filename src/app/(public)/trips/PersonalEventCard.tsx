@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition } from "react";
 import Modal from "@/components/Modal";
+import TimeInput from "@/components/TimeInput";
 import DatePickerInput from "@/components/DatePickerInput";
 import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -102,12 +103,7 @@ export function PersonalEventFields({
         </div>
         <div className="col-5">
           <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>{t.trips.personal.time}</label>
-          <input id={`${uid}-time`}
-            type="time"
-            name="time"
-            defaultValue={defaults?.timeValue ?? "00:00"}
-            className="form-control"
-          />
+          <TimeInput id={`${uid}-time`} name="time" defaultValue={defaults?.timeValue ?? ""} />
         </div>
       </div>
       <LocationPickerField defaultLocation={defaults?.location} />

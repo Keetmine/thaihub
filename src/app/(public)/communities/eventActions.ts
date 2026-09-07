@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
-import { combineDateTime, optionalFormTime } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import {
   MEETUP_ADDRESS_MAX,
@@ -68,9 +68,9 @@ async function validate(input: MeetupInput) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { ok: false as const, error: s.dateRequired };
   // Время приводим к «ЧЧ:ММ», а не требуем его в таком виде: половина
   // введённого («12» без минут) — это тоже время, а не повод ронять
-  // форму. «00:00» здесь значит «не назначено» — так устроено умолчание
-  // поля, см. optionalFormTime.
-  const time = optionalFormTime(input.time);
+  // форму (см. normalizeTimeValue). Пустое поле — законное «время не
+  // назначено».
+  const time = normalizeTimeValue(input.time);
   // Время не указано — startsAt хранит 00:00 при hasTime=false (иначе
   // полночь неотличима от «время не назначено», см. схему).
   return {

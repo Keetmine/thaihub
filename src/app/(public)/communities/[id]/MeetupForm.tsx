@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import ConfirmForm from "@/components/ConfirmForm";
 import DatePickerInput from "@/components/DatePickerInput";
+import TimeInput from "@/components/TimeInput";
 import EntitySelect from "@/components/EntitySelect";
 import { useT } from "@/components/LocaleProvider";
 import UploadImage from "@/components/UploadImage";
@@ -247,21 +248,12 @@ export default function MeetupForm({
               <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>
                 {s.timeLabel}
               </label>
-              <input
-                id={`${uid}-time`}
-                type="time"
-                name="time"
-                // Нулями по умолчанию (правка владельца 2026-09-09):
-                // пустое поле браузер рисует призрачным «12:30», которого
-                // в форме нет, и правка такого «значения» кончалась
-                // ошибкой. «00:00» на сервере значит «время не назначено»
-                // (см. optionalFormTime).
-                defaultValue={meetup?.timeValue ?? "00:00"}
-                className="form-control"
-              />
-              <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
-                {s.timeHint}
-              </p>
+              {/* Своё поле, а не type="time" (правка владельца
+                  2026-09-09): нативное пустое поле браузер рисовал как
+                  «12:30», и стереть эту подпись было нельзя. Подписи
+                  «оставьте пустым» тут тоже нет — пустое поле и так
+                  выглядит пустым. */}
+              <TimeInput id={`${uid}-time`} name="time" defaultValue={meetup?.timeValue ?? ""} />
             </div>
           </div>
 

@@ -23,8 +23,22 @@ const CODED_SLUG_MODELS: Record<string, string> = {
   Trip: "title",
   PlaceList: "title",
   PerformerList: "title",
-  // Сообщества: названия у людей повторяются («Лакорны Беларусь» заведут
-  // трижды), а нумерация -2/-3 выдавала бы, сколько всего таких уже есть.
+};
+
+/**
+ * Сообщества: чистый адрес, пока имя свободно, и суффикс — только при
+ * совпадении (правка владельца 2026-09-09: «а почему в ссылке в конце
+ * ttbc?»).
+ *
+ * Поездки и списки остаются с кодом всегда: их заводят десятками и
+ * названия там повторяются постоянно. Сообщество — вещь публичная, его
+ * адресом делятся и его же читают глазами, а тёзок у него единицы.
+ * Нумерации -2/-3 при совпадении не даём по-прежнему: она выдавала бы,
+ * сколько таких сообществ уже есть.
+ *
+ * Адреса УЖЕ созданных сообществ не трогаем: по ним ходят ссылки.
+ */
+const FREE_SLUG_MODELS: Record<string, string> = {
   Community: "title",
 };
 
@@ -96,6 +110,33 @@ async function uniqueCatalogSlug(
   return `${baseSlug}-${shortCode()}`;
 }
 
+/** Чистый слаг, если он свободен, иначе — с коротким кодом. */
+async function freeSlug(model: string, title: string): Promise<string> {
+  const baseSlug = slugify(title);
+  // Название только на тайском/эмодзи — базы нет вовсе, остаётся код.
+  if (!baseSlug) return `p-${shortCode()}${shortCode()}`;
+  const delegate = (base as unknown as Record<
+    string,
+    { findFirst: (q: object) => Promise<unknown> }
+  >)[model.charAt(0).toLowerCase() + model.slice(1)];
+  const taken = await delegate.findFirst({ where: { slug: baseSlug }, select: { slug: true } });
+  return taken ? `${baseSlug}-${shortCode()}` : baseSlug;
+}
+
+/**
+ * Занят ли слаг — проверка перед вставкой и сама вставка идут разными
+ * запросами, так что двое, заводящие тёзок одновременно, могут
+ * договориться об одном и том же чистом адресе. Ошибку уникальности в
+ * этом случае не показываем человеку: второму просто достаётся адрес с
+ * кодом.
+ */
+function isSlugConflict(e: unknown): boolean {
+  const err = e as { code?: string; meta?: { target?: unknown } };
+  if (err?.code !== "P2002") return false;
+  const target = err.meta?.target;
+  return Array.isArray(target) ? target.includes("slug") : String(target ?? "").includes("slug");
+}
+
 function codedSlug(title: string): string | null {
   const baseSlug = slugify(title);
   return baseSlug ? `${baseSlug}-${shortCode()}` : `p-${shortCode()}${shortCode()}`;
@@ -119,6 +160,19 @@ export const prisma = base.$extends({
             );
           } else if (codedField && typeof a.data[codedField] === "string") {
             a.data.slug = codedSlug(a.data[codedField] as string);
+          } else if (
+            FREE_SLUG_MODELS[model] &&
+            typeof a.data[FREE_SLUG_MODELS[model]] === "string"
+          ) {
+            const title = a.data[FREE_SLUG_MODELS[model]] as string;
+            a.data.slug = await freeSlug(model, title);
+            try {
+              return await query(args);
+            } catch (e) {
+              if (!isSlugConflict(e)) throw e;
+              a.data.slug = codedSlug(title);
+              return query(args);
+            }
           }
         }
         return query(args);
@@ -138,6 +192,11 @@ export const prisma = base.$extends({
             );
           } else if (codedField && typeof a.create[codedField] === "string") {
             a.create.slug = codedSlug(a.create[codedField] as string);
+          } else if (
+            FREE_SLUG_MODELS[model] &&
+            typeof a.create[FREE_SLUG_MODELS[model]] === "string"
+          ) {
+            a.create.slug = await freeSlug(model, a.create[FREE_SLUG_MODELS[model]] as string);
           }
         }
         return query(args);

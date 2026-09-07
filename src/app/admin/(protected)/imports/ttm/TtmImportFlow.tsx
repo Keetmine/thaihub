@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect, { type EntityOption } from "@/components/EntitySelect";
+import TimeInput from "@/components/TimeInput";
 import { searchPerformerOptions } from "../../performers/actions";
 import { searchDramaOptions } from "../../dramas/actions";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
@@ -189,17 +190,16 @@ export default function TtmImportFlow({
         </div>
         <div className="col-6 col-sm-4">
           <label className="form-label" htmlFor="ttm-import-flow-startTime">Начало *</label>
-          <input id="ttm-import-flow-startTime"
-            type="time"
+          <TimeInput
+            id="ttm-import-flow-startTime"
             name="startTime"
             required
             defaultValue={preview.startTime}
-            className="form-control"
           />
         </div>
         <div className="col-6 col-sm-4">
           <label className="form-label" htmlFor="ttm-import-flow-endTime">Конец</label>
-          <input id="ttm-import-flow-endTime" type="time" name="endTime" className="form-control" />
+          <TimeInput id="ttm-import-flow-endTime" name="endTime" />
         </div>
       </div>
 
@@ -281,11 +281,10 @@ export default function TtmImportFlow({
             </div>
             <div className="col-12 col-sm-4">
               <label className="form-label" htmlFor="ttm-import-flow-presaleTime">Время</label>
-              <input id="ttm-import-flow-presaleTime"
-                type="time"
+              <TimeInput
+                id="ttm-import-flow-presaleTime"
                 name="presaleTime"
                 defaultValue={preview.presaleTime}
-                className="form-control"
               />
             </div>
             <div className="col-12 col-sm-4">
