@@ -193,8 +193,9 @@ export default function CommunityAdmin({
           <div className="d-flex flex-column gap-2">
             <FileDropzone
               name="coverUrl"
+              label={s.coverLabel}
               defaultValue={coverUrl ?? ""}
-              compact
+              wide
               crop
               ratioW={COMMUNITY_COVER_RATIO_W}
               ratioH={COMMUNITY_COVER_RATIO_H}

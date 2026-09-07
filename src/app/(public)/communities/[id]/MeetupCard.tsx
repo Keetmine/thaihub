@@ -44,26 +44,43 @@ export default async function MeetupCard({
 }) {
   const { t } = await getT();
   const s = t.communities.meetups;
-  const hasFooter = canEdit || !!authorName || goingCount > 0;
+  // Всё это стоит ВНУТРИ карточки (правка владельца 2026-09-09): и
+  // «Позвал(а) X · идут: N», и правка. Раньше строка висела под
+  // карточкой отдельным рядом и читалась как чужой текст рядом с ней, а
+  // «Изменить» подписанной кнопкой перетягивало на себя внимание с
+  // самой встречи.
+  const meta =
+    authorName || goingCount > 0 ? (
+      <>
+        {authorName && <span>{s.author(authorName)}</span>}
+        {goingCount > 0 && (
+          <span>
+            <UsersIcon className="icon-inline" /> {s.goingCount(goingCount)}
+          </span>
+        )}
+      </>
+    ) : null;
 
   return (
-    <div className="d-flex flex-column gap-1">
-      <EventCard
-        event={event}
-        isFavorited={isFavorited}
-        isGoing={isGoing}
-      />
-      {hasFooter && (
-        <div className="small text-secondary d-flex flex-wrap align-items-center gap-3 ps-1">
-          {authorName && <span>{s.author(authorName)}</span>}
-          {goingCount > 0 && (
-            <span>
-              <UsersIcon className="icon-inline" /> {s.goingCount(goingCount)}
-            </span>
-          )}
-          {canEdit && <MeetupForm communityId={communityId} meetup={values} canDelete />}
-        </div>
-      )}
-    </div>
+    <EventCard
+      event={event}
+      isFavorited={isFavorited}
+      isGoing={isGoing}
+      meta={meta}
+      // Карандаш — слева от сердечка, в общем ряду значков карточки.
+      // Удаление сюда не переехало: значок корзины рядом с сердечком
+      // слишком легко нажать мимо, а встречу это уносит насовсем —
+      // «Удалить» осталось внутри окна правки.
+      actions={
+        canEdit ? (
+          <MeetupForm
+            communityId={communityId}
+            meetup={values}
+            canDelete
+            compact
+          />
+        ) : undefined
+      }
+    />
   );
 }

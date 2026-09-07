@@ -13,6 +13,7 @@ export const communities = {
     descriptionLabel: "About the community",
     descriptionPlaceholder: "Who it is for and what happens inside.",
 
+    coverLabel: "Cover",
     visibilityLabel: "Who can find it",
     visibility: {
         PUBLIC: "Anyone",
@@ -127,6 +128,7 @@ export const communities = {
         past: "Past meetups",
 
         titleLabel: "What is happening",
+        posterLabel: "Meetup picture",
         titlePlaceholder: "Watching episode 5 together",
         dateLabel: "Date",
         timeLabel: "Time",

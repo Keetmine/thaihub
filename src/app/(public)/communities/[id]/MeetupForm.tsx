@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
+import { PencilIcon } from "@/components/icons";
 import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
 import DatePickerInput from "@/components/DatePickerInput";
@@ -56,11 +57,17 @@ export default function MeetupForm({
   communityId,
   meetup,
   canDelete = false,
+  compact = false,
 }: {
   communityId: string;
   /** Есть — правим эту встречу, нет — заводим новую. */
   meetup?: MeetupFormValues;
   canDelete?: boolean;
+  /** Иконка-карандаш вместо подписанной кнопки — для угла карточки в
+   *  списке встреч (правка владельца 2026-09-09). Ровно тот же приём и
+   *  та же причина, что у правки темы обсуждения (`PostEditForm`): в
+   *  ряду значков подпись была бы единственным словом. */
+  compact?: boolean;
 }) {
   const uid = useId();
   const t = useT();
@@ -110,13 +117,25 @@ export default function MeetupForm({
 
   return (
     <>
-      <button
-        type="button"
-        className={meetup ? "btn btn-ghost btn-sm" : "btn btn-primary btn-sm"}
-        onClick={() => setIsOpen(true)}
-      >
-        {meetup ? t.communities.edit : s.create}
-      </button>
+      {compact ? (
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={t.communities.edit}
+          data-tooltip={t.communities.edit}
+          onClick={() => setIsOpen(true)}
+        >
+          <PencilIcon />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className={meetup ? "btn btn-ghost btn-sm" : "btn btn-primary btn-sm"}
+          onClick={() => setIsOpen(true)}
+        >
+          {meetup ? t.communities.edit : s.create}
+        </button>
+      )}
 
       <Modal
         open={isOpen}
@@ -150,15 +169,16 @@ export default function MeetupForm({
               а Enter отправляет форму мимо кнопки. */}
           {/* Обычное поле загрузки, как во всех формах админки (правка
               владельца 2026-09-09): раньше тут была кнопка «Добавить
-              картинку» со своей загрузкой и своим заголовком над ней —
-              второй вид у одной и той же вещи. Заголовка нет: поле стоит
-              первым в форме встречи, и что это картинка, видно по самой
-              рамке. */}
+              картинку» со своей загрузкой — второй вид у одной и той же
+              вещи. Подпись владелец попросила вернуть: поле стоит первым
+              в форме, и без неё непонятно, картинка чего это. Рамка —
+              полосой во всю ширину и низкая: окно узкое. */}
           <FileDropzone
             key={posterKey}
             name="posterUrl"
+            label={s.posterLabel}
             defaultValue={meetup?.posterUrl ?? ""}
-            compact
+            wide
           />
 
           <div className="row g-2">

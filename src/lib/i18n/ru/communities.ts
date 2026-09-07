@@ -17,6 +17,7 @@ export const communities: Dict["communities"] = {
     descriptionLabel: "О сообществе",
     descriptionPlaceholder: "Для кого оно и что внутри происходит.",
 
+    coverLabel: "Обложка",
     visibilityLabel: "Кто может найти",
     visibility: {
         PUBLIC: "Все",
@@ -125,6 +126,7 @@ export const communities: Dict["communities"] = {
         past: "Прошедшие встречи",
 
         titleLabel: "Что происходит",
+        posterLabel: "Картинка встречи",
         titlePlaceholder: "Смотрим пятую серию вместе",
         dateLabel: "Дата",
         timeLabel: "Время",

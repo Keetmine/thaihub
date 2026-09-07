@@ -24,6 +24,7 @@ export default function FileDropzone({
   // квадрат не нужен и лишний шаг только мешает, поэтому по умолчанию
   // выключено.
   crop = false,
+  wide = false,
   ratioW,
   ratioH,
   onUrlChange,
@@ -38,6 +39,9 @@ export default function FileDropzone({
   endpoint?: string;
   compact?: boolean;
   crop?: boolean;
+  /** Полоса во всю ширину и низкая — для узких окон форм сообщества и
+   *  встречи, где высокий бокс 3:4 съедает полэкрана. */
+  wide?: boolean;
   /** Пропорции рамки кадрирования, если стандартные 3:4 не подходят
    *  (обложка сообщества — квадрат). */
   ratioW?: number;
@@ -98,7 +102,9 @@ export default function FileDropzone({
       )}
       <input id={`${uid}-input`} type="hidden" name={name} value={url} />
       <div
-        className={`file-dropzone ${compact ? "file-dropzone-compact" : ""} ${isDragging ? "is-dragging" : ""}`}
+        className={`file-dropzone ${compact ? "file-dropzone-compact" : ""} ${
+          wide ? "file-dropzone-wide" : ""
+        } ${isDragging ? "is-dragging" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
           setIsDragging(true);

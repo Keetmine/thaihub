@@ -147,8 +147,9 @@ export default function CreateCommunityButton() {
               обложка и показывается. */}
           <FileDropzone
             name="coverUrl"
+            label={s.coverLabel}
             defaultValue=""
-            compact
+            wide
             crop
             ratioW={COMMUNITY_COVER_RATIO_W}
             ratioH={COMMUNITY_COVER_RATIO_H}

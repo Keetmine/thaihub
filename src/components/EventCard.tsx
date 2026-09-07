@@ -24,6 +24,8 @@ export default function EventCard({
   isFavorited = false,
   isGoing = false,
   friendsGoing = [],
+  actions,
+  meta,
 }: {
   /** Прикреплённый билет текущего юзера (показывается 🎫-кнопкой). */
   ticketUrl?: string | null;
@@ -31,6 +33,15 @@ export default function EventCard({
   isFavorited?: boolean;
   isGoing?: boolean;
   friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
+  /** Дополнительные действия в углу карточки, СЛЕВА от сердечка —
+   *  правка встречи сообщества (правка владельца 2026-09-09). Слотом, а
+   *  не флагом: карточка одна на всю афишу и знать про сообщества ей
+   *  незачем. */
+  actions?: React.ReactNode;
+  /** Тихая строка в теле карточки под площадкой — «Позвал(а) X · идут:
+   *  N» у встречи сообщества. Раньше она стояла ПОД карточкой отдельным
+   *  рядом, и это читалось как чужой текст рядом с карточкой. */
+  meta?: React.ReactNode;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -53,6 +64,7 @@ export default function EventCard({
   return (
     <div className="event-card">
       <div className="corner-actions corner-actions-row">
+        {actions}
         <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
         <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>
@@ -161,6 +173,7 @@ export default function EventCard({
           )}
         </p>
         <EventRowCast performers={event.performers} />
+        {meta && <div className="small text-secondary d-flex flex-wrap gap-3">{meta}</div>}
       </div>
     </div>
   );
