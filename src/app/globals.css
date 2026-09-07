@@ -3375,6 +3375,16 @@ button.hero-stat-toggle.is-open {
 .drama-fact:has(.star-rating) {
   align-items: center;
 }
+/* В строке фактов шкала мельче обычного: рядом с текстом в 0.875rem
+   звёзды в 1rem задирали строку и подпись рядом смотрелась чужой. */
+.drama-fact .star-rating {
+  font-size: 0.95em;
+}
+/* Звёздочка перед оценкой — закрашенная и золотая, независимо от того,
+   какого цвета сама цифра. */
+.rating-star {
+  color: var(--rating-good);
+}
 /* Сколько человек оценило — тише самой оценки: цифра в скобках не
    должна спорить с ней за внимание. */
 .drama-fact-votes {
@@ -3479,7 +3489,8 @@ button.hero-stat-toggle.is-open {
   flex-wrap: wrap;
 }
 .drama-rating-value {
-  font-size: 0.85rem;
+  /* Кегль наследуем: со своим размером строка «Моя оценка» выбивалась
+     из соседних строк фактов (правка владельца 2026-09-07). */
   font-variant-numeric: tabular-nums;
   color: var(--bs-secondary-color);
 }
@@ -5245,17 +5256,41 @@ body::after {
    Ширина — по постеру: колонка и так 15rem, и блок во всю её ширину
    читается продолжением карточки, а не наклейкой сбоку. */
 .next-episode {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(165deg, #1a1412, #0e0c0b 65%);
+  text-align: center;
+}
+/* Постер размытым фоном — тот же приём, что у hero новеллы
+   (.detail-hero-backdrop): плоская заливка выглядела скучно (правка
+   владельца 2026-09-07). Плёночное зерно поверх даёт общий слой
+   body::after, свой тут не нужен. */
+.next-episode-backdrop,
+.next-episode-scrim {
+  position: absolute;
+  inset: 0;
+}
+.next-episode-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(24px) saturate(1.45);
+  transform: scale(1.35);
+  opacity: 0.55;
+}
+.next-episode-scrim {
+  background: linear-gradient(180deg, rgba(10, 10, 12, 0.35), rgba(10, 10, 12, 0.82) 85%);
+}
+.next-episode-body {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.15rem;
   padding: 0.7rem 0.75rem 0.75rem;
-  border-radius: 0.9rem;
-  background:
-    radial-gradient(12rem 6rem at 50% -20%, rgba(var(--accent-rgb), 0.35), transparent 70%),
-    rgba(var(--accent-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  text-align: center;
 }
 .next-episode-eyebrow {
   display: inline-flex;

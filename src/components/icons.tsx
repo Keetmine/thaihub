@@ -541,9 +541,12 @@ export function ChartIcon({ className }: { className?: string } = {}) {
   );
 }
 
-export function StarIcon({ className }: { className?: string } = {}) {
+/** Звезда. `filled` — закрашенная: у оценок контурная читалась пустой
+ *  (правка владельца 2026-09-07), а в шкале оценки заливкой показывают
+ *  выставленный балл. */
+export function StarIcon({ className, filled = false }: { className?: string; filled?: boolean } = {}) {
   return (
-    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
       <path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8L12 3z" />
     </svg>
   );

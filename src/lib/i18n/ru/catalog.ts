@@ -232,7 +232,11 @@ export const catalog: Dict["catalog"] = {
                 return pluralized(days, ["день", "дня", "дней"]);
             },
             nextEpisodeCaption: (n: number) => `${n} серия`,
-            nextEpisodeTitle: "Следующая серия",
+            /** Надзаголовок блока. «Через» дописывается, только когда
+             *  дальше идёт срок: «След. серия через · Сегодня» звучало бы
+             *  сломанно. */
+            nextEpisodeTitle: (days: number) =>
+                days <= 1 ? "След. серия" : "След. серия через",
         },
     },
 

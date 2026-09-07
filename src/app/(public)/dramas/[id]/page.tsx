@@ -62,7 +62,6 @@ import {
   formatDateWithYear,
   formatShortDate,
   parseDateKey,
-  shortWeekdayName,
   startOfDay,
 } from "@/lib/dates";
 import { getT } from "@/lib/i18n";
@@ -363,7 +362,7 @@ export default async function DramaDetailPage({
     const days = Math.round(
       (parseDateKey(dateKey(next.airDate)).getTime() - today.getTime()) / 86_400_000,
     );
-    return { number: next.number, days, airDate: next.airDate };
+    return { number: next.number, days };
   })();
 
   // Строка «Эфир: 29 июл. 2026 (по четвергам)». Собрана отдельным
@@ -471,21 +470,31 @@ export default async function DramaDetailPage({
                 возвращаются. */}
             {nextEpisode && (
               <div className="next-episode">
-                {/* Пульсирующая точка и надзаголовок: без них блок был
-                    просто крупной цифрой в рамке («скучно как-то
-                    выводится» — владелец). Точка говорит «идёт прямо
-                    сейчас» быстрее любой подписи. */}
-                <span className="next-episode-eyebrow">
-                  <span className="next-episode-dot" aria-hidden />
-                  {t.catalog.drama.schedule.nextEpisodeTitle}
-                </span>
-                <span className="next-episode-value">
-                  {t.catalog.drama.schedule.nextEpisodeLeft(nextEpisode.days)}
-                </span>
-                <span className="next-episode-caption">
-                  {t.catalog.drama.schedule.nextEpisodeCaption(nextEpisode.number)} ·{" "}
-                  {formatShortDate(nextEpisode.airDate, locale)},{" "}
-                  {shortWeekdayName(nextEpisode.airDate, locale)}
+                {/* Постер размытым фоном — тем же приёмом, что hero
+                    новеллы (.detail-hero-backdrop): плоская заливка
+                    выглядела скучно (правка владельца 2026-09-07).
+                    Зерно поверх даёт общий слой body::after, свой тут не
+                    нужен. */}
+                {drama.posterUrl && (
+                  <span className="next-episode-backdrop" aria-hidden>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={drama.posterUrl} alt="" loading="lazy" decoding="async" />
+                  </span>
+                )}
+                <span className="next-episode-scrim" aria-hidden />
+                <span className="next-episode-body">
+                  {/* Пульсирующая точка: говорит «идёт прямо сейчас»
+                      быстрее любой подписи. */}
+                  <span className="next-episode-eyebrow">
+                    <span className="next-episode-dot" aria-hidden />
+                    {t.catalog.drama.schedule.nextEpisodeTitle(nextEpisode.days)}
+                  </span>
+                  <span className="next-episode-value">
+                    {t.catalog.drama.schedule.nextEpisodeLeft(nextEpisode.days)}
+                  </span>
+                  <span className="next-episode-caption">
+                    {t.catalog.drama.schedule.nextEpisodeCaption(nextEpisode.number)}
+                  </span>
                 </span>
               </div>
             )}
@@ -522,17 +531,17 @@ export default async function DramaDetailPage({
                 оценкам, рядом — сколько человек проголосовало. */}
             {score.site != null && (
               <Fact label={t.catalog.drama.ourScore}>
-                <span style={{ color: ratingColor(score.site) }}>
-                  <StarIcon /> {score.site.toFixed(1)}
-                </span>{" "}
+                <StarIcon className="rating-star" filled />{" "}
+                <span style={{ color: ratingColor(score.site) }}>{score.site.toFixed(1)}</span>{" "}
                 <span className="drama-fact-votes">({score.siteCount})</span>
               </Fact>
             )}
+            {/* У MyDramaList цифра обычным цветом строки (правка
+                владельца 2026-09-07): цветная шкала — про НАШУ оценку,
+                чужая стоит рядом просто как справка. */}
             {score.mdl != null && (
               <Fact label={t.catalog.drama.mdlScore}>
-                <span style={{ color: ratingColor(score.mdl) }}>
-                  <StarIcon /> {score.mdl.toFixed(1)}
-                </span>
+                <StarIcon className="rating-star" filled /> {score.mdl.toFixed(1)}
               </Fact>
             )}
 
