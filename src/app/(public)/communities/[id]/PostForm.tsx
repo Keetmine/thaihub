@@ -25,8 +25,15 @@ export default function PostForm({ communityId }: { communityId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   if (!open) {
+    // Кнопка по содержимому, а не во всю ширину: вкладка — flex-колонка,
+    // и без align-self ребёнок растягивается на всю её ширину (жалоба
+    // владельца 2026-09-08: «не такая большая кнопка»).
     return (
-      <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm align-self-start"
+        onClick={() => setOpen(true)}
+      >
         {s.newTopic}
       </button>
     );

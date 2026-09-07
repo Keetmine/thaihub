@@ -100,6 +100,11 @@ export const communities: Dict["communities"] = {
         past: "Прошедшие встречи",
 
         titleLabel: "Что происходит",
+        posterLabel: "Афиша",
+        posterUpload: "Добавить афишу",
+        posterReplace: "Заменить афишу",
+        posterRemove: "Убрать",
+        posterUploading: "Загружаем…",
         titlePlaceholder: "Смотрим пятую серию вместе",
         dateLabel: "Дата",
         timeLabel: "Время",

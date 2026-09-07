@@ -2,7 +2,6 @@ import AppLink from "@/components/AppLink";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { catalogEventsWhere } from "@/lib/catalogEvents";
-import OpenMeetups from "../communities/OpenMeetups";
 import { dateKey, formatShortDate, startOfDay } from "@/lib/dates";
 import { getT, localeHref } from "@/lib/i18n";
 import InfiniteEventList from "@/components/InfiniteEventList";
@@ -26,7 +25,7 @@ export async function generateMetadata() {
 
 export const dynamic = "force-dynamic";
 
-type EventFilter = "all" | "going" | "favorited" | "artists";
+type EventFilter = "all" | "going" | "favorited" | "artists" | "communities";
 
 export default async function HomePage({
   searchParams,
@@ -55,11 +54,6 @@ export default async function HomePage({
           />
         </div>
         <EventsTeaser userId={user?.id ?? null} />
-        {/* Открытые встречи сообществ — и без подписки: участие в
-            сообществах бесплатное, за подпиской только сама афиша. */}
-        <div className="mt-4">
-          <OpenMeetups />
-        </div>
       </div>
     );
   }
@@ -128,7 +122,9 @@ export default async function HomePage({
         ? "favorited"
         : rawFilter === "artists"
           ? "artists"
-          : "all";
+          : rawFilter === "communities"
+            ? "communities"
+            : "all";
 
   const from = activeTrip ? dateKey(activeTrip.startDate) : isValidDateKey(rawFrom) ? rawFrom! : "";
   const to = activeTrip ? dateKey(activeTrip.endDate) : isValidDateKey(rawTo) ? rawTo! : "";
@@ -143,13 +139,17 @@ export default async function HomePage({
 
   // Первая страница и счётчик по диапазону — параллельно: счётчик не
   // зависит от того, что вернул список.
-  const [initialPage, rangeTotal] = await Promise.all([
+  const [initialPage, rangeTotal, myCommunityCount] = await Promise.all([
     fetchEventListPage(user.id, true, filters, "upcoming", 0),
     // Общее число событий в явном диапазоне — одним count'ом (сам список
     // при этом всё равно подгружается страницами). Условия берём из той
     // же функции, что и лента, иначе счётчик расходится с показанным.
     countEventListRange(user.id, filters),
+    // Вкладка встреч нужна лишь тем, у кого сообщества есть: иначе она
+    // обещала бы содержимое, которого у человека быть не может.
+    prisma.communityMember.count({ where: { userId: user.id, status: "ACTIVE" } }),
   ]);
+  const hasCommunities = myCommunityCount > 0;
 
   return (
     <div>
@@ -175,10 +175,6 @@ export default async function HomePage({
           }
         />
       </div>
-
-      {/* Встречи сообществ — отдельным блоком НАД лентой, а не строками
-          в ней: см. OpenMeetups и lib/catalogEvents.ts. */}
-      <OpenMeetups />
 
       <div className="tab-bar-row">
         <div className="tab-bar">
@@ -210,6 +206,20 @@ export default async function HomePage({
           >
             {t.events.list.tabArtists}
           </AppLink>
+          {/* Встречи сообществ — своей вкладкой, а не строками в общей
+              ленте (правка владельца 2026-09-08): выглядят они так же,
+              как обычные события, но видит их только тот, кто в этих
+              сообществах состоит. Вкладку рисуем лишь тем, у кого
+              сообщества есть — пустая вкладка была бы загадкой. */}
+          {hasCommunities && (
+            <AppLink
+              href={`/events?filter=communities${rangeQuery}`}
+              prefetch={false}
+              className={`tab-bar-item ${filter === "communities" ? "active" : ""}`}
+            >
+              {t.events.list.tabCommunities}
+            </AppLink>
+          )}
           {myTrips.map((trip) => (
             <AppLink
               key={trip.id}

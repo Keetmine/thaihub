@@ -63,17 +63,16 @@ export async function communityRights(
 /**
  * Может ли зритель открыть страницу события.
  *
- * Каталожное событие открыто всем — оно и должно быть в поиске. Встреча
- * открыта участникам сообщества, а посторонним — только если автор снял
- * галочку «только участники»: до этого момента в `venue`/`address`
- * стоит чей-то домашний адрес.
+ * Каталожное событие открыто всем — оно и должно быть в поиске. Встречу
+ * видят только участники сообщества, и исключений нет (правка владельца
+ * 2026-09-08, флаг «показывать всем» отменён): в `venue`/`address` у
+ * встречи стоит чей-то домашний адрес.
  */
 export async function canSeeMeetup(
-  event: { communityId: string | null; communityOnly: boolean },
+  event: { communityId: string | null },
   viewerId: string | null | undefined,
 ): Promise<boolean> {
   if (!event.communityId) return true;
-  if (!event.communityOnly) return true;
   const rights = await communityRights(event.communityId, viewerId);
   return rights.isMember;
 }

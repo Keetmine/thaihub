@@ -99,6 +99,11 @@ export const communities = {
         past: "Past meetups",
 
         titleLabel: "What is happening",
+        posterLabel: "Cover",
+        posterUpload: "Add a cover",
+        posterReplace: "Replace the cover",
+        posterRemove: "Remove",
+        posterUploading: "Uploading…",
         titlePlaceholder: "Watching episode 5 together",
         dateLabel: "Date",
         timeLabel: "Time",

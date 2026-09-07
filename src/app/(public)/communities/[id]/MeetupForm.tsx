@@ -1,12 +1,14 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import ConfirmForm from "@/components/ConfirmForm";
 import DatePickerInput from "@/components/DatePickerInput";
 import EntitySelect from "@/components/EntitySelect";
 import { useT } from "@/components/LocaleProvider";
+import UploadImage from "@/components/UploadImage";
+import { uploadErrorMessage } from "@/lib/uploadErrors";
 import { createMeetup, deleteMeetup, searchMeetupDramas, updateMeetup } from "../eventActions";
 
 export type MeetupFormValues = {
@@ -20,7 +22,7 @@ export type MeetupFormValues = {
    *  превратилось бы в 15:00. */
   dateKey: string;
   timeValue: string;
-  communityOnly: boolean;
+  posterUrl: string | null;
   drama: { id: string; name: string } | null;
 };
 
@@ -30,10 +32,14 @@ export type MeetupFormValues = {
  * Кнопка + модалка, как у настроек сообщества (`CommunityAdmin`):
  * встречи заводят из вкладки, не уходя с неё.
  *
- * Главное поле формы — галочка «показывать всем». Она снята по
- * умолчанию, и это не оформительское решение: в «где» у домашней
- * встречи стоит чей-то адрес, и попасть в общую афишу он может только
- * осознанным жестом автора.
+ * Галочки «показывать всем» тут нет: встречу видят только участники
+ * сообщества, и исключений не бывает (правка владельца 2026-09-08) — в
+ * «где» у домашней встречи стоит чей-то адрес.
+ *
+ * Афиша встречи грузится сразу при выборе файла, а не по «Сохранить»:
+ * так же сделана обложка сообщества (`CommunityAdmin`) — картинка
+ * уезжает на общую ручку /api/upload, а в форме остаётся только её
+ * адрес скрытым полем.
  */
 export default function MeetupForm({
   communityId,
@@ -52,6 +58,33 @@ export default function MeetupForm({
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Афиша встречи: адрес держим в состоянии и отдаём форме скрытым
+  // полем. Без картинки карточка рисует первую букву названия — как у
+  // обычных событий, отдельного «нет постера» не нужно.
+  const [posterUrl, setPosterUrl] = useState<string | null>(meetup?.posterUrl ?? null);
+  const [posterBusy, setPosterBusy] = useState(false);
+  const posterInputRef = useRef<HTMLInputElement>(null);
+
+  async function pickPoster(file: File) {
+    setError(null);
+    setPosterBusy(true);
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body });
+      const data = await res.json();
+      // Ручка отдаёт код ошибки, а не фразу: языка страницы она не знает.
+      if (!res.ok) {
+        setError(uploadErrorMessage(t, data, t.widgets.file.failed));
+        return;
+      }
+      setPosterUrl(data.url as string);
+    } catch {
+      setError(t.widgets.file.failed);
+    } finally {
+      setPosterBusy(false);
+    }
+  }
 
   async function save(formData: FormData) {
     setError(null);
@@ -201,21 +234,48 @@ export default function MeetupForm({
             searchOptions={searchMeetupDramas}
           />
 
-          <fieldset>
-            <legend className="form-label small text-secondary">{s.visibilityLabel}</legend>
-            <label className="form-check d-flex align-items-center gap-2 mb-1">
-              <input
-                type="checkbox"
-                name="openToEveryone"
-                defaultChecked={meetup ? !meetup.communityOnly : false}
-                className="form-check-input m-0"
-              />
-              <span className="form-check-label small">{s.openToEveryone}</span>
-            </label>
-            <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
-              {s.openHint}
-            </p>
-          </fieldset>
+          <div className="d-flex flex-column gap-2">
+            <span className="form-label small text-secondary mb-0">{s.posterLabel}</span>
+            {posterUrl && (
+              <div style={{ width: "8rem" }}>
+                <UploadImage src={posterUrl} alt="" sizes="8rem" />
+              </div>
+            )}
+            <div className="d-flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={posterBusy}
+                onClick={() => posterInputRef.current?.click()}
+              >
+                {posterBusy ? s.posterUploading : posterUrl ? s.posterReplace : s.posterUpload}
+              </button>
+              {posterUrl && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-danger"
+                  disabled={posterBusy}
+                  onClick={() => setPosterUrl(null)}
+                >
+                  {s.posterRemove}
+                </button>
+              )}
+            </div>
+            <input
+              ref={posterInputRef}
+              type="file"
+              accept="image/*"
+              className="d-none"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                // Сбрасываем поле: повторный выбор ТОГО ЖЕ файла иначе не
+                // поднимает change.
+                e.target.value = "";
+                if (file) void pickPoster(file);
+              }}
+            />
+            <input type="hidden" name="posterUrl" value={posterUrl ?? ""} />
+          </div>
 
           {error && <p className="small text-danger mb-0">{error}</p>}
 

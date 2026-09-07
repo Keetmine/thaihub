@@ -121,21 +121,32 @@ export default async function CommunityPage({
 
   // Вкладки собираются по правам: закрытое зрителю не попадает даже в
   // пропсы, потому что панели для него просто не создаются.
+  // Счётчики в подписях вкладок (правка владельца 2026-09-08): по ним
+  // сразу видно, живое ли сообщество. Ноль не показываем — пустые
+  // скобки только шумят, как и на вкладках поездки.
+  const [postCount, meetupCount] = access.canSeeInside
+    ? await Promise.all([
+        prisma.communityPost.count({ where: { communityId: community.id } }),
+        prisma.event.count({ where: { communityId: community.id } }),
+      ])
+    : [0, 0];
+  const withCount = (label: string, n: number) => (n > 0 ? `${label} (${n})` : label);
+
   const tabs: { key: CommunityTabKey; label: string; content: React.ReactNode }[] = [];
   if (access.canSeeInside) {
     tabs.push({
       key: "discussions",
-      label: s.tabs.discussions,
+      label: withCount(s.tabs.discussions, postCount),
       content: <DiscussionsTab communityId={community.id} canPost={access.isMember} />,
     });
     tabs.push({
       key: "meetups",
-      label: s.tabs.meetups,
+      label: withCount(s.tabs.meetups, meetupCount),
       content: <MeetupsTab communityId={community.id} canCreate={access.isMember} />,
     });
     tabs.push({
       key: "members",
-      label: s.tabs.members,
+      label: withCount(s.tabs.members, active.length),
       content: (
         <MembersTab
           members={active.map(memberRow)}

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { catalogEventsWhere } from "@/lib/catalogEvents";
+import { catalogEventsWhere, viewerEventsWhere, viewerMeetupsWhere } from "@/lib/catalogEvents";
 import { endOfDay, parseDateKey, startOfDay } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
@@ -14,7 +14,7 @@ import type { EventWithPerformers } from "@/lib/types";
 export const EVENT_PAGE_SIZE = 20;
 
 export type EventListFilters = {
-  filter: "all" | "going" | "favorited" | "artists";
+  filter: "all" | "going" | "favorited" | "artists" | "communities";
   from: string;
   to: string;
   q: string;
@@ -51,12 +51,19 @@ export type EventListPage = {
 function occurrenceFilterWhere(userId: string | null, filters: EventListFilters) {
   const { filter, q } = filters;
   const eventWhere = {
-    // Афиша — только каталожные события: встречи сообществ живут на
-    // страницах своих сообществ, и «пью пиво и смотрю сериал» не должно
-    // стоять в ленте рядом с концертом в Impact Arena (см.
-    // src/lib/catalogEvents.ts). Открытые встречи попадают на /events
-    // ОТДЕЛЬНЫМ блоком, а не через это условие.
-    ...catalogEventsWhere(),
+    // Что вообще попадает в ленту (см. src/lib/catalogEvents.ts):
+    //
+    // - обычные вкладки — только каталожные события: «пью пиво и смотрю
+    //   сериал у Кати» не должно стоять рядом с концертом в Impact Arena;
+    // - «Сообщества» — наоборот, ТОЛЬКО встречи, и только тех сообществ,
+    //   где зритель состоит;
+    // - «Я иду» — и то и другое вперемешку: человек отметился на встрече,
+    //   и она обязана быть в его списке (правка владельца 2026-09-08).
+    ...(filter === "communities"
+      ? viewerMeetupsWhere(userId)
+      : filter === "going"
+        ? viewerEventsWhere(userId)
+        : catalogEventsWhere()),
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
     ...(filter === "favorited" && userId ? { favoritedBy: { some: { userId } } } : {}),
     // «Мои артисты» — события, где выступает кто-то из избранных

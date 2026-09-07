@@ -303,7 +303,7 @@ export async function toggleGoing(occurrenceId: string): Promise<ActionResult> {
 
   const occurrence = await prisma.eventOccurrence.findUnique({
     where: { id: occurrenceId },
-    include: { event: { select: { communityId: true, communityOnly: true } } },
+    include: { event: { select: { communityId: true } } },
   });
   if (!occurrence) return { ok: false, error: (await getT()).t.events.going.dateNotFound };
   // Отметиться на встречу сообщества может только тот, кто вправе её

@@ -78,6 +78,7 @@ export default async function MeetupsTab({
       id: m.id,
       title: m.title,
       venue: m.venue,
+      posterUrl: m.posterUrl,
       address: m.address,
       description: m.description,
       // Дата и время в форму уходят строками, посчитанными на сервере:
@@ -85,7 +86,6 @@ export default async function MeetupsTab({
       // часов (то же правило, что в личных событиях поездки).
       dateKey: occurrence ? dateKey(occurrence.startsAt) : "",
       timeValue: occurrence?.hasTime ? formatTime(occurrence.startsAt) : "",
-      communityOnly: m.communityOnly,
       drama: m.drama ? { id: m.drama.id, name: dramaTitleForLocale(m.drama, locale) } : null,
     };
     return (
@@ -146,9 +146,6 @@ export default async function MeetupsTab({
           {/* Видимость видна всем участникам, а не только автору: по
               открытой встрече люди должны понимать, что адрес уехал в
               общую афишу. */}
-          <span className={m.communityOnly ? "date-chip" : "tag-chip"}>
-            {m.communityOnly ? s.onlyMembersBadge : s.openBadge}
-          </span>
           {m.createdBy?.name && <span>{s.author(m.createdBy.name)}</span>}
           <AppLink href={`/event/${m.id}`} className="link-body-emphasis">
             {s.openPage} →

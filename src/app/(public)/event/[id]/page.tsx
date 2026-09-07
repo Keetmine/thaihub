@@ -102,13 +102,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // <title> — уже утечка), а участнику её всё равно не индексируют.
   if (event.communityId) {
     if (!(await canSeeMeetup(event, (await getCurrentUser())?.id))) notFound();
-    if (event.communityOnly) {
-      return pageMetadata({
-        title: event.title,
-        description: t.communities.meetups.eventNoticeMembers,
-        noIndex: true,
-      });
-    }
+    // Участнику страницу отдаём, поисковику — никогда: встречу видят
+    // только свои, и в индексе ей делать нечего.
+    return pageMetadata({
+      title: event.title,
+      description: t.communities.meetups.eventNoticeMembers,
+      noIndex: true,
+    });
   }
   return pageMetadata({
     title: event.title,
@@ -398,7 +398,7 @@ export default async function EventDetailPage({
           <AppLink href={communityHref(event.community)} className="link-body-emphasis">
             {t.communities.meetups.eventNotice(event.community.title)}
           </AppLink>
-          {event.communityOnly && ` · ${t.communities.meetups.eventNoticeMembers}`}
+          {` · ${t.communities.meetups.eventNoticeMembers}`}
         </p>
       )}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-4">
@@ -703,7 +703,9 @@ export default async function EventDetailPage({
           названия, адреса и дат — то есть ровно из того, что не должно
           уехать в поиск (страница таким зрителям и не открывается, но
           правило держим в одном месте с noIndex выше). */}
-      {eventLd && !(isMeetup && event.communityOnly) && <JsonLd data={eventLd} />}
+      {/* У встречи разметки для поисковика нет вовсе: её и в индексе
+          быть не должно. */}
+      {eventLd && !isMeetup && <JsonLd data={eventLd} />}
     </div>
   );
 }

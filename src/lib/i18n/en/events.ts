@@ -12,6 +12,7 @@ export const events = {
         tabGoing: "I'm going",
         tabFavorites: "Favourites",
         tabArtists: "My artists",
+        tabCommunities: "Communities",
         searchPlaceholder: "Search by title…",
         rangeEmpty: "No events in this date range.",
         rangeCount: (count: number) =>

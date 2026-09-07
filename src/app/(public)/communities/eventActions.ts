@@ -40,8 +40,9 @@ type MeetupInput = {
   address: string;
   description: string;
   dramaId: string;
-  /** Снятая галочка «показывать всем» = встреча остаётся внутри. */
-  communityOnly: boolean;
+  /** Афиша встречи. Пусто — карточка рисует первую букву названия
+   *  (правка владельца 2026-09-08). */
+  posterUrl: string;
 };
 
 function readForm(formData: FormData): MeetupInput {
@@ -54,10 +55,7 @@ function readForm(formData: FormData): MeetupInput {
     address: str("address").slice(0, MEETUP_ADDRESS_MAX),
     description: str("description").slice(0, MEETUP_DESCRIPTION_MAX),
     dramaId: str("dramaId"),
-    // Умолчание — «только участники»: за встречей стоит чей-то домашний
-    // адрес, и открыть её должен именно ЖЕСТ автора, а не пропущенное
-    // поле формы.
-    communityOnly: formData.get("openToEveryone") === null,
+    posterUrl: str("posterUrl"),
   };
 }
 
@@ -119,7 +117,11 @@ export async function createMeetup(
     data: {
       communityId,
       createdById: user.id,
-      communityOnly: input.communityOnly,
+      // Только наша же загрузка: адрес уходит прямо в <img src> на
+      // странице встречи, и чужой хост тут был бы дырой.
+      posterUrl: /^\/uploads\//.test(input.posterUrl) && !input.posterUrl.includes("..")
+        ? input.posterUrl
+        : null,
       title: input.title,
       venue: input.venue,
       address: input.address || null,
@@ -169,7 +171,11 @@ export async function updateMeetup(eventId: string, formData: FormData): Promise
   await prisma.event.update({
     where: { id: eventId },
     data: {
-      communityOnly: input.communityOnly,
+      // Только наша же загрузка: адрес уходит прямо в <img src> на
+      // странице встречи, и чужой хост тут был бы дырой.
+      posterUrl: /^\/uploads\//.test(input.posterUrl) && !input.posterUrl.includes("..")
+        ? input.posterUrl
+        : null,
       title: input.title,
       venue: input.venue,
       address: input.address || null,

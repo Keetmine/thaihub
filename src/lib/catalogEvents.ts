@@ -30,20 +30,34 @@ export function catalogOccurrencesWhere(): Prisma.EventOccurrenceWhereInput {
 }
 
 /**
- * Обратная сторона фильтра: встречи, которые автор ОТКРЫЛ ВСЕМ
- * (`communityOnly = false`).
+ * Встречи сообществ, доступные ЗРИТЕЛЮ: только тех сообществ, где он
+ * состоит.
  *
- * Такие встречи показываются в афише отдельным блоком, а не строкой в
- * общей ленте, и вот почему:
- *
- * - в общей ленте «пью пиво и смотрю сериал у Кати» встало бы вровень с
- *   концертом в Impact Arena — одинаковой карточкой, одинаковым весом;
- * - чтобы пустить встречи в ленту, пришлось бы ослабить условие в общем
- *   `fetchEventListPage` — то есть в том самом месте, где одна забытая
- *   строчка выпускает наружу ВСЕ встречи, включая закрытые. Отдельный
- *   запрос с явным `communityOnly: false` так сломаться не может: он
- *   ничего не показывает по умолчанию.
+ * Отдельной вкладкой афиши, а не строками в общей ленте (правка
+ * владельца 2026-09-08): встречу видят лишь участники, и в ленте,
+ * которую видят все, ей делать нечего. Гостю и постороннему эта функция
+ * не отдаёт ничего — по невозможному условию, а не по забытому `if`.
  */
-export function openMeetupsWhere(): Prisma.EventWhereInput {
-  return { communityId: { not: null }, communityOnly: false };
+export function viewerMeetupsWhere(userId: string | null | undefined): Prisma.EventWhereInput {
+  if (!userId) return { id: { in: [] } };
+  return {
+    communityId: { not: null },
+    community: { members: { some: { userId, status: "ACTIVE" } } },
+  };
+}
+
+/**
+ * Область видимости событий для зрителя: вся афиша плюс встречи ЕГО
+ * сообществ. Нужна там, где смешивать можно и нужно, — например в «я
+ * иду»: человек отметился на встрече, и она обязана быть в его списке
+ * (правка владельца 2026-09-08: «можно смешивать, ничего страшного»).
+ */
+export function viewerEventsWhere(userId: string | null | undefined): Prisma.EventWhereInput {
+  if (!userId) return catalogEventsWhere();
+  return {
+    OR: [
+      { communityId: null },
+      { community: { members: { some: { userId, status: "ACTIVE" } } } },
+    ],
+  };
 }

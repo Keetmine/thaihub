@@ -14,6 +14,7 @@ export const events: Dict["events"] = {
         tabGoing: "Я иду",
         tabFavorites: "Избранное",
         tabArtists: "Мои артисты",
+        tabCommunities: "Сообщества",
         searchPlaceholder: "Поиск по названию…",
         rangeEmpty: "В этом диапазоне дат событий нет.",
         rangeCount: (count: number) => `Событий в диапазоне: ${count}.`,

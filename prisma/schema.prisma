@@ -50,15 +50,17 @@ model Event {
   // поле разделяет афишу и посиделки — выборки каталога обязаны идти
   // через catalogEventsWhere (src/lib/catalogEvents.ts), иначе «пью
   // пиво и смотрю сериал» окажется в общей афише.
+  //
+  // Встречу видят только участники сообщества, всегда. Был флаг
+  // «показывать всем», владелец его отменила (2026-09-08): встреча в
+  // общей афише сбивает с толку, а видеть её должны те, кто в
+  // сообществе, — им она и показывается отдельной вкладкой афиши.
   communityId          String?
   community            Community?                    @relation(fields: [communityId], references: [id], onDelete: Cascade)
   // Кто завёл встречу. У каталожных событий null — их заводит админка
   // и импортёры.
   createdById          String?
   createdBy            User?                         @relation("EventAuthor", fields: [createdById], references: [id], onDelete: SetNull)
-  // Видна ли встреча за пределами сообщества. По умолчанию нет: за
-  // встречей стоит чей-то домашний адрес.
-  communityOnly        Boolean                       @default(true)
   // Optional tie-in to a drama this event is about (premiere screening,
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
   dramaId              String?
