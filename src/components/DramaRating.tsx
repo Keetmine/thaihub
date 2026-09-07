@@ -67,6 +67,7 @@ export default function DramaRating({
         onChange={choose}
         disabled={isPending}
         labelFor={(n) => (n === value ? s.clear : s.choose(formatRating(n)))}
+        hintFor={(n) => s.hint(formatRating(n))}
       />
       {/* Цифра рядом со звёздами: считать десять иконок глазами
           неудобно, а «9.5 из 10» читается сразу. Пока не оценили —

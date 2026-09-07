@@ -64,7 +64,7 @@ export const catalog = {
         set: (n: string) => `My rating: ${n} out of 10`,
         choose: (n: string) => `Rate ${n} out of 10`,
         clear: "Remove rating",
-        hint: "Your rating shows in your profile",
+        hint: (n: string) => `${n} out of 10`,
     },
 
     /** Ж6: на какой серии человек остановился. */
@@ -185,7 +185,7 @@ export const catalog = {
         scoreTooltip: (site: string | null, count: number, mdl: string | null) => {
             const ours = `MyBLHub ${site} (${count})`;
             if (site && mdl) {
-                return `Average of MyBLHub and MyDramaList ratings: ${ours}, MyDramaList ${mdl}`;
+                return `${ours} combined with MyDramaList ${mdl}. The more ratings we have, the more they count`;
             }
             if (site) return `Average rating on MyBLHub: ${ours}`;
             return "MyDramaList rating: nobody has rated this here yet";

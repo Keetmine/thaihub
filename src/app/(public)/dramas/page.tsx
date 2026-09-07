@@ -235,15 +235,15 @@ export default async function DramasPage({
   );
 
   // Оценка бейджем в строке каталога — сводная: наши оценки (звёздочки
-  // и публичные отзывы, один человек — один голос) в среднем с
+  // и публичные отзывы, один человек — один голос), взвешенные с
   // MyDramaList. Та же логика, что на странице сериала, см.
   // src/lib/dramaRating.ts.
   const siteScores = await fetchSiteScores(dramas.map((d) => d.id));
   const scoreByDramaId = new Map(
-    dramas.map((d) => [
-      d.id,
-      combineScores(siteScores.get(d.id)?.site ?? null, d.mdlScore),
-    ]),
+    dramas.map((d) => {
+      const ours = siteScores.get(d.id);
+      return [d.id, combineScores(ours?.site ?? null, ours?.siteCount ?? 0, d.mdlScore)];
+    }),
   );
 
   // Названия за шапкой — самые популярные сериалы по числу отметок

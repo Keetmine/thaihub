@@ -50,7 +50,9 @@ export const catalog: Dict["catalog"] = {
         set: (n: string) => `Моя оценка: ${n} из 10`,
         choose: (n: string) => `Поставить ${n} из 10`,
         clear: "Убрать оценку",
-        hint: "Оценка видна в вашем профиле",
+        /** Подсказка по наведению на звезду: какую оценку ставит
+         *  этот клик (правка владельца 2026-09-07). */
+        hint: (n: string) => `${n} из 10`,
     },
 
     /** Ж6: на какой серии человек остановился. */
@@ -184,9 +186,9 @@ export const catalog: Dict["catalog"] = {
          *  честно говорим какой: «среднее» из одного числа звучало бы
          *  странно. */
         scoreTooltip: (site: string | null, count: number, mdl: string | null) => {
-            const ours = `у нас ${site} (${count} ${plural(count, ["оценка", "оценки", "оценок"])})`;
+            const ours = `${site} (${count} ${plural(count, ["оценка", "оценки", "оценок"])})`;
             if (site && mdl) {
-                return `Среднее оценок нашего сайта и MyDramaList: ${ours}, MyDramaList ${mdl}`;
+                return `Оценки нашего сайта — ${ours} — вместе с MyDramaList ${mdl}. Чем больше наших оценок, тем сильнее они влияют`;
             }
             if (site) return `Средняя оценка на нашем сайте: ${ours}`;
             return "Оценка MyDramaList: у нас этот сериал пока никто не оценил";

@@ -76,6 +76,7 @@ export default function ReviewRatingFields({
             value={parts[field] ?? null}
             onChange={(next) => setPart(field, next)}
             labelFor={(n) => s.choose(s[field], formatRating(n))}
+            hintFor={(n) => t.catalog.rating.hint(formatRating(n))}
           />
           <span className="small text-secondary review-rating-value">
             {parts[field] != null ? formatRating(parts[field] as number) : ""}
@@ -93,6 +94,7 @@ export default function ReviewRatingFields({
             setOverallTouched(next != null);
           }}
           labelFor={(n) => s.choose(s.overall, formatRating(n))}
+          hintFor={(n) => t.catalog.rating.hint(formatRating(n))}
         />
         <span className="small text-secondary review-rating-value">
           {overall != null ? formatRating(overall) : ""}

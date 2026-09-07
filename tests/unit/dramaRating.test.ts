@@ -65,12 +65,22 @@ assert.equal(mergeVotes([], []).get("d1"), undefined);
 
 // ---------- сводное число ----------
 
-assert.equal(combineScores(9, 8), 8.5, "среднее двух источников");
-// Один источник — показываем его как есть, а не половинку.
-assert.equal(combineScores(9, null), 9);
-assert.equal(combineScores(null, 7.8), 7.8);
-assert.equal(combineScores(null, null), null);
-// Округление до десятой и тут.
-assert.equal(combineScores(9, 8.3), 8.7);
+// Ради чего вводился вес (жалоба владельца): у MyDramaList 7.5 на
+// тысяче отзывов, у нас ОДНА десятка — итог обязан остаться около 7.5,
+// а не улететь на 8.5, как было при ровном среднем.
+assert.equal(combineScores(10, 1, 7.5), 7.6);
+
+// Двадцать наших голосов весят наравне с MDL — ровно середина.
+assert.equal(combineScores(10, 20, 8), 9);
+
+// Сотня наших перевешивает: итог тянется к нашей оценке.
+assert.equal(combineScores(10, 100, 5), 9.2);
+
+// Один источник — показываем его как есть, без всякого веса.
+assert.equal(combineScores(9, 3, null), 9);
+assert.equal(combineScores(null, 0, 7.8), 7.8);
+assert.equal(combineScores(null, 0, null), null);
+// Оценка без голосов — не оценка: считаем, что у нас её нет.
+assert.equal(combineScores(9, 0, 7.5), 7.5);
 
 console.log("ok: сведение оценок сериала");

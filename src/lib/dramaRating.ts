@@ -30,7 +30,8 @@ export type DramaScore = {
   siteCount: number;
   /** Оценка MyDramaList — как есть. */
   mdl: number | null;
-  /** Что показываем одним числом: среднее нашего и MDL. */
+  /** Что показываем одним числом: наши оценки и MDL, взвешенные по
+   *  числу голосов. */
   combined: number | null;
 };
 
@@ -40,17 +41,33 @@ function round1(n: number): number {
 }
 
 /**
- * Сводное число: среднее нашей оценки и MyDramaList.
+ * Сколькими голосами считать оценку MyDramaList (правка владельца
+ * 2026-09-07).
  *
- * Ровно среднее двух чисел, а не взвешенное по числу голосов
- * (решение владельца: «среднее значение оценок нашего сайта и мдл»).
- * Обратная сторона — пока оценок у нас единицы, одна чужая девятка
- * заметно двигает итог; если это начнёт мешать, вес легко добавить
- * здесь одной формулой, всё остальное трогать не придётся.
+ * Первая версия брала ровное среднее двух чисел — и владелец сразу
+ * поймала беду: «у MDL 7.5 на тысяче отзывов, у нас один отзыв на 10 —
+ * и стало 8.5, как будто один голос стоит тысячи». Так и было.
+ *
+ * Теперь оценка MDL входит в среднее как MDL_VOTES голосов, а наши —
+ * как есть. Один наш голос почти не двигает итог, двадцать весят
+ * наравне с MDL, дальше перевешивают. Число подобрано под размер сайта
+ * — это единственная ручка, крутить её тут.
  */
-export function combineScores(site: number | null, mdl: number | null): number | null {
-  if (site != null && mdl != null) return round1((site + mdl) / 2);
-  if (site != null) return round1(site);
+const MDL_VOTES = 20;
+
+/**
+ * Сводное число: наши оценки и MyDramaList, взвешенные по числу
+ * голосов. Пока у нас никто не оценил — просто MDL, и наоборот.
+ */
+export function combineScores(
+  site: number | null,
+  siteCount: number,
+  mdl: number | null,
+): number | null {
+  if (site != null && mdl != null && siteCount > 0) {
+    return round1((site * siteCount + mdl * MDL_VOTES) / (siteCount + MDL_VOTES));
+  }
+  if (site != null && siteCount > 0) return round1(site);
   if (mdl != null) return round1(mdl);
   return null;
 }
@@ -126,6 +143,6 @@ export async function fetchDramaScore(
     site: site?.site ?? null,
     siteCount: site?.siteCount ?? 0,
     mdl: mdlScore,
-    combined: combineScores(site?.site ?? null, mdlScore),
+    combined: combineScores(site?.site ?? null, site?.siteCount ?? 0, mdlScore),
   };
 }

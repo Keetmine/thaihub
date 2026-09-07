@@ -127,6 +127,7 @@ export default function DramaRatingSelect({
               value={value}
               onChange={choose}
               labelFor={(n) => (n === value ? s.clear : s.choose(formatRating(n)))}
+              hintFor={(n) => s.hint(formatRating(n))}
             />
             <button
               type="button"

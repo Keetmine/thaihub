@@ -35,6 +35,7 @@ export default function StarRatingInput({
   disabled = false,
   size,
   labelFor,
+  hintFor,
 }: {
   /** Текущая оценка 1-10; null — не оценено. Дробное значение с MDL
    *  («8.5») рисуется как есть. */
@@ -46,6 +47,9 @@ export default function StarRatingInput({
   size?: string;
   /** Как назвать оценку скринридеру: «Поставить 9 из 10». */
   labelFor: (n: number) => string;
+  /** Короткая подсказка по наведению — «9 из 10». Без неё подсказки
+   *  просто нет (в тесной строке таблицы она бывает лишней). */
+  hintFor?: (n: number) => string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const shown = hover ?? value ?? 0;
@@ -78,12 +82,15 @@ export default function StarRatingInput({
                 <StarIcon />
               </span>
             )}
-            {/* Две половины-кнопки поверх иконки. */}
+            {/* Две половины-кнопки поверх иконки. Подсказка на каждой
+                (правка владельца 2026-09-07): по звёздам не видно, куда
+                именно ты целишься — «8» это или «9». */}
             <button
               type="button"
               className="star-rating-half is-left"
               disabled={disabled}
               aria-label={labelFor(half)}
+              data-tooltip={hintFor ? hintFor(half) : undefined}
               onMouseEnter={() => setHover(half)}
               onFocus={() => setHover(half)}
               onBlur={() => setHover(null)}
@@ -94,6 +101,7 @@ export default function StarRatingInput({
               className="star-rating-half is-right"
               disabled={disabled}
               aria-label={labelFor(full)}
+              data-tooltip={hintFor ? hintFor(full) : undefined}
               onMouseEnter={() => setHover(full)}
               onFocus={() => setHover(full)}
               onBlur={() => setHover(null)}
