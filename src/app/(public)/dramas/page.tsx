@@ -67,8 +67,6 @@ const DRAMA_ROW_SELECT = {
   // страна; статус — для бейджа «Выходит» у названия.
   type: true,
   country: true,
-  // Сводная оценка в строке (см. dramaRating.ts) — половина от MDL.
-  mdlScore: true,
   status: true,
 } as const;
 
@@ -234,25 +232,12 @@ export default async function DramasPage({
     currentUser?.id,
   );
 
-  // Оценка бейджем у названия. Наша (звёздочки и публичные отзывы, один
-  // человек — один голос) считается отдельно от MyDramaList — см.
-  // src/lib/dramaRating.ts. В строке каталога подписи не разместить,
-  // поэтому показываем нашу, когда она есть, иначе чужую, а чья именно
-  // — говорит подсказка по наведению.
+  // Оценка бейджем у названия — ТОЛЬКО наша: звёздочки и публичные
+  // отзывы, один человек — один голос (src/lib/dramaRating.ts). Оценку
+  // MyDramaList тут не показываем (правка владельца 2026-09-07): в
+  // строке каталога подписи не разместить, и чужая цифра без пояснения
+  // читалась как наша. Никто не оценил — бейджа просто нет.
   const siteScores = await fetchSiteScores(dramas.map((d) => d.id));
-  const scoreByDramaId = new Map(
-    dramas.map((d) => {
-      const ours = siteScores.get(d.id);
-      return [
-        d.id,
-        ours
-          ? { value: ours.site, ours: true as const, count: ours.siteCount }
-          : d.mdlScore != null
-            ? { value: d.mdlScore, ours: false as const, count: 0 }
-            : null,
-      ];
-    }),
-  );
 
   // Названия за шапкой — самые популярные сериалы по числу отметок
   // статуса просмотра (единственный «мой» сигнал у сериала, сердечка у
@@ -468,7 +453,7 @@ export default async function DramasPage({
   /** Одна строка таблицы. Вынесена из renderItem: её рисуют обе ветки —
    *  и алфавитный список, и плоский отсортированный. */
   function renderRow(d: (typeof dramas)[number]) {
-    const score = scoreByDramaId.get(d.id) ?? null;
+    const score = siteScores.get(d.id) ?? null;
     const entry = statusByDramaId.get(d.id) ?? null;
     const progress = episodeProgress(entry, d.episodes);
     const airing = d.status === "RETURNING_SERIES";
@@ -497,13 +482,9 @@ export default async function DramasPage({
                     {score != null && (
                       <span
                         className={`small text-secondary ${styles.meta}`}
-                        data-tooltip={
-                          score.ours
-                            ? t.catalog.drama.ourScoreTip(score.count)
-                            : t.catalog.drama.mdlScoreTip
-                        }
+                        data-tooltip={t.catalog.drama.ourScoreTip(score.siteCount)}
                       >
-                        ★ {score.value.toFixed(1)}
+                        ★ {score.site.toFixed(1)}
                       </span>
                     )}
                   </span>

@@ -185,7 +185,6 @@ export const catalog = {
         ourScore: "Score:",
         mdlScore: "MyDramaList:",
         ourScoreTip: (n: number) => `MyBLHub viewers · ${n} votes`,
-        mdlScoreTip: "MyDramaList rating",
         scoreTooltip: (site: string | null, mdl: string | null) => {
             if (site && mdl) {
                 return `Series rating: MyBLHub viewers — ${site}, MyDramaList — ${mdl}`;
