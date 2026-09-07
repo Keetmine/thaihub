@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
 import { getT } from "@/lib/i18n";
+import { isEventFinished } from "@/lib/eventFinished";
 import { parseCommentPhotoUrls } from "@/lib/commentPhotos";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
@@ -55,6 +56,13 @@ export async function saveReview(
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { t } = await getT();
+
+  // Событие ещё не прошло — отзыв не принимаем. Страница такую форму и
+  // не рисует, но форма не защита: экшен вызывается напрямую, мимо
+  // любой страницы (см. src/lib/eventFinished.ts).
+  if (kind === "event" && !(await isEventFinished(id))) {
+    return { ok: false, error: t.reviews.errors.eventNotFinished };
+  }
 
   const rating = parseRating(formData.get("rating"));
   const text = String(formData.get("text") ?? "").trim();

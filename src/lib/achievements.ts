@@ -1,3 +1,4 @@
+import type { AchievementScope } from "@/generated/prisma/client";
 import { userHref } from "@/lib/userProfile";
 import { prisma } from "@/lib/prisma";
 import { computeUserStats, type UserStats } from "@/lib/userStats";
@@ -68,17 +69,24 @@ export function metricValue(metric: string, s: UserStats): number {
 // upsert по key); дальше источник правды — таблица Achievement.
 // Новая ачивка добавляется строкой сюда и попадает в базу прогоном
 // скрипта — второго механизма нет.
-export type AchievementSeed = {
+//
+// Тип параметризован ключом метрики: у личных ачивок это MetricKey, у
+// ачивок сообщества — CommunityMetricKey (см. communityAchievements.ts).
+// Так опечатка в метрике ловится компилятором в обоих наборах, а сид
+// остаётся один.
+export type AchievementSeed<M extends string = string> = {
   key: string;
+  /** Чья ачивка. У личных не указывается — в базе это и есть default. */
+  scope?: AchievementScope;
   emoji: string;
   title: string;
   hint: string;
-  metric: MetricKey;
+  metric: M;
   threshold: number;
   sort: number;
 };
 
-export const ACHIEVEMENT_SEED: AchievementSeed[] = [
+export const ACHIEVEMENT_SEED: AchievementSeed<MetricKey>[] = [
   // Концерты
   { key: "first-concert", emoji: "🎤", title: "Первый концерт", hint: "Посетить первое событие", metric: "attendedEvents", threshold: 1, sort: 10 },
   { key: "concerts-5", emoji: "🎶", title: "Завсегдатай", hint: "Посетить 5 событий", metric: "attendedEvents", threshold: 5, sort: 20 },
@@ -133,10 +141,17 @@ export type AchievementState = {
   target: number;
 };
 
-/** Включённые определения в порядке показа (sort, затем дата создания). */
-export function getEnabledAchievements() {
+/**
+ * Включённые определения в порядке показа (sort, затем дата создания).
+ *
+ * Каталог общий для личных ачивок и ачивок сообщества, поэтому выборка
+ * ВСЕГДА фильтруется по `scope`: без фильтра медали сообщества
+ * попадали бы в личный прогресс «N из M» и в ленту обновлений человека,
+ * а метрики у них считаются от другого свода.
+ */
+export function getEnabledAchievements(scope: AchievementScope = "USER") {
   return prisma.achievement.findMany({
-    where: { enabled: true },
+    where: { enabled: true, scope },
     orderBy: [{ sort: "asc" }, { createdAt: "asc" }],
   });
 }

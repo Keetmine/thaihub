@@ -21,6 +21,7 @@ import PageHeader from "@/components/PageHeader";
 import PosterTile from "@/components/PosterTile";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import EmptyState from "@/components/EmptyState";
+import HomeCommunities from "./HomeCommunities";
 import LandingPage from "./LandingPage";
 
 export const dynamic = "force-dynamic";
@@ -126,6 +127,7 @@ export default async function HomePage({
     myPersonalEvents,
     airingTodayEpisodes,
     locationNews,
+    communityCount,
   ] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
     getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
@@ -231,6 +233,14 @@ export default async function HomePage({
     // нового» (просьба владельца): музыка приезжает обходом YouTube
     // Music, локации — прогоном blscene.
     getLocationNews(4),
+    // Гейт блока «В ваших сообществах» (АА25): главная — самая
+    // посещаемая страница, и лишних запросов на ней быть не должно.
+    // Один индексированный `count` (участий у человека максимум
+    // горстка) решает, идти ли за темами и встречами вообще: не
+    // состоит — блок не рендерится, и запросов от него ноль. Сам отбор
+    // содержимого считает HomeCommunities, чтобы фильтр приватности жил
+    // в одном месте, а не половиной здесь.
+    prisma.communityMember.count({ where: { userId: user.id, status: "ACTIVE" } }),
   ]);
 
   // Сдвоенный показ — две строки на один сериал: карточка всё равно
@@ -631,6 +641,16 @@ export default async function HomePage({
         </div>
       )}
       </div>
+
+      {/* «В ваших сообществах» — ПОД личным расписанием и НАД лентой
+          новинок каталога: встречи и разговоры своих важнее свежего
+          сингла, но не важнее того, куда человек сам собрался. Блока
+          нет вовсе у того, кто ни в одном сообществе не состоит, — и
+          это не «пустая секция», а её отсутствие: показывать нечего, а
+          звать вступать есть кому на витрине. Содержимое сообществ
+          закрытое, поэтому отбирает его сам компонент своими запросами
+          (см. HomeCommunities). */}
+      {communityCount > 0 && <HomeCommunities userId={user.id} />}
 
       {/* Новинки — во всю ширину ПОД рядом (правка владельца
           2026-09-06): раньше лента жила в правой колонке и растягивала

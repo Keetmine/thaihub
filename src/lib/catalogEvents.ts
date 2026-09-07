@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { viewerCommunitiesWhere } from "@/lib/communities";
 
 /**
  * Что считается КАТАЛОЖНЫМ событием (АА25).
@@ -42,7 +43,10 @@ export function viewerMeetupsWhere(userId: string | null | undefined): Prisma.Ev
   if (!userId) return { id: { in: [] } };
   return {
     communityId: { not: null },
-    community: { members: { some: { userId, status: "ACTIVE" } } },
+    // Само «где я состою» — общей функцией: тем же условием отбираются
+    // обсуждения (главная), и две копии одного правила приватности
+    // однажды разъехались бы молча.
+    community: viewerCommunitiesWhere(userId),
   };
 }
 
@@ -55,9 +59,6 @@ export function viewerMeetupsWhere(userId: string | null | undefined): Prisma.Ev
 export function viewerEventsWhere(userId: string | null | undefined): Prisma.EventWhereInput {
   if (!userId) return catalogEventsWhere();
   return {
-    OR: [
-      { communityId: null },
-      { community: { members: { some: { userId, status: "ACTIVE" } } } },
-    ],
+    OR: [{ communityId: null }, { community: viewerCommunitiesWhere(userId) }],
   };
 }

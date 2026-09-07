@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { METRICS, METRIC_KEYS } from "@/lib/achievements";
+import { metricOptionsForForm } from "../metricOptions";
 import AchievementForm from "../AchievementForm";
 import { createAchievement } from "../actions";
 
@@ -8,13 +8,10 @@ export const metadata = { title: "Новая ачивка" };
 export const dynamic = "force-dynamic";
 
 export default function NewAchievementPage() {
-  // Реестр метрик — серверный (тянет prisma через achievements.ts),
-  // в клиентскую форму уходит плоским списком опций.
-  const metricOptions = METRIC_KEYS.map((value) => ({
-    value,
-    label: METRICS[value].label,
-    kind: METRICS[value].kind,
-  }));
+  // Реестры метрик — серверные (тянут prisma через achievements.ts),
+  // в клиентскую форму уходят плоским списком опций: и личные, и
+  // сообществ, а форма показывает те, что подходят выбранному «чья».
+  const metricOptions = metricOptionsForForm();
 
   return (
     <div>

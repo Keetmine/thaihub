@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { isMetricKey, METRICS } from "@/lib/achievements";
+import { COMMUNITY_METRICS, isCommunityMetricKey } from "@/lib/communityAchievements";
 import { logAudit, diffRecords } from "@/lib/audit";
 
 // CRUD определений ачивок (Э2ф). Раздел в группе «Коммьюнити» — только
@@ -27,6 +28,10 @@ function parseAchievementForm(formData: FormData) {
   const metric = String(formData.get("metric") ?? "").trim();
   const enabled = formData.get("enabled") === "on";
   const sort = Math.trunc(Number(formData.get("sort") ?? 0)) || 0;
+  // Чья ачивка. Каталог общий, реестры метрик — разные: у личной
+  // считается свод человека (METRICS), у сообщества — свод сообщества
+  // (COMMUNITY_METRICS). Поэтому scope проверяется ДО метрики.
+  const scope = formData.get("scope") === "COMMUNITY" ? "COMMUNITY" : "USER";
 
   if (!key || !/^[a-z0-9-]+$/.test(key)) {
     throw new Error("Ключ обязателен: латиница в нижнем регистре, цифры и дефисы");
@@ -34,18 +39,24 @@ function parseAchievementForm(formData: FormData) {
   if (!emoji) throw new Error("Укажите эмодзи");
   if (!title) throw new Error("Укажите название");
   if (!hint) throw new Error("Укажите подсказку — как получить ачивку");
-  if (!isMetricKey(metric)) throw new Error("Неизвестная метрика");
+
+  const kind =
+    scope === "COMMUNITY"
+      ? isCommunityMetricKey(metric)
+        ? COMMUNITY_METRICS[metric].kind
+        : null
+      : isMetricKey(metric)
+        ? METRICS[metric].kind
+        : null;
+  if (!kind) throw new Error("Неизвестная метрика");
 
   // Флаговые метрики («было/не было») порога не имеют — threshold всегда 1.
-  const threshold =
-    METRICS[metric].kind === "flag"
-      ? 1
-      : Math.trunc(Number(formData.get("threshold") ?? 0));
+  const threshold = kind === "flag" ? 1 : Math.trunc(Number(formData.get("threshold") ?? 0));
   if (!Number.isFinite(threshold) || threshold < 1) {
     throw new Error("Порог должен быть целым числом от 1");
   }
 
-  return { key, emoji, title, hint, metric, threshold, enabled, sort };
+  return { key, scope, emoji, title, hint, metric, threshold, enabled, sort } as const;
 }
 
 function revalidateAchievementPages() {
@@ -89,6 +100,13 @@ export async function updateAchievement(id: string, formData: FormData) {
   // без FK) — форма шлёт key только для чтения, здесь страхуемся.
   if (data.key !== before.key) {
     throw new Error("Ключ менять нельзя — по нему привязаны уже полученные ачивки");
+  }
+  // Смена scope сменила бы и адресата ачивки: выданные строки лежат в
+  // РАЗНЫХ таблицах (UserAchievement / CommunityAchievement), и уже
+  // полученное осиротело бы. Форма scope на правке не шлёт, здесь
+  // страхуемся — как с ключом.
+  if (data.scope !== before.scope) {
+    throw new Error("Чью ачивку менять нельзя: уже выданные записи лежат по старому адресу");
   }
 
   await prisma.achievement.update({ where: { id }, data });

@@ -3,6 +3,7 @@ import type {
   CommunityMemberStatus,
   CommunityRole,
   CommunityVisibility,
+  Prisma,
 } from "@/generated/prisma/client";
 
 /**
@@ -84,6 +85,33 @@ export function communityAccess(
     canJoin: !!viewerId && !isMember && !isPending && !isBanned && isPublic,
     indexable: isPublic,
   };
+}
+
+/**
+ * Сообщества, где зритель — ДЕЙСТВУЮЩИЙ участник (`status = ACTIVE`).
+ *
+ * Это то самое условие, за которым живёт всё содержимое сообщества:
+ * темы, встречи с адресами, списки мест. Оно и раньше существовало —
+ * россыпью одинаковых `members: { some: { userId, status: "ACTIVE" } }`
+ * по выборкам, — и вот тут-то и опасно: одна копия, отставшая от
+ * остальных, молча покажет чужое. Поэтому условие живёт одной строкой,
+ * рядом с `communityAccess`, который решает то же самое для одной
+ * страницы.
+ *
+ * Гостю функция не отдаёт ничего по НЕВОЗМОЖНОМУ условию, а не по
+ * забытому снаружи `if`: пустой `userId` не должен превращаться в
+ * выборку «все сообщества». То же правило, что у `viewerMeetupsWhere`
+ * (`src/lib/catalogEvents.ts`), — она через эту функцию и работает.
+ *
+ * ```ts
+ * where: { community: viewerCommunitiesWhere(userId) }
+ * ```
+ */
+export function viewerCommunitiesWhere(
+  userId: string | null | undefined,
+): Prisma.CommunityWhereInput {
+  if (!userId) return { id: { in: [] } };
+  return { members: { some: { userId, status: "ACTIVE" } } };
 }
 
 /** Сообщество названо, но пустым названием жить не может. */

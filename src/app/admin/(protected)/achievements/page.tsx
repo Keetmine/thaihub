@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { METRICS, isMetricKey } from "@/lib/achievements";
+import { COMMUNITY_METRICS, isCommunityMetricKey } from "@/lib/communityAchievements";
 import {
   bulkDeleteAchievements,
   bulkSetAchievementsEnabled,
@@ -17,15 +18,19 @@ export const metadata = { title: "Ачивки" };
 export const dynamic = "force-dynamic";
 
 // Определения ачивок (Э2ф): раньше были зашиты в код, теперь — таблица
-// Achievement. Подсчёт «сколько получили» идёт по UserAchievement.key —
-// связи без FK, поэтому счётчик у удалённой ачивки просто пропадает
-// вместе с ней.
+// Achievement. Подсчёт «сколько получили» идёт по ключу — связи без FK,
+// поэтому счётчик у удалённой ачивки просто пропадает вместе с ней.
+// Таблиц с выданным две: личные у людей (UserAchievement) и ачивки
+// сообществ (CommunityAchievement) — каталог-то общий, разделяет их
+// только `scope`.
 export default async function AdminAchievementsPage() {
-  const [achievements, holders] = await Promise.all([
+  const [achievements, holders, communityHolders] = await Promise.all([
     prisma.achievement.findMany({ orderBy: [{ sort: "asc" }, { createdAt: "asc" }] }),
     prisma.userAchievement.groupBy({ by: ["key"], _count: { _all: true } }),
+    prisma.communityAchievement.groupBy({ by: ["key"], _count: { _all: true } }),
   ]);
   const holdersByKey = new Map(holders.map((h) => [h.key, h._count._all]));
+  const communityHoldersByKey = new Map(communityHolders.map((h) => [h.key, h._count._all]));
   const enabledCount = achievements.filter((a) => a.enabled).length;
 
   return (
@@ -53,9 +58,21 @@ export default async function AdminAchievementsPage() {
       ) : (
         <BulkList
           rows={achievements.map((a) => {
-            const metricLabel = isMetricKey(a.metric) ? METRICS[a.metric].label : `⚠️ ${a.metric}`;
-            const isFlag = isMetricKey(a.metric) && METRICS[a.metric].kind === "flag";
-            const got = holdersByKey.get(a.key) ?? 0;
+            // Метрика ищется в своём реестре: у ачивки сообщества это
+            // COMMUNITY_METRICS, и метка «⚠️» должна загораться только
+            // на настоящей опечатке, а не на чужом типе.
+            const isCommunity = a.scope === "COMMUNITY";
+            const known = isCommunity ? isCommunityMetricKey(a.metric) : isMetricKey(a.metric);
+            const def = isCommunity
+              ? isCommunityMetricKey(a.metric)
+                ? COMMUNITY_METRICS[a.metric]
+                : null
+              : isMetricKey(a.metric)
+                ? METRICS[a.metric]
+                : null;
+            const metricLabel = def ? def.label : `⚠️ ${a.metric}`;
+            const isFlag = known && def?.kind === "flag";
+            const got = (isCommunity ? communityHoldersByKey : holdersByKey).get(a.key) ?? 0;
             const boundDelete = deleteAchievement.bind(null, a.id);
             const boundToggle = toggleAchievementEnabled.bind(null, a.id);
             return {
@@ -82,6 +99,14 @@ export default async function AdminAchievementsPage() {
                         className="stretched-link text-decoration-none"
                       >
                         <span className="font-display fw-medium text-white">{a.title}</span>{" "}
+                        {isCommunity && (
+                          <span
+                            className="badge rounded-pill text-bg-info"
+                            style={{ fontSize: "0.6rem" }}
+                          >
+                            сообщества
+                          </span>
+                        )}{" "}
                         {!a.enabled && (
                           <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
                             выключена
@@ -97,7 +122,12 @@ export default async function AdminAchievementsPage() {
                   {/* position-relative + z-2: кнопки поверх stretched-link
                       строки, иначе клик уводил бы на редактирование. */}
                   <div className="position-relative z-2 d-flex align-items-center gap-2 flex-shrink-0">
-                    <span className="small text-secondary d-none d-md-inline" data-tooltip="Сколько пользователей получили">
+                    <span
+                      className="small text-secondary d-none d-md-inline"
+                      data-tooltip={
+                        isCommunity ? "Сколько сообществ получили" : "Сколько пользователей получили"
+                      }
+                    >
                       получили: {got}
                     </span>
                     <form action={boundToggle}>

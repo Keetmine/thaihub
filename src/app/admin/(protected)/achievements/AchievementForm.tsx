@@ -6,11 +6,21 @@ import SubmitButton from "@/components/admin/SubmitButton";
 import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 
 // Форма ачивки (Э2ф). Метрики приходят с сервера готовым списком
-// (значение + русская подпись + kind): сам реестр METRICS живёт в
-// src/lib/achievements.ts, который тянет prisma и в клиентский бандл
-// не попадает. У флаговых метрик порога нет — поле блокируется на 1.
+// (значение + русская подпись + kind + чья): сами реестры METRICS и
+// COMMUNITY_METRICS живут в src/lib/, тянут prisma и в клиентский бандл
+// не попадают. У флаговых метрик порога нет — поле блокируется на 1.
+//
+// Ачивка бывает личная и сообщества (`scope`): каталог общий, а вот
+// метрики у них разные — при смене переключателя список метрик
+// перерисовывается, чтобы нельзя было повесить на сообщество «дни в
+// Таиланде».
 
-export type MetricOption = { value: string; label: string; kind: "counter" | "flag" };
+export type MetricOption = {
+  value: string;
+  label: string;
+  kind: "counter" | "flag";
+  scope: "USER" | "COMMUNITY";
+};
 
 export default function AchievementForm({
   action,
@@ -24,6 +34,7 @@ export default function AchievementForm({
   metricOptions: MetricOption[];
   defaultValues?: {
     key: string;
+    scope: "USER" | "COMMUNITY";
     emoji: string;
     title: string;
     hint: string;
@@ -33,12 +44,20 @@ export default function AchievementForm({
     sort: number;
   };
   /** true на редактировании: по key привязаны уже полученные
-   *  UserAchievement, менять его нельзя. */
+   *  UserAchievement/CommunityAchievement, менять его нельзя. Заодно
+   *  запирается и scope — выданные строки лежат в разных таблицах. */
   keyLocked?: boolean;
 }) {
   const v = defaultValues;
-  const [metric, setMetric] = useState(v?.metric ?? metricOptions[0]?.value ?? "");
-  const isFlag = metricOptions.find((m) => m.value === metric)?.kind === "flag";
+  const [scope, setScope] = useState<"USER" | "COMMUNITY">(v?.scope ?? "USER");
+  const scopeOptions = metricOptions.filter((m) => m.scope === scope);
+  const [metric, setMetric] = useState(v?.metric ?? scopeOptions[0]?.value ?? "");
+  // Метрика чужого scope в селекте не показана — значит, и выбранной
+  // остаться не может: подставляем первую из своих.
+  const currentMetric = scopeOptions.some((m) => m.value === metric)
+    ? metric
+    : (scopeOptions[0]?.value ?? "");
+  const isFlag = scopeOptions.find((m) => m.value === currentMetric)?.kind === "flag";
 
   const formRef = useRef<HTMLFormElement>(null);
   const { dirty } = useUnsavedGuard(formRef);
@@ -70,25 +89,48 @@ export default function AchievementForm({
 
       <FormSection
         title="Условие"
-        hint="метрика считается кодом из статистики юзера, порог задаётся здесь"
+        hint="метрика считается кодом из статистики (юзера или сообщества), порог задаётся здесь"
       >
         <div className="row g-3">
-          <div className="col-12 col-md-6">
+          <div className="col-12 col-md-3">
+            <label className="form-label" htmlFor="achievement-form-scope">Чья ачивка *</label>
+            {/* На правке scope заперт: выданные строки лежат в разных
+                таблицах (UserAchievement / CommunityAchievement), и
+                смена адресата осиротила бы уже полученное. */}
+            <select
+              id="achievement-form-scope"
+              name="scope"
+              className="form-select"
+              value={scope}
+              disabled={keyLocked}
+              onChange={(e) => setScope(e.target.value as "USER" | "COMMUNITY")}
+            >
+              <option value="USER">Личная</option>
+              <option value="COMMUNITY">Сообщества</option>
+            </select>
+            {keyLocked && <input type="hidden" name="scope" value={scope} />}
+            <div className="form-text">
+              {keyLocked
+                ? "Менять нельзя: выданные записи привязаны к этому типу."
+                : "Личная висит в профиле, сообщества — на странице сообщества."}
+            </div>
+          </div>
+          <div className="col-12 col-md-5">
             <label className="form-label" htmlFor="achievement-form-metric">Метрика *</label>
             <select id="achievement-form-metric"
               name="metric"
               className="form-select"
-              value={metric}
+              value={currentMetric}
               onChange={(e) => setMetric(e.target.value)}
             >
-              {metricOptions.map((m) => (
+              {scopeOptions.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>
               ))}
             </select>
           </div>
-          <div className="col-6 col-md-3">
+          <div className="col-6 col-md-2">
             <label className="form-label" htmlFor="achievement-form-threshold">
               Порог *
             </label>
@@ -111,7 +153,7 @@ export default function AchievementForm({
               <div className="form-text">У флага порога нет — «было/не было».</div>
             )}
           </div>
-          <div className="col-6 col-md-3">
+          <div className="col-6 col-md-2">
             <label className="form-label" htmlFor="achievement-form-sort">Порядок</label>
             <input id="achievement-form-sort"
               name="sort"

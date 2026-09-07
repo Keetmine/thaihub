@@ -142,12 +142,13 @@ export const communities = {
         past: "Past meetups",
 
         titleLabel: "What is happening",
-        posterLabel: "Cover",
-        posterUpload: "Add a cover",
-        posterReplace: "Replace the cover",
+        posterLabel: "Meetup picture",
+        posterHint: "It shows up on the meetup card. Without it we draw the first letter of the name.",
+        posterUpload: "Add a picture",
+        posterReplace: "Replace the picture",
         posterRemove: "Remove",
         posterUploading: "Uploading…",
-        posterWait: "The cover is still uploading — one moment",
+        posterWait: "The picture is still uploading — one moment",
         titlePlaceholder: "Watching episode 5 together",
         dateLabel: "Date",
         timeLabel: "Time",
@@ -175,8 +176,11 @@ export const communities = {
         delete: "Delete the meetup",
         deleteConfirm: "Delete this meetup? The going marks will be gone with it.",
 
-        /** Плашка на странице самой встречи — чтобы её не приняли за афишу. */
-        eventNotice: (community: string) => `Meetup of the “${community}” community`,
+        /** Строка в блоке информации о событии — чтобы встречу не приняли
+         *  за афишное событие; оговорка о закрытости — тихой добавкой. */
+        eventCommunityLabel: "Community",
+        eventOnlyMembers: "members only",
+        /** То же целой фразой — для описания страницы в метадате. */
         eventNoticeMembers: "Only members of this community can see this page.",
 
         /** Блок открытых встреч в афише. */
@@ -328,6 +332,18 @@ export const communities = {
             noInvite: "There is no such invitation any more",
             banned: "You were removed from this community",
         },
+    },
+
+    /**
+     * Медали самого СООБЩЕСТВА в левой колонке страницы (не личные
+     * ачивки про сообщества — те живут в профиле). Свой подобъект: они
+     * правятся вместе с блоком медалей, а не с витриной.
+     */
+    achievements: {
+        title: "Achievements",
+        progress: (n: number, total: number) => `${n} of ${total}`,
+        emptyHint:
+            "None yet — they come on their own: for the first meetup, the first members, a lively thread.",
     },
 
     /**

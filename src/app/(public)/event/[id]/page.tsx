@@ -413,19 +413,9 @@ export default async function EventDetailPage({
       <BackLink fallbackHref="/" fallbackLabel={t.events.detail.backToEvents} />
       {/* Классическая шапка (по просьбе владельца): заголовок сверху,
           постер слева с кнопкой «Билеты», инфо-карта справа. */}
-      {/* Плашка встречи — над заголовком: человек должен с первой
-          строки понимать, что это не афиша, а сбор сообщества, и куда
-          вернуться. Закрытой встрече тут же говорим, что страницу видят
-          только свои — иначе адрес в карточке выглядит опубликованным. */}
-      {event.community && (
-        <p className="small text-secondary mt-3 mb-0">
-          <UsersIcon className="icon-inline" />{" "}
-          <AppLink href={communityHref(event.community)} className="link-body-emphasis">
-            {t.communities.meetups.eventNotice(event.community.title)}
-          </AppLink>
-          {` · ${t.communities.meetups.eventNoticeMembers}`}
-        </p>
-      )}
+      {/* Отдельной плашки над заголовком больше НЕТ (правка владельца
+          2026-09-08 «некрасиво выводится»): сообщество уехало строкой в
+          блок информации, к площадке и организатору. */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {event.title}
@@ -472,6 +462,25 @@ export default async function EventDetailPage({
         )}
         {/* Без подложки-surface (просьба владельца). */}
         <div className="flex-fill" style={{ minWidth: 0 }}>
+            {/* Сообщество — ПЕРВОЙ строкой блока информации (правка
+                владельца 2026-09-08): раньше это был отдельный абзац над
+                заголовком, и он выбивался из страницы. Оформление — как у
+                площадки и организатора: иконка, подпись, значение; значение
+                — ссылка обратно в сообщество, ради которой строка и нужна.
+                Оговорку «видят только участники» держим тихой добавкой: это
+                пояснение к странице, а не факт о встрече наравне с местом. */}
+            {event.community && (
+              <p className="mb-2">
+                <UsersIcon className="icon-inline" />{" "}
+                <span className="text-secondary">{t.communities.meetups.eventCommunityLabel}</span>{" "}
+                <AppLink href={communityHref(event.community)} className="link-body-emphasis">
+                  {event.community.title}
+                </AppLink>
+                <span className="small text-secondary">
+                  {` · ${t.communities.meetups.eventOnlyMembers}`}
+                </span>
+              </p>
+            )}
             {/* Площадка: при наличии mapsUrl её название — ссылка на
                 карту в новой вкладке (краулер фестивалей отдаёт короткие
                 maps.app.goo.gl). Адрес — тихой строкой рядом, отдельной

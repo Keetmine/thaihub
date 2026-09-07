@@ -36,20 +36,21 @@ export type MeetupFormValues = {
  * сообщества, и исключений не бывает (правка владельца 2026-09-08) — в
  * «где» у домашней встречи стоит чей-то адрес.
  *
- * Афиша встречи грузится сразу при выборе файла, а не по «Сохранить»:
+ * Картинка встречи грузится сразу при выборе файла, а не по «Сохранить»:
  * так же сделана обложка сообщества (`CommunityAdmin`) — картинка
  * уезжает на общую ручку /api/upload, а в форме остаётся только её
  * адрес скрытым полем.
  *
  * Отсюда же и запрет сохранять, пока файл ещё едет (жалоба владельца
- * 2026-09-08 «фото не загружается»): «Афиша» — последнее поле формы,
- * кнопка «Сохранить» стоит прямо под ним, а фотография с телефона
- * уезжает на сервер и переживает пережатие в WebP несколько секунд. Кто
- * нажимал «Сохранить», не дожидаясь, отправлял форму с ПУСТЫМ
- * `posterUrl` — встреча сохранялась без картинки и молча, без единой
- * ошибки. Поэтому сабмит на время загрузки закрыт и кнопкой, и
- * проверкой в самом обработчике (форму отправляет ещё и Enter в любом
- * текстовом поле, мимо кнопки).
+ * 2026-09-08 «фото не загружается»): фотография с телефона уезжает на
+ * сервер и переживает пережатие в WebP несколько секунд, а кто нажимал
+ * «Сохранить», не дождавшись, отправлял форму с ПУСТЫМ `posterUrl` —
+ * встреча сохранялась без картинки и молча, без единой ошибки. Поэтому
+ * сабмит на время загрузки закрыт и кнопкой, и проверкой в самом
+ * обработчике (форму отправляет ещё и Enter в любом текстовом поле,
+ * мимо кнопки). Поле картинки с тех пор переехало наверх, сразу под
+ * название (правка владельца 2026-09-08), — от этого гонка стала реже,
+ * но не исчезла: запрет остаётся на месте.
  */
 export default function MeetupForm({
   communityId,
@@ -68,7 +69,7 @@ export default function MeetupForm({
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  // Афиша встречи: адрес держим в состоянии и отдаём форме скрытым
+  // Картинка встречи: адрес держим в состоянии и отдаём форме скрытым
   // полем. Без картинки карточка рисует первую букву названия — как у
   // обычных событий, отдельного «нет постера» не нужно.
   const [posterUrl, setPosterUrl] = useState<string | null>(meetup?.posterUrl ?? null);
@@ -97,7 +98,7 @@ export default function MeetupForm({
   }
 
   async function save(formData: FormData) {
-    // Афиша ещё едет — сохранять нельзя: в форме сейчас пустой
+    // Картинка ещё едет — сохранять нельзя: в форме сейчас пустой
     // posterUrl, и встреча записалась бы без картинки, ничего об этом
     // не сказав. Кнопка на это время отключена, но Enter в текстовом
     // поле отправляет форму мимо неё.
@@ -116,7 +117,7 @@ export default function MeetupForm({
         return;
       }
       setIsOpen(false);
-      // Новая встреча заведена — чистим афишу за собой: форма создания
+      // Новая встреча заведена — чистим картинку за собой: форма создания
       // живёт в шапке вкладки и не размонтируется, и следующая встреча
       // уехала бы с картинкой предыдущей.
       if (!meetup) setPosterUrl(null);
@@ -166,6 +167,68 @@ export default function MeetupForm({
               placeholder={s.titlePlaceholder}
               className="form-control"
             />
+          </div>
+
+          {/* Картинка — СРАЗУ после названия (правка владельца
+              2026-09-08). Внизу формы её не замечали, а слово «Афиша»
+              над ней читалось как «список событий», а не «картинка для
+              карточки». Заодно у файла появляется фора: пока автор
+              заполняет дату, место и подробности, загрузка успевает
+              закончиться — и запрет сабмита ниже никого не задерживает.
+              Сам запрет остаётся: заполнить остальное можно и за секунду,
+              а Enter отправляет форму мимо кнопки. */}
+          <div className="d-flex flex-column gap-2">
+            <span className="form-label small text-secondary mb-0">{s.posterLabel}</span>
+            {posterUrl && (
+              <div style={{ width: "8rem" }}>
+                <UploadImage src={posterUrl} alt="" sizes="8rem" />
+              </div>
+            )}
+            <div className="d-flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={posterBusy}
+                onClick={() => posterInputRef.current?.click()}
+              >
+                {posterBusy ? s.posterUploading : posterUrl ? s.posterReplace : s.posterUpload}
+              </button>
+              {posterUrl && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-danger"
+                  disabled={posterBusy}
+                  onClick={() => setPosterUrl(null)}
+                >
+                  {s.posterRemove}
+                </button>
+              )}
+            </div>
+            <input
+              ref={posterInputRef}
+              type="file"
+              accept="image/*"
+              className="d-none"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                // Сбрасываем поле: повторный выбор ТОГО ЖЕ файла иначе не
+                // поднимает change.
+                e.target.value = "";
+                if (file) void pickPoster(file);
+              }}
+            />
+            <input type="hidden" name="posterUrl" value={posterUrl ?? ""} />
+            {/* Пока файл едет — говорим об этом прямо у поля: кнопка
+                «Сохранить» теперь далеко внизу, и надписи на кнопке
+                загрузки мало. Ошибка при попытке сохранить раньше
+                времени всё равно придёт этой же фразой (см. save). */}
+            {posterBusy ? (
+              <p className="small text-secondary mb-0">{s.posterWait}</p>
+            ) : (
+              <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
+                {s.posterHint}
+              </p>
+            )}
           </div>
 
           <div className="row g-2">
@@ -255,53 +318,6 @@ export default function MeetupForm({
             placeholder={s.dramaNone}
             searchOptions={searchMeetupDramas}
           />
-
-          <div className="d-flex flex-column gap-2">
-            <span className="form-label small text-secondary mb-0">{s.posterLabel}</span>
-            {posterUrl && (
-              <div style={{ width: "8rem" }}>
-                <UploadImage src={posterUrl} alt="" sizes="8rem" />
-              </div>
-            )}
-            <div className="d-flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={posterBusy}
-                onClick={() => posterInputRef.current?.click()}
-              >
-                {posterBusy ? s.posterUploading : posterUrl ? s.posterReplace : s.posterUpload}
-              </button>
-              {posterUrl && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm text-danger"
-                  disabled={posterBusy}
-                  onClick={() => setPosterUrl(null)}
-                >
-                  {s.posterRemove}
-                </button>
-              )}
-            </div>
-            <input
-              ref={posterInputRef}
-              type="file"
-              accept="image/*"
-              className="d-none"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                // Сбрасываем поле: повторный выбор ТОГО ЖЕ файла иначе не
-                // поднимает change.
-                e.target.value = "";
-                if (file) void pickPoster(file);
-              }}
-            />
-            <input type="hidden" name="posterUrl" value={posterUrl ?? ""} />
-            {/* Пока файл едет — говорим об этом прямо у поля, а не
-                только надписью на кнопке загрузки: человек в этот
-                момент смотрит на «Сохранить». */}
-            {posterBusy && <p className="small text-secondary mb-0">{s.posterWait}</p>}
-          </div>
 
           {error && <p className="small text-danger mb-0">{error}</p>}
 

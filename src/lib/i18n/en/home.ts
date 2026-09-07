@@ -16,6 +16,13 @@ export const home = {
     // Сдвоенный показ: одной карточкой с диапазоном.
     airingTodayEpisodes: (from: number, to: number) => `Episodes ${from}–${to}`,
     watchingNow: "Watching now",
+    /** Блок «В ваших сообществах» (АА25): ближайшие встречи и свежие
+     *  темы из сообществ, где человек СОСТОИТ. Строки живут здесь, а не
+     *  в словаре сообществ, потому что правятся вместе с главной. */
+    communities: "In your communities",
+    communityMeetups: "Upcoming meetups",
+    communityPosts: "Latest discussions",
+    communityReplies: (n: number) => `${n} ${n === 1 ? "reply" : "replies"}`,
     whatsNew: "What's new",
     /** Новость про места съёмок: у сериала появились локации
      *  (просьба владельца 2026-09-06). */

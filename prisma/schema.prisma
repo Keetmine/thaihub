@@ -1342,9 +1342,18 @@ enum NoteVisibility {
 // подсчёта (METRICS в src/lib/achievements.ts): само вычисление остаётся
 // кодом, БД задаёт только «какая метрика и какой порог». Флаговые метрики
 // («Дубль», «Марафон» и т.п.) держат threshold = 1.
+/// Чья это ачивка. До сих пор все были личные; у сообществ появились
+/// свои — их зарабатывают вместе, и висят они на странице сообщества,
+/// а не в профиле (просьба владельца 2026-09-08).
+enum AchievementScope {
+  USER
+  COMMUNITY
+}
+
 model Achievement {
   id        String   @id @default(cuid())
   key       String   @unique
+  scope     AchievementScope @default(USER)
   emoji     String
   title     String
   hint      String
@@ -1362,6 +1371,18 @@ model Achievement {
 // «новых» поздравлений в Telegram и стабильного порядка в профиле.
 // `key` ссылается на Achievement.key НАМЕРЕННО без FK: удалённая из
 // админки ачивка просто перестаёт показываться, а строка-факт остаётся.
+/// Выданная ачивка СООБЩЕСТВА. Устроена как UserAchievement — связь по
+/// ключу, а не по id: ключи стабильны, а строки Achievement
+/// пересоздаются сидом.
+model CommunityAchievement {
+  communityId String
+  key         String
+  unlockedAt  DateTime  @default(now())
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@id([communityId, key])
+}
+
 model UserAchievement {
   userId     String
   key        String
@@ -2232,7 +2253,8 @@ model Community {
   country     String?
   city        String?
   links       CommunityLink[]
-  topics      CommunityTopic[]
+  topics       CommunityTopic[]
+  achievements CommunityAchievement[]
   placeLists  PlaceList[]
   trips       Trip[]
   members     CommunityMember[]
@@ -2307,6 +2329,13 @@ model CommunityPost {
   text        String
   /// Закреплённая тема — правила сообщества, знакомство, объявление.
   pinned      Boolean   @default(false)
+  /// Приватная тема видна только участникам. Публичная попадает в
+  /// список, который видят и посторонние (правка владельца
+  /// 2026-09-09): по такому списку видно, живое ли сообщество, и
+  /// становится понятно, ради чего в него вступать. ОТКРЫТЬ тему
+  /// по-прежнему может только участник — снаружи виден заголовок,
+  /// а не разговор.
+  isPrivate   Boolean   @default(false)
   /// Картинки самой темы. Своя модель, а не «служебный комментарий с
   /// фотографиями»: призрачная строка в общей таблице комментариев
   /// заставляла бы каждое место, которое их считает или показывает

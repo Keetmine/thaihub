@@ -13,6 +13,10 @@ export const home: Dict["home"] = {
     airingTodayEpisode: (n: number) => `${n} серия`,
     airingTodayEpisodes: (from: number, to: number) => `${from}–${to} серии`,
     watchingNow: "Смотрю сейчас",
+    communities: "В ваших сообществах",
+    communityMeetups: "Ближайшие встречи",
+    communityPosts: "Свежие обсуждения",
+    communityReplies: (n: number) => pluralized(n, ["ответ", "ответа", "ответов"]),
     whatsNew: "Что нового",
     newsLocations: "Места съёмок",
     newsLocationsCount: (n: number) =>

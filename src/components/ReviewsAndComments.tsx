@@ -1,6 +1,7 @@
 import Link from "@/components/AppLink";
 import { getT } from "@/lib/i18n";
-import { endOfDay, formatDateWithYear } from "@/lib/dates";
+import { formatDateWithYear } from "@/lib/dates";
+import { isEventFinished } from "@/lib/eventFinished";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -219,35 +220,32 @@ export default async function ReviewsAndComments({
       orderBy: { createdAt: "desc" },
       take: 100,
     }),
-    // Отзыв о событии можно оставить только ПОСЛЕ него (правка
-    // владельца 2026-09-08): «понравилось» о концерте, который ещё не
-    // состоялся, — это не отзыв. Комментарии остаются открытыми: перед
-    // событием как раз и договариваются, кто во сколько идёт.
+    // Отзывы о событии живут только ПОСЛЕ него (правка владельца
+    // 2026-09-08): «понравилось» о концерте, который ещё не состоялся, —
+    // это не отзыв. У непрошедшего события блок отзывов не рендерится
+    // целиком, а не только его форма: пустая секция с заголовком и
+    // строкой «отзыв можно оставить после события» занимала экран, ничего
+    // не давая взамен. Комментарии остаются открытыми: перед событием как
+    // раз и договариваются, кто во сколько идёт.
     //
     // Прошедшим считаем событие, у которого закончилась ПОСЛЕДНЯЯ дата:
     // у двухдневного фестиваля второй день ещё впереди, и «уже
     // прошедшим» он не стал. Дата без времени кончается вместе с днём —
     // startsAt у неё 00:00, и сравнение с «сейчас» объявило бы её
     // прошедшей в первую же минуту суток.
-    kind === "event"
-      ? prisma.eventOccurrence
-          .findFirst({
-            where: { eventId: id },
-            orderBy: { startsAt: "desc" },
-            select: { startsAt: true, endsAt: true, hasTime: true },
-          })
-          .then((last) => {
-            if (!last) return false;
-            const finishedAt = last.hasTime
-              ? (last.endsAt ?? last.startsAt)
-              : endOfDay(last.startsAt);
-            // new Date(), а не Date.now(): правило react-hooks
-            // запрещает второй в рендере как нестабильный вызов (тот же
-            // обход, что в admin/errors/page.tsx).
-            return finishedAt.getTime() < new Date().getTime();
-          })
-      : Promise.resolve(true),
+    kind === "event" ? isEventFinished(id) : Promise.resolve(true),
   ]);
+
+  // Показывать ли секцию отзывов. У сериалов и новелл eventFinished
+  // всегда true — правило про них не про них, отзыв о книге или сериале
+  // можно оставить когда угодно.
+  //
+  // Край, чтобы никто не счёл это потерей данных: у будущего события
+  // могут уже лежать отзывы — написанные до этой правки или оставленные,
+  // а потом событие перенесли вперёд. Они не удаляются и не правятся,
+  // только временно не отрисовываются и вернутся на страницу сами, когда
+  // событие пройдёт. В базе строки Review на месте.
+  const showReviews = eventFinished;
 
   const ownReview = currentUser ? reviews.find((r) => r.user.id === currentUser.id) : undefined;
   // Средний рейтинг и счётчик — только по публичным отзывам: рейтинг —
@@ -267,157 +265,155 @@ export default async function ReviewsAndComments({
   return (
     <>
       {/* ---------- Отзывы ---------- */}
-      <section className="surface p-4 mb-3">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <h2 className="section-heading mb-0 d-flex align-items-center gap-2">
-            <StarIcon /> {t.reviews.reviewsHeading}
-            {avg !== null && (
-              <span className="fw-semibold" style={{ color: ratingColor(avg) }}>
-                {avg}
-              </span>
-            )}
-            {publicReviews.length > 0 && (
-              <span className="small text-secondary fw-normal">({publicReviews.length})</span>
-            )}
-          </h2>
-        </div>
-
-        {currentUser && !eventFinished ? (
-          // Событие ещё не прошло: вместо формы — строка почему.
-          // Молча прятать кнопку нельзя, человек решит, что сломалось.
-          <p className="small text-secondary mb-3">{t.reviews.eventNotFinished}</p>
-        ) : currentUser ? (
-          <details className="mb-3">
-            <summary className="btn btn-ghost btn-sm d-inline-flex">
-              {ownReview ? t.reviews.editReview : t.reviews.writeReview}
-            </summary>
-            <ActionResultForm action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
-              {/* Оценка по разделам, звёздами с половинками (правка
-                  владельца 2026-09-07). Набор разделов зависит от типа
-                  записи: у новеллы нет актёров, у события — ни сюжета,
-                  ни актёрской игры. */}
-              <ReviewRatingFields
-                fields={RATING_FIELDS[kind]}
-                initial={{
-                  overall: ownReview?.rating ?? null,
-                  story: ownReview?.ratingStory ?? null,
-                  acting: ownReview?.ratingActing ?? null,
-                  music: ownReview?.ratingMusic ?? null,
-                }}
-              />
-              <textarea
-                name="text"
-                rows={4}
-                required
-                defaultValue={ownReview?.text}
-                placeholder={t.reviews.reviewPlaceholder}
-                aria-label={t.reviews.reviewAria}
-                className="form-control"
-              />
-              {/* Что значит «приватный» — подсказкой на вопросике
-                  (правка владельца 2026-09-07): строчкой под чекбоксом
-                  это лишний текст в и без того длинной форме. */}
-              <label className="form-check small text-secondary mb-0 d-flex align-items-center gap-1">
-                <input
-                  type="checkbox"
-                  name="isPrivate"
-                  defaultChecked={ownReview?.isPrivate ?? false}
-                  className="form-check-input mt-0"
-                />
-                <span>{t.reviews.privateLabel}</span>
-                <span
-                  className="tooltip-wide d-inline-flex"
-                  data-tooltip={t.reviews.privateHint}
-                  tabIndex={0}
-                  role="note"
-                  aria-label={t.reviews.privateHint}
-                >
-                  <HelpIcon />
+      {showReviews && (
+        <section className="surface p-4 mb-3">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="section-heading mb-0 d-flex align-items-center gap-2">
+              <StarIcon /> {t.reviews.reviewsHeading}
+              {avg !== null && (
+                <span className="fw-semibold" style={{ color: ratingColor(avg) }}>
+                  {avg}
                 </span>
-              </label>
-              <div className="d-flex gap-2">
-                <button type="submit" className="btn btn-primary btn-sm">
-                  {ownReview ? t.reviews.save : t.reviews.publish}
-                </button>
-                {ownReview && (
-                  <ConfirmForm action={boundDeleteReview} confirmMessage={t.reviews.deleteReviewConfirm}>
-                    <button type="button" className="btn btn-outline-secondary btn-sm">
-                      {t.reviews.deleteReview}
-                    </button>
-                  </ConfirmForm>
-                )}
-              </div>
-            </ActionResultForm>
-          </details>
-        ) : (
-          <p className="small text-secondary">
-            <Link href="/login" className="link-body-emphasis">
-              {t.reviews.signIn}
-            </Link>
-            {t.reviews.toReview}
-          </p>
-        )}
-
-        {reviews.length === 0 ? (
-          <p className="small text-secondary mb-0">{t.reviews.noReviews}</p>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {reviews.map((r) => {
-              const authorName = r.user.deletedAt ? t.common.deletedAccount : r.user.name;
-              return (
-                <div key={r.id} className="d-flex align-items-start gap-2">
-                  <Avatar name={authorName} photoUrl={r.user.photoUrl} />
-                  <div style={{ minWidth: 0 }}>
-                    <p className="small mb-1">
-                      <span className="text-white fw-medium">{authorName ?? t.reviews.noName}</span>{" "}
-                      <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
-                        {formatRating(r.rating)}
-                      </span>
-                      <span className="text-secondary"> · {formatDateWithYear(r.createdAt, locale)}</span>
-                      {/* Бейдж только у своего приватного отзыва — чужие
-                          в выборку не попадают вовсе. */}
-                      {r.isPrivate && (
-                        <span
-                          className="badge rounded-pill text-bg-secondary ms-2 align-middle"
-                          style={{ fontSize: "0.65rem" }}
-                        >
-                          {t.reviews.privateBadge}
-                        </span>
-                      )}
-                    </p>
-                    {/* Разделы — тихой строкой под шапкой отзыва: их
-                        заполняют не все, и в главной строке они спорили
-                        бы с общей оценкой. */}
-                    {(r.ratingStory != null || r.ratingActing != null || r.ratingMusic != null) && (
-                      <p className="small text-secondary mb-1">
-                        {[
-                          r.ratingStory != null
-                            ? `${t.reviews.rating.story} ${formatRating(r.ratingStory)}`
-                            : null,
-                          r.ratingActing != null
-                            ? `${t.reviews.rating.acting} ${formatRating(r.ratingActing)}`
-                            : null,
-                          r.ratingMusic != null
-                            ? `${t.reviews.rating.music} ${formatRating(r.ratingMusic)}`
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    )}
-                    <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
-                      {r.text}
-                    </p>
-                    {currentUser && r.user.id !== currentUser.id && (
-                      <ReportButton targetType="review" targetId={r.id} />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+              )}
+              {publicReviews.length > 0 && (
+                <span className="small text-secondary fw-normal">({publicReviews.length})</span>
+              )}
+            </h2>
           </div>
-        )}
-      </section>
+
+          {currentUser ? (
+            <details className="mb-3">
+              <summary className="btn btn-ghost btn-sm d-inline-flex">
+                {ownReview ? t.reviews.editReview : t.reviews.writeReview}
+              </summary>
+              <ActionResultForm action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
+                {/* Оценка по разделам, звёздами с половинками (правка
+                    владельца 2026-09-07). Набор разделов зависит от типа
+                    записи: у новеллы нет актёров, у события — ни сюжета,
+                    ни актёрской игры. */}
+                <ReviewRatingFields
+                  fields={RATING_FIELDS[kind]}
+                  initial={{
+                    overall: ownReview?.rating ?? null,
+                    story: ownReview?.ratingStory ?? null,
+                    acting: ownReview?.ratingActing ?? null,
+                    music: ownReview?.ratingMusic ?? null,
+                  }}
+                />
+                <textarea
+                  name="text"
+                  rows={4}
+                  required
+                  defaultValue={ownReview?.text}
+                  placeholder={t.reviews.reviewPlaceholder}
+                  aria-label={t.reviews.reviewAria}
+                  className="form-control"
+                />
+                {/* Что значит «приватный» — подсказкой на вопросике
+                    (правка владельца 2026-09-07): строчкой под чекбоксом
+                    это лишний текст в и без того длинной форме. */}
+                <label className="form-check small text-secondary mb-0 d-flex align-items-center gap-1">
+                  <input
+                    type="checkbox"
+                    name="isPrivate"
+                    defaultChecked={ownReview?.isPrivate ?? false}
+                    className="form-check-input mt-0"
+                  />
+                  <span>{t.reviews.privateLabel}</span>
+                  <span
+                    className="tooltip-wide d-inline-flex"
+                    data-tooltip={t.reviews.privateHint}
+                    tabIndex={0}
+                    role="note"
+                    aria-label={t.reviews.privateHint}
+                  >
+                    <HelpIcon />
+                  </span>
+                </label>
+                <div className="d-flex gap-2">
+                  <button type="submit" className="btn btn-primary btn-sm">
+                    {ownReview ? t.reviews.save : t.reviews.publish}
+                  </button>
+                  {ownReview && (
+                    <ConfirmForm action={boundDeleteReview} confirmMessage={t.reviews.deleteReviewConfirm}>
+                      <button type="button" className="btn btn-outline-secondary btn-sm">
+                        {t.reviews.deleteReview}
+                      </button>
+                    </ConfirmForm>
+                  )}
+                </div>
+              </ActionResultForm>
+            </details>
+          ) : (
+            <p className="small text-secondary">
+              <Link href="/login" className="link-body-emphasis">
+                {t.reviews.signIn}
+              </Link>
+              {t.reviews.toReview}
+            </p>
+          )}
+
+          {reviews.length === 0 ? (
+            <p className="small text-secondary mb-0">{t.reviews.noReviews}</p>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {reviews.map((r) => {
+                const authorName = r.user.deletedAt ? t.common.deletedAccount : r.user.name;
+                return (
+                  <div key={r.id} className="d-flex align-items-start gap-2">
+                    <Avatar name={authorName} photoUrl={r.user.photoUrl} />
+                    <div style={{ minWidth: 0 }}>
+                      <p className="small mb-1">
+                        <span className="text-white fw-medium">{authorName ?? t.reviews.noName}</span>{" "}
+                        <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
+                          {formatRating(r.rating)}
+                        </span>
+                        <span className="text-secondary"> · {formatDateWithYear(r.createdAt, locale)}</span>
+                        {/* Бейдж только у своего приватного отзыва — чужие
+                            в выборку не попадают вовсе. */}
+                        {r.isPrivate && (
+                          <span
+                            className="badge rounded-pill text-bg-secondary ms-2 align-middle"
+                            style={{ fontSize: "0.65rem" }}
+                          >
+                            {t.reviews.privateBadge}
+                          </span>
+                        )}
+                      </p>
+                      {/* Разделы — тихой строкой под шапкой отзыва: их
+                          заполняют не все, и в главной строке они спорили
+                          бы с общей оценкой. */}
+                      {(r.ratingStory != null || r.ratingActing != null || r.ratingMusic != null) && (
+                        <p className="small text-secondary mb-1">
+                          {[
+                            r.ratingStory != null
+                              ? `${t.reviews.rating.story} ${formatRating(r.ratingStory)}`
+                              : null,
+                            r.ratingActing != null
+                              ? `${t.reviews.rating.acting} ${formatRating(r.ratingActing)}`
+                              : null,
+                            r.ratingMusic != null
+                              ? `${t.reviews.rating.music} ${formatRating(r.ratingMusic)}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      )}
+                      <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
+                        {r.text}
+                      </p>
+                      {currentUser && r.user.id !== currentUser.id && (
+                        <ReportButton targetType="review" targetId={r.id} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ---------- Комментарии ---------- */}
       <section className="surface p-4 mb-3">

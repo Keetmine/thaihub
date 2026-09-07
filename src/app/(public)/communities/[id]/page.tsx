@@ -17,6 +17,7 @@ import MembersTab from "./MembersTab";
 import MemberRowActions from "./MemberRowActions";
 import InviteMemberButton from "./InviteMemberButton";
 import InviteBanner, { InviteCancelButton } from "./InviteBanner";
+import AchievementsBlock from "./AchievementsBlock";
 import DiscussionsTab from "./DiscussionsTab";
 import MeetupsTab from "./MeetupsTab";
 import PlacesTab from "./PlacesTab";
@@ -309,6 +310,12 @@ export default async function CommunityPage({
               invitedBy={userDisplayName(myInvite.invitedBy, locale)}
             />
           )}
+
+          {/* Медали сообщества — там же, где личные в профиле: в левой
+              колонке под самим сообществом. Видят их те же, кто видит
+              содержимое: правило одно на страницу (`canSeeInside`), а
+              не своя копия условий. */}
+          {access.canSeeInside && <AchievementsBlock communityId={community.id} />}
 
           {/* Ссылки — только участникам: за ними обычно закрытый чат. */}
           {access.canSeeInside && community.links.length > 0 && (

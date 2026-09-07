@@ -2,7 +2,7 @@ import Link from "next/link";
 import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { METRICS, METRIC_KEYS } from "@/lib/achievements";
+import { metricOptionsForForm } from "../../metricOptions";
 import AchievementForm from "../../AchievementForm";
 import { updateAchievement, deleteAchievement } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -24,13 +24,14 @@ export default async function EditAchievementPage({
   const achievement = await prisma.achievement.findUnique({ where: { id } });
   if (!achievement) notFound();
 
-  const holders = await prisma.userAchievement.count({ where: { key: achievement.key } });
+  // «Получили: N» — из своей таблицы: у личной ачивки это люди, у
+  // ачивки сообщества — сообщества (связь у обеих по key, без FK).
+  const holders =
+    achievement.scope === "COMMUNITY"
+      ? await prisma.communityAchievement.count({ where: { key: achievement.key } })
+      : await prisma.userAchievement.count({ where: { key: achievement.key } });
 
-  const metricOptions = METRIC_KEYS.map((value) => ({
-    value,
-    label: METRICS[value].label,
-    kind: METRICS[value].kind,
-  }));
+  const metricOptions = metricOptionsForForm();
 
   const boundUpdate = updateAchievement.bind(null, id);
   const boundDelete = deleteAchievement.bind(null, id);
@@ -56,6 +57,7 @@ export default async function EditAchievementPage({
           keyLocked
           defaultValues={{
             key: achievement.key,
+            scope: achievement.scope,
             emoji: achievement.emoji,
             title: achievement.title,
             hint: achievement.hint,

@@ -1,6 +1,5 @@
 export const reviews = {
   reviewsHeading: "Reviews",
-    eventNotFinished: "You can review an event once it is over.",
   commentsHeading: "Comments",
   noName: "No name",
   writeReview: "+ Write a review",
@@ -54,6 +53,7 @@ export const reviews = {
   /** Ответы серверных экшенов — их показывают формы блока. */
   errors: {
     ratingRange: "Set an overall rating — between 0.5 and 10",
+        eventNotFinished: "You can review an event once it is over.",
     textRequired: "Write the review text",
     emptyComment: "The comment is empty",
     tooLongComment: "The comment is too long",
