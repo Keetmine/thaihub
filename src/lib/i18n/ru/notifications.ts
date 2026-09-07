@@ -12,7 +12,7 @@ export const notifications: Dict["notifications"] = {
     TRIP_INVITE_ACCEPTED: (who: string) => `${who} принял(а) приглашение в поездку`,
     TRIP_REMOVED: (trip: string) => `Вас убрали из поездки «${trip}» — ваша копия сохранена`,
     FRIEND_GOING: (who: string, event: string) => `${who} идёт на «${event}»`,
-    ACHIEVEMENT: (name: string) => `Новая ачивка: ${name}`,
+    ACHIEVEMENT: (name: string) => `Новое достижение: ${name}`,
     PREMIUM_GRANTED: "Подписка активна",
     PREMIUM_LIFETIME: "🎉 Вам открыт доступ навсегда!",
     PERFORMER_BIRTHDAY: (name: string) => `Сегодня день рождения у ${name}`,

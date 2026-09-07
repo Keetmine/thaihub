@@ -65,7 +65,7 @@ export const account: Dict["account"] = {
 
     lockedTitle: "Личная статистика — по подписке",
     lockedDescription:
-      "Сколько событий и артистов вы застали вживую, дни в Таиланде, карта посещённого и ачивки.",
+      "Сколько событий и артистов вы застали вживую, дни в Таиланде, карта посещённого и достижения.",
   },
 
   stats: {
@@ -83,11 +83,11 @@ export const account: Dict["account"] = {
     // На чужом профиле — без обращения к владельцу.
     visitedMapViewer: "Карта посещённых мест",
 
-    achievements: "Ачивки",
+    achievements: "Достижения",
     // achievementsSecret удалён — правка владельца: строки про «секрет»
     // на профиле больше нет.
     achievementsEmpty: "Пока ни одной — первая ждёт на первом же событии.",
-    achievementsLockedTitle: "Ачивки — по подписке",
+    achievementsLockedTitle: "Достижения — по подписке",
     achievementsLockedDescription: (total: number) =>
       `Достижения за концерты, поездки и просмотренные сериалы (сейчас их ${total}) — какие именно, узнаете, когда получите.`,
   },
@@ -190,7 +190,7 @@ export const account: Dict["account"] = {
     privacyIntro: "Друзья видят всё всегда; настройки ниже — для остальных.",
     privacyHideActivity: "Скрыть всю активность",
     privacyHideActivityHint: "Не-друзья увидят только имя и фото.",
-    privacyHideAchievements: "Скрыть ачивки",
+    privacyHideAchievements: "Скрыть достижения",
     privacyHideFavorites: "Скрыть фан-профиль (любимых актёров)",
     privacyHideVisited: "Скрыть посещённые места",
 

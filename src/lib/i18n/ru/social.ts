@@ -105,7 +105,7 @@ export const social: Dict["social"] = {
       trip: "новая поездка",
       // Оценка бывает дробной («8.5») — форматирует вызывающий.
       review: (rating: string) => `отзыв — ${rating}/10`,
-      achievement: "новая ачивка",
+      achievement: "новое достижение",
     },
 
     friendsTitle: "Друзья",
@@ -167,7 +167,7 @@ export const social: Dict["social"] = {
     notifyOffTitle: "Уведомления об этом друге выключены",
 
     hidden: "Этот профиль скрывает свою активность.",
-    achievements: "Ачивки",
+    achievements: "Достижения",
     going: "Идёт на события",
     goingLocked: "🔒 Списки событий доступны по подписке.",
     goingLockedWithCount: (n: number) =>
