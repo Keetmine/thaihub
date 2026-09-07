@@ -24,10 +24,14 @@ import StarRatingInput, { formatRating } from "@/components/StarRatingInput";
 export default function DramaRating({
   dramaId,
   rating,
+  hideLabel = false,
 }: {
   dramaId: string;
-  /** Поставленная оценка 0.5-10; null — не оценивал. */
+  /** Поставленная оценка 1-10; null — не оценивал. */
   rating: number | null;
+  /** Подпись «Моя оценка» рисует вызывающий — например, колонка подписей
+   *  в блоке фактов сериала, где все строки выровнены по ней. */
+  hideLabel?: boolean;
 }) {
   const t = useT();
   const s = t.catalog.rating;
@@ -61,7 +65,7 @@ export default function DramaRating({
 
   return (
     <div className="drama-rating">
-      <span className="small text-secondary">{s.label}</span>
+      {!hideLabel && <span className="small text-secondary">{s.label}</span>}
       <StarRatingInput
         value={value}
         onChange={choose}
@@ -69,9 +73,8 @@ export default function DramaRating({
         labelFor={(n) => (n === value ? s.clear : s.choose(formatRating(n)))}
         hintFor={(n) => s.hint(formatRating(n))}
       />
-      {/* Цифра рядом со звёздами: считать десять иконок глазами
-          неудобно, а «9.5 из 10» читается сразу. Пока не оценили —
-          зовём это сделать. */}
+      {/* Цифра рядом со звёздами: считать звёзды глазами неудобно, а
+          «9/10» читается сразу. Пока не оценили — зовём это сделать. */}
       <span className="drama-rating-value">
         {value != null ? `${formatRating(value)}/10` : s.none}
       </span>

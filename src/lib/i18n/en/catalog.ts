@@ -208,6 +208,14 @@ export const catalog = {
             // Переключатель свёртки в конце строки «Эфир».
             more: "Details",
             hide: "Hide",
+            /** Таймер под постером: сколько осталось до ближайшей серии
+             *  (просьба владельца 2026-09-07). Дни считает страница, здесь
+             *  только фраза. */
+            nextEpisode: (n: number, days: number) => {
+                if (days === 0) return `Episode ${n} airs today`;
+                if (days === 1) return `Episode ${n} airs tomorrow`;
+                return `Episode ${n} airs in ${days} days`;
+            },
         },
     },
 

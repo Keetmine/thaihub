@@ -19,6 +19,7 @@ import EpisodeBellButton from "./EpisodeBellButton";
 import EpisodeSchedule from "@/components/EpisodeSchedule";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import CastGrid from "@/components/CastGrid";
+import type { ReactNode } from "react";
 import TagRowFold from "@/components/TagRowFold";
 import SynopsisFold from "@/components/SynopsisFold";
 import EventAgendaRow from "@/components/EventAgendaRow";
@@ -31,6 +32,8 @@ import { PinIcon,
   TagIcon,
   TvIcon,
   InfoIcon,
+  GridIcon,
+  StarIcon,
 } from "@/components/icons";
 import {
   getDramaWatchStatuses,
@@ -58,6 +61,7 @@ import {
   formatCombinedDateList,
   formatDateWithYear,
   formatShortDate,
+  parseDateKey,
   startOfDay,
 } from "@/lib/dates";
 import { getT } from "@/lib/i18n";
@@ -124,6 +128,38 @@ export async function generateMetadata({
     image: drama.posterUrl,
     type: "article",
   });
+}
+
+/**
+ * Строка блока фактов: подпись слева, значение справа (правка владельца
+ * 2026-09-07 — «надо всё выровнять»).
+ *
+ * Сетка, а не «иконка + подпись + текст» одним абзацем: только так
+ * значения всех строк встают в одну колонку, а расстояние между
+ * строками остаётся одинаковым независимо от того, что внутри —
+ * короткое слово, чипы жанров или свёрнутый график серий.
+ *
+ * Иконка необязательна: у строки со своей оценкой её роль играют сами
+ * звёзды.
+ */
+function Fact({
+  icon,
+  label,
+  children,
+}: {
+  icon?: ReactNode;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="drama-fact">
+      <span className="drama-fact-label">
+        {icon}
+        {label}
+      </span>
+      <span className="drama-fact-value">{children}</span>
+    </div>
+  );
 }
 
 export default async function DramaDetailPage({
@@ -298,13 +334,43 @@ export default async function DramaDetailPage({
   }));
   const airedCount = episodeRows.filter((r) => r.aired).length;
 
+  // Таймер до следующей серии под постером (просьба владельца
+  // 2026-09-07: «сколько дней осталось для тех сериалов, что выходят
+  // сейчас»). Показываем только там, где он что-то значит: сериал
+  // выходит И у ближайшей будущей серии уже объявлена дата. У
+  // завершённого считать нечего, а у выходящего хвост расписания часто
+  // пустой (даты подвозит суточная mdl-auto-update) — в этом случае
+  // блока нет вовсе, «—» и «дата неизвестна» здесь были бы шумом.
+  //
+  // Дни считаются НА СЕРВЕРЕ, и это безопасно: страница объявлена
+  // force-dynamic (см. верх файла), CDN перед приложением нет и
+  // Cache-Control страницам не выставляется (next.config.ts) — разметка
+  // собирается на каждый запрос, застрять на сутки числу негде. Клиент
+  // тут был бы хуже: до гидратации блок либо пустой, либо мигает.
+  //
+  // Разница — календарная, а не «сколько прошло часов»: обе даты
+  // приводятся к UTC-полуночи (dateKey/parseDateKey), как и признак
+  // «уже вышло» выше. Даты эфира лежат тайским настенным временем, и
+  // вычитание моментов давало бы 0 или 2 дня там, где на календаре 1.
+  const nextEpisode = (() => {
+    if (drama.status !== "RETURNING_SERIES") return null;
+    const next = drama.episodeList.find(
+      (e) => e.airDate && dateKey(e.airDate) >= todayKey,
+    );
+    if (!next?.airDate) return null;
+    const days = Math.round(
+      (parseDateKey(dateKey(next.airDate)).getTime() - today.getTime()) / 86_400_000,
+    );
+    return { number: next.number, days };
+  })();
+
   // Строка «Эфир: 29 июл. 2026 (по четвергам)». Собрана отдельным
   // фрагментом, потому что она же служит переключателем графика: внутри
   // <summary> абзац недопустим, там разрешено только фразовое содержимое.
+  // Только даты, без иконки и подписи: их даёт колонка подписей в
+  // сетке фактов (см. .drama-facts).
   const airedLine = drama.airedFrom ? (
     <>
-      <CalendarIcon />{" "}
-      <span className="text-secondary">{t.catalog.drama.aired}</span>{" "}
       {formatDateWithYear(drama.airedFrom, locale)}
       {drama.airedTo && drama.airedTo.getTime() !== drama.airedFrom.getTime()
         ? ` — ${formatDateWithYear(drama.airedTo, locale)}`
@@ -394,6 +460,19 @@ export default async function DramaDetailPage({
               className="rounded-4"
               style={{ width: "15rem", aspectRatio: "2 / 3", objectFit: "cover" }}
             />
+            {/* Отсчёт до следующей серии — сразу под постером (просьба
+                владельца 2026-09-07). Тот же чип, что и «сегодня» в
+                графике серий, чтобы отсчёт и график читались как одно;
+                тише постера и кнопки, но заметнее серой строки фактов. */}
+            {nextEpisode && (
+              <p className="date-chip next-episode-chip mb-0">
+                <CalendarIcon />
+                {t.catalog.drama.schedule.nextEpisode(
+                  nextEpisode.number,
+                  nextEpisode.days,
+                )}
+              </p>
+            )}
             {drama.mydramalistUrl && (
               <a
                 href={drama.mydramalistUrl}
@@ -410,158 +489,146 @@ export default async function DramaDetailPage({
             просто текст в правой колонке, как у артиста. */}
         {hasFacts && (
         <div className="flex-fill d-flex flex-column gap-1" style={{ minWidth: 0 }}>
-          {/* Оценки — в самом начале колонки, над «Студия» (правка
-              владельца 2026-09-07): сначала своя, под ней сводная.
-              Раньше своя стояла у счётчика серий, а сводная терялась
-              строкой в середине списка фактов. */}
-          {(currentUser || score.combined != null) && (
-            <div className="d-flex flex-column gap-2 mb-3">
-              {currentUser && (
-                <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} />
-              )}
-              {score.combined != null && (
-                <p className="small text-secondary mb-0">
-                  <span className="text-secondary">{t.catalog.drama.ourScore}</span>{" "}
-                  <span
-                    className="tooltip-wide"
-                    data-tooltip={scoreTooltip}
-                    tabIndex={0}
-                    style={{ color: ratingColor(score.combined) }}
-                  >
-                    ★ {score.combined.toFixed(1)}
-                  </span>
-                </p>
-              )}
-            </div>
-          )}
-
-          {studios.length > 0 && (
-            <p className="small text-secondary mb-2">
-              <BuildingIcon />{" "}
-              <span className="text-secondary">
-                {studios.length > 1 ? t.catalog.drama.studios : t.catalog.drama.studio}
-              </span>{" "}
-              {studios.map((a, i) => (
-                <span key={a.id}>
-                  {i > 0 && ", "}
-                  <AppLink href={agencyHref(a)} className="link-body-emphasis">
-                    {a.name}
-                  </AppLink>
-                </span>
-              ))}
-            </p>
-          )}
-          {drama.novel && (
-            <p className="small text-secondary mb-2">
-              <BookIcon className="icon-inline" />{" "}
-              <span className="text-secondary">{t.catalog.drama.basedOn}</span>{" "}
-              <AppLink
-                href={novelHref(drama.novel)}
-                className="link-body-emphasis"
-              >
-                {drama.novel.title}
-              </AppLink>
-              {drama.novel.author ? ` (${drama.novel.author})` : ""}
-            </p>
-          )}
-
-          {drama.genres.length > 0 && (
-            <p className="small text-secondary mb-2 d-flex flex-wrap align-items-center gap-2">
-              <span className="d-inline-flex align-items-center gap-1">
-                <TagIcon /> <span className="text-secondary">{t.catalog.drama.genres}</span>
-              </span>
-              {/* Жанр — вход в поиск с этим жанром в фильтре (И1):
-                  раньше чипы были глухие, и «ещё такое же» приходилось
-                  собирать руками. */}
-              {drama.genres.map((g) => (
-                <AppLink
-                  key={g}
-                  href={`/search?section=dramas&genres=${encodeURIComponent(g)}`}
-                  className="tag-chip text-decoration-none"
-                >
-                  {g}
-                </AppLink>
-              ))}
-            </p>
-          )}
-
-          {/* Теги — обычным текстом в цвет .tag-chip, короткой строкой
-              со свёрткой «ещё N» (просьба владельца): у MDL тегов
-              десятки, и чипы раздували карточку на пол-экрана. Первые
-              TAGS_VISIBLE рендерит сервер — без замеров и мигания. */}
-          {drama.tags.length > 0 && (
-            <div className="small text-secondary mb-2 d-flex align-items-baseline gap-2">
-              <span className="d-inline-flex align-items-center gap-1 flex-shrink-0">
-                <TagIcon /> <span className="text-secondary">{t.catalog.drama.tags}</span>
-              </span>
-              <TagRowFold
-                moreLabel={t.catalog.tagsShowAll(drama.tags.length - TAGS_VISIBLE)}
-                visible={drama.tags.slice(0, TAGS_VISIBLE).map((tag) => (
-                  <AppLink
-                    key={tag}
-                    href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
-                    className="tag-link"
-                  >
-                    {tag}
-                  </AppLink>
-                ))}
-                rest={
-                  drama.tags.length > TAGS_VISIBLE
-                    ? drama.tags.slice(TAGS_VISIBLE).map((tag) => (
-                        <AppLink
-                          key={tag}
-                          href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
-                          className="tag-link"
-                        >
-                          {tag}
-                        </AppLink>
-                      ))
-                    : null
-                }
-              />
-            </div>
-          )}
-
-          <div className="d-flex flex-column gap-1 mb-3">
-            {/* Страна, тип и канал (И4) — значения из данных, не
-                переводятся; каждая — ссылка в поиск с этим фильтром:
-                фильтры появились в И1, и «ещё такое же» в одном клике. */}
-            {(drama.country || drama.type) && (
-              <p className="small text-secondary mb-0">
-                <PinIcon />{" "}
-                {drama.country && (
-                  <>
-                    <span className="text-secondary">{t.catalog.drama.country}</span>{" "}
-                    <AppLink
-                      href={`/search?section=dramas&country=${encodeURIComponent(drama.country)}`}
-                      className="link-body-emphasis"
-                    >
-                      {drama.country}
-                    </AppLink>
-                  </>
-                )}
-                {drama.country && drama.type && " · "}
-                {drama.type && (
-                  <>
-                    <span className="text-secondary">{t.catalog.drama.type}</span>{" "}
-                    <AppLink
-                      href={`/search?section=dramas&type=${encodeURIComponent(drama.type)}`}
-                      className="link-body-emphasis"
-                    >
-                      {drama.type}
-                    </AppLink>
-                  </>
-                )}
-              </p>
+          {/* ВСЕ факты — одной сеткой «подпись · значение» (правка
+              владельца 2026-09-07: «поля с описаниями выглядят криво…
+              надо всё выровнять»). Раньше каждая строка была
+              самостоятельным абзацем со своим отступом, подписи стояли
+              внутри текста, и значения не попадали в одну колонку; а
+              строка жанров с чипами вдобавок оказывалась выше соседних,
+              и промежуток вокруг неё выглядел вдвое больше. Теперь
+              отступ один на все строки, подписи в своей колонке, а
+              чипы прижаты отрицательным полем, чтобы не растить строку.
+              Компонент Fact — ниже в этом файле. */}
+          <div className="drama-facts small mb-3">
+            {currentUser && (
+              <Fact label={t.catalog.rating.label}>
+                <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} hideLabel />
+              </Fact>
             )}
+            {score.combined != null && (
+              <Fact icon={<StarIcon />} label={t.catalog.drama.ourScore}>
+                <span
+                  className="tooltip-wide"
+                  data-tooltip={scoreTooltip}
+                  tabIndex={0}
+                  style={{ color: ratingColor(score.combined) }}
+                >
+                  {score.combined.toFixed(1)}
+                </span>
+              </Fact>
+            )}
+
+            {studios.length > 0 && (
+              <Fact
+                icon={<BuildingIcon />}
+                label={studios.length > 1 ? t.catalog.drama.studios : t.catalog.drama.studio}
+              >
+                {studios.map((a, i) => (
+                  <span key={a.id}>
+                    {i > 0 && ", "}
+                    <AppLink href={agencyHref(a)} className="link-body-emphasis">
+                      {a.name}
+                    </AppLink>
+                  </span>
+                ))}
+              </Fact>
+            )}
+
+            {drama.novel && (
+              <Fact icon={<BookIcon className="icon-inline" />} label={t.catalog.drama.basedOn}>
+                <AppLink href={novelHref(drama.novel)} className="link-body-emphasis">
+                  {drama.novel.title}
+                </AppLink>
+                {drama.novel.author ? ` (${drama.novel.author})` : ""}
+              </Fact>
+            )}
+
+            {/* Жанр — вход в поиск с этим жанром в фильтре (И1): раньше
+                чипы были глухие, и «ещё такое же» приходилось собирать
+                руками. */}
+            {drama.genres.length > 0 && (
+              <Fact icon={<TagIcon />} label={t.catalog.drama.genres}>
+                <span className="drama-facts-chips">
+                  {drama.genres.map((g) => (
+                    <AppLink
+                      key={g}
+                      href={`/search?section=dramas&genres=${encodeURIComponent(g)}`}
+                      className="tag-chip text-decoration-none"
+                    >
+                      {g}
+                    </AppLink>
+                  ))}
+                </span>
+              </Fact>
+            )}
+
+            {/* Теги — обычным текстом в цвет .tag-chip, короткой строкой
+                со свёрткой «ещё N» (просьба владельца): у MDL тегов
+                десятки, и чипы раздували карточку на пол-экрана. Первые
+                TAGS_VISIBLE рендерит сервер — без замеров и мигания. */}
+            {drama.tags.length > 0 && (
+              <Fact icon={<TagIcon />} label={t.catalog.drama.tags}>
+                <TagRowFold
+                  moreLabel={t.catalog.tagsShowAll(drama.tags.length - TAGS_VISIBLE)}
+                  visible={drama.tags.slice(0, TAGS_VISIBLE).map((tag) => (
+                    <AppLink
+                      key={tag}
+                      href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
+                      className="tag-link"
+                    >
+                      {tag}
+                    </AppLink>
+                  ))}
+                  rest={
+                    drama.tags.length > TAGS_VISIBLE
+                      ? drama.tags.slice(TAGS_VISIBLE).map((tag) => (
+                          <AppLink
+                            key={tag}
+                            href={`/search?section=dramas&tags=${encodeURIComponent(tag)}`}
+                            className="tag-link"
+                          >
+                            {tag}
+                          </AppLink>
+                        ))
+                      : null
+                  }
+                />
+              </Fact>
+            )}
+
+            {/* Страна и тип (И4) — значения из данных, не переводятся;
+                каждое ведёт в поиск с этим фильтром: фильтры появились в
+                И1, и «ещё такое же» в одном клике. Раньше они делили
+                одну строку через «·» — в сетке у каждого своя строка,
+                иначе значения не встают в колонку. */}
+            {drama.country && (
+              <Fact icon={<PinIcon />} label={t.catalog.drama.country}>
+                <AppLink
+                  href={`/search?section=dramas&country=${encodeURIComponent(drama.country)}`}
+                  className="link-body-emphasis"
+                >
+                  {drama.country}
+                </AppLink>
+              </Fact>
+            )}
+            {drama.type && (
+              <Fact icon={<GridIcon />} label={t.catalog.drama.type}>
+                <AppLink
+                  href={`/search?section=dramas&type=${encodeURIComponent(drama.type)}`}
+                  className="link-body-emphasis"
+                >
+                  {drama.type}
+                </AppLink>
+              </Fact>
+            )}
+
             {(drama.episodes || drama.duration) && (
-              <p className="small text-secondary mb-0">
-                <TvIcon className="icon-inline" />{" "}
-                <span className="text-secondary">{t.catalog.drama.episodes}</span>{" "}
+              <Fact icon={<TvIcon className="icon-inline" />} label={t.catalog.drama.episodes}>
                 {drama.episodes ? `${drama.episodes}` : "?"}
                 {drama.duration ? ` × ${drama.duration}` : ""}
-              </p>
+              </Fact>
             )}
+
             {/* График выхода серий свёрнут под строку «Эфир» (просьба
                 владельца): в конце строки — «Подробнее», по нему
                 раскрывается поимённый список серий. Свёртка нативная,
@@ -571,49 +638,47 @@ export default async function DramaDetailPage({
                 самого summary. Расписания нет — нет и переключателя,
                 остаётся обычная строка. */}
             {episodeRows.length > 0 ? (
-              <details className="schedule-fold small text-secondary">
-                <summary>
-                  {airedLine ?? (
-                    <>
-                      <CalendarIcon />{" "}
-                      <span className="text-secondary">
-                        {t.catalog.drama.schedule.title}
+              <Fact icon={<CalendarIcon />} label={t.catalog.drama.aired}>
+                <details className="schedule-fold">
+                  <summary>
+                    {airedLine ?? t.catalog.drama.schedule.title}{" "}
+                    <span className="schedule-fold-toggle">
+                      <span className="schedule-fold-more">
+                        {t.catalog.drama.schedule.more}
                       </span>
-                    </>
-                  )}{" "}
-                  <span className="schedule-fold-toggle">
-                    <span className="schedule-fold-more">
-                      {t.catalog.drama.schedule.more}
+                      <span className="schedule-fold-less">
+                        {t.catalog.drama.schedule.hide}
+                      </span>
+                      <span className="schedule-fold-caret" aria-hidden>
+                        ▾
+                      </span>
                     </span>
-                    <span className="schedule-fold-less">
-                      {t.catalog.drama.schedule.hide}
-                    </span>
-                    <span className="schedule-fold-caret" aria-hidden>
-                      ▾
-                    </span>
-                  </span>
-                </summary>
-                {/* Ширина ограничена: на широком экране номер серии и
-                    дата иначе разъезжаются по краям колонки. */}
-                <div className="schedule-fold-body">
-                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                    <span className="text-white">{t.catalog.drama.schedule.title}</span>
-                    <span>
-                      {t.catalog.drama.schedule.aired(airedCount, episodeRows.length)}
-                    </span>
+                  </summary>
+                  {/* Ширина ограничена: на широком экране номер серии и
+                      дата иначе разъезжаются по краям колонки. */}
+                  <div className="schedule-fold-body">
+                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                      <span className="text-white">{t.catalog.drama.schedule.title}</span>
+                      <span>
+                        {t.catalog.drama.schedule.aired(airedCount, episodeRows.length)}
+                      </span>
+                    </div>
+                    <EpisodeSchedule rows={episodeRows} />
                   </div>
-                  <EpisodeSchedule rows={episodeRows} />
-                </div>
-              </details>
+                </details>
+              </Fact>
             ) : (
-              airedLine && <p className="small text-secondary mb-0">{airedLine}</p>
+              airedLine && (
+                <Fact icon={<CalendarIcon />} label={t.catalog.drama.aired}>
+                  {airedLine}
+                </Fact>
+              )
             )}
+
             {drama.contentRating && (
-              <p className="small text-secondary mb-0">
-                <InfoIcon />{" "}
-                <span className="text-secondary">{t.catalog.drama.contentRating}</span>{" "}
+              <Fact icon={<InfoIcon />} label={t.catalog.drama.contentRating}>
                 {drama.contentRating}
-              </p>
+              </Fact>
             )}
           </div>
 

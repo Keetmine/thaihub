@@ -1,4 +1,4 @@
-import { plural } from "@/lib/plural";
+import { plural, pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
 export const catalog: Dict["catalog"] = {
@@ -208,6 +208,17 @@ export const catalog: Dict["catalog"] = {
             showAll: (n: number) => `Показать все (${n})`,
             more: "Подробнее",
             hide: "Свернуть",
+            /** Таймер под постером: сколько осталось до ближайшей серии
+             *  (просьба владельца 2026-09-07). Фраза целиком, а не «дней:
+             *  3»: это подпись на витрине, её читают, а не парсят. Нулевой
+             *  и однодневный остаток называем словом — «через 0 дней» не
+             *  говорят, а «через 1 день» человек всё равно прочитает как
+             *  «завтра». */
+            nextEpisode: (n: number, days: number) => {
+                if (days === 0) return `${n} серия выходит сегодня`;
+                if (days === 1) return `${n} серия выходит завтра`;
+                return `${n} серия выходит через ${pluralized(days, ["день", "дня", "дней"])}`;
+            },
         },
     },
 
