@@ -3,6 +3,7 @@
 import DramaStatusSelect from "@/components/DramaStatusSelect";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import DramaRatingSelect from "@/components/DramaRatingSelect";
+import { formatRating } from "@/components/StarRatingInput";
 import { useMemo, useState } from "react";
 import AppLink from "@/components/AppLink";
 import SubTabs from "@/components/SubTabs";
@@ -29,7 +30,7 @@ export type ProfileDramaRow = {
   year: number | null;
   status: DramaWatchStatusValue;
   episodesWatched: number | null;
-  /** Своя оценка 1-10 (АА2); null — не оценивал. */
+  /** Своя оценка 0.5-10 с шагом 0.5 (АА2); null — не оценивал. */
   rating: number | null;
 };
 
@@ -266,7 +267,7 @@ function Row({
           {editable ? (
             <DramaRatingSelect dramaId={row.id} rating={row.rating} />
           ) : row.rating != null ? (
-            `★ ${row.rating}`
+            `★ ${formatRating(row.rating)}`
           ) : (
             ""
           )}

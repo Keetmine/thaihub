@@ -61,8 +61,8 @@ export const catalog = {
     rating: {
         label: "My rating",
         none: "Rate",
-        set: (n: number) => `My rating: ${n} out of 10`,
-        choose: (n: number) => `Rate ${n} out of 10`,
+        set: (n: string) => `My rating: ${n} out of 10`,
+        choose: (n: string) => `Rate ${n} out of 10`,
         clear: "Remove rating",
         hint: "Your rating shows in your profile",
     },
@@ -181,7 +181,15 @@ export const catalog = {
         director: "Director:",
         screenwriter: "Writer:",
         contentRating: "Rating:",
-        ourScore: "MyBLHub score:",
+        ourScore: "Score:",
+        scoreTooltip: (site: string | null, count: number, mdl: string | null) => {
+            const ours = `MyBLHub ${site} (${count})`;
+            if (site && mdl) {
+                return `Average of MyBLHub and MyDramaList ratings: ${ours}, MyDramaList ${mdl}`;
+            }
+            if (site) return `Average rating on MyBLHub: ${ours}`;
+            return "MyDramaList rating: nobody has rated this here yet";
+        },
         events: "Events",
         cast: "Cast",
         related: "Related series",

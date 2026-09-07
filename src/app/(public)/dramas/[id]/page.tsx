@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import DramaRating from "@/components/DramaRating";
+import { fetchDramaScore } from "@/lib/dramaRating";
 import { episodeProgress } from "@/lib/watchStatus";
 import { dramaSynopsisForLocale, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { findSimilarDramas } from "@/lib/similarDramas";
@@ -152,16 +153,11 @@ export default async function DramaDetailPage({
 
   // Первая волна: всё, что зависит только от самого сериала, — одним
   // Promise.all вместо четырёх последовательных await.
-  const [ratingAgg, dramaEvents, currentUser, similarDramas, castPairings] =
+  const [score, dramaEvents, currentUser, similarDramas, castPairings] =
     await Promise.all([
-      // Средняя оценка из наших отзывов — в шапку, рядом с MDL.
-      // Только публичные: приватный отзыв не двигает средний рейтинг
-      // (см. docs/features/social.md#отзывы).
-      prisma.review.aggregate({
-        where: { dramaId: id, isPrivate: false },
-        _avg: { rating: true },
-        _count: { rating: true },
-      }),
+      // Оценка сайта: свои звёздочки + публичные отзывы, один человек
+      // — один голос (см. src/lib/dramaRating.ts).
+      fetchDramaScore(id, drama.mdlScore),
       prisma.event.findMany({
         where: { dramaId: id },
         include: {
@@ -182,8 +178,13 @@ export default async function DramaDetailPage({
       // АА4: пары внутри каста — чтобы поставить их рядом в сетке.
       fetchPairingsAmong(drama.performers.map((pd) => pd.performerId)),
     ]);
-  const ourRating = ratingAgg._count.rating > 0 ? ratingAgg._avg.rating : null;
-  const ourRatingCount = ratingAgg._count.rating;
+  // Одно число вместо двух (правка владельца 2026-09-07): подпись «MDL»
+  // убрана, из чего оно сложено — в подсказке по наведению.
+  const scoreTooltip = t.catalog.drama.scoreTooltip(
+    score.site != null ? score.site.toFixed(1) : null,
+    score.siteCount,
+    score.mdl != null ? score.mdl.toFixed(1) : null,
+  );
   const eventsRows = groupByEvent(
     dramaEvents
       .flatMap((ev) =>
@@ -241,8 +242,9 @@ export default async function DramaDetailPage({
     !!drama.duration ||
     !!drama.airedFrom ||
     !!drama.contentRating ||
-    drama.mdlScore != null ||
-    ourRating != null ||
+    score.combined != null ||
+    // Вошедшему колонка нужна всегда: наверху неё стоят его звёзды.
+    !!currentUser ||
     !!drama.synopsis ||
     // График живёт внутри этой же колонки (свёрнут под строкой «Эфир»),
     // поэтому одного расписания достаточно, чтобы колонку нарисовать.
@@ -363,9 +365,11 @@ export default async function DramaDetailPage({
                 .join(" · ")}
             </p>
           )}
-          {ourRating != null && (
+          {score.combined != null && (
             <div className="d-flex flex-wrap gap-2 mt-2">
-              <span className="date-chip">★ {ourRating.toFixed(1)}</span>
+              <span className="date-chip tooltip-wide" data-tooltip={scoreTooltip} tabIndex={0}>
+                ★ {score.combined.toFixed(1)}
+              </span>
             </div>
           )}
         </div>
@@ -413,6 +417,38 @@ export default async function DramaDetailPage({
             просто текст в правой колонке, как у артиста. */}
         {hasFacts && (
         <div className="flex-fill d-flex flex-column gap-1" style={{ minWidth: 0 }}>
+          {/* Оценки — в самом начале колонки, над «Студия» (правка
+              владельца 2026-09-07): сначала своя, под ней сводная.
+              Раньше своя стояла у счётчика серий, а сводная терялась
+              строкой в середине списка фактов. */}
+          {(currentUser || score.combined != null) && (
+            <div className="d-flex flex-column gap-2 mb-3">
+              {currentUser && (
+                <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} />
+              )}
+              {score.combined != null && (
+                <p className="small text-secondary mb-0">
+                  <span className="text-secondary">{t.catalog.drama.ourScore}</span>{" "}
+                  <span
+                    className="tooltip-wide"
+                    data-tooltip={scoreTooltip}
+                    tabIndex={0}
+                    style={{
+                      color:
+                        score.combined >= 7
+                          ? "#3bb33b"
+                          : score.combined >= 5
+                            ? "inherit"
+                            : "#e5484d",
+                    }}
+                  >
+                    ★ {score.combined.toFixed(1)}
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
+
           {studios.length > 0 && (
             <p className="small text-secondary mb-2">
               <BuildingIcon />{" "}
@@ -593,35 +629,6 @@ export default async function DramaDetailPage({
                 {drama.contentRating}
               </p>
             )}
-            {(drama.mdlScore != null || ourRating != null) && (
-              <p className="small text-secondary mb-0">
-                {ourRating != null && (
-                  <>
-                    <span className="text-secondary">{t.catalog.drama.ourScore}</span>{" "}
-                    <span
-                      style={{
-                        color:
-                          ourRating >= 7
-                            ? "#3bb33b"
-                            : ourRating >= 5
-                              ? "inherit"
-                              : "#e5484d",
-                      }}
-                    >
-                      ★ {ourRating.toFixed(1)}
-                    </span>{" "}
-                    <span className="text-secondary">({ourRatingCount})</span>
-                  </>
-                )}
-                {ourRating != null && drama.mdlScore != null && " · "}
-                {drama.mdlScore != null && (
-                  <>
-                    <span className="text-secondary">MDL:</span> ★{" "}
-                    {drama.mdlScore.toFixed(1)}
-                  </>
-                )}
-              </p>
-            )}
           </div>
 
           {/* Ж6: счётчик серий — прямо над описанием, где человек и
@@ -638,17 +645,6 @@ export default async function DramaDetailPage({
                 // серий), и сырой NULL показывал 0 из 10 у досмотренного.
                 watched={episodeProgress(watchStatus, drama.episodes)?.watched ?? null}
               />
-            </div>
-          )}
-
-          {/* Своя оценка (АА2) — рядом с прогрессом, где человек и так
-              отмечает своё. Показываем всем вошедшим, а не только
-              отметившим сериал: оценку ставят как раз досмотрев, и
-              просить сначала выбрать статус было бы лишним шагом —
-              экшен заведёт отметку сам. */}
-          {currentUser && (
-            <div className="mb-3">
-              <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} />
             </div>
           )}
 

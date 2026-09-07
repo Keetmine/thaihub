@@ -66,9 +66,9 @@ export type MdlListRow = {
   title: string;
   /** Сколько серий отмечено («7» из «7/10»); null — не разобрали. */
   seen: number | null;
-  /** Своя оценка из колонки со звёздами, 1-10 (АА2); null — не
-   *  поставлена или не разобрали. У MDL шкала с половинками («8.5»), у
-   *  нас целая — округляем к ближайшему целому. */
+  /** Своя оценка из колонки со звёздами, 0.5-10 (АА2); null — не
+   *  поставлена или не разобрали. Половинки MDL («8.5») сохраняем как
+   *  есть: с 2026-09-07 у нас та же шкала с шагом 0.5. */
   rating: number | null;
 };
 
@@ -104,15 +104,15 @@ export function parseMdlListRows(html: string): MdlListRow[] {
     // Оценка: в обоих видах списка это <span class="score">, отличается
     // только ячейка вокруг (msv2-i-score / mdl-style-col-score).
     // Непоставленная приезжает нулём — это «не оценил», а не «ноль
-    // баллов», поэтому ниже отсекаем всё вне 1-10. Половинки MDL
-    // («8.5») округляем: у нас шкала целая.
+    // баллов», поэтому ниже отсекаем всё вне шкалы. Шаг у MDL 0.5 —
+    // ровно наш, к нему и округляем на случай экзотики вроде «8.7».
     const ratingRaw = row.match(/class="[^"]*\bscore\b[^"]*"[^>]*>\s*(\d+(?:\.\d+)?)\s*</)?.[1];
-    const rating = ratingRaw != null ? Math.round(Number(ratingRaw)) : null;
+    const rating = ratingRaw != null ? Math.round(Number(ratingRaw) * 2) / 2 : null;
     out.push({
       mdlPath: href,
       title: title.replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"'),
       seen: seenRaw != null ? Number(seenRaw) : null,
-      rating: rating != null && rating >= 1 && rating <= 10 ? rating : null,
+      rating: rating != null && rating >= 0.5 && rating <= 10 ? rating : null,
     });
   }
   return out;

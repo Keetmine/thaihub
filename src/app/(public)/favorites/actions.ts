@@ -264,10 +264,12 @@ export async function setDramaRating(
 
   let value: number | null = null;
   if (rating !== null) {
+    // Шкала с половинками (правка владельца 2026-09-07): округляем к
+    // ближайшей половине и держим в 0.5-10.
     if (!Number.isFinite(rating)) {
       return { ok: false, error: (await getT()).t.catalog.errors.badRating };
     }
-    value = Math.max(1, Math.min(10, Math.round(rating)));
+    value = Math.max(0.5, Math.min(10, Math.round(rating * 2) / 2));
   }
 
   await prisma.dramaWatchStatus.upsert({

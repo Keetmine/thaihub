@@ -5,19 +5,20 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { setDramaRating } from "@/app/(public)/favorites/actions";
 import { useT } from "@/components/LocaleProvider";
-import { CheckIcon, StarIcon } from "@/components/icons";
+import { StarIcon } from "@/components/icons";
+import StarRatingInput, { formatRating } from "@/components/StarRatingInput";
 
 /**
  * Своя оценка в строке таблицы — компактный вид `DramaRating` (АА2).
  *
  * Десять звёзд в колонку не влезают (это добрых десять сантиметров), а
- * жать их в строке всё равно неудобно. Поэтому тут — подпись «★ 9», по
- * клику раскрывающая список оценок: ровно тот же дропдаун, что у
- * статуса просмотра рядом (`DramaStatusSelect`), чтобы две соседние
- * колонки не вели себя по-разному.
+ * половинки в такой мелочи ещё и не нажать. Поэтому тут подпись «★ 8.5»,
+ * по клику раскрывающая окошко с теми же звёздами покрупнее — не список
+ * из двадцати чисел: с половинками он стал бы простынёй.
  *
- * Меню — порталом в body с fixed-координатами: строки лежат в
- * прокручиваемых контейнерах, absolute-меню ими обрезалось бы.
+ * Окошко — порталом в body с fixed-координатами: строки лежат в
+ * прокручиваемых контейнерах, absolute-меню ими обрезалось бы (то же
+ * решение, что у `DramaStatusSelect` рядом).
  */
 export default function DramaRatingSelect({
   dramaId,
@@ -51,7 +52,7 @@ export default function DramaRatingSelect({
       if (menuRef.current?.contains(e.target as Node)) return;
       setIsOpen(false);
     }
-    // Прокрутка уводит строку из-под fixed-меню — просто закрываем.
+    // Прокрутка уводит строку из-под fixed-окошка — просто закрываем.
     function onScroll() {
       setIsOpen(false);
     }
@@ -64,6 +65,8 @@ export default function DramaRatingSelect({
   }, [isOpen]);
 
   function choose(next: number | null) {
+    // Окошко закрываем сразу: оценку ставят одним движением, и
+    // висящая панель после клика только мешала бы.
     setIsOpen(false);
     const previous = value;
     setValue(next);
@@ -86,20 +89,24 @@ export default function DramaRatingSelect({
         className={`drama-status-select-trigger ${value != null ? "is-set" : ""}`}
         disabled={isPending}
         aria-expanded={isOpen}
-        aria-label={value != null ? s.set(value) : s.none}
+        aria-label={value != null ? s.set(formatRating(value)) : s.none}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           const rect = e.currentTarget.getBoundingClientRect();
           setCoords({
             top: rect.bottom + 6,
-            left: Math.max(8, Math.min(rect.left, window.innerWidth - 216)),
+            // Окошко со звёздами шире меню статусов — держим его в
+            // экране по своей ширине, а не по чужой.
+            left: Math.max(8, Math.min(rect.left, window.innerWidth - 260)),
           });
           setIsOpen((v) => !v);
         }}
       >
         <StarIcon />
-        <span className="drama-status-select-label">{value ?? "—"}</span>
+        <span className="drama-status-select-label">
+          {value != null ? formatRating(value) : "—"}
+        </span>
       </button>
 
       {isOpen &&
@@ -107,7 +114,7 @@ export default function DramaRatingSelect({
         createPortal(
           <div
             ref={menuRef}
-            className="performer-select-dropdown drama-status-dropdown"
+            className="performer-select-dropdown rating-popover"
             style={{
               position: "fixed",
               top: coords.top,
@@ -116,23 +123,19 @@ export default function DramaRatingSelect({
               zIndex: 2000,
             }}
           >
-            <button type="button" className="performer-select-option" onClick={() => choose(null)}>
-              <span className="flex-fill text-start">{s.clear}</span>
-              {value == null && <CheckIcon />}
+            <StarRatingInput
+              value={value}
+              onChange={choose}
+              labelFor={(n) => (n === value ? s.clear : s.choose(formatRating(n)))}
+            />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={value == null}
+              onClick={() => choose(null)}
+            >
+              {s.clear}
             </button>
-            {/* Сверху вниз от десятки: высокие оценки ставят чаще, и
-                тянуться за ними в конец списка незачем. */}
-            {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
-              <button
-                key={n}
-                type="button"
-                className="performer-select-option"
-                onClick={() => choose(n)}
-              >
-                <span className="flex-fill text-start">{n}</span>
-                {value === n && <CheckIcon />}
-              </button>
-            ))}
           </div>,
           document.body,
         )}

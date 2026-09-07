@@ -8,6 +8,8 @@ import ActionResultForm from "@/components/ActionResultForm";
 import CommentLikeButton from "@/components/CommentLikeButton";
 import ReportButton from "@/components/ReportButton";
 import { TrashIcon, StarIcon, ChatIcon } from "@/components/icons";
+import ReviewRatingFields, { type ReviewRatingField } from "@/components/ReviewRatingFields";
+import { formatRating } from "@/components/StarRatingInput";
 import {
   saveReview,
   deleteReview,
@@ -109,6 +111,16 @@ async function CommentRow({
     </div>
   );
 }
+
+/** Какие разделы оценки показывать у какого типа записи (правка
+ *  владельца 2026-09-07): у новеллы нет актёрской игры, у события —
+ *  ни сюжета, ни актёров. Общая оценка есть всегда и здесь не
+ *  перечисляется. */
+const RATING_FIELDS: Record<ReviewKind, ReviewRatingField[]> = {
+  drama: ["story", "acting", "music"],
+  novel: ["story"],
+  event: ["music"],
+};
 
 /** Кинопоиск-стайл цвет оценки: 7+ зелёная, 5–6 серая, ниже — красная. */
 function ratingColor(r: number): string {
@@ -224,24 +236,19 @@ export default async function ReviewsAndComments({
               {ownReview ? t.reviews.editReview : t.reviews.writeReview}
             </summary>
             <ActionResultForm action={boundSaveReview} className="d-flex flex-column gap-2 mt-3">
-              <div className="d-flex align-items-center gap-2">
-                <label className="form-label small text-secondary mb-0" htmlFor="review-rating">
-                  {t.reviews.ratingLabel}
-                </label>
-                <select
-                  id="review-rating"
-                  name="rating"
-                  defaultValue={ownReview?.rating ?? 8}
-                  className="form-select form-select-sm w-auto"
-                >
-                  {Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                <span className="small text-secondary">{t.reviews.outOf10}</span>
-              </div>
+              {/* Оценка по разделам, звёздами с половинками (правка
+                  владельца 2026-09-07). Набор разделов зависит от типа
+                  записи: у новеллы нет актёров, у события — ни сюжета,
+                  ни актёрской игры. */}
+              <ReviewRatingFields
+                fields={RATING_FIELDS[kind]}
+                initial={{
+                  overall: ownReview?.rating ?? null,
+                  story: ownReview?.ratingStory ?? null,
+                  acting: ownReview?.ratingActing ?? null,
+                  music: ownReview?.ratingMusic ?? null,
+                }}
+              />
               <textarea
                 name="text"
                 rows={4}
@@ -297,7 +304,7 @@ export default async function ReviewsAndComments({
                     <p className="small mb-1">
                       <span className="text-white fw-medium">{authorName ?? t.reviews.noName}</span>{" "}
                       <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
-                        {r.rating}
+                        {formatRating(r.rating)}
                       </span>
                       <span className="text-secondary"> · {formatDateWithYear(r.createdAt, locale)}</span>
                       {/* Бейдж только у своего приватного отзыва — чужие
@@ -311,6 +318,26 @@ export default async function ReviewsAndComments({
                         </span>
                       )}
                     </p>
+                    {/* Разделы — тихой строкой под шапкой отзыва: их
+                        заполняют не все, и в главной строке они спорили
+                        бы с общей оценкой. */}
+                    {(r.ratingStory != null || r.ratingActing != null || r.ratingMusic != null) && (
+                      <p className="small text-secondary mb-1">
+                        {[
+                          r.ratingStory != null
+                            ? `${t.reviews.rating.story} ${formatRating(r.ratingStory)}`
+                            : null,
+                          r.ratingActing != null
+                            ? `${t.reviews.rating.acting} ${formatRating(r.ratingActing)}`
+                            : null,
+                          r.ratingMusic != null
+                            ? `${t.reviews.rating.music} ${formatRating(r.ratingMusic)}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
                     <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
                       {r.text}
                     </p>

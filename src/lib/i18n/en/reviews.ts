@@ -8,6 +8,15 @@ export const reviews = {
   reviewAria: "Review text",
   ratingLabel: "Rating",
   outOf10: "out of 10",
+
+  rating: {
+      story: "Story",
+      acting: "Cast",
+      music: "Music",
+      overall: "Overall",
+      choose: (label: string, n: string) => `${label}: rate ${n} out of 10`,
+      overallAuto: "Overall is the average of the sections — feel free to change it.",
+  },
   publish: "Publish",
   save: "Save",
   // Приватный отзыв: чекбокс в форме (с подсказкой) и бейдж у своего
@@ -34,7 +43,7 @@ export const reviews = {
 
   /** Ответы серверных экшенов — их показывают формы блока. */
   errors: {
-    ratingRange: "The rating must be between 1 and 10",
+    ratingRange: "Set an overall rating — between 0.5 and 10",
     textRequired: "Write the review text",
     emptyComment: "The comment is empty",
     tooLongComment: "The comment is too long",

@@ -47,8 +47,8 @@ export const catalog: Dict["catalog"] = {
     rating: {
         label: "Моя оценка",
         none: "Оценить",
-        set: (n: number) => `Моя оценка: ${n} из 10`,
-        choose: (n: number) => `Поставить ${n} из 10`,
+        set: (n: string) => `Моя оценка: ${n} из 10`,
+        choose: (n: string) => `Поставить ${n} из 10`,
         clear: "Убрать оценку",
         hint: "Оценка видна в вашем профиле",
     },
@@ -177,7 +177,20 @@ export const catalog: Dict["catalog"] = {
         director: "Режиссёр:",
         screenwriter: "Сценарий:",
         contentRating: "Рейтинг:",
-        ourScore: "Оценка MyBLHub:",
+        ourScore: "Оценка:",
+        /** Что за число стоит рядом со звездой — подсказкой по
+         *  наведению (правка владельца 2026-09-07: подпись «MDL» убрать,
+         *  а объяснение спрятать в подсказку). Когда источник один,
+         *  честно говорим какой: «среднее» из одного числа звучало бы
+         *  странно. */
+        scoreTooltip: (site: string | null, count: number, mdl: string | null) => {
+            const ours = `у нас ${site} (${count} ${plural(count, ["оценка", "оценки", "оценок"])})`;
+            if (site && mdl) {
+                return `Среднее оценок нашего сайта и MyDramaList: ${ours}, MyDramaList ${mdl}`;
+            }
+            if (site) return `Средняя оценка на нашем сайте: ${ours}`;
+            return "Оценка MyDramaList: у нас этот сериал пока никто не оценил";
+        },
         events: "События",
         cast: "Актёрский состав",
         related: "Связанные сериалы",

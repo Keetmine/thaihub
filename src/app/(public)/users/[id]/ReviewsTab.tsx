@@ -4,6 +4,7 @@ import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { formatDateWithYear } from "@/lib/dates";
+import { formatRating } from "@/components/StarRatingInput";
 
 /** Одна строка вкладки: ссылка/обложка считаются на сервере
  *  (dramaHref/novelHref/eventHref — см. users/[id]/page.tsx), клиенту
@@ -92,7 +93,7 @@ export default function ReviewsTab({
                 {r.title}
               </AppLink>{" "}
               <span className="fw-semibold" style={{ color: ratingColor(r.rating) }}>
-                {r.rating}
+                {formatRating(r.rating)}
               </span>
               <span className="text-secondary"> · {formatDateWithYear(r.createdAt, locale)}</span>
               {r.isPrivate && (

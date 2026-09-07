@@ -90,7 +90,7 @@ export const social = {
       favorite: "now a favourite artist",
       going: "going to the event",
       trip: "new trip",
-      review: (rating: number) => `review — ${rating}/10`,
+      review: (rating: string) => `review — ${rating}/10`,
       achievement: "achievement unlocked",
     },
 

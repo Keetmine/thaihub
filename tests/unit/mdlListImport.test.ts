@@ -38,8 +38,8 @@ const DOC = `<script> window.dramalist_json = {"username":"keetmine","vip":"0","
     mdlPath: "/801612-be-my-player-two",
     title: "Be My Player Two",
     seen: 7,
-    // Половинки MDL («8.5») округляем — у нас шкала целая.
-    rating: 9,
+    // Половинки MDL («8.5») сохраняем: шкала у нас с тем же шагом 0.5.
+    rating: 8.5,
   });
 
   // Абсолютная ссылка сводится к пути, сущности в названии decoded,

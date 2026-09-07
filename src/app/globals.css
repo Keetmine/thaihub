@@ -2103,6 +2103,16 @@ svg[aria-hidden="true"] {
   transform: translateX(-50%) translateY(0);
 }
 
+/* Подсказка в несколько слов не влезает в одну строку: nowrap выше
+   уводил бы её за край экрана. Даём перенос и потолок по ширине —
+   для объяснений вроде «из чего сложена оценка». */
+.tooltip-wide[data-tooltip]::after {
+  white-space: normal;
+  width: max-content;
+  max-width: min(18rem, 70vw);
+  text-align: center;
+}
+
 /* Начальное состояние для появления из display: none — без него подсказка
    возникала бы рывком, без плавного проявления. */
 @starting-style {
@@ -3302,44 +3312,81 @@ button.hero-stat-toggle.is-open {
   color: var(--bs-secondary-color);
 }
 
-/* Своя оценка сериалу — десять звёзд (АА2, DramaRating.tsx). Звёзды
-   контурные и загораются заливкой: пустая звезда читается как «можно
-   поставить», закрашенная — как «поставил». */
-.drama-rating {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.drama-rating-stars {
+/* Оценка звёздами с ПОЛОВИНКАМИ (StarRatingInput.tsx): контурная
+   звезда + закрашенный слой поверх, обрезанный по ширине (50% или
+   100%). Кликабельные половины — два прозрачных прямоугольника поверх
+   иконки. */
+.star-rating {
   display: inline-flex;
   align-items: center;
   /* Без зазора: десять звёзд с промежутками расползались бы на
      полстроки, а сплошной ряд читается одной шкалой. */
   gap: 0;
-}
-.drama-rating-star {
-  border: none;
-  background: transparent;
-  padding: 0.05rem;
-  line-height: 0;
   font-size: 1.15rem;
+  line-height: 1;
   color: var(--bs-secondary-color);
-  cursor: pointer;
-  transition: color 0.12s ease, transform 0.12s ease;
 }
-.drama-rating-star.is-on {
+.star-rating-star {
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+}
+.star-rating-base,
+.star-rating-fill {
+  position: absolute;
+  inset: 0;
+  display: block;
+  line-height: 0;
+  pointer-events: none;
+}
+.star-rating-fill {
+  overflow: hidden;
   color: rgb(var(--accent-rgb));
 }
-.drama-rating-star.is-on svg {
+.star-rating-fill svg {
   fill: currentColor;
 }
-.drama-rating-star:hover:not(:disabled),
-.drama-rating-star:focus-visible {
-  transform: scale(1.15);
+/* Внутренняя иконка не должна сжиматься вместе с обрезкой половинки —
+   иначе вместо половины звезды получилась бы узкая звёздочка. */
+.star-rating-base svg,
+.star-rating-fill svg {
+  width: 1em;
+  height: 1em;
+  display: block;
 }
-.drama-rating-star:disabled {
+.star-rating-half {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  z-index: 1;
+}
+.star-rating-half.is-left {
+  left: 0;
+}
+.star-rating-half.is-right {
+  right: 0;
+}
+.star-rating-half:disabled {
   cursor: default;
+}
+.star-rating-half:focus-visible {
+  outline: 2px solid rgb(var(--accent-rgb));
+  outline-offset: 1px;
+  border-radius: 0.2rem;
+}
+
+/* Своя оценка сериалу (АА2, DramaRating.tsx): звёзды + подпись. */
+.drama-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 .drama-rating-value {
   font-size: 0.85rem;
@@ -3347,26 +3394,34 @@ button.hero-stat-toggle.is-open {
   color: var(--bs-secondary-color);
 }
 
-/* В строке таблицы профиля звёзды мельче, а цифра прячется: место в
-   колонке дорого, и «9/10» дублировало бы то, что и так видно. */
-.drama-rating.is-inline {
-  gap: 0.25rem;
+/* Строка оценки в форме отзыва: подпись — звёзды — цифра. Подписи
+   выровнены по ширине, чтобы шкалы стояли в одну колонку и их можно
+   было сравнивать взглядом. */
+.review-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.drama-rating.is-inline .drama-rating-star {
-  font-size: 0.95rem;
-  padding: 0;
+.review-rating-label {
+  width: 4.5rem;
+  flex-shrink: 0;
 }
-.drama-rating.is-inline .drama-rating-value {
-  display: none;
+.review-rating-value {
+  font-variant-numeric: tabular-nums;
+  min-width: 1.8rem;
 }
-@media (prefers-reduced-motion: reduce) {
-  .drama-rating-star {
-    transition: none;
-  }
-  .drama-rating-star:hover:not(:disabled),
-  .drama-rating-star:focus-visible {
-    transform: none;
-  }
+
+/* Звёзды в выпадающем окошке оценки (строка таблицы) — крупнее, чем в
+   тексте: попасть в половинку пальцем иначе невозможно. */
+.rating-popover {
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.rating-popover .star-rating {
+  font-size: 1.35rem;
 }
 
 /* Фолбэк без постера: крупная первая буква на тёплом градиенте. */

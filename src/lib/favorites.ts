@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import type { DramaWatchStatusValue } from "@/app/(public)/favorites/actions";
 
-/** Что пользователь отметил у каждого из `dramaIds`: статус и, если
- *  отмечал, на какой серии остановился. */
+/** Что пользователь отметил у каждого из `dramaIds`: статус, на какой
+ *  серии остановился и свою оценку (АА2), если ставил. */
 export type DramaWatchEntry = {
   status: DramaWatchStatusValue;
   episodesWatched: number | null;
+  rating: number | null;
 };
 
 export async function getDramaWatchStatuses(
@@ -16,11 +17,14 @@ export async function getDramaWatchStatuses(
 
   const statuses = await prisma.dramaWatchStatus.findMany({
     where: { userId, dramaId: { in: dramaIds } },
-    select: { dramaId: true, status: true, episodesWatched: true },
+    select: { dramaId: true, status: true, episodesWatched: true, rating: true },
   });
 
   return new Map(
-    statuses.map((s) => [s.dramaId, { status: s.status, episodesWatched: s.episodesWatched }]),
+    statuses.map((s) => [
+      s.dramaId,
+      { status: s.status, episodesWatched: s.episodesWatched, rating: s.rating },
+    ]),
   );
 }
 

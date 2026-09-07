@@ -10,6 +10,8 @@ import NameSearchBox from "@/components/NameSearchBox";
 import { adminListHref } from "@/lib/adminListHref";
 import DramaStatusSelect from "@/components/DramaStatusSelect";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import DramaRatingSelect from "@/components/DramaRatingSelect";
+import { combineScores, fetchSiteScores } from "@/lib/dramaRating";
 import { episodeProgress } from "@/lib/watchStatus";
 import { getCurrentUser } from "@/lib/userAuth";
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
@@ -65,6 +67,8 @@ const DRAMA_ROW_SELECT = {
   // страна; статус — для бейджа «Выходит» у названия.
   type: true,
   country: true,
+  // Сводная оценка в строке (см. dramaRating.ts) — половина от MDL.
+  mdlScore: true,
   status: true,
 } as const;
 
@@ -120,7 +124,7 @@ const getDramasByLetter = unstable_cache(
 /** Колонки таблицы, по которым можно сортировать. Ключ уезжает в адрес
  *  (`?sort=year&dir=desc`) — сортировка серверная, как и сам список:
  *  ссылка-колонка работает без JS и переживает перезагрузку. */
-const SORT_KEYS = ["title", "status", "type", "year", "country", "episodes"] as const;
+const SORT_KEYS = ["title", "status", "type", "year", "country", "rating", "episodes"] as const;
 type SortKey = (typeof SORT_KEYS)[number];
 
 export default async function DramasPage({
@@ -230,17 +234,16 @@ export default async function DramasPage({
     currentUser?.id,
   );
 
-  // Средние оценки из отзывов — бейджем в строке каталога. Приватные
-  // отзывы не участвуют: рейтинг — публичный сигнал, и невидимая оценка,
-  // двигающая среднее, вызывала бы вопросы (то же правило, что на
-  // странице сериала).
-  const ratings = await prisma.review.groupBy({
-    by: ["dramaId"],
-    where: { dramaId: { in: dramas.map((d) => d.id) }, isPrivate: false },
-    _avg: { rating: true },
-  });
-  const ratingByDramaId = new Map(
-    ratings.filter((r) => r.dramaId).map((r) => [r.dramaId as string, r._avg.rating as number]),
+  // Оценка бейджем в строке каталога — сводная: наши оценки (звёздочки
+  // и публичные отзывы, один человек — один голос) в среднем с
+  // MyDramaList. Та же логика, что на странице сериала, см.
+  // src/lib/dramaRating.ts.
+  const siteScores = await fetchSiteScores(dramas.map((d) => d.id));
+  const scoreByDramaId = new Map(
+    dramas.map((d) => [
+      d.id,
+      combineScores(siteScores.get(d.id)?.site ?? null, d.mdlScore),
+    ]),
   );
 
   // Названия за шапкой — самые популярные сериалы по числу отметок
@@ -271,6 +274,9 @@ export default async function DramasPage({
         return d.year;
       case "country":
         return d.country ? t.catalog.dramaCountry(d.country) : null;
+      case "rating":
+        // По СВОЕЙ оценке: колонка про неё, а сводная стоит у названия.
+        return entry?.rating ?? null;
       case "episodes":
         return episodeProgress(entry, d.episodes)?.watched ?? null;
       default:
@@ -321,6 +327,7 @@ export default async function DramasPage({
     type: styles.colType,
     year: styles.colYear,
     country: styles.colCountry,
+    rating: styles.colRating,
     episodes: styles.colProgress,
   };
 
@@ -452,7 +459,7 @@ export default async function DramasPage({
   /** Одна строка таблицы. Вынесена из renderItem: её рисуют обе ветки —
    *  и алфавитный список, и плоский отсортированный. */
   function renderRow(d: (typeof dramas)[number]) {
-    const rating = ratingByDramaId.get(d.id);
+    const score = scoreByDramaId.get(d.id) ?? null;
     const entry = statusByDramaId.get(d.id) ?? null;
     const progress = episodeProgress(entry, d.episodes);
     const airing = d.status === "RETURNING_SERIES";
@@ -478,9 +485,9 @@ export default async function DramasPage({
                     <span className={`font-display fw-medium text-white ${styles.title}`}>
                       {dramaTitleForLocale(d, locale)}
                     </span>
-                    {rating != null && (
+                    {score != null && (
                       <span className={`small text-secondary ${styles.meta}`}>
-                        ★ {rating.toFixed(1)}
+                        ★ {score.toFixed(1)}
                       </span>
                     )}
                   </span>
@@ -506,6 +513,16 @@ export default async function DramasPage({
                 <span className={styles.colYear}>{d.year ?? ""}</span>
                 <span className={styles.colCountry}>
                   {d.country ? t.catalog.dramaCountry(d.country) : ""}
+                </span>
+                <span className={`${styles.colRating} table-status-cell`}>
+                  {/* Своя оценка (АА2) — правится прямо в строке, как и
+                      статус слева; гостю не показываем, он всё равно
+                      уедет на страницу входа. */}
+                  {currentUser ? (
+                    <DramaRatingSelect dramaId={d.id} rating={entry?.rating ?? null} />
+                  ) : (
+                    ""
+                  )}
                 </span>
                 <span className={styles.colProgress}>
                   {/* Ж6: править серии — прямо отсюда, не заходя на

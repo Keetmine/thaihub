@@ -28,9 +28,24 @@ function pagePath(kind: ReviewKind, id: string): string {
   return `/event/${id}`;
 }
 
-/** Сохранить (создать/обновить) свой отзыв: оценка 1–10 + текст.
- *  Пустой текст с оценкой допустим («только оценка» как на Кинопоиске —
- *  нет: у нас отзыв = оценка + текст, текст обязателен). */
+/**
+ * Оценка из формы: шкала 0.5-10 с шагом 0.5 (правка владельца
+ * 2026-09-07 — половинки, как у MyDramaList). Пусто или мусор — null:
+ * для разделов это «не оценивал», для общей оценки вызывающий сам
+ * превращает null в ошибку.
+ */
+function parseRating(raw: FormDataEntryValue | null): number | null {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0.5 || n > 10) return null;
+  return Math.round(n * 2) / 2;
+}
+
+/** Сохранить (создать/обновить) свой отзыв: общая оценка + текст, плюс
+ *  необязательные оценки по разделам (сюжет/актёры/музыка — набор
+ *  зависит от типа записи). Текст обязателен: «только оценка» у нас не
+ *  отзыв, для неё есть звёздочка на самом сериале (АА2). */
 export async function saveReview(
   kind: ReviewKind,
   id: string,
@@ -40,11 +55,16 @@ export async function saveReview(
   if (!user) redirect("/login");
   const { t } = await getT();
 
-  const rating = Number(formData.get("rating"));
+  const rating = parseRating(formData.get("rating"));
   const text = String(formData.get("text") ?? "").trim();
-  if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
+  if (rating == null) {
     return { ok: false, error: t.reviews.errors.ratingRange };
   }
+  // Оценки по разделам необязательны (правка владельца 2026-09-07):
+  // пустое поле — «не оценивал этот раздел», а не ноль.
+  const ratingStory = parseRating(formData.get("ratingStory"));
+  const ratingActing = parseRating(formData.get("ratingActing"));
+  const ratingMusic = parseRating(formData.get("ratingMusic"));
   if (!text) return { ok: false, error: t.reviews.errors.textRequired };
 
   // Чекбокс «Виден только мне»: приватный отзыв видит только автор, в
@@ -54,10 +74,11 @@ export async function saveReview(
 
   const where = targetWhere(kind, id);
   const existing = await prisma.review.findFirst({ where: { userId: user.id, ...where } });
+  const data = { rating, ratingStory, ratingActing, ratingMusic, text, isPrivate };
   if (existing) {
-    await prisma.review.update({ where: { id: existing.id }, data: { rating, text, isPrivate } });
+    await prisma.review.update({ where: { id: existing.id }, data });
   } else {
-    await prisma.review.create({ data: { userId: user.id, ...where, rating, text, isPrivate } });
+    await prisma.review.create({ data: { userId: user.id, ...where, ...data } });
   }
   revalidatePath(pagePath(kind, id));
   return { ok: true };

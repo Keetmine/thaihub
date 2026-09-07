@@ -93,7 +93,8 @@ export const social: Dict["social"] = {
       favorite: "теперь в любимых артистах",
       going: "отметка «иду» на событие",
       trip: "новая поездка",
-      review: (rating: number) => `отзыв — ${rating}/10`,
+      // Оценка бывает дробной («8.5») — форматирует вызывающий.
+      review: (rating: string) => `отзыв — ${rating}/10`,
       achievement: "новая ачивка",
     },
 

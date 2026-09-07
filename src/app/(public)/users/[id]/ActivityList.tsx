@@ -7,6 +7,7 @@ import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import type { ActivityItem } from "@/lib/activityFeed";
 import type { ReactNode } from "react";
 import type { Dict, Locale } from "@/lib/i18n";
+import { formatRating } from "@/components/StarRatingInput";
 
 const TYPE_EMOJI: Record<ActivityItem["type"], string> = {
   watch: "📺",
@@ -87,7 +88,7 @@ export default function ActivityList({
             action = a.trip;
             break;
           case "review":
-            action = a.review(item.rating);
+            action = a.review(formatRating(item.rating));
             break;
           case "achievement":
             action = a.achievement;

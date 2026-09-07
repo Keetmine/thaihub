@@ -4,40 +4,35 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setDramaRating } from "@/app/(public)/favorites/actions";
 import { useT } from "@/components/LocaleProvider";
-import { StarIcon } from "@/components/icons";
+import StarRatingInput, { formatRating } from "@/components/StarRatingInput";
 
 /**
- * Своя оценка сериалу — десять звёзд (АА2).
+ * Своя оценка сериалу — десять звёзд с половинками (АА2; половинки —
+ * правка владельца 2026-09-07).
  *
- * Отдельная от отзыва вещь: `Drama.mdlScore` — общая оценка с
- * MyDramaList, «★ 8.4» рядом — средняя по сайту, а это личное «мне на
- * девять». Раньше поставить её можно было только написав отзыв.
+ * Отдельная от отзыва вещь: `Drama.mdlScore` — оценка MyDramaList,
+ * «★ 8.4» рядом — сводная, а это личное «мне на девять с половиной».
+ * Раньше поставить её можно было только написав отзыв.
  *
- * Повторный клик по той же звезде снимает оценку — привычный способ
- * передумать, отдельная кнопка «убрать» ради этого не нужна.
+ * Повторный клик по той же половинке снимает оценку — привычный способ
+ * передумать, отдельная кнопка ради этого не нужна.
  *
  * Значение держим локально и рисуем сразу: звёзды должны загораться под
  * пальцем, а не после ответа сервера. `router.refresh()` следом
- * подтягивает остальное — оценка видна и в профиле.
- *
- * Два вида: `full` — с подписью «Моя оценка» (страница сериала);
- * `inline` — только звёзды, для строк таблицы в профиле.
+ * подтягивает остальное — своя оценка входит в среднее по сайту.
  */
 export default function DramaRating({
   dramaId,
   rating,
-  variant = "full",
 }: {
   dramaId: string;
-  /** Поставленная оценка 1-10; null — не оценивал. */
+  /** Поставленная оценка 0.5-10; null — не оценивал. */
   rating: number | null;
-  variant?: "full" | "inline";
 }) {
   const t = useT();
   const s = t.catalog.rating;
   const router = useRouter();
   const [value, setValue] = useState(rating);
-  const [hover, setHover] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Оценка могла смениться не отсюда (импорт списка с MDL, вторая
@@ -49,15 +44,13 @@ export default function DramaRating({
     setValue(rating);
   }
 
-  function choose(next: number) {
-    // Клик по уже горящей звезде — «передумал», снимаем.
-    const target = next === value ? null : next;
+  function choose(next: number | null) {
     const previous = value;
-    setValue(target);
+    setValue(next);
     startTransition(async () => {
       // Ошибку экшен отдаёт значением (текст исключения в проде до
       // клиента не доезжает) — молча откатываем звёзды.
-      const result = await setDramaRating(dramaId, target);
+      const result = await setDramaRating(dramaId, next);
       if (!result.ok) {
         setValue(previous);
         return;
@@ -66,39 +59,21 @@ export default function DramaRating({
     });
   }
 
-  const shown = hover ?? value ?? 0;
-
   return (
-    <div className={`drama-rating is-${variant}`}>
-      {variant === "full" && <span className="small text-secondary">{s.label}</span>}
-      <div
-        className="drama-rating-stars"
-        onMouseLeave={() => setHover(null)}
-        role="radiogroup"
-        aria-label={s.label}
-      >
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            type="button"
-            className={`drama-rating-star ${n <= shown ? "is-on" : ""}`}
-            disabled={isPending}
-            role="radio"
-            aria-checked={value === n}
-            aria-label={value === n ? s.clear : s.choose(n)}
-            onMouseEnter={() => setHover(n)}
-            onFocus={() => setHover(n)}
-            onBlur={() => setHover(null)}
-            onClick={() => choose(n)}
-          >
-            <StarIcon />
-          </button>
-        ))}
-      </div>
+    <div className="drama-rating">
+      <span className="small text-secondary">{s.label}</span>
+      <StarRatingInput
+        value={value}
+        onChange={choose}
+        disabled={isPending}
+        labelFor={(n) => (n === value ? s.clear : s.choose(formatRating(n)))}
+      />
       {/* Цифра рядом со звёздами: считать десять иконок глазами
-          неудобно, а «9 из 10» читается сразу. Пока не оценили —
+          неудобно, а «9.5 из 10» читается сразу. Пока не оценили —
           зовём это сделать. */}
-      <span className="drama-rating-value">{value != null ? `${value}/10` : s.none}</span>
+      <span className="drama-rating-value">
+        {value != null ? `${formatRating(value)}/10` : s.none}
+      </span>
     </div>
   );
 }
