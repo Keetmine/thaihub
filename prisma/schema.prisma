@@ -137,33 +137,33 @@ model Performer {
   type PerformerType @default(SOLO)
 
   // Profile fields (populated manually or via mydramalist import).
-  realName       String?
-  birthDate      DateTime?
-  placeOfBirth   String?
-  bio            String?
+  realName         String?
+  birthDate        DateTime?
+  placeOfBirth     String?
+  bio              String?
   // A performer can belong to more than one agency at once — a co-produced
   // drama's cast may formally be signed to a different studio than the one
   // that produced it, and a performer can move agencies over time. No
   // current-vs-past status yet (see PerformerAgency) — every row is just
   // "this performer is associated with this agency".
-  agencies       PerformerAgency[]
-  photoUrl       String?
-  mydramalistUrl String?
+  agencies         PerformerAgency[]
+  photoUrl         String?
+  mydramalistUrl   String?
   // TMDB person id — set once a performer's been imported/matched from
   // TMDB (see tmdb-import.md), lets re-imports and cast matching key off
   // a stable id instead of a fuzzy name match.
-  tmdbId         String?           @unique
+  tmdbId           String?           @unique
   // Страница артиста на musicfestival.in.th, с которой запись заведена
   // краулером фестивалей (см. docs/features/musicfestival-import.md):
   // ключ повторного матчинга лайнапов (тёзки по имени не разводятся —
   // адрес разводит) и строка в «Источниках». Уникален: одна их
   // страница — один наш исполнитель.
-  musicFestivalUrl String?         @unique
+  musicFestivalUrl String?           @unique
   // Заготовка: заведён парсером с одним именем (и фото, если было) и
   // ждёт, когда владелец дополнит карточку. Список — фильтр
   // «Заготовки парсеров» на /admin/performers; снимается сохранением
   // профиля в форме.
-  stub             Boolean         @default(false)
+  stub             Boolean           @default(false)
 
   events                EventPerformer[]
   dramas                PerformerDrama[]
@@ -783,6 +783,7 @@ model Pairing {
   events       EventPairing[]
 
   createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   mascots   MascotOwner[]
 
   @@unique([performerAId, performerBId])
@@ -949,9 +950,9 @@ model User {
   feedbacks              Feedback[]
   reports                Report[]
   payments               Payment[]
-  friendRequestsSent     Friendship[]  @relation("FriendRequester")
-  friendRequestsReceived Friendship[]  @relation("FriendAddressee")
-  redeemedPromoCodes     PromoCode[]   @relation("PromoRedeemer")
+  friendRequestsSent     Friendship[]      @relation("FriendRequester")
+  friendRequestsReceived Friendship[]      @relation("FriendAddressee")
+  redeemedPromoCodes     PromoCode[]       @relation("PromoRedeemer")
   eventTickets           EventTicket[]
   // Блокировка (решение владельца 2026-09-09). Мягкое удаление
   // (`deletedAt`) — действие самого человека, а это инструмент
@@ -961,14 +962,14 @@ model User {
   /// Причина видна только админу: человеку показываем факт, а не текст.
   banReason              String?
   bannedById             String?
-  bannedBy               User?               @relation("UserBans", fields: [bannedById], references: [id], onDelete: SetNull)
-  bannedUsers            User[]              @relation("UserBans")
-  ownedCommunities       Community[]         @relation("CommunityOwner")
+  bannedBy               User?             @relation("UserBans", fields: [bannedById], references: [id], onDelete: SetNull)
+  bannedUsers            User[]            @relation("UserBans")
+  ownedCommunities       Community[]       @relation("CommunityOwner")
   communityMemberships   CommunityMember[]
-  communityInvites       CommunityInvite[]   @relation("CommunityInviteTo")
-  communityInvitesSent   CommunityInvite[]   @relation("CommunityInviteBy")
+  communityInvites       CommunityInvite[] @relation("CommunityInviteTo")
+  communityInvitesSent   CommunityInvite[] @relation("CommunityInviteBy")
   communityPosts         CommunityPost[]
-  createdEvents          Event[]             @relation("EventAuthor")
+  createdEvents          Event[]           @relation("EventAuthor")
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -1038,7 +1039,6 @@ enum TripMemberStatus {
  * летят разными рейсами — одна с 18 октября по 2 ноября, другая с 22 по
  * 6. Поездка при этом ОДНА: общий отель, общий план, одна страница;
  * разъезжается только присутствие.
- *
  * Строки нет — «как вся поездка», поэтому ничего не надо ни
  * бэкфиллить, ни заводить владельцу; свои даты он задаёт так же, как
  * участник, и отдельной строкой в TripMember для этого не становится.
@@ -1359,8 +1359,8 @@ enum AchievementScope {
 }
 
 model Achievement {
-  id        String   @id @default(cuid())
-  key       String   @unique
+  id        String           @id @default(cuid())
+  key       String           @unique
   scope     AchievementScope @default(USER)
   emoji     String
   title     String
@@ -1369,9 +1369,10 @@ model Achievement {
   threshold Int
   // enabled=false прячет ачивку отовсюду (кабинет, профиль, подсчёт
   // прогресса), но уже выданные UserAchievement-строки не трогает.
-  enabled   Boolean  @default(true)
-  sort      Int      @default(0)
-  createdAt DateTime @default(now())
+  enabled   Boolean          @default(true)
+  sort      Int              @default(0)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 }
 
 // Разблокированные ачивки (Д2): условия считаются из данных на лету
@@ -1504,14 +1505,14 @@ model FavoriteEvent {
  * occurrenceId занулился, билет остался у события.
  */
 model EventTicket {
-  id           String           @id @default(cuid())
-  userId       String
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventId      String
-  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  occurrenceId String?
-  occurrence   EventOccurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
-  fileUrl      String
+  id                      String           @id @default(cuid())
+  userId                  String
+  user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId                 String
+  event                   Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occurrenceId            String?
+  occurrence              EventOccurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+  fileUrl                 String
   // Онлайн-бронирование (мест/бенефитов), которое у тайских событий
   // открывается после покупки билета в назначенное время. Владелец
   // билета записывает его сам. Время — тайское настенное в UTC-слоте,
@@ -1522,7 +1523,7 @@ model EventTicket {
   // отметка ставится атомарно перед отправкой, а смена времени
   // бронирования сбрасывает её — новое время напоминается заново.
   onlineBookingNotifiedAt DateTime?
-  createdAt    DateTime         @default(now())
+  createdAt               DateTime         @default(now())
 
   @@index([userId])
   @@index([eventId])
@@ -1552,19 +1553,19 @@ model EventAttendance {
 // трёх ссылок задана. Один отзыв на юзера на объект: составные @@unique
 // работают, т.к. NULL в Postgres не конфликтует.
 model Review {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dramaId   String?
-  drama     Drama?   @relation(fields: [dramaId], references: [id], onDelete: Cascade)
-  novelId   String?
-  novel     Novel?   @relation(fields: [novelId], references: [id], onDelete: Cascade)
-  eventId   String?
-  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dramaId      String?
+  drama        Drama?   @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  novelId      String?
+  novel        Novel?   @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  eventId      String?
+  event        Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   // Оценка отзыва — ОБЩАЯ («Overall»), она же средняя по разделам, если
   // человек их заполнил. Float, а не Int: шкала с половинками (8.5), как
   // у своей оценки сериалу и у MyDramaList.
-  rating    Float
+  rating       Float
   // Оценки по разделам (правка владельца 2026-09-07) — необязательные:
   // модель общая для сериалов, новелл и событий, и «Игра актёров» у
   // новеллы смысла не имеет. Что показывать, решает ReviewsAndComments
@@ -1572,13 +1573,13 @@ model Review {
   ratingStory  Float?
   ratingActing Float?
   ratingMusic  Float?
-  text      String
+  text         String
   // Приватный отзыв видит только автор: в чужих списках его нет, в
   // средний рейтинг и счётчик он не входит (невидимая оценка, двигающая
   // среднее, вызывала бы вопросы). Общий флаг для всех трёх типов.
-  isPrivate Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isPrivate    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([userId, dramaId])
   @@unique([userId, novelId])
@@ -1591,15 +1592,15 @@ model Review {
 // Комментарий к сериалу/новелле/событию: плоский или ответ (parentId,
 // один уровень вложенности) + лайки.
 model Comment {
-  id        String        @id @default(cuid())
+  id        String         @id @default(cuid())
   userId    String
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   dramaId   String?
-  drama     Drama?        @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+  drama     Drama?         @relation(fields: [dramaId], references: [id], onDelete: Cascade)
   novelId   String?
-  novel     Novel?        @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  novel     Novel?         @relation(fields: [novelId], references: [id], onDelete: Cascade)
   eventId   String?
-  event     Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event     Event?         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   /// Тема обсуждения в сообществе (АА25) — четвёртый вид объекта.
   postId    String?
   post      CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -1608,11 +1609,11 @@ model Comment {
   /// несколько, и порядок важен.
   photos    CommentPhoto[]
   parentId  String?
-  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[]     @relation("CommentReplies")
+  parent    Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]      @relation("CommentReplies")
   likes     CommentLike[]
   text      String
-  createdAt DateTime      @default(now())
+  createdAt DateTime       @default(now())
 
   @@index([dramaId])
   @@index([novelId])
@@ -1924,24 +1925,24 @@ enum TripBookingKind {
 }
 
 model TripBooking {
-  id         String             @id @default(cuid())
-  tripId     String
-  trip       Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  kind       TripBookingKind    @default(HOTEL)
+  id          String             @id @default(cuid())
+  tripId      String
+  trip        Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  kind        TripBookingKind    @default(HOTEL)
   // Отель: название; перелёт: рейс или авиакомпания («TG 975»).
-  name       String
+  name        String
   // Отель: адрес. У перелёта не используется.
-  address    String?
+  address     String?
   // Перелёт: откуда и куда (город или аэропорт).
-  fromPlace  String?
-  toPlace    String?
+  fromPlace   String?
+  toPlace     String?
   // Ссылка на саму бронь (Booking, письмо) и загруженный файл/скрин.
-  url        String?
-  fileUrl    String?
+  url         String?
+  fileUrl     String?
   // Отель: заезд/выезд; перелёт: вылет/прилёт.
-  startAt    DateTime?
-  endAt      DateTime?
-  note       String?
+  startAt     DateTime?
+  endAt       DateTime?
+  note        String?
   // Кто видит бронь. По умолчанию участники: адрес проживания и номер
   // брони — не то, что показывают всем подряд.
   // Кто завёл бронь. Без этого поля приватная бронь участницы
@@ -1949,8 +1950,8 @@ model TripBooking {
   // по умолчанию, и своя же запись исчезала у автора, зато была видна
   // хозяйке поездки (поймано проверкой совместной поездки 2026-09-06).
   createdById String?
-  visibility TripItemVisibility @default(PARTICIPANTS)
-  createdAt  DateTime           @default(now())
+  visibility  TripItemVisibility @default(PARTICIPANTS)
+  createdAt   DateTime           @default(now())
 
   @@index([tripId])
 }
@@ -2073,14 +2074,14 @@ model ScheduledJobTarget {
 // уходит уведомление DRAMA_ADDED. notifiedAt — защита от повторной
 // рассылки; резолвим только открытые (resolvedAt == null).
 model MdlDramaRequest {
-  id     String @id @default(cuid())
+  id              String    @id @default(cuid())
   // Канонический адрес страницы MDL (canonicalMdlUrl) — ключ дедупа,
   // как Drama.mdlUrl.
-  mdlUrl String @unique
+  mdlUrl          String    @unique
   // Название с MDL — замороженное: сериала у нас ещё нет, а админке
   // нужно что-то показать.
-  title      String
-  createdAt  DateTime  @default(now())
+  title           String
+  createdAt       DateTime  @default(now())
   // Проставлены разом при появлении сериала в каталоге.
   resolvedAt      DateTime?
   resolvedDramaId String?
@@ -2089,7 +2090,7 @@ model MdlDramaRequest {
   // «Отклонить» в админке: мусорная ссылка. Запись остаётся, чтобы
   // повторный импорт списка не воскрешал заявку; но если сериал всё же
   // появится в каталоге, хук её резолвит и уведомит просивших.
-  rejectedAt DateTime?
+  rejectedAt      DateTime?
 
   users MdlDramaRequestUser[]
 
@@ -2126,25 +2127,25 @@ model MdlDramaRequestUser {
 // NO_MATCH (в составе никого из каталога) перепроверяется, когда
 // checkedAt старше недели — артист мог появиться в каталоге позже.
 model EventDraft {
-  id        String           @id @default(cuid())
+  id                String           @id @default(cuid())
   // Канонический адрес страницы события (без utm-хвостов) — ключ дедупа.
-  sourceUrl String           @unique
+  sourceUrl         String           @unique
   // Весь распарс страницы (TtmEvent: название, даты, площадка, цены,
   // постер-URL, пресейл, состав) — Json, а не колонки: черновик живёт
   // до решения владельца, событие создаётся существующим импортом.
-  payload   Json
+  payload           Json
   // Совпавшие с каталогом артисты: [{performerId, nickname}]. Json, а
   // не join-таблица: нужны только чипы в очереди и привязка состава при
   // одобрении; удалённый из каталога артист просто отвалится при
   // создании события.
   matchedPerformers Json
-  status    EventDraftStatus @default(PENDING)
+  status            EventDraftStatus @default(PENDING)
   // Событие, созданное одобрением (для ссылки «открыть» из истории).
-  eventId   String?
-  createdAt DateTime         @default(now())
+  eventId           String?
+  createdAt         DateTime         @default(now())
   // Последняя проверка краулером — по ней NO_MATCH уходит на re-check.
-  checkedAt DateTime         @default(now())
-  reviewedAt DateTime?
+  checkedAt         DateTime         @default(now())
+  reviewedAt        DateTime?
 
   @@index([status])
 }
@@ -2164,21 +2165,21 @@ enum EventDraftStatus {
 // краулер публичной таблицы Performer не касается вовсе. Таблица заодно
 // и память краулера: REJECTED повторный обход не воскрешает.
 model MascotDraft {
-  id     String @id @default(cuid())
+  id            String            @id @default(cuid())
   // Нормализованное имя маскота (NFKC + casefold + схлопнутые пробелы,
   // см. normalizeMascotName) — ключ дедупа. Именно имя, а не адрес: у
   // маскота нет своей страницы на вики, только якорь-секция общей
   // Mascots, и якорь — производная того же имени; а дедуп против
   // каталога (Performer type MASCOT, в т.ч. заведённые руками) всё
   // равно возможен только по имени.
-  nameKey String @unique
+  nameKey       String            @unique
   // Имя как на вики — для карточки очереди и создаваемого Performer.
-  name String
+  name          String
   // Ссылка на секцию маскота (…/wiki/Mascots#Якорь) — «открыть на вики».
-  sourceUrl String
+  sourceUrl     String
   // Весь распарс секции (GmmtvMascot: описание, картинка, владельцы,
   // соцсети) — Json, а не колонки: черновик живёт до решения владельца.
-  payload Json
+  payload       Json
   // Совпавшие с каталогом владельцы: [{performerId, name, type}] —
   // Json, а не join-таблица, как matchedPerformers у EventDraft: нужны
   // только чипы в очереди и привязка MascotOwner при одобрении.
@@ -2187,9 +2188,9 @@ model MascotDraft {
   status        MascotDraftStatus @default(PENDING)
   // Performer типа MASCOT, созданный одобрением (или найденный по имени,
   // если маскота успели завести руками, пока черновик ждал).
-  performerId String?
-  createdAt   DateTime  @default(now())
-  reviewedAt  DateTime?
+  performerId   String?
+  createdAt     DateTime          @default(now())
+  reviewedAt    DateTime?
 
   @@index([status])
 }
@@ -2241,37 +2242,38 @@ enum CommunityMemberStatus {
 }
 
 model Community {
-  id          String              @id @default(cuid())
+  id           String                 @id @default(cuid())
   // Слаг с коротким кодом (CODED_SLUG_MODELS в src/lib/prisma.ts):
   // названия у людей повторяются, а нумерация -2/-3 выдавала бы, сколько
   // всего таких сообществ завели.
-  slug        String?             @unique
-  ownerId     String
-  owner       User                @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
+  slug         String?                @unique
+  ownerId      String
+  owner        User                   @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
   // Баннер-обложка на странице сообщества.
-  coverUrl    String?
-  visibility  CommunityVisibility @default(PUBLIC)
-  joinMode    CommunityJoinMode   @default(OPEN)
+  coverUrl     String?
+  visibility   CommunityVisibility    @default(PUBLIC)
+  joinMode     CommunityJoinMode      @default(OPEN)
   // Где живёт сообщество (АА25). Городские и страновые сообщества
   // («Лакорны Беларусь») любят ВСЕХ актёров и все сериалы — привязать их
   // к каталогу нечем, и найти их можно только по месту. Поэтому у места
   // свои поля и свой фильтр витрины, а не сотня привязок к артистам.
-  country     String?
-  city        String?
-  links       CommunityLink[]
+  country      String?
+  city         String?
+  links        CommunityLink[]
   achievements CommunityAchievement[]
-  placeLists  PlaceList[]
-  trips       Trip[]
-  members     CommunityMember[]
-  invites     CommunityInvite[]
-  posts       CommunityPost[]
+  placeLists   PlaceList[]
+  trips        Trip[]
+  members      CommunityMember[]
+  invites      CommunityInvite[]
+  posts        CommunityPost[]
   /// Встречи сообщества — те же Event, но со ссылкой сюда: карточка,
   /// «я иду», комментарии и карта достаются им бесплатно. В каталожную
   /// афишу они НЕ попадают, см. catalogEventsWhere.
-  events      Event[]
-  createdAt   DateTime            @default(now())
+  events       Event[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
 
   @@index([ownerId])
 }
@@ -2327,34 +2329,33 @@ model CommunityInvite {
 /// Тема обсуждения в сообществе. Комментарии к ней — общая модель
 /// Comment (поле postId), лайки и жалобы работают как везде.
 model CommunityPost {
-  id          String    @id @default(cuid())
+  id          String               @id @default(cuid())
   communityId String
-  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  community   Community            @relation(fields: [communityId], references: [id], onDelete: Cascade)
   authorId    String
-  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author      User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
   title       String?
   text        String
   /// Закреплённая тема — правила сообщества, знакомство, объявление.
-  pinned      Boolean   @default(false)
+  pinned      Boolean              @default(false)
   /// Приватная тема видна только участникам. Публичная попадает в
   /// список, который видят и посторонние (правка владельца
   /// 2026-09-09): по такому списку видно, живое ли сообщество, и
   /// становится понятно, ради чего в него вступать. ОТКРЫТЬ тему
   /// по-прежнему может только участник — снаружи виден заголовок,
   /// а не разговор.
-  isPrivate   Boolean   @default(false)
+  isPrivate   Boolean              @default(false)
   /// Картинки самой темы. Своя модель, а не «служебный комментарий с
   /// фотографиями»: призрачная строка в общей таблице комментариев
   /// заставляла бы каждое место, которое их считает или показывает
   /// (лента, счётчики, админская модерация), знать про исключение.
   photos      CommunityPostPhoto[]
   comments    Comment[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@index([communityId, createdAt])
 }
-
 
 /// Фото, прикреплённое к комментарию: к отзыву о событии (АА20) и к
 /// обсуждению в сообществе. Лежит в общем /uploads через ту же ручку,

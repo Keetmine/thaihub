@@ -13,6 +13,13 @@ import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  updatedOrderBy,
+  updatedSortOption,
+  UPDATED_SORT,
+} from "@/lib/adminSort";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
 
@@ -20,17 +27,20 @@ export const metadata = { title: "Агентства" };
 
 export const dynamic = "force-dynamic";
 
+const SORT_OPTIONS = [{ key: null, label: "по названию" }, updatedSortOption];
+
 // Раньше список агентств жил вкладкой внутри /admin/performers
 // (?view=agencies) — теперь это свой раздел, старый адрес редиректит сюда.
 export default async function AdminAgenciesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string } & FilterParams>;
 }) {
   const sp = await searchParams;
   const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
 
   const where = {
     AND: [
@@ -42,7 +52,7 @@ export default async function AdminAgenciesPage({
     prisma.agency.findMany({
       where,
       include: { _count: { select: { performers: true } } },
-      orderBy: { name: "asc" },
+      orderBy: sort === UPDATED_SORT ? updatedOrderBy : { name: "asc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -66,8 +76,16 @@ export default async function AdminAgenciesPage({
         action="/admin/agencies"
         q={q}
         placeholder="Поиск по названию…"
+        hiddenFields={sort ? { sort } : undefined}
         className="admin-search-lg mb-3"
         quickKind="agency"
+      />
+
+      <AdminSortLinks
+        basePath="/admin/agencies"
+        params={sp}
+        options={SORT_OPTIONS}
+        active={sort}
       />
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}

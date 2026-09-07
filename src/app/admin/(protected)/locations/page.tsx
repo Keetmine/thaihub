@@ -14,6 +14,13 @@ import Pagination from "@/components/Pagination";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  updatedOrderBy,
+  updatedSortOption,
+  UPDATED_SORT,
+} from "@/lib/adminSort";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
 
@@ -21,15 +28,18 @@ export const metadata = { title: "Локации" };
 
 export const dynamic = "force-dynamic";
 
+const SORT_OPTIONS = [{ key: null, label: "по названию" }, updatedSortOption];
+
 export default async function AdminLocationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string } & FilterParams>;
 }) {
   const sp = await searchParams;
   const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
 
   // Пользовательские места (createdByUserId) — не часть каталога.
   // «Чьи» из фильтра важнее зашитого «только каталожные»: раньше
@@ -49,7 +59,7 @@ export default async function AdminLocationsPage({
     prisma.location.findMany({
       where,
       include: { _count: { select: { dramas: true } } },
-      orderBy: { name: "asc" },
+      orderBy: sort === UPDATED_SORT ? updatedOrderBy : { name: "asc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -73,8 +83,15 @@ export default async function AdminLocationsPage({
         action="/admin/locations"
         q={q}
         placeholder="Поиск по названию…"
+        hiddenFields={sort ? { sort } : undefined}
         quickKind="location"
         className="admin-search-lg mb-3"
+      />
+      <AdminSortLinks
+        basePath="/admin/locations"
+        params={sp}
+        options={SORT_OPTIONS}
+        active={sort}
       />
       {/* Список слева, фильтры колонкой справа — как на /search. */}
       <div className="row g-4">

@@ -6,6 +6,13 @@ import { communityHref } from "@/lib/slugHelpers";
 import { adminListHref } from "@/lib/adminListHref";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  UPDATED_SORT,
+  updatedOrderBy,
+  updatedSortOption,
+} from "@/lib/adminSort";
 import Pagination from "@/components/Pagination";
 import ConfirmForm from "@/components/ConfirmForm";
 import { TrashIcon } from "@/components/icons";
@@ -35,17 +42,30 @@ const VISIBILITY_TABS = [
 ] as const;
 type VisibilityTab = (typeof VISIBILITY_TABS)[number]["key"];
 
+const SORT_OPTIONS = [
+  { key: null, label: "по дате создания" },
+  updatedSortOption,
+];
+
 export default async function AdminCommunitiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; visibility?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    page?: string;
+    visibility?: string;
+    sort?: string;
+  }>;
 }) {
   await requireAdminPage();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   const page = parsePage(sp.page);
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
   const visibility: VisibilityTab =
-    sp.visibility === "PUBLIC" || sp.visibility === "PRIVATE" ? sp.visibility : "all";
+    sp.visibility === "PUBLIC" || sp.visibility === "PRIVATE"
+      ? sp.visibility
+      : "all";
 
   const where = {
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
@@ -66,7 +86,7 @@ export default async function AdminCommunitiesPage({
         _count: { select: { posts: true, events: true } },
       },
       // Новые сверху: в раздел заходят посмотреть, что появилось.
-      orderBy: { createdAt: "desc" },
+      orderBy: sort === UPDATED_SORT ? updatedOrderBy : { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -82,7 +102,10 @@ export default async function AdminCommunitiesPage({
     (
       await prisma.communityMember.groupBy({
         by: ["communityId"],
-        where: { communityId: { in: communities.map((c) => c.id) }, status: "ACTIVE" },
+        where: {
+          communityId: { in: communities.map((c) => c.id) },
+          status: "ACTIVE",
+        },
         _count: { _all: true },
       })
     ).map((row) => [row.communityId, row._count._all]),
@@ -110,7 +133,11 @@ export default async function AdminCommunitiesPage({
               visibility: v.key === "all" ? null : v.key,
               page: null,
             })}
-            className={v.key === visibility ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+            className={
+              v.key === visibility
+                ? "btn btn-primary btn-sm"
+                : "btn btn-ghost btn-sm"
+            }
           >
             {v.label}
           </Link>
@@ -120,13 +147,25 @@ export default async function AdminCommunitiesPage({
       <NameSearchBox
         action="/admin/communities"
         q={q}
-        hiddenFields={visibility === "all" ? undefined : { visibility }}
+        hiddenFields={{
+          ...(visibility === "all" ? {} : { visibility }),
+          ...(sort ? { sort } : {}),
+        }}
         placeholder="Поиск по названию…"
         className="admin-search-lg mb-4"
       />
 
+      <AdminSortLinks
+        basePath="/admin/communities"
+        params={sp}
+        options={SORT_OPTIONS}
+        active={sort}
+      />
+
       {communities.length === 0 ? (
-        <p className="text-secondary">{q ? "Ничего не найдено." : "Пока нет сообществ."}</p>
+        <p className="text-secondary">
+          {q ? "Ничего не найдено." : "Пока нет сообществ."}
+        </p>
       ) : (
         <div className="d-flex flex-column gap-2">
           {communities.map((c) => (
@@ -139,21 +178,27 @@ export default async function AdminCommunitiesPage({
                   {/* Название ведёт в админскую карточку, а не на сайт:
                       у закрытого сообщества публичная страница ничего
                       админу не покажет, пока он не в нём. */}
-                  <Link href={`/admin/communities/${c.id}`} className="link-body-emphasis">
+                  <Link
+                    href={`/admin/communities/${c.id}`}
+                    className="link-body-emphasis"
+                  >
                     {c.title}
                   </Link>
                   <VisibilityBadge visibility={c.visibility} />
                 </span>
                 <span className="small text-secondary">
                   {c.owner ? (
-                    <Link href={`/admin/users/${c.owner.id}`} className="link-body-emphasis">
+                    <Link
+                      href={`/admin/users/${c.owner.id}`}
+                      className="link-body-emphasis"
+                    >
                       {c.owner.name || c.owner.email || "без имени"}
                     </Link>
                   ) : (
                     "аккаунт удалён"
                   )}{" "}
-                  · {memberCounts.get(c.id) ?? 0} участн. · {c._count.posts} тем ·{" "}
-                  {c._count.events} встреч · {formatDateWithYear(c.createdAt)}
+                  · {memberCounts.get(c.id) ?? 0} участн. · {c._count.posts} тем
+                  · {c._count.events} встреч · {formatDateWithYear(c.createdAt)}
                 </span>
               </div>
               <div className="d-flex align-items-center gap-2 flex-shrink-0">

@@ -12,6 +12,13 @@ import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import CreatePairingModal from "./CreatePairingModal";
 import NameSearchBox from "@/components/NameSearchBox";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  UPDATED_SORT,
+  updatedOrderBy,
+  updatedSortOption,
+} from "@/lib/adminSort";
 import AdminFilters from "@/components/admin/AdminFilters";
 import {
   adminPairingFilterDefs,
@@ -30,12 +37,19 @@ export const metadata = { title: "Пейринги" };
 
 export const dynamic = "force-dynamic";
 
+// Порядок по умолчанию — заявки сверху: пейринги приходят от людей, и
+// неразобранное важнее алфавита.
+const SORT_OPTIONS = [{ key: null, label: "по статусу" }, updatedSortOption];
+
 export default async function AdminPairingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
+  searchParams: Promise<
+    { q?: string; page?: string; sort?: string } & FilterParams
+  >;
 }) {
   const sp = await searchParams;
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
   const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
@@ -47,8 +61,16 @@ export default async function AdminPairingsPage({
         ? {
             OR: [
               { name: { contains: q, mode: "insensitive" as const } },
-              { performerA: { name: { contains: q, mode: "insensitive" as const } } },
-              { performerB: { name: { contains: q, mode: "insensitive" as const } } },
+              {
+                performerA: {
+                  name: { contains: q, mode: "insensitive" as const },
+                },
+              },
+              {
+                performerB: {
+                  name: { contains: q, mode: "insensitive" as const },
+                },
+              },
             ],
           }
         : {},
@@ -63,7 +85,10 @@ export default async function AdminPairingsPage({
         performerB: true,
         _count: { select: { events: true } },
       },
-      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      orderBy:
+        sort === UPDATED_SORT
+          ? updatedOrderBy
+          : [{ status: "asc" }, { createdAt: "desc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -87,133 +112,144 @@ export default async function AdminPairingsPage({
         action="/admin/pairings"
         q={q}
         placeholder="Поиск по имени…"
+        hiddenFields={sort ? { sort } : undefined}
         className="admin-search-lg mb-3"
+      />
+
+      <AdminSortLinks
+        basePath="/admin/pairings"
+        params={sp}
+        options={SORT_OPTIONS}
+        active={sort}
       />
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}
 
       <div className="row g-4">
-
-      <div className="col-12 col-xl-9">
-
-      {pairings.length === 0 ? (
-        <p className="text-secondary">
-          {q ? "Ничего не найдено." : "Пока нет пейрингов."}
-        </p>
-      ) : (
-        <BulkList
-          rows={pairings.map((pair) => {
-            const boundDelete = deletePairing.bind(null, pair.id);
-            const boundToggleStatus = setPairingStatus.bind(
-              null,
-              pair.id,
-              pair.status === "CURRENT" ? "PAST" : "CURRENT",
-            );
-            // Для подтверждения удаления: там нужна одна строка.
-            const fallbackLabel = `${pair.performerA.name} × ${pair.performerB.name}`;
-            return {
-              id: pair.id,
-              node: (
-                <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
-                  <div>
-                    {/* Кто в паре — карточками с фото и ссылкой на
+        <div className="col-12 col-xl-9">
+          {pairings.length === 0 ? (
+            <p className="text-secondary">
+              {q ? "Ничего не найдено." : "Пока нет пейрингов."}
+            </p>
+          ) : (
+            <BulkList
+              rows={pairings.map((pair) => {
+                const boundDelete = deletePairing.bind(null, pair.id);
+                const boundToggleStatus = setPairingStatus.bind(
+                  null,
+                  pair.id,
+                  pair.status === "CURRENT" ? "PAST" : "CURRENT",
+                );
+                // Для подтверждения удаления: там нужна одна строка.
+                const fallbackLabel = `${pair.performerA.name} × ${pair.performerB.name}`;
+                return {
+                  id: pair.id,
+                  node: (
+                    <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
+                      <div>
+                        {/* Кто в паре — карточками с фото и ссылкой на
                         правку, а не строкой имён: пейринги правят,
                         глядя на людей, и «Tay × New» текстом каждый раз
                         приходилось искать глазами (правка владельца
                         2026-09-06). Имя пары стоит рядом со статусом
                         такой же плашкой: это ярлык пары, а не её
                         заголовок. */}
-                    <div className="d-flex align-items-center flex-wrap gap-2">
-                      <PerformerChip performer={pair.performerA} />
-                      <span className="text-secondary">×</span>
-                      <PerformerChip performer={pair.performerB} />
-                      {pair.name && (
-                        <span
-                          className="badge rounded-pill text-bg-primary"
-                          style={{ fontSize: "0.65rem" }}
+                        <div className="d-flex align-items-center flex-wrap gap-2">
+                          <PerformerChip performer={pair.performerA} />
+                          <span className="text-secondary">×</span>
+                          <PerformerChip performer={pair.performerB} />
+                          {pair.name && (
+                            <span
+                              className="badge rounded-pill text-bg-primary"
+                              style={{ fontSize: "0.65rem" }}
+                            >
+                              {pair.name}
+                            </span>
+                          )}
+                          <span
+                            className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
+                            style={{ fontSize: "0.65rem" }}
+                          >
+                            {PAIRING_STATUS_LABELS[pair.status]}
+                          </span>
+                        </div>
+                        <p className="small text-secondary mb-0 mt-1">
+                          {pair._count.events} событ.
+                        </p>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                        <form action={swapPairingOrder.bind(null, pair.id)}>
+                          <SubmitButton
+                            label="⇄"
+                            busyLabel="…"
+                            className="btn btn-ghost btn-sm"
+                            title="Поменять A и B местами"
+                          />
+                        </form>
+                        <form action={boundToggleStatus}>
+                          <SubmitButton
+                            label={
+                              pair.status === "CURRENT"
+                                ? "Отметить бывшим"
+                                : "Отметить текущим"
+                            }
+                            busyLabel="Сохраняем…"
+                            className="btn btn-ghost btn-sm"
+                          />
+                        </form>
+                        <ConfirmForm
+                          action={boundDelete}
+                          confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
                         >
-                          {pair.name}
-                        </span>
-                      )}
-                      <span
-                        className={`badge rounded-pill ${pair.status === "CURRENT" ? "text-bg-success" : "text-bg-secondary"}`}
-                        style={{ fontSize: "0.65rem" }}
-                      >
-                        {PAIRING_STATUS_LABELS[pair.status]}
-                      </span>
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn-danger"
+                            aria-label="Удалить"
+                            data-tooltip="Удалить"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </ConfirmForm>
+                      </div>
                     </div>
-                    <p className="small text-secondary mb-0 mt-1">
-                      {pair._count.events} событ.
-                    </p>
-                  </div>
-                  <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                    <form action={swapPairingOrder.bind(null, pair.id)}>
-                      <SubmitButton
-                        label="⇄"
-                        busyLabel="…"
-                        className="btn btn-ghost btn-sm"
-                        title="Поменять A и B местами"
-                      />
-                    </form>
-                    <form action={boundToggleStatus}>
-                      <SubmitButton
-                        label={pair.status === "CURRENT" ? "Отметить бывшим" : "Отметить текущим"}
-                        busyLabel="Сохраняем…"
-                        className="btn btn-ghost btn-sm"
-                      />
-                    </form>
-                    <ConfirmForm
-                      action={boundDelete}
-                      confirmMessage={`Удалить пейринг «${pair.name || fallbackLabel}»?`}
-                    >
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn-danger"
-                        aria-label="Удалить"
-                        data-tooltip="Удалить"
-                      >
-                        <TrashIcon />
-                      </button>
-                    </ConfirmForm>
-                  </div>
-                </div>
-              ),
-            };
-          })}
-          actions={[
-            {
-              kind: "delete",
-              label: "Удалить выбранные",
-              confirmTemplate: "Удалить {n} пейрингов? Действие необратимо.",
-              run: async (ids) => {
-                "use server";
-                await bulkDeletePairings(ids);
-              },
-            },
-            {
-              kind: "select",
-              label: "Проставить статус",
-              placeholder: "Статус…",
-              options: Object.entries(PAIRING_STATUS_LABELS).map(
-                ([id, name]) => ({ id, name }),
-              ),
-              run: async (ids, value) => {
-                "use server";
-                await bulkSetPairingStatus(ids, value);
-              },
-            },
-          ]}
-        />
-      )}
-      {/* Листание — от полного адреса: поиск и фильтры остаются на
+                  ),
+                };
+              })}
+              actions={[
+                {
+                  kind: "delete",
+                  label: "Удалить выбранные",
+                  confirmTemplate:
+                    "Удалить {n} пейрингов? Действие необратимо.",
+                  run: async (ids) => {
+                    "use server";
+                    await bulkDeletePairings(ids);
+                  },
+                },
+                {
+                  kind: "select",
+                  label: "Проставить статус",
+                  placeholder: "Статус…",
+                  options: Object.entries(PAIRING_STATUS_LABELS).map(
+                    ([id, name]) => ({ id, name }),
+                  ),
+                  run: async (ids, value) => {
+                    "use server";
+                    await bulkSetPairingStatus(ids, value);
+                  },
+                },
+              ]}
+            />
+          )}
+          {/* Листание — от полного адреса: поиск и фильтры остаются на
           месте (И16), меняется только page. */}
-      <Pagination
-        page={page}
-        totalPages={totalPages}
-        buildHref={(p) => adminListHref("/admin/pairings", sp, { page: p })}
-      />
-      </div>
-      <AdminFilters defs={adminPairingFilterDefs()} params={sp} />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            buildHref={(p) => adminListHref("/admin/pairings", sp, { page: p })}
+          />
+        </div>
+        <AdminFilters defs={adminPairingFilterDefs()} params={sp} />
       </div>
     </div>
   );
@@ -231,7 +267,11 @@ function PerformerChip({
       href={adminEntityHref("Performer", performer.id)!}
       className="event-chip performer-chip text-decoration-none"
     >
-      <LetterAvatar name={performer.name} photoUrl={performer.photoUrl} size={1.5} />
+      <LetterAvatar
+        name={performer.name}
+        photoUrl={performer.photoUrl}
+        size={1.5}
+      />
       {performer.name}
     </Link>
   );

@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { METRICS, isMetricKey } from "@/lib/achievements";
-import { COMMUNITY_METRICS, isCommunityMetricKey } from "@/lib/communityAchievements";
+import {
+  COMMUNITY_METRICS,
+  isCommunityMetricKey,
+} from "@/lib/communityAchievements";
 import {
   bulkDeleteAchievements,
   bulkSetAchievementsEnabled,
@@ -9,6 +12,13 @@ import {
   toggleAchievementEnabled,
 } from "./actions";
 import BulkList from "@/components/admin/BulkList";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  UPDATED_SORT,
+  updatedOrderBy,
+  updatedSortOption,
+} from "@/lib/adminSort";
 import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import { PencilIcon, TrashIcon } from "@/components/icons";
@@ -17,20 +27,47 @@ export const metadata = { title: "Ачивки" };
 
 export const dynamic = "force-dynamic";
 
+// Своё поле `sort` у ачивки — это порядок показа, а `?sort` в адресе —
+// сортировка списка; совпадение имён случайное, поэтому выбранный
+// вариант тут зовётся `order`.
+const SORT_OPTIONS = [
+  { key: null, label: "по порядку показа" },
+  updatedSortOption,
+];
+
 // Определения ачивок (Э2ф): раньше были зашиты в код, теперь — таблица
 // Achievement. Подсчёт «сколько получили» идёт по ключу — связи без FK,
 // поэтому счётчик у удалённой ачивки просто пропадает вместе с ней.
 // Таблиц с выданным две: личные у людей (UserAchievement) и ачивки
 // сообществ (CommunityAchievement) — каталог-то общий, разделяет их
 // только `scope`.
-export default async function AdminAchievementsPage() {
+export default async function AdminAchievementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string }>;
+}) {
+  const sp = await searchParams;
+  const order = activeAdminSort(sp.sort, SORT_OPTIONS);
   const [achievements, holders, communityHolders] = await Promise.all([
-    prisma.achievement.findMany({ orderBy: [{ sort: "asc" }, { createdAt: "asc" }] }),
+    prisma.achievement.findMany({
+      // По умолчанию — вручную заданный порядок показа (поле `sort`), в
+      // котором ачивки видит человек в профиле: список тут и есть этот
+      // порядок, и по алфавиту его не соберёшь.
+      orderBy:
+        order === UPDATED_SORT
+          ? updatedOrderBy
+          : [{ sort: "asc" }, { createdAt: "asc" }],
+    }),
     prisma.userAchievement.groupBy({ by: ["key"], _count: { _all: true } }),
-    prisma.communityAchievement.groupBy({ by: ["key"], _count: { _all: true } }),
+    prisma.communityAchievement.groupBy({
+      by: ["key"],
+      _count: { _all: true },
+    }),
   ]);
   const holdersByKey = new Map(holders.map((h) => [h.key, h._count._all]));
-  const communityHoldersByKey = new Map(communityHolders.map((h) => [h.key, h._count._all]));
+  const communityHoldersByKey = new Map(
+    communityHolders.map((h) => [h.key, h._count._all]),
+  );
   const enabledCount = achievements.filter((a) => a.enabled).length;
 
   return (
@@ -46,9 +83,17 @@ export default async function AdminAchievementsPage() {
       </div>
 
       <p className="small text-secondary mb-3">
-        Включено {enabledCount} из {achievements.length}. В кабинете пользователи видят
-        только полученные ачивки — остальные остаются сюрпризом.
+        Включено {enabledCount} из {achievements.length}. В кабинете
+        пользователи видят только полученные ачивки — остальные остаются
+        сюрпризом.
       </p>
+
+      <AdminSortLinks
+        basePath="/admin/achievements"
+        params={sp}
+        options={SORT_OPTIONS}
+        active={order}
+      />
 
       {achievements.length === 0 ? (
         <p className="text-secondary">
@@ -62,7 +107,9 @@ export default async function AdminAchievementsPage() {
             // COMMUNITY_METRICS, и метка «⚠️» должна загораться только
             // на настоящей опечатке, а не на чужом типе.
             const isCommunity = a.scope === "COMMUNITY";
-            const known = isCommunity ? isCommunityMetricKey(a.metric) : isMetricKey(a.metric);
+            const known = isCommunity
+              ? isCommunityMetricKey(a.metric)
+              : isMetricKey(a.metric);
             const def = isCommunity
               ? isCommunityMetricKey(a.metric)
                 ? COMMUNITY_METRICS[a.metric]
@@ -72,7 +119,9 @@ export default async function AdminAchievementsPage() {
                 : null;
             const metricLabel = def ? def.label : `⚠️ ${a.metric}`;
             const isFlag = known && def?.kind === "flag";
-            const got = (isCommunity ? communityHoldersByKey : holdersByKey).get(a.key) ?? 0;
+            const got =
+              (isCommunity ? communityHoldersByKey : holdersByKey).get(a.key) ??
+              0;
             const boundDelete = deleteAchievement.bind(null, a.id);
             const boundToggle = toggleAchievementEnabled.bind(null, a.id);
             return {
@@ -81,7 +130,10 @@ export default async function AdminAchievementsPage() {
                 <div
                   className={`surface position-relative d-flex align-items-center justify-content-between gap-3 p-3 ${a.enabled ? "" : "opacity-50"}`}
                 >
-                  <div className="d-flex align-items-center gap-3" style={{ minWidth: 0 }}>
+                  <div
+                    className="d-flex align-items-center gap-3"
+                    style={{ minWidth: 0 }}
+                  >
                     <span
                       className="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
                       style={{
@@ -98,7 +150,9 @@ export default async function AdminAchievementsPage() {
                         href={`/admin/achievements/${a.id}/edit`}
                         className="stretched-link text-decoration-none"
                       >
-                        <span className="font-display fw-medium text-white">{a.title}</span>{" "}
+                        <span className="font-display fw-medium text-white">
+                          {a.title}
+                        </span>{" "}
                         {isCommunity && (
                           <span
                             className="badge rounded-pill text-bg-info"
@@ -108,7 +162,10 @@ export default async function AdminAchievementsPage() {
                           </span>
                         )}{" "}
                         {!a.enabled && (
-                          <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
+                          <span
+                            className="badge rounded-pill text-bg-secondary"
+                            style={{ fontSize: "0.6rem" }}
+                          >
                             выключена
                           </span>
                         )}
@@ -125,7 +182,9 @@ export default async function AdminAchievementsPage() {
                     <span
                       className="small text-secondary d-none d-md-inline"
                       data-tooltip={
-                        isCommunity ? "Сколько сообществ получили" : "Сколько пользователей получили"
+                        isCommunity
+                          ? "Сколько сообществ получили"
+                          : "Сколько пользователей получили"
                       }
                     >
                       получили: {got}
@@ -181,7 +240,8 @@ export default async function AdminAchievementsPage() {
             {
               kind: "confirm",
               label: "Включить выбранные",
-              confirmTemplate: "Включить {n} ачивок? Они снова начнут показываться и считаться.",
+              confirmTemplate:
+                "Включить {n} ачивок? Они снова начнут показываться и считаться.",
               confirmLabel: "Включить",
               busyLabel: "Включаем…",
               run: async (ids) => {

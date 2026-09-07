@@ -17,6 +17,13 @@ import {
   type FilterParams,
 } from "@/lib/catalogFilters";
 import { getDict } from "@/lib/i18n";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  updatedOrderBy,
+  updatedSortOption,
+  UPDATED_SORT,
+} from "@/lib/adminSort";
 import BulkList from "@/components/admin/BulkList";
 import {
   bulkDelete,
@@ -40,6 +47,8 @@ const AIR_TABS = [
 ] as const;
 type AirTab = (typeof AIR_TABS)[number]["key"];
 
+const SORT_OPTIONS = [{ key: null, label: "по названию" }, updatedSortOption];
+
 /** Фильтр вкладки по датам эфира (airedFrom/airedTo из MDL). */
 function airWhere(tab: AirTab, now: Date) {
   if (tab === "airing")
@@ -56,12 +65,15 @@ function airWhere(tab: AirTab, now: Date) {
 export default async function AdminDramasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; tab?: string; issue?: string } & FilterParams>;
+  searchParams: Promise<
+    { q?: string; page?: string; tab?: string; sort?: string; issue?: string } & FilterParams
+  >;
 }) {
   const sp = await searchParams;
   const { q: rawQ, page: rawPage, tab: rawTab, issue } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
   const tab: AirTab = (AIR_TABS.find((t) => t.key === rawTab)?.key ??
     "all") as AirTab;
   const now = new Date();
@@ -87,7 +99,7 @@ export default async function AdminDramasPage({
     prisma.drama.findMany({
       where,
       include: { _count: { select: { performers: true } } },
-      orderBy: { title: "asc" },
+      orderBy: sort === UPDATED_SORT ? updatedOrderBy : { title: "asc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -129,7 +141,10 @@ export default async function AdminDramasPage({
         action="/admin/dramas"
         q={q}
         placeholder="Поиск по названию…"
-        hiddenFields={tab !== "all" ? { tab } : undefined}
+        hiddenFields={{
+          ...(tab !== "all" ? { tab } : {}),
+          ...(sort ? { sort } : {}),
+        }}
         className="admin-search-lg mb-3"
         quickKind="drama"
       />
@@ -138,7 +153,14 @@ export default async function AdminDramasPage({
           {AIR_TABS.map((t, i) => (
             <Link
               key={t.key}
-              href={`/admin/dramas?tab=${t.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              // Вкладка меняет в текущем адресе только себя (adminListHref,
+              // И16): поиск, сортировка и фильтры остаются. Уходит лишь
+              // ?issue — это разовый переход с дашборда, а не срез.
+              href={adminListHref("/admin/dramas", sp, {
+                tab: t.key,
+                page: 1,
+                issue: null,
+              })}
               prefetch={false}
               className={`tab-bar-item ${tab === t.key ? "active" : ""}`}
             >
@@ -146,6 +168,13 @@ export default async function AdminDramasPage({
             </Link>
           ))}
         </div>
+        <AdminSortLinks
+          basePath="/admin/dramas"
+          params={sp}
+          options={SORT_OPTIONS}
+          active={sort}
+          className="d-flex flex-wrap align-items-center gap-2"
+        />
       </div>
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}

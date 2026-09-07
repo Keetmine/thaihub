@@ -15,7 +15,6 @@ import useUnsavedGuard from "@/components/admin/UnsavedGuard";
 import DuplicateNameWarning from "@/components/DuplicateNameWarning";
 import QuickCreateEventButton from "./QuickCreateEventButton";
 import PairingManager from "./PairingManager";
-import type { PairingStatus } from "@/generated/prisma/client";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import DatePickerInput from "@/components/DatePickerInput";
 

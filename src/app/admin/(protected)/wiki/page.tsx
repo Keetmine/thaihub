@@ -14,28 +14,38 @@ import {
   bulkSetWikiPublished,
 } from "./actions";
 import { formatShortDate } from "@/lib/dates";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  updatedOrderBy,
+  updatedSortOption,
+  UPDATED_SORT,
+} from "@/lib/adminSort";
 
 export const metadata = { title: "Вики" };
 
 export const dynamic = "force-dynamic";
 
+const SORT_OPTIONS = [{ key: null, label: "по дате создания" }, updatedSortOption];
+
 export default async function AdminWikiPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string }>;
 }) {
   await requireAdminPage();
   const sp = await searchParams;
   const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
   const where = q
     ? { title: { contains: q, mode: "insensitive" as const } }
     : {};
   const [articles, total] = await Promise.all([
     prisma.wikiArticle.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: sort === UPDATED_SORT ? updatedOrderBy : { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -59,7 +69,14 @@ export default async function AdminWikiPage({
         action="/admin/wiki"
         q={q}
         placeholder="Поиск по названию…"
-        className="admin-search-lg mb-4"
+        hiddenFields={sort ? { sort } : undefined}
+        className="admin-search-lg mb-3"
+      />
+      <AdminSortLinks
+        basePath="/admin/wiki"
+        params={sp}
+        options={SORT_OPTIONS}
+        active={sort}
       />
 
       {articles.length === 0 ? (

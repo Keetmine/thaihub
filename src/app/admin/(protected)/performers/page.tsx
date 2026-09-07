@@ -12,12 +12,21 @@ import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
 import { performerNameWhere } from "@/lib/searchWhere";
 import AdminFilters from "@/components/admin/AdminFilters";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  UPDATED_SORT,
+  updatedOrderBy,
+  updatedSortOption,
+} from "@/lib/adminSort";
 import {
   adminPerformerFilterDefs,
   adminPerformerFilterWhere,
   loadPerformerFilterOptions,
+  type FilterDef,
   type FilterParams,
 } from "@/lib/catalogFilters";
+import type { Prisma } from "@/generated/prisma/client";
 import { getDict } from "@/lib/i18n";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete, bulkSetPerformerAgency } from "../bulkActions";
@@ -25,6 +34,29 @@ import { bulkDelete, bulkSetPerformerAgency } from "../bulkActions";
 export const metadata = { title: "Исполнители" };
 
 export const dynamic = "force-dynamic";
+
+/**
+ * «Пустые» артисты (?noEvents=1, ?noDramas=1) — рабочий список владельца:
+ * карточка заведена, а показывать на ней нечего. Флаги независимы и
+ * складываются друг с другом и с остальными фильтрами через AND.
+ * Живут здесь, а не в общем catalogFilters: срез нужен только этому
+ * списку, зрителю такой выборки не предлагаем.
+ */
+const emptyRelationFilterDefs: FilterDef[] = [
+  { key: "noEvents", title: "Без событий", kind: "flag" },
+  { key: "noDramas", title: "Без сериалов", kind: "flag" },
+];
+
+function emptyRelationFilterWhere(
+  p: FilterParams,
+): Prisma.PerformerWhereInput[] {
+  const w: Prisma.PerformerWhereInput[] = [];
+  // Связи — таблицы-связки (EventPerformer, PerformerDrama), поэтому
+  // «нет ни одного события» — это none по строкам связки, а не по Event.
+  if (p.noEvents === "1") w.push({ events: { none: {} } });
+  if (p.noDramas === "1") w.push({ dramas: { none: {} } });
+  return w;
+}
 
 function AdminPerformerRow({
   performer,
@@ -95,10 +127,14 @@ function AdminPerformerRow({
   );
 }
 
+const SORT_OPTIONS = [{ key: null, label: "по имени" }, updatedSortOption];
+
 export default async function AdminPerformersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; q?: string; page?: string } & FilterParams>;
+  searchParams: Promise<
+    { view?: string; q?: string; page?: string; sort?: string } & FilterParams
+  >;
 }) {
   const sp = await searchParams;
   const { view, q: rawQ, page: rawPage } = sp;
@@ -108,15 +144,27 @@ export default async function AdminPerformersPage({
   const isMascots = view === "mascots";
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
+  // Порядок один на все четыре запроса ниже, включая три ранжированные
+  // ветки поиска: внутри «точное / по началу / везде» строки всё равно
+  // надо чем-то упорядочить, и «по обновлению» там значит то же самое.
+  const performersOrderBy =
+    sort === UPDATED_SORT ? updatedOrderBy : ({ name: "asc" } as const);
 
   const performerType: "BAND" | "SOLO" | "MASCOT" = isMascots
     ? "MASCOT"
     : isBands
       ? "BAND"
       : "SOLO";
-  const filterWhere = adminPerformerFilterWhere(sp);
+  const filterWhere = [
+    ...adminPerformerFilterWhere(sp),
+    ...emptyRelationFilterWhere(sp),
+  ];
   const performersWhere = {
-    AND: [{ type: performerType, ...(q ? performerNameWhere(q) : {}) }, ...filterWhere],
+    AND: [
+      { type: performerType, ...(q ? performerNameWhere(q) : {}) },
+      ...filterWhere,
+    ],
   };
   // При поиске — ранжирование как на фронте: точные совпадения по
   // имени/реальному имени/алиасу, затем префиксные, затем contains
@@ -138,7 +186,7 @@ export default async function AdminPerformersPage({
               ],
             },
             include: { _count: { select: { events: true } } },
-            orderBy: { name: "asc" },
+            orderBy: performersOrderBy,
             take: 20,
           }),
           prisma.performer.findMany({
@@ -154,13 +202,13 @@ export default async function AdminPerformersPage({
               ],
             },
             include: { _count: { select: { events: true } } },
-            orderBy: { name: "asc" },
+            orderBy: performersOrderBy,
             take: 20,
           }),
           prisma.performer.findMany({
             where: performersWhere,
             include: { _count: { select: { events: true } } },
-            orderBy: { name: "asc" },
+            orderBy: performersOrderBy,
             skip: (page - 1) * PAGE_SIZE,
             take: PAGE_SIZE,
           }),
@@ -173,7 +221,7 @@ export default async function AdminPerformersPage({
       : prisma.performer.findMany({
           where: performersWhere,
           include: { _count: { select: { events: true } } },
-          orderBy: { name: "asc" },
+          orderBy: performersOrderBy,
           skip: (page - 1) * PAGE_SIZE,
           take: PAGE_SIZE,
         }),
@@ -202,88 +250,105 @@ export default async function AdminPerformersPage({
       {/* Список слева, фильтры колонкой справа — как на /search. */}
 
       <div className="row g-4">
+        <div className="col-12 col-xl-9">
+          {/* Табы разделов убраны — группы/маскоты теперь пункты сайдбара. */}
+          <NameSearchBox
+            action="/admin/performers"
+            q={q}
+            // Раздел и выбранный порядок переживают поиск: иначе строка
+            // поиска молча возвращала бы солистов и сортировку по имени.
+            hiddenFields={{
+              ...(isMascots
+                ? { view: "mascots" }
+                : isBands
+                  ? { view: "bands" }
+                  : {}),
+              ...(sort ? { sort } : {}),
+            }}
+            placeholder="Поиск по имени…"
+            className="admin-search-lg mb-3"
+            quickKind="performer"
+          />
 
-      <div className="col-12 col-xl-9">
+          <AdminSortLinks
+            basePath="/admin/performers"
+            params={sp}
+            options={SORT_OPTIONS}
+            active={sort}
+          />
 
-      {/* Табы разделов убраны — группы/маскоты теперь пункты сайдбара. */}
-      <NameSearchBox
-        action="/admin/performers"
-        q={q}
-        hiddenFields={
-          isMascots
-            ? { view: "mascots" }
-            : isBands
-              ? { view: "bands" }
-              : undefined
-        }
-        placeholder="Поиск по имени…"
-        className="admin-search-lg mb-3"
-        quickKind="performer"
-      />
-
-      {/* Список заготовок парсера фестивалей (docs/features/musicfestival-import.md):
+          {/* Список заготовок парсера фестивалей (docs/features/musicfestival-import.md):
           подсказка, что это за записи и как они отсюда выпадают. */}
-      {sp.stub === "1" && (
-        <p className="alert alert-secondary small py-2 mb-3">
-          Заготовки: заведены парсером лайнапов musicfestival.in.th с одним именем
-          (и фото, если было на сайте), тип «актёр» по умолчанию. Откройте запись,
-          дополните и сохраните профиль — после сохранения она из этого списка
-          выпадает. Тёзки не привязывались нарочно: если это уже известный артист,
-          слейте записи через «Дубли».
-        </p>
-      )}
+          {sp.stub === "1" && (
+            <p className="alert alert-secondary small py-2 mb-3">
+              Заготовки: заведены парсером лайнапов musicfestival.in.th с одним
+              именем (и фото, если было на сайте), тип «актёр» по умолчанию.
+              Откройте запись, дополните и сохраните профиль — после сохранения
+              она из этого списка выпадает. Тёзки не привязывались нарочно: если
+              это уже известный артист, слейте записи через «Дубли».
+            </p>
+          )}
 
-      {performers.length === 0 ? (
-        <p className="text-secondary">
-          {q
-            ? "Ничего не найдено."
-            : isBands
-              ? "Пока нет групп."
-              : "Пока нет актёров."}
-        </p>
-      ) : (
-        <>
-          <BulkList
-            rows={performers.map((p) => ({
-              id: p.id,
-              node: <AdminPerformerRow performer={p} />,
-            }))}
-            actions={[
-              {
-                kind: "delete",
-                label: "Удалить выбранных",
-                confirmTemplate: "Удалить {n} записей? Действие необратимо.",
-                run: async (ids) => {
-                  "use server";
-                  await bulkDelete("performer", ids);
-                },
-              },
-              {
-                kind: "select",
-                label: "Сменить агентство",
-                placeholder: "Агентство…",
-                options: allAgencies,
-                run: async (ids, value) => {
-                  "use server";
-                  await bulkSetPerformerAgency(ids, value);
-                },
-              },
-            ]}
-          />
-          {/* Листание — от полного адреса: view, поиск и фильтры
+          {performers.length === 0 ? (
+            <p className="text-secondary">
+              {q
+                ? "Ничего не найдено."
+                : isBands
+                  ? "Пока нет групп."
+                  : "Пока нет актёров."}
+            </p>
+          ) : (
+            <>
+              <BulkList
+                rows={performers.map((p) => ({
+                  id: p.id,
+                  node: <AdminPerformerRow performer={p} />,
+                }))}
+                actions={[
+                  {
+                    kind: "delete",
+                    label: "Удалить выбранных",
+                    confirmTemplate:
+                      "Удалить {n} записей? Действие необратимо.",
+                    run: async (ids) => {
+                      "use server";
+                      await bulkDelete("performer", ids);
+                    },
+                  },
+                  {
+                    kind: "select",
+                    label: "Сменить агентство",
+                    placeholder: "Агентство…",
+                    options: allAgencies,
+                    run: async (ids, value) => {
+                      "use server";
+                      await bulkSetPerformerAgency(ids, value);
+                    },
+                  },
+                ]}
+              />
+              {/* Листание — от полного адреса: view, поиск и фильтры
               остаются на месте (И16), меняется только page. */}
-          <Pagination
-            page={page}
-            totalPages={performersTotalPages}
-            buildHref={(p) => adminListHref("/admin/performers", sp, { page: p })}
-          />
-        </>
-      )}
-      </div>
-      <AdminFilters
-        defs={adminPerformerFilterDefs(getDict("ru"), await loadPerformerFilterOptions())}
-        params={sp}
-      />
+              <Pagination
+                page={page}
+                totalPages={performersTotalPages}
+                buildHref={(p) =>
+                  adminListHref("/admin/performers", sp, { page: p })
+                }
+              />
+            </>
+          )}
+        </div>
+        <AdminFilters
+          defs={[
+            ...adminPerformerFilterDefs(
+              getDict("ru"),
+              await loadPerformerFilterOptions(),
+            ),
+            ...emptyRelationFilterDefs,
+          ]}
+          params={sp}
+        />
       </div>
     </div>
   );

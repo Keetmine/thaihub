@@ -18,20 +18,30 @@ import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import {
+  activeAdminSort,
+  updatedOrderBy,
+  updatedSortOption,
+  UPDATED_SORT,
+} from "@/lib/adminSort";
 
 export const metadata = { title: "Новеллы" };
 
 export const dynamic = "force-dynamic";
 
+const SORT_OPTIONS = [{ key: null, label: "по названию" }, updatedSortOption];
+
 export default async function AdminNovelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string } & FilterParams>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string } & FilterParams>;
 }) {
   const sp = await searchParams;
   const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
 
   const where = {
     AND: [
@@ -50,7 +60,7 @@ export default async function AdminNovelsPage({
     prisma.novel.findMany({
       where,
       include: { _count: { select: { dramas: true, links: true } } },
-      orderBy: { title: "asc" },
+      orderBy: sort === UPDATED_SORT ? updatedOrderBy : { title: "asc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -76,8 +86,15 @@ export default async function AdminNovelsPage({
         action="/admin/novels"
         q={q}
         placeholder="Поиск по названию или автору…"
+        hiddenFields={sort ? { sort } : undefined}
         quickKind="novel"
         className="admin-search-lg mb-3"
+      />
+      <AdminSortLinks
+        basePath="/admin/novels"
+        params={sp}
+        options={SORT_OPTIONS}
+        active={sort}
       />
       {/* Список слева, фильтры колонкой справа — как на /search. */}
       <div className="row g-4">

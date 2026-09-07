@@ -21,10 +21,18 @@ import { PencilIcon, PinIcon, TrashIcon } from "@/components/icons";
 import ImportEventButton from "./ImportEventButton";
 import BulkList from "@/components/admin/BulkList";
 import { bulkDelete } from "../bulkActions";
+import AdminSortLinks from "@/components/admin/AdminSortLinks";
+import { activeAdminSort, updatedSortOption, UPDATED_SORT } from "@/lib/adminSort";
 
 export const metadata = { title: "События" };
 
 export const dynamic = "force-dynamic";
+
+const SORT_OPTIONS = [
+  { key: null, label: "по дате события" },
+  { key: "added", label: "по дате добавления" },
+  updatedSortOption,
+];
 
 export default async function AdminEventsPage({
   searchParams,
@@ -34,12 +42,13 @@ export default async function AdminEventsPage({
   >;
 }) {
   const sp = await searchParams;
-  const { q: rawQ, tab: rawTab, sort: rawSort, issue, page: rawPage } = sp;
+  const { q: rawQ, tab: rawTab, issue, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
   // «Текущие» — события с будущими датами, «Архив» — целиком прошедшие.
   const isArchive = rawTab === "archive";
-  // Сортировка: по дате события (дефолт) или по дате добавления записи.
-  const sortByAdded = rawSort === "added";
+  // Сортировка: по дате события (дефолт), по дате добавления записи или
+  // по последней правке.
+  const sort = activeAdminSort(sp.sort, SORT_OPTIONS);
   const page = parsePage(rawPage);
 
   // ?issue=no-lineup — переход с блока «требует внимания» на дашборде:
@@ -69,6 +78,7 @@ export default async function AdminEventsPage({
     select: {
       id: true,
       createdAt: true,
+      updatedAt: true,
       occurrences: { select: { startsAt: true }, orderBy: { startsAt: "asc" } },
     },
   });
@@ -81,11 +91,13 @@ export default async function AdminEventsPage({
   // Архив — свежепрошедшие сверху.
   const sortedIds = [...tabEvents]
     .sort((a, b) =>
-      sortByAdded
+      sort === "added"
         ? b.createdAt.getTime() - a.createdAt.getTime()
-        : isArchive
-          ? b.occurrences[0].startsAt.getTime() - a.occurrences[0].startsAt.getTime()
-          : a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime(),
+        : sort === UPDATED_SORT
+          ? b.updatedAt.getTime() - a.updatedAt.getTime()
+          : isArchive
+            ? b.occurrences[0].startsAt.getTime() - a.occurrences[0].startsAt.getTime()
+            : a.occurrences[0].startsAt.getTime() - b.occurrences[0].startsAt.getTime(),
     )
     .map((ev) => ev.id);
   const totalPages = totalPagesFor(sortedIds.length);
@@ -109,14 +121,15 @@ export default async function AdminEventsPage({
     current: isArchive ? withDates.length - tabEvents.length : tabEvents.length,
     archive: isArchive ? tabEvents.length : withDates.length - tabEvents.length,
   };
-  const baseQuery = (tab: string, sort: string) =>
-    `/admin/events?${[
-      tab === "archive" ? "tab=archive" : "",
-      sort === "added" ? "sort=added" : "",
-      q ? `q=${encodeURIComponent(q)}` : "",
-    ]
-      .filter(Boolean)
-      .join("&")}`;
+  // Вкладка меняет в текущем адресе только себя (adminListHref, И16):
+  // поиск, сортировка и фильтры остаются. Уходит лишь ?issue — это
+  // разовый переход с дашборда, а не срез.
+  const tabHref = (tab: string) =>
+    adminListHref("/admin/events", sp, {
+      tab: tab === "archive" ? "archive" : null,
+      page: 1,
+      issue: null,
+    });
 
   return (
     <div>
@@ -141,7 +154,7 @@ export default async function AdminEventsPage({
         placeholder="Поиск по названию…"
         hiddenFields={{
           ...(isArchive ? { tab: "archive" } : {}),
-          ...(sortByAdded ? { sort: "added" } : {}),
+          ...(sort ? { sort } : {}),
         }}
         className="admin-search-lg mb-3"
         quickKind="event"
@@ -149,37 +162,27 @@ export default async function AdminEventsPage({
       <div className="tab-bar-row">
         <div className="tab-bar">
           <Link
-            href={baseQuery("current", rawSort ?? "")}
+            href={tabHref("current")}
             prefetch={false}
             className={`tab-bar-item ${!isArchive ? "active" : ""}`}
           >
             Текущие ({tabCounts.current})
           </Link>
           <Link
-            href={baseQuery("archive", rawSort ?? "")}
+            href={tabHref("archive")}
             prefetch={false}
             className={`tab-bar-item ${isArchive ? "active" : ""}`}
           >
             Архив ({tabCounts.archive})
           </Link>
         </div>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span className="small text-secondary">Сортировка:</span>
-          <Link
-            href={baseQuery(isArchive ? "archive" : "current", "")}
-            prefetch={false}
-            className={`btn btn-sm ${!sortByAdded ? "btn-primary" : "btn-ghost"}`}
-          >
-            по дате события
-          </Link>
-          <Link
-            href={baseQuery(isArchive ? "archive" : "current", "added")}
-            prefetch={false}
-            className={`btn btn-sm ${sortByAdded ? "btn-primary" : "btn-ghost"}`}
-          >
-            по дате добавления
-          </Link>
-        </div>
+        <AdminSortLinks
+          basePath="/admin/events"
+          params={sp}
+          options={SORT_OPTIONS}
+          active={sort}
+          className="d-flex align-items-center gap-2 flex-wrap"
+        />
       </div>
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}

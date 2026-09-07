@@ -254,16 +254,22 @@ export default async function AdminUsersPage({
                         .join(" · ")}
                     </p>
                     {/* Отдельной строкой, а не в общем перечислении:
-                        глазами по списку ищут именно её. */}
-                    <p
-                      className="small mb-0"
-                      title={u.lastSeenAt ? lastSeenExact(u.lastSeenAt) : undefined}
-                    >
+                        глазами по списку ищут именно её.
+                        Дата и время, а не «вчера» (правка владельца
+                        2026-09-09): по относительной подписи нельзя
+                        сверить заход с чем-то ещё — письмом, оплатой,
+                        жалобой, — а ровно за этим в список и смотрят.
+                        «Сейчас на сайте» осталось: это не про дату. */}
+                    <p className="small mb-0">
                       <span className="text-secondary opacity-75">последний заход: </span>
                       <span
                         className={isOnlineNow(u.lastSeenAt) ? "text-success" : "text-secondary"}
                       >
-                        {lastSeenLabel(u.lastSeenAt)}
+                        {isOnlineNow(u.lastSeenAt)
+                          ? lastSeenLabel(u.lastSeenAt)
+                          : u.lastSeenAt
+                            ? lastSeenExact(u.lastSeenAt)
+                            : lastSeenLabel(null)}
                       </span>
                     </p>
                   </div>
