@@ -29,6 +29,13 @@ export const communities = {
         APPROVAL: "With the owner's approval",
     },
 
+    tabs: {
+        discussions: "Discussions",
+        meetups: "Meetups",
+        members: "Members",
+        requests: "Requests",
+    },
+    soon: "Coming soon.",
     members: "Members",
     membersCount: (n: number) => `${n} members`,
     requests: "Join requests",

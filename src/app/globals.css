@@ -5244,40 +5244,25 @@ body::after {
   color: rgb(var(--accent-rgb));
 }
 
-/* Приветственный баннер сообщества (АА25). Обложка размытым фоном не
-   нужна — она тут главная картинка, а не фон; поверх только тёмная
-   подложка, чтобы название читалось на любой картинке. Без обложки
-   остаётся тёплая заливка: пустой серый прямоугольник смотрелся бы
-   поломкой. */
-.community-hero {
-  position: relative;
+/* Обложка сообщества в левой колонке — как фото в профиле (правка
+   владельца 2026-09-08: страницу сообщества сделали раскладкой
+   профиля). Без загруженной картинки остаётся тёплая заливка: пустой
+   серый прямоугольник смотрелся бы поломкой. */
+.community-cover {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border-radius: var(--bs-border-radius-lg, 1rem);
   overflow: hidden;
-  border-radius: var(--bs-border-radius-xl);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--bs-border-color);
   background:
-    radial-gradient(120% 140% at 80% 0%, rgba(var(--accent-rgb), 0.24), transparent 55%),
-    linear-gradient(165deg, #1a1412, #0e0c0b 65%);
-  min-height: 9rem;
-  display: flex;
-  align-items: flex-end;
+    radial-gradient(24rem 16rem at 20% 0%, rgba(var(--accent-rgb), 0.18), transparent 70%),
+    var(--bs-secondary-bg);
 }
-.community-hero-cover,
-.community-hero-scrim {
-  position: absolute;
-  inset: 0;
-}
-.community-hero-cover img {
+.community-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-.community-hero-scrim {
-  background: linear-gradient(180deg, rgba(10, 10, 12, 0.1), rgba(10, 10, 12, 0.85) 85%);
-}
-.community-hero-body {
-  position: relative;
-  z-index: 1;
-  padding: 1.25rem 1.5rem;
+  display: block;
 }
 
 /* Отсчёт до следующей серии под постером (просьба владельца

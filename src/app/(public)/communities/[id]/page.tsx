@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import ConfirmForm from "@/components/ConfirmForm";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +11,10 @@ import { leaveCommunity } from "../actions";
 import JoinButton from "./JoinButton";
 import MemberRequests from "./MemberRequests";
 import CommunityAdmin from "./CommunityAdmin";
+import CommunityTabs, { type CommunityTabKey } from "./CommunityTabs";
+import MembersTab from "./MembersTab";
+import DiscussionsTab from "./DiscussionsTab";
+import MeetupsTab from "./MeetupsTab";
 
 export const dynamic = "force-dynamic";
 
@@ -52,16 +55,27 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 /**
- * Страница сообщества (АА25).
+ * Страница сообщества (АА25) — раскладкой как профиль (правка владельца
+ * 2026-09-08): слева колонка с самим сообществом, справа вкладки с
+ * содержимым. Классы раскладки общие с профилем (`.profile-layout` и
+ * соседние): страницы устроены одинаково, и вторая копия тех же правил
+ * разъехалась бы с первой.
  *
  * Витрина — всем, содержимое — участникам: внутри живут ссылки на
- * закрытые чаты, а дальше появятся встречи с адресами (см.
+ * закрытые чаты и встречи с адресами (см.
  * docs/features/communities.md). Гость видит обложку, название,
  * описание и число участников — этого хватает, чтобы захотеть войти, и
  * не хватает, чтобы что-то утекло.
  */
-export default async function CommunityPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CommunityPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { id } = await params;
+  const { tab } = await searchParams;
   const { t } = await getT();
   const s = t.communities;
   const community = await loadCommunity(id);
@@ -78,137 +92,156 @@ export default async function CommunityPage({ params }: { params: Promise<{ id: 
   const active = community.members.filter((m) => m.status === "ACTIVE");
   const pending = community.members.filter((m) => m.status === "PENDING");
 
+  // Вкладки собираются по правам: закрытое зрителю не попадает даже в
+  // пропсы, потому что панели для него просто не создаются.
+  const tabs: { key: CommunityTabKey; label: string; content: React.ReactNode }[] = [];
+  if (access.canSeeInside) {
+    tabs.push({
+      key: "discussions",
+      label: s.tabs.discussions,
+      content: <DiscussionsTab communityId={community.id} canPost={access.isMember} />,
+    });
+    tabs.push({
+      key: "meetups",
+      label: s.tabs.meetups,
+      content: <MeetupsTab communityId={community.id} canCreate={access.isMember} />,
+    });
+    tabs.push({
+      key: "members",
+      label: s.tabs.members,
+      content: (
+        <MembersTab
+          members={active.map((m) => ({
+            userId: m.userId,
+            name: m.user.name,
+            username: m.user.username,
+            photoUrl: m.user.photoUrl,
+            role: m.role,
+          }))}
+        />
+      ),
+    });
+    if (access.canManage && pending.length > 0) {
+      tabs.push({
+        key: "requests",
+        label: `${s.tabs.requests} (${pending.length})`,
+        content: (
+          <MemberRequests
+            communityId={community.id}
+            requests={pending.map((m) => ({
+              userId: m.userId,
+              name: m.user.name ?? t.common.deletedAccount,
+            }))}
+          />
+        ),
+      });
+    }
+  }
+
   return (
     <div>
       <BackLink fallbackHref="/communities" fallbackLabel={s.heading} />
 
-      {/* Приветственный баннер: обложка, если её загрузили, иначе тёплая
-          заливка — пустой серый прямоугольник смотрелся бы поломкой. */}
-      <section className="community-hero mb-4">
-        {community.coverUrl && (
-          <span className="community-hero-cover" aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={community.coverUrl} alt="" loading="eager" decoding="async" />
-          </span>
-        )}
-        <span className="community-hero-scrim" aria-hidden />
-        <div className="community-hero-body">
-          <h1 className="display-1-tight mb-1">{community.title}</h1>
-          <p className="small text-secondary mb-0">
-            {s.membersCount(active.length)}
-            {community.visibility === "PRIVATE" && ` · ${s.visibility.PRIVATE}`}
-          </p>
-        </div>
-      </section>
-
-      <div style={{ maxWidth: "44rem" }}>
-        {community.description && (
-          <p className="text-secondary" style={{ whiteSpace: "pre-line" }}>
-            {community.description}
-          </p>
-        )}
-
-        <div className="d-flex flex-wrap gap-2 mb-4">
-          {access.canJoin && (
-            <JoinButton
-              communityId={community.id}
-              needsApproval={community.joinMode === "APPROVAL"}
-            />
-          )}
-          {access.isPending && <span className="date-chip">{s.pending}</span>}
-          {access.isMember && !access.isOwner && (
-            <ConfirmForm
-              action={leaveCommunity.bind(null, community.id)}
-              confirmMessage={s.leaveConfirm}
-              confirmLabel={s.leave}
-            >
-              <button type="button" className="btn btn-ghost btn-sm">
-                {s.leave}
-              </button>
-            </ConfirmForm>
-          )}
-          {access.canManage && (
-            <CommunityAdmin
-              communityId={community.id}
-              isOwner={access.isOwner}
-              community={{
-                title: community.title,
-                description: community.description,
-                visibility: community.visibility,
-                joinMode: community.joinMode,
-              }}
-              links={community.links}
-            />
-          )}
-        </div>
-
-        {access.canSeeInside ? (
-          <>
-            {access.canManage && pending.length > 0 && (
-              <MemberRequests
-                communityId={community.id}
-                requests={pending.map((m) => ({
-                  userId: m.userId,
-                  name: m.user.name ?? t.common.deletedAccount,
-                }))}
-              />
+      <div className="profile-layout mt-3">
+        <aside className="profile-side">
+          {/* Обложка — главный визуал колонки, как фото в профиле. Без
+              неё остаётся тёплая заливка: пустой серый прямоугольник
+              смотрелся бы поломкой. */}
+          <div className="community-cover">
+            {community.coverUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={community.coverUrl} alt="" loading="eager" decoding="async" />
             )}
+          </div>
 
-            {community.links.length > 0 && (
-              <section className="mb-4">
-                <h2 className="section-heading mb-2">{s.linksTitle}</h2>
-                <div className="d-flex flex-column gap-2">
-                  {community.links.map((l) => (
-                    <a
-                      key={l.id}
-                      href={l.url}
-                      target="_blank"
-                      rel="noopener noreferrer nofollow"
-                      className="surface surface-hover text-decoration-none p-2 px-3"
-                    >
-                      {l.label} ↗
-                    </a>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section>
-              <h2 className="section-heading mb-2">{s.members}</h2>
-              <div className="d-flex flex-column gap-2">
-                {active.map((m) => (
-                  <div
-                    key={m.userId}
-                    className="surface d-flex align-items-center gap-2 p-2 px-3"
-                  >
-                    <AppLink
-                      href={`/users/${m.user.username ?? m.user.id}`}
-                      className="text-decoration-none text-white"
-                    >
-                      {m.user.name ?? t.common.deletedAccount}
-                    </AppLink>
-                    {m.role !== "MEMBER" && (
-                      <span className="small text-secondary">
-                        {m.role === "OWNER" ? s.owner : s.moderator}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </>
-        ) : (
-          // Приватному сообществу не рассказываем даже, что внутри есть
-          // участники и ссылки: снаружи оно просто закрыто.
-          <div className="surface p-3">
-            <p className="fw-medium text-white mb-1">
-              {community.visibility === "PRIVATE" ? s.privateTitle : s.insideLockedTitle}
-            </p>
+          <div>
+            <h1 className="font-display h3 mb-1">{community.title}</h1>
             <p className="small text-secondary mb-0">
-              {community.visibility === "PRIVATE" ? s.privateHint : s.insideLockedHint}
+              {s.membersCount(active.length)}
+              {community.visibility === "PRIVATE" && ` · ${s.visibility.PRIVATE}`}
             </p>
           </div>
-        )}
+
+          {community.description && (
+            <p className="small text-secondary mb-0" style={{ whiteSpace: "pre-line" }}>
+              {community.description}
+            </p>
+          )}
+
+          <div className="d-flex flex-wrap gap-2">
+            {access.canJoin && (
+              <JoinButton
+                communityId={community.id}
+                needsApproval={community.joinMode === "APPROVAL"}
+              />
+            )}
+            {access.isPending && <span className="date-chip">{s.pending}</span>}
+            {access.isMember && !access.isOwner && (
+              <ConfirmForm
+                action={leaveCommunity.bind(null, community.id)}
+                confirmMessage={s.leaveConfirm}
+                confirmLabel={s.leave}
+              >
+                <button type="button" className="btn btn-ghost btn-sm">
+                  {s.leave}
+                </button>
+              </ConfirmForm>
+            )}
+            {access.canManage && (
+              <CommunityAdmin
+                communityId={community.id}
+                isOwner={access.isOwner}
+                community={{
+                  title: community.title,
+                  description: community.description,
+                  visibility: community.visibility,
+                  joinMode: community.joinMode,
+                }}
+                links={community.links}
+              />
+            )}
+          </div>
+
+          {/* Ссылки — только участникам: за ними обычно закрытый чат. */}
+          {access.canSeeInside && community.links.length > 0 && (
+            <div>
+              <h2 className="section-heading mb-2">{s.linksTitle}</h2>
+              <div className="d-flex flex-column gap-2">
+                {community.links.map((l) => (
+                  <a
+                    key={l.id}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    className="surface surface-hover text-decoration-none p-2 px-3 small"
+                  >
+                    {l.label} ↗
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        <div className="profile-main">
+          {access.canSeeInside ? (
+            <CommunityTabs
+              initialTab={(tab as CommunityTabKey) ?? "discussions"}
+              tabs={tabs}
+            />
+          ) : (
+            // Приватному сообществу не рассказываем даже, что внутри
+            // есть участники и ссылки: снаружи оно просто закрыто.
+            <div className="surface p-3">
+              <p className="fw-medium text-white mb-1">
+                {community.visibility === "PRIVATE" ? s.privateTitle : s.insideLockedTitle}
+              </p>
+              <p className="small text-secondary mb-0">
+                {community.visibility === "PRIVATE" ? s.privateHint : s.insideLockedHint}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

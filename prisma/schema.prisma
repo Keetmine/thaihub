@@ -46,6 +46,19 @@ model Event {
   // Жанры/теги события: у фестивалей источник отдаёт их списком, и
   // раньше они уходили в описание текстом.
   tags                 String[]
+  // Встреча сообщества (АА25): у каталожного события тут null. Одно
+  // поле разделяет афишу и посиделки — выборки каталога обязаны идти
+  // через catalogEventsWhere (src/lib/catalogEvents.ts), иначе «пью
+  // пиво и смотрю сериал» окажется в общей афише.
+  communityId          String?
+  community            Community?                    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  // Кто завёл встречу. У каталожных событий null — их заводит админка
+  // и импортёры.
+  createdById          String?
+  createdBy            User?                         @relation("EventAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  // Видна ли встреча за пределами сообщества. По умолчанию нет: за
+  // встречей стоит чей-то домашний адрес.
+  communityOnly        Boolean                       @default(true)
   // Optional tie-in to a drama this event is about (premiere screening,
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
   dramaId              String?
@@ -827,6 +840,9 @@ model User {
   // переключатель по той же причине, что и у дней рождения: у
   // выходящего сериала повод еженедельный, а то и чаще.
   tgNotifyEpisodes         Boolean         @default(true)
+  // Сообщества: приглашения и решения по заявкам. Темы обсуждений сюда
+  // не идут — их слишком много.
+  tgNotifyCommunities      Boolean         @default(true)
   // Новости проекта из /admin/broadcast — раньше рассылка игнорировала
   // настройки и уходила всем с привязанным Telegram.
   tgNotifyBroadcast        Boolean         @default(true)
@@ -937,6 +953,10 @@ model User {
   eventTickets           EventTicket[]
   ownedCommunities       Community[]         @relation("CommunityOwner")
   communityMemberships   CommunityMember[]
+  communityInvites       CommunityInvite[]   @relation("CommunityInviteTo")
+  communityInvitesSent   CommunityInvite[]   @relation("CommunityInviteBy")
+  communityPosts         CommunityPost[]
+  createdEvents          Event[]             @relation("EventAuthor")
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -1539,6 +1559,9 @@ model Comment {
   novel     Novel?        @relation(fields: [novelId], references: [id], onDelete: Cascade)
   eventId   String?
   event     Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  /// Тема обсуждения в сообществе (АА25) — четвёртый вид объекта.
+  postId    String?
+  post      CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
   parentId  String?
   parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[]     @relation("CommentReplies")
@@ -1549,6 +1572,7 @@ model Comment {
   @@index([dramaId])
   @@index([novelId])
   @@index([eventId])
+  @@index([postId])
   @@index([parentId])
 }
 
@@ -1790,6 +1814,11 @@ enum NotificationKind {
   // строки не стоит — текст различает сам COMMUNITY_JOIN_ANSWER.
   COMMUNITY_JOIN_REQUEST
   COMMUNITY_JOIN_ANSWER
+  // Позвали в сообщество — единственный путь в закрытое.
+  COMMUNITY_INVITE
+  // Новая тема в сообществе. В Telegram НЕ уходит по умолчанию: у
+  // живого сообщества тем много, и это был бы спам.
+  COMMUNITY_POST
 }
 
 model Notification {
@@ -2162,6 +2191,8 @@ enum CommunityMemberStatus {
   /// Заявка подана, решения ещё нет (только при joinMode = APPROVAL).
   PENDING
   ACTIVE
+  /// Выгнали. Строка остаётся: без неё человек просто вступил бы заново.
+  BANNED
 }
 
 model Community {
@@ -2180,6 +2211,12 @@ model Community {
   joinMode    CommunityJoinMode   @default(OPEN)
   links       CommunityLink[]
   members     CommunityMember[]
+  invites     CommunityInvite[]
+  posts       CommunityPost[]
+  /// Встречи сообщества — те же Event, но со ссылкой сюда: карточка,
+  /// «я иду», комментарии и карта достаются им бесплатно. В каталожную
+  /// афишу они НЕ попадают, см. catalogEventsWhere.
+  events      Event[]
   createdAt   DateTime            @default(now())
 
   @@index([ownerId])
@@ -2211,4 +2248,43 @@ model CommunityMember {
   @@id([communityId, userId])
   @@index([userId])
   @@index([communityId, status])
+}
+
+/// Приглашение в сообщество. Для закрытых это единственный способ
+/// попасть внутрь: заявок с улицы они не принимают. Приглашённый
+/// становится участником, приняв приглашение, — молча зачислять человека
+/// в сообщество нельзя.
+model CommunityInvite {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  /// Кого зовут.
+  userId      String
+  user        User      @relation("CommunityInviteTo", fields: [userId], references: [id], onDelete: Cascade)
+  /// Кто позвал — для строки «Аня зовёт вас в сообщество».
+  invitedById String
+  invitedBy   User      @relation("CommunityInviteBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([communityId, userId])
+  @@index([userId])
+}
+
+/// Тема обсуждения в сообществе. Комментарии к ней — общая модель
+/// Comment (поле postId), лайки и жалобы работают как везде.
+model CommunityPost {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title       String?
+  text        String
+  /// Закреплённая тема — правила сообщества, знакомство, объявление.
+  pinned      Boolean   @default(false)
+  comments    Comment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([communityId, createdAt])
 }

@@ -31,6 +31,13 @@ export const communities: Dict["communities"] = {
         APPROVAL: "С одобрения создателя",
     },
 
+    tabs: {
+        discussions: "Обсуждения",
+        meetups: "Встречи",
+        members: "Участники",
+        requests: "Заявки",
+    },
+    soon: "Скоро будет.",
     members: "Участники",
     membersCount: (n: number) => `${n} участников`,
     requests: "Заявки на вступление",
