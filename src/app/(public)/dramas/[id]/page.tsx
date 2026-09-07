@@ -485,15 +485,19 @@ export default async function DramaDetailPage({
                 <span className="next-episode-body">
                   {/* Пульсирующая точка: говорит «идёт прямо сейчас»
                       быстрее любой подписи. */}
+                  {/* Номер серии сразу в надзаголовке — «10 серия
+                      через» (правка владельца 2026-09-07): отдельная
+                      строка под сроком повторяла то же самое двумя
+                      кусками. */}
                   <span className="next-episode-eyebrow">
                     <span className="next-episode-dot" aria-hidden />
-                    {t.catalog.drama.schedule.nextEpisodeTitle(nextEpisode.days)}
+                    {t.catalog.drama.schedule.nextEpisodeTitle(
+                      nextEpisode.number,
+                      nextEpisode.days,
+                    )}
                   </span>
                   <span className="next-episode-value">
                     {t.catalog.drama.schedule.nextEpisodeLeft(nextEpisode.days)}
-                  </span>
-                  <span className="next-episode-caption">
-                    {t.catalog.drama.schedule.nextEpisodeCaption(nextEpisode.number)}
                   </span>
                 </span>
               </div>
@@ -541,7 +545,7 @@ export default async function DramaDetailPage({
                 чужая стоит рядом просто как справка. */}
             {score.mdl != null && (
               <Fact label={t.catalog.drama.mdlScore}>
-                <StarIcon className="rating-star" filled /> {score.mdl.toFixed(1)}
+                <StarIcon filled /> {score.mdl.toFixed(1)}
               </Fact>
             )}
 
@@ -553,7 +557,7 @@ export default async function DramaDetailPage({
                 {studios.map((a, i) => (
                   <span key={a.id}>
                     {i > 0 && ", "}
-                    <AppLink href={agencyHref(a)} className="link-body-emphasis">
+                    <AppLink href={agencyHref(a)}>
                       {a.name}
                     </AppLink>
                   </span>
@@ -563,7 +567,7 @@ export default async function DramaDetailPage({
 
             {drama.novel && (
               <Fact icon={<BookIcon className="icon-inline" />} label={t.catalog.drama.basedOn}>
-                <AppLink href={novelHref(drama.novel)} className="link-body-emphasis">
+                <AppLink href={novelHref(drama.novel)}>
                   {drama.novel.title}
                 </AppLink>
                 {drama.novel.author ? ` (${drama.novel.author})` : ""}
@@ -632,7 +636,7 @@ export default async function DramaDetailPage({
               <Fact icon={<PinIcon />} label={t.catalog.drama.country}>
                 <AppLink
                   href={`/search?section=dramas&country=${encodeURIComponent(drama.country)}`}
-                  className="link-body-emphasis"
+                 
                 >
                   {drama.country}
                 </AppLink>
@@ -642,7 +646,7 @@ export default async function DramaDetailPage({
               <Fact icon={<GridIcon />} label={t.catalog.drama.type}>
                 <AppLink
                   href={`/search?section=dramas&type=${encodeURIComponent(drama.type)}`}
-                  className="link-body-emphasis"
+                 
                 >
                   {drama.type}
                 </AppLink>

@@ -221,9 +221,8 @@ export const catalog = {
                 if (days === 1) return "Tomorrow";
                 return `${days} days`;
             },
-            nextEpisodeCaption: (n: number) => `episode ${n}`,
-            nextEpisodeTitle: (days: number): string =>
-                days <= 1 ? "Next episode" : "Next episode in",
+            nextEpisodeTitle: (n: number, days: number): string =>
+                days <= 1 ? `Episode ${n}` : `Episode ${n} in`,
         },
     },
 
