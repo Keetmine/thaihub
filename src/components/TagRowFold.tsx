@@ -22,8 +22,13 @@ export default function TagRowFold({
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  // Обычный текстовый поток, а не flex-раскладка (правка владельца
+  // 2026-09-07): во flex «ещё N» — такой же элемент, как тег, и стоило
+  // тегам занять строку целиком, кнопка съезжала на следующую одна.
+  // В потоке она ведёт себя как последнее слово абзаца и остаётся
+  // вплотную за последним тегом, где бы тот ни оказался.
   return (
-    <div className="d-flex flex-wrap column-gap-2 row-gap-1" style={{ minWidth: 0 }}>
+    <div className="tag-row" style={{ minWidth: 0 }}>
       {visible}
       {expanded && rest}
       {rest != null && !expanded && (

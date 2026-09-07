@@ -461,17 +461,21 @@ export default async function DramaDetailPage({
               style={{ width: "15rem", aspectRatio: "2 / 3", objectFit: "cover" }}
             />
             {/* Отсчёт до следующей серии — сразу под постером (просьба
-                владельца 2026-09-07). Тот же чип, что и «сегодня» в
-                графике серий, чтобы отсчёт и график читались как одно;
-                тише постера и кнопки, но заметнее серой строки фактов. */}
+                владельца 2026-09-07). Крупно и акцентом: сначала сам
+                остаток («3 дня»), под ним тихая подпись, чего ждём.
+                Первая версия была неброским чипом в строку — владелец
+                попросила «сильно больше и визуальнее»: это единственное
+                на странице, что меняется само по себе, ради него и
+                возвращаются. */}
             {nextEpisode && (
-              <p className="date-chip next-episode-chip mb-0">
-                <CalendarIcon />
-                {t.catalog.drama.schedule.nextEpisode(
-                  nextEpisode.number,
-                  nextEpisode.days,
-                )}
-              </p>
+              <div className="next-episode">
+                <span className="next-episode-value">
+                  {t.catalog.drama.schedule.nextEpisodeLeft(nextEpisode.days)}
+                </span>
+                <span className="next-episode-caption">
+                  {t.catalog.drama.schedule.nextEpisodeCaption(nextEpisode.number)}
+                </span>
+              </div>
             )}
             {drama.mydramalistUrl && (
               <a

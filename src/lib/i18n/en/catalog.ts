@@ -211,11 +211,13 @@ export const catalog = {
             /** Таймер под постером: сколько осталось до ближайшей серии
              *  (просьба владельца 2026-09-07). Дни считает страница, здесь
              *  только фраза. */
-            nextEpisode: (n: number, days: number) => {
-                if (days === 0) return `Episode ${n} airs today`;
-                if (days === 1) return `Episode ${n} airs tomorrow`;
-                return `Episode ${n} airs in ${days} days`;
+            /** Таймер под постером: крупно остаток, под ним подпись. */
+            nextEpisodeLeft: (days: number) => {
+                if (days === 0) return "Today";
+                if (days === 1) return "Tomorrow";
+                return `${days} days`;
             },
+            nextEpisodeCaption: (n: number) => `episode ${n} airs`,
         },
     },
 
