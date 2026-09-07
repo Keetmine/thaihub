@@ -185,7 +185,7 @@ export const catalog = {
         scoreTooltip: (site: string | null, count: number, mdl: string | null) => {
             const ours = `MyBLHub ${site} (${count})`;
             if (site && mdl) {
-                return `${ours} combined with MyDramaList ${mdl}. The more ratings we have, the more they count`;
+                return `${ours} combined with MyDramaList ${mdl}`;
             }
             if (site) return `Average rating on MyBLHub: ${ours}`;
             return "MyDramaList rating: nobody has rated this here yet";

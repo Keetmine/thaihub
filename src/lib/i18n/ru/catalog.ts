@@ -188,7 +188,7 @@ export const catalog: Dict["catalog"] = {
         scoreTooltip: (site: string | null, count: number, mdl: string | null) => {
             const ours = `${site} (${count} ${plural(count, ["оценка", "оценки", "оценок"])})`;
             if (site && mdl) {
-                return `Оценки нашего сайта — ${ours} — вместе с MyDramaList ${mdl}. Чем больше наших оценок, тем сильнее они влияют`;
+                return `Оценки нашего сайта — ${ours} — вместе с MyDramaList ${mdl}`;
             }
             if (site) return `Средняя оценка на нашем сайте: ${ours}`;
             return "Оценка MyDramaList: у нас этот сериал пока никто не оценил";
