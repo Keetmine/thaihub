@@ -157,7 +157,7 @@ function Fact({
   children: ReactNode;
 }) {
   return (
-    <div className="drama-fact">
+    <div className="drama-fact text-secondary">
       <span className="drama-fact-label">
         {icon}
         {icon ? " " : null}

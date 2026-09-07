@@ -74,10 +74,12 @@ export default function DramaRating({
         hintFor={(n) => s.hint(formatRating(n))}
       />
       {/* Цифра рядом со звёздами: считать звёзды глазами неудобно, а
-          «9/10» читается сразу. Пока не оценили — зовём это сделать. */}
-      <span className="drama-rating-value">
-        {value != null ? `${formatRating(value)}/10` : s.none}
-      </span>
+          «9/10» читается сразу. Пока не оценили — тут пусто: слово
+          «Оценить» выглядело кнопкой, которой не является (правка
+          владельца 2026-09-07), а звёзды и так зовут по себе. */}
+      {value != null && (
+        <span className="drama-rating-value">{`${formatRating(value)}/10`}</span>
+      )}
     </div>
   );
 }
