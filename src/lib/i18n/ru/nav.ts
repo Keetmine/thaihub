@@ -7,6 +7,7 @@ export const nav: Dict["nav"] = {
     novels: "Новеллы",
     locations: "Локации",
     trips: "Поездки",
+    communities: "Сообщества",
     calendar: "Календарь",
     search: "Поиск",
     searchPlaceholder: "Поиск…",

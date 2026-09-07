@@ -55,6 +55,18 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return subject ? titles.DRAMA_ADDED(subject) : n.title;
     case "ONLINE_BOOKING":
       return subject ? titles.ONLINE_BOOKING(subject) : n.title;
+    case "COMMUNITY_JOIN_REQUEST":
+      return who && subject ? titles.COMMUNITY_JOIN_REQUEST(who, subject) : n.title;
+    case "COMMUNITY_JOIN_ANSWER": {
+      // Решение по заявке приезжает одним видом: «+название» — приняли,
+      // «-название» — отказали. Отдельный вид уведомления ради одной
+      // строки не заводим, а фразу собираем на языке получателя.
+      if (!subject) return n.title;
+      const name = subject.slice(1);
+      return subject.startsWith("+")
+        ? titles.COMMUNITY_JOIN_ACCEPTED(name)
+        : titles.COMMUNITY_JOIN_DECLINED(name);
+    }
     default:
       return n.title;
   }

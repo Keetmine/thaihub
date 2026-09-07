@@ -23,6 +23,9 @@ const CODED_SLUG_MODELS: Record<string, string> = {
   Trip: "title",
   PlaceList: "title",
   PerformerList: "title",
+  // Сообщества: названия у людей повторяются («Лакорны Беларусь» заведут
+  // трижды), а нумерация -2/-3 выдавала бы, сколько всего таких уже есть.
+  Community: "title",
 };
 
 function makeBase(): PrismaClient {

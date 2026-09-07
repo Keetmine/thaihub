@@ -42,6 +42,8 @@ const KIND_ICONS: Record<string, string> = {
   EPISODE_AIRED: "📺",
   DRAMA_ADDED: "🎬",
   ONLINE_BOOKING: "🎟",
+  COMMUNITY_JOIN_REQUEST: "🙋",
+  COMMUNITY_JOIN_ANSWER: "🫂",
 };
 
 // Лента активностей: приглашения в поездки, заявки в друзья, ответы и

@@ -26,6 +26,10 @@ export const notifications = {
     EPISODE_AIRED: (drama: string) => `New episode of "${drama}"`,
     DRAMA_ADDED: (drama: string) => `"${drama}" is now in our catalog`,
     ONLINE_BOOKING: (event: string) => `Online booking for "${event}" opens soon`,
+    COMMUNITY_JOIN_REQUEST: (who: string, community: string) =>
+        `${who} wants to join "${community}"`,
+    COMMUNITY_JOIN_ACCEPTED: (community: string) => `You are now a member of "${community}"`,
+    COMMUNITY_JOIN_DECLINED: (community: string) => `Your request to join "${community}" was declined`,
   },
 
   /** Body of the online-booking reminder: the time is Thai wall-clock,

@@ -935,6 +935,8 @@ model User {
   friendRequestsReceived Friendship[]  @relation("FriendAddressee")
   redeemedPromoCodes     PromoCode[]   @relation("PromoRedeemer")
   eventTickets           EventTicket[]
+  ownedCommunities       Community[]         @relation("CommunityOwner")
+  communityMemberships   CommunityMember[]
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -1782,6 +1784,12 @@ enum NotificationKind {
   // «Через час откроется онлайн-бронирование» — по времени, которое
   // владелец записал у своего билета (EventTicket.onlineBookingAt).
   ONLINE_BOOKING
+  // Сообщества: заявка на вступление — владельцу, решение по ней —
+  // заявителю. Отказ отдельным видом не заводим: молчаливый отказ
+  // обиднее внятного «не приняли», но плодить ещё один вид ради одной
+  // строки не стоит — текст различает сам COMMUNITY_JOIN_ANSWER.
+  COMMUNITY_JOIN_REQUEST
+  COMMUNITY_JOIN_ANSWER
 }
 
 model Notification {
@@ -2116,4 +2124,91 @@ enum MascotDraftStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ---------------------------------------------------------------------
+// Сообщества (АА25): «Лакорны Беларусь» и подобное — место, где люди
+// находят единомышленников. Заводить может обладатель подписки, вступать
+// — любой вошедший (правила вступления настраиваются владельцем).
+//
+// Структурно это близкий родственник совместной поездки: владелец,
+// участники, видимость. Отдельная модель, а не поездка с флагом:
+// у поездки есть даты и план, у сообщества их нет и не будет.
+// ---------------------------------------------------------------------
+
+enum CommunityVisibility {
+  // Витрину видит кто угодно, включая поисковики; содержимое — только
+  // участники (см. docs/features/communities.md).
+  PUBLIC
+  // Не в поиске и не в общем списке: попасть можно только по ссылке, а
+  // увидеть внутри — только вступив.
+  PRIVATE
+}
+
+enum CommunityJoinMode {
+  /// Вступают сразу, без спроса.
+  OPEN
+  /// Заявка ждёт решения владельца.
+  APPROVAL
+}
+
+enum CommunityRole {
+  OWNER
+  MODERATOR
+  MEMBER
+}
+
+enum CommunityMemberStatus {
+  /// Заявка подана, решения ещё нет (только при joinMode = APPROVAL).
+  PENDING
+  ACTIVE
+}
+
+model Community {
+  id          String              @id @default(cuid())
+  // Слаг с коротким кодом (CODED_SLUG_MODELS в src/lib/prisma.ts):
+  // названия у людей повторяются, а нумерация -2/-3 выдавала бы, сколько
+  // всего таких сообществ завели.
+  slug        String?             @unique
+  ownerId     String
+  owner       User                @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  // Баннер-обложка на странице сообщества.
+  coverUrl    String?
+  visibility  CommunityVisibility @default(PUBLIC)
+  joinMode    CommunityJoinMode   @default(OPEN)
+  links       CommunityLink[]
+  members     CommunityMember[]
+  createdAt   DateTime            @default(now())
+
+  @@index([ownerId])
+}
+
+/// Ссылки сообщества (свой чат в Telegram, канал, гуглодок с правилами).
+/// Отдельной моделью, как PerformerLink: их число заранее не известно.
+/// Видны только участникам — за ссылкой обычно закрытый чат.
+model CommunityLink {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  label       String
+  url         String
+  createdAt   DateTime  @default(now())
+
+  @@index([communityId])
+}
+
+model CommunityMember {
+  communityId String
+  community   Community             @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        CommunityRole         @default(MEMBER)
+  status      CommunityMemberStatus @default(ACTIVE)
+  createdAt   DateTime              @default(now())
+
+  @@id([communityId, userId])
+  @@index([userId])
+  @@index([communityId, status])
 }

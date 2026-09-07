@@ -5,6 +5,7 @@ export const nav = {
     novels: "Novels",
     locations: "Locations",
     trips: "Trips",
+    communities: "Communities",
     calendar: "Calendar",
     search: "Search",
     searchPlaceholder: "Search…",

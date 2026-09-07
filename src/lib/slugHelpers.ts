@@ -22,6 +22,7 @@ export const agencyHref = (a: Sluggable & { name: string }) => href("agencies", 
 export const tripHref = (t: Sluggable) => `/trips/${t.slug ?? t.id}`;
 export const artistListHref = (l: Sluggable) => `/artist-lists/${l.slug ?? l.id}`;
 export const listHref = (l: Sluggable) => `/lists/${l.slug ?? l.id}`;
+export const communityHref = (c: Sluggable) => `/communities/${c.slug ?? c.id}`;
 
 /**
  * Where-условие резолва параметра страницы: слаг ИЛИ id (голый cuid или

@@ -56,6 +56,14 @@ export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
     requiresUser: true,
     icon: PlaneIcon,
   },
+  // Сообщества видны и гостю: витрина открыта всем и работает на поиск
+  // (см. docs/features/communities.md).
+  {
+    href: "/communities",
+    labelKey: "communities",
+    matchPrefixes: ["/communities/"],
+    icon: UsersIcon,
+  },
 ];
 
 /**

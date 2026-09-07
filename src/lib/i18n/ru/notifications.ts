@@ -19,6 +19,13 @@ export const notifications: Dict["notifications"] = {
     EPISODE_AIRED: (drama: string) => `Новая серия «${drama}»`,
     DRAMA_ADDED: (drama: string) => `Сериал «${drama}» теперь в каталоге`,
     ONLINE_BOOKING: (event: string) => `Скоро откроется онлайн-бронирование на «${event}»`,
+    // Сообщества: «+название» — приняли, «-название» — отказали. Приставку
+    // ставит экшен: фраза собирается на языке получателя, готовый текст в
+    // базу класть нельзя (см. notificationText.ts).
+    COMMUNITY_JOIN_REQUEST: (who: string, community: string) =>
+        `${who} просится в сообщество «${community}»`,
+    COMMUNITY_JOIN_ACCEPTED: (community: string) => `Вас приняли в сообщество «${community}»`,
+    COMMUNITY_JOIN_DECLINED: (community: string) => `Заявку в «${community}» отклонили`,
   },
 
   onlineBookingBody: (time: string) => `Откроется примерно через час — в ${time} (тайское время).`,
