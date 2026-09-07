@@ -7,9 +7,20 @@ import AppLink from "@/components/AppLink";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { localeHref } from "@/lib/i18n/config";
 import { SearchIcon } from "@/components/icons";
-import { searchLive, type LiveHit, type LiveSection } from "@/app/(public)/searchLiveActions";
+import {
+  searchLive,
+  type LiveHit,
+  type LiveSection,
+} from "@/app/(public)/searchLiveActions";
 
-const SECTIONS: LiveSection[] = ["all", "dramas", "performers", "events", "locations", "novels"];
+const SECTIONS: LiveSection[] = [
+  "all",
+  "dramas",
+  "performers",
+  "events",
+  "locations",
+  "novels",
+];
 
 /**
  * Поиск в шапке: клик поднимает отдельную палитру поверх страницы — как
@@ -21,7 +32,11 @@ const SECTIONS: LiveSection[] = ["all", "dramas", "performers", "events", "locat
  * гидратации это обычная ссылка на /search: клик без JS уводит на
  * страницу поиска, где есть всё то же самое.
  */
-export default function SearchOverlay({ variant = "header" }: { variant?: "header" | "drawer" }) {
+export default function SearchOverlay({
+  variant = "header",
+}: {
+  variant?: "header" | "drawer";
+}) {
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
@@ -104,7 +119,9 @@ export default function SearchOverlay({ variant = "header" }: { variant?: "heade
       <AppLink
         href="/search"
         className={
-          variant === "drawer" ? "search-palette-trigger w-100" : "search-palette-trigger"
+          variant === "drawer"
+            ? "search-palette-trigger w-100"
+            : "search-palette-trigger"
         }
         onClick={(e) => {
           e.preventDefault();
@@ -122,137 +139,169 @@ export default function SearchOverlay({ variant = "header" }: { variant?: "heade
           причина, по которой мобильная шторка живёт вне навбара. */}
       {open &&
         createPortal(
-        <div className="quick-search-backdrop" onMouseDown={() => setOpen(false)}>
-          <div className="quick-search" onMouseDown={(e) => e.stopPropagation()}>
-            <form
-              action={localeHref("/search", locale)}
-              method="GET"
-              onSubmit={(e) => {
-                // И17: закрывать палитру на submit нельзя — портал
-                // размонтирует форму раньше, чем браузер уйдёт по
-                // адресу, и переход отменяется (Enter «не работал»).
-                // Уходим сами роутером, как это делает выбор подсказки
-                // стрелками; action остаётся запасом на «до гидратации».
-                e.preventDefault();
-                go(searchHref);
-              }}
+          <div
+            className="quick-search-backdrop"
+            onMouseDown={() => setOpen(false)}
+          >
+            <div
+              className="quick-search"
+              onMouseDown={(e) => e.stopPropagation()}
             >
-              <input
-                ref={inputRef}
-                type="search"
-                name="q"
-                autoComplete="off"
-                value={query}
-                placeholder={t.filters.live.hint}
-                aria-label={t.nav.searchAria}
-                className="form-control form-control-lg"
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  requestHits(e.target.value, section);
+              <form
+                action={localeHref("/search", locale)}
+                method="GET"
+                onSubmit={(e) => {
+                  // И17: закрывать палитру на submit нельзя — портал
+                  // размонтирует форму раньше, чем браузер уйдёт по
+                  // адресу, и переход отменяется (Enter «не работал»).
+                  // Уходим сами роутером, как это делает выбор подсказки
+                  // стрелками; action остаётся запасом на «до гидратации».
+                  e.preventDefault();
+                  go(searchHref);
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                    e.preventDefault();
-                    if (hits.length === 0) return;
-                    const delta = e.key === "ArrowDown" ? 1 : -1;
-                    // Кольцо с «ничего не выбрано» (-1): Enter без
-                    // выбора отправляет форму на /search.
-                    setActive((prev) => {
-                      const next = prev + delta;
-                      if (next < -1) return hits.length - 1;
-                      if (next >= hits.length) return -1;
-                      return next;
-                    });
-                  } else if (e.key === "Enter" && active >= 0 && hits[active]) {
-                    e.preventDefault();
-                    go(hits[active].href);
-                  }
-                }}
-              />
-              {section !== "all" && <input type="hidden" name="section" value={section} />}
-            </form>
-
-            <div className="search-palette-sections">
-              {SECTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`search-palette-chip ${s === section ? "active" : ""}`}
-                  aria-pressed={s === section}
-                  onClick={() => {
-                    setSection(s);
-                    requestHits(query, s);
-                    inputRef.current?.focus();
+              >
+                <input
+                  ref={inputRef}
+                  type="search"
+                  name="q"
+                  autoComplete="off"
+                  value={query}
+                  placeholder={t.filters.live.hint}
+                  aria-label={t.nav.searchAria}
+                  className="form-control form-control-lg"
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    requestHits(e.target.value, section);
                   }}
-                >
-                  {t.filters.sections[s]}
-                </button>
-              ))}
-            </div>
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                      e.preventDefault();
+                      if (hits.length === 0) return;
+                      const delta = e.key === "ArrowDown" ? 1 : -1;
+                      // Кольцо с «ничего не выбрано» (-1): Enter без
+                      // выбора отправляет форму на /search.
+                      setActive((prev) => {
+                        const next = prev + delta;
+                        if (next < -1) return hits.length - 1;
+                        if (next >= hits.length) return -1;
+                        return next;
+                      });
+                    } else if (
+                      e.key === "Enter" &&
+                      active >= 0 &&
+                      hits[active]
+                    ) {
+                      e.preventDefault();
+                      go(hits[active].href);
+                    }
+                  }}
+                />
+                {section !== "all" && (
+                  <input type="hidden" name="section" value={section} />
+                )}
+              </form>
 
-            <div className="quick-search-hits">
-              {query.trim().length < 2 ? (
-                <p className="small text-secondary m-0 p-3">{t.filters.live.hint}</p>
-              ) : loading && hits.length === 0 ? (
-                <p className="small text-secondary m-0 p-3">{t.common.loading}</p>
-              ) : hits.length === 0 ? (
-                <p className="small text-secondary m-0 p-3">{t.filters.live.empty}</p>
-              ) : (
-                hits.map((hit, i) => (
+              <div className="search-palette-sections">
+                {SECTIONS.map((s) => (
                   <button
-                    key={`${hit.kind}:${hit.href}`}
+                    key={s}
                     type="button"
-                    className={`quick-search-hit search-palette-hit ${i === active ? "is-active" : ""}`}
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => go(hit.href)}
+                    className={`search-palette-chip ${s === section ? "active" : ""}`}
+                    aria-pressed={s === section}
+                    onClick={() => {
+                      setSection(s);
+                      requestHits(query, s);
+                      inputRef.current?.focus();
+                    }}
                   >
-                    {hit.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={hit.photoUrl}
-                        alt=""
-                        className="live-search-thumb"
-                        style={hit.round ? { borderRadius: "50%" } : undefined}
-                      />
-                    ) : (
-                      <span className="live-search-thumb d-inline-flex align-items-center justify-content-center small">
-                        {hit.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                    <span className="text-truncate">
-                      <span className="text-white">{hit.name}</span>
-                      {/* Настоящее имя артиста серым в скобках (АА21):
+                    {t.filters.sections[s]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Пока не набрали двух букв, блока результатов нет вовсе
+                (правка владельца 2026-09-09). Раньше на его месте
+                висело «Начните вводить название или имя», и подсказку
+                принимали за второе поле ввода — та же фраза стоит
+                плейсхолдером в самой строке поиска, и повторять её
+                отдельной строкой незачем. */}
+              {query.trim().length >= 2 && (
+                <div className="quick-search-hits">
+                  {loading && hits.length === 0 ? (
+                    <p className="small text-secondary m-0 p-3">
+                      {t.common.loading}
+                    </p>
+                  ) : hits.length === 0 ? (
+                    <p className="small text-secondary m-0 p-3">
+                      {t.filters.live.empty}
+                    </p>
+                  ) : (
+                    hits.map((hit, i) => (
+                      <button
+                        key={`${hit.kind}:${hit.href}`}
+                        type="button"
+                        className={`quick-search-hit search-palette-hit ${i === active ? "is-active" : ""}`}
+                        onMouseEnter={() => setActive(i)}
+                        onClick={() => go(hit.href)}
+                      >
+                        {hit.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={hit.photoUrl}
+                            alt=""
+                            className="live-search-thumb"
+                            style={
+                              hit.round ? { borderRadius: "50%" } : undefined
+                            }
+                          />
+                        ) : (
+                          <span className="live-search-thumb d-inline-flex align-items-center justify-content-center small">
+                            {hit.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="text-truncate">
+                          <span className="text-white">{hit.name}</span>
+                          {/* Настоящее имя артиста серым в скобках (АА21):
                           ник и паспортное имя помнят вразнобой, и без
                           подсказки не понять, тот ли это человек. */}
-                      {hit.nameSuffix && (
-                        <span className="small text-secondary"> ({hit.nameSuffix})</span>
-                      )}
-                      {hit.subtitle && (
-                        <span className="small text-secondary"> · {hit.subtitle}</span>
-                      )}
-                    </span>
-                    <span className="live-search-kind">{t.filters.sections[hit.kind]}</span>
-                  </button>
-                ))
+                          {hit.nameSuffix && (
+                            <span className="small text-secondary">
+                              {" "}
+                              ({hit.nameSuffix})
+                            </span>
+                          )}
+                          {hit.subtitle && (
+                            <span className="small text-secondary">
+                              {" "}
+                              · {hit.subtitle}
+                            </span>
+                          )}
+                        </span>
+                        <span className="live-search-kind">
+                          {t.filters.sections[hit.kind]}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
               )}
-            </div>
 
-            <div className="quick-search-foot d-flex align-items-center gap-2">
-              <AppLink
-                href={searchHref}
-                className="btn btn-ghost btn-sm"
-                onClick={() => setOpen(false)}
-              >
-                {t.filters.live.allFilters} →
-              </AppLink>
-              <span className="small text-secondary ms-auto d-none d-sm-inline">
-                ↑↓ · Enter · Esc
-              </span>
+              <div className="quick-search-foot d-flex align-items-center gap-2">
+                <AppLink
+                  href={searchHref}
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setOpen(false)}
+                >
+                  {t.filters.live.allFilters} →
+                </AppLink>
+                <span className="small text-secondary ms-auto d-none d-sm-inline">
+                  ↑↓ · Enter · Esc
+                </span>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
