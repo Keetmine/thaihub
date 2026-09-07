@@ -11,7 +11,7 @@ export const communities: Dict["communities"] = {
     create: "Создать сообщество",
     createTitle: "Новое сообщество",
     titleLabel: "Название",
-    titlePlaceholder: "Лакорны Беларусь",
+    titlePlaceholder: "Клуб любителей лакорнов",
     descriptionLabel: "О сообществе",
     descriptionPlaceholder: "Для кого оно и что внутри происходит.",
 
@@ -96,11 +96,11 @@ export const communities: Dict["communities"] = {
 
         placeTitle: "Где живёт сообщество",
         placeHint:
-            "Для тех, кого ищут по месту, а не по актёру: «Лакорны Беларусь». Место показывается на витрине сообществ и работает там фильтром; на страницах артистов его нет.",
+            "Для тех, кого ищут по месту, а не по актёру. Место показывается на витрине сообществ и работает там фильтром; на страницах артистов его нет.",
         countryLabel: "Страна",
-        countryPlaceholder: "Беларусь",
+        countryPlaceholder: "Таиланд",
         cityLabel: "Город",
-        cityPlaceholder: "Минск",
+        cityPlaceholder: "Бангкок",
         save: "Сохранить",
         loading: "Загружаем…",
 
@@ -204,7 +204,7 @@ export const communities: Dict["communities"] = {
         create: "Создать список",
         createTitle: "Новый список сообщества",
         titleLabel: "Название",
-        titlePlaceholder: "Куда сходить в Минске",
+        titlePlaceholder: "Куда сходить всем вместе",
         descriptionLabel: "О чём этот список",
         descriptionPlaceholder: "Кафе и места, ради которых стоит собраться.",
         publicLabel: "Показывать список всем",
@@ -233,7 +233,7 @@ export const communities: Dict["communities"] = {
 
         emptyTitle: "Общих мест пока нет",
         emptyHint:
-            "Заведите список — «куда сходить в Минске», «кафе из сериалов» — и наполняйте его вместе.",
+            "Заведите список — «куда сходить всем вместе», «кафе из сериалов» — и наполняйте его вместе.",
         emptyHintReadOnly: "Списки сообщества ведут создатель и модераторы.",
 
         errors: {

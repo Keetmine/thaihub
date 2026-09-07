@@ -9,7 +9,7 @@ export const communities = {
     create: "Create a community",
     createTitle: "New community",
     titleLabel: "Name",
-    titlePlaceholder: "Lakorns Belarus",
+    titlePlaceholder: "Lakorn lovers club",
     descriptionLabel: "About the community",
     descriptionPlaceholder: "Who it is for and what happens inside.",
 
@@ -97,11 +97,11 @@ export const communities = {
 
         placeTitle: "Where the community lives",
         placeHint:
-            "For communities people look for by place rather than by actor — “Lakorns Belarus”. The place is shown on the communities page and works as a filter there; it never appears on artist pages.",
+            "For communities people look for by place rather than by actor. The place is shown on the communities page and works as a filter there; it never appears on artist pages.",
         countryLabel: "Country",
-        countryPlaceholder: "Belarus",
+        countryPlaceholder: "Thailand",
         cityLabel: "City",
-        cityPlaceholder: "Minsk",
+        cityPlaceholder: "Bangkok",
         save: "Save",
         loading: "Loading…",
 
@@ -198,7 +198,7 @@ export const communities = {
         create: "New list",
         createTitle: "New community list",
         titleLabel: "Name",
-        titlePlaceholder: "Where to go in Minsk",
+        titlePlaceholder: "Where to go together",
         descriptionLabel: "What this list is about",
         descriptionPlaceholder: "Cafés and spots worth an evening together.",
         publicLabel: "Show the list to everyone",
@@ -227,7 +227,7 @@ export const communities = {
 
         emptyTitle: "No shared places yet",
         emptyHint:
-            "Start a list — “where to go in Minsk”, “cafés from the series” — and fill it together.",
+            "Start a list — “where to go together”, “cafés from the series” — and fill it together.",
         emptyHintReadOnly: "The owner and the moderators keep the lists of this community.",
 
         errors: {
