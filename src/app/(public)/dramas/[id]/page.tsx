@@ -183,7 +183,6 @@ export default async function DramaDetailPage({
   // убрана, из чего оно сложено — в подсказке по наведению.
   const scoreTooltip = t.catalog.drama.scoreTooltip(
     score.site != null ? score.site.toFixed(1) : null,
-    score.siteCount,
     score.mdl != null ? score.mdl.toFixed(1) : null,
   );
   const eventsRows = groupByEvent(

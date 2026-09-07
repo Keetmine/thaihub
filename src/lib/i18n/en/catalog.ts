@@ -182,13 +182,12 @@ export const catalog = {
         screenwriter: "Writer:",
         contentRating: "Rating:",
         ourScore: "Score:",
-        scoreTooltip: (site: string | null, count: number, mdl: string | null) => {
-            const ours = `MyBLHub ${site} (${count})`;
+        scoreTooltip: (site: string | null, mdl: string | null) => {
             if (site && mdl) {
-                return `${ours} combined with MyDramaList ${mdl}`;
+                return `Series rating: MyBLHub viewers — ${site}, MyDramaList — ${mdl}`;
             }
-            if (site) return `Average rating on MyBLHub: ${ours}`;
-            return "MyDramaList rating: nobody has rated this here yet";
+            if (site) return `Series rating from MyBLHub viewers — ${site}`;
+            return `Series rating from MyDramaList — ${mdl}`;
         },
         events: "Events",
         cast: "Cast",
