@@ -5286,9 +5286,6 @@ body::after {
   padding: 0.35rem 0.75rem 0.4rem;
 }
 .next-episode-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5319,11 +5316,16 @@ body::after {
   }
 }
 .next-episode-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 700;
   line-height: 1.2;
-  color: rgb(var(--accent-rgb));
+  /* Белым, а не акцентом (правка владельца 2026-09-07): акцент тут
+     держит одна пульсирующая точка рядом — этого хватает. */
+  color: var(--bs-body-color);
 }
 
 /* ============================================================

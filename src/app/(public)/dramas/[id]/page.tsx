@@ -490,13 +490,16 @@ export default async function DramaDetailPage({
                       строка под сроком повторяла то же самое двумя
                       кусками. */}
                   <span className="next-episode-eyebrow">
-                    <span className="next-episode-dot" aria-hidden />
                     {t.catalog.drama.schedule.nextEpisodeTitle(
                       nextEpisode.number,
                       nextEpisode.days,
                     )}
                   </span>
+                  {/* Пульсирующая точка стоит у самого срока (правка
+                      владельца 2026-09-07): она про то, что до серии
+                      осталось всего ничего, а не про подпись сверху. */}
                   <span className="next-episode-value">
+                    <span className="next-episode-dot" aria-hidden />
                     {t.catalog.drama.schedule.nextEpisodeLeft(nextEpisode.days)}
                   </span>
                 </span>
