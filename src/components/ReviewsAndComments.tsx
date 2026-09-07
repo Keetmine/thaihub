@@ -439,11 +439,24 @@ export default async function ReviewsAndComments({
             />
             {/* Фото — только под событием (см. photosAllowed выше).
                 Пикер грузит файл сразу при выборе и оставляет форме
-                скрытые photoUrl, поэтому форма остаётся серверной. */}
-            {photosAllowed(kind) && <CommentPhotoPicker />}
-            <button type="submit" className="btn btn-primary btn-sm align-self-start">
-              {t.reviews.send}
-            </button>
+                скрытые photoUrl, поэтому форма остаётся серверной.
+                «Отправить» отдана пикеру слотом: скрепка и отправка
+                стоят одной строкой, скрепка слева (правка владельца
+                2026-09-09) — как в комментариях сообществ. Там, где
+                фото нельзя, кнопка остаётся сама по себе. */}
+            {photosAllowed(kind) ? (
+              <CommentPhotoPicker
+                trailing={
+                  <button type="submit" className="btn btn-primary btn-sm">
+                    {t.reviews.send}
+                  </button>
+                }
+              />
+            ) : (
+              <button type="submit" className="btn btn-primary btn-sm align-self-start">
+                {t.reviews.send}
+              </button>
+            )}
           </ActionResultForm>
         ) : (
           <p className="small text-secondary">
