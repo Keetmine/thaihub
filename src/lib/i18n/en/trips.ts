@@ -40,7 +40,7 @@ export const trips = {
         tabTodos: (n: number) => `To-do list (${n})`,
         tabPacking: (n: number) => `Packing (${n})`,
         tabShopping: (n: number) => `Shopping (${n})`,
-        tabPlaces: "Places to go",
+        tabPlaces: (n: number) => (n > 0 ? `Places to go (${n})` : "Places to go"),
         onlyMine: "Only mine",
         deleteTrip: "Delete trip",
         deleteConfirm: (title: string) => `Delete the trip "${title}"?`,

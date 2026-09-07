@@ -969,6 +969,23 @@ export default async function TripPage({
   const attachedListIds = new Set(tripLists.map((t) => t.listId));
   const availableLists = myLists.filter((l) => !attachedListIds.has(l.id));
 
+  // Счётчик в подписи вкладки (правка владельца 2026-09-07: «в „что
+  // посетить“ тоже в скобки выводить, если есть места»). Считаем ВСЕГДА,
+  // а не только на самой вкладке: подпись видна с любой другой.
+  // Локации приезжают двумя путями — из прикреплённых списков и
+  // поштучно, — и одно и то же место может быть и там, и там, поэтому
+  // считаем разные, а не сумму.
+  const placeIdRows = await prisma.location.findMany({
+    where: {
+      OR: [
+        { tripPlaces: { some: { tripId: trip.id } } },
+        { listItems: { some: { list: { trips: { some: { tripId: trip.id } } } } } },
+      ],
+    },
+    select: { id: true },
+  });
+  const placesCount = placeIdRows.length;
+
   // Кандидаты в участники — друзья владельца, которых ещё нет в поездке
   // (friendIds для владельца — его же друзья).
   const memberIdSet = new Set(trip.members.map((m) => m.userId));
@@ -1206,7 +1223,7 @@ export default async function TripPage({
             prefetch={false}
             className={`tab-bar-item ${showPlaces ? "active" : ""}`}
           >
-            {t.trips.detail.tabPlaces}
+            {t.trips.detail.tabPlaces(placesCount)}
           </AppLink>
         </div>
         {isShared && isParticipant && !showAll && !showPlaces && (
@@ -1270,12 +1287,6 @@ export default async function TripPage({
                 <AttachListSelect tripId={trip.id} availableLists={availableLists} />
               </div>
             )}
-            {pins.length > 0 && (
-              <div className="mb-4">
-                <LocationMapLoader locations={pins} height="22rem" />
-              </div>
-            )}
-
             {tripLists.map((tl) => (
               <div key={tl.listId} className="mb-4">
                 <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -1321,6 +1332,15 @@ export default async function TripPage({
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Карта — ПОД списками (правка владельца 2026-09-07):
+                сначала читают, куда собрались, и только потом смотрят,
+                как это разбросано по городу. */}
+            {pins.length > 0 && (
+              <div className="mb-4">
+                <LocationMapLoader locations={pins} height="22rem" />
               </div>
             )}
 

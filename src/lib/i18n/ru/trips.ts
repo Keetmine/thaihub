@@ -38,7 +38,9 @@ export const trips: Dict["trips"] = {
         tabTodos: (n: number) => `Список дел (${n})`,
         tabPacking: (n: number) => `Чемодан (${n})`,
         tabShopping: (n: number) => `Покупки (${n})`,
-        tabPlaces: "Что посетить",
+        /** Счётчик как у соседних вкладок; ноль не показываем — пустые
+         *  скобки только шумят. */
+        tabPlaces: (n: number) => (n > 0 ? `Что посетить (${n})` : "Что посетить"),
         onlyMine: "Только моё",
         deleteTrip: "Удалить поездку",
         deleteConfirm: (title: string) => `Удалить поездку «${title}»?`,
