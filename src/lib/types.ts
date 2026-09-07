@@ -17,4 +17,14 @@ export type EventWithPerformers = {
   endsAt: Date | null;
   posterUrl: string | null;
   performers: { performer: { id: string; name: string; slug: string | null } }[];
+  /**
+   * Сообщество-хозяин встречи (Event.communityId). У каталожных событий
+   * там null, и поле остаётся пустым — карточка рисует его только для
+   * встреч, чтобы в афише было видно, ЧЬЯ это встреча (жалоба владельца
+   * 2026-09-08: «не видно, чьё событие»).
+   *
+   * Необязательное: списки, где встреч не бывает вовсе (локация,
+   * сериал, артист), сообщество в запрос не тянут.
+   */
+  community?: { id: string; slug: string | null; title: string } | null;
 };

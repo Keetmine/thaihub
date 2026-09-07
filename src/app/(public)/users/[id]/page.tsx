@@ -1,4 +1,4 @@
-import { userHref } from "@/lib/userProfile";
+import { userDisplayName, userHref } from "@/lib/userProfile";
 import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import ReportButton from "@/components/ReportButton";
@@ -1239,25 +1239,51 @@ export default async function UserProfilePage({
             ) : (
               <>
                 <div className="profile-friend-grid">
-                  {friends.slice(0, 12).map((f) => (
-                    <AppLink
-                      key={f.id}
-                      href={userHref(f)}
-                      // Подписчики — с цветной обводкой (п.6, тот же
-                      // .premium-ring, что у LetterAvatar premiumRing).
-                      className={`profile-friend${isPremiumActive(f) ? " premium-ring" : ""}`}
-                      title={f.name ?? undefined}
-                    >
-                      {f.photoUrl ? (
-                        // alt пустой: имя уже в title, а сломанная
-                        // картинка с alt-текстом вылезала из круга.
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img loading="lazy" decoding="async" src={f.photoUrl} alt="" />
-                      ) : (
-                        <span aria-hidden>{(f.name || "?").charAt(0).toUpperCase()}</span>
-                      )}
-                    </AppLink>
-                  ))}
+                  {friends.slice(0, 12).map((f) => {
+                    // Кто есть кто в сетке аватарок было не разобрать
+                    // (жалоба владельца 2026-09-08). Показываем имя, а
+                    // если ник отличается от него — ник в скобках: у
+                    // многих в друзьях именно ник и на слуху.
+                    const friendName = userDisplayName(f, locale);
+                    // Сравниваем ник с ПОКАЗАННЫМ именем, а не с полем
+                    // name: у кого имя не заполнено, userDisplayName и
+                    // так вернёт ник — иначе выходило «vasya (@vasya)».
+                    const friendLabel =
+                      f.username && f.username !== friendName
+                        ? `${friendName} (@${f.username})`
+                        : friendName;
+                    return (
+                      <AppLink
+                        key={f.id}
+                        href={userHref(f)}
+                        // Подписчики — с цветной обводкой (п.6, тот же
+                        // .premium-ring, что у LetterAvatar premiumRing).
+                        //
+                        // Подсказка — своя (data-tooltip), а не
+                        // браузерный title: по АА5 все подсказки на
+                        // сайте одного вида, а title вдобавок ждёт
+                        // секунду и не показывается с клавиатуры.
+                        // tooltip-wide — длинному «Имя (@ник)» нужен
+                        // перенос, иначе он обрезается многоточием.
+                        className={`profile-friend tooltip-wide${isPremiumActive(f) ? " premium-ring" : ""}`}
+                        data-tooltip={friendLabel}
+                        // Ссылка состоит из одной картинки с пустым alt —
+                        // без явной подписи скринридер читает её как
+                        // «ссылка» без адресата.
+                        aria-label={friendLabel}
+                      >
+                        {f.photoUrl ? (
+                          // alt пустой: имя уже в подсказке и aria-label,
+                          // а сломанная картинка с alt-текстом вылезала
+                          // из круга.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img loading="lazy" decoding="async" src={f.photoUrl} alt="" />
+                        ) : (
+                          <span aria-hidden>{friendName.charAt(0).toUpperCase()}</span>
+                        )}
+                      </AppLink>
+                    );
+                  })}
                 </div>
                 {isSelf && (
                   <AppLink href="/friends" className="small link-body-emphasis d-inline-block mt-3">

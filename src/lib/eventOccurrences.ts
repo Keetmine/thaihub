@@ -13,6 +13,9 @@ type OccurrenceWithEvent = {
     description: string | null;
     posterUrl: string | null;
     performers: { performer: { id: string; name: string; slug: string | null } }[];
+    /** Есть только там, где запрос его просит (афиша: вкладки
+     *  «Сообщества» и «Я иду») — см. EventWithPerformers.community. */
+    community?: { id: string; slug: string | null; title: string } | null;
   };
 };
 
@@ -32,6 +35,7 @@ export function flattenOccurrence(occ: OccurrenceWithEvent): EventWithPerformers
     hasTime: occ.hasTime ?? true,
     endsAt: occ.endsAt,
     performers: occ.event.performers,
+    community: occ.event.community ?? null,
   };
 }
 

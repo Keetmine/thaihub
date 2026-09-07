@@ -6,6 +6,7 @@ import { uploadSrcSet } from "@/lib/imageVariants";
 import { formatTime, shortMonthName, shortWeekdayName } from "@/lib/dates";
 import type { EventWithPerformers } from "@/lib/types";
 import { eventHref } from "@/lib/eventSlug";
+import { communityHref } from "@/lib/slugHelpers";
 import { PinIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
@@ -95,6 +96,29 @@ export default function EventCard({
               {event.title}
             </AppLink>
           </h3>
+          {/* Встреча сообщества: карточка остаётся обычной карточкой
+              события (просьба владельца — «одинакового вида»), но рядом
+              с названием стоит тихий чип с названием сообщества. В
+              афише на вкладке «Сообщества» без него было не понять,
+              ЧЬЯ это встреча (жалоба владельца 2026-09-08). Чип, а не
+              строка ниже: серую строку под названием он бы догрузил
+              четвёртым элементом и потерялся между площадкой и
+              составом. */}
+          {event.community && (
+            <AppLink
+              href={communityHref(event.community)}
+              className="date-chip event-row-community tooltip-wide"
+              // Чип несёт только название; «встреча сообщества» —
+              // в подсказке и в подписи для скринридера. tooltip-wide:
+              // фраза с названием в одну строку не влезает и обрезалась
+              // бы многоточием.
+              data-tooltip={t.events.card.communityMeetup(event.community.title)}
+              aria-label={t.events.card.communityMeetup(event.community.title)}
+            >
+              <UsersIcon className="icon-inline" />
+              <span className="event-row-community-name">{event.community.title}</span>
+            </AppLink>
+          )}
         </div>
         {/* Площадка — обычный span, не flex-строка: в flex длинное
             название площадки сжималось в столбик по одному слову на
@@ -123,8 +147,11 @@ export default function EventCard({
           )}
           {friendsGoing.length > 0 && (
             <span
-              className="d-inline-flex align-items-center gap-1"
-              title={friendsGoing.map((f) => f.name || t.events.card.friend).join(", ")}
+              // Своя подсказка вместо браузерного title (АА5): на сайте
+              // все подсказки одного вида. tooltip-wide — список имён в
+              // одну строку не влезает.
+              className="d-inline-flex align-items-center gap-1 tooltip-wide"
+              data-tooltip={friendsGoing.map((f) => f.name || t.events.card.friend).join(", ")}
             >
               <UsersIcon className="icon-inline" />
               {friendsGoing.length === 1

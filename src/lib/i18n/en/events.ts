@@ -189,6 +189,9 @@ export const events = {
         oneFriendGoing: (name: string) => `${name} is going`,
         manyFriendsGoing: (count: number) => `${count} friends are going`,
         extraDates: (count: number) => (count === 1 ? "+1 more date" : `+${count} more dates`),
+        // Подсказка на чипе сообщества у названия встречи (см.
+        // .event-row-community): чип несёт только название.
+        communityMeetup: (name: string) => `Meetup of the “${name}” community`,
         lockedAria: "This event is available with a subscription",
         lockedBadge: "Subscribers only",
         thaiTime: (zone: string, time: string) => `Thai time. ${zone}: ${time}`,

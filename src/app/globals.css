@@ -4643,6 +4643,44 @@ body::after {
   color: var(--bs-secondary-color);
 }
 
+/* Чип сообщества у названия встречи («смотрим обликов» → чьё это).
+   Тот же .date-chip, что и у времени, но тише и мельче: карточка
+   встречи обязана остаться похожей на обычную карточку события
+   (просьба владельца 2026-09-08), а не превратиться в другой вид
+   строки. Ссылка ведёт в сообщество. */
+.event-row-community {
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+  display: inline-flex;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Название сообщества бывает длинным — обрезаем его, а не растягиваем
+   строку заголовка. Обрезка живёт на внутреннем span, а НЕ на самом
+   чипе: overflow: hidden на чипе срезал бы и его подсказку — она
+   рисуется его же ::after (см. [data-tooltip]). */
+.event-row-community-name {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-row-community:hover {
+  color: var(--bs-body-color);
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+/* Иконку не сжимаем: у чипа есть потолок ширины, и длинное название
+   выдавливало значок в ноль — на узком экране чип оставался без него. */
+.event-row-community svg {
+  flex-shrink: 0;
+}
+
 /* Второй чип строки («+2 даты») — тише первого: это уточнение, а не само
    время события. */
 .event-row-time-quiet {
@@ -6005,7 +6043,11 @@ body::after {
 .profile-friend {
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  overflow: hidden;
+  /* НЕ overflow: hidden. Подсказка с именем друга (data-tooltip, см.
+     профиль) — это ::after самой ссылки, и обрезка по кругу съедала бы
+     её целиком. Круг картинке даёт её собственный радиус ниже, а
+     буквенному фолбэку обрезка и не нужна. */
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6028,10 +6070,11 @@ body::after {
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50%;
 }
 
-/* Ряд вкладок профиля: вкладок до восьми — на узких экранах ряд
-   скроллится горизонтально, а не заворачивается в три строки. */
+/* Ряд вкладок профиля: вкладок до десяти — ряд скроллится
+   горизонтально, а не заворачивается в три строки. */
 .profile-tab-row {
   flex-wrap: nowrap;
 }
@@ -6040,7 +6083,47 @@ body::after {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
-  gap: 1.25rem;
+  /* Ряд занимает всю ширину колонки, а не ужимается по содержимому:
+     иначе растушёвка края (ниже) рисовалась бы не у края колонки, а там,
+     где кончился текст последней вкладки. */
+  flex: 1;
+  /* 1.25rem между вкладками ряд из десяти подписей уже не выдерживал:
+     на 1440 (типичный ноутбук) он перестал влезать целиком — жалоба
+     владельца 2026-09-08. Поджатый шаг возвращает ~60px и снимает
+     прокрутку на широких экранах, оставляя её только там, где вкладки
+     физически не помещаются. */
+  gap: 0.85rem;
+  /* Растушёванный край — единственный признак прокрутки, полосу мы
+     прячем. Величины растушёвки в переменных: по умолчанию нулевые
+     (ряд влез — края чёткие), классы has-more-* их поднимают.
+     Маска, а не градиент цветом фона: под контентом лежит ambient-wash
+     с цветными пятнами, и «заливка цветом body» рядом с ним читалась бы
+     как грязный прямоугольник. */
+  --tab-fade-start: 0px;
+  --tab-fade-end: 0px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--tab-fade-start),
+    #000 calc(100% - var(--tab-fade-end)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--tab-fade-start),
+    #000 calc(100% - var(--tab-fade-end)),
+    transparent 100%
+  );
+}
+
+/* Классы вешает ProfileTabs по фактическому scrollLeft (см. там же). */
+.profile-tab-row .tab-bar.has-more-start {
+  --tab-fade-start: 2.25rem;
+}
+
+.profile-tab-row .tab-bar.has-more-end {
+  --tab-fade-end: 2.25rem;
 }
 
 .profile-tab-row .tab-bar::-webkit-scrollbar {
@@ -6340,7 +6423,10 @@ body::after {
   border: none;
 }
 
-.profile-friend.premium-ring::after {
+/* ::before, а не ::after: ::after у этой же ссылки занят подсказкой с
+   именем друга ([data-tooltip] выше), и кольцо подписчика её перебивало
+   бы — у подписчиков подсказка просто не появлялась. */
+.profile-friend.premium-ring::before {
   content: "";
   position: absolute;
   inset: 0;

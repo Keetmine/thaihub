@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 export type ProfileTabKey =
@@ -23,8 +23,26 @@ export type ProfileTabKey =
  *
  * Панели остаются смонтированными (display:none), чтобы состояние
  * (раскрытые списки, карта) не терялось при переключении — тот же
- * паттерн, что был в кабинете. На узких экранах ряд вкладок скроллится
- * горизонтально (.profile-tab-row в globals.css).
+ * паттерн, что был в кабинете. Ряд вкладок скроллится горизонтально
+ * (.profile-tab-row в globals.css).
+ *
+ * Про прокрутку ряда (жалоба владельца 2026-09-08 «вкладки не влезают»).
+ * Вкладок стало десять, и на 1280 последние две («Места и списки»,
+ * «Сообщества») просто обрезались краем колонки — прокрутка была, но
+ * выглядела как поломанная вёрстка: ни полосы (она спрятана), ни любого
+ * другого признака, что справа что-то есть. Поэтому здесь два
+ * дополнения к CSS:
+ *
+ * 1) классы has-more-start/has-more-end по фактическому положению
+ *    прокрутки — CSS по ним растушёвывает соответствующий край, и
+ *    обрезанная вкладка читается как «ряд продолжается», а не как
+ *    обрезка;
+ * 2) активная вкладка подтягивается в видимую часть ряда. Без этого
+ *    ссылка вида ?tab=communities открывала нужную панель, а сама
+ *    вкладка оставалась за краем — казалось, что подсветилась не та.
+ *
+ * Прокручиваем строго scrollLeft самого ряда, а не scrollIntoView:
+ * последний умеет утянуть за собой и страницу целиком.
  *
  * Вкладки — НАСТОЯЩИЕ ссылки на `?tab=…` (просьба владельца
  * 2026-09-06: «хочу скинуть ссылку на сериалы в профиле»). Обычный клик
@@ -71,10 +89,59 @@ export default function ProfileTabs({
     return () => window.removeEventListener("popstate", syncFromUrl);
   }, [firstKey, tabs]);
 
+  const barRef = useRef<HTMLDivElement>(null);
+  // Что показывать растушёванным: слева и/или справа ряда осталось
+  // непоказанное. Оба false — ряд влез целиком, краям делать нечего.
+  const [more, setMore] = useState({ start: false, end: false });
+
+  const syncMore = useCallback(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    // Запас в 1px: дробная ширина колонки даёт scrollWidth на доли
+    // пикселя больше clientWidth даже у ряда, который влез.
+    const max = bar.scrollWidth - bar.clientWidth;
+    const next = { start: bar.scrollLeft > 1, end: bar.scrollLeft < max - 1 };
+    // Возвращаем прежний объект, когда ничего не изменилось: событий
+    // прокрутки за один жест десятки, и каждый новый объект перерисовывал
+    // бы весь профиль впустую.
+    setMore((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
+  }, []);
+
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    syncMore();
+    bar.addEventListener("scroll", syncMore, { passive: true });
+    // Ряд меняет ширину не только с окном: слева от него грид-колонка,
+    // а внутри — подписи со счётчиками, которые дорисовываются позже.
+    const observer = new ResizeObserver(syncMore);
+    observer.observe(bar);
+    return () => {
+      bar.removeEventListener("scroll", syncMore);
+      observer.disconnect();
+    };
+  }, [syncMore, tabs.length]);
+
+  // Активная вкладка — в видимую часть ряда (см. п.2 в шапке файла).
+  useEffect(() => {
+    const bar = barRef.current;
+    const item = bar?.querySelector<HTMLElement>(".tab-bar-item.active");
+    if (!bar || !item) return;
+    const barBox = bar.getBoundingClientRect();
+    const itemBox = item.getBoundingClientRect();
+    // Отступ, чтобы вкладка не прилипала к растушёванному краю.
+    const pad = 24;
+    if (itemBox.right > barBox.right) bar.scrollLeft += itemBox.right - barBox.right + pad;
+    else if (itemBox.left < barBox.left) bar.scrollLeft -= barBox.left - itemBox.left + pad;
+  }, [activeTab]);
+
   return (
     <div>
       <div className="tab-bar-row profile-tab-row">
-        <div className="tab-bar">
+        <div
+          ref={barRef}
+          className={`tab-bar${more.start ? " has-more-start" : ""}${more.end ? " has-more-end" : ""}`}
+        >
           {tabs.map((tab) => (
             <a
               key={tab.key}

@@ -172,6 +172,10 @@ export const events: Dict["events"] = {
         manyFriendsGoing: (count: number) =>
             `${pluralized(count, ["друг", "друга", "друзей"])} ${plural(count, ["идёт", "идут", "идут"])}`,
         extraDates: (count: number) => `+${count} ${plural(count, ["дата", "даты", "дат"])}`,
+        // Подсказка на чипе сообщества у названия встречи: сам чип
+        // показывает только название, а «встреча сообщества» —
+        // расшифровка, зачем оно там (см. .event-row-community).
+        communityMeetup: (name: string) => `Встреча сообщества «${name}»`,
         lockedAria: "Событие доступно по подписке",
         lockedBadge: "По подписке",
         thaiTime: (zone: string, time: string) => `Тайское время. ${zone}: ${time}`,

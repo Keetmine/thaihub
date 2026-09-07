@@ -140,7 +140,20 @@ export async function fetchEventListPage(
 
   const occurrences = await prisma.eventOccurrence.findMany({
     where: { startsAt, ...occurrenceFilterWhere(userId, filters) },
-    include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
+    include: {
+      event: {
+        include: {
+          performers: { include: { performer: { select: { id: true, name: true, slug: true } } } },
+          // Сообщество-хозяин встречи: у каталожных событий null, у
+          // встреч — подпись на карточке (вкладка «Сообщества» и
+          // смешанная «Я иду»). Тянем всегда, а не только под
+          // filter === "communities": во вкладке «Я иду» встречи и
+          // каталожные события идут вперемешку, и различать их по
+          // отсутствующему полю было бы нечем.
+          community: { select: { id: true, slug: true, title: true } },
+        },
+      },
+    },
     orderBy: { startsAt: phase === "upcoming" ? "asc" : "desc" },
     skip: offset,
     take: EVENT_PAGE_SIZE + 1,
@@ -164,6 +177,8 @@ export async function fetchEventListPage(
       startsAt: ev.startsAt,
       endsAt: null,
       performers: [],
+      // Название сообщества — тоже содержимое: наружу не уходит.
+      community: null,
     }));
   }
 
