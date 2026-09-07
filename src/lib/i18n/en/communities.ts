@@ -4,7 +4,7 @@ export const communities = {
         "Communities on MyBLHub: find people who watch the same shows and go to the same events.",
     heading: "Communities",
     eyebrow: "Together",
-    intro: "Places to find people who watch the same shows as you.",
+    intro: "Places to find people who love the same shows as you.",
 
     create: "Create a community",
     createTitle: "New community",

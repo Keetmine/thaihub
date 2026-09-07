@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
-import { combineDateTime } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 import type { TripTodoKind, TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, isItemVisibility } from "./itemVisibility";
 import { isPremiumActive } from "@/lib/premium";
@@ -938,9 +938,15 @@ function parseTodoDate(formData: FormData): { date: Date | null; hasTime: boolea
   const dateRaw = String(formData.get("date") ?? "").trim();
   if (!dateRaw) return { date: null, hasTime: false };
   const timeRaw = String(formData.get("time") ?? "").trim();
-  const date = new Date(`${dateRaw}T${timeRaw || "00:00"}`);
+  // Через normalizeTimeValue и combineDateTime: строка `${date}T${time}`
+  // ломалась о «12.30» (браузер рисует поле по настройкам системы), и
+  // дело кончалось Invalid Date — а тут это значило «дела без даты
+  // вовсе», то есть введённая дата молча пропадала.
+  const time = timeRaw ? normalizeTimeValue(timeRaw) : null;
+  if (timeRaw && !time) return { date: null, hasTime: false };
+  const date = combineDateTime(dateRaw, time ?? "00:00");
   if (Number.isNaN(date.getTime())) return { date: null, hasTime: false };
-  return { date, hasTime: Boolean(timeRaw) };
+  return { date, hasTime: Boolean(time) };
 }
 
 /** Какой это список: дела, чемодан или покупки (АА10/АА11). Мусор в

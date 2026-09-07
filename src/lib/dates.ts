@@ -36,8 +36,41 @@ function normalizeYear(year: number): number {
 /** Combines a "YYYY-MM-DD" date string and "HH:mm" time string into a
  *  local wall-clock Date — never through `new Date(isoString)`, which
  *  would reinterpret an unqualified string in the server's own timezone. */
+/**
+ * Приводит введённое время к «ЧЧ:ММ» или отдаёт null, если это вообще
+ * не время.
+ *
+ * Терпимо к тому, как время выглядит у человека на экране (находка
+ * владельца 2026-09-09: «маска стоит 12.30, исправляю 30 на 00 — и
+ * форма говорит, что дата неправильная»). Поле `type="time"` рисует
+ * браузер по настройкам системы, и разделителем там бывает точка;
+ * оттуда же приходят «9:30» без ведущего нуля и «12:30:00» с
+ * секундами. Раньше всё это не проходило проверку `^\d{2}:\d{2}$` и
+ * превращалось в ошибку про дату, хотя со временем всё было в порядке.
+ *
+ * Пустая строка — это НЕ ошибка, а «время не указали»: у события такое
+ * бывает законно (hasTime = false). Поэтому пустое отсеивают до вызова.
+ */
+export function normalizeTimeValue(raw: string): string | null {
+  const trimmed = raw.trim();
+  // Разделитель — что угодно из привычного: двоеточие, точка, дефис,
+  // пробел. Секунды принимаем и отбрасываем: они нам не нужны, но
+  // ронять из-за них форму — грубо.
+  const m = trimmed.match(/^(\d{1,2})\s*[:.\-\s]\s*(\d{1,2})(?:\s*[:.]\s*\d{1,2})?$/);
+  // «1230» и «930» — набранное подряд, без разделителя.
+  const digits = !m && /^\d{3,4}$/.test(trimmed) ? trimmed.padStart(4, "0") : null;
+  const h = m ? Number(m[1]) : digits ? Number(digits.slice(0, 2)) : NaN;
+  const min = m ? Number(m[2]) : digits ? Number(digits.slice(2)) : NaN;
+  if (!Number.isInteger(h) || !Number.isInteger(min)) return null;
+  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return `${pad(h)}:${pad(min)}`;
+}
+
 export function combineDateTime(dateStr: string, time: string): Date {
-  const [h, m] = time.split(":").map(Number);
+  // Через normalizeTimeValue, а не split(":"): в поле могло прийти
+  // «12.30» или «9:30», и раньше такое давало NaN, то есть Invalid Date
+  // прямо в базу.
+  const [h, m] = (normalizeTimeValue(time) ?? "00:00").split(":").map(Number);
   const [y, mo, d] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(normalizeYear(y), mo - 1, d, h, m));
 }

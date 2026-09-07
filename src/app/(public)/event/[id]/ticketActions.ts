@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { privateUploadsDir } from "@/lib/privateUploads";
 import { canAttachPrivateFile } from "@/lib/privateFiles";
 import { getT } from "@/lib/i18n";
-import { combineDateTime } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action (см. promoActions.ts). */
@@ -115,7 +115,10 @@ export async function setTicketOnlineBooking(
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
   }
-  if (time && !/^\d{2}:\d{2}$/.test(time)) {
+  // Время нормализуем, а не сверяем по шаблону: поле рисует браузер, и
+  // разделителем там бывает точка (см. normalizeTimeValue).
+  const normalizedTime = time ? normalizeTimeValue(time) : null;
+  if (time && !normalizedTime) {
     return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
   }
   const url = normalizeBookingUrl(input.url);
@@ -128,7 +131,7 @@ export async function setTicketOnlineBooking(
   });
   if (!ticket) return { ok: false, error: t.events.tickets.goFirst };
 
-  const onlineBookingAt = date ? combineDateTime(date, time) : null;
+  const onlineBookingAt = date ? combineDateTime(date, normalizedTime ?? time) : null;
   const timeChanged = (ticket.onlineBookingAt?.getTime() ?? null) !== (onlineBookingAt?.getTime() ?? null);
   await prisma.eventTicket.update({
     where: { id: ticket.id },
