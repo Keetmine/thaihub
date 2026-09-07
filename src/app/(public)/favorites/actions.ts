@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { canSeeMeetup } from "@/lib/meetups";
+import { isPremiumActive } from "@/lib/premium";
 import { getT } from "@/lib/i18n";
 import type { DramaStatus } from "@/generated/prisma/client";
 
@@ -80,7 +81,13 @@ export async function toggleFavoriteEvent(eventId: string) {
   revalidatePath(`/event/${eventId}`);
 }
 
-const WATCH_STATUSES = ["WATCHING", "COMPLETED", "ON_HOLD", "PLAN_TO_WATCH", "DROPPED"] as const;
+const WATCH_STATUSES = [
+  "WATCHING",
+  "COMPLETED",
+  "ON_HOLD",
+  "PLAN_TO_WATCH",
+  "DROPPED",
+] as const;
 export type DramaWatchStatusValue = (typeof WATCH_STATUSES)[number];
 
 export async function setDramaWatchStatus(
@@ -166,7 +173,9 @@ function hasFinishedAiring(status: DramaStatus | null): boolean {
 export async function setDramaEpisodesWatched(
   dramaId: string,
   episodes: number,
-): Promise<{ ok: true; watched: number; status: DramaWatchStatusValue } | ActionError> {
+): Promise<
+  { ok: true; watched: number; status: DramaWatchStatusValue } | ActionError
+> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!Number.isFinite(episodes)) {
@@ -183,10 +192,14 @@ export async function setDramaEpisodesWatched(
       select: { status: true },
     }),
   ]);
-  if (!drama) return { ok: false, error: (await getT()).t.catalog.errors.dramaNotFound };
+  if (!drama)
+    return { ok: false, error: (await getT()).t.catalog.errors.dramaNotFound };
 
   const total = drama.episodes ?? null;
-  const watched = Math.max(0, Math.min(Math.floor(episodes), total ?? MAX_EPISODES));
+  const watched = Math.max(
+    0,
+    Math.min(Math.floor(episodes), total ?? MAX_EPISODES),
+  );
   const finishedAll = total !== null && watched >= total;
 
   let status: DramaWatchStatusValue = current?.status ?? "WATCHING";
@@ -201,7 +214,9 @@ export async function setDramaEpisodesWatched(
       status,
       // Автосмена статуса двигает и колокольчик (как в setDramaWatchStatus);
       // при том же статусе не трогаем — выключенный руками не включаем.
-      ...(current?.status !== status ? { notifyEpisodes: status === "WATCHING" } : {}),
+      ...(current?.status !== status
+        ? { notifyEpisodes: status === "WATCHING" }
+        : {}),
     },
     create: {
       userId: user.id,
@@ -237,7 +252,12 @@ export async function toggleEpisodeNotifications(
   await prisma.dramaWatchStatus.upsert({
     where: { userId_dramaId: { userId: user.id, dramaId } },
     update: { notifyEpisodes: enabled },
-    create: { userId: user.id, dramaId, status: "WATCHING", notifyEpisodes: true },
+    create: {
+      userId: user.id,
+      dramaId,
+      status: "WATCHING",
+      notifyEpisodes: true,
+    },
   });
 
   revalidatePath(`/dramas/${dramaId}`);
@@ -289,7 +309,9 @@ export async function clearDramaWatchStatus(dramaId: string) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  await prisma.dramaWatchStatus.deleteMany({ where: { userId: user.id, dramaId } });
+  await prisma.dramaWatchStatus.deleteMany({
+    where: { userId: user.id, dramaId },
+  });
 
   revalidatePath("/account");
   revalidatePath(`/dramas/${dramaId}`);
@@ -305,7 +327,8 @@ export async function toggleGoing(occurrenceId: string): Promise<ActionResult> {
     where: { id: occurrenceId },
     include: { event: { select: { communityId: true } } },
   });
-  if (!occurrence) return { ok: false, error: (await getT()).t.events.going.dateNotFound };
+  if (!occurrence)
+    return { ok: false, error: (await getT()).t.events.going.dateNotFound };
   // Отметиться на встречу сообщества может только тот, кто вправе её
   // видеть: id даты угадать нельзя, но и полагаться на это не станем —
   // экшен вызывается напрямую, мимо любой страницы (см. lib/meetups.ts).
@@ -322,6 +345,20 @@ export async function toggleGoing(occurrenceId: string): Promise<ActionResult> {
       where: { userId_occurrenceId: { userId: user.id, occurrenceId } },
     });
   } else {
+    // Отметка «иду» на событие АФИШИ — часть подписки. Проверяем здесь,
+    // а не только в разметке: страница события кнопки без подписки не
+    // рисует, но экшен вызывается и напрямую, мимо любой страницы.
+    //
+    // Встречи сообществ — исключение, как и на странице события
+    // (`isPremium || isMeetup`): участие в сообществе бесплатное, и
+    // отметиться на встречу своего сообщества можно без подписки.
+    //
+    // Снятие отметки свободно всегда: у истёкшей подписки человек иначе
+    // остался бы с планами в календаре и без способа их убрать (то же
+    // правило, что у своих списков, — платно создание).
+    if (!occurrence.event.communityId && !isPremiumActive(user)) {
+      return { ok: false, error: (await getT()).t.events.going.premium };
+    }
     await prisma.eventAttendance.create({
       data: { userId: user.id, occurrenceId, eventId: occurrence.eventId },
     });
