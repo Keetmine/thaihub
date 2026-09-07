@@ -90,7 +90,10 @@ export default function BookingForm({
         <input id={`${uid}-input`}
           type="time"
           name={side === "start" ? "startTime" : "endTime"}
-          defaultValue={(side === "start" ? booking?.startTime : booking?.endTime) ?? ""}
+          // Нули вместо пустоты: пустое поле времени браузер рисует
+          // призрачным «12:30» (правка владельца 2026-09-09), а «00:00»
+          // на сервере значит «время не назначено».
+          defaultValue={(side === "start" ? booking?.startTime : booking?.endTime) ?? "00:00"}
           aria-label={timeAria}
           className="form-control form-control-sm"
         />

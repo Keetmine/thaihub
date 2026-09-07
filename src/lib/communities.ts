@@ -154,6 +154,86 @@ export function viewerCommunitiesWhere(
 /** Сообщество названо, но пустым названием жить не может. */
 export const COMMUNITY_TITLE_MAX = 80;
 export const COMMUNITY_DESCRIPTION_MAX = 2000;
+export const COMMUNITY_PLACE_MAX = 60;
+export const COMMUNITY_LINK_LABEL_MAX = 60;
+/** Сколько ссылок принимаем ПРИ СОЗДАНИИ. Дальше их добавляют по одной в
+ *  управлении, и потолка там нет: здесь он только затем, чтобы форму
+ *  нельзя было отправить с тысячей рядов мимо интерфейса. */
+export const COMMUNITY_LINKS_AT_CREATE_MAX = 5;
+
+/**
+ * Пропорции обложки — те же, в которых она и рисуется везде
+ * (`.community-cover` в globals.css, квадрат; правка владельца
+ * 2026-09-09). Кадрируем ровно в них: рамка обязана показывать то, что
+ * окажется на странице, иначе `object-fit: cover` срежет края уже после
+ * загрузки.
+ *
+ * Константа общая намеренно: обложку кадрируют два окна — создание и
+ * управление, — и разъехавшиеся числа означали бы, что в одном из них
+ * рамка врёт. Меняете здесь — меняйте и `aspect-ratio` в CSS.
+ */
+export const COMMUNITY_COVER_RATIO_W = 1;
+export const COMMUNITY_COVER_RATIO_H = 1;
+
+/**
+ * Место сообщества из формы: страна и город.
+ *
+ * Правило одно на оба окна: город без страны на витрине не находится
+ * вовсе — фильтр там «страна → город», и одинокий «Минск» остался бы
+ * невидимым. Поэтому проверка живёт здесь, а не копией в каждом экшене.
+ * Фразу об ошибке подставляет вызывающий: словарь берётся из запроса, а
+ * тут чистая функция без локали.
+ */
+export function parseCommunityPlace(
+  rawCountry: unknown,
+  rawCity: unknown,
+): { ok: true; country: string | null; city: string | null } | { ok: false } {
+  const country = String(rawCountry ?? "")
+    .trim()
+    .slice(0, COMMUNITY_PLACE_MAX);
+  const city = String(rawCity ?? "")
+    .trim()
+    .slice(0, COMMUNITY_PLACE_MAX);
+  if (city && !country) return { ok: false };
+  return { ok: true, country: country || null, city: city || null };
+}
+
+export type CommunityLinkDraft = { label: string; url: string };
+
+/** Ссылка сообщества из формы — одна и та же проверка и при создании, и
+ *  при добавлении в управлении. `reason` вызывающий превращает во фразу
+ *  словаря (см. выше про локаль). */
+export function parseCommunityLink(
+  rawLabel: unknown,
+  rawUrl: unknown,
+): { ok: true; link: CommunityLinkDraft } | { ok: false; reason: "required" | "url" } {
+  const label = String(rawLabel ?? "")
+    .trim()
+    .slice(0, COMMUNITY_LINK_LABEL_MAX);
+  const url = String(rawUrl ?? "").trim();
+  if (!label || !url) return { ok: false, reason: "required" };
+  // Только http(s): javascript: и data: в чужой ссылке — это уже атака
+  // на того, кто её откроет.
+  if (!/^https?:\/\//i.test(url)) return { ok: false, reason: "url" };
+  return { ok: true, link: { label, url } };
+}
+
+/**
+ * Адрес обложки, годный для записи в базу (пустой — «без обложки»).
+ *
+ * Принимаем только собственные `/uploads/…`: адрес уходит прямо в `<img
+ * src>` на публичной странице, и чужой домен в нём — это и утечка
+ * реферера всем, кто открыл сообщество, и картинка, которая в любой
+ * момент станет чем угодно. `..` отдельно: без этого `/uploads/../../etc`
+ * прошёл бы проверку префикса.
+ */
+export function parseCommunityCoverUrl(
+  raw: unknown,
+): { ok: true; url: string | null } | { ok: false } {
+  const next = String(raw ?? "").trim() || null;
+  if (next && (!next.startsWith("/uploads/") || next.includes(".."))) return { ok: false };
+  return { ok: true, url: next };
+}
 /** Потолок на человека: три сообщества — это уже «веду сообщества», а
  *  не «завёл на пробу». Мёртвые сообщества портят витрину сильнее, чем
  *  их отсутствие (см. docs/features/communities.md). */

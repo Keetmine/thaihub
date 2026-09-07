@@ -20,12 +20,10 @@ import {
   saveCommunityPlace,
   type CommunityPlaceState,
 } from "../whereActions";
-
-/** Пропорции обложки — те же, в которых она и рисуется в колонке
- *  сообщества (`.community-cover`, 3:2). Кадрируем ровно в них: рамка
- *  обязана показывать то, что окажется на странице. */
-const COVER_RATIO_W = 3;
-const COVER_RATIO_H = 2;
+// Пропорции обложки — общей константой: рамка кадрирования обязана
+// показывать то, что окажется на странице, а форма создания и форма
+// правки должны кадрировать ОДИНАКОВО.
+import { COMMUNITY_COVER_RATIO_H, COMMUNITY_COVER_RATIO_W } from "@/lib/communities";
 
 /** Загруженное место — только успешная ветка ответа экшена: ошибку окно
  *  показывает отдельной строкой, а не подставляет в поля. */
@@ -220,8 +218,11 @@ export default function CommunityAdmin({
               (см. coverActions.ts). */}
           <div className="d-flex flex-column gap-2">
             <h3 className="section-heading mb-0">{s.cover.title}</h3>
-            <div className="community-cover" style={{ maxWidth: "18rem" }}>
-              {coverUrl && <UploadImage src={coverUrl} alt="" sizes="18rem" />}
+            {/* Предпросмотр уже квадратный, поэтому и уже: 18rem, взятые
+                под полосу 3:2, квадратом заняли бы в окне правки целый
+                экран телефона и отодвинули бы за него саму форму. */}
+            <div className="community-cover" style={{ maxWidth: "12rem" }}>
+              {coverUrl && <UploadImage src={coverUrl} alt="" sizes="12rem" />}
             </div>
             <p className="small text-secondary mb-0">{s.cover.hint}</p>
             <div className="d-flex flex-wrap gap-2">
@@ -340,10 +341,11 @@ export default function CommunityAdmin({
               docs/features/communities.md. */}
           {topics ? (
             <form action={saveTopics} className="d-flex flex-column gap-3">
-              <div className="d-flex flex-column gap-1">
-                <h3 className="section-heading mb-0">{s.topics.placeTitle}</h3>
-                <p className="small text-secondary mb-0">{s.topics.placeHint}</p>
-              </div>
+              {/* Заголовка и пояснения над полями нет (правка владельца
+                  2026-09-09): «Страна» и «Город» с примерами в
+                  плейсхолдерах понятны сами, а абзац про витрину и фильтр
+                  объяснял устройство сайта тому, кто просто правит своё
+                  сообщество. Так же и в форме создания. */}
               <div className="row g-2">
                 <div className="col-6">
                   <label className="form-label small text-secondary" htmlFor={`${uid}-country`}>
@@ -440,9 +442,8 @@ export default function CommunityAdmin({
       {cropFile && (
         <ImageCropDialog
           file={cropFile}
-          ratioW={COVER_RATIO_W}
-          ratioH={COVER_RATIO_H}
-          stageMaxWidth="20rem"
+          ratioW={COMMUNITY_COVER_RATIO_W}
+          ratioH={COMMUNITY_COVER_RATIO_H}
           onCancel={() => setCropFile(null)}
           onDone={(cropped) => {
             setCropFile(null);

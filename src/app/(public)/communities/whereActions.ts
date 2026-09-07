@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { communityHref } from "@/lib/slugHelpers";
+import { parseCommunityPlace } from "@/lib/communities";
 
 /**
  * Где живёт сообщество — страна и город (АА25).
@@ -22,8 +23,6 @@ import { communityHref } from "@/lib/slugHelpers";
  */
 export type ActionError = { ok: false; error: string };
 export type ActionResult = { ok: true } | ActionError;
-
-const PLACE_MAX = 60;
 
 export type CommunityPlaceState = { ok: true; country: string; city: string } | ActionError;
 
@@ -60,15 +59,15 @@ export async function saveCommunityPlace(
   const community = await requireManaged(communityId);
   if (!community) return { ok: false, error: t.communities.errors.notFound };
 
-  const country = String(formData.get("country") ?? "").trim().slice(0, PLACE_MAX);
-  const city = String(formData.get("city") ?? "").trim().slice(0, PLACE_MAX);
-  // Город без страны на витрине не находится вовсе: фильтр там
-  // страна → город, и одинокий «Минск» остался бы невидимым.
-  if (city && !country) return { ok: false, error: t.communities.topics.errors.cityWithoutCountry };
+  // Разбор и правило «город без страны не бывает» — общие с созданием
+  // сообщества (`parseCommunityPlace`): две копии условия однажды
+  // разъехались бы, и на витрине завёлся бы ненаходимый город.
+  const place = parseCommunityPlace(formData.get("country"), formData.get("city"));
+  if (!place.ok) return { ok: false, error: t.communities.topics.errors.cityWithoutCountry };
 
   await prisma.community.update({
     where: { id: community.id },
-    data: { country: country || null, city: city || null },
+    data: { country: place.country, city: place.city },
   });
   revalidatePath(communityHref(community));
   revalidatePath("/communities");

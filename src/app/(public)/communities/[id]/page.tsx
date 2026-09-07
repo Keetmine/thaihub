@@ -247,9 +247,11 @@ export default async function CommunityPage({
 
       <div className="profile-layout mt-3">
         <aside className="profile-side">
-          {/* Обложка — главный визуал колонки, как фото в профиле. Без
-              неё остаётся тёплая заливка: пустой серый прямоугольник
-              смотрелся бы поломкой. */}
+          {/* Обложка — главный визуал колонки, как фото в профиле, и
+              квадратная: сообщество показывается квадратом и на витрине,
+              и в профиле (правка владельца 2026-09-09). Без неё остаётся
+              тёплая заливка: пустой серый прямоугольник смотрелся бы
+              поломкой. */}
           <div className="community-cover">
             {community.coverUrl && (
               // eslint-disable-next-line @next/next/no-img-element

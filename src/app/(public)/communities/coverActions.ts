@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { communityHref } from "@/lib/slugHelpers";
+import { parseCommunityCoverUrl } from "@/lib/communities";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action, и клиент видит generic error boundary
@@ -65,17 +66,17 @@ export async function setCommunityCover(
   const community = await requireManaged(communityId);
   if (!community) return { ok: false, error: t.communities.errors.notFound };
 
-  const next = coverUrl?.trim() || null;
-  // `..` отдельно: без него `/uploads/../../etc` прошёл бы проверку
-  // префикса и увёл бы <img> с картинок куда угодно.
-  if (next && (!next.startsWith("/uploads/") || next.includes(".."))) {
-    return { ok: false, error: t.communities.errors.coverUrl };
-  }
+  // Проверка адреса — общая с созданием сообщества
+  // (`parseCommunityCoverUrl`): форма создания пишет обложку своим
+  // экшеном, и вторая копия условия — второе место, где однажды
+  // проглядят чужой домен.
+  const parsed = parseCommunityCoverUrl(coverUrl);
+  if (!parsed.ok) return { ok: false, error: t.communities.errors.coverUrl };
 
   await prisma.community.update({
     where: { id: community.id },
-    data: { coverUrl: next },
+    data: { coverUrl: parsed.url },
   });
   revalidatePath(communityHref(community));
-  return { ok: true, coverUrl: next };
+  return { ok: true, coverUrl: parsed.url };
 }

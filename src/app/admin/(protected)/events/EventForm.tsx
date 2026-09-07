@@ -47,7 +47,17 @@ export type OccurrenceRow = {
   lineup: LineupRow[];
 };
 
-const EMPTY_OCCURRENCE: OccurrenceRow = { id: "", date: "", startTime: "", endTime: "", lineup: [] };
+// Время нулями, а не пустым (правка владельца 2026-09-09): пустое поле
+// браузер рисует призрачным «12:30», которого в форме нет, и правка
+// такого «значения» кончалась ошибкой про дату. «00:00» на сервере
+// значит «время не назначено» — см. optionalFormTime в lib/dates.ts.
+const EMPTY_OCCURRENCE: OccurrenceRow = {
+  id: "",
+  date: "",
+  startTime: "00:00",
+  endTime: "00:00",
+  lineup: [],
+};
 
 export default function EventForm({
   action,
@@ -113,7 +123,16 @@ export default function EventForm({
   // a repeatable list of dates it happens on, not a single date/time
   // pair. At least one row always stays present.
   const [occurrences, setOccurrences] = useState<OccurrenceRow[]>(
-    v?.occurrences && v.occurrences.length > 0 ? v.occurrences : [EMPTY_OCCURRENCE],
+    v?.occurrences && v.occurrences.length > 0
+      ? // У события без времени в базе пусто — в поле подставляем нули,
+        // иначе браузер снова покажет призрачное «12:30» вместо
+        // пустоты. Смысл тот же: «00:00» = время не назначено.
+        v.occurrences.map((o) => ({
+          ...o,
+          startTime: o.startTime || "00:00",
+          endTime: o.endTime || "00:00",
+        }))
+      : [EMPTY_OCCURRENCE],
   );
 
   function addOccurrence() {
@@ -500,7 +519,7 @@ export default function EventForm({
               <input id="event-form-presaleTime"
                 type="time"
                 name="presaleTime"
-                defaultValue={v?.presaleTime}
+                defaultValue={v?.presaleTime || "00:00"}
                 className="form-control"
               />
             </div>

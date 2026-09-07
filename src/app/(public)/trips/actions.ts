@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
-import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
+import { combineDateTime, optionalFormTime } from "@/lib/dates";
 import type { TripTodoKind, TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, isItemVisibility } from "./itemVisibility";
 import { isPremiumActive } from "@/lib/premium";
@@ -942,8 +942,7 @@ function parseTodoDate(formData: FormData): { date: Date | null; hasTime: boolea
   // ломалась о «12.30» (браузер рисует поле по настройкам системы), и
   // дело кончалось Invalid Date — а тут это значило «дела без даты
   // вовсе», то есть введённая дата молча пропадала.
-  const time = timeRaw ? normalizeTimeValue(timeRaw) : null;
-  if (timeRaw && !time) return { date: null, hasTime: false };
+  const time = optionalFormTime(timeRaw);
   const date = combineDateTime(dateRaw, time ?? "00:00");
   if (Number.isNaN(date.getTime())) return { date: null, hasTime: false };
   return { date, hasTime: Boolean(time) };
@@ -1164,9 +1163,13 @@ function parseTripDateTime(
 ): Date | null {
   const date = parseTripDate(dateValue);
   if (!date) return null;
-  const raw = String(timeValue ?? "").trim();
-  const [h, min] = raw.split(":").map(Number);
-  if (!raw || Number.isNaN(h) || Number.isNaN(min)) return date;
+  // Через общий разбор: половина введённого («12» без минут) — тоже
+  // время, а «00:00» — это умолчание поля, то есть «время не назначено»
+  // (см. optionalFormTime). Раньше сырой split(":") давал NaN и время
+  // молча пропадало.
+  const time = optionalFormTime(String(timeValue ?? ""));
+  if (!time) return date;
+  const [h, min] = time.split(":").map(Number);
   return new Date(date.getTime() + h * 3600_000 + min * 60_000);
 }
 

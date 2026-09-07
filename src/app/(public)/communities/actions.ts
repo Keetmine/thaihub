@@ -13,7 +13,12 @@ import { communityHref } from "@/lib/slugHelpers";
 import {
   COMMUNITY_DESCRIPTION_MAX,
   COMMUNITY_LIMIT_PER_USER,
+  COMMUNITY_LINKS_AT_CREATE_MAX,
   COMMUNITY_TITLE_MAX,
+  parseCommunityCoverUrl,
+  parseCommunityLink,
+  parseCommunityPlace,
+  type CommunityLinkDraft,
 } from "@/lib/communities";
 import type { CommunityJoinMode, CommunityVisibility } from "@/generated/prisma/client";
 
@@ -30,6 +35,32 @@ function parseVisibility(raw: unknown): CommunityVisibility {
 
 function parseJoinMode(raw: unknown): CommunityJoinMode {
   return raw === "APPROVAL" ? "APPROVAL" : "OPEN";
+}
+
+/**
+ * Ссылки из формы СОЗДАНИЯ: подписи и адреса приезжают параллельными
+ * наборами одноимённых полей (в управлении ссылку добавляют по одной,
+ * там формы отдельные). Пустой ряд пропускаем молча — это незаполненное
+ * поле, а не ошибка: рядов в окне несколько, а заполняют обычно один.
+ *
+ * Разбор ряда — общий с `addCommunityLink` (`parseCommunityLink`):
+ * запрет на `javascript:` в чужой ссылке существует в одном месте.
+ */
+function parseNewLinks(
+  formData: FormData,
+): { ok: true; links: CommunityLinkDraft[] } | { ok: false; reason: "required" | "url" } {
+  const labels = formData.getAll("linkLabel");
+  const urls = formData.getAll("linkUrl");
+  const links: CommunityLinkDraft[] = [];
+  for (let i = 0; i < labels.length && links.length < COMMUNITY_LINKS_AT_CREATE_MAX; i++) {
+    const label = String(labels[i] ?? "").trim();
+    const url = String(urls[i] ?? "").trim();
+    if (!label && !url) continue;
+    const parsed = parseCommunityLink(label, url);
+    if (!parsed.ok) return parsed;
+    links.push(parsed.link);
+  }
+  return { ok: true, links };
 }
 
 /**
@@ -73,6 +104,30 @@ export async function createCommunity(formData: FormData): Promise<ActionError |
     .slice(0, COMMUNITY_DESCRIPTION_MAX);
   if (!title) return { ok: false, error: t.communities.errors.titleRequired };
 
+  // Всё остальное необязательно, но проверяется теми же правилами, что
+  // и в управлении (правка владельца 2026-09-09: «сразу выводим все поля
+  // и со странами и с фотками»). Обязательным осталось одно название:
+  // сообщество заводят на настроении, и пять обязательных полей на входе
+  // — верный способ не завести его вовсе.
+  const place = parseCommunityPlace(formData.get("country"), formData.get("city"));
+  if (!place.ok) return { ok: false, error: t.communities.topics.errors.cityWithoutCountry };
+
+  // Обложка уже лежит на диске: форма грузит файл на /api/upload сразу
+  // при выборе и приносит сюда только адрес (см. CreateCommunityButton).
+  const cover = parseCommunityCoverUrl(formData.get("coverUrl"));
+  if (!cover.ok) return { ok: false, error: t.communities.errors.coverUrl };
+
+  const newLinks = parseNewLinks(formData);
+  if (!newLinks.ok) {
+    return {
+      ok: false,
+      error:
+        newLinks.reason === "url"
+          ? t.communities.errors.linkUrl
+          : t.communities.errors.linkRequired,
+    };
+  }
+
   // Потолок на человека — против витрины из мёртвых сообществ.
   const mine = await prisma.community.count({ where: { ownerId: user.id } });
   if (mine >= COMMUNITY_LIMIT_PER_USER) {
@@ -84,8 +139,15 @@ export async function createCommunity(formData: FormData): Promise<ActionError |
       ownerId: user.id,
       title,
       description: description || null,
+      coverUrl: cover.url,
+      country: place.country,
+      city: place.city,
       visibility: parseVisibility(formData.get("visibility")),
       joinMode: parseJoinMode(formData.get("joinMode")),
+      // Ссылки — той же записью: за ссылкой обычно чат, ради которого
+      // сообщество и заводят, и заставлять открывать «Управление» сразу
+      // после создания незачем.
+      ...(newLinks.links.length ? { links: { create: newLinks.links } } : {}),
       // Создатель сразу состоит в своём сообществе: иначе он не был бы в
       // списке участников и не получал бы того, что видят участники.
       members: { create: { userId: user.id, role: "OWNER", status: "ACTIVE" } },
@@ -287,14 +349,16 @@ export async function addCommunityLink(
   const managed = await requireManaged(communityId);
   if (!managed) return { ok: false, error: t.communities.errors.notFound };
 
-  const label = String(formData.get("label") ?? "").trim().slice(0, 60);
-  const url = String(formData.get("url") ?? "").trim();
-  if (!label || !url) return { ok: false, error: t.communities.errors.linkRequired };
-  // Только http(s): javascript: и data: в чужой ссылке — это уже атака
-  // на того, кто её откроет.
-  if (!/^https?:\/\//i.test(url)) return { ok: false, error: t.communities.errors.linkUrl };
+  const parsed = parseCommunityLink(formData.get("label"), formData.get("url"));
+  if (!parsed.ok) {
+    return {
+      ok: false,
+      error:
+        parsed.reason === "url" ? t.communities.errors.linkUrl : t.communities.errors.linkRequired,
+    };
+  }
 
-  await prisma.communityLink.create({ data: { communityId, label, url } });
+  await prisma.communityLink.create({ data: { communityId, ...parsed.link } });
   revalidatePath(`/communities/${communityId}`);
   return { ok: true };
 }

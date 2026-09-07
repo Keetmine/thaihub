@@ -66,11 +66,14 @@ export const communities = {
     /** Обложка: грузится и снимается сразу, отдельно от формы правки. */
     cover: {
         title: "Cover",
-        hint: "A wide picture, 3:2 — you can move and zoom it before saving.",
+        hint: "A square picture — you can move and zoom it before saving.",
         upload: "Add a cover",
         replace: "Replace the cover",
         remove: "Remove the cover",
         uploading: "Uploading…",
+        // Нужна ровно затем, чтобы «Создать сообщество» во время загрузки
+        // не выглядело сломанной кнопкой: см. CreateCommunityButton.
+        wait: "The cover is still uploading — one moment",
     },
 
     /** The page is open, but the inside is not — see communities.ts. */
@@ -95,9 +98,10 @@ export const communities = {
      *  свалку на странице артиста. */
     topics: {
 
-        placeTitle: "Where the community lives",
-        placeHint:
-            "For communities people look for by place rather than by actor. The place is shown on the communities page and works as a filter there; it never appears on artist pages.",
+        // Заголовка и пояснения над полями места больше нет (правка
+        // владельца 2026-09-09): поля с примерами в плейсхолдерах
+        // понятны сами, а абзац объяснял устройство витрины тому, кто
+        // просто заводит сообщество.
         countryLabel: "Country",
         countryPlaceholder: "Thailand",
         cityLabel: "City",

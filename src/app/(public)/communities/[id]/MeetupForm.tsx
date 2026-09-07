@@ -251,7 +251,12 @@ export default function MeetupForm({
                 id={`${uid}-time`}
                 type="time"
                 name="time"
-                defaultValue={meetup?.timeValue}
+                // Нулями по умолчанию (правка владельца 2026-09-09):
+                // пустое поле браузер рисует призрачным «12:30», которого
+                // в форме нет, и правка такого «значения» кончалась
+                // ошибкой. «00:00» на сервере значит «время не назначено»
+                // (см. optionalFormTime).
+                defaultValue={meetup?.timeValue ?? "00:00"}
                 className="form-control"
               />
               <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>

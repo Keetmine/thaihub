@@ -56,14 +56,46 @@ export function normalizeTimeValue(raw: string): string | null {
   // Разделитель — что угодно из привычного: двоеточие, точка, дефис,
   // пробел. Секунды принимаем и отбрасываем: они нам не нужны, но
   // ронять из-за них форму — грубо.
-  const m = trimmed.match(/^(\d{1,2})\s*[:.\-\s]\s*(\d{1,2})(?:\s*[:.]\s*\d{1,2})?$/);
+  // Половина введённого — тоже время (находка владельца 2026-09-09:
+  // «заполняешь часы, но не минуты — и ошибка, и наоборот»). «12» и
+  // «12:» читаем как 12:00, «:30» — как 00:30: человек начал вводить и
+  // не дошёл до конца, а форма из-за этого не должна падать.
+  const m = trimmed.match(/^(\d{1,2})?\s*[:.\-\s]?\s*(\d{1,2})?(?:\s*[:.]\s*\d{1,2})?$/);
   // «1230» и «930» — набранное подряд, без разделителя.
-  const digits = !m && /^\d{3,4}$/.test(trimmed) ? trimmed.padStart(4, "0") : null;
-  const h = m ? Number(m[1]) : digits ? Number(digits.slice(0, 2)) : NaN;
-  const min = m ? Number(m[2]) : digits ? Number(digits.slice(2)) : NaN;
+  const digits = /^\d{3,4}$/.test(trimmed) ? trimmed.padStart(4, "0") : null;
+  if (digits) {
+    const dh = Number(digits.slice(0, 2));
+    const dm = Number(digits.slice(2));
+    return dh > 23 || dm > 59 ? null : `${pad(dh)}:${pad(dm)}`;
+  }
+  // Пустая строка сюда доходить не должна, но регулярка выше её
+  // пропускает: без этого «» превратилось бы в 00:00.
+  if (!m || (m[1] === undefined && m[2] === undefined)) return null;
+  const h = m[1] === undefined ? 0 : Number(m[1]);
+  const min = m[2] === undefined ? 0 : Number(m[2]);
   if (!Number.isInteger(h) || !Number.isInteger(min)) return null;
   if (h < 0 || h > 23 || min < 0 || min > 59) return null;
   return `${pad(h)}:${pad(min)}`;
+}
+
+/**
+ * Время из НЕОБЯЗАТЕЛЬНОГО поля формы: «00:00» здесь значит «время не
+ * назначено», а не полночь.
+ *
+ * Так вышло из правки владельца 2026-09-09: поля времени теперь
+ * заполнены нулями по умолчанию, потому что пустое поле браузер рисовал
+ * призрачным «12:30», которого на самом деле в форме не было. Раз
+ * умолчание видно всем, оно и должно значить «ничего не назначено» —
+ * иначе каждая встреча и каждое событие получили бы настоящее начало в
+ * полночь и показывали бы её в афише, карточках и календаре.
+ *
+ * Цена решения: событие, которое ДЕЙСТВИТЕЛЬНО начинается в полночь,
+ * этими формами не задать — его начало ставится на 00:01. Ночных начал
+ * в афише не бывает, а пустых полей времени — постоянно.
+ */
+export function optionalFormTime(raw: string): string | null {
+  const time = normalizeTimeValue(raw);
+  return !time || time === "00:00" ? null : time;
 }
 
 export function combineDateTime(dateStr: string, time: string): Date {

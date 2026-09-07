@@ -181,7 +181,11 @@ function OnlineBookingLine({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [date, setDate] = useState(booking?.date ?? "");
-  const [time, setTime] = useState(booking?.time ?? "");
+  // Нули вместо пустоты: пустое поле времени браузер рисует призрачным
+  // «12:30» (правка владельца 2026-09-09). Сервер понимает «00:00» как
+  // «время не назначено» (optionalFormTime), а тут его всё равно
+  // спрашивают вместе с датой — обе половины проверяются парой.
+  const [time, setTime] = useState(booking?.time ?? "00:00");
   const [url, setUrl] = useState(booking?.url ?? "");
 
   function openForm() {

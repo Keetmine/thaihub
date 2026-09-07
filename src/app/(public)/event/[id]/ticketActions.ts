@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { privateUploadsDir } from "@/lib/privateUploads";
 import { canAttachPrivateFile } from "@/lib/privateFiles";
 import { getT } from "@/lib/i18n";
-import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
+import { combineDateTime, optionalFormTime } from "@/lib/dates";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action (см. promoActions.ts). */
@@ -108,17 +108,15 @@ export async function setTicketOnlineBooking(
   if (!user) redirect("/login");
   const { t } = await getT();
   const date = input.date.trim();
-  const time = input.time.trim();
+  // Время разбираем ПЕРВЫМ делом: «00:00» — это умолчание поля, то есть
+  // «время не назначено» (см. optionalFormTime), и парную проверку
+  // «дата без времени» оно проходить не должно — иначе бронь по одной
+  // ссылке, без даты, перестала бы сохраняться.
+  const time = optionalFormTime(input.time);
   if ((date && !time) || (!date && time)) {
     return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
   }
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
-  }
-  // Время нормализуем, а не сверяем по шаблону: поле рисует браузер, и
-  // разделителем там бывает точка (см. normalizeTimeValue).
-  const normalizedTime = time ? normalizeTimeValue(time) : null;
-  if (time && !normalizedTime) {
     return { ok: false, error: t.events.tickets.onlineBooking.needDateTime };
   }
   const url = normalizeBookingUrl(input.url);
@@ -131,7 +129,7 @@ export async function setTicketOnlineBooking(
   });
   if (!ticket) return { ok: false, error: t.events.tickets.goFirst };
 
-  const onlineBookingAt = date ? combineDateTime(date, normalizedTime ?? time) : null;
+  const onlineBookingAt = date && time ? combineDateTime(date, time) : null;
   const timeChanged = (ticket.onlineBookingAt?.getTime() ?? null) !== (onlineBookingAt?.getTime() ?? null);
   await prisma.eventTicket.update({
     where: { id: ticket.id },

@@ -222,7 +222,10 @@ export function TodoRow({
                 <input id={`${uid}-time`}
                   type="time"
                   name="time"
-                  defaultValue={timeLabel ?? ""}
+                  // Нули, а не пустое: пустое поле браузер рисует
+                  // призрачным «12:30» (правка владельца 2026-09-09), а
+                  // «00:00» на сервере значит «время не назначено».
+                  defaultValue={timeLabel ?? "00:00"}
                   className="form-control"
                 />
               </div>
@@ -356,7 +359,13 @@ export function AddTripTodoButton({
               </div>
               <div className="col-5">
                 <label className="form-label small text-secondary" htmlFor={`${uid}-time2`}>{t.trips.todos.time}</label>
-                <input id={`${uid}-time2`} type="time" name="time" className="form-control" />
+                <input
+                  id={`${uid}-time2`}
+                  type="time"
+                  name="time"
+                  defaultValue="00:00"
+                  className="form-control"
+                />
               </div>
             </div>
           )}

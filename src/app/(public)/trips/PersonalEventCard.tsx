@@ -105,7 +105,7 @@ export function PersonalEventFields({
           <input id={`${uid}-time`}
             type="time"
             name="time"
-            defaultValue={defaults?.timeValue}
+            defaultValue={defaults?.timeValue ?? "00:00"}
             className="form-control"
           />
         </div>
