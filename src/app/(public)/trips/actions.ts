@@ -170,6 +170,12 @@ export async function createCommunityTrip(
       startDate: start,
       endDate: end,
       visibility: parseVisibility(formData.get("visibility")),
+      // Откуда поездка родом: по этому полю она возвращается на вкладку
+      // «Поездки» сообщества. Прав оно НЕ раздаёт — вкладка показывает
+      // поездку только тем, кто и так вправе её открыть (см. TripsTab):
+      // сотня участников сообщества не должна узнать, что четверо из
+      // них летят в Бангкок 20 августа.
+      communityId,
       members: { create: memberIds.map((userId) => ({ userId })) },
     },
   });

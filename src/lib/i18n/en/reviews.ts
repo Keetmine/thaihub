@@ -12,6 +12,9 @@ export const reviews = {
       uploading: "Uploading…",
       remove: "Remove the photo",
       limit: (n: number) => `up to ${n} photos`,
+      /** Shown next to the picker under an event: says whose photos we
+       *  expect and reminds that a comment is public. */
+      hint: "Your own shots from the show — everyone will see them",
   },
   ratingLabel: "Rating",
   outOf10: "out of 10",

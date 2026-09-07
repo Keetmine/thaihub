@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/userAuth";
 import ConfirmForm from "@/components/ConfirmForm";
 import ActionResultForm from "@/components/ActionResultForm";
 import CommentLikeButton from "@/components/CommentLikeButton";
+import CommentPhotoPicker from "@/components/CommentPhotoPicker";
+import CommentPhotos from "@/components/CommentPhotos";
 import ReportButton from "@/components/ReportButton";
 import { TrashIcon, StarIcon, ChatIcon, HelpIcon } from "@/components/icons";
 import ReviewRatingFields, { type ReviewRatingField } from "@/components/ReviewRatingFields";
@@ -25,8 +27,24 @@ type CommentWithMeta = {
   createdAt: Date;
   user: { id: string; name: string | null; photoUrl: string | null; deletedAt: Date | null };
   likes: { userId: string }[];
+  photos: { id: string; url: string }[];
   replies?: CommentWithMeta[];
 };
+
+/**
+ * Можно ли прикладывать фото к комментарию (АА20).
+ *
+ * Только события. Под событием комментарий — это «я там был»: свои
+ * кадры с концерта, и они по делу. Под сериалом и новеллой то же поле
+ * собирало бы чужие кадры из серий (то есть чужие права) и спойлеры
+ * картинкой, мимо которой не проскочишь глазами, — а модерировать это
+ * пришлось бы вручную и постоянно. Ту же развилку повторяет addComment
+ * в reviews/actions.ts: форма без пикера ещё не защита, скрытое поле
+ * подделывается руками.
+ */
+function photosAllowed(kind: ReviewKind): boolean {
+  return kind === "event";
+}
 
 async function CommentRow({
   comment: c,
@@ -60,6 +78,11 @@ async function CommentRow({
         <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>
           {c.text}
         </p>
+        {/* Показываем картинки везде, где они есть, а не только там, где
+            их сейчас разрешено прикладывать: если правило когда-нибудь
+            изменится, уже приложенные фото не должны пропасть со
+            страницы, оставшись в базе. */}
+        <CommentPhotos photos={c.photos} />
         <div className="d-flex align-items-center gap-3">
           <CommentLikeButton
             commentId={c.id}
@@ -76,7 +99,11 @@ async function CommentRow({
                 {t.reviews.reply}
               </summary>
               {/* ActionResultForm: ошибки экшена приходят значением и
-                  показываются под формой (см. компонент). */}
+                  показываются под формой (см. компонент).
+                  Пикера фото здесь нет намеренно: ответ — это реплика в
+                  чужой ветке, а фото с концерта — самостоятельный вклад,
+                  и место ему в своём комментарии, где его увидят все, а
+                  не в свёрнутой ветке. */}
               <ActionResultForm action={boundAdd} className="d-flex gap-2 mt-2 flex-wrap">
                 <input type="hidden" name="parentId" value={replyToId ?? c.id} />
                 <input
@@ -178,10 +205,13 @@ export default async function ReviewsAndComments({
       include: {
         user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
         likes: { select: { userId: true } },
+        // Порядок картинок задал автор при выборе (sort), не база.
+        photos: { select: { id: true, url: true }, orderBy: { sort: "asc" } },
         replies: {
           include: {
             user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
             likes: { select: { userId: true } },
+            photos: { select: { id: true, url: true }, orderBy: { sort: "asc" } },
           },
           orderBy: { createdAt: "asc" },
         },
@@ -379,6 +409,15 @@ export default async function ReviewsAndComments({
               aria-label={t.reviews.commentAria}
               className="form-control"
             />
+            {/* Фото — только под событием (см. photosAllowed выше).
+                Пикер грузит файл сразу при выборе и оставляет форме
+                скрытые photoUrl, поэтому форма остаётся серверной. */}
+            {photosAllowed(kind) && (
+              <div className="d-flex flex-column gap-1">
+                <CommentPhotoPicker />
+                <span className="small text-secondary">{t.reviews.photos.hint}</span>
+              </div>
+            )}
             <button type="submit" className="btn btn-primary btn-sm align-self-start">
               {t.reviews.send}
             </button>

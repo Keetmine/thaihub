@@ -21,8 +21,6 @@ import DiscussionsTab from "./DiscussionsTab";
 import MeetupsTab from "./MeetupsTab";
 import PlacesTab from "./PlacesTab";
 import TripsTab from "./TripsTab";
-import TripFromCommunityButton from "./TripFromCommunityButton";
-import { isPremiumActive } from "@/lib/premium";
 
 export const dynamic = "force-dynamic";
 
@@ -284,26 +282,9 @@ export default async function CommunityPage({
                 </button>
               </ConfirmForm>
             )}
-            {/* «Собрать поездку» (АА25, связка с поездками): в
-                сообществе договариваются, а едут в поездке — с планом по
-                дням, бронями и общими делами. Кнопка только участнику и
-                только с подпиской: поездки платные целиком, и кнопка,
-                которая всегда отвечает «это по подписке», хуже её
-                отсутствия. Кого звать, человек выбирает в форме —
-                скопом сообщество в поездку не зачисляется. */}
-            {access.isMember && isPremiumActive(viewer) && (
-              <TripFromCommunityButton
-                communityId={community.id}
-                communityTitle={community.title}
-                members={active
-                  .filter((m) => m.userId !== viewer?.id)
-                  .map((m) => ({
-                    id: m.userId,
-                    name: userDisplayName(m.user, locale),
-                    photoUrl: m.user.photoUrl,
-                  }))}
-              />
-            )}
+            {/* «Собрать поездку» живёт во вкладке «Поездки», рядом со
+                списком уже собранных: здесь она была вторым экземпляром
+                той же кнопки. */}
             {access.canManage && (
               <CommunityAdmin
                 communityId={community.id}

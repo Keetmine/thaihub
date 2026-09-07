@@ -1,13 +1,21 @@
 import EmptyState from "@/components/EmptyState";
 import { getT } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
+import { communityHref } from "@/lib/slugHelpers";
 import { getCurrentUser } from "@/lib/userAuth";
-import PostCard, { type PostViewer } from "./PostCard";
+import PostCard from "./PostCard";
+import type { PostViewer } from "./PostComment";
 import PostForm from "./PostForm";
 
 /**
- * Вкладка «Обсуждения» — темы сообщества и комментарии к ним (АА25,
- * этап 2; см. docs/features/communities.md).
+ * Вкладка «Обсуждения» — СПИСОК тем сообщества (АА25, этап 2; см.
+ * docs/features/communities.md).
+
+ * Список, а не лента с раскрытыми комментариями: раньше все темы вместе
+ * со всеми ответами и картинками лежали на одной вкладке, и читать её
+ * было нечем — «если там будет 100500 фоток, то как листать» (жалоба
+ * владельца 2026-09-08). Сама тема открывается своей страницей
+ * `/communities/<slug>/posts/<id>`.
  *
  * Вкладка рисуется только тем, кто внутри сообщества: наружу обсуждения
  * не уходят ни гостю, ни поисковику (правило «витрина — всем,
@@ -34,6 +42,10 @@ export default async function DiscussionsTab({
     prisma.community.findUnique({
       where: { id: communityId },
       select: {
+        id: true,
+        // Слаг — чтобы ссылка на тему выглядела как остальные ссылки
+        // сайта, а не как строка из cuid'ов.
+        slug: true,
         ownerId: true,
         // Гостя тут быть не должно (вкладка рисуется только участникам),
         // но пустой id — честный «ничего не нашлось», а не падение.
@@ -45,25 +57,17 @@ export default async function DiscussionsTab({
     }),
     prisma.communityPost.findMany({
       where: { communityId },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        text: true,
+        pinned: true,
+        createdAt: true,
         author: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
-        // Комментарии одной выборкой вместе с темами: отдельный запрос на
-        // каждую тему — это N+1 на ленте из полусотни обсуждений.
-        comments: {
-          where: { parentId: null },
-          include: {
-            user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
-            likes: { select: { userId: true } },
-            replies: {
-              include: {
-                user: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
-                likes: { select: { userId: true } },
-              },
-              orderBy: { createdAt: "asc" },
-            },
-          },
-          orderBy: { createdAt: "asc" },
-        },
+        // Комментарии считаются в базе, а не тянутся сюда: списку нужно
+        // одно число на строку, а не сами реплики с картинками.
+        // Носитель картинок темы из счёта выкинут — он служебный
+        _count: { select: { comments: true } },
       },
       // Закреплённые сверху, дальше свежие: закреп для того и нужен,
       // чтобы правила и знакомство не тонули под новыми темами.
@@ -82,9 +86,10 @@ export default async function DiscussionsTab({
     // страница уже решила, что зритель не участник, форм не будет.
     canPost: canPost && (isOwner || membership?.status === "ACTIVE"),
   };
+  const base = community ? communityHref(community) : "";
 
   return (
-    <div className="d-flex flex-column gap-3">
+    <div className="d-flex flex-column gap-2">
       {viewer.canPost && <PostForm communityId={communityId} />}
 
       {posts.length === 0 ? (
@@ -95,7 +100,14 @@ export default async function DiscussionsTab({
           compact
         />
       ) : (
-        posts.map((post) => <PostCard key={post.id} post={post} viewer={viewer} />)
+        posts.map((post) => (
+          <PostCard
+            key={post.id}
+            post={{ ...post, commentCount: post._count.comments }}
+            href={`${base}/posts/${post.id}`}
+            viewer={viewer}
+          />
+        ))
       )}
     </div>
   );

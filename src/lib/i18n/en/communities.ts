@@ -247,6 +247,9 @@ export const communities = {
         deletePost: "Delete the topic",
         deletePostConfirm: "Delete this topic? Its comments go with it.",
         commentsCount: (n: number) => (n === 1 ? "1 comment" : `${n} comments`),
+        /** Заголовок ленты на странице темы — там число уже не новость,
+         *  оно стояло в строке списка, по которой человек и пришёл. */
+        commentsHeading: "Comments",
         noComments: "No comments yet.",
         commentPlaceholder: "Write a comment…",
         commentAria: "Comment text",
@@ -345,6 +348,15 @@ export const communities = {
         tripMembersPlaceholder: "Pick members…",
         tripNobody: "Nobody but you here yet — the trip will start out solo.",
         tripSubmit: "Create the trip",
+
+        tripsHeading: "Community trips",
+        tripsNote:
+            "Only the trips you can open anyway: your own, the ones you were invited to, and the ones their owners opened up. A trip planned here does not become everyone's.",
+        tripsPast: "Past trips",
+        tripsEmptyTitle: "No trips yet",
+        tripsEmptyHint: "Plan the first one — the day-by-day plan, bookings and shared to-dos come with it.",
+        tripsEmptyHintReadOnly:
+            "Either nobody has planned one yet, or you have not been invited: other people's trips are not listed here.",
 
         errors: {
             notMember: "Only members of the community can plan a trip from it",

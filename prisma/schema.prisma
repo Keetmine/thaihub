@@ -2307,6 +2307,11 @@ model CommunityPost {
   text        String
   /// Закреплённая тема — правила сообщества, знакомство, объявление.
   pinned      Boolean   @default(false)
+  /// Картинки самой темы. Своя модель, а не «служебный комментарий с
+  /// фотографиями»: призрачная строка в общей таблице комментариев
+  /// заставляла бы каждое место, которое их считает или показывает
+  /// (лента, счётчики, админская модерация), знать про исключение.
+  photos      CommunityPostPhoto[]
   comments    Comment[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -2350,4 +2355,18 @@ model CommentPhoto {
   createdAt DateTime @default(now())
 
   @@index([commentId])
+}
+
+/// Фото, приложенное к теме обсуждения. Устроено как `CommentPhoto` и
+/// показывается тем же компонентом — разница только в том, к чему
+/// прицеплено.
+model CommunityPostPhoto {
+  id        String        @id @default(cuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  url       String
+  sort      Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  @@index([postId])
 }

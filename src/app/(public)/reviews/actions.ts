@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
 import { getT } from "@/lib/i18n";
+import { parseCommentPhotoUrls } from "@/lib/commentPhotos";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action, и клиент видел generic error boundary
@@ -116,8 +117,27 @@ export async function addComment(
     parentAuthor = parent.user;
   }
 
+  // Фото к комментарию (АА20) — ТОЛЬКО у событий. Проверка серверная, а
+  // не «нет пикера — нет и полей»: скрытое поле photoUrl подделывается
+  // руками, а под сериалом и новеллой фото нам не нужны (объяснение —
+  // в ReviewsAndComments.tsx, там же живёт эта же развилка для формы).
+  // Сами адреса чистит parseCommentPhotoUrls: чужие хосты выбрасываются,
+  // остаются только наши /uploads/…, уже прошедшие /api/upload.
+  const photoUrls =
+    kind === "event" ? parseCommentPhotoUrls(formData.getAll("photoUrl")) : [];
+
   await prisma.comment.create({
-    data: { userId: user.id, ...targetWhere(kind, id), parentId, text },
+    data: {
+      userId: user.id,
+      ...targetWhere(kind, id),
+      parentId,
+      text,
+      // sort — порядок, в котором человек выбрал картинки: показываем их
+      // так же, а не как ляжет в базе.
+      ...(photoUrls.length
+        ? { photos: { create: photoUrls.map((url, i) => ({ url, sort: i })) } }
+        : {}),
+    },
   });
 
   // Автору родителя — уведомление на сайте (и в Telegram, если привязан).

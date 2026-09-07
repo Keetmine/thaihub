@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import CommentPhotoPicker from "@/components/CommentPhotoPicker";
 import { useT } from "@/components/LocaleProvider";
 import { createPost } from "@/app/(public)/communities/postActions";
 
@@ -23,6 +24,11 @@ export default function PostForm({ communityId }: { communityId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Выбор картинок пересоздаётся после отправки: `form.reset()` чистит
+  // только поля браузера, а адреса загруженных файлов живут в состоянии
+  // CommentPhotoPicker — без этого следующая тема уехала бы с теми же
+  // фотографиями.
+  const [pickerKey, setPickerKey] = useState(0);
 
   if (!open) {
     // Кнопка по содержимому, а не во всю ширину: вкладка — flex-колонка,
@@ -51,6 +57,7 @@ export default function PostForm({ communityId }: { communityId: string }) {
           return;
         }
         formRef.current?.reset();
+        setPickerKey((k) => k + 1);
         setOpen(false);
       }}
     >
@@ -73,6 +80,11 @@ export default function PostForm({ communityId }: { communityId: string }) {
         aria-label={s.textAria}
         className="form-control"
       />
+      {/* Картинки темы: уезжают на сервер сразу при выборе, форме
+          остаются адреса скрытыми полями. В базе они лягут на служебный
+          первый комментарий — своей модели картинок у темы нет
+ */}
+      <CommentPhotoPicker key={pickerKey} />
       <p className="small text-secondary mb-0">{s.newTopicHint}</p>
       {error && <p className="small text-danger mb-0">{error}</p>}
       <div className="d-flex gap-2">

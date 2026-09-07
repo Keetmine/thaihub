@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { formatShortDate } from "@/lib/dates";
 import CreateTripButton from "./CreateTripButton";
+import TripCard from "./TripCard";
 import { TripInviteActions } from "./TripMembersControls";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import { isPremiumActive } from "@/lib/premium";
@@ -153,71 +154,29 @@ export default async function TripsPage() {
           <div className="d-flex flex-column gap-3 stagger">
             {trips.map((trip, i) => {
               const isPast = trip.endDate < now;
-              // Будущие отсортированы по startDate, значит первая
-              // не-прошедшая — ближайшая: она и есть карточка-герой.
-              const shared = trip._count.members > 0 || trip.userId !== user.id;
-              const dates = (
-                <>
-                  {formatShortDate(trip.startDate, locale)}{" "}
-                  <span className="trip-dates-arrow">→</span>{" "}
-                  {formatShortDate(trip.endDate, locale)}
-                  <span className="trip-dates-year">{trip.endDate.getFullYear()}</span>
-                </>
+              // Сама карточка — общий TripCard: та же разметка рисуется
+              // ещё и во вкладке «Поездки» сообщества, и двух копий
+              // билетной вёрстки заводить не стали.
+              const card = (
+                <TripCard
+                  trip={{ ...trip, acceptedMembers: trip._count.members }}
+                  viewerId={user.id}
+                  isPast={isPast}
+                  locale={locale}
+                  t={t}
+                />
               );
-              // Прошедшие — приглушённой компактной строкой.
               if (isPast) {
                 return (
                   <Fragment key={trip.id}>
                     {trips.findIndex((x) => x.endDate < now) === i && (
                       <h2 className="section-heading mb-0 mt-2">{t.trips.list.pastHeading}</h2>
                     )}
-                    <AppLink
-                      href={tripHref(trip)}
-                      className="trip-card trip-card-past d-flex flex-wrap align-items-center justify-content-between gap-2"
-                    >
-                      <div style={{ minWidth: 0 }}>
-                        <p className="trip-dates mb-0">{dates}</p>
-                        <p className="font-display fw-medium text-white small mb-0 text-truncate">
-                          {trip.title}
-                          {shared && (
-                            <span className="text-secondary fw-normal">
-                              {t.trips.list.sharedSuffix}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </AppLink>
+                    {card}
                   </Fragment>
                 );
               }
-              return (
-                <AppLink
-                  key={trip.id}
-                  href={tripHref(trip)}
-                  className="trip-card"
-                >
-                  <div className="d-flex flex-wrap align-items-start justify-content-between gap-2">
-                    {/* Даты крупно, как на билете: «20 авг → 27 авг». */}
-                    <p className="trip-dates mb-1">{dates}</p>
-                    {shared && <span className="date-chip">{t.trips.list.shared}</span>}
-                  </div>
-                  <p className="font-display fw-medium text-white mb-0">{trip.title}</p>
-                  {trip.userId !== user.id && (
-                    <p className="small text-secondary mb-0">
-                      {t.trips.list.organiser(
-                        trip.user.name
-                          ? userDisplayName(trip.user, locale)
-                          : t.trips.list.noName,
-                      )}
-                    </p>
-                  )}
-                  {trip.visibility !== "PRIVATE" && (
-                    <p className="text-secondary mt-2 mb-0" style={{ fontSize: "0.7rem" }}>
-                      {t.trips.visibility.options[trip.visibility]}
-                    </p>
-                  )}
-                </AppLink>
-              );
+              return <Fragment key={trip.id}>{card}</Fragment>;
             })}
           </div>
         )}

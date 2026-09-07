@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { notifyUser, type NotifyUserRecipient } from "@/lib/notifications";
+import { parseCommentPhotoUrls } from "@/lib/commentPhotos";
 
 /**
  * Обсуждения сообщества (АА25, этап 2): темы и комментарии к ним.
@@ -83,10 +84,26 @@ function communityPath(community: { id: string; slug: string | null }): string {
   return `/communities/${community.slug ?? community.id}`;
 }
 
-/** Обсуждения открываются своей вкладкой: ссылка из колокольчика должна
- *  вести к теме, а не на первую попавшуюся панель сообщества. */
+/** Обсуждения открываются своей вкладкой: с удалённой темы возвращаемся
+ *  сюда, а не на первую попавшуюся панель сообщества. */
 function discussionsPath(community: { id: string; slug: string | null }): string {
   return `${communityPath(community)}?tab=discussions`;
+}
+
+/**
+ * Своя страница темы.
+ *
+ * Раньше ссылка вела на вкладку с якорем `#post-<id>`, и все темы с их
+ * комментариями лежали в одной ленте: «если там будет 100500 фоток, то
+ * как листать» (жалоба владельца 2026-09-08). Теперь тема открывается
+ * отдельной страницей, а вкладка стала списком тем.
+ *
+ * Адрес строится по слагу сообщества, как и остальные ссылки: id внутри
+ * пути остаётся рабочим запасным вариантом (страница резолвит и его),
+ * но в уведомлении человек видит понятное имя сообщества.
+ */
+function postPath(community: { id: string; slug: string | null }, postId: string): string {
+  return `${communityPath(community)}/posts/${postId}`;
 }
 
 // ---------- темы ----------
@@ -111,14 +128,26 @@ export async function createPost(
     return { ok: false, error: t.communities.posts.errors.textTooLong(POST_TEXT_MAX) };
   }
 
+  // Картинки темы висят на самой теме: своя таблица, а не служебный
+  // комментарий с пустым текстом — призрачная строка в общей таблице
+  // комментариев заставляла бы помнить про исключение всех, кто их
+  // считает или показывает.
+  const photoUrls = parseCommentPhotoUrls(formData.getAll("photoUrl"));
   const post = await prisma.communityPost.create({
-    data: { communityId, authorId: member.user.id, title: title || null, text },
+    data: {
+      communityId,
+      authorId: member.user.id,
+      title: title || null,
+      text,
+      photos: { create: photoUrls.map((url, sort) => ({ url, sort })) },
+    },
   });
 
   await notifyMembersAboutPost(member, post.id, title || text);
   revalidatePath(communityPath(member.community));
   return { ok: true };
 }
+
 
 /**
  * Уведомить участников о новой теме.
@@ -162,7 +191,9 @@ async function notifyMembersAboutPost(
     },
   });
 
-  const href = `${discussionsPath(member.community)}#post-${postId}`;
+  // Ссылка ведёт на страницу самой темы: из колокольчика человек
+  // приходит читать конкретный разговор, а не листать общую ленту.
+  const href = postPath(member.community, postId);
   for (const r of recipients) {
     await notifyUser({
       userId: r.userId,
@@ -182,7 +213,13 @@ async function notifyMembersAboutPost(
  * сайта: в чужом сообществе порядок наводят его хозяева, а админ — на
  * случай, когда хозяева и есть проблема.
  */
-export async function deletePost(postId: string): Promise<ActionResult> {
+export async function deletePost(
+  postId: string,
+  /** Удаляют со страницы самой темы — после удаления её больше нет, и
+   *  оставаться там не на чем: уводим в список обсуждений. Со списка
+   *  (`false`) уводить некуда, строка просто пропадает. */
+  fromPostPage = false,
+): Promise<ActionResult> {
   const { t } = await getT();
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", await getLocale()));
@@ -200,9 +237,11 @@ export async function deletePost(postId: string): Promise<ActionResult> {
     user.isAdmin || post.authorId === user.id || !!member?.canManage;
   if (!allowed) return { ok: false, error: t.communities.posts.errors.cannotDelete };
 
-  // Комментарии уходят каскадом (Comment.post onDelete: Cascade).
+  // Комментарии (и носитель картинок темы) уходят каскадом
+  // (Comment.post onDelete: Cascade).
   await prisma.communityPost.delete({ where: { id: postId } });
   revalidatePath(communityPath(post.community));
+  if (fromPostPage) redirect(localeHref(discussionsPath(post.community), await getLocale()));
   return { ok: true };
 }
 
@@ -227,6 +266,7 @@ export async function togglePostPin(postId: string): Promise<ActionResult> {
     data: { pinned: !post.pinned },
   });
   revalidatePath(communityPath(post.community));
+  revalidatePath(postPath(post.community, postId));
   return { ok: true };
 }
 
@@ -250,6 +290,8 @@ export async function addPostComment(
   const member = await requireMember(post.communityId);
   if (!member) return { ok: false, error: t.communities.posts.errors.notMember };
 
+  // Текст обязателен даже с приложенными картинками: комментарий из
+  // одной фотографии в ленте выглядит обрывком разговора.
   const text = String(formData.get("text") ?? "").trim();
   if (!text) return { ok: false, error: t.communities.posts.errors.commentRequired };
   if (text.length > POST_COMMENT_MAX) {
@@ -270,8 +312,20 @@ export async function addPostComment(
     parentAuthor = parent.user;
   }
 
+  // Картинки — общим механизмом (`parseCommentPhotoUrls` принимает
+  // только наши `/uploads/…`): чужой хост в `<img src>` это и реферер
+  // всех, кто открыл тему, и картинка, которая в любой момент станет
+  // чем угодно.
+  const photoUrls = parseCommentPhotoUrls(formData.getAll("photoUrl"));
+
   await prisma.comment.create({
-    data: { userId: member.user.id, postId, parentId, text },
+    data: {
+      userId: member.user.id,
+      postId,
+      parentId,
+      text,
+      photos: { create: photoUrls.map((url, sort) => ({ url, sort })) },
+    },
   });
 
   // Ответ автору родителя — обычным COMMENT_REPLY: для читателя это тот
@@ -283,10 +337,12 @@ export async function addPostComment(
       kind: "COMMENT_REPLY",
       actorName: member.user.name,
       body: text.slice(0, 200),
-      href: `${discussionsPath(member.community)}#post-${postId}`,
+      href: postPath(member.community, postId),
     });
   }
+  // Обе страницы: список тем (счётчик комментариев) и сама тема.
   revalidatePath(communityPath(post.community));
+  revalidatePath(postPath(post.community, postId));
   return { ok: true };
 }
 
@@ -306,6 +362,7 @@ export async function deletePostComment(commentId: string): Promise<ActionResult
     select: {
       id: true,
       userId: true,
+      postId: true,
       post: { select: { communityId: true, community: { select: { id: true, slug: true } } } },
     },
   });
@@ -318,7 +375,11 @@ export async function deletePostComment(commentId: string): Promise<ActionResult
   const allowed = user.isAdmin || comment.userId === user.id || !!member?.canManage;
   if (!allowed) return { ok: false, error: t.communities.posts.errors.cannotDelete };
 
+  // Картинки комментария уходят каскадом (CommentPhoto onDelete: Cascade).
   await prisma.comment.delete({ where: { id: commentId } });
   revalidatePath(communityPath(comment.post.community));
+  if (comment.postId) {
+    revalidatePath(postPath(comment.post.community, comment.postId));
+  }
   return { ok: true };
 }

@@ -15,6 +15,7 @@ import Pagination from "@/components/Pagination";
 import NameSearchBox from "@/components/NameSearchBox";
 import { DENSE_PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import ConfirmForm from "@/components/ConfirmForm";
+import CommentPhotos from "@/components/CommentPhotos";
 import SubmitButton from "@/components/admin/SubmitButton";
 import { TrashIcon } from "@/components/icons";
 import {
@@ -241,11 +242,20 @@ export default async function AdminModerationPage({
       ).map((u) => [u.id, u]),
     );
     // Жалобы на комментарии и отзывы: показываем отрывок текста и автора.
+    // У комментария тянем ещё и приложенные картинки (АА20): жалуются
+    // чаще всего именно на картинку, и решать «удалять или нет» по
+    // одному тексту вслепую нельзя — иначе за каждой жалобой пришлось бы
+    // идти на публичную страницу.
     const commentTargets = new Map(
       (
         await prisma.comment.findMany({
           where: { id: { in: reports.filter((r) => r.targetType === "comment").map((r) => r.targetId) } },
-          select: { id: true, text: true, user: { select: { id: true, name: true, email: true } } },
+          select: {
+            id: true,
+            text: true,
+            user: { select: { id: true, name: true, email: true } },
+            photos: { select: { id: true, url: true }, orderBy: { sort: "asc" } },
+          },
         })
       ).map((c) => [c.id, c]),
     );
@@ -418,6 +428,12 @@ export default async function AdminModerationPage({
                   )}
                 </p>
                 {r.reason && <p className="small text-secondary mb-0">{r.reason}</p>}
+                {/* Картинки из комментария, на который жалуются — тем же
+                    компонентом, что и на публичной странице: каждая
+                    открывается в полный размер в новой вкладке. */}
+                {r.targetType === "comment" && commentTargets.has(r.targetId) && (
+                  <CommentPhotos photos={commentTargets.get(r.targetId)!.photos} />
+                )}
               </div>
               <div className="d-flex align-items-start gap-2 flex-shrink-0">
                 {r.status === "RESOLVED" ? (
@@ -454,7 +470,13 @@ export default async function AdminModerationPage({
         })
       : await prisma.comment.findMany({
           where: textOrAuthor,
-          include: { user: userSelect, ...targetInclude },
+          include: {
+            user: userSelect,
+            ...targetInclude,
+            // Приложенные фото (АА20) — чтобы вкладку «Комментарии» можно
+            // было просматривать как ленту и ловить лишнее до жалобы.
+            photos: { select: { id: true, url: true }, orderBy: { sort: "asc" } },
+          },
           orderBy: { createdAt: "desc" },
           ...pageArgs,
         });
@@ -477,6 +499,9 @@ export default async function AdminModerationPage({
                   </span>
                 </p>
                 <p className="small mb-0" style={{ whiteSpace: "pre-wrap" }}>{item.text}</p>
+                {/* Фото есть только у комментариев: у отзыва своей модели
+                    картинок нет (см. docs/features/catalog.md). */}
+                {"photos" in item && <CommentPhotos photos={item.photos} />}
                 <ContentControls type={isReview ? "review" : "comment"} id={item.id} text={item.text} />
               </div>
               <div className="d-flex align-items-start gap-2 flex-shrink-0">
