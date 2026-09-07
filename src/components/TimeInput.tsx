@@ -14,13 +14,33 @@ import { normalizeTimeValue } from "@/lib/dates";
  * Дальше человек правил эту фантомную подпись, отправлял половину («12»
  * без минут) и получал ошибку про неправильную дату.
  *
- * Здесь пустое поле пустое, а подсказка формата — обычный placeholder.
- * Ввод не ограничиваем на лету по одному символу (так поле дёргается
- * из-под пальцев): пускаем цифры и двоеточие, а приводим к «ЧЧ:ММ» на
- * потере фокуса — тем же `normalizeTimeValue`, что и сервер. Поэтому
- * «12», «12:», «1230» и «9:30» одинаково становятся нормальным
- * временем, а мусор просто остаётся в поле, и сервер его отклонит.
+ * Здесь пустое поле пустое, а ввод идёт по МАСКЕ «ЧЧ:ММ»: принимаются
+ * только цифры, двоеточие ставится само, часы держатся в 00–23, минуты
+ * в 00–59. Набрать «99999» нельзя (правка владельца 2026-09-09) —
+ * раньше поле пропускало что угодно и надеялось на проверку сервера.
  */
+
+/** Ввод по маске: из набранного оставляем цифры и складываем «ЧЧ:ММ».
+ *  `prev` нужен для забоя: стирая двоеточие, человек хочет стереть и
+ *  цифру перед ним, иначе маска возвращает его на место и поле
+ *  «залипает». */
+export function maskTime(raw: string, prev: string): string {
+  let digits = raw.replace(/\D/g, "").slice(0, 4);
+  if (prev.endsWith(":") && raw === prev.slice(0, -1)) digits = digits.slice(0, -1);
+  if (!digits) return "";
+
+  let hours = digits.slice(0, 2);
+  // Одинокая цифра больше двух часами первого разряда быть не может:
+  // человек набрал «9» — значит 09, и двоеточие пора ставить.
+  if (hours.length === 1 && Number(hours) > 2) hours = `0${hours}`;
+  if (hours.length === 2 && Number(hours) > 23) hours = "23";
+  if (hours.length < 2) return hours;
+
+  const minutes = digits.slice(2);
+  if (!minutes) return `${hours}:`;
+  return `${hours}:${Number(minutes) > 59 ? "59" : minutes}`;
+}
+
 export default function TimeInput({
   id,
   name,
@@ -60,23 +80,20 @@ export default function TimeInput({
       autoComplete="off"
       required={required}
       aria-label={ariaLabel}
-      // Пять знаков — ровно «ЧЧ:ММ»: больше в осмысленное время не
-      // складывается, а обрезать лишнее молча неприятно.
+      // Ровно «ЧЧ:ММ». Маска и так не пустит больше, но с атрибутом это
+      // видно и мобильной клавиатуре, и автозаполнению.
       maxLength={5}
       placeholder="чч:мм"
       className={className}
       value={current}
-      onChange={(e) => set(e.target.value.replace(/[^\d:.\s-]/g, ""))}
+      onChange={(e) => set(maskTime(e.target.value, current))}
       onBlur={() => {
-        const trimmed = current.trim();
-        if (!trimmed) {
-          // Пустое остаётся пустым: у времени это законное «не
-          // назначено», и подставлять сюда полночь нельзя.
-          if (trimmed !== current) set("");
-          return;
-        }
-        const normalized = normalizeTimeValue(trimmed);
-        if (normalized) set(normalized);
+        // Недобранное дополняем при уходе из поля: «12» и «12:» — это
+        // 12:00. Пустое остаётся пустым: у времени это законное «не
+        // назначено», подставлять сюда полночь нельзя.
+        if (!current) return;
+        const normalized = normalizeTimeValue(current);
+        if (normalized && normalized !== current) set(normalized);
       }}
     />
   );
