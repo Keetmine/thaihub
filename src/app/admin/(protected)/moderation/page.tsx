@@ -116,9 +116,21 @@ function ContentControls({
   );
 }
 
+/** Предупреждение под тип: снести сообщество — не то же самое, что
+ *  убрать комментарий, и общее «Удалить контент?» этого не показывало. */
+const DELETE_CONFIRM: Partial<Record<ModContentType, string>> = {
+  community: "Удалить сообщество целиком? Вместе с ним исчезнут его темы, встречи и участники.",
+  communityPost: "Удалить тему? Комментарии к ней тоже исчезнут.",
+  communityMeetup: "Удалить встречу сообщества?",
+  communityLink: "Удалить ссылку сообщества?",
+};
+
 function DeleteContentButton({ type, id }: { type: ModContentType; id: string }) {
   return (
-    <ConfirmForm action={adminDeleteContent.bind(null, type, id)} confirmMessage="Удалить контент?">
+    <ConfirmForm
+      action={adminDeleteContent.bind(null, type, id)}
+      confirmMessage={DELETE_CONFIRM[type] ?? "Удалить контент?"}
+    >
       <button type="button" className="icon-btn icon-btn-danger flex-shrink-0" aria-label="Удалить">
         <TrashIcon />
       </button>
@@ -268,8 +280,10 @@ export default async function AdminModerationPage({
       ).map((rv) => [rv.id, rv]),
     );
     // Жалобы на темы обсуждений в сообществах (АА25). Само сообщество
-    // тянем вместе с темой: без него ссылка «открыть» вела бы в никуда —
-    // у темы нет своей страницы, она живёт вкладкой сообщества.
+    // тянем вместе с темой: ссылка ведёт на страницу темы внутри
+    // сообщества, а название сообщества в очереди отвечает на вопрос
+    // «где это происходит» — по нему видно, что жалоб на одно и то же
+    // сообщество уже третья.
     const postTargets = new Map(
       (
         await prisma.communityPost.findMany({
@@ -284,6 +298,73 @@ export default async function AdminModerationPage({
         })
       ).map((p) => [p.id, p]),
     );
+    // Жалобы на само сообщество, его встречу и его ссылку (АА25,
+    // админский этап). Раньше принималась жалоба только на тему, и
+    // «сообщество целиком не то» сказать было нечем — приходилось
+    // жаловаться на случайную тему внутри.
+    const communityTargets = new Map(
+      (
+        await prisma.community.findMany({
+          where: { id: { in: reports.filter((r) => r.targetType === "community").map((r) => r.targetId) } },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            visibility: true,
+            owner: { select: { id: true, name: true, email: true } },
+          },
+        })
+      ).map((c) => [c.id, c]),
+    );
+    // Встреча — Event со ссылкой на сообщество; условие `communityId`
+    // отсекает попытку выдать за встречу каталожное событие афиши.
+    const meetupTargets = new Map(
+      (
+        await prisma.event.findMany({
+          where: {
+            id: { in: reports.filter((r) => r.targetType === "communityMeetup").map((r) => r.targetId) },
+            communityId: { not: null },
+          },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            community: { select: { id: true, slug: true, title: true } },
+          },
+        })
+      ).map((e) => [e.id, e]),
+    );
+    // У ссылки своей страницы нет — ведём в сообщество, где она висит,
+    // а в очереди показываем подпись и сам адрес: жалуются как раз на
+    // то, куда ссылка ведёт.
+    const linkTargets = new Map(
+      (
+        await prisma.communityLink.findMany({
+          where: { id: { in: reports.filter((r) => r.targetType === "communityLink").map((r) => r.targetId) } },
+          select: {
+            id: true,
+            label: true,
+            url: true,
+            community: { select: { id: true, slug: true, title: true } },
+          },
+        })
+      ).map((l) => [l.id, l]),
+    );
+    /**
+     * Что удалять по этой жалобе прямо из очереди. Только контент
+     * сообществ: у отзыва, комментария и списка есть своя вкладка с
+     * поиском, а у сообщества, темы, встречи и ссылки её нет — сходить
+     * за ними было некуда, и жалоба закрывалась «на словах».
+     *
+     * null — объект уже удалён (кнопке нечего сносить).
+     */
+    const deletableTarget = (r: { targetType: string; targetId: string }): ModContentType | null => {
+      if (r.targetType === "community") return communityTargets.has(r.targetId) ? "community" : null;
+      if (r.targetType === "communityPost") return postTargets.has(r.targetId) ? "communityPost" : null;
+      if (r.targetType === "communityMeetup") return meetupTargets.has(r.targetId) ? "communityMeetup" : null;
+      if (r.targetType === "communityLink") return linkTargets.has(r.targetId) ? "communityLink" : null;
+      return null;
+    };
     const reportsPerTarget = new Map<string, number>();
     for (const r of reports) {
       reportsPerTarget.set(r.targetId, (reportsPerTarget.get(r.targetId) ?? 0) + 1);
@@ -386,18 +467,22 @@ export default async function AdminModerationPage({
             ) : r.targetType === "communityPost" ? (
               postTargets.has(r.targetId) ? (
                 <>
-                  тема «
-                  {(postTargets.get(r.targetId)!.title ?? postTargets.get(r.targetId)!.text).slice(0, 80)}
-                  » в{" "}
+                  {/* Ссылка ведёт на страницу самой темы. Раньше вела на
+                      `?tab=discussions#post-<id>` — адрес тех времён,
+                      когда своей страницы у темы не было; после её
+                      появления якорь приводил в список, где разговор ещё
+                      надо было открывать руками. */}
                   <a
-                    href={`${communityHref(postTargets.get(r.targetId)!.community)}?tab=discussions#post-${r.targetId}`}
+                    href={`${communityHref(postTargets.get(r.targetId)!.community)}/posts/${r.targetId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="link-body-emphasis"
                   >
-                    «{postTargets.get(r.targetId)!.community.title}» ↗
+                    тему «
+                    {(postTargets.get(r.targetId)!.title ?? postTargets.get(r.targetId)!.text).slice(0, 80)}
+                    » ↗
                   </a>{" "}
-                  —{" "}
+                  в «{postTargets.get(r.targetId)!.community.title}» —{" "}
                   <Link
                     href={`/admin/users/${postTargets.get(r.targetId)!.author.id}`}
                     className="link-body-emphasis"
@@ -410,11 +495,78 @@ export default async function AdminModerationPage({
               ) : (
                 <span className="text-secondary">тема удалена</span>
               )
+            ) : r.targetType === "community" ? (
+              communityTargets.has(r.targetId) ? (
+                <>
+                  сообщество{" "}
+                  <Link
+                    href={`/admin/communities/${r.targetId}`}
+                    className="link-body-emphasis"
+                  >
+                    «{communityTargets.get(r.targetId)!.title}»
+                  </Link>
+                  {communityTargets.get(r.targetId)!.visibility === "PRIVATE" && (
+                    <span className="badge rounded-pill text-bg-secondary ms-2">закрытое</span>
+                  )}{" "}
+                  —{" "}
+                  <Link
+                    href={`/admin/users/${communityTargets.get(r.targetId)!.owner.id}`}
+                    className="link-body-emphasis"
+                  >
+                    {communityTargets.get(r.targetId)!.owner.name ||
+                      communityTargets.get(r.targetId)!.owner.email ||
+                      "без имени"}
+                  </Link>
+                  {(reportsPerTarget.get(r.targetId) ?? 0) > 1 && (
+                    <span className="badge rounded-pill text-bg-danger ms-2">
+                      жалоб: {reportsPerTarget.get(r.targetId)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-secondary">сообщество удалено</span>
+              )
+            ) : r.targetType === "communityMeetup" ? (
+              meetupTargets.has(r.targetId) ? (
+                <>
+                  встречу{" "}
+                  <a
+                    href={eventHref(meetupTargets.get(r.targetId)!)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="link-body-emphasis"
+                  >
+                    «{meetupTargets.get(r.targetId)!.title}» ↗
+                  </a>{" "}
+                  в «{meetupTargets.get(r.targetId)!.community?.title ?? "сообществе"}»
+                </>
+              ) : (
+                <span className="text-secondary">встреча удалена</span>
+              )
+            ) : r.targetType === "communityLink" ? (
+              linkTargets.has(r.targetId) ? (
+                <>
+                  ссылку «{linkTargets.get(r.targetId)!.label}» (
+                  <span className="text-secondary">
+                    {linkTargets.get(r.targetId)!.url.slice(0, 80)}
+                  </span>
+                  ) в{" "}
+                  <Link
+                    href={`/admin/communities/${linkTargets.get(r.targetId)!.community.id}`}
+                    className="link-body-emphasis"
+                  >
+                    «{linkTargets.get(r.targetId)!.community.title}»
+                  </Link>
+                </>
+              ) : (
+                <span className="text-secondary">ссылка удалена</span>
+              )
             ) : (
               <span>
                 {r.targetType} {r.targetId}
               </span>
             );
+          const deletable = deletableTarget(r);
           return (
             <div key={r.id} className="surface d-flex flex-wrap justify-content-between gap-3 p-3">
               <div style={{ minWidth: 0, flex: 1 }}>
@@ -436,6 +588,12 @@ export default async function AdminModerationPage({
                 )}
               </div>
               <div className="d-flex align-items-start gap-2 flex-shrink-0">
+                {/* Удаление прямо из очереди — только для контента
+                    сообществ: у остальных типов есть своя вкладка, а
+                    сюда админ приходит именно затем, чтобы убрать
+                    сообщество, тему, встречу или ссылку и закрыть
+                    жалобу, не уходя со страницы. */}
+                {deletable && <DeleteContentButton type={deletable} id={r.targetId} />}
                 {r.status === "RESOLVED" ? (
                   <form action={reopenReport.bind(null, r.id)}>
                     <SubmitButton label="↩ Вернуть в работу" busyLabel="Возвращаем…" className="btn btn-ghost btn-sm" />

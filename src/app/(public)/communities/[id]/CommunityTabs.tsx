@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import ScrollableTabs from "@/components/ScrollableTabs";
 
 export type CommunityTabKey =
   | "discussions"
@@ -59,13 +60,17 @@ export default function CommunityTabs({
 
   return (
     <>
-      <div className="tab-bar-row profile-tab-row">
-        <div className="tab-bar">
+      <div className="tab-bar-row">
+        {/* Прокрутка ряда — общая с профилем и каталогами
+            (ScrollableTabs): вкладок тут до шести, и со счётчиками в
+            подписях они на узком экране в строку не влезают. */}
+        <ScrollableTabs activeKey={activeTab} dense>
           {tabs.map((tab) => (
             <a
               key={tab.key}
               href={`${pathname}?tab=${tab.key}`}
               className={`tab-bar-item ${activeTab === tab.key ? "active" : ""}`}
+              aria-current={activeTab === tab.key ? "page" : undefined}
               onClick={(e) => {
                 // Ctrl/⌘-клик и средняя кнопка — обычное поведение
                 // ссылки: открыть в новой вкладке.
@@ -78,7 +83,7 @@ export default function CommunityTabs({
               {tab.label}
             </a>
           ))}
-        </div>
+        </ScrollableTabs>
       </div>
 
       {tabs.map((tab) => (

@@ -17,7 +17,7 @@ import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import NavDepthTracker from "@/components/NavDepthTracker";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import SiteFooter from "@/components/SiteFooter";
-import { getCurrentUser } from "@/lib/userAuth";
+import { assertNotBanned, getCurrentUser } from "@/lib/userAuth";
 import { CalendarIcon, GridIcon, HeartIcon, InfoIcon, SearchIcon } from "@/components/icons";
 import NotificationBell, { NotificationBellProvider } from "@/components/NotificationBell";
 import { unreadNotificationCount } from "@/lib/notifications";
@@ -92,6 +92,12 @@ function shouldPromptTelegram(user: Awaited<ReturnType<typeof getCurrentUser>>):
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const { t } = await getT();
+  // Заблокированный не должен получать сайт «как гость» — молчаливое
+  // исчезновение своего имени и своих поездок человек читает как поломку.
+  // Layout рендерится перед КАЖДОЙ публичной страницей, так что одной
+  // строки хватает на весь сайт (сам экран /banned лежит вне этой
+  // группы — иначе редирект зациклился бы).
+  await assertNotBanned();
   const fullUser = await getCurrentUser();
   const isAdmin = !!fullUser?.isAdmin;
   // Счётчик у колокольчика: приглашения в поездки и заявки в друзья

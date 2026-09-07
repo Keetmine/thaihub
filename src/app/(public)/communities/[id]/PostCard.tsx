@@ -7,6 +7,7 @@ import { formatDateWithYear } from "@/lib/dates";
 import { getT } from "@/lib/i18n";
 import { deletePost, togglePostPin } from "@/app/(public)/communities/postActions";
 import type { PostViewer } from "./PostComment";
+import PostEditForm from "./PostEditForm";
 
 /**
  * Строка списка тем.
@@ -17,9 +18,12 @@ import type { PostViewer } from "./PostComment";
  * 2026-09-08). Теперь строка — только вывеска разговора (заголовок,
  * автор, дата, сколько ответов), а сам он открывается своей страницей.
  *
- * Закреп и удаление остались тут: это быстрые действия хозяев
- * сообщества, и ради них незачем заходить в каждую тему. Права всё
- * равно перепроверяются в экшенах — скрытая кнопка правом не является.
+ * Закреп, правка и удаление остались тут: это быстрые действия хозяев
+ * сообщества и автора, и ради них незачем заходить в каждую тему.
+ * Правка появилась здесь по правке владельца 2026-09-09 — «изменить»
+ * было только на странице темы, хотя опечатку замечают как раз в
+ * списке. Права всё равно перепроверяются в экшенах — скрытая кнопка
+ * правом не является.
  */
 
 export type PostListRow = {
@@ -27,6 +31,9 @@ export type PostListRow = {
   title: string | null;
   text: string;
   pinned: boolean;
+  /** Нужна форме правки: галочку «только для участников» она показывает
+   *  в её текущем состоянии, а не сбрасывает при каждой правке. */
+  isPrivate: boolean;
   createdAt: Date;
   author: { id: string; name: string | null; photoUrl: string | null; deletedAt: Date | null };
   commentCount: number;
@@ -51,7 +58,9 @@ export default async function PostCard({
   const { t, locale } = await getT();
   const s = t.communities.posts;
   const authorName = post.author.deletedAt ? t.common.deletedAccount : post.author.name;
-  const canDelete = viewer.isAdmin || viewer.canManage || post.author.id === viewer.id;
+  // Круг лиц у правки и удаления один и тот же: автор, хозяева
+  // сообщества, админ сайта (см. postActions.ts).
+  const canEdit = viewer.isAdmin || viewer.canManage || post.author.id === viewer.id;
   const excerpt =
     post.text.length > EXCERPT_MAX ? `${post.text.slice(0, EXCERPT_MAX).trimEnd()}…` : post.text;
 
@@ -99,7 +108,16 @@ export default async function PostCard({
               </button>
             </ActionResultForm>
           )}
-          {canDelete && (
+          {canEdit && (
+            // Иконкой: в ряду действий строки подпись была бы
+            // единственным словом среди значков.
+            <PostEditForm
+              postId={post.id}
+              initial={{ title: post.title, text: post.text, isPrivate: post.isPrivate }}
+              compact
+            />
+          )}
+          {canEdit && (
             // false — «удаляют из списка»: уводить отсюда некуда,
             // строка просто пропадает (см. deletePost).
             <ConfirmForm

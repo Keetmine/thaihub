@@ -39,6 +39,15 @@ export type CommunityAccess = {
   /** Видно ли содержимое: участники, ссылки, обсуждения, встречи. */
   canSeeInside: boolean;
   /**
+   * Зритель — админ САЙТА, а не участник сообщества. Он видит содержимое
+   * закрытого сообщества (иначе разбирать жалобы было бы не по чему), но
+   * участником при этом не становится: не попадает в список людей, не
+   * получает уведомлений и не «управляет» сообществом снаружи. Флаг
+   * отдаётся наружу, чтобы страница могла честно сказать «вы смотрите
+   * как администратор», а не притворяться, что он свой.
+   */
+  isSiteAdmin: boolean;
+  /**
    * Можно ли ЗАГЛЯНУТЬ снаружи: вкладки видны, публичные темы
    * перечислены заголовками, встречи — закрытыми карточками с датой
    * (правка владельца 2026-09-09).
@@ -66,11 +75,22 @@ export type CommunityAccess = {
   indexable: boolean;
 };
 
+/**
+ * @param options.isSiteAdmin — зритель админ сайта (`User.isAdmin`).
+ *   Модерация сообществ (АА25, админский этап) устроена так: чужое
+ *   сообщество на своём домене владелица должна уметь ОТКРЫТЬ и
+ *   прочитать, включая закрытое, — иначе жалоба «там творится дичь»
+ *   неразбираема. Поэтому админу открывается содержимое, и только оно:
+ *   участником, модератором и кандидатом на вступление он от этого не
+ *   становится (см. `isSiteAdmin` в `CommunityAccess`).
+ */
 export function communityAccess(
   community: CommunityForAccess,
   viewerId: string | null | undefined,
   membership: ViewerMembership,
+  options?: { isSiteAdmin?: boolean },
 ): CommunityAccess {
+  const isSiteAdmin = !!viewerId && !!options?.isSiteAdmin;
   const isOwner = !!viewerId && community.ownerId === viewerId;
   const isMember = isOwner || membership?.status === "ACTIVE";
   const isPending = membership?.status === "PENDING";
@@ -83,8 +103,12 @@ export function communityAccess(
     // Приватное сообщество открывается по ссылке — «страницы нет» было
     // бы враньём, а вот содержимого гостю там не покажут.
     canOpen: true,
-    canSeeInside: isMember,
-    canBrowse: isPublic && !isMember,
+    canSeeInside: isMember || isSiteAdmin,
+    // «Заглянуть снаружи» — режим для того, кто внутрь не попал. Админ
+    // уже внутри, и без этого условия страница нарисовала бы ему обе
+    // версии вкладок разом.
+    canBrowse: isPublic && !isMember && !isSiteAdmin,
+    isSiteAdmin,
     isMember,
     isPending,
     isBanned,
@@ -135,17 +159,3 @@ export const COMMUNITY_DESCRIPTION_MAX = 2000;
  *  их отсутствие (см. docs/features/communities.md). */
 export const COMMUNITY_LIMIT_PER_USER = 3;
 
-/**
- * Сколько привязок к каталогу (`CommunityTopic`) можно повесить на одно
- * сообщество — артистов и сериалов ВМЕСТЕ.
- *
- * Ограничение принципиальное, а не техническое. Привязка — это то, ради
- * чего сообщество показывается на странице артиста и сериала, и она
- * должна отвечать на вопрос «о ком это сообщество». Сообщество города
- * любит всех подряд: список из сотни привязок никто не станет вести, а
- * на странице артиста он превратился бы в свалку из сообществ, которым
- * до него нет особого дела. Тем, кого ищут по месту, а не по актёру,
- * оставлены `country`/`city` и свой фильтр на витрине — см.
- * docs/features/communities.md, раздел «Связь с каталогом и место».
- */
-export const COMMUNITY_TOPIC_LIMIT = 3;

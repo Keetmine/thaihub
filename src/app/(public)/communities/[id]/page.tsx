@@ -14,6 +14,7 @@ import MemberRequests from "./MemberRequests";
 import CommunityAdmin from "./CommunityAdmin";
 import CommunityTabs, { type CommunityTabKey } from "./CommunityTabs";
 import MembersTab from "./MembersTab";
+import MembersBlock from "./MembersBlock";
 import MemberRowActions from "./MemberRowActions";
 import InviteMemberButton from "./InviteMemberButton";
 import InviteBanner, { InviteCancelButton } from "./InviteBanner";
@@ -100,10 +101,15 @@ export default async function CommunityPage({
 
   const viewer = await getCurrentUser();
   const membership = viewer ? community.members.find((m) => m.userId === viewer.id) : undefined;
+  // Админ сайта видит содержимое любого сообщества, включая закрытое:
+  // без этого модерация упиралась бы в заглушку «внутри для
+  // участников». Участником он при этом не становится — см.
+  // communityAccess.
   const access = communityAccess(
     community,
     viewer?.id ?? null,
     membership ? { role: membership.role, status: membership.status } : null,
+    { isSiteAdmin: !!viewer?.isAdmin },
   );
 
   const active = community.members.filter((m) => m.status === "ACTIVE");
@@ -183,7 +189,14 @@ export default async function CommunityPage({
     });
     tabs.push({
       key: "places",
-      label: s.tabs.places,
+      // Считаем РАЗНЫЕ локации, а не строки списков: одно место может
+      // лежать в двух списках сообщества, и по строкам счётчик врал бы.
+      label: withCount(
+        s.tabs.places,
+        await prisma.location.count({
+          where: { listItems: { some: { list: { communityId: community.id } } } },
+        }),
+      ),
       content: <PlacesTab communityId={community.id} canEdit={access.canManage} />,
     });
     tabs.push({
@@ -346,13 +359,10 @@ export default async function CommunityPage({
             />
           )}
 
-          {/* Медали сообщества — там же, где личные в профиле: в левой
-              колонке под самим сообществом. Видят их те же, кто видит
-              содержимое: правило одно на страницу (`canSeeInside`), а
-              не своя копия условий. */}
-          {access.canSeeInside && <AchievementsBlock communityId={community.id} />}
-
-          {/* Ссылки — только участникам: за ними обычно закрытый чат. */}
+          {/* Ссылки — только участникам: за ними обычно закрытый чат.
+              Стоят ВЫШЕ медалей (правка владельца 2026-09-09): за
+              ссылкой человек идёт по делу, в чат, а медали — украшение,
+              и держать их первыми значило отодвигать дело за украшение. */}
           {access.canSeeInside && community.links.length > 0 && (
             <div>
               <h2 className="section-heading mb-2">{s.linksTitle}</h2>
@@ -371,6 +381,18 @@ export default async function CommunityPage({
               </div>
             </div>
           )}
+
+          {/* Медали сообщества — там же, где личные в профиле: в левой
+              колонке под самим сообществом. Видят их те же, кто видит
+              содержимое: правило одно на страницу (`canSeeInside`), а
+              не своя копия условий. */}
+          {access.canSeeInside && <AchievementsBlock communityId={community.id} />}
+
+          {/* Участники — аватарками под медалями, как друзья в профиле
+              (правка владельца 2026-09-09). Тот же `canSeeInside`, что и
+              у вкладки «Участники»: снаружи блока нет вовсе — список
+              людей это персональные данные. */}
+          {access.canSeeInside && <MembersBlock members={active.map(memberRow)} />}
         </aside>
 
         <div className="profile-main">

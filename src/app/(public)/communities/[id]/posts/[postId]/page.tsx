@@ -95,7 +95,12 @@ const loadVisiblePost = cache(async (communityParam: string, postId: string) => 
         select: { role: true, status: true },
       })
     : null;
-  const access = communityAccess(c, viewer?.id ?? null, membership);
+  // Админ сайта заходит в закрытое сообщество читать, а не участвовать:
+  // без этого модерация упиралась бы в собственную страницу-404
+  // (см. communityAccess).
+  const access = communityAccess(c, viewer?.id ?? null, membership, {
+    isSiteAdmin: !!viewer?.isAdmin,
+  });
   if (!access.canSeeInside) return null;
 
   return { post, viewer, access };

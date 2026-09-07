@@ -85,27 +85,31 @@ export default async function PostComment({
             initiallyLiked={c.likes.some((l) => l.userId === viewer.id)}
             disabled={!viewer.canPost}
           />
-          {viewer.canPost && (canReply || replyToId) && (
-            <details>
-              <summary
-                className="small text-secondary"
-                style={{ cursor: "pointer", listStyle: "none" }}
-              >
-                {s.reply}
-              </summary>
-              <div className="mt-2">
-                <PostCommentForm
-                  postId={postId}
-                  parentId={replyToId ?? c.id}
-                  placeholder={s.replyPlaceholder(displayName)}
-                  ariaLabel={s.replyAria(displayName)}
-                  rows={2}
-                />
-              </div>
-            </details>
-          )}
           {c.user.id !== viewer.id && <ReportButton targetType="comment" targetId={c.id} />}
         </div>
+        {/* Ответ — СВОИМ блоком под строкой действий, а не внутри неё
+            (правка владельца 2026-09-09: «поле ответа во всю ширину»).
+            В flex-строке с лайком и жалобой ширина свёртки считается по
+            её содержимому, и поле ответа выходило в треть страницы. */}
+        {viewer.canPost && (canReply || replyToId) && (
+          <details className="mt-2">
+            <summary
+              className="small text-secondary"
+              style={{ cursor: "pointer", listStyle: "none" }}
+            >
+              {s.reply}
+            </summary>
+            <div className="mt-2">
+              <PostCommentForm
+                postId={postId}
+                parentId={replyToId ?? c.id}
+                placeholder={s.replyPlaceholder(displayName)}
+                ariaLabel={s.replyAria(displayName)}
+                rows={2}
+              />
+            </div>
+          </details>
+        )}
       </div>
       {canDelete && (
         <ConfirmForm

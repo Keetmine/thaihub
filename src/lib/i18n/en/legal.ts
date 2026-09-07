@@ -149,6 +149,7 @@ export const legal = {
         places: "My places",
         artistLists: "Artist lists",
         trips: "Trips",
+        communities: "Communities",
         friends: "Friends",
         notifications: "Notifications",
         profile: "My profile",
@@ -308,6 +309,58 @@ export const legal = {
           bookings: {
             q: "Where do the hotel and the flights go?",
             a: "Add them as bookings: a name, dates with times, the address or the route, a link and the confirmation file. In the plan a booking sits as two entries — check-in and check-out, departure and arrival — on the days they actually happen. The address, the note, the link and the file stay with you and the people travelling with you even if you open the booking itself to a wider audience.",
+          },
+        },
+
+        communities: {
+          title: "Communities",
+          what: {
+            q: "What is a community?",
+            a: "A page for a group of people: “Lakorns Belarus”, an actor's fan club, everyone going to the same festival. Inside there are discussions, the group's own meetups, shared trips and place lists. Public communities are listed in their own section, where you can narrow them down by country and city, and they also appear on the pages of the artists and series a community has linked itself to.",
+          },
+          create: {
+            q: "How do I start my own community?",
+            a: "The “Create community” button in the communities section — it needs an active subscription. The form asks for a name, a description, who can see the community (everyone, or only people with the link) and how people join (freely, or with your approval). Three communities per person is the ceiling. Only creating one is paid: joining, reading and taking part work without a subscription.",
+          },
+          join: {
+            q: "How do I join one?",
+            a: "A public community has a “Join” button on its page. If the owner turned approval on, a request goes out, and you will hear back either way — no silent refusals. A private community takes no requests from outside: people are invited there, and an invitation arrives as a notification and as a banner on the page itself, with “Accept” and “Decline”. Nobody is added to a community without agreeing to it.",
+          },
+          outside: {
+            q: "What can people who have not joined see?",
+            a: "From outside, a public community shows its cover, name, description, location and member count, plus the titles of its topics and meetup cards with nothing but the date: enough to tell whether the community is alive and worth joining. Opening a topic, reading a conversation, seeing a meetup address, the member list and the community's links takes membership. A topic can be marked private — from outside it does not even show up in the count. A private community gives away nothing but its name.",
+          },
+          discussions: {
+            q: "What are discussions?",
+            a: "Topics inside the community: the title is optional, and up to three photos can go with the text. People answer in comments, with replies and likes, the same as under a series. The owner and moderators can pin a topic to the top so that the rules or the introductions do not sink under newer ones. A new topic arrives in the bell on the site; topics are not repeated in Telegram, though a reply to your own comment is.",
+          },
+          meetups: {
+            q: "What are community meetups?",
+            a: "The group's own events: watching an episode at someone's place, going to a concert together. Any member can call one; the author edits their own, the owner and moderators edit any; the card is the same as in the event feed, with “I'm going”, comments and a calendar export. Only members see a meetup — there is usually someone's home address behind it — so it never reaches the general feed, the calendar, search or your statistics. Your meetups live on the community's own tab and in a separate “Communities” tab in the event feed.",
+          },
+          trips: {
+            q: "How do I put together a trip from a community?",
+            a: "The “Trips” tab has a “Plan a trip” button: it creates an ordinary shared trip and invites the members you picked — they join once they accept. The button needs a subscription, because trips are a paid feature end to end. The list on the tab only shows trips you are entitled to open anyway: someone else's private trip is shown to no one, fellow members included.",
+          },
+          places: {
+            q: "What about shared place lists?",
+            a: "The “Places” tab: “where to eat in Minsk”, “cafés from the series” — the same kind of list as a personal one, with the map, the notes and the “been there” mark. The owner and moderators create and keep them, and no subscription is needed for that inside a community. A new list is visible to members only by default; a checkbox opens it to everyone, and only in a public community. A place itself stays with whoever added it.",
+          },
+          roles: {
+            q: "Who runs a community?",
+            a: "The owner. They appoint and remove moderators, change the visibility and the joining rules and can delete the community; leaving your own community is not possible — deleting it is what that is for. A moderator helps run the place: decides on requests, invites people, edits the name, the description, the cover and the catalogue links, pins and removes topics and keeps the place lists.",
+          },
+          ban: {
+            q: "What do I do about someone who spoils it?",
+            a: "The owner and moderators can remove a member, and that is a ban rather than a request to leave: they cannot join again until it is lifted. Their role is reset and any pending invitation is cancelled. Lifting the ban simply opens the door again — coming back is their own decision. The owner cannot be removed, and a moderator only by the owner.",
+          },
+          achievements: {
+            q: "What are the badges on a community page?",
+            a: "The community's own achievements: meetups held, members gathered, topics and comments, a trip put together, a shared place list and the community's age. They are counted for the community rather than for a person and are shown to members; there is no notification for a new one — it was earned together. Personal achievements for communities exist too, and those sit in your profile with the rest.",
+          },
+          report: {
+            q: "Something is wrong in a community — who do I tell?",
+            a: "Every topic and comment that is not yours has a “Report” link, and the report comes to us. The owner and moderators can also clear things up on the spot, and they are closer to it. If the problem is the community itself, write to us with the form on this page.",
           },
         },
 

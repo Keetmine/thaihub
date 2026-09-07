@@ -4,12 +4,10 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import ConfirmForm from "@/components/ConfirmForm";
-import EntityMultiSelect from "@/components/EntityMultiSelect";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import UploadImage from "@/components/UploadImage";
 import { useT } from "@/components/LocaleProvider";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
-import { COMMUNITY_TOPIC_LIMIT } from "@/lib/communities";
 import {
   addCommunityLink,
   deleteCommunity,
@@ -18,12 +16,10 @@ import {
 } from "../actions";
 import { loadCommunityCover, setCommunityCover } from "../coverActions";
 import {
-  loadCommunityTopics,
-  saveCommunityTopics,
-  searchTopicDramas,
-  searchTopicPerformers,
-  type CommunityTopicsState,
-} from "../topicActions";
+  loadCommunityPlace,
+  saveCommunityPlace,
+  type CommunityPlaceState,
+} from "../whereActions";
 
 /** Пропорции обложки — те же, в которых она и рисуется в колонке
  *  сообщества (`.community-cover`, 3:2). Кадрируем ровно в них: рамка
@@ -31,9 +27,9 @@ import {
 const COVER_RATIO_W = 3;
 const COVER_RATIO_H = 2;
 
-/** Загруженные привязки и место — только успешная ветка ответа экшена:
- *  ошибку окно показывает отдельной строкой, а не подставляет в поля. */
-type LoadedTopics = Extract<CommunityTopicsState, { ok: true }>;
+/** Загруженное место — только успешная ветка ответа экшена: ошибку окно
+ *  показывает отдельной строкой, а не подставляет в поля. */
+type LoadedPlace = Extract<CommunityPlaceState, { ok: true }>;
 
 /**
  * Управление сообществом — для владельца и модераторов: обложка, правка
@@ -93,13 +89,13 @@ export default function CommunityAdmin({
   // Текущий набор приезжает при открытии окна, как и обложка: страница
   // сообщества его в пропсах не передаёт, а комбобокс обязан показать
   // ИМЕНА уже выбранных, а не голые id.
-  const [topics, setTopics] = useState<LoadedTopics | null>(null);
+  const [topics, setTopics] = useState<LoadedPlace | null>(null);
   const [topicsError, setTopicsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     let dropped = false;
-    loadCommunityTopics(communityId).then((result) => {
+    loadCommunityPlace(communityId).then((result) => {
       if (dropped || !result.ok) return;
       setTopics(result);
     });
@@ -110,7 +106,7 @@ export default function CommunityAdmin({
 
   async function saveTopics(formData: FormData) {
     setTopicsError(null);
-    const result = await saveCommunityTopics(communityId, formData);
+    const result = await saveCommunityPlace(communityId, formData);
     if (!result.ok) {
       setTopicsError(result.error);
       return;
@@ -344,46 +340,6 @@ export default function CommunityAdmin({
               docs/features/communities.md. */}
           {topics ? (
             <form action={saveTopics} className="d-flex flex-column gap-3">
-              <div className="d-flex flex-column gap-1">
-                <h3 className="section-heading mb-0">{s.topics.title}</h3>
-                <p className="small text-secondary mb-0">{s.topics.hint}</p>
-                <p className="small text-secondary mb-0" style={{ opacity: 0.75 }}>
-                  {s.topics.limitHint(COMMUNITY_TOPIC_LIMIT)}
-                </p>
-              </div>
-
-              {/* Каталог пропсом не приезжает (тысячи артистов и
-                  сериалов) — общий комбобокс ищет на сервере по мере
-                  ввода, как выбор сериала в форме встречи. Уже
-                  привязанные приходят options'ом, чтобы их имена
-                  показались сразу. */}
-              <div>
-                <label className="form-label small text-secondary" htmlFor={`${uid}-performers`}>
-                  {s.topics.performersLabel}
-                </label>
-                <EntityMultiSelect
-                  id={`${uid}-performers`}
-                  name="performerId"
-                  options={topics.performers}
-                  defaultSelectedIds={topics.performers.map((p) => p.id)}
-                  placeholder={s.topics.performersPlaceholder}
-                  searchOptions={searchTopicPerformers}
-                />
-              </div>
-              <div>
-                <label className="form-label small text-secondary" htmlFor={`${uid}-dramas`}>
-                  {s.topics.dramasLabel}
-                </label>
-                <EntityMultiSelect
-                  id={`${uid}-dramas`}
-                  name="dramaId"
-                  options={topics.dramas}
-                  defaultSelectedIds={topics.dramas.map((d) => d.id)}
-                  placeholder={s.topics.dramasPlaceholder}
-                  searchOptions={searchTopicDramas}
-                />
-              </div>
-
               <div className="d-flex flex-column gap-1">
                 <h3 className="section-heading mb-0">{s.topics.placeTitle}</h3>
                 <p className="small text-secondary mb-0">{s.topics.placeHint}</p>

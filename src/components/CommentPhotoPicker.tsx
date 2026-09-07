@@ -6,6 +6,26 @@ import UploadImage from "@/components/UploadImage";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
 import { COMMENT_PHOTO_LIMIT } from "@/lib/commentPhotos";
 
+/** Скрепка. Живёт здесь, а не в общем `icons.tsx`: она нужна ровно
+ *  одному месту — так же сделан глаз в `PasswordInput`. */
+function PaperclipIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l8.49-8.48a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a1.5 1.5 0 0 1-2.12-2.12l7.78-7.78" />
+    </svg>
+  );
+}
+
 /**
  * Прикрепить фото к комментарию — общий выбор картинок для отзывов о
  * событии (АА20) и обсуждений в сообществе.
@@ -18,8 +38,26 @@ import { COMMENT_PHOTO_LIMIT } from "@/lib/commentPhotos";
  * так человек видит, что картинка принята, ещё до отправки формы, а
  * форме остаётся только адрес скрытым полем. Тот же приём у обложки
  * сообщества и афиши встречи.
+ *
+ * Кнопка — ИКОНКА со скрепкой, без подписи (правка владельца
+ * 2026-09-09). Прикрепить фото — действие второго ряда: подпись
+ * «Прикрепить фото» рядом с «до 3 фото» весила больше самой формы и
+ * перетягивала внимание с «Отправить». Что делает кнопка, объясняет
+ * подсказка по наведению (`data-tooltip` — так подсказки сделаны по
+ * всему сайту), а сколько фото влезет, человек и так узнаёт: на третьей
+ * кнопка гаснет.
  */
-export default function CommentPhotoPicker({ name = "photoUrl" }: { name?: string }) {
+export default function CommentPhotoPicker({
+  name = "photoUrl",
+  trailing,
+}: {
+  name?: string;
+  /** Что поставить СПРАВА от скрепки, в один ряд с ней, — обычно кнопку
+   *  «Отправить» (правка владельца 2026-09-09). Слотом, а не жёсткой
+   *  разметкой: под событием (`ReviewsAndComments`) кнопка отправки
+   *  осталась своей строкой ниже, и ломать её ради обсуждений незачем. */
+  trailing?: React.ReactNode;
+}) {
   const t = useT();
   const s = t.reviews.photos;
   const [urls, setUrls] = useState<string[]>([]);
@@ -76,13 +114,15 @@ export default function CommentPhotoPicker({ name = "photoUrl" }: { name?: strin
       <div className="d-flex flex-wrap align-items-center gap-2">
         <button
           type="button"
-          className="btn btn-ghost btn-sm"
+          className="icon-btn"
           disabled={busy || full}
+          data-tooltip={busy ? s.uploading : s.add}
+          aria-label={busy ? s.uploading : s.add}
           onClick={() => inputRef.current?.click()}
         >
-          {busy ? s.uploading : s.add}
+          <PaperclipIcon />
         </button>
-        <span className="small text-secondary">{s.limit(COMMENT_PHOTO_LIMIT)}</span>
+        {trailing}
       </div>
 
       <input

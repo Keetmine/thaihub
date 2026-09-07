@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { assertRateLimit } from "@/lib/rateLimit";
 import { notifyAdmins } from "@/lib/adminNotify";
 import { getT } from "@/lib/i18n";
+import { REPORT_TARGET_LABELS, isReportTargetType } from "@/lib/reports";
 import type { FeedbackKind } from "@/generated/prisma/client";
 
 const KINDS = new Set(["QUESTION", "SUGGESTION", "CONTENT_REQUEST"]);
@@ -66,18 +67,8 @@ export async function submitReport(
   if (!user) return { ok: false, error: t.widgets.promo.signInRequired };
   await assertRateLimit("signup");
 
-  // Только известные типы: targetType приходит с клиента, и произвольная
-  // строка засоряла бы очередь модерации нерезолвящимися записями.
-  const KNOWN_TARGETS = [
-    "placeList",
-    "profile",
-    "eventNote",
-    "comment",
-    "review",
-    // Тема обсуждения в сообществе (АА25).
-    "communityPost",
-  ];
-  if (!KNOWN_TARGETS.includes(targetType)) {
+  // Только известные типы — см. REPORT_TARGET_LABELS.
+  if (!isReportTargetType(targetType)) {
     return { ok: false, error: t.widgets.report.unknownType };
   }
 
@@ -92,7 +83,7 @@ export async function submitReport(
 
   await notifyAdmins(
     "report",
-    `🚩 Жалоба на ${targetType} от ${user.name ?? user.email ?? user.id}` +
+    `🚩 Жалоба на ${REPORT_TARGET_LABELS[targetType]} от ${user.name ?? user.email ?? user.id}` +
       (reason.trim() ? `\n\n${reason.trim().slice(0, 500)}` : ""),
   );
   return { ok: true };

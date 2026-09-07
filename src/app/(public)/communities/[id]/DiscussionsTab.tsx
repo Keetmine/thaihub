@@ -69,6 +69,10 @@ export default async function DiscussionsTab({
         title: true,
         text: true,
         pinned: true,
+        // Форме правки в строке списка нужно текущее состояние галочки
+        // «только для участников» — иначе правка опечатки молча
+        // раскрывала бы приватную тему.
+        isPrivate: true,
         createdAt: true,
         author: { select: { id: true, name: true, photoUrl: true, deletedAt: true } },
         // Комментарии считаются в базе, а не тянутся сюда: списку нужно

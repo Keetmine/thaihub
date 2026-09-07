@@ -78,6 +78,19 @@ export const auth = {
       show: "Show password",
       hide: "Hide password",
     },
+    // Экран /banned. Причину блокировки здесь НЕ показываем — она
+    // служебная, для админа (решение владельца): человеку сообщаем факт
+    // и канал, по которому можно ответить.
+    banned: {
+      metaTitle: "Access closed",
+      eyebrow: "Access closed",
+      title: "Your account is blocked",
+      lead: "You can no longer sign in or post here. Everything you wrote earlier is still in place — we haven't erased it.",
+      contactTitle: "Think this is a mistake?",
+      contactLead:
+        "Write to us and we'll take another look. Leave an email address so we have somewhere to reply.",
+      logout: "Sign out",
+    },
     welcome: {
       metaTitle: "Who do you love?",
       metaDescription:

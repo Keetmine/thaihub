@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import SourcesBlock from "@/components/SourcesBlock";
 import BackLink from "@/components/BackLink";
 import DetailHero from "@/components/DetailHero";
@@ -189,7 +190,7 @@ export default async function AgencyDetailPage({
       )}
 
       <div className="tab-bar-row">
-        <div className="tab-bar">
+        <ScrollableTabs>
           <AppLink
             href={q ? `${href}?q=${encodeURIComponent(q)}` : href}
             prefetch={false}
@@ -204,7 +205,7 @@ export default async function AgencyDetailPage({
           >
             {t.catalog.agency.tabSeries(agency.dramas.length)}
           </AppLink>
-        </div>
+        </ScrollableTabs>
         <NameSearchBox
           action={href}
           q={q}

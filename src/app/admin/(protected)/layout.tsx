@@ -113,6 +113,15 @@ const NAV_SECTIONS: {
       { href: "/admin/users", title: "Пользователи", icon: UserIcon, matchPrefixes: ["/admin/users/"] },
       { href: "/admin/feedback", title: "Обращения", icon: ChatIcon },
       { href: "/admin/moderation", title: "Модерация", icon: FlagIcon },
+      // Сообщества — чужой контент на нашем домене, и закрытых не видно
+      // ниоткуда: ни витрина, ни поиск, ни карта сайта их не показывают.
+      // Без своего пункта меню о них можно было узнать только по жалобе.
+      {
+        href: "/admin/communities",
+        title: "Сообщества",
+        icon: UsersIcon,
+        matchPrefixes: ["/admin/communities/"],
+      },
       { href: "/admin/achievements", title: "Ачивки", icon: TrophyIcon, matchPrefixes: ["/admin/achievements/"] },
       { href: "/admin/broadcast", title: "Рассылки", icon: MegaphoneIcon },
       { href: "/admin/wiki", title: "Вики", icon: BookIcon, matchPrefixes: ["/admin/wiki/"] },

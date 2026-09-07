@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { unstable_cache } from "next/cache";
 import AppLink from "@/components/AppLink";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { CATALOG_TAG } from "@/lib/catalogCache";
@@ -197,7 +198,7 @@ type View = "performers" | "bands" | "mascots" | "agencies";
 
 function Tabs({ active, t }: { active: View; t: Dict }) {
   return (
-    <div className="tab-bar">
+    <ScrollableTabs>
       <AppLink
         href="/artists"
         prefetch={false}
@@ -226,7 +227,7 @@ function Tabs({ active, t }: { active: View; t: Dict }) {
       >
         {t.catalog.artists.tabAgencies}
       </AppLink>
-    </div>
+    </ScrollableTabs>
   );
 }
 

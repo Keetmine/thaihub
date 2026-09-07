@@ -1,5 +1,6 @@
 import UploadImage from "@/components/UploadImage";
 import AppLink from "@/components/AppLink";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import { CalendarIcon } from "@/components/icons";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
@@ -379,7 +380,7 @@ export default async function DramasPage({
       />
 
       <div className="tab-bar-row">
-        <div className="tab-bar">
+        <ScrollableTabs>
           {/* Статусы идут первыми, «Все» — последней справа (правка
               владельца 2026-09-08): каталог открывается на «Смотрю
               сейчас», и полный список стал не отправной точкой, а
@@ -401,7 +402,7 @@ export default async function DramasPage({
           >
             {t.catalog.all}
           </AppLink>
-        </div>
+        </ScrollableTabs>
         {/* И10: из каталога сериалов в их расписание раньше было не
             попасть — иконка ведёт на вкладку «Сериалы» календаря.
             Календарь и поиск — одной группой у правого края: врозь

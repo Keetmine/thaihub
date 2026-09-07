@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import PremiumToggle from "../PremiumToggle";
 import AdminRoleToggle from "./AdminRoleToggle";
+import BanControls from "../BanControls";
 import ConfirmForm from "@/components/ConfirmForm";
 import StatTile from "@/components/StatTile";
 import { TrashIcon } from "@/components/icons";
@@ -64,6 +65,9 @@ export default async function AdminUserPage({
         orderBy: { occurrence: { startsAt: "desc" } },
         take: 30,
       },
+      // Кто заблокировал — на карточке видно рядом с причиной: через
+      // полгода «когда и за что» без автора читается наполовину.
+      bannedBy: { select: { name: true, email: true } },
       _count: {
         select: {
           favoriteEvents: true,
@@ -115,6 +119,11 @@ export default async function AdminUserPage({
                   ADMIN
                 </span>
               )}
+              {user.bannedAt && (
+                <span className="badge rounded-pill text-bg-danger ms-2 align-middle">
+                  ЗАБЛОКИРОВАН
+                </span>
+              )}
             </h1>
             <p className="small text-secondary mb-0">
               {[
@@ -157,6 +166,29 @@ export default async function AdminUserPage({
             userId={user.id}
             premiumUntil={user.premiumUntil}
             premiumLifetime={user.premiumLifetime}
+          />
+        </div>
+        <div>
+          <p className="small text-secondary mb-1">Доступ к сайту</p>
+          <BanControls
+            userId={user.id}
+            userLabel={displayName}
+            banned={
+              user.bannedAt
+                ? {
+                    at: `заблокирован ${formatShortDate(user.bannedAt)} ${user.bannedAt.getFullYear()}`,
+                    reason: user.banReason,
+                    by: user.bannedBy?.name ?? user.bannedBy?.email ?? null,
+                  }
+                : null
+            }
+            blockedReason={
+              me?.id === user.id
+                ? "Себя заблокировать нельзя"
+                : user.isAdmin
+                  ? "Админа заблокировать нельзя"
+                  : null
+            }
           />
         </div>
         <div className="ms-auto">

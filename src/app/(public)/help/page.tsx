@@ -47,6 +47,7 @@ function buildFaq(t: Dict): FaqTopic[] {
   const map = link("/locations/map", l.map);
   const places = link("/lists", l.places);
   const trips = link("/trips", l.trips);
+  const communities = link("/communities", l.communities);
   const friends = link("/friends", l.friends);
   const notifications = link("/notifications", l.notifications);
   const profile = link("/account", l.profile);
@@ -119,6 +120,28 @@ function buildFaq(t: Dict): FaqTopic[] {
         { id: "trips-stay", ...p.trips.stay },
         { id: "trips-lists", ...p.trips.lists },
         { id: "trips-bookings", ...p.trips.bookings },
+      ],
+    },
+    {
+      id: "communities",
+      title: p.communities.title,
+      items: [
+        { id: "communities-what", ...p.communities.what, links: [communities] },
+        { id: "communities-create", ...p.communities.create, links: [communities, subscribe] },
+        { id: "communities-join", ...p.communities.join, links: [communities] },
+        { id: "communities-outside", ...p.communities.outside },
+        { id: "communities-discussions", ...p.communities.discussions },
+        { id: "communities-meetups", ...p.communities.meetups, links: [events] },
+        { id: "communities-trips", ...p.communities.trips, links: [trips] },
+        { id: "communities-places", ...p.communities.places },
+        { id: "communities-roles", ...p.communities.roles },
+        { id: "communities-ban", ...p.communities.ban },
+        { id: "communities-achievements", ...p.communities.achievements, links: [profile] },
+        {
+          id: "communities-report",
+          ...p.communities.report,
+          links: [link("/help#feedback", h.feedbackTitle)],
+        },
       ],
     },
     {

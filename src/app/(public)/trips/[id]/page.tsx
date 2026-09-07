@@ -1,5 +1,6 @@
 import type { TripTodoKind } from "@/generated/prisma/client";
 import AppLink from "@/components/AppLink";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
@@ -1195,7 +1196,7 @@ export default async function TripPage({
       )}
 
       <div className="tab-bar-row">
-        <div className="tab-bar">
+        <ScrollableTabs>
           <AppLink
             href={tripHref(trip)}
             prefetch={false}
@@ -1231,7 +1232,7 @@ export default async function TripPage({
           >
             {t.trips.detail.tabPlaces(placesCount)}
           </AppLink>
-        </div>
+        </ScrollableTabs>
         {isShared && isParticipant && !showAll && !showPlaces && (
           <AppLink
             href={`${tripHref(trip)}${showTodos ? `?view=${TODO_TABS.find((tab) => tab.kind === activeList)!.view}` : ""}${onlyMine ? "" : showTodos ? "&mine=1" : "?mine=1"}`}

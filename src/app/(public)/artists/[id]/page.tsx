@@ -13,7 +13,6 @@ import DramaStatusButton from "@/components/DramaStatusButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
-import CommunityTopicBlock from "@/components/CommunityTopicBlock";
 import SocialLinkIcons from "@/components/SocialLinkIcons";
 import SubTabs from "@/components/SubTabs";
 import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
@@ -863,11 +862,6 @@ export default async function PerformerPage({
         </>
       )}
 
-      {/* Сообщества, привязавшие себя к этому артисту (АА25). Блок сам
-          ходит в базу и сам отсекает закрытые — см.
-          CommunityTopicBlock. Пустого каркаса не оставляет: без
-          сообществ возвращает null. */}
-      <CommunityTopicBlock performerId={id} />
 
       {/* Сериалы / Фильмы / Шоу — под-табами, а не тремя лентами друг
           под другом (правка владельца: компактнее). Пустые типы пилюль

@@ -223,7 +223,6 @@ model Performer {
   updatedAt DateTime @updatedAt
 
   @@index([name])
-  communityTopics CommunityTopic[]
 }
 
 enum PerformerType {
@@ -565,7 +564,6 @@ model Drama {
   // Гостевой список /dramas: «свежие по дате эфира» (order by desc,
   // airedFrom not null, take 60).
   @@index([airedFrom])
-  communityTopics CommunityTopic[]
 }
 
 // «Related Content» с MyDramaList: drama → related с подписью
@@ -955,6 +953,16 @@ model User {
   friendRequestsReceived Friendship[]  @relation("FriendAddressee")
   redeemedPromoCodes     PromoCode[]   @relation("PromoRedeemer")
   eventTickets           EventTicket[]
+  // Блокировка (решение владельца 2026-09-09). Мягкое удаление
+  // (`deletedAt`) — действие самого человека, а это инструмент
+  // владельца сайта: забаненный не входит и не пишет, но написанное им
+  // остаётся — массовое исчезновение чужих реплик рвёт разговоры.
+  bannedAt               DateTime?
+  /// Причина видна только админу: человеку показываем факт, а не текст.
+  banReason              String?
+  bannedById             String?
+  bannedBy               User?               @relation("UserBans", fields: [bannedById], references: [id], onDelete: SetNull)
+  bannedUsers            User[]              @relation("UserBans")
   ownedCommunities       Community[]         @relation("CommunityOwner")
   communityMemberships   CommunityMember[]
   communityInvites       CommunityInvite[]   @relation("CommunityInviteTo")
@@ -2253,7 +2261,6 @@ model Community {
   country     String?
   city        String?
   links       CommunityLink[]
-  topics       CommunityTopic[]
   achievements CommunityAchievement[]
   placeLists  PlaceList[]
   trips       Trip[]
@@ -2348,29 +2355,6 @@ model CommunityPost {
   @@index([communityId, createdAt])
 }
 
-/// О ком или о чём сообщество: до трёх привязок к каталогу (правило —
-/// в коде, COMMUNITY_TOPIC_LIMIT). Ровно они показываются блоком
-/// «Сообщества» на страницах артиста и сериала.
-///
-/// Почему до трёх, а не сколько угодно: сообщество города любит всех
-/// подряд, и список из сотни привязок и вести невозможно, и на странице
-/// артиста он превратился бы в свалку. Такие сообщества находят по
-/// месту (`Community.country`/`city`), а не по актёру.
-model CommunityTopic {
-  id          String     @id @default(cuid())
-  communityId String
-  community   Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  performerId String?
-  performer   Performer? @relation(fields: [performerId], references: [id], onDelete: Cascade)
-  dramaId     String?
-  drama       Drama?     @relation(fields: [dramaId], references: [id], onDelete: Cascade)
-  createdAt   DateTime   @default(now())
-
-  @@unique([communityId, performerId])
-  @@unique([communityId, dramaId])
-  @@index([performerId])
-  @@index([dramaId])
-}
 
 /// Фото, прикреплённое к комментарию: к отзыву о событии (АА20) и к
 /// обсуждению в сообществе. Лежит в общем /uploads через ту же ручку,

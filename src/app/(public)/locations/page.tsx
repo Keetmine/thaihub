@@ -8,14 +8,15 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { PinIcon } from "@/components/icons";
 import { dramaHref } from "@/lib/dramaSlug";
 import { DRAMA_TITLE_SELECT, compareDramaTitles, dramaTitleForLocale } from "@/lib/dramaLocale";
-import { locationHref } from "@/lib/slugHelpers";
+import { listHref, locationHref } from "@/lib/slugHelpers";
+import { visibleCommunityListsWhere } from "@/app/(public)/lists/communityLists";
 import { pageMetadata } from "@/lib/seo";
 import { LOCATION_CATEGORIES, isLocationCategory } from "@/lib/locationCategories";
 import { getT } from "@/lib/i18n";
 import { unstable_cache } from "next/cache";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
-import type { LocationCategory } from "@/generated/prisma/client";
+import type { LocationCategory, Prisma } from "@/generated/prisma/client";
 import CreateOwnPlaceButton from "@/app/(public)/lists/[id]/CreateOwnPlaceButton";
 
 export async function generateMetadata({
@@ -176,6 +177,9 @@ export default async function LocationsPage({
     rawCat && isLocationCategory(rawCat) ? (rawCat as LocationCategory) : null;
   const groupByDrama = rawGroup === "drama";
   const showMine = rawGroup === "mine";
+  // Места сообществ (правка владельца 2026-09-09): каталог о них не знал
+  // вовсе, хотя «куда сходить в Минске» — такие же места, как свои.
+  const showCommunities = rawGroup === "communities";
 
   const currentUser = await getCurrentUser();
   const activeListId = (rawList ?? "").trim() || null;
@@ -192,24 +196,35 @@ export default async function LocationsPage({
     ? await prisma.location.count({ where: { createdByUserId: currentUser.id } })
     : 0;
 
+  // Места из списков сообществ, доступных ЗРИТЕЛЮ. Кто что видит —
+  // общим правилом (`lists/communityLists.ts`), и отбор идёт В ЗАПРОСЕ:
+  // из закрытого сообщества наружу не должно уходить ничего, а
+  // спрятанное разметкой всё равно уехало бы в HTML.
+  const communityPlacesWhere: Prisma.LocationWhereInput = {
+    listItems: { some: { list: visibleCommunityListsWhere(currentUser?.id) } },
+  };
+  // Ноль не показываем: вкладки нет, пока показывать нечего.
+  const communityPlacesCount = await prisma.location.count({ where: communityPlacesWhere });
+
   // Какие категории вообще встречаются на текущей вкладке — пустые в
   // фильтр не выводим. Для общего каталога — из кэша (одинаково для
-  // всех), для личных вкладок — живым запросом.
-  const presentCategoryValues =
-    activeListId || (showMine && currentUser)
-      ? (
-          await prisma.location.findMany({
-            where: {
-              ...(activeListId
-                ? { listItems: { some: { listId: activeListId } } }
-                : { createdByUserId: currentUser!.id }),
-              category: { not: null },
-            },
-            select: { category: true },
-            distinct: ["category"],
-          })
-        ).map((r) => r.category)
-      : await getCatalogCategories();
+  // всех), для остальных вкладок — живым запросом.
+  const tabScopeWhere: Prisma.LocationWhereInput | null = activeListId
+    ? { listItems: { some: { listId: activeListId } } }
+    : showCommunities
+      ? communityPlacesWhere
+      : showMine && currentUser
+        ? { createdByUserId: currentUser.id }
+        : null;
+  const presentCategoryValues = tabScopeWhere
+    ? (
+        await prisma.location.findMany({
+          where: { ...tabScopeWhere, category: { not: null } },
+          select: { category: true },
+          distinct: ["category"],
+        })
+      ).map((r) => r.category)
+    : await getCatalogCategories();
   const presentCategories = new Set(presentCategoryValues);
   const availableCategories = LOCATION_CATEGORIES.filter((c) => presentCategories.has(c.value));
 
@@ -217,6 +232,7 @@ export default async function LocationsPage({
     const params = new URLSearchParams();
     if (activeListId) params.set("list", activeListId);
     else if (showMine) params.set("group", "mine");
+    else if (showCommunities) params.set("group", "communities");
     if (value) params.set("cat", value);
     if (q) params.set("q", q);
     const qs = params.toString();
@@ -292,6 +308,20 @@ export default async function LocationsPage({
               {t.catalog.locations.tabAllMine(myPlacesCount)}
             </AppLink>
           )}
+          {/* Места сообществ — одной вкладкой, а не списком вкладок на
+              каждый список: сообществ у человека может быть несколько, и
+              рейка вкладок расползлась бы. Вкладки нет, пока показывать
+              нечего (гостю — пока ни одно публичное сообщество не открыло
+              список). */}
+          {communityPlacesCount > 0 && (
+            <AppLink
+              href={`/locations?group=communities${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              prefetch={false}
+              className={`tab-bar-item ${showCommunities ? "active" : ""}`}
+            >
+              {`${t.communities.places.catalogTab} (${communityPlacesCount})`}
+            </AppLink>
+          )}
         </div>
         <NameSearchBox
           action="/locations"
@@ -302,7 +332,9 @@ export default async function LocationsPage({
               ? { group: "drama" }
               : showMine
                 ? { group: "mine" }
-                : undefined
+                : showCommunities
+                  ? { group: "communities" }
+                  : undefined
           }
           className=""
         />
@@ -343,6 +375,8 @@ export default async function LocationsPage({
         />
       ) : groupByDrama ? (
         <LocationsByDrama q={q} currentUser={currentUser} />
+      ) : showCommunities ? (
+        <CommunityPlaces q={q} category={category} currentUser={currentUser} />
       ) : showMine && currentUser ? (
         <MyPlaces q={q} userId={currentUser.id} category={category} />
       ) : (
@@ -554,6 +588,115 @@ async function UserPlaceList({
           href: locationHref(l),
           photoUrl: l.photoUrl,
           subtitle: l.category ? t.catalog.locationCategory[l.category] : null,
+          visited: visitedIds.has(l.id),
+        }))}
+      />
+    </>
+  );
+}
+
+/**
+ * Вкладка «Места сообществ» — места из общих списков («куда сходить в
+ * Минске»), которые зритель вправе видеть.
+ *
+ * ПРИВАТНОСТЬ ЗДЕСЬ ГЛАВНОЕ. Отбор идёт В ЗАПРОСЕ, общим правилом
+ * `visibleCommunityListsWhere` (`lists/communityLists.ts`), тем же, по
+ * которому открывается страница списка: участнику — списки его
+ * сообществ, всем остальным — только публичный список публичного
+ * сообщества. Из ЗАКРЫТОГО сообщества наружу не уходит ничего, включая
+ * само его название. Отфильтровать в разметке было бы нельзя: скрытое
+ * стилями всё равно уехало бы в HTML.
+ *
+ * Место может лежать сразу в нескольких списках — показываем его один
+ * раз, а в подписи перечисляем сообщества, у которых оно есть.
+ */
+async function CommunityPlaces({
+  q,
+  category,
+  currentUser,
+}: {
+  q: string;
+  category: LocationCategory | null;
+  currentUser: { id: string } | null;
+}) {
+  const { t, locale } = await getT();
+
+  const items = await prisma.placeListItem.findMany({
+    where: {
+      list: visibleCommunityListsWhere(currentUser?.id),
+      location: {
+        ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+        ...(category ? { category } : {}),
+      },
+    },
+    select: {
+      location: { select: { id: true, name: true, photoUrl: true, slug: true, category: true } },
+      list: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          community: { select: { title: true } },
+        },
+      },
+    },
+  });
+
+  // Одно место — одна карточка, даже если оно лежит в трёх списках.
+  const places = new Map<
+    string,
+    { location: (typeof items)[number]["location"]; communities: Set<string> }
+  >();
+  const lists = new Map<string, (typeof items)[number]["list"]>();
+  for (const item of items) {
+    lists.set(item.list.id, item.list);
+    const row = places.get(item.location.id) ?? {
+      location: item.location,
+      communities: new Set<string>(),
+    };
+    if (item.list.community) row.communities.add(item.list.community.title);
+    places.set(item.location.id, row);
+  }
+
+  const rows = [...places.values()].sort((a, b) =>
+    a.location.name.localeCompare(b.location.name, locale),
+  );
+  const visitedIds = await getVisitedIds(currentUser, rows.map((r) => r.location.id));
+
+  return (
+    <>
+      <p className="small text-secondary mb-3">{t.communities.places.catalogIntro}</p>
+
+      {/* Сами списки — строкой чипов: с вкладки видно, чьи это места, и
+          можно уйти в список целиком, где карта и заметки. */}
+      {lists.size > 0 && (
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          {[...lists.values()].map((l) => (
+            <AppLink
+              key={l.id}
+              href={listHref(l)}
+              className="nav-chip nav-chip-link text-decoration-none"
+            >
+              {l.title}
+              {l.community && <span className="nav-chip-value">{l.community.title}</span>}
+            </AppLink>
+          ))}
+        </div>
+      )}
+
+      <AlphabetDataList
+        emptyMessage={
+          q || category ? t.common.nothingFound : t.communities.places.catalogEmptyHint
+        }
+        showVisitedButton
+        variant="cards"
+        cardAspect="4 / 3"
+        rows={rows.map(({ location: l, communities }) => ({
+          id: l.id,
+          name: l.name,
+          href: locationHref(l),
+          photoUrl: l.photoUrl,
+          subtitle: [...communities].join(", ") || null,
           visited: visitedIds.has(l.id),
         }))}
       />

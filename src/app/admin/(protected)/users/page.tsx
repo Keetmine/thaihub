@@ -20,6 +20,8 @@ import Pagination from "@/components/Pagination";
 import { PAGE_SIZE, parsePage, totalPagesFor } from "@/lib/pagination";
 import { adminListHref } from "@/lib/adminListHref";
 import { isOnlineNow, lastSeenExact, lastSeenLabel } from "./lastSeenLabel";
+import BanControls from "./BanControls";
+import { getCurrentUser } from "@/lib/userAuth";
 
 export const metadata = { title: "Пользователи" };
 
@@ -28,11 +30,17 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; sort?: string } & FilterParams>;
+  searchParams: Promise<
+    { q?: string; page?: string; sort?: string; banned?: string } & FilterParams
+  >;
 }) {
   await requireAdminPage();
   const sp = await searchParams;
+  const me = await getCurrentUser();
   const { q: rawQ, page: rawPage, sort: rawSort } = sp;
+  // Заблокированные не выделены в фильтры (AdminFilters) намеренно: их
+  // единицы, и нужны они не «в разрезе», а списком — по ссылке с плитки.
+  const bannedOnly = sp.banned === "1";
   const q = (rawQ ?? "").trim();
   const page = parsePage(rawPage);
   // По умолчанию список отсортирован по последнему заходу — сюда смотрят,
@@ -46,6 +54,7 @@ export default async function AdminUsersPage({
     AND: [
       {
         deletedAt: null,
+        ...(bannedOnly ? { bannedAt: { not: null } } : {}),
         ...(q
           ? {
               OR: [
@@ -63,7 +72,7 @@ export default async function AdminUsersPage({
   const now = new Date();
   const activeSince = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-  const [users, usersTotal, activeWeek, activeMonth, neverSeen] = await Promise.all([
+  const [users, usersTotal, activeWeek, activeMonth, neverSeen, bannedCount] = await Promise.all([
     prisma.user.findMany({
       where,
       // nulls: "last" — те, кто ни разу не заходил, не должны занимать
@@ -86,6 +95,7 @@ export default async function AdminUsersPage({
     prisma.user.count({ where: { deletedAt: null, lastSeenAt: { gte: activeSince(7) } } }),
     prisma.user.count({ where: { deletedAt: null, lastSeenAt: { gte: activeSince(30) } } }),
     prisma.user.count({ where: { deletedAt: null, lastSeenAt: null } }),
+    prisma.user.count({ where: { deletedAt: null, bannedAt: { not: null } } }),
   ]);
 
   const promos = await prisma.promoCode.findMany({
@@ -109,6 +119,7 @@ export default async function AdminUsersPage({
         <StatTile value={activeWeek} label="заходили за 7 дней" />
         <StatTile value={activeMonth} label="за 30 дней" />
         <StatTile value={neverSeen} label="ни разу не заходили" />
+        <StatTile value={bannedCount} label="заблокированы" />
       </div>
       <p className="small text-secondary mb-4">
         По всем аккаунтам, независимо от поиска и страницы. У тех, кто не заходил с тех пор, как
@@ -134,13 +145,28 @@ export default async function AdminUsersPage({
         >
           по регистрации
         </Link>
+        {/* Заблокированных единицы, и ищут их не по имени, а «покажи
+            всех разом» — отдельным переключателем рядом с сортировкой. */}
+        <Link
+          href={adminListHref("/admin/users", sp, {
+            banned: bannedOnly ? null : "1",
+            page: 1,
+          })}
+          prefetch={false}
+          className={`btn btn-sm ms-2 ${bannedOnly ? "btn-outline-danger" : "btn-ghost"}`}
+        >
+          {bannedOnly ? "× только заблокированные" : "только заблокированные"}
+        </Link>
       </div>
 
       <NameSearchBox
         action="/admin/users"
         q={q}
         placeholder="Поиск по имени, email, telegram…"
-        hiddenFields={sortByCreated ? { sort: "created" } : undefined}
+        hiddenFields={{
+          ...(sortByCreated ? { sort: "created" } : {}),
+          ...(bannedOnly ? { banned: "1" } : {}),
+        }}
         className="admin-search-lg mb-3"
       />
       {/* Список слева, фильтры колонкой справа — как на /search. */}
@@ -243,6 +269,27 @@ export default async function AdminUsersPage({
                   </div>
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-shrink-0">
+                  <BanControls
+                    userId={u.id}
+                    userLabel={displayName}
+                    banned={
+                      u.bannedAt
+                        ? {
+                            at: `${formatShortDate(u.bannedAt)} ${u.bannedAt.getFullYear()}`,
+                            reason: u.banReason,
+                            by: null,
+                          }
+                        : null
+                    }
+                    blockedReason={
+                      me?.id === u.id
+                        ? "Себя заблокировать нельзя"
+                        : u.isAdmin
+                          ? "Админа заблокировать нельзя"
+                          : null
+                    }
+                    compact
+                  />
                   <PremiumToggle userId={u.id} premiumUntil={u.premiumUntil} premiumLifetime={u.premiumLifetime} />
                   <ConfirmForm
                     action={boundDelete}

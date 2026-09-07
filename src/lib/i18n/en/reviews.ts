@@ -10,10 +10,10 @@ export const reviews = {
   photos: {
       add: "Attach a photo",
       uploading: "Uploading…",
+      /** Подписи у кнопки нет: скрепка объясняется подсказкой по
+       *  наведению (правка владельца 2026-09-09), и `add` теперь ею и
+       *  служит. */
       remove: "Remove the photo",
-      limit: (n: number) => `up to ${n} photos`,
-      /** Shown next to the picker under an event: says whose photos we
-       *  expect and reminds that a comment is public. */
   },
   ratingLabel: "Rating",
   outOf10: "out of 10",

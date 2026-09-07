@@ -2,21 +2,29 @@
 
 import { useRef, useState } from "react";
 import CommentPhotoPicker from "@/components/CommentPhotoPicker";
+import Modal from "@/components/Modal";
 import { useT } from "@/components/LocaleProvider";
 import { createPost } from "@/app/(public)/communities/postActions";
 
 /**
- * Форма новой темы обсуждения.
+ * Форма новой темы обсуждения — в модальном окне (правка владельца
+ * 2026-09-09).
  *
- * Клиентская, а не голый `<form action>`, ради двух вещей: свернуть
- * форму обратно и очистить поля после удачной отправки (иначе текст
- * висел бы в textarea и человек отправлял бы его вторым разом), и
- * показать ошибку экшена под полями — текст исключения из server action
- * в проде до клиента не доезжает, поэтому ошибки приезжают значением
- * (см. docs/architecture.md).
+ * Раньше форма разворачивалась прямо на вкладке и на время написания
+ * съезжала вместе со списком тем. Окно — то же решение, что у
+ * «Создать сообщество» (`CreateCommunityButton`) и у встречи
+ * (`MeetupForm`): пока человек пишет, всё остальное не мешает, а список
+ * тем остаётся на месте, когда окно закрылось.
  *
- * Свёрнутая по умолчанию: обсуждения читают чаще, чем пишут, и большая
- * форма наверху отодвигала бы сами темы вниз.
+ * Кнопка — обычная оранжевая (`btn btn-primary`), а не тихая: завести
+ * тему это главное действие вкладки, и прятать его в цвет фона незачем.
+ *
+ * Клиентская, а не голый `<form action>`, ради двух вещей: закрыть окно
+ * и очистить поля после удачной отправки (иначе текст висел бы в
+ * textarea и человек отправлял бы его вторым разом), и показать ошибку
+ * экшена под полями — текст исключения из server action в проде до
+ * клиента не доезжает, поэтому ошибки приезжают значением (см.
+ * docs/architecture.md).
  */
 export default function PostForm({ communityId }: { communityId: string }) {
   const t = useT();
@@ -30,85 +38,92 @@ export default function PostForm({ communityId }: { communityId: string }) {
   // фотографиями.
   const [pickerKey, setPickerKey] = useState(0);
 
-  if (!open) {
-    // Кнопка по содержимому, а не во всю ширину: вкладка — flex-колонка,
-    // и без align-self ребёнок растягивается на всю её ширину (жалоба
-    // владельца 2026-09-08: «не такая большая кнопка»).
-    return (
+  return (
+    <>
+      {/* Кнопка по содержимому, а не во всю ширину: вкладка — flex-колонка,
+          и без align-self ребёнок растягивается на всю её ширину (жалоба
+          владельца 2026-09-08: «не такая большая кнопка»). */}
       <button
         type="button"
-        className="btn btn-ghost btn-sm align-self-start"
+        className="btn btn-primary btn-sm align-self-start"
         onClick={() => setOpen(true)}
       >
         {s.newTopic}
       </button>
-    );
-  }
 
-  return (
-    <form
-      ref={formRef}
-      className="surface p-3 d-flex flex-column gap-2"
-      action={async (formData) => {
-        setError(null);
-        const result = await createPost(communityId, formData);
-        if (!result.ok) {
-          setError(result.error);
-          return;
-        }
-        formRef.current?.reset();
-        setPickerKey((k) => k + 1);
-        setOpen(false);
-      }}
-    >
-      {/* Заголовок необязателен: половина обсуждений начинается репликой
-          («кто идёт на фанмит?»), и обязательное поле заставляло бы
-          придумывать ей название. */}
-      <input
-        name="title"
-        maxLength={120}
-        placeholder={s.titlePlaceholder}
-        aria-label={s.titleAria}
-        className="form-control form-control-sm"
-      />
-      <textarea
-        name="text"
-        rows={4}
-        required
-        maxLength={5000}
-        placeholder={s.textPlaceholder}
-        aria-label={s.textAria}
-        className="form-control"
-      />
-      {/* Картинки темы: уезжают на сервер сразу при выборе, форме
-          остаются адреса скрытыми полями. Лежат они на самой теме, своей
-          таблицей (см. CommunityPostPhoto). */}
-      <CommentPhotoPicker key={pickerKey} />
-      {/* Приватная тема не попадает в список, который видят посторонние
-          (правка владельца 2026-09-09). Умолчание — публичная:
-          сообщество заводят, чтобы его нашли, и по темам с улицы видно,
-          живое ли оно. */}
-      <label className="form-check small text-secondary mb-0 d-flex align-items-center gap-2">
-        <input type="checkbox" name="isPrivate" className="form-check-input mt-0" />
-        <span>{s.privateLabel}</span>
-      </label>
-      <p className="small text-secondary mb-0">{s.newTopicHint}</p>
-      {error && <p className="small text-danger mb-0">{error}</p>}
-      <div className="d-flex gap-2">
-        <button type="submit" className="btn btn-primary btn-sm">
-          {s.publish}
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            setOpen(false);
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          setError(null);
+        }}
+        title={s.newTopic}
+      >
+        <form
+          ref={formRef}
+          className="d-flex flex-column gap-2"
+          action={async (formData) => {
             setError(null);
+            const result = await createPost(communityId, formData);
+            if (!result.ok) {
+              setError(result.error);
+              return;
+            }
+            formRef.current?.reset();
+            setPickerKey((k) => k + 1);
+            setOpen(false);
           }}
         >
-          {s.cancel}
-        </button>
-      </div>
-    </form>
+          {/* Заголовок необязателен: половина обсуждений начинается
+              репликой («кто идёт на фанмит?»), и обязательное поле
+              заставляло бы придумывать ей название. */}
+          <input
+            name="title"
+            maxLength={120}
+            autoFocus
+            placeholder={s.titlePlaceholder}
+            aria-label={s.titleAria}
+            className="form-control form-control-sm"
+          />
+          <textarea
+            name="text"
+            rows={4}
+            required
+            maxLength={5000}
+            placeholder={s.textPlaceholder}
+            aria-label={s.textAria}
+            className="form-control"
+          />
+          {/* Картинки темы: уезжают на сервер сразу при выборе, форме
+              остаются адреса скрытыми полями. Лежат они на самой теме,
+              своей таблицей (см. CommunityPostPhoto). */}
+          <CommentPhotoPicker key={pickerKey} />
+          {/* Приватная тема не попадает в список, который видят посторонние
+              (правка владельца 2026-09-09). Умолчание — публичная:
+              сообщество заводят, чтобы его нашли, и по темам с улицы видно,
+              живое ли оно. */}
+          <label className="form-check small text-secondary mb-0 d-flex align-items-center gap-2">
+            <input type="checkbox" name="isPrivate" className="form-check-input mt-0" />
+            <span>{s.privateLabel}</span>
+          </label>
+          {error && <p className="small text-danger mb-0">{error}</p>}
+          <div className="d-flex gap-2">
+            <button type="submit" className="btn btn-primary btn-sm">
+              {s.publish}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                setOpen(false);
+                setError(null);
+              }}
+            >
+              {s.cancel}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </>
   );
 }

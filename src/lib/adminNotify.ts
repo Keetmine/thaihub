@@ -10,7 +10,17 @@ import { isMailerConfigured, sendMail } from "@/lib/mailer";
 // письмо уходит, только если настроен SMTP и задан адрес получателя,
 // иначе канал молча пропускается.
 
-export type AdminNotifyKind = "feedback" | "report" | "import" | "error" | "payment" | "signup";
+export type AdminNotifyKind =
+  | "feedback"
+  | "report"
+  | "import"
+  | "error"
+  | "payment"
+  | "signup"
+  // Кто-то завёл сообщество. Повод отдельный от «signup»: сообщество —
+  // это чужой контент на нашем домене, и узнавать о новом владелица
+  // должна сразу, а не при следующем заходе в админку.
+  | "community";
 
 /** Ключ настройки, которым канал отключается из /admin/settings. */
 export const ADMIN_NOTIFY_SETTING = "admin_notify_kinds";
@@ -19,7 +29,14 @@ export const ADMIN_NOTIFY_EMAIL_SETTING = "admin_notify_email";
 
 /** Значение по умолчанию: включено всё, кроме ошибок — их поток шумный,
  *  а счётчик в сайдбаре и так виден. */
-const DEFAULT_KINDS: AdminNotifyKind[] = ["feedback", "report", "import", "payment", "signup"];
+const DEFAULT_KINDS: AdminNotifyKind[] = [
+  "feedback",
+  "report",
+  "import",
+  "payment",
+  "signup",
+  "community",
+];
 
 async function enabledKinds(): Promise<Set<AdminNotifyKind>> {
   const raw = await getSetting(ADMIN_NOTIFY_SETTING);
@@ -117,6 +134,54 @@ export function notifyAdminsAboutSignup(user: {
     // Дедуп по пользователю: повторов быть не должно, но если
     // обработчик вдруг выполнится дважды, второе сообщение не уйдёт.
     { dedupKey: user.id },
+  );
+}
+
+/**
+ * Экранирование под `parse_mode: "HTML"` бота. Нужно там, где в текст
+ * попадает ПОЛЬЗОВАТЕЛЬСКАЯ строка: название сообщества вида
+ * «Лакорны <3» иначе не просто отвалится — Telegram отклонит всё
+ * сообщение целиком, и уведомление молча не придёт.
+ */
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+const APP_URL = process.env.APP_URL ?? "https://myblhub.com";
+
+/**
+ * «Завели сообщество». Сообщества — чужой контент на нашем домене, и
+ * владелица сайта отвечает за него перед всеми: закрытое сообщество не
+ * видно ни в витрине, ни в поиске, поэтому единственный способ узнать о
+ * нём вовремя — это сообщение в Telegram (решение владельца: до выкладки
+ * сообществ на прод админка должна знать о них всё).
+ *
+ * В тексте ровно то, по чему принимается решение «идти смотреть или
+ * нет»: название, кто завёл, видимость и прямая ссылка на страницу.
+ *
+ * Ничего не ждём и не бросаем — как у регистрации: создание сообщества
+ * не должно ни тормозить из-за похода в Telegram, ни падать, если бот
+ * недоступен.
+ */
+export function notifyAdminsAboutCommunity(community: {
+  id: string;
+  slug: string | null;
+  title: string;
+  visibility: "PUBLIC" | "PRIVATE";
+  owner: { name: string | null; email: string | null };
+}): void {
+  const who = community.owner.name?.trim() || community.owner.email || "без имени";
+  const visibility = community.visibility === "PRIVATE" ? "закрытое" : "открытое";
+  const href = `${APP_URL}/communities/${community.slug ?? community.id}`;
+  void notifyAdmins(
+    "community",
+    `👥 Новое сообщество (${visibility})\n\n` +
+      `<b>${escapeHtml(community.title)}</b>\n` +
+      `создал: ${escapeHtml(who)}\n` +
+      href,
+    // Дедуп по сообществу: повторов быть не должно, но двойная отправка
+    // экшена не должна превращаться в два одинаковых сообщения.
+    { dedupKey: community.id },
   );
 }
 

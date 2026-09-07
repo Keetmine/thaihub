@@ -90,15 +90,11 @@ export const communities = {
      * Привязки к каталогу и место (АА25). Свой подобъект: этот кусок
      * словаря правится вместе с привязками, а не с витриной.
      */
+    /** Место сообщества и фильтр витрины по нему. Привязки к
+     *  артистам и сериалам жили тут же, но владелец их отменила
+     *  2026-09-09 — лимит мешал, а без лимита список превращался в
+     *  свалку на странице артиста. */
     topics: {
-        title: "What this community is about",
-        hint: "The artists and series people come here for. These links show up on the artist and series pages — that is where new members come from.",
-        limitHint: (n: number) =>
-            `Up to ${n} links in total: a long list would turn the artist page into a dump.`,
-        performersLabel: "Artists",
-        performersPlaceholder: "Start typing a name",
-        dramasLabel: "Series",
-        dramasPlaceholder: "Start typing a title",
 
         placeTitle: "Where the community lives",
         placeHint:
@@ -111,7 +107,6 @@ export const communities = {
         loading: "Loading…",
 
         /** Заголовок блока на странице артиста и сериала. */
-        blockHeading: "Communities",
 
         /** Фильтр по месту на витрине. */
         filterLabel: "Where",
@@ -121,7 +116,6 @@ export const communities = {
         emptyPlaceHint: "Try another place — or start a community here yourself.",
 
         errors: {
-            limit: (n: number) => `A community can be linked to at most ${n} catalog entries`,
             cityWithoutCountry:
                 "A city needs a country — a community with a city alone would never be found",
         },
@@ -219,9 +213,18 @@ export const communities = {
         openToEveryone: "Open to everyone",
         // Счёт мест берём из словаря списков (t.lists.places.placeCount):
         // фраза одна и та же, а вторая копия склонений разъехалась бы.
-        morePlaces: (n: number) => `and ${n} more →`,
-        openList: "Open the list",
-        listEmpty: "No places in this list yet.",
+        // Чей это список — там, где списки разных сообществ вперемешку
+        // (каталог локаций, страница места).
+        ofCommunity: (title: string) => `Community “${title}”`,
+
+        // Каталог локаций: вкладка с местами из общих списков.
+        catalogTab: "Community places",
+        catalogIntro:
+            "Places from shared lists: the communities you belong to, and open lists of public communities.",
+        catalogEmptyHint:
+            "A community list is visible to its members. Only open lists of public communities go outside.",
+        // Страница места: в каких общих списках оно лежит.
+        onLocation: "In community lists",
 
         emptyTitle: "No shared places yet",
         emptyHint:
@@ -237,8 +240,7 @@ export const communities = {
 
     /** Обсуждения (этап 2): темы сообщества и комментарии к ним. */
     posts: {
-        newTopic: "Start a topic",
-        newTopicHint: "Members will see it in their notifications on the site.",
+        newTopic: "New topic",
         privateLabel: "Members only",
         privateBadge: "Members only",
         edit: "Edit",
@@ -305,6 +307,9 @@ export const communities = {
         inviteSearch: "Search",
         invited: "Invited, waiting for an answer",
         cancelInvite: "Cancel",
+        // Блок участников в левой колонке показывает два ряда аватарок,
+        // остальные — по этой кнопке, в модалке.
+        seeAll: "See everyone",
         inviteBannerTitle: (who: string) => `${who} is inviting you to this community`,
         inviteBannerHint: "Accept and you are a member; decline and the invitation is gone.",
 

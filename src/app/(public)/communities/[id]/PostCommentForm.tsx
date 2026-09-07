@@ -20,6 +20,11 @@ import { addPostComment } from "@/app/(public)/communities/postActions";
  * 2. ошибку экшена надо показать под полем: текст исключения из server
  *    action в проде до клиента не доезжает, поэтому ошибки приезжают
  *    значением (см. docs/architecture.md).
+ *
+ * Отправленный ОТВЕТ закрывает свою свёртку (правка владельца
+ * 2026-09-09): раньше форма оставалась открытой, и на длинной ветке под
+ * репликами копились пустые поля ответа — по одному на каждую, куда
+ * человек успел написать.
  */
 export default function PostCommentForm({
   postId,
@@ -54,6 +59,11 @@ export default function PostCommentForm({
         }
         formRef.current?.reset();
         setPickerKey((k) => k + 1);
+        // Форма ответа живёт в <details> (см. PostComment) — закрываем её
+        // руками через DOM, потому что состоянием свёртки владеет
+        // разметка ответа, а не эта форма. У комментария первого уровня
+        // никакой свёртки нет, `closest` вернёт null и ничего не случится.
+        formRef.current?.closest("details")?.removeAttribute("open");
       }}
     >
       {parentId && <input type="hidden" name="parentId" value={parentId} />}
@@ -66,13 +76,19 @@ export default function PostCommentForm({
         aria-label={ariaLabel}
         className="form-control"
       />
-      {/* Картинки уезжают на сервер сразу при выборе, форме остаются
-          только адреса скрытыми полями (см. CommentPhotoPicker). */}
-      <CommentPhotoPicker key={pickerKey} />
       {error && <p className="small text-danger mb-0">{error}</p>}
-      <button type="submit" className="btn btn-primary btn-sm align-self-start">
-        {s.send}
-      </button>
+      {/* Картинки уезжают на сервер сразу при выборе, форме остаются
+          только адреса скрытыми полями (см. CommentPhotoPicker). Кнопка
+          «Отправить» отдана пикеру слотом: скрепка и отправка стоят одной
+          строкой, скрепка слева (правка владельца 2026-09-09). */}
+      <CommentPhotoPicker
+        key={pickerKey}
+        trailing={
+          <button type="submit" className="btn btn-primary btn-sm">
+            {s.send}
+          </button>
+        }
+      />
     </form>
   );
 }

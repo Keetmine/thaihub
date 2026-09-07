@@ -2,6 +2,7 @@ import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
 import PremiumUpsell from "@/components/PremiumUpsell";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
@@ -150,8 +151,13 @@ export default async function CommunitiesPage({
         action={canCreate ? <CreateCommunityButton /> : undefined}
       />
 
-      <div style={{ maxWidth: "44rem" }}>
-        <p className="text-secondary mb-3">{t.communities.intro}</p>
+      {/* Ширину держит только вступительный абзац: строка в 44rem
+          читается, а во всю страницу — нет. Сам список с этого места и
+          ниже занимает всю ширину (правка владельца 2026-09-09). */}
+      <div>
+        <p className="text-secondary mb-3" style={{ maxWidth: "44rem" }}>
+          {t.communities.intro}
+        </p>
 
         {/* Заводить сообщество — часть подписки; вступать и участвовать
             можно без неё (решение владельца). */}
@@ -165,7 +171,11 @@ export default async function CommunitiesPage({
             назвало страну: пустая панель фильтров — это шум. */}
         {countries.length > 0 && (
           <nav aria-label={s.filterLabel} className="mb-3">
-            <div className="d-flex flex-wrap gap-3 tab-bar">
+            {/* Стран в ряду сколько угодно — ряд прокручивается общим
+                механизмом (ScrollableTabs), как вкладки везде на сайте:
+                со стрелками и растушёванным краем вместо заворота в три
+                строки. */}
+            <ScrollableTabs>
               <AppLink
                 href={placeHref(null, null)}
                 className={`tab-bar-item ${country ? "" : "active"}`}
@@ -183,7 +193,7 @@ export default async function CommunitiesPage({
                   {c.value} ({c.count})
                 </AppLink>
               ))}
-            </div>
+            </ScrollableTabs>
             {/* Города появляются, только когда страна выбрана и город у
                 кого-то заполнен: у сообщества «Лакорны Беларусь» города
                 нет, и второй пустой ряд ему не нужен. */}
@@ -220,7 +230,7 @@ export default async function CommunitiesPage({
         {mine.length > 0 && (
           <section className="mb-4">
             <h2 className="section-heading mb-2">{t.communities.myCommunities}</h2>
-            <div className="d-flex flex-column gap-2">{byMembers(mine).map(card)}</div>
+            <div className="community-grid">{byMembers(mine).map(card)}</div>
           </section>
         )}
 
@@ -229,7 +239,7 @@ export default async function CommunitiesPage({
             {mine.length > 0 && (
               <h2 className="section-heading mb-2">{t.communities.allCommunities}</h2>
             )}
-            <div className="d-flex flex-column gap-2">{others.map(card)}</div>
+            <div className="community-grid">{others.map(card)}</div>
           </section>
         )}
 

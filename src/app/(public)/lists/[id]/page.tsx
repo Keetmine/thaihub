@@ -14,6 +14,7 @@ import EditListButton from "./EditListButton";
 import VisitedButton from "@/components/VisitedButton";
 import { communityHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { communityRights } from "@/lib/meetups";
+import { canSeeCommunityList } from "../communityLists";
 import { getT, localeHref } from "@/lib/i18n";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 
@@ -51,18 +52,11 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
     // `requireListRights` в lists/actions.ts).
     const rights = await communityRights(list.community.id, user?.id);
     canManage = rights.canManage;
-    if (!rights.isMember) {
-      // Наружу список сообщества выходит ровно в одном случае: он сам
-      // публичный И сообщество публичное. У ЗАКРЫТОГО сообщества наружу
-      // не уходит ничего — даже помеченное PUBLIC: закрытое прячется
-      // именно затем, чтобы о нём не узнавали со стороны, и утечь через
-      // список мест оно не должно (то же правило, что у вкладки
-      // «Сообщества» в чужом профиле).
-      //
-      // «Для друзей» у списка сообщества наружу не открывает никого:
-      // друзья заводившего — не участники сообщества.
-      if (list.visibility !== "PUBLIC" || list.community.visibility !== "PUBLIC") notFound();
-    }
+    // Кто видит список сообщества — общим правилом (communityLists.ts):
+    // тем же, которым каталог мест отбирает списки выборкой. Наружу
+    // выходит только публичный список публичного сообщества, у
+    // закрытого — ничего; подробности там же.
+    if (!canSeeCommunityList(list, list.community, rights.isMember)) notFound();
   } else {
     // ---- Личный список: та же модель видимости, что у поездок ----
     // Чужому 404, не 403.

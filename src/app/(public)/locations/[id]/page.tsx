@@ -9,6 +9,8 @@ import { getCurrentUser } from "@/lib/userAuth";
 import VisitedButton from "@/components/VisitedButton";
 import AddToListButton from "@/components/AddToListButton";
 import { addPlaceToList } from "@/app/(public)/lists/actions";
+import { visibleCommunityListsWhere } from "@/app/(public)/lists/communityLists";
+import PlaceListCard from "@/app/(public)/communities/[id]/PlaceListCard";
 import LocationMap from "@/components/LocationMapLoader";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -131,7 +133,7 @@ export default async function LocationDetailPage({
   ]);
 
   // Вторая волна: пользовательские отметки — все ждут только currentUser.
-  const [visit, myPlaceListsRaw, favoritedIds, goingIds, friendIds] =
+  const [visit, myPlaceListsRaw, communityLists, favoritedIds, goingIds, friendIds] =
     await Promise.all([
       currentUser
         ? prisma.locationVisit.findUnique({
@@ -155,6 +157,28 @@ export default async function LocationDetailPage({
             orderBy: { title: "asc" },
           })
         : [],
+      // В каких ОБЩИХ списках лежит это место. Отбор — в запросе, общим
+      // правилом (`lists/communityLists.ts`): участнику видны списки его
+      // сообществ, всем остальным — только публичный список публичного
+      // сообщества. Из закрытого сообщества сюда не доезжает ничего,
+      // даже название: страница локации открыта всем, включая гостя и
+      // поисковик.
+      prisma.placeList.findMany({
+        where: {
+          ...visibleCommunityListsWhere(currentUser?.id),
+          items: { some: { locationId: id } },
+        },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          description: true,
+          visibility: true,
+          community: { select: { title: true } },
+          _count: { select: { items: true } },
+        },
+        orderBy: { title: "asc" },
+      }),
       getFavoritedEventIds(eventIds, currentUser?.id),
       getGoingOccurrenceIds(occIds, currentUser?.id),
       getFriendIds(currentUser?.id),
@@ -320,6 +344,25 @@ export default async function LocationDetailPage({
                 ]}
                 height="16rem"
               />
+            </div>
+          )}
+
+          {/* В чьих общих списках это место. Карточка — та же, что во
+              вкладке «Места» сообщества: список один и тот же, и
+              выглядеть должен одинаково. */}
+          {communityLists.length > 0 && (
+            <div className="mt-4">
+              <h2 className="section-heading mb-2">{t.communities.places.onLocation}</h2>
+              <div className="d-flex flex-column gap-2">
+                {communityLists.map((list) => (
+                  <PlaceListCard
+                    key={list.id}
+                    list={list}
+                    placeCount={list._count.items}
+                    communityTitle={list.community?.title}
+                  />
+                ))}
+              </div>
             </div>
           )}
 

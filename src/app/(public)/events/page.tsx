@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { catalogEventsWhere } from "@/lib/catalogEvents";
@@ -177,7 +178,7 @@ export default async function HomePage({
       </div>
 
       <div className="tab-bar-row">
-        <div className="tab-bar">
+        <ScrollableTabs>
           <AppLink
             href={`/events?filter=all${rangeQuery}`}
             prefetch={false}
@@ -231,7 +232,7 @@ export default async function HomePage({
               ✈ {trip.title}
             </AppLink>
           ))}
-        </div>
+        </ScrollableTabs>
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {!activeTrip && (
             <DateRangeFilterButton

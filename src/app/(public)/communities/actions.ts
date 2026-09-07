@@ -7,6 +7,8 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { isPremiumActive } from "@/lib/premium";
 import { notifyUser } from "@/lib/notifications";
+import { notifyAdminsAboutCommunity } from "@/lib/adminNotify";
+import { isAdminAuthenticated } from "@/lib/auth";
 import { communityHref } from "@/lib/slugHelpers";
 import {
   COMMUNITY_DESCRIPTION_MAX,
@@ -89,6 +91,15 @@ export async function createCommunity(formData: FormData): Promise<ActionError |
       members: { create: { userId: user.id, role: "OWNER", status: "ACTIVE" } },
     },
   });
+  // Админам — сразу в Telegram: закрытое сообщество не попадает ни в
+  // витрину, ни в поиск, и иначе о нём никто бы не узнал.
+  notifyAdminsAboutCommunity({
+    id: community.id,
+    slug: community.slug,
+    title: community.title,
+    visibility: community.visibility,
+    owner: { name: user.name, email: user.email },
+  });
   revalidatePath("/communities");
   redirect(localeHref(communityHref(community), locale));
 }
@@ -129,11 +140,21 @@ export async function updateCommunity(
 
 export async function deleteCommunity(communityId: string): Promise<ActionError | void> {
   const { locale, t } = await getT();
-  const managed = await requireManaged(communityId);
-  // Удаляет только владелец: модератор следит за порядком, а не
-  // распоряжается чужим сообществом.
-  if (!managed?.isOwner) return { ok: false, error: t.communities.errors.notFound };
-  await prisma.community.delete({ where: { id: communityId } });
+  // Админ сайта удаляет любое сообщество: оно живёт на её домене, и
+  // отвечает за него она — а создатель проблемного сообщества сносить
+  // его сам, разумеется, не станет. Проверку админа делаем ПЕРВОЙ, чтобы
+  // не звать requireManaged: тот уводит редиректом всякого, кто в
+  // сообществе не хозяин.
+  if (!(await isAdminAuthenticated())) {
+    const managed = await requireManaged(communityId);
+    // Из своих удаляет только владелец: модератор следит за порядком, а
+    // не распоряжается чужим сообществом.
+    if (!managed?.isOwner) return { ok: false, error: t.communities.errors.notFound };
+  }
+  // deleteMany, а не delete: у админского пути объекта на руках нет, и
+  // «уже удалили в соседней вкладке» — не повод для 500.
+  const { count } = await prisma.community.deleteMany({ where: { id: communityId } });
+  if (count === 0) return { ok: false, error: t.communities.errors.notFound };
   revalidatePath("/communities");
   redirect(localeHref("/communities", locale));
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useT } from "@/components/LocaleProvider";
 import { submitReport } from "@/app/(public)/feedbackActions";
+import type { ReportTargetType } from "@/lib/reports";
 
 // «Пожаловаться» на пользовательский контент (список мест, профиль…) —
 // жалобы попадают в очередь /admin/moderation.
@@ -12,10 +13,12 @@ export default function ReportButton({
   targetId,
   className,
 }: {
-  // communityPost — тема обсуждения в сообществе (АА25): содержимое
-  // сообщества модерируют его хозяева, но и админам сайта жалоба должна
-  // доходить — сообщество может быть проблемой целиком.
-  targetType: "placeList" | "profile" | "eventNote" | "comment" | "review" | "communityPost";
+  // Сообщества (АА25): жалоба принимается и на тему (communityPost), и
+  // на само сообщество, его встречу и его ссылку. Содержимое сообщества
+  // модерируют его хозяева, но проблемой бывает сообщество целиком —
+  // тогда разбирается админ сайта. Полный список типов и подписи —
+  // REPORT_TARGET_LABELS в src/lib/reports.ts.
+  targetType: ReportTargetType;
   targetId: string;
   className?: string;
 }) {

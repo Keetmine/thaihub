@@ -1145,7 +1145,9 @@ server action скрытыми полями, форма остаётся сер�
 (`commentId`, `url`, `sort`) и связь `Comment.photos`. Выбор —
 клиентский `src/components/CommentPhotoPicker.tsx` (файл уезжает на
 `/api/upload` сразу при выборе, форме остаются скрытые поля
-`photoUrl`), показ — серверный `src/components/CommentPhotos.tsx`
+`photoUrl`; кнопка — иконка со скрепкой с подсказкой по наведению, без
+подписи и без строки «до 3 фото», правка владельца 2026-09-09), показ —
+серверный `src/components/CommentPhotos.tsx`
 (каждая картинка ссылкой на полный размер). Общие правила — в
 `src/lib/commentPhotos.ts`: `COMMENT_PHOTO_LIMIT` и
 `parseCommentPhotoUrls`.
