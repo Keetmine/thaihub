@@ -117,10 +117,13 @@ export default function DramasTable({
     </div>
   );
 
+  // Порядок пилюль: сначала статусы (WATCH_STATUS_ORDER начинается со
+  // «Смотрю»), «Все» — последней (правка владельца 2026-09-09). Открытая
+  // по умолчанию вкладка — первая, то есть «Смотрю»: в свой список ходят
+  // отметить серию у того, что смотрят сейчас, а полный перечень — это
+  // архив, за которым приходят реже. Если ничего не смотрят, откроется
+  // следующий непустой статус, а у совсем пустого списка — «Все».
   const tabs = [
-    // «Все» — первой пилюлей (правка владельца): сортировка по колонке
-    // «Статус просмотра» работает только здесь.
-    { key: "all", label: p.dramasTab.allTab, count: rows.length, content: table(rows) },
     ...WATCH_STATUS_ORDER.flatMap((status) => {
       const list = rows.filter((r) => r.status === status);
       // Пустые статусы пилюль не получают — как было раньше.
@@ -134,6 +137,9 @@ export default function DramasTable({
         },
       ];
     }),
+    // «Все» нужна не только для полноты: сортировка по колонке «Статус
+    // просмотра» имеет смысл только здесь.
+    { key: "all", label: p.dramasTab.allTab, count: rows.length, content: table(rows) },
   ];
 
   return <SubTabs tabs={tabs} ariaLabel={p.tabs.dramas(rows.length)} />;
