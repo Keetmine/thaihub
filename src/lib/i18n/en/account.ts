@@ -99,7 +99,6 @@ export const account = {
     visitedMapViewer: "Map of visited places",
 
     achievements: "Achievements",
-    achievementsProgress: (unlocked: number, total: number) => `${unlocked} of ${total}`,
     // achievementsSecret удалён — правка владельца: строки про «секрет»
     // на профиле больше нет.
     achievementsEmpty: "None yet — the first one is waiting at your first event.",

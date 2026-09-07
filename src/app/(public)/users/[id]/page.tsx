@@ -398,7 +398,6 @@ export default async function UserProfilePage({
     : showAchievements
       ? await getUnlockedAchievements(user.id)
       : [];
-  const achievementsTotal = achievementStates?.length ?? 0;
 
   const statsForTab: StatsForTab | null = fullStats
     ? {
@@ -1235,14 +1234,11 @@ export default async function UserProfilePage({
 
         {unlockedBadges.length > 0 && (
           <div className="profile-side-block">
-            <h2 className="section-heading mb-2">
-              {p.achievements}
-              {isSelf && achievementsTotal > 0 && (
-                <span className="text-secondary text-lowercase ms-2" style={{ letterSpacing: 0 }}>
-                  {t.account.stats.achievementsProgress(unlockedBadges.length, achievementsTotal)}
-                </span>
-              )}
-            </h2>
+            {/* Счётчика «N из N» тут нет (правка владельца 2026-09-09):
+                общее число ачивок — это скорее список того, чего у
+                человека ещё нет, и рядом с полученными медалями он
+                читался как недобор. */}
+            <h2 className="section-heading mb-2">{p.achievements}</h2>
             {/* Только иконки; название и описание — в title/aria-label
                 медали (правка владельца п.3). Строки «остальные пока
                 секрет» больше нет. */}

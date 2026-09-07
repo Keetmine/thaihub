@@ -84,7 +84,6 @@ export const account: Dict["account"] = {
     visitedMapViewer: "Карта посещённых мест",
 
     achievements: "Ачивки",
-    achievementsProgress: (unlocked: number, total: number) => `${unlocked} из ${total}`,
     // achievementsSecret удалён — правка владельца: строки про «секрет»
     // на профиле больше нет.
     achievementsEmpty: "Пока ни одной — первая ждёт на первом же событии.",
