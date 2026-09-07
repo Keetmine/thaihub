@@ -20,6 +20,7 @@ import InviteBanner, { InviteCancelButton } from "./InviteBanner";
 import DiscussionsTab from "./DiscussionsTab";
 import MeetupsTab from "./MeetupsTab";
 import PlacesTab from "./PlacesTab";
+import TripsTab from "./TripsTab";
 import TripFromCommunityButton from "./TripFromCommunityButton";
 import { isPremiumActive } from "@/lib/premium";
 
@@ -146,6 +147,11 @@ export default async function CommunityPage({
       key: "meetups",
       label: withCount(s.tabs.meetups, meetupCount),
       content: <MeetupsTab communityId={community.id} canCreate={access.isMember} />,
+    });
+    tabs.push({
+      key: "trips",
+      label: s.tabs.trips,
+      content: <TripsTab communityId={community.id} canCreate={access.isMember} />,
     });
     tabs.push({
       key: "places",

@@ -8,6 +8,13 @@ export const reviews: Dict["reviews"] = {
   editReview: "Редактировать мой отзыв",
   reviewPlaceholder: "Чем зацепило, что не понравилось, кому советуете…",
   reviewAria: "Текст отзыва",
+  /** Фото в комментариях (АА20). */
+  photos: {
+      add: "Прикрепить фото",
+      uploading: "Загружаем…",
+      remove: "Убрать фото",
+      limit: (n: number) => `до ${n} фото`,
+  },
   ratingLabel: "Оценка",
   outOf10: "из 10",
 

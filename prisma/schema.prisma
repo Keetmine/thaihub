@@ -983,6 +983,10 @@ model Trip {
   // Личные события поездки при этом видны только владельцу всегда.
   visibility     TripVisibility      @default(PRIVATE)
   createdAt      DateTime            @default(now())
+  /// Поездка, собранная сообществом: показывается вкладкой в самом
+  /// сообществе. У личных поездок тут null.
+  communityId    String?
+  community      Community?          @relation(fields: [communityId], references: [id], onDelete: SetNull)
   personalEvents TripPersonalEvent[]
   placeLists     TripPlaceList[]
   places         TripPlace[]
@@ -1570,6 +1574,10 @@ model Comment {
   /// Тема обсуждения в сообществе (АА25) — четвёртый вид объекта.
   postId    String?
   post      CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// Картинки к комментарию (АА20 и обсуждения сообществ): фото с
+  /// концерта, скрин, мем. Отдельной моделью, а не полем: их бывает
+  /// несколько, и порядок важен.
+  photos    CommentPhoto[]
   parentId  String?
   parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[]     @relation("CommentReplies")
@@ -2226,6 +2234,7 @@ model Community {
   links       CommunityLink[]
   topics      CommunityTopic[]
   placeLists  PlaceList[]
+  trips       Trip[]
   members     CommunityMember[]
   invites     CommunityInvite[]
   posts       CommunityPost[]
@@ -2327,4 +2336,18 @@ model CommunityTopic {
   @@unique([communityId, dramaId])
   @@index([performerId])
   @@index([dramaId])
+}
+
+/// Фото, прикреплённое к комментарию: к отзыву о событии (АА20) и к
+/// обсуждению в сообществе. Лежит в общем /uploads через ту же ручку,
+/// что и остальные картинки — там же и потолки размера.
+model CommentPhoto {
+  id        String   @id @default(cuid())
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  url       String
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([commentId])
 }

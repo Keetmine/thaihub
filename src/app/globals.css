@@ -5250,6 +5250,57 @@ body::after {
   color: rgb(var(--accent-rgb));
 }
 
+/* Фото в комментариях (АА20 и обсуждения сообществ): ряд миниатюр под
+   текстом. Квадратные и мелкие — лента остаётся лентой, а не
+   галереей; рассмотреть кадр можно, открыв его по клику. */
+.comment-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+.comment-photos a {
+  width: 6rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  display: block;
+}
+.comment-photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Выбранные, но ещё не отправленные — с крестиком «убрать». */
+.comment-photo-thumb {
+  position: relative;
+  width: 6rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+}
+.comment-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.comment-photo-remove {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(10, 10, 12, 0.75);
+  color: #fff;
+  line-height: 1;
+  cursor: pointer;
+}
+
 /* Обложка сообщества в левой колонке — как фото в профиле (правка
    владельца 2026-09-08: страницу сообщества сделали раскладкой
    профиля). Без загруженной картинки остаётся тёплая заливка: пустой

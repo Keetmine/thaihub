@@ -3,7 +3,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-export type CommunityTabKey = "discussions" | "meetups" | "places" | "members" | "requests";
+export type CommunityTabKey =
+  | "discussions"
+  | "meetups"
+  | "trips"
+  | "places"
+  | "members"
+  | "requests";
 
 /**
  * Правая колонка страницы сообщества: ряд вкладок + панели.

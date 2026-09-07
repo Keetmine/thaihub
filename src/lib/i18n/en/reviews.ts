@@ -6,6 +6,13 @@ export const reviews = {
   editReview: "Edit my review",
   reviewPlaceholder: "What hooked you, what didn't, who would you recommend it to…",
   reviewAria: "Review text",
+  /** Фото в комментариях (АА20). */
+  photos: {
+      add: "Attach a photo",
+      uploading: "Uploading…",
+      remove: "Remove the photo",
+      limit: (n: number) => `up to ${n} photos`,
+  },
   ratingLabel: "Rating",
   outOf10: "out of 10",
 
