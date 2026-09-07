@@ -62,6 +62,7 @@ import {
   formatDateWithYear,
   formatShortDate,
   parseDateKey,
+  shortWeekdayName,
   startOfDay,
 } from "@/lib/dates";
 import { getT } from "@/lib/i18n";
@@ -221,12 +222,6 @@ export default async function DramaDetailPage({
       // АА4: пары внутри каста — чтобы поставить их рядом в сетке.
       fetchPairingsAmong(drama.performers.map((pd) => pd.performerId)),
     ]);
-  // Одно число вместо двух (правка владельца 2026-09-07): подпись «MDL»
-  // убрана, из чего оно сложено — в подсказке по наведению.
-  const scoreTooltip = t.catalog.drama.scoreTooltip(
-    score.site != null ? score.site.toFixed(1) : null,
-    score.mdl != null ? score.mdl.toFixed(1) : null,
-  );
   const eventsRows = groupByEvent(
     dramaEvents
       .flatMap((ev) =>
@@ -284,7 +279,8 @@ export default async function DramaDetailPage({
     !!drama.duration ||
     !!drama.airedFrom ||
     !!drama.contentRating ||
-    score.combined != null ||
+    score.site != null ||
+    drama.mdlScore != null ||
     // Вошедшему колонка нужна всегда: наверху неё стоят его звёзды.
     !!currentUser ||
     !!drama.synopsis ||
@@ -367,7 +363,7 @@ export default async function DramaDetailPage({
     const days = Math.round(
       (parseDateKey(dateKey(next.airDate)).getTime() - today.getTime()) / 86_400_000,
     );
-    return { number: next.number, days };
+    return { number: next.number, days, airDate: next.airDate };
   })();
 
   // Строка «Эфир: 29 июл. 2026 (по четвергам)». Собрана отдельным
@@ -475,11 +471,21 @@ export default async function DramaDetailPage({
                 возвращаются. */}
             {nextEpisode && (
               <div className="next-episode">
+                {/* Пульсирующая точка и надзаголовок: без них блок был
+                    просто крупной цифрой в рамке («скучно как-то
+                    выводится» — владелец). Точка говорит «идёт прямо
+                    сейчас» быстрее любой подписи. */}
+                <span className="next-episode-eyebrow">
+                  <span className="next-episode-dot" aria-hidden />
+                  {t.catalog.drama.schedule.nextEpisodeTitle}
+                </span>
                 <span className="next-episode-value">
                   {t.catalog.drama.schedule.nextEpisodeLeft(nextEpisode.days)}
                 </span>
                 <span className="next-episode-caption">
-                  {t.catalog.drama.schedule.nextEpisodeCaption(nextEpisode.number)}
+                  {t.catalog.drama.schedule.nextEpisodeCaption(nextEpisode.number)} ·{" "}
+                  {formatShortDate(nextEpisode.airDate, locale)},{" "}
+                  {shortWeekdayName(nextEpisode.airDate, locale)}
                 </span>
               </div>
             )}
@@ -508,15 +514,24 @@ export default async function DramaDetailPage({
                 <DramaRating dramaId={drama.id} rating={watchStatus?.rating ?? null} hideLabel />
               </Fact>
             )}
-            {score.combined != null && (
-              <Fact icon={<StarIcon />} label={t.catalog.drama.ourScore}>
-                <span
-                  className="tooltip-wide"
-                  data-tooltip={scoreTooltip}
-                  tabIndex={0}
-                  style={{ color: ratingColor(score.combined) }}
-                >
-                  {score.combined.toFixed(1)}
+            {/* Своя оценка сайта и оценка MyDramaList — РАЗНЫЕ строки
+                (правка владельца 2026-09-07). Сводить их в одно число
+                оказалось затеей неудачной: чей это рейтинг, из подписи
+                не понять, а вес чужих тысяч голосов приходилось
+                выдумывать. Теперь наш рейтинг считается только по нашим
+                оценкам, рядом — сколько человек проголосовало. */}
+            {score.site != null && (
+              <Fact label={t.catalog.drama.ourScore}>
+                <span style={{ color: ratingColor(score.site) }}>
+                  <StarIcon /> {score.site.toFixed(1)}
+                </span>{" "}
+                <span className="drama-fact-votes">({score.siteCount})</span>
+              </Fact>
+            )}
+            {score.mdl != null && (
+              <Fact label={t.catalog.drama.mdlScore}>
+                <span style={{ color: ratingColor(score.mdl) }}>
+                  <StarIcon /> {score.mdl.toFixed(1)}
                 </span>
               </Fact>
             )}
@@ -640,10 +655,17 @@ export default async function DramaDetailPage({
                 (свёрнуто/раскрыто) и работа с клавиатуры достаются от
                 самого summary. Расписания нет — нет и переключателя,
                 остаётся обычная строка. */}
+            {/* График — НЕ внутри Fact: там значение стоит справа от
+                подписи, и раскрытый список серий уезжал вправо вместе с
+                ним (жалоба владельца 2026-09-07: «сместился, нужно
+                выравнивать по левому краю как раньше»). Поэтому подпись
+                уходит внутрь summary, а сама свёртка занимает всю
+                ширину строки. */}
             {episodeRows.length > 0 ? (
-              <Fact icon={<CalendarIcon />} label={t.catalog.drama.aired}>
-                <details className="schedule-fold">
+              <details className="schedule-fold drama-fact-block text-secondary">
                   <summary>
+                    <CalendarIcon />{" "}
+                    <span className="drama-fact-label">{t.catalog.drama.aired}</span>{" "}
                     {airedLine ?? t.catalog.drama.schedule.title}{" "}
                     <span className="schedule-fold-toggle">
                       <span className="schedule-fold-more">
@@ -668,8 +690,7 @@ export default async function DramaDetailPage({
                     </div>
                     <EpisodeSchedule rows={episodeRows} />
                   </div>
-                </details>
-              </Fact>
+              </details>
             ) : (
               airedLine && (
                 <Fact icon={<CalendarIcon />} label={t.catalog.drama.aired}>

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { combineScores, mergeVotes } from "../../src/lib/dramaRating";
+import { mergeVotes } from "../../src/lib/dramaRating";
 
-// Сведение оценок сериала: свои звёздочки + отзывы → оценка сайта, она
-// же в среднем с MyDramaList (docs/features/catalog.md). Без базы:
+// Оценка сайта: свои звёздочки + отзывы, один человек — один голос
+// (docs/features/catalog.md). Оценка MyDramaList живёт отдельно и
+// ничего тут не считает. Без базы:
 //
 //   npx tsx tests/unit/dramaRating.test.ts
 
@@ -63,24 +64,4 @@ import { combineScores, mergeVotes } from "../../src/lib/dramaRating";
 // Никто не оценил — записи в карте нет вовсе (а не «0»).
 assert.equal(mergeVotes([], []).get("d1"), undefined);
 
-// ---------- сводное число ----------
-
-// Ради чего вводился вес (жалоба владельца): у MyDramaList 7.5 на
-// тысяче отзывов, у нас ОДНА десятка — итог обязан остаться у 7.5, а
-// не улететь на 8.5, как было при ровном среднем.
-assert.equal(combineScores(10, 1, 7.5), 7.5);
-
-// Сотня наших голосов весит наравне с MDL — ровно середина.
-assert.equal(combineScores(10, 100, 8), 9);
-
-// Дальше наши перевешивают: итог тянется к нашей оценке.
-assert.equal(combineScores(10, 300, 5), 8.8);
-
-// Один источник — показываем его как есть, без всякого веса.
-assert.equal(combineScores(9, 3, null), 9);
-assert.equal(combineScores(null, 0, 7.8), 7.8);
-assert.equal(combineScores(null, 0, null), null);
-// Оценка без голосов — не оценка: считаем, что у нас её нет.
-assert.equal(combineScores(9, 0, 7.5), 7.5);
-
-console.log("ok: сведение оценок сериала");
+console.log("ok: оценка сайта");

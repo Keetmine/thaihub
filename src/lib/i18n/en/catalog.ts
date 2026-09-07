@@ -182,6 +182,9 @@ export const catalog = {
         screenwriter: "Writer:",
         contentRating: "Rating:",
         ourScore: "Score:",
+        mdlScore: "MyDramaList:",
+        ourScoreTip: (n: number) => `MyBLHub viewers · ${n} votes`,
+        mdlScoreTip: "MyDramaList rating",
         scoreTooltip: (site: string | null, mdl: string | null) => {
             if (site && mdl) {
                 return `Series rating: MyBLHub viewers — ${site}, MyDramaList — ${mdl}`;
@@ -217,7 +220,8 @@ export const catalog = {
                 if (days === 1) return "Tomorrow";
                 return `${days} days`;
             },
-            nextEpisodeCaption: (n: number) => `episode ${n} airs`,
+            nextEpisodeCaption: (n: number) => `episode ${n}`,
+            nextEpisodeTitle: "Next episode",
         },
     },
 

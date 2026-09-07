@@ -11,7 +11,7 @@ import { adminListHref } from "@/lib/adminListHref";
 import DramaStatusSelect from "@/components/DramaStatusSelect";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import DramaRatingSelect from "@/components/DramaRatingSelect";
-import { combineScores, fetchSiteScores } from "@/lib/dramaRating";
+import { fetchSiteScores } from "@/lib/dramaRating";
 import { episodeProgress } from "@/lib/watchStatus";
 import { getCurrentUser } from "@/lib/userAuth";
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
@@ -234,15 +234,23 @@ export default async function DramasPage({
     currentUser?.id,
   );
 
-  // Оценка бейджем в строке каталога — сводная: наши оценки (звёздочки
-  // и публичные отзывы, один человек — один голос), взвешенные с
-  // MyDramaList. Та же логика, что на странице сериала, см.
-  // src/lib/dramaRating.ts.
+  // Оценка бейджем у названия. Наша (звёздочки и публичные отзывы, один
+  // человек — один голос) считается отдельно от MyDramaList — см.
+  // src/lib/dramaRating.ts. В строке каталога подписи не разместить,
+  // поэтому показываем нашу, когда она есть, иначе чужую, а чья именно
+  // — говорит подсказка по наведению.
   const siteScores = await fetchSiteScores(dramas.map((d) => d.id));
   const scoreByDramaId = new Map(
     dramas.map((d) => {
       const ours = siteScores.get(d.id);
-      return [d.id, combineScores(ours?.site ?? null, ours?.siteCount ?? 0, d.mdlScore)];
+      return [
+        d.id,
+        ours
+          ? { value: ours.site, ours: true as const, count: ours.siteCount }
+          : d.mdlScore != null
+            ? { value: d.mdlScore, ours: false as const, count: 0 }
+            : null,
+      ];
     }),
   );
 
@@ -487,8 +495,15 @@ export default async function DramasPage({
                       {dramaTitleForLocale(d, locale)}
                     </span>
                     {score != null && (
-                      <span className={`small text-secondary ${styles.meta}`}>
-                        ★ {score.toFixed(1)}
+                      <span
+                        className={`small text-secondary ${styles.meta}`}
+                        data-tooltip={
+                          score.ours
+                            ? t.catalog.drama.ourScoreTip(score.count)
+                            : t.catalog.drama.mdlScoreTip
+                        }
+                      >
+                        ★ {score.value.toFixed(1)}
                       </span>
                     )}
                   </span>

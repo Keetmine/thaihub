@@ -180,6 +180,15 @@ export const catalog: Dict["catalog"] = {
         screenwriter: "Сценарий:",
         contentRating: "Рейтинг:",
         ourScore: "Оценка:",
+        /** Оценка MyDramaList — своей строкой и своей подписью (правка
+         *  владельца 2026-09-07): наш рейтинг считается только по нашим
+         *  голосам, чужой стоит рядом и честно назван. */
+        mdlScore: "MyDramaList:",
+        /** В строке каталога подписи не разместить — чья это оценка,
+         *  говорит подсказка по наведению. */
+        ourScoreTip: (n: number) =>
+            `Оценка зрителей MyBLHub · ${n} ${plural(n, ["голос", "голоса", "голосов"])}`,
+        mdlScoreTip: "Оценка MyDramaList",
         /** Что за число стоит рядом со звездой — подсказкой по
          *  наведению (правка владельца 2026-09-07: подпись «MDL» убрать,
          *  а объяснение спрятать в подсказку). Текст обычный «как на
@@ -222,7 +231,8 @@ export const catalog: Dict["catalog"] = {
                 if (days === 1) return "Завтра";
                 return pluralized(days, ["день", "дня", "дней"]);
             },
-            nextEpisodeCaption: (n: number) => `выходит ${n} серия`,
+            nextEpisodeCaption: (n: number) => `${n} серия`,
+            nextEpisodeTitle: "Следующая серия",
         },
     },
 
