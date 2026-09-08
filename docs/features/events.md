@@ -92,6 +92,16 @@ for "a filter that needs real inputs but shouldn't clutter a tab row",
 distinct from `DramaStatusButton`'s dropdown (a fixed list of options
 instead of freeform inputs).
 
+Названия за шапкой `/events` (подложка `PageHeader`) — самые
+посещаемые каталожные события, сортировка по числу «иду» и избранного.
+Популярность одна на всех, поэтому выборка лежит в `unstable_cache`
+(`getEventsWatermarkNames`, TTL 30 мин, тег `catalog` — как подложки
+`/dramas`, `/artists`, `/locations`, см.
+[catalog.md](catalog.md)); раньше эта сортировка шла в базу на каждый
+заход каждого гостя (аудит 2026-09, п.4). Запрос стоит ДО развилки
+гость/подписка: в подложке нет ничего персонального, и гостю она нужна
+так же, как подписчику.
+
 Admin CRUD: `src/app/admin/(protected)/events/` (`EventForm.tsx`,
 `actions.ts`, `new/`, `[id]/edit/`).
 

@@ -94,10 +94,10 @@ does and doesn't check.
   `onValueChange`) use; controlled is required inside index-keyed row
   lists (EventForm's occurrence rows) where internal state would stick
   to the position rather than the row.
-- **`SectionHeading`** (`src/components/SectionHeading.tsx`) / класс
-  `.section-heading` — единый заголовок секции (бывшая копипаста "small
-  text-secondary text-uppercase" + inline letterSpacing в 40+ местах);
-  опциональные `icon` и `action` (контрол справа). **`StatTile`**
+- Класс `.section-heading` — единый заголовок секции (бывшая копипаста
+  "small text-secondary text-uppercase" + inline letterSpacing в 40+
+  местах). Страницы ставят его прямо на `<h2>`; компонента-обёртки
+  `SectionHeading` больше нет — её никто не звал. **`StatTile`**
   (`src/components/StatTile.tsx`) — общая плитка-счётчик (кабинет,
   профиль, админ-дашборд). Утилита `.thin-scroll` — тонкий кастомный
   скроллбар (горизонтальные ленты постеров, внутренний список

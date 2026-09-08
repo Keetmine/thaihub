@@ -208,7 +208,6 @@ export const trips = {
         leaveWithCopy: "Leave and keep a copy",
         leaveWithCopyHint: "We will create a personal trip with your entries and your dates — nothing to move by hand.",
         leavePlain: "Just leave",
-        leaveFailed: "Could not leave — please try again",
         copyFailed: "Could not keep a copy — please try again",
         hint:
             "Your friend gets an invite and joins once they accept it. Members see the plan, the to-dos and the personal entries, and can add their own. Someone else's entry can only be changed if its author ticked the box allowing it.",

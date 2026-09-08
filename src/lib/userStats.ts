@@ -150,23 +150,80 @@ export async function getSeenLiveState(
   return { seen: manual ? manual.seen : auto, auto };
 }
 
-export async function computeUserStats(userId: string): Promise<UserStats> {
+/** Артист в составе события/дня — одинаково в своде и в выборках,
+ *  которые его кормят. */
+type StatsPerformer = { id: string; name: string; slug: string | null; photoUrl: string | null };
+
+/**
+ * Строки, которые свод читает сам, — но страница профиля их УЖЕ выбрала
+ * (те же таблицы, те же условия). Передавайте их сюда, и второго похода
+ * в базу не будет: до этого одни и те же отметки «иду» и статусы
+ * просмотра читались на профиле трижды (страница, свод, лента).
+ *
+ * Типы описаны структурно, а не выведены из Prisma: у страницы свой
+ * (более широкий) select, и лишние поля в нём мешать не должны —
+ * важно лишь, чтобы нужные своду были на месте.
+ */
+export type StatsAttendanceRow = {
+  eventId: string;
+  createdAt: Date;
+  occurrence: {
+    startsAt: Date;
+    attendances: { userId: string }[];
+    lineup: { performer: StatsPerformer }[];
+  };
+  event: {
+    id: string;
+    slug: string | null;
+    title: string;
+    venue: string;
+    presaleAt: Date | null;
+    performers: { performer: StatsPerformer }[];
+  };
+};
+
+export type StatsWatchRow = {
+  status: string;
+  episodesWatched: number | null;
+  rating: number | null;
+  rewatchCount: number;
+  drama: {
+    title: string;
+    titleRu: string | null;
+    episodes: number | null;
+    duration: string | null;
+    genres: string[];
+    mdlScore: number | null;
+  };
+};
+
+export type StatsMembershipRow = { community: { ownerId: string } };
+
+export type UserStatsPreloaded = {
+  /** Отметки «иду» по афишным событиям — where обязан совпадать с
+   *  выборкой ниже (`catalogEventsWhere`), иначе свод посчитает не то. */
+  attendances?: StatsAttendanceRow[];
+  /** Все статусы просмотра человека. Из них же берётся и «досмотрено»:
+   *  отдельного count не будет, так что потолок `take` у выборки-донора
+   *  становится потолком и для свода. */
+  watchRows?: StatsWatchRow[];
+  /** Принятые дружбы (число). */
+  friends?: number;
+  /** Активные членства в сообществах — ВСЕ, включая закрытые: свод
+   *  считает по ним ачивки, и отфильтрованный по видимости список
+   *  (как у чужого профиля) сюда передавать нельзя. */
+  memberships?: StatsMembershipRow[];
+};
+
+export async function computeUserStats(
+  userId: string,
+  preloaded?: UserStatsPreloaded,
+): Promise<UserStats> {
   const now = new Date();
 
-  const [
-    attendances,
-    visits,
-    completedDramas,
-    watchRows,
-    trips,
-    friendships,
-    memberships,
-    ownedCommunities,
-    communityPosts,
-    ownCommunityCrowd,
-    meetupAttendances,
-  ] = await Promise.all([
-      prisma.eventAttendance.findMany({
+  const attendancesPromise: Promise<StatsAttendanceRow[]> = preloaded?.attendances
+    ? Promise.resolve(preloaded.attendances)
+    : prisma.eventAttendance.findMany({
         // Та же причина, что в autoSeenLive: статистика — про афишу.
         where: { userId, event: catalogEventsWhere() },
         include: {
@@ -188,15 +245,13 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
             },
           },
         },
-      }),
-      prisma.locationVisit.findMany({
-        where: { userId },
-        include: { location: { select: { id: true, name: true, latitude: true, longitude: true } } },
-      }),
-      prisma.dramaWatchStatus.count({ where: { userId, status: "COMPLETED" } }),
-      // Все статусы целиком, а не count: из них же считаются серии и
-      // часы у экрана и пересмотры.
-      prisma.dramaWatchStatus.findMany({
+      });
+
+  // Все статусы целиком, а не count: из них же считаются серии и
+  // часы у экрана, пересмотры и вкусовой профиль.
+  const watchPromise: Promise<StatsWatchRow[]> = preloaded?.watchRows
+    ? Promise.resolve(preloaded.watchRows)
+    : prisma.dramaWatchStatus.findMany({
         where: { userId },
         select: {
           status: true,
@@ -215,7 +270,38 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
             },
           },
         },
+      });
+
+  const [
+    attendances,
+    visits,
+    completedCount,
+    watchRows,
+    trips,
+    friendships,
+    memberships,
+    ownedCommunities,
+    communityPosts,
+    ownCommunityCrowd,
+    meetupAttendances,
+    // Ручные решения «видела вживую» и артисты личных событий поездок
+    // раньше запрашивались ПОСЛЕ этой волны, хотя зависят только от
+    // userId и текущего момента: две лишние последовательные ступени
+    // на ровном месте.
+    manualSeen,
+    personalEventSeen,
+  ] = await Promise.all([
+      attendancesPromise,
+      prisma.locationVisit.findMany({
+        where: { userId },
+        include: { location: { select: { id: true, name: true, latitude: true, longitude: true } } },
       }),
+      // «Досмотрено» — отдельный count только тогда, когда статусы
+      // приходится читать самим: из готовых строк это фильтр в памяти.
+      preloaded?.watchRows
+        ? null
+        : prisma.dramaWatchStatus.count({ where: { userId, status: "COMPLETED" } }),
+      watchPromise,
       // Поездки — свои И совместные, где инвайт принят: тот же критерий,
       // что у списка /trips и главной (жалоба владельца: подругу добавили
       // в поездку, а «дней в Таиланде» у неё 0). PENDING не считается —
@@ -233,18 +319,20 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
           stays: { where: { userId }, select: { startDate: true, endDate: true } },
         },
       }),
-      prisma.friendship.count({
-        where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
-      }),
+      preloaded?.friends ??
+        prisma.friendship.count({
+          where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
+        }),
       // Дальше — только для ачивок про сообщества (АА25).
       // Членства: владелец своего сообщества тоже лежит строкой
       // CommunityMember, поэтому «вступил» и «завёл» различаем по
       // владельцу сообщества, а не по роли (роль владельца можно и
       // потерять при кривой строке в базе, ownerId — нет).
-      prisma.communityMember.findMany({
-        where: { userId, status: "ACTIVE" },
-        select: { community: { select: { ownerId: true } } },
-      }),
+      preloaded?.memberships ??
+        prisma.communityMember.findMany({
+          where: { userId, status: "ACTIVE" },
+          select: { community: { select: { ownerId: true } } },
+        }),
       prisma.community.count({ where: { ownerId: userId } }),
       prisma.communityPost.count({ where: { authorId: userId } }),
       // Сколько людей собралось в каждом СВОЁМ сообществе. Себя не
@@ -271,7 +359,36 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
         },
         select: { eventId: true, event: { select: { createdById: true } } },
       }),
+      // Ручные РЕШЕНИЯ «видела вживую» (PerformerSeen): перекрывают
+      // автоматику в обе стороны. seen=true — концерты до регистрации на
+      // сайте, случайные встречи и события вне нашей афиши; seen=false —
+      // «этого из состава я не видела» (на концерте пятеро, а разглядела
+      // двоих). Совпадающего с автоматикой решения в таблице не бывает —
+      // такую строку экшен удаляет.
+      prisma.performerSeen.findMany({
+        where: { userId },
+        select: { performerId: true, seen: true },
+      }),
+      // Третий источник — артисты на ЛИЧНЫХ событиях поездок (фанмит, ужин
+      // с актёром: таких событий в нашей афише нет). Считаются только
+      // ПРОШЕДШИЕ — привязать артиста к завтрашней встрече не значит уже
+      // его увидеть, — и только с СОБСТВЕННОЙ отметкой «я там буду»
+      // (владелец: планов создают больше, чем посещают; в совместной
+      // поездке каждый отмечается сам). Автору отметка ставится при
+      // создании записи по умолчанию, бэкфилл покрыл старые записи.
+      prisma.tripPersonalEventPerformer.findMany({
+        where: {
+          personalEvent: {
+            startsAt: { lt: now },
+            attendances: { some: { userId } },
+          },
+        },
+        select: { performerId: true },
+      }),
     ]);
+
+  const completedDramas =
+    completedCount ?? watchRows.filter((r) => r.status === "COMPLETED").length;
 
   // «Иду» теперь per-дата: «посещено» — прошедшие отмеченные даты,
   // событие считается один раз даже при нескольких отмеченных днях.
@@ -322,32 +439,6 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       else performerCounts.set(performer.id, { ...performer, count: 1 });
     }
   }
-  // Ручные РЕШЕНИЯ «видела вживую» (PerformerSeen): перекрывают
-  // автоматику в обе стороны. seen=true — концерты до регистрации на
-  // сайте, случайные встречи и события вне нашей афиши; seen=false —
-  // «этого из состава я не видела» (на концерте пятеро, а разглядела
-  // двоих). Совпадающего с автоматикой решения в таблице не бывает —
-  // такую строку экшен удаляет.
-  const manualSeen = await prisma.performerSeen.findMany({
-    where: { userId },
-    select: { performerId: true, seen: true },
-  });
-  // Третий источник — артисты на ЛИЧНЫХ событиях поездок (фанмит, ужин
-  // с актёром: таких событий в нашей афише нет). Считаются только
-  // ПРОШЕДШИЕ — привязать артиста к завтрашней встрече не значит уже
-  // его увидеть, — и только с СОБСТВЕННОЙ отметкой «я там буду»
-  // (владелец: планов создают больше, чем посещают; в совместной
-  // поездке каждый отмечается сам). Автору отметка ставится при
-  // создании записи по умолчанию, бэкфилл покрыл старые записи.
-  const personalEventSeen = await prisma.tripPersonalEventPerformer.findMany({
-    where: {
-      personalEvent: {
-        startsAt: { lt: now },
-        attendances: { some: { userId } },
-      },
-    },
-    select: { performerId: true },
-  });
   const excludedIds = new Set(manualSeen.filter((m) => !m.seen).map((m) => m.performerId));
   const seenPerformerIds = new Set(
     [

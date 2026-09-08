@@ -25,6 +25,4 @@ export const common = {
   deletedAccount: "Deleted account",
     year: "year",
     language: "Language",
-    switchToRussian: "Русский",
-    switchToEnglish: "English",
 };

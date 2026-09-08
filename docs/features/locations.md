@@ -23,9 +23,40 @@ on `.leaflet-map-dark .leaflet-tile-pane` (see `globals.css`).
   directly.
 - The admin location form has a click-to-place coordinate picker (plus
   manual lat/lng inputs) built on the same map component.
-- `/locations/map` plots every location that has coordinates; a location
-  without coordinates (blscene link had no resolvable place, or it was
-  never given one) just doesn't appear there — no error, no placeholder.
+- `/locations/map` plots every catalogue location that has coordinates; a
+  location without coordinates (blscene link had no resolvable place, or
+  it was never given one) just doesn't appear there — no error, no
+  placeholder. Маркер несёт четыре поля (`id`, название, широта,
+  долгота): описания, адреса и источники карте не нужны.
+
+### Вкладка «Из моих сериалов» (`?mine=1`)
+
+Залогинённому карта показывает ряд вкладок: **«Все места»** и **«Из
+моих сериалов (N)»** (аудит 2026-09, §6 п.7). Вторая оставляет только
+локации, снятые в сериалах, которые зритель отметил у себя, —
+`DramaLocation` × `DramaWatchStatus` одним условием запроса:
+
+```ts
+dramas: { some: { drama: { watchStatuses: { some: { userId } } } } }
+```
+
+Отметкой считается **любой** статус просмотра (смотрю, посмотрел, буду
+смотреть) — тем же правилом живут «мои сериалы» в календаре
+(`?view=series&mine=1`) и «Выходит сегодня» на главной: в поездку едут и
+за тем, что ещё только собираются посмотреть.
+
+Состояние в адресе, а не в куке: ссылкой на срез можно поделиться, и без
+JS переключатель работает. **Гостю вкладок нет вовсе** — отмечать
+сериалы ему негде, и вкладка обещала бы содержимое, которого у него быть
+не может; `?mine=1` без сессии просто показывает всю карту. Вкладки нет
+и у того, у кого отмеченные сериалы есть, а мест съёмок у них не
+заведено (`mineCount === 0`): пустую вкладку мы не предлагаем — то же
+правило, что у переключателя «Мои» на главной. Счётчик в подписи —
+отдельный `count`, он считается всегда, пока вкладка рисуется.
+
+Пусто на «моих» и пусто вообще — разные `EmptyState`: во втором случае
+дело в координатах каталога, в первом — в отметках зрителя, и сказать
+надо разное.
 
 ## List views: alphabetical vs. grouped by drama
 

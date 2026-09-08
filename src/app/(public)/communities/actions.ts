@@ -9,6 +9,7 @@ import { isPremiumActive } from "@/lib/premium";
 import { notifyUser } from "@/lib/notifications";
 import { notifyAdminsAboutCommunity } from "@/lib/adminNotify";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { invalidateCatalogCache } from "@/lib/catalogCache";
 import { communityHref } from "@/lib/slugHelpers";
 import { requireManagedCommunity } from "@/lib/communities.server";
 import {
@@ -153,6 +154,9 @@ export async function createCommunity(formData: FormData): Promise<ActionError |
     owner: { name: user.name, email: user.email },
   });
   revalidatePath("/communities");
+  // Витрина сообществ лежит в unstable_cache: revalidatePath её не
+  // трогает, свежесть даёт только сброс тега (см. communities/page.tsx).
+  invalidateCatalogCache();
   redirect(localeHref(communityHref(community), locale));
 }
 
@@ -187,6 +191,9 @@ export async function updateCommunity(
   });
   revalidatePath(`/communities/${communityId}`);
   revalidatePath("/communities");
+  // Витрина сообществ лежит в unstable_cache: revalidatePath её не
+  // трогает, свежесть даёт только сброс тега (см. communities/page.tsx).
+  invalidateCatalogCache();
   return { ok: true };
 }
 
@@ -208,6 +215,9 @@ export async function deleteCommunity(communityId: string): Promise<ActionError 
   const { count } = await prisma.community.deleteMany({ where: { id: communityId } });
   if (count === 0) return { ok: false, error: t.communities.errors.notFound };
   revalidatePath("/communities");
+  // Витрина сообществ лежит в unstable_cache: revalidatePath её не
+  // трогает, свежесть даёт только сброс тега (см. communities/page.tsx).
+  invalidateCatalogCache();
   redirect(localeHref("/communities", locale));
 }
 

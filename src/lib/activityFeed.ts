@@ -70,12 +70,74 @@ export type ActivityFeedAccess = {
   tripVisibilities: ("PRIVATE" | "FRIENDS" | "PUBLIC")[];
 };
 
+/**
+ * Строки, которые лента прочитала бы сама, — но профиль их уже выбрал
+ * теми же запросами (статусы просмотра, «иду», поездки, отзывы,
+ * полученные ачивки). Передавайте их сюда: до этого одни и те же
+ * таблицы читались на профиле по два-три раза.
+ *
+ * Ограничение по видимости остаётся на вызывающем: строки берутся как
+ * есть, и приватный отзыв, попавший в этот массив, попадёт и в ленту.
+ * Проверить легко — `access` и where выборки-донора должны сходиться
+ * (см. users/[id]/page.tsx).
+ *
+ * Резать до `limit` не нужно: лента сливает источники и обрезает сама.
+ */
+export type ActivityFeedPreloaded = {
+  watches?: FeedWatchRow[];
+  going?: FeedGoingRow[];
+  trips?: FeedTripRow[];
+  reviews?: FeedReviewRow[];
+  achievements?: FeedAchievementRow[];
+};
+
+type FeedDrama = {
+  id: string;
+  slug: string | null;
+  title: string;
+  titleRu: string | null;
+  episodes: number | null;
+  posterUrl: string | null;
+};
+export type FeedWatchRow = {
+  status: WatchStatus;
+  episodesWatched: number | null;
+  updatedAt: Date;
+  drama: FeedDrama;
+};
+export type FeedGoingRow = {
+  createdAt: Date;
+  eventId: string;
+  event: { id: string; slug: string | null; title: string; posterUrl: string | null };
+};
+export type FeedTripRow = { id: string; slug: string | null; title: string; createdAt: Date };
+export type FeedReviewRow = {
+  rating: number;
+  isPrivate: boolean;
+  createdAt: Date;
+  drama: { id: string; slug: string | null; title: string; titleRu: string | null; posterUrl: string | null } | null;
+  novel: { id: string; slug: string | null; title: string; coverUrl: string | null } | null;
+  event: { id: string; slug: string | null; title: string; posterUrl: string | null } | null;
+};
+export type FeedAchievementRow = { key: string; unlockedAt: Date };
+
 export async function getActivityFeed(
   userId: string,
   access: ActivityFeedAccess,
   limit = 20,
+  preloaded?: ActivityFeedPreloaded,
 ): Promise<ActivityItem[]> {
-  return collectActivity([userId], access, limit);
+  // Владелец у готовых строк один и известен — дописываем его здесь,
+  // чтобы страница-донор не подмешивала userId в каждую выборку.
+  const withOwner = <T,>(rows: T[] | undefined) =>
+    rows?.map((row) => ({ ...row, userId }));
+  return collectActivity([userId], access, limit, {
+    watches: withOwner(preloaded?.watches),
+    going: withOwner(preloaded?.going),
+    trips: withOwner(preloaded?.trips),
+    reviews: withOwner(preloaded?.reviews),
+    achievements: withOwner(preloaded?.achievements),
+  });
 }
 
 /**
@@ -105,15 +167,26 @@ export async function getFriendsActivity(
   );
 }
 
+type Owned<T> = T & { userId: string };
+
 async function collectActivity(
   userIds: string[],
   access: ActivityFeedAccess,
   limit: number,
+  preloaded?: {
+    watches?: Owned<FeedWatchRow>[];
+    going?: Owned<FeedGoingRow>[];
+    trips?: Owned<FeedTripRow>[];
+    reviews?: Owned<FeedReviewRow>[];
+    achievements?: Owned<FeedAchievementRow>[];
+  },
 ): Promise<UserActivityItem[]> {
   const userWhere = { in: userIds };
   // Каждый источник ограничен limit'ом: после слияния всё равно
   // останется не больше limit строк, а тянуть всю историю незачем.
-  const [watches, favorites, attendances, trips, reviews, achievementRows] = await Promise.all([
+  const [watches, favorites, attendances, trips, reviews, achievementRows, achievementDefs] =
+    await Promise.all([
+    preloaded?.watches ??
     prisma.dramaWatchStatus.findMany({
       where: { userId: userWhere },
       orderBy: { updatedAt: "desc" },
@@ -138,7 +211,8 @@ async function collectActivity(
           },
         })
       : [],
-    access.going
+    preloaded?.going ??
+    (access.going
       ? prisma.eventAttendance.findMany({
           // Лента активности видна друзьям (а по настройке — и всем):
           // отметка на встречу сообщества в неё не идёт, иначе название
@@ -155,15 +229,17 @@ async function collectActivity(
             event: { select: { id: true, slug: true, title: true, posterUrl: true } },
           },
         })
-      : [],
-    access.tripVisibilities.length > 0
+      : []),
+    preloaded?.trips ??
+    (access.tripVisibilities.length > 0
       ? prisma.trip.findMany({
           where: { userId: userWhere, visibility: { in: access.tripVisibilities } },
           orderBy: { createdAt: "desc" },
           take: limit,
           select: { userId: true, id: true, slug: true, title: true, createdAt: true },
         })
-      : [],
+      : []),
+    preloaded?.reviews ??
     prisma.review.findMany({
       // Чужой приватный отзыв не должен попасть даже в HTML — фильтр в
       // выборке, как везде (см. docs/features/social.md).
@@ -180,13 +256,19 @@ async function collectActivity(
         event: { select: { id: true, slug: true, title: true, posterUrl: true } },
       },
     }),
-    access.achievements
+    preloaded?.achievements ??
+    (access.achievements
       ? prisma.userAchievement.findMany({
           where: { userId: userWhere },
           orderBy: { unlockedAt: "desc" },
           take: limit,
         })
-      : [],
+      : []),
+    // Названия ачивок живут в БД (модель Achievement) — раньше за ними
+    // ходили ПОСЛЕ этой волны, отдельной ступенью. Запрос дешёвый и
+    // кэширован на время запроса (см. getEnabledAchievements), так что
+    // ему самое место здесь.
+    access.achievements || preloaded?.achievements ? getEnabledAchievements() : [],
   ]);
 
   const items: UserActivityItem[] = [];
@@ -270,10 +352,8 @@ async function collectActivity(
   }
 
   if (achievementRows.length > 0) {
-    // Названия ачивок живут в БД (модель Achievement); выключенные в
-    // админке не показываем — как и везде.
-    const defs = await getEnabledAchievements();
-    const byKey = new Map(defs.map((d) => [d.key, d]));
+    // Выключенные в админке ачивки не показываем — как и везде.
+    const byKey = new Map(achievementDefs.map((d) => [d.key, d]));
     for (const row of achievementRows) {
       const def = byKey.get(row.key);
       if (!def) continue;

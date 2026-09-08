@@ -18,6 +18,7 @@ import { softDeleteUser } from "@/lib/userDeletion";
 import { isValidUsername, RESERVED_USERNAMES } from "@/lib/userProfile";
 import { isKnownCountry } from "@/lib/countries";
 import { parseUploadUrl } from "@/lib/uploadUrl";
+import { isPremiumActive } from "@/lib/premium";
 import { getT, localeHref } from "@/lib/i18n";
 
 export async function updateProfile(
@@ -34,6 +35,17 @@ export async function updateProfile(
   const photo = parseUploadUrl(formData.get("photoUrl"));
   if (!photo.ok) {
     return { ok: false, error: (await getT()).t.account.settings.badPhotoUrl };
+  }
+  // Обложка профиля — косметика подписчика (аудит 2026-09, раздел 8).
+  // Поле есть в форме только у подписчика, поэтому трогаем колонку
+  // ТОЛЬКО когда оно пришло: иначе первое же сохранение профиля после
+  // окончания подписки стирало бы обложку, которую мы обещали оставить
+  // видимой всем. Проверка подписки на сервере отдельно — форму можно и
+  // подделать.
+  const coverSent = formData.has("coverUrl") && isPremiumActive(user);
+  const cover = coverSent ? parseUploadUrl(formData.get("coverUrl")) : null;
+  if (cover && !cover.ok) {
+    return { ok: false, error: (await getT()).t.settings.coverBadUrl };
   }
   const timezone = String(formData.get("timezone") ?? "");
   const locale = String(formData.get("locale") ?? "");
@@ -61,6 +73,7 @@ export async function updateProfile(
     data: {
       name: name || null,
       photoUrl: photo.url,
+      ...(cover?.ok ? { coverUrl: cover.url } : {}),
       // Неизвестное значение молча не пишем — остаётся прежняя зона.
       ...(isKnownTimezone(timezone) ? { timezone } : {}),
       ...(isLocale(locale) ? { locale } : {}),
@@ -217,6 +230,10 @@ export async function updateNotificationPrefs(formData: FormData) {
       tgNotifyEpisodes: String(formData.get("tgNotifyEpisodes") ?? "") === "on",
       tgNotifyCommunities: String(formData.get("tgNotifyCommunities") ?? "") === "on",
       tgNotifyBroadcast: String(formData.get("tgNotifyBroadcast") ?? "") === "on",
+      // Недельный дайджест: сама рассылка идёт только подписчикам, но
+      // тумблер пишем всем — бесплатный аккаунт может настроить его
+      // заранее, а после оплаты подписки настройка уже на месте.
+      tgNotifyDigest: String(formData.get("tgNotifyDigest") ?? "") === "on",
     },
   });
   revalidatePath("/account/settings");

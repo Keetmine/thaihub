@@ -285,48 +285,6 @@ export async function matchTmdbPerson(realName: string): Promise<number | null> 
   return candidates[0].id;
 }
 
-export type DramaSyncOutcome =
-  | { status: "created"; castCreated: number }
-  | { status: "updated"; castCreated: number }
-  | { status: "not_found" }
-  | { status: "conflict"; claimedByTitle: string }
-  | { status: "error"; message: string };
-
-/** Syncs one Drama already in our DB against TMDB: refreshes directly by
- *  tmdbId if it has one, otherwise searches-and-matches by title/year
- *  first. Same importShow used by the single-person flow, so this is
- *  just as idempotent — running it again just refreshes metadata/cast. */
-export async function syncDramaFromTmdb(drama: {
-  id: string;
-  title: string;
-  year: number | null;
-  tmdbId: string | null;
-}): Promise<DramaSyncOutcome> {
-  try {
-    const tvId = drama.tmdbId ? Number(drama.tmdbId) : await matchTmdbTvShow(drama.title, drama.year);
-    if (!tvId) return { status: "not_found" };
-
-    const result = await importShow(tvId, drama.id);
-    return { status: result.created ? "created" : "updated", castCreated: result.castCreated };
-  } catch (err) {
-    if (err instanceof TmdbConflictError) return { status: "conflict", claimedByTitle: err.claimedByTitle };
-    return { status: "error", message: err instanceof Error ? err.message : String(err) };
-  }
-}
-
-export type DramaSyncSummary = {
-  total: number;
-  created: number;
-  updated: number;
-  notFound: number;
-  conflicts: number;
-  errors: number;
-  castCreated: number;
-  notFoundTitles: string[];
-  conflictTitles: string[];
-};
-
-
 export type PerformerSyncOutcome =
   | { status: "synced"; dramasCreated: number; dramasUpdated: number; castCreated: number; showsSkipped: number }
   | { status: "not_found" }

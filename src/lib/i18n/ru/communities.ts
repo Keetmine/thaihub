@@ -41,7 +41,6 @@ export const communities: Dict["communities"] = {
         trips: "Поездки",
         requests: "Заявки",
     },
-    soon: "Скоро будет.",
     members: "Участники",
     membersCount: (n: number) => pluralized(n, ["участник", "участника", "участников"]),
     requests: "Заявки на вступление",
@@ -70,7 +69,6 @@ export const communities: Dict["communities"] = {
 
     /** Обложка: грузится и снимается сразу, отдельно от формы правки. */
 
-    insideLockedTitle: "Внутри — для участников",
     insideLockedHint: "Вступите, чтобы читать обсуждения и видеть подробности встреч.",
     privateTitle: "Это закрытое сообщество",
     privateHint: "Попасть внутрь можно по приглашению создателя.",
@@ -99,7 +97,6 @@ export const communities: Dict["communities"] = {
         cityPlaceholder: "Бангкок",
         save: "Сохранить",
         loading: "Загружаем…",
-
 
         filterLabel: "Где",
         anyPlace: "Везде",
@@ -130,8 +127,6 @@ export const communities: Dict["communities"] = {
         titlePlaceholder: "Смотрим пятую серию вместе",
         dateLabel: "Дата",
         timeLabel: "Время",
-        venueLabel: "Где",
-        venuePlaceholder: "У Кати дома",
         addressLabel: "Адрес",
         addressPlaceholder: "Улица, дом, код от подъезда",
         descriptionLabel: "Подробности",
@@ -147,14 +142,9 @@ export const communities: Dict["communities"] = {
 
         visibilityLabel: "Кто видит встречу",
         openToEveryone: "Показывать всем",
-        openHint:
-            "По умолчанию встреча остаётся внутри сообщества: за адресом стоит чей-то дом. Откроете — она попадёт ещё и в афишу.",
-        onlyMembersBadge: "Только участникам",
-        openBadge: "Открыта всем",
 
         goingCount: (n: number) => `идут: ${n}`,
         author: (who: string) => `Позвал(а) ${who}`,
-        openPage: "Страница встречи",
         save: "Сохранить",
         delete: "Удалить встречу",
         deleteConfirm: "Удалить встречу? Отметки «иду» пропадут вместе с ней.",
@@ -170,9 +160,6 @@ export const communities: Dict["communities"] = {
         // Тот же смысл целой фразой — для описания страницы в метадате,
         // где обрывок «видят только участники» повис бы без подлежащего.
         eventNoticeMembers: "Эту страницу видят только участники сообщества.",
-
-        inEventsHeading: "Встречи сообществ",
-        inEventsHint: "Их зовут такие же зрители, а не организаторы концертов.",
 
         errors: {
             notMember: "Звать на встречи могут только участники сообщества",
@@ -314,8 +301,6 @@ export const communities: Dict["communities"] = {
 
         makeModerator: "Сделать модератором",
         removeModerator: "Снять модератора",
-        moderatorHint:
-            "Модератор решает по заявкам, зовёт людей и убирает их. Настройки, видимость и удаление остаются у создателя.",
 
         ban: "Убрать",
         banConfirm: (who: string) =>
@@ -386,6 +371,17 @@ export const communities: Dict["communities"] = {
         errors: {
             notMember: "Собрать поездку из сообщества могут только его участники",
         },
+    },
+
+    monthlyDigest: {
+        title: (community: string) => `«${community}» за месяц`,
+        newMembers: (n: number) =>
+            `${pluralized(n, ["новый участник", "новых участника", "новых участников"])}`,
+        posts: (n: number) => pluralized(n, ["тема", "темы", "тем"]),
+        comments: (n: number) => pluralized(n, ["комментарий", "комментария", "комментариев"]),
+        nextMeetup: (what: string, when: string) => `Ближайшая встреча: ${what} — ${when}`,
+        footer:
+            "Сводка владельцу сообщества раз в месяц — выключается тумблером «Сообщества» в настройках уведомлений.",
     },
 
     errors: {

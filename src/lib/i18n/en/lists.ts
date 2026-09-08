@@ -167,7 +167,6 @@ export const lists = {
         listTitleRequired: "Give the list a title",
         listNotFound: "List not found",
         placeNameRequired: "Give the place a name",
-        signInToAddPlaces: "Sign in to add places",
         placeCreateFailed: "Couldn't create the place",
         placeNotFound: "Place not found",
         artistNotFound: "Artist not found",

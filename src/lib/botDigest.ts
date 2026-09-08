@@ -1,19 +1,30 @@
 import { prisma } from "@/lib/prisma";
-import { catalogOccurrencesWhere } from "@/lib/catalogEvents";
-import { endOfDay, formatShortDate, startOfDay } from "@/lib/dates";
+import { catalogEventsWhere, catalogOccurrencesWhere } from "@/lib/catalogEvents";
+import { endOfDay, formatShortDate, formatTime, startOfDay } from "@/lib/dates";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { dramaHref, eventHref, performerHref } from "@/lib/slugHelpers";
 import { getDict, isLocale, localeHref, DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 
-// Подборка для команд бота /today и /week (аудит 2026-09, раздел 7):
-// серии моих сериалов, мои события и дни рождения избранных на день или
-// неделю вперёд. Выборки — те же, что на сайте, чтобы бот и страницы не
-// разъезжались в ответах:
+// Подборка «что у меня сегодня / на неделе» — ОДИН сборщик на три
+// повода: команды бота /today и /week (аудит 2026-09, раздел 7) и
+// воскресный недельный дайджест подписчикам (раздел 8,
+// sendWeeklyDigests в lib/telegramNotifications.ts). Второго сборщика
+// у дайджеста нет намеренно: два списка «что у меня на неделе»
+// разъехались бы молча — бот показывал бы одно, рассылка другое.
+//
+// Что входит: серии моих сериалов, мои события, старты продаж по ним и
+// дни рождения избранных. Выборки — те же, что на сайте, чтобы бот и
+// страницы не разъезжались в ответах:
 // - серии «моих» — как вкладка сериалов календаря с фильтром «только
 //   мои» (/calendar?view=series&mine=1): любой статус просмотра;
 // - события — как телеграм-напоминания (sendUpcomingEventReminders):
 //   «иду» на дату или событие в избранном, только афиша
 //   (catalogOccurrencesWhere — встречи сообществ боту не место);
+// - старты продаж — как пресейл-напоминания (sendPresaleReminders): то
+//   же «иду или в избранном», только афиша. Подписка здесь НЕ
+//   проверяется, в отличие от самого напоминания за час: дата
+//   препродажи и так открыто написана на странице события, платное в
+//   ней — пинг за час, а не знание;
 // - дни рождения — как поздравления З3: только избранные артисты,
 //   месяц/день в UTC (даты-без-времени лежат полуночью UTC, приведение
 //   к поясу сервера сдвигало бы день).
@@ -37,16 +48,31 @@ function link(href: string, label: string, locale: Locale): string {
   return `<a href="${APP_URL}${localeHref(href, locale)}">${escapeHtml(label)}</a>`;
 }
 
+type DigestUser = { id: string; locale: string | null };
+
 /**
  * Текст подборки «что у меня сегодня / на неделе» — готовый HTML для
  * sendTelegramMessage. days: 1 — /today, 7 — /week. Пустые секции
  * пропускаются; совсем пустая подборка отвечает подсказкой, откуда ей
  * взяться (иначе бот молчал бы, как сломанный).
+ *
+ * `skipEmpty` меняет как раз это: вместо подсказки возвращается `null`.
+ * Нужен рассылке — человек не спрашивал, и «у вас ничего нет» в
+ * воскресенье утром это спам, а не забота. Разница вынесена в
+ * перегрузки, чтобы у бота (он зовёт без опций) тип остался строкой и
+ * ветку «а вдруг null» писать было не нужно.
  */
+export async function buildDigestMessage(user: DigestUser, days: 1 | 7): Promise<string>;
 export async function buildDigestMessage(
-  user: { id: string; locale: string | null },
+  user: DigestUser,
   days: 1 | 7,
-): Promise<string> {
+  options: { skipEmpty: true },
+): Promise<string | null>;
+export async function buildDigestMessage(
+  user: DigestUser,
+  days: 1 | 7,
+  options: { skipEmpty?: boolean } = {},
+): Promise<string | null> {
   const locale = isLocale(user.locale) ? user.locale : DEFAULT_LOCALE;
   const t = getDict(locale);
   const d = t.notifications.digest;
@@ -57,7 +83,7 @@ export async function buildDigestMessage(
   const rangeStart = startOfDay(now);
   const rangeEnd = endOfDay(new Date(now.getTime() + (days - 1) * DAY_MS));
 
-  const [episodes, occurrences, favorites] = await Promise.all([
+  const [episodes, occurrences, presales, favorites] = await Promise.all([
     prisma.dramaEpisode.findMany({
       where: {
         airDate: { gte: rangeStart, lte: rangeEnd },
@@ -87,6 +113,23 @@ export async function buildDigestMessage(
         event: { select: { id: true, slug: true, title: true, venue: true } },
       },
       orderBy: { startsAt: "asc" },
+      take: SECTION_LIMIT + 1,
+    }),
+    // Старты продаж: препродажа бывает только у афишных событий, а
+    // условие «иду или в избранном» — то же, что у пресейл-напоминаний.
+    // Событие тут одно на препродажу (presaleAt лежит у Event, не у
+    // даты), поэтому и строка одна, сколько бы дней ни шёл фестиваль.
+    prisma.event.findMany({
+      where: {
+        ...catalogEventsWhere(),
+        presaleAt: { gte: rangeStart, lte: rangeEnd },
+        OR: [
+          { attendees: { some: { userId: user.id } } },
+          { favoritedBy: { some: { userId: user.id } } },
+        ],
+      },
+      select: { id: true, slug: true, title: true, presaleAt: true },
+      orderBy: { presaleAt: "asc" },
       take: SECTION_LIMIT + 1,
     }),
     // Избранных у человека горстка — месяц/день отбираем в памяти, как
@@ -146,6 +189,16 @@ export async function buildDigestMessage(
       ),
     ),
     section(
+      d.presalesHeader,
+      presales.map(
+        (e) =>
+          `${datePrefix(e.presaleAt!)}🎟 ${d.presaleLine(
+            link(eventHref(e), e.title, locale),
+            formatTime(e.presaleAt!),
+          )}`,
+      ),
+    ),
+    section(
       d.birthdaysHeader,
       birthdays.map(
         (b) => `${datePrefix(b.day)}🎂 ${link(performerHref(b.performer), b.performer.name, locale)}`,
@@ -154,6 +207,8 @@ export async function buildDigestMessage(
   ].filter((s): s is string => s !== null);
 
   const title = `📅 <b>${escapeHtml(days === 1 ? d.todayTitle : d.weekTitle)}</b>`;
-  if (sections.length === 0) return `${title}\n\n${escapeHtml(d.empty)}`;
+  if (sections.length === 0) {
+    return options.skipEmpty ? null : `${title}\n\n${escapeHtml(d.empty)}`;
+  }
   return `${title}\n\n${sections.join("\n\n")}`;
 }

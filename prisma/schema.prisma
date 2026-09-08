@@ -874,6 +874,10 @@ model User {
   // Новости проекта из /admin/broadcast — раньше рассылка игнорировала
   // настройки и уходила всем с привязанным Telegram.
   tgNotifyBroadcast        Boolean         @default(true)
+  // Недельный дайджест «Ваша неделя» по воскресеньям (премиум). Свой
+  // переключатель: человек может хотеть напоминания о продажах, но не
+  // хотеть воскресное письмо. Колонка заведена миграцией 20260910T00.
+  tgNotifyDigest           Boolean         @default(true)
   // Тур по интерфейсу для новичков: показывается один раз после
   // регистрации, перезапускается кнопкой в настройках.
   tourCompletedAt          DateTime?
@@ -894,6 +898,12 @@ model User {
   googleId                 String?         @unique
   name                     String?
   photoUrl                 String?
+  // Широкая картинка над левой колонкой профиля — косметика для
+  // подписчиков (аудит 2026-09, раздел 8). Отдельно от photoUrl: то
+  // аватар 3:4, это баннер. Ставить может подписчик, ВИДЯТ все, включая
+  // гостей: иначе профиль ломался бы визуально в день окончания
+  // подписки. Колонка заведена миграцией 20260910T00.
+  coverUrl                 String?
   // Telegram user id from the Login Widget (doubles as the DM chat id
   // for bot notifications). Set = "can log in via Telegram".
   telegramId               String?         @unique
@@ -1935,6 +1945,10 @@ enum NotificationKind {
   // Новая тема в сообществе. В Telegram НЕ уходит по умолчанию: у
   // живого сообщества тем много, и это был бы спам.
   COMMUNITY_POST
+  // Месячная сводка владельцу сообщества: сколько новых участников, тем
+  // и комментариев за месяц и когда ближайшая встреча. Свой вид, а не
+  // чужой: фраза складывается из вида (см. lib/notificationText.ts).
+  COMMUNITY_DIGEST
 }
 
 model Notification {
@@ -2066,8 +2080,8 @@ model TripPersonalEventAttendance {
 // кандидат — состав изменится и группа вернётся в список сама.
 model DuplicateDismissal {
   id         String   @id @default(cuid())
-  // "drama" | "performer" — строкой: enum ради двух значений раздул бы
-  // клиент, а пишет сюда только своя админка.
+  // "drama" | "performer" | "agency" — строкой: enum ради трёх значений
+  // раздул бы клиент, а пишет сюда только своя админка.
   entityType String
   memberKey  String
   createdAt  DateTime @default(now())

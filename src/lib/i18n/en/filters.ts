@@ -13,9 +13,6 @@ export const filters = {
     panelTitle: "Filters",
     reset: "Reset",
     apply: "Show",
-    activeCount: (n: number) => `Filters (${n})`,
-    showAllOptions: (n: number) => `Show all ${n}`,
-    collapseOptions: "Collapse",
     optionSearchPlaceholder: "Search the list…",
     anyOption: "Any",
 

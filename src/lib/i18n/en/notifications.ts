@@ -30,6 +30,7 @@ export const notifications = {
     // actorName так же, как имена людей в соседних поводах.
     PERFORMER_EVENT: (who: string, event: string) => `${who} has a new event: "${event}"`,
     DRAMA_STARTED: (drama: string) => `"${drama}" from your plans has started`,
+    COMMUNITY_DIGEST: (community: string) => `“${community}” this month`,
     COMMUNITY_JOIN_REQUEST: (who: string, community: string) =>
         `${who} wants to join "${community}"`,
     COMMUNITY_JOIN_ACCEPTED: (community: string) => `You are now a member of "${community}"`,
@@ -56,10 +57,15 @@ export const notifications = {
     weekTitle: "Your week ahead",
     episodesHeader: "Episodes of your series",
     eventsHeader: "Your events",
+    presalesHeader: "Ticket sales opening",
     birthdaysHeader: "Birthdays of artists you follow",
     episodeLine: (drama: string, n: number) => `${drama} — episode ${n}`,
+    presaleLine: (event: string, time: string) => `${event} — at ${time} (Thai time)`,
     empty:
       "Nothing yet: mark series you watch and add artists and events to favorites — the digest will fill up.",
+    /** Подпись воскресной рассылки (sendWeeklyDigests). У ответов бота
+     *  её нет: там человек спросил сам, и «как отписаться» неуместно. */
+    weeklyFooter: "Your weekly digest — switch it off in notification settings.",
   },
 
   premiumBody: (until: string) => `The feed, the calendar and trips are open — until ${until}.`,

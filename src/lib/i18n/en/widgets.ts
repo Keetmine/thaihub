@@ -78,15 +78,12 @@ export const widgets = {
      *  придумывала свою, а форма создания сообщества и вовсе показывала
      *  чужую («Укажите название») на любую ошибку сети. */
     network: "Couldn't reach the server, please try again",
-    notFoundTitle: "Page not found",
     notFoundHint: "There's no such page — it may have been removed, or the link has a typo.",
     goHome: "Go home",
     goSearch: "Search",
     errorEyebrow: "Error",
     errorTitle: "Something went wrong",
     errorHint: "The report is already with us. Try again — that usually does it; if it doesn't, write to us from the help page.",
-    globalTitle: "The site stumbled",
-    globalHint: "The report is already with us. Try reloading the page.",
     tryAgain: "Try again",
   },
   tour: {

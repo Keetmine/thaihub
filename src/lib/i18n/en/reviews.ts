@@ -15,8 +15,6 @@ export const reviews = {
        *  служит. */
       remove: "Remove the photo",
   },
-  ratingLabel: "Rating",
-  outOf10: "out of 10",
 
   rating: {
       story: "Story",

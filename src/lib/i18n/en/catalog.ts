@@ -238,14 +238,6 @@ export const catalog = {
         myScore: "My rating:",
         ourScore: "Score:",
         mdlScore: "MyDramaList:",
-        ourScoreTip: (n: number) => `MyBLHub viewers · ${n} votes`,
-        scoreTooltip: (site: string | null, mdl: string | null) => {
-            if (site && mdl) {
-                return `Series rating: MyBLHub viewers — ${site}, MyDramaList — ${mdl}`;
-            }
-            if (site) return `Series rating from MyBLHub viewers — ${site}`;
-            return `Series rating from MyDramaList — ${mdl}`;
-        },
         events: "Events",
         cast: "Cast",
         /** «Смотреть по порядку» (аудит, п. 6.1): бывший блок «Связанные
@@ -470,5 +462,14 @@ export const catalog = {
             "A map of series filming spots: where scenes were shot, what is nearby and how to get there.",
         title: "Locations map",
         back: "← All locations",
+        /** Вкладки карты: вся карта / только съёмки отмеченных сериалов. */
+        tabsLabel: "What to show on the map",
+        tabAll: "All places",
+        tabMine: (n: number) => `From my series (${n})`,
+        emptyTitle: "Nothing on the map yet",
+        emptyHint: "Catalogue locations have no coordinates yet.",
+        emptyMineTitle: "No filming spots from your series",
+        emptyMineHint:
+            "The series you marked have no filming locations with coordinates yet. Mark a few more series — or look at the whole map.",
     },
 };

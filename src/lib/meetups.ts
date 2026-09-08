@@ -29,7 +29,6 @@ export const MEETUP_TITLE_MAX = 120;
  *  осталась в базе ради встреч, заведённых двумя полями: форма склеит
  *  их при первой правке. */
 export const MEETUP_VENUE_MAX = 200;
-export const MEETUP_ADDRESS_MAX = 200;
 export const MEETUP_DESCRIPTION_MAX = 2000;
 
 export type MeetupRights = {

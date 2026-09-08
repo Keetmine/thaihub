@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { userDisplayName, userHref } from "@/lib/userProfile";
 import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
@@ -24,10 +25,13 @@ import { ONLINE_WINDOW_MS } from "@/lib/lastSeen";
 import { sendFriendRequest } from "../../friends/actions";
 import { logout } from "../../login/actions";
 import FriendNotifyToggle from "./FriendNotifyToggle";
-import { getUnlockedAchievements, syncAchievements } from "@/lib/achievements";
+import {
+  achievementsSyncDue,
+  getUnlockedAchievements,
+  syncAchievements,
+} from "@/lib/achievements";
 import { computeUserStats } from "@/lib/userStats";
 import { getActivityFeed } from "@/lib/activityFeed";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import AchievementBadge from "@/components/AchievementBadge";
 import StatsUpsell from "./StatsUpsell";
@@ -52,6 +56,28 @@ import SubTabs from "@/components/SubTabs";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Владелец профиля по адресу — общий для `generateMetadata` и самой
+ * страницы: обе зовутся на один HTTP-запрос, и без React.cache строка
+ * читалась дважды.
+ *
+ * Свой профиль не стоит вообще ни одного запроса: та же строка уже
+ * приехала вместе с сессией (см. lib/userAuth.ts), а по адресу
+ * /users/<свой ник|свой id> открывается именно она.
+ */
+const loadProfileUser = cache(async (id: string) => {
+  // Ник от id отличаем по формату: id — это cuid (начинается с "c" и
+  // длинный), ник короче и может быть любым допустимым словом.
+  const looksLikeId = /^c[a-z0-9]{20,}$/.test(id);
+  const viewer = await getCurrentUser();
+  if (viewer && (looksLikeId ? viewer.id === id : viewer.username === id)) return viewer;
+  return prisma.user.findUnique({
+    // Ник в адресе (/users/keetmine) — им делятся с друзьями; id
+    // остаётся рабочим для старых ссылок и аккаунтов без ника.
+    where: looksLikeId ? { id } : { username: id },
+  });
+});
+
 export async function generateMetadata({
   params,
 }: {
@@ -59,13 +85,7 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const { locale, t } = await getT();
-  // Тот же разбор параметра, что в самой странице: cuid — это id, всё
-  // остальное — ник.
-  const looksLikeId = /^c[a-z0-9]{20,}$/.test(id);
-  const user = await prisma.user.findUnique({
-    where: looksLikeId ? { id } : { username: id },
-    select: { name: true, deletedAt: true },
-  });
+  const user = await loadProfileUser(id);
   if (!user || user.deletedAt)
     return pageMetadata({
       title: t.social.profile.metaTitle,
@@ -139,16 +159,8 @@ export default async function UserProfilePage({
 
   const { id } = await params;
   const { tab } = await searchParams;
-  // Ник от id отличаем по формату: id — это cuid (начинается с "c" и
-  // длинный), ник короче и может быть любым допустимым словом.
-  const looksLikeId = /^c[a-z0-9]{20,}$/.test(id);
-  const username = looksLikeId ? null : id;
 
-  const user = await prisma.user.findUnique({
-    // Ник в адресе (/users/keetmine) — им делятся с друзьями; id
-    // остаётся рабочим для старых ссылок и аккаунтов без ника.
-    where: username ? { username } : { id },
-  });
+  const user = await loadProfileUser(id);
   // Удалённый аккаунт публично не существует.
   if (!user || user.deletedAt) notFound();
 
@@ -161,7 +173,13 @@ export default async function UserProfilePage({
 
   // Друзья владельца — и счётчик, и сетка аватарок в левой колонке
   // (жалоба владельца: «друзей на профиле не видно»).
-  const friendships = await prisma.friendship.findMany({
+  //
+  // Запрос уходит СРАЗУ, а ждём мы его только там, где без него нельзя:
+  // права зрителя зависят от дружбы, и раньше вся страница стояла в
+  // очереди за этим списком. Себе и гостю ждать нечего — «друг сам себе»
+  // и «друг без учётки» не бывают, — так что у них выборки ниже уходят в
+  // ту же волну, что и этот запрос.
+  const friendshipsPromise = prisma.friendship.findMany({
     where: { status: "ACCEPTED", OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
     include: {
       // Поля подписки — для цветной обводки аватарок подписчиков в сетке
@@ -175,8 +193,12 @@ export default async function UserProfilePage({
     },
     orderBy: { createdAt: "desc" },
   });
-  const friends = friendships.map((f) => (f.requesterId === user.id ? f.addressee : f.requester));
-  const isFriend = !!viewer && !isSelf && friends.some((f) => f.id === viewer.id);
+  const isFriend =
+    !viewer || isSelf
+      ? false
+      : (await friendshipsPromise).some(
+          (f) => f.requesterId === viewer.id || f.addresseeId === viewer.id,
+        );
 
   // Приватный профиль (Г8): друзья и сам владелец видят всё; остальным —
   // мастер-выключатель + точечные блоки.
@@ -184,29 +206,6 @@ export default async function UserProfilePage({
   const showAchievements = showActivity && (isSelf || isFriend || !user.hideAchievements);
   const showFavorites = showActivity && (isSelf || isFriend || !user.hideFavoritePerformers);
   const showVisited = showActivity && (isSelf || isFriend || !user.hideVisitedPlaces);
-
-  const muteRow =
-    isFriend
-      ? await prisma.friendNotificationMute.findUnique({
-          where: { userId_mutedFriendId: { userId: viewer!.id, mutedFriendId: user.id } },
-        })
-      : null;
-  // Не-друзьям в шапке нужна кнопка «В друзья» — а если заявка уже висит
-  // (в любую сторону), показываем её состояние вместо кнопки.
-  // Гостю заявку искать не по кому: у него нет своей учётки, а без
-  // проверки запрос уходил с пустым идентификатором и ронял страницу.
-  const pendingFriendship =
-    !viewer || isSelf || isFriend
-      ? null
-      : await prisma.friendship.findFirst({
-          where: {
-            status: "PENDING",
-            OR: [
-              { requesterId: viewer!.id, addresseeId: user.id },
-              { requesterId: user.id, addresseeId: viewer!.id },
-            ],
-          },
-        });
 
   // ---------- Общие выборки (видимость решается прямо в where) ----------
 
@@ -225,16 +224,37 @@ export default async function UserProfilePage({
         ],
       };
 
+  const performerInEvent = {
+    // photoUrl нужен своду статистики («кого видели вживую») — он
+    // считается из ЭТИХ же строк, второй выборки отметок больше нет.
+    // Цена — лишнее поле в пропсах строк событий (их на профиле около
+    // десятка), и это заведомо дешевле второго запроса всех отметок с
+    // составами.
+    include: { performer: { select: { id: true, name: true, slug: true, photoUrl: true } } },
+  };
   const eventWithOccurrences = {
     include: {
-      performers: {
-        include: { performer: { select: { id: true, name: true, slug: true } } },
-      },
+      performers: performerInEvent,
       occurrences: { orderBy: { startsAt: "asc" as const } },
     },
   };
 
+  // Свод статистики нужен себе всегда, зрителю — только у владельца с
+  // подпиской и открытой активностью (та же логика «чужая статистика
+  // видна у премиума», что была у чипов старого профиля).
+  const statsVisibleToViewer = !isSelf && ownerPremium && showActivity;
+  const needStats = isSelf || statsVisibleToViewer;
+  // Пересчёт ачивок — не чаще раза в 10 минут на человека (см.
+  // lib/achievements.ts): между окнами показываем уже выданные медали.
+  const syncDue = isSelf && achievementsSyncDue(user.id);
+
+  // ОДНА волна на всё, что страница читает своими руками: раньше эти же
+  // выборки шли шестью ступенями (общая, лента, свод, ачивки, избранные
+  // события, билеты, счётчики, сообщества), и каждая ждала предыдущую
+  // без всякой на то причины. Всё, что зависит от прав, уже посчитано
+  // выше — сами права в where, как и было.
   const [
+    friendships,
     attendances,
     favoritePerformersCount,
     watchRows,
@@ -247,21 +267,56 @@ export default async function UserProfilePage({
     commentRows,
     commentCount,
     viewerWatch,
+    communityMemberships,
+    unlockedRows,
+    referrals,
+    muteRow,
+    pendingRow,
+    favoriteEventRows,
+    ticketRows,
   ] = await Promise.all([
+    friendshipsPromise,
     // «Иду»: себе — полный список для вкладки «События», зрителю — только
-    // для блока будущих событий и счётчика.
+    // для блока будущих событий и счётчика. Эти же строки уходят в свод
+    // статистики и в ленту обновлений — отдельных выборок отметок на
+    // странице больше нет.
     prisma.eventAttendance.findMany({
       // Только афишные события: профиль открыт другим людям, и отметка
       // «иду» на домашнюю встречу раздала бы её название и адрес тем,
       // кого в сообщество не звали (см. src/lib/catalogEvents.ts).
       where: { userId: user.id, event: catalogEventsWhere() },
-      include: { event: eventWithOccurrences, occurrence: true },
+      include: {
+        event: eventWithOccurrences,
+        occurrence: {
+          include: {
+            // Оба вложения — для свода: «шли компанией 4+» считается по
+            // числу отметившихся, а состав дня — по кому засчитывать
+            // «видела вживую». Тянем их всегда, не только когда свод
+            // будет: отметок у человека единицы, и одна выборка на два
+            // случая честнее, чем две формы одного запроса.
+            attendances: { select: { userId: true } },
+            lineup: performerInEvent,
+          },
+        },
+      },
     }),
-    prisma.favoritePerformer.count({ where: { userId: user.id } }),
+    // Число любимых артистов показывает только свой «Обзор».
+    isSelf ? prisma.favoritePerformer.count({ where: { userId: user.id } }) : 0,
     showActivity
       ? prisma.dramaWatchStatus.findMany({
           where: { userId: user.id },
-          include: {
+          // select, а не include: строк тут до потолка ниже, и лишние
+          // колонки отметки (заметки, флаг колокольчика, даты) в них
+          // никому не нужны.
+          select: {
+            status: true,
+            episodesWatched: true,
+            rating: true,
+            // Для свода статистики: пересмотры, часы у экрана, жанры и
+            // «строже/щедрее MDL» считаются из этих же строк.
+            rewatchCount: true,
+            // Лента обновлений сортируется по нему.
+            updatedAt: true,
             drama: {
               select: {
                 id: true,
@@ -275,6 +330,11 @@ export default async function UserProfilePage({
                 type: true,
                 country: true,
                 year: true,
+                // Только для свода — в таблицу вкладки эти поля не
+                // уезжают (см. DramasPanel: строки собираются поимённо).
+                duration: true,
+                genres: true,
+                mdlScore: true,
               },
             },
           },
@@ -289,10 +349,14 @@ export default async function UserProfilePage({
           take: 2000,
         })
       : [],
-    prisma.dramaWatchStatus.count({ where: { userId: user.id } }),
+    showActivity ? prisma.dramaWatchStatus.count({ where: { userId: user.id } }) : 0,
     prisma.trip.findMany({
       where: { userId: user.id, visibility: { in: tripVisibilities } },
       orderBy: { startDate: "desc" },
+      // Потолок — защита от абсурдного списка (как у сериалов выше):
+      // счётчик вкладки считается по длине этого массива, и низкий
+      // потолок соврал бы.
+      take: 200,
     }),
     prisma.placeList.findMany({
       // communityId: null — в профиле только ЛИЧНЫЕ списки. Список
@@ -317,10 +381,16 @@ export default async function UserProfilePage({
         })
       : [],
     // Отзывы: чужой приватный не попадает даже в HTML — фильтр в выборке.
+    // Эти же строки уходят в ленту обновлений — второй выборки отзывов
+    // на странице нет.
     showActivity
       ? prisma.review.findMany({
           where: { userId: user.id, ...(isSelf ? {} : { isPrivate: false }) },
           orderBy: { createdAt: "desc" },
+          // Потолок — по той же причине, что у поездок: счётчик вкладки
+          // считается по длине массива, поэтому он высокий и в жизни не
+          // срабатывает (у отзывов и текст, и он весь уезжает в разметку).
+          take: 200,
           select: {
             id: true,
             rating: true,
@@ -354,8 +424,8 @@ export default async function UserProfilePage({
     // Счётчик в подписи вкладки «Комментарии» (правка владельца
     // 2026-09-08). Отдельный count, а не длина строк выше: те срезаны
     // потолком take: 30, и у активного комментатора подпись врала бы.
-    // Отзывам такой запрос не нужен — они выбираются без потолка, у них
-    // счётчик берётся из длины уже полученного массива.
+    // Отзывам такой запрос не нужен — их потолок в двести штук в жизни
+    // не срабатывает, и счётчик берётся из длины массива.
     showActivity ? prisma.comment.count({ where: { userId: user.id } }) : 0,
     // Совместимость вкусов (аудит 2026-09, раздел 7): узкий срез
     // статусов ЗРИТЕЛЯ — единственный дополнительный запрос блока,
@@ -368,7 +438,101 @@ export default async function UserProfilePage({
           select: { dramaId: true, rating: true },
         })
       : [],
+    // Сообщества человека (АА25). Приватность — прямо в where, как у
+    // поездок и списков: то, чего зрителю не положено, не доезжает даже
+    // до пропсов.
+    //
+    // ЗАКРЫТОЕ сообщество в ЧУЖОМ профиле не показывается вовсе — и
+    // друзьям тоже, в отличие от остальных блоков. «Друзья видят всё» —
+    // правило про данные ВЛАДЕЛЬЦА профиля, а состав закрытого сообщества
+    // принадлежит не ему, а сообществу: назвать его — значит выдать
+    // чужую тайну через профиль случайного участника. Само сообщество
+    // закрыто ровно за этим (см. docs/features/communities.md).
+    //
+    // Заявки (PENDING) сюда не попадают: человек ещё не участник, а
+    // «подавал заявку туда-то» — не то, что стоит показывать даже себе
+    // отдельным списком.
+    showActivity
+      ? prisma.communityMember.findMany({
+          where: {
+            userId: user.id,
+            status: "ACTIVE",
+            ...(isSelf ? {} : { community: { visibility: "PUBLIC" as const } }),
+          },
+          include: {
+            community: {
+              select: {
+                id: true,
+                slug: true,
+                title: true,
+                description: true,
+                coverUrl: true,
+                visibility: true,
+                // Для свода (ачивки «вступил» против «завёл») — в
+                // разметку не уезжает, см. myCommunities ниже.
+                ownerId: true,
+                _count: { select: { members: { where: { status: "ACTIVE" } } } },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : [],
+    // Выданные медали: одной выборкой на всех — бейджи левой колонки,
+    // лента обновлений и пересчёт (раньше каждый читал таблицу сам).
+    showAchievements
+      ? prisma.userAchievement.findMany({ where: { userId: user.id } })
+      : [],
+    // Приглашённые по реферальной ссылке — метрика только для пересчёта,
+    // поэтому и спрашиваем только когда он будет.
+    syncDue ? prisma.user.count({ where: { referredById: user.id, deletedAt: null } }) : 0,
+    // Молчалка уведомлений о друге и висящая заявка: спрашиваем у любого
+    // залогиненного не-себя, а показываем по правам ниже — так они не
+    // ждут списка друзей отдельной ступенью. Гостю искать нечего: у него
+    // нет своей учётки, а без проверки запрос уходил с пустым
+    // идентификатором и ронял страницу.
+    viewer && !isSelf
+      ? prisma.friendNotificationMute.findUnique({
+          where: { userId_mutedFriendId: { userId: viewer.id, mutedFriendId: user.id } },
+        })
+      : null,
+    viewer && !isSelf
+      ? prisma.friendship.findFirst({
+          where: {
+            status: "PENDING",
+            OR: [
+              { requesterId: viewer.id, addresseeId: user.id },
+              { requesterId: user.id, addresseeId: viewer.id },
+            ],
+          },
+        })
+      : null,
+    // Дальше — только своё: избранные события и билеты. Билеты — ТОЛЬКО
+    // себе: файл не должен попасть в чужую разметку.
+    isSelf
+      ? prisma.favoriteEvent.findMany({
+          // Та же причина, что у «иду» выше: вкладка событий — про афишу.
+          where: { userId: user.id, event: catalogEventsWhere() },
+          include: { event: eventWithOccurrences },
+        })
+      : [],
+    isSelf
+      ? prisma.eventTicket.findMany({
+          where: { userId: user.id },
+          select: {
+            id: true,
+            fileUrl: true,
+            event: { select: { id: true, slug: true, title: true, venue: true } },
+            occurrence: { select: { startsAt: true } },
+          },
+        })
+      : [],
   ]);
+
+  const friends = friendships.map((f) => (f.requesterId === user.id ? f.addressee : f.requester));
+  // Не-друзьям в шапке нужна кнопка «В друзья» — а если заявка уже висит
+  // (в любую сторону), показываем её состояние вместо кнопки.
+  const pendingFriendship = isFriend ? null : pendingRow;
 
   const now = new Date();
   const goingEventIds = new Set(attendances.map((a) => a.eventId));
@@ -401,35 +565,69 @@ export default async function UserProfilePage({
   // поездки — их собственные правила видимости.
   // 10 записей, не 20: лента ужалась в узкую правую колонку обзора
   // (правка владельца п.1).
-  const activityItems = showActivity
-    ? await getActivityFeed(
-        user.id,
-        {
-          privateReviews: isSelf,
-          going: isSelf || viewerPremium,
-          favoritePerformers: showFavorites,
-          achievements: showAchievements,
-          tripVisibilities,
-        },
-        10,
-      )
-    : [];
+  //
+  // Строки лента больше не читает сама: те же таблицы уже выбраны выше
+  // (статусы, «иду», поездки, отзывы, медали) — и передаются ей как
+  // есть. Гейты при этом остаются на странице: «иду» без подписки
+  // зрителя не показывается, значит и в ленту не отдаётся.
+  const goingVisible = isSelf || viewerPremium;
 
-  // ---------- Статистика ----------
-  // Себе — всегда (заодно syncAchievements фиксирует новые ачивки, как
-  // раньше делал кабинет); зрителю — только если владелец с подпиской и
-  // не скрыл активность (та же логика «чужая статистика видна у
-  // премиума», что была у чипов старого профиля).
-  const statsVisibleToViewer = !isSelf && ownerPremium && showActivity;
-  const fullStats = isSelf || statsVisibleToViewer ? await computeUserStats(user.id) : null;
-  const achievementStates =
-    isSelf && fullStats ? await syncAchievements(user.id, fullStats) : null;
+  // ---------- Статистика и ачивки ----------
+  // Свод себе — всегда (заодно пересчёт фиксирует новые ачивки, как
+  // раньше делал кабинет); зрителю — по правам, см. statsVisibleToViewer.
+  // Свод, лента и пересчёт независимы друг от друга — одна волна, а не
+  // три ступени; свод пересчёт получает ОБЕЩАНИЕМ и потому идёт с ним
+  // рядом, а не после.
+  const statsPromise = needStats
+    ? // Отметки и статусы уже выбраны страницей — второго похода за ними
+      // не будет. watchRows при needStats всегда выбраны: и себе, и
+      // зрителю статистика положена только при открытой активности.
+      computeUserStats(user.id, {
+        attendances,
+        watchRows,
+        friends: friendships.length,
+        // Список сообществ у зрителя урезан по видимости — своду нужны
+        // ВСЕ членства, поэтому отдаём только свой.
+        memberships: isSelf ? communityMemberships : undefined,
+      })
+    : null;
+
+  const [fullStats, achievementStates, activityItems] = await Promise.all([
+    statsPromise,
+    isSelf && statsPromise && syncDue
+      ? syncAchievements(user.id, statsPromise, { referrals, unlockedRows })
+      : null,
+    showActivity
+      ? getActivityFeed(
+          user.id,
+          {
+            privateReviews: isSelf,
+            going: goingVisible,
+            favoritePerformers: showFavorites,
+            achievements: showAchievements,
+            tripVisibilities,
+          },
+          10,
+          {
+            watches: watchRows,
+            going: goingVisible ? attendances : [],
+            trips,
+            reviews: reviewRows,
+            achievements: showAchievements ? unlockedRows : [],
+          },
+        )
+      : [],
+  ]);
+
   const unlockedBadges = isSelf
     ? ownerPremium
-      ? (achievementStates ?? []).filter((a) => a.unlocked)
+      ? // Между пересчётами (см. syncDue) показываем уже выданные медали
+        // из тех же строк: свежая медаль опоздает максимум на окно.
+        (achievementStates?.filter((a) => a.unlocked) ??
+          (await getUnlockedAchievements(user.id, unlockedRows)))
       : []
     : showAchievements
-      ? await getUnlockedAchievements(user.id)
+      ? await getUnlockedAchievements(user.id, unlockedRows)
       : [];
 
   const statsForTab: StatsForTab | null = fullStats
@@ -471,11 +669,6 @@ export default async function UserProfilePage({
   // вкладке не нужно.
   let selfEventsCount = 0;
   if (isSelf) {
-    const favoriteEventRows = await prisma.favoriteEvent.findMany({
-      // Та же причина, что у «иду» выше: вкладка событий — про афишу.
-      where: { userId: user.id, event: catalogEventsWhere() },
-      include: { event: eventWithOccurrences },
-    });
     const attendanceRows = attendances
       .map((a) => flattenOccurrence({ ...a.occurrence, event: a.event }))
       .sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime());
@@ -496,13 +689,12 @@ export default async function UserProfilePage({
     // и число как раз объясняет, за что предлагается подписка.
     selfEventsCount = attendanceRows.length + favoriteEvents.length;
 
-    const allRows = [...attendanceRows, ...favoriteEvents.map((f) => f.row)];
-    const [favoritedEventIds, goingOccurrenceIds] = await Promise.all([
-      getFavoritedEventIds(allRows.map((e) => e.id), user.id),
-      getGoingOccurrenceIds(allRows.map((e) => e.occurrenceId), user.id),
-    ]);
-    const favoritedSet = new Set(favoritedEventIds);
-    const goingSet = new Set(goingOccurrenceIds);
+    // Сердечко и «иду» на строках — из уже выбранных отметок: это СВОИ
+    // события, и оба ответа целиком лежат в favoriteEventRows и
+    // attendances (обе выборки — по афишным событиям, как и строки
+    // здесь). Двух запросов «а что из этого списка отмечено» больше нет.
+    const favoritedSet = new Set(favoriteEventRows.map((f) => f.eventId));
+    const goingSet = new Set(attendances.map((a) => a.occurrenceId));
 
     // Списки событий — за подпиской (как в кабинете): без неё массивы
     // не рендерим вовсе, короткое пояснение вместо них.
@@ -591,16 +783,7 @@ export default async function UserProfilePage({
       </div>
     );
 
-    // Билеты — ТОЛЬКО себе: файл не должен попасть в чужую разметку.
-    const ticketRows = await prisma.eventTicket.findMany({
-      where: { userId: user.id },
-      select: {
-        id: true,
-        fileUrl: true,
-        event: { select: { id: true, slug: true, title: true, venue: true } },
-        occurrence: { select: { startsAt: true } },
-      },
-    });
+    // Билеты (выбраны в общей волне — они только свои).
     const tickets = ticketRows
       .map((row) => ({
         id: row.id,
@@ -683,50 +866,10 @@ export default async function UserProfilePage({
   const country = user.country ? countryName(user.country, locale) : null;
 
   // ---------- Сборка вкладок ----------
-  const favoriteEventsCount = isSelf
-    ? await prisma.favoriteEvent.count({
-        // Счётчик считает ровно то, что показано в списке выше.
-        where: { userId: user.id, event: catalogEventsWhere() },
-      })
-    : 0;
+  // Счётчик избранных событий считает ровно то, что выбрано выше (тот же
+  // where), — отдельного count ему не нужно.
+  const favoriteEventsCount = favoriteEventRows.length;
 
-  // Сообщества человека (АА25). Приватность — прямо в where, как у
-  // поездок и списков: то, чего зрителю не положено, не доезжает даже
-  // до пропсов.
-  //
-  // ЗАКРЫТОЕ сообщество в ЧУЖОМ профиле не показывается вовсе — и
-  // друзьям тоже, в отличие от остальных блоков. «Друзья видят всё» —
-  // правило про данные ВЛАДЕЛЬЦА профиля, а состав закрытого сообщества
-  // принадлежит не ему, а сообществу: назвать его — значит выдать
-  // чужую тайну через профиль случайного участника. Само сообщество
-  // закрыто ровно за этим (см. docs/features/communities.md).
-  //
-  // Заявки (PENDING) сюда не попадают: человек ещё не участник, а
-  // «подавал заявку туда-то» — не то, что стоит показывать даже себе
-  // отдельным списком.
-  const communityMemberships = showActivity
-    ? await prisma.communityMember.findMany({
-        where: {
-          userId: user.id,
-          status: "ACTIVE",
-          ...(isSelf ? {} : { community: { visibility: "PUBLIC" as const } }),
-        },
-        include: {
-          community: {
-            select: {
-              id: true,
-              slug: true,
-              title: true,
-              description: true,
-              coverUrl: true,
-              visibility: true,
-              _count: { select: { members: { where: { status: "ACTIVE" } } } },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
   const myCommunities = communityMemberships.map((m) => ({
     id: m.community.id,
     slug: m.community.slug,
@@ -1152,6 +1295,18 @@ export default async function UserProfilePage({
           своему она не нужна вовсе, а чужому «← Друзья» врала о том,
           откуда пришли, — назад ведут браузер и навигация. */}
       <aside className="profile-side">
+        {/* Обложка — косметика подписчика (аудит 2026-09, раздел 8), но
+            ВИДЯТ её все, включая гостей: пропадать в день окончания
+            подписки профиль не должен, иначе он выглядит сломанным.
+            Ставит её только подписчик — это проверяет updateProfile.
+            Без обложки блока нет вовсе, и колонка выглядит как
+            раньше. */}
+        {user.coverUrl && (
+          <div className="profile-side-cover">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={user.coverUrl} alt="" loading="eager" decoding="async" />
+          </div>
+        )}
         {/* Цветная обводка фото у подписчика (правка владельца п.6);
             тот же визуал у мини-аватарок — .premium-ring. */}
         <div className={`profile-side-photo${ownerPremium ? " profile-side-photo-premium" : ""}`}>
@@ -1542,8 +1697,20 @@ function DramasPanel({
         // 2026-09-06): отмечать серии прямо отсюда быстрее, чем
         // заходить в каталог или на страницу сериала.
         editable={isSelf}
+        // Поля перечислены поимённо, а не `...w.drama`: строки уезжают в
+        // КЛИЕНТСКИЙ компонент, и вместе с ними уехало бы всё, что в
+        // выборке есть для свода статистики (жанры, длительность, оценка
+        // MDL). Здесь ровно то, что таблица рисует и по чему сортирует.
         rows={watchRows.map((w) => ({
-          ...w.drama,
+          id: w.drama.id,
+          slug: w.drama.slug,
+          title: w.drama.title,
+          titleRu: w.drama.titleRu,
+          posterUrl: w.drama.posterUrl,
+          episodes: w.drama.episodes,
+          type: w.drama.type,
+          country: w.drama.country,
+          year: w.drama.year,
           status: w.status,
           episodesWatched: w.episodesWatched,
           rating: w.rating,

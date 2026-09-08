@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { communityHref } from "@/lib/slugHelpers";
 import { parseCommunityPlace } from "@/lib/communities";
 import { requireManagedCommunity } from "@/lib/communities.server";
+import { invalidateCatalogCache } from "@/lib/catalogCache";
 
 /**
  * Где живёт сообщество — страна и город (АА25).
@@ -59,5 +60,8 @@ export async function saveCommunityPlace(
   });
   revalidatePath(communityHref(managed.community));
   revalidatePath("/communities");
+  // Место — это ещё и ряды фильтра на витрине, а они кэшированы: без
+  // сброса тега новая страна появилась бы в ряду только через полчаса.
+  invalidateCatalogCache();
   return { ok: true };
 }

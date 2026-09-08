@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import BackLink from "@/components/BackLink";
 import AppLink from "@/components/AppLink";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -28,9 +29,14 @@ import TripsTab from "./TripsTab";
 export const dynamic = "force-dynamic";
 
 /** Общая выборка страницы: и метаданным, и самой странице нужно одно и
- *  то же, а запрос тут не из дешёвых. */
-async function loadCommunity(param: string) {
-  return prisma.community.findFirst({
+ *  то же, а запрос тут не из дешёвых — сообщество едет со всеми
+ *  участниками, приглашениями и ссылками.
+ *
+ *  React.cache: generateMetadata и страница делят ОДИН запрос на
+ *  HTTP-запрос (как в artists/[id] и trips/[id]). Без обёртки самый
+ *  тяжёлый запрос страницы шёл в базу дважды — аудит 2026-09, п.4. */
+const loadCommunity = cache(async (param: string) =>
+  prisma.community.findFirst({
     where: slugOrIdWhere(param),
     include: {
       owner: { select: { id: true, name: true } },
@@ -56,8 +62,8 @@ async function loadCommunity(param: string) {
         orderBy: { createdAt: "asc" },
       },
     },
-  });
-}
+  }),
+);
 
 export async function generateMetadata({
   params,

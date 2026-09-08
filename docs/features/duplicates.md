@@ -32,25 +32,30 @@ that specific bug.
 ## Cleanup: admin merge tool
 
 `/admin/duplicates` (`src/app/admin/(protected)/duplicates/`) — finds
-groups of `Performer` or `Drama` rows sharing the exact same
+groups of `Performer`, `Drama` or `Agency` rows sharing the exact same
 (case-insensitive, trimmed) name, and lets an admin merge each group down
 to one record.
 
 - **Detection**: `findDuplicatePerformerGroups()` /
-  `findDuplicateDramaGroups()` in `src/lib/duplicates.ts` — exact
+  `findDuplicateDramaGroups()` / `findDuplicateAgencyGroups()` in
+  `src/lib/duplicates.ts` — exact
   normalized-name match only, no fuzzy matching. A typo'd duplicate
   ("Beside The Sky" vs "Beside the sky ") would still be caught (case +
   whitespace insensitive); a genuinely different spelling would not.
+  У агентства `name` уникален, поэтому в его группы попадает только то,
+  что база пропустила: разный регистр и лишние пробелы.
 - **Paging**: групп бывает несколько сотен, а каждая — карточка с
   формой слияния, поэтому страница режет общий список (сначала
-  сериалы, потом исполнители) на страницы по `DENSE_PAGE_SIZE` (20) из
+  сериалы, потом исполнители, потом агентства) на страницы по
+  `DENSE_PAGE_SIZE` (20) из
   `src/lib/pagination`. Заголовок раздела показывает полное число
   групп этого типа, под ним — только попавшие на текущую страницу;
   раздел без своих групп на странице не рисуется. `?a=`/`?b=` формы
   ручного сравнения переносятся в ссылки пагинации.
 - **UI**: `MergeGroupCard.tsx` — radio-select which row to keep, shows
   each candidate's relation counts (events/dramas for performers;
-  cast/locations/events for dramas) so the admin can judge which one has
+  cast/locations/events for dramas; артисты/сериалы/избранное for
+  agencies) so the admin can judge which one has
   the richer data before picking, then a confirm-and-merge button.
 - **Слаг после слияния** (жалоба владельца 2026-09-06): если выживший
   жил по нумерованному `nick-2`, а «чистый» `nick` был как раз у дубля,
@@ -68,7 +73,7 @@ to one record.
   слага меняет публичный адрес, и ссылки на старый нумерованный
   перестают открываться — истории слагов с редиректами у нас нет.
   Проверки правила — `tests/unit/slugReclaim.test.ts`.
-- **Merge logic**: `mergePerformers` / `mergeDramas` in
+- **Merge logic**: `mergePerformers` / `mergeDramas` / `mergeAgencies` in
   `src/lib/duplicates.ts`, each wrapped in one `prisma.$transaction` (all
   relations move or none do). Every relation table gets reassigned from
   the loser id(s) to the keeper id; where a row would collide with
@@ -140,9 +145,17 @@ genuinely deleted, not soft-deleted. The confirm dialog in
 «Оставить эту запись» на каждой — вторая вливается через
 `mergePerformersAction`.
 
-## mergeAgencies
+## Агентства
 
 Слияние агентств (`mergeAgencies`): PerformerAgency/FavoriteAgency —
 через reassignJoinRows, Drama.agencyId — updateMany, пустые
-logoUrl/description дозаполняются. Использовано разово для чистки
-мусорных агентств с датами в имени (15 штук слито в базовые).
+logoUrl/description дозаполняются, слаг проигравшего забирается
+(`reclaimBaseSlug`). Изначально функция вызывалась разово скриптом —
+чистка мусорных агентств с датами в имени (15 штук слито в базовые).
+
+С 2026-09-09 у неё есть кнопка: раздел «Агентства» на
+/admin/duplicates — та же `MergeGroupCard`, что у сериалов и
+исполнителей, через `mergeAgenciesAction`. Дискриминатора у агентства
+нет (ни года, ни реального имени), поэтому группы не дробятся; «не
+сливать» работает так же (`entityType: "agency"` в
+`DuplicateDismissal`).

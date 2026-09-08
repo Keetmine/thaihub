@@ -3,14 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { mergeDramas, mergePerformers } from "@/lib/duplicates";
+import { mergeAgencies, mergeDramas, mergePerformers } from "@/lib/duplicates";
 import { requireAdmin } from "@/lib/auth";
+
+/** Что за записи скрывает «не сливать» — те же три типа, что и на
+ *  странице дублей. */
+export type DuplicateEntityType = "drama" | "performer" | "agency";
 
 /** И5: «не сливать» — скрыть группу из списка дублей. Ремейк с тем же
  *  названием или тёзки — не дубли, но раньше убрать их было нельзя.
  *  Обратимо (restore ниже), поэтому без подтверждения. */
 export async function dismissDuplicateGroupAction(
-  entityType: "drama" | "performer",
+  entityType: DuplicateEntityType,
   memberKey: string,
 ): Promise<void> {
   await requireAdmin();
@@ -23,7 +27,7 @@ export async function dismissDuplicateGroupAction(
 }
 
 export async function restoreDuplicateGroupAction(
-  entityType: "drama" | "performer",
+  entityType: DuplicateEntityType,
   memberKey: string,
 ): Promise<void> {
   await requireAdmin();
@@ -46,6 +50,19 @@ export async function mergePerformersAction(keeperId: string, loserIds: string[]
   revalidatePath("/admin/duplicates");
   revalidatePath("/admin/performers");
   revalidatePath("/artists");
+  clearComparison();
+}
+
+/** Слияние агентств. Отдельные адреса на сброс кэша: у агентства своя
+ *  публичная страница, и артисты/сериалы показывают его название. */
+export async function mergeAgenciesAction(keeperId: string, loserIds: string[]) {
+  await requireAdmin();
+  await mergeAgencies(keeperId, loserIds);
+  revalidatePath("/admin/duplicates");
+  revalidatePath("/admin/agencies");
+  // Списка агентств у нас нет — сбрасываем сами страницы агентств
+  // (проигравшая исчезла, у выжившей прибавилось артистов).
+  revalidatePath("/agencies/[id]", "page");
   clearComparison();
 }
 

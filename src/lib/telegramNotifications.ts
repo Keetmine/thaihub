@@ -3,14 +3,22 @@ import { catalogEventsWhere, catalogOccurrencesWhere } from "@/lib/catalogEvents
 import { sendTelegramMessage } from "@/lib/telegram";
 import { formatHumanDate, formatTime } from "@/lib/dates";
 import { eventHref } from "@/lib/eventSlug";
+import { communityHref } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
-import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n";
-import { isPremiumActive, type PremiumFields } from "@/lib/premium";
+import { getDict, isLocale, localeHref, DEFAULT_LOCALE } from "@/lib/i18n";
+import { isPremiumActive, premiumActiveWhere, type PremiumFields } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { notifyUser } from "@/lib/notifications";
+import { buildDigestMessage } from "@/lib/botDigest";
 
 const LOOKAHEAD_HOURS = 24;
+
+// Абсолютный адрес для ссылок в сообщениях бота — как в notifications.ts
+// и botDigest.ts. Старые рассылки этого файла берут process.env.APP_URL
+// сами и без него просто не ставят ссылку; у дайджеста ссылка вшита в
+// текст строки, и относительный адрес Telegram ссылкой не сделает.
+const APP_URL = process.env.APP_URL ?? "https://myblhub.com";
 
 // Поля получателя для notifyUser (см. NotifyUserRecipient): массовые
 // рассылки выбирают их одним findMany и передают готового юзера, чтобы
@@ -665,6 +673,296 @@ export async function sendOnlineBookingReminders(): Promise<number> {
       href: eventHref(ticket.event),
     });
     sent += 1;
+  }
+  return sent;
+}
+
+// --- Дайджесты (аудит 2026-09, раздел 8) -----------------------------
+//
+// Обе рассылки ниже разделены на «собрать» и «отправить». Это не
+// украшательство: у рассылки в живого бота нет способа посмотреть, что
+// именно она напишет людям, — а посмотреть надо ДО того, как она
+// написала. Сборка возвращает готовые сообщения, отправка их разносит;
+// сухой прогон зовёт только первую половину.
+
+/** Одно готовое сообщение рассылки: кому (chat id) и что. */
+type PreparedMessage = {
+  chatId: string;
+  text: string;
+  subject: string;
+  /** Строка для колокольчика, если у рассылки она есть. Дайджест «Ваша
+   *  неделя» её не имеет намеренно: это письмо на воскресенье, а не
+   *  событие, о котором стоит помнить в ленте уведомлений. */
+  bell?: { userId: string; title: string; body: string; href: string };
+};
+
+/**
+ * Кому и что уйдёт в недельном дайджесте «Ваша неделя» — подписчикам с
+ * привязанным Telegram и включённым `tgNotifyDigest`.
+ *
+ * Текст собирает ОБЩИЙ сборщик подборок (`buildDigestMessage`, days: 7),
+ * тот же, что отвечает боту на /week: два списка «что у меня на неделе»
+ * разъехались бы молча — рассылка обещала бы одно, бот показывал другое.
+ * Оттуда же берутся и старты продаж, и дни рождения избранных.
+ *
+ * Пустую подборку НЕ шлём (`skipEmpty`): человек рассылку не спрашивал,
+ * и «у вас на неделе ничего нет» воскресным утром — спам, а не забота.
+ */
+export async function collectWeeklyDigests(): Promise<PreparedMessage[]> {
+  const recipients = await prisma.user.findMany({
+    where: {
+      telegramId: { not: null },
+      tgNotifyDigest: true,
+      deletedAt: null,
+      // Дайджест — платная функция, и условие подписки то же самое, что
+      // у всех остальных гейтов (см. lib/premium.ts).
+      ...premiumActiveWhere(),
+    },
+    // Сборщику подборки нужны id и язык, отправке — telegramId; полные
+    // строки User ради трёх полей не тянем.
+    select: { id: true, locale: true, telegramId: true },
+  });
+
+  const prepared: PreparedMessage[] = [];
+  for (const user of recipients) {
+    try {
+      const text = await buildDigestMessage(user, 7, { skipEmpty: true });
+      if (!text) continue;
+      const locale = isLocale(user.locale) ? user.locale : DEFAULT_LOCALE;
+      const footer = getDict(locale).notifications.digest.weeklyFooter;
+      prepared.push({
+        chatId: user.telegramId!,
+        text: `${text}\n\n<i>${escapeHtml(footer)}</i>`,
+        subject: user.id,
+      });
+    } catch (err) {
+      // Падение на одном человеке не должно ронять рассылку остальным.
+      console.warn(
+        `weekly digest build failed (user ${user.id}): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+  return prepared;
+}
+
+/**
+ * Недельный дайджест — сама рассылка. Запускается задачей
+ * `weekly-digest` планировщика по воскресеньям.
+ *
+ * Дедуп отдельной таблицей не нужен: задачу захватывает планировщик
+ * атомарно и повторно за неделю не стартует. Идём по одному человеку за
+ * раз — подписчиков десятки, складывать их запросы к Bot API в
+ * параллель незачем.
+ */
+export async function sendWeeklyDigests(): Promise<number> {
+  const prepared = await collectWeeklyDigests();
+  let sent = 0;
+  for (const message of prepared) {
+    try {
+      await sendTelegramMessage(message.chatId, message.text);
+      sent += 1;
+    } catch (err) {
+      console.warn(
+        `weekly digest failed (user ${message.subject}): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+  return sent;
+}
+
+/** За какой срок считается месячная сводка сообщества. Календарный
+ *  месяц тут не нужен: прогон привязан к интервалу задачи
+ *  (`community-digest`, раз в 30 дней), и «с 1-го по 30-е» всё равно не
+ *  совпало бы с датами прогонов. */
+const COMMUNITY_DIGEST_DAYS = 30;
+
+/**
+ * Месячные сводки владельцам сообществ: сколько за месяц пришло
+ * участников, сколько завели тем и написали комментариев и какая
+ * встреча ближайшая.
+ *
+ * Считается по уже существующим моделям, без новых таблиц:
+ * `CommunityMember.createdAt` (только ACTIVE — неодобренная заявка и
+ * забаненный не «новые участники»), `CommunityPost`, `Comment` по темам
+ * сообщества и ближайшая будущая дата встречи.
+ *
+ * **Пустую сводку не собираем.** «За месяц ничего не произошло» — это
+ * ежемесячное напоминание о том, что сообщество мертво, то есть спам.
+ * Ближайшая встреча поводом сама по себе тоже не считается: о ней
+ * владелец знает, он её и завёл.
+ */
+export async function collectCommunityMonthlySummaries(): Promise<PreparedMessage[]> {
+  const now = new Date();
+  const since = new Date(now.getTime() - COMMUNITY_DIGEST_DAYS * 24 * 60 * 60 * 1000);
+
+  // Сообщества без «достижимого» владельца отсекаем ещё в базе: считать
+  // месяц ради сообщения, которое некуда отправить, незачем.
+  const communities = await prisma.community.findMany({
+    where: {
+      owner: { telegramId: { not: null }, tgNotifyCommunities: true, deletedAt: null },
+    },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      owner: { select: { id: true, locale: true, telegramId: true } },
+      _count: {
+        select: {
+          members: { where: { status: "ACTIVE", createdAt: { gte: since } } },
+          posts: { where: { createdAt: { gte: since } } },
+        },
+      },
+    },
+  });
+  if (communities.length === 0) return [];
+
+  const ids = communities.map((c) => c.id);
+  const [commentRows, meetups] = await Promise.all([
+    // Комментарии месяца — одним группированным запросом на все
+    // сообщества сразу, а не по запросу на сообщество (N+1).
+    prisma.comment.groupBy({
+      by: ["postId"],
+      where: { createdAt: { gte: since }, post: { communityId: { in: ids } } },
+      _count: { _all: true },
+    }),
+    // Ближайшая встреча каждого сообщества: все будущие даты одним
+    // запросом, первая по каждому — в памяти. Сообществ и встреч тут
+    // единицы, отдельный запрос на каждое был бы N+1 на ровном месте.
+    prisma.eventOccurrence.findMany({
+      where: { startsAt: { gte: now }, event: { communityId: { in: ids } } },
+      select: {
+        startsAt: true,
+        event: { select: { id: true, slug: true, title: true, communityId: true } },
+      },
+      orderBy: { startsAt: "asc" },
+    }),
+  ]);
+
+  // groupBy умеет группировать только по своим колонкам, поэтому
+  // комментарии раскладываем по сообществам через темы.
+  const postIds = commentRows.map((r) => r.postId).filter((id): id is string => id !== null);
+  const posts = postIds.length
+    ? await prisma.communityPost.findMany({
+        where: { id: { in: postIds } },
+        select: { id: true, communityId: true },
+      })
+    : [];
+  const communityByPost = new Map(posts.map((p) => [p.id, p.communityId]));
+  const commentsByCommunity = new Map<string, number>();
+  for (const row of commentRows) {
+    const communityId = row.postId ? communityByPost.get(row.postId) : undefined;
+    if (!communityId) continue;
+    commentsByCommunity.set(
+      communityId,
+      (commentsByCommunity.get(communityId) ?? 0) + row._count._all,
+    );
+  }
+
+  const nextMeetupByCommunity = new Map<string, (typeof meetups)[number]>();
+  for (const occ of meetups) {
+    const communityId = occ.event.communityId;
+    if (!communityId || nextMeetupByCommunity.has(communityId)) continue;
+    nextMeetupByCommunity.set(communityId, occ);
+  }
+
+  const prepared: PreparedMessage[] = [];
+  for (const community of communities) {
+    const newMembers = community._count.members;
+    const newPosts = community._count.posts;
+    const newComments = commentsByCommunity.get(community.id) ?? 0;
+    // Тишина — не повод писать владельцу.
+    if (newMembers === 0 && newPosts === 0 && newComments === 0) continue;
+
+    const locale = isLocale(community.owner.locale) ? community.owner.locale : DEFAULT_LOCALE;
+    const d = getDict(locale).communities.monthlyDigest;
+    // Ссылки — на версию сайта на языке владельца, как у notifyUser.
+    const link = (href: string, label: string) =>
+      `<a href="${APP_URL}${localeHref(href, locale)}">${escapeHtml(label)}</a>`;
+
+    // Строки складываются из словарных фраз и чисел, поэтому экранируется
+    // только то, что написали люди: название сообщества и встречи
+    // (последнее — внутри link).
+    const lines: string[] = [];
+    if (newMembers > 0) lines.push(`• ${d.newMembers(newMembers)}`);
+    // Темы и комментарии — одной строкой: это одна и та же жизнь в
+    // обсуждениях, двумя буллетами она читалась бы как отчёт.
+    if (newPosts > 0 || newComments > 0) {
+      const parts = [
+        newPosts > 0 ? d.posts(newPosts) : null,
+        newComments > 0 ? d.comments(newComments) : null,
+      ]
+        .filter((p): p is string => p !== null)
+        .join(", ");
+      lines.push(`• ${parts}`);
+    }
+    const next = nextMeetupByCommunity.get(community.id);
+    if (next) {
+      lines.push(
+        `• ${d.nextMeetup(
+          link(eventHref(next.event), next.event.title),
+          formatHumanDate(next.startsAt, locale),
+        )}`,
+      );
+    }
+
+    prepared.push({
+      chatId: community.owner.telegramId!,
+      text:
+        `📊 <b>${escapeHtml(d.title(community.title))}</b>\n` +
+        `${lines.join("\n")}\n` +
+        `${link(communityHref(community), community.title)}\n\n` +
+        `<i>${escapeHtml(d.footer)}</i>`,
+      subject: community.id,
+      // Для колокольчика: тот же счёт словами, но без ссылок и разметки
+      // Telegram. Заголовок сложится из вида уведомления при чтении, на
+      // языке читающего (см. lib/notificationText.ts).
+      bell: {
+        userId: community.owner.id,
+        title: community.title,
+        body: lines.map((l) => l.replace(/^• /, "")).join(" · ").replace(/<[^>]+>/g, ""),
+        href: communityHref(community),
+      },
+    });
+  }
+  return prepared;
+}
+
+/**
+ * Месячная сводка владельцу сообщества — сама рассылка. Запускается
+ * задачей `community-digest` планировщика.
+ *
+ * Доставка — через `notifyUser` с видом `COMMUNITY_DIGEST`: строка
+ * ложится в колокольчик и уходит в Telegram по тумблеру «Сообщества»
+ * (`tgNotifyCommunities`) одним движением. Своего sendTelegramMessage
+ * тут нет намеренно — иначе владелец с привязанным ботом получал бы
+ * сводку дважды.
+ */
+export async function sendCommunityMonthlySummaries(): Promise<number> {
+  const prepared = await collectCommunityMonthlySummaries();
+  let sent = 0;
+  for (const message of prepared) {
+    try {
+      if (message.bell) {
+        // Через notifyUser: он сам положит строку в колокольчик и сам же
+        // отправит её в Telegram по тумблеру «Сообщества» — своего
+        // sendTelegramMessage тут больше нет, иначе владелец с
+        // привязанным ботом получал бы сводку дважды.
+        await notifyUser({
+          userId: message.bell.userId,
+          kind: "COMMUNITY_DIGEST",
+          subject: message.bell.title,
+          body: message.bell.body,
+          href: message.bell.href,
+        });
+      } else {
+        await sendTelegramMessage(message.chatId, message.text);
+      }
+      sent += 1;
+    } catch (err) {
+      console.warn(
+        `community monthly digest failed (community ${message.subject}): ${err instanceof Error ? err.message : err}`,
+      );
+    }
   }
   return sent;
 }

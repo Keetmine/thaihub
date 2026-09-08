@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import LetterAvatar from "@/components/LetterAvatar";
@@ -10,6 +11,7 @@ import { isPremiumActive } from "@/lib/premium";
 import { communityHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
+import { CATALOG_TAG } from "@/lib/catalogCache";
 import CreateCommunityButton from "./CreateCommunityButton";
 
 export async function generateMetadata() {
@@ -22,6 +24,76 @@ export async function generateMetadata() {
 }
 
 export const dynamic = "force-dynamic";
+
+/* ------------------------------------------------------------------
+ * Кэш общей части витрины (аудит 2026-09, п.4). Список публичных
+ * сообществ и оба ряда фильтра по месту одинаковы для всех — считаем
+ * раз в полчаса, как соседние каталоги (тег catalog сбрасывает раньше,
+ * когда сообщество правят). Блок «мои сообщества» ниже остаётся живым
+ * запросом: он у каждого свой, и в общий кэш ему нельзя.
+ * ------------------------------------------------------------------ */
+
+/** Поля карточки витрины — ровно то, что рисует `card` ниже. Узкий
+ *  select, а не целая строка: описание, правила вступления и даты
+ *  списку не нужны, а из кэша даты всё равно вернулись бы строками. */
+const CARD_SELECT = {
+  id: true,
+  slug: true,
+  title: true,
+  description: true,
+  coverUrl: true,
+  country: true,
+  city: true,
+  _count: { select: { members: { where: { status: "ACTIVE" as const } } } },
+} as const;
+
+/** Публичные сообщества — весь список среза по месту (ключ кэша —
+ *  страна и город, поэтому у каждого среза своя запись). */
+const getPublicCommunities = unstable_cache(
+  async (country: string | null, city: string | null) =>
+    prisma.community.findMany({
+      where: {
+        visibility: "PUBLIC",
+        ...(country ? { country, ...(city ? { city } : {}) } : {}),
+      },
+      select: CARD_SELECT,
+      take: 100,
+    }),
+  ["communities-public-list"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/** Варианты фильтра по месту: страны — всегда, города — внутри
+ *  выбранной страны (её имя входит в ключ кэша). */
+const getPlaceFacets = unstable_cache(
+  async (country: string | null) => {
+    const [countryRows, cityRows] = await Promise.all([
+      // Варианты фильтра считаем по ВСЕМ публичным сообществам, а не по
+      // выданной сотне: иначе страна пропадала бы из ряда ровно тогда,
+      // когда её сообщества не попали на первую страницу.
+      prisma.community.groupBy({
+        by: ["country"],
+        where: { visibility: "PUBLIC", country: { not: null } },
+        _count: { _all: true },
+      }),
+      // Города — только внутри выбранной страны: список городов мира
+      // одним рядом нечитаем, да и «Минск» без страны ничего не значит.
+      country
+        ? prisma.community.groupBy({
+            by: ["city"],
+            where: { visibility: "PUBLIC", country, city: { not: null } },
+            _count: { _all: true },
+          })
+        : Promise.resolve([] as { city: string | null; _count: { _all: number } }[]),
+    ]);
+    return {
+      countries: countryRows.map((row) => ({ value: row.country!, count: row._count._all })),
+      cities: cityRows.map((row) => ({ value: row.city!, count: row._count._all })),
+    };
+  },
+  ["communities-place-facets"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
 
 /**
  * Витрина сообществ (АА25).
@@ -57,37 +129,18 @@ export default async function CommunitiesPage({
   const city = country ? (rawCity ?? "").trim() || null : null;
   const placeWhere = country ? { country, ...(city ? { city } : {}) } : {};
 
-  const [publicCommunities, mine, countryFacets, cityFacets] = await Promise.all([
-    prisma.community.findMany({
-      where: { visibility: "PUBLIC", ...placeWhere },
-      include: { _count: { select: { members: { where: { status: "ACTIVE" } } } } },
-      take: 100,
-    }),
+  const [publicCommunities, facets, mine] = await Promise.all([
+    getPublicCommunities(country, city),
+    getPlaceFacets(country),
     user
       ? prisma.community.findMany({
           // Свои — и те, что завёл, и те, куда вступил, включая закрытые:
-          // человеку они видны всегда. Фильтр по месту действует и здесь:
-          // иначе выбранная страна молча не относилась бы к половине
-          // страницы.
+          // человеку они видны всегда. Персональный запрос, мимо кэша:
+          // общий ответ на всех тут выдал бы чужие закрытые сообщества.
+          // Фильтр по месту действует и здесь: иначе выбранная страна
+          // молча не относилась бы к половине страницы.
           where: { members: { some: { userId: user.id, status: "ACTIVE" } }, ...placeWhere },
-          include: { _count: { select: { members: { where: { status: "ACTIVE" } } } } },
-        })
-      : Promise.resolve([]),
-    // Варианты фильтра считаем по ВСЕМ публичным сообществам, а не по
-    // выданной сотне: иначе страна пропадала бы из ряда ровно тогда,
-    // когда её сообщества не попали на первую страницу.
-    prisma.community.groupBy({
-      by: ["country"],
-      where: { visibility: "PUBLIC", country: { not: null } },
-      _count: { _all: true },
-    }),
-    // Города — только внутри выбранной страны: список городов мира
-    // одним рядом нечитаем, да и «Минск» без страны ничего не значит.
-    country
-      ? prisma.community.groupBy({
-          by: ["city"],
-          where: { visibility: "PUBLIC", country, city: { not: null } },
-          _count: { _all: true },
+          select: CARD_SELECT,
         })
       : Promise.resolve([]),
   ]);
@@ -100,13 +153,12 @@ export default async function CommunitiesPage({
   const canCreate = isPremiumActive(user);
 
   // Частые места вперёд, при равенстве — по алфавиту: ряд читается как
-  // «где сообществ больше всего».
-  const countries = countryFacets
-    .map((row) => ({ value: row.country!, count: row._count._all }))
-    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
-  const cities = cityFacets
-    .map((row) => ({ value: row.city!, count: row._count._all }))
-    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+  // «где сообществ больше всего». Сортируем ЗДЕСЬ, а не в кэше: порядок
+  // дешёвый, а в кэше лежит голый ответ базы.
+  const byCount = (rows: { value: string; count: number }[]) =>
+    [...rows].sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+  const countries = byCount(facets.countries);
+  const cities = byCount(facets.cities);
 
   const placeHref = (nextCountry: string | null, nextCity: string | null) => {
     const params = new URLSearchParams();

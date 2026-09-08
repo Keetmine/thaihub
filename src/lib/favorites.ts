@@ -59,21 +59,6 @@ export async function getGoingOccurrenceIds(
   return new Set(attendances.map((a) => a.occurrenceId));
 }
 
-/** Set of event ids `userId` is marked as attending ("Я пойду"), restricted to `eventIds`. */
-export async function getGoingEventIds(
-  eventIds: string[],
-  userId: string | null | undefined,
-): Promise<Set<string>> {
-  if (eventIds.length === 0 || !userId) return new Set();
-
-  const attendances = await prisma.eventAttendance.findMany({
-    where: { userId, eventId: { in: eventIds } },
-    select: { eventId: true },
-  });
-
-  return new Set(attendances.map((a) => a.eventId));
-}
-
 /** Один человек из сообщества зрителя, отметивший «иду». `community` —
  *  то сообщество, через которое зритель с ним и знаком: без него плашка
  *  отвечает «идёт какой-то Дима», а не «идёт Дима из „Лакорнов“». */

@@ -244,8 +244,6 @@ export const events = {
     title: "Search",
     placeholder: "Event, artist, series, location…",
     ariaLabel: "Search query",
-    youSearched: (query: string) =>
-      `You searched for “${query}” — here is what we found:`,
     hint: "Type the name of an event, artist, series, location or agency.",
     nothingFound: (query: string) => `Nothing found for “${query}”.`,
     sectionEvents: "Events",

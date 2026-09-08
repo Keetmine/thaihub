@@ -5,8 +5,6 @@ import type { settings as enSettings } from "../en/settings";
 export const settings: typeof enSettings = {
   profileSection: "Профиль",
   regionalSection: "Язык и регион",
-  regionalSectionHint:
-    "Язык сайта, часовой пояс и страна — от них зависят даты, время и уведомления.",
   telegramSectionHint:
     "Напоминания и новости могут приходить и в мессенджер — здесь настраивается, что присылать.",
   passwordSection: "Пароль",
@@ -14,6 +12,14 @@ export const settings: typeof enSettings = {
     "После смены все остальные устройства разлогинятся — вход останется только здесь.",
   calendarSection: "Подписка на календарь",
   privacySection: "Кто что видит",
+
+  telegramNotifyDigest: "Недельный дайджест «Ваша неделя» (по воскресеньям)",
+  telegramNotifyDigestPremium: "Входит в подписку",
+
+  coverSection: "Обложка профиля",
+  coverHint: "Широкая картинка над левой колонкой профиля. Её видят все.",
+  coverPremiumHint: "Обложка профиля — часть подписки.",
+  coverBadUrl: "Обложку сохранить не вышло — загрузите картинку заново",
 
   saving: "Сохраняем…",
   saved: "Сохранено",

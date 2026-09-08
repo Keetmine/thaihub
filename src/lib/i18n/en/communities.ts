@@ -37,7 +37,6 @@ export const communities = {
         trips: "Trips",
         requests: "Requests",
     },
-    soon: "Coming soon.",
     members: "Members",
     membersCount: (n: number) => `${n} ${n === 1 ? "member" : "members"}`,
     requests: "Join requests",
@@ -67,7 +66,6 @@ export const communities = {
     /** Обложка: грузится и снимается сразу, отдельно от формы правки. */
 
     /** The page is open, but the inside is not — see communities.ts. */
-    insideLockedTitle: "Members only",
     insideLockedHint: "Join to read the discussions and see meetup details.",
     privateTitle: "This community is private",
     privateHint: "You can get in by invitation from its owner.",
@@ -132,8 +130,6 @@ export const communities = {
         titlePlaceholder: "Watching episode 5 together",
         dateLabel: "Date",
         timeLabel: "Time",
-        venueLabel: "Where",
-        venuePlaceholder: "At Katya's place",
         addressLabel: "Address",
         addressPlaceholder: "Street, building, entrance code",
         descriptionLabel: "Details",
@@ -149,14 +145,9 @@ export const communities = {
 
         visibilityLabel: "Who sees this meetup",
         openToEveryone: "Show it to everyone",
-        openHint:
-            "By default a meetup stays inside the community: its address is someone's home. Open it up and it goes into the events feed as well.",
-        onlyMembersBadge: "Members only",
-        openBadge: "Open to everyone",
 
         goingCount: (n: number) => `${n} going`,
         author: (who: string) => `Arranged by ${who}`,
-        openPage: "Meetup page",
         save: "Save",
         delete: "Delete the meetup",
         deleteConfirm: "Delete this meetup? The going marks will be gone with it.",
@@ -167,10 +158,6 @@ export const communities = {
         eventOnlyMembers: "members only",
         /** То же целой фразой — для описания страницы в метадате. */
         eventNoticeMembers: "Only members of this community can see this page.",
-
-        /** Блок открытых встреч в афише. */
-        inEventsHeading: "Community meetups",
-        inEventsHint: "Arranged by people here, not by promoters.",
 
         errors: {
             notMember: "Only members of the community can arrange meetups",
@@ -309,8 +296,6 @@ export const communities = {
 
         makeModerator: "Make a moderator",
         removeModerator: "Dismiss the moderator",
-        moderatorHint:
-            "A moderator answers join requests, invites people and removes them. Settings, visibility and deletion stay with the owner.",
 
         ban: "Remove",
         banConfirm: (who: string) =>
@@ -385,6 +370,19 @@ export const communities = {
         errors: {
             notMember: "Only members of the community can plan a trip from it",
         },
+    },
+
+    /** Месячная сводка владельцу сообщества (аудит 2026-09, раздел 8) —
+     *  уходит в Telegram из sendCommunityMonthlySummaries. Строки живут
+     *  здесь, а не в словаре уведомлений: это текст фичи сообществ. */
+    monthlyDigest: {
+        title: (community: string) => `"${community}" over the past month`,
+        newMembers: (n: number) => `${n} new ${n === 1 ? "member" : "members"}`,
+        posts: (n: number) => `${n} ${n === 1 ? "topic" : "topics"}`,
+        comments: (n: number) => `${n} ${n === 1 ? "comment" : "comments"}`,
+        nextMeetup: (what: string, when: string) => `Next meet-up: ${what} — ${when}`,
+        footer:
+            "A monthly recap for the community owner — switch it off with the “Communities” toggle in notification settings.",
     },
 
     errors: {

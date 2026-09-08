@@ -2,7 +2,7 @@ import { TIMEZONES } from "@/lib/timezones";
 import AppLink from "@/components/AppLink";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/userAuth";
-import FileDropzone from "@/components/FileDropzone";
+import SettingsUploadField from "./SettingsUploadField";
 import {
   updateProfile,
   updatePrivacy,
@@ -25,6 +25,8 @@ import { countryOptions } from "@/lib/countries";
 import { dateKey } from "@/lib/dates";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
+import { isPremiumActive } from "@/lib/premium";
+import { PROFILE_COVER_RATIO_H, PROFILE_COVER_RATIO_W } from "@/lib/userProfile";
 import { getT, localeHref, LOCALES, type Dict } from "@/lib/i18n";
 
 export async function generateMetadata() {
@@ -43,17 +45,32 @@ export const dynamic = "force-dynamic";
 
 // Подписи переключателей приходят из словаря, поэтому списки собираются
 // функцией: сами наборы полей от языка не зависят.
-const telegramNotifyToggles = (s: Dict["account"]["settings"], c: Dict["communities"]) => [
-  { name: "tgNotifyInvites" as const, label: s.telegramNotifyInvites },
-  { name: "tgNotifyFriends" as const, label: s.telegramNotifyFriends },
-  { name: "tgNotifyReplies" as const, label: s.telegramNotifyReplies },
-  { name: "tgNotifyEvents" as const, label: s.telegramNotifyEvents },
-  { name: "tgNotifyBirthdays" as const, label: s.telegramNotifyBirthdays },
-  { name: "tgNotifyEpisodes" as const, label: s.telegramNotifyEpisodes },
+const telegramNotifyToggles = (
+  s: Dict["account"]["settings"],
+  c: Dict["communities"],
+  ts: Dict["settings"],
+  premium: boolean,
+) => [
+  { name: "tgNotifyInvites" as const, label: s.telegramNotifyInvites, hint: null },
+  { name: "tgNotifyFriends" as const, label: s.telegramNotifyFriends, hint: null },
+  { name: "tgNotifyReplies" as const, label: s.telegramNotifyReplies, hint: null },
+  { name: "tgNotifyEvents" as const, label: s.telegramNotifyEvents, hint: null },
+  { name: "tgNotifyBirthdays" as const, label: s.telegramNotifyBirthdays, hint: null },
+  { name: "tgNotifyEpisodes" as const, label: s.telegramNotifyEpisodes, hint: null },
+  // Недельный дайджест (аудит 2026-09, раздел 8) — платная рассылка,
+  // но тумблер стоит в общем ряду и работает у всех: настройка
+  // сохраняется заранее и после оплаты уже на месте. Бесплатному
+  // аккаунту под подписью — честная пометка, что письмо придёт с
+  // подпиской, а не молчаливая галочка в никуда.
+  {
+    name: "tgNotifyDigest" as const,
+    label: ts.telegramNotifyDigest,
+    hint: premium ? null : ts.telegramNotifyDigestPremium,
+  },
   // Подпись — из словаря сообществ: строка про сообщества и правится
   // вместе с фичей, а account.ts трогают параллельно другие разделы.
-  { name: "tgNotifyCommunities" as const, label: c.people.tgToggle },
-  { name: "tgNotifyBroadcast" as const, label: s.telegramNotifyBroadcast },
+  { name: "tgNotifyCommunities" as const, label: c.people.tgToggle, hint: null },
+  { name: "tgNotifyBroadcast" as const, label: s.telegramNotifyBroadcast, hint: null },
 ];
 
 const privacyToggles = (s: Dict["account"]["settings"]) =>
@@ -84,6 +101,9 @@ export default async function SettingsPage({
   const ts = t.settings;
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
+  // Подписка решает две вещи на этой странице: можно ли поставить
+  // обложку профиля и обещаем ли недельный дайджест.
+  const premium = isPremiumActive(user);
   const icsToken = await getOrCreateIcsToken();
   const { telegram: telegramStatus } = await searchParams;
   const botUsername = telegramBotUsername();
@@ -124,7 +144,7 @@ export default async function SettingsPage({
                     сразу за ним. */}
                 <div className="d-flex flex-column flex-sm-row gap-3">
                   <div style={{ width: "11rem", flexShrink: 0 }}>
-                    <FileDropzone
+                    <SettingsUploadField
                       name="photoUrl"
                       label={s.photo}
                       defaultValue={user.photoUrl ?? ""}
@@ -200,6 +220,37 @@ export default async function SettingsPage({
                     </div>
                   </div>
                 </div>
+
+                {/* Обложка профиля — косметика подписчика (аудит
+                    2026-09, раздел 8). Отдельной строкой под фото, а не
+                    рядом с ним: это широкая полоса, и рамка
+                    кадрирования у неё во всю ширину карточки.
+                    Кадрируем ровно теми пропорциями, какими обложка
+                    показывается на профиле.
+
+                    У бесплатного аккаунта поля НЕТ вовсе — только
+                    честная строка про подписку; на его отсутствие
+                    рассчитывает и экшен: раз поле не пришло, колонку он
+                    не трогает, и обложка, поставленная во время
+                    подписки, остаётся на месте (её видят все, включая
+                    гостей). */}
+                <hr className="my-4" />
+                <h3 className="small text-uppercase text-secondary mb-2" style={{ letterSpacing: "0.08em" }}>
+                  {ts.coverSection}
+                </h3>
+                <p className="small text-secondary mb-3">
+                  {premium ? ts.coverHint : ts.coverPremiumHint}
+                </p>
+                {premium && (
+                  <SettingsUploadField
+                    name="coverUrl"
+                    defaultValue={user.coverUrl ?? ""}
+                    wide
+                    crop
+                    ratioW={PROFILE_COVER_RATIO_W}
+                    ratioH={PROFILE_COVER_RATIO_H}
+                  />
+                )}
 
                 {/* Язык и часовой пояс — той же карточкой, но отбиты
                     линией: это уже не «о себе», а «как показывать». */}
@@ -282,7 +333,7 @@ export default async function SettingsPage({
                   <SettingsForm action={updateNotificationPrefs} submitLabel={s.save} className="mt-3">
                     <p className="small text-secondary mb-2">{s.telegramSendTitle}</p>
                     <div className="d-flex flex-column gap-1">
-                      {telegramNotifyToggles(s, t.communities).map((toggle) => (
+                      {telegramNotifyToggles(s, t.communities, ts, premium).map((toggle) => (
                         <div className="form-check" key={toggle.name}>
                           <input
                             type="checkbox"
@@ -293,6 +344,9 @@ export default async function SettingsPage({
                           />
                           <label className="form-check-label small" htmlFor={toggle.name}>
                             {toggle.label}
+                            {toggle.hint && (
+                              <span className="text-secondary d-block">{toggle.hint}</span>
+                            )}
                           </label>
                         </div>
                       ))}

@@ -177,6 +177,17 @@ export function formatShortDate(d: Date, locale: Locale = "ru"): string {
   return `${d.getUTCDate()} ${DATE_MONTHS[locale][d.getUTCMonth()]}`;
 }
 
+/** «24 октября» / "24 October" — день с полным месяцем, без года: год
+ *  в таких подписях стоит рядом заголовком (хроника «путь артиста»
+ *  сгруппирована по годам). Считается в UTC, как остальные даты модуля. */
+export function formatDayLongMonth(d: Date, locale: Locale = "ru"): string {
+  return d.toLocaleDateString(INTL_TAG[locale], {
+    day: "numeric",
+    month: "long",
+    timeZone: UTC,
+  });
+}
+
 /** «5 ч 20 мин» / "5 h 20 min" — длительность в минутах. Ровные часы —
  *  без минут («3 ч»), меньше часа — только минуты («45 мин»). Единицы
  *  живут здесь, а не в словарях, по той же логике, что названия

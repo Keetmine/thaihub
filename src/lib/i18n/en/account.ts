@@ -13,8 +13,6 @@ export const account = {
   // Бессрочная подписка (выдаёт админ) — та же иконка, другая подсказка.
   planLifetimeHint: "Lifetime subscription",
   planFree: "Free",
-  telegramSignIn: "Signed in with Telegram",
-  memberSince: (date: string) => `On MyBLHub since ${date}`,
   settingsLink: "Settings",
   logout: "Log out",
 
@@ -105,9 +103,6 @@ export const account = {
     artistLists: "My actor lists",
     artistListsHint: "Start a list of your own — “seen live”, “had a beer with”…",
     artistListsLocked: "Your own actor lists come with a subscription.",
-    artistListsLockedCta: "Subscribe",
-    listEmpty: "empty for now",
-    listCount: (n: number) => `${n} ${n === 1 ? "artist" : "artists"}`,
 
     byYear: "Events by year",
     visitedMap: "Map of where you've been",
@@ -117,10 +112,6 @@ export const account = {
     achievements: "Achievements",
     // achievementsSecret удалён — правка владельца: строки про «секрет»
     // на профиле больше нет.
-    achievementsEmpty: "None yet — the first one is waiting at your first event.",
-    achievementsLockedTitle: "Achievements come with a subscription",
-    achievementsLockedDescription: (total: number) =>
-      `Badges for concerts, trips and series you have finished (${total} of them so far) — which ones exactly, you find out as you earn them.`,
   },
 
   settings: {

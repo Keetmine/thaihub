@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { findDuplicateDramaGroups, findDuplicatePerformerGroups, groupMemberKey } from "@/lib/duplicates";
 import {
+  findDuplicateAgencyGroups,
+  findDuplicateDramaGroups,
+  findDuplicatePerformerGroups,
+  groupMemberKey,
+} from "@/lib/duplicates";
+import {
+  mergeAgenciesAction,
   mergeDramasAction,
   mergePerformersAction,
   dismissDuplicateGroupAction,
@@ -67,9 +73,10 @@ export default async function DuplicatesPage({
     inputA && inputB && compareKind === "drama"
       ? await Promise.all([compareDrama(inputA.slug), compareDrama(inputB.slug)])
       : [null, null];
-  const [allDramaGroups, allPerformerGroups, dismissals] = await Promise.all([
+  const [allDramaGroups, allPerformerGroups, allAgencyGroups, dismissals] = await Promise.all([
     findDuplicateDramaGroups(),
     findDuplicatePerformerGroups(),
+    findDuplicateAgencyGroups(),
     prisma.duplicateDismissal.findMany({ select: { entityType: true, memberKey: true } }),
   ]);
   // И5: «не сливать» — скрытые группы уходят из основного списка, но
@@ -85,23 +92,32 @@ export default async function DuplicatesPage({
   const performerGroups = allPerformerGroups.filter(
     (g) => isDismissed("performer", g.rows) === showHidden,
   );
+  const agencyGroups = allAgencyGroups.filter(
+    (g) => isDismissed("agency", g.rows) === showHidden,
+  );
   const hiddenCount =
     allDramaGroups.filter((g) => isDismissed("drama", g.rows)).length +
-    allPerformerGroups.filter((g) => isDismissed("performer", g.rows)).length;
+    allPerformerGroups.filter((g) => isDismissed("performer", g.rows)).length +
+    allAgencyGroups.filter((g) => isDismissed("agency", g.rows)).length;
 
   // Групп бывает несколько сотен, и каждая — карточка с формой слияния:
   // страница отдавала их разом и заметно тормозила. Режем общий список
   // (сериалы, потом исполнители) на страницы DENSE_PAGE_SIZE — заголовок
   // раздела показывает полное число групп, под ним только те, что попали
   // на текущую страницу.
-  const totalGroups = dramaGroups.length + performerGroups.length;
+  const totalGroups = dramaGroups.length + performerGroups.length + agencyGroups.length;
   const page = parsePage(rawPage);
   const totalPages = totalPagesFor(totalGroups, DENSE_PAGE_SIZE);
   const from = (page - 1) * DENSE_PAGE_SIZE;
-  const pageDramaGroups = dramaGroups.slice(from, from + DENSE_PAGE_SIZE);
-  const pagePerformerGroups = performerGroups.slice(
-    Math.max(0, from - dramaGroups.length),
-    Math.max(0, from + DENSE_PAGE_SIZE - dramaGroups.length),
+  // Разделы идут встык одним сквозным списком: `before` — сколько групп
+  // стоит перед этим разделом, чтобы окно страницы попало в него куском.
+  const sliceSection = <T,>(groups: T[], before: number) =>
+    groups.slice(Math.max(0, from - before), Math.max(0, from + DENSE_PAGE_SIZE - before));
+  const pageDramaGroups = sliceSection(dramaGroups, 0);
+  const pagePerformerGroups = sliceSection(performerGroups, dramaGroups.length);
+  const pageAgencyGroups = sliceSection(
+    agencyGroups,
+    dramaGroups.length + performerGroups.length,
   );
   const compareParams =
     (rawA ? `a=${encodeURIComponent(rawA)}&` : "") +
@@ -129,9 +145,9 @@ export default async function DuplicatesPage({
         )
       )}
       <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>
-        Записи с одинаковым (без учёта регистра) названием; одинаковый ник
-        при разных реальных именах и одно название сериала при разных годах
-        дублями не считаются. Слияние переносит все связи —
+        Сериалы, исполнители и агентства с одинаковым (без учёта регистра)
+        названием; одинаковый ник при разных реальных именах и одно название
+        сериала при разных годах дублями не считаются. Слияние переносит все связи —
         события, избранное, статусы просмотра, пейринги и т.п. — на выбранную запись и
         удаляет остальные. Действие необратимо.
       </p>
@@ -303,6 +319,33 @@ export default async function DuplicatesPage({
                     onDismiss={(showHidden ? restoreDuplicateGroupAction : dismissDuplicateGroupAction).bind(
                       null,
                       "performer",
+                      groupMemberKey(group.rows),
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {pageAgencyGroups.length > 0 && (
+            <div>
+              <h2 className="section-heading mb-2">Агентства ({agencyGroups.length})</h2>
+              <div className="d-flex flex-column gap-2">
+                {pageAgencyGroups.map((group) => (
+                  <MergeGroupCard
+                    key={group.key}
+                    title={group.rows[0].name}
+                    editHrefBase="/admin/agencies"
+                    rows={group.rows.map((a) => ({
+                      id: a.id,
+                      label: a.name,
+                      sublabel: `${a._count.performers} артистов, ${a._count.dramas} сериалов, ${a._count.favoritedBy} в избранном`,
+                    }))}
+                    onMerge={mergeAgenciesAction}
+                    dismissLabel={showHidden ? "Вернуть в дубли" : "Не сливать"}
+                    onDismiss={(showHidden ? restoreDuplicateGroupAction : dismissDuplicateGroupAction).bind(
+                      null,
+                      "agency",
                       groupMemberKey(group.rows),
                     )}
                   />

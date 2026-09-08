@@ -21,10 +21,11 @@ import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { getT } from "@/lib/i18n";
+import { formatDayLongMonth, formatLongDate } from "@/lib/dates";
 import { performerHref } from "@/lib/performerSlug";
 import { agencyHref, eventHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
-import { dramaTitleForLocale } from "@/lib/dramaLocale";
+import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import {
   CakeIcon,
   BuildingIcon,
@@ -56,7 +57,28 @@ const getPerformer = cache(async (rawId: string) =>
         orderBy: { agency: { name: "asc" } },
       },
       dramas: {
-        include: { drama: true },
+        // Узкий select вместо целой строки Drama (аудит 2026-09, п.4): у
+        // топ-актёра полные сериалы давали ~112 КБ ответа ради шести
+        // полей. Тут ровно то, что рисует страница: ссылка (id/slug/
+        // title), название на языке зрителя (titleRu), постер, год, тип
+        // и статус для бейджа «Выходит» плюс airedFrom — по нему идёт
+        // сортировка фильмографии и годы «Пути артиста».
+        select: {
+          dramaId: true,
+          role: true,
+          drama: {
+            select: {
+              id: true,
+              slug: true,
+              ...DRAMA_TITLE_SELECT,
+              posterUrl: true,
+              year: true,
+              type: true,
+              status: true,
+              airedFrom: true,
+            },
+          },
+        },
         orderBy: { drama: { title: "asc" } },
       },
       bandMembers: {
@@ -348,11 +370,6 @@ export default async function PerformerPage({
   // «Путь артиста» (аудит 2026-09, п.7): хроника по годам из того, что
   // страница УЖЕ загрузила — фильмография, прошедшие события, альбомы,
   // awards. Своих запросов у блока нет.
-  const formatDayMonth = (d: Date) =>
-    d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
-      day: "numeric",
-      month: "long",
-    });
   const isPremium = isPremiumActive(currentUser);
   const careerItems: CareerItem[] = [];
   for (const pd of performer.dramas) {
@@ -383,7 +400,7 @@ export default async function PerformerPage({
       year: row.startsAt.getFullYear(),
       time: row.startsAt.getTime(),
       kind: "event",
-      subtitle: formatDayMonth(row.startsAt),
+      subtitle: formatDayLongMonth(row.startsAt, locale),
       ...(isPremium
         ? { title: row.title, href: eventHref(row) }
         : { title: t.events.card.lockedBadge, locked: true }),
@@ -428,12 +445,6 @@ export default async function PerformerPage({
     });
   }
 
-  const formatBirthDate = (d: Date) =>
-    d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
   const currentAge = (d: Date) => {
     const today = new Date();
     let age = today.getFullYear() - d.getFullYear();
@@ -587,7 +598,7 @@ export default async function PerformerPage({
             <p className="small text-secondary mb-0">
               <CakeIcon />{" "}
               <span className="text-secondary">{t.catalog.artist.birthDate}</span>{" "}
-              {formatBirthDate(performer.birthDate)} (
+              {formatLongDate(performer.birthDate, locale)} (
               {currentAge(performer.birthDate)})
             </p>
           )}

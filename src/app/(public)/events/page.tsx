@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import AppLink from "@/components/AppLink";
 import ScrollableTabs from "@/components/ScrollableTabs";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
@@ -14,6 +15,7 @@ import { CalendarIcon } from "@/components/icons";
 import EventsTeaser from "./EventsTeaser";
 import { isPremiumActive } from "@/lib/premium";
 import { pageMetadata } from "@/lib/seo";
+import { CATALOG_TAG } from "@/lib/catalogCache";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -25,6 +27,33 @@ export async function generateMetadata() {
 }
 
 export const dynamic = "force-dynamic";
+
+/** Имена за шапкой — события, на которые идёт больше всего народу.
+ *  Каталожные: название встречи («Смотрим 5 серию у Кати») в подложке
+ *  афиши читалось бы как чужой личный план (см. lib/catalogEvents.ts).
+ *
+ *  Популярность одна на всех — считаем раз в полчаса, как соседние
+ *  каталоги (/dramas, /artists, /locations): раньше сортировка по числу
+ *  отметок шла в базу на КАЖДЫЙ заход каждого гостя ради картинки за
+ *  заголовком (аудит 2026-09, п.4). Тег catalog сбрасывает раньше
+ *  срока, когда афишу правят из админки. */
+const getEventsWatermarkNames = unstable_cache(
+  async () =>
+    (
+      await prisma.event.findMany({
+        where: catalogEventsWhere(),
+        select: { title: true },
+        orderBy: [
+          { attendees: { _count: "desc" } },
+          { favoritedBy: { _count: "desc" } },
+          { createdAt: "desc" },
+        ],
+        take: WATERMARK_NAME_LIMIT,
+      })
+    ).map((e) => e.title),
+  ["events-watermark-names"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
 
 type EventFilter = "all" | "going" | "favorited" | "artists" | "communities";
 
@@ -40,24 +69,10 @@ export default async function HomePage({
   // показаны честно и целиком, остальная лента остаётся за подпиской.
   // Гостю здесь БОЛЬШЕ НЕ подсовывается лендинг: это был дубль главной
   // под адресом, по которому человек пришёл именно за афишей.
-  // Названия за шапкой — события, на которые идёт больше всего народу.
-  // Каталожные: название встречи («Смотрим 5 серию у Кати») в подложке
-  // афиши читалось бы как чужой личный план (см. lib/catalogEvents.ts).
-  // Запрос стоит ДО развилки гость/подписка: в подложке нет ничего
+  // Подложка стоит ДО развилки гость/подписка: в ней нет ничего
   // персонального, и гостю она нужна так же, как подписчику (правка
   // владельца 2026-09-09 — раньше гость видел шапку без имён).
-  const watermarkNames = await prisma.event
-    .findMany({
-      where: catalogEventsWhere(),
-      select: { title: true },
-      orderBy: [
-        { attendees: { _count: "desc" } },
-        { favoritedBy: { _count: "desc" } },
-        { createdAt: "desc" },
-      ],
-      take: WATERMARK_NAME_LIMIT,
-    })
-    .then((rows) => rows.map((e) => e.title));
+  const watermarkNames = await getEventsWatermarkNames();
 
   if (!user || !isPremiumActive(user)) {
     return (

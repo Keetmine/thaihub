@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { AchievementScope } from "@/generated/prisma/client";
 import { userHref } from "@/lib/userProfile";
 import { prisma } from "@/lib/prisma";
@@ -183,54 +184,89 @@ export type AchievementState = {
  * ВСЕГДА фильтруется по `scope`: без фильтра медали сообщества
  * попадали бы в личный прогресс «N из M» и в ленту обновлений человека,
  * а метрики у них считаются от другого свода.
+ *
+ * React.cache: на своём профиле каталог спрашивают трое (пересчёт,
+ * бейджи в левой колонке и лента обновлений) — один запрос на HTTP-запрос
+ * вместо трёх. Кэш живёт ровно один запрос, поэтому правка в админке
+ * видна сразу.
  */
-export function getEnabledAchievements(scope: AchievementScope = "USER") {
+export const getEnabledAchievements = cache((scope: AchievementScope = "USER") => {
   return prisma.achievement.findMany({
     where: { enabled: true, scope },
     orderBy: [{ sort: "asc" }, { createdAt: "asc" }],
   });
+});
+
+// Троттлинг пересчёта: последний прогон на пользователя, в памяти
+// процесса (как лимитер входа в lib/rateLimit.ts — процесс один,
+// single-container deploy). Своя страница профиля открывается по
+// несколько раз подряд, а пересчёт — это чтения плюс возможные записи;
+// пока идёт окно, хватает уже зафиксированных медалей.
+const lastSync = new Map<string, number>();
+// 10 минут: ачивка не теряется, а лишь появляется на профиле не в ту же
+// секунду, что действие, её открывшее. Уведомление придёт тогда же —
+// на следующем открытии профиля после окна.
+const SYNC_INTERVAL_MS = 10 * 60 * 1000;
+
+/**
+ * Пора ли пересчитывать ачивки этому человеку. Спрашивать ДО того, как
+ * готовить данные для `syncAchievements`: смысл окна в том, чтобы
+ * лишние чтения вообще не уезжали в базу.
+ */
+export function achievementsSyncDue(userId: string, now = Date.now()): boolean {
+  for (const [key, at] of lastSync) {
+    if (at + SYNC_INTERVAL_MS <= now) lastSync.delete(key);
+  }
+  const at = lastSync.get(userId);
+  return at == null || at + SYNC_INTERVAL_MS <= now;
 }
+
+/** Строка уже выданной медали — столько о ней знают и пересчёт, и
+ *  бейджи левой колонки, и лента. */
+export type UnlockedRow = { key: string; unlockedAt: Date };
 
 /**
  * Состояние всех ВКЛЮЧЁННЫХ ачивок юзера + фиксация новых (UserAchievement)
- * с поздравлением в Telegram. Считается при открытии кабинета — отдельного
- * фонового пересчёта нет. Выключенные (enabled=false) не считаются и не
- * возвращаются вовсе.
+ * с поздравлением в Telegram. Считается при открытии своего профиля —
+ * отдельного фонового пересчёта нет, но не чаще раза в SYNC_INTERVAL_MS
+ * (см. `achievementsSyncDue`). Выключенные (enabled=false) не считаются и
+ * не возвращаются вовсе.
+ *
+ * `stats` принимается и ОБЕЩАНИЕМ свода: тогда собственные чтения
+ * пересчёта (рефералы, каталог, выданные медали) идут параллельно с ним,
+ * а не после — на профиле это была отдельная последовательная ступень.
+ * `preloaded` — те же строки, если вызывающий их уже выбрал.
  */
-export async function syncAchievements(userId: string, stats?: UserStats): Promise<AchievementState[]> {
+export async function syncAchievements(
+  userId: string,
+  stats?: UserStats | Promise<UserStats>,
+  preloaded?: { referrals?: number; unlockedRows?: UnlockedRow[] },
+): Promise<AchievementState[]> {
   const [base, referrals, defs, unlockedRows] = await Promise.all([
-    stats ? Promise.resolve(stats) : computeUserStats(userId),
+    stats ?? computeUserStats(userId),
     // Приглашённые по реферальной ссылке — прямо здесь, а не в
     // computeUserStats: тот свод питает ещё и вкладку «Статистика», а
     // это число нужно только ачивкам. Удалённые аккаунты не в счёт:
     // «привела человека» — про живого человека на сайте, при этом уже
     // выданная медаль (строка UserAchievement) никуда не денется.
-    prisma.user.count({ where: { referredById: userId, deletedAt: null } }),
+    preloaded?.referrals ??
+      prisma.user.count({ where: { referredById: userId, deletedAt: null } }),
     getEnabledAchievements(),
-    prisma.userAchievement.findMany({ where: { userId } }),
+    preloaded?.unlockedRows ?? prisma.userAchievement.findMany({ where: { userId } }),
   ]);
+  lastSync.set(userId, Date.now());
   const s: AchievementStats = { ...base, referrals };
   const unlockedByKey = new Map(unlockedRows.map((r) => [r.key, r.unlockedAt]));
 
   const result: AchievementState[] = [];
-  const newlyUnlocked: { emoji: string; title: string; hint: string }[] = [];
+  const newlyUnlocked: { key: string; emoji: string; title: string; hint: string }[] = [];
 
   for (const def of defs) {
     const target = Math.max(def.threshold, 1);
     const value = Math.min(metricValue(def.metric, s), target);
     const done = value >= target;
-    let unlockedAt = unlockedByKey.get(def.key) ?? null;
-    if (done && !unlockedAt) {
-      // upsert, не create: параллельный запрос (два открытых кабинета)
-      // мог успеть зафиксировать ту же ачивку.
-      const row = await prisma.userAchievement.upsert({
-        where: { userId_key: { userId, key: def.key } },
-        create: { userId, key: def.key },
-        update: {},
-      });
-      unlockedAt = row.unlockedAt;
-      newlyUnlocked.push(def);
-    }
+    const unlockedAt = unlockedByKey.get(def.key) ?? null;
+    if (done && !unlockedAt) newlyUnlocked.push(def);
     result.push({
       key: def.key,
       emoji: def.emoji,
@@ -241,6 +277,28 @@ export async function syncAchievements(userId: string, stats?: UserStats): Promi
       value,
       target,
     });
+  }
+
+  // Записи — одной волной, а не по очереди внутри цикла: обычно медаль
+  // одна, но у человека, пришедшего с готовой историей, их сразу
+  // десяток, и это были десять последовательных запросов.
+  // upsert, не create: параллельный запрос (два открытых профиля) мог
+  // успеть зафиксировать ту же ачивку.
+  if (newlyUnlocked.length > 0) {
+    const rows = await Promise.all(
+      newlyUnlocked.map((def) =>
+        prisma.userAchievement.upsert({
+          where: { userId_key: { userId, key: def.key } },
+          create: { userId, key: def.key },
+          update: {},
+        }),
+      ),
+    );
+    const unlockedNow = new Map(rows.map((r) => [r.key, r.unlockedAt]));
+    for (const item of result) {
+      const at = unlockedNow.get(item.key);
+      if (at) item.unlockedAt = at;
+    }
   }
 
   // Поздравление — fire-and-forget, одна ошибка не мешает остальному.
@@ -276,13 +334,18 @@ export async function syncAchievements(userId: string, stats?: UserStats): Promi
 
 /**
  * Только уже зафиксированные (и всё ещё включённые) ачивки — для чужих
- * страниц вроде публичного профиля: пересчёт прогресса делает сам владелец
- * при заходе в кабинет, здесь только чтение.
+ * страниц вроде публичного профиля, а также для своего между
+ * пересчётами (см. `achievementsSyncDue`).
+ *
+ * `preloaded` — те же строки UserAchievement, если вызывающий их уже
+ * выбрал; порядок «сначала старые» тогда наводится здесь.
  */
-export async function getUnlockedAchievements(userId: string) {
+export async function getUnlockedAchievements(userId: string, preloaded?: UnlockedRow[]) {
   const [defs, rows] = await Promise.all([
     getEnabledAchievements(),
-    prisma.userAchievement.findMany({ where: { userId }, orderBy: { unlockedAt: "asc" } }),
+    preloaded
+      ? [...preloaded].sort((a, b) => a.unlockedAt.getTime() - b.unlockedAt.getTime())
+      : prisma.userAchievement.findMany({ where: { userId }, orderBy: { unlockedAt: "asc" } }),
   ]);
   const byKey = new Map(defs.map((d) => [d.key, d]));
   return rows.flatMap((r) => {

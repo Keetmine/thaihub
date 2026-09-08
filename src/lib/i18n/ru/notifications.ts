@@ -26,6 +26,7 @@ export const notifications: Dict["notifications"] = {
     // Сообщества: «+название» — приняли, «-название» — отказали. Приставку
     // ставит экшен: фраза собирается на языке получателя, готовый текст в
     // базу класть нельзя (см. notificationText.ts).
+    COMMUNITY_DIGEST: (community: string) => `«${community}» за месяц`,
     COMMUNITY_JOIN_REQUEST: (who: string, community: string) =>
         `${who} просится в сообщество «${community}»`,
     COMMUNITY_JOIN_ACCEPTED: (community: string) => `Вас приняли в сообщество «${community}»`,
@@ -48,10 +49,13 @@ export const notifications: Dict["notifications"] = {
     weekTitle: "Ваша неделя",
     episodesHeader: "Серии ваших сериалов",
     eventsHeader: "Ваши события",
+    presalesHeader: "Старты продаж",
     birthdaysHeader: "Дни рождения избранных",
     episodeLine: (drama: string, n: number) => `${drama} — серия ${n}`,
+    presaleLine: (event: string, time: string) => `${event} — в ${time} (тайское время)`,
     empty:
       "Пока пусто: отмечайте сериалы и добавляйте артистов и события в избранное — подборка наполнится.",
+    weeklyFooter: "Ваш недельный дайджест — выключается в настройках уведомлений.",
   },
 
   premiumBody: (until: string) => `Открыты афиша, календарь и поездки — до ${until}.`,

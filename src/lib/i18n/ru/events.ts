@@ -224,8 +224,6 @@ export const events: Dict["events"] = {
     title: "Поиск",
     placeholder: "Событие, артист, сериал, локация…",
     ariaLabel: "Поисковый запрос",
-    youSearched: (query: string) =>
-      `Вы искали «${query}» — вот что нашлось по каталогу:`,
     hint: "Введите название события, артиста, сериала, локации или агентства.",
     nothingFound: (query: string) => `Ничего не найдено по запросу «${query}».`,
     sectionEvents: "События",

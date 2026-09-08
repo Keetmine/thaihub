@@ -61,6 +61,10 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return who && subject ? titles.PERFORMER_EVENT(who, subject) : n.title;
     case "DRAMA_STARTED":
       return subject ? titles.DRAMA_STARTED(subject) : n.title;
+    case "COMMUNITY_DIGEST":
+      // Месячная сводка владельцу: подробности (сколько участников, тем,
+      // комментариев) лежат в body — там же, где у остальных поводов.
+      return subject ? titles.COMMUNITY_DIGEST(subject) : n.title;
     case "COMMUNITY_JOIN_REQUEST":
       return who && subject ? titles.COMMUNITY_JOIN_REQUEST(who, subject) : n.title;
     case "COMMUNITY_INVITE":

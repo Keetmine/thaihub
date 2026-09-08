@@ -21,6 +21,4 @@ export const common: Dict["common"] = {
   deletedAccount: "Удалённый аккаунт",
     year: "год",
     language: "Язык",
-    switchToRussian: "Русский",
-    switchToEnglish: "English",
 };

@@ -103,6 +103,41 @@ export async function findDuplicateDramaGroups(): Promise<
   }));
 }
 
+/**
+ * Группы агентств с одинаковым (нормализованным) названием.
+ *
+ * Дискриминатора у агентства нет: ни года, ни реального имени — тёзка
+ * с точностью до регистра и пробелов это и есть дубль. Само поле `name`
+ * уникально, поэтому в группу попадает только то, что база пропустила:
+ * «GMMTV » против «gmmtv», мусор из импорта с датой в названии.
+ */
+export async function findDuplicateAgencyGroups(): Promise<
+  DuplicateGroup<{ id: string; name: string; createdAt: Date; _count: { performers: number; dramas: number; favoritedBy: number } }>[]
+> {
+  // Та же двухпроходная схема, что у сериалов: сначала названия, потом
+  // счётчики только для попавших в группы.
+  const agencies = await prisma.agency.findMany({
+    select: { id: true, name: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const groups = groupByNormName(agencies, (a) => a.name);
+  const countRows = await prisma.agency.findMany({
+    where: { id: { in: groups.flatMap((g) => g.rows.map((r) => r.id)) } },
+    select: {
+      id: true,
+      _count: { select: { performers: true, dramas: true, favoritedBy: true } },
+    },
+  });
+  const countById = new Map(countRows.map((c) => [c.id, c._count]));
+  return groups.map((g) => ({
+    key: g.key,
+    rows: g.rows.map((r) => ({
+      ...r,
+      _count: countById.get(r.id) ?? { performers: 0, dramas: 0, favoritedBy: 0 },
+    })),
+  }));
+}
+
 /** Дробит группу «одинаковых» по дискриминатору (реальное имя / год):
  *  один известный вариант на группу — вся группа остаётся вместе (null
  *  считаем совпадением); несколько разных — подгруппы по значению, null

@@ -21,10 +21,6 @@ export const LOCATION_CATEGORIES: {
 
 const BY_VALUE = new Map(LOCATION_CATEGORIES.map((c) => [c.value, c]));
 
-export function categoryLabel(value: LocationCategory | null | undefined): string | null {
-  return value ? (BY_VALUE.get(value)?.label ?? null) : null;
-}
-
 export function categoryEmoji(value: LocationCategory | null | undefined): string | null {
   return value ? (BY_VALUE.get(value)?.emoji ?? null) : null;
 }

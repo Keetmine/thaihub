@@ -24,6 +24,17 @@ export type JobDefinition = {
    *  Минимальная недельность: без «дня недели» — неделя отсчитывается
    *  от последнего прогона (см. isDue), в БД ничего не добавляется. */
   intervalDays?: number;
+  /** День недели, в который задача обязана идти (0 — воскресенье).
+   *  Нужен рассылкам, у которых день — часть обещания: «дайджест по
+   *  воскресеньям» должен приходить в воскресенье, а не через семь дней
+   *  после прошлого прогона — один пропуск (задачу выключали, прогон
+   *  упал) увёл бы рассылку на среду навсегда. В БД ничего не
+   *  добавляется, как и у intervalDays. */
+  weekday?: number;
+  /** Час прогона у новой задачи, пока его не поменяли на
+   *  /admin/schedule. Не задан — общие 4 утра: ночь удобна парсерам, но
+   *  не рассылке, которую человек читает. */
+  defaultHour?: number;
   run: (targetIds: string[] | null) => Promise<string>;
 };
 
@@ -345,6 +356,56 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "weekly-digest",
+    title: "Недельный дайджест подписчикам",
+    description:
+      "По воскресеньям утром рассылает подписчикам «Вашу неделю» в Telegram: серии " +
+      "отмеченных сериалов, события, на которые человек идёт или которые в избранном, " +
+      "старты продаж по ним и дни рождения избранных артистов — на семь дней вперёд. " +
+      "Получают только те, у кого привязан Telegram, активна подписка и включён " +
+      "переключатель «Недельный дайджест» в настройках. Кому за неделю ничего не " +
+      "набралось, письмо НЕ уходит: «у вас ничего нет» — это спам, а не забота. " +
+      "Подборку собирает тот же код, что отвечает боту на /week.",
+    supportsTargets: false,
+    // Журнала прогонов у рассылки нет (в отличие от парсеров): ImportRun —
+    // про импорты, и любая незакрытая строка в нём блокирует кнопки в
+    // /admin/imports. Итог прогона виден в самом расписании — строкой
+    // «последний результат».
+    logKind: "weekly-digest",
+    logsItems: false,
+    intervalDays: 7,
+    // Воскресенье — часть обещания в подписи переключателя, поэтому день
+    // жёсткий, а не «через семь дней после прошлого раза» (см. isDue).
+    weekday: 0,
+    // Не 4 утра, как у парсеров: дайджест человек читает, а не сервер.
+    defaultHour: 10,
+    run: async () => {
+      const { sendWeeklyDigests } = await import("@/lib/telegramNotifications");
+      const sent = await sendWeeklyDigests();
+      return `отправлено ${sent}`;
+    },
+  },
+  {
+    key: "community-digest",
+    title: "Месячная сводка владельцам сообществ",
+    description:
+      "Раз в месяц пишет создателю каждого сообщества в Telegram, что у него за 30 дней " +
+      "произошло: сколько пришло участников, сколько завели тем и написали комментариев, " +
+      "какая встреча ближайшая. Сводка уходит, только если за месяц ЧТО-ТО было — пустая " +
+      "была бы ежемесячным напоминанием о том, что сообщество мертво. Нужны привязанный " +
+      "Telegram и включённый переключатель «Сообщества» в настройках уведомлений.",
+    supportsTargets: false,
+    logKind: "community-digest",
+    logsItems: false,
+    intervalDays: 30,
+    defaultHour: 11,
+    run: async () => {
+      const { sendCommunityMonthlySummaries } = await import("@/lib/telegramNotifications");
+      const sent = await sendCommunityMonthlySummaries();
+      return `отправлено ${sent}`;
+    },
+  },
+  {
     key: "cleanup-expired",
     title: "Чистка просроченного",
     description:
@@ -467,7 +528,7 @@ export async function listJobs() {
     return {
       ...def,
       enabled: row?.enabled ?? true,
-      hour: row?.hour ?? 4,
+      hour: row?.hour ?? def.defaultHour ?? 4,
       targetMode: row?.targetMode ?? ("ALL" as const),
       targets: row?.targets.map((t) => t.performer) ?? [],
       lastRunAt: row?.lastRunAt ?? null,
@@ -484,14 +545,21 @@ export async function listJobs() {
  * процесса (TZ=Europe/Moscow) — «раз в сутки в 4 утра» должно означать
  * местные 4 утра; Math.round гасит сдвиг перехода на летнее время.
  * Экспортирована ради юнит-теста недельного интервала.
+ *
+ * `weekday` (0 — воскресенье) добавляет к этому жёсткий день недели: в
+ * другие дни задача не due вовсе, сколько бы времени ни прошло. День
+ * берётся в той же зоне процесса, что и час, — иначе воскресный
+ * дайджест в 10 утра МСК уезжал бы то в субботу, то в понедельник.
  */
 export function isDue(
   hour: number,
   lastRunAt: Date | null,
   now: Date,
   intervalDays = 1,
+  weekday?: number,
 ): boolean {
   if (now.getHours() < hour) return false;
+  if (weekday !== undefined && now.getDay() !== weekday) return false;
   if (!lastRunAt) return true;
   const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const daysSince = Math.round((dayStart(now) - dayStart(lastRunAt)) / (24 * 60 * 60 * 1000));
@@ -548,7 +616,8 @@ async function runDueJobsInner(now: Date): Promise<string[]> {
   const started: string[] = [];
 
   for (const job of jobs) {
-    if (!job.enabled || !isDue(job.hour, job.lastRunAt, now, job.intervalDays ?? 1)) continue;
+    if (!job.enabled || !isDue(job.hour, job.lastRunAt, now, job.intervalDays ?? 1, job.weekday))
+      continue;
     // Отметку ставим ДО запуска: прогон длинный, и при перезапуске
     // приложения задача не должна стартовать второй раз за сутки.
     if (!(await claimJob(job.key, job.hour, job.lastRunAt, now))) continue;

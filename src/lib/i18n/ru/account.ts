@@ -7,8 +7,6 @@ export const account: Dict["account"] = {
   planPremiumHint: "Действующая подписка",
   planLifetimeHint: "Бессрочная подписка",
   planFree: "Базовый",
-  telegramSignIn: "Вход через Telegram",
-  memberSince: (date: string) => `На MyBLHub с ${date}`,
   settingsLink: "Настройки",
   logout: "Выйти",
 
@@ -87,9 +85,6 @@ export const account: Dict["account"] = {
     artistLists: "Мои списки артистов",
     artistListsHint: "Создайте свой список — «видела вживую», «пили пиво»…",
     artistListsLocked: "Свои списки артистов — по подписке.",
-    artistListsLockedCta: "Оформить",
-    listEmpty: "пока пусто",
-    listCount: (n: number) => `${n} ${plural(n, ["артист", "артиста", "артистов"])}`,
 
     byYear: "События по годам",
     visitedMap: "Карта посещённого",
@@ -99,10 +94,6 @@ export const account: Dict["account"] = {
     achievements: "Достижения",
     // achievementsSecret удалён — правка владельца: строки про «секрет»
     // на профиле больше нет.
-    achievementsEmpty: "Пока ни одной — первая ждёт на первом же событии.",
-    achievementsLockedTitle: "Достижения — по подписке",
-    achievementsLockedDescription: (total: number) =>
-      `Достижения за концерты, поездки и просмотренные сериалы (сейчас их ${total}) — какие именно, узнаете, когда получите.`,
   },
 
   settings: {

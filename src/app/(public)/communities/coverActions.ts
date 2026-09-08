@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { communityHref } from "@/lib/slugHelpers";
 import { parseCommunityCoverUrl } from "@/lib/communities";
 import { requireManagedCommunity } from "@/lib/communities.server";
+import { invalidateCatalogCache } from "@/lib/catalogCache";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action, и клиент видит generic error boundary
@@ -63,5 +64,8 @@ export async function setCommunityCover(
     data: { coverUrl: parsed.url },
   });
   revalidatePath(communityHref(managed.community));
+  // Обложка видна и в карточке на витрине, а та кэширована — сбрасываем
+  // тег, иначе список полчаса показывал бы старую картинку.
+  invalidateCatalogCache();
   return { ok: true, coverUrl: parsed.url };
 }

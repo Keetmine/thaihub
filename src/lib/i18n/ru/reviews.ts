@@ -14,8 +14,6 @@ export const reviews: Dict["reviews"] = {
       uploading: "Загружаем…",
       remove: "Убрать фото",
   },
-  ratingLabel: "Оценка",
-  outOf10: "из 10",
 
   /** Оценки отзыва по разделам (правка владельца 2026-09-07). Набор
    *  разделов зависит от типа записи, см. ReviewRatingFields. */

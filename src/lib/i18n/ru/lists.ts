@@ -167,7 +167,6 @@ export const lists: Dict["lists"] = {
         listTitleRequired: "Укажите название списка",
         listNotFound: "Список не найден",
         placeNameRequired: "Укажите название места",
-        signInToAddPlaces: "Войдите, чтобы добавлять места",
         placeCreateFailed: "Не удалось создать место",
         placeNotFound: "Место не найдено",
         artistNotFound: "Артист не найден",

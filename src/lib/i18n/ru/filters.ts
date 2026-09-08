@@ -13,9 +13,6 @@ export const filters: Dict["filters"] = {
     panelTitle: "Фильтры",
     reset: "Сбросить",
     apply: "Показать",
-    activeCount: (n: number) => `Фильтры (${n})`,
-    showAllOptions: (n: number) => `Показать все ${n}`,
-    collapseOptions: "Свернуть",
     optionSearchPlaceholder: "Поиск по списку…",
     anyOption: "Любые",
 
