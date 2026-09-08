@@ -194,18 +194,18 @@ export const catalog = {
         heroLead2: "have marked are here.",
         heroCta: "Not on the list — search by title.",
         // Ссылка-вкладка на народный топ (/dramas/top) в ряду статусов.
-        topLink: "Community top",
+        topLink: "Popular",
     },
 
-    /** Народный топ /dramas/top (аудит 2026-09, п.6.5): сериалы по
+    /** «Популярное» /dramas/top (аудит 2026-09, п.6.5): сериалы по
      *  средней оценке зрителей MyBLHub, порог — MIN_VOTES оценок на
      *  тайтл. Фолбэк-ключи — на случай, когда под порог не попадает
      *  ничего: тогда честно показываем самое смотримое. */
     dramasTop: {
-        metaTitle: "Community top series",
+        metaTitle: "Popular series",
         metaDescription:
             "The series MyBLHub viewers rate the highest — an average of real scores from real people.",
-        title: "Community top",
+        title: "Popular",
         intro: (min: number) =>
             `Ranked by the average MyBLHub viewer score. Only series rated by at least ${min} people make the list — that is why it is short and honest.`,
         votes: (n: number) => `${n} ${n === 1 ? "vote" : "votes"}`,
@@ -214,6 +214,7 @@ export const catalog = {
         fallbackHeading: "Most watched on MyBLHub",
         watchers: (n: number) => `${n} ${n === 1 ? "viewer" : "viewers"}`,
         empty: "No ratings yet — be the first to rate a series.",
+        searchMore: "Search series by filters",
     },
 
     drama: {

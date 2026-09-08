@@ -68,9 +68,30 @@ function decryptRoundToken(token: string): string | null {
   }
 }
 
-/** Загаданным может стать только сериал с НАШИМ постером: внешние
- *  ссылки бывают битыми (аудит 2026-09), а /uploads раздаётся с диска. */
-const WITH_POSTER: Prisma.DramaWhereInput = { posterUrl: { startsWith: "/uploads" } };
+/** Сколько лет назад сериал ещё «свежий» для игры. */
+const GAME_YEARS = 5;
+
+/**
+ * Из чего играем (правка владельца 2026-09-10): ТОЛЬКО тайские сериалы
+ * последних пяти лет.
+ *
+ * Каталог у нас куда шире (корейское, японское, тайваньское, старое), но
+ * игра — витрина сайта про лакорны, и угадывать японский фильм 2009-го
+ * тут не про что. Заодно узкий пул делает раунд честнее: варианты
+ * похожи друг на друга, и правильный не выдаёт себя одной строкой.
+ *
+ * Постер — только НАШ: внешние ссылки бывают битыми (аудит 2026-09), а
+ * /uploads раздаётся с диска.
+ */
+function gamePool(): Prisma.DramaWhereInput {
+  // Год считаем при каждом раунде, а не при старте процесса: сервер
+  // живёт месяцами, и «последние пять лет» не должны застыть.
+  return {
+    posterUrl: { startsWith: "/uploads" },
+    country: "Thailand",
+    year: { gte: new Date().getUTCFullYear() - GAME_YEARS },
+  };
+}
 
 const OPTION_SELECT = { id: true, ...DRAMA_TITLE_SELECT } as const;
 
@@ -111,10 +132,13 @@ async function pickDecoys(
   correctTitle: string,
   locale: Locale,
 ): Promise<GameOption[]> {
+  // Ярусы внутри ИГРОВОГО пула: сначала тот же тип (сериал к сериалу,
+  // фильм к фильму), потом весь пул. Страну в ярусы больше не кладём —
+  // она в пуле и так одна (см. gamePool).
+  const pool = gamePool();
   const tiers: Prisma.DramaWhereInput[] = [];
-  if (target.type && target.country) tiers.push({ type: target.type, country: target.country });
-  if (target.country) tiers.push({ country: target.country });
-  tiers.push({});
+  if (target.type) tiers.push({ ...pool, type: target.type });
+  tiers.push(pool);
 
   const picked: GameOption[] = [];
   // Названия сравниваем на языке зрителя: у дубликатов и переизданий
@@ -145,11 +169,12 @@ async function pickDecoys(
  *  меньше четырёх различимых названий) — страница покажет пустое
  *  состояние. */
 export async function buildGameRound(locale: Locale): Promise<GameRound | null> {
-  const count = await prisma.drama.count({ where: WITH_POSTER });
+  const pool = gamePool();
+  const count = await prisma.drama.count({ where: pool });
   if (count === 0) return null;
 
   const target = await prisma.drama.findFirst({
-    where: WITH_POSTER,
+    where: pool,
     select: { ...OPTION_SELECT, posterUrl: true, type: true, country: true },
     orderBy: { id: "asc" },
     skip: Math.floor(Math.random() * count),

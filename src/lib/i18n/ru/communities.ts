@@ -1,4 +1,4 @@
-import { plural, pluralized } from "@/lib/plural";
+import { pluralized } from "@/lib/plural";
 
 import type { Dict } from "../en";
 
@@ -338,8 +338,6 @@ export const communities: Dict["communities"] = {
         // список остаётся сюрпризом, поэтому дальние не называем.
         // «Остался/осталось» согласуем с числом, чтобы «остался 1» не
         // превращался в «осталось 1».
-        nextProgress: (title: string, left: number) =>
-            `До «${title}» ${plural(left, ["остался", "осталось", "осталось"])} ${left}`,
     },
 
     // «Вместе»: связки сообщества с остальным сайтом — блок «из вашего

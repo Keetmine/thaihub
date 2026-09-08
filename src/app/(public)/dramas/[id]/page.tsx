@@ -15,7 +15,6 @@ import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
-import EpisodeDiary from "@/components/EpisodeDiary";
 import RewatchCounter from "@/components/RewatchCounter";
 import DramaRating from "@/components/DramaRating";
 import { fetchDramaScore } from "@/lib/dramaRating";
@@ -366,6 +365,10 @@ export default async function DramaDetailPage({
   ]);
   const visitedLocationIds = new Set(visits.map((v) => v.locationId));
 
+  // Дневник серий СКРЫТ (решение владельца 2026-09-10) — вместе с ним
+  // спит и его выборка: лишний запрос на каждой странице сериала ради
+  // невидимого блока не нужен. Код сохранён целиком, чтобы вернуть его
+  // одним раскомментированием (см. блок в разметке ниже и roadmap).
   // Дневник серий (аудит 2026-09 §7): отметки владельца по этому
   // сериалу. Только СВОИ строки — дневник личный, и заметки не
   // показываются нигде, кроме этой страницы под своей сессией. Даты
@@ -374,30 +377,31 @@ export default async function DramaDetailPage({
   // Запрос отдельным await, а не в общих волнах Promise.all, —
   // точечная вставка (страницу параллельно правят), а выборка по
   // первичному ключу дешёвая.
-  const episodeWatches =
-    currentUser && watchStatus
-      ? await prisma.episodeWatch.findMany({
-          where: { userId: currentUser.id, dramaId: id },
-          orderBy: { episode: "asc" },
-        })
-      : [];
-  const diaryYear = new Date().getUTCFullYear();
-  const diaryEntries = episodeWatches.map((w) => ({
-    episode: w.episode,
-    // Год — только у отметок не этого года, как в графике серий: у
-    // свежих он повторялся бы в каждой строке впустую.
-    dateLabel:
-      w.watchedAt.getUTCFullYear() === diaryYear
-        ? formatShortDate(w.watchedAt, locale)
-        : formatDateWithYear(w.watchedAt, locale),
-    note: w.note ?? "",
-  }));
+  // const episodeWatches =
+  //   currentUser && watchStatus
+  //     ? await prisma.episodeWatch.findMany({
+  //         where: { userId: currentUser.id, dramaId: id },
+  //         orderBy: { episode: "asc" },
+  //       })
+  //     : [];
+  // const diaryYear = new Date().getUTCFullYear();
+  // const diaryEntries = episodeWatches.map((w) => ({
+  //   episode: w.episode,
+  //   // Год — только у отметок не этого года, как в графике серий: у
+  //   // свежих он повторялся бы в каждой строке впустую.
+  //   dateLabel:
+  //     w.watchedAt.getUTCFullYear() === diaryYear
+  //       ? formatShortDate(w.watchedAt, locale)
+  //       : formatDateWithYear(w.watchedAt, locale),
+  //   note: w.note ?? "",
+  // }));
   // Строки дневника: 1..N при известном числе серий; если оно
   // неизвестно — по факту отмеченного плюс одна следующая строка, чтобы
   // дневник было с чего начать и чем продолжить.
-  const diaryCount =
-    drama.episodes ?? (episodeWatches.at(-1)?.episode ?? 0) + 1;
-  const diaryEpisodes = Array.from({ length: diaryCount }, (_, i) => i + 1);
+  // const diaryCount =
+  //   drama.episodes ?? (episodeWatches.at(-1)?.episode ?? 0) + 1;
+  // const diaryEpisodes = Array.from({ length: diaryCount }, (_, i) => i + 1);
+
 
   // У сериала может быть несколько студий (DramaAgency); легаси-поле
   // agency подставляется, если связей ещё нет.
@@ -944,11 +948,13 @@ export default async function DramaDetailPage({
                     />
                   </div>
                 )}
-                {/* Дневник серий (аудит 2026-09 §7) — свёрнут прямо под
-                  счётчиком: галочки по сериям с датой и личной
-                  заметкой. Связь со счётчиком односторонняя — отметка
-                  серии двигает счётчик, но не наоборот; почему — в
-                  episodeActions.ts. */}
+                {/* Дневник серий СКРЫТ (решение владельца 2026-09-10:
+                    «пока прячем, пометь в туду»). Код цел и рабочий —
+                    компонент, экшены (episodeActions.ts), таблица
+                    EpisodeWatch и строки словарей на месте; чтобы
+                    вернуть, достаточно раскомментировать этот блок.
+                    Данных он не теряет: у кого отметки уже стоят, те
+                    так и лежат в базе. См. docs/roadmap.md.
                 <div className="mt-2">
                   <EpisodeDiary
                     dramaId={drama.id}
@@ -957,6 +963,7 @@ export default async function DramaDetailPage({
                     todayLabel={formatShortDate(new Date(), locale)}
                   />
                 </div>
+                */}
               </div>
             )}
 
@@ -984,6 +991,47 @@ export default async function DramaDetailPage({
         )}
       </div>
 
+      {watchOrder.length > 0 && (
+        <div className="mb-4">
+          <h2 className="section-heading mb-2">
+            {t.catalog.drama.watchOrder}
+          </h2>
+          <div className="d-flex flex-wrap gap-2">
+            {watchOrder.map(({ drama: rel, relation, current }) => (
+              <EntityMiniCard
+                key={rel.id}
+                href={dramaHref(rel)}
+                photoUrl={rel.posterUrl}
+                name={dramaTitleForLocale(rel, locale)}
+                subtitle={
+                  [
+                    rel.year,
+                    current
+                      ? t.catalog.drama.watchOrderCurrent
+                      : relation
+                        ? t.catalog.drama.relationLabel(relation)
+                        : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || null
+                }
+                round={false}
+                style={
+                  current
+                    ? {
+                        width: "11rem",
+                        borderColor: "rgba(var(--accent-rgb), 0.55)",
+                      }
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Стоит ПОД «смотреть по порядку» (правка владельца
+          2026-09-10): сначала сериал и его вселенная, потом люди. */}
       {/* «Из ваших друзей смотрели» (аудит, п. 5.4): аватарка, имя,
           статус и оценка каждого друга, у кого этот сериал отмечен.
           Только для залогиненного, пустой блок не рисуем; гость и
@@ -1041,44 +1089,6 @@ export default async function DramaDetailPage({
           (он выделен акцентной рамкой и не кликается никуда, кроме
           себя). Подпись карточки: год · тип связи (relationLabel
           переводит «Thai sequel» → «сиквел» на /ru). */}
-      {watchOrder.length > 0 && (
-        <div className="mb-4">
-          <h2 className="section-heading mb-2">
-            {t.catalog.drama.watchOrder}
-          </h2>
-          <div className="d-flex flex-wrap gap-2">
-            {watchOrder.map(({ drama: rel, relation, current }) => (
-              <EntityMiniCard
-                key={rel.id}
-                href={dramaHref(rel)}
-                photoUrl={rel.posterUrl}
-                name={dramaTitleForLocale(rel, locale)}
-                subtitle={
-                  [
-                    rel.year,
-                    current
-                      ? t.catalog.drama.watchOrderCurrent
-                      : relation
-                        ? t.catalog.drama.relationLabel(relation)
-                        : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || null
-                }
-                round={false}
-                style={
-                  current
-                    ? {
-                        width: "11rem",
-                        borderColor: "rgba(var(--accent-rgb), 0.55)",
-                      }
-                    : undefined
-                }
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* События сериала — ниже каста и связанных (просьба
           владельца): фан-митинги/премьеры. */}

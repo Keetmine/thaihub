@@ -420,7 +420,7 @@ export default async function CommunityPage({
               участникам (isMember): зритель со стороны к нему ничего не
               добавит. */}
           {access.canSeeInside && (
-            <AchievementsBlock communityId={community.id} isMember={access.isMember} />
+            <AchievementsBlock communityId={community.id} />
           )}
 
           {/* Участники — аватарками под медалями, как друзья в профиле

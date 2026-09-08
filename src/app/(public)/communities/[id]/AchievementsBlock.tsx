@@ -23,37 +23,16 @@ import { getT } from "@/lib/i18n";
  * сразу — в суточной задаче он узнал бы о ней через сутки. Гость
  * пересчёта не запускает: блока у него нет.
  */
-export default async function AchievementsBlock({
-  communityId,
-  isMember = false,
-}: {
-  communityId: string;
-  /** Участник видит ещё и прогресс к ближайшей медали. Зритель со
-   *  стороны (гость публичного сообщества, админ сайта) — только уже
-   *  полученные: прогресс — внутренняя кухня, к которой он ничего не
-   *  добавит. */
-  isMember?: boolean;
-}) {
+export default async function AchievementsBlock({ communityId }: { communityId: string }) {
   const { locale, t } = await getT();
   const s = t.communities.achievements;
 
   const states = await syncCommunityAchievements(communityId);
   const unlocked = states.filter((a) => a.unlocked);
 
-  // Ближайшая НЕполученная медаль — одна, с максимальной долей
-  // готовности (value уже обрезан по target в syncCommunityAchievements,
-  // так что остаток всегда ≥ 1). Только одна намеренно: какие медали
-  // существуют дальше — сюрприз, и список «до чего ещё далеко» его бы
-  // раскрыл. Всё получено — блока прогресса просто нет.
-  const next = isMember
-    ? states
-        .filter((a) => !a.unlocked)
-        .reduce<(typeof states)[number] | null>(
-          (best, a) => (!best || a.value / a.target > best.value / best.target ? a : best),
-          null,
-        )
-    : null;
-
+  // Прогресса к ближайшей медали тут нет (правка владельца
+  // 2026-09-10): достижения сообщества — сюрприз целиком, а полоса
+  // «осталось 3» превращала их в задание. Показываем только полученные.
   return (
     <div>
       {/* Счётчика «N из N» тут нет (правка владельца 2026-09-09):
@@ -80,27 +59,6 @@ export default async function AchievementsBlock({
               locale={locale}
             />
           ))}
-        </div>
-      )}
-      {next && (
-        <div className="mt-2">
-          {/* «До „10 участников“ осталось 3» + тонкая полоса. Полоса —
-              та же, что у прогресса по сериям: это просто «сколько из
-              скольких», второй вид полосы был бы вторым видом той же
-              вещи. */}
-          <p className="small text-secondary mb-1">
-            {s.nextProgress(next.title, next.target - next.value)}
-          </p>
-          <span
-            className="episode-progress-bar"
-            role="progressbar"
-            aria-label={next.title}
-            aria-valuemin={0}
-            aria-valuemax={next.target}
-            aria-valuenow={next.value}
-          >
-            <span style={{ width: `${Math.round((next.value / next.target) * 100)}%` }} />
-          </span>
         </div>
       )}
     </div>

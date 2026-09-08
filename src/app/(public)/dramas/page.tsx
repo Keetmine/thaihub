@@ -400,7 +400,7 @@ export default async function DramasPage({
           >
             {t.catalog.all}
           </AppLink>
-          {/* Народный топ (аудит 2026-09, п.6.5) — отдельная страница, а
+          {/* «Популярное» (аудит 2026-09, п.6.5) — отдельная страница, а
               не вкладка-фильтр: у неё свой адрес для поисковика и гостя.
               Ссылка в том же ряду, чтобы топ было откуда найти. */}
           <AppLink href="/dramas/top" prefetch={false} className="tab-bar-item">

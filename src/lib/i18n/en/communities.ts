@@ -334,8 +334,6 @@ export const communities = {
             "None yet — they come on their own: for the first meetup, the first members, a lively thread.",
         // Прогресс к БЛИЖАЙШЕЙ неполученной медали — одной: полный
         // список остаётся сюрпризом, поэтому дальние не называем.
-        nextProgress: (title: string, left: number) =>
-            `${left} more to go for “${title}”`,
     },
 
     /**
