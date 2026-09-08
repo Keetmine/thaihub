@@ -202,6 +202,10 @@ export const legal = {
             q: "How do I keep count of watched episodes?",
             a: "An episode counter appears on any series with a status — on the series page, in the series list, in the profile and on the “Watching now” card on the home page. Marking the last episode of a finished series moves it to “Watched”, and lowering the count returns it to “Watching now”. For a series still airing the status is not changed automatically.",
           },
+          rewatch: {
+            q: "How do I mark that I watched a series again?",
+            a: "A finished series shows a “Watched” row under the episode counter with a plus and a minus — it counts complete watch-throughs, not just repeats. Next to it is “Watch again”: it puts the series back to “Watching”, resets the episode counter and adds a watch-through. Rewatches count towards episodes and hours on screen in your statistics, but not towards the number of series finished — that one counts distinct titles.",
+          },
           bell: {
             q: "How do I hear about a new episode?",
             a: "The series page has a bell next to the status button — that is the subscription to new episodes. The notification arrives on the site, and in the bot as well if Telegram is linked. Setting “Watching now” turns the bell on automatically.",
@@ -272,7 +276,7 @@ export const legal = {
           },
           visited: {
             q: "How do I mark a place as visited?",
-            a: "The “Mark as visited” button is on the place page, in lists of places and on a series page. Visited places count towards profile statistics and are pinned on the map there. The mark requires no subscription.",
+            a: "The “Mark as visited” button is on the place page, in lists of places and on a series page. Next to it is “Want to go”: the place goes into your personal “Want to visit” list, which can be attached to a trip; that mark needs no subscription. Visited places count towards profile statistics and are pinned on the map there. The mark requires no subscription.",
           },
           own: {
             q: "Can I add a place of my own?",
@@ -388,7 +392,7 @@ export const legal = {
           },
           telegram: {
             q: "How do I connect Telegram notifications?",
-            a: "Settings → Profile → the Telegram block: signing in through the widget links the account. Start has to be pressed in the bot once afterwards, because Telegram does not let a bot write first. Which notifications are repeated in the bot is set with the switches in the same block.",
+            a: "Settings → Profile → the Telegram block: signing in through the widget links the account. The bot also answers “/today” and “/week” with what is on for you — episodes, events, presale starts and birthdays of your favourite artists. Start has to be pressed in the bot once afterwards, because Telegram does not let a bot write first. Which notifications are repeated in the bot is set with the switches in the same block.",
           },
         },
 

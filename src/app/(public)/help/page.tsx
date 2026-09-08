@@ -78,6 +78,7 @@ function buildFaq(t: Dict): FaqTopic[] {
         { id: "catalog-mine", ...p.catalog.mine, links: [series] },
         { id: "catalog-status", ...p.catalog.status, links: [series] },
         { id: "catalog-episodes", ...p.catalog.episodes },
+        { id: "catalog-rewatch", ...p.catalog.rewatch },
         { id: "catalog-bell", ...p.catalog.bell, links: [settings] },
         { id: "catalog-reviews", ...p.catalog.reviews },
         { id: "catalog-artists-list", ...p.catalog.artistsList, links: [artists] },

@@ -42,7 +42,7 @@ export const social = {
     cancel: "Cancel",
     cancelConfirm: "Cancel this friend request?",
 
-    /** Блок «Пригласить подругу» в настройках (аудит 2026-09 п.7). */
+    /** Блок «Пригласить» в настройках (аудит 2026-09 п.7). */
     invite: {
       title: "Invite a friend",
       hint: "Share your link — whoever signs up through it becomes your friend right away.",

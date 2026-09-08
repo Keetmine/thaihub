@@ -10,9 +10,9 @@ export const landing = {
     featuresEyebrow: "Features",
     featuresTitle: "What's inside",
     eventsTitle: "Events and presales",
-    eventsChip: "with a subscription",
+    eventsChip: "next ones open to all",
     eventsBody:
-      "Concerts and fan meets day by day, with on-sale times, tickets and Telegram reminders an hour before sales open.",
+      "Concerts and fan meets day by day, with on-sale times, tickets and Telegram reminders an hour before sales open. The next events and any event page are open without a subscription; the full feed with filters and archive comes with it.",
     agendaEmpty: "New events are added every week.",
     artistsTitle: "Artists and favourites",
     artistsBody:
