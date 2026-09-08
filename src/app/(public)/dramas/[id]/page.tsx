@@ -208,12 +208,12 @@ export default async function DramaDetailPage({
       /sequel|prequel|parent story|side story/,
       (m) =>
         (
-          {
+          ({
             sequel: "prequel",
             prequel: "sequel",
             "parent story": "side story",
             "side story": "parent story",
-          } as Record<string, string>
+          }) as Record<string, string>
         )[m] ?? m,
     ) ?? null;
   const relatedItems = [
@@ -401,7 +401,6 @@ export default async function DramaDetailPage({
   // const diaryCount =
   //   drama.episodes ?? (episodeWatches.at(-1)?.episode ?? 0) + 1;
   // const diaryEpisodes = Array.from({ length: diaryCount }, (_, i) => i + 1);
-
 
   // У сериала может быть несколько студий (DramaAgency); легаси-поле
   // agency подставляется, если связей ещё нет.
@@ -991,11 +990,35 @@ export default async function DramaDetailPage({
         )}
       </div>
 
+      {/* Каст — СРАЗУ ПОД описанием (правка владельца 2026-09-10:
+          «состав должен быть после описания», и опускать его ниже
+          нельзя — это почти самое важное на странице). Раньше он стоял
+          после «смотреть по порядку» и списка друзей.
+          Адаптивной фото-сеткой (Э2ф) вместо ряда одинаковых плашек;
+          первые ~14, остальные за «Показать всех». Пустой раздел не
+          рисуем — ни заголовка, ни «состав не указан». */}
+      {castSorted.length > 0 && (
+        <div id="cast" className="anchor-target mb-4">
+          <h2 className="section-heading mb-3">{t.catalog.drama.cast}</h2>
+          {/* Капсулы вместо фото-сетки: сетка выходила гигантской
+              (фидбек владельца). Роль — подписью в капсуле. */}
+          <CastGrid chips limit={18}>
+            {castSorted.map(({ performer, role }) => (
+              <EntityMiniCard
+                key={performer.id}
+                href={performerHref(performer)}
+                photoUrl={performer.photoUrl}
+                name={performer.name}
+                subtitle={role}
+              />
+            ))}
+          </CastGrid>
+        </div>
+      )}
+
       {watchOrder.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">
-            {t.catalog.drama.watchOrder}
-          </h2>
+          <h2 className="section-heading mb-2">{t.catalog.drama.watchOrder}</h2>
           <div className="d-flex flex-wrap gap-2">
             {watchOrder.map(({ drama: rel, relation, current }) => (
               <EntityMiniCard
@@ -1060,35 +1083,6 @@ export default async function DramaDetailPage({
           </div>
         </div>
       )}
-
-      {/* Каст — адаптивной фото-сеткой (Э2ф) вместо ряда одинаковых
-          плашек; первые ~14, остальные за «Показать всех». Пустой
-          раздел не рисуем — ни заголовка, ни «состав не указан». */}
-      {castSorted.length > 0 && (
-        <div id="cast" className="anchor-target mb-4">
-          <h2 className="section-heading mb-3">{t.catalog.drama.cast}</h2>
-          {/* Капсулы вместо фото-сетки: сетка выходила гигантской
-              (фидбек владельца). Роль — подписью в капсуле. */}
-          <CastGrid chips limit={18}>
-            {castSorted.map(({ performer, role }) => (
-              <EntityMiniCard
-                key={performer.id}
-                href={performerHref(performer)}
-                photoUrl={performer.photoUrl}
-                name={performer.name}
-                subtitle={role}
-              />
-            ))}
-          </CastGrid>
-        </div>
-      )}
-
-      {/* «Смотреть по порядку» (аудит, п. 6.1) — бывшие «Связанные
-          сериалы», объединённые с идеей порядка просмотра: те же
-          DramaRelation-карточки, но по годам, с самим сериалом в ряду
-          (он выделен акцентной рамкой и не кликается никуда, кроме
-          себя). Подпись карточки: год · тип связи (relationLabel
-          переводит «Thai sequel» → «сиквел» на /ru). */}
 
       {/* События сериала — ниже каста и связанных (просьба
           владельца): фан-митинги/премьеры. */}
