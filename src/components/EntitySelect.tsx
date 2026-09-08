@@ -3,6 +3,7 @@
 import { adminEntityHref, type AdminEntityType } from "@/app/admin/entityHref";
 import { useId, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon } from "./icons";
+import { useT } from "./LocaleProvider";
 import Modal from "./Modal";
 
 export type EntityOption = {
@@ -42,20 +43,23 @@ export function OpenEntityLink({
   name: string;
   compact?: boolean;
 }) {
+  // Подписи из словаря: селект стоит и на публичных формах, где зритель
+  // может быть англоязычным (в админке proxy ставит ru — там всё как было).
+  const t = useT();
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="entity-open-link"
-      data-tooltip="Открыть карточку в новой вкладке"
-      aria-label={`Открыть карточку: ${name}`}
+      data-tooltip={t.ui.select.openCard}
+      aria-label={t.ui.select.openCardAria(name)}
       // Клик по ссылке не должен ни открывать выпадашку, ни ронять
       // фокус комбобокса до перехода.
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {compact ? "↗" : "Открыть ↗"}
+      {compact ? "↗" : t.ui.select.openCardText}
     </a>
   );
 }
@@ -74,9 +78,9 @@ export default function EntitySelect({
   label,
   options,
   defaultValue,
-  placeholder = "Выберите…",
+  placeholder,
   onCreateNew,
-  createLabel = "Создать",
+  createLabel,
   searchOptions,
   onChange,
   hrefKind,
@@ -112,6 +116,12 @@ export default function EntitySelect({
   // `options` can change from the parent (e.g. excluding a sibling select's
   // current value) — merge with locally-created-this-session options rather
   // than snapshotting once, so both stay in sync.
+  // Дефолты подписей — из словаря (пропом их по-прежнему можно
+  // переопределить): раньше русские строки были зашиты и утекали на
+  // EN-витрину (аудит 2026-09, п.3).
+  const t = useT();
+  const placeholderText = placeholder ?? t.ui.select.placeholder;
+  const createText = createLabel ?? t.ui.select.create;
   const [createdOptions, setCreatedOptions] = useState<EntityOption[]>([]);
   const allOptions = useMemo(
     () => [...options, ...createdOptions.filter((c) => !options.some((o) => o.id === c.id))],
@@ -203,7 +213,7 @@ export default function EntitySelect({
         setCreatePrefill(null);
       }
     } catch {
-      setCreateError("Не удалось создать. Проверьте название и попробуйте ещё раз.");
+      setCreateError(t.ui.select.createFailed);
     } finally {
       setIsCreating(false);
     }
@@ -225,7 +235,7 @@ export default function EntitySelect({
             <span className="d-flex align-items-center gap-2 min-w-0">
               {selected && <Avatar option={selected} />}
               <span className={`text-truncate ${selected ? "" : "text-secondary"}`}>
-                {selected?.name ?? placeholder}
+                {selected?.name ?? placeholderText}
               </span>
             </span>
             <ChevronDownIcon />
@@ -240,19 +250,19 @@ export default function EntitySelect({
             <input
               type="text"
               className="form-control form-control-sm mb-2"
-              placeholder="Поиск…"
-              aria-label="Поиск по списку"
+              placeholder={t.ui.select.searchPlaceholder}
+              aria-label={t.ui.select.searchAria}
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               autoFocus
             />
             {searchOptions && trimmedQuery.length < 2 && (
               <p className="small text-secondary px-2 py-1 mb-0">
-                Начните вводить название для поиска…
+                {t.ui.select.startTypingHint}
               </p>
             )}
             {searchOptions && isSearching && (
-              <p className="small text-secondary px-2 py-1 mb-0">Поиск…</p>
+              <p className="small text-secondary px-2 py-1 mb-0">{t.ui.select.searching}</p>
             )}
             {value && (
               <button
@@ -263,7 +273,7 @@ export default function EntitySelect({
                   setIsOpen(false);
                 }}
               >
-                Не выбрано
+                {t.ui.select.notSelected}
               </button>
             )}
             {filtered.map((o) => (
@@ -290,7 +300,7 @@ export default function EntitySelect({
             {filtered.length === 0 &&
               !showCreateOption &&
               !(searchOptions && (trimmedQuery.length < 2 || isSearching)) && (
-                <p className="small text-secondary px-2 py-1 mb-0">Ничего не найдено</p>
+                <p className="small text-secondary px-2 py-1 mb-0">{t.common.nothingFound}</p>
               )}
             {showCreateOption && (
               <button
@@ -301,7 +311,7 @@ export default function EntitySelect({
                   setIsOpen(false);
                 }}
               >
-                {`+ ${createLabel} «${trimmedQuery}»`}
+                {t.ui.select.createOption(createText, trimmedQuery)}
               </button>
             )}
           </div>
@@ -311,12 +321,12 @@ export default function EntitySelect({
       <Modal
         open={createPrefill !== null}
         onClose={() => setCreatePrefill(null)}
-        title={createLabel}
+        title={createText}
       >
         <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
           <div>
             <label className="form-label" htmlFor={`${uid}-newName`}>
-              Название *
+              {t.ui.select.nameLabel} *
             </label>
             <input id={`${uid}-newName`}
               name="newName"
@@ -328,7 +338,7 @@ export default function EntitySelect({
           </div>
           {createError && <p className="small text-danger mb-0">{createError}</p>}
           <button type="submit" className="btn btn-primary" disabled={isCreating}>
-            {isCreating ? "Создание…" : "Создать"}
+            {isCreating ? t.ui.select.creating : t.ui.select.create}
           </button>
         </form>
       </Modal>

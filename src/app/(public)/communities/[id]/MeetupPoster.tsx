@@ -1,3 +1,7 @@
+"use client";
+
+import { useCallback, useState } from "react";
+
 /**
  * Афиша встречи на её собственной странице `/event/<id>`.
  *
@@ -13,9 +17,17 @@
  * классовый размер шрифта потерялся бы в нём точкой.
  *
  * Через этот же компонент проходит и постер каталожного события — чтобы
- * разметка картинки жила в одном месте. До буквенной ветки оно не
- * доходит: колонку постера страница рисует ему только с картинкой (см.
- * event/[id]/page.tsx).
+ * разметка картинки жила в одном месте. До буквенной ветки без ошибки
+ * загрузки оно не доходит: колонку постера страница рисует ему только с
+ * картинкой (см. event/[id]/page.tsx).
+ *
+ * Компонент клиентский ради фолбэка на БИТУЮ картинку (файл переехал,
+ * источник удалил): раньше на её месте оставалась пустая рамка на всю
+ * колонку. Механика перенесена из EventCard: одного onError мало —
+ * разметка приходит с сервера, браузер начинает грузить картинку сразу,
+ * и ошибка успевает случиться ДО гидратации, когда React обработчик ещё
+ * не повесил. Поэтому при монтировании ещё и спрашиваем саму картинку:
+ * complete при naturalWidth === 0 — значит не вышло.
  */
 export default function MeetupPoster({
   title,
@@ -24,16 +36,23 @@ export default function MeetupPoster({
   title: string;
   posterUrl: string | null;
 }) {
-  if (posterUrl) {
+  const [posterFailed, setPosterFailed] = useState(false);
+  const checkPoster = useCallback((node: HTMLImageElement | null) => {
+    if (node?.complete && node.naturalWidth === 0) setPosterFailed(true);
+  }, []);
+
+  if (posterUrl && !posterFailed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
+        ref={checkPoster}
         loading="eager"
         decoding="async"
         src={posterUrl}
         alt={title}
         className="rounded-4 w-100"
         style={{ aspectRatio: "3 / 4", objectFit: "cover" }}
+        onError={() => setPosterFailed(true)}
       />
     );
   }

@@ -76,7 +76,14 @@ export async function generateMetadata({
   }
   return pageMetadata({
     title: community.title,
-    description: community.description ?? t.communities.metaDescription,
+    // У закрытого сообщества описание — уже содержимое, а не витрина:
+    // метадата уезжает гостю, поисковику и в превью ссылок, поэтому
+    // вместо него общая фраза раздела (аудит 2026-09, п.1.3; обещание
+    // docs — «название + „закрытое“»).
+    description:
+      community.visibility === "PRIVATE"
+        ? t.communities.metaDescription
+        : (community.description ?? t.communities.metaDescription),
     path: `/communities/${community.slug ?? community.id}`,
     // Закрытое сообщество поисковикам не отдаём: его и в списке нет.
     noIndex: community.visibility === "PRIVATE",
@@ -92,9 +99,11 @@ export async function generateMetadata({
  *
  * Витрина — всем, содержимое — участникам: внутри живут ссылки на
  * закрытые чаты и встречи с адресами (см.
- * docs/features/communities.md). Гость видит обложку, название,
- * описание и число участников — этого хватает, чтобы захотеть войти, и
- * не хватает, чтобы что-то утекло.
+ * docs/features/communities.md). У ПУБЛИЧНОГО сообщества гость видит
+ * обложку, название, описание и число участников — этого хватает, чтобы
+ * захотеть войти, и не хватает, чтобы что-то утекло. У ЗАКРЫТОГО нет и
+ * витрины: постороннему — только название с пометкой «закрытое» (аудит
+ * 2026-09, п.1.3).
  */
 export default async function CommunityPage({
   params,
@@ -134,6 +143,14 @@ export default async function CommunityPage({
   const myInvite = viewer
     ? community.invites.find((i) => i.userId === viewer.id)
     : undefined;
+
+  // Есть ли у зрителя витрина: у публичного сообщества — у всех, у
+  // закрытого — только у тех, кто видит содержимое. Постороннему на
+  // закрытом достаётся ровно «название + „закрытое“» (обещание
+  // docs/features/communities.md, «Кто что видит»): обложка, описание и
+  // даже число участников — уже рассказ о сообществе, которое прячется
+  // намеренно.
+  const showcase = access.canSeeInside || access.canBrowse;
 
   const memberRow = (m: (typeof community.members)[number]) => ({
     userId: m.userId,
@@ -254,7 +271,10 @@ export default async function CommunityPage({
               тёплая заливка: пустой серый прямоугольник смотрелся бы
               поломкой. */}
           <div className="community-cover">
-            {community.coverUrl && (
+            {/* Постороннему на закрытом обложку не отдаём — остаётся
+                тёплая заливка: картинка тоже рассказывает о сообществе,
+                а закрытому обещано «название + „закрытое“». */}
+            {showcase && community.coverUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={community.coverUrl}
@@ -268,19 +288,23 @@ export default async function CommunityPage({
           <div>
             <h1 className="font-display h3 mb-1">{community.title}</h1>
             <p className="small text-secondary mb-0">
-              {s.membersCount(active.length)}
-              {/* Где живёт сообщество — тут же, под названием (правка
-                  владельца 2026-09-09): его вводят в настройках, а
-                  видно оно было только в карточке на витрине, то есть
-                  везде, кроме самой страницы сообщества. */}
-              {community.country &&
-                ` · ${[community.country, community.city].filter(Boolean).join(", ")}`}
-              {community.visibility === "PRIVATE" &&
-                ` · ${s.visibility.PRIVATE}`}
+              {/* Число участников и место — витрина: постороннему на
+                  закрытом остаётся одна пометка «закрытое». */}
+              {[
+                ...(showcase ? [s.membersCount(active.length)] : []),
+                // Где живёт сообщество — тут же, под названием (правка
+                // владельца 2026-09-09): его вводят в настройках, а
+                // видно оно было только в карточке на витрине, то есть
+                // везде, кроме самой страницы сообщества.
+                ...(showcase && community.country
+                  ? [[community.country, community.city].filter(Boolean).join(", ")]
+                  : []),
+                ...(community.visibility === "PRIVATE" ? [s.visibility.PRIVATE] : []),
+              ].join(" · ")}
             </p>
           </div>
 
-          {community.description && (
+          {showcase && community.description && (
             <p
               className="small text-secondary mb-0"
               style={{ whiteSpace: "pre-line" }}
@@ -300,9 +324,16 @@ export default async function CommunityPage({
                 владельца 2026-09-09): раньше кнопки не было вовсе, и
                 страница не отвечала на главный вопрос «как сюда
                 попасть». Подпись честная — «Подать заявку» у сообщества
-                с одобрением: после входа человек увидит ровно её. */}
-            {!viewer && (
-              <AppLink href="/login" className="btn btn-primary btn-sm">
+                с одобрением: после входа человек увидит ровно её. На
+                закрытом кнопки нет (`showcase`): заявок с улицы оно не
+                принимает, и после входа кнопки тоже не будет. */}
+            {!viewer && showcase && (
+              // С возвратом: после входа человек оказывается снова на
+              // этом сообществе, а не в кабинете (аудит 2026-09, ?next=).
+              <AppLink
+                href={`/login?next=${encodeURIComponent(`/communities/${community.slug ?? community.id}`)}`}
+                className="btn btn-primary btn-sm"
+              >
                 {community.joinMode === "APPROVAL" ? s.joinRequest : s.join}
               </AppLink>
             )}

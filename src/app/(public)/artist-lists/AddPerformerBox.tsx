@@ -71,7 +71,7 @@ export default function AddPerformerBox({ listId }: { listId: string }) {
           )}
           {!isSearching && results.length === 0 && (
             <div className="performer-combobox-option text-secondary">
-              {t.lists.artists.nobodyFound}
+              {t.common.nobodyFound}
             </div>
           )}
           {results.map((p) => (

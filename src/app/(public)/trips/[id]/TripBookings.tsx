@@ -25,13 +25,14 @@ export type { TripBookingRow };
 export default function TripBookings({
   tripId,
   bookings,
-  canEdit = true,
   visibilityOptions,
 }: {
   tripId: string;
-  /** Только брони без дат — датированные показывает лента. */
-  bookings: TripBookingRow[];
-  canEdit?: boolean;
+  /** Только брони без дат — датированные показывает лента. canEdit у
+   *  каждой строки свой: у брони нет editableByOthers, и правят её
+   *  только автор и владелец поездки (как guardBookingTouch на
+   *  сервере), а не любой участник. */
+  bookings: (TripBookingRow & { canEdit: boolean })[];
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
@@ -98,7 +99,7 @@ export default function TripBookings({
                       {t.trips.bookings.link}
                     </a>
                   )}
-                  {canEdit && (
+                  {b.canEdit && (
                     <>
                       <button
                         type="button"

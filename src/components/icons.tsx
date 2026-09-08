@@ -385,6 +385,28 @@ export function UploadIcon() {
   );
 }
 
+/** Лист с загнутым углом — «это файл, а не картинка». Появился для
+ *  превью PDF в дропзоне: PDF в <img> рисуется битой картинкой, и вместо
+ *  неё показываются иконка с именем файла. */
+export function FileIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1.6rem"
+      height="1.6rem"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z" />
+      <path d="M13 3v6h6" />
+    </svg>
+  );
+}
+
 export function UserIcon({ className }: { className?: string } = {}) {
   return (
     <svg

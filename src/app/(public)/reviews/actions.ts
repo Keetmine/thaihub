@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
 import { getT } from "@/lib/i18n";
 import { isEventFinished } from "@/lib/eventFinished";
+import { canSeeMeetup } from "@/lib/meetups";
 import { parseCommentPhotoUrls } from "@/lib/commentPhotos";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
@@ -36,6 +37,28 @@ function pagePath(kind: ReviewKind, id: string): string {
  * для разделов это «не оценивал», для общей оценки вызывающий сам
  * превращает null в ошибку.
  */
+/**
+ * Гейт события для отзывов и комментариев: событие должно существовать
+ * и быть видимым зрителю. Встречу сообщества видят только участники
+ * (см. src/lib/meetups.ts), и писать под ней — тоже только они: иначе
+ * посторонний оставлял бы комментарии под закрытой встречей, зная лишь
+ * её id. Текст ошибки — тот же «не найдено», что у 404 самой страницы:
+ * «есть, но не для вас» раскрывал бы существование встречи.
+ *
+ * Возвращает текст ошибки или null, если всё в порядке.
+ */
+async function eventVisibleError(
+  eventId: string,
+  viewerId: string,
+): Promise<string | null> {
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { communityId: true },
+  });
+  if (event && (await canSeeMeetup(event, viewerId))) return null;
+  return (await getT()).t.events.errors.notFound;
+}
+
 function parseRating(raw: FormDataEntryValue | null): number | null {
   const value = String(raw ?? "").trim();
   if (!value) return null;
@@ -57,11 +80,17 @@ export async function saveReview(
   if (!user) redirect("/login");
   const { t } = await getT();
 
-  // Событие ещё не прошло — отзыв не принимаем. Страница такую форму и
-  // не рисует, но форма не защита: экшен вызывается напрямую, мимо
-  // любой страницы (см. src/lib/eventFinished.ts).
-  if (kind === "event" && !(await isEventFinished(id))) {
-    return { ok: false, error: t.reviews.errors.eventNotFinished };
+  if (kind === "event") {
+    // Сначала — видимость: несуществующее событие и закрытая встреча
+    // чужого сообщества отвечают одинаковым «не найдено».
+    const gateError = await eventVisibleError(id, user.id);
+    if (gateError) return { ok: false, error: gateError };
+    // Событие ещё не прошло — отзыв не принимаем. Страница такую форму и
+    // не рисует, но форма не защита: экшен вызывается напрямую, мимо
+    // любой страницы (см. src/lib/eventFinished.ts).
+    if (!(await isEventFinished(id))) {
+      return { ok: false, error: t.reviews.errors.eventNotFinished };
+    }
   }
 
   const rating = parseRating(formData.get("rating"));
@@ -108,6 +137,15 @@ export async function addComment(
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { t } = await getT();
+
+  // Комментарий под событием — только тому, кто вправе его видеть:
+  // закрытая встреча сообщества для постороннего «не найдена»
+  // (см. eventVisibleError выше).
+  if (kind === "event") {
+    const gateError = await eventVisibleError(id, user.id);
+    if (gateError) return { ok: false, error: gateError };
+  }
+
   const text = String(formData.get("text") ?? "").trim();
   if (!text) return { ok: false, error: t.reviews.errors.emptyComment };
   if (text.length > 3000) return { ok: false, error: t.reviews.errors.tooLongComment };

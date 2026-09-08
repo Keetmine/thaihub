@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
+import { uploadErrorMessage } from "@/lib/uploadErrors";
 
 // Мини-редактор для вики-статей: contenteditable + document.execCommand
 // (deprecated, но повсеместно работает и не тянет зависимостей).
@@ -24,8 +26,10 @@ export default function RichTextEditor({
   labelledBy?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const t = useT();
   const [html, setHtml] = useState(defaultValue);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   function exec(command: string, value?: string) {
     ref.current?.focus();
@@ -35,16 +39,27 @@ export default function RichTextEditor({
 
   async function insertImage(file: File) {
     setUploading(true);
+    setUploadError(null);
     try {
       const body = new FormData();
       body.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body });
-      if (!res.ok) throw new Error("upload failed");
-      const { url } = (await res.json()) as { url: string };
+      const data = await res.json();
+      // Ручка отдаёт машинный код ошибки — фразу подбирает общий разбор,
+      // как в FileDropzone (раньше тут был голый throw, и слишком большой
+      // файл выглядел как «кнопка не сработала», без единого слова).
+      if (!res.ok) {
+        setUploadError(uploadErrorMessage(t, data, t.widgets.file.failed));
+        return;
+      }
+      const { url } = data as { url: string };
       exec(
         "insertHTML",
         `<img src="${url}" alt="" loading="lazy" decoding="async" style="max-width:100%;border-radius:0.5rem" />`,
       );
+    } catch {
+      // Сеть оборвалась или ответ не JSON — причину не знаем.
+      setUploadError(t.widgets.file.failed);
     } finally {
       setUploading(false);
     }
@@ -52,17 +67,17 @@ export default function RichTextEditor({
 
   // Только данные (никаких замыканий с ref в рендере — правило
   // react-hooks/refs); обработчик один, ниже.
-  const buttons: { key: string; label: React.ReactNode; title: string; cmd: string; arg?: string }[] = [
-    { key: "h2", label: "H2", title: "Заголовок", cmd: "formatBlock", arg: "<h2>" },
-    { key: "h3", label: "H3", title: "Подзаголовок", cmd: "formatBlock", arg: "<h3>" },
-    { key: "p", label: "¶", title: "Обычный текст", cmd: "formatBlock", arg: "<p>" },
-    { key: "b", label: <b>B</b>, title: "Жирный", cmd: "bold" },
-    { key: "i", label: <i>I</i>, title: "Курсив", cmd: "italic" },
-    { key: "u", label: <u>U</u>, title: "Подчёркнутый", cmd: "underline" },
-    { key: "ul", label: "• Список", title: "Маркированный список", cmd: "insertUnorderedList" },
-    { key: "ol", label: "1. Список", title: "Нумерованный список", cmd: "insertOrderedList" },
-    { key: "link", label: "Ссылка", title: "Вставить ссылку", cmd: "createLink" },
-    { key: "clear", label: "✕ Формат", title: "Очистить форматирование", cmd: "removeFormat" },
+  const buttons: { key: string; label: React.ReactNode; tip: string; cmd: string; arg?: string }[] = [
+    { key: "h2", label: "H2", tip: "Заголовок", cmd: "formatBlock", arg: "<h2>" },
+    { key: "h3", label: "H3", tip: "Подзаголовок", cmd: "formatBlock", arg: "<h3>" },
+    { key: "p", label: "¶", tip: "Обычный текст", cmd: "formatBlock", arg: "<p>" },
+    { key: "b", label: <b>B</b>, tip: "Жирный", cmd: "bold" },
+    { key: "i", label: <i>I</i>, tip: "Курсив", cmd: "italic" },
+    { key: "u", label: <u>U</u>, tip: "Подчёркнутый", cmd: "underline" },
+    { key: "ul", label: "• Список", tip: "Маркированный список", cmd: "insertUnorderedList" },
+    { key: "ol", label: "1. Список", tip: "Нумерованный список", cmd: "insertOrderedList" },
+    { key: "link", label: "Ссылка", tip: "Вставить ссылку", cmd: "createLink" },
+    { key: "clear", label: "✕ Формат", tip: "Очистить форматирование", cmd: "removeFormat" },
   ];
 
   function runButton(b: (typeof buttons)[number]) {
@@ -78,12 +93,15 @@ export default function RichTextEditor({
     <div>
       <input type="hidden" name={name} value={html} />
       <div className="d-flex flex-wrap gap-1 mb-2">
+        {/* Подсказки — через data-tooltip, а не браузерный title (АА5):
+            title нигде на сайте не стилизован и не показывается с
+            клавиатуры, общий тултип умеет и то и другое. */}
         {buttons.map((b) => (
           <button
             key={b.key}
             type="button"
             className="btn btn-ghost btn-sm"
-            title={b.title}
+            data-tooltip={b.tip}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => runButton(b)}
           >
@@ -110,7 +128,11 @@ export default function RichTextEditor({
           <button
             key={c}
             type="button"
-            title={`Цвет текста ${c}`}
+            // У кружка нет текста — aria-label даёт имя читалке, тултип
+            // дублирует его глазам (title не делал толком ни того, ни
+            // другого).
+            aria-label={`Цвет текста ${c}`}
+            data-tooltip={`Цвет текста ${c}`}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => exec("foreColor", c)}
             style={{
@@ -127,7 +149,8 @@ export default function RichTextEditor({
           <button
             key={c}
             type="button"
-            title={`Фон ${c}`}
+            aria-label={`Фон ${c}`}
+            data-tooltip={`Фон ${c}`}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => exec("hiliteColor", c)}
             style={{
@@ -140,6 +163,7 @@ export default function RichTextEditor({
           />
         ))}
       </div>
+      {uploadError && <p className="small text-danger mb-2">{uploadError}</p>}
       <div
         ref={ref}
         className="form-control rich-editor"

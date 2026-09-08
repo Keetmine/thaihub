@@ -33,7 +33,9 @@ export const dynamic = "force-dynamic";
 export default async function TripsPage() {
   const { locale, t } = await getT();
   const user = await getCurrentUser();
-  if (!user) redirect(localeHref("/login", locale));
+  // next — чтобы после входа вернуло сюда же (гейт ловит и протухшую
+  // сессию, мимо прокси, который смотрит только наличие куки).
+  if (!user) redirect(localeHref("/login?next=/trips", locale));
 
   // Поездки целиком — платная функция (см. PremiumUpsell / /admin/users).
   if (!isPremiumActive(user)) {

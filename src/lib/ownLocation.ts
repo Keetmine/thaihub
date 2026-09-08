@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { resolveMapsCoords, resolveMapsCoordsViaHttp } from "@/lib/blscene";
 import { isLocationCategory } from "@/lib/locationCategories";
+import { parseUploadUrl } from "@/lib/uploadUrl";
 import { getT } from "@/lib/i18n";
 
 // Обычный модуль БЕЗ "use server" — сознательно. Раньше createOwnLocation
@@ -53,7 +54,11 @@ export async function createOwnLocation(
   const name = String(formData.get("name") ?? "").trim();
   const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
-  const photoUrl = String(formData.get("photoUrl") ?? "").trim();
+  // Фото места — только свой /uploads/…: адрес уходит в голый <img> на
+  // страницах списков и поездок (см. src/lib/uploadUrl.ts). Пусто —
+  // «без фото»; подделанный адрес — ошибка, а не молчаливое сохранение.
+  const photo = parseUploadUrl(formData.get("photoUrl"));
+  if (!photo.ok) return { ok: false, error: (await getT()).t.lists.errors.badPhotoUrl };
   if (!name) return { ok: false, error: (await getT()).t.lists.errors.placeNameRequired };
 
   let coords: { lat: number; lng: number } | null = null;
@@ -72,7 +77,7 @@ export async function createOwnLocation(
     data: {
       name,
       createdByUserId: userId,
-      photoUrl: photoUrl || null,
+      photoUrl: photo.url,
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
       category: rawCategory && isLocationCategory(rawCategory) ? rawCategory : null,

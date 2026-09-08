@@ -75,9 +75,9 @@ export const account: Dict["account"] = {
   stats: {
     topPerformers: "Чаще всего видела вживую",
 
-    artistLists: "Мои списки актёров",
+    artistLists: "Мои списки артистов",
     artistListsHint: "Создайте свой список — «видела вживую», «пили пиво»…",
-    artistListsLocked: "Свои списки актёров — по подписке.",
+    artistListsLocked: "Свои списки артистов — по подписке.",
     artistListsLockedCta: "Оформить",
     listEmpty: "пока пусто",
     listCount: (n: number) => `${n} ${plural(n, ["артист", "артиста", "артистов"])}`,
@@ -128,7 +128,7 @@ export const account: Dict["account"] = {
     genderOther: "другой",
     birthDate: "Дата рождения",
     bio: "О себе",
-    bioPlaceholder: "Любимые актёры и сериалы, на скольких концертах были",
+    bioPlaceholder: "Любимые артисты и сериалы, на скольких концертах были",
     save: "Сохранить",
 
     exportTitle: "Выгрузка данных",
@@ -195,7 +195,7 @@ export const account: Dict["account"] = {
     privacyHideActivity: "Скрыть всю активность",
     privacyHideActivityHint: "Не-друзья увидят только имя и фото.",
     privacyHideAchievements: "Скрыть достижения",
-    privacyHideFavorites: "Скрыть фан-профиль (любимых актёров)",
+    privacyHideFavorites: "Скрыть фан-профиль (любимых артистов)",
     privacyHideVisited: "Скрыть посещённые места",
 
     currentPassword: "Текущий пароль",
@@ -205,6 +205,9 @@ export const account: Dict["account"] = {
     passwordSaving: "Сохранение…",
     passwordSubmit: "Сменить пароль",
     passwordFailed: "Не удалось изменить пароль — попробуйте ещё раз",
+    /** Подделанный адрес фото (см. src/lib/uploadUrl.ts) — молча не
+     *  сохраняем и говорим почему. */
+    badPhotoUrl: "Фото сохранить не вышло — загрузите картинку заново",
     passwordNoAccount: "Аккаунт создан через Telegram — пароля у него нет",
     passwordWrongCurrent: "Неверный текущий пароль",
     passwordTooShort: "Новый пароль должен быть не короче 6 символов",

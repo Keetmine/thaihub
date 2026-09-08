@@ -19,6 +19,9 @@ export const widgets = {
   },
   file: {
     drop: "Drop a file here or choose one",
+    /** Короткая подпись дропзоны для тач-экранов: «перетащите» там
+     *  нечем. */
+    choose: "Choose a file",
     uploading: "Uploading…",
     thanks: "Thank you! Your message is sent — we'll look into it and reply if needed.",
     kind: "What is this about",
@@ -29,6 +32,9 @@ export const widgets = {
     message: "Message",
     failed: "Could not upload the file",
     hintImage: "Image, up to 8MB",
+    /** Для дропзон, принимающих PDF (брони, билеты): подпись «только
+     *  изображение» там говорила неправду. */
+    hintPdf: "Image or PDF, up to 8MB",
     remove: "Remove",
   },
   /** Окно кадрирования своей фотографии — см. ImageCropDialog. */
@@ -62,6 +68,10 @@ export const widgets = {
     clear: "Clear",
   },
   errors: {
+    /** Общая фраза «запрос не дошёл» для catch-веток форм: раньше каждая
+     *  придумывала свою, а форма создания сообщества и вовсе показывала
+     *  чужую («Укажите название») на любую ошибку сети. */
+    network: "Couldn't reach the server, please try again",
     notFoundTitle: "Page not found",
     notFoundHint: "There's no such page — it may have been removed, or the link has a typo.",
     goHome: "Go home",

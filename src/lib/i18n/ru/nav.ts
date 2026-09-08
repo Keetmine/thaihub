@@ -9,6 +9,8 @@ export const nav: Dict["nav"] = {
     trips: "Поездки",
     communities: "Сообщества",
     calendar: "Календарь",
+    // Короткая подпись для мобильного таб-бара — см. комментарий в en.
+    calendarShort: "Даты",
     search: "Поиск",
     searchPlaceholder: "Поиск…",
     searchAria: "Поиск по сайту",

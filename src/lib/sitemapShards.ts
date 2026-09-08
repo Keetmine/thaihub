@@ -139,8 +139,27 @@ const getSectionCounts = unstable_cache(
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
-/** Статические страницы витрины. Дат нет намеренно — см. `entries`. */
-const STATIC_PATHS = ["/", "/about", "/calendar", "/help", "/dramas", "/artists", "/novels", "/locations", "/wiki"];
+/** Статические страницы витрины. Дат нет намеренно — см. `entries`.
+ *  /calendar здесь больше нет: календарь — платная функция, робот
+ *  получает пейволл, а страница помечена noIndex (не витрина, решение
+ *  из аудита 2026-09). /events и /communities — гостевые витрины,
+ *  /locations/map — карта каталога, /privacy и /terms — правовые
+ *  тексты: всё публичное и индексируемое. */
+const STATIC_PATHS = [
+  "/",
+  "/about",
+  "/help",
+  "/dramas",
+  "/artists",
+  "/novels",
+  "/locations",
+  "/locations/map",
+  "/events",
+  "/communities",
+  "/wiki",
+  "/privacy",
+  "/terms",
+];
 
 /** Оглавление: список id шардов в порядке вывода в индексе. */
 export async function listSitemapShards(): Promise<string[]> {

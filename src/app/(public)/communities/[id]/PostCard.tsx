@@ -29,7 +29,9 @@ import PostEditForm from "./PostEditForm";
 export type PostListRow = {
   id: string;
   title: string | null;
-  text: string;
+  /** null — зритель снаружи: текст темы не выбирается из базы вовсе
+   *  (см. DiscussionsTab), и отрывка вместо заголовка не будет. */
+  text: string | null;
   pinned: boolean;
   /** Нужна форме правки: галочку «только для участников» она показывает
    *  в её текущем состоянии, а не сбрасывает при каждой правке. */
@@ -59,10 +61,20 @@ export default async function PostCard({
   const s = t.communities.posts;
   const authorName = post.author.deletedAt ? t.common.deletedAccount : post.author.name;
   // Круг лиц у правки и удаления один и тот же: автор, хозяева
-  // сообщества, админ сайта (см. postActions.ts).
-  const canEdit = viewer.isAdmin || viewer.canManage || post.author.id === viewer.id;
+  // сообщества, админ сайта (см. postActions.ts). Снаружи (href ===
+  // null) действий нет ни у кого: текста темы в строке нет, и автор,
+  // успевший выйти из сообщества, правил бы её пустой формой вслепую.
+  const canEdit =
+    href !== null && (viewer.isAdmin || viewer.canManage || post.author.id === viewer.id);
+  // Снаружи текста нет (null) — у темы без заголовка вывеской служит
+  // честное «Тема без названия», а не отрывок разговора.
   const excerpt =
-    post.text.length > EXCERPT_MAX ? `${post.text.slice(0, EXCERPT_MAX).trimEnd()}…` : post.text;
+    post.text === null
+      ? null
+      : post.text.length > EXCERPT_MAX
+        ? `${post.text.slice(0, EXCERPT_MAX).trimEnd()}…`
+        : post.text;
+  const heading = post.title ?? excerpt ?? s.untitled;
 
   return (
     // id — якорь: ссылки из старых уведомлений вели на вкладку с
@@ -74,10 +86,10 @@ export default async function PostCard({
           <h3 className="h6 mb-1">
             {href ? (
               <AppLink href={href} className="text-white text-decoration-none">
-                {post.title ?? excerpt}
+                {heading}
               </AppLink>
             ) : (
-              <span className="text-white">{post.title ?? excerpt}</span>
+              <span className="text-white">{heading}</span>
             )}
           </h3>
           <p className="small text-secondary mb-0">
@@ -113,7 +125,9 @@ export default async function PostCard({
             // единственным словом среди значков.
             <PostEditForm
               postId={post.id}
-              initial={{ title: post.title, text: post.text, isPrivate: post.isPrivate }}
+              // canEdit гарантирует href !== null, то есть текст выбран;
+              // `?? ""` — только для типа.
+              initial={{ title: post.title, text: post.text ?? "", isPrivate: post.isPrivate }}
               compact
             />
           )}

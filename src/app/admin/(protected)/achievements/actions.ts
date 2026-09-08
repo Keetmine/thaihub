@@ -38,7 +38,7 @@ function parseAchievementForm(formData: FormData) {
   }
   if (!emoji) throw new Error("Укажите эмодзи");
   if (!title) throw new Error("Укажите название");
-  if (!hint) throw new Error("Укажите подсказку — как получить ачивку");
+  if (!hint) throw new Error("Укажите подсказку — как получить достижение");
 
   const kind =
     scope === "COMMUNITY"
@@ -74,7 +74,7 @@ export async function createAchievement(formData: FormData) {
     achievement = await prisma.achievement.create({ data });
   } catch (error) {
     if (isUniqueKeyError(error)) {
-      throw new Error("Ачивка с таким ключом уже существует");
+      throw new Error("Достижение с таким ключом уже существует");
     }
     throw error;
   }
@@ -95,18 +95,18 @@ export async function updateAchievement(id: string, formData: FormData) {
   const data = parseAchievementForm(formData);
 
   const before = await prisma.achievement.findUnique({ where: { id } });
-  if (!before) throw new Error("Ачивка не найдена");
+  if (!before) throw new Error("Достижение не найдено");
   // Смена ключа отвязала бы уже выданные UserAchievement (связь по key
   // без FK) — форма шлёт key только для чтения, здесь страхуемся.
   if (data.key !== before.key) {
-    throw new Error("Ключ менять нельзя — по нему привязаны уже полученные ачивки");
+    throw new Error("Ключ менять нельзя — по нему привязаны уже полученные достижения");
   }
   // Смена scope сменила бы и адресата ачивки: выданные строки лежат в
   // РАЗНЫХ таблицах (UserAchievement / CommunityAchievement), и уже
   // полученное осиротело бы. Форма scope на правке не шлёт, здесь
   // страхуемся — как с ключом.
   if (data.scope !== before.scope) {
-    throw new Error("Чью ачивку менять нельзя: уже выданные записи лежат по старому адресу");
+    throw new Error("Чьё достижение менять нельзя: уже выданные записи лежат по старому адресу");
   }
 
   await prisma.achievement.update({ where: { id }, data });
@@ -138,7 +138,7 @@ export async function updateAchievement(id: string, formData: FormData) {
 export async function toggleAchievementEnabled(id: string) {
   await requireAdmin();
   const existing = await prisma.achievement.findUnique({ where: { id } });
-  if (!existing) throw new Error("Ачивка не найдена");
+  if (!existing) throw new Error("Достижение не найдено");
   await prisma.achievement.update({
     where: { id },
     data: { enabled: !existing.enabled },
@@ -195,7 +195,7 @@ export async function bulkDeleteAchievements(ids: string[]): Promise<void> {
     // У массового действия нет одной записи-владельца — id первой строки
     // просто даёт ссылке куда указывать, смысл несёт note.
     entityId: ids[0],
-    entityLabel: `${ids.length} ачивок`,
+    entityLabel: `${ids.length} достижений`,
     note: `удалено: ${summarize(rows.map((a) => `${a.emoji} ${a.title}`))}`,
   });
   revalidateAchievementPages();
@@ -225,7 +225,7 @@ export async function bulkSetAchievementsEnabled(
     action: "BULK",
     entityType: "Achievement",
     entityId: rows[0].id,
-    entityLabel: `${rows.length} ачивок`,
+    entityLabel: `${rows.length} достижений`,
     note: `${enabled ? "включено" : "выключено"}: ${summarize(
       rows.map((a) => `${a.emoji} ${a.title}`),
     )}`,

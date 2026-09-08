@@ -1348,14 +1348,25 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   height: 0.7rem;
 }
 
+/* Русская дата с прописной буквы: bootstrap-овский text-capitalize
+   поднимал КАЖДОЕ слово («Воскресенье, 25 Октября»), а по правилам
+   языка прописная нужна только первой букве строки. ::first-letter
+   поднимает ровно её и не трогает месяц. */
+.first-letter-cap::first-letter {
+  text-transform: uppercase;
+}
+
 /* Баннер согласия на куки (src/components/CookieConsent.tsx): плашка в
-   нижнем углу, поверх контента, но не на весь экран. */
+   нижнем углу, поверх контента, но не на весь экран. z-index — между
+   таб-баром (1035) и шторкой/модалками (1044/1050): раньше стоял 1080,
+   и баннер ложился ПОВЕРХ открытой модалки, закрывая её кнопки на
+   телефоне. Согласие не срочнее диалога, который человек сам открыл. */
 .cookie-consent {
   position: fixed;
   bottom: 1rem;
   left: 1rem;
   right: 1rem;
-  z-index: 1080;
+  z-index: 1040;
   max-width: 26rem;
   box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
 }
@@ -2284,10 +2295,37 @@ svg[aria-hidden="true"] {
   max-height: 9.5rem;
 }
 
+/* «Перетащите файл сюда или выберите» на устройстве без курсора — совет
+   без смысла: тянуть нечем. Обе подписи лежат в разметке, а какая видна,
+   решает hover-медиазапрос: на таче остаётся короткое «Выберите файл».
+   (hover: none) вместо ширины экрана: ноутбук с узким окном перетащить
+   как раз может, а планшету и в альбомной ориентации нечем. */
+@media (hover: none) {
+  .file-dropzone-hint-drag {
+    display: none;
+  }
+}
+@media (hover: hover) {
+  .file-dropzone-hint-tap {
+    display: none;
+  }
+}
+
 .file-dropzone-preview {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Превью загруженного PDF: иконка файла и имя вместо <img> (PDF в img —
+   всегда битая картинка). Имя может быть длинным — даём перенос. */
+.file-dropzone-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  color: var(--bs-body-color);
 }
 
 .file-dropzone-preview img {

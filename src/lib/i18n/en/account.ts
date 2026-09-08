@@ -217,6 +217,9 @@ export const account = {
     passwordSaving: "Saving…",
     passwordSubmit: "Change password",
     passwordFailed: "Couldn't change the password — please try again",
+    /** Подделанный адрес фото (см. src/lib/uploadUrl.ts) — молча не
+     *  сохраняем и говорим почему. */
+    badPhotoUrl: "That photo could not be saved — upload the picture again",
     passwordNoAccount: "This account was created through Telegram — it has no password",
     passwordWrongCurrent: "Wrong current password",
     passwordTooShort: "The new password must be at least 6 characters long",

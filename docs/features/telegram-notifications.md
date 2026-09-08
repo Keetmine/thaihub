@@ -114,8 +114,9 @@ reminders** (3 days before `premiumUntil`, dedup via
 им нечего продлевать). Separately, `notifyFriendsAboutGoing` fires
 from `toggleGoing` (fire-and-forget) — «X идёт на …» to the actor's
 friends, unless a friend muted them (`FriendNotificationMute`, toggled
-by the bell button on the friend's profile page); receivers also need
-Telegram + active premium.
+by the bell button on the friend's profile page; экшен заводит mute
+только при принятой дружбе — иначе ошибка значением, а не строка про
+постороннего); receivers also need Telegram + active premium.
 
 **Дни рождения избранных артистов** (`sendBirthdayNotifications`, З3) —
 там же, в получасовом прогоне. Блок на главной показывает именинников

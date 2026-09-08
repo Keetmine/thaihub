@@ -91,6 +91,15 @@ export async function addPerformerToList(
 ): Promise<ActionResult> {
   const own = await requireOwnList(listId);
   if (!own.ok) return own;
+  // performerId приходит с клиента: подделанный давал 500 на внешнем
+  // ключе вместо внятного ответа.
+  const performer = await prisma.performer.findUnique({
+    where: { id: performerId },
+    select: { id: true },
+  });
+  if (!performer) {
+    return { ok: false, error: (await getT()).t.lists.errors.artistNotFound };
+  }
   const max = await prisma.performerListItem.aggregate({
     where: { listId },
     _max: { position: true },

@@ -75,7 +75,6 @@ export const filters: Dict["filters"] = {
     live: {
         allFilters: "Все фильтры",
         seeAll: (n: number) => `Показать все результаты (${n})`,
-        empty: "Ничего не нашлось",
         hint: "Начните вводить название или имя",
     },
 

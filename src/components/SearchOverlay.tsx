@@ -233,7 +233,7 @@ export default function SearchOverlay({
                     </p>
                   ) : hits.length === 0 ? (
                     <p className="small text-secondary m-0 p-3">
-                      {t.filters.live.empty}
+                      {t.common.nothingFound}
                     </p>
                   ) : (
                     hits.map((hit, i) => (

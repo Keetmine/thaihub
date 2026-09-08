@@ -96,7 +96,11 @@ export async function generateMetadata({
     title: `${performer.name}${performer.realName ? ` (${performer.realName})` : ""}`,
     description:
       performer.bio?.slice(0, 160) ?? t.catalog.artist.metaDescription(performer.name),
-    path: `/artists/${rawId}`,
+    // Canonical всегда по слагу, а не по запрошенному адресу: страница
+    // открывается и по легаси-id, и такой адрес объявлял сам себя
+    // каноническим — поисковик видел два «канонических» дубля (образец —
+    // locations/novels).
+    path: `/artists/${performer.slug ?? performer.id}`,
     image: performer.photoUrl,
     type: "article",
   });
@@ -1199,7 +1203,9 @@ export default async function PerformerPage({
                   path: "/artists?view=mascots",
                 }
               : { name: t.catalog.breadcrumb.artists, path: "/artists" },
-            { name: performer.name, path: `/artists/${rawId}` },
+            // По слагу, как canonical в метадате: крошка с легаси-id
+            // расходилась бы с каноническим адресом страницы.
+            { name: performer.name, path: `/artists/${performer.slug ?? performer.id}` },
           ],
           locale,
         )}

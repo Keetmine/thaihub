@@ -2,6 +2,7 @@
 
 import { adminEntityHref, type AdminEntityType } from "@/app/admin/entityHref";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "./LocaleProvider";
 import Modal from "./Modal";
 
 export type EntityOption = {
@@ -17,14 +18,17 @@ export type EntityOption = {
  *  как и Avatar ниже: компоненты живут отдельными бандлами, и общий
  *  импорт затащил бы один в другой. */
 function OpenEntityLink({ href, name }: { href: string; name: string }) {
+  // Подписи из словаря: селект стоит и на публичных формах (в админке
+  // proxy ставит ru, там всё по-русски, как и было).
+  const t = useT();
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="entity-open-link"
-      data-tooltip="Открыть карточку в новой вкладке"
-      aria-label={`Открыть карточку: ${name}`}
+      data-tooltip={t.ui.select.openCard}
+      aria-label={t.ui.select.openCardAria(name)}
       // Чип стоит рядом с полем ввода: гасим всплытие, чтобы клик по
       // ссылке не считался кликом по чипу/полю.
       onMouseDown={(e) => e.stopPropagation()}
@@ -61,10 +65,10 @@ export default function EntityMultiSelect({
   name,
   options,
   defaultSelectedIds,
-  placeholder = "Начните вводить…",
+  placeholder,
   onCreateNew,
-  createLabel = "Создать",
-  createNameLabel = "Название",
+  createLabel,
+  createNameLabel,
   emptyMessage,
   externalAdditions,
   searchOptions,
@@ -119,6 +123,13 @@ export default function EntityMultiSelect({
    *  страницы) ссылок нет. */
   hrefKind?: AdminEntityType;
 }) {
+  // Дефолты подписей — из словаря (пропом по-прежнему можно
+  // переопределить): раньше русские строки были зашиты и утекали на
+  // EN-витрину (аудит 2026-09, п.3).
+  const t = useT();
+  const placeholderText = placeholder ?? t.ui.select.multiPlaceholder;
+  const createText = createLabel ?? t.ui.select.create;
+  const createNameText = createNameLabel ?? t.ui.select.nameLabel;
   const [createdOptions, setCreatedOptions] = useState<EntityOption[]>([]);
   const allOptions = useMemo(
     () => [...options, ...createdOptions.filter((c) => !options.some((o) => o.id === c.id))],
@@ -239,7 +250,7 @@ export default function EntityMultiSelect({
         setCreatePrefill(null);
       }
     } catch {
-      setCreateError("Не удалось создать. Проверьте название и попробуйте ещё раз.");
+      setCreateError(t.ui.select.createFailed);
     } finally {
       setIsCreating(false);
     }
@@ -259,7 +270,7 @@ export default function EntityMultiSelect({
                 type="button"
                 className="performer-chip-remove"
                 onClick={() => remove(o.id)}
-                aria-label={`Убрать ${o.name}`}
+                aria-label={t.ui.select.remove(o.name)}
               >
                 ×
               </button>
@@ -283,7 +294,7 @@ export default function EntityMultiSelect({
                 type="button"
                 className="performer-chip-remove"
                 onClick={() => remove(o.id)}
-                aria-label={`Убрать ${o.name}`}
+                aria-label={t.ui.select.remove(o.name)}
               >
                 ×
               </button>
@@ -297,8 +308,8 @@ export default function EntityMultiSelect({
           id={id}
           type="text"
           className={inputClassName ? `form-control ${inputClassName}` : "form-control"}
-          placeholder={placeholder}
-          aria-label={placeholder}
+          placeholder={placeholderText}
+          aria-label={placeholderText}
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
@@ -308,7 +319,11 @@ export default function EntityMultiSelect({
         {isOpen && searchOptions && trimmedQuery.length > 0 && filtered.length === 0 && !showCreateOption && (
           <div className="performer-combobox-dropdown">
             <div className="performer-combobox-option text-secondary" aria-disabled>
-              {trimmedQuery.length < 2 ? "Введите минимум 2 символа" : isSearching ? "Поиск…" : "Никого не найдено"}
+              {trimmedQuery.length < 2
+                ? t.ui.select.minTwoChars
+                : isSearching
+                  ? t.ui.select.searching
+                  : t.common.nobodyFound}
             </div>
           </div>
         )}
@@ -336,7 +351,7 @@ export default function EntityMultiSelect({
                   setIsOpen(false);
                 }}
               >
-                {`+ ${createLabel} «${trimmedQuery}»`}
+                {t.ui.select.createOption(createText, trimmedQuery)}
               </button>
             )}
           </div>
@@ -350,11 +365,11 @@ export default function EntityMultiSelect({
       <Modal
         open={createPrefill !== null}
         onClose={() => setCreatePrefill(null)}
-        title={createLabel}
+        title={createText}
       >
         <form className="d-flex flex-column gap-3" onSubmit={handleCreateSubmit}>
           <div>
-            <label className="form-label" htmlFor="entity-multi-select-newName">{createNameLabel} *</label>
+            <label className="form-label" htmlFor="entity-multi-select-newName">{createNameText} *</label>
             <input id="entity-multi-select-newName"
               name="newName"
               required
@@ -365,7 +380,7 @@ export default function EntityMultiSelect({
           </div>
           {createError && <p className="small text-danger mb-0">{createError}</p>}
           <button type="submit" className="btn btn-primary" disabled={isCreating}>
-            {isCreating ? "Создание…" : "Создать"}
+            {isCreating ? t.ui.select.creating : t.ui.select.create}
           </button>
         </form>
       </Modal>

@@ -35,6 +35,7 @@ export async function generateMetadata({
     return pageMetadata({
       title: t.events.day.metaTitleUnknown,
       description: t.events.day.metaDescriptionUnknown,
+      noIndex: true,
     });
   // formatCombinedDateList для одной даты — «22 августа 2026»: без дня
   // недели (как в formatHumanDate) заголовок читается естественнее.
@@ -43,6 +44,11 @@ export async function generateMetadata({
     title: t.events.day.metaTitle(human),
     description: t.events.day.metaDescription(human),
     path: `/day/${date}`,
+    // День — часть платного календаря, гость видит пейволл. Раньше
+    // страница была закрыта только в robots.txt, и Google держал её как
+    // «indexed, though blocked»: запрет обхода не даёт увидеть noindex.
+    // Теперь наоборот — обход открыт, а из индекса выводит эта мета.
+    noIndex: true,
   });
 }
 

@@ -11,7 +11,13 @@ import { useT } from "@/components/LocaleProvider";
 
 export type FavoriteKind = "performer" | "event" | "agency";
 
-const actionByKind: Record<FavoriteKind, (id: string) => Promise<void>> = {
+// Экшен может вернуть ошибку значением `{ ok: false, error }` (текст
+// исключения в проде до клиента не доезжает) — сердечко тогда
+// откатывается, как и при броске.
+const actionByKind: Record<
+  FavoriteKind,
+  (id: string) => Promise<void | { ok: boolean }>
+> = {
   performer: toggleFavoritePerformer,
   event: toggleFavoriteEvent,
   agency: toggleFavoriteAgency,
@@ -59,7 +65,8 @@ export default function FavoriteButton({
     setActive(next);
     startTransition(async () => {
       try {
-        await actionByKind[kind](id);
+        const result = await actionByKind[kind](id);
+        if (result && !result.ok) setActive(!next);
       } catch {
         setActive(!next);
       }

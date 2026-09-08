@@ -3,6 +3,7 @@ import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import AlphabetDataList from "@/components/AlphabetDataList";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import DramaLocationGroups from "@/components/DramaLocationGroups";
 import { getCurrentUser } from "@/lib/userAuth";
 import { PinIcon } from "@/components/icons";
@@ -270,7 +271,10 @@ export default async function LocationsPage({
       />
 
       <div className="tab-bar-row">
-        <div className="tab-bar">
+        {/* ScrollableTabs, как во всех каталогах: со списками мест и
+            вкладкой сообществ ряд перерастает экран, и без растушёвки
+            обрезанная вкладка выглядела сломанной вёрсткой. */}
+        <ScrollableTabs>
           <AppLink
             href={`/locations?${q ? `q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
@@ -322,7 +326,7 @@ export default async function LocationsPage({
               {`${t.communities.places.catalogTab} (${communityPlacesCount})`}
             </AppLink>
           )}
-        </div>
+        </ScrollableTabs>
         <NameSearchBox
           action="/locations"
           q={q}

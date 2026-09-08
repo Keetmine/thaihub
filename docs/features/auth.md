@@ -32,6 +32,38 @@ E2e tests upsert a dedicated admin user via
 
 Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
 
+## Возврат после входа (`?next=`)
+
+Гость, упёршийся в гейт приватной страницы, после входа возвращается
+туда, куда шёл, а не в жёсткий `/account`. Механика:
+
+- `proxy.ts` при редиректе гостя на логин (приватные разделы и
+  `/admin/*`) добавляет `?next=<путь без языкового префикса + query>`.
+  Гейты внутри страниц (`trips/page.tsx`, `lists/page.tsx` — они ловят
+  ещё и протухшую сессию, мимо прокси) делают то же.
+- `/login` кладёт next в скрытое поле формы (server action своего URL
+  не видит) и проносит его в ссылку «Зарегистрироваться»
+  (`/signup?next=…`) — регистрация возвращает туда же; `/signup`
+  симметрично проносит next в ссылку «Войти».
+- Экшены `login`/`signup` после успеха редиректят на next; при ошибке
+  (неверный пароль, занятый email, лимит) next проносится обратно в
+  форму через query, чтобы возврат пережил опечатку. **Signup с next
+  пропускает онбординг** — возврат важнее, ник заполняется позже в
+  настройках (существующий путь: телеграм-новички с ником онбординг
+  тоже не видят). Без next всё как раньше: логин → `/account`,
+  регистрация → `/welcome/profile`.
+- Валидация — `sanitizeNextPath` (`src/lib/loginNext.ts`), строгая и
+  общая для страниц и экшенов: только внутренний путь (один `/` в
+  начале, не `//`, без `\` и управляющих символов, не длиннее 1024,
+  не `/login|/signup` — петля). Мусор молча отбрасывается → `/account`.
+  Языковой префикс срезается — его подставляет обратно `localeHref` по
+  языку страницы, с которой пришла форма.
+- **Google и Telegram next не проносят**: Telegram Login Widget не
+  сохраняет свои query-параметры в `data-auth-url` (проверено — из-за
+  этого же режим привязки живёт отдельным путём, а не параметром), у
+  Google next пришлось бы везти в state-куке. Осознанно оставлено как
+  есть: оба ведут на `/` или `/welcome/profile`, как раньше.
+
 ## Блокировка (бан)
 
 Инструмент владельца сайта — в отличие от мягкого удаления, которое
@@ -131,8 +163,15 @@ Signup/login pages: `src/app/(public)/signup/`, `src/app/(public)/login/`.
 
 **Signup is open** — no invite codes (the `InviteCode` system was
 removed; anyone can register with email+password). **Rate limiting**:
-`assertRateLimit` (`src/lib/rateLimit.ts`, in-memory fixed window, 30
-attempts / 10 min per IP) guards user login and signup. IP берётся из
+`src/lib/rateLimit.ts` (in-memory fixed window, 30 attempts / 10 min
+per IP) guards user login and signup. Две формы одной проверки:
+`isRateLimited` возвращает ответ **значением** — прод-сборка Next
+заменяет текст брошенной из server action ошибки заглушкой, и человек
+видел безликое зависание; форма входа по значению редиректит на
+`/login?error=rate` с человеческим «Слишком много попыток — подождите
+несколько минут» (`auth.login.rateLimited`, обе локали).
+`assertRateLimit` — throw-обёртка для действий без своей формы ошибок
+(промокоды, обратная связь, восстановление пароля). IP берётся из
 **последнего** элемента X-Forwarded-For — его дописывает Caddy, а
 начало списка может прислать сам клиент (первый элемент давал
 бесплатный обход лимита). Для e2e лимитер отключается переменной
@@ -307,7 +346,9 @@ cookie-presence check only** — it never touches the database:
   instead of sending a person anywhere useful).
 - `/`, `/about` (лендинг по постоянному адресу), `/wiki` (индекс) и
   `/wiki/[slug]`, `/login`, `/signup`, `/forgot-password`,
-  `/reset-password/[token]`, `/manifest.webmanifest` — always public.
+  `/reset-password/[token]`, `/terms`, `/privacy`,
+  `/manifest.webmanifest` — always public (юридические страницы — в
+  `PUBLIC_PATHS` явно, а не через финальный pass).
 - **Каталог открыт без логина ради SEO** (regex в proxy): `/artists`,
   `/dramas`, `/novels`, `/locations`, `/agencies`, `/day`, `/event`,
   `/search` со всеми подстраницами. Страницы null-safe по
@@ -332,7 +373,8 @@ cookie-presence check only** — it never touches the database:
 - `/event/[id]/ics` — public (calendar apps fetch it directly, no session
   cookie).
 - Everything else — redirects to `/login` unless a `user_session` cookie
-  is present at all (not validated against the DB here).
+  is present at all (not validated against the DB here). К редиректу
+  добавляется `?next=<исходный путь>` — см. «Возврат после входа».
 
 **Real session validation — is this cookie's session actually valid and
 unexpired — happens per-page via `getCurrentUser()`**, not in proxy.ts.
@@ -401,7 +443,9 @@ npx tsx --env-file=.env scripts/revoke-all-sessions.ts --apply  # удалить
 После регистрации редирект на /welcome: плитки самых «событийных»
 артистов + мультиселект с поиском — выбранные уходят в избранное
 (`saveOnboardingFavorites`, skipDuplicates), «Пропустить» ведёт на
-главную. Логин ведёт на /account, как раньше.
+главную. Логин ведёт на /account; и логин, и регистрация с `?next=`
+возвращают на исходную страницу (см. «Возврат после входа» — signup с
+next онбординг пропускает).
 
 ## Согласие и самоудаление
 

@@ -132,7 +132,11 @@ export async function generateMetadata({
     description:
       dramaSynopsisForLocale(drama, locale)?.slice(0, 160) ??
       t.catalog.drama.metaDescription(dramaTitleForLocale(drama, locale)),
-    path: `/dramas/${rawId}`,
+    // Canonical всегда по слагу, а не по запрошенному адресу: страница
+    // открывается и по легаси-id, и такой адрес объявлял сам себя
+    // каноническим — поисковик видел два «канонических» дубля (образец —
+    // locations/novels).
+    path: `/dramas/${drama.slug ?? drama.id}`,
     image: drama.posterUrl,
     type: "article",
   });
@@ -1069,7 +1073,9 @@ export default async function DramaDetailPage({
             { name: t.catalog.breadcrumb.dramas, path: "/dramas" },
             {
               name: dramaTitleForLocale(drama, locale),
-              path: `/dramas/${rawId}`,
+              // По слагу, как canonical выше: крошка с легаси-id
+              // расходилась бы с каноническим адресом страницы.
+              path: `/dramas/${drama.slug ?? drama.id}`,
             },
           ],
           locale,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { UploadIcon } from "@/components/icons";
+import { FileIcon, UploadIcon } from "@/components/icons";
 import ImageCropDialog from "@/components/ImageCropDialog";
 import { useT } from "@/components/LocaleProvider";
 import { uploadErrorMessage } from "@/lib/uploadErrors";
@@ -28,6 +28,7 @@ export default function FileDropzone({
   ratioW,
   ratioH,
   onUrlChange,
+  onUploadingChange,
 }: {
   name: string;
   /** Подпись над полем. Необязательна: у обложки сообщества и картинки
@@ -50,6 +51,12 @@ export default function FileDropzone({
    *  (обложка сообщества в окне правки уезжает своим экшеном). Пустая
    *  строка означает «убрали». */
   onUrlChange?: (url: string) => void;
+  /** Для форм, где адрес картинки уезжает ВМЕСТЕ с формой скрытым полем
+   *  (встреча, создание сообщества): пока файл едет, поле пустое, и
+   *  «Сохранить» отправил бы форму без картинки — молча, без единой
+   *  ошибки. Дропзона отдаёт своё «занята/свободна» наружу, а форма на
+   *  это время закрывает сабмит. */
+  onUploadingChange?: (busy: boolean) => void;
 }) {
   const uid = useId();
   const t = useT();
@@ -73,6 +80,7 @@ export default function FileDropzone({
 
   async function upload(file: File) {
     setIsUploading(true);
+    onUploadingChange?.(true);
     setError(null);
     try {
       const body = new FormData();
@@ -90,8 +98,21 @@ export default function FileDropzone({
       setError(t.widgets.file.failed);
     } finally {
       setIsUploading(false);
+      onUploadingChange?.(false);
     }
   }
+
+  // PDF в превью нельзя отдавать в <img> — браузер нарисует битую
+  // картинку. Показываем имя файла с иконкой: человеку важно увидеть,
+  // ЧТО именно он приложил (брони отелей и билеты грузятся именно PDF).
+  const isPdf = /\.pdf(\?|$)/i.test(url);
+  const fileName = (() => {
+    try {
+      return decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "");
+    } catch {
+      return url.split("/").pop() ?? "";
+    }
+  })();
 
   return (
     <div>
@@ -125,10 +146,17 @@ export default function FileDropzone({
       >
         {url ? (
           <div className="file-dropzone-preview">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-            loading="lazy"
-            decoding="async" src={url} alt="" />
+            {isPdf ? (
+              <span className="file-dropzone-file small text-break">
+                <FileIcon />
+                {fileName}
+              </span>
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+              loading="lazy"
+              decoding="async" src={url} alt="" />
+            )}
             <button
               type="button"
               className="btn btn-outline-danger btn-sm mt-2"
@@ -145,9 +173,25 @@ export default function FileDropzone({
           <>
             <UploadIcon />
             <p className="fw-semibold mb-0 mt-2">
-              {isUploading ? t.widgets.file.uploading : t.widgets.file.drop}
+              {isUploading ? (
+                t.widgets.file.uploading
+              ) : (
+                <>
+                  {/* «Перетащите файл сюда» на телефоне — совет без
+                      смысла: тянуть нечем. Обе подписи в разметке, экран
+                      без hover прячет длинную через CSS (hover: none). */}
+                  <span className="file-dropzone-hint-drag">{t.widgets.file.drop}</span>
+                  <span className="file-dropzone-hint-tap">{t.widgets.file.choose}</span>
+                </>
+              )}
             </p>
-            <p className="small text-secondary mb-0">{t.widgets.file.hintImage}</p>
+            {/* Подсказка — по accept: рамкам броней и билетов, куда кладут
+                PDF, «Изображение, до 8 МБ» говорила неправду. */}
+            <p className="small text-secondary mb-0">
+              {accept.toLowerCase().includes("pdf")
+                ? t.widgets.file.hintPdf
+                : t.widgets.file.hintImage}
+            </p>
           </>
         )}
         <input

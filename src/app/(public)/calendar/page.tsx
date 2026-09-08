@@ -29,6 +29,11 @@ export async function generateMetadata() {
     title: t.events.calendar.metaTitle,
     description: t.events.calendar.metaDescription,
     path: "/calendar",
+    // Календарь — платная функция: робот и гость видят пейволл, в
+    // выдаче такой странице делать нечего. Из sitemap она тоже убрана
+    // (sitemapShards.ts), а в robots.txt НЕ закрыта намеренно — иначе
+    // краулер не увидел бы сам noindex.
+    noIndex: true,
   });
 }
 

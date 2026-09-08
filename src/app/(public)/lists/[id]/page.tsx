@@ -12,23 +12,21 @@ import { AddPlaceBox, ListVisibilitySelect, PlaceRowControls } from "./ListContr
 import CreateOwnPlaceButton from "./CreateOwnPlaceButton";
 import EditListButton from "./EditListButton";
 import VisitedButton from "@/components/VisitedButton";
-import { communityHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { communityHref, listHref, locationHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { communityRights } from "@/lib/meetups";
 import { canSeeCommunityList } from "../communityLists";
 import { getT, localeHref } from "@/lib/i18n";
 import { userHref, userDisplayName } from "@/lib/userProfile";
+import { pageMetadata } from "@/lib/seo";
+import { cache } from "react";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlaceListPage({ params }: { params: Promise<{ id: string }> }) {
-  const { locale, t } = await getT();
-  // Гость (без логина) может открыть ПУБЛИЧНЫЙ список по прямой ссылке —
-  // proxy.ts пропускает /lists/[id] без куки, а гейт видимости ниже
-  // решает по самому списку.
-  const user = await getCurrentUser();
-
-  const { id: rawParam } = await params;
-  const list = await prisma.placeList.findFirst({
+// React.cache: generateMetadata и страница делят ОДИН запрос на
+// HTTP-запрос (тот же приём, что у деталок каталога) — метадата не
+// ходит в базу отдельно.
+const getPlaceList = cache(async (rawParam: string) =>
+  prisma.placeList.findFirst({
     where: slugOrIdWhere(rawParam),
     include: {
       user: { select: { id: true, name: true, username: true, deletedAt: true } },
@@ -40,7 +38,47 @@ export default async function PlaceListPage({ params }: { params: Promise<{ id: 
         orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       },
     },
+  }),
+);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id: rawParam } = await params;
+  const { t } = await getT();
+  const list = await getPlaceList(rawParam);
+  if (!list)
+    return pageMetadata({
+      title: t.lists.detail.metaTitle,
+      description: t.lists.detail.metaNotFound,
+      noIndex: true,
+    });
+  // Индексируем только то, что открыто ЛЮБОМУ гостю: личный PUBLIC-список
+  // и публичный список публичного сообщества (то же правило, что в гейте
+  // страницы, — но без зрителя: у поисковика аккаунта нет). Всё
+  // остальное — noIndex; название в мете при этом не секрет — слаг в
+  // адресе и так собран из названия, а посторонний получает 404-страницу.
+  const isPublic = list.community
+    ? canSeeCommunityList(list, list.community, false)
+    : list.visibility === "PUBLIC";
+  return pageMetadata({
+    title: list.title,
+    description:
+      list.description?.slice(0, 160) ??
+      t.lists.detail.metaDescription(list.title, list.items.length),
+    path: listHref(list),
+    noIndex: !isPublic,
   });
+}
+
+export default async function PlaceListPage({ params }: { params: Promise<{ id: string }> }) {
+  const { locale, t } = await getT();
+  // Гость (без логина) может открыть ПУБЛИЧНЫЙ список по прямой ссылке —
+  // proxy.ts пропускает /lists/[id] без куки, а гейт видимости ниже
+  // решает по самому списку.
+  const user = await getCurrentUser();
+
+  const { id: rawParam } = await params;
+  // Тот же React.cache-запрос, что и в generateMetadata.
+  const list = await getPlaceList(rawParam);
   if (!list) notFound();
 
   let canManage: boolean;

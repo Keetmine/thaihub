@@ -122,7 +122,7 @@ const NAV_SECTIONS: {
         icon: UsersIcon,
         matchPrefixes: ["/admin/communities/"],
       },
-      { href: "/admin/achievements", title: "Ачивки", icon: TrophyIcon, matchPrefixes: ["/admin/achievements/"] },
+      { href: "/admin/achievements", title: "Достижения", icon: TrophyIcon, matchPrefixes: ["/admin/achievements/"] },
       { href: "/admin/broadcast", title: "Рассылки", icon: MegaphoneIcon },
       { href: "/admin/wiki", title: "Вики", icon: BookIcon, matchPrefixes: ["/admin/wiki/"] },
     ],

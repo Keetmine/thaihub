@@ -1,4 +1,5 @@
 import type { TripTodoKind } from "@/generated/prisma/client";
+import { cache } from "react";
 import AppLink from "@/components/AppLink";
 import ScrollableTabs from "@/components/ScrollableTabs";
 import { notFound } from "next/navigation";
@@ -302,6 +303,49 @@ function bookingLegs(
   ];
 }
 
+// React.cache: generateMetadata и страница делят ОДИН запрос на
+// HTTP-запрос (по образцу artists/[id]) — раньше метадата ходила в базу
+// отдельным select, и поездка искалась дважды. getCurrentUser внутри
+// сам под React.cache (см. lib/userAuth.ts), лишней сессии не будет;
+// зритель нужен подзапросу attendances — «я там буду» тянется только
+// своё, карточке хватает булева.
+const getTrip = cache(async (rawParam: string) => {
+  const viewerId = (await getCurrentUser())?.id ?? null;
+  return prisma.trip.findFirst({
+    where: slugOrIdWhere(rawParam),
+    include: {
+      personalEvents: {
+        orderBy: { startsAt: "asc" },
+        include: {
+          location: { select: { id: true, name: true } },
+          performers: {
+            include: {
+              performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
+            },
+          },
+          // Своя отметка «я там буду». У гостя её быть не может —
+          // подставляем заведомо несуществующий id, чтобы не городить
+          // две ветки запроса.
+          attendances: { where: { userId: viewerId ?? "" }, select: { userId: true } },
+        },
+      },
+      user: { select: { id: true, name: true, username: true, deletedAt: true } },
+      // Свои даты участников (АА17): нет строки — едет на всю поездку.
+      stays: { select: { userId: true, startDate: true, endDate: true } },
+      // Брони жилья: показываются на вкладке плана рядом с событиями —
+      // в день заселения не приходится искать письмо в почте.
+      bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
+      members: {
+        // username — не для ссылки, а для ПОДПИСИ: userDisplayName без
+        // него не может откатиться на ник и зовёт человека безликим
+        // «Пользователем» (поймано на проверке имён 2026-09-06).
+        include: { user: { select: { id: true, name: true, username: true, deletedAt: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+});
+
 /**
  * Поездка открыта по прямой ссылке, но в поиске ей не место: это личная
  * страница человека — как и профиль, она уходит с `noindex` (правка
@@ -312,10 +356,7 @@ function bookingLegs(
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { locale, t } = await getT();
-  const trip = await prisma.trip.findFirst({
-    where: slugOrIdWhere(id),
-    select: { title: true, visibility: true },
-  });
+  const trip = await getTrip(id);
   return pageMetadata({
     title: trip && trip.visibility === "PUBLIC" ? trip.title : t.trips.list.metaTitle,
     description: t.trips.list.metaDescription,
@@ -367,40 +408,9 @@ export default async function TripPage({
   const showTodos = view === "todos" || view === "packing" || view === "shopping";
   const activeList: TripTodoKind =
     view === "packing" ? "PACKING" : view === "shopping" ? "SHOPPING" : "TODO";
-  const trip = await prisma.trip.findFirst({
-    where: slugOrIdWhere(rawParam),
-    include: {
-      personalEvents: {
-        orderBy: { startsAt: "asc" },
-        include: {
-          location: { select: { id: true, name: true } },
-          performers: {
-            include: {
-              performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
-            },
-          },
-          // Только СВОЯ отметка «я там буду» — карточке хватает булева.
-          // Своя отметка «я там буду». У гостя её быть не может —
-          // подставляем заведомо несуществующий id, чтобы не городить
-          // две ветки запроса.
-          attendances: { where: { userId: viewerId ?? "" }, select: { userId: true } },
-        },
-      },
-      user: { select: { id: true, name: true, username: true, deletedAt: true } },
-      // Свои даты участников (АА17): нет строки — едет на всю поездку.
-      stays: { select: { userId: true, startDate: true, endDate: true } },
-      // Брони жилья: показываются на вкладке плана рядом с событиями —
-      // в день заселения не приходится искать письмо в почте.
-      bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
-      members: {
-        // username — не для ссылки, а для ПОДПИСИ: userDisplayName без
-        // него не может откатиться на ник и зовёт человека безликим
-        // «Пользователем» (поймано на проверке имён 2026-09-06).
-        include: { user: { select: { id: true, name: true, username: true, deletedAt: true } } },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
+  // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
+  // дёргается один раз на HTTP-запрос.
+  const trip = await getTrip(rawParam);
   if (!trip) notFound();
 
   // Доступ по видимости: PRIVATE — только владелец, FRIENDS — владелец и
@@ -496,49 +506,116 @@ export default async function TripPage({
   };
   // Отдельного счётчика плана больше нет (у вкладки убрана цифра), так
   // что и запрос под него не нужен — остался только счётчик «Афиши».
-  const [occurrences, totalCount] = await Promise.all([
-    prisma.eventOccurrence.findMany({
-      where: {
-        ...rangeWhere,
-        // План совместной поездки — отметки «иду» всех участников;
-        // «Только моё» сужает до текущего юзера.
-        ...(showAll
-          ? {}
-          : {
-              attendances: {
-                some: { userId: onlyMine && viewerId ? viewerId : { in: participantIds } },
-              },
+  //
+  // Дела, счётчик «Что посетить» и содержимое этой вкладки не зависят
+  // ни от событий, ни друг от друга — раньше они ждали своей очереди
+  // хвостом последовательных стадий (аудит 2026-09, п.4), теперь едут
+  // одним залпом с афишей. Сами данные и их обработка не менялись —
+  // только порядок ожидания.
+  const [[occurrences, totalCount], todos, [tripLists, tripPlaces, myLists], placeIdRows] =
+    await Promise.all([
+      Promise.all([
+        prisma.eventOccurrence.findMany({
+          where: {
+            ...rangeWhere,
+            // План совместной поездки — отметки «иду» всех участников;
+            // «Только моё» сужает до текущего юзера.
+            ...(showAll
+              ? {}
+              : {
+                  attendances: {
+                    some: { userId: onlyMine && viewerId ? viewerId : { in: participantIds } },
+                  },
+                }),
+          },
+          include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
+          orderBy: { startsAt: "asc" },
+        }),
+        prisma.eventOccurrence.count({ where: rangeWhere }),
+      ]),
+      // Дела поездки: кого пускать к каждому, решает его видимость —
+      // фильтр canSeeItem стоит ниже, у него (см. todoData).
+      prisma.tripTodo.findMany({
+        where: { tripId: trip.id },
+        orderBy: [{ done: "asc" }, { date: "asc" }],
+      }),
+      // «Что посетить» (Г4): прикреплённые списки мест + отдельные
+      // добавленные места (+ свои списки для селекта прикрепления) —
+      // только на самой вкладке.
+      showPlaces
+        ? Promise.all([
+            prisma.tripPlaceList.findMany({
+              where: { tripId: trip.id },
+              include: { list: { include: { items: { include: { location: true } } } } },
             }),
-      },
-      include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
-      orderBy: { startsAt: "asc" },
-    }),
-    prisma.eventOccurrence.count({ where: rangeWhere }),
-  ]);
+            prisma.tripPlace.findMany({
+              where: { tripId: trip.id },
+              include: { location: true },
+            }),
+            isParticipant && viewerId
+              ? prisma.placeList.findMany({
+                  where: { userId: viewerId },
+                  select: { id: true, title: true },
+                  orderBy: { createdAt: "desc" },
+                })
+              : Promise.resolve([]),
+          ])
+        : [[], [], []],
+      // Счётчик в подписи вкладки «Что посетить» (правка владельца
+      // 2026-09-07). Считаем ВСЕГДА, а не только на самой вкладке:
+      // подпись видна с любой другой. Локации приезжают двумя путями —
+      // из прикреплённых списков и поштучно, — и одно и то же место
+      // может быть и там, и там, поэтому считаем разные, а не сумму.
+      prisma.location.findMany({
+        where: {
+          OR: [
+            { tripPlaces: { some: { tripId: trip.id } } },
+            { listItems: { some: { list: { trips: { some: { tripId: trip.id } } } } } },
+          ],
+        },
+        select: { id: true },
+      }),
+    ]);
   const events = occurrences.map(flattenOccurrence);
 
   const eventIds = events.map((ev) => ev.id);
   const occIds = events.map((ev) => ev.occurrenceId);
-  // Личное к событиям (избранное, «иду», кто из друзей идёт) есть
-  // только у залогиненного: гостю нечего показывать и не за кем ходить
-  // в базу.
-  const [favoritedIds, goingIds, friendIds] = viewerId
+  // Личное к событиям (избранное, «иду», кто из друзей идёт, билеты 🎫
+  // в карточку) есть только у залогиненного: гостю нечего показывать и
+  // не за кем ходить в базу. Всё четыре зависят лишь от списка событий
+  // и друг друга не ждут (аудит 2026-09, п.4).
+  const [favoritedIds, goingIds, friendIds, myTickets] = viewerId
     ? await Promise.all([
         getFavoritedEventIds(eventIds, viewerId),
         getGoingOccurrenceIds(occIds, viewerId),
         getFriendIds(viewerId),
+        prisma.eventTicket.findMany({
+          where: { userId: viewerId, occurrenceId: { in: occIds } },
+          select: { occurrenceId: true, fileUrl: true },
+        }),
       ])
-    : [new Set<string>(), new Set<string>(), [] as string[]];
-  const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
-
-  // Билеты юзера к датам плана — 🎫 прямо в карточке события.
-  const myTickets = viewerId
-    ? await prisma.eventTicket.findMany({
-        where: { userId: viewerId, occurrenceId: { in: occIds } },
-        select: { occurrenceId: true, fileUrl: true },
-      })
-    : [];
+    : [
+        new Set<string>(),
+        new Set<string>(),
+        [] as string[],
+        [] as { occurrenceId: string | null; fileUrl: string }[],
+      ];
   const ticketByOccurrence = new Map(myTickets.map((t) => [t.occurrenceId, t.fileUrl]));
+
+  // Кандидаты в участники — друзья владельца, которых ещё нет в поездке
+  // (friendIds для владельца — его же друзья). «Кто из друзей идёт»
+  // ждёт того же friendIds — обоим запросам одна очередь.
+  const memberIdSet = new Set(trip.members.map((m) => m.userId));
+  const [friendsGoingByEvent, availableFriends] = await Promise.all([
+    getFriendsGoingByOccurrence(occIds, friendIds),
+    isOwner
+      ? prisma.user.findMany({
+          where: { id: { in: friendIds.filter((id) => !memberIdSet.has(id)) } },
+          select: { id: true, name: true, deletedAt: true },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
 
   // Право менять конкретную запись: автор, владелец поездки или другой
   // участник, если автор разрешил галочкой (editableByOthers).
@@ -549,6 +626,13 @@ export default async function TripPage({
   };
   const isMine = (createdById: string | null): boolean =>
     (createdById ?? trip.userId) === viewerId;
+  // У брони галочки editableByOthers нет, поэтому карандаш — автору и
+  // владельцу поездки: ровно то, что пропустит guardBookingTouch на
+  // сервере (аудит 2026-09, п.1.1). Раньше canEdit был общим
+  // canContribute — участник видел карандаш на чужой брони, и сервер
+  // правку не останавливал.
+  const canTouchBooking = (b: { createdById: string | null }): boolean =>
+    canTouch({ createdById: b.createdById, editableByOthers: false });
 
   // Кто видит конкретную запись поездки — дело, личное событие, бронь.
   // Решает поле `visibility` самой записи (у записей до этого поля —
@@ -605,11 +689,8 @@ export default async function TripPage({
       attending: p.attendances.length > 0,
       canEdit: canTouch(p),
     }));
-  // Дела поездки: кого пускать к каждому, решает его видимость.
-  const todos = await prisma.tripTodo.findMany({
-    where: { tripId: trip.id },
-    orderBy: [{ done: "asc" }, { date: "asc" }],
-  });
+  // Дела поездки (загружены залпом выше): кого пускать к каждому,
+  // решает его видимость.
   const todoData = todos
     .filter((t) => canSeeItem(t.visibility, t.createdById))
     .filter((t) => !onlyMine || isMine(t.createdById))
@@ -659,11 +740,12 @@ export default async function TripPage({
   const legs = showAll
     ? []
     : visibleBookings.flatMap((b) =>
-        bookingLegs(b, locale, t, canContribute, stayColorByBooking.get(b.id) ?? null),
+        bookingLegs(b, locale, t, canTouchBooking(b), stayColorByBooking.get(b.id) ?? null),
       );
-  const undatedBookings: TripBookingRow[] = visibleBookings
+  const undatedBookings: (TripBookingRow & { canEdit: boolean })[] = visibleBookings
     .filter((b) => !b.startAt && !b.endAt)
     .map((b) => ({
+      canEdit: canTouchBooking(b),
       id: b.id,
       kind: b.kind,
       name: b.name,
@@ -952,57 +1034,11 @@ export default async function TripPage({
   const visibleRows = tripFinished ? rows : rows.filter((r) => !isPastRow(r));
   const pastDayCount = new Set(pastRows.map((r) => dateKey(r.item.startsAt))).size;
 
-  // «Что посетить» (Г4): локации съёмок сериалов владельца + прикреплённые
-  // списки мест + отдельные добавленные места.
-  const [tripLists, tripPlaces, myLists] = showPlaces
-    ? await Promise.all([
-        prisma.tripPlaceList.findMany({
-          where: { tripId: trip.id },
-          include: { list: { include: { items: { include: { location: true } } } } },
-        }),
-        prisma.tripPlace.findMany({
-          where: { tripId: trip.id },
-          include: { location: true },
-        }),
-        isParticipant && viewerId
-          ? prisma.placeList.findMany({
-              where: { userId: viewerId },
-              select: { id: true, title: true },
-              orderBy: { createdAt: "desc" },
-            })
-          : Promise.resolve([]),
-      ])
-    : [[], [], []];
+  // «Что посетить» (загружено залпом выше): готовим селект прикрепления
+  // и счётчик вкладки.
   const attachedListIds = new Set(tripLists.map((t) => t.listId));
   const availableLists = myLists.filter((l) => !attachedListIds.has(l.id));
-
-  // Счётчик в подписи вкладки (правка владельца 2026-09-07: «в „что
-  // посетить“ тоже в скобки выводить, если есть места»). Считаем ВСЕГДА,
-  // а не только на самой вкладке: подпись видна с любой другой.
-  // Локации приезжают двумя путями — из прикреплённых списков и
-  // поштучно, — и одно и то же место может быть и там, и там, поэтому
-  // считаем разные, а не сумму.
-  const placeIdRows = await prisma.location.findMany({
-    where: {
-      OR: [
-        { tripPlaces: { some: { tripId: trip.id } } },
-        { listItems: { some: { list: { trips: { some: { tripId: trip.id } } } } } },
-      ],
-    },
-    select: { id: true },
-  });
   const placesCount = placeIdRows.length;
-
-  // Кандидаты в участники — друзья владельца, которых ещё нет в поездке
-  // (friendIds для владельца — его же друзья).
-  const memberIdSet = new Set(trip.members.map((m) => m.userId));
-  const availableFriends = isOwner
-    ? await prisma.user.findMany({
-        where: { id: { in: friendIds.filter((id) => !memberIdSet.has(id)) } },
-        select: { id: true, name: true, deletedAt: true },
-        orderBy: { name: "asc" },
-      })
-    : [];
 
   const boundDelete = deleteTrip.bind(null, trip.id);
 
@@ -1249,7 +1285,6 @@ export default async function TripPage({
       {!showTodos && !showPlaces && (
         <TripBookings
           tripId={trip.id}
-          canEdit={canContribute}
           bookings={undatedBookings}
           visibilityOptions={visibilityOptions}
         />

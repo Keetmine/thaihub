@@ -3,7 +3,7 @@ import { metricOptionsForForm } from "../metricOptions";
 import AchievementForm from "../AchievementForm";
 import { createAchievement } from "../actions";
 
-export const metadata = { title: "Новая ачивка" };
+export const metadata = { title: "Новое достижение" };
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +16,14 @@ export default function NewAchievementPage() {
   return (
     <div>
       <Link href="/admin/achievements" className="eyebrow text-decoration-none">
-        ← К списку ачивок
+        ← К списку достижений
       </Link>
       <h1 className="display-1-tight mt-3 mb-5" style={{ fontSize: "2rem" }}>
-        Новая ачивка
+        Новое достижение
       </h1>
       <AchievementForm
         action={createAchievement}
-        submitLabel="Создать ачивку"
+        submitLabel="Создать достижение"
         metricOptions={metricOptions}
       />
     </div>

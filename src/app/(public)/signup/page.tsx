@@ -7,6 +7,7 @@ import { signup } from "./actions";
 import { pageMetadata } from "@/lib/seo";
 import { getCurrentUser } from "@/lib/userAuth";
 import { telegramBotUsername } from "@/lib/telegram";
+import { sanitizeNextPath } from "@/lib/loginNext";
 import { getT, localeHref } from "@/lib/i18n";
 
 export async function generateMetadata() {
@@ -24,12 +25,16 @@ export async function generateMetadata() {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next: rawNext } = await searchParams;
   const { locale, t } = await getT();
+  // Возврат после регистрации: next приезжает со страницы входа
+  // (гость упёрся в гейт → /login?next=… → «Зарегистрироваться»).
+  // Значение из URL — чужое, валидируем и здесь.
+  const next = sanitizeNextPath(rawNext);
   // Залогиненному регистрироваться незачем — форма только путала.
-  if (await getCurrentUser()) redirect(localeHref("/account", locale));
+  if (await getCurrentUser()) redirect(localeHref(next ?? "/account", locale));
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
   const botUsername = telegramBotUsername();
 
@@ -55,6 +60,8 @@ export default async function SignupPage({
         {error === "1" && (
           <p className="small text-danger text-center mb-3">{t.auth.signup.invalid}</p>
         )}
+        {/* Возврат после регистрации: экшен читает next из формы. */}
+        {next && <input type="hidden" name="next" value={next} />}
         {/* Ханипот против ботов: поле скрыто от людей, автозаполнялки
             ботов его заполняют — такие регистрации молча отбрасываются. */}
         <input
@@ -121,7 +128,12 @@ export default async function SignupPage({
         )}
         <p className="small text-secondary text-center mb-0">
           {t.auth.signup.haveAccount}{" "}
-          <AppLink href="/login" className="link-body-emphasis">
+          {/* next едет обратно на вход: человек мог передумать
+              регистрироваться, а вернуться после входа должен туда же. */}
+          <AppLink
+            href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
+            className="link-body-emphasis"
+          >
             {t.auth.signup.loginLink}
           </AppLink>
         </p>

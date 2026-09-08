@@ -708,7 +708,9 @@ descending) — with an explicit date range collapsing to a single
 "upcoming" phase over that range, matching the pre-existing no-split
 behavior. Because pages are offset-based, the Все/Иду/Избранное filter
 is applied **in the SQL where-clause** (`attendees/favoritedBy some`)
-rather than post-filtering in JS, and the client dedupes rows by
+rather than post-filtering in JS — and «Иду» without a signed-in user
+matches nothing by an impossible condition (гостю на `?filter=going`
+раньше уезжала полная афиша; аудит 2026-09, п.1.9) — and the client dedupes rows by
 `occurrenceId` in case data shifts between page fetches. The month
 grouping (`groupByMonth`) therefore lives in the client component now,
 computed over the accumulated list. The server page keys

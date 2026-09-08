@@ -8,7 +8,7 @@ import { updateAchievement, deleteAchievement } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
 
-export const metadata = { title: "Редактировать ачивку" };
+export const metadata = { title: "Редактировать достижение" };
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export default async function EditAchievementPage({
   return (
     <div>
       <Link href="/admin/achievements" className="eyebrow text-decoration-none">
-        ← К списку ачивок
+        ← К списку достижений
       </Link>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2rem" }}>
@@ -70,11 +70,11 @@ export default async function EditAchievementPage({
 
         <ConfirmForm
           action={boundDelete}
-          confirmMessage={`Удалить ачивку «${achievement.emoji} ${achievement.title}»? Записи о получении у пользователей останутся в БД, но бейдж перестанет показываться.`}
+          confirmMessage={`Удалить достижение «${achievement.emoji} ${achievement.title}»? Записи о получении у пользователей останутся в БД, но бейдж перестанет показываться.`}
           className="pt-2"
         >
           <button type="button" className="btn btn-outline-danger btn-sm">
-            Удалить ачивку
+            Удалить достижение
           </button>
         </ConfirmForm>
       </div>

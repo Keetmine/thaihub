@@ -92,8 +92,13 @@ function occurrenceFilterWhere(userId: string | null, filters: EventListFilters)
   return {
     event: eventWhere,
     // «Иду» — отметка на конкретной дате, поэтому фильтр на occurrence,
-    // а не на событии: показываются только выбранные дни.
-    ...(filter === "going" && userId ? { attendances: { some: { userId } } } : {}),
+    // а не на событии: показываются только выбранные дни. Без userId
+    // отметок не бывает, и вкладка отдаёт ПУСТО — по невозможному
+    // условию, а не по забытому if (как viewerMeetupsWhere): раньше
+    // гость на ?filter=going получал полную афишу.
+    ...(filter === "going"
+      ? { attendances: { some: userId ? { userId } : { userId: { in: [] } } } }
+      : {}),
   };
 }
 

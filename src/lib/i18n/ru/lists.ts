@@ -26,6 +26,11 @@ export const lists: Dict["lists"] = {
 
     /** Страница списка мест: /lists/[id] */
     detail: {
+        metaTitle: "Список мест",
+        metaNotFound: "Такого списка нет.",
+        /** Запасное описание, когда у списка нет своего: число мест. */
+        metaDescription: (title: string, n: number) =>
+            `«${title}» — список мест на MyBLHub: ${n} ${pluralized(n, ["место", "места", "мест"])}, куда стоит дойти.`,
         back: "← Мои места",
         visibilityAria: "Видимость списка",
         deleteList: "Удалить список",
@@ -145,7 +150,6 @@ export const lists: Dict["lists"] = {
         addPlaceholder: "Начните вводить имя актёра…",
         addAria: "Добавить актёра в список",
         searching: "Поиск…",
-        nobodyFound: "Никого не найдено",
     },
 
     /** Ответы серверных экшенов — их показывают формы раздела. */
@@ -160,6 +164,8 @@ export const lists: Dict["lists"] = {
         signInToAddPlaces: "Войдите, чтобы добавлять места",
         placeCreateFailed: "Не удалось создать место",
         placeNotFound: "Место не найдено",
+        artistNotFound: "Артист не найден",
+        badPhotoUrl: "Фото сохранить не вышло — загрузите картинку заново",
         signInRequired: "Требуется вход",
     },
 };

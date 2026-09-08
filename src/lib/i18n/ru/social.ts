@@ -13,12 +13,13 @@ export const social: Dict["social"] = {
     title: "Друзья",
     searchPlaceholder: "Найти по имени, нику или email (точно)…",
     searchResults: "Результаты поиска",
-    noneFound: "Никого не найдено.",
     noName: "Без имени",
     /** Ответы серверных экшенов заявок. */
     errors: {
       cannotAddSelf: "Нельзя добавить в друзья себя",
       alreadyRequested: "Заявка уже отправлена или вы уже друзья",
+      userNotFound: "Пользователь не найден",
+      notFriends: "Вы ещё не друзья",
     },
     noNameInline: "без имени",
 

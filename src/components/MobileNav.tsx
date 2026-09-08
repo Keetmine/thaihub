@@ -127,7 +127,9 @@ const TABS: {
 }[] = [
   { href: "/", labelKey: "home", icon: HomeIcon, exact: true },
   { href: "/events", labelKey: "events", icon: TicketIcon, matchPrefixes: ["/event/"] },
-  { href: "/calendar", labelKey: "calendar", icon: CalendarIcon, matchPrefixes: ["/day/"] },
+  // «Даты», а не «Календарь»: длинная подпись на 360px обрезалась в
+  // «Календа…» (пять табов дают ячейке ~55px, слово занимает ~54).
+  { href: "/calendar", labelKey: "calendarShort", icon: CalendarIcon, matchPrefixes: ["/day/"] },
   { href: "/search", labelKey: "search", icon: SearchIcon },
 ];
 

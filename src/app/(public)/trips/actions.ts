@@ -1048,6 +1048,36 @@ export async function deleteTripTodo(todoId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** Право менять/удалять КОНКРЕТНУЮ бронь — то, чего у броней долго не
+ *  было (аудит 2026-09: участник мог переписать и удалить чужую
+ *  приватную бронь). Правило — как `canTouchItem` у дел и личных
+ *  событий, но галочки editableByOthers у брони нет, так что трогают
+ *  её только автор и владелец поездки. Чужая ПРИВАТНАЯ бронь закрыта
+ *  даже от владельца — `canSeeItem` на странице её ему не показывает,
+ *  и сервер отвечает «не найдена», а не «нельзя»: другой ответ через
+ *  правку подтверждал бы само её существование. null — можно. */
+async function guardBookingTouch(
+  booking: { createdById: string | null; visibility: TripItemVisibility },
+  userId: string,
+  trip: { userId: string; visibility: TripVisibility },
+  intent: "edit" | "delete",
+): Promise<ActionError | null> {
+  const authorId = booking.createdById ?? trip.userId;
+  if (authorId === userId) return null;
+  // Видимость — зажатая видимостью поездки, как при чтении на странице.
+  if (clampItemVisibility(booking.visibility, trip.visibility) === "PRIVATE") {
+    return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
+  }
+  if (!canTouchItem({ createdById: booking.createdById, editableByOthers: false }, userId, trip.userId)) {
+    const { t } = await getT();
+    return {
+      ok: false,
+      error: intent === "edit" ? t.trips.errors.cannotEditOthers : t.trips.errors.cannotDeleteOthers,
+    };
+  }
+  return null;
+}
+
 /** Бронь в поездке — отель или перелёт. Доступ как у дел и событий:
  *  владелец и принятые участники — они едут вместе, и бронь нужна
  *  всем. Тип решает, какие поля осмысленны: у отеля адрес и заезд/
@@ -1091,6 +1121,8 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
     // было бы отредактировать бронь чужой поездки.
     const existing = await prisma.tripBooking.findFirst({ where: { id, tripId } });
     if (!existing) return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
+    const guard = await guardBookingTouch(existing, access.user.id, access.trip, "edit");
+    if (guard) return guard;
     // Путь файла приходит из формы строкой: новый — только формат
     // /api/upload-hotel и файл, не занятый чужой записью; прежнее
     // значение записи пропускаем как есть (в т.ч. легаси-пути) — оно
@@ -1147,10 +1179,15 @@ export async function deleteTripBooking(tripId: string, bookingId: string): Prom
   // удаления записи и чистим диск следом (по образцу ticketActions).
   const booking = await prisma.tripBooking.findFirst({
     where: { id: bookingId, tripId },
-    select: { fileUrl: true },
+    select: { fileUrl: true, createdById: true, visibility: true },
   });
+  if (!booking) return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
+  // Те же права, что на правку: id приходит с клиента, и без проверки
+  // участник удалял чужую бронь (аудит 2026-09, п.1.1).
+  const guard = await guardBookingTouch(booking, access.user.id, access.trip, "delete");
+  if (guard) return guard;
   await prisma.tripBooking.deleteMany({ where: { id: bookingId, tripId } });
-  await unlinkPrivateFile(booking?.fileUrl);
+  await unlinkPrivateFile(booking.fileUrl);
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }

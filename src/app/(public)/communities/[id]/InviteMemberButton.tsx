@@ -106,7 +106,7 @@ export default function InviteMemberButton({ communityId }: { communityId: strin
             </h3>
             {candidates && candidates.length === 0 && (
               <p className="small text-secondary mb-0">
-                {shownQuery ? s.inviteEmpty : s.inviteNoFriendsLeft}
+                {shownQuery ? t.common.nobodyFound : s.inviteNoFriendsLeft}
               </p>
             )}
             <div className="d-flex flex-column gap-2">

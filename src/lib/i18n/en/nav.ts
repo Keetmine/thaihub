@@ -7,6 +7,11 @@ export const nav = {
     trips: "Trips",
     communities: "Communities",
     calendar: "Calendar",
+    // Короткая подпись для мобильного таб-бара: «Календарь» при пяти
+    // табах на 360px влезал впритык (~54px текста в ~55px ячейки) и
+    // обрезался многоточием. Меняем слово, а не шрифт: мельче 0.6rem
+    // подписи уже не читаются.
+    calendarShort: "Dates",
     search: "Search",
     searchPlaceholder: "Search…",
     searchAria: "Search the site",

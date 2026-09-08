@@ -77,10 +77,18 @@ export default function MeetupForm({
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [posterKey, setPosterKey] = useState(0);
+  // Файл ещё едет на сервер — дропзона сообщает об этом сюда (её
+  // onUploadingChange), и на это время сабмит закрыт: адрес картинки
+  // попадает в скрытое поле только ПОСЛЕ загрузки, и ранний «Сохранить»
+  // отправил бы встречу без картинки.
+  const [isPosterUploading, setIsPosterUploading] = useState(false);
   // Картинка встречи: адрес держим в состоянии и отдаём форме скрытым
   // полем. Без картинки карточка рисует первую букву названия — как у
   // обычных событий, отдельного «нет постера» не нужно.
   async function save(formData: FormData) {
+    // Дубль запрета с кнопки: Enter в любом текстовом поле отправляет
+    // форму мимо неё, и disabled его не останавливает.
+    if (isPosterUploading) return;
     setError(null);
     setIsSaving(true);
     try {
@@ -179,6 +187,7 @@ export default function MeetupForm({
             label={s.posterLabel}
             defaultValue={meetup?.posterUrl ?? ""}
             wide
+            onUploadingChange={setIsPosterUploading}
           />
 
           <div className="row g-2">
@@ -263,7 +272,7 @@ export default function MeetupForm({
             <button
               type="submit"
               className="btn btn-primary btn-sm"
-              disabled={isSaving}
+              disabled={isSaving || isPosterUploading}
             >
               {s.save}
             </button>

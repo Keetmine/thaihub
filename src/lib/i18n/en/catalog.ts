@@ -335,7 +335,6 @@ export const catalog = {
         seriesCount: (n: number) => `${n} series`,
         tabArtists: (n: number) => `Artists (${n})`,
         tabSeries: (n: number) => `Series (${n})`,
-        noArtistsFound: "No one matched.",
         emptyArtists: "No artists here yet.",
         emptySeries: "No series here yet.",
     },

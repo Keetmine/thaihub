@@ -17,14 +17,24 @@ import {
 import { softDeleteUser } from "@/lib/userDeletion";
 import { isValidUsername, RESERVED_USERNAMES } from "@/lib/userProfile";
 import { isKnownCountry } from "@/lib/countries";
+import { parseUploadUrl } from "@/lib/uploadUrl";
 import { getT, localeHref } from "@/lib/i18n";
 
-export async function updateProfile(formData: FormData) {
+export async function updateProfile(
+  formData: FormData,
+): Promise<{ ok: false; error: string } | void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const name = String(formData.get("name") ?? "").trim();
-  const photoUrl = String(formData.get("photoUrl") ?? "").trim();
+  // Фото профиля — только свой /uploads/…: адрес уходит в голый <img>
+  // на публичном профиле, чужой домен — утечка реферера и подменяемая
+  // картинка (см. src/lib/uploadUrl.ts). Пусто — «фото убрали», это
+  // законно; подделанный адрес — ошибка, а не молчаливое сохранение.
+  const photo = parseUploadUrl(formData.get("photoUrl"));
+  if (!photo.ok) {
+    return { ok: false, error: (await getT()).t.account.settings.badPhotoUrl };
+  }
   const timezone = String(formData.get("timezone") ?? "");
   const locale = String(formData.get("locale") ?? "");
   const country = String(formData.get("country") ?? "").trim();
@@ -50,7 +60,7 @@ export async function updateProfile(formData: FormData) {
     where: { id: user.id },
     data: {
       name: name || null,
-      photoUrl: photoUrl || null,
+      photoUrl: photo.url,
       // Неизвестное значение молча не пишем — остаётся прежняя зона.
       ...(isKnownTimezone(timezone) ? { timezone } : {}),
       ...(isLocale(locale) ? { locale } : {}),

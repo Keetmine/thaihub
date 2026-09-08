@@ -1,12 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { getT } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/userAuth";
-import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { communityHref } from "@/lib/slugHelpers";
 import { parseCommunityCoverUrl } from "@/lib/communities";
+import { requireManagedCommunity } from "@/lib/communities.server";
 
 /** Ошибки — значением, а не броском: в проде Next минифицирует текст
  *  исключения из server action, и клиент видит generic error boundary
@@ -20,33 +19,19 @@ export type CoverResult = { ok: true; coverUrl: string | null } | { ok: false; e
  * правка названия молча откатывает и загруженную обложку.
  */
 
-/** Сообщество, которым текущий пользователь вправе управлять (владелец
- *  или модератор), либо null. Своя копия проверки: в actions.ts она
- *  модульно-приватная, а тянуть её наружу ради одного вызова — значит
- *  расширять чужой публичный интерфейс. Правило одно и то же: тот, кто
- *  правит название, правит и обложку. */
-async function requireManaged(communityId: string) {
-  const user = await getCurrentUser();
-  if (!user) redirect(localeHref("/communities", await getLocale()));
-  const community = await prisma.community.findUnique({
-    where: { id: communityId },
-    include: { members: { where: { userId: user.id } } },
-  });
-  if (!community) return null;
-  const isOwner = community.ownerId === user.id;
-  const isModerator = community.members[0]?.role === "MODERATOR";
-  if (!isOwner && !isModerator) return null;
-  return community;
-}
+// «Кто вправе управлять» — общий requireManagedCommunity из
+// lib/communities.server.ts (тот, кто правит название, правит и
+// обложку): своя копия здесь смотрела роль без `status: "ACTIVE"` и
+// держалась на том, что бан сбрасывает роль (аудит 2026-09, п.1.8).
 
 /** Текущая обложка — окну управления, когда оно открывается. Страница
  *  сообщества её в `CommunityAdmin` не передаёт, а показать предпросмотр
  *  и кнопку «убрать» без неё нельзя. */
 export async function loadCommunityCover(communityId: string): Promise<CoverResult> {
   const { t } = await getT();
-  const community = await requireManaged(communityId);
-  if (!community) return { ok: false, error: t.communities.errors.notFound };
-  return { ok: true, coverUrl: community.coverUrl };
+  const managed = await requireManagedCommunity(communityId);
+  if (!managed) return { ok: false, error: t.communities.errors.notFound };
+  return { ok: true, coverUrl: managed.community.coverUrl };
 }
 
 /**
@@ -63,8 +48,8 @@ export async function setCommunityCover(
   coverUrl: string | null,
 ): Promise<CoverResult> {
   const { t } = await getT();
-  const community = await requireManaged(communityId);
-  if (!community) return { ok: false, error: t.communities.errors.notFound };
+  const managed = await requireManagedCommunity(communityId);
+  if (!managed) return { ok: false, error: t.communities.errors.notFound };
 
   // Проверка адреса — общая с созданием сообщества
   // (`parseCommunityCoverUrl`): форма создания пишет обложку своим
@@ -74,9 +59,9 @@ export async function setCommunityCover(
   if (!parsed.ok) return { ok: false, error: t.communities.errors.coverUrl };
 
   await prisma.community.update({
-    where: { id: community.id },
+    where: { id: managed.community.id },
     data: { coverUrl: parsed.url },
   });
-  revalidatePath(communityHref(community));
+  revalidatePath(communityHref(managed.community));
   return { ok: true, coverUrl: parsed.url };
 }

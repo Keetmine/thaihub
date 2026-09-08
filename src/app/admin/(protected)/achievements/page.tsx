@@ -23,7 +23,9 @@ import ConfirmForm from "@/components/ConfirmForm";
 import SubmitButton from "@/components/admin/SubmitButton";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 
-export const metadata = { title: "Ачивки" };
+// В интерфейсе — «достижения», как и на публичной части (аудит 2026-09,
+// п.9): «ачивки» остались только в комментариях кода.
+export const metadata = { title: "Достижения" };
 
 export const dynamic = "force-dynamic";
 
@@ -75,17 +77,17 @@ export default async function AdminAchievementsPage({
       <span className="eyebrow">Управление</span>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mt-3 mb-5">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
-          Ачивки
+          Достижения
         </h1>
         <Link href="/admin/achievements/new" className="btn btn-primary btn-sm">
-          + Добавить ачивку
+          + Добавить достижение
         </Link>
       </div>
 
       <p className="small text-secondary mb-3">
         Включено {enabledCount} из {achievements.length}. В кабинете
-        пользователи видят только полученные ачивки — остальные остаются
-        сюрпризом.
+        пользователи видят только полученные достижения — остальные
+        остаются сюрпризом.
       </p>
 
       <AdminSortLinks
@@ -97,7 +99,7 @@ export default async function AdminAchievementsPage({
 
       {achievements.length === 0 ? (
         <p className="text-secondary">
-          Пока нет ачивок. Стартовый набор сидируется скриптом{" "}
+          Пока нет достижений. Стартовый набор сидируется скриптом{" "}
           <code>npx tsx scripts/seed-achievements.ts</code>.
         </p>
       ) : (
@@ -210,7 +212,7 @@ export default async function AdminAchievementsPage({
                     </Link>
                     <ConfirmForm
                       action={boundDelete}
-                      confirmMessage={`Удалить ачивку «${a.emoji} ${a.title}»? Записи о получении у пользователей останутся в БД, но бейдж перестанет показываться.`}
+                      confirmMessage={`Удалить достижение «${a.emoji} ${a.title}»? Записи о получении у пользователей останутся в БД, но бейдж перестанет показываться.`}
                     >
                       <button
                         type="button"
@@ -231,7 +233,7 @@ export default async function AdminAchievementsPage({
               kind: "delete",
               label: "Удалить выбранные",
               confirmTemplate:
-                "Удалить {n} ачивок? Записи о получении у пользователей останутся в БД, но бейджи перестанут показываться.",
+                "Удалить {n} достижений? Записи о получении у пользователей останутся в БД, но бейджи перестанут показываться.",
               run: async (ids) => {
                 "use server";
                 await bulkDeleteAchievements(ids);
@@ -241,7 +243,7 @@ export default async function AdminAchievementsPage({
               kind: "confirm",
               label: "Включить выбранные",
               confirmTemplate:
-                "Включить {n} ачивок? Они снова начнут показываться и считаться.",
+                "Включить {n} достижений? Они снова начнут показываться и считаться.",
               confirmLabel: "Включить",
               busyLabel: "Включаем…",
               run: async (ids) => {
@@ -253,7 +255,7 @@ export default async function AdminAchievementsPage({
               kind: "confirm",
               label: "Выключить выбранные",
               confirmTemplate:
-                "Выключить {n} ачивок? Они спрячутся отовсюду, прогресс по ним считаться не будет. Уже выданные останутся в БД.",
+                "Выключить {n} достижений? Они спрячутся отовсюду, прогресс по ним считаться не будет. Уже выданные останутся в БД.",
               confirmLabel: "Выключить",
               busyLabel: "Выключаем…",
               run: async (ids) => {

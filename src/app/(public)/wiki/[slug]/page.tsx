@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BackLink from "@/components/BackLink";
 import { slugOrIdWhere } from "@/lib/slugHelpers";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, articleJsonLd, JsonLd } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
 import { sanitizeWikiHtml } from "@/app/admin/(protected)/wiki/wikiSanitize";
 
@@ -50,6 +50,14 @@ export default async function WikiArticlePage({
   });
   if (!article) notFound();
 
+  // Та же выжимка текста, что в meta description, — разметка должна
+  // повторять видимую страницу, а не сочинять своё.
+  const excerpt = article.content
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+
   return (
     <div style={{ maxWidth: "46rem" }}>
       <BackLink fallbackHref="/help" fallbackLabel={t.wiki.article.back} />
@@ -57,6 +65,9 @@ export default async function WikiArticlePage({
         {article.title}
       </h1>
       <div className="wiki-content" dangerouslySetInnerHTML={{ __html: sanitizeWikiHtml(article.content) }} />
+      {/* JSON-LD Article — с dateModified: у вики, единственной на
+          сайте, дата обновления настоящая (правки руками, а не синк). */}
+      <JsonLd data={articleJsonLd({ ...article, description: excerpt || undefined })} />
     </div>
   );
 }

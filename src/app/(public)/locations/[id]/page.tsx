@@ -70,6 +70,12 @@ export async function generateMetadata({
       t.catalog.location.metaDescription(location.name),
     path: `/locations/${location.slug ?? id}`,
     image: location.photoUrl,
+    // Личное место (createdByUserId) — не каталог: sitemap его не
+    // отдаёт, и в индексе ему делать нечего. Саму страницу при этом не
+    // закрываем 404-ом: по задумке place-lists.md место живёт в списках
+    // и поездках, а публичный список открыт гостю по прямой ссылке —
+    // жёсткий гейт ломал бы эти переходы.
+    noIndex: location.createdByUserId != null,
   });
 }
 

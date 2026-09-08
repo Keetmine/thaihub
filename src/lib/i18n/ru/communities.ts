@@ -235,6 +235,10 @@ export const communities: Dict["communities"] = {
         save: "Сохранить",
         titlePlaceholder: "Заголовок (необязательно)",
         titleAria: "Заголовок темы",
+        // Вывеска темы без заголовка в ЗАКРЫТОМ виде вкладки: внутри
+        // вместо заголовка показывается начало текста, а постороннему
+        // текст не отдаётся вовсе (аудит 2026-09, п.1.4).
+        untitled: "Тема без названия",
         textPlaceholder: "О чём хотите поговорить?",
         textAria: "Текст темы",
         publish: "Опубликовать",
@@ -291,7 +295,6 @@ export const communities: Dict["communities"] = {
         inviteSearchPlaceholder: "Имя или ник",
         inviteFriends: "Ваши друзья",
         inviteFound: "Найдены",
-        inviteEmpty: "Никого не нашлось",
         inviteNoFriendsLeft: "Все ваши друзья уже здесь.",
         inviteSend: "Позвать",
         inviteSearch: "Найти",

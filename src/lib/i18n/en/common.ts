@@ -7,7 +7,11 @@ export const common = {
     delete: "Delete",
     edit: "Edit",
     add: "Add",
+    // Единственные две подписи пустого поиска на весь сайт (аудит
+    // 2026-09, п.9): «ничего» — для записей, «никого» — для людей.
+    // Свои варианты в разделах не заводить.
     nothingFound: "Nothing found.",
+    nobodyFound: "No one found.",
     searchByName: "Search by name…",
   loading: "Loading…",
   // Счётчик живёт здесь, а не в nav: подписи навигации типизированы

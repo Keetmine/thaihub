@@ -27,6 +27,11 @@ export const lists = {
 
     /** Страница списка мест: /lists/[id] */
     detail: {
+        metaTitle: "Place list",
+        metaNotFound: "This list doesn't exist.",
+        /** Запасное описание, когда у списка нет своего: число мест. */
+        metaDescription: (title: string, n: number) =>
+            `"${title}" — a place list on MyBLHub: ${n === 1 ? "1 place" : `${n} places`} to visit.`,
         back: "← My places",
         visibilityAria: "List visibility",
         deleteList: "Delete list",
@@ -145,7 +150,6 @@ export const lists = {
         addPlaceholder: "Start typing an actor's name…",
         addAria: "Add an actor to the list",
         searching: "Searching…",
-        nobodyFound: "No one found",
     },
 
     /** Ответы серверных экшенов — их показывают формы раздела. */
@@ -160,6 +164,8 @@ export const lists = {
         signInToAddPlaces: "Sign in to add places",
         placeCreateFailed: "Couldn't create the place",
         placeNotFound: "Place not found",
+        artistNotFound: "Artist not found",
+        badPhotoUrl: "That photo could not be saved — upload the picture again",
         signInRequired: "You need to sign in",
     },
 };

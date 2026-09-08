@@ -234,6 +234,9 @@ export const communities = {
         save: "Save",
         titlePlaceholder: "Title (optional)",
         titleAria: "Topic title",
+        // Вывеска темы без заголовка в закрытом виде вкладки: снаружи
+        // текст темы не отдаётся вовсе (аудит 2026-09, п.1.4).
+        untitled: "Untitled topic",
         textPlaceholder: "What do you want to talk about?",
         textAria: "Topic text",
         publish: "Post it",
@@ -287,7 +290,6 @@ export const communities = {
         inviteSearchPlaceholder: "Name or username",
         inviteFriends: "Your friends",
         inviteFound: "Search results",
-        inviteEmpty: "Nobody found",
         inviteNoFriendsLeft: "Everyone you are friends with is already here.",
         inviteSend: "Invite",
         inviteSearch: "Search",

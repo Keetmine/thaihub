@@ -10,6 +10,7 @@ import { notifyUser } from "@/lib/notifications";
 import { notifyAdminsAboutCommunity } from "@/lib/adminNotify";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { communityHref } from "@/lib/slugHelpers";
+import { requireManagedCommunity } from "@/lib/communities.server";
 import {
   COMMUNITY_DESCRIPTION_MAX,
   COMMUNITY_LIMIT_PER_USER,
@@ -76,21 +77,10 @@ async function requirePremiumUser() {
   return { ok: true as const, user };
 }
 
-/** Сообщество, которым текущий пользователь вправе управлять (владелец
- *  или модератор), либо null — вызывающий превращает его в ошибку. */
-async function requireManaged(communityId: string) {
-  const user = await getCurrentUser();
-  if (!user) redirect(localeHref("/communities", await getLocale()));
-  const community = await prisma.community.findUnique({
-    where: { id: communityId },
-    include: { members: { where: { userId: user.id } } },
-  });
-  if (!community) return null;
-  const isOwner = community.ownerId === user.id;
-  const isModerator = community.members[0]?.role === "MODERATOR";
-  if (!isOwner && !isModerator) return null;
-  return { user, community, isOwner };
-}
+// «Кто вправе управлять» — общий requireManagedCommunity из
+// lib/communities.server.ts: своя копия здесь смотрела роль без
+// `status: "ACTIVE"` и держалась на том, что бан сбрасывает роль
+// (аудит 2026-09, п.1.8).
 
 export async function createCommunity(formData: FormData): Promise<ActionError | void> {
   const { locale, t } = await getT();
@@ -171,7 +161,7 @@ export async function updateCommunity(
   formData: FormData,
 ): Promise<ActionResult> {
   const { t } = await getT();
-  const managed = await requireManaged(communityId);
+  const managed = await requireManagedCommunity(communityId);
   if (!managed) return { ok: false, error: t.communities.errors.notFound };
 
   const title = String(formData.get("title") ?? "").trim().slice(0, COMMUNITY_TITLE_MAX);
@@ -205,10 +195,10 @@ export async function deleteCommunity(communityId: string): Promise<ActionError 
   // Админ сайта удаляет любое сообщество: оно живёт на её домене, и
   // отвечает за него она — а создатель проблемного сообщества сносить
   // его сам, разумеется, не станет. Проверку админа делаем ПЕРВОЙ, чтобы
-  // не звать requireManaged: тот уводит редиректом всякого, кто в
-  // сообществе не хозяин.
+  // не звать requireManagedCommunity: тот уводит редиректом всякого, кто
+  // в сообществе не хозяин.
   if (!(await isAdminAuthenticated())) {
-    const managed = await requireManaged(communityId);
+    const managed = await requireManagedCommunity(communityId);
     // Из своих удаляет только владелец: модератор следит за порядком, а
     // не распоряжается чужим сообществом.
     if (!managed?.isOwner) return { ok: false, error: t.communities.errors.notFound };
@@ -297,7 +287,7 @@ export async function answerJoinRequest(
   accept: boolean,
 ): Promise<ActionResult> {
   const { t } = await getT();
-  const managed = await requireManaged(communityId);
+  const managed = await requireManagedCommunity(communityId);
   if (!managed) return { ok: false, error: t.communities.errors.notFound };
 
   const pending = await prisma.communityMember.findUnique({
@@ -346,7 +336,7 @@ export async function addCommunityLink(
   formData: FormData,
 ): Promise<ActionResult> {
   const { t } = await getT();
-  const managed = await requireManaged(communityId);
+  const managed = await requireManagedCommunity(communityId);
   if (!managed) return { ok: false, error: t.communities.errors.notFound };
 
   const parsed = parseCommunityLink(formData.get("label"), formData.get("url"));
@@ -368,7 +358,7 @@ export async function deleteCommunityLink(
   linkId: string,
 ): Promise<ActionResult> {
   const { t } = await getT();
-  const managed = await requireManaged(communityId);
+  const managed = await requireManagedCommunity(communityId);
   if (!managed) return { ok: false, error: t.communities.errors.notFound };
   await prisma.communityLink.deleteMany({ where: { id: linkId, communityId } });
   revalidatePath(`/communities/${communityId}`);

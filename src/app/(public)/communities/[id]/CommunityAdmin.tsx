@@ -333,9 +333,15 @@ export default function CommunityAdmin({
             {links.map((l) => (
               <div key={l.id} className="d-flex align-items-center justify-content-between gap-2">
                 <span className="small text-truncate">{l.label}</span>
+                {/* Крестик, как в форме создания: подписанная «Убрать
+                    ссылку» весила больше самой строки, а два вида у
+                    одного действия читались как два разных действия.
+                    Что делает крестик, говорит подсказка по наведению. */}
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="icon-btn"
+                  aria-label={s.deleteLink}
+                  data-tooltip={s.deleteLink}
                   disabled={isPending}
                   onClick={() =>
                     startTransition(async () => {
@@ -344,17 +350,21 @@ export default function CommunityAdmin({
                     })
                   }
                 >
-                  {s.deleteLink}
+                  ×
                 </button>
               </div>
             ))}
             <form action={addLink} className="d-flex flex-wrap gap-2 align-items-end">
+              {/* aria-label, как у тех же полей в форме создания: видимой
+                  подписи у них нет, а плейсхолдер именем поля служит не
+                  во всех читалках. */}
               <input
                 type="text"
                 name="label"
                 required
                 maxLength={60}
                 placeholder={s.linkLabel}
+                aria-label={s.linkLabel}
                 className="form-control form-control-sm"
                 style={{ maxWidth: "10rem" }}
               />
@@ -363,6 +373,7 @@ export default function CommunityAdmin({
                 name="url"
                 required
                 placeholder="https://t.me/…"
+                aria-label={s.linkUrl}
                 className="form-control form-control-sm"
                 style={{ maxWidth: "14rem" }}
               />

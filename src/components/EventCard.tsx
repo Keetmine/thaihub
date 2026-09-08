@@ -75,7 +75,10 @@ export default function EventCard({
         <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
       </div>
 
-      <AppLink href={eventHref(event)} className="event-card-poster flex-shrink-0">
+      {/* tabIndex={-1}, как у постера в EventAgendaRow: ссылка дублирует
+          переход по названию, а alt="" оставляет её без имени — фокус на
+          «пустой» ссылке только путал бы скринридер. */}
+      <AppLink href={eventHref(event)} className="event-card-poster flex-shrink-0" tabIndex={-1}>
         {event.posterUrl && !posterFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -164,6 +167,10 @@ export default function EventCard({
               // одну строку не влезает.
               className="d-inline-flex align-items-center gap-1 tooltip-wide"
               data-tooltip={friendsGoing.map((f) => f.name || t.events.card.friend).join(", ")}
+              // tabIndex как у подсказки MskTimeInfo: имена друзей живут
+              // только в data-tooltip, и без фокуса с клавиатуры их было
+              // не открыть вовсе.
+              tabIndex={0}
             >
               <UsersIcon className="icon-inline" />
               {friendsGoing.length === 1

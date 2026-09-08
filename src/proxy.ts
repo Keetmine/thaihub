@@ -20,7 +20,10 @@ const USER_COOKIE = "user_session";
 // Routes reachable without being logged in: the marketing landing page
 // (which itself renders the real event feed once you ARE logged in — see
 // src/app/(public)/page.tsx) and the auth forms themselves.
-const PUBLIC_PATHS = new Set(["/", "/about", "/wiki", "/help", "/login", "/signup", "/terms", "/forgot-password", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml", "/sw.js"]);
+// /privacy — в списке явно, а не через финальный pass: юридическая
+// страница обязана быть публичной по построению, а не по счастливому
+// совпадению (что она не попадает в isPrivateSection).
+const PUBLIC_PATHS = new Set(["/", "/about", "/wiki", "/help", "/login", "/signup", "/terms", "/privacy", "/forgot-password", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml", "/sw.js"]);
 
 export function proxy(request: NextRequest) {
   const { pathname: rawPathname } = request.nextUrl;
@@ -82,7 +85,11 @@ export function proxy(request: NextRequest) {
     // isAdminAuthenticated()/requireAdmin(), которые вызывают
     // admin-layout и каждый admin server action.
     if (!request.cookies.get(USER_COOKIE)?.value) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const loginUrl = new URL("/login", request.url);
+      // Возврат после входа: куда шёл, туда и вернётся (админские
+      // адреса без языкового префикса, pathname здесь равен raw).
+      loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
+      return NextResponse.redirect(loginUrl);
     }
     return pass();
   }
@@ -145,6 +152,12 @@ export function proxy(request: NextRequest) {
     );
   if (isPrivateSection && !request.cookies.get(USER_COOKIE)?.value) {
     const loginUrl = new URL(localeHref("/login", locale), request.url);
+    // Возврат после входа: исходный путь (без языкового префикса — его
+    // подставит обратно localeHref в экшене входа) кладём в ?next=.
+    // Query сохраняем тоже: фильтры страницы — часть адреса. Валидацию
+    // не делаем здесь — значение всё равно перепроверит sanitizeNextPath
+    // на форме и в экшене (URL может прийти и не от прокси).
+    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 

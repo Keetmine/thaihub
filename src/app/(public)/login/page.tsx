@@ -7,6 +7,7 @@ import { telegramBotUsername } from "@/lib/telegram";
 import TelegramLoginButton from "@/components/TelegramLoginButton";
 import { pageMetadata } from "@/lib/seo";
 import { getCurrentUser } from "@/lib/userAuth";
+import { sanitizeNextPath } from "@/lib/loginNext";
 import { getT, localeHref } from "@/lib/i18n";
 
 export async function generateMetadata() {
@@ -24,12 +25,17 @@ export async function generateMetadata() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next: rawNext } = await searchParams;
   const { locale, t } = await getT();
-  // Залогиненного форма входа только сбивает с толку — уводим в кабинет.
-  if (await getCurrentUser()) redirect(localeHref("/account", locale));
+  // Куда вернуть после входа (?next= проставляют прокси и гейты
+  // приватных страниц). Значение из URL — чужое: валидируем и здесь,
+  // чтобы не пронести мусор в скрытое поле и ссылку на регистрацию.
+  const next = sanitizeNextPath(rawNext);
+  // Залогиненного форма входа только сбивает с толку — уводим сразу
+  // туда, куда он шёл (или в кабинет).
+  if (await getCurrentUser()) redirect(localeHref(next ?? "/account", locale));
   // Виджет появляется только когда бот настроен (env задан) — читаем на
   // сервере в рантайме, поэтому NEXT_PUBLIC-переменная не нужна.
   const botUsername = telegramBotUsername();
@@ -60,9 +66,14 @@ export default async function LoginPage({
           <p className="small text-danger text-center mb-3">
             {t.auth.login.googleError}
           </p>
+        ) : error === "rate" ? (
+          <p className="small text-danger text-center mb-3">{t.auth.login.rateLimited}</p>
         ) : error ? (
           <p className="small text-danger text-center mb-3">{t.auth.login.wrongCredentials}</p>
         ) : null}
+        {/* Возврат после входа: экшен читает next из формы, а не из URL —
+            server action своего URL не видит. */}
+        {next && <input type="hidden" name="next" value={next} />}
         <label className="form-label" htmlFor="login-email">{t.auth.login.email}</label>
         <input id="login-email" type="email" name="email" required autoFocus className="form-control mb-3" />
         <label className="form-label" htmlFor="login-password">{t.auth.login.password}</label>
@@ -95,7 +106,12 @@ export default async function LoginPage({
         )}
         <p className="small text-secondary text-center mb-0">
           {t.auth.login.noAccount}{" "}
-          <AppLink href="/signup" className="link-body-emphasis">
+          {/* next едет и на регистрацию: пришедший по гейту может не
+              иметь аккаунта, а вернуться после signup должен туда же. */}
+          <AppLink
+            href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+            className="link-body-emphasis"
+          >
             {t.auth.login.signupLink}
           </AppLink>
         </p>

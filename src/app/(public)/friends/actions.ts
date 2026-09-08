@@ -19,6 +19,17 @@ export async function sendFriendRequest(addresseeId: string): Promise<FriendActi
     return { ok: false, error: t.social.friends.errors.cannotAddSelf };
   }
 
+  // Адресат должен существовать и не быть удалённым: id приходит с
+  // клиента, и подделанный давал 500 на внешнем ключе, а мягко
+  // удалённый аккаунт (deletedAt) — заявку, которую некому принять.
+  const addressee = await prisma.user.findFirst({
+    where: { id: addresseeId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!addressee) {
+    return { ok: false, error: t.social.friends.errors.userNotFound };
+  }
+
   const [a, b] = [user.id, addresseeId];
   const existing = await prisma.friendship.findFirst({
     where: {

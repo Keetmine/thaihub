@@ -7,6 +7,7 @@ export const auth = {
       telegramError: "Couldn't sign you in with Telegram — please try again",
       googleError: "Couldn't sign you in with Google — please try again",
       wrongCredentials: "Wrong email or password",
+      rateLimited: "Too many attempts — please wait a few minutes",
       email: "Email",
       password: "Password",
       forgot: "Forgot your password?",

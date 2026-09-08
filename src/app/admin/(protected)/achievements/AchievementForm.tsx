@@ -93,7 +93,7 @@ export default function AchievementForm({
       >
         <div className="row g-3">
           <div className="col-12 col-md-3">
-            <label className="form-label" htmlFor="achievement-form-scope">Чья ачивка *</label>
+            <label className="form-label" htmlFor="achievement-form-scope">Чьё достижение *</label>
             {/* На правке scope заперт: выданные строки лежат в разных
                 таблицах (UserAchievement / CommunityAchievement), и
                 смена адресата осиротила бы уже полученное. */}
@@ -169,7 +169,7 @@ export default function AchievementForm({
 
       <FormSection
         title="Служебное"
-        hint="ключ связывает ачивку с уже полученными у пользователей"
+        hint="ключ связывает достижение с уже полученными у пользователей"
       >
         <div className="row g-3 align-items-end">
           <div className="col-12 col-md-6">
@@ -185,7 +185,7 @@ export default function AchievementForm({
             />
             <div className="form-text">
               {keyLocked
-                ? "Менять нельзя: по ключу привязаны уже полученные ачивки."
+                ? "Менять нельзя: по ключу привязаны уже полученные достижения."
                 : "Латиница в нижнем регистре, цифры и дефисы. После создания не меняется."}
             </div>
           </div>

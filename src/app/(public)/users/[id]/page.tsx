@@ -723,7 +723,9 @@ export default async function UserProfilePage({
           {/* Одна строка с многоточием — правка владельца: длинное
               название не ломает строку события. */}
           <p className="font-display fw-medium text-white mb-0 text-truncate">{event.title}</p>
-          <p className="small text-secondary mb-0 text-capitalize">
+          {/* first-letter-cap, а не text-capitalize: капитализироваться
+              должен только день недели, не месяц («25 Октября»). */}
+          <p className="small text-secondary mb-0 first-letter-cap">
             {dates.length === 1
               ? formatHumanDate(dates[0], locale)
               : formatCombinedDateList(dates, locale)}

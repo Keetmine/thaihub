@@ -24,16 +24,23 @@ async function clientKey(scope: string): Promise<string> {
 }
 
 /**
- * Бросает с понятным сообщением после MAX_ATTEMPTS попыток за 10 минут
- * с одного IP. Считает только вызовы этой функции — вызывать в начале
- * действия, до проверки пароля (иначе перебор бесплатен до успеха).
+ * true — лимит исчерпан (MAX_ATTEMPTS попыток за 10 минут с одного IP).
+ * Считает только вызовы этой функции — вызывать в начале действия, до
+ * проверки пароля (иначе перебор бесплатен до успеха).
+ *
+ * Возвращает ответ значением, а не исключением: текст брошенной из
+ * server action ошибки прод-сборка Next не показывает (заменяет общей
+ * заглушкой), и человек видел безликое зависание вместо «подождите».
+ * Форма входа по этому значению редиректит на себя с понятной ошибкой.
  */
-export async function assertRateLimit(scope: "login" | "signup"): Promise<void> {
+export async function isRateLimited(scope: "login" | "signup"): Promise<boolean> {
   // Обход для e2e: полный прогон логинится десятки раз с одного IP и
   // упирался в лимит невнятными таймаутами. Двойное условие — в проде
   // (NODE_ENV=production) переменная не действует, ослабить боевой
   // лимитер ею нельзя.
-  if (process.env.E2E_RATE_LIMIT_OFF === "1" && process.env.NODE_ENV !== "production") return;
+  if (process.env.E2E_RATE_LIMIT_OFF === "1" && process.env.NODE_ENV !== "production") {
+    return false;
+  }
   const key = await clientKey(scope);
   const now = Date.now();
 
@@ -44,10 +51,19 @@ export async function assertRateLimit(scope: "login" | "signup"): Promise<void> 
   const w = windows.get(key);
   if (!w || w.resetAt <= now) {
     windows.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return;
+    return false;
   }
   w.count += 1;
-  if (w.count > MAX_ATTEMPTS) {
+  return w.count > MAX_ATTEMPTS;
+}
+
+/**
+ * Throw-обёртка над isRateLimited для действий без собственной формы
+ * ошибок (обратная связь, промокоды, восстановление пароля): там ответ
+ * человеку строит сама форма, а лимит — аварийный стоп-кран.
+ */
+export async function assertRateLimit(scope: "login" | "signup"): Promise<void> {
+  if (await isRateLimited(scope)) {
     throw new Error("Слишком много попыток — подождите несколько минут");
   }
 }

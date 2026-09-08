@@ -127,8 +127,12 @@ export default async function MeetupsTab({
     };
     // Снаружи — закрытая карточка: та же, что показывает афиша без
     // подписки. Ни названия, ни площадки, ни адреса в разметку не
-    // попадает вовсе.
-    if (locked) return <EventCardLocked key={m.id} startsAt={occurrence.startsAt} />;
+    // попадает вовсе. Подпись — «Для участников сообщества», а не
+    // афишное «По подписке»: гейт здесь членство, участие бесплатное,
+    // и звать человека платить было бы враньём (аудит 2026-09, п.2.1).
+    if (locked) {
+      return <EventCardLocked key={m.id} startsAt={occurrence.startsAt} membersOnly />;
+    }
     return (
       <MeetupCard
         key={m.id}

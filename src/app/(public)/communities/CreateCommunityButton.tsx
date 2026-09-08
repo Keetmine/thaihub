@@ -44,6 +44,12 @@ export default function CreateCommunityButton() {
   // достаётся только адрес скрытым полем — так же сделаны обложка в
   // управлении и картинка встречи. Сообщества ещё нет, писать адрес
   // некуда, поэтому он просто ждёт сабмита в состоянии.
+  //
+  // Пока файл едет, сабмит закрыт (onUploadingChange у дропзоны): адрес
+  // попадает в скрытое поле только ПОСЛЕ загрузки, и ранний «Создать»
+  // молча завёл бы сообщество без обложки — как это уже случалось со
+  // встречами (жалоба владельца 2026-09-08 «фото не загружается»).
+  const [isCoverUploading, setIsCoverUploading] = useState(false);
 
   // Ссылок при создании может быть несколько, но ряды показываем по
   // мере надобности: пять пустых пар полей в окне выглядят как
@@ -72,6 +78,9 @@ export default function CreateCommunityButton() {
   }
 
   async function handleSubmit(formData: FormData) {
+    // Дубль запрета с кнопки: Enter в любом текстовом поле отправляет
+    // форму мимо неё, и disabled его не останавливает.
+    if (isCoverUploading) return;
     setIsSaving(true);
     setError(null);
     try {
@@ -80,7 +89,10 @@ export default function CreateCommunityButton() {
       const result = await createCommunity(formData);
       if (result) setError(result.error);
     } catch {
-      setError(s.errors.titleRequired);
+      // Сюда попадает сеть/сервер, а не валидация — конкретную причину
+      // мы не знаем, поэтому фраза общая (раньше тут стояло «Укажите
+      // название», и на оборванную сеть человек шёл чинить название).
+      setError(t.widgets.errors.network);
     } finally {
       setIsSaving(false);
     }
@@ -153,6 +165,7 @@ export default function CreateCommunityButton() {
             crop
             ratioW={COMMUNITY_COVER_RATIO_W}
             ratioH={COMMUNITY_COVER_RATIO_H}
+            onUploadingChange={setIsCoverUploading}
           />
 
           <div className="d-flex flex-column gap-3">
@@ -289,7 +302,7 @@ export default function CreateCommunityButton() {
 
           {error && <p className="small text-danger mb-0">{error}</p>}
           <div>
-            <button type="submit" className="btn btn-primary" disabled={isSaving}>
+            <button type="submit" className="btn btn-primary" disabled={isSaving || isCoverUploading}>
               {s.create}
             </button>
           </div>

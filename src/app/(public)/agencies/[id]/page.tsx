@@ -220,7 +220,7 @@ export default async function AgencyDetailPage({
       {tab === "performers" ? (
         performers.length === 0 ? (
           <p className="small text-secondary mb-4">
-            {q ? t.catalog.agency.noArtistsFound : t.catalog.agency.emptyArtists}
+            {q ? t.common.nobodyFound : t.catalog.agency.emptyArtists}
           </p>
         ) : (
           // Компактная сетка карточек (как постеры сериалов на странице

@@ -112,6 +112,13 @@ export const events = {
     unnamedFriend: "Unnamed",
   },
 
+  /** Ответы серверных экшенов вокруг события (избранное, отзывы,
+   *  комментарии). Тот же текст, что у 404 самой страницы: посторонний
+   *  не должен отличить «встречи нет» от «встреча есть, но не для вас». */
+  errors: {
+    notFound: "Event not found",
+  },
+
   /** Чипы «иду» по датам на странице события */
   going: {
     promptPast:
@@ -202,6 +209,10 @@ export const events = {
     communityMeetup: (name: string) => `Meetup of the “${name}” community`,
     lockedAria: "This event is available with a subscription",
     lockedBadge: "Subscribers only",
+    // Закрытая встреча сообщества для постороннего: гейт — членство, а
+    // не подписка (см. ru/events.ts).
+    lockedMembersAria: "This meetup is visible to community members only",
+    lockedBadgeMembers: "Community members only",
     thaiTime: (zone: string, time: string) => `Thai time. ${zone}: ${time}`,
   },
 

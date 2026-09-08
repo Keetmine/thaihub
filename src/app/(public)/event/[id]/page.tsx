@@ -104,7 +104,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // нельзя показывать даже заголовок («Смотрим 5 серию у Кати» в
   // <title> — уже утечка), а участнику её всё равно не индексируют.
   if (event.communityId) {
-    if (!(await canSeeMeetup(event, (await getCurrentUser())?.id))) notFound();
+    // isSiteAdmin — чтобы админ сайта дошёл до встречи из очереди жалоб
+    // (аудит 2026-09, п.1.9): смотреть можно, участником не становится.
+    const metaViewer = await getCurrentUser();
+    if (!(await canSeeMeetup(event, metaViewer?.id, { isSiteAdmin: !!metaViewer?.isAdmin }))) {
+      notFound();
+    }
     // Участнику страницу отдаём, поисковику — никогда: встречу видят
     // только свои, и в индексе ей делать нечего.
     return pageMetadata({
@@ -174,11 +179,17 @@ export default async function EventDetailPage({
   ]);
   const viewerTz = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
-  // Встреча сообщества (АА25). Закрытая — только участникам: посторонний
-  // получает честный 404, как будто страницы нет (см. lib/meetups.ts).
+  // Встреча сообщества (АА25). Закрытая — только участникам и админу
+  // сайта (модерация; аудит 2026-09, п.1.9): посторонний получает
+  // честный 404, как будто страницы нет (см. lib/meetups.ts).
   // Метадата выше проверяет то же самое и тем же способом.
   const isMeetup = !!event.communityId;
-  if (isMeetup && !(await canSeeMeetup(event, currentUser?.id))) notFound();
+  if (
+    isMeetup &&
+    !(await canSeeMeetup(event, currentUser?.id, { isSiteAdmin: !!currentUser?.isAdmin }))
+  ) {
+    notFound();
+  }
 
   // Карточка события ПУБЛИЧНАЯ: что, когда, где, кто выступает, постер,
   // описание, цена и ссылка на билеты — видно всем, включая поисковики

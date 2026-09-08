@@ -79,7 +79,6 @@ export const filters = {
     live: {
         allFilters: "All filters",
         seeAll: (n: number) => `Show all ${n} results`,
-        empty: "Nothing found",
         hint: "Start typing a title or a name",
     },
 

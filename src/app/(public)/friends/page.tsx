@@ -141,7 +141,7 @@ export default async function FriendsPage({
         <>
           <h2 className="section-heading mb-2">{f.searchResults}</h2>
           {searchResults.length === 0 ? (
-            <p className="small text-secondary mb-4">{f.noneFound}</p>
+            <p className="small text-secondary mb-4">{t.common.nobodyFound}</p>
           ) : (
             <div className="d-flex flex-column gap-2 mb-4">
               {searchResults.map((u) => (

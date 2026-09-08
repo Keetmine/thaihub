@@ -296,7 +296,7 @@ function FilterGroup({
               ))}
             </div>
           ) : (
-            <span className="small text-secondary">{t.filters.live.empty}</span>
+            <span className="small text-secondary">{t.common.nothingFound}</span>
           ))}
       </>
     );

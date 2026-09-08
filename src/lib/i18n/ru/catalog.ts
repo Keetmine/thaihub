@@ -272,7 +272,7 @@ export const catalog: Dict["catalog"] = {
         emptyAgencies: "Пока нет агентств.",
         emptyBands: "Пока нет групп.",
         emptyMascots: "Пока нет маскотов.",
-        emptyFavorites: "Пока никого нет в избранном. Используйте поиск, чтобы найти актёра.",
+        emptyFavorites: "Пока никого нет в избранном. Используйте поиск, чтобы найти артиста.",
     },
 
     artist: {
@@ -348,7 +348,6 @@ export const catalog: Dict["catalog"] = {
         seriesCount: (n: number) => `сериалов: ${n}`,
         tabArtists: (n: number) => `Артисты (${n})`,
         tabSeries: (n: number) => `Сериалы (${n})`,
-        noArtistsFound: "Никого не нашлось.",
         emptyArtists: "Пока нет артистов.",
         emptySeries: "Пока нет сериалов.",
     },

@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useT } from "@/components/LocaleProvider";
 import { defaultIcon } from "@/lib/leafletIcon";
 
 const DEFAULT_CENTER: [number, number] = [13.7563, 100.5018]; // Bangkok
@@ -30,6 +31,9 @@ export default function LocationPicker({
   onChange?: (lat: number | null, lng: number | null) => void;
 }) {
   const uid = useId();
+  // Подписи из словаря: пикер стоит и на публичных формах, где зритель
+  // может быть англоязычным (аудит 2026-09, п.3).
+  const t = useT();
   const [position, setPosition] = useState<[number, number] | null>(
     defaultLatitude != null && defaultLongitude != null
       ? [defaultLatitude, defaultLongitude]
@@ -45,7 +49,7 @@ export default function LocationPicker({
     <div>
       <div className="row g-2 mb-2">
         <div className="col-6">
-          <label className="form-label small" htmlFor={`${uid}-input`}>Широта</label>
+          <label className="form-label small" htmlFor={`${uid}-input`}>{t.ui.map.latitude}</label>
           <input id={`${uid}-input`}
             type="number"
             step="any"
@@ -58,7 +62,7 @@ export default function LocationPicker({
           />
         </div>
         <div className="col-6">
-          <label className="form-label small" htmlFor={`${uid}-input2`}>Долгота</label>
+          <label className="form-label small" htmlFor={`${uid}-input2`}>{t.ui.map.longitude}</label>
           <input id={`${uid}-input2`}
             type="number"
             step="any"
@@ -72,7 +76,7 @@ export default function LocationPicker({
         </div>
       </div>
 
-      <p className="small text-secondary mb-2">Кликните на карте, чтобы указать точку.</p>
+      <p className="small text-secondary mb-2">{t.ui.map.clickToPick}</p>
 
       <div
         className="leaflet-map-dark"

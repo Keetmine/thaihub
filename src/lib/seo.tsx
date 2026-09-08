@@ -327,6 +327,43 @@ export function eventJsonLd(e: {
 }
 
 /**
+ * schema.org/Article для вики-статей. Единственный тип разметки, где
+ * отдаётся дата обновления: в вики правки живые, человеческие, и
+ * «обновлено» в выдаче читателю действительно что-то говорит — в
+ * отличие от карточек каталога, где @updatedAt освежает любой массовый
+ * прогон синка (см. комментарий к lastmod в lib/sitemapShards.ts).
+ */
+export function articleJsonLd(a: {
+  title: string;
+  slug: string | null;
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  /** Короткая текстовая выжимка — та же, что идёт в meta description. */
+  description?: string;
+}) {
+  const url = `${SITE_URL}/wiki/${a.slug ?? a.id}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: a.title,
+    ...(a.description ? { description: a.description } : {}),
+    datePublished: a.createdAt.toISOString(),
+    dateModified: a.updatedAt.toISOString(),
+    mainEntityOfPage: url,
+    url,
+    // Автор и издатель — сайт: статьи пишет владелец от имени MyBLHub,
+    // персональных авторов у вики нет.
+    author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icons/icon-512.png` },
+    },
+  };
+}
+
+/**
  * WebSite + SearchAction: подсказывает поисковикам сайтлинк-поиск.
  * Живёт в корневом layout — он общий на оба языка, поэтому скрипт
  * рендерится ровно один раз на страницу; сущность одна, url без

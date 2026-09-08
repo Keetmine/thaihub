@@ -21,12 +21,13 @@ export const social = {
     title: "Friends",
     searchPlaceholder: "Find by name, handle or email (exact)…",
     searchResults: "Search results",
-    noneFound: "Nobody found.",
     noName: "No name",
     /** Ответы серверных экшенов заявок. */
     errors: {
       cannotAddSelf: "You can't send a friend request to yourself",
       alreadyRequested: "The request is already sent, or you're already friends",
+      userNotFound: "User not found",
+      notFriends: "You are not friends yet",
     },
     /** Внутри фразы («Удалить «без имени» из друзей?») — с маленькой. */
     noNameInline: "no name",

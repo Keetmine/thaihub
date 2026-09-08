@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { isLocationCategory } from "@/lib/locationCategories";
+import { parseUploadUrl } from "@/lib/uploadUrl";
 import { canUseLocation, createOwnLocation, resolveUserMapsCoords } from "@/lib/ownLocation";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { communityRights } from "@/lib/meetups";
@@ -307,7 +308,11 @@ export async function updateOwnPlace(locationId: string, formData: FormData): Pr
   }
 
   const name = String(formData.get("name") ?? "").trim();
-  const photoUrl = String(formData.get("photoUrl") ?? "").trim();
+  // Фото — только свой /uploads/…, как и при создании места (см.
+  // createOwnLocation и src/lib/uploadUrl.ts): подделанный адрес —
+  // ошибка, а не молчаливое сохранение.
+  const photo = parseUploadUrl(formData.get("photoUrl"));
+  if (!photo.ok) return { ok: false, error: t.lists.errors.badPhotoUrl };
   const mapsInput = String(formData.get("mapsUrl") ?? "").trim();
   if (!name) return { ok: false, error: t.lists.errors.placeNameRequired };
 
@@ -323,7 +328,7 @@ export async function updateOwnPlace(locationId: string, formData: FormData): Pr
     where: { id: locationId },
     data: {
       name,
-      photoUrl: photoUrl || null,
+      photoUrl: photo.url,
       category: rawCategory && isLocationCategory(rawCategory) ? rawCategory : null,
       ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
     },

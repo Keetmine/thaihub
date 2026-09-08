@@ -27,8 +27,10 @@ export default function FriendNotifyToggle({
       title={isMuted ? t.social.profile.notifyOffTitle : t.social.profile.notifyOnTitle}
       onClick={() =>
         startTransition(async () => {
-          await toggleFriendNotifications(friendId);
-          setIsMuted(!isMuted);
+          // Ошибка приходит значением (дружбы уже нет — кнопка от
+          // устаревшей страницы): колокольчик тогда не перещёлкиваем.
+          const result = await toggleFriendNotifications(friendId);
+          if (!result) setIsMuted(!isMuted);
         })
       }
     >

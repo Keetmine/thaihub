@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { normalizeTimeValue } from "@/lib/dates";
 
 /**
@@ -63,6 +64,9 @@ export default function TimeInput({
   ariaLabel?: string;
 }) {
   const isControlled = value !== undefined;
+  // Плейсхолдер — из словаря: русское «чч:мм» утекало на EN-витрину
+  // (аудит 2026-09, п.3).
+  const t = useT();
   const [own, setOwn] = useState(defaultValue);
   const current = isControlled ? value : own;
 
@@ -83,7 +87,7 @@ export default function TimeInput({
       // Ровно «ЧЧ:ММ». Маска и так не пустит больше, но с атрибутом это
       // видно и мобильной клавиатуре, и автозаполнению.
       maxLength={5}
-      placeholder="чч:мм"
+      placeholder={t.ui.timePlaceholder}
       className={className}
       value={current}
       onChange={(e) => set(maskTime(e.target.value, current))}
