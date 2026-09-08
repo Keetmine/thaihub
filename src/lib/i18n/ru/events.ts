@@ -21,8 +21,6 @@ export const events: Dict["events"] = {
     emptyUpcoming: "Предстоящих событий пока нет.",
     archiveHeading: "Архив событий",
     teaserHeading: "Ближайшее",
-    teaserIntro: (count: string, base: number) =>
-      `Ближайшие события открыты всем. Подписка открывает остальную афишу — ещё ${count} ${plural(base, ["событие", "события", "событий"])} впереди — с поиском, фильтром по датам и напоминаниями, чтобы не пропустить старт продаж.`,
   },
 
   calendar: {

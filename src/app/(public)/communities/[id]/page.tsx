@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import BackLink from "@/components/BackLink";
+import AppLink from "@/components/AppLink";
 import ConfirmForm from "@/components/ConfirmForm";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -294,6 +295,16 @@ export default async function CommunityPage({
                 communityId={community.id}
                 needsApproval={community.joinMode === "APPROVAL"}
               />
+            )}
+            {/* Гостю — та же кнопка, но ведущая на вход (правка
+                владельца 2026-09-09): раньше кнопки не было вовсе, и
+                страница не отвечала на главный вопрос «как сюда
+                попасть». Подпись честная — «Подать заявку» у сообщества
+                с одобрением: после входа человек увидит ровно её. */}
+            {!viewer && (
+              <AppLink href="/login" className="btn btn-primary btn-sm">
+                {community.joinMode === "APPROVAL" ? s.joinRequest : s.join}
+              </AppLink>
             )}
             {access.isPending && <span className="date-chip">{s.pending}</span>}
             {/* Убранному говорим прямо, почему кнопки «Вступить» нет:

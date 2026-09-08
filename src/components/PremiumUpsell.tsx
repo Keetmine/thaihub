@@ -32,7 +32,17 @@ export default async function PremiumUpsell({
   ]);
   const canPay = !!process.env.TELEGRAM_BOT_TOKEN && mode === "stars";
   const { t } = await getT();
-  const features = [t.widgets.premium.presales, t.widgets.premium.feed, t.widgets.premium.trips, t.widgets.premium.ics];
+  // Порядок — от самого горячего к остальному; список сверяем с ФАКом
+  // («Что даёт подписка»), чтобы блок не отставал от продукта.
+  const features = [
+    t.widgets.premium.feed,
+    t.widgets.premium.presales,
+    t.widgets.premium.going,
+    t.widgets.premium.trips,
+    t.widgets.premium.stats,
+    t.widgets.premium.create,
+    t.widgets.premium.ics,
+  ];
 
   return (
     <div className="surface p-5" style={{ maxWidth: "34rem", margin: "0 auto" }}>
@@ -42,11 +52,13 @@ export default async function PremiumUpsell({
         </div>
         <h2 className="h4 font-display mb-1">{t.widgets.premium.heading(feature)}</h2>
         {intro && <p className="text-secondary small mb-2">{intro}</p>}
-        <p className="text-secondary small mb-0">
-          {canPay
-            ? t.widgets.premium.priceOneClick(price)
-            : t.widgets.premium.priceByAgreement(price)}
-        </p>
+        {/* Цену показываем только там, где её можно заплатить в один
+            клик (правка владельца 2026-09-09): «оплата по
+            договорённости» рядом с цифрой звучала как торг, а сумму
+            человек всё равно узнаёт в переписке. */}
+        {canPay && (
+          <p className="text-secondary small mb-0">{t.widgets.premium.priceOneClick(price)}</p>
+        )}
       </div>
 
       <ul className="list-unstyled d-flex flex-column gap-2 mb-4">

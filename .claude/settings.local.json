@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx --yes create-next-app@latest . --typescript --eslint --tailwind --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)"
+      "Bash(npx --yes create-next-app@latest . --typescript --eslint --tailwind --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+       "Bash(ssh root@myblhub.com*)",
+      "Bash(scp root@myblhub.com:*)"
     ]
   }
 }

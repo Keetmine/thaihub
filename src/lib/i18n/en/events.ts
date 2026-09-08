@@ -24,8 +24,6 @@ export const events = {
     teaserHeading: "Coming up next",
     // `count` — уже готовая подпись («150+»), `base` — число, по
     // которому она склоняется (в русском словаре).
-    teaserIntro: (count: string, base: number) =>
-      `The nearest events are open to everyone. A subscription opens the rest of the feed — ${count} more upcoming ${base === 1 ? "event" : "events"} — with search, date filters and reminders that keep you from missing a ticket sale.`,
   },
 
   /** Календарь: /calendar */

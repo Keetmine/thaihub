@@ -40,6 +40,25 @@ export default async function HomePage({
   // показаны честно и целиком, остальная лента остаётся за подпиской.
   // Гостю здесь БОЛЬШЕ НЕ подсовывается лендинг: это был дубль главной
   // под адресом, по которому человек пришёл именно за афишей.
+  // Названия за шапкой — события, на которые идёт больше всего народу.
+  // Каталожные: название встречи («Смотрим 5 серию у Кати») в подложке
+  // афиши читалось бы как чужой личный план (см. lib/catalogEvents.ts).
+  // Запрос стоит ДО развилки гость/подписка: в подложке нет ничего
+  // персонального, и гостю она нужна так же, как подписчику (правка
+  // владельца 2026-09-09 — раньше гость видел шапку без имён).
+  const watermarkNames = await prisma.event
+    .findMany({
+      where: catalogEventsWhere(),
+      select: { title: true },
+      orderBy: [
+        { attendees: { _count: "desc" } },
+        { favoritedBy: { _count: "desc" } },
+        { createdAt: "desc" },
+      ],
+      take: WATERMARK_NAME_LIMIT,
+    })
+    .then((rows) => rows.map((e) => e.title));
+
   if (!user || !isPremiumActive(user)) {
     return (
       <div>
@@ -52,6 +71,7 @@ export default async function HomePage({
             size="lg"
             className="mb-5"
             watermark="Events"
+            watermarkNames={watermarkNames}
           />
         </div>
         <EventsTeaser userId={user?.id ?? null} />
@@ -80,28 +100,11 @@ export default async function HomePage({
 
   // Поездки и названия-подложка не зависят ни от фильтров, ни друг от
   // друга — один заход в базу вместо двух подряд.
-  const [myTrips, watermarkNames] = await Promise.all([
-    prisma.trip.findMany({
-      where: { ...tripAccess, endDate: { gte: startOfDay(new Date()) } },
-      select: tripSelect,
-      orderBy: { startDate: "asc" },
-    }),
-    // Названия за шапкой — события, на которые идёт больше всего народу.
-    // Каталожные: название встречи («Смотрим 5 серию у Кати») в подложке
-    // афиши читалось бы как чужой личный план (см. lib/catalogEvents.ts).
-    prisma.event
-      .findMany({
-        where: catalogEventsWhere(),
-        select: { title: true },
-        orderBy: [
-          { attendees: { _count: "desc" } },
-          { favoritedBy: { _count: "desc" } },
-          { createdAt: "desc" },
-        ],
-        take: WATERMARK_NAME_LIMIT,
-      })
-      .then((rows) => rows.map((e) => e.title)),
-  ]);
+  const myTrips = await prisma.trip.findMany({
+    where: { ...tripAccess, endDate: { gte: startOfDay(new Date()) } },
+    select: tripSelect,
+    orderBy: { startDate: "asc" },
+  });
 
   const activeTrip = rawTrip
     ? (myTrips.find((t) => t.id === rawTrip) ??
