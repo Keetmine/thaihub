@@ -158,10 +158,10 @@ export const lists = {
 
     /** Ответы серверных экшенов — их показывают формы раздела. */
     errors: {
-        /** Создание своего места или списка — платное (правка
-         *  владельца 2026-09-06); смотреть чужие публичные списки
-         *  можно и без подписки. */
-        premium: "Your own places and lists come with a subscription",
+        /** Создание своего места — платное (правка владельца
+         *  2026-09-06); смотреть чужие публичные списки можно и без
+         *  подписки, а первый свой список — пробный (см. freeLimit). */
+        premium: "Your own places come with a subscription",
         /** Пробный лимит: второй список бесплатно не создаётся. */
         freeLimit: "One place list is free — more come with a subscription",
         listTitleRequired: "Give the list a title",

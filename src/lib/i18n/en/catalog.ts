@@ -378,7 +378,7 @@ export const catalog = {
     music: {
         metaTitle: "New music releases",
         metaDescription:
-            "Fresh albums, EPs, singles and songs by Thai artists — the latest additions to the catalogue.",
+            "Fresh albums, EPs, singles and songs — the latest additions to the catalogue.",
         title: "New releases",
         all: "All",
         onlyFavorites: "My artists",

@@ -348,7 +348,9 @@ export const trips = {
     errors: {
         stayBothDates: "Set both dates — arrival and departure",
         stayOrder: "The departure date is before the arrival",
-        premium: "Trips are part of the subscription",
+        /** Показывается уже владельцу пробной поездки: сама поездка у
+         *  него есть, платное — править её и вносить записи. */
+        premium: "Editing a trip and adding entries come with a subscription",
         /** Пробный лимит: вторая поездка бесплатно не создаётся. */
         freeLimit: "One trip is free — more come with a subscription",
         fillTitleAndDates: "Fill in the title and both dates",

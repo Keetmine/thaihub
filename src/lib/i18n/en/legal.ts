@@ -16,11 +16,11 @@ export const legal = {
 
       whatTitle: "What MyBLHub is",
       whatText:
-        "MyBLHub is a service for fans of series and their artists: a feed of concerts and fan meets, a catalogue of actors and series, filming locations, trip planning and reminders in Telegram. Part of the catalogue is open to everyone; the event feed and the personal sections are available with a subscription.",
+        "MyBLHub is a service for fans of series and their artists: a feed of concerts and fan meets, a catalogue of actors and series, filming locations, trip planning and reminders in Telegram. The catalogue is open to everyone; the full event feed and the personal sections are available with a subscription.",
 
       subscriptionTitle: "Subscription and payment",
       subscriptionAccess:
-        "A subscription opens up the event feed, the calendar, trips, place lists and notifications for 30 days from the moment of payment.",
+        "A subscription runs for 30 days from the moment of payment and opens up the full event feed, the calendar, trips and place lists without the free-trial limits, as well as the presale reminder and the weekly digest in Telegram.",
       subscriptionOneOff:
         "Payment is one-off. There is no automatic renewal — when the term runs out the subscription simply ends, and no money is charged again.",
       subscriptionHow:
@@ -240,7 +240,7 @@ export const legal = {
           },
           going: {
             q: "How do I mark that I'm going to a concert?",
-            a: "The mark is set with the “I'm going” button on the event card or a date chip on the event page, and it applies to a specific date. What is marked appears in the profile, in the calendar, in the plan of a trip covering those dates and in the calendar subscription, and counts towards statistics once the event has passed. Marking attendance is part of the subscription; favourites are available to any signed-in visitor.",
+            a: "The mark is set with the “I'm going” button on the event card or a date chip on the event page, and it applies to a specific date. What is marked appears in the profile, in the calendar, in the plan of a trip covering those dates and in the calendar subscription, and counts towards statistics once the event has passed. Marking attendance at feed events is part of the subscription, while marking a meetup of your own community is free; favourites are available to any signed-in visitor.",
           },
           calendar: {
             q: "Is there a monthly calendar of events?",
@@ -280,7 +280,7 @@ export const legal = {
           },
           lists: {
             q: "What are lists of places and artists for?",
-            a: "A list is a shareable set of places or artists. Visibility is chosen per list: private, friends-only or public — a public list opens without an account. Lists of places can be attached to a trip and are drawn on its map. Lists of places are created in “My places” and lists of artists in your own profile; creating them requires a subscription, while existing lists stay available without one.",
+            a: "A list is a shareable set of places or artists. Visibility is chosen per list: private, friends-only or public — a public list opens without an account. Lists of places can be attached to a trip and are drawn on its map. Lists of places are created in “My places” and lists of artists in your own profile. The first list of places is free; further lists of places and any list of artists require a subscription, while existing lists stay available without one.",
           },
         },
 
@@ -288,11 +288,11 @@ export const legal = {
           title: "Trips",
           what: {
             q: "What is a trip?",
-            a: "A trip is a page built around a set of dates that gathers everything falling inside them: marked events from the feed, personal meet-ups and flights, hotel and travel bookings, a to-do list, a packing list, a shopping list and places. The section requires a subscription.",
+            a: "A trip is a page built around a set of dates that gathers everything falling inside them: marked events from the feed, personal meet-ups and flights, hotel and travel bookings, a to-do list, a packing list, a shopping list and places. One trip of your own is free to create and to look through, showing what falls inside its dates; adding entries to it and creating further trips require a subscription.",
           },
           create: {
             q: "How do I create a trip?",
-            a: "With the “+ Create a trip” button in the trips section: a name, the dates and the visibility. Friends can be picked in the same form — they receive an invitation and become participants once they accept.",
+            a: "With the “+ Create a trip” button in the trips section: a name, the dates and the visibility. Friends can be picked in the same form — they receive an invitation and become participants once they accept. The first trip of your own is free, the ones after it come with a subscription.",
           },
           shared: {
             q: "How do I invite someone to a shared trip?",
@@ -336,11 +336,11 @@ export const legal = {
           },
           meetups: {
             q: "What are community meetups?",
-            a: "A meetup is the community's own event. Any member can create one; the author edits their own and the owner and moderators edit any. The card works like one in the event feed, with an “I'm going” mark, comments and a calendar export. Meetups are visible to members only and never reach the general feed, the calendar, search or statistics; they are gathered on the community tab and on the “Communities” tab in the event feed.",
+            a: "A meetup is the community's own event. Any member can create one; the author edits their own and the owner and moderators edit any. The card works like one in the event feed, with an “I'm going” mark, comments and a calendar export. Meetups are visible to members only and never reach the general feed, the calendar, search or statistics; they are gathered on the community tab and, for subscribers, on the “Communities” tab in the event feed as well.",
           },
           trips: {
             q: "How do I organise a trip from a community?",
-            a: "The “Trips” tab has a “Plan a trip” button: it creates an ordinary shared trip and sends invitations to the chosen members. The button requires a subscription, because the trips section is paid throughout. The tab lists only the trips the viewer is entitled to open by their visibility.",
+            a: "The “Trips” tab has a “Plan a trip” button: it creates an ordinary shared trip and sends invitations to the chosen members. The button requires an active subscription: the one free trip is created on your own, in the trips section. The tab lists only the trips the viewer is entitled to open by their visibility.",
           },
           places: {
             q: "Does a community have shared lists of places?",
@@ -384,7 +384,7 @@ export const legal = {
           },
           notifications: {
             q: "What are notifications sent about?",
-            a: "Friend requests, trip invitations, replies and likes on comments, new episodes of followed series, birthdays of favourite artists, friends marking events, new badges and the opening of online seat booking. Everything collects in the bell in the header.",
+            a: "Friend requests, trip invitations, replies and likes on comments, new episodes of followed series, a series from your plans starting, a new event for a favourite artist, birthdays of favourite artists, friends marking events, community invitations and new topics, new badges and the opening of online seat booking. Everything collects in the bell in the header.",
           },
           telegram: {
             q: "How do I connect Telegram notifications?",
@@ -396,11 +396,11 @@ export const legal = {
           title: "Subscription",
           gives: {
             q: "What does a subscription give?",
-            a: "The full event feed with its filters, search and archive; the calendar and day pages; trips; the personal features around an event — “I'm going” marks, tickets, friends going, notes, the presale reminder and the calendar export; statistics and badges in the profile; and creating own places, lists of places, lists of artists and communities.",
+            a: "The full event feed with its filters, search and archive; the calendar and day pages; trips beyond the free one; the personal features around an event — “I'm going” marks, tickets, friends going, notes, the presale reminder and the calendar export; statistics and badges in the profile; the weekly digest in Telegram and the profile cover; and creating own places, lists of places beyond the first, lists of artists and communities.",
           },
           free: {
             q: "What works without a subscription?",
-            a: "The catalogue of series, artists, groups, agencies and novels in full, watch statuses, ratings and the episode counter, reviews and comments, favourites, filming locations and the map, visited marks, friends, notifications, taking part in communities, the MyDramaList import and the export of personal data. In the event feed the two nearest events and any individual event page are open. Places and lists created earlier stay available as well.",
+            a: "The catalogue of series, artists, groups, agencies and novels in full, watch statuses, ratings and the episode counter, reviews and comments, favourites, filming locations and the map, visited marks, friends, notifications, taking part in communities, one trip of your own and one list of places of your own, the MyDramaList import and the export of personal data. In the event feed the two nearest events and any individual event page are open. Places and lists created earlier stay available as well.",
           },
           pay: {
             q: "How do I subscribe?",
