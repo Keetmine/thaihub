@@ -13,42 +13,42 @@ datasource db {
 }
 
 model Event {
-  id                   String                        @id @default(cuid())
-  title                String
+  id                          String                        @id @default(cuid())
+  title                       String
   // Публичный слаг URL (см. src/lib/slug.ts + slugHelpers.ts):
   // каталожные — из названия с нумерацией при совпадении, поездки и
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
-  slug                 String?                       @unique
+  slug                        String?                       @unique
   // Онлайн-встреча сообщества: смотрим вместе из дома, места нет.
   // У каталожных событий всегда false.
-  isOnline             Boolean                       @default(false)
-  venue                String
-  description          String?
+  isOnline                    Boolean                       @default(false)
+  venue                       String
+  description                 String?
   // Откуда событие импортировано (ThaiTicketMajor) — блок «Источники»
   // на странице; у добавленных руками null.
-  sourceUrl            String?
-  presaleAt            DateTime?
-  presaleUrl           String?
+  sourceUrl                   String?
+  presaleAt                   DateTime?
+  presaleUrl                  String?
   // Free-text ticket price display string (e.g. "6,900 / 5,900 / 5,000
   // baht") — deliberately not a structured number, since sources like
   // ThaiTicketMajor list several tiers as one string.
-  ticketPrice          String?
-  posterUrl            String?
+  ticketPrice                 String?
+  posterUrl                   String?
   // Кто проводит (GMM Show, Eventpop…). Отдельным полем, а не строкой в
   // описании: по нему видно организатора в карточке и его можно
   // показывать/фильтровать (правка владельца 2026-09-06).
-  organizer            String?
+  organizer                   String?
   // Адрес площадки текстом — район и город со страницы источника;
   // `venue` остаётся отображаемым названием.
-  address              String?
+  address                     String?
   // Ссылка «посмотреть на карте». Ведёт в Google Maps (источники дают
   // короткие maps.app.goo.gl) — на странице события название площадки
   // становится ссылкой.
-  mapsUrl              String?
+  mapsUrl                     String?
   // Жанры/теги события: у фестивалей источник отдаёт их списком, и
   // раньше они уходили в описание текстом.
-  tags                 String[]
+  tags                        String[]
   // Встреча сообщества (АА25): у каталожного события тут null. Одно
   // поле разделяет афишу и посиделки — выборки каталога обязаны идти
   // через catalogEventsWhere (src/lib/catalogEvents.ts), иначе «пью
@@ -58,42 +58,46 @@ model Event {
   // «показывать всем», владелец его отменила (2026-09-08): встреча в
   // общей афише сбивает с толку, а видеть её должны те, кто в
   // сообществе, — им она и показывается отдельной вкладкой афиши.
-  communityId          String?
-  community            Community?                    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  communityId                 String?
+  community                   Community?                    @relation(fields: [communityId], references: [id], onDelete: Cascade)
   // Кто завёл встречу. У каталожных событий null — их заводит админка
   // и импортёры.
-  createdById          String?
-  createdBy            User?                         @relation("EventAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById                 String?
+  createdBy                   User?                         @relation("EventAuthor", fields: [createdById], references: [id], onDelete: SetNull)
   // Optional tie-in to a drama this event is about (premiere screening,
   // fan meet for the cast, etc.) — one event belongs to at most one drama.
-  dramaId              String?
-  drama                Drama?                        @relation(fields: [dramaId], references: [id])
+  dramaId                     String?
+  drama                       Drama?                        @relation(fields: [dramaId], references: [id])
   // Optional link to a known real-world Location (venue reused from a
   // filming-location page, a recurring fan-meet spot, etc.) — `venue`
   // stays the free-text display string either way; this just lets the
   // event show up on that Location's page and on the map.
-  locationId           String?
-  location             Location?                     @relation(fields: [locationId], references: [id])
+  locationId                  String?
+  location                    Location?                     @relation(fields: [locationId], references: [id])
   // A multi-day concert is still ONE Event (one title/venue/cast/
   // favorite/going state) with several occurrences — it shows up once
   // per day in listings/calendar, but editing or deleting it acts on the
   // whole thing at once. See docs/features/events.md.
-  occurrences          EventOccurrence[]
+  occurrences                 EventOccurrence[]
   // Ж9: до трёх фото для покупающих билеты (схема зала, бенефиты).
   // Постер остаётся отдельным полем: он идёт в OG-картинку и карточки.
-  photos               EventPhoto[]
-  performers           EventPerformer[]
-  pairings             EventPairing[]
-  favoritedBy          FavoriteEvent[]
-  attendees            EventAttendance[]
-  notes                EventNote[]
-  presaleNotifications TelegramPresaleNotification[]
+  photos                      EventPhoto[]
+  performers                  EventPerformer[]
+  pairings                    EventPairing[]
+  favoritedBy                 FavoriteEvent[]
+  attendees                   EventAttendance[]
+  notes                       EventNote[]
+  presaleNotifications        TelegramPresaleNotification[]
   performerEventNotifications PerformerEventNotification[]
-  createdAt            DateTime                      @default(now())
-  updatedAt            DateTime                      @updatedAt
-  reviews              Review[]
-  comments             Comment[]
-  tickets              EventTicket[]
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  reviews                     Review[]
+  comments                    Comment[]
+  tickets                     EventTicket[]
+
+  @@index([createdById])
+  @@index([dramaId])
+  @@index([locationId])
 }
 
 // Ж9: до трёх фото для покупающих билеты (схема зала, цены, бенефиты)
@@ -569,6 +573,8 @@ model Drama {
   // Гостевой список /dramas: «свежие по дате эфира» (order by desc,
   // airedFrom not null, take 60).
   @@index([airedFrom])
+  @@index([agencyId])
+  @@index([novelId])
 }
 
 // «Related Content» с MyDramaList: drama → related с подписью
@@ -665,6 +671,7 @@ model Location {
   updatedAt DateTime @updatedAt
 
   @@index([name])
+  @@index([createdByUserId])
 }
 
 model DramaLocation {
@@ -1128,6 +1135,7 @@ model TripPersonalEvent {
   createdAt        DateTime                      @default(now())
 
   @@index([tripId])
+  @@index([locationId])
 }
 
 // Пользовательская подборка локаций («где вкусная еда», «кафешки из
@@ -1256,6 +1264,7 @@ model TripPlaceList {
   list   PlaceList @relation(fields: [listId], references: [id], onDelete: Cascade)
 
   @@id([tripId, listId])
+  @@index([listId])
 }
 
 // Отдельное важное место, добавленное прямо в поездку (без списка).
@@ -1268,6 +1277,7 @@ model TripPlace {
   createdAt  DateTime @default(now())
 
   @@id([tripId, locationId])
+  @@index([locationId])
 }
 
 // Дедуп пресейл-напоминаний: одно на (юзер, событие) — сама препродажа
@@ -1361,6 +1371,7 @@ model FriendNotificationMute {
   createdAt     DateTime @default(now())
 
   @@id([userId, mutedFriendId])
+  @@index([mutedFriendId])
 }
 
 // Заметка пользователя к событию — личная или видимая друзьям. Одна на
@@ -1497,6 +1508,8 @@ model PromoCode {
   usedAt    DateTime?
   usedById  String?
   usedBy    User?     @relation("PromoRedeemer", fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@index([usedById])
 }
 
 model FavoritePerformer {
@@ -1662,6 +1675,7 @@ model Comment {
   @@index([eventId])
   @@index([postId])
   @@index([parentId])
+  @@index([userId])
 }
 
 model CommentLike {
@@ -1672,6 +1686,7 @@ model CommentLike {
   createdAt DateTime @default(now())
 
   @@id([commentId, userId])
+  @@index([userId])
 }
 
 // Токен сброса пароля: одноразовый, живёт час. Письмо уходит через SMTP
@@ -1705,6 +1720,8 @@ model Feedback {
   context   String?
   status    FeedbackStatus @default(NEW)
   createdAt DateTime       @default(now())
+
+  @@index([userId])
 }
 
 enum FeedbackKind {
@@ -1729,6 +1746,8 @@ model Report {
   reason     String?
   status     ReportStatus @default(NEW)
   createdAt  DateTime     @default(now())
+
+  @@index([reporterId])
 }
 
 enum ReportStatus {
@@ -1777,6 +1796,7 @@ model ImportedItem {
   createdAt  DateTime   @default(now())
 
   @@index([createdAt])
+  @@index([runId])
 }
 
 model ImportRun {
@@ -1945,6 +1965,7 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([userId, readAt, createdAt])
+  @@index([actorId])
 }
 
 // Ссылка у места: инстаграм заведения, сайт, канал в телеграме.
@@ -2074,6 +2095,7 @@ model PerformerSeen {
 
   @@unique([userId, performerId])
   @@index([userId])
+  @@index([performerId])
 }
 
 // Расписание фоновых задач: что запускается само, когда и по кому.
@@ -2112,6 +2134,7 @@ model ScheduledJobTarget {
 
   @@unique([jobKey, performerId])
   @@index([jobKey])
+  @@index([performerId])
 }
 
 // Заявка «добавьте сериал»: ненайденная строка пользовательского импорта
@@ -2145,6 +2168,7 @@ model MdlDramaRequest {
   users MdlDramaRequestUser[]
 
   @@index([resolvedAt, rejectedAt])
+  @@index([resolvedDramaId])
 }
 
 // Кто просил и с каким статусом/прогрессом в своём списке MDL: при
@@ -2374,6 +2398,7 @@ model CommunityInvite {
 
   @@unique([communityId, userId])
   @@index([userId])
+  @@index([invitedById])
 }
 
 /// Тема обсуждения в сообществе. Комментарии к ней — общая модель
@@ -2405,6 +2430,7 @@ model CommunityPost {
   updatedAt   DateTime             @updatedAt
 
   @@index([communityId, createdAt])
+  @@index([authorId])
 }
 
 /// Фото, прикреплённое к комментарию: к отзыву о событии (АА20) и к
