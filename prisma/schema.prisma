@@ -20,6 +20,9 @@ model Event {
   // списки — название + короткий код. null — слаг не сгенерирован
   // (например, тайское название), ссылки откатываются на id.
   slug                 String?                       @unique
+  // Онлайн-встреча сообщества: смотрим вместе из дома, места нет.
+  // У каталожных событий всегда false.
+  isOnline             Boolean                       @default(false)
   venue                String
   description          String?
   // Откуда событие импортировано (ThaiTicketMajor) — блок «Источники»
@@ -541,12 +544,13 @@ model Drama {
   relatedFrom DramaRelation[] @relation("RelatedFrom")
   relatedTo   DramaRelation[] @relation("RelatedTo")
 
-  performers    PerformerDrama[]
-  watchStatuses DramaWatchStatus[]
-  mdlRequests   MdlDramaRequest[]
-  episodeList   DramaEpisode[]
-  events        Event[]
-  locations     DramaLocation[]
+  performers     PerformerDrama[]
+  episodeWatches EpisodeWatch[]
+  watchStatuses  DramaWatchStatus[]
+  mdlRequests    MdlDramaRequest[]
+  episodeList    DramaEpisode[]
+  events         Event[]
+  locations      DramaLocation[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -755,6 +759,10 @@ model DramaWatchStatus {
   // не помнят. Считается в серии и часы у экрана, но НЕ в «досмотрено
   // сериалов»: там счёт разным тайтлам (см. lib/userStats.ts).
   rewatchCount    Int         @default(0)
+  // Когда досмотрели: ставится при переходе в COMPLETED, руками не
+  // правится. null у старых строк — честное «не знаем», выдуманной даты
+  // тут не будет (итоги года считают только заполненные).
+  completedAt     DateTime?
   // Колокольчик «уведомлять о новых сериях» на странице сериала (З1):
   // подписка per-сериал. Включается сам при переходе в «Смотрю сейчас»
   // и гаснет при уходе из него; руками переключается независимо от
@@ -967,6 +975,12 @@ model User {
   // (`deletedAt`) — действие самого человека, а это инструмент
   // владельца сайта: забаненный не входит и не пишет, но написанное им
   // остаётся — массовое исчезновение чужих реплик рвёт разговоры.
+  // Кто привёл (реферальная ссылка /signup?ref=…). SetNull при удалении
+  // пригласившего: приглашённый — не его собственность.
+  referredById           String?
+  referredBy             User?             @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals              User[]            @relation("Referrals")
+  episodeWatches         EpisodeWatch[]
   bannedAt               DateTime?
   /// Причина видна только админу: человеку показываем факт, а не текст.
   banReason              String?
@@ -2392,4 +2406,21 @@ model CommunityPostPhoto {
   createdAt DateTime      @default(now())
 
   @@index([postId])
+}
+
+// Дневник серий (аудит 2026-09): отметка КОНКРЕТНОЙ серии с датой и
+// необязательной заметкой-впечатлением. Живёт рядом со счётчиком
+// episodesWatched, не вместо него: счётчик — быстрый прогресс, дневник —
+// память. Материал для «итогов года» и будущих эпизодных обсуждений.
+model EpisodeWatch {
+  userId    String
+  dramaId   String
+  episode   Int
+  watchedAt DateTime @default(now())
+  note      String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drama     Drama    @relation(fields: [dramaId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dramaId, episode])
+  @@index([dramaId])
 }
