@@ -75,6 +75,15 @@ export const account: Dict["account"] = {
   stats: {
     topPerformers: "Чаще всего видела вживую",
 
+    // Вкусовой профиль (аудит 2026-09, п.6.2). Строка про MDL собирается
+    // из «начала» и «хвоста» в StatsTab; см. комментарий в en/account.ts.
+    tasteTitle: "Вкусовой профиль",
+    tasteAvgSelf: (avg: string) => `Ваша средняя оценка ${avg}`,
+    tasteAvgViewer: (avg: string) => `Средняя оценка ${avg}`,
+    tasteStricter: (diff: string) => ` — на ${diff} строже, чем у MyDramaList`,
+    tasteKinder: (diff: string) => ` — на ${diff} щедрее, чем у MyDramaList`,
+    tasteSame: " — вровень с MyDramaList",
+
     artistLists: "Мои списки артистов",
     artistListsHint: "Создайте свой список — «видела вживую», «пили пиво»…",
     artistListsLocked: "Свои списки артистов — по подписке.",
@@ -159,7 +168,7 @@ export const account: Dict["account"] = {
     telegramNotifyInvites: "Приглашения в поездки и подписка",
     telegramNotifyFriends: "Заявки в друзья",
     telegramNotifyReplies: "Ответы на мои комментарии",
-    telegramNotifyEvents: "События: друзья идут, открытие онлайн-бронирования",
+    telegramNotifyEvents: "События: новое у избранного артиста, друзья идут, открытие онлайн-бронирования",
     telegramNotifyBirthdays: "Дни рождения избранных артистов",
     telegramNotifyEpisodes: "Новые серии сериалов, которые смотрю",
     telegramNotifyBroadcast: "Новости проекта",

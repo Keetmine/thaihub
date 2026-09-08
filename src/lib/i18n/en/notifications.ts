@@ -26,6 +26,10 @@ export const notifications = {
     EPISODE_AIRED: (drama: string) => `New episode of "${drama}"`,
     DRAMA_ADDED: (drama: string) => `"${drama}" is now in our catalog`,
     ONLINE_BOOKING: (event: string) => `Online booking for "${event}" opens soon`,
+    // «Кто» здесь — артист, а не пользователь: имя замораживается в
+    // actorName так же, как имена людей в соседних поводах.
+    PERFORMER_EVENT: (who: string, event: string) => `${who} has a new event: "${event}"`,
+    DRAMA_STARTED: (drama: string) => `"${drama}" from your plans has started`,
     COMMUNITY_JOIN_REQUEST: (who: string, community: string) =>
         `${who} wants to join "${community}"`,
     COMMUNITY_JOIN_ACCEPTED: (community: string) => `You are now a member of "${community}"`,
@@ -44,6 +48,19 @@ export const notifications = {
 
   episodeBody: (n: number, total: number | null) =>
     total ? `Episode ${n} of ${total} is out.` : `Episode ${n} is out.`,
+
+  /** Подборки бота по /today и /week — см. src/lib/botDigest.ts. Язык
+   *  берётся из профиля привязанного аккаунта, как у notifyUser. */
+  digest: {
+    todayTitle: "Today for you",
+    weekTitle: "Your week ahead",
+    episodesHeader: "Episodes of your series",
+    eventsHeader: "Your events",
+    birthdaysHeader: "Birthdays of artists you follow",
+    episodeLine: (drama: string, n: number) => `${drama} — episode ${n}`,
+    empty:
+      "Nothing yet: mark series you watch and add artists and events to favorites — the digest will fill up.",
+  },
 
   premiumBody: (until: string) => `The feed, the calendar and trips are open — until ${until}.`,
   premiumLifetimeBody:

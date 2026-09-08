@@ -11,7 +11,7 @@ import { formatShortDate } from "@/lib/dates";
 import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 import type { TripTodoKind, TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, isItemVisibility } from "./itemVisibility";
-import { isPremiumActive } from "@/lib/premium";
+import { FREE_TRIP_LIMIT, isPremiumActive } from "@/lib/premium";
 import { notifyUser } from "@/lib/notifications";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 
@@ -57,11 +57,32 @@ function itemVisibilityData(visibility: TripItemVisibility) {
 export type ActionError = { ok: false; error: string };
 export type ActionResult = { ok: true } | ActionError;
 
+/**
+ * Гейт создания поездки: подписка ИЛИ пробный лимит (аудит 2026-09
+ * п.8, решение владельца) — бесплатному одна СВОЯ поездка, чтобы
+ * пощупать фичу. Считаются только свои (userId): совместная, куда
+ * человека позвали, лимит не съедает — её завёл другой. Остальные
+ * действия с поездками для бесплатного не открывались: страница
+ * поездки и так показывает события её дат, а вносить свои записи —
+ * уже часть подписки.
+ */
+async function tripCreateGateError(user: {
+  id: string;
+  premiumUntil: Date | null;
+  premiumLifetime: boolean;
+}): Promise<string | null> {
+  if (isPremiumActive(user)) return null;
+  const ownTrips = await prisma.trip.count({ where: { userId: user.id } });
+  if (ownTrips < FREE_TRIP_LIMIT) return null;
+  return (await getT()).t.trips.errors.freeLimit;
+}
+
 export async function createTrip(formData: FormData): Promise<ActionError | void> {
   const { locale, t } = await getT();
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
-  if (!isPremiumActive(user)) return { ok: false, error: t.trips.errors.premium };
+  const gateError = await tripCreateGateError(user);
+  if (gateError) return { ok: false, error: gateError };
 
   const title = String(formData.get("title") ?? "").trim();
   const startDate = String(formData.get("startDate") ?? "");
@@ -125,8 +146,10 @@ export async function createCommunityTrip(
   const { locale, t } = await getT();
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
-  // Поездки целиком платные (см. auth.md) — гейт тот же, что у createTrip.
-  if (!isPremiumActive(user)) return { ok: false, error: t.trips.errors.premium };
+  // Гейт тот же, что у createTrip: подписка или пробный лимит — поездка
+  // из сообщества всё равно СВОЯ поездка и лимит съедает так же.
+  const gateError = await tripCreateGateError(user);
+  if (gateError) return { ok: false, error: gateError };
 
   // Звать из сообщества вправе только тот, кто в нём сам состоит:
   // список участников — содержимое сообщества, а оно не для посторонних.

@@ -269,6 +269,96 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
   }
 }
 
+/**
+ * «У избранного артиста новое событие» (аудит 2026-09, приоритет №1).
+ *
+ * Вызывается из админских экшенов после привязки состава: создание
+ * события (форма и импорт, включая одобрение черновиков) — со всем
+ * составом, правка — только с ВПЕРВЫЕ привязанными артистами (старый
+ * состав уже отработан при создании, пересборка связей формой — не
+ * новость). Встречи сообществ — НЕ триггер: их админка не заводит, но
+ * калитка communityId стоит и здесь — одна общая, как в рассылках.
+ *
+ * Уведомление одно на пару (получатель, событие), сколько бы избранных
+ * артистов ни оказалось в составе: дедуп — PerformerEventNotification,
+ * отметка ставится ДО отправки, гонку параллельных сохранений судит
+ * уникальный ключ (как у серий и дней рождения).
+ *
+ * Идёт через notifyUser: колокольчик + Telegram по tgNotifyEvents, на
+ * языке получателя. Ошибка рассылки не роняет админский экшен.
+ */
+export async function notifyFavoritersAboutEventPerformers(
+  eventId: string,
+  performerIds: string[],
+): Promise<void> {
+  try {
+    if (performerIds.length === 0) return;
+
+    const now = new Date();
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        communityId: true,
+        // Ближайшая будущая дата — во фразу «когда». Событию целиком в
+        // прошлом уведомление не положено: привязка артиста к архивной
+        // карточке — уборка данных, а не «новое событие».
+        occurrences: {
+          where: { startsAt: { gte: now } },
+          orderBy: { startsAt: "asc" },
+          select: { startsAt: true },
+          take: 1,
+        },
+      },
+    });
+    if (!event || event.communityId) return;
+    const firstUpcoming = event.occurrences[0];
+    if (!firstUpcoming) return;
+
+    // Получатели — избравшие любого артиста из привязанных; данные для
+    // notifyUser забираем тем же findMany, чтобы не перечитывать User на
+    // каждое уведомление (N+1).
+    const favorites = await prisma.favoritePerformer.findMany({
+      where: { performerId: { in: performerIds } },
+      select: {
+        userId: true,
+        performer: { select: { name: true } },
+        user: { select: NOTIFY_RECIPIENT_SELECT },
+      },
+    });
+
+    // Несколько избранных в составе — в фразу идёт первый попавшийся:
+    // важен факт события, а не перечень имён.
+    const byUser = new Map<string, (typeof favorites)[number]>();
+    for (const f of favorites) if (!byUser.has(f.userId)) byUser.set(f.userId, f);
+
+    for (const fav of byUser.values()) {
+      try {
+        await prisma.performerEventNotification.create({
+          data: { userId: fav.userId, eventId: event.id },
+        });
+      } catch {
+        continue; // уже уведомляли об этом событии (или выиграла гонка)
+      }
+
+      await notifyUser({
+        userId: fav.userId,
+        user: fav.user,
+        kind: "PERFORMER_EVENT",
+        actorName: fav.performer.name,
+        subject: event.title,
+        body: (_t, locale) => formatHumanDate(firstUpcoming.startsAt, locale),
+        href: eventHref(event),
+      });
+    }
+  } catch (error) {
+    // Создание/правка события важнее уведомления — экшен не роняем.
+    console.error("notifyFavoritersAboutEventPerformers failed", error);
+  }
+}
+
 // Час по Бангкоку, после которого серию считаем вышедшей: точного
 // времени эфира в расписании нет (DramaEpisode.airDate — только дата),
 // а тайские сериалы выходят вечером. Уведомление в утро дня эфира было
@@ -330,7 +420,6 @@ export async function sendEpisodeNotifications(): Promise<number> {
       user: { select: NOTIFY_RECIPIENT_SELECT },
     },
   });
-  if (watchers.length === 0) return 0;
   const watchersByDrama = new Map<string, typeof watchers>();
   for (const w of watchers) {
     watchersByDrama.set(w.dramaId, [...(watchersByDrama.get(w.dramaId) ?? []), w]);
@@ -356,6 +445,63 @@ export async function sendEpisodeNotifications(): Promise<number> {
         userId: watcher.userId,
         user: watcher.user,
         kind: "EPISODE_AIRED",
+        subject: dramaTitleForLocale(episode.drama, locale),
+        body: (t) => t.notifications.episodeBody(episode.number, episode.drama.episodes),
+        href: dramaHref(episode.drama),
+      });
+      sent += 1;
+    }
+  }
+
+  // «Стартовал сериал из ваших планов» (аудит 2026-09, раздел 5 п. 5):
+  // серия №1 будит и тех, кто отложил сериал «В планы», — колокольчик
+  // серий у них обычно погашен, и основная рассылка их не видит.
+  // notifyEpisodes: false в условии — не отписка, а анти-дубль по
+  // смыслу: подписанные колокольчиком уже получили «Вышла серия 1»
+  // выше, и премьерная фраза стала бы вторым письмом про ту же серию.
+  // Технически второй барьер — та же EpisodeNotification (userId +
+  // episodeId): что бы ни разъехалось, дважды про серию не шлём.
+  // Общие отписки уважаются как всегда: notifyUser сам смотрит
+  // tgNotifyEpisodes перед дублированием в Telegram.
+  const premieres = episodes.filter((e) => e.number === 1);
+  if (premieres.length === 0) return sent;
+
+  const planWatchers = await prisma.dramaWatchStatus.findMany({
+    where: {
+      dramaId: { in: [...new Set(premieres.map((e) => e.dramaId))] },
+      status: "PLAN_TO_WATCH",
+      notifyEpisodes: false,
+    },
+    select: {
+      userId: true,
+      dramaId: true,
+      episodesWatched: true,
+      user: { select: NOTIFY_RECIPIENT_SELECT },
+    },
+  });
+  const planByDrama = new Map<string, typeof planWatchers>();
+  for (const w of planWatchers) {
+    planByDrama.set(w.dramaId, [...(planByDrama.get(w.dramaId) ?? []), w]);
+  }
+
+  for (const episode of premieres) {
+    for (const watcher of planByDrama.get(episode.dramaId) ?? []) {
+      // Первую серию уже отметил просмотренной — старт он не пропустил.
+      if (watcher.episodesWatched != null && watcher.episodesWatched >= episode.number) continue;
+
+      try {
+        await prisma.episodeNotification.create({
+          data: { userId: watcher.userId, episodeId: episode.id },
+        });
+      } catch {
+        continue; // уже уведомляли (или выиграл параллельный тик)
+      }
+
+      const locale = isLocale(watcher.user.locale) ? watcher.user.locale : DEFAULT_LOCALE;
+      await notifyUser({
+        userId: watcher.userId,
+        user: watcher.user,
+        kind: "DRAMA_STARTED",
         subject: dramaTitleForLocale(episode.drama, locale),
         body: (t) => t.notifications.episodeBody(episode.number, episode.drama.episodes),
         href: dramaHref(episode.drama),

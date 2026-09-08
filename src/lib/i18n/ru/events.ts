@@ -101,6 +101,11 @@ export const events: Dict["events"] = {
     friendGoing: "Друг идёт",
     friendsGoing: "Друзья идут",
     unnamedFriend: "Без имени",
+    /** «Идут с сайта» — витрина живых людей на событии, видна и гостю. */
+    siteGoing: "Идут с сайта",
+    /** Подсказка на кружке «+N», когда идущих больше десяти. */
+    siteGoingMore: (n: number) =>
+      `и ещё ${pluralized(n, ["человек", "человека", "человек"])}`,
   },
 
   /** Ответы серверных экшенов вокруг события (избранное, отзывы,
@@ -180,6 +185,9 @@ export const events: Dict["events"] = {
 
   card: {
     myTicket: "Мой билет",
+    // Бейдж онлайн-встречи сообщества — встаёт на место площадки
+    // (venue у такой встречи пустой); см. комментарий в en/events.ts.
+    online: "Онлайн",
     friend: "Друг",
     oneFriendGoing: (name: string) => `${name} идёт`,
     manyFriendsGoing: (count: number) =>

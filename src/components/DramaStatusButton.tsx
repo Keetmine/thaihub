@@ -11,6 +11,11 @@ import {
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { useT } from "@/components/LocaleProvider";
 import { CheckIcon, PencilIcon, PlusIcon } from "@/components/icons";
+import RatePromptPopover, {
+  isRatePromptDismissed,
+  ratePromptCoords,
+  type RatePromptCoords,
+} from "@/components/RatePromptPopover";
 
 /** Compact icon-button replacement for the drama heart/favorite toggle:
  *  a "+" when no watch status is set yet, a pencil once one is — both open
@@ -31,6 +36,9 @@ export default function DramaStatusButton({
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Попап «поставьте оценку» после перехода в «Просмотрено» — у самой
+  // кнопки, тем же порталом, что и меню статусов.
+  const [ratePromptAt, setRatePromptAt] = useState<RatePromptCoords | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +75,17 @@ export default function DramaStatusButton({
         if (!result.ok) {
           setError(result.error);
           return;
+        }
+        // Только что досмотрела и своей оценки нет — мягко предложить
+        // поставить (п.5.2 аудита). Ответ сервера, не пропсы: у кнопки
+        // в фильмографии оценка в данные строки не приходит.
+        if (
+          result.completedNow &&
+          !result.hasRating &&
+          !isRatePromptDismissed(dramaId)
+        ) {
+          const rect = ref.current?.getBoundingClientRect();
+          if (rect) setRatePromptAt(ratePromptCoords(rect));
         }
       }
       router.refresh();
@@ -139,6 +158,14 @@ export default function DramaStatusButton({
           ))}
         </div>,
         document.body,
+      )}
+
+      {ratePromptAt && (
+        <RatePromptPopover
+          dramaId={dramaId}
+          coords={ratePromptAt}
+          onClose={() => setRatePromptAt(null)}
+        />
       )}
     </div>
   );

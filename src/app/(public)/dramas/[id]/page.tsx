@@ -15,6 +15,7 @@ import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import EpisodeDiary from "@/components/EpisodeDiary";
 import RewatchCounter from "@/components/RewatchCounter";
 import DramaRating from "@/components/DramaRating";
 import { fetchDramaScore } from "@/lib/dramaRating";
@@ -51,6 +52,7 @@ import {
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { performerHref } from "@/lib/performerSlug";
+import { userDisplayName, userHref } from "@/lib/userProfile";
 import {
   fetchPairingsAmong,
   hideMembersOfListedBands,
@@ -196,6 +198,25 @@ export default async function DramaDetailPage({
   const id = drama.id;
 
   // Related Content с MDL: связь направленная, показываем обе стороны.
+  // Подпись у relatedTo-строки сформулирована с ТОЙ страницы («Bad Buddy
+  // — Thai sequel → Our Skyy 2» значит «Our Skyy 2 — сиквел Bad Buddy»),
+  // поэтому у односторонних связей (~275 из 1 077) тип разворачиваем.
+  // Разворачиваем только точные пары сиквел↔приквел и основная↔побочная
+  // история: у остальных типов (adaptation, original story, remake…)
+  // обратная формулировка неоднозначна, и честнее оставить как есть.
+  const invertRelation = (raw: string | null): string | null =>
+    raw?.replace(
+      /sequel|prequel|parent story|side story/,
+      (m) =>
+        (
+          {
+            sequel: "prequel",
+            prequel: "sequel",
+            "parent story": "side story",
+            "side story": "parent story",
+          } as Record<string, string>
+        )[m] ?? m,
+    ) ?? null;
   const relatedItems = [
     ...drama.relatedFrom.map((r) => ({
       drama: r.related,
@@ -203,8 +224,23 @@ export default async function DramaDetailPage({
     })),
     ...drama.relatedTo
       .filter((r) => !drama.relatedFrom.some((f) => f.relatedId === r.dramaId))
-      .map((r) => ({ drama: r.drama, relation: r.relation })),
+      .map((r) => ({ drama: r.drama, relation: invertRelation(r.relation) })),
   ];
+  // «Смотреть по порядку» (аудит, п. 6.1): связанные сериалы плюс сам
+  // текущий — одним рядом по годам, чтобы читался порядок просмотра
+  // франшизы. Сериалы без года — в конец: их место в хронологии
+  // неизвестно, и выдуманный «1900-й» ставил бы их первыми.
+  const watchOrder =
+    relatedItems.length > 0
+      ? [
+          ...relatedItems.map((r) => ({ ...r, current: false })),
+          { drama, relation: null as string | null, current: true },
+        ].sort(
+          (a, b) =>
+            (a.drama.year ?? Infinity) - (b.drama.year ?? Infinity) ||
+            a.drama.title.localeCompare(b.drama.title),
+        )
+      : [];
 
   // Первая волна: всё, что зависит только от самого сериала, — одним
   // Promise.all вместо четырёх последовательных await.
@@ -255,6 +291,7 @@ export default async function DramaDetailPage({
     goingEventIds,
     similarStatuses,
     visits,
+    friendStatuses,
   ] = await Promise.all([
     currentUser
       ? prisma.dramaWatchStatus.findUnique({
@@ -278,8 +315,89 @@ export default async function DramaDetailPage({
           select: { locationId: true },
         })
       : [],
+    // «Из ваших друзей смотрели» (аудит, п. 5.4): пересечение принятых
+    // дружб зрителя со статусами этого сериала — ОДНИМ запросом, через
+    // обратные связи Friendship на пользователе (дружба живёт в любую
+    // сторону, поэтому OR по обеим). Свою строку не показываем — она и
+    // так в шапке кнопкой статуса.
+    //
+    // hideProfileActivity тут фильтром не нужен НАМЕРЕННО: в блоке
+    // только друзья зрителя, а мастер-выключатель прячет активность от
+    // посторонних, не от друзей — то же правило, что на профиле
+    // (users/[id]/page.tsx: showActivity = isSelf || isFriend || !hide).
+    currentUser
+      ? prisma.dramaWatchStatus.findMany({
+          where: {
+            dramaId: id,
+            userId: { not: currentUser.id },
+            user: {
+              deletedAt: null,
+              OR: [
+                {
+                  friendRequestsSent: {
+                    some: { addresseeId: currentUser.id, status: "ACCEPTED" },
+                  },
+                },
+                {
+                  friendRequestsReceived: {
+                    some: { requesterId: currentUser.id, status: "ACCEPTED" },
+                  },
+                },
+              ],
+            },
+          },
+          select: {
+            status: true,
+            rating: true,
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                photoUrl: true,
+                deletedAt: true,
+              },
+            },
+          },
+          // Свежие отметки первыми: у кого сериал «живее», тот и ближе.
+          orderBy: { updatedAt: "desc" },
+        })
+      : [],
   ]);
   const visitedLocationIds = new Set(visits.map((v) => v.locationId));
+
+  // Дневник серий (аудит 2026-09 §7): отметки владельца по этому
+  // сериалу. Только СВОИ строки — дневник личный, и заметки не
+  // показываются нигде, кроме этой страницы под своей сессией. Даты
+  // форматируются здесь же, как у графика серий: клиенту уходят готовые
+  // строки, чтобы дату негде было прочитать в часовом поясе браузера.
+  // Запрос отдельным await, а не в общих волнах Promise.all, —
+  // точечная вставка (страницу параллельно правят), а выборка по
+  // первичному ключу дешёвая.
+  const episodeWatches =
+    currentUser && watchStatus
+      ? await prisma.episodeWatch.findMany({
+          where: { userId: currentUser.id, dramaId: id },
+          orderBy: { episode: "asc" },
+        })
+      : [];
+  const diaryYear = new Date().getUTCFullYear();
+  const diaryEntries = episodeWatches.map((w) => ({
+    episode: w.episode,
+    // Год — только у отметок не этого года, как в графике серий: у
+    // свежих он повторялся бы в каждой строке впустую.
+    dateLabel:
+      w.watchedAt.getUTCFullYear() === diaryYear
+        ? formatShortDate(w.watchedAt, locale)
+        : formatDateWithYear(w.watchedAt, locale),
+    note: w.note ?? "",
+  }));
+  // Строки дневника: 1..N при известном числе серий; если оно
+  // неизвестно — по факту отмеченного плюс одна следующая строка, чтобы
+  // дневник было с чего начать и чем продолжить.
+  const diaryCount =
+    drama.episodes ?? (episodeWatches.at(-1)?.episode ?? 0) + 1;
+  const diaryEpisodes = Array.from({ length: diaryCount }, (_, i) => i + 1);
 
   // У сериала может быть несколько студий (DramaAgency); легаси-поле
   // agency подставляется, если связей ещё нет.
@@ -826,6 +944,19 @@ export default async function DramaDetailPage({
                     />
                   </div>
                 )}
+                {/* Дневник серий (аудит 2026-09 §7) — свёрнут прямо под
+                  счётчиком: галочки по сериям с датой и личной
+                  заметкой. Связь со счётчиком односторонняя — отметка
+                  серии двигает счётчик, но не наоборот; почему — в
+                  episodeActions.ts. */}
+                <div className="mt-2">
+                  <EpisodeDiary
+                    dramaId={drama.id}
+                    episodes={diaryEpisodes}
+                    entries={diaryEntries}
+                    todayLabel={formatShortDate(new Date(), locale)}
+                  />
+                </div>
               </div>
             )}
 
@@ -853,6 +984,35 @@ export default async function DramaDetailPage({
         )}
       </div>
 
+      {/* «Из ваших друзей смотрели» (аудит, п. 5.4): аватарка, имя,
+          статус и оценка каждого друга, у кого этот сериал отмечен.
+          Только для залогиненного, пустой блок не рисуем; гость и
+          человек без друзей разницы не заметят. Карточка — та же
+          EntityMiniCard, что и у каста ниже: подпись строкой «статус ·
+          ★ оценка», ссылка ведёт на профиль друга. */}
+      {friendStatuses.length > 0 && (
+        <div className="mb-4">
+          <h2 className="section-heading mb-2">
+            {t.catalog.drama.friendsWatched}
+          </h2>
+          <div className="d-flex flex-wrap gap-2">
+            {friendStatuses.map((fs) => (
+              <EntityMiniCard
+                key={fs.user.id}
+                href={userHref(fs.user)}
+                photoUrl={fs.user.photoUrl}
+                name={userDisplayName(fs.user, locale)}
+                subtitle={
+                  t.catalog.watchStatus[fs.status] +
+                  (fs.rating != null ? ` · ★ ${fs.rating}` : "")
+                }
+                style={{ width: "13rem" }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Каст — адаптивной фото-сеткой (Э2ф) вместо ряда одинаковых
           плашек; первые ~14, остальные за «Показать всех». Пустой
           раздел не рисуем — ни заголовка, ни «состав не указан». */}
@@ -875,18 +1035,45 @@ export default async function DramaDetailPage({
         </div>
       )}
 
-      {relatedItems.length > 0 && (
+      {/* «Смотреть по порядку» (аудит, п. 6.1) — бывшие «Связанные
+          сериалы», объединённые с идеей порядка просмотра: те же
+          DramaRelation-карточки, но по годам, с самим сериалом в ряду
+          (он выделен акцентной рамкой и не кликается никуда, кроме
+          себя). Подпись карточки: год · тип связи (relationLabel
+          переводит «Thai sequel» → «сиквел» на /ru). */}
+      {watchOrder.length > 0 && (
         <div className="mb-4">
-          <h2 className="section-heading mb-2">{t.catalog.drama.related}</h2>
+          <h2 className="section-heading mb-2">
+            {t.catalog.drama.watchOrder}
+          </h2>
           <div className="d-flex flex-wrap gap-2">
-            {relatedItems.map(({ drama: rel, relation }) => (
+            {watchOrder.map(({ drama: rel, relation, current }) => (
               <EntityMiniCard
                 key={rel.id}
                 href={dramaHref(rel)}
                 photoUrl={rel.posterUrl}
                 name={dramaTitleForLocale(rel, locale)}
-                subtitle={relation}
+                subtitle={
+                  [
+                    rel.year,
+                    current
+                      ? t.catalog.drama.watchOrderCurrent
+                      : relation
+                        ? t.catalog.drama.relationLabel(relation)
+                        : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || null
+                }
                 round={false}
+                style={
+                  current
+                    ? {
+                        width: "11rem",
+                        borderColor: "rgba(var(--accent-rgb), 0.55)",
+                      }
+                    : undefined
+                }
               />
             ))}
           </div>

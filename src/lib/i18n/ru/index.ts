@@ -6,6 +6,7 @@ import { communities } from "./communities";
 import { events } from "./events";
 import { filters } from "./filters";
 import { footer } from "./footer";
+import { game } from "./game";
 import { home } from "./home";
 import { landing } from "./landing";
 import { legal } from "./legal";
@@ -24,4 +25,4 @@ import type { Dict } from "../en";
 import { widgets } from "./widgets";
 
 /** Русский словарь; структура проверяется типом Dict. */
-export const ru: Dict = { widgets, reviews, account, auth, catalog, common, communities, events, filters, footer, home, landing, legal, lists, mdlImport, nav, onboardingImport, notifications, settings, social, trips, ui, wiki };
+export const ru: Dict = { widgets, reviews, account, auth, catalog, common, communities, events, filters, footer, game, home, landing, legal, lists, mdlImport, nav, onboardingImport, notifications, settings, social, trips, ui, wiki };

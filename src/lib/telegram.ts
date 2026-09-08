@@ -142,6 +142,37 @@ export async function createPremiumInvoiceLink(
   return data.result;
 }
 
+/** Префикс payload подарочного инвойса: после него — userId покупателя.
+ *  По префиксу вебхук отличает подарок (создать промокод и прислать его
+ *  покупателю) от обычной оплаты (продлить подписку плательщику). */
+export const GIFT_PAYLOAD_PREFIX = "gift:";
+
+/**
+ * Ссылка-инвойс «подарить подписку»: та же цена и валюта, что у обычной
+ * (см. createPremiumInvoiceLink), но оплата НЕ продлевает подписку
+ * покупателю — вебхук по префиксу payload создаёт одноразовый промокод
+ * на месяц и присылает его покупателю в Telegram открыткой для
+ * пересылки (см. api/telegram/webhook/route.ts).
+ */
+export async function createGiftPremiumInvoiceLink(
+  buyerUserId: string,
+  priceStars: number = PREMIUM_PRICE_STARS,
+): Promise<string> {
+  const res = await callTelegram("createInvoiceLink", {
+    title: "Подарочная подписка MyBLHub — 1 месяц",
+    description:
+      "Промокод на 30 дней подписки придёт вам сообщением — перешлите его тому, кому дарите.",
+    payload: `${GIFT_PAYLOAD_PREFIX}${buyerUserId}`,
+    currency: "XTR",
+    prices: [{ label: "Подарочная подписка на месяц", amount: priceStars }],
+  });
+  const data = (await res.json()) as { ok: boolean; result?: string; description?: string };
+  if (!data.ok || !data.result) {
+    throw new Error(`createInvoiceLink (gift) failed: ${data.description ?? res.status}`);
+  }
+  return data.result;
+}
+
 /**
  * Возврат оплаченных звёзд (refundStarPayment). Нужен и для проверки
  * оплаты на живом боте — песочницы у Stars нет, поэтому тестовый платёж

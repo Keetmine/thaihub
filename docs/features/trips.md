@@ -59,7 +59,11 @@ manually re-entering a date filter every time.
 
   Карта стоит ПОД списками мест (правка владельца 2026-09-07): сначала
   читают, куда собрались, и только потом смотрят, как это разбросано по
-  городу. Подробности про сами места — [place-lists.md](place-lists.md).
+  городу. Над картой — «Построить маршрут» («маршрут дня», аудит
+  2026-09 §7): ссылка Google Maps со waypoints без API-ключей, жадный
+  порядок от первой точки, максимум 9 точек с честной подписью при
+  переборе (`src/lib/dayRoute.ts`). Подробности про сами места —
+  [place-lists.md](place-lists.md).
 - **`/trips/[id]`** — two tabs over the trip's date range:
   **«Мой план»** (default; «План» when the trip has members) shows the
   occurrences of events any *participant* (owner + members) marked «я

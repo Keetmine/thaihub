@@ -13,6 +13,15 @@ import { notifyUser } from "@/lib/notifications";
 // Achievement.key намеренно без FK: удалённая из админки ачивка просто
 // перестаёт показываться, строка-факт остаётся.
 
+/**
+ * Свод для метрик ачивок: UserStats плюс числа, которые нужны ТОЛЬКО
+ * ачивкам и потому не живут в computeUserStats (он питает ещё и вкладку
+ * «Статистика», и тащить туда счётчик ради одной медали незачем).
+ * `referrals` — сколько людей пришло по реферальной ссылке (аудит
+ * 2026-09 п.7), докладывает syncAchievements.
+ */
+export type AchievementStats = UserStats & { referrals: number };
+
 export type MetricDef = {
   /** Русская подпись для селекта в админке. */
   label: string;
@@ -21,7 +30,7 @@ export type MetricDef = {
    * flag — бинарное условие («было/не было»), threshold всегда 1.
    */
   kind: "counter" | "flag";
-  get: (s: UserStats) => number;
+  get: (s: AchievementStats) => number;
 };
 
 // Фиксированный набор способов подсчёта. Новая метрика = новая строка тут
@@ -47,6 +56,9 @@ export const METRICS = {
   longestTripDays: { label: "Самая длинная поездка (дней)", kind: "counter", get: (s) => s.longestTripDays },
   daysInThailand: { label: "Дни в Таиланде", kind: "counter", get: (s) => s.daysInThailand },
   friends: { label: "Друзья", kind: "counter", get: (s) => s.friends },
+  // Приглашённые по реферальной ссылке (/signup?ref=…): счёт по
+  // User.referredById, живые аккаунты (см. syncAchievements).
+  referrals: { label: "Приглашённые по ссылке", kind: "counter", get: (s) => s.referrals },
   // Сообщества (АА25). Отдельных флагов тут нет намеренно: «первое
   // сообщество» — это тот же счётчик с порогом 1, и порог у него можно
   // подкрутить в админке, не трогая код.
@@ -70,7 +82,7 @@ export function isMetricKey(metric: string): metric is MetricKey {
 
 /** Значение метрики из свода статистики; неизвестный ключ считается нулём
  *  (такая ачивка просто никогда не разблокируется — не падаем). */
-export function metricValue(metric: string, s: UserStats): number {
+export function metricValue(metric: string, s: AchievementStats): number {
   return isMetricKey(metric) ? METRICS[metric].get(s) : 0;
 }
 
@@ -132,6 +144,11 @@ export const ACHIEVEMENT_SEED: AchievementSeed<MetricKey>[] = [
   { key: "thai-week", emoji: "🌴", title: "Неделя в Таиланде", hint: "Поездка на 7+ дней", metric: "longestTripDays", threshold: 7, sort: 200 },
   // Соц
   { key: "first-friend", emoji: "🤝", title: "Первый друг", hint: "Добавить первого друга", metric: "friends", threshold: 1, sort: 210 },
+  // Рефералка (аудит 2026-09 п.7). sort между «другом» и «компанией» —
+  // шаг 4, место между блоками уже занято (как у пересмотров выше).
+  // Приглашённой отдельная медаль не нужна: авто-дружба с пригласившей
+  // разблокирует ей обычного «Первого друга».
+  { key: "referral-1", emoji: "💌", title: "Привела человека", hint: "Подруга зарегистрировалась по вашей ссылке", metric: "referrals", threshold: 1, sort: 214 },
   { key: "squad", emoji: "👯", title: "Компанией веселее", hint: "Событие, куда шли вчетвером+", metric: "squad", threshold: 1, sort: 220 },
   // Сообщества (АА25). Пороги нарочно маленькие: сайт небольшой, и
   // ачивка «100 участников» не будет получена никогда — она не мотивирует,
@@ -181,11 +198,18 @@ export function getEnabledAchievements(scope: AchievementScope = "USER") {
  * возвращаются вовсе.
  */
 export async function syncAchievements(userId: string, stats?: UserStats): Promise<AchievementState[]> {
-  const [s, defs, unlockedRows] = await Promise.all([
+  const [base, referrals, defs, unlockedRows] = await Promise.all([
     stats ? Promise.resolve(stats) : computeUserStats(userId),
+    // Приглашённые по реферальной ссылке — прямо здесь, а не в
+    // computeUserStats: тот свод питает ещё и вкладку «Статистика», а
+    // это число нужно только ачивкам. Удалённые аккаунты не в счёт:
+    // «привела человека» — про живого человека на сайте, при этом уже
+    // выданная медаль (строка UserAchievement) никуда не денется.
+    prisma.user.count({ where: { referredById: userId, deletedAt: null } }),
     getEnabledAchievements(),
     prisma.userAchievement.findMany({ where: { userId } }),
   ]);
+  const s: AchievementStats = { ...base, referrals };
   const unlockedByKey = new Map(unlockedRows.map((r) => [r.key, r.unlockedAt]));
 
   const result: AchievementState[] = [];

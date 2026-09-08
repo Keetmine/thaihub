@@ -90,6 +90,18 @@ export const account = {
   stats: {
     topPerformers: "Seen live most often",
 
+    // Вкусовой профиль (аудит 2026-09, п.6.2): заголовок секции, начало
+    // строки про среднюю оценку (своё/зрительское — без «your» на чужом
+    // профиле) и три хвоста по знаку разницы с MyDramaList. Строка
+    // собирается из половин в StatsTab — в обоих языках это
+    // «начало + хвост», поэтому склейка грамматику не ломает.
+    tasteTitle: "Taste profile",
+    tasteAvgSelf: (avg: string) => `Your average rating is ${avg}`,
+    tasteAvgViewer: (avg: string) => `Average rating ${avg}`,
+    tasteStricter: (diff: string) => ` — ${diff} stricter than MyDramaList`,
+    tasteKinder: (diff: string) => ` — ${diff} more generous than MyDramaList`,
+    tasteSame: " — right in line with MyDramaList",
+
     artistLists: "My actor lists",
     artistListsHint: "Start a list of your own — “seen live”, “had a beer with”…",
     artistListsLocked: "Your own actor lists come with a subscription.",
@@ -174,7 +186,7 @@ export const account = {
     telegramNotifyInvites: "Trip invitations and subscription",
     telegramNotifyFriends: "Friend requests",
     telegramNotifyReplies: "Replies to my comments",
-    telegramNotifyEvents: "Events: friends going, online booking opening",
+    telegramNotifyEvents: "Events: a favorite artist's new event, friends going, online booking opening",
     telegramNotifyBirthdays: "Birthdays of artists I follow",
     telegramNotifyEpisodes: "New episodes of series I'm watching",
     telegramNotifyBroadcast: "Project news",

@@ -10,8 +10,9 @@ import { parseUploadUrl } from "@/lib/uploadUrl";
 import { canUseLocation, createOwnLocation, resolveUserMapsCoords } from "@/lib/ownLocation";
 import { getLocale, getT, localeHref } from "@/lib/i18n";
 import { communityRights } from "@/lib/meetups";
-import { isPremiumActive } from "@/lib/premium";
+import { FREE_PLACE_LIST_LIMIT, isPremiumActive } from "@/lib/premium";
 import { communityHref } from "@/lib/slugHelpers";
+import { findWantToVisitList, WANT_TO_VISIT_TITLE } from "@/lib/systemLists";
 
 function parseVisibility(raw: unknown): TripVisibility {
   return raw === "PUBLIC" || raw === "FRIENDS" ? raw : "PRIVATE";
@@ -90,9 +91,22 @@ function needsPremium(list: { communityId: string | null }) {
 
 export async function createPlaceList(formData: FormData): Promise<ActionError | void> {
   const { locale, t } = await getT();
-  const access = await requirePremiumUser();
-  if (!access.ok) return access;
-  const user = access.user;
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref("/login", locale));
+  // Пробный лимит вместо requirePremiumUser (аудит 2026-09 п.8, решение
+  // владельца): бесплатному — ОДИН свой список, наполняемый каталожными
+  // локациями (свои места остаются частью подписки). Списки сообществ
+  // не в счёт (их ведёт сообщество), системный «Хочу посетить» — тоже:
+  // он заводится кнопкой «хочу сюда» в обход гейта (см.
+  // toggleWantToVisit) и не должен молча съедать пробный слот.
+  if (!isPremiumActive(user)) {
+    const ownLists = await prisma.placeList.count({
+      where: { userId: user.id, communityId: null, title: { not: WANT_TO_VISIT_TITLE } },
+    });
+    if (ownLists >= FREE_PLACE_LIST_LIMIT) {
+      return { ok: false, error: t.lists.errors.freeLimit };
+    }
+  }
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -167,6 +181,49 @@ export async function addPlaceToList(listId: string, locationId: string): Promis
     create: { listId: own.list.id, locationId },
   });
   revalidatePath(`/lists/${listId}`);
+  return { ok: true };
+}
+
+/** «Хочу сюда» на странице локации: кладёт место в системный список
+ *  «Хочу посетить» (см. src/lib/systemLists.ts) или убирает оттуда.
+ *
+ *  ОСОЗНАННО в обход премиум-гейта (`requirePremiumUser`): создание
+ *  списков — платное, но «Хочу посетить» — это отметка на месте, того
+ *  же сорта, что бесплатная «была здесь», а не «свой список». Сам
+ *  список заводится лениво при первом клике, чтобы у тех, кто кнопку
+ *  ни разу не нажал, пустой список ниоткуда не появлялся. */
+export async function toggleWantToVisit(locationId: string): Promise<ActionResult> {
+  const { locale, t } = await getT();
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref("/login", locale));
+
+  // locationId приходит с клиента — то же правило, что у addPlaceToList:
+  // чужое приватное место через отметку не «подсветить».
+  if (!(await canUseLocation(locationId, user.id))) {
+    return { ok: false, error: t.lists.errors.placeNotFound };
+  }
+
+  let list = await findWantToVisitList(user.id);
+  if (!list) {
+    list = await prisma.placeList.create({
+      // PRIVATE по умолчанию: «хотелки» — личное, открывают их отдельно.
+      data: { userId: user.id, title: WANT_TO_VISIT_TITLE },
+    });
+  }
+
+  const key = { listId_locationId: { listId: list.id, locationId } };
+  const existing = await prisma.placeListItem.findUnique({ where: key });
+  if (existing) {
+    // Повторный клик — убрать отметку. Пустой список НЕ удаляем: он уже
+    // мог быть прикреплён к поездке, и его исчезновение рвало бы связь.
+    await prisma.placeListItem.delete({ where: key });
+  } else {
+    await prisma.placeListItem.create({ data: { listId: list.id, locationId } });
+  }
+
+  revalidatePath(`/locations/${locationId}`);
+  revalidatePath(`/lists/${list.id}`);
+  revalidatePath("/lists");
   return { ok: true };
 }
 

@@ -28,6 +28,15 @@ export function premiumInactiveWhere(now = new Date()): Prisma.UserWhereInput {
   return { premiumLifetime: false, OR: [{ premiumUntil: null }, { premiumUntil: { lte: now } }] };
 }
 
+// Пробный лимит вместо глухого пейволла (аудит 2026-09 п.8, решение
+// владельца): бесплатному аккаунту — ОДНА поездка и ОДИН свой список
+// мест, чтобы пощупать фичу до подписки. Считается по владельцу
+// (count < лимита), сами константы живут тут, рядом с isPremiumActive:
+// гейты в trips/lists сверяются с ними, а не с зашитой единицей.
+// У активной подписки лимитов нет.
+export const FREE_TRIP_LIMIT = 1;
+export const FREE_PLACE_LIST_LIMIT = 1;
+
 export const PREMIUM_TERM_DAYS = 30;
 
 export function extendPremium(current: Date | null): Date {

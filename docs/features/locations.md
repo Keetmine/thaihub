@@ -51,11 +51,27 @@ The `[id]` page header is a `DetailHero` (see
 chips for the category (emoji + label from `src/lib/locationCategories.ts`,
 when set) and «сериалов снималось: N», with `description` as the subtitle —
 for catalog locations that field holds the district/city (≤100 chars),
-not prose. Hero actions: the visited button («была здесь») and, when the
+not prose. Hero actions: the visited button («была здесь»), the
+«Хочу сюда» heart (`WantToVisitButton` → `toggleWantToVisit`, puts the
+place into the user's system "Хочу посетить" list — see
+[place-lists.md](place-lists.md#системный-список-хочу-посетить); works
+without a subscription) and, when the
 user has place lists, an `AddToListButton` wired to `addPlaceToList`
 (the button is hidden for users with zero lists — its empty state is
 worded for performer lists). Filming dramas render below under the
 «Дорамы» heading.
+
+Two "related places" sections, deliberately distinct:
+
+- **«Рядом с этим местом»** — up to 5 catalog locations within ~2 km by
+  coordinates, each labeled with the straight-line distance («≈ 400 м»,
+  «≈ 1.3 км»). Candidates are cut by a lat/lng bounding box in the
+  Prisma query, then the exact haversine distance, sort and top-5 happen
+  in JS (`src/lib/geo.ts` — no raw SQL/PostGIS; a few hundred locations
+  with coordinates make this instant). Locations without coordinates
+  simply don't get the block.
+- **«Другие места этих съёмок»** — locations sharing a linked drama;
+  those can be across the whole city.
 
 ## What links to a Location
 

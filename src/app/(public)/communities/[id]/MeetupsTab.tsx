@@ -106,6 +106,7 @@ export default async function MeetupsTab({
       dateKey: dateKey(occurrence.startsAt),
       timeValue: occurrence.hasTime ? formatTime(occurrence.startsAt) : "",
       drama: m.drama ? { id: m.drama.id, name: dramaTitleForLocale(m.drama, locale) } : null,
+      isOnline: m.isOnline,
     };
     // Ровно та же плоская строка, что везёт афиша (см.
     // flattenOccurrence). Состав пустой — на домашней встрече артистов
@@ -117,6 +118,9 @@ export default async function MeetupsTab({
       title: m.title,
       slug: m.slug,
       venue: m.venue,
+      // Онлайн-встреча: карточка рисует бейдж «Онлайн» на месте
+      // площадки (venue у неё пустой).
+      isOnline: m.isOnline,
       description: m.description,
       posterUrl: m.posterUrl,
       startsAt: occurrence.startsAt,

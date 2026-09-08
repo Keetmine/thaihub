@@ -8,6 +8,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
+import { notifyFavoritersAboutEventPerformers } from "@/lib/telegramNotifications";
 
 function getPerformerIds(formData: FormData): string[] {
   return formData.getAll("performerIds").map(String).filter(Boolean);
@@ -227,6 +228,10 @@ export async function createEvent(formData: FormData) {
     entityLabel: created.title,
   });
 
+  // «У избранного артиста новое событие» — избравшим кого-то из
+  // состава. Ошибку рассылка ловит сама, создание не роняет.
+  await notifyFavoritersAboutEventPerformers(created.id, performerIds);
+
   revalidatePath("/");
   revalidatePath("/admin/events");
   redirect("/admin/events");
@@ -320,6 +325,17 @@ export async function updateEvent(id: string, formData: FormData) {
   }
 
   const before = await prisma.event.findUnique({ where: { id } });
+  // Состав ДО правки: форма пересобирает связи целиком, а «новым
+  // событием» для избравших считается только ВПЕРВЫЕ привязанный артист
+  // — про остальных уведомление ушло ещё при создании.
+  const beforePerformerIds = new Set(
+    (
+      await prisma.eventPerformer.findMany({
+        where: { eventId: id },
+        select: { performerId: true },
+      })
+    ).map((p) => p.performerId),
+  );
 
   await prisma.$transaction(async (tx) => {
     await tx.eventPerformer.deleteMany({ where: { eventId: id } });
@@ -373,6 +389,13 @@ export async function updateEvent(id: string, formData: FormData) {
       ),
     });
   }
+
+  // Избравшим — про впервые привязанных артистов; анти-дубль
+  // (userId, eventId) страхует от повторов при любом раскладе.
+  await notifyFavoritersAboutEventPerformers(
+    id,
+    performerIds.filter((pid) => !beforePerformerIds.has(pid)),
+  );
 
   revalidatePath("/");
   revalidatePath("/admin/events");

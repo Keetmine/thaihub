@@ -42,6 +42,7 @@ import {
 import EventCardLocked from "@/components/EventCardLocked";
 import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
+import { buildDayRoute } from "@/lib/dayRoute";
 import { pageMetadata } from "@/lib/seo";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
@@ -1376,6 +1377,36 @@ export default async function TripPage({
                 </div>
               </div>
             )}
+
+            {/* «Маршрут дня» (аудит 2026-09, §7): чистая ссылка Google
+                Maps со waypoints, без API-ключей. Точки — места вкладки
+                с координатами, порядок — жадный по близости от первой
+                (см. src/lib/dayRoute.ts). Origin не задан — маршрут
+                начнётся с текущего положения человека. */}
+            {(() => {
+              const route = buildDayRoute(pins);
+              return (
+                route && (
+                  <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <a
+                      href={route.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-sm"
+                    >
+                      🗺️ {t.trips.places.routeButton}
+                    </a>
+                    {/* Больше девяти точек Google в ссылку не берёт —
+                        говорим об этом честно, а не молча режем. */}
+                    {route.total > route.shown && (
+                      <span className="small text-secondary">
+                        {t.trips.places.routeCapped(route.shown, route.total)}
+                      </span>
+                    )}
+                  </div>
+                )
+              );
+            })()}
 
             {/* Карта — ПОД списками (правка владельца 2026-09-07):
                 сначала читают, куда собрались, и только потом смотрят,

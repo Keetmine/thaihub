@@ -29,6 +29,40 @@ const TYPE_EMOJI: Record<ActivityItem["type"], string> = {
   achievement: "🏆",
 };
 
+/** Подпись действия для строки ленты — общая для профиля и мини-блока
+ *  «У друзей» на главной (HomeFriendsFeed): формулировки «статус —
+ *  смотрю», «отзыв — 8/10» должны совпадать везде, где лента видна. */
+export function activityAction(item: ActivityItem, t: Dict): ReactNode {
+  const a = t.social.profile.activity;
+  switch (item.type) {
+    case "watch": {
+      const status = t.catalog.watchStatus[item.status];
+      // «серия 6 из 10» не разрывается изнутри (правка владельца):
+      // перенос разрешён только после « · », хвост цельным куском.
+      return item.episodesWatched != null && item.episodesWatched > 0 ? (
+        <>
+          {a.watch(status)} ·{" "}
+          <span className="text-nowrap">
+            {a.episodes(item.episodesWatched, item.episodesTotal)}
+          </span>
+        </>
+      ) : (
+        a.watch(status)
+      );
+    }
+    case "favoritePerformer":
+      return a.favorite;
+    case "going":
+      return a.going;
+    case "trip":
+      return a.trip;
+    case "review":
+      return a.review(ratingText(item.rating));
+    case "achievement":
+      return a.achievement;
+  }
+}
+
 /**
  * «Последние обновления» — серверный рендер ленты активности
  * (src/lib/activityFeed.ts): строка = иконка типа, название-ссылка,
@@ -70,41 +104,7 @@ export default function ActivityList({
             ? dramaTitleForLocale({ title: item.title, titleRu: item.titleRu }, locale)
             : item.title;
 
-        let action: ReactNode;
-        switch (item.type) {
-          case "watch": {
-            const status = t.catalog.watchStatus[item.status];
-            // «серия 6 из 10» не разрывается изнутри (правка владельца):
-            // перенос разрешён только после « · », хвост цельным куском.
-            action =
-              item.episodesWatched != null && item.episodesWatched > 0 ? (
-                <>
-                  {a.watch(status)} ·{" "}
-                  <span className="text-nowrap">
-                    {a.episodes(item.episodesWatched, item.episodesTotal)}
-                  </span>
-                </>
-              ) : (
-                a.watch(status)
-              );
-            break;
-          }
-          case "favoritePerformer":
-            action = a.favorite;
-            break;
-          case "going":
-            action = a.going;
-            break;
-          case "trip":
-            action = a.trip;
-            break;
-          case "review":
-            action = a.review(ratingText(item.rating));
-            break;
-          case "achievement":
-            action = a.achievement;
-            break;
-        }
+        const action = activityAction(item, t);
 
         return (
           <div key={`${item.type}-${i}`} className="activity-row">

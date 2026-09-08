@@ -31,6 +31,12 @@ export type StatsForTab = {
    *  его сама плитка (dramaTitleForLocale). */
   rewatchTotal?: number;
   mostRewatched?: { title: string; titleRu: string | null; count: number } | null;
+  /** Вкусовой профиль (аудит 2026-09, п.6.2): топ-жанры по досмотренному
+   *  и «своя средняя против MyDramaList». Необязательные по той же
+   *  причине, что пересмотры: пустой блок — шум, рисуемся только когда
+   *  есть что сказать (жанров нет / оценок с парой MDL меньше пяти). */
+  topGenres?: { genre: string; count: number }[];
+  ratingVsMdl?: { own: number; diff: number; count: number } | null;
   trips: number;
   daysInThailand: number;
   friends: number;
@@ -58,8 +64,46 @@ export default function StatsTab({
   const s = t.account.stats;
   const maxYear = Math.max(1, ...stats.eventsByYear.map((y) => y.count));
 
+  const topGenres = stats.topGenres ?? [];
+  const vsMdl = stats.ratingVsMdl;
+  // Знак diff читается словом: минус — строже MyDramaList, плюс —
+  // щедрее, ноль после округления — вровень. Само число показываем без
+  // знака, знак уже в слове.
+  const vsMdlLine = vsMdl
+    ? (viewer ? s.tasteAvgViewer : s.tasteAvgSelf)(vsMdl.own.toFixed(1)) +
+      (vsMdl.diff < 0
+        ? s.tasteStricter(Math.abs(vsMdl.diff).toFixed(1))
+        : vsMdl.diff > 0
+          ? s.tasteKinder(vsMdl.diff.toFixed(1))
+          : s.tasteSame)
+    : null;
+
   return (
     <div>
+      {/* Вкусовой профиль (п.6.2): жанры — теми же чипами, что артисты
+          ниже; ссылки ведут в поиск с фильтром жанра, как чипы жанров на
+          странице сериала. Значения не переводятся — данные каталога. */}
+      {(topGenres.length > 0 || vsMdlLine) && (
+        <>
+          <h2 className="section-heading mb-2">{s.tasteTitle}</h2>
+          {topGenres.length > 0 && (
+            <div className={`d-flex flex-wrap gap-2 ${vsMdlLine ? "mb-2" : "mb-4"}`}>
+              {topGenres.map((g) => (
+                <AppLink
+                  key={g.genre}
+                  href={`/search?section=dramas&genres=${encodeURIComponent(g.genre)}`}
+                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 pe-3"
+                >
+                  <span className="small text-white">{g.genre}</span>
+                  <span className="small text-secondary">×{g.count}</span>
+                </AppLink>
+              ))}
+            </div>
+          )}
+          {vsMdlLine && <p className="small text-secondary mb-4">{vsMdlLine}</p>}
+        </>
+      )}
+
       {stats.topPerformers.length > 0 && (
         <>
           <h2 className="section-heading mb-2">{s.topPerformers}</h2>

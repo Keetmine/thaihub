@@ -7,7 +7,8 @@ import { pageMetadata } from "@/lib/seo";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { getCurrentUser } from "@/lib/userAuth";
 import { isPremiumActive } from "@/lib/premium";
-import { getMusicNews, getLocationNews, type NewsItem } from "@/lib/whatsNew";
+import { getMusicNews, getLocationNews } from "@/lib/whatsNew";
+import { queryOnThisDayDramas } from "@/lib/onThisDay";
 import { getFriendIds } from "@/lib/friends";
 import { performerHref } from "@/lib/performerSlug";
 import { eventHref } from "@/lib/eventSlug";
@@ -21,7 +22,9 @@ import PageHeader from "@/components/PageHeader";
 import PosterTile from "@/components/PosterTile";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import EmptyState from "@/components/EmptyState";
+import MusicReleaseCard from "@/components/MusicReleaseCard";
 import HomeCommunities from "./HomeCommunities";
+import HomeFriendsFeed from "./HomeFriendsFeed";
 import LandingPage from "./LandingPage";
 
 export const dynamic = "force-dynamic";
@@ -79,6 +82,15 @@ const getBirthdayPerformers = unstable_cache(
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
+// «В этот день» — годовщины премьер (Drama.airedFrom, см.
+// lib/onThisDay.ts). Сутки, а не полчаса: список меняется только со
+// сменой даты, а дата входит в ключ; правка каталога сбросит тегом.
+const getOnThisDayDramas = unstable_cache(
+  async (month: number, day: number, year: number) => queryOnThisDayDramas(month, day, year),
+  ["home-on-this-day"],
+  { revalidate: 86400, tags: [CATALOG_TAG] },
+);
+
 // Главная для своих: сводка вместо сразу афиши. Сюда ведёт логотип, и
 // это первое, что человек видит после входа — ближайшее из «иду»
 // постерами, новинки любимых артистов, планы друзей. Афиша — на /events.
@@ -91,13 +103,6 @@ function countdown(start: Date, t: Dict): string {
   if (days < 31) return t.home.countdownDays(days);
   const months = Math.round(days / 30);
   return months <= 1 ? t.home.countdownMonth : t.home.countdownMonths(months);
-}
-
-/** «Сингл · 2025» под названием новинки: тип релиза (у отдельной песни —
- *  просто «песня») и год, если он известен. */
-function newsSubtitle(item: NewsItem, t: Dict): string {
-  const kind = item.albumType ? t.catalog.albumType[item.albumType] : t.catalog.songType;
-  return [kind, item.year].filter(Boolean).join(" · ");
 }
 
 export default async function HomePage({
@@ -290,11 +295,13 @@ export default async function HomePage({
   const todayDay = now.getUTCDate();
   const [
     birthdayPerformersCached,
+    onThisDayCached,
     friendBirthdayRows,
     favoriteIds,
     airingTodayStatuses,
   ] = await Promise.all([
     getBirthdayPerformers(todayMonth, todayDay),
+    getOnThisDayDramas(todayMonth, todayDay, now.getUTCFullYear()),
     friendIds.length > 0
       ? prisma.user.findMany({
           where: { id: { in: friendIds }, birthDate: { not: null } },
@@ -312,6 +319,7 @@ export default async function HomePage({
     ...p,
     birthDate: new Date(p.birthDate),
   }));
+  const onThisDay = onThisDayCached.map((d) => ({ ...d, airedFrom: new Date(d.airedFrom) }));
 
   // Витрина, а не личный список: показываем всё, что выходит сегодня, —
   // «Смотрю сейчас» ниже как раз про личное, а этот блок отвечает на
@@ -348,6 +356,9 @@ export default async function HomePage({
       f.birthDate.getUTCDate() === todayDay,
   );
   const hasBirthdays = birthdayPerformers.length > 0 || birthdayFriends.length > 0;
+  // Правая колонка ряда живёт, пока в ней есть хоть один из двух
+  // «календарных» блоков: дни рождения или годовщины премьер.
+  const hasAside = hasBirthdays || onThisDay.length > 0;
 
 
   return (
@@ -375,7 +386,7 @@ export default async function HomePage({
           в разных рядах это читалось как список одинаковых секций.
           Поездка сверху задаёт рамку периода, под ней — события. */}
       <div className="row g-4 mb-5">
-      <div className={hasBirthdays ? "col-12 col-lg-8" : "col-12"}>
+      <div className={hasAside ? "col-12 col-lg-8" : "col-12"}>
         <section className="glow-panel p-4 h-100">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">{dict.home.upcoming}</h2>
@@ -452,11 +463,13 @@ export default async function HomePage({
         </section>
       </div>
 
-      {/* Дни рождения — тёплый акцентный блок рядом: он же держит
-          асимметрию ряда. Показываем и артистов, и друзей. */}
-      {hasBirthdays && (
-        <div className="col-12 col-lg-4">
-          <section className="surface p-4 h-100">
+      {/* Календарная колонка рядом: дни рождения и «В этот день» — оба
+          про «какой сегодня день», и она же держит асимметрию ряда.
+          Пустой блок не рендерится: колонка живёт, пока есть хоть один. */}
+      {hasAside && (
+        <div className="col-12 col-lg-4 d-flex flex-column gap-4">
+          {hasBirthdays && (
+          <section className="surface p-4 flex-grow-1">
             <h2 className="section-heading mb-3">🎂 {dict.home.birthdays}</h2>
             <div className="d-flex flex-column gap-3">
               {birthdayFriends.map((f) => (
@@ -494,6 +507,44 @@ export default async function HomePage({
               ))}
             </div>
           </section>
+          )}
+
+          {/* «В этот день» — ностальгия по годовщинам премьер
+              (Drama.airedFrom, день+месяц = сегодня, год раньше
+              текущего). Та же манера, что у дней рождения: строка =
+              постер, название, подпись. Пусто сегодня — блока нет. */}
+          {onThisDay.length > 0 && (
+          <section className="surface p-4 flex-grow-1">
+            <h2 className="section-heading mb-3">📅 {dict.home.onThisDay}</h2>
+            <div className="d-flex flex-column gap-3">
+              {onThisDay.map((d) => (
+                <Link
+                  key={d.id}
+                  href={dramaHref(d)}
+                  className="d-flex align-items-center gap-3 text-decoration-none"
+                >
+                  <LetterAvatar
+                    name={dramaTitleForLocale(d, locale)}
+                    photoUrl={d.posterUrl}
+                    size={2.6}
+                    rounded={false}
+                  />
+                  <span style={{ minWidth: 0 }}>
+                    <span className="text-white d-block text-truncate">
+                      {dramaTitleForLocale(d, locale)}
+                    </span>
+                    <span className="small text-secondary">
+                      {dict.home.onThisDayAgo(
+                        now.getUTCFullYear() - d.airedFrom.getUTCFullYear(),
+                      )}
+                      {` · ${d.airedFrom.getUTCFullYear()}`}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+          )}
         </div>
       )}
       </div>
@@ -652,6 +703,13 @@ export default async function HomePage({
           (см. HomeCommunities). */}
       {communityCount > 0 && <HomeCommunities userId={user.id} />}
 
+      {/* «У друзей» — три последние записи активности друзей
+          (минимальная версия Г3, см. HomeFriendsFeed). Гейт — уже
+          посчитанные friendIds: без друзей ни блока, ни запросов. */}
+      {friendIds.length > 0 && (
+        <HomeFriendsFeed friendIds={friendIds} viewerPremium={premium} />
+      )}
+
       {/* Новинки — во всю ширину ПОД рядом (правка владельца
           2026-09-06): раньше лента жила в правой колонке и растягивала
           её сильно ниже соседа. mt-4 — тот же зазор, что между
@@ -662,6 +720,12 @@ export default async function HomePage({
           <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
           <span className="small text-secondary">
             {favoritePerformers > 0 ? dict.home.newsFromFavourites : dict.home.newsFromCatalogue}
+            {" · "}
+            {/* Выход на витрину релизов /music — лента здесь только
+                анонс, целиком новинки живут там. */}
+            <Link href="/music" className="text-secondary">
+              {dict.common.all}
+            </Link>
           </span>
         </div>
 
@@ -710,34 +774,9 @@ export default async function HomePage({
           <div className="row g-2 stagger">
             {news.map((item) => (
               <div key={`${item.kind}-${item.id}`} className="col-12 col-md-6 col-xl-4">
-                <div className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100">
-                  <LetterAvatar
-                    name={item.title}
-                    photoUrl={item.coverUrl ?? item.performer.photoUrl}
-                    size={4}
-                    rounded={false}
-                  />
-                  <div style={{ minWidth: 0 }} className="flex-grow-1">
-                    <span className="text-white d-block text-truncate">{item.title}</span>
-                    <Link
-                      href={performerHref(item.performer)}
-                      className="small text-secondary text-decoration-none d-block text-truncate"
-                    >
-                      {item.performer.name}
-                    </Link>
-                    <span className="small text-secondary">{newsSubtitle(item, dict)}</span>
-                  </div>
-                  {item.url && (
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-ghost btn-sm flex-shrink-0"
-                    >
-                      {dict.home.listen}
-                    </a>
-                  )}
-                </div>
+                {/* Карточка релиза общая с витриной /music — см.
+                    components/MusicReleaseCard. */}
+                <MusicReleaseCard item={item} t={dict} />
               </div>
             ))}
           </div>

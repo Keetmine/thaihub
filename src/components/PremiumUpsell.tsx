@@ -1,4 +1,5 @@
 import BuyPremiumButton from "@/components/BuyPremiumButton";
+import GiftPremiumButton from "@/components/GiftPremiumButton";
 import PromoCodeRedeem from "@/components/PromoCodeRedeem";
 import Link from "@/components/AppLink";
 import { getT } from "@/lib/i18n";
@@ -72,7 +73,13 @@ export default async function PremiumUpsell({
 
       <div className="text-center">
         {canPay ? (
-          <BuyPremiumButton />
+          <div className="d-flex flex-column align-items-center gap-3">
+            <BuyPremiumButton />
+            {/* Подарить подписку (аудит 2026-09 п.8): оплата создаёт
+                одноразовый промокод — открытку с ним присылает вебхук
+                в Telegram покупателя. */}
+            <GiftPremiumButton />
+          </div>
         ) : (
           <div className="d-flex flex-column align-items-center gap-2">
             {contact && (
@@ -93,6 +100,21 @@ export default async function PremiumUpsell({
               </Link>
               .
             </p>
+            {/* Пока Stars выключены, «подарить» — та же личка, но с
+                заготовленной фразой (?text= предзаполняет черновик
+                сообщения в официальных клиентах Telegram): владелец
+                сразу видит, что человек пришёл за подарком, а не за
+                своей подпиской. */}
+            {contact && (
+              <a
+                href={`https://t.me/${contact}?text=${encodeURIComponent(t.widgets.premium.giftContactText)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-outline-secondary btn-sm"
+              >
+                {t.widgets.premium.gift}
+              </a>
+            )}
           </div>
         )}
         <div className="mt-3">

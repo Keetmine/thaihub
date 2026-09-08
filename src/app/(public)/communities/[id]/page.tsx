@@ -410,9 +410,11 @@ export default async function CommunityPage({
           {/* Медали сообщества — там же, где личные в профиле: в левой
               колонке под самим сообществом. Видят их те же, кто видит
               содержимое: правило одно на страницу (`canSeeInside`), а
-              не своя копия условий. */}
+              не своя копия условий. Прогресс к следующей медали — только
+              участникам (isMember): зритель со стороны к нему ничего не
+              добавит. */}
           {access.canSeeInside && (
-            <AchievementsBlock communityId={community.id} />
+            <AchievementsBlock communityId={community.id} isMember={access.isMember} />
           )}
 
           {/* Участники — аватарками под медалями, как друзья в профиле

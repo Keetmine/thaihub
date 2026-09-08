@@ -7,6 +7,7 @@ import { combineDateTime } from "@/lib/dates";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { notifyFavoritersAboutEventPerformers } from "@/lib/telegramNotifications";
 import { matchArtistsByNickname, type MatchedArtist } from "@/lib/performerMatching";
 import {
   importMusicFestivalByUrl,
@@ -137,6 +138,10 @@ export async function createEventFromTtmImport(
   // создастся.
   const posterUrl = await downloadRemoteImage(data.posterUrl.trim() || null, "posters");
 
+  // Итоговый состав события — виден и после транзакции: по нему уходит
+  // «у избранного артиста новое событие» (свежесозданные в этой же
+  // транзакции артисты в чьём-то избранном оказаться ещё не могли).
+  let uniquePerformerIds: string[] = [];
   const event = await prisma.$transaction(async (tx) => {
     const performerIds: string[] = [...data.extraPerformerIds];
 
@@ -155,7 +160,7 @@ export async function createEventFromTtmImport(
       performerIds.push(created.id);
     }
 
-    const uniquePerformerIds = Array.from(new Set(performerIds));
+    uniquePerformerIds = Array.from(new Set(performerIds));
 
     return tx.event.create({
       data: {
@@ -193,6 +198,11 @@ export async function createEventFromTtmImport(
       ? `импорт события: ${data.sourceUrl.trim()}`
       : "импорт события с билетного сайта",
   });
+
+  // «У избранного артиста новое событие» — и по ссылке из админки, и
+  // при одобрении черновика обхода афиши (фоновая пачка зовёт этот же
+  // экшен). Ошибку рассылка ловит сама, импорт не роняет.
+  await notifyFavoritersAboutEventPerformers(event.id, uniquePerformerIds);
 
   if (opts.revalidate !== false) {
     revalidatePath("/");

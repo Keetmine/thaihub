@@ -11,6 +11,11 @@ import {
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { useT } from "@/components/LocaleProvider";
 import { CheckIcon } from "@/components/icons";
+import RatePromptPopover, {
+  isRatePromptDismissed,
+  ratePromptCoords,
+  type RatePromptCoords,
+} from "@/components/RatePromptPopover";
 
 /**
  * Статус просмотра в колонке таблицы каталога — подпись, по клику
@@ -44,6 +49,10 @@ export default function DramaStatusSelect({
   const [value, setValue] = useState<DramaWatchStatusValue | null>(status);
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  // Попап «поставьте оценку» после перехода в «Просмотрено» — прямо у
+  // селекта: строка каталога узкая, всплыви он в другом месте, было бы
+  // непонятно, к какому сериалу он относится.
+  const [ratePromptAt, setRatePromptAt] = useState<RatePromptCoords | null>(null);
   const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -82,15 +91,25 @@ export default function DramaStatusSelect({
     const previous = value;
     setValue(next);
     startTransition(async () => {
+      if (!next) {
+        await clearDramaWatchStatus(dramaId);
+        router.refresh();
+        return;
+      }
       // Ошибку экшен возвращает значением (текст исключения в проде до
       // клиента не доезжает) — молча откатываем ячейку: шуметь в списке
       // из сотен строк нечем.
-      const result = next
-        ? await setDramaWatchStatus(dramaId, next)
-        : await clearDramaWatchStatus(dramaId);
-      if (result && typeof result === "object" && "ok" in result && !result.ok) {
+      const result = await setDramaWatchStatus(dramaId, next);
+      if (!result.ok) {
         setValue(previous);
         return;
+      }
+      // Только что досмотрела и своей оценки нет — мягко предложить
+      // поставить (п.5.2 аудита). Показывать или нет, знает сервер:
+      // оценки в пропсах ячейки статуса не бывает.
+      if (result.completedNow && !result.hasRating && !isRatePromptDismissed(dramaId)) {
+        const rect = ref.current?.getBoundingClientRect();
+        if (rect) setRatePromptAt(ratePromptCoords(rect));
       }
       router.refresh();
     });
@@ -157,6 +176,14 @@ export default function DramaStatusSelect({
           </div>,
           document.body,
         )}
+
+      {ratePromptAt && (
+        <RatePromptPopover
+          dramaId={dramaId}
+          coords={ratePromptAt}
+          onClose={() => setRatePromptAt(null)}
+        />
+      )}
     </div>
   );
 }

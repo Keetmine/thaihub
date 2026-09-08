@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import VisitedButton from "@/components/VisitedButton";
+import WantToVisitButton from "@/components/WantToVisitButton";
+import { boundingBox, distanceMeters } from "@/lib/geo";
+import { WANT_TO_VISIT_TITLE } from "@/lib/systemLists";
 import AddToListButton from "@/components/AddToListButton";
 import { addPlaceToList } from "@/app/(public)/lists/actions";
 import { visibleCommunityListsWhere } from "@/app/(public)/lists/communityLists";
@@ -110,7 +113,7 @@ export default async function LocationDetailPage({
 
   // Первая волна: соседние локации зависят только от самой локации, а
   // текущий пользователь — вообще ни от чего; раньше шли друг за другом.
-  const [relatedLocations, currentUser] = await Promise.all([
+  const [relatedLocations, nearbyCandidates, currentUser] = await Promise.all([
     // Другие места съёмок тех же сериалов: с одной локации логично уйти
     // смотреть соседние — фанаты обходят их одной поездкой.
     dramaIds.length === 0
@@ -135,8 +138,51 @@ export default async function LocationDetailPage({
           orderBy: { name: "asc" },
           take: 12,
         }),
+    // «Рядом с этим местом»: кандидаты в радиусе ~2 км. Грубый отбор —
+    // прямоугольником по широте/долготе прямо в запросе (индексов по
+    // координатам нет, но локаций с ними сотни — фильтр мгновенный),
+    // точное расстояние и топ-5 добираются ниже в JS (см. src/lib/geo.ts).
+    location.latitude == null || location.longitude == null
+      ? []
+      : prisma.location.findMany({
+          where: {
+            id: { not: id },
+            createdByUserId: null,
+            ...boundingBox({ latitude: location.latitude, longitude: location.longitude }, 2),
+          },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            photoUrl: true,
+            latitude: true,
+            longitude: true,
+          },
+        }),
     getCurrentUser(),
   ]);
+
+  // Точный отсев по гаверсинусу: прямоугольник по углам шире круга 2 км.
+  const nearbyLocations =
+    location.latitude == null || location.longitude == null
+      ? []
+      : nearbyCandidates
+          .map((l) => ({
+            ...l,
+            distanceM: distanceMeters(
+              { latitude: location.latitude!, longitude: location.longitude! },
+              { latitude: l.latitude!, longitude: l.longitude! },
+            ),
+          }))
+          .filter((l) => l.distanceM <= 2000)
+          .sort((a, b) => a.distanceM - b.distanceM)
+          .slice(0, 5);
+  // Подпись расстояния: до километра — метры с шагом 50 («≈ 400 м»),
+  // дальше — километры с одним знаком («≈ 1,3 км»).
+  const distanceLabel = (m: number) =>
+    m < 975
+      ? t.catalog.location.distanceM(Math.max(50, Math.round(m / 50) * 50))
+      : t.catalog.location.distanceKm((m / 1000).toFixed(1));
 
   // Вторая волна: пользовательские отметки — все ждут только currentUser.
   const [visit, myPlaceListsRaw, communityLists, favoritedIds, goingIds, friendIds] =
@@ -190,6 +236,12 @@ export default async function LocationDetailPage({
       getFriendIds(currentUser?.id),
     ]);
   const isVisited = !!visit;
+  // «Хочу сюда»: место уже в системном списке «Хочу посетить»? Списки
+  // пользователя (с items по этой локации) уже загружены строкой выше —
+  // отдельный запрос не нужен. У кого списка ещё нет, тот и не отмечал.
+  const isWanted = myPlaceListsRaw.some(
+    (l) => l.title === WANT_TO_VISIT_TITLE && l.items.length > 0,
+  );
   const myPlaceLists = myPlaceListsRaw.map((l) => ({
     id: l.id,
     title: l.title,
@@ -231,6 +283,9 @@ export default async function LocationDetailPage({
           actions={
             <>
               <VisitedButton locationId={location.id} isVisited={isVisited} />
+              {/* «Хочу сюда» — отметка, а не «свой список»: работает и
+                  без подписки (см. toggleWantToVisit в lists/actions.ts). */}
+              <WantToVisitButton locationId={location.id} isWanted={isWanted} />
               {myPlaceLists.length > 0 && (
                 <AddToListButton
                   lists={myPlaceLists}
@@ -350,6 +405,56 @@ export default async function LocationDetailPage({
                 ]}
                 height="16rem"
               />
+            </div>
+          )}
+
+          {/* «Рядом с этим местом»: топ-5 локаций в радиусе ~2 км по
+              координатам — не путать с «другими местами этих съёмок»
+              ниже (те могут быть на другом конце города). Подпись —
+              расстояние по прямой. */}
+          {nearbyLocations.length > 0 && (
+            <div className="mt-4">
+              <h2 className="section-heading mb-2">{t.catalog.location.nearbyGeo}</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {nearbyLocations.map((near) => (
+                  <AppLink
+                    key={near.id}
+                    href={locationHref(near)}
+                    className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2"
+                    style={{ width: "13rem" }}
+                  >
+                    <div
+                      style={{
+                        width: "2.5rem",
+                        height: "2.5rem",
+                        borderRadius: "0.5rem",
+                        background: "var(--bs-secondary-bg)",
+                        flexShrink: 0,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {near.photoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          loading="lazy"
+                          decoding="async"
+                          src={near.photoUrl}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </div>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="font-display fw-medium text-white d-block text-truncate">
+                        {near.name}
+                      </span>
+                      <span className="small text-secondary d-block">
+                        {distanceLabel(near.distanceM)}
+                      </span>
+                    </span>
+                  </AppLink>
+                ))}
+              </div>
             </div>
           )}
 

@@ -144,12 +144,14 @@ const getSectionCounts = unstable_cache(
  *  получает пейволл, а страница помечена noIndex (не витрина, решение
  *  из аудита 2026-09). /events и /communities — гостевые витрины,
  *  /locations/map — карта каталога, /privacy и /terms — правовые
- *  тексты: всё публичное и индексируемое. */
+ *  тексты, /dramas/top — народный топ по нашим оценкам: всё публичное
+ *  и индексируемое. */
 const STATIC_PATHS = [
   "/",
   "/about",
   "/help",
   "/dramas",
+  "/dramas/top",
   "/artists",
   "/novels",
   "/locations",
@@ -157,6 +159,11 @@ const STATIC_PATHS = [
   "/events",
   "/communities",
   "/wiki",
+  // Витрина музыкальных релизов — открыта гостю, обновляется суточным
+  // импортом (features/home.md).
+  "/music",
+  // Мини-игра «Угадай сериал по постеру» — гостевая витрина.
+  "/game",
   "/privacy",
   "/terms",
 ];

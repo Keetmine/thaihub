@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { answerPreCheckoutQuery, sendTelegramMessage } from "@/lib/telegram";
+import { GIFT_PAYLOAD_PREFIX, answerPreCheckoutQuery, sendTelegramMessage } from "@/lib/telegram";
 import { formatFullDate } from "@/lib/dates";
 import { extendPremium } from "@/lib/premium";
+import { createGiftPromoCode } from "@/lib/promoCodes";
 import { notifyAdmins } from "@/lib/adminNotify";
+import { buildDigestMessage } from "@/lib/botDigest";
 
 // Вебхук Telegram-бота — регистрируется скриптом
 // scripts/setup-telegram-webhook.ts (setWebhook с secret_token).
@@ -66,7 +68,8 @@ const COMMAND_REPLIES: Record<string, string> = {
     `Привет! Это бот сайта <b>MyBLHub</b> — трекера концертов и фанмитов тайских актёров.\n\n` +
     `Я присылаю напоминания о событиях из избранного, сигналы о старте продаж билетов и новости друзей.\n\n` +
     `Сайт: ${APP_URL}\n` +
-    `Команды: /terms — условия, /support — поддержка`,
+    `Команды: /today — что у вас сегодня, /week — что на неделе, ` +
+    `/terms — условия, /support — поддержка`,
   "/terms":
     `<b>Условия использования MyBLHub</b>\n\n` +
     `Подписка открывает афишу событий, календарь, поездки и уведомления на 30 дней с момента оплаты.\n\n` +
@@ -90,17 +93,53 @@ export async function POST(request: Request) {
 
   if (update.pre_checkout_query) {
     const { id, invoice_payload } = update.pre_checkout_query;
-    const user = await prisma.user.findUnique({ where: { id: invoice_payload } });
+    // У подарочного инвойса payload с префиксом (см. GIFT_PAYLOAD_PREFIX
+    // в lib/telegram.ts) — покупателя ищем по остатку, иначе подарок
+    // упирался бы в «Аккаунт не найден» и оплата не проходила.
+    const buyerId = invoice_payload.startsWith(GIFT_PAYLOAD_PREFIX)
+      ? invoice_payload.slice(GIFT_PAYLOAD_PREFIX.length)
+      : invoice_payload;
+    const user = await prisma.user.findUnique({ where: { id: buyerId } });
     await answerPreCheckoutQuery(id, !!user, user ? undefined : "Аккаунт не найден");
     return NextResponse.json({ ok: true });
   }
 
   // Команды: отвечаем и выходим — оплата этим же апдейтом не приходит.
+  // Суффикс «@ИмяБота» (так Telegram шлёт команды из групповых чатов)
+  // отрезаем — иначе «/today@бот» молча падал бы в ветку фидбэка.
   const rawText = update.message?.text?.trim();
-  const command = rawText?.split(/\s+/)[0].toLowerCase();
+  const command = rawText?.split(/\s+/)[0].toLowerCase().split("@")[0];
   const chatId = update.message?.chat?.id ?? update.message?.from?.id;
   if (command && chatId && COMMAND_REPLIES[command]) {
     await sendTelegramMessage(String(chatId), COMMAND_REPLIES[command]).catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
+
+  // /today и /week — личная подборка (аудит 2026-09, раздел 7): серии
+  // моих сериалов, мои события, дни рождения избранных. Аккаунт ищем по
+  // отправителю (from.id), а не по чату: в личке это одно и то же, а
+  // командам из группового чата чужая подборка не положена.
+  if (command === "/today" || command === "/week") {
+    const senderId = update.message?.from?.id ?? chatId;
+    if (!senderId || !chatId) return NextResponse.json({ ok: true });
+    const linked = await prisma.user.findFirst({
+      where: { telegramId: String(senderId) },
+      select: { id: true, locale: true },
+    });
+    if (!linked) {
+      // Непривязанному подборку собрать не из чего — подсказываем, где
+      // привязать. По-русски, как остальные ответы бота: язык человека
+      // без аккаунта нам неоткуда узнать.
+      await sendTelegramMessage(
+        String(chatId),
+        `Подборка работает с привязанным аккаунтом MyBLHub.\n` +
+          `Привяжите Telegram на сайте: Настройки → Профиль → блок «Telegram».\n` +
+          `${APP_URL}/account/settings`,
+      ).catch(() => {});
+    } else {
+      const digest = await buildDigestMessage(linked, command === "/today" ? 1 : 7);
+      await sendTelegramMessage(String(chatId), digest).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -196,7 +235,67 @@ export async function POST(request: Request) {
 
   const payment = update.message?.successful_payment;
   if (payment) {
-    const user = await prisma.user.findUnique({ where: { id: payment.invoice_payload } });
+    // Подарочная покупка (аудит 2026-09 п.8): payload с префиксом. Не
+    // продлеваем подписку покупателю, а создаём одноразовый промокод и
+    // шлём его покупателю сюда же, в чат с ботом, — открыткой для
+    // пересылки. Показать код на сайте в момент покупки нельзя: оплата
+    // приходит асинхронно вебхуком, а чат, из которого заплатили,
+    // всегда под рукой — и переслать оттуда проще всего.
+    const isGift = payment.invoice_payload.startsWith(GIFT_PAYLOAD_PREFIX);
+    const payloadUserId = isGift
+      ? payment.invoice_payload.slice(GIFT_PAYLOAD_PREFIX.length)
+      : payment.invoice_payload;
+    if (isGift) {
+      const buyer = await prisma.user.findUnique({ where: { id: payloadUserId } });
+      if (!buyer) {
+        console.warn(`gift payment for unknown user payload: ${payment.invoice_payload}`);
+        return NextResponse.json({ ok: true });
+      }
+      // Дедуп ретраев вебхука ДО генерации: у обычной оплаты upsert по
+      // charge id спасает журнал, но здесь ретрай наплодил бы вторые
+      // промокоды — проверяем журнал заранее и выходим.
+      const already = await prisma.payment.findUnique({
+        where: { telegramChargeId: payment.telegram_payment_charge_id },
+      });
+      if (already) return NextResponse.json({ ok: true });
+
+      const code = await createGiftPromoCode();
+      // Журнал оплат (/admin/finance) — строка покупателя, как у
+      // обычной подписки: звёзды заплатил он.
+      await prisma.payment.create({
+        data: {
+          userId: buyer.id,
+          amount: payment.total_amount,
+          telegramChargeId: payment.telegram_payment_charge_id,
+        },
+      });
+      console.log(
+        `gift payment: buyer ${buyer.id}, charge ${payment.telegram_payment_charge_id}, code ${code}`,
+      );
+      await notifyAdmins(
+        "payment",
+        `🎁 Подарочная подписка: ${buyer.name ?? buyer.email ?? buyer.id}, ${payment.total_amount} Stars. Код ${code}.`,
+      );
+      if (update.message?.from) {
+        const chatId = String(update.message.from.id);
+        // Два сообщения: короткое «готово» покупателю и отдельная
+        // самодостаточная открытка — её пересылают как есть, и в ней
+        // не должно быть служебного «перешлите подруге».
+        await sendTelegramMessage(
+          chatId,
+          "✅ Оплачено! Ниже — открытка с промокодом: перешлите её тому, кому дарите. Код одноразовый.",
+        ).catch(() => {});
+        await sendTelegramMessage(
+          chatId,
+          `🎁 Вам дарят месяц подписки <b>MyBLHub</b>!\n\n` +
+            `Промокод: <code>${code}</code>\n\n` +
+            `Как активировать: войдите на ${APP_URL} и введите код в поле «Промокод» на странице подписки — 30 дней откроются сразу.`,
+        ).catch(() => {});
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: payloadUserId } });
     if (user) {
       const until = extendPremium(user.premiumUntil);
       await prisma.user.update({

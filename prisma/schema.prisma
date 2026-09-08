@@ -88,6 +88,7 @@ model Event {
   attendees            EventAttendance[]
   notes                EventNote[]
   presaleNotifications TelegramPresaleNotification[]
+  performerEventNotifications PerformerEventNotification[]
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
   reviews              Review[]
@@ -942,6 +943,7 @@ model User {
   birthdayNotifications        BirthdayNotification[]
   mdlDramaRequests             MdlDramaRequestUser[]
   episodeNotifications         EpisodeNotification[]
+  performerEventNotifications  PerformerEventNotification[]
   friendMutes                  FriendNotificationMute[]      @relation("MuteOwner")
   mutedByFriends               FriendNotificationMute[]      @relation("MuteTarget")
   eventNotes                   EventNote[]
@@ -1303,6 +1305,23 @@ model EpisodeNotification {
 
   @@unique([userId, episodeId])
   @@index([episodeId])
+}
+
+// Дедуп «у избранного артиста новое событие»: одно уведомление на пару
+// (пользователь, событие) — сколько бы избранных артистов ни было в
+// составе, сколько бы раз админ ни пересобрал состав правкой формы и
+// когда бы к событию ни привязали ещё одного артиста. Отметка ставится
+// ДО отправки, гонку двух вызовов судит уникальный ключ — как у серий.
+model PerformerEventNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
+  @@index([eventId])
 }
 
 // Состояние разговора с ботом (И7): по нему вебхук решает, отвечать ли
@@ -1877,6 +1896,14 @@ enum NotificationKind {
   // «Через час откроется онлайн-бронирование» — по времени, которое
   // владелец записал у своего билета (EventTicket.onlineBookingAt).
   ONLINE_BOOKING
+  // «У избранного артиста новое событие» (аудит 2026-09, приоритет №1):
+  // каталожное событие с артистом из избранного получателя. Одно на
+  // событие, сколько бы избранных ни было в составе.
+  PERFORMER_EVENT
+  // «Стартовал сериал из ваших планов»: вышла серия №1 у сериала со
+  // статусом PLAN_TO_WATCH. Дальше серий этому человеку не шлём — он
+  // ещё не смотрит, колокольчик серий у него не включён.
+  DRAMA_STARTED
   // Сообщества: заявка на вступление — владельцу, решение по ней —
   // заявителю. Отказ отдельным видом не заводим: молчаливый отказ
   // обиднее внятного «не приняли», но плодить ещё один вид ради одной

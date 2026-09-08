@@ -25,6 +25,12 @@ export const home: Dict["home"] = {
     newsFromCatalogue: "свежее в каталоге",
     listen: "Слушать ↗",
     birthdays: "Сегодня день рождения",
+    onThisDay: "В этот день",
+    onThisDayAgo: (years: number) =>
+        years === 1
+            ? "вышел год назад"
+            : `вышел ${pluralized(years, ["год", "года", "лет"])} назад`,
+    friendsFeed: "У друзей",
     turns: (age: number) => `исполняется ${age}`,
     yourFriend: "ваш друг",
     inFavourites: "в избранном",

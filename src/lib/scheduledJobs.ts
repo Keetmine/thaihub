@@ -399,7 +399,7 @@ async function runCleanupExpired(): Promise<string> {
   // Дедуп-отметки напоминаний: нужны, только пока повод может
   // повториться (событие в ближайшие сутки, серия в окне добора,
   // день рождения в этом году) — дальше строки лишь занимают место.
-  const [birthdays, episodes, eventReminders, presales] = await Promise.all([
+  const [birthdays, episodes, eventReminders, presales, performerEvents] = await Promise.all([
     prisma.birthdayNotification.deleteMany({
       where: { createdAt: { lt: daysAgo(BIRTHDAY_DEDUPE_RETENTION_DAYS) } },
     }),
@@ -412,9 +412,16 @@ async function runCleanupExpired(): Promise<string> {
     prisma.telegramPresaleNotification.deleteMany({
       where: { sentAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
     }),
+    // «Новое событие избранного артиста»: повторно повод возможен лишь
+    // при привязке ещё одного артиста к старому событию — а это и есть
+    // новость, так что просроченная отметка ничего не ломает.
+    prisma.performerEventNotification.deleteMany({
+      where: { createdAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+    }),
   ]);
 
-  const dedupe = birthdays.count + episodes.count + eventReminders.count + presales.count;
+  const dedupe =
+    birthdays.count + episodes.count + eventReminders.count + presales.count + performerEvents.count;
   return (
     `сессий удалено ${sessions.count}, токенов сброса ${tokens.count}, ` +
     `аудита ${audit.count}, уведомлений ${notifications.count}, ` +

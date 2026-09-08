@@ -25,14 +25,20 @@ export async function generateMetadata() {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; ref?: string }>;
 }) {
-  const { error, next: rawNext } = await searchParams;
+  const { error, next: rawNext, ref: rawRef } = await searchParams;
   const { locale, t } = await getT();
   // Возврат после регистрации: next приезжает со страницы входа
   // (гость упёрся в гейт → /login?next=… → «Зарегистрироваться»).
   // Значение из URL — чужое, валидируем и здесь.
   const next = sanitizeNextPath(rawNext);
+  // Реферальная ссылка /signup?ref=<ник или id> (аудит 2026-09 п.7):
+  // значение просто едет в экшен hidden-полем — валидность (есть ли
+  // такой пользователь) проверяет он, а битый ref регистрацию не
+  // ломает и ошибок на форме не рисует. Обрезка — чтобы чужая строка
+  // из URL не раздувала форму.
+  const ref = (rawRef ?? "").trim().slice(0, 64);
   // Залогиненному регистрироваться незачем — форма только путала.
   if (await getCurrentUser()) redirect(localeHref(next ?? "/account", locale));
   const hasGoogle = !!process.env.GOOGLE_CLIENT_ID;
@@ -62,6 +68,8 @@ export default async function SignupPage({
         )}
         {/* Возврат после регистрации: экшен читает next из формы. */}
         {next && <input type="hidden" name="next" value={next} />}
+        {/* Кто пригласил (реферальная ссылка) — тоже сквозь форму. */}
+        {ref && <input type="hidden" name="ref" value={ref} />}
         {/* Ханипот против ботов: поле скрыто от людей, автозаполнялки
             ботов его заполняют — такие регистрации молча отбрасываются. */}
         <input

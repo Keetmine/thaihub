@@ -25,6 +25,8 @@ export type MeetupFormValues = {
   timeValue: string;
   posterUrl: string | null;
   drama: { id: string; name: string } | null;
+  /** Онлайн-встреча: адреса нет, на карточке — бейдж «Онлайн». */
+  isOnline: boolean;
 };
 
 /**
@@ -82,6 +84,10 @@ export default function MeetupForm({
   // попадает в скрытое поле только ПОСЛЕ загрузки, и ранний «Сохранить»
   // отправил бы встречу без картинки.
   const [isPosterUploading, setIsPosterUploading] = useState(false);
+  // Онлайн-встреча: поле адреса при включении прячется целиком, а не
+  // просто перестаёт быть обязательным, — полупустое «Адрес» рядом с
+  // «Онлайн» читалось бы как вопрос, на который всё-таки ждут ответа.
+  const [isOnline, setIsOnline] = useState(meetup?.isOnline ?? false);
   // Картинка встречи: адрес держим в состоянии и отдаём форме скрытым
   // полем. Без картинки карточка рисует первую букву названия — как у
   // обычных событий, отдельного «нет постера» не нужно.
@@ -215,28 +221,50 @@ export default function MeetupForm({
             </div>
           </div>
 
-          {/* Одно поле вместо «Где» и «Адрес» (правка владельца
-              2026-09-09: «чем они отличаются? оставим один Адрес»). Их и
-              правда было не различить: обе строки показывались рядом
-              через точку на странице встречи.
-              У встречи, заведённой ещё двумя полями, значения склеиваем
-              в одно — иначе адрес остался бы в базе, но правкой его было
-              бы не достать. */}
-          <div>
-            <label className="form-label small text-secondary" htmlFor={`${uid}-venue`}>
-              {s.addressLabel}
-            </label>
+          {/* Онлайн-встреча: переключатель НАД адресом — он решает,
+              будет ли поле ниже вовсе. Подсказка про «ссылку в
+              подробностях» стоит только при включённом: выключенному
+              она отвечала бы на незаданный вопрос. */}
+          <div className="form-check form-switch">
             <input
-              id={`${uid}-venue`}
-              type="text"
-              name="venue"
-              required
-              maxLength={200}
-              defaultValue={[meetup?.venue, meetup?.address].filter(Boolean).join(", ")}
-              placeholder={s.addressPlaceholder}
-              className="form-control"
+              className="form-check-input"
+              type="checkbox"
+              role="switch"
+              id={`${uid}-online`}
+              name="isOnline"
+              checked={isOnline}
+              onChange={(e) => setIsOnline(e.target.checked)}
             />
+            <label className="form-check-label" htmlFor={`${uid}-online`}>
+              {s.onlineLabel}
+            </label>
           </div>
+          {isOnline ? (
+            <p className="small text-secondary mb-0">{s.onlineHint}</p>
+          ) : (
+            /* Одно поле вместо «Где» и «Адрес» (правка владельца
+               2026-09-09: «чем они отличаются? оставим один Адрес»). Их и
+               правда было не различить: обе строки показывались рядом
+               через точку на странице встречи.
+               У встречи, заведённой ещё двумя полями, значения склеиваем
+               в одно — иначе адрес остался бы в базе, но правкой его было
+               бы не достать. */
+            <div>
+              <label className="form-label small text-secondary" htmlFor={`${uid}-venue`}>
+                {s.addressLabel}
+              </label>
+              <input
+                id={`${uid}-venue`}
+                type="text"
+                name="venue"
+                required
+                maxLength={200}
+                defaultValue={[meetup?.venue, meetup?.address].filter(Boolean).join(", ")}
+                placeholder={s.addressPlaceholder}
+                className="form-control"
+              />
+            </div>
+          )}
 
           <div>
             <label className="form-label small text-secondary" htmlFor={`${uid}-description`}>

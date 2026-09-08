@@ -35,6 +35,7 @@ export const nav = {
     help: "Help",
     contact: "Contact us",
     wiki: "Wiki",
+    game: "Guess the series",
     about: "About",
     terms: "Terms",
     privacy: "Privacy",

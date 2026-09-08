@@ -10,6 +10,8 @@ type OccurrenceWithEvent = {
     title: string;
     slug: string | null;
     venue: string;
+    /** Онлайн-встреча сообщества — см. EventWithPerformers.isOnline. */
+    isOnline?: boolean;
     description: string | null;
     posterUrl: string | null;
     performers: { performer: { id: string; name: string; slug: string | null } }[];
@@ -29,6 +31,7 @@ export function flattenOccurrence(occ: OccurrenceWithEvent): EventWithPerformers
     title: occ.event.title,
     slug: occ.event.slug,
     venue: occ.event.venue,
+    isOnline: occ.event.isOnline ?? false,
     description: occ.event.description,
     posterUrl: occ.event.posterUrl,
     startsAt: occ.startsAt,

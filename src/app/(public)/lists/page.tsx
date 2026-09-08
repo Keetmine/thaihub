@@ -1,4 +1,5 @@
-import { isPremiumActive } from "@/lib/premium";
+import { FREE_PLACE_LIST_LIMIT, isPremiumActive } from "@/lib/premium";
+import { WANT_TO_VISIT_TITLE } from "@/lib/systemLists";
 import AppLink from "@/components/AppLink";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
@@ -70,6 +71,15 @@ export default async function ListsPage() {
 
   const isEmpty = places.length === 0 && lists.length === 0;
   const canCreate = isPremiumActive(user);
+  // Пробный лимит (аудит 2026-09 п.8, решение владельца): бесплатному —
+  // ОДИН свой список мест (наполняется каталожными локациями; свои
+  // места остаются частью подписки). Списки сообществ сюда не попадают
+  // (выборка выше уже с communityId: null), а системный «Хочу посетить»
+  // не в счёт: он заводится кнопкой «хочу сюда» в обход гейта (см.
+  // toggleWantToVisit в actions.ts) и слот съедать не должен. Тот же
+  // подсчёт — в createPlaceList: кнопка правом не является.
+  const trialListsUsed = lists.filter((l) => l.title !== WANT_TO_VISIT_TITLE).length;
+  const canCreateList = canCreate || trialListsUsed < FREE_PLACE_LIST_LIMIT;
 
   return (
     <div>
@@ -82,9 +92,11 @@ export default async function ListsPage() {
 
       <div style={{ maxWidth: "44rem" }}>
         <p className="text-secondary mb-3">{t.lists.places.intro}</p>
-        {/* Заводить своё — по подписке (правка владельца 2026-09-06);
-            уже созданные места и списки остаются на месте и работают,
-            платное тут только создание. */}
+        {/* Заводить СВОИ места — по подписке (правка владельца
+            2026-09-06); уже созданные места и списки остаются на месте
+            и работают. Бесплатному — пробный первый список (кнопка
+            ниже), а когда он использован — честный апселл: intro
+            объясняет, что первый был бесплатным. */}
         {canCreate ? (
           <div className="mb-4">
             <CreateOwnPlaceButton
@@ -92,9 +104,14 @@ export default async function ListsPage() {
               label={t.lists.places.addPlace}
             />
           </div>
+        ) : canCreateList ? (
+          <div className="mb-4">
+            <CreateListButton />
+            <p className="small text-secondary mb-0 mt-2">{t.lists.freeFirstListHint}</p>
+          </div>
         ) : (
           <div className="mb-4">
-            <PremiumUpsell feature={t.lists.paywallFeature} />
+            <PremiumUpsell feature={t.lists.paywallFeature} intro={t.lists.freeLimitIntro} />
           </div>
         )}
 
@@ -168,7 +185,9 @@ export default async function ListsPage() {
 
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
               <h2 className="section-heading mb-0">{t.lists.places.listsHeading}</h2>
-              {canCreate && <CreateListButton />}
+              {/* canCreateList, а не canCreate: у бесплатного без
+                  списков кнопка тоже должна быть — это его пробный. */}
+              {canCreateList && <CreateListButton />}
             </div>
             <p className="small text-secondary mb-3">{t.lists.places.listsIntro}</p>
 

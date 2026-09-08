@@ -10,7 +10,7 @@ import CreateTripButton from "./CreateTripButton";
 import TripCard from "./TripCard";
 import { TripInviteActions } from "./TripMembersControls";
 import PremiumUpsell from "@/components/PremiumUpsell";
-import { isPremiumActive } from "@/lib/premium";
+import { FREE_TRIP_LIMIT, isPremiumActive } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { tripHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
@@ -37,21 +37,16 @@ export default async function TripsPage() {
   // сессию, мимо прокси, который смотрит только наличие куки).
   if (!user) redirect(localeHref("/login?next=/trips", locale));
 
-  // Поездки целиком — платная функция (см. PremiumUpsell / /admin/users).
-  if (!isPremiumActive(user)) {
-    return (
-      <div>
-        <PageHeader
-          eyebrow={t.trips.eyebrow}
-          title={t.trips.list.title}
-          size="lg"
-          className="mb-5"
-          watermark="Trips"
-        />
-        <PremiumUpsell feature={t.trips.paywallFeature} />
-      </div>
-    );
-  }
+  // Пробный лимит вместо глухого пейволла (аудит 2026-09 п.8, решение
+  // владельца): раньше страница целиком закрывалась подпиской, теперь
+  // бесплатному доступна ОДНА своя поездка — свои и совместные он видит
+  // всегда, а на второй создаваемой упирается в апселл ниже (тот же
+  // гейт в createTrip: спрятанная кнопка правом не является).
+  const isPremium = isPremiumActive(user);
+  const ownTripCount = isPremium
+    ? 0 // подписчику лимит не считаем — незачем лишний запрос
+    : await prisma.trip.count({ where: { userId: user.id } });
+  const canCreate = isPremium || ownTripCount < FREE_TRIP_LIMIT;
 
   // Друзья — в мультиселект «С кем едете» формы создания.
   const friendIds = await getFriendIds(user.id);
@@ -133,17 +128,25 @@ export default async function TripsPage() {
           </div>
         )}
 
-        <div className="mb-4">
-          <CreateTripButton
-            friends={friends.map((f) => ({
-              id: f.id,
-              // Утилита переведёт подпись удалённого аккаунта на язык
-              // зрителя; безымянный живой аккаунт остаётся «без имени».
-              name: f.name ? userDisplayName(f, locale) : t.trips.members.noName,
-              photoUrl: f.photoUrl,
-            }))}
-          />
-        </div>
+        {canCreate ? (
+          <div className="mb-4">
+            <CreateTripButton
+              friends={friends.map((f) => ({
+                id: f.id,
+                // Утилита переведёт подпись удалённого аккаунта на язык
+                // зрителя; безымянный живой аккаунт остаётся «без имени».
+                name: f.name ? userDisplayName(f, locale) : t.trips.members.noName,
+                photoUrl: f.photoUrl,
+              }))}
+            />
+          </div>
+        ) : (
+          // Бесплатная поездка уже создана — вместо кнопки честный
+          // апселл: intro объясняет, что первая была бесплатной.
+          <div className="mb-4">
+            <PremiumUpsell feature={t.trips.paywallFeature} intro={t.trips.freeLimitIntro} />
+          </div>
+        )}
 
         {trips.length === 0 ? (
           <EmptyState

@@ -5,6 +5,9 @@
 export const trips = {
     eyebrow: "Planning",
     paywallFeature: "Trips",
+    /** Мостик на апселле /trips, когда бесплатная поездка уже создана
+     *  (пробный лимит, аудит 2026-09 п.8). */
+    freeLimitIntro: "One trip is free to try — you already have yours. A subscription lifts the limit.",
 
     /** Список поездок: /trips */
     list: {
@@ -231,6 +234,11 @@ export const trips = {
         emptyTitle: "No places yet",
         emptyHint:
             "Add your own from a Google Maps link, find one in the catalogue or attach a list — this is where the trip's shortlist lives.",
+        /** Day route: a plain Google Maps directions link, no API keys
+         *  (see src/lib/dayRoute.ts). */
+        routeButton: "Build a route",
+        routeCapped: (shown: number, total: number) =>
+            `Google Maps takes up to ${shown} stops — the route has the first ${shown} of ${total}`,
     },
 
     /** Дела поездки. */
@@ -342,6 +350,8 @@ export const trips = {
         stayBothDates: "Set both dates — arrival and departure",
         stayOrder: "The departure date is before the arrival",
         premium: "Trips are part of the subscription",
+        /** Пробный лимит: вторая поездка бесплатно не создаётся. */
+        freeLimit: "One trip is free — more come with a subscription",
         fillTitleAndDates: "Fill in the title and both dates",
         endBeforeStart: "The end date is before the start date",
         tripNotFound: "Trip not found",

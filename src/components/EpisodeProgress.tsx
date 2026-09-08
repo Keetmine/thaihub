@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setDramaEpisodesWatched } from "@/app/(public)/favorites/actions";
 import { useT } from "@/components/LocaleProvider";
+import RatePromptPopover, {
+  isRatePromptDismissed,
+  ratePromptCoords,
+  type RatePromptCoords,
+} from "@/components/RatePromptPopover";
 
 /**
  * «На какой серии я остановился»: счётчик + полоса прогресса.
@@ -45,6 +50,11 @@ export default function EpisodeProgress({
   const [seen, setSeen] = useState(watched);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Попап «поставьте оценку», когда последняя отмеченная серия увела
+  // сериал в «Просмотрено» (автопереход в setDramaEpisodesWatched) — у
+  // самого счётчика: человек смотрит на плюс, который только что нажал.
+  const [ratePromptAt, setRatePromptAt] = useState<RatePromptCoords | null>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
 
   // Число могло измениться не отсюда: например, статус переставили на
   // «Просмотрено», и сервер досчитал серии до конца. Локальное состояние
@@ -77,6 +87,16 @@ export default function EpisodeProgress({
         setError(result.error);
         return;
       }
+      // Досчитала до конца, автопереход в «Просмотрено», своей оценки
+      // нет — мягко предложить поставить (п.5.2 аудита).
+      if (
+        result.completedNow &&
+        !result.hasRating &&
+        !isRatePromptDismissed(dramaId)
+      ) {
+        const rect = controlsRef.current?.getBoundingClientRect();
+        if (rect) setRatePromptAt(ratePromptCoords(rect));
+      }
       router.refresh();
     });
   }
@@ -98,7 +118,7 @@ export default function EpisodeProgress({
         {variant === "full" && (
           <span className="small text-secondary">{t.catalog.episodes.label}</span>
         )}
-        <div className="episode-progress-controls">
+        <div className="episode-progress-controls" ref={controlsRef}>
           <button
             type="button"
             className="episode-progress-step"
@@ -162,6 +182,13 @@ export default function EpisodeProgress({
         />
       )}
       {error && <p className="small text-danger mb-0 mt-1">{error}</p>}
+      {ratePromptAt && (
+        <RatePromptPopover
+          dramaId={dramaId}
+          coords={ratePromptAt}
+          onClose={() => setRatePromptAt(null)}
+        />
+      )}
     </div>
   );
 }

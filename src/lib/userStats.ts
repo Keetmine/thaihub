@@ -37,6 +37,16 @@ export type UserStats = {
    *  профиля клиентская и выбирает язык сама). null — пересмотров нет,
    *  тогда блока в профиле просто не будет. */
   mostRewatched: { title: string; titleRu: string | null; count: number } | null;
+  /** Вкусовой профиль (аудит 2026-09, п.6.2): топ-5 жанров по
+   *  ДОСМОТРЕННОМУ. Жанры — сырые строки с MDL (`Drama.genres`), как и
+   *  везде на сайте они не переводятся. Пусто — блока в профиле нет. */
+  topGenres: { genre: string; count: number }[];
+  /** Своя средняя оценка против MyDramaList по ТЕМ ЖЕ тайтлам: own —
+   *  средняя своих оценок, diff — own минус средняя mdlScore (то есть
+   *  минус = строже, плюс = щедрее), оба округлены до десятой. null —
+   *  пар «своя оценка + оценка MDL» меньше пяти: на трёх оценках
+   *  «строже на 2.1» звучит как диагноз, а это случайность. */
+  ratingVsMdl: { own: number; diff: number; count: number } | null;
   trips: number;
   longestTripDays: number;
   daysInThailand: number;
@@ -192,7 +202,18 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
           status: true,
           episodesWatched: true,
           rewatchCount: true,
-          drama: { select: { ...DRAMA_TITLE_SELECT, episodes: true, duration: true } },
+          // rating, genres и mdlScore — для вкусового профиля (п.6.2):
+          // считается из этих же строк, отдельных запросов не нужно.
+          rating: true,
+          drama: {
+            select: {
+              ...DRAMA_TITLE_SELECT,
+              episodes: true,
+              duration: true,
+              genres: true,
+              mdlScore: true,
+            },
+          },
         },
       }),
       // Поездки — свои И совместные, где инвайт принят: тот же критерий,
@@ -263,7 +284,11 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     attendances.filter((a) => a.occurrence.startsAt >= now).map((a) => a.eventId),
   ).size;
 
-  const venues = new Set(attended.map((a) => a.event.venue.trim().toLowerCase()));
+  // Пустой venue — онлайн-встреча сообщества: местом она не считается,
+  // иначе «разных площадок» прибавлялось бы от сидения дома.
+  const venues = new Set(
+    attended.map((a) => a.event.venue.trim().toLowerCase()).filter(Boolean),
+  );
 
   const performerCounts = new Map<string, { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }>();
   // Кого именно человек видел: у дня фестиваля свой состав, и отметка
@@ -426,6 +451,43 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
       }
     : null;
 
+  // Вкусовой профиль (п.6.2) — из тех же watchRows. Жанры считаются
+  // только по ДОСМОТРЕННОМУ: «в планах» лежит что попало, а досмотренное
+  // человек выбрал и вытерпел до конца — это и есть вкус.
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  const genreCounts = new Map<string, number>();
+  for (const row of watchRows) {
+    if (row.status !== "COMPLETED") continue;
+    for (const genre of row.drama.genres) {
+      genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
+    }
+  }
+  const topGenres = Array.from(genreCounts.entries())
+    // При равенстве — по алфавиту, чтобы порядок не зависел от порядка
+    // строк в ответе базы (та же причина, что у mostRewatched).
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 5)
+    .map(([genre, count]) => ({ genre, count }));
+
+  // «Строже/щедрее MDL»: сравниваем средние ПО ОДНИМ И ТЕМ ЖЕ тайтлам —
+  // своя средняя по всему списку против общей средней MDL сравнивала бы
+  // разные множества сериалов и была бы просто неправдой.
+  const ratedPairs = watchRows.filter(
+    (row): row is (typeof watchRows)[number] & { rating: number } =>
+      row.rating != null && row.drama.mdlScore != null,
+  );
+  const ratingVsMdl =
+    ratedPairs.length >= 5
+      ? {
+          own: round1(ratedPairs.reduce((sum, r) => sum + r.rating, 0) / ratedPairs.length),
+          diff: round1(
+            ratedPairs.reduce((sum, r) => sum + (r.rating - r.drama.mdlScore!), 0) /
+              ratedPairs.length,
+          ),
+          count: ratedPairs.length,
+        }
+      : null;
+
   const byYear = new Map<number, number>();
   const attendedDays: string[] = [];
   for (const a of attended) {
@@ -512,6 +574,8 @@ export async function computeUserStats(userId: string): Promise<UserStats> {
     hoursWatched,
     rewatchTotal,
     mostRewatched,
+    topGenres,
+    ratingVsMdl,
     trips: tripStats.trips,
     longestTripDays: tripStats.longestTripDays,
     daysInThailand: tripStats.daysInThailand,

@@ -14,6 +14,7 @@ import {
 import { restartTour } from "../tourActions";
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
+import InviteFriendSection from "./InviteFriendSection";
 import MdlImportSection from "./MdlImportSection";
 import SettingsForm, { SettingsSubmitRow } from "./SettingsForm";
 import SettingsTabs from "./SettingsTabs";
@@ -306,6 +307,15 @@ export default async function SettingsPage({
                 )}
               </div>
             )}
+
+            {/* Пригласить подругу (аудит 2026-09 п.7): копируемая
+                реферальная ссылка. Зарегистрировавшаяся по ней сразу
+                становится другом — см. signup/actions.ts. */}
+            <div className="surface p-4">
+              <h2 className="section-heading mb-1">{t.social.friends.invite.title}</h2>
+              <p className="small text-secondary mb-3">{t.social.friends.invite.hint}</p>
+              <InviteFriendSection refValue={user.username ?? user.id} />
+            </div>
 
             {/* Тур по интерфейсу — пройти заново. Полезно и когда
                 появляются новые разделы. */}

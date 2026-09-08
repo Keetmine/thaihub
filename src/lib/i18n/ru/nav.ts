@@ -34,6 +34,7 @@ export const nav: Dict["nav"] = {
     help: "Помощь",
     contact: "Написать нам",
     wiki: "Вики",
+    game: "Угадайте сериал",
     about: "О нас",
     terms: "Условия",
     privacy: "Конфиденциальность",

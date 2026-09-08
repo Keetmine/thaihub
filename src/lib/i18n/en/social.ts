@@ -42,6 +42,15 @@ export const social = {
     cancel: "Cancel",
     cancelConfirm: "Cancel this friend request?",
 
+    /** Блок «Пригласить подругу» в настройках (аудит 2026-09 п.7). */
+    invite: {
+      title: "Invite a friend",
+      hint: "Share your link — whoever signs up through it becomes your friend right away.",
+      aria: "Invite link",
+      copy: "Copy link",
+      copied: "Copied!",
+    },
+
     mine: "My friends",
     emptyTitle: "No friends yet",
     emptyHint:
@@ -116,6 +125,16 @@ export const social = {
     friendsAll: "All friends",
     friendsEmptySelf: "Find people you know on the friends page.",
     friendsEmpty: "No friends yet.",
+
+    /** Совместимость вкусов на чужом профиле (аудит 2026-09, раздел 7):
+     *  пересечение отмеченных сериалов зрителя и владельца, плюс
+     *  совпавшие оценки 9+. Формулировки без рода — пол обоих людей
+     *  неизвестен. */
+    tasteMatch: {
+      title: "Taste match",
+      common: (n: number) => `${n} series in common with you`,
+      bothHigh: (n: number) => `Rated 9+ by you both: ${n}`,
+    },
 
     dramasTab: {
       emptyTitle: "No series on the list yet",

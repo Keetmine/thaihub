@@ -42,6 +42,9 @@ type MeetupInput = {
   /** Афиша встречи. Пусто — карточка рисует первую букву названия
    *  (правка владельца 2026-09-08). */
   posterUrl: string;
+  /** Онлайн-встреча: адрес не нужен, venue храним пустым, на карточке —
+   *  бейдж «Онлайн» (по языку зрителя, поэтому слово в базу не пишем). */
+  isOnline: boolean;
 };
 
 function readForm(formData: FormData): MeetupInput {
@@ -59,6 +62,9 @@ function readForm(formData: FormData): MeetupInput {
     description: str("description").slice(0, MEETUP_DESCRIPTION_MAX),
     dramaId: str("dramaId"),
     posterUrl: str("posterUrl"),
+    // Чекбокс: в FormData он есть только включённым. Включён — поле
+    // адреса форма не отправляет вовсе, venue выше придёт пустым.
+    isOnline: formData.get("isOnline") != null,
   };
 }
 
@@ -67,7 +73,8 @@ async function validate(input: MeetupInput) {
   const { t } = await getT();
   const s = t.communities.meetups.errors;
   if (!input.title) return { ok: false as const, error: s.titleRequired };
-  if (!input.venue) return { ok: false as const, error: s.venueRequired };
+  // Онлайн-встрече адрес не нужен; офлайн — обязателен, как и раньше.
+  if (!input.isOnline && !input.venue) return { ok: false as const, error: s.venueRequired };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { ok: false as const, error: s.dateRequired };
   // Время приводим к «ЧЧ:ММ», а не требуем его в таком виде: половина
   // введённого («12» без минут) — это тоже время, а не повод ронять
@@ -128,7 +135,10 @@ export async function createMeetup(
         ? input.posterUrl
         : null,
       title: input.title,
-      venue: input.venue,
+      // Онлайн-встреча: venue пустой, слово «Онлайн» рисуется бейджем на
+      // языке зрителя, а не пишется в базу одним из языков.
+      isOnline: input.isOnline,
+      venue: input.isOnline ? "" : input.venue,
       address: input.address || null,
       description: input.description || null,
       dramaId: await resolveDramaId(input.dramaId),
@@ -182,7 +192,11 @@ export async function updateMeetup(eventId: string, formData: FormData): Promise
         ? input.posterUrl
         : null,
       title: input.title,
-      venue: input.venue,
+      // Переключили офлайн-встречу в онлайн — прежний адрес затирается
+      // намеренно: чей-то домашний адрес не должен тихо лежать у
+      // онлайн-встречи и вернуться при обратном переключении.
+      isOnline: input.isOnline,
+      venue: input.isOnline ? "" : input.venue,
       address: input.address || null,
       description: input.description || null,
       dramaId: await resolveDramaId(input.dramaId),

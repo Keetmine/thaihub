@@ -146,9 +146,17 @@ export default function EventCard({
               <MskTimeInfo startsAt={event.startsAt} endsAt={event.endsAt} />
             </span>
           )}
-          <span>
-            <PinIcon /> {event.venue}
-          </span>
+          {/* Онлайн-встреча: на месте площадки — бейдж «Онлайн» (venue у
+              неё хранится пустым, см. eventActions сообществ). Чип тот
+              же, что у времени: это такой же факт строки, а пин с пустым
+              текстом выглядел бы как недогруженные данные. */}
+          {event.isOnline ? (
+            <span className="date-chip">{t.events.card.online}</span>
+          ) : (
+            <span>
+              <PinIcon /> {event.venue}
+            </span>
+          )}
           {ticketUrl && (
             <a
               href={ticketUrl}

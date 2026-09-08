@@ -6,6 +6,10 @@ import "dotenv/config";
 // src/app/api/telegram/webhook/route.ts.
 const COMMANDS = [
   { command: "start", description: "О боте и сайте" },
+  // Личные подборки (аудит 2026-09, раздел 7): серии моих сериалов,
+  // мои события, дни рождения избранных.
+  { command: "today", description: "Что у вас сегодня" },
+  { command: "week", description: "Что у вас на неделе" },
   { command: "terms", description: "Условия использования и возврат" },
   { command: "support", description: "Написать в поддержку" },
 ];

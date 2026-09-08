@@ -31,6 +31,7 @@ import { userDisplayName, userHref } from "@/lib/userProfile";
 import PremiumUpsell from "@/components/PremiumUpsell";
 import MeetupPoster from "@/app/(public)/communities/[id]/MeetupPoster";
 import EventNoteSection, { type FriendNote } from "./EventNoteSection";
+import SiteGoersBlock, { type SiteGoer } from "./SiteGoersBlock";
 import EventPhotoGallery from "./EventPhotoGallery";
 import GoingDateChips from "./GoingDateChips";
 import TicketSection, { type TicketRow } from "./TicketSection";
@@ -168,7 +169,7 @@ export default async function EventDetailPage({
   // --- own block: current user's favorite/attendance state for this event ---
   // АА4: пары среди тех, кто на событии (общий состав + лайнапы дней) —
   // одним запросом на страницу, чтобы поставить их рядом в списках.
-  const [currentUser, castPairings] = await Promise.all([
+  const [currentUser, castPairings, allAttendances] = await Promise.all([
     getCurrentUser(),
     fetchPairingsAmong([
       ...new Set([
@@ -176,6 +177,30 @@ export default async function EventDetailPage({
         ...event.occurrences.flatMap((o) => o.lineup.map((l) => l.performer.id)),
       ]),
     ]),
+    // ЕДИНСТВЕННАЯ выборка EventAttendance на страницу: из неё же
+    // достаются и свои отметки зрителя, и «Друзья идут», и новый ряд
+    // «Идут с сайта» (аудит 2026-09, п.7) — раньше своих и дружеских
+    // отметок было два отдельных запроса, теперь их ноль сверх этого.
+    // Удалённые аккаунты отсекаем сразу: они не показываются нигде.
+    prisma.eventAttendance.findMany({
+      where: { eventId: event.id, user: { deletedAt: null } },
+      // По времени отметки: ряд «Идут с сайта» стабилен между
+      // заходами, а не перетасовывается базой.
+      orderBy: { createdAt: "asc" },
+      select: {
+        occurrenceId: true,
+        userId: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            photoUrl: true,
+            hideProfileActivity: true,
+          },
+        },
+      },
+    }),
   ]);
   const viewerTz = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
@@ -213,25 +238,22 @@ export default async function EventDetailPage({
     // «Иду» на встрече сообщества — БЕСПЛАТНО: участие в сообществах не
     // за подпиской (решение владельца 2026-09-08), а отметка здесь и
     // есть весь смысл встречи — по ней видно, сколько народу придёт.
+    // Свои отметки — из общей выборки выше, отдельный запрос не нужен.
     if (isMeetup) {
-      const attendances = await prisma.eventAttendance.findMany({
-        where: { userId: currentUser.id, eventId: event.id },
-        select: { occurrenceId: true },
-      });
-      goingOccurrenceIds = attendances.map((a) => a.occurrenceId);
+      goingOccurrenceIds = allAttendances
+        .filter((a) => a.userId === currentUser.id)
+        .map((a) => a.occurrenceId);
     }
   }
   if (currentUser && isPremium) {
     // Первая волна: всё, что зависит только от юзера и события, — включая
-    // билеты, раньше ждавшие отдельным await.
-    const [favorite, attendances, friendIds, coTravelerIds, myTickets] =
+    // билеты, раньше ждавшие отдельным await. Свои отметки «иду» —
+    // из общей выборки allAttendances, отдельного запроса больше нет.
+    const attendances = allAttendances.filter((a) => a.userId === currentUser.id);
+    const [favorite, friendIds, coTravelerIds, myTickets] =
       await Promise.all([
         prisma.favoriteEvent.findUnique({
           where: { userId_eventId: { userId: currentUser.id, eventId: event.id } },
-        }),
-        prisma.eventAttendance.findMany({
-          where: { userId: currentUser.id, eventId: event.id },
-          select: { occurrenceId: true },
         }),
         getFriendIds(currentUser.id),
         getCoTravelerIds(currentUser.id),
@@ -281,36 +303,37 @@ export default async function EventDetailPage({
       })
       .filter((r): r is TicketRow => r !== null);
 
-    // Вторая волна: обе ждут только списков друзей/попутчиков из первой.
-    const [friendAttendances, notes] = await Promise.all([
-      friendIds.length > 0
-        ? prisma.eventAttendance.findMany({
-            where: { eventId: event.id, userId: { in: friendIds } },
-            select: { user: { select: { id: true, name: true, photoUrl: true } } },
-          })
-        : [],
-      // Заметки (Г6): своя + друзей с видимостью FRIENDS + со-путешественников
-      // по совместным поездкам с видимостью TRIP.
-      prisma.eventNote.findMany({
-        where: {
-          eventId: event.id,
-          OR: [
-            { userId: currentUser.id },
-            ...(friendIds.length > 0
-              ? [{ userId: { in: friendIds }, visibility: "FRIENDS" as const }]
-              : []),
-            ...(coTravelerIds.length > 0
-              ? [{ userId: { in: coTravelerIds }, visibility: "TRIP" as const }]
-              : []),
-          ],
-        },
-        include: { user: { select: { name: true, photoUrl: true } } },
-      }),
-    ]);
+    // Вторая волна: заметки ждут только списков друзей/попутчиков из
+    // первой. «Друзья идут» больше в базу не ходят — фильтруются из
+    // общей выборки allAttendances.
+    // Заметки (Г6): своя + друзей с видимостью FRIENDS + со-путешественников
+    // по совместным поездкам с видимостью TRIP.
+    const notes = await prisma.eventNote.findMany({
+      where: {
+        eventId: event.id,
+        OR: [
+          { userId: currentUser.id },
+          ...(friendIds.length > 0
+            ? [{ userId: { in: friendIds }, visibility: "FRIENDS" as const }]
+            : []),
+          ...(coTravelerIds.length > 0
+            ? [{ userId: { in: coTravelerIds }, visibility: "TRIP" as const }]
+            : []),
+        ],
+      },
+      include: { user: { select: { name: true, photoUrl: true } } },
+    });
     // «Иду» per-дата — у идущего на все 3 дня будет 3 строки; в блоке
-    // «Друзья идут» человек выводится один раз.
+    // «Друзья идут» человек выводится один раз. hideProfileActivity
+    // друзей тут НЕ смотрим — друзья видят активность друг друга, как в
+    // профиле (`showActivity` в users/[id]/page.tsx).
+    const friendIdSet = new Set(friendIds);
     friendsGoing = Array.from(
-      new Map(friendAttendances.map((a) => [a.user.id, a.user])).values(),
+      new Map(
+        allAttendances
+          .filter((a) => friendIdSet.has(a.userId))
+          .map((a) => [a.user.id, a.user]),
+      ).values(),
     );
     const own = notes.find((n) => n.userId === currentUser.id);
     ownNote = own ? { text: own.text, visibility: own.visibility } : null;
@@ -340,6 +363,40 @@ export default async function EventDetailPage({
       friendsGoing.map((f) => f.id),
     );
   }
+
+  // «Идут с сайта» (аудит 2026-09, п.7): все люди сайта с отметкой «иду»
+  // на любую из дат — витрина «тут есть люди», видная и гостю. Отдельного
+  // запроса нет: ряд собирается из той же выборки allAttendances, что и
+  // свои отметки с «Друзья идут» выше.
+  //
+  // Правила ряда:
+  // - закрывшие профиль (hideProfileActivity) не показываются — тот же
+  //   мастер-выключатель, что в профиле (`showActivity` в
+  //   users/[id]/page.tsx) и в «Из вашего сообщества идут»;
+  // - сам зритель видит себя ВСЕГДА, даже закрывшись, — как свою
+  //   активность в собственном профиле; поэтому он и стоит первым;
+  // - друзья и соседи по сообществу, уже показанные плашками выше, в ряд
+  //   не дублируются: одно лицо на странице дважды выглядит ошибкой, а
+  //   не заботой (то же правило, что между блоками друзей и сообщества);
+  // - удалённые аккаунты отсечены ещё в выборке.
+  //
+  // На встрече сообщества ряд тоже есть: гостей туда не пускает сама
+  // страница (canSeeMeetup), а участникам видно, кто собирается.
+  const shownAbove = new Set([
+    ...friendsGoing.map((f) => f.id),
+    ...communityPeersGoing.map((p) => p.id),
+  ]);
+  const siteGoers: SiteGoer[] = Array.from(
+    new Map(
+      allAttendances
+        .filter(
+          ({ user }) =>
+            user.id === currentUser?.id ||
+            (!user.hideProfileActivity && !shownAbove.has(user.id)),
+        )
+        .map(({ user }) => [user.id, user]),
+    ).values(),
+  ).sort((a, b) => Number(b.id === currentUser?.id) - Number(a.id === currentUser?.id));
   // --- end own block ---
 
   // Э2ф: свой осмысленный порядок у состава события не хранится —
@@ -496,6 +553,17 @@ export default async function EventDetailPage({
                 карту в новой вкладке (краулер фестивалей отдаёт короткие
                 maps.app.goo.gl). Адрес — тихой строкой рядом, отдельной
                 строки «Адрес: —» у пустого поля нет. */}
+            {/* Онлайн-встреча сообщества: вместо площадки и карты —
+                бейдж «Онлайн» (venue у неё хранится пустым, см.
+                eventActions сообществ). Ключ — тот же card.online, что
+                на карточке: слово одно на весь сайт. */}
+            {event.isOnline ? (
+              <p className="mb-2">
+                <PinIcon className="icon-inline" />{" "}
+                <span className="text-secondary">{t.events.detail.venue}</span>{" "}
+                <span className="date-chip">{t.events.card.online}</span>
+              </p>
+            ) : (
             <p className="mb-2">
               <PinIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.events.detail.venue}</span>{" "}
@@ -516,6 +584,7 @@ export default async function EventDetailPage({
                 <span className="text-secondary"> · {event.address}</span>
               )}
             </p>
+            )}
             {event.organizer && (
               <p className="mb-2">
                 <BuildingIcon className="icon-inline" />{" "}
@@ -757,6 +826,11 @@ export default async function EventDetailPage({
           </div>
         </div>
       )}
+
+      {/* «Идут с сайта» — третьим в ряду «кто там будет»: сначала самые
+          близкие (друзья), потом знакомые (сообщества), потом остальные
+          люди сайта. Пустой ряд компонент не рисует сам. */}
+      <SiteGoersBlock goers={siteGoers} />
 
       {/* Заметки — личный блок (свои + друзей/попутчиков), по подписке. */}
       {isPremium && (

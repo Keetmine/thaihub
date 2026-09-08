@@ -42,9 +42,14 @@ export async function GET(
     return new NextResponse(t.events.ics.noPresale, { status: 404 });
   }
 
+  // Онлайн-встреча: venue в базе пустой, а LOCATION в календаре пустым
+  // быть не должен — подставляем то же слово «Онлайн», что и бейдж на
+  // карточке, на языке скачавшего (файл качается кнопкой со страницы,
+  // язык зрителя тут известен).
+  const withVenue = event.isOnline ? { ...event, venue: t.events.card.online } : event;
   const ics = isPresale
-    ? buildPresaleICS({ ...event, presaleAt: event.presaleAt! }, locale)
-    : buildEventICS(event);
+    ? buildPresaleICS({ ...withVenue, presaleAt: event.presaleAt! }, locale)
+    : buildEventICS(withVenue);
 
   return new NextResponse(ics, {
     headers: {

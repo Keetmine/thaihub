@@ -25,6 +25,8 @@ something changes, edit the doc in place rather than appending a note.
   - [ttm-crawl.md](features/ttm-crawl.md) — краулер афиши ThaiTicketMajor: черновики событий с артистами из каталога, очередь на одобрение
   - [gmmtv-mascots-import.md](features/gmmtv-mascots-import.md) — недельный краулер маскотов с вики GMMTV (официальный MediaWiki API): черновики маскотов с владельцами из каталога, очередь на одобрение
   - [musicfestival-import.md](features/musicfestival-import.md) — суточный краулер фестивалей musicfestival.in.th: события создаются сразу со всем лайнапом, неизвестные артисты — заготовками; разовый импорт прошедших
+  - [home.md](features/home.md) — главная залогиненного: блоки сводки («В этот день», «У друзей» и др.) и витрина релизов /music
+  - [premium.md](features/premium.md) — подписка: что платно, пробный лимит (одна поездка/список бесплатно), подарочная подписка, реферальная ссылка
   - [catalog.md](features/catalog.md) — performers/bands, pairings, dramas, agencies
   - [locations.md](features/locations.md) — filming/venue locations, map, visited tracking
   - [blscene-import.md](features/blscene-import.md) — the blscene.com drama/location scraper
@@ -38,6 +40,7 @@ something changes, edit the doc in place rather than appending a note.
   - [youtube-music-import.md](features/youtube-music-import.md) — дискография с YouTube Music + суточное обновление
   - [tpop-band-import.md](features/tpop-band-import.md) — idol-group importer from tpop.fandom.com (official MediaWiki API, not scraping)
   - [social.md](features/social.md) — favorites, watch status, "going", friends, friends-going indicator
+  - [game.md](features/game.md) — мини-игра «Угадай сериал по постеру» (/game), стрик в localStorage
   - [onboarding.md](features/onboarding.md) — /welcome и интерактивный тур по интерфейсу
   - [gamification.md](features/gamification.md) — stats tab + achievements
   - [place-lists.md](features/place-lists.md) — раздел «Мои места»: свои места, списки-подборки, привязка к поездкам

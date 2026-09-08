@@ -19,6 +19,10 @@ export const notifications: Dict["notifications"] = {
     EPISODE_AIRED: (drama: string) => `Новая серия «${drama}»`,
     DRAMA_ADDED: (drama: string) => `Сериал «${drama}» теперь в каталоге`,
     ONLINE_BOOKING: (event: string) => `Скоро откроется онлайн-бронирование на «${event}»`,
+    // «Кто» здесь — артист, а не пользователь: имя замораживается в
+    // actorName так же, как имена людей в соседних поводах.
+    PERFORMER_EVENT: (who: string, event: string) => `У ${who} новое событие: «${event}»`,
+    DRAMA_STARTED: (drama: string) => `Стартовал сериал из ваших планов: «${drama}»`,
     // Сообщества: «+название» — приняли, «-название» — отказали. Приставку
     // ставит экшен: фраза собирается на языке получателя, готовый текст в
     // базу класть нельзя (см. notificationText.ts).
@@ -38,6 +42,17 @@ export const notifications: Dict["notifications"] = {
 
   episodeBody: (n: number, total: number | null) =>
     total ? `Вышла серия ${n} из ${total}.` : `Вышла серия ${n}.`,
+
+  digest: {
+    todayTitle: "Сегодня у вас",
+    weekTitle: "Ваша неделя",
+    episodesHeader: "Серии ваших сериалов",
+    eventsHeader: "Ваши события",
+    birthdaysHeader: "Дни рождения избранных",
+    episodeLine: (drama: string, n: number) => `${drama} — серия ${n}`,
+    empty:
+      "Пока пусто: отмечайте сериалы и добавляйте артистов и события в избранное — подборка наполнится.",
+  },
 
   premiumBody: (until: string) => `Открыты афиша, календарь и поездки — до ${until}.`,
   premiumLifetimeBody:

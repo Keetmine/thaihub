@@ -32,6 +32,14 @@ export const home = {
     newsFromCatalogue: "fresh in the catalogue",
     listen: "Listen ↗",
     birthdays: "Birthdays today",
+    /** «В этот день» — ностальгия рядом с днями рождения: сериалы,
+     *  стартовавшие в этот же день в прошлые годы (Drama.airedFrom). */
+    onThisDay: "On this day",
+    onThisDayAgo: (years: number) =>
+      years === 1 ? "premiered a year ago" : `premiered ${years} years ago`,
+    /** Мини-блок «У друзей» — сознательно минимальная версия ленты
+     *  друзей (Г3): три записи, без своей страницы. */
+    friendsFeed: "Your friends lately",
     turns: (age: number) => `turns ${age}`,
     yourFriend: "your friend",
     inFavourites: "in favourites",

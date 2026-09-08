@@ -2633,6 +2633,77 @@ svg[aria-hidden="true"] {
   }
 }
 
+/* ---------- Путь артиста (CareerTimeline) ---------- */
+/* Год слева колонкой (та же сетка, что award-row), пункты года — справа
+   вдоль общей вертикальной линии. */
+.career-path {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.career-year {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: 0.85rem;
+}
+
+.career-year-label {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  margin: 0;
+  padding-top: 0.15rem;
+  text-align: right;
+}
+
+.career-year-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-left: 2px solid var(--bs-border-color);
+  padding-left: 0.9rem;
+  min-width: 0;
+}
+
+.career-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+/* Пометка типа («сериал», «событие»…) — маленьким чипом, чтобы пункты
+   разных сущностей читались с одного взгляда. */
+.career-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 2rem;
+  padding: 0.05rem 0.5rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .career-year {
+    grid-template-columns: 2.75rem 1fr;
+  }
+
+  /* Узкий экран: чип типа над названием, а не в одну строку с ним. */
+  .career-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+}
+
 /* ---------- Ачивки ---------- */
 .achv {
   height: 100%;
@@ -3593,6 +3664,14 @@ button.hero-stat-toggle.is-open {
 }
 .rating-popover .star-rating {
   font-size: 1.25rem;
+}
+
+/* Попап «поставьте оценку» после перехода в «Просмотрено»
+   (RatePromptPopover): то же окошко звёзд, что в таблице, плюс строка
+   приглашения. Ширину не задаём — растёт по звёздам и «Позже». */
+.rate-prompt-popover .rate-prompt-title {
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
 }
 
 /* Фолбэк без постера: крупная первая буква на тёплом градиенте. */
@@ -7181,4 +7260,83 @@ body::after {
   .faq-anchor {
     transition: none;
   }
+}
+
+/* ============================================================
+   Дневник серий (аудит 2026-09 §7)
+   ============================================================ */
+
+/* Свёртка берёт готовые классы .schedule-fold* (как график серий) —
+   здесь только сами строки списка. */
+
+/* «виден только вам» — тише подписи «Дневник»: это сноска о приватности,
+   а не часть названия. */
+.episode-diary-hint {
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+.episode-diary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.episode-diary-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Галочка без bootstrap-отступа .form-check-input: строка центрует
+   всё сама. */
+.episode-diary-check {
+  flex-shrink: 0;
+  margin-top: 0;
+  cursor: pointer;
+}
+
+/* Номер фиксированной ширины: галочки и заметки встают в колонки, а не
+   пляшут от «1 серия» к «10 серия». */
+.episode-diary-num {
+  flex-shrink: 0;
+  min-width: 4.2rem;
+}
+
+/* Заметка выглядит текстом, а не полем (как инпут счётчика серий):
+   рамка на каждой строке превращала список в форму. Пунктир снизу
+   появляется на фокусе — единственный намёк, что тут можно писать. */
+.episode-diary-note {
+  flex: 1;
+  min-width: 0;
+  padding: 0.1rem 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  border-radius: 0;
+  font-size: inherit;
+  color: var(--bs-body-color);
+}
+
+.episode-diary-note:focus {
+  outline: none;
+  border-bottom-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.episode-diary-note::placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 0.6;
+}
+
+/* У неотмеченной серии поле выключено и не должно ловить взгляд:
+   заметка живёт на самой отметке. */
+.episode-diary-note:disabled {
+  cursor: default;
+}
+
+.episode-diary-date {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
 }

@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { extendPremium } from "@/lib/premium";
-import { randomBytes } from "crypto";
 import { requireAdmin } from "@/lib/auth";
+import { createGiftPromoCode } from "@/lib/promoCodes";
 import { getCurrentUser } from "@/lib/userAuth";
 import { notifyUser } from "@/lib/notifications";
 import { formatFullDate } from "@/lib/dates";
@@ -77,13 +77,12 @@ export async function deleteUser(userId: string) {
  *  и читаемый — им делятся в переписке. */
 
 
-/** Промокод на месяц подписки (подарочный). 8 байт случайности:
- *  4 байта (~4 млрд вариантов) уже можно было перебирать онлайн через
- *  форму активации — 16 hex-символов перебором не достать. */
+/** Промокод на месяц подписки (подарочный). Генерация — общая с
+ *  покупкой «подарить подписку» за Stars: src/lib/promoCodes.ts (там же
+ *  комментарий про стойкость кода). */
 export async function createPromoCode(): Promise<void> {
   await requireAdmin();
-  const code = `GIFT-${randomBytes(8).toString("hex").toUpperCase()}`;
-  await prisma.promoCode.create({ data: { code, months: 1 } });
+  await createGiftPromoCode();
   revalidatePath("/admin/users");
 }
 

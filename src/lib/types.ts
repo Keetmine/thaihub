@@ -10,6 +10,13 @@ export type EventWithPerformers = {
   title: string;
   slug: string | null;
   venue: string;
+  /**
+   * Онлайн-встреча сообщества (Event.isOnline): venue у неё хранится
+   * пустым, и на месте площадки карточка рисует бейдж «Онлайн».
+   * Необязательное — каталожные списки, где встреч не бывает, поле не
+   * тянут (у каталожных событий оно всегда false).
+   */
+  isOnline?: boolean;
   description: string | null;
   startsAt: Date;
   /** false — время не указано (startsAt хранит 00:00). */

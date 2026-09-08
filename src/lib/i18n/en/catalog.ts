@@ -55,6 +55,8 @@ export const catalog = {
         badEpisodes: "Invalid episode count",
         badRating: "Invalid rating",
         dramaNotFound: "Series not found",
+        noteTooLong: "The note is too long",
+        episodeNotMarked: "Mark the episode as watched first",
     },
 
     /** АА2: своя оценка сериалу — отдельно от общей оценки MyDramaList. */
@@ -65,6 +67,10 @@ export const catalog = {
         choose: (n: string) => `Rate ${n} out of 10`,
         clear: "Remove rating",
         hint: (n: string) => `${n} out of 10`,
+        /** Попап-приглашение после перехода в «Просмотрено»
+         *  (RatePromptPopover). */
+        promptTitle: "How was it? Leave a rating",
+        promptLater: "Later",
     },
 
     /** Ж6: на какой серии человек остановился. */
@@ -74,6 +80,19 @@ export const catalog = {
         ofTotal: (total: number) => `of ${total}`,
         plus: "One more episode",
         minus: "One episode back",
+    },
+    /** Дневник серий (аудит 2026-09 §7): поимённые отметки «смотрела»
+     *  с датой и однострочной заметкой. Личное — виден только владельцу. */
+    diary: {
+        title: "Diary",
+        privacyHint: "only you can see it",
+        open: "Expand",
+        hide: "Collapse",
+        episode: (n: number) => `Ep. ${n}`,
+        mark: (n: number) => `Mark episode ${n} as watched`,
+        unmark: (n: number) => `Unmark episode ${n}`,
+        notePlaceholder: "A note about the episode…",
+        noteLabel: (n: number) => `Note for episode ${n}`,
     },
     /** Пересмотры: сколько раз сериал смотрели целиком. Показываем
      *  просмотры вместе с первым, а храним сверх него. */
@@ -161,6 +180,9 @@ export const catalog = {
 
     dramas: {
         calendarLink: "Episode calendar",
+        // Рулетка «что посмотреть» (аудит, п. 6.3): кнопка у поиска ведёт
+        // на случайный сериал.
+        roulette: "Surprise me",
         metaTitle: "Series",
         metaDescription:
             "Series: what they are about, who stars in them, when they aired and where they were filmed.",
@@ -171,6 +193,27 @@ export const catalog = {
         heroLead1: "Only the series you",
         heroLead2: "have marked are here.",
         heroCta: "Not on the list — search by title.",
+        // Ссылка-вкладка на народный топ (/dramas/top) в ряду статусов.
+        topLink: "Community top",
+    },
+
+    /** Народный топ /dramas/top (аудит 2026-09, п.6.5): сериалы по
+     *  средней оценке зрителей MyBLHub, порог — MIN_VOTES оценок на
+     *  тайтл. Фолбэк-ключи — на случай, когда под порог не попадает
+     *  ничего: тогда честно показываем самое смотримое. */
+    dramasTop: {
+        metaTitle: "Community top series",
+        metaDescription:
+            "The series MyBLHub viewers rate the highest — an average of real scores from real people.",
+        title: "Community top",
+        intro: (min: number) =>
+            `Ranked by the average MyBLHub viewer score. Only series rated by at least ${min} people make the list — that is why it is short and honest.`,
+        votes: (n: number) => `${n} ${n === 1 ? "vote" : "votes"}`,
+        fallbackIntro: (min: number) =>
+            `Not enough ratings yet (a series needs at least ${min}), so for now — what people watch and finish most.`,
+        fallbackHeading: "Most watched on MyBLHub",
+        watchers: (n: number) => `${n} ${n === 1 ? "viewer" : "viewers"}`,
+        empty: "No ratings yet — be the first to rate a series.",
     },
 
     drama: {
@@ -205,7 +248,19 @@ export const catalog = {
         },
         events: "Events",
         cast: "Cast",
-        related: "Related series",
+        /** «Смотреть по порядку» (аудит, п. 6.1): бывший блок «Связанные
+         *  сериалы» — те же DramaRelation, но отсортированные по году и
+         *  с текущим сериалом в ряду, чтобы читалось как порядок
+         *  просмотра франшизы. */
+        watchOrder: "Watch in order",
+        /** Подпись у текущего сериала в ряду порядка просмотра. */
+        watchOrderCurrent: "this series",
+        /** Подпись связи из DramaRelation (сырые строки MDL вида
+         *  «Thai sequel»). По-английски они и так читаются — отдаём как
+         *  есть; русский словарь переводит тип связи. */
+        relationLabel: (raw: string): string => raw,
+        /** «Из ваших друзей смотрели» (аудит, п. 5.4). */
+        friendsWatched: "Your friends watched",
         similar: "You may also like",
         locations: "Locations",
 
@@ -301,6 +356,19 @@ export const catalog = {
         mvAppearances: "Music video appearances",
         awards: "Awards and nominations",
         trivia: "Trivia",
+        careerPath: "Career timeline",
+        // Small type captions on timeline entries — lowercase on purpose,
+        // they read as a mark, not a heading.
+        careerKind: {
+            series: "series",
+            movie: "movie",
+            show: "show",
+            event: "event",
+            album: "album",
+            ep: "EP",
+            single: "single",
+            award: "award",
+        },
     },
 
     novels: {
@@ -310,6 +378,22 @@ export const catalog = {
         title: "Novels",
         search: "Search by title or author…",
         empty: "Novels are on the way.",
+    },
+
+    /** Витрина музыкальных релизов /music: свежие альбомы и песни из
+     *  каталога, с фильтром «мои артисты» для залогиненного. */
+    music: {
+        metaTitle: "New music releases",
+        metaDescription:
+            "Fresh albums, EPs, singles and songs by Thai artists — the latest additions to the catalogue.",
+        title: "New releases",
+        all: "All",
+        onlyFavorites: "My artists",
+        empty: "No releases yet — they are on the way.",
+        emptyFavoritesTitle: "No releases by your artists yet",
+        emptyFavoritesHint:
+            "Add artists to your favourites — their new releases will gather here.",
+        emptyFavoritesCta: "To the artists",
     },
 
     novel: {
@@ -373,6 +457,11 @@ export const catalog = {
         eventsHere: "Events here",
         onMap: "On the map",
         nearby: "Other spots from these shoots",
+        /** Geo neighbours within ~2 km — a different thing from `nearby`
+         *  (same-shoot spots that can be across the whole city). */
+        nearbyGeo: "Near this place",
+        distanceM: (n: number) => `≈ ${n} m`,
+        distanceKm: (s: string) => `≈ ${s} km`,
     },
 
     map: {

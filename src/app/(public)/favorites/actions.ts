@@ -104,10 +104,20 @@ const WATCH_STATUSES = [
 ] as const;
 export type DramaWatchStatusValue = (typeof WATCH_STATUSES)[number];
 
+/**
+ * Ответ смены статуса чуть богаче обычного `{ ok: true }`: клиенту нужно
+ * знать, был ли это ПЕРЕХОД в «Просмотрено» и стоит ли уже своя оценка —
+ * от этого зависит, показывать ли попап «поставьте оценку». Считать это
+ * на клиенте нельзя: у кнопки в фильмографии оценки просто нет в пропсах.
+ */
+export type SetStatusResult =
+  | { ok: true; completedNow: boolean; hasRating: boolean }
+  | ActionError;
+
 export async function setDramaWatchStatus(
   dramaId: string,
   status: DramaWatchStatusValue,
-): Promise<ActionResult> {
+): Promise<SetStatusResult> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!WATCH_STATUSES.includes(status)) {
@@ -125,7 +135,7 @@ export async function setDramaWatchStatus(
       : Promise.resolve(null),
     prisma.dramaWatchStatus.findUnique({
       where: { userId_dramaId: { userId: user.id, dramaId } },
-      select: { status: true },
+      select: { status: true, rating: true },
     }),
   ]);
 
@@ -134,12 +144,19 @@ export async function setDramaWatchStatus(
   // по тому же статусу не должен перебивать выключенный руками
   // колокольчик.
   const statusChanged = current?.status !== status;
+  // Дата досмотра — только при ПЕРЕХОДЕ в «Просмотрено»: повторный клик
+  // по уже стоящему статусу дату не переписывает. Уход из «Просмотрено»
+  // её не стирает (история просмотра честнее с датой), а новое досмотрение
+  // после «Смотреть заново» перезапишет её на свежую — итоги года считают
+  // по последней.
+  const completedNow = status === "COMPLETED" && statusChanged;
   await prisma.dramaWatchStatus.upsert({
     where: { userId_dramaId: { userId: user.id, dramaId } },
     update: {
       status,
       ...(total ? { episodesWatched: total } : {}),
       ...(statusChanged ? { notifyEpisodes: status === "WATCHING" } : {}),
+      ...(completedNow ? { completedAt: new Date() } : {}),
     },
     create: {
       userId: user.id,
@@ -147,13 +164,14 @@ export async function setDramaWatchStatus(
       status,
       episodesWatched: total,
       notifyEpisodes: status === "WATCHING",
+      completedAt: status === "COMPLETED" ? new Date() : null,
     },
   });
 
   revalidatePath("/");
   revalidatePath("/account");
   revalidatePath(`/dramas/${dramaId}`);
-  return { ok: true };
+  return { ok: true, completedNow, hasRating: current?.rating != null };
 }
 
 /** Потолок пересмотров. Число заведомо больше любой правды и нужно
@@ -279,7 +297,16 @@ export async function setDramaEpisodesWatched(
   dramaId: string,
   episodes: number,
 ): Promise<
-  { ok: true; watched: number; status: DramaWatchStatusValue } | ActionError
+  | {
+      ok: true;
+      watched: number;
+      status: DramaWatchStatusValue;
+      /** Автопереход в «Просмотрено» случился именно сейчас — клиент по
+       *  нему решает, звать ли попап оценки (см. setDramaWatchStatus). */
+      completedNow: boolean;
+      hasRating: boolean;
+    }
+  | ActionError
 > {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -294,7 +321,7 @@ export async function setDramaEpisodesWatched(
     }),
     prisma.dramaWatchStatus.findUnique({
       where: { userId_dramaId: { userId: user.id, dramaId } },
-      select: { status: true },
+      select: { status: true, rating: true },
     }),
   ]);
   if (!drama)
@@ -312,6 +339,10 @@ export async function setDramaEpisodesWatched(
   else if (status === "COMPLETED" && !finishedAll) status = "WATCHING";
   else if (watched > 0 && status === "PLAN_TO_WATCH") status = "WATCHING";
 
+  // Автопереход в «Просмотрено» ставит дату досмотра по тем же правилам,
+  // что и ручной (см. setDramaWatchStatus): только при переходе, откат
+  // серии назад дату не стирает.
+  const completedNow = status === "COMPLETED" && current?.status !== status;
   await prisma.dramaWatchStatus.upsert({
     where: { userId_dramaId: { userId: user.id, dramaId } },
     update: {
@@ -322,6 +353,7 @@ export async function setDramaEpisodesWatched(
       ...(current?.status !== status
         ? { notifyEpisodes: status === "WATCHING" }
         : {}),
+      ...(completedNow ? { completedAt: new Date() } : {}),
     },
     create: {
       userId: user.id,
@@ -329,13 +361,20 @@ export async function setDramaEpisodesWatched(
       status,
       episodesWatched: watched,
       notifyEpisodes: status === "WATCHING",
+      completedAt: status === "COMPLETED" ? new Date() : null,
     },
   });
 
   revalidatePath("/");
   revalidatePath("/account");
   revalidatePath(`/dramas/${dramaId}`);
-  return { ok: true, watched, status };
+  return {
+    ok: true,
+    watched,
+    status,
+    completedNow,
+    hasRating: current?.rating != null,
+  };
 }
 
 /**

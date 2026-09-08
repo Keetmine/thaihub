@@ -246,6 +246,7 @@ export default async function UserProfilePage({
     reviewRows,
     commentRows,
     commentCount,
+    viewerWatch,
   ] = await Promise.all([
     // «Иду»: себе — полный список для вкладки «События», зрителю — только
     // для блока будущих событий и счётчика.
@@ -356,10 +357,42 @@ export default async function UserProfilePage({
     // Отзывам такой запрос не нужен — они выбираются без потолка, у них
     // счётчик берётся из длины уже полученного массива.
     showActivity ? prisma.comment.count({ where: { userId: user.id } }) : 0,
+    // Совместимость вкусов (аудит 2026-09, раздел 7): узкий срез
+    // статусов ЗРИТЕЛЯ — единственный дополнительный запрос блока,
+    // сторона владельца берётся из уже выбранных watchRows. Гейты те же,
+    // что у остальной активности: залогиненный на ЧУЖОМ профиле с
+    // открытой активностью; гостю и себе считать не с кем.
+    viewer && !isSelf && showActivity
+      ? prisma.dramaWatchStatus.findMany({
+          where: { userId: viewer.id },
+          select: { dramaId: true, rating: true },
+        })
+      : [],
   ]);
 
   const now = new Date();
   const goingEventIds = new Set(attendances.map((a) => a.eventId));
+
+  // ---------- Совместимость вкусов (чужой профиль) ----------
+  // Пересечение отмеченных сериалов зрителя и владельца + совпавшие
+  // высокие оценки (9+ у обоих). Порог ≥3 общих: «общего с вами: один
+  // сериал» — не совместимость, а совпадение. При скрытой активности
+  // viewerWatch пуст (см. выборку), так что блок не строится.
+  let tasteMatch: { common: number; bothHigh: number } | null = null;
+  if (viewerWatch.length > 0 && watchRows.length > 0) {
+    const ownerRatingByDrama = new Map(watchRows.map((w) => [w.drama.id, w.rating]));
+    let common = 0;
+    let bothHigh = 0;
+    for (const v of viewerWatch) {
+      if (!ownerRatingByDrama.has(v.dramaId)) continue;
+      common += 1;
+      const ownerRating = ownerRatingByDrama.get(v.dramaId);
+      if (v.rating != null && v.rating >= 9 && ownerRating != null && ownerRating >= 9) {
+        bothHigh += 1;
+      }
+    }
+    if (common >= 3) tasteMatch = { common, bothHigh };
+  }
 
   // ---------- Лента «Последние обновления» ----------
   // Права зрителя считает страница, лента только исполняет (см.
@@ -416,6 +449,8 @@ export default async function UserProfilePage({
         hoursWatched: fullStats.hoursWatched,
         rewatchTotal: fullStats.rewatchTotal,
         mostRewatched: fullStats.mostRewatched,
+        topGenres: fullStats.topGenres,
+        ratingVsMdl: fullStats.ratingVsMdl,
         trips: fullStats.trips,
         daysInThailand: fullStats.daysInThailand,
         friends: fullStats.friends,
@@ -731,9 +766,13 @@ export default async function UserProfilePage({
               : formatCombinedDateList(dates, locale)}
             {first && ` · ${formatTime(first.startsAt)}`}
           </p>
-          <p className="small text-secondary mb-0">
-            <PinIcon /> {event.venue}
-          </p>
+          {/* Пустой venue — онлайн-встреча сообщества: пин без текста
+              выглядел бы как недогруженные данные, строку не рисуем. */}
+          {event.venue && (
+            <p className="small text-secondary mb-0">
+              <PinIcon /> {event.venue}
+            </p>
+          )}
         </div>
       </AppLink>
     );
@@ -1235,6 +1274,25 @@ export default async function UserProfilePage({
         {/* Ряда чипов-счётчиков (друзья/события/актёры/сериалы) в левой
             колонке больше нет — правка владельца п.7; те же числа живут
             чипами-ссылками в «Обзоре» и на вкладках. */}
+
+        {/* Совместимость вкусов (раздел 7 аудита): только на чужом
+            профиле залогиненному, только при ≥3 общих сериалах — см.
+            подсчёт tasteMatch выше. Строка про 9+ — лишь когда такие
+            совпадения есть: «оценки 9+: 0» ничего не сообщает. */}
+        {tasteMatch && (
+          <div className="profile-side-block">
+            <h2 className="section-heading mb-2">{p.tasteMatch.title}</h2>
+            <p className="small text-secondary mb-0">
+              {p.tasteMatch.common(tasteMatch.common)}
+              {tasteMatch.bothHigh > 0 && (
+                <>
+                  <br />
+                  {p.tasteMatch.bothHigh(tasteMatch.bothHigh)}
+                </>
+              )}
+            </p>
+          </div>
+        )}
 
         {unlockedBadges.length > 0 && (
           <div className="profile-side-block">

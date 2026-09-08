@@ -86,8 +86,9 @@ when `TELEGRAM_BOT_TOKEN` is unset.
 
 Dedup ledgers don't grow forever: the `cleanup-expired` scheduled job
 (`src/lib/scheduledJobs.ts`) rotates `TelegramNotification`,
-`TelegramPresaleNotification` and `EpisodeNotification` rows after 180
-days and `BirthdayNotification` rows after 2 years — all far beyond the
+`TelegramPresaleNotification`, `EpisodeNotification` and
+`PerformerEventNotification` rows after 180 days and
+`BirthdayNotification` rows after 2 years — all far beyond the
 window in which a reminder could repeat.
 
 **Получателей выбираем узким `select`, а не строками User целиком.**
@@ -135,6 +136,16 @@ Telegram, на языке получателя и по его переключа
 — там же, в получасовом прогоне; подробности в
 [notifications.md](notifications.md): кому, когда по бангкокскому
 времени, дедуп `EpisodeNotification`, переключатель `tgNotifyEpisodes`.
+Тот же прогон шлёт и «Стартовал сериал из ваших планов» (`DRAMA_STARTED`)
+тем, у кого сериал «В планах», когда выходит серия №1.
+
+**У избранного артиста новое событие** (`PERFORMER_EVENT`,
+`notifyFavoritersAboutEventPerformers`) — НЕ из получасового прогона, а
+из админских экшенов создания события и правки состава: повод возникает
+в момент привязки артиста, ждать до получаса незачем. Дедуп —
+`PerformerEventNotification` (userId+eventId), ротируется чисткой вместе
+с остальными; Telegram — по `tgNotifyEvents`. Подробности — в
+[notifications.md](notifications.md).
 
 **Онлайн-бронирование по своему билету** (`sendOnlineBookingReminders`)
 — там же. Билеты с `EventTicket.onlineBookingAt` в окне «через 0–60
@@ -203,10 +214,27 @@ The paywall (`PremiumUpsell` → `BuyPremiumButton` →
 
 ## Команды бота
 
-`/start`, `/terms`, `/support` — обрабатываются в
+`/start`, `/today`, `/week`, `/terms`, `/support` — обрабатываются в
 `src/app/api/telegram/webhook/route.ts`, список для кнопки «Меню»
 регистрируется скриптом `scripts/setup-telegram-commands.ts` (разовый
-запуск, как и вебхук).
+запуск, как и вебхук; после добавления команды скрипт нужно прогнать
+заново).
+
+`/today` и `/week` — личная подборка (`buildDigestMessage` в
+`src/lib/botDigest.ts`): серии моих сериалов на день/неделю, мои
+события, дни рождения избранных. Выборки повторяют сайт, чтобы бот и
+страницы не разъезжались: серии — как вкладка сериалов календаря с
+фильтром «только мои» (любой статус просмотра), события — как
+телеграм-напоминания («иду» на дату или событие в избранном, только
+афиша — встречи сообществ боту не место), дни рождения — как
+поздравления З3 (месяц/день в UTC). Ответ — на языке привязанного
+аккаунта, ссылки ведут на версию сайта этого языка; секция длиннее 12
+строк обрезается с «…», совсем пустая подборка отвечает подсказкой
+«отмечайте сериалы и добавляйте в избранное». Аккаунт ищется по
+`telegramId` ОТПРАВИТЕЛЯ (`from.id`, не chat id: командам из группового
+чата чужая подборка не положена); непривязанному бот подсказывает
+привязать Telegram в настройках — по-русски, как остальные ответы бота:
+язык человека без аккаунта узнать неоткуда.
 
 `/terms` и `/support` обязательны для ботов, принимающих Telegram Stars
 (Live Checklist в core.telegram.org/bots/payments-stars). Оттуда же ещё

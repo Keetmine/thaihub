@@ -22,7 +22,7 @@ import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { getT } from "@/lib/i18n";
 import { performerHref } from "@/lib/performerSlug";
-import { agencyHref, slugOrIdWhere } from "@/lib/slugHelpers";
+import { agencyHref, eventHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import {
@@ -37,6 +37,7 @@ import SeenLiveButton from "@/components/SeenLiveButton";
 import { toggleSeenLive } from "@/app/(public)/artists/seenActions";
 import { getSeenLiveState } from "@/lib/userStats";
 import ListFold from "./ListFold";
+import CareerTimeline, { type CareerItem } from "./CareerTimeline";
 import { performerPhoto } from "@/lib/performerPhoto";
 import { cache } from "react";
 
@@ -343,6 +344,89 @@ export default async function PerformerPage({
   const seriesDramas = sortedDramas.filter(
     (pd) => !movieDramas.includes(pd) && !showDramas.includes(pd),
   );
+
+  // «Путь артиста» (аудит 2026-09, п.7): хроника по годам из того, что
+  // страница УЖЕ загрузила — фильмография, прошедшие события, альбомы,
+  // awards. Своих запросов у блока нет.
+  const formatDayMonth = (d: Date) =>
+    d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
+      day: "numeric",
+      month: "long",
+    });
+  const isPremium = isPremiumActive(currentUser);
+  const careerItems: CareerItem[] = [];
+  for (const pd of performer.dramas) {
+    // Анонсы и записи без года — не «путь»: хроника только о том, что
+    // уже случилось (события ниже отфильтрованы так же — только прошедшие).
+    if (pd.drama.year == null || isAnnounced(pd.drama)) continue;
+    careerItems.push({
+      key: `drama-${pd.dramaId}`,
+      year: pd.drama.year,
+      time: dramaAirTime(pd.drama) ?? Date.UTC(pd.drama.year, 0, 1),
+      kind:
+        pd.drama.type === "Movie"
+          ? "movie"
+          : pd.drama.type === "TV Show" || pd.drama.type === "TV Program"
+            ? "show"
+            : "series",
+      title: dramaTitleForLocale(pd.drama, locale),
+      subtitle: pd.role,
+      href: dramaHref(pd.drama),
+    });
+  }
+  for (const { row } of past) {
+    // Тот же гейт, что у списка событий выше: без подписки настоящие
+    // данные события (название, ссылка) в разметку не попадают вовсе —
+    // только дата, как в EventCardLocked.
+    careerItems.push({
+      key: `event-${row.id}`,
+      year: row.startsAt.getFullYear(),
+      time: row.startsAt.getTime(),
+      kind: "event",
+      subtitle: formatDayMonth(row.startsAt),
+      ...(isPremium
+        ? { title: row.title, href: eventHref(row) }
+        : { title: t.events.card.lockedBadge, locked: true }),
+    });
+  }
+  for (const album of performer.albums) {
+    if (album.year == null || album.year > now.getFullYear()) continue;
+    careerItems.push({
+      key: `album-${album.id}`,
+      year: album.year,
+      time: Date.UTC(album.year, 0, 1),
+      kind: album.type === "SINGLE" ? "single" : album.type === "EP" ? "ep" : "album",
+      title: album.title,
+      // У релиза своей страницы нет — ведём на площадку, если импорт
+      // сохранил ссылку.
+      url: album.url ?? undefined,
+    });
+  }
+  if (Array.isArray(performer.awards)) {
+    (
+      performer.awards as {
+        year: string;
+        award: string;
+        category: string;
+        result: string;
+      }[]
+    ).forEach((a, i) => {
+      // Год в awards — строка с MDL; без внятного года пункту не встать
+      // в хронику.
+      const awardYear = Number.parseInt(a.year, 10);
+      if (!Number.isFinite(awardYear)) return;
+      careerItems.push({
+        key: `award-${i}`,
+        year: awardYear,
+        time: Date.UTC(awardYear, 0, 1),
+        kind: "award",
+        title: a.award || a.category,
+        subtitle: a.award
+          ? [a.category, a.result].filter(Boolean).join(" · ")
+          : a.result,
+      });
+    });
+  }
 
   const formatBirthDate = (d: Date) =>
     d.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-GB", {
@@ -1052,6 +1136,11 @@ export default async function PerformerPage({
           />
         </div>
       )}
+
+      {/* «Путь артиста» — после фильмографии и дискографии: хроника
+          собирает воедино то, что выше разложено по типам. Блок сам
+          прячется, когда пунктов меньше двух (нечего листать). */}
+      <CareerTimeline items={careerItems} />
 
       {performer.mvAppearances.length > 0 && (
         <div className="surface p-4 mb-3">

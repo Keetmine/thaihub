@@ -17,6 +17,12 @@ export const widgets = {
     mark: "Mark as visited",
     unmark: "Remove from visited",
   },
+  /** «Хочу сюда» на странице локации — системный список «Хочу
+   *  посетить» (см. src/lib/systemLists.ts). */
+  wantToVisit: {
+    mark: "I want to go here",
+    unmark: "Remove from “Want to visit”",
+  },
   file: {
     drop: "Drop a file here or choose one",
     /** Короткая подпись дропзоны для тач-экранов: «перетащите» там
@@ -180,5 +186,10 @@ export const widgets = {
     pay: "Pay in Telegram",
     paying: "Creating the invoice…",
     payFailed: "We couldn't create the invoice — please try again later",
+    /** Подарочная подписка (аудит 2026-09 п.8). */
+    gift: "Gift a subscription",
+    giftHint:
+      "After payment a one-time promo code with a gift note arrives in your Telegram chat with the bot — forward it to the person you're gifting.",
+    giftContactText: "Hi! I'd like to gift a MyBLHub subscription to a friend.",
   },
 };

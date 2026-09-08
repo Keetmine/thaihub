@@ -85,6 +85,8 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
             slug: true,
             title: true,
             venue: true,
+            // Онлайн-встреча: бейдж «Онлайн» на месте площадки.
+            isOnline: true,
             description: true,
             posterUrl: true,
             community: { select: { id: true, slug: true, title: true } },
@@ -160,6 +162,7 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
                   title: o.event.title,
                   slug: o.event.slug,
                   venue: o.event.venue,
+                  isOnline: o.event.isOnline,
                   description: o.event.description,
                   posterUrl: o.event.posterUrl,
                   startsAt: o.startsAt,

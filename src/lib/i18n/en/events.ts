@@ -110,6 +110,10 @@ export const events = {
     friendGoing: "A friend is going",
     friendsGoing: "Friends are going",
     unnamedFriend: "Unnamed",
+    /** «Идут с сайта» — витрина живых людей на событии, видна и гостю. */
+    siteGoing: "Going from MyBLHub",
+    /** Подсказка на кружке «+N», когда идущих больше десяти. */
+    siteGoingMore: (n: number) => `and ${n} more`,
   },
 
   /** Ответы серверных экшенов вокруг события (избранное, отзывы,
@@ -199,6 +203,11 @@ export const events = {
   /** Карточка и строка события в списках */
   card: {
     myTicket: "My ticket",
+    // Бейдж онлайн-встречи сообщества — встаёт на место площадки
+    // (venue у такой встречи пустой). Ключ живёт в card, но им же
+    // пользуются страница события и LOCATION в .ics: слово одно, и
+    // три копии разъехались бы.
+    online: "Online",
     friend: "Friend",
     oneFriendGoing: (name: string) => `${name} is going`,
     manyFriendsGoing: (count: number) => `${count} friends are going`,

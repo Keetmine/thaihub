@@ -53,6 +53,8 @@ export default async function SiteFooter() {
               <NavLink href="/help" matchPrefixes={NAV_PREFIXES["/help"]} className={link}>{t.nav.help}</NavLink>
               <Link href="/help#feedback" className={link}>{t.nav.contact}</Link>
               <NavLink href="/wiki" matchPrefixes={NAV_PREFIXES["/wiki"]} className={link}>{t.nav.wiki}</NavLink>
+              {/* Игра — витринная мелочь: футер, а не главное меню. */}
+              <NavLink href="/game" className={link}>{t.nav.game}</NavLink>
               <NavLink href="/about" matchPrefixes={NAV_PREFIXES["/about"]} className={link}>{t.nav.about}</NavLink>
               <NavLink href="/terms" matchPrefixes={NAV_PREFIXES["/terms"]} className={link}>{t.nav.terms}</NavLink>
               <NavLink href="/privacy" matchPrefixes={NAV_PREFIXES["/privacy"]} className={link}>{t.nav.privacy}</NavLink>

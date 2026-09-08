@@ -400,6 +400,12 @@ export default async function DramasPage({
           >
             {t.catalog.all}
           </AppLink>
+          {/* Народный топ (аудит 2026-09, п.6.5) — отдельная страница, а
+              не вкладка-фильтр: у неё свой адрес для поисковика и гостя.
+              Ссылка в том же ряду, чтобы топ было откуда найти. */}
+          <AppLink href="/dramas/top" prefetch={false} className="tab-bar-item">
+            {t.catalog.dramas.topLink}
+          </AppLink>
         </ScrollableTabs>
         {/* И10: из каталога сериалов в их расписание раньше было не
             попасть — иконка ведёт на вкладку «Сериалы» календаря.
@@ -407,6 +413,26 @@ export default async function DramasPage({
             space-between ронял иконку в центр ряда (жалоба владельца —
             она должна стоять чуть левее поиска). */}
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          {/* Рулетка «что посмотреть» (аудит, п. 6.3): 302 на случайный
+              сериал (роут /dramas/random), у залогиненного — без уже
+              отмеченных. Кнопка проносит поисковый запрос q — других
+              фильтров у этой страницы в адресе нет (вкладки статусов
+              рулетке не нужны: отмеченное она и так исключает).
+              prefetch выключен: префетч ссылки дёргал бы редирект со
+              случайным исходом впустую. Текст прячется на узком экране —
+              в ряду с поиском ему не хватает места, кость остаётся. */}
+          <AppLink
+            href={`/dramas/random${q ? `?q=${encodeURIComponent(q)}` : ""}`}
+            prefetch={false}
+            className="btn btn-ghost btn-sm flex-shrink-0"
+            aria-label={t.catalog.dramas.roulette}
+            title={t.catalog.dramas.roulette}
+          >
+            <span aria-hidden>🎲</span>
+            <span className="d-none d-md-inline ms-1">
+              {t.catalog.dramas.roulette}
+            </span>
+          </AppLink>
           <AppLink
             href="/calendar?view=series"
             className="btn btn-ghost btn-sm flex-shrink-0"

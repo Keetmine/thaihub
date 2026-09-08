@@ -55,6 +55,12 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return subject ? titles.DRAMA_ADDED(subject) : n.title;
     case "ONLINE_BOOKING":
       return subject ? titles.ONLINE_BOOKING(subject) : n.title;
+    case "PERFORMER_EVENT":
+      // «Кто» — артист из избранного получателя: его имя заморожено в
+      // actorName точно так же, как имена людей в соседних поводах.
+      return who && subject ? titles.PERFORMER_EVENT(who, subject) : n.title;
+    case "DRAMA_STARTED":
+      return subject ? titles.DRAMA_STARTED(subject) : n.title;
     case "COMMUNITY_JOIN_REQUEST":
       return who && subject ? titles.COMMUNITY_JOIN_REQUEST(who, subject) : n.title;
     case "COMMUNITY_INVITE":

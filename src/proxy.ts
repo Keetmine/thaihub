@@ -23,7 +23,9 @@ const USER_COOKIE = "user_session";
 // /privacy — в списке явно, а не через финальный pass: юридическая
 // страница обязана быть публичной по построению, а не по счастливому
 // совпадению (что она не попадает в isPrivateSection).
-const PUBLIC_PATHS = new Set(["/", "/about", "/wiki", "/help", "/login", "/signup", "/terms", "/privacy", "/forgot-password", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml", "/sw.js"]);
+// /game — мини-игра «Угадай сериал по постеру»: витринная фишка,
+// открыта гостю по той же логике «явно, а не совпадением».
+const PUBLIC_PATHS = new Set(["/", "/about", "/wiki", "/help", "/game", "/login", "/signup", "/terms", "/privacy", "/forgot-password", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml", "/sw.js"]);
 
 export function proxy(request: NextRequest) {
   const { pathname: rawPathname } = request.nextUrl;
