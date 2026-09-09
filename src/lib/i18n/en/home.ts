@@ -5,7 +5,6 @@ export const home = {
     eyebrow: "Home",
     hello: "Hi,",
     greeting: (name: string) => `Hi, ${name}`,
-    startTitle: "Where to start",
     startArtists: "Pick your favourite artists",
     startArtistsHint: "Their events and releases will land in your feed",
     startFriends: "Find friends",

@@ -406,12 +406,6 @@ export default async function HomePage({
   // Правая колонка ряда живёт, пока в ней есть хоть один из двух
   // «календарных» блоков: дни рождения или годовщины премьер.
 
-  // «Что впереди» бывает пустым — и чаще всего именно пусто: поездок нет,
-  // отметок «иду» нет либо их вовсе не видно без подписки. Растянутая на
-  // всю высоту ряда панель с одним апселлом внутри выглядела как дыра
-  // (правка владельца 2026-09-10), поэтому в этом случае раскладка
-  // другая: панель узкой полосой во всю ширину, а календарные карточки —
-  // рядом друг с другом под ней.
   // Призывы для того, у кого страница ещё пустая (правка владельца
   // 2026-09-10: «для юзера, который только зарегался, справа куча
   // пустого пространства; добавить больше CTA»). Показываем ровно то,
@@ -447,14 +441,8 @@ export default async function HomePage({
       !!c,
   );
 
-  const upcomingThin =
-    upcomingTrips.length === 0 && (!premium || goingCards.length === 0);
-
   const birthdaysCard = hasBirthdays ? (
-    // Скругление асимметричное (.bento-tile--leaf): плитка перестаёт
-    // читаться как ячейка таблицы, фон «обтекает» содержимое —
-    // референс владельца 2026-09-10.
-    <section className="surface bento-tile--leaf p-4 h-100">
+    <section className="h-100 d-flex flex-column">
       <h2 className="section-heading mb-3">🎂 {dict.home.birthdays}</h2>
       <div className="d-flex flex-column gap-3">
         {birthdayFriends.map((f) => (
@@ -504,7 +492,7 @@ export default async function HomePage({
   }
   const onThisDayCard =
     onThisDay.length > 0 ? (
-      <section className="surface p-4 h-100">
+      <section className="h-100 d-flex flex-column">
         <h2 className="section-heading mb-3">📅 {dict.home.onThisDay}</h2>
         <div className="d-flex flex-column gap-3">
           {onThisDay.map((d) => (
@@ -543,70 +531,47 @@ export default async function HomePage({
           колонок. Пустая плитка больше не растягивается под соседа —
           высоту задаёт содержимое, а дырки в потоке закрывает следующая
           подходящая плитка. */}
-      <div className="bento mb-4">
-        {/* Приветствие — БЕЗ плитки, прямо на фоне страницы (правка
-            владельца 2026-09-10, референс MNear: «не нравится, что
-            визуально всё карточками, текст должен быть вне фона»). Имя
-            выделено акцентным цветом: в строке это единственное «своё»
-            слово. Чипы разделов тут же — раньше они жили в шапке
-            справа и на узком экране уезжали вторым рядом. */}
-        <div className="bento-hello" data-span="12">
-          <span className="eyebrow">{dict.home.eyebrow}</span>
-          <p className="bento-hero-name font-display fw-medium text-white mt-2 mb-3">
-            {dict.home.hello}{" "}
-            <span className="bento-hello-name">
-              {userDisplayName(user, locale)}
-            </span>
-          </p>
-          <div className="d-flex flex-wrap gap-2">
-            <Link href="/events" className="chip-link">
-              {dict.nav.events}
-            </Link>
-            <Link href="/calendar" className="chip-link">
-              {dict.nav.calendar}
-            </Link>
-            <Link href="/trips" className="chip-link">
-              {dict.nav.trips}
-            </Link>
-          </div>
+      {/* Приветствие — заголовок страницы НАД сеткой (правка владельца
+          2026-09-10): внутри сетки оно выглядело ещё одной плиткой, а
+          это единственный крупный текст, которому фон не нужен. Имя —
+          акцентным цветом: в строке это единственное своё слово. */}
+      <div className="mb-4">
+        <span className="eyebrow">{dict.home.eyebrow}</span>
+        <p className="bento-hero-name font-display fw-medium text-white mt-2 mb-3">
+          {dict.home.hello}{" "}
+          <span className="bento-hello-name">
+            {userDisplayName(user, locale)}
+          </span>
+        </p>
+        <div className="d-flex flex-wrap gap-2">
+          <Link href="/events" className="chip-link">
+            {dict.nav.events}
+          </Link>
+          <Link href="/calendar" className="chip-link">
+            {dict.nav.calendar}
+          </Link>
+          <Link href="/trips" className="chip-link">
+            {dict.nav.trips}
+          </Link>
         </div>
+      </div>
 
-        {/* «С чего начать» — только то, чего у человека ещё нет. Это и
-            есть лекарство от «справа куча пустого пространства»: пустые
-            места в сетке занимают призывы, а не воздух. Пунктирная
-            рамка вместо фона — чтобы они не притворялись готовыми
-            блоками с содержимым. */}
-        {/* Заголовок группы: без него четыре ссылки подряд читаются как
-            куча, а не как один совет «с чего начать» (замечание
-            владельца 2026-09-10). */}
-        {startCards.length > 0 && (
-          <p className="section-heading mb-0 align-self-end" data-span="12">
-            {dict.home.startTitle}
-          </p>
-        )}
-
+      <div className="bento mb-4">
+        {/* «С чего начать» — те же плитки, что и у остального: в
+            референсах разные размеры смотрятся цельно ровно потому, что
+            оформлены одинаково. Показываем ровно то, чего у человека
+            ещё нет, — это и заполняет пустые места в сетке у новичка. */}
         {startCards.map((card) => (
           <Link
             key={card.href}
             href={card.href}
-            className="bento-cta"
-            // Ширина — чтобы призывы ложились ровно в строку: четыре по
-            // 3, три по 4, два по 6. Один — узкой плиткой рядом с
-            // остальным содержимым, а не полосой во всю страницу.
-            data-span={
-              startCards.length >= 4
-                ? "3"
-                : startCards.length === 3
-                  ? "4"
-                  : startCards.length === 2
-                    ? "6"
-                    : "4"
-            }
+            className="bento-tile bento-tile-link"
+            data-span="4"
           >
-            <span className="bento-cta-emoji" aria-hidden>
+            <span className="bento-cta-emoji mb-2" aria-hidden>
               {card.emoji}
             </span>
-            <span className="font-display fw-medium text-white">
+            <span className="font-display fw-medium text-white mb-1">
               {card.title}
             </span>
             <span className="small text-secondary">{card.hint}</span>
@@ -618,8 +583,11 @@ export default async function HomePage({
             содержимому: с картинками планов — во всю строку, с одним
             апселлом — узкой полосой, чтобы рядом встали календарные
             карточки. */}
-        <div data-span={upcomingThin ? "4" : "8"}>
-          <section className="glow-panel p-4">
+        {/* Ширина — по содержимому, а не по важности: широкая плитка
+            зияла пустотой справа от двух афиш (правка владельца
+            2026-09-10). Ряд складывается из трёх равных плиток. */}
+        <div className="bento-tile" data-span="4">
+          <section className="h-100 d-flex flex-column">
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <h2 className="section-heading mb-0">{dict.home.upcoming}</h2>
               {premium && (
@@ -692,7 +660,7 @@ export default async function HomePage({
             ) : (
               <div className="row g-3 stagger">
                 {goingCards.map((card) => (
-                  <div key={card.key} className="col-4 col-md-3">
+                  <div key={card.key} className="col-6">
                     <PosterTile
                       href={card.href}
                       posterUrl={card.posterUrl}
@@ -710,8 +678,19 @@ export default async function HomePage({
         {/* Календарные карточки — самостоятельные плитки, а не колонка
             сбоку: в бенто они сами встают рядом с «Что впереди», если
             там просторно, и переносятся под него, если нет. */}
-        {birthdaysCard && <div data-span="4">{birthdaysCard}</div>}
-        {onThisDayCard && <div data-span="4">{onThisDayCard}</div>}
+        {/* Календарные карточки — по трети строки, рядом с «Что
+            впереди»: три плитки одной высоты читаются цельно, а стопка
+            рядом с короткой плиткой давала дыру снизу. */}
+        {birthdaysCard && (
+          <div className="bento-tile" data-span="4">
+            {birthdaysCard}
+          </div>
+        )}
+        {onThisDayCard && (
+          <div className="bento-tile" data-span="4">
+            {onThisDayCard}
+          </div>
+        )}
 
         {/* «Выходит сегодня» и «Смотрю сейчас» — плитки в той же сетке
             (правка владельца 2026-09-10; до бенто это был отдельный ряд
@@ -721,7 +700,7 @@ export default async function HomePage({
             карточками»). Их держит заголовок и собственные строки-
             карточки внутри, рамка вокруг рамок только дробила бы ряд. */}
         {airingToday.length > 0 && (
-          <div data-span="6">
+          <div className="bento-tile" data-span="6">
             <section className="h-100 d-flex flex-column">
               {/* И9: из блока должен быть выход в календарь серий — раньше
               человек видел сегодняшнее и не догадывался, что есть
@@ -824,7 +803,7 @@ export default async function HomePage({
         )}
 
         {watchingNow.length > 0 && (
-          <div data-span="6">
+          <div className="bento-tile" data-span="6">
             <section className="h-100 d-flex flex-column">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                 <h2 className="section-heading mb-0">

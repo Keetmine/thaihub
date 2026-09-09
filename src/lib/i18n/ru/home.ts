@@ -6,7 +6,6 @@ export const home: Dict["home"] = {
     eyebrow: "Главная",
     hello: "Привет,",
     greeting: (name: string) => `Привет, ${name}`,
-    startTitle: "С чего начать",
     startArtists: "Отметьте любимых артистов",
     startArtistsHint: "Их события и релизы будут приходить к вам в ленту",
     startFriends: "Найдите друзей",
