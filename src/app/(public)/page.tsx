@@ -150,8 +150,8 @@ export default async function HomePage({
     communityCount,
   ] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
-    getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(
-      async (own) => (own.length > 0 ? own : getMusicNews({ limit: 8 })),
+    getMusicNews({ limit: 6, userId: user.id, onlyFavorites: true }).then(
+      async (own) => (own.length > 0 ? own : getMusicNews({ limit: 6 })),
     ),
     premium
       ? prisma.eventAttendance.findMany({
@@ -586,7 +586,7 @@ export default async function HomePage({
         {/* Ширина — по содержимому, а не по важности: широкая плитка
             зияла пустотой справа от двух афиш (правка владельца
             2026-09-10). Ряд складывается из трёх равных плиток. */}
-        <div className="bento-tile" data-span="4">
+        <div className="bento-tile bento-tile--accent" data-span="6">
           <section className="h-100 d-flex flex-column">
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <h2 className="section-heading mb-0">{dict.home.upcoming}</h2>
@@ -682,16 +682,10 @@ export default async function HomePage({
             впереди»: три плитки одной высоты читаются цельно, а стопка
             рядом с короткой плиткой давала дыру снизу. */}
         {birthdaysCard && (
-          <div className="bento-tile" data-span="4">
+          <div className="bento-tile" data-span="6">
             {birthdaysCard}
           </div>
         )}
-        {onThisDayCard && (
-          <div className="bento-tile" data-span="4">
-            {onThisDayCard}
-          </div>
-        )}
-
         {/* «Выходит сегодня» и «Смотрю сейчас» — плитки в той же сетке
             (правка владельца 2026-09-10; до бенто это был отдельный ряд
             из двух колонок). */}
@@ -869,7 +863,7 @@ export default async function HomePage({
         {communityCount > 0 && (
           <div
             className="bento-tile"
-            data-span={friendIds.length > 0 ? "7" : "12"}
+            data-span={friendIds.length > 0 ? "5" : "12"}
           >
             <HomeCommunities userId={user.id} />
           </div>
@@ -881,7 +875,7 @@ export default async function HomePage({
         {friendIds.length > 0 && (
           <div
             className="bento-tile"
-            data-span={communityCount > 0 ? "5" : "6"}
+            data-span={communityCount > 0 ? "7" : "6"}
           >
             <HomeFriendsFeed friendIds={friendIds} viewerPremium={premium} />
           </div>
@@ -889,7 +883,16 @@ export default async function HomePage({
 
         {/* Новинки каталога — во всю строку: лента из карточек в узкой
             плитке рассыпалась бы по одной в ряд. */}
-        <section className="bento-tile" data-span="12">
+        {/* «В этот день» стоит рядом с новинками (правка владельца
+            2026-09-10): обе плитки — про каталог, а не про мои планы, и
+            в паре они закрывают последнюю строку. */}
+        {onThisDayCard && (
+          <div className="bento-tile" data-span="4">
+            {onThisDayCard}
+          </div>
+        )}
+
+        <section className="bento-tile" data-span="8">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
             <span className="small text-secondary">
@@ -912,10 +915,7 @@ export default async function HomePage({
           {locationNews.length > 0 && (
             <div className="row g-2 stagger mb-2">
               {locationNews.map((item) => (
-                <div
-                  key={`loc-${item.dramaId}`}
-                  className="col-12 col-md-6 col-xl-4"
-                >
+                <div key={`loc-${item.dramaId}`} className="col-12 col-md-6">
                   <Link
                     href={dramaHref(item)}
                     className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
@@ -956,7 +956,7 @@ export default async function HomePage({
               {news.map((item) => (
                 <div
                   key={`${item.kind}-${item.id}`}
-                  className="col-12 col-md-6 col-xl-4"
+                  className="col-12 col-md-6"
                 >
                   {/* Карточка релиза общая с витриной /music — см.
                     components/MusicReleaseCard. */}
