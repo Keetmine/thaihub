@@ -278,7 +278,13 @@ export default async function LocationsPage({
           <AppLink
             href={`/locations?${q ? `q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
-            className={`tab-bar-item ${!groupByDrama && !showMine ? "active" : ""}`}
+            // «По алфавиту» — это отсутствие любого другого среза, и
+            // проверять надо ВСЕ соседние вкладки: раньше выбранный
+            // список мест подсвечивался вместе с алфавитом (находка
+            // владельца 2026-09-10).
+            className={`tab-bar-item ${
+              !groupByDrama && !showMine && !showCommunities && !activeListId ? "active" : ""
+            }`}
           >
             {t.catalog.locations.tabAlphabet}
           </AppLink>
