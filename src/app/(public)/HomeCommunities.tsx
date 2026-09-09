@@ -73,7 +73,10 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
     // У встречи дата ровно одна (см. eventActions.ts), поэтому строка
     // occurrence и есть встреча, дублей не будет.
     prisma.eventOccurrence.findMany({
-      where: { startsAt: { gte: new Date() }, event: viewerMeetupsWhere(userId) },
+      where: {
+        startsAt: { gte: new Date() },
+        event: viewerMeetupsWhere(userId),
+      },
       select: {
         id: true,
         startsAt: true,
@@ -139,7 +142,9 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
   const twoColumns = occurrences.length > 0 && posts.length > 0;
 
   return (
-    <section className="mt-4">
+    // Отступ задаёт бенто-сетка (gap), свой mt-4 внутри плитки
+    // сдвигал бы заголовок вниз относительно соседей.
+    <section>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h2 className="section-heading mb-0">{t.home.communities}</h2>
         <Link href="/communities" className="small text-secondary">
@@ -150,7 +155,9 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
       <div className="row g-4 align-items-stretch">
         {occurrences.length > 0 && (
           <div className={twoColumns ? "col-12 col-lg-6" : "col-12"}>
-            <h3 className="small text-secondary mb-2">{t.home.communityMeetups}</h3>
+            <h3 className="small text-secondary mb-2">
+              {t.home.communityMeetups}
+            </h3>
             <div className="d-flex flex-column gap-2 stagger">
               {occurrences.map((o) => {
                 // Ровно та же плоская строка, что везёт афиша
@@ -191,7 +198,9 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
 
         {posts.length > 0 && (
           <div className={twoColumns ? "col-12 col-lg-6" : "col-12"}>
-            <h3 className="small text-secondary mb-2">{t.home.communityPosts}</h3>
+            <h3 className="small text-secondary mb-2">
+              {t.home.communityPosts}
+            </h3>
             <div className="d-flex flex-column gap-2 stagger">
               {posts.map((post) => {
                 const authorName = post.author.deletedAt
@@ -211,7 +220,11 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
                     href={`${communityHref(post.community)}/posts/${post.id}`}
                     className="surface surface-hover p-3 d-flex align-items-start gap-2 text-decoration-none"
                   >
-                    <LetterAvatar name={authorName} photoUrl={post.author.photoUrl} size={2.25} />
+                    <LetterAvatar
+                      name={authorName}
+                      photoUrl={post.author.photoUrl}
+                      size={2.25}
+                    />
                     <span className="flex-fill" style={{ minWidth: 0 }}>
                       <span className="text-white d-block text-truncate">
                         {post.title ?? excerpt}

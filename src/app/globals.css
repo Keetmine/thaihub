@@ -80,22 +80,59 @@ body {
      на контент (фидбек владельца) — пятна теперь заметны, но не спорят
      с карточками. */
   background:
-    radial-gradient(65rem 40rem at 100% -15%, rgba(var(--accent-rgb), 0.26), transparent 65%),
-    radial-gradient(45rem 30rem at -15% 30%, rgba(var(--accent-rgb), 0.15), transparent 60%),
-    radial-gradient(28rem 20rem at 50% -8%, rgba(var(--accent-rgb), 0.22), transparent 55%),
-    radial-gradient(52rem 36rem at 88% 108%, rgba(200, 80, 190, 0.14), transparent 60%),
-    radial-gradient(44rem 30rem at -8% 105%, rgba(120, 90, 255, 0.11), transparent 60%),
-    radial-gradient(30rem 22rem at 20% 70%, rgba(var(--accent-rgb), 0.07), transparent 60%);
+    radial-gradient(
+      65rem 40rem at 100% -15%,
+      rgba(var(--accent-rgb), 0.26),
+      transparent 65%
+    ),
+    radial-gradient(
+      45rem 30rem at -15% 30%,
+      rgba(var(--accent-rgb), 0.15),
+      transparent 60%
+    ),
+    radial-gradient(
+      28rem 20rem at 50% -8%,
+      rgba(var(--accent-rgb), 0.22),
+      transparent 55%
+    ),
+    radial-gradient(
+      52rem 36rem at 88% 108%,
+      rgba(200, 80, 190, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(
+      44rem 30rem at -8% 105%,
+      rgba(120, 90, 255, 0.11),
+      transparent 60%
+    ),
+    radial-gradient(
+      30rem 22rem at 20% 70%,
+      rgba(var(--accent-rgb), 0.07),
+      transparent 60%
+    );
 }
 
 .ambient-wash::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.028) 1px,
+    transparent 1px
+  );
   background-size: 34px 34px;
-  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.25) 55%, transparent);
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.25) 55%, transparent);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.9),
+    rgba(0, 0, 0, 0.25) 55%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.9),
+    rgba(0, 0, 0, 0.25) 55%,
+    transparent
+  );
 }
 
 .ambient-wash::after {
@@ -152,9 +189,16 @@ body {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.035) 1px,
+    transparent 1px
+  );
   background-size: 32px 32px;
-  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 90%);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.9),
+    transparent 90%
+  );
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 90%);
 }
 
@@ -538,14 +582,21 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 /* ---------- Cards / surfaces ---------- */
 .surface {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035),
+    rgba(255, 255, 255, 0)
+  );
   background-color: var(--bs-tertiary-bg);
   border: 1px solid var(--bs-border-color);
   border-radius: var(--bs-border-radius-lg);
 }
 
 .surface-hover {
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .surface-hover:hover {
@@ -626,7 +677,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .calendar-cell:hover {
@@ -891,7 +944,10 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   border-radius: var(--bs-border-radius);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .event-card:hover {
@@ -966,7 +1022,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   justify-content: center;
   aspect-ratio: 3 / 4;
   background:
-    radial-gradient(120% 120% at 20% 0%, rgba(255, 106, 61, 0.18), transparent 60%),
+    radial-gradient(
+      120% 120% at 20% 0%,
+      rgba(255, 106, 61, 0.18),
+      transparent 60%
+    ),
     var(--bs-tertiary-bg);
   font-family: var(--font-display);
   font-weight: 700;
@@ -1276,7 +1336,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .locked-bar {
   border-radius: 0.35rem;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.05)
+  );
   filter: blur(3px);
 }
 
@@ -1428,7 +1492,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   height: 2px;
   border-radius: 2px;
   background: var(--bs-body-color);
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .burger-btn span.burger-line-1 {
@@ -1751,7 +1817,10 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   color: var(--bs-body-color);
   padding: 0.5rem 0.85rem;
   font-size: 1rem;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .performer-select-trigger:hover {
@@ -2120,7 +2189,9 @@ svg[aria-hidden="true"] {
   max-width: min(18rem, calc(100vw - 1.5rem));
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
   /* Второй строкой, а не одной: браузер без allow-discrete не поймёт всю
      запись целиком и оставит вариант выше — подсказка просто появится без
      плавности. */
@@ -2422,7 +2493,8 @@ svg[aria-hidden="true"] {
 /* ---------- Leaflet map (recolored to match the site's dark theme —
    OpenStreetMap tiles are only served light) ---------- */
 .leaflet-map-dark .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.85) saturate(0.25);
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.85)
+    saturate(0.25);
 }
 
 .leaflet-map-dark .leaflet-container {
@@ -2714,7 +2786,11 @@ svg[aria-hidden="true"] {
 }
 
 .achv-unlocked {
-  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.12), rgba(255, 255, 255, 0.02));
+  background: linear-gradient(
+    180deg,
+    rgba(var(--accent-rgb), 0.12),
+    rgba(255, 255, 255, 0.02)
+  );
   border-color: rgba(var(--accent-rgb), 0.4);
 }
 
@@ -2800,7 +2876,11 @@ svg[aria-hidden="true"] {
   border-radius: var(--bs-border-radius-lg, 1rem);
   border: 1px solid var(--bs-border-color);
   background:
-    radial-gradient(20rem 8rem at 100% 0%, rgba(var(--accent-rgb), 0.16), transparent 70%),
+    radial-gradient(
+      20rem 8rem at 100% 0%,
+      rgba(var(--accent-rgb), 0.16),
+      transparent 70%
+    ),
     rgba(255, 255, 255, 0.025);
 }
 
@@ -2871,7 +2951,9 @@ button.hero-stat-toggle.is-open {
   border-radius: var(--bs-border-radius);
   border: 1px solid var(--bs-border-color);
   background: rgba(255, 255, 255, 0.03);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .list-card:hover {
@@ -3175,8 +3257,16 @@ button.hero-stat-toggle.is-open {
   border-radius: var(--bs-border-radius-xl);
   border: 1px solid rgba(255, 154, 114, 0.18);
   background:
-    radial-gradient(120% 140% at 85% 0%, rgba(255, 106, 61, 0.26), transparent 55%),
-    radial-gradient(90% 120% at 8% 100%, rgba(200, 80, 190, 0.1), transparent 60%),
+    radial-gradient(
+      120% 140% at 85% 0%,
+      rgba(255, 106, 61, 0.26),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 120% at 8% 100%,
+      rgba(200, 80, 190, 0.1),
+      transparent 60%
+    ),
     linear-gradient(160deg, #1b1410, #110d0c 60%, #0c0a0a);
 }
 
@@ -3211,7 +3301,11 @@ button.hero-stat-toggle.is-open {
   aspect-ratio: 3 / 4;
   border: 1px solid var(--bs-border-color);
   background:
-    radial-gradient(120% 120% at 20% 0%, rgba(255, 106, 61, 0.22), transparent 60%),
+    radial-gradient(
+      120% 120% at 20% 0%,
+      rgba(255, 106, 61, 0.22),
+      transparent 60%
+    ),
     var(--bs-tertiary-bg);
   text-decoration: none;
 }
@@ -3759,14 +3853,30 @@ button.hero-stat-toggle.is-open {
 .stagger > * {
   animation: fade-up 0.55s ease backwards;
 }
-.stagger > *:nth-child(1) { animation-delay: 0.04s; }
-.stagger > *:nth-child(2) { animation-delay: 0.1s; }
-.stagger > *:nth-child(3) { animation-delay: 0.16s; }
-.stagger > *:nth-child(4) { animation-delay: 0.22s; }
-.stagger > *:nth-child(5) { animation-delay: 0.28s; }
-.stagger > *:nth-child(6) { animation-delay: 0.34s; }
-.stagger > *:nth-child(7) { animation-delay: 0.4s; }
-.stagger > *:nth-child(8) { animation-delay: 0.46s; }
+.stagger > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 0.22s;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 0.28s;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 0.34s;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 0.4s;
+}
+.stagger > *:nth-child(8) {
+  animation-delay: 0.46s;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .stagger > * {
@@ -3790,7 +3900,10 @@ button.hero-stat-toggle.is-open {
   color: var(--bs-body-color);
   font-size: 0.85rem;
   text-decoration: none;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 .chip-link:hover {
   border-color: rgba(var(--accent-rgb), 0.55);
@@ -3946,7 +4059,9 @@ button.hero-stat-toggle.is-open {
   line-height: 1;
   letter-spacing: 0.01em;
   text-decoration: none;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .mobile-tab svg {
@@ -3999,7 +4114,11 @@ button.hero-stat-toggle.is-open {
   padding: 1.5rem 1.75rem 1.25rem;
   margin-bottom: 1.5rem;
   background:
-    radial-gradient(120% 140% at 80% 0%, rgba(255, 106, 61, 0.2), transparent 55%),
+    radial-gradient(
+      120% 140% at 80% 0%,
+      rgba(255, 106, 61, 0.2),
+      transparent 55%
+    ),
     linear-gradient(165deg, #1a1412, #0e0c0b 65%);
 }
 
@@ -4019,7 +4138,11 @@ button.hero-stat-toggle.is-open {
 }
 
 .detail-hero-scrim {
-  background: linear-gradient(180deg, rgba(10, 10, 12, 0), rgba(10, 10, 12, 0.78) 82%);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 12, 0),
+    rgba(10, 10, 12, 0.78) 82%
+  );
 }
 
 .detail-hero-content {
@@ -4085,14 +4208,20 @@ button.hero-stat-toggle.is-open {
    обычная ячейка). «Сегодня» — акцентное кольцо вокруг ячейки. */
 .calendar-cell:has(.event-chip) {
   background:
-    radial-gradient(130% 110% at 50% 0%, rgba(var(--accent-rgb), 0.13), transparent 70%),
+    radial-gradient(
+      130% 110% at 50% 0%,
+      rgba(var(--accent-rgb), 0.13),
+      transparent 70%
+    ),
     var(--bs-tertiary-bg);
   border-color: rgba(var(--accent-rgb), 0.26);
 }
 
 .calendar-cell:has(.calendar-day-num.today) {
   border-color: rgba(var(--accent-rgb), 0.65);
-  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.35), 0 0 1.4rem rgba(var(--accent-rgb), 0.18);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.35),
+    0 0 1.4rem rgba(var(--accent-rgb), 0.18);
 }
 
 /* ---------- Э2ф: фирменные штрихи ---------- */
@@ -4124,7 +4253,11 @@ button.hero-stat-toggle.is-open {
   border-radius: var(--bs-border-radius-lg, 1rem);
   border: 1px solid var(--bs-border-color);
   background:
-    radial-gradient(9rem 5.5rem at 50% -20%, rgba(var(--accent-rgb), 0.16), transparent 70%),
+    radial-gradient(
+      9rem 5.5rem at 50% -20%,
+      rgba(var(--accent-rgb), 0.16),
+      transparent 70%
+    ),
     rgba(255, 255, 255, 0.03);
 }
 
@@ -4157,12 +4290,19 @@ button.hero-stat-toggle.is-open {
 }
 
 @keyframes online-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.78; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.78;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .online-dot { animation: none; }
+  .online-dot {
+    animation: none;
+  }
 }
 
 /* «Монетка» ачивки (AchievementCoin): сам эмодзи размытым фоном +
@@ -4316,7 +4456,10 @@ button.hero-stat-toggle.is-open {
   overflow: hidden;
   background: var(--bs-secondary-bg);
   border: 1px solid var(--bs-border-color);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .cast-card:hover .cast-card-photo {
@@ -4445,10 +4588,17 @@ button.hero-stat-toggle.is-open {
   border: 1px solid rgba(255, 154, 114, 0.12);
   padding: 1.2rem 1.4rem;
   background:
-    radial-gradient(110% 130% at 88% 0%, rgba(255, 106, 61, 0.08), transparent 55%),
+    radial-gradient(
+      110% 130% at 88% 0%,
+      rgba(255, 106, 61, 0.08),
+      transparent 55%
+    ),
     var(--bs-tertiary-bg);
   text-decoration: none;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 .trip-card:hover {
   transform: translateY(-3px);
@@ -4510,11 +4660,21 @@ button.hero-stat-toggle.is-open {
    feTurbulence-шумом, лёгкое «дрожание» под плёнку. Едва заметное —
    даёт фактуру, не мешая тексту. */
 @keyframes film-grain {
-  0% { transform: translate(0, 0); }
-  25% { transform: translate(-1.5%, 1%); }
-  50% { transform: translate(1%, -1.5%); }
-  75% { transform: translate(-1%, -1%); }
-  100% { transform: translate(1.5%, 1%); }
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1.5%, 1%);
+  }
+  50% {
+    transform: translate(1%, -1.5%);
+  }
+  75% {
+    transform: translate(-1%, -1%);
+  }
+  100% {
+    transform: translate(1.5%, 1%);
+  }
 }
 
 body::after {
@@ -4632,7 +4792,11 @@ body::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(var(--lineup-day-rgb), 0.4), transparent);
+  background: linear-gradient(
+    90deg,
+    rgba(var(--lineup-day-rgb), 0.4),
+    transparent
+  );
 }
 
 .lineup-stage-dot {
@@ -4799,7 +4963,9 @@ body::after {
   color: var(--bs-secondary-color);
   text-decoration: none;
   display: inline-flex;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 /* Название сообщества бывает длинным — обрезаем его, а не растягиваем
@@ -5501,7 +5667,11 @@ body::after {
   overflow: hidden;
   border: 1px solid var(--bs-border-color);
   background:
-    radial-gradient(24rem 16rem at 20% 0%, rgba(var(--accent-rgb), 0.18), transparent 70%),
+    radial-gradient(
+      24rem 16rem at 20% 0%,
+      rgba(var(--accent-rgb), 0.18),
+      transparent 70%
+    ),
     var(--bs-secondary-bg);
 }
 .community-cover img {
@@ -5573,7 +5743,11 @@ body::after {
   opacity: 0.55;
 }
 .next-episode-scrim {
-  background: linear-gradient(180deg, rgba(10, 10, 12, 0.35), rgba(10, 10, 12, 0.82) 85%);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 12, 0.35),
+    rgba(10, 10, 12, 0.82) 85%
+  );
 }
 .next-episode-body {
   position: relative;
@@ -5994,7 +6168,10 @@ body::after {
   font-size: 0.9rem;
   text-decoration: none;
   white-space: nowrap;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .search-palette-trigger:hover {
@@ -6193,7 +6370,11 @@ body::after {
   overflow: hidden;
   border: 1px solid var(--bs-border-color);
   background:
-    radial-gradient(24rem 16rem at 20% 0%, rgba(var(--accent-rgb), 0.18), transparent 70%),
+    radial-gradient(
+      24rem 16rem at 20% 0%,
+      rgba(var(--accent-rgb), 0.18),
+      transparent 70%
+    ),
     var(--bs-secondary-bg);
 }
 
@@ -6268,7 +6449,9 @@ body::after {
   font-family: var(--font-display), var(--font-geist-sans), sans-serif;
   font-weight: 700;
   text-decoration: none;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .profile-friend:hover {
@@ -7168,8 +7351,12 @@ body::after {
 }
 
 .table-status-cell:hover .drama-status-select-caret,
-.table-status-cell .drama-status-select-trigger:focus-visible .drama-status-select-caret,
-.table-status-cell .drama-status-select-trigger[aria-expanded="true"] .drama-status-select-caret {
+.table-status-cell
+  .drama-status-select-trigger:focus-visible
+  .drama-status-select-caret,
+.table-status-cell
+  .drama-status-select-trigger[aria-expanded="true"]
+  .drama-status-select-caret {
   opacity: 0.7;
 }
 
@@ -7192,7 +7379,6 @@ body::after {
   font-size: 0.86rem;
   letter-spacing: 0.01em;
 }
-
 
 /* ============================================================
    Раздел помощи: вопросы-раскрывашки
@@ -7367,4 +7553,100 @@ body::after {
   font-size: 0.78rem;
   color: var(--bs-secondary-color);
   white-space: nowrap;
+}
+
+/* ---------- Бенто-сетка главной ----------
+
+   Правка владельца 2026-09-10 (с референсами): «сетка не фиксированная,
+   а как бы плавающая, и есть большие текстовые акценты».
+
+   Ряды Bootstrap для главной не годились: колонка растягивалась под
+   самого высокого соседа, и пустой блок «Что впереди» занимал пол-экрана
+   рядом с двумя короткими карточками. Здесь плитки живут в одной
+   12-колоночной grid с `dense`: каждая занимает столько, сколько
+   попросила (data-span), а дырки в потоке заполняются следующей
+   подходящей плиткой — отсюда и «плавающая» асимметрия.
+
+   Высоту плитки задаёт её содержимое (align-items: start), поэтому
+   короткая карточка больше не тянется вслед за длинной. */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+  grid-auto-flow: row dense;
+  align-items: start;
+}
+
+/* На телефоне бенто нет: любая плитка — во всю ширину, порядок сверху
+   вниз. Дробить 360px на колонки бессмысленно. */
+.bento > * {
+  grid-column: span 12;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .bento > [data-span="4"],
+  .bento > [data-span="6"] {
+    grid-column: span 6;
+  }
+}
+
+@media (min-width: 992px) {
+  .bento > [data-span="3"] {
+    grid-column: span 3;
+  }
+  .bento > [data-span="4"] {
+    grid-column: span 4;
+  }
+  .bento > [data-span="5"] {
+    grid-column: span 5;
+  }
+  .bento > [data-span="6"] {
+    grid-column: span 6;
+  }
+  .bento > [data-span="7"] {
+    grid-column: span 7;
+  }
+  .bento > [data-span="8"] {
+    grid-column: span 8;
+  }
+}
+
+/* Плитка. Фон и рамка — те же, что у .surface, но со скруглением
+   покрупнее: в сетке из плиток мелкий радиус читается как таблица. */
+.bento-tile {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035),
+    rgba(255, 255, 255, 0)
+  );
+  background-color: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius-xl);
+  padding: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .bento-tile {
+    padding: 1.5rem;
+  }
+}
+
+/* Приветствие — тот самый «большой текстовый акцент» из референсов:
+   имя во всю плитку, клампом по ширине экрана. font-display и
+   отрицательный трекинг — как у заголовков разделов, только крупнее. */
+.bento-hero-name {
+  font-size: clamp(2.4rem, 6.5vw, 4.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+
+/* Цифра-акцент (сколько дней до поездки, сколько сериалов смотрю).
+   В референсах это «17k+», «258+» — крупное число и подпись под ним. */
+.bento-figure {
+  font-size: clamp(2.6rem, 5vw, 3.8rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--bs-body-color);
 }

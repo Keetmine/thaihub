@@ -18,7 +18,6 @@ import { endOfDay, formatShortDate, startOfDay } from "@/lib/dates";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 import LetterAvatar from "@/components/LetterAvatar";
-import PageHeader from "@/components/PageHeader";
 import PosterTile from "@/components/PosterTile";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import EmptyState from "@/components/EmptyState";
@@ -53,11 +52,20 @@ export async function generateMetadata() {
 const getAiringTodayEpisodes = unstable_cache(
   async (dayStartIso: string, dayEndIso: string) =>
     prisma.dramaEpisode.findMany({
-      where: { airDate: { gte: new Date(dayStartIso), lte: new Date(dayEndIso) } },
+      where: {
+        airDate: { gte: new Date(dayStartIso), lte: new Date(dayEndIso) },
+      },
       select: {
         number: true,
         drama: {
-          select: { id: true, slug: true, title: true, titleRu: true, posterUrl: true, year: true },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            titleRu: true,
+            posterUrl: true,
+            year: true,
+          },
         },
       },
       orderBy: { number: "asc" },
@@ -69,7 +77,13 @@ const getAiringTodayEpisodes = unstable_cache(
 const getBirthdayPerformers = unstable_cache(
   async (month: number, day: number) =>
     prisma.$queryRaw<
-      { id: string; name: string; slug: string | null; photoUrl: string | null; birthDate: Date }[]
+      {
+        id: string;
+        name: string;
+        slug: string | null;
+        photoUrl: string | null;
+        birthDate: Date;
+      }[]
     >`
       SELECT p.id, p.name, p.slug, p."photoUrl", p."birthDate"
       FROM "Performer" p
@@ -86,7 +100,8 @@ const getBirthdayPerformers = unstable_cache(
 // lib/onThisDay.ts). Сутки, а не полчаса: список меняется только со
 // сменой даты, а дата входит в ключ; правка каталога сбросит тегом.
 const getOnThisDayDramas = unstable_cache(
-  async (month: number, day: number, year: number) => queryOnThisDayDramas(month, day, year),
+  async (month: number, day: number, year: number) =>
+    queryOnThisDayDramas(month, day, year),
   ["home-on-this-day"],
   { revalidate: 86400, tags: [CATALOG_TAG] },
 );
@@ -135,8 +150,8 @@ export default async function HomePage({
     communityCount,
   ] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
-    getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(async (own) =>
-      own.length > 0 ? own : getMusicNews({ limit: 8 }),
+    getMusicNews({ limit: 8, userId: user.id, onlyFavorites: true }).then(
+      async (own) => (own.length > 0 ? own : getMusicNews({ limit: 8 })),
     ),
     premium
       ? prisma.eventAttendance.findMany({
@@ -144,12 +159,21 @@ export default async function HomePage({
           // на страницах сообществ (см. src/lib/catalogEvents.ts).
           where: {
             userId: user.id,
-            occurrence: { ...catalogOccurrencesWhere(), startsAt: { gte: now } },
+            occurrence: {
+              ...catalogOccurrencesWhere(),
+              startsAt: { gte: now },
+            },
           },
           select: {
             occurrence: { select: { startsAt: true } },
             event: {
-              select: { id: true, slug: true, title: true, venue: true, posterUrl: true },
+              select: {
+                id: true,
+                slug: true,
+                title: true,
+                venue: true,
+                posterUrl: true,
+              },
             },
           },
           orderBy: { occurrence: { startsAt: "asc" } },
@@ -211,10 +235,7 @@ export default async function HomePage({
           where: {
             showOnHome: true,
             startsAt: { gte: now },
-            OR: [
-              { trip: { userId: user.id } },
-              { createdById: user.id },
-            ],
+            OR: [{ trip: { userId: user.id } }, { createdById: user.id }],
           },
           select: {
             id: true,
@@ -233,7 +254,10 @@ export default async function HomePage({
     // нужно: расписание ведётся только у тех сериалов, что ещё выходят,
     // а у завершённого сегодняшних дат не бывает. Выборка общая для
     // всех — из кэша (см. getAiringTodayEpisodes выше).
-    getAiringTodayEpisodes(startOfDay(now).toISOString(), endOfDay(now).toISOString()),
+    getAiringTodayEpisodes(
+      startOfDay(now).toISOString(),
+      endOfDay(now).toISOString(),
+    ),
     // «У сериала появились места съёмок» — вторая половина ленты «что
     // нового» (просьба владельца): музыка приезжает обходом YouTube
     // Music, локации — прогоном blscene.
@@ -245,14 +269,20 @@ export default async function HomePage({
     // состоит — блок не рендерится, и запросов от него ноль. Сам отбор
     // содержимого считает HomeCommunities, чтобы фильтр приватности жил
     // в одном месте, а не половиной здесь.
-    prisma.communityMember.count({ where: { userId: user.id, status: "ACTIVE" } }),
+    prisma.communityMember.count({
+      where: { userId: user.id, status: "ACTIVE" },
+    }),
   ]);
 
   // Сдвоенный показ — две строки на один сериал: карточка всё равно
   // одна, с диапазоном серий.
   const airingTodayByDrama = new Map<
     string,
-    { drama: (typeof airingTodayEpisodes)[number]["drama"]; from: number; to: number }
+    {
+      drama: (typeof airingTodayEpisodes)[number]["drama"];
+      from: number;
+      to: number;
+    }
   >();
   for (const ep of airingTodayEpisodes) {
     const seen = airingTodayByDrama.get(ep.drama.id);
@@ -260,7 +290,11 @@ export default async function HomePage({
       seen.from = Math.min(seen.from, ep.number);
       seen.to = Math.max(seen.to, ep.number);
     } else {
-      airingTodayByDrama.set(ep.drama.id, { drama: ep.drama, from: ep.number, to: ep.number });
+      airingTodayByDrama.set(ep.drama.id, {
+        drama: ep.drama,
+        from: ep.number,
+        to: ep.number,
+      });
     }
   }
 
@@ -305,7 +339,13 @@ export default async function HomePage({
     friendIds.length > 0
       ? prisma.user.findMany({
           where: { id: { in: friendIds }, birthDate: { not: null } },
-          select: { id: true, name: true, username: true, photoUrl: true, birthDate: true },
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            photoUrl: true,
+            birthDate: true,
+          },
         })
       : Promise.resolve([]),
     prisma.favoritePerformer.findMany({
@@ -319,7 +359,10 @@ export default async function HomePage({
     ...p,
     birthDate: new Date(p.birthDate),
   }));
-  const onThisDay = onThisDayCached.map((d) => ({ ...d, airedFrom: new Date(d.airedFrom) }));
+  const onThisDay = onThisDayCached.map((d) => ({
+    ...d,
+    airedFrom: new Date(d.airedFrom),
+  }));
 
   // Витрина, а не личный список: показываем всё, что выходит сегодня, —
   // «Смотрю сейчас» ниже как раз про личное, а этот блок отвечает на
@@ -335,11 +378,14 @@ export default async function HomePage({
     airingTodayStatuses.has(a.drama.id),
   ).length;
   const airingToday = (
-    onlyMineAiring ? airingTodayAll.filter((a) => airingTodayStatuses.has(a.drama.id)) : airingTodayAll
+    onlyMineAiring
+      ? airingTodayAll.filter((a) => airingTodayStatuses.has(a.drama.id))
+      : airingTodayAll
   ).slice(0, 6);
 
   const favoriteSet = new Set(favoriteIds.map((f) => f.performerId));
-  const turns = (birthDate: Date) => now.getUTCFullYear() - birthDate.getUTCFullYear();
+  const turns = (birthDate: Date) =>
+    now.getUTCFullYear() - birthDate.getUTCFullYear();
   // Свои артисты вперёд: «сегодня др у того, кого я слежу» важнее, чем
   // у случайного человека из каталога.
   const birthdayPerformers = [...birthdayPerformersRaw]
@@ -355,19 +401,141 @@ export default async function HomePage({
       f.birthDate.getUTCMonth() + 1 === todayMonth &&
       f.birthDate.getUTCDate() === todayDay,
   );
-  const hasBirthdays = birthdayPerformers.length > 0 || birthdayFriends.length > 0;
+  const hasBirthdays =
+    birthdayPerformers.length > 0 || birthdayFriends.length > 0;
   // Правая колонка ряда живёт, пока в ней есть хоть один из двух
   // «календарных» блоков: дни рождения или годовщины премьер.
-  const hasAside = hasBirthdays || onThisDay.length > 0;
 
+  // «Что впереди» бывает пустым — и чаще всего именно пусто: поездок нет,
+  // отметок «иду» нет либо их вовсе не видно без подписки. Растянутая на
+  // всю высоту ряда панель с одним апселлом внутри выглядела как дыра
+  // (правка владельца 2026-09-10), поэтому в этом случае раскладка
+  // другая: панель узкой полосой во всю ширину, а календарные карточки —
+  // рядом друг с другом под ней.
+  // Цифра-акцент для первой плитки (референсы владельца 2026-09-10:
+  // «17k+», «258+» — крупное число и подпись). Берём ОДНО самое живое
+  // из того, что уже посчитано для страницы, по убыванию важности:
+  // ближайшая поездка → сколько событий в плане → сколько сериалов
+  // смотрю. Нечего показать — плитки нет, и сетка сомкнётся сама.
+  const accent: { value: string; label: string } | null =
+    upcomingTrips.length > 0
+      ? {
+          value: countdown(upcomingTrips[0].startDate, dict),
+          label: upcomingTrips[0].title,
+        }
+      : goingCards.length > 0
+        ? { value: String(goingCards.length), label: dict.home.accentGoing }
+        : watchingNow.length > 0
+          ? {
+              value: String(watchingNow.length),
+              label: dict.home.accentWatching,
+            }
+          : null;
+
+  const upcomingThin =
+    upcomingTrips.length === 0 && (!premium || goingCards.length === 0);
+
+  const birthdaysCard = hasBirthdays ? (
+    <section className="surface p-4 h-100">
+      <h2 className="section-heading mb-3">🎂 {dict.home.birthdays}</h2>
+      <div className="d-flex flex-column gap-3">
+        {birthdayFriends.map((f) => (
+          <Link
+            key={f.id}
+            href={userHref(f)}
+            className="d-flex align-items-center gap-3 text-decoration-none"
+          >
+            <LetterAvatar name={f.name} photoUrl={f.photoUrl} size={2.6} />
+            <span style={{ minWidth: 0 }}>
+              <span className="text-white d-block text-truncate">
+                {userDisplayName(f, locale)}
+              </span>
+              <span className="small text-secondary">
+                {f.birthDate
+                  ? `${turns(f.birthDate)} — ${dict.home.yourFriend}`
+                  : dict.home.yourFriend}
+              </span>
+            </span>
+          </Link>
+        ))}
+        {birthdayPerformers.map((p) => (
+          <Link
+            key={p.id}
+            href={performerHref(p)}
+            className="d-flex align-items-center gap-3 text-decoration-none"
+          >
+            <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={2.6} />
+            <span style={{ minWidth: 0 }}>
+              <span className="text-white d-block text-truncate">{p.name}</span>
+              <span className="small text-secondary">
+                {dict.home.turns(turns(p.birthDate))}
+                {favoriteSet.has(p.id) ? ` · ${dict.home.inFavourites}` : ""}
+              </span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  ) : null;
+
+  {
+    /* «В этот день» — ностальгия по годовщинам премьер
+                (Drama.airedFrom, день+месяц = сегодня, год раньше
+                текущего). Та же манера, что у дней рождения: строка =
+                постер, название, подпись. Пусто сегодня — блока нет. */
+  }
+  const onThisDayCard =
+    onThisDay.length > 0 ? (
+      <section className="surface p-4 h-100">
+        <h2 className="section-heading mb-3">📅 {dict.home.onThisDay}</h2>
+        <div className="d-flex flex-column gap-3">
+          {onThisDay.map((d) => (
+            <Link
+              key={d.id}
+              href={dramaHref(d)}
+              className="d-flex align-items-center gap-3 text-decoration-none"
+            >
+              <LetterAvatar
+                name={dramaTitleForLocale(d, locale)}
+                photoUrl={d.posterUrl}
+                size={2.6}
+                rounded={false}
+              />
+              <span style={{ minWidth: 0 }}>
+                <span className="text-white d-block text-truncate">
+                  {dramaTitleForLocale(d, locale)}
+                </span>
+                <span className="small text-secondary">
+                  {dict.home.onThisDayAgo(
+                    now.getUTCFullYear() - d.airedFrom.getUTCFullYear(),
+                  )}
+                  {` · ${d.airedFrom.getUTCFullYear()}`}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+    ) : null;
 
   return (
     <div>
-      <PageHeader
-        eyebrow={dict.home.eyebrow}
-        title={dict.home.greeting(userDisplayName(user, locale))}
-        action={
-          <>
+      {/* Бенто-сетка (правка владельца 2026-09-10 с референсами):
+          плитки разного размера в одной grid с `dense`, а не ряды
+          колонок. Пустая плитка больше не растягивается под соседа —
+          высоту задаёт содержимое, а дырки в потоке закрывает следующая
+          подходящая плитка. */}
+      <div className="bento mb-4">
+        {/* Приветствие — крупный текстовый акцент из референсов: имя во
+            всю плитку. Чипы разделов тут же, под именем: раньше они
+            жили в шапке справа и на узком экране уезжали под заголовок
+            вторым рядом. */}
+        <div className="bento-tile" data-span="8">
+          <span className="eyebrow">{dict.home.eyebrow}</span>
+          <p className="bento-hero-name font-display fw-medium text-white mt-2 mb-3">
+            {dict.home.greeting(userDisplayName(user, locale))}
+          </p>
+          <div className="d-flex flex-wrap gap-2">
             <Link href="/events" className="chip-link">
               {dict.nav.events}
             </Link>
@@ -377,298 +545,264 @@ export default async function HomePage({
             <Link href="/trips" className="chip-link">
               {dict.nav.trips}
             </Link>
-          </>
-        }
-      />
-
-      {/* «Что впереди» — план и поездки одной панелью: и то и другое
-          отвечает на вопрос «что у меня скоро», а раздельными блоками
-          в разных рядах это читалось как список одинаковых секций.
-          Поездка сверху задаёт рамку периода, под ней — события. */}
-      <div className="row g-4 mb-5">
-      <div className={hasAside ? "col-12 col-lg-8" : "col-12"}>
-        <section className="glow-panel p-4 h-100">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="section-heading mb-0">{dict.home.upcoming}</h2>
-            {premium && (
-              <Link href="/events?filter=going" className="small text-secondary">
-                {dict.common.all}
-              </Link>
-            )}
           </div>
-
-          {upcomingTrips.length > 0 && (
-            <div className="d-flex flex-column gap-2 mb-3">
-              {upcomingTrips.map((t) => (
-                <Link
-                  key={t.id}
-                  href={tripHref(t)}
-                  className="home-trip-strip d-flex flex-wrap align-items-center gap-3"
-                >
-                  <span className="trip-dates mb-0">
-                    {formatShortDate(t.startDate, locale)}{" "}
-                    <span className="trip-dates-arrow">→</span>{" "}
-                    {formatShortDate(t.endDate, locale)}
-                    <span className="trip-dates-year">{t.endDate.getFullYear()}</span>
-                  </span>
-                  <span className="font-display fw-medium text-white flex-grow-1 text-truncate">
-                    {t.title}
-                  </span>
-                  <span className="d-flex flex-wrap gap-2 flex-shrink-0">
-                    {t.userId !== user.id && <span className="date-chip">{dict.home.shared}</span>}
-                    <span className="date-chip">{countdown(t.startDate, dict)}</span>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {!premium ? (
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-              <div>
-                <p className="font-display fw-medium text-white mb-1">
-                  {dict.home.paywallTitle}
-                </p>
-                <p className="small text-secondary mb-0" style={{ maxWidth: "30rem" }}>
-                  {dict.home.paywallHint}
-                </p>
-              </div>
-              <Link href="/events" className="btn btn-primary flex-shrink-0">
-                {dict.home.paywallCta}
-              </Link>
-            </div>
-          ) : goingCards.length === 0 ? (
-            <EmptyState
-              emoji="🎫"
-              title={dict.home.emptyGoingTitle}
-              hint={dict.home.emptyGoingHint}
-              cta={{ href: "/events", label: dict.home.emptyGoingCta }}
-              compact
-            />
-          ) : (
-            <div className="row g-3 stagger">
-              {goingCards.map((card) => (
-                <div key={card.key} className="col-4 col-md-3">
-                  <PosterTile
-                    href={card.href}
-                    posterUrl={card.posterUrl}
-                    title={card.title}
-                    subtitle={card.subtitle}
-                    chip={formatShortDate(card.startsAt, locale)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Календарная колонка рядом: дни рождения и «В этот день» — оба
-          про «какой сегодня день», и она же держит асимметрию ряда.
-          Пустой блок не рендерится: колонка живёт, пока есть хоть один. */}
-      {hasAside && (
-        <div className="col-12 col-lg-4 d-flex flex-column gap-4">
-          {hasBirthdays && (
-          <section className="surface p-4 flex-grow-1">
-            <h2 className="section-heading mb-3">🎂 {dict.home.birthdays}</h2>
-            <div className="d-flex flex-column gap-3">
-              {birthdayFriends.map((f) => (
-                <Link
-                  key={f.id}
-                  href={userHref(f)}
-                  className="d-flex align-items-center gap-3 text-decoration-none"
-                >
-                  <LetterAvatar name={f.name} photoUrl={f.photoUrl} size={2.6} />
-                  <span style={{ minWidth: 0 }}>
-                    <span className="text-white d-block text-truncate">
-                      {userDisplayName(f, locale)}
-                    </span>
-                    <span className="small text-secondary">
-                      {f.birthDate ? `${turns(f.birthDate)} — ${dict.home.yourFriend}` : dict.home.yourFriend}
-                    </span>
-                  </span>
-                </Link>
-              ))}
-              {birthdayPerformers.map((p) => (
-                <Link
-                  key={p.id}
-                  href={performerHref(p)}
-                  className="d-flex align-items-center gap-3 text-decoration-none"
-                >
-                  <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={2.6} />
-                  <span style={{ minWidth: 0 }}>
-                    <span className="text-white d-block text-truncate">{p.name}</span>
-                    <span className="small text-secondary">
-                      {dict.home.turns(turns(p.birthDate))}
-                      {favoriteSet.has(p.id) ? ` · ${dict.home.inFavourites}` : ""}
-                    </span>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-          )}
-
-          {/* «В этот день» — ностальгия по годовщинам премьер
-              (Drama.airedFrom, день+месяц = сегодня, год раньше
-              текущего). Та же манера, что у дней рождения: строка =
-              постер, название, подпись. Пусто сегодня — блока нет. */}
-          {onThisDay.length > 0 && (
-          <section className="surface p-4 flex-grow-1">
-            <h2 className="section-heading mb-3">📅 {dict.home.onThisDay}</h2>
-            <div className="d-flex flex-column gap-3">
-              {onThisDay.map((d) => (
-                <Link
-                  key={d.id}
-                  href={dramaHref(d)}
-                  className="d-flex align-items-center gap-3 text-decoration-none"
-                >
-                  <LetterAvatar
-                    name={dramaTitleForLocale(d, locale)}
-                    photoUrl={d.posterUrl}
-                    size={2.6}
-                    rounded={false}
-                  />
-                  <span style={{ minWidth: 0 }}>
-                    <span className="text-white d-block text-truncate">
-                      {dramaTitleForLocale(d, locale)}
-                    </span>
-                    <span className="small text-secondary">
-                      {dict.home.onThisDayAgo(
-                        now.getUTCFullYear() - d.airedFrom.getUTCFullYear(),
-                      )}
-                      {` · ${d.airedFrom.getUTCFullYear()}`}
-                    </span>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-          )}
         </div>
-      )}
-      </div>
 
-      {/* Ряд 2 (правка владельца 2026-09-06): слева «Выходит сегодня»
-          и справа «Смотрю сейчас» — пополам, по col-6, оба одной высоты
-          (align-items-stretch + h-100 у секций). «Что нового» уехало
-          ПОД ряд, во всю ширину — раньше оно жило в правой колонке под
-          афишей и растягивало её. */}
-      <div className="row g-4 align-items-stretch">
-      <div className={watchingNow.length > 0 ? "col-12 col-lg-6" : "col-12"}>
-      {airingToday.length > 0 && (
-        <section className="h-100 d-flex flex-column">
-          {/* И9: из блока должен быть выход в календарь серий — раньше
+        {/* Цифра-акцент. Показываем ОДНО самое живое число из тех, что
+            уже посчитаны для страницы: ближайшая поездка важнее плана на
+            события, план — важнее счётчика «смотрю». Нечего показать —
+            плитки нет вовсе, и сетка сомкнётся сама. */}
+        {accent && (
+          <div
+            className="bento-tile d-flex flex-column justify-content-center"
+            data-span="4"
+          >
+            <p className="bento-figure font-display fw-medium mb-1">
+              {accent.value}
+            </p>
+            <p className="small text-secondary mb-0">{accent.label}</p>
+          </div>
+        )}
+
+        {/* «Что впереди» — план и поездки одной плиткой: и то и другое
+            отвечает на вопрос «что у меня скоро». Ширину просит по
+            содержимому: с картинками планов — во всю строку, с одним
+            апселлом — узкой полосой, чтобы рядом встали календарные
+            карточки. */}
+        <div data-span={upcomingThin ? "4" : "8"}>
+          <section className="glow-panel p-4">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <h2 className="section-heading mb-0">{dict.home.upcoming}</h2>
+              {premium && (
+                <Link
+                  href="/events?filter=going"
+                  className="small text-secondary"
+                >
+                  {dict.common.all}
+                </Link>
+              )}
+            </div>
+
+            {upcomingTrips.length > 0 && (
+              <div className="d-flex flex-column gap-2 mb-3">
+                {upcomingTrips.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={tripHref(t)}
+                    className="home-trip-strip d-flex flex-wrap align-items-center gap-3"
+                  >
+                    <span className="trip-dates mb-0">
+                      {formatShortDate(t.startDate, locale)}{" "}
+                      <span className="trip-dates-arrow">→</span>{" "}
+                      {formatShortDate(t.endDate, locale)}
+                      <span className="trip-dates-year">
+                        {t.endDate.getFullYear()}
+                      </span>
+                    </span>
+                    <span className="font-display fw-medium text-white flex-grow-1 text-truncate">
+                      {t.title}
+                    </span>
+                    <span className="d-flex flex-wrap gap-2 flex-shrink-0">
+                      {t.userId !== user.id && (
+                        <span className="date-chip">{dict.home.shared}</span>
+                      )}
+                      <span className="date-chip">
+                        {countdown(t.startDate, dict)}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {!premium ? (
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                  <p className="font-display fw-medium text-white mb-1">
+                    {dict.home.paywallTitle}
+                  </p>
+                  <p
+                    className="small text-secondary mb-0"
+                    style={{ maxWidth: "30rem" }}
+                  >
+                    {dict.home.paywallHint}
+                  </p>
+                </div>
+                <Link href="/events" className="btn btn-primary flex-shrink-0">
+                  {dict.home.paywallCta}
+                </Link>
+              </div>
+            ) : goingCards.length === 0 ? (
+              <EmptyState
+                emoji="🎫"
+                title={dict.home.emptyGoingTitle}
+                hint={dict.home.emptyGoingHint}
+                cta={{ href: "/events", label: dict.home.emptyGoingCta }}
+                compact
+              />
+            ) : (
+              <div className="row g-3 stagger">
+                {goingCards.map((card) => (
+                  <div key={card.key} className="col-4 col-md-3">
+                    <PosterTile
+                      href={card.href}
+                      posterUrl={card.posterUrl}
+                      title={card.title}
+                      subtitle={card.subtitle}
+                      chip={formatShortDate(card.startsAt, locale)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Календарные карточки — самостоятельные плитки, а не колонка
+            сбоку: в бенто они сами встают рядом с «Что впереди», если
+            там просторно, и переносятся под него, если нет. */}
+        {birthdaysCard && <div data-span="4">{birthdaysCard}</div>}
+        {onThisDayCard && <div data-span="4">{onThisDayCard}</div>}
+
+        {/* «Выходит сегодня» и «Смотрю сейчас» — плитки в той же сетке
+            (правка владельца 2026-09-10; до бенто это был отдельный ряд
+            из двух колонок). */}
+        {airingToday.length > 0 && (
+          <div className="bento-tile" data-span="6">
+            <section className="h-100 d-flex flex-column">
+              {/* И9: из блока должен быть выход в календарь серий — раньше
               человек видел сегодняшнее и не догадывался, что есть
               расписание на месяц. Тот же вид, что «Все» у соседей. */}
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-            <h2 className="section-heading mb-0">{dict.home.airingToday}</h2>
-            <span className="d-flex align-items-center gap-2 small">
-              {/* Переключатель «вся афиша / только моё» (просьба
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <h2 className="section-heading mb-0">
+                  {dict.home.airingToday}
+                </h2>
+                <span className="d-flex align-items-center gap-2 small">
+                  {/* Переключатель «вся афиша / только моё» (просьба
                   владельца). Показываем, только когда своё вообще есть:
                   иначе «Мои» вело бы в заведомо пустой список. */}
-              {airingTodayMineCount > 0 && (
-                <>
-                  {/* Link здесь — это наш AppLink (см. импорт вверху):
+                  {airingTodayMineCount > 0 && (
+                    <>
+                      {/* Link здесь — это наш AppLink (см. импорт вверху):
                       адрес сам получает префикс языка. */}
-                  <Link
-                    href="/"
-                    prefetch={false}
-                    className={onlyMineAiring ? "text-secondary" : "text-white fw-medium"}
-                  >
-                    {dict.home.airingAll}
+                      <Link
+                        href="/"
+                        prefetch={false}
+                        className={
+                          onlyMineAiring
+                            ? "text-secondary"
+                            : "text-white fw-medium"
+                        }
+                      >
+                        {dict.home.airingAll}
+                      </Link>
+                      <Link
+                        href="/?airing=mine"
+                        prefetch={false}
+                        className={
+                          onlyMineAiring
+                            ? "text-white fw-medium"
+                            : "text-secondary"
+                        }
+                      >
+                        {dict.home.airingMine}
+                      </Link>
+                      <span className="text-secondary">·</span>
+                    </>
+                  )}
+                  <Link href="/calendar?view=series" className="text-secondary">
+                    {dict.home.airingTodayCalendar}
                   </Link>
-                  <Link
-                    href="/?airing=mine"
-                    prefetch={false}
-                    className={onlyMineAiring ? "text-white fw-medium" : "text-secondary"}
-                  >
-                    {dict.home.airingMine}
-                  </Link>
-                  <span className="text-secondary">·</span>
-                </>
-              )}
-              <Link href="/calendar?view=series" className="text-secondary">
-                {dict.home.airingTodayCalendar}
-              </Link>
-            </span>
-          </div>
-          <div className="d-flex flex-column gap-1 stagger">
-            {airingToday.map(({ drama, from, to }) => {
-              const marked = airingTodayStatuses.get(drama.id);
-              const subline = marked
-                ? dict.catalog.watchStatus[marked.status]
-                : drama.year
-                  ? String(drama.year)
-                  : null;
-              return (
-                <Link
-                  key={drama.id}
-                  href={dramaHref(drama)}
-                  className="surface surface-hover d-flex align-items-center gap-2 airing-row text-decoration-none"
-                >
-                  <span className="drama-row-poster airing-row-poster">
-                    {drama.posterUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        loading="lazy"
-                        decoding="async"
-                        src={drama.posterUrl}
-                        alt=""
-                      />
-                    ) : (
-                      <span className="drama-row-poster-letter" aria-hidden>
-                        {dramaTitleForLocale(drama, locale).trim().charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="d-flex flex-column gap-1 stagger">
+                {airingToday.map(({ drama, from, to }) => {
+                  const marked = airingTodayStatuses.get(drama.id);
+                  const subline = marked
+                    ? dict.catalog.watchStatus[marked.status]
+                    : drama.year
+                      ? String(drama.year)
+                      : null;
+                  return (
+                    <Link
+                      key={drama.id}
+                      href={dramaHref(drama)}
+                      className="surface surface-hover d-flex align-items-center gap-2 airing-row text-decoration-none"
+                    >
+                      <span className="drama-row-poster airing-row-poster">
+                        {drama.posterUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            loading="lazy"
+                            decoding="async"
+                            src={drama.posterUrl}
+                            alt=""
+                          />
+                        ) : (
+                          <span className="drama-row-poster-letter" aria-hidden>
+                            {dramaTitleForLocale(drama, locale)
+                              .trim()
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                  <span className="flex-fill" style={{ minWidth: 0 }}>
-                    <span className="font-display fw-medium text-white d-block text-truncate">
-                      {dramaTitleForLocale(drama, locale)}
-                    </span>
-                    {subline && <span className="small text-secondary">{subline}</span>}
-                  </span>
-                  <span className="date-chip flex-shrink-0">
-                    {from === to
-                      ? dict.home.airingTodayEpisode(from)
-                      : dict.home.airingTodayEpisodes(from, to)}
-                  </span>
-                </Link>
-              );
-            })}
+                      <span className="flex-fill" style={{ minWidth: 0 }}>
+                        <span className="font-display fw-medium text-white d-block text-truncate">
+                          {dramaTitleForLocale(drama, locale)}
+                        </span>
+                        {subline && (
+                          <span className="small text-secondary">
+                            {subline}
+                          </span>
+                        )}
+                      </span>
+                      <span className="date-chip flex-shrink-0">
+                        {from === to
+                          ? dict.home.airingTodayEpisode(from)
+                          : dict.home.airingTodayEpisodes(from, to)}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
           </div>
-        </section>
-      )}
-      </div>
+        )}
 
-      {watchingNow.length > 0 && (
-        <div className="col-12 col-lg-6">
-          <section className="h-100 d-flex flex-column">
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-              <h2 className="section-heading mb-0">{dict.home.watchingNow}</h2>
-              <Link href="/dramas" className="small text-secondary">
-                {dict.common.all}
-              </Link>
-            </div>
-            <div className="row g-3 stagger">
-              {watchingNow.map(({ drama, episodesWatched }) => (
-                <div key={drama.id} className="col-4 poster-tile-cell">
-                  <PosterTile
-                    href={dramaHref(drama)}
-                    posterUrl={drama.posterUrl}
-                    title={dramaTitleForLocale(drama, locale)}
-                    subtitle={drama.year ? String(drama.year) : undefined}
-                    progress={
-                      drama.episodes && episodesWatched != null
-                        ? {
-                            watched: episodesWatched,
-                            total: drama.episodes,
-                            label: dict.catalog.episodes.of(episodesWatched, drama.episodes),
-                          }
-                        : null
-                    }
-                  />
-                  {/* Править серии — отсюда, без захода на страницу:
+        {watchingNow.length > 0 && (
+          <div className="bento-tile" data-span="6">
+            <section className="h-100 d-flex flex-column">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <h2 className="section-heading mb-0">
+                  {dict.home.watchingNow}
+                </h2>
+                <Link href="/dramas" className="small text-secondary">
+                  {dict.common.all}
+                </Link>
+              </div>
+              <div className="row g-3 stagger">
+                {watchingNow.map(({ drama, episodesWatched }) => (
+                  <div key={drama.id} className="col-4 poster-tile-cell">
+                    <PosterTile
+                      href={dramaHref(drama)}
+                      posterUrl={drama.posterUrl}
+                      title={dramaTitleForLocale(drama, locale)}
+                      subtitle={drama.year ? String(drama.year) : undefined}
+                      progress={
+                        drama.episodes && episodesWatched != null
+                          ? {
+                              watched: episodesWatched,
+                              total: drama.episodes,
+                              label: dict.catalog.episodes.of(
+                                episodesWatched,
+                                drama.episodes,
+                              ),
+                            }
+                          : null
+                      }
+                    />
+                    {/* Править серии — отсюда, без захода на страницу:
                       ровно это человек и делает, досмотрев серию. Полоса
                       рисуется внутри постера, поэтому у счётчика своей
                       нет. Карточка здесь рабочая, а не витринная, — этим
@@ -679,109 +813,128 @@ export default async function HomePage({
                       разметке — рядом с плиткой, а не внутри: плитка
                       целиком ссылка, а кнопку в ссылку класть нельзя.
                       Позиционирует .poster-tile-cell в globals.css. */}
-                  <EpisodeProgress
-                    dramaId={drama.id}
-                    total={drama.episodes}
-                    watched={episodesWatched}
-                    variant="card"
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
-      </div>
+                    <EpisodeProgress
+                      dramaId={drama.id}
+                      total={drama.episodes}
+                      watched={episodesWatched}
+                      variant="card"
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
 
-      {/* «В ваших сообществах» — ПОД личным расписанием и НАД лентой
+        {/* «В ваших сообществах» — ПОД личным расписанием и НАД лентой
           новинок каталога: встречи и разговоры своих важнее свежего
           сингла, но не важнее того, куда человек сам собрался. Блока
           нет вовсе у того, кто ни в одном сообществе не состоит, — и
           это не «пустая секция», а её отсутствие: показывать нечего, а
           звать вступать есть кому на витрине. Содержимое сообществ
           закрытое, поэтому отбирает его сам компонент своими запросами
-          (см. HomeCommunities). */}
-      {communityCount > 0 && <HomeCommunities userId={user.id} />}
+            (см. HomeCommunities). */}
+        {communityCount > 0 && (
+          <div
+            className="bento-tile"
+            data-span={friendIds.length > 0 ? "7" : "12"}
+          >
+            <HomeCommunities userId={user.id} />
+          </div>
+        )}
 
-      {/* «У друзей» — три последние записи активности друзей
-          (минимальная версия Г3, см. HomeFriendsFeed). Гейт — уже
-          посчитанные friendIds: без друзей ни блока, ни запросов. */}
-      {friendIds.length > 0 && (
-        <HomeFriendsFeed friendIds={friendIds} viewerPremium={premium} />
-      )}
+        {/* «У друзей» — три последние записи активности друзей
+            (минимальная версия Г3, см. HomeFriendsFeed). Гейт — уже
+            посчитанные friendIds: без друзей ни блока, ни запросов. */}
+        {friendIds.length > 0 && (
+          <div
+            className="bento-tile"
+            data-span={communityCount > 0 ? "5" : "6"}
+          >
+            <HomeFriendsFeed friendIds={friendIds} viewerPremium={premium} />
+          </div>
+        )}
 
-      {/* Новинки — во всю ширину ПОД рядом (правка владельца
-          2026-09-06): раньше лента жила в правой колонке и растягивала
-          её сильно ниже соседа. mt-4 — тот же зазор, что между
-          колонками ряда: без него заголовок ленты липнул к последней
-          строке афиши. */}
-      <section className="mt-4">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
-          <span className="small text-secondary">
-            {favoritePerformers > 0 ? dict.home.newsFromFavourites : dict.home.newsFromCatalogue}
-            {" · "}
-            {/* Выход на витрину релизов /music — лента здесь только
+        {/* Новинки каталога — во всю строку: лента из карточек в узкой
+            плитке рассыпалась бы по одной в ряд. */}
+        <section className="bento-tile" data-span="12">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
+            <span className="small text-secondary">
+              {favoritePerformers > 0
+                ? dict.home.newsFromFavourites
+                : dict.home.newsFromCatalogue}
+              {" · "}
+              {/* Выход на витрину релизов /music — лента здесь только
                 анонс, целиком новинки живут там. */}
-            <Link href="/music" className="text-secondary">
-              {dict.common.all}
-            </Link>
-          </span>
-        </div>
+              <Link href="/music" className="text-secondary">
+                {dict.common.all}
+              </Link>
+            </span>
+          </div>
 
-        {/* Места съёмок — первыми строками ленты: их приносит прогон
+          {/* Места съёмок — первыми строками ленты: их приносит прогон
             blscene, и это единственное место на витрине, где видно, что
             у сериала появились новые точки (просьба владельца
             2026-09-06). */}
-        {locationNews.length > 0 && (
-          <div className="row g-2 stagger mb-2">
-            {locationNews.map((item) => (
-              <div key={`loc-${item.dramaId}`} className="col-12 col-md-6 col-xl-4">
-                <Link
-                  href={dramaHref(item)}
-                  className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
+          {locationNews.length > 0 && (
+            <div className="row g-2 stagger mb-2">
+              {locationNews.map((item) => (
+                <div
+                  key={`loc-${item.dramaId}`}
+                  className="col-12 col-md-6 col-xl-4"
                 >
-                  <LetterAvatar
-                    name={dramaTitleForLocale(item, locale)}
-                    photoUrl={item.posterUrl}
-                    size={4}
-                    rounded={false}
-                  />
-                  <div style={{ minWidth: 0 }} className="flex-grow-1">
-                    <span className="text-white d-block text-truncate">
-                      {dramaTitleForLocale(item, locale)}
-                    </span>
-                    <span className="small text-secondary d-block">{dict.home.newsLocations}</span>
-                    <span className="small text-secondary">
-                      {dict.home.newsLocationsCount(item.count)}
-                    </span>
-                  </div>
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
+                  <Link
+                    href={dramaHref(item)}
+                    className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
+                  >
+                    <LetterAvatar
+                      name={dramaTitleForLocale(item, locale)}
+                      photoUrl={item.posterUrl}
+                      size={4}
+                      rounded={false}
+                    />
+                    <div style={{ minWidth: 0 }} className="flex-grow-1">
+                      <span className="text-white d-block text-truncate">
+                        {dramaTitleForLocale(item, locale)}
+                      </span>
+                      <span className="small text-secondary d-block">
+                        {dict.home.newsLocations}
+                      </span>
+                      <span className="small text-secondary">
+                        {dict.home.newsLocationsCount(item.count)}
+                      </span>
+                    </div>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
 
-        {news.length === 0 ? (
-          <EmptyState
-            emoji="🎧"
-            title={dict.home.emptyNewsTitle}
-            hint={dict.home.emptyNewsHint}
-            cta={{ href: "/artists", label: dict.home.emptyNewsCta }}
-            compact
-          />
-        ) : (
-          <div className="row g-2 stagger">
-            {news.map((item) => (
-              <div key={`${item.kind}-${item.id}`} className="col-12 col-md-6 col-xl-4">
-                {/* Карточка релиза общая с витриной /music — см.
+          {news.length === 0 ? (
+            <EmptyState
+              emoji="🎧"
+              title={dict.home.emptyNewsTitle}
+              hint={dict.home.emptyNewsHint}
+              cta={{ href: "/artists", label: dict.home.emptyNewsCta }}
+              compact
+            />
+          ) : (
+            <div className="row g-2 stagger">
+              {news.map((item) => (
+                <div
+                  key={`${item.kind}-${item.id}`}
+                  className="col-12 col-md-6 col-xl-4"
+                >
+                  {/* Карточка релиза общая с витриной /music — см.
                     components/MusicReleaseCard. */}
-                <MusicReleaseCard item={item} t={dict} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+                  <MusicReleaseCard item={item} t={dict} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,8 @@ export const home = {
     metaTitle: "Series, actors and events: fan tracker",
     eyebrow: "Home",
     greeting: (name: string) => `Hi, ${name}`,
+    accentGoing: "events in your plan",
+    accentWatching: "series in progress",
     upcoming: "What's next",
     // Блок «выходит сегодня» — над «Что нового».
     airingToday: "Airing today",

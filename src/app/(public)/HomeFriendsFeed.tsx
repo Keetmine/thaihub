@@ -41,13 +41,18 @@ export default async function HomeFriendsFeed({
   const users = await prisma.user.findMany({
     // Мягко удалённый друг из блока пропадает вместе со строками —
     // подписывать «Удалённый аккаунт» на главной незачем.
-    where: { id: { in: [...new Set(items.map((i) => i.userId))] }, deletedAt: null },
+    where: {
+      id: { in: [...new Set(items.map((i) => i.userId))] },
+      deletedAt: null,
+    },
     select: { id: true, name: true, username: true, photoUrl: true },
   });
   const byId = new Map(users.map((u) => [u.id, u]));
 
   return (
-    <section className="mt-4">
+    // Отступ задаёт бенто-сетка (gap), свой mt-4 внутри плитки
+    // сдвигал бы заголовок вниз относительно соседей.
+    <section>
       <h2 className="section-heading mb-3">{t.home.friendsFeed}</h2>
       <div className="d-flex flex-column gap-2">
         {items.map((item, i) => {
@@ -55,14 +60,21 @@ export default async function HomeFriendsFeed({
           if (!friend) return null; // друг успел удалиться — строку молча пропускаем
           const title =
             item.type === "watch" || item.type === "review"
-              ? dramaTitleForLocale({ title: item.title, titleRu: item.titleRu }, locale)
+              ? dramaTitleForLocale(
+                  { title: item.title, titleRu: item.titleRu },
+                  locale,
+                )
               : item.title;
           return (
             <div key={`${item.type}-${i}`} className="activity-row">
               {/* В иконке строки — ДРУГ, а не обложка записи: блок
                   отвечает на «что у моих», и лицо тут главнее постера. */}
               <span className="activity-row-icon" aria-hidden>
-                <LetterAvatar name={friend.name} photoUrl={friend.photoUrl} size={2.4} />
+                <LetterAvatar
+                  name={friend.name}
+                  photoUrl={friend.photoUrl}
+                  size={2.4}
+                />
               </span>
               <span className="activity-row-body">
                 <AppLink href={userHref(friend)} className="activity-row-title">
@@ -80,7 +92,9 @@ export default async function HomeFriendsFeed({
                   )}
                 </span>
               </span>
-              <span className="activity-row-date">{formatDateWithYear(item.date, locale)}</span>
+              <span className="activity-row-date">
+                {formatDateWithYear(item.date, locale)}
+              </span>
             </div>
           );
         })}

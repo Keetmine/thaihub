@@ -5,6 +5,8 @@ export const home: Dict["home"] = {
     metaTitle: "Сериалы, артисты и события: фан-трекер",
     eyebrow: "Главная",
     greeting: (name: string) => `Привет, ${name}`,
+    accentGoing: "событий в вашем плане",
+    accentWatching: "сериала в процессе",
     upcoming: "Что впереди",
     airingToday: "Выходит сегодня",
     airingTodayCalendar: "Календарь",
