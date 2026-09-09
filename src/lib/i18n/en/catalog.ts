@@ -387,6 +387,7 @@ export const catalog = {
         emptyFavoritesHint:
             "Add artists to your favourites — their new releases will gather here.",
         emptyFavoritesCta: "To the artists",
+        shownFirst: (n: number) => `Showing the first ${n} — narrow the filters to see more.`,
     },
 
     novel: {

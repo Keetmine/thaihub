@@ -418,6 +418,7 @@ export const catalog: Dict["catalog"] = {
         emptyFavoritesTitle: "У ваших артистов пока нет релизов",
         emptyFavoritesHint: "Добавьте артистов в избранное — их новинки соберутся здесь.",
         emptyFavoritesCta: "К артистам",
+        shownFirst: (n: number) => `Показаны первые ${n} — уточните фильтры, чтобы увидеть остальное.`,
     },
 
     novel: {

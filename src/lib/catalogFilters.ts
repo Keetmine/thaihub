@@ -470,6 +470,130 @@ export function novelFilterWhere(p: FilterParams): Prisma.NovelWhereInput[] {
 }
 
 /* ------------------------------------------------------------------ */
+/* Музыка                                                              */
+/*                                                                     */
+/* Особый случай: витрина /music склеивает ДВЕ таблицы — альбомы и     */
+/* самостоятельные песни. Поэтому здесь не один массив условий, а по   */
+/* массиву на половину, и признак «половина отключена фильтром типа»   */
+/* (null) — выбрали «Альбом», значит песни не запрашиваем вовсе.       */
+/* ------------------------------------------------------------------ */
+
+/** Псевдотип для отдельной песни: в базе такого значения нет (у Song   *
+ *  нет поля type), но в фильтре «Альбом / Мини-альбом / Сингл / Песня» *
+ *  человеку он нужен наравне с остальными. */
+const SONG_TYPE = "SONG";
+
+/** Значения AlbumType — списком, чтобы отфильтровать мусор из адреса:
+ *  `?releaseType=DROP TABLE` не должен доехать до Prisma. */
+const ALBUM_TYPES = ["ALBUM", "EP", "SINGLE"] as const;
+type AlbumTypeValue = (typeof ALBUM_TYPES)[number];
+
+export const loadMusicFilterOptions = unstable_cache(
+  async () => {
+    const [performers, albumYears, songYears] = await Promise.all([
+      // Только те, у кого есть что показать: артист без релизов — это
+      // вариант фильтра с гарантированным нулём.
+      prisma.performer.findMany({
+        where: { OR: [{ albums: { some: {} } }, { songs: { some: { albumId: null } } }] },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.album.aggregate({ _min: { year: true }, _max: { year: true } }),
+      prisma.song.aggregate({ _min: { year: true }, _max: { year: true } }),
+    ]);
+    const now = new Date().getUTCFullYear();
+    const mins = [albumYears._min.year, songYears._min.year].filter((y): y is number => !!y);
+    const maxs = [albumYears._max.year, songYears._max.year].filter((y): y is number => !!y);
+    return {
+      performers: performers.map((p) => ({ id: p.id, name: p.name })),
+      yearMin: mins.length ? Math.min(...mins) : 1990,
+      yearMax: maxs.length ? Math.max(...maxs) : now,
+    };
+  },
+  ["music-filter-options"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+export type MusicFilterOptions = Awaited<ReturnType<typeof loadMusicFilterOptions>>;
+
+export function musicFilterDefs(t: Dict, o: MusicFilterOptions): FilterDef[] {
+  return [
+    {
+      key: "performer",
+      title: t.filters.performer,
+      kind: "multi",
+      // Исполнителей полторы сотни — чекбоксами это стена, поэтому тот
+      // же приём, что у тегов: поиск и плашки.
+      options: o.performers.map((p) => ({ value: p.id, label: p.name })),
+      chipStyle: true,
+      hint: t.filters.hints.performer,
+    },
+    {
+      key: "year",
+      title: t.filters.year,
+      kind: "yearRange",
+      min: o.yearMin,
+      max: o.yearMax,
+      hint: t.filters.hints.year,
+    },
+    {
+      key: "releaseType",
+      title: t.filters.releaseType,
+      kind: "multi",
+      options: [
+        { value: "ALBUM", label: t.catalog.albumType.ALBUM },
+        { value: "EP", label: t.catalog.albumType.EP },
+        { value: "SINGLE", label: t.catalog.albumType.SINGLE },
+        { value: SONG_TYPE, label: t.catalog.songType },
+      ],
+      hint: t.filters.hints.releaseType,
+    },
+  ];
+}
+
+export type MusicFilterWhere = {
+  /** Условия для альбомов; `null` — фильтр типа выключил эту половину. */
+  albums: Prisma.AlbumWhereInput[] | null;
+  /** То же для самостоятельных песен. */
+  songs: Prisma.SongWhereInput[] | null;
+  /** Год выбран руками — витрина снимает своё окно свежести и слушает
+   *  человека (см. getMusicNews в lib/whatsNew.ts). */
+  yearPicked: boolean;
+};
+
+export function musicFilterWhere(p: FilterParams): MusicFilterWhere {
+  const performers = csv(p.performer);
+  const types = csv(p.releaseType);
+  const yearFrom = intOrNull(p.yearFrom);
+  const yearTo = intOrNull(p.yearTo);
+
+  const common: (Prisma.AlbumWhereInput & Prisma.SongWhereInput)[] = [];
+  if (performers.length) common.push({ performerId: { in: performers } });
+  if (yearFrom !== null || yearTo !== null) {
+    common.push({
+      year: {
+        ...(yearFrom !== null ? { gte: yearFrom } : {}),
+        ...(yearTo !== null ? { lte: yearTo } : {}),
+      },
+    });
+  }
+
+  const albumTypes = types.filter((v): v is AlbumTypeValue =>
+    (ALBUM_TYPES as readonly string[]).includes(v),
+  );
+  const wantsAlbums = types.length === 0 || albumTypes.length > 0;
+  const wantsSongs = types.length === 0 || types.includes(SONG_TYPE);
+
+  return {
+    albums: wantsAlbums
+      ? [...common, ...(albumTypes.length ? [{ type: { in: albumTypes } }] : [])]
+      : null,
+    songs: wantsSongs ? [...common] : null,
+    yearPicked: yearFrom !== null || yearTo !== null,
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Админские дополнения                                                */
 /*                                                                     */
 /* Публичные фильтры — про «что искать», админские флаги — про «что    */

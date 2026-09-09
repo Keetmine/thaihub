@@ -1,4 +1,5 @@
-import type { AlbumType } from "@/generated/prisma/client";
+import type { AlbumType, Prisma } from "@/generated/prisma/client";
+import type { MusicFilterWhere } from "@/lib/catalogFilters";
 import { prisma } from "@/lib/prisma";
 
 // «Что нового» — свежие релизы и песни, появившиеся в каталоге.
@@ -20,57 +21,75 @@ export type NewsItem = {
   performer: { id: string; name: string; slug: string | null; photoUrl: string | null };
 };
 
+/** Насколько старым может быть релиз, чтобы считаться новинкой: этот
+ *  год и прошлый. */
+const MUSIC_NEWS_YEARS = 1;
+
 /**
  * Последние музыкальные новинки. `favoritedBy` сужает выборку до
  * артистов, которых человек добавил себе, — лента «моих» новостей
  * интереснее общей.
+ *
+ * Новизна считается по ГОДУ РЕЛИЗА, а не по дате появления в каталоге
+ * (правка владельца 2026-09-10). Иначе разбор нового артиста выкладывал
+ * в «Новую музыку» его песни 2020 года: для сайта они свежие, для
+ * человека — нет. Год у релиза известен всегда, точной даты в модели
+ * нет, поэтому окно грубое, в годах.
+ *
+ * Песни без года из ленты выпадают: сказать «это новинка» про них
+ * нечем, а показывать наугад — то же самое враньё, только тише.
+ *
+ * `filter` — срез витрины /music (musicFilterWhere в lib/catalogFilters).
+ * Одно правило поверх него: если человек ВЫБРАЛ годы, окно свежести
+ * снимается. Иначе фильтр «2019» отвечал бы пустотой — витрина спорила
+ * бы с тем, что у неё же и спросили.
  */
 export async function getMusicNews(options?: {
   limit?: number;
   userId?: string | null;
   onlyFavorites?: boolean;
+  filter?: MusicFilterWhere;
 }): Promise<NewsItem[]> {
   const limit = options?.limit ?? 12;
-  const performerWhere =
-    options?.onlyFavorites && options.userId
-      ? { favoritedBy: { some: { userId: options.userId } } }
-      : {};
+  const where = musicWhere(options);
 
   const performerSelect = {
     select: { id: true, name: true, slug: true, photoUrl: true },
   } as const;
 
   const [albums, songs] = await Promise.all([
-    prisma.album.findMany({
-      where: { performer: performerWhere },
-      select: {
-        id: true,
-        title: true,
-        type: true,
-        year: true,
-        coverUrl: true,
-        url: true,
-        createdAt: true,
-        performer: performerSelect,
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    }),
-    prisma.song.findMany({
-      // Песни, вышедшие отдельным синглом, уже показаны релизом — в
-      // ленте нужны только самостоятельные.
-      where: { performer: performerWhere, albumId: null },
-      select: {
-        id: true,
-        title: true,
-        year: true,
-        url: true,
-        createdAt: true,
-        performer: performerSelect,
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    }),
+    where.albums
+      ? prisma.album.findMany({
+          where: { AND: where.albums },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            year: true,
+            coverUrl: true,
+            url: true,
+            createdAt: true,
+            performer: performerSelect,
+          },
+          orderBy: [{ year: "desc" }, { createdAt: "desc" }],
+          take: limit,
+        })
+      : [],
+    where.songs
+      ? prisma.song.findMany({
+          where: { AND: where.songs },
+          select: {
+            id: true,
+            title: true,
+            year: true,
+            url: true,
+            createdAt: true,
+            performer: performerSelect,
+          },
+          orderBy: [{ year: "desc" }, { createdAt: "desc" }],
+          take: limit,
+        })
+      : [],
   ]);
 
   const items: NewsItem[] = [
@@ -98,7 +117,52 @@ export async function getMusicNews(options?: {
     })),
   ];
 
-  return items.sort((a, b) => +b.addedAt - +a.addedAt).slice(0, limit);
+  // Сначала год релиза, при равенстве — что позже завели у нас: внутри
+  // одного года «свежим» честно считать недавно добавленное.
+  return items
+    .sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || +b.addedAt - +a.addedAt)
+    .slice(0, limit);
+}
+
+/** Сколько релизов под этим срезом всего — витрине нужно честное
+ *  «Найдено: N», а не «показано столько, сколько влезло». */
+export async function countMusicNews(options?: {
+  userId?: string | null;
+  onlyFavorites?: boolean;
+  filter?: MusicFilterWhere;
+}): Promise<number> {
+  const where = musicWhere(options);
+  const [albums, songs] = await Promise.all([
+    where.albums ? prisma.album.count({ where: { AND: where.albums } }) : 0,
+    where.songs ? prisma.song.count({ where: { AND: where.songs } }) : 0,
+  ]);
+  return albums + songs;
+}
+
+/** Общие условия выборки и счёта: список и счётчик обязаны считать одно
+ *  и то же, поэтому склейка среза с окном свежести живёт в одном месте. */
+function musicWhere(options?: {
+  userId?: string | null;
+  onlyFavorites?: boolean;
+  filter?: MusicFilterWhere;
+}): { albums: Prisma.AlbumWhereInput[] | null; songs: Prisma.SongWhereInput[] | null } {
+  const filter = options?.filter;
+  const base: (Prisma.AlbumWhereInput & Prisma.SongWhereInput)[] = [];
+
+  if (options?.onlyFavorites && options.userId) {
+    base.push({ performer: { favoritedBy: { some: { userId: options.userId } } } });
+  }
+  if (!filter?.yearPicked) {
+    base.push({ year: { gte: new Date().getUTCFullYear() - MUSIC_NEWS_YEARS } });
+  }
+
+  return {
+    albums: filter?.albums === null ? null : [...base, ...(filter?.albums ?? [])],
+    // Песни, вышедшие отдельным синглом, уже показаны релизом — в
+    // ленте нужны только самостоятельные.
+    songs:
+      filter?.songs === null ? null : [{ albumId: null }, ...base, ...(filter?.songs ?? [])],
+  };
 }
 
 /** «У сериала появились места съёмок» — вторая половина ленты «что

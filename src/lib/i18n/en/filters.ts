@@ -28,6 +28,8 @@ export const filters = {
     status: "Status",
     network: "Network",
     agency: "Agency",
+    performer: "Artist",
+    releaseType: "Release type",
     performerKind: "Kind",
     performerKinds: {
         SOLO: "Actors",
@@ -56,6 +58,8 @@ export const filters = {
         type: "Series or movie, as the source labels it.",
         status: "One at a time.",
         agency: "Tick one or more agencies.",
+        performer: "Start typing a name — matching artists appear below, click one to add it.",
+        releaseType: "Albums, EPs, singles or standalone songs.",
         tags: "Start typing — matching tags appear below, click one to add it.",
         performerKind: "Actors, groups or mascots — tick any.",
         date: "From and to, both days included.",
