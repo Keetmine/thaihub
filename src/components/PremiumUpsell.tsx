@@ -1,5 +1,4 @@
 import BuyPremiumButton from "@/components/BuyPremiumButton";
-import GiftPremiumButton from "@/components/GiftPremiumButton";
 import PromoCodeRedeem from "@/components/PromoCodeRedeem";
 import Link from "@/components/AppLink";
 import { getT } from "@/lib/i18n";
@@ -9,7 +8,14 @@ import { TelegramIcon } from "@/components/icons";
 // Буллеты — про пользу, а не перечень разделов (Э3.3): человек должен
 // понять, что изменится в его жизни, а не какие таблицы откроются.
 
-/** Продающая заглушка платной функции. Кнопка оплаты появляется, когда
+/** Продающая заглушка платной функции. Кнопки «подарить подписку» тут
+ *  НЕТ (правка владельца 2026-09-10): блок продаёт подписку тому, кто
+ *  его читает, и второй призыв рядом с оплатой разводил внимание.
+ *  ВНИМАНИЕ: другого входа в подарок на сайте нет — `GiftPremiumButton`
+ *  и обработка подарочных промокодов живы, но сейчас ниоткуда не
+ *  вызываются (см. docs/features/premium.md).
+ *
+ *  Кнопка оплаты появляется, когда
  *  настроен бот И режим оплаты — stars (переключается в /admin/settings:
  *  приём Stars зависит от страны владельца бота, и пока он недоступен,
  *  кнопка вела бы прямо в ошибку Telegram). Серверный компонент — читает
@@ -75,10 +81,6 @@ export default async function PremiumUpsell({
         {canPay ? (
           <div className="d-flex flex-column align-items-center gap-3">
             <BuyPremiumButton />
-            {/* Подарить подписку (аудит 2026-09 п.8): оплата создаёт
-                одноразовый промокод — открытку с ним присылает вебхук
-                в Telegram покупателя. */}
-            <GiftPremiumButton />
           </div>
         ) : (
           <div className="d-flex flex-column align-items-center gap-2">
@@ -100,21 +102,6 @@ export default async function PremiumUpsell({
               </Link>
               .
             </p>
-            {/* Пока Stars выключены, «подарить» — та же личка, но с
-                заготовленной фразой (?text= предзаполняет черновик
-                сообщения в официальных клиентах Telegram): владелец
-                сразу видит, что человек пришёл за подарком, а не за
-                своей подпиской. */}
-            {contact && (
-              <a
-                href={`https://t.me/${contact}?text=${encodeURIComponent(t.widgets.premium.giftContactText)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-outline-secondary btn-sm"
-              >
-                {t.widgets.premium.gift}
-              </a>
-            )}
           </div>
         )}
         <div className="mt-3">
