@@ -576,6 +576,15 @@ export default async function HomePage({
             места в сетке занимают призывы, а не воздух. Пунктирная
             рамка вместо фона — чтобы они не притворялись готовыми
             блоками с содержимым. */}
+        {/* Заголовок группы: без него четыре ссылки подряд читаются как
+            куча, а не как один совет «с чего начать» (замечание
+            владельца 2026-09-10). */}
+        {startCards.length > 0 && (
+          <p className="section-heading mb-0 align-self-end" data-span="12">
+            {dict.home.startTitle}
+          </p>
+        )}
+
         {startCards.map((card) => (
           <Link
             key={card.href}
