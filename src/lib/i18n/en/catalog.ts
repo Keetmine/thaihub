@@ -300,7 +300,7 @@ export const catalog = {
         // Подпись справа от заголовка идёт тремя строками, и переносы
         // прибиты разметкой (макет владельца): три ключа, три абзаца.
         heroLead1: "Favourites and artists",
-        heroLead2: "with events in the feed.",
+        heroLead2: "with series and events.",
         heroCta: "Not on the list — search by name.",
         artistCount: (n: number) => `${n} ${n === 1 ? "artist" : "artists"}`,
         emptyAgencies: "No agencies yet.",

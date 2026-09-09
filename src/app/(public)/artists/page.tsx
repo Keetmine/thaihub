@@ -84,17 +84,29 @@ const HAS_PHOTO_WHERE: Prisma.PerformerWhereInput = {
   OR: [{ photoUrl: { not: null } }, { albums: { some: { coverUrl: { not: null } } } }],
 };
 
-/** Гостевой список актёров без поиска: у кого есть события И фото. */
+/**
+ * «Есть сериалы» — второе условие общего списка (правка владельца
+ * 2026-09-10: «не выводить тех, у кого нет сериалов»). Артист, попавший
+ * в каталог одним концертом, для витрины лакорнов посторонний: имя
+ * ничего не говорит, а список раздувает. Через поиск он по-прежнему
+ * находится, и своя страница у него на месте.
+ *
+ * Только на вкладке актёров: у групп связей с сериалами нет вовсе, и
+ * это условие оставило бы вкладку пустой.
+ */
+const HAS_DRAMAS_WHERE: Prisma.PerformerWhereInput = { dramas: { some: {} } };
+
+/** Гостевой список актёров без поиска: у кого есть события, сериалы И фото. */
 const getPerformersWithEvents = unstable_cache(
   async (type: "SOLO" | "BAND" | "MASCOT") =>
     prisma.performer.findMany({
-      where: { type, events: { some: {} }, ...HAS_PHOTO_WHERE },
+      where: { type, events: { some: {} }, ...HAS_DRAMAS_WHERE, ...HAS_PHOTO_WHERE },
       select: PERFORMER_ROW_SELECT,
       orderBy: { name: "asc" },
     }),
-  // v2: ключ сменён вместе с условием (добавилось требование фото) —
-  // иначе до конца TTL список шёл бы по-старому.
-  ["artists-with-events-v2"],
+  // v3: ключ меняется вместе с условием (сначала добавилось требование
+  // фото, теперь сериалов) — иначе до конца TTL список шёл бы по-старому.
+  ["artists-with-events-v3"],
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
@@ -531,17 +543,23 @@ export default async function PerformersPage({
           ? // Одинаково для всех — из кэша (только поля строки:
             // биографии и профильные списки в перечне не нужны).
             await getAllPerformersOfType(typeOfView(view))
-          : // Без поиска: избранные юзера + все, у кого есть хотя бы
-            // одно событие И фото (анониму — только такие, из кэша).
+          : // Без поиска: избранные юзера + все, у кого есть событие,
+            // сериалы И фото (анониму — только такие, из кэша).
             // Полный каталог в тысячи актёров — через поиск.
-            // Избранное показывается независимо от фото: это явный
-            // выбор человека, а не автоподбор по событиям.
+            // Избранное показывается независимо от этих условий: это
+            // явный выбор человека, а не автоподбор.
             currentUser
             ? await prisma.performer.findMany({
                 where: {
                   type: typeOfView(view),
                   OR: [
-                    { AND: [{ events: { some: {} } }, HAS_PHOTO_WHERE] },
+                    {
+                      AND: [
+                        { events: { some: {} } },
+                        HAS_DRAMAS_WHERE,
+                        HAS_PHOTO_WHERE,
+                      ],
+                    },
                     { favoritedBy: { some: { userId: currentUser.id } } },
                   ],
                 },

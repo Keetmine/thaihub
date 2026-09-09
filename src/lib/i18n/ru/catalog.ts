@@ -334,7 +334,7 @@ export const catalog: Dict["catalog"] = {
         titleAgencies: "Агентства",
         favorites: "Избранное",
         heroLead1: "Избранные и артисты",
-        heroLead2: "с событиями в афише.",
+        heroLead2: "с сериалами и событиями.",
         heroCta: "Нет в списке — ищите по имени.",
         artistCount: (n: number) => `артистов: ${n}`,
         emptyAgencies: "Пока нет агентств.",
