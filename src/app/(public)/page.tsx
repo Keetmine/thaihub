@@ -524,6 +524,41 @@ export default async function HomePage({
       </section>
     ) : null;
 
+  // Ширины плиток считаются, а не проставляются руками (правка
+  // владельца 2026-09-10: у новичка справа зияли дыры — часть плиток
+  // просто не рендерится, и заданные вручную 7/5 переставали
+  // складываться в строку).
+  //
+  // Правило простое: плитки идут ПАРАМИ, пара занимает всю строку, а
+  // ширины внутри пары чередуются 7/5 → 5/7 — отсюда «плавающая»
+  // асимметрия из референсов. Нечётная последняя плитка забирает строку
+  // целиком: полупустой ряд выглядит хуже широкой плитки.
+  const tileOrder = [
+    "upcoming",
+    birthdaysCard ? "birthdays" : null,
+    airingToday.length > 0 ? "airing" : null,
+    watchingNow.length > 0 ? "watching" : null,
+    communityCount > 0 ? "communities" : null,
+    friendIds.length > 0 ? "friends" : null,
+    onThisDayCard ? "onThisDay" : null,
+    "news",
+  ].filter((k): k is string => !!k);
+
+  const spanOf = new Map<string, string>();
+  tileOrder.forEach((key, index) => {
+    const isLast = index === tileOrder.length - 1;
+    if (isLast && tileOrder.length % 2 === 1) {
+      spanOf.set(key, "12");
+      return;
+    }
+    // Пара чередует стороны: в чётной паре широкая слева, в нечётной —
+    // справа. Так соседние ряды не выглядят одинаковыми.
+    const wideFirst = Math.floor(index / 2) % 2 === 0;
+    const first = index % 2 === 0;
+    spanOf.set(key, (first ? wideFirst : !wideFirst) ? "7" : "5");
+  });
+  const span = (key: string) => spanOf.get(key) ?? "6";
+
   return (
     <div>
       {/* Бенто-сетка (правка владельца 2026-09-10 с референсами):
@@ -566,7 +601,9 @@ export default async function HomePage({
             key={card.href}
             href={card.href}
             className="bento-tile bento-tile-link"
-            data-span="4"
+            data-span={
+              startCards.length >= 4 ? "3" : startCards.length === 3 ? "4" : "6"
+            }
           >
             <span className="bento-cta-emoji mb-2" aria-hidden>
               {card.emoji}
@@ -583,10 +620,13 @@ export default async function HomePage({
             содержимому: с картинками планов — во всю строку, с одним
             апселлом — узкой полосой, чтобы рядом встали календарные
             карточки. */}
-        {/* Ширина — по содержимому, а не по важности: широкая плитка
-            зияла пустотой справа от двух афиш (правка владельца
-            2026-09-10). Ряд складывается из трёх равных плиток. */}
-        <div className="bento-tile bento-tile--accent" data-span="6">
+        {/* Ширину каждой плитки считает spanOf (см. выше): пары
+            занимают строку целиком и чередуют стороны. «Что впереди» —
+            единственная акцентная плитка сетки. */}
+        <div
+          className="bento-tile bento-tile--accent"
+          data-span={span("upcoming")}
+        >
           <section className="h-100 d-flex flex-column">
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <h2 className="section-heading mb-0">{dict.home.upcoming}</h2>
@@ -675,26 +715,15 @@ export default async function HomePage({
           </section>
         </div>
 
-        {/* Календарные карточки — самостоятельные плитки, а не колонка
-            сбоку: в бенто они сами встают рядом с «Что впереди», если
-            там просторно, и переносятся под него, если нет. */}
-        {/* Календарные карточки — по трети строки, рядом с «Что
-            впереди»: три плитки одной высоты читаются цельно, а стопка
-            рядом с короткой плиткой давала дыру снизу. */}
+        {/* Календарные карточки — самостоятельные плитки: ширину им,
+            как и остальным, считает spanOf. */}
         {birthdaysCard && (
-          <div className="bento-tile" data-span="6">
+          <div className="bento-tile" data-span={span("birthdays")}>
             {birthdaysCard}
           </div>
         )}
-        {/* «Выходит сегодня» и «Смотрю сейчас» — плитки в той же сетке
-            (правка владельца 2026-09-10; до бенто это был отдельный ряд
-            из двух колонок). */}
-        {/* «Выходит сегодня» и «Смотрю сейчас» — БЕЗ фона-плитки
-            (правка владельца 2026-09-10: «не нравится, что визуально всё
-            карточками»). Их держит заголовок и собственные строки-
-            карточки внутри, рамка вокруг рамок только дробила бы ряд. */}
         {airingToday.length > 0 && (
-          <div className="bento-tile" data-span="6">
+          <div className="bento-tile" data-span={span("airing")}>
             <section className="h-100 d-flex flex-column">
               {/* И9: из блока должен быть выход в календарь серий — раньше
               человек видел сегодняшнее и не догадывался, что есть
@@ -797,7 +826,7 @@ export default async function HomePage({
         )}
 
         {watchingNow.length > 0 && (
-          <div className="bento-tile" data-span="6">
+          <div className="bento-tile" data-span={span("watching")}>
             <section className="h-100 d-flex flex-column">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                 <h2 className="section-heading mb-0">
@@ -861,10 +890,7 @@ export default async function HomePage({
           закрытое, поэтому отбирает его сам компонент своими запросами
             (см. HomeCommunities). */}
         {communityCount > 0 && (
-          <div
-            className="bento-tile"
-            data-span={friendIds.length > 0 ? "5" : "12"}
-          >
+          <div className="bento-tile" data-span={span("communities")}>
             <HomeCommunities userId={user.id} />
           </div>
         )}
@@ -873,10 +899,7 @@ export default async function HomePage({
             (минимальная версия Г3, см. HomeFriendsFeed). Гейт — уже
             посчитанные friendIds: без друзей ни блока, ни запросов. */}
         {friendIds.length > 0 && (
-          <div
-            className="bento-tile"
-            data-span={communityCount > 0 ? "7" : "6"}
-          >
+          <div className="bento-tile" data-span={span("friends")}>
             <HomeFriendsFeed friendIds={friendIds} viewerPremium={premium} />
           </div>
         )}
@@ -887,12 +910,12 @@ export default async function HomePage({
             2026-09-10): обе плитки — про каталог, а не про мои планы, и
             в паре они закрывают последнюю строку. */}
         {onThisDayCard && (
-          <div className="bento-tile" data-span="4">
+          <div className="bento-tile" data-span={span("onThisDay")}>
             {onThisDayCard}
           </div>
         )}
 
-        <section className="bento-tile" data-span="8">
+        <section className="bento-tile" data-span={span("news")}>
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
             <span className="small text-secondary">
