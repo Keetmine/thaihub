@@ -917,14 +917,9 @@ export default async function HomePage({
             {/* Заголовок и подпись говорят, что места СВЕЖИЕ, а не
                 просто раздел каталога (правка владельца 2026-09-10:
                 «показать, что недавно добавлены или обновлены»). */}
-            <div className="mb-3">
-              <h2 className="section-heading mb-0">
-                📍 {dict.home.newsLocations}
-              </h2>
-              <span className="small text-secondary">
-                {dict.home.newsLocationsWindow}
-              </span>
-            </div>
+            <h2 className="section-heading mb-3">
+              📍 {dict.home.newsLocations}
+            </h2>
             <div className="row g-3 stagger">
               {locationNews.map((item) => (
                 <div key={`loc-${item.dramaId}`} className="col-12">
@@ -942,13 +937,11 @@ export default async function HomePage({
                       <span className="text-white d-block text-truncate">
                         {dramaTitleForLocale(item, locale)}
                       </span>
-                      {/* Сколько добавили и когда: без даты строка
-                          читалась как «столько мест всего», а не как
-                          новость. */}
+                      {/* Только «+N мест»: что это новое, говорит сам
+                          заголовок плитки, а дата рядом с ним только
+                          дробила строку (правка владельца 2026-09-10). */}
                       <span className="small text-secondary">
                         {dict.home.newsLocationsCount(item.count)}
-                        {" · "}
-                        {formatShortDate(item.addedAt, locale)}
                       </span>
                     </div>
                   </Link>
@@ -966,7 +959,7 @@ export default async function HomePage({
             осталась витрине /music, где ей просторно. */}
         <section className="bento-tile" data-span="6">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="section-heading mb-0">{dict.home.musicNew}</h2>
+            <h2 className="section-heading mb-0">🎧 {dict.home.musicNew}</h2>
             <span className="small text-secondary">
               {favoritePerformers > 0
                 ? dict.home.newsFromFavourites

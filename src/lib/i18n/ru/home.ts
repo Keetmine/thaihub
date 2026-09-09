@@ -32,7 +32,6 @@ export const home: Dict["home"] = {
     // съёмок» читалось как раздел каталога, а не как новость (правка
     // владельца 2026-09-10).
     newsLocations: "Новые места съёмок",
-    newsLocationsWindow: "добавлены за месяц",
     newsLocationsCount: (n: number) =>
         `+${n} ${plural(n, ["место", "места", "мест"])}`,
     newsFromFavourites: "релизы ваших артистов",

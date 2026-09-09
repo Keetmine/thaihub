@@ -37,7 +37,6 @@ export const home = {
     /** Новость про места съёмок: у сериала появились локации
      *  (просьба владельца 2026-09-06). */
     newsLocations: "New filming locations",
-    newsLocationsWindow: "added this month",
     newsLocationsCount: (n: number) => `+${n} ${n === 1 ? "place" : "places"}`,
     newsFromFavourites: "releases by your artists",
     newsFromCatalogue: "fresh in the catalogue",
