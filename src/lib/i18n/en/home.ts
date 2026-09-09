@@ -32,11 +32,13 @@ export const home = {
     communityMeetups: "Upcoming meetups",
     communityPosts: "Latest discussions",
     communityReplies: (n: number) => `${n} ${n === 1 ? "reply" : "replies"}`,
+    musicNew: "New music",
     whatsNew: "What's new",
     /** Новость про места съёмок: у сериала появились локации
      *  (просьба владельца 2026-09-06). */
-    newsLocations: "Filming locations",
-    newsLocationsCount: (n: number) => `${n} ${n === 1 ? "place" : "places"} added`,
+    newsLocations: "New filming locations",
+    newsLocationsWindow: "added this month",
+    newsLocationsCount: (n: number) => `+${n} ${n === 1 ? "place" : "places"}`,
     newsFromFavourites: "releases by your artists",
     newsFromCatalogue: "fresh in the catalogue",
     listen: "Listen ↗",

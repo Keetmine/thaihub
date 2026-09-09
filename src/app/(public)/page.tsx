@@ -21,7 +21,6 @@ import LetterAvatar from "@/components/LetterAvatar";
 import PosterTile from "@/components/PosterTile";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import EmptyState from "@/components/EmptyState";
-import MusicReleaseCard from "@/components/MusicReleaseCard";
 import HomeCommunities from "./HomeCommunities";
 import HomeFriendsFeed from "./HomeFriendsFeed";
 import LandingPage from "./LandingPage";
@@ -150,8 +149,8 @@ export default async function HomePage({
     communityCount,
   ] = await Promise.all([
     // Новинки любимых артистов; если избранного ещё нет — общие.
-    getMusicNews({ limit: 6, userId: user.id, onlyFavorites: true }).then(
-      async (own) => (own.length > 0 ? own : getMusicNews({ limit: 6 })),
+    getMusicNews({ limit: 5, userId: user.id, onlyFavorites: true }).then(
+      async (own) => (own.length > 0 ? own : getMusicNews({ limit: 5 })),
     ),
     premium
       ? prisma.eventAttendance.findMany({
@@ -902,49 +901,72 @@ export default async function HomePage({
           </div>
         )}
 
-        {/* Последний ряд — узкий столбец из двух плиток и высокая
-            музыкальная лента рядом. Места съёмок уехали из «Что нового»
-            в свою плитку (правка владельца 2026-09-10): на витрине
-            /music одна музыка, и мешать туда места было нелогично. */}
-        <div className="d-flex flex-column gap-3" data-span="5">
-          {locationNews.length > 0 && (
-            <div className="bento-tile">
-              <h2 className="section-heading mb-3">
+        {/* Последний ряд — три РАВНЫЕ плитки: места съёмок, новинки
+            музыки и «В этот день» (правка владельца 2026-09-10:
+            «объединить всю эту историю в одно цельное, чтоб не было
+            пустых мест», и следом — «не три одинаковых блока, мы же
+            этого избегаем»). Ряд идёт 3 / 6 / 3: по краям узкие списки,
+            в середине широкая лента релизов. Ширины разные, а низ
+            сходится — списки в узких плитках примерно одной длины.
+            Столбец из двух плиток рядом с одной высокой не годился:
+            стопка оказывалась заметно выше соседки.
+            Места живут отдельно от музыки: на витрине /music, куда
+            ведёт «все →», одна музыка. */}
+        {locationNews.length > 0 && (
+          <div className="bento-tile" data-span="3">
+            {/* Заголовок и подпись говорят, что места СВЕЖИЕ, а не
+                просто раздел каталога (правка владельца 2026-09-10:
+                «показать, что недавно добавлены или обновлены»). */}
+            <div className="mb-3">
+              <h2 className="section-heading mb-0">
                 📍 {dict.home.newsLocations}
               </h2>
-              <div className="row g-2 stagger">
-                {locationNews.map((item) => (
-                  <div key={`loc-${item.dramaId}`} className="col-12">
-                    <Link
-                      href={dramaHref(item)}
-                      className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
-                    >
-                      <LetterAvatar
-                        name={dramaTitleForLocale(item, locale)}
-                        photoUrl={item.posterUrl}
-                        size={3}
-                        rounded={false}
-                      />
-                      <div style={{ minWidth: 0 }} className="flex-grow-1">
-                        <span className="text-white d-block text-truncate">
-                          {dramaTitleForLocale(item, locale)}
-                        </span>
-                        <span className="small text-secondary">
-                          {dict.home.newsLocationsCount(item.count)}
-                        </span>
-                      </div>
-                    </Link>
-                  </div>
-                ))}
-              </div>
+              <span className="small text-secondary">
+                {dict.home.newsLocationsWindow}
+              </span>
             </div>
-          )}
-          {onThisDayCard && <div className="bento-tile">{onThisDayCard}</div>}
-        </div>
+            <div className="row g-3 stagger">
+              {locationNews.map((item) => (
+                <div key={`loc-${item.dramaId}`} className="col-12">
+                  <Link
+                    href={dramaHref(item)}
+                    className="d-flex align-items-center gap-3 text-decoration-none"
+                  >
+                    <LetterAvatar
+                      name={dramaTitleForLocale(item, locale)}
+                      photoUrl={item.posterUrl}
+                      size={2.6}
+                      rounded={false}
+                    />
+                    <div style={{ minWidth: 0 }} className="flex-grow-1">
+                      <span className="text-white d-block text-truncate">
+                        {dramaTitleForLocale(item, locale)}
+                      </span>
+                      {/* Сколько добавили и когда: без даты строка
+                          читалась как «столько мест всего», а не как
+                          новость. */}
+                      <span className="small text-secondary">
+                        {dict.home.newsLocationsCount(item.count)}
+                        {" · "}
+                        {formatShortDate(item.addedAt, locale)}
+                      </span>
+                    </div>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <section className="bento-tile" data-span="7">
+        {/* Новая музыка. Внутри — ПЛОСКИЕ строки, без карточек-рамок
+            внутри плитки (правка владельца 2026-09-10: «блоки хоть и
+            разной ширины, но полностью одинаковые — картинка, название,
+            описание»). Заодно кнопка «Слушать» перестала занимать всю
+            ширину и съедать название песни. Карточка MusicReleaseCard
+            осталась витрине /music, где ей просторно. */}
+        <section className="bento-tile" data-span="6">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
+            <h2 className="section-heading mb-0">{dict.home.musicNew}</h2>
             <span className="small text-secondary">
               {favoritePerformers > 0
                 ? dict.home.newsFromFavourites
@@ -967,20 +989,48 @@ export default async function HomePage({
               compact
             />
           ) : (
-            <div className="row g-2 stagger">
+            <div className="d-flex flex-column gap-3 stagger">
               {news.map((item) => (
                 <div
                   key={`${item.kind}-${item.id}`}
-                  className="col-12 col-md-6"
+                  className="d-flex align-items-center gap-3"
                 >
-                  {/* Карточка релиза общая с витриной /music — см.
-                    components/MusicReleaseCard. */}
-                  <MusicReleaseCard item={item} t={dict} />
+                  <LetterAvatar
+                    name={item.title}
+                    photoUrl={item.coverUrl ?? item.performer.photoUrl}
+                    size={2.6}
+                    rounded={false}
+                  />
+                  <span style={{ minWidth: 0 }} className="flex-grow-1">
+                    <span className="text-white d-block text-truncate">
+                      {item.title}
+                    </span>
+                    <span className="small text-secondary d-block text-truncate">
+                      {item.performer.name}
+                      {item.year ? ` · ${item.year}` : ""}
+                    </span>
+                  </span>
+                  {item.url && (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="small text-secondary flex-shrink-0 text-decoration-none"
+                    >
+                      {dict.home.listen}
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </section>
+
+        {onThisDayCard && (
+          <div className="bento-tile" data-span="3">
+            {onThisDayCard}
+          </div>
+        )}
       </div>
     </div>
   );

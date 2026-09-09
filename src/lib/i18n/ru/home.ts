@@ -26,10 +26,15 @@ export const home: Dict["home"] = {
     communityMeetups: "Ближайшие встречи",
     communityPosts: "Свежие обсуждения",
     communityReplies: (n: number) => pluralized(n, ["ответ", "ответа", "ответов"]),
+    musicNew: "Новая музыка",
     whatsNew: "Что нового",
-    newsLocations: "Места съёмок",
+    // Заголовок плитки говорит, что места СВЕЖИЕ: просто «Места
+    // съёмок» читалось как раздел каталога, а не как новость (правка
+    // владельца 2026-09-10).
+    newsLocations: "Новые места съёмок",
+    newsLocationsWindow: "добавлены за месяц",
     newsLocationsCount: (n: number) =>
-        `${n} ${plural(n, ["место", "места", "мест"])} на карте`,
+        `+${n} ${plural(n, ["место", "места", "мест"])}`,
     newsFromFavourites: "релизы ваших артистов",
     newsFromCatalogue: "свежее в каталоге",
     listen: "Слушать ↗",
