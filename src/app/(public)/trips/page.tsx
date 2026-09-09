@@ -97,8 +97,15 @@ export default async function TripsPage() {
     <div>
       <PageHeader eyebrow={t.trips.eyebrow} title={t.trips.list.title} size="lg" className="mb-5" />
 
-      <div style={{ maxWidth: "44rem" }}>
-        <p className="text-secondary mb-3">{t.trips.list.intro}</p>
+      {/* Ширину держит только вступительный абзац: строка в 44rem
+          читается, а во всю страницу — нет. Сами поездки и приглашения
+          занимают всю ширину — как витрина сообществ (правка владельца
+          2026-09-10: «страницу мои поездки делаем на ширину всей
+          страницы»). */}
+      <div>
+        <p className="text-secondary mb-3" style={{ maxWidth: "44rem" }}>
+          {t.trips.list.intro}
+        </p>
         {invites.length > 0 && (
           <div className="mb-4 d-flex flex-column gap-2">
             <h2 className="section-heading mb-0">{t.trips.list.invites}</h2>

@@ -14,7 +14,10 @@ manually re-entering a date filter every time.
   (`.trip-progress`), visibility as small text. Ascending by start
   date; все предстоящие карточки равнозначные и приглушённые (без
   hero-варианта — фидбек владельца), past trips collapse into dimmed
-  compact rows (`.trip-card-past`) under a «Прошедшие» heading; creation lives behind a «+ Создать поездку»
+  compact rows (`.trip-card-past`) under a «Прошедшие» heading;
+  страница идёт **во всю ширину** (правка владельца 2026-09-10), в
+  44rem остался только вступительный абзац — как на витрине сообществ;
+  creation lives behind a «+ Создать поездку»
   button opening a `Modal` popup (`CreateTripButton.tsx`) rather than an
   always-visible form; в форме есть мультиселект «С кем едете»
   (EntityMultiSelect по друзьям, с аватарками) — выбранные друзья сразу

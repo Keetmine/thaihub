@@ -151,6 +151,12 @@ export default async function CommunitiesPage({
   const mineIds = new Set(mine.map((c) => c.id));
   const others = byMembers(publicCommunities.filter((c) => !mineIds.has(c.id)));
   const canCreate = isPremiumActive(user);
+  // Заводить сообщество — часть подписки; вступать и участвовать можно
+  // без неё (решение владельца). Апселл поэтому не стена, а колонка
+  // сбоку: раньше он стоял между вступлением и списком и своей высотой
+  // отодвигал сам список за экран — «пользователь может даже не
+  // долистать до списка» (правка владельца 2026-09-10).
+  const showUpsell = !!user && !canCreate;
 
   // Частые места вперёд, при равенстве — по алфавиту: ряд читается как
   // «где сообществ больше всего». Сортируем ЗДЕСЬ, а не в кэше: порядок
@@ -218,19 +224,11 @@ export default async function CommunitiesPage({
       {/* Ширину держит только вступительный абзац: строка в 44rem
           читается, а во всю страницу — нет. Сам список с этого места и
           ниже занимает всю ширину (правка владельца 2026-09-09). */}
+      <p className="text-secondary mb-4" style={{ maxWidth: "44rem" }}>
+        {t.communities.intro}
+      </p>
+
       <div>
-        <p className="text-secondary mb-3" style={{ maxWidth: "44rem" }}>
-          {t.communities.intro}
-        </p>
-
-        {/* Заводить сообщество — часть подписки; вступать и участвовать
-            можно без неё (решение владельца). */}
-        {user && !canCreate && (
-          <div className="mb-4">
-            <PremiumUpsell feature={t.communities.create} />
-          </div>
-        )}
-
         {/* Фильтр по месту. Ряда нет вовсе, пока ни одно сообщество не
             назвало страну: пустая панель фильтров — это шум. */}
         {countries.length > 0 && (
@@ -317,6 +315,15 @@ export default async function CommunitiesPage({
             hint={country ? s.emptyPlaceHint : t.communities.emptyHint}
             compact
           />
+        )}
+
+        {/* Апселл — ПОД списком (правка владельца 2026-09-10). Раньше
+            он стоял над ним и своей высотой отодвигал сам список за
+            экран: «пользователь может даже не долистать до списка». */}
+        {showUpsell && (
+          <div className="mt-5">
+            <PremiumUpsell feature={t.communities.create} />
+          </div>
         )}
       </div>
     </div>
