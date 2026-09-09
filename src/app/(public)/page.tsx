@@ -540,8 +540,6 @@ export default async function HomePage({
     watchingNow.length > 0 ? "watching" : null,
     communityCount > 0 ? "communities" : null,
     friendIds.length > 0 ? "friends" : null,
-    onThisDayCard ? "onThisDay" : null,
-    "news",
   ].filter((k): k is string => !!k);
 
   const spanOf = new Map<string, string>();
@@ -700,7 +698,7 @@ export default async function HomePage({
             ) : (
               <div className="row g-3 stagger">
                 {goingCards.map((card) => (
-                  <div key={card.key} className="col-6">
+                  <div key={card.key} className="col-4">
                     <PosterTile
                       href={card.href}
                       posterUrl={card.posterUrl}
@@ -904,18 +902,47 @@ export default async function HomePage({
           </div>
         )}
 
-        {/* Новинки каталога — во всю строку: лента из карточек в узкой
-            плитке рассыпалась бы по одной в ряд. */}
-        {/* «В этот день» стоит рядом с новинками (правка владельца
-            2026-09-10): обе плитки — про каталог, а не про мои планы, и
-            в паре они закрывают последнюю строку. */}
-        {onThisDayCard && (
-          <div className="bento-tile" data-span={span("onThisDay")}>
-            {onThisDayCard}
-          </div>
-        )}
+        {/* Последний ряд — узкий столбец из двух плиток и высокая
+            музыкальная лента рядом. Места съёмок уехали из «Что нового»
+            в свою плитку (правка владельца 2026-09-10): на витрине
+            /music одна музыка, и мешать туда места было нелогично. */}
+        <div className="d-flex flex-column gap-3" data-span="5">
+          {locationNews.length > 0 && (
+            <div className="bento-tile">
+              <h2 className="section-heading mb-3">
+                📍 {dict.home.newsLocations}
+              </h2>
+              <div className="row g-2 stagger">
+                {locationNews.map((item) => (
+                  <div key={`loc-${item.dramaId}`} className="col-12">
+                    <Link
+                      href={dramaHref(item)}
+                      className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
+                    >
+                      <LetterAvatar
+                        name={dramaTitleForLocale(item, locale)}
+                        photoUrl={item.posterUrl}
+                        size={3}
+                        rounded={false}
+                      />
+                      <div style={{ minWidth: 0 }} className="flex-grow-1">
+                        <span className="text-white d-block text-truncate">
+                          {dramaTitleForLocale(item, locale)}
+                        </span>
+                        <span className="small text-secondary">
+                          {dict.home.newsLocationsCount(item.count)}
+                        </span>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {onThisDayCard && <div className="bento-tile">{onThisDayCard}</div>}
+        </div>
 
-        <section className="bento-tile" data-span={span("news")}>
+        <section className="bento-tile" data-span="7">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <h2 className="section-heading mb-0">{dict.home.whatsNew}</h2>
             <span className="small text-secondary">
@@ -930,41 +957,6 @@ export default async function HomePage({
               </Link>
             </span>
           </div>
-
-          {/* Места съёмок — первыми строками ленты: их приносит прогон
-            blscene, и это единственное место на витрине, где видно, что
-            у сериала появились новые точки (просьба владельца
-            2026-09-06). */}
-          {locationNews.length > 0 && (
-            <div className="row g-2 stagger mb-2">
-              {locationNews.map((item) => (
-                <div key={`loc-${item.dramaId}`} className="col-12 col-md-6">
-                  <Link
-                    href={dramaHref(item)}
-                    className="surface surface-hover d-flex align-items-center gap-3 p-3 h-100 text-decoration-none"
-                  >
-                    <LetterAvatar
-                      name={dramaTitleForLocale(item, locale)}
-                      photoUrl={item.posterUrl}
-                      size={4}
-                      rounded={false}
-                    />
-                    <div style={{ minWidth: 0 }} className="flex-grow-1">
-                      <span className="text-white d-block text-truncate">
-                        {dramaTitleForLocale(item, locale)}
-                      </span>
-                      <span className="small text-secondary d-block">
-                        {dict.home.newsLocations}
-                      </span>
-                      <span className="small text-secondary">
-                        {dict.home.newsLocationsCount(item.count)}
-                      </span>
-                    </div>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
 
           {news.length === 0 ? (
             <EmptyState
