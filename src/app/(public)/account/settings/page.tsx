@@ -11,7 +11,8 @@ import {
   updateNotificationPrefs,
   deleteOwnAccount,
 } from "../actions";
-import { restartTour } from "../tourActions";
+// import { restartTour } from "../tourActions"; — вернётся вместе с
+// блоком тура, см. ниже и docs/roadmap.md.
 import ChangePasswordForm from "./ChangePasswordForm";
 import IcsFeedSection from "./IcsFeedSection";
 import InviteFriendSection from "./InviteFriendSection";
@@ -371,8 +372,10 @@ export default async function SettingsPage({
               <InviteFriendSection refValue={user.username ?? user.id} />
             </div>
 
-            {/* Тур по интерфейсу — пройти заново. Полезно и когда
-                появляются новые разделы. */}
+            {/* Блок «Тур по интерфейсу» скрыт (решение владельца
+                2026-09-10): тур ждёт переделки, и звать в него из
+                настроек незачем. Экшен restartTour и сам компонент
+                остались на месте — см. docs/roadmap.md.
             <div className="surface p-4">
               <h2 className="section-heading mb-1">{s.tourTitle}</h2>
               <p className="small text-secondary mb-3">{s.tourHint}</p>
@@ -382,6 +385,7 @@ export default async function SettingsPage({
                 </button>
               </form>
             </div>
+            */}
           </div>
         }
         privacy={

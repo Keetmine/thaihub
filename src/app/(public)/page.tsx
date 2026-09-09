@@ -412,31 +412,49 @@ export default async function HomePage({
   // (правка владельца 2026-09-10), поэтому в этом случае раскладка
   // другая: панель узкой полосой во всю ширину, а календарные карточки —
   // рядом друг с другом под ней.
-  // Цифра-акцент для первой плитки (референсы владельца 2026-09-10:
-  // «17k+», «258+» — крупное число и подпись). Берём ОДНО самое живое
-  // из того, что уже посчитано для страницы, по убыванию важности:
-  // ближайшая поездка → сколько событий в плане → сколько сериалов
-  // смотрю. Нечего показать — плитки нет, и сетка сомкнётся сама.
-  const accent: { value: string; label: string } | null =
-    upcomingTrips.length > 0
-      ? {
-          value: countdown(upcomingTrips[0].startDate, dict),
-          label: upcomingTrips[0].title,
-        }
-      : goingCards.length > 0
-        ? { value: String(goingCards.length), label: dict.home.accentGoing }
-        : watchingNow.length > 0
-          ? {
-              value: String(watchingNow.length),
-              label: dict.home.accentWatching,
-            }
-          : null;
+  // Призывы для того, у кого страница ещё пустая (правка владельца
+  // 2026-09-10: «для юзера, который только зарегался, справа куча
+  // пустого пространства; добавить больше CTA»). Показываем ровно то,
+  // чего у человека НЕТ, — и не показываем ничего, когда всё уже есть.
+  // Ссылки ведут в разделы, а не в онбординг: тур человек уже прошёл.
+  const startCards = [
+    favoritePerformers === 0 && {
+      href: "/artists",
+      emoji: "⭐️",
+      title: dict.home.startArtists,
+      hint: dict.home.startArtistsHint,
+    },
+    watchingNow.length === 0 && {
+      href: "/dramas",
+      emoji: "📺",
+      title: dict.home.startDramas,
+      hint: dict.home.startDramasHint,
+    },
+    friendIds.length === 0 && {
+      href: "/friends",
+      emoji: "🤝",
+      title: dict.home.startFriends,
+      hint: dict.home.startFriendsHint,
+    },
+    communityCount === 0 && {
+      href: "/communities",
+      emoji: "🫂",
+      title: dict.home.startCommunities,
+      hint: dict.home.startCommunitiesHint,
+    },
+  ].filter(
+    (c): c is { href: string; emoji: string; title: string; hint: string } =>
+      !!c,
+  );
 
   const upcomingThin =
     upcomingTrips.length === 0 && (!premium || goingCards.length === 0);
 
   const birthdaysCard = hasBirthdays ? (
-    <section className="surface p-4 h-100">
+    // Скругление асимметричное (.bento-tile--leaf): плитка перестаёт
+    // читаться как ячейка таблицы, фон «обтекает» содержимое —
+    // референс владельца 2026-09-10.
+    <section className="surface bento-tile--leaf p-4 h-100">
       <h2 className="section-heading mb-3">🎂 {dict.home.birthdays}</h2>
       <div className="d-flex flex-column gap-3">
         {birthdayFriends.map((f) => (
@@ -526,14 +544,19 @@ export default async function HomePage({
           высоту задаёт содержимое, а дырки в потоке закрывает следующая
           подходящая плитка. */}
       <div className="bento mb-4">
-        {/* Приветствие — крупный текстовый акцент из референсов: имя во
-            всю плитку. Чипы разделов тут же, под именем: раньше они
-            жили в шапке справа и на узком экране уезжали под заголовок
-            вторым рядом. */}
-        <div className="bento-tile" data-span="8">
+        {/* Приветствие — БЕЗ плитки, прямо на фоне страницы (правка
+            владельца 2026-09-10, референс MNear: «не нравится, что
+            визуально всё карточками, текст должен быть вне фона»). Имя
+            выделено акцентным цветом: в строке это единственное «своё»
+            слово. Чипы разделов тут же — раньше они жили в шапке
+            справа и на узком экране уезжали вторым рядом. */}
+        <div className="bento-hello" data-span="12">
           <span className="eyebrow">{dict.home.eyebrow}</span>
           <p className="bento-hero-name font-display fw-medium text-white mt-2 mb-3">
-            {dict.home.greeting(userDisplayName(user, locale))}
+            {dict.home.hello}{" "}
+            <span className="bento-hello-name">
+              {userDisplayName(user, locale)}
+            </span>
           </p>
           <div className="d-flex flex-wrap gap-2">
             <Link href="/events" className="chip-link">
@@ -548,21 +571,38 @@ export default async function HomePage({
           </div>
         </div>
 
-        {/* Цифра-акцент. Показываем ОДНО самое живое число из тех, что
-            уже посчитаны для страницы: ближайшая поездка важнее плана на
-            события, план — важнее счётчика «смотрю». Нечего показать —
-            плитки нет вовсе, и сетка сомкнётся сама. */}
-        {accent && (
-          <div
-            className="bento-tile d-flex flex-column justify-content-center"
-            data-span="4"
+        {/* «С чего начать» — только то, чего у человека ещё нет. Это и
+            есть лекарство от «справа куча пустого пространства»: пустые
+            места в сетке занимают призывы, а не воздух. Пунктирная
+            рамка вместо фона — чтобы они не притворялись готовыми
+            блоками с содержимым. */}
+        {startCards.map((card) => (
+          <Link
+            key={card.href}
+            href={card.href}
+            className="bento-cta"
+            // Ширина — чтобы призывы ложились ровно в строку: четыре по
+            // 3, три по 4, два по 6. Один — узкой плиткой рядом с
+            // остальным содержимым, а не полосой во всю страницу.
+            data-span={
+              startCards.length >= 4
+                ? "3"
+                : startCards.length === 3
+                  ? "4"
+                  : startCards.length === 2
+                    ? "6"
+                    : "4"
+            }
           >
-            <p className="bento-figure font-display fw-medium mb-1">
-              {accent.value}
-            </p>
-            <p className="small text-secondary mb-0">{accent.label}</p>
-          </div>
-        )}
+            <span className="bento-cta-emoji" aria-hidden>
+              {card.emoji}
+            </span>
+            <span className="font-display fw-medium text-white">
+              {card.title}
+            </span>
+            <span className="small text-secondary">{card.hint}</span>
+          </Link>
+        ))}
 
         {/* «Что впереди» — план и поездки одной плиткой: и то и другое
             отвечает на вопрос «что у меня скоро». Ширину просит по
@@ -667,8 +707,12 @@ export default async function HomePage({
         {/* «Выходит сегодня» и «Смотрю сейчас» — плитки в той же сетке
             (правка владельца 2026-09-10; до бенто это был отдельный ряд
             из двух колонок). */}
+        {/* «Выходит сегодня» и «Смотрю сейчас» — БЕЗ фона-плитки
+            (правка владельца 2026-09-10: «не нравится, что визуально всё
+            карточками»). Их держит заголовок и собственные строки-
+            карточки внутри, рамка вокруг рамок только дробила бы ряд. */}
         {airingToday.length > 0 && (
-          <div className="bento-tile" data-span="6">
+          <div data-span="6">
             <section className="h-100 d-flex flex-column">
               {/* И9: из блока должен быть выход в календарь серий — раньше
               человек видел сегодняшнее и не догадывался, что есть
@@ -771,7 +815,7 @@ export default async function HomePage({
         )}
 
         {watchingNow.length > 0 && (
-          <div className="bento-tile" data-span="6">
+          <div data-span="6">
             <section className="h-100 d-flex flex-column">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                 <h2 className="section-heading mb-0">

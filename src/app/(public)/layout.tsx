@@ -104,8 +104,12 @@ export default async function PublicLayout({ children }: { children: React.React
   // приходили молча, пока не появилась лента (features/notifications.md).
   // null у гостя — колокольчика нет, и опрашивать сервер незачем.
   const unreadNotifications = fullUser ? await unreadNotificationCount(fullUser.id) : null;
-  // Тур запускается сам, пока человек его не прошёл и не закрыл.
-  const showTour = !!fullUser && !fullUser.tourCompletedAt;
+  // Тур ВЫКЛЮЧЕН (решение владельца 2026-09-10: «визуально не нравится,
+  // переделать»). Код тура цел и работает — снят только автозапуск после
+  // регистрации и кнопка в настройках; вернуть его — это поставить
+  // сюда прежнее условие `!fullUser.tourCompletedAt`. Задача на
+  // переделку записана в docs/roadmap.md.
+  const showTour = false;
   // Предложение привязать Telegram — тем, кто зарегистрировался почтой
   // (правка владельца 2026-09-06). Условия нарочно строгие: попап в
   // лицо новичку — худшее, что можно сделать со свежим аккаунтом.

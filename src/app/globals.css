@@ -7650,3 +7650,63 @@ body::after {
   letter-spacing: -0.03em;
   color: var(--bs-body-color);
 }
+
+/* ---------- Бенто: акценты и «не всё карточками» ----------
+
+   Правка владельца 2026-09-10 (референс — MNear studio): «не нравится,
+   что визуально всё карточками; текст должен быть вне фона, а сам фон —
+   не стандартный прямоугольник».
+
+   Отсюда три вещи: приветствие живёт БЕЗ плитки прямо на фоне
+   страницы; часть блоков (личное расписание) тоже без фона — они
+   держатся заголовком, а не рамкой; а плиткам, которые остаются
+   карточками, разрешено скругляться асимметрично. */
+
+/* Приветствие. Ник — акцентным цветом: в референсе крупная строка
+   всегда разноцветная, а у нас единственное «своё» слово в ней — имя. */
+.bento-hello {
+  padding: 0.5rem 0 0.25rem;
+}
+
+.bento-hello-name {
+  color: var(--bs-primary-text-emphasis);
+}
+
+/* Асимметричное скругление: один угол сильно круглее остальных — фон
+   перестаёт читаться как таблица и «обтекает» содержимое. Чередуем
+   сторону у соседей, иначе повтор выглядит как ошибка. */
+.bento-tile--leaf {
+  border-radius: var(--bs-border-radius-xl) 3.5rem var(--bs-border-radius-xl)
+    var(--bs-border-radius-xl);
+}
+
+.bento-tile--leaf-start {
+  border-radius: 3.5rem var(--bs-border-radius-xl) var(--bs-border-radius-xl)
+    var(--bs-border-radius-xl);
+}
+
+/* Плитка-призыв для того, у кого ещё пусто: без фона-карточки, только
+   пунктирная рамка — она читается как «здесь пока ничего нет, но можно
+   начать», а не как готовый блок с содержимым. */
+.bento-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: var(--bs-border-radius-xl);
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.bento-cta:hover {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background-color: rgba(var(--accent-rgb), 0.05);
+}
+
+.bento-cta-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
