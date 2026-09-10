@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Children, Fragment, useState, type ReactNode } from "react";
 
 /**
  * Свёртка тегов на карточке сериала: первые N рендерит сервер, хвост
@@ -22,6 +22,23 @@ export default function TagRowFold({
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  /**
+   * Между тегами нужен НАСТОЯЩИЙ пробел. Массив элементов React
+   * склеивает встык, а перенос строки бывает только по пробелу — и
+   * строка тегов не переносилась вовсе: на телефоне она уезжала за
+   * экран и тянула за собой горизонтальный скролл всей страницы
+   * (жалоба владельца 2026-09-10, /dramas/muteluv — 832px при экране
+   * 390px). Зазор при этом остаётся прежним: половину даёт пробел,
+   * половину — margin-right в .tag-row (уменьшен на ту же величину).
+   */
+  const spaced = (nodes: ReactNode) =>
+    Children.toArray(nodes).map((child, i) => (
+      <Fragment key={i}>
+        {i > 0 ? " " : null}
+        {child}
+      </Fragment>
+    ));
+
   // Обычный текстовый поток, а не flex-раскладка (правка владельца
   // 2026-09-07): во flex «ещё N» — такой же элемент, как тег, и стоило
   // тегам занять строку целиком, кнопка съезжала на следующую одна.
@@ -29,12 +46,15 @@ export default function TagRowFold({
   // вплотную за последним тегом, где бы тот ни оказался.
   return (
     <div className="tag-row" style={{ minWidth: 0 }}>
-      {visible}
-      {expanded && rest}
+      {spaced(visible)}
+      {expanded && <> {spaced(rest)}</>}
       {rest != null && !expanded && (
-        <button type="button" className="tag-more-link" onClick={() => setExpanded(true)}>
-          {moreLabel}
-        </button>
+        <>
+          {" "}
+          <button type="button" className="tag-more-link" onClick={() => setExpanded(true)}>
+            {moreLabel}
+          </button>
+        </>
       )}
     </div>
   );
