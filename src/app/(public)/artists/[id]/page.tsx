@@ -345,7 +345,17 @@ export default async function PerformerPage({
     d.status === "IN_PRODUCTION" ||
     d.status === "PILOT" ||
     (dramaAirTime(d) ?? -Infinity) > nowMs;
+  // Отменённые — в самый конец всего списка (правка владельца
+  // 2026-09-10). Формально они TBA (даты нет и не будет), но вести ими
+  // фильмографию нельзя: проект закрыт. На карточке они помечены
+  // бейджем «Отменён» — иначе внизу списка они читались бы просто как
+  // «что-то недозаполненное».
+  const isCanceled = (d: (typeof performer.dramas)[number]["drama"]) =>
+    d.status === "CANCELED";
   const sortedDramas = [...performer.dramas].sort((a, b) => {
+    const canA = isCanceled(a.drama);
+    const canB = isCanceled(b.drama);
+    if (canA !== canB) return canA ? 1 : -1;
     const tA = dramaAirTime(a.drama);
     const tB = dramaAirTime(b.drama);
     // TBA впереди всего — и статус тут не при чём: важно, что даты нет.
@@ -1025,9 +1035,16 @@ export default async function PerformerPage({
                         }}
                       />
                     )}
-                    {pd.drama.status === "RETURNING_SERIES" && (
+                    {/* Бейдж на постере — только там, где статус меняет
+                        смысл строки: «Выходит» (идёт прямо сейчас) и
+                        «Отменён» (правка владельца 2026-09-10: такие
+                        уехали в конец списка, и без пометки было бы
+                        непонятно, почему они там). Остальные статусы
+                        читаются из года под названием. */}
+                    {(pd.drama.status === "RETURNING_SERIES" ||
+                      pd.drama.status === "CANCELED") && (
                       <span
-                        className={`badge rounded-pill ${DRAMA_STATUS_BADGE_CLASS.RETURNING_SERIES}`}
+                        className={`badge rounded-pill poster-status-badge ${DRAMA_STATUS_BADGE_CLASS[pd.drama.status]}`}
                         style={{
                           position: "absolute",
                           top: "0.375rem",
@@ -1035,7 +1052,7 @@ export default async function PerformerPage({
                           fontSize: "0.6rem",
                         }}
                       >
-                        {t.catalog.dramaStatus.RETURNING_SERIES}
+                        {t.catalog.dramaStatus[pd.drama.status]}
                       </span>
                     )}
                   </div>

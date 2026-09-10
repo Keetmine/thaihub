@@ -311,7 +311,9 @@ export default async function AgencyDetailPage({
                   )}
                   {d.status === "RETURNING_SERIES" && (
                     <span
-                      className={`badge rounded-pill ${DRAMA_STATUS_BADGE_CLASS.RETURNING_SERIES}`}
+                      // Подложка — общая для бейджей поверх постера
+                      // (см. .poster-status-badge в globals.css).
+                      className={`badge rounded-pill poster-status-badge ${DRAMA_STATUS_BADGE_CLASS.RETURNING_SERIES}`}
                       style={{ position: "absolute", top: "0.375rem", left: "0.375rem", fontSize: "0.6rem" }}
                     >
                       {t.catalog.dramaStatus.RETURNING_SERIES}
