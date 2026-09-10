@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import type { ContentDict } from "@/lib/contentDictionary";
 import { prisma } from "@/lib/prisma";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import type { Prisma } from "@/generated/prisma/client";
@@ -164,7 +165,14 @@ export const loadDramaFilterOptions = unstable_cache(
 
 export type DramaFilterOptions = Awaited<ReturnType<typeof loadDramaFilterOptions>>;
 
-export function dramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
+export function dramaFilterDefs(
+  t: Dict,
+  o: DramaFilterOptions,
+  /** Словарь повторяющихся значений: подписи жанров, стран и типов
+   *  правит владелец в админке (см. contentDictionary.ts). Значения в
+   *  фильтре остаются СЫРЫМИ — по ним ищет каталог. */
+  contentDict: ContentDict,
+): FilterDef[] {
   const plain = (values: string[]) => values.map((v) => ({ value: v, label: v }));
   // Канала здесь нет сознательно (правка владельца): зрителю он мало
   // что говорит. В админке остаётся — adminDramaFilterDefs.
@@ -183,14 +191,14 @@ export function dramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
       kind: "multi",
       // ЗНАЧЕНИЕ остаётся сырым — по нему ищет каталог и живут ссылки;
       // переводится только подпись (правка владельца 2026-09-10).
-      options: o.genres.map((v) => ({ value: v, label: t.catalog.dramaGenre(v) })),
+      options: o.genres.map((v) => ({ value: v, label: contentDict.genre(v) })),
       hint: t.filters.hints.genres,
     },
     {
       key: "country",
       title: t.filters.country,
       kind: "multi",
-      options: o.countries.map((v) => ({ value: v, label: t.catalog.dramaCountry(v) })),
+      options: o.countries.map((v) => ({ value: v, label: contentDict.country(v) })),
       hint: t.filters.hints.country,
       alwaysShow: true,
     },
@@ -198,7 +206,7 @@ export function dramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
       key: "type",
       title: t.filters.type,
       kind: "multi",
-      options: o.types.map((v) => ({ value: v, label: t.catalog.dramaType(v) })),
+      options: o.types.map((v) => ({ value: v, label: contentDict.dramaType(v) })),
       hint: t.filters.hints.type,
     },
     {
@@ -609,9 +617,13 @@ export function musicFilterWhere(p: FilterParams): MusicFilterWhere {
 /* срезы не нужны, владельцу они — рабочий список на день.             */
 /* ------------------------------------------------------------------ */
 
-export function adminDramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
+export function adminDramaFilterDefs(
+  t: Dict,
+  o: DramaFilterOptions,
+  contentDict: ContentDict,
+): FilterDef[] {
   return [
-    ...dramaFilterDefs(t, o),
+    ...dramaFilterDefs(t, o, contentDict),
     // Канал скрыт с публичной страницы, но владельцу нужен.
     {
       key: "network",

@@ -1,4 +1,5 @@
 import UploadImage from "@/components/UploadImage";
+import { getContentDict } from "@/lib/contentDictionary.server";
 import {
   pageMetadata,
   JsonLd,
@@ -188,6 +189,9 @@ export default async function DramaDetailPage({
 }) {
   const { id: rawId } = await params;
   const { locale, t } = await getT();
+  // Словарь повторяющихся значений (жанры и т.п.): правки владельца
+  // из админки поверх значений по умолчанию — см. contentDictionary.ts.
+  const contentDict = await getContentDict();
 
   // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
   // дёргается один раз на HTTP-запрос.
@@ -797,7 +801,7 @@ export default async function DramaDetailPage({
                         {/* Значение в ссылке — сырое (по нему ищет
                             каталог), на экране — словарное (см.
                             fromDict в i18n/ru/catalog.ts). */}
-                        {t.catalog.dramaGenre(g)}
+                        {contentDict.genre(g)}
                       </AppLink>
                     ))}
                   </span>

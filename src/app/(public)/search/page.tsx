@@ -1,6 +1,7 @@
 // Ссылки — через AppLink: со страницы /ru/search обычный next/link увёл
 // бы на английскую версию каталога.
 import AppLink from "@/components/AppLink";
+import { getContentDict } from "@/lib/contentDictionary.server";
 import PageHeader from "@/components/PageHeader";
 import { SearchIcon } from "@/components/icons";
 import { prisma } from "@/lib/prisma";
@@ -166,7 +167,7 @@ async function SectionResults({
 
   if (section === "dramas") {
     const options = await loadDramaFilterOptions();
-    defs = dramaFilterDefs(t, options);
+    defs = dramaFilterDefs(t, options, await getContentDict());
     const where = {
       AND: [...(q ? [dramaTitleWhere(q)] : []), ...dramaFilterWhere(params)],
     };

@@ -1,4 +1,5 @@
 import LetterAvatar from "@/components/LetterAvatar";
+import { getContentDict } from "@/lib/contentDictionary.server";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteDrama } from "./actions";
@@ -308,7 +309,7 @@ export default async function AdminDramasPage({
         buildHref={(p) => adminListHref("/admin/dramas", sp, { page: p })}
       />
       </div>
-      <AdminFilters defs={adminDramaFilterDefs(getDict("ru"), await loadDramaFilterOptions())} params={sp} />
+      <AdminFilters defs={adminDramaFilterDefs(getDict("ru"), await loadDramaFilterOptions(), await getContentDict())} params={sp} />
       </div>
     </div>
   );

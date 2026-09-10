@@ -1,25 +1,6 @@
 import { plural, pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
-/**
- * Словарный перевод значения-строки из импорта: жанр, занятие,
- * инструмент, национальность (правка владельца 2026-09-10).
- *
- * Такие поля — НЕ уникальные тексты, а повторяющиеся значения: жанров
- * три десятка на пять тысяч сериалов. Переводить их у каждой записи
- * бессмысленно и невозможно поддерживать — один словарь накрывает и
- * весь каталог, и всё, что импортируется дальше.
- *
- * Ключи в нижнем регистре: источники пишут одно и то же вразнобой
- * («Actor» и «actor», «Guitar» и «guitar»). Незнакомое значение
- * возвращаем КАК ЕСТЬ — пустое место вместо жанра хуже английского
- * слова.
- */
-function fromDict(raw: string, dict: Record<string, string>): string {
-    return dict[raw.trim().toLowerCase()] ?? raw;
-}
-
-
 export const catalog: Dict["catalog"] = {
     eyebrow: "Каталог",
     all: "Все",
@@ -129,19 +110,6 @@ export const catalog: Dict["catalog"] = {
         PILOT: "Пилот",
     },
 
-    /** Тип записи из MDL (`Drama.type` — свободная строка, не enum):
-     *  переводим известные значения, незнакомое показываем как есть. */
-    dramaType: (raw: string): string =>
-        ((
-            {
-                Drama: "Сериал",
-                Movie: "Фильм",
-                "TV Show": "Шоу",
-                "TV Program": "Шоу",
-                Special: "Спешл",
-            } as Record<string, string>
-        )[raw] ?? raw),
-
     /** Подписи колонок таблицы сериалов. Общие для каталога /dramas и
      *  вкладки «Сериалы» в профиле: таблицы задуманы роднёй, и два
      *  словаря разъехались бы («Статус просмотра» против «Статус»). */
@@ -154,111 +122,6 @@ export const catalog: Dict["catalog"] = {
         episodes: "Серии",
         rating: "Оценка",
     },
-
-    /** Жанр сериала (`Drama.genres`, свободные строки с MDL). Словарь,
-     *  а не перевод у каждой записи: значений всего три десятка, и одно
-     *  переведённое накрывает тысячи сериалов сразу — включая те, что
-     *  импортируются завтра. Незнакомое показываем как есть. */
-    dramaGenre: (raw: string): string => fromDict(raw, {
-        romance: "Романтика",
-        drama: "Драма",
-        comedy: "Комедия",
-        mystery: "Детектив",
-        youth: "Молодёжное",
-        thriller: "Триллер",
-        action: "Экшен",
-        life: "О жизни",
-        fantasy: "Фэнтези",
-        supernatural: "Мистика",
-        melodrama: "Мелодрама",
-        historical: "Историческое",
-        crime: "Криминал",
-        family: "Семейное",
-        horror: "Ужасы",
-        music: "Музыка",
-        business: "Бизнес",
-        psychological: "Психологическое",
-        "sci-fi": "Фантастика",
-        food: "Еда",
-        sports: "Спорт",
-        medical: "Медицина",
-        law: "Юридическое",
-        political: "Политика",
-        documentary: "Документальное",
-        adventure: "Приключения",
-        sitcom: "Ситком",
-        wuxia: "Уся",
-        mature: "Для взрослых",
-        tokusatsu: "Токусацу",
-        war: "Война",
-        military: "Военное",
-        "martial arts": "Боевые искусства",
-    }),
-
-    /** Национальность артиста (`Performer.nationality`). Прилагательным,
-     *  а не страной: строка стоит после подписи «Национальность:», и
-     *  «Таиланд» там читается как место, а не как ответ. Форма женского
-     *  рода согласуется с самим словом «национальность», о человеке
-     *  ничего не утверждая. */
-    performerNationality: (raw: string): string => fromDict(raw, {
-        thai: "тайская",
-        "south korean": "южнокорейская",
-        japanese: "японская",
-        singaporean: "сингапурская",
-        vietnamese: "вьетнамская",
-        chinese: "китайская",
-        taiwanese: "тайваньская",
-        filipino: "филиппинская",
-    }),
-
-    /** Занятие артиста (`Performer.occupation`). Источники пишут вразнобой
-     *  («Actor» и «actor»), поэтому сравнение без учёта регистра. */
-    performerOccupation: (raw: string): string => fromDict(raw, {
-        actor: "актёр",
-        actress: "актриса",
-        singer: "певец",
-        "singer-songwriter": "автор-исполнитель",
-        rapper: "рэпер",
-        model: "модель",
-        producer: "продюсер",
-        lyricist: "автор текстов",
-        musician: "музыкант",
-        trainee: "трейни",
-        youtuber: "ютубер",
-        "graphic designer": "графический дизайнер",
-        businessman: "предприниматель",
-        bussinesman: "предприниматель",
-        dancer: "танцор",
-        host: "ведущий",
-    }),
-
-    /** Инструмент артиста (`Performer.instruments`). */
-    performerInstrument: (raw: string): string => fromDict(raw, {
-        guitar: "гитара",
-        drums: "барабаны",
-        drum: "барабаны",
-        piano: "фортепиано",
-        bass: "бас-гитара",
-        violin: "скрипка",
-        phin: "пхин",
-        keyboard: "клавишные",
-        ukulele: "укулеле",
-    }),
-
-    /** Страна производства (`Drama.country`, строка с MDL). */
-    dramaCountry: (raw: string): string =>
-        ((
-            {
-                Thailand: "Таиланд",
-                "South Korea": "Южная Корея",
-                Japan: "Япония",
-                China: "Китай",
-                Taiwan: "Тайвань",
-                "Hong Kong": "Гонконг",
-                Philippines: "Филиппины",
-                Singapore: "Сингапур",
-            } as Record<string, string>
-        )[raw] ?? raw),
 
     albumType: {
         ALBUM: "Альбом",
@@ -463,7 +326,11 @@ export const catalog: Dict["catalog"] = {
         birthDate: "Дата рождения:",
         birthdayToday: "Сегодня день рождения",
         age: (years: number) => `${years} ${plural(years, ["год", "года", "лет"])}`,
-        nationality: "Национальность:",
+        // «Страна», а не «Национальность» (правка владельца 2026-09-10):
+        // о стране можно сказать спокойно, а национальность — разговор,
+        // в который каталогу лезть незачем. Поле в базе осталось
+        // Performer.nationality, меняется только то, что видит человек.
+        nationality: "Страна:",
         // Без рода (правило владельца): подпись видят на страницах и
         // актёров, и актрис, и групп.
         alsoKnownAs: "Другие имена:",

@@ -132,6 +132,7 @@ const NAV_SECTIONS: {
     items: [
       { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
       { href: "/admin/finance", title: "Финансы", icon: StarIcon },
+      { href: "/admin/translations", title: "Словарь каталога", icon: BookIcon },
       { href: "/admin/settings", title: "Настройки", icon: SettingsIcon },
     ],
   },

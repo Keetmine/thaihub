@@ -1,4 +1,5 @@
 import { JsonLd, pageMetadata, personJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { getContentDict } from "@/lib/contentDictionary.server";
 import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -139,6 +140,7 @@ export default async function PerformerPage({
 }) {
   const { id: rawId } = await params;
   const { locale, t } = await getT();
+  const contentDict = await getContentDict();
   const { events: eventsTab } = await searchParams;
   const showPastEvents = eventsTab === "past";
   // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
@@ -671,7 +673,7 @@ export default async function PerformerPage({
             <p className="small text-secondary mb-0">
               <PinIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.catalog.artist.nationality}</span>{" "}
-              {t.catalog.performerNationality(performer.nationality)}
+              {contentDict.performerCountry(performer.nationality)}
             </p>
           )}
           {!isBand && performer.alsoKnownAs && (
@@ -698,13 +700,13 @@ export default async function PerformerPage({
           {performer.occupation.length > 0 && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.occupation}</span>{" "}
-              {performer.occupation.map((o) => t.catalog.performerOccupation(o)).join(", ")}
+              {performer.occupation.map((o) => contentDict.occupation(o)).join(", ")}
             </p>
           )}
           {performer.instruments.length > 0 && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.instruments}</span>{" "}
-              {performer.instruments.map((i) => t.catalog.performerInstrument(i)).join(", ")}
+              {performer.instruments.map((i) => contentDict.instrument(i)).join(", ")}
             </p>
           )}
           {performer.soloDebut && (

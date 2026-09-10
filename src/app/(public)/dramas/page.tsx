@@ -1,4 +1,5 @@
 import UploadImage from "@/components/UploadImage";
+import { getContentDict } from "@/lib/contentDictionary.server";
 import AppLink from "@/components/AppLink";
 import ScrollableTabs from "@/components/ScrollableTabs";
 import { CalendarIcon } from "@/components/icons";
@@ -263,6 +264,9 @@ export default async function DramasPage({
   // приезжают картой statusByDramaId. Список тут в сотни строк, не в
   // тысячи (гостю — свежие 60, своему — только отмеченные, поиску —
   // предел выдачи), так что сортировка памяти стоит копейки.
+  // Подписи типа и страны — из правимого словаря (админка), а не из
+  // i18n: справочник один на все страницы и на обе половины сайта.
+  const contentDict = await getContentDict();
   const collator = new Intl.Collator(locale);
   const sortValue = (d: (typeof dramas)[number]): string | number | null => {
     const entry = statusByDramaId.get(d.id) ?? null;
@@ -274,11 +278,11 @@ export default async function DramasPage({
         // а не по алфавиту подписи; без отметки — пусто, вниз.
         return entry ? WATCH_STATUS_ORDER.indexOf(entry.status) : null;
       case "type":
-        return d.type ? t.catalog.dramaType(d.type) : null;
+        return d.type ? contentDict.dramaType(d.type) : null;
       case "year":
         return d.year;
       case "country":
-        return d.country ? t.catalog.dramaCountry(d.country) : null;
+        return d.country ? contentDict.country(d.country) : null;
       case "rating":
         // По СВОЕЙ оценке: колонка про неё, а сводная стоит у названия.
         return entry?.rating ?? null;
@@ -539,10 +543,10 @@ export default async function DramasPage({
                     ""
                   )}
                 </span>
-                <span className={styles.colType}>{d.type ? t.catalog.dramaType(d.type) : ""}</span>
+                <span className={styles.colType}>{d.type ? contentDict.dramaType(d.type) : ""}</span>
                 <span className={styles.colYear}>{d.year ?? ""}</span>
                 <span className={styles.colCountry}>
-                  {d.country ? t.catalog.dramaCountry(d.country) : ""}
+                  {d.country ? contentDict.country(d.country) : ""}
                 </span>
                 <span className={`${styles.colRating} table-status-cell`}>
                   {/* Своя оценка (АА2) — правится прямо в строке, как и

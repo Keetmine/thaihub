@@ -7,7 +7,8 @@ import { formatRating } from "@/components/StarRatingInput";
 import { useMemo, useState } from "react";
 import AppLink from "@/components/AppLink";
 import SubTabs from "@/components/SubTabs";
-import { useLocale, useT } from "@/components/LocaleProvider";
+import { useContentDict, useLocale, useT } from "@/components/LocaleProvider";
+import type { ContentDict } from "@/lib/contentDictionary";
 import { dramaHref } from "@/lib/slugHelpers";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { WATCH_STATUS_ORDER, episodeProgress } from "@/lib/watchStatus";
@@ -64,6 +65,9 @@ export default function DramasTable({
   editable?: boolean;
 }) {
   const t = useT();
+  // Подписи типа и страны — из правимого словаря (админка), а не из
+  // i18n: справочник один на сервер и клиент.
+  const contentDict = useContentDict();
   const locale = useLocale();
   const p = t.social.profile;
   // По умолчанию — по названию (правка владельца 2026-09-06): раньше
@@ -85,8 +89,8 @@ export default function DramasTable({
   const sortRows = (list: ProfileDramaRow[]): ProfileDramaRow[] => {
     const dir = sort.dir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
-      const av = sortValue(a, sort.key, t, locale);
-      const bv = sortValue(b, sort.key, t, locale);
+      const av = sortValue(a, sort.key, contentDict, locale);
+      const bv = sortValue(b, sort.key, contentDict, locale);
       // Пустые ячейки (у части записей нет типа/страны/года) всегда
       // внизу — и по возрастанию, и по убыванию: иначе разворот
       // порядка показывал бы полтаблицы пустых строк.
@@ -149,18 +153,23 @@ export default function DramasTable({
  *  вниз. Статус сортируется по порядку из WATCH_STATUS_ORDER (смотрю →
  *  просмотрено → в планах → …), а не по алфавиту подписи; тип и страна
  *  — по переведённой подписи, ведь её человек и видит. */
-function sortValue(row: ProfileDramaRow, key: SortKey, t: Dict, locale: Locale): string | number | null {
+function sortValue(
+  row: ProfileDramaRow,
+  key: SortKey,
+  contentDict: ContentDict,
+  locale: Locale,
+): string | number | null {
   switch (key) {
     case "title":
       return dramaTitleForLocale(row, locale);
     case "status":
       return WATCH_STATUS_ORDER.indexOf(row.status);
     case "type":
-      return row.type ? t.catalog.dramaType(row.type) : null;
+      return row.type ? contentDict.dramaType(row.type) : null;
     case "year":
       return row.year;
     case "country":
-      return row.country ? t.catalog.dramaCountry(row.country) : null;
+      return row.country ? contentDict.country(row.country) : null;
     case "rating":
       return row.rating;
     case "episodes": {
@@ -230,6 +239,9 @@ function Row({
   locale: Locale;
   editable: boolean;
 }) {
+  // Свой вызов хука, а не проп: строк в таблице сотни, и тащить словарь
+  // через каждую было бы шумно — контекст для того и заведён.
+  const contentDict = useContentDict();
   const progress = episodeProgress(row, row.episodes);
   const title = dramaTitleForLocale(row, locale);
   return (
@@ -260,10 +272,10 @@ function Row({
             t.catalog.watchStatus[row.status]
           )}
         </span>
-        <span className={styles.colType}>{row.type ? t.catalog.dramaType(row.type) : ""}</span>
+        <span className={styles.colType}>{row.type ? contentDict.dramaType(row.type) : ""}</span>
         <span className={styles.colYear}>{row.year ?? ""}</span>
         <span className={styles.colCountry}>
-          {row.country ? t.catalog.dramaCountry(row.country) : ""}
+          {row.country ? contentDict.country(row.country) : ""}
         </span>
         <span className={`${styles.colRating} table-status-cell`}>
           {/* Своя оценка (АА2): в своём профиле её тут же и ставят —

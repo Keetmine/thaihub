@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { loadContentOverrides } from "@/lib/contentDictionary.server";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
@@ -102,6 +103,11 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const locale = await getLocale();
+  // Правки словаря повторяющихся значений — один запрос на сутки (кэш с
+  // тегом, правка в админке сбрасывает его сразу). Кладём в провайдер,
+  // чтобы клиентские таблицы каталога показывали те же подписи, что и
+  // серверные страницы.
+  const contentOverrides = await loadContentOverrides();
   return (
     <html
       lang={locale}
@@ -132,7 +138,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             таймзона. Значение приходит из заголовка, который ставит
             proxy (из пути его не прочитать: русские страницы —
             рерайт). */}
-        <LocaleProvider locale={locale}>
+        <LocaleProvider locale={locale} contentOverrides={contentOverrides}>
           {children}
           {/* Баннер согласия + аналитика: Метрика и Google Tag Manager
               грузятся только после «Принять все» (см. CookieConsent).

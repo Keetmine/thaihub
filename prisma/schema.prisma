@@ -2496,3 +2496,19 @@ model EpisodeWatch {
   @@id([userId, dramaId, episode])
   @@index([dramaId])
 }
+
+/// Правимый словарь повторяющихся значений из импорта: жанр, страна,
+/// тип сериала, страна артиста, занятие, инструмент. Значения по
+/// умолчанию живут в коде (src/lib/contentDictionary.ts) — здесь только
+/// то, что владелец поправила или добавила через /admin/translations.
+/// `source` — сырое значение в нижнем регистре: источники пишут одно и
+/// то же вразнобой («Actor» и «actor»).
+model ContentTranslation {
+  id        String   @id @default(cuid())
+  kind      String
+  source    String
+  ru        String
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, source])
+}

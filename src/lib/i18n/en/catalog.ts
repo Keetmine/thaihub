@@ -120,28 +120,6 @@ export const catalog = {
         PILOT: "Pilot",
     },
 
-    /** Тип записи из MDL (`Drama.type` — свободная строка, не enum). */
-    dramaType: (raw: string): string =>
-        ((
-            {
-                Drama: "Series",
-                "TV Show": "Show",
-                "TV Program": "Show",
-            } as Record<string, string>
-        )[raw] ?? raw),
-
-    /** Страна производства — MDL и так пишет по-английски. */
-    dramaCountry: (raw: string): string => raw,
-
-    /* Словарные значения из импорта. Английская витрина показывает их
-       как есть: источники (MyDramaList, фандомные вики) пишут именно
-       по-английски, переводить нечего. Функции всё равно нужны — чтобы
-       у страниц была одна точка вызова на оба языка. */
-    dramaGenre: (raw: string): string => raw,
-    performerNationality: (raw: string): string => raw,
-    performerOccupation: (raw: string): string => raw,
-    performerInstrument: (raw: string): string => raw,
-
     /** Подписи колонок таблицы сериалов. Общие для каталога /dramas и
      *  вкладки «Сериалы» в профиле: таблицы задуманы роднёй, и два
      *  словаря разъехались бы («Статус просмотра» против «Статус»). */
@@ -329,7 +307,7 @@ export const catalog = {
          *  2026-09-10). Без рода: подпись видят все. */
         birthdayToday: "Birthday today",
         age: (years: number) => `${years} years old`,
-        nationality: "Nationality:",
+        nationality: "Country:",
         alsoKnownAs: "Also known as:",
         performsAs: "Performs as:",
         placeOfBirth: "Place of birth:",
