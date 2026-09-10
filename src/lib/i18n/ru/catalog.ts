@@ -354,7 +354,9 @@ export const catalog: Dict["catalog"] = {
         birthdayToday: "Сегодня день рождения",
         age: (years: number) => `${years} ${plural(years, ["год", "года", "лет"])}`,
         nationality: "Национальность:",
-        alsoKnownAs: "Также известен как:",
+        // Без рода (правило владельца): подпись видят на страницах и
+        // актёров, и актрис, и групп.
+        alsoKnownAs: "Другие имена:",
         performsAs: "Выступает как:",
         placeOfBirth: "Место рождения:",
         occupation: "Занятия:",
