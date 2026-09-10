@@ -1,4 +1,5 @@
 import ReviewsAndComments from "@/components/ReviewsAndComments";
+import { pairingNames } from "@/lib/pairingLabel";
 import { translatedText } from "@/lib/entityTranslations";
 import SourcesBlock from "@/components/SourcesBlock";
 import AppLink from "@/components/AppLink";
@@ -720,7 +721,7 @@ export default async function EventDetailPage({
                         добавкой. Одно имя вместо людей не читалось. */}
                     {event.pairings.map(({ pairing }) => (
                       <span key={pairing.id} className="event-chip">
-                        {`${pairing.performerA.name} × ${pairing.performerB.name}`}
+                        {pairingNames(pairing)}
                         {pairing.name && (
                           <span className="small text-secondary"> · {pairing.name}</span>
                         )}

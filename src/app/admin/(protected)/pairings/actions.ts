@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { pairingLabel } from "@/lib/pairingLabel";
 import { prisma } from "@/lib/prisma";
 import type { PairingStatus } from "@/generated/prisma/client";
 import { requireCatalogEditor } from "@/lib/auth";
@@ -99,10 +100,6 @@ async function loadPairings(ids: string[]) {
 }
 
 type LoadedPairing = Awaited<ReturnType<typeof loadPairings>>[number];
-
-function pairingLabel(p: LoadedPairing): string {
-  return p.name || `${p.performerA.name} × ${p.performerB.name}`;
-}
 
 /** Короткая сводка для истории: первые пять названий и «ещё N» — как в
  *  общем bulkActions.ts, история читается одинаково везде. */

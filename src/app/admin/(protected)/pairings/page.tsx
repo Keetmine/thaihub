@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { pairingNames } from "@/lib/pairingLabel";
 import {
   bulkDeletePairings,
   bulkSetPairingStatus,
@@ -141,7 +142,7 @@ export default async function AdminPairingsPage({
                   pair.status === "CURRENT" ? "PAST" : "CURRENT",
                 );
                 // Для подтверждения удаления: там нужна одна строка.
-                const fallbackLabel = `${pair.performerA.name} × ${pair.performerB.name}`;
+                const fallbackLabel = pairingNames(pair);
                 return {
                   id: pair.id,
                   node: (

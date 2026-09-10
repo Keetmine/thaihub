@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pairingLabel } from "@/lib/pairingLabel";
 import SavedBanner from "@/components/admin/SavedBanner";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -77,7 +78,7 @@ export default async function EditPerformerPage({
     const partner = pair.performerAId === id ? pair.performerB : pair.performerA;
     return {
       id: pair.id,
-      label: pair.name || `${pair.performerA.name} × ${pair.performerB.name}`,
+      label: pairingLabel(pair),
       name: pair.name,
       status: pair.status,
       partner: { id: partner.id, name: partner.name, photoUrl: partner.photoUrl },
@@ -119,7 +120,7 @@ export default async function EditPerformerPage({
           }))}
           pairingOptions={allPairings.map((p) => ({
             id: p.id,
-            name: p.name || `${p.performerA.name} × ${p.performerB.name}`,
+            name: pairingLabel(p),
             // Своей картинки у пейринга нет — миниатюрой берём фото
             // первого участника (вид опции един для всех сущностей).
             photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl,

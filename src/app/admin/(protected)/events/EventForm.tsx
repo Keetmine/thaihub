@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { pairingLabel } from "@/lib/pairingLabel";
 import EntityMultiSelect, { type EntityOption } from "@/components/EntityMultiSelect";
 import TimeInput from "@/components/TimeInput";
 import EntitySelect, { OpenEntityLink } from "@/components/EntitySelect";
@@ -23,10 +24,6 @@ type PairingOption = {
   performerA: { id: string; name: string; photoUrl?: string | null };
   performerB: { id: string; name: string; photoUrl?: string | null };
 };
-
-function pairingLabel(pairing: PairingOption): string {
-  return pairing.name || `${pairing.performerA.name} × ${pairing.performerB.name}`;
-}
 
 /** Строка лайнапа дня: кто выступает и когда. Время держим строкой, как
  *  на афише («16:00-16:45», иногда «TBA»), — фестивали пишут слоты, а не

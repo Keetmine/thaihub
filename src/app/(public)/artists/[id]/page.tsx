@@ -1,4 +1,5 @@
 import { JsonLd, pageMetadata, personJsonLd, breadcrumbJsonLd } from "@/lib/seo";
+import { pairingNames } from "@/lib/pairingLabel";
 import { getContentDict } from "@/lib/contentDictionary.server";
 import { translatedList, translatedText } from "@/lib/entityTranslations";
 import AppLink from "@/components/AppLink";
@@ -878,6 +879,12 @@ export default async function PerformerPage({
             <div>
               <h2 className="section-heading mb-2">{t.catalog.artist.pairedWith}</h2>
               <div className="d-flex flex-wrap gap-2">
+                {/* Подпись — «Zee × NuNew», а не только партнёр (правка
+                    владельца 2026-09-10: «выводим как раньше, актёр ×
+                    актёр»). Порядок имён — из пейринга, он один и тот
+                    же на всех страницах. Ссылка и фото ведут к
+                    ПАРТНЁРУ: карточка стоит на странице человека, и
+                    «открыть» тут значит «открыть второго». */}
                 {currentPairings.map((pair) => {
                   const other =
                     pair.performerAId === id
@@ -888,7 +895,8 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={other.name}
+                      name={pairingNames(pair)}
+                      style={{ width: "14rem" }}
                     />
                   );
                 })}
@@ -910,7 +918,8 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={other.name}
+                      name={pairingNames(pair)}
+                      style={{ width: "14rem" }}
                     />
                   );
                 })}
@@ -929,6 +938,8 @@ export default async function PerformerPage({
                   group.every((pair) => pair.status === "PAST") ? " opacity-50" : ""
                 }`}
               >
+                {/* У названной пары имя уже в заголовке блока —
+                    в карточке показываем состав «А × Б». */}
                 {group.map((pair) => {
                   const other = pair.performerAId === id ? pair.performerB : pair.performerA;
                   return (
@@ -936,7 +947,8 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={other.name}
+                      name={pairingNames(pair)}
+                      style={{ width: "14rem" }}
                     />
                   );
                 })}

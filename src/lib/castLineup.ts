@@ -12,14 +12,25 @@ import { prisma } from "@/lib/prisma";
 export type PairingEdge = { performerAId: string; performerBId: string };
 
 /**
- * АА4. Ставит участников пейринга РЯДОМ в уже отсортированном списке.
+ * АА4. Ставит участников пейринга РЯДОМ и в порядке самого пейринга.
  *
  * Это правило про ПОРЯДОК, а не про новую сущность: сортировка списка
  * (по популярности, по алфавиту — как решила страница) остаётся, просто
  * пара не разъезжается по нему. Группа целиком встаёт на место своего
  * первого (то есть самого «сильного» по исходной сортировке) участника,
- * внутри группы исходный порядок сохраняется — так пара не тянет
- * малоизвестного человека в начало списка и не роняет известного вниз.
+ * так пара не тянет малоизвестного человека в начало списка и не роняет
+ * известного вниз.
+ *
+ * ВНУТРИ группы порядок задаёт САМ ПЕЙРИНГ — сначала `performerA`,
+ * потом `performerB` (правка владельца 2026-09-10: «везде, где есть
+ * вывод актёров, пара должна стоять вместе и всегда в том порядке, как
+ * указано в пейринге»). Раньше внутри сохранялся порядок исходного
+ * списка, и «Zee × NuNew» на одной странице выглядел как «NuNew × Zee»
+ * на другой — по числу событий.
+ *
+ * `pairsFirst` поднимает пары в начало списка целиком: так каст сериала
+ * открывается парами, ради которых его и смотрят, а одиночки идут
+ * следом своим прежним порядком.
  *
  * Считается связными компонентами, а не «нашли пару — переставили»:
  * у человека может быть несколько пейрингов сразу (см. Pairing.status в
@@ -34,6 +45,7 @@ export function keepPairingsTogether<T>(
   items: T[],
   idOf: (item: T) => string,
   pairings: PairingEdge[],
+  options: { pairsFirst?: boolean } = {},
 ): T[] {
   if (items.length < 2 || pairings.length === 0) return items;
 
@@ -71,7 +83,40 @@ export function keepPairingsTogether<T>(
     if (group) group.push(item);
     else groups.set(root, [item]);
   }
-  return Array.from(groups.values()).flat();
+
+  // Порядок внутри группы — по самим пейрингам: идём по ним подряд и
+  // выкладываем A, потом B. Кто в пейринги не попал (третий участник
+  // цепочки, которого связали через кого-то) — следом, в порядке
+  // исходного списка.
+  const byId = new Map(items.map((item) => [idOf(item), item]));
+  const ordered = new Map<string, T[]>();
+  for (const [root, group] of groups) {
+    if (group.length < 2) {
+      ordered.set(root, group);
+      continue;
+    }
+    const memberIds = new Set(group.map(idOf));
+    const seen = new Set<string>();
+    const out: T[] = [];
+    const push = (id: string) => {
+      if (!memberIds.has(id) || seen.has(id)) return;
+      seen.add(id);
+      out.push(byId.get(id)!);
+    };
+    for (const { performerAId, performerBId } of pairings) {
+      if (!memberIds.has(performerAId) || !memberIds.has(performerBId)) continue;
+      push(performerAId);
+      push(performerBId);
+    }
+    for (const item of group) push(idOf(item));
+    ordered.set(root, out);
+  }
+
+  const result = [...ordered.values()];
+  if (!options.pairsFirst) return result.flat();
+  // Пары вперёд, одиночки следом — и те, и другие своим прежним
+  // относительным порядком.
+  return [...result.filter((g) => g.length > 1), ...result.filter((g) => g.length === 1)].flat();
 }
 
 /**
@@ -86,6 +131,10 @@ export async function fetchPairingsAmong(performerIds: string[]): Promise<Pairin
       performerAId: { in: performerIds },
       performerBId: { in: performerIds },
     },
+    // Порядок пейрингов задаёт порядок людей внутри группы (см.
+    // keepPairingsTogether), поэтому он должен быть устойчивым, а не
+    // «как легло из базы».
+    orderBy: { createdAt: "asc" },
     select: { performerAId: true, performerBId: true },
   });
 }

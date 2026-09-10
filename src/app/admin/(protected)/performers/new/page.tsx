@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pairingLabel } from "@/lib/pairingLabel";
 import { prisma } from "@/lib/prisma";
 import PerformerForm from "../PerformerForm";
 import { createPerformer } from "../actions";
@@ -35,7 +36,7 @@ export default async function NewPerformerPage() {
         soloPerformers={[]}
         pairingOptions={pairings.map((p) => ({
           id: p.id,
-          name: p.name || `${p.performerA.name} × ${p.performerB.name}`,
+          name: pairingLabel(p),
           // Картинки у пейринга нет — берём фото первого участника.
           photoUrl: p.performerA.photoUrl ?? p.performerB.photoUrl,
         }))}
