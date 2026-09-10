@@ -252,8 +252,9 @@ export const catalog = {
          *  «Thai sequel»). По-английски они и так читаются — отдаём как
          *  есть; русский словарь переводит тип связи. */
         relationLabel: (raw: string): string => raw,
-        /** «Из ваших друзей смотрели» (аудит, п. 5.4). */
-        friendsWatched: "Your friends watched",
+        /** Блок «этот сериал есть у друзей» (аудит, п. 5.4). Не
+         *  прошедшее время: сюда попадают и планы, и «смотрю сейчас». */
+        friendsWatched: "Your friends marked it",
         similar: "You may also like",
         locations: "Locations",
 
