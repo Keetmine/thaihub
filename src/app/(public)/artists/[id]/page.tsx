@@ -854,7 +854,7 @@ export default async function PerformerPage({
                     />
                   ) : o.pairing ? (
                     <span key={o.id} className="event-chip">
-                      {`${o.pairing.performerA.name} × ${o.pairing.performerB.name}`}
+                      {pairingNames(o.pairing)}
                       {o.pairing.name && (
                         <span className="small text-secondary"> · {o.pairing.name}</span>
                       )}
@@ -879,12 +879,12 @@ export default async function PerformerPage({
             <div>
               <h2 className="section-heading mb-2">{t.catalog.artist.pairedWith}</h2>
               <div className="d-flex flex-wrap gap-2">
-                {/* Подпись — «Zee × NuNew», а не только партнёр (правка
-                    владельца 2026-09-10: «выводим как раньше, актёр ×
-                    актёр»). Порядок имён — из пейринга, он один и тот
-                    же на всех страницах. Ссылка и фото ведут к
-                    ПАРТНЁРУ: карточка стоит на странице человека, и
-                    «открыть» тут значит «открыть второго». */}
+                {/* В карточке — ОДНО имя, партнёра (правка владельца
+                    2026-09-11). Пробовали «Zee × NuNew» составом пары —
+                    вживую не подошло: карточка и так стоит на странице
+                    человека, и его имя в ней лишнее. Порядок самой пары
+                    от этого не зависит: он задаётся пейрингом и работает
+                    там, где выводится список людей (см. castLineup). */}
                 {currentPairings.map((pair) => {
                   const other =
                     pair.performerAId === id
@@ -895,8 +895,7 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={pairingNames(pair)}
-                      style={{ width: "14rem" }}
+                      name={other.name}
                     />
                   );
                 })}
@@ -918,8 +917,7 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={pairingNames(pair)}
-                      style={{ width: "14rem" }}
+                      name={other.name}
                     />
                   );
                 })}
@@ -938,8 +936,6 @@ export default async function PerformerPage({
                   group.every((pair) => pair.status === "PAST") ? " opacity-50" : ""
                 }`}
               >
-                {/* У названной пары имя уже в заголовке блока —
-                    в карточке показываем состав «А × Б». */}
                 {group.map((pair) => {
                   const other = pair.performerAId === id ? pair.performerB : pair.performerA;
                   return (
@@ -947,8 +943,7 @@ export default async function PerformerPage({
                       key={pair.id}
                       href={performerHref(other)}
                       photoUrl={other.photoUrl}
-                      name={pairingNames(pair)}
-                      style={{ width: "14rem" }}
+                      name={other.name}
                     />
                   );
                 })}
