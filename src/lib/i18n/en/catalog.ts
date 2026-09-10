@@ -209,8 +209,6 @@ export const catalog = {
         intro: (min: number) =>
             `Ranked by the average MyBLHub viewer score. Only series rated by at least ${min} people make the list — that is why it is short and honest.`,
         votes: (n: number) => `${n} ${n === 1 ? "vote" : "votes"}`,
-        fallbackIntro: (min: number) =>
-            `Not enough ratings yet (a series needs at least ${min}), so for now — what people watch and finish most.`,
         fallbackHeading: "Most watched on MyBLHub",
         watchers: (n: number) => `${n} ${n === 1 ? "viewer" : "viewers"}`,
         empty: "No ratings yet — be the first to rate a series.",

@@ -164,11 +164,15 @@ export default async function DramasTopPage() {
       <p className="mb-2">
         <AppLink href="/dramas">{t.catalog.letterBack}</AppLink>
       </p>
-      {/* Подводка честно называет правило списка — в том числе в
-          фолбэке, когда оценок с порогом ещё нет. */}
-      <p className="small text-secondary mb-4" style={{ maxWidth: "40rem" }}>
-        {top.byRatings ? d.intro(MIN_VOTES) : d.fallbackIntro(MIN_VOTES)}
-      </p>
+      {/* Подводка честно называет правило списка. В фолбэке её НЕТ
+          (правка владельца 2026-09-10): объяснение, что оценок пока мало
+          и поэтому список другой, — это разговор о нашей кухне, а не о
+          сериалах. Что список про смотримое, говорит его заголовок. */}
+      {top.byRatings && (
+        <p className="small text-secondary mb-4" style={{ maxWidth: "40rem" }}>
+          {d.intro(MIN_VOTES)}
+        </p>
+      )}
       {!top.byRatings && top.rows.length > 0 && (
         <h2 className="section-heading mb-2">{d.fallbackHeading}</h2>
       )}
