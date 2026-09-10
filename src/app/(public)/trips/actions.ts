@@ -699,6 +699,7 @@ function parsePersonalEventForm(
   isPrivate: boolean;
   showOnHome: boolean;
   imageUrl: string | null;
+  url: string | null;
   performerIds: string[];
   attending: boolean;
 } | null {
@@ -707,6 +708,14 @@ function parsePersonalEventForm(
   const date = String(formData.get("date") ?? "");
   const time = String(formData.get("time") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
+  // Ссылка «куда посмотреть» (просьба владельца 2026-09-10): бронь на
+  // сайте площадки, страница мероприятия, точка на карте. Только
+  // http(s) — `javascript:` и `data:` в ссылке, которую откроет другой
+  // участник поездки, это уже атака на него (то же правило, что у
+  // ссылок сообщества). Мусор молча отбрасываем: запись из-за него
+  // сохраняться не перестаёт.
+  const rawUrl = String(formData.get("url") ?? "").trim();
+  const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : null;
   if (!title || !date) return null;
   const performerIds = formData
     .getAll("performerIds")
@@ -725,6 +734,7 @@ function parsePersonalEventForm(
     ),
     showOnHome: formData.get("showOnHome") === "on",
     imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
+    url,
     performerIds,
     // «Я там буду» — СВОЯ отметка редактирующего (в форме включена по
     // умолчанию): планов создают больше, чем посещают, и артисты

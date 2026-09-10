@@ -164,6 +164,10 @@ export const trips = {
         time: "Time",
         note: "Note",
         image: "Image",
+        /** Ссылка у личного события: бронь, страница мероприятия, карта. */
+        url: "Link",
+        urlPlaceholder: "https://…",
+        urlOpen: "Open the link",
         attending: "I’ll be there",
         showOnHome: "Show on the home page",
         editableByOthers: "Trip members can edit and delete this",

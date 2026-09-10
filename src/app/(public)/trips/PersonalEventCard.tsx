@@ -46,6 +46,9 @@ export type PersonalEventData = {
   showOnHome: boolean;
   // Ж10: картинка к записи — скан билета, скрин брони, афиша.
   imageUrl: string | null;
+  /** Ссылка «куда посмотреть»: бронь, страница мероприятия, карта.
+   *  Только http(s) — проверено при сохранении. */
+  url: string | null;
   // Артисты на событии: после даты события попадают в «видел(а)
   // вживую» — но только отметившимся «я там буду».
   performers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
@@ -73,6 +76,7 @@ export function PersonalEventFields({
     visibility?: TripItemVisibilityValue;
     showOnHome?: boolean;
     imageUrl?: string | null;
+    url?: string | null;
     attending?: boolean;
   };
   showShareToggle?: boolean;
@@ -129,6 +133,24 @@ export function PersonalEventFields({
       <div>
         <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>{t.trips.personal.note}</label>
         <textarea id={`${uid}-note`} name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />
+      </div>
+      {/* Ссылка на бронь, страницу мероприятия или точку на карте
+          (просьба владельца 2026-09-10). type="url" — чтобы на телефоне
+          открывалась подходящая клавиатура; пустое поле и мусор без
+          http(s) просто не сохраняются, запись из-за них не теряется. */}
+      <div>
+        <label className="form-label small text-secondary" htmlFor={`${uid}-url`}>
+          {t.trips.personal.url}
+        </label>
+        <input
+          id={`${uid}-url`}
+          name="url"
+          type="url"
+          inputMode="url"
+          placeholder={t.trips.personal.urlPlaceholder}
+          defaultValue={defaults?.url ?? ""}
+          className="form-control"
+        />
       </div>
       {/* Ж10: картинка к записи. Личные события приватные, поэтому файл
           уходит в приватное хранилище (/files/personal/…), а не в
@@ -307,6 +329,41 @@ export default function PersonalEventCard({
         <span className="event-card-weekday">{shortWeekdayName(d, locale)}</span>
       </div>
 
+      {/* Ж10: миниатюра приложенной картинки — открывается по клику в
+          новой вкладке (PDF тоже). Файл приватный, раздаётся через
+          /files/personal/… с проверкой прав.
+
+          Стоит СЛЕВА, между датой и текстом — там же, где постер у
+          каталожного события (правка владельца 2026-09-10: «а тут фото
+          специально снизу? надо бы выводить слева, как на других
+          событиях»). Раньше лежала в конце текстового блока и
+          получалась снизу. */}
+      {event.imageUrl && (
+        <a
+          href={event.imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="personal-event-thumb flex-shrink-0"
+          aria-label={t.trips.personal.attachmentOf(event.title)}
+        >
+          {event.imageUrl.endsWith(".pdf") || thumbFailed ? (
+            // PDF миниатюрой не показать, а битая ссылка иначе
+            // нарисовала бы иконку сломанной картинки. Заглушка — того
+            // же размера, что и миниатюра, иначе строка бы прыгала.
+            <span className="personal-event-thumb-file">{t.trips.personal.file}</span>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={event.imageUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              onError={() => setThumbFailed(true)}
+            />
+          )}
+        </a>
+      )}
+
       <div className="event-card-body">
         <h3 className="h5 font-display mb-1 d-flex align-items-center gap-2">
           {event.title}
@@ -332,6 +389,20 @@ export default function PersonalEventCard({
           {event.location && event.note && " · "}
           {event.note}
         </p>
+        {/* Ссылка отдельной строкой, а не в общей: адрес бывает длинным,
+            и в одной строке с местом и заметкой он бы её порвал. */}
+        {event.url && (
+          <p className="small mb-0 text-truncate">
+            <a
+              href={event.url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="agenda-performer-link"
+            >
+              🔗 {t.trips.personal.urlOpen}
+            </a>
+          </p>
+        )}
         {event.performers.length > 0 && (
           <p className="event-row-cast mb-0">
             <UserIcon className="icon-inline" />{" "}
@@ -344,33 +415,6 @@ export default function PersonalEventCard({
               </span>
             ))}
           </p>
-        )}
-        {/* Ж10: миниатюра приложенной картинки — открывается по клику
-            в новой вкладке (PDF тоже). Файл приватный, раздаётся через
-            /files/personal/… с проверкой прав. */}
-        {event.imageUrl && (
-          <a
-            href={event.imageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="personal-event-thumb mt-2 d-inline-block"
-            aria-label={t.trips.personal.attachmentOf(event.title)}
-          >
-            {event.imageUrl.endsWith(".pdf") || thumbFailed ? (
-              // PDF миниатюрой не показать, а битая ссылка иначе
-              // нарисовала бы иконку сломанной картинки.
-              <span className="btn btn-ghost btn-sm">{t.trips.personal.file}</span>
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={event.imageUrl}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                onError={() => setThumbFailed(true)}
-              />
-            )}
-          </a>
         )}
       </div>
 
@@ -394,6 +438,7 @@ export default function PersonalEventCard({
               visibility: event.visibility,
               showOnHome: event.showOnHome,
               imageUrl: event.imageUrl,
+              url: event.url,
               performers: event.performers,
               attending: event.attending,
             }}

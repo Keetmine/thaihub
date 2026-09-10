@@ -686,6 +686,7 @@ export default async function TripPage({
       visibility: effectiveVisibility(p.visibility),
       showOnHome: p.showOnHome,
       imageUrl: p.imageUrl,
+      url: p.url,
       performers: p.performers.map((link) => link.performer),
       attending: p.attendances.length > 0,
       canEdit: canTouch(p),
@@ -781,7 +782,10 @@ export default async function TripPage({
     | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData }
     | { kind: "todo"; startsAt: Date; key: string; todo: (typeof todoData)[number] }
     // АА17: «прилетает Аня» / «вы улетаете» — отметка в своём дне.
-    | { kind: "stay"; startsAt: Date; key: string; label: string }
+    // `dateLabel` — само число: у соседей по ленте дата своя (карточка
+    // события, строка дела), а отметка была единственной строкой без
+    // неё, и «когда» из неё не читалось (правка владельца 2026-09-10).
+    | { kind: "stay"; startsAt: Date; key: string; label: string; dateLabel: string }
     | BookingEntry
     | { kind: "flightChain"; startsAt: Date; endsAt: Date; key: string; chain: FlightChainData };
 
@@ -823,6 +827,7 @@ export default async function TripPage({
               // делами ровно так же, как бронь без времени.
               startsAt: new Date(`${date}T12:00:00.000Z`),
               key: `stay-${mark.userId}-${mark.kind}`,
+              dateLabel: formatShortDate(new Date(`${date}T12:00:00.000Z`), locale),
               label:
                 mark.kind === "arrive"
                   ? isMe
@@ -1101,8 +1106,13 @@ export default async function TripPage({
           />
         ) : item.kind === "stay" ? (
           // Тихая строка-отметка: не карточка — у неё нет ни своей
-          // страницы, ни действий, это просто веха дня.
-          <p className="trip-stay-mark mb-0">{item.label}</p>
+          // страницы, ни действий, это просто веха дня. Дата — приглушённо
+          // следом: у остальных строк ленты она своя, и без неё отметка
+          // не отвечала на «когда».
+          <p className="trip-stay-mark mb-0">
+            {item.label}
+            <span className="text-secondary"> · {item.dateLabel}</span>
+          </p>
         ) : item.kind === "booking" ? (
           <TripBookingLeg tripId={trip.id} leg={item.leg} visibilityOptions={visibilityOptions} />
         ) : item.kind === "flightChain" ? (

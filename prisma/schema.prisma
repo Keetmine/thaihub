@@ -1142,6 +1142,11 @@ model TripPersonalEvent {
   // как и сама запись: лежит в private-uploads/, раздаётся через
   // /files/personal/… с проверкой участия в поездке.
   imageUrl         String?
+  // Ссылка «куда посмотреть»: бронь на сайте площадки, страница
+  // мероприятия, точка на карте. Только http(s) — проверка в
+  // parsePersonalEventForm. Отдельно от imageUrl: там наш приватный
+  // файл, тут чужой адрес.
+  url              String?
   createdAt        DateTime                      @default(now())
 
   @@index([tripId])

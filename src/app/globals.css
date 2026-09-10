@@ -5068,16 +5068,43 @@ body::after {
    ============================================================ */
 /* Миниатюра приложенной картинки в карточке: маленькая, чтобы запись
    осталась строкой плана, а не превратилась в галерею. */
+/* Вложение личного события стоит в том же столбце, что постер у
+   каталожного (.event-card-poster), — и ширина у него та же, иначе
+   строки поездки не выстроились бы в колонку. */
+.personal-event-thumb {
+  display: block;
+  width: 3.9rem;
+  text-decoration: none;
+}
+
 .personal-event-thumb img {
-  width: 5rem;
-  height: 5rem;
+  width: 100%;
+  aspect-ratio: 3 / 4;
   object-fit: cover;
-  border-radius: 0.6rem;
+  display: block;
+  border-radius: 0.7rem;
   border: 1px solid var(--bs-border-color);
   transition: border-color 0.15s ease;
 }
 
-.personal-event-thumb:hover img {
+/* PDF и битая ссылка: коробка того же размера, чтобы строка не прыгала. */
+.personal-event-thumb-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 0.7rem;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  font-size: 0.7rem;
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.personal-event-thumb:hover img,
+.personal-event-thumb:hover .personal-event-thumb-file {
   border-color: rgba(var(--accent-rgb), 0.6);
 }
 
