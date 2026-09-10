@@ -61,8 +61,11 @@ attempt to defeat).
 - **`src/lib/tpopFandomImport.ts`** — DB orchestration:
   `importTpopBand(pageUrlOrTitle, onProgress?)` upserts the band as a
   `Performer` (type `BAND`) and its label as an `Agency`, then for every
-  current member fetches their own page, matches or creates a
-  `Performer` (type `SOLO`), and links them via `BandMember`.
+  current member fetches their own page and — если совпадение
+  подтверждено не только ником — matches or creates a `Performer`
+  (type `SOLO`), and links them via `BandMember`. Участники, про
+  которых на вики только имя, записей не получают: их имена уходят в
+  описание группы (см. «Участники» ниже).
 - **`scripts/import-tpop-band.ts`** — CLI entry point, no review screen:
   ```
   npx tsx scripts/import-tpop-band.ts <tpop-fandom-url-or-title>
@@ -122,16 +125,36 @@ attempt to defeat).
   `src/lib/performerAgency.ts`) rather than replacing whatever's there —
   see "A performer can belong to more than one agency" in
   [catalog.md](catalog.md#agencies).
-- **Members**: matched by `name` *or* `realName` (case-insensitive,
-  either matching) against existing `Performer` rows — a member already
-  in the catalog under their stage name, or already under their real
-  name (e.g. from a TMDB import, which prefers `realName` for cast
-  credits — see `tmdb-import.md`), both resolve to the same match. A
-  miss creates a new `Performer` (type `SOLO`) from the member page's
-  data. Profile fields only fill in blanks; the member's own agency
-  (from their page's "Agency" field, falling back to the band's own
-  label if their page doesn't list one) is added to their set the same
-  way as the band's.
+- **Участники — правило «одного ника мало»** (правка владельца
+  2026-09-10). Ник в тайской сцене ничего не доказывает: «Boom» в
+  каталоге четверо, «Gun» — пятеро, и прежний `findFirst` по имени
+  привязывал участника к ПЕРВОМУ попавшемуся тёзке. Теперь исход у
+  участника один из четырёх (`MemberOutcome`):
+  - **имя без своей страницы** («красная» ссылка — так устроена вся
+    статья The Yers: Boat, Boom, Tor, Wu) → записи НЕ создаём и ни к
+    кому не привязываем. Имя без настоящего имени и даты рождения —
+    это строка, а не человек. Состав при этом не теряется: имена
+    дописываются в описание группы строкой `Members: A, B, C.`
+    (`membersSentence`) — строка добавляется к существующему тексту, а
+    не переписывает его, и повторный прогон её не дублирует;
+  - **своя страница есть, совпадение подтверждено** настоящим именем
+    или датой рождения (ник в подтверждение НЕ идёт — он и есть то,
+    что путает тёзок) → связь, пустые поля профиля дозаполняются;
+  - **своя страница есть, подтверждение не сошлось** → заводим нового
+    `Performer` (`SOLO`) по данным страницы: ложная привязка хуже
+    дубля, дубль виден в «Дублях» и сливается. Повторный прогон дубля
+    не наплодит — у заведённой записи есть настоящее имя и дата, и она
+    опознаётся;
+  - **подтверждать нечем** (на вики нет ни настоящего имени, ни даты) →
+    единственный тёзка считается им (иначе каждый прогон плодил бы
+    новую запись), а из нескольких не выбираем: имя уходит в описание
+    группы, причина — в журнал прогона.
+
+  Совпадение по `realName` работает и для тех, кто уже в каталоге под
+  настоящим именем (например из TMDB-импорта, который для каста
+  предпочитает `realName` — см. `tmdb-import.md`). Агентство участника
+  (из поля "Agency" его страницы, с откатом на лейбл группы) добавляется
+  в его набор так же, как у группы.
 - **`BandMember`**: upserted per member (`bandId_performerId` composite
   key) — safe to re-run, matching character-role `upsert` idempotency
   used elsewhere in this project's importers.

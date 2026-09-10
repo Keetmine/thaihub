@@ -22,6 +22,12 @@ async function main() {
   console.log("\n=== Done in " + elapsedMin + " min ===");
   console.log(`Группа: ${result.bandName} (${result.bandCreated ? "создана" : "обновлена"})`);
   console.log(`Участники — создано: ${result.membersCreated}, найдено существующих: ${result.membersMatched}`);
+  if (result.membersInBioOnly > 0) {
+    console.log(
+      `Без записей (только имя на вики либо неразличимые тёзки): ${result.membersInBioOnly} — ` +
+        "имена дописаны в описание группы",
+    );
+  }
 }
 
 main().catch((e) => {

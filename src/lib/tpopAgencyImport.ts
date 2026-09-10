@@ -209,9 +209,23 @@ async function searchTtm(query: string): Promise<{ url: string; title: string }[
   return out;
 }
 
-/** Привязывает к событию всех артистов концерта (включая гостей),
- *  которых удалось найти в каталоге по имени/алиасу. */
-export async function linkEventArtists(eventId: string, artistNames: string[]): Promise<number> {
+/**
+ * Привязывает к событию всех артистов концерта (включая гостей),
+ * которых удалось ОДНОЗНАЧНО найти в каталоге по имени/алиасу.
+ *
+ * Тёзки разводятся только контекстом: если человек с этим ником состоит
+ * в группе, уже привязанной к событию, — это он («Tui» из состава LYKN
+ * важнее случайного актёра Tui). Не развелись — привязки НЕТ (правка
+ * владельца 2026-09-10). Раньше здесь стояло
+ * `candidates.find(c => c.sourceUrl) ?? candidates[0]`, то есть при
+ * пяти «Gun»-ах к концерту молча цеплялся случайный.
+ */
+export async function linkEventArtists(
+  eventId: string,
+  artistNames: string[],
+  /** Куда сообщить про неразобранных тёзок — обычно в журнал прогона. */
+  onAmbiguous?: (name: string, candidates: number) => void,
+): Promise<number> {
   let linked = 0;
   // Группы, уже привязанные к событию, — контекст для разруливания
   // тёзок: «Tui» из состава LYKN важнее случайного актёра Tui.
@@ -235,9 +249,11 @@ export async function linkEventArtists(eventId: string, artistNames: string[]): 
     });
     const performer =
       candidates.find((c) => c.memberOfBands.some((m) => bandIds.includes(m.bandId))) ??
-      candidates.find((c) => c.sourceUrl) ??
-      candidates[0];
-    if (!performer) continue;
+      (candidates.length === 1 ? candidates[0] : undefined);
+    if (!performer) {
+      if (candidates.length > 1) onAmbiguous?.(name, candidates.length);
+      continue;
+    }
     await prisma.eventPerformer.upsert({
       where: { eventId_performerId: { eventId, performerId: performer.id } },
       update: {},
@@ -303,10 +319,11 @@ async function createEventFromTtm(
     },
   });
   // артисты с TTM-страницы + с вики-страницы концерта (гости включая)
-  await linkEventArtists(event.id, [
-    ...ttm.artists.map((a) => a.nickname || a.fullName),
-    ...extraArtists,
-  ]);
+  await linkEventArtists(
+    event.id,
+    [...ttm.artists.map((a) => a.nickname || a.fullName), ...extraArtists],
+    (name, n) => ctx.log(`  [событие] ${name}: в каталоге ${n} тёзки — не привязываем`),
+  );
   ctx.summary.eventsCreated += 1;
   await recordItem(ctx, "event", event.id, "created", ttm.title);
   ctx.log(`  [событие] создано с TTM: ${ttm.title}`);
@@ -331,7 +348,9 @@ async function createEventFromWiki(
       performers: { create: { performerId } },
     },
   });
-  await linkEventArtists(event.id, wiki.artists);
+  await linkEventArtists(event.id, wiki.artists, (name, n) =>
+    ctx.log(`  [событие] ${name}: в каталоге ${n} тёзки — не привязываем`),
+  );
   ctx.summary.eventsCreated += 1;
   await recordItem(ctx, "event", event.id, "created", wiki.title);
   ctx.log(`  [событие] создано с вики концерта: ${wiki.title}`);
@@ -453,7 +472,12 @@ async function importArtist(
     const displayName = (member?.stageName || link.name)
       .replace(/\s*\((soloist|singer|actor|rapper|group|duo)\)$/i, "")
       .trim();
-    let existing = await prisma.performer.findFirst({
+    // Кандидаты — по нику, алиасу и настоящему имени. Раньше здесь
+    // стоял findFirst, и из пяти «Gun»-ов выигрывал ПЕРВЫЙ попавшийся
+    // (правка владельца 2026-09-10). Теперь совпадение должно быть
+    // подтверждено не только ником — настоящим именем или датой
+    // рождения, ровно как в импорте состава группы.
+    const candidates = await prisma.performer.findMany({
       where: {
         OR: [
           { name: { equals: displayName, mode: "insensitive" } },
@@ -464,18 +488,42 @@ async function importArtist(
         ],
       },
     });
+    const normName = (v: string) => v.toLowerCase().replace(/[-\s.'’]/g, "");
+    const confirmed = candidates.filter(
+      (c) =>
+        (member?.birthName && c.realName && normName(c.realName) === normName(member.birthName)) ||
+        (member?.birthDate &&
+          c.birthDate &&
+          c.birthDate.getTime() === member.birthDate.getTime()),
+    );
+    // Подтверждать нечем (на вики нет ни настоящего имени, ни даты):
+    // единственный тёзка — это он (отказ заводил бы новую запись на
+    // каждый прогон), а выбирать из нескольких мы права не имеем.
+    const nothingToConfirmWith = !member?.birthName && !member?.birthDate;
+    let existing: (typeof candidates)[number] | null =
+      confirmed.length === 1
+        ? confirmed[0]
+        : nothingToConfirmWith && candidates.length === 1
+          ? candidates[0]
+          : null;
+    if (!existing && nothingToConfirmWith && candidates.length > 1) {
+      ctx.log(
+        `  ${displayName}: в каталоге ${candidates.length} тёзки и подтвердить нечем ` +
+          "(на вики нет ни настоящего имени, ни даты рождения) — пропускаем, разберите руками",
+      );
+      return;
+    }
     // Фолбэк: реальные имена часто расходятся дефисами/пробелами
     // («Opas-iamkajorn» vs «Opasiamkajorn») — сравниваем нормализованно
     // среди кандидатов по первому слову.
     if (!existing && member?.birthName) {
-      const normName = (v: string) => v.toLowerCase().replace(/[-\s]/g, "");
       const firstWord = member.birthName.split(/\s+/)[0];
       if (firstWord.length >= 4) {
-        const candidates = await prisma.performer.findMany({
+        const wider = await prisma.performer.findMany({
           where: { realName: { contains: firstWord, mode: "insensitive" } },
         });
         existing =
-          candidates.find((c) => c.realName && normName(c.realName) === normName(member.birthName!)) ??
+          wider.find((c) => c.realName && normName(c.realName) === normName(member.birthName!)) ??
           null;
       }
     }
