@@ -70,10 +70,10 @@ function getDramaDetailFields(formData: FormData) {
   return {
     nativeTitle: str("nativeTitle") || null,
     alsoKnownAs: str("alsoKnownAs") || null,
-    // Русские тексты (dorama.land): их набивает импорт, но править
-    // должно быть можно и руками — парсер ошибается.
-    titleRu: str("titleRu") || null,
-    synopsisRu: str("synopsisRu") || null,
+    // titleRu/synopsisRu здесь БОЛЬШЕ НЕТ: русские тексты правятся во
+    // вкладке «Перевод» своим экшеном (saveEntityTranslations). Если
+    // оставить их тут, сохранение основной формы стирало бы перевод —
+    // полей в ней нет, и str() вернул бы пустоту.
     doramalandUrl: str("doramalandUrl") || null,
     director: str("director") || null,
     screenwriter: str("screenwriter") || null,
@@ -296,8 +296,9 @@ export async function updateDrama(id: string, _prev: DramaFormState, formData: F
           "title", "year", "posterUrl", "synopsis", "mydramalistUrl", "novelId",
           "agencyIds", "status", "network", "episodes", "nativeTitle", "director",
           "screenwriter", "genres", "tags", "duration", "contentRating",
-          // Без них правка русского названия не оставляла бы следа в истории.
-          "titleRu", "synopsisRu", "doramalandUrl",
+          // Русские тексты пишет вкладка «Перевод» — свой след в
+          // истории оставляет её экшен.
+          "doramalandUrl",
         ],
       ),
     });

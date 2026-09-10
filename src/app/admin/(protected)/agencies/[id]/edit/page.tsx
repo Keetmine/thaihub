@@ -8,6 +8,7 @@ import { updateAgency, deleteAgency } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
 import TranslationEditor from "@/components/admin/TranslationEditor";
+import EntityTabs from "@/components/admin/EntityTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -61,50 +62,63 @@ export default async function EditAgencyPage({
         </a>
       </div>
 
-      <div className="d-flex flex-column gap-3">
-        {saved === "1" && <SavedBanner />}
-        <AgencyForm
-          key={agency.updatedAt.toISOString()}
-          action={boundUpdate}
-          submitLabel="Сохранить изменения"
-          performers={performers}
-          dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-          defaultPerformerIds={performers.map((p) => p.id)}
-          defaultDramaIds={agency.dramas.map((d) => d.id)}
-          defaultLinks={agency.links}
-          defaultValues={{
-            name: agency.name,
-            logoUrl: agency.logoUrl ?? "",
-            description: agency.description ?? "",
-          }}
-        />
+      {/* Вкладки «Запись / Перевод / История» — одинаково у всех
+          сущностей каталога (правка владельца 2026-09-10). */}
+      <EntityTabs
+        tabs={[
+          {
+            key: "record",
+            label: "Запись",
+            content: (
+              <div className="d-flex flex-column gap-3">
+          {saved === "1" && <SavedBanner />}
+          <AgencyForm
+            key={agency.updatedAt.toISOString()}
+            action={boundUpdate}
+            submitLabel="Сохранить изменения"
+            performers={performers}
+            dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
+            defaultPerformerIds={performers.map((p) => p.id)}
+            defaultDramaIds={agency.dramas.map((d) => d.id)}
+            defaultLinks={agency.links}
+            defaultValues={{
+              name: agency.name,
+              logoUrl: agency.logoUrl ?? "",
+              description: agency.description ?? "",
+            }}
+          />
 
-        <ConfirmForm
-          action={boundDelete}
-          confirmMessage={`Удалить агентство «${agency.name}»?`}
-          className="pt-2"
-        >
-          <button type="button" className="btn btn-outline-danger btn-sm">
-            Удалить агентство
-          </button>
-        </ConfirmForm>
-      </div>
-      {/* Перевод на русский — отдельным блоком со своей формой:
-          сохранять перевод, проходя валидацию всей карточки, не нужно
-          (правка владельца 2026-09-10). */}
-      <div className="mt-4">
-        <TranslationEditor
-          entity="agency"
-          id={agency.id}
-          original={{
-description: agency.description,
-          }}
-          translations={agency.translations}
-        />
-      </div>
-      <div className="mt-4">
-        <AuditTrail entityType="Agency" entityId={agency.id} hideWhenEmpty />
-      </div>
+          <ConfirmForm
+            action={boundDelete}
+            confirmMessage={`Удалить агентство «${agency.name}»?`}
+            className="pt-2"
+          >
+            <button type="button" className="btn btn-outline-danger btn-sm">
+              Удалить агентство
+            </button>
+          </ConfirmForm>
+              </div>
+            ),
+          },
+          {
+            key: "translation",
+            label: "Перевод",
+            content: (
+              <TranslationEditor
+                entity="agency"
+                id={agency.id}
+                original={{ description: agency.description }}
+                translations={agency.translations}
+              />
+            ),
+          },
+          {
+            key: "history",
+            label: "История",
+            content: <AuditTrail entityType="Agency" entityId={agency.id} />,
+          },
+        ]}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { updateNovel } from "../../actions";
 import { novelHref } from "@/lib/slugHelpers";
 import AuditTrail from "@/components/admin/AuditTrail";
 import TranslationEditor from "@/components/admin/TranslationEditor";
+import EntityTabs from "@/components/admin/EntityTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -46,40 +47,53 @@ export default async function EditNovelPage({
         </a>
       </div>
       {saved === "1" && <SavedBanner />}
-      <NovelForm
-        action={boundUpdate}
-        submitLabel="Сохранить изменения"
-        dramas={novel.dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-        defaultDramaIds={novel.dramas.map((d) => d.id)}
-        defaultValues={{
-          title: novel.title,
-          ficbookUrl: novel.ficbookUrl ?? "",
-          author: novel.author ?? "",
-          originalAuthor: novel.originalAuthor ?? "",
-          size: novel.size ?? "",
-          tags: novel.tags.join(", "),
-          coverUrl: novel.coverUrl ?? "",
-          description: novel.description ?? "",
-          links: novel.links.map((l) => ({ label: l.label, url: l.url })),
-        }}
+      {/* Вкладки «Запись / Перевод / История» — одинаково у всех
+          сущностей каталога (правка владельца 2026-09-10). Панели
+          рендерит сервер, клиентский только переключатель. */}
+      <EntityTabs
+        tabs={[
+          {
+            key: "record",
+            label: "Запись",
+            content: (
+              <NovelForm
+                action={boundUpdate}
+                submitLabel="Сохранить изменения"
+                dramas={novel.dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
+                defaultDramaIds={novel.dramas.map((d) => d.id)}
+                defaultValues={{
+                  title: novel.title,
+                  ficbookUrl: novel.ficbookUrl ?? "",
+                  author: novel.author ?? "",
+                  originalAuthor: novel.originalAuthor ?? "",
+                  size: novel.size ?? "",
+                  tags: novel.tags.join(", "),
+                  coverUrl: novel.coverUrl ?? "",
+                  description: novel.description ?? "",
+                  links: novel.links.map((l) => ({ label: l.label, url: l.url })),
+                }}
+              />
+            ),
+          },
+          {
+            key: "translation",
+            label: "Перевод",
+            content: (
+              <TranslationEditor
+                entity="novel"
+                id={novel.id}
+                original={{ title: novel.title, description: novel.description }}
+                translations={novel.translations}
+              />
+            ),
+          },
+          {
+            key: "history",
+            label: "История",
+            content: <AuditTrail entityType="Novel" entityId={novel.id} />,
+          },
+        ]}
       />
-      {/* Перевод на русский — отдельным блоком со своей формой:
-          сохранять перевод, проходя валидацию всей карточки, не нужно
-          (правка владельца 2026-09-10). */}
-      <div className="mt-4">
-        <TranslationEditor
-          entity="novel"
-          id={novel.id}
-          original={{
-title: novel.title,
-            description: novel.description,
-          }}
-          translations={novel.translations}
-        />
-      </div>
-      <div className="mt-4">
-        <AuditTrail entityType="Novel" entityId={novel.id} hideWhenEmpty />
-      </div>
     </div>
   );
 }

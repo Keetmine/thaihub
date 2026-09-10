@@ -10,6 +10,7 @@ import { updateEvent, deleteEvent } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
 import TranslationEditor from "@/components/admin/TranslationEditor";
+import EntityTabs from "@/components/admin/EntityTabs";
 
 export default async function EditEventPage({
   params,
@@ -78,78 +79,95 @@ export default async function EditEventPage({
         </a>
       </div>
       {saved === "1" && <SavedBanner />}
-      <EventForm
-        action={boundUpdate}
-        performers={event.performers.map((p) => ({
-          id: p.performer.id,
-          name: performerOptionLabel(p.performer),
-          photoUrl: p.performer.photoUrl,
-        }))}
-        pairings={pairings}
-        dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
-        locations={locations}
-        submitLabel="Сохранить изменения"
-        defaultValues={{
-          title: event.title,
-          venue: event.venue,
-          organizer: event.organizer ?? "",
-          address: event.address ?? "",
-          mapsUrl: event.mapsUrl ?? "",
-          tags: event.tags.join(", "),
-          description: event.description ?? "",
-          occurrences: event.occurrences.map((o) => ({
-            id: o.id,
-            date: dateKey(o.startsAt),
-            startTime: o.hasTime ? formatTime(o.startsAt) : "",
-            endTime: o.endsAt ? formatTime(o.endsAt) : "",
-            lineup: o.lineup.map((l) => ({
-              id: l.performer.id,
-              name: performerOptionLabel(l.performer),
-              photoUrl: l.performer.photoUrl,
-              timeText: l.timeText ?? "",
-              stage: l.stage ?? "",
-            })),
-          })),
-          performerIds: event.performers.map((p) => p.performerId),
-          pairingIds: event.pairings.map((p) => p.pairingId),
-          dramaId: event.dramaId ?? "",
-          locationId: event.locationId ?? "",
-          presaleDate: event.presaleAt ? dateKey(event.presaleAt) : "",
-          presaleTime: event.presaleAt ? formatTime(event.presaleAt) : "",
-          presaleUrl: event.presaleUrl ?? "",
-          ticketPrice: event.ticketPrice ?? "",
-          posterUrl: event.posterUrl ?? "",
-          photos: event.photos.map((p) => ({ url: p.url })),
-        }}
-      />
+      {/* Вкладки «Запись / Перевод / История» — одинаково у всех
+          сущностей каталога (правка владельца 2026-09-10). */}
+      <EntityTabs
+        tabs={[
+          {
+            key: "record",
+            label: "Запись",
+            content: (
+              <>
+          <EventForm
+            action={boundUpdate}
+            performers={event.performers.map((p) => ({
+              id: p.performer.id,
+              name: performerOptionLabel(p.performer),
+              photoUrl: p.performer.photoUrl,
+            }))}
+            pairings={pairings}
+            dramas={dramas.map((d) => ({ id: d.id, name: d.title, photoUrl: d.posterUrl }))}
+            locations={locations}
+            submitLabel="Сохранить изменения"
+            defaultValues={{
+              title: event.title,
+              venue: event.venue,
+              organizer: event.organizer ?? "",
+              address: event.address ?? "",
+              mapsUrl: event.mapsUrl ?? "",
+              tags: event.tags.join(", "),
+              description: event.description ?? "",
+              occurrences: event.occurrences.map((o) => ({
+                id: o.id,
+                date: dateKey(o.startsAt),
+                startTime: o.hasTime ? formatTime(o.startsAt) : "",
+                endTime: o.endsAt ? formatTime(o.endsAt) : "",
+                lineup: o.lineup.map((l) => ({
+                  id: l.performer.id,
+                  name: performerOptionLabel(l.performer),
+                  photoUrl: l.performer.photoUrl,
+                  timeText: l.timeText ?? "",
+                  stage: l.stage ?? "",
+                })),
+              })),
+              performerIds: event.performers.map((p) => p.performerId),
+              pairingIds: event.pairings.map((p) => p.pairingId),
+              dramaId: event.dramaId ?? "",
+              locationId: event.locationId ?? "",
+              presaleDate: event.presaleAt ? dateKey(event.presaleAt) : "",
+              presaleTime: event.presaleAt ? formatTime(event.presaleAt) : "",
+              presaleUrl: event.presaleUrl ?? "",
+              ticketPrice: event.ticketPrice ?? "",
+              posterUrl: event.posterUrl ?? "",
+              photos: event.photos.map((p) => ({ url: p.url })),
+            }}
+          />
 
-      <ConfirmForm
-        action={boundDelete}
-        confirmMessage={`Удалить событие «${event.title}»?`}
-        className="mt-4 pt-4"
-      >
-        <button type="button" className="btn btn-outline-danger btn-sm">
-          Удалить событие
-        </button>
-      </ConfirmForm>
-      {/* Перевод на русский — отдельным блоком со своей формой:
-          сохранять перевод, проходя валидацию всей карточки, не нужно
-          (правка владельца 2026-09-10). */}
-      <div className="mt-4">
-        <TranslationEditor
-          entity="event"
-          id={event.id}
-          original={{
-title: event.title,
-            description: event.description,
-            venue: event.venue,
-          }}
-          translations={event.translations}
-        />
-      </div>
-      <div className="mt-4">
-        <AuditTrail entityType="Event" entityId={event.id} hideWhenEmpty />
-      </div>
+          <ConfirmForm
+            action={boundDelete}
+            confirmMessage={`Удалить событие «${event.title}»?`}
+            className="mt-4 pt-4"
+          >
+            <button type="button" className="btn btn-outline-danger btn-sm">
+              Удалить событие
+            </button>
+          </ConfirmForm>
+              </>
+            ),
+          },
+          {
+            key: "translation",
+            label: "Перевод",
+            content: (
+              <TranslationEditor
+                entity="event"
+                id={event.id}
+                original={{
+                  title: event.title,
+                  description: event.description,
+                  venue: event.venue,
+                }}
+                translations={event.translations}
+              />
+            ),
+          },
+          {
+            key: "history",
+            label: "История",
+            content: <AuditTrail entityType="Event" entityId={event.id} />,
+          },
+        ]}
+      />
     </div>
   );
 }

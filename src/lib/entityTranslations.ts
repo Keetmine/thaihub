@@ -30,9 +30,24 @@ export type TranslatableField = {
   /** Подпись в админке. Админка одноязычная, русская. */
   label: string;
   kind: TranslatableKind;
+  /**
+   * Настоящая колонка таблицы вместо json — только у сериала. Его
+   * `titleRu`/`synopsisRu` заведены раньше этого механизма, их
+   * заполняет импорт с dorama.land и читает `lib/dramaLocale`, а по
+   * названию каталог ещё и сортирует. Перевозить их в json значило бы
+   * ломать всё это ради единообразия хранения; единообразной должна
+   * быть ФОРМА, а не таблица (правка владельца 2026-09-10).
+   */
+  column?: string;
 };
 
-export type TranslatableEntity = "performer" | "event" | "location" | "novel" | "agency";
+export type TranslatableEntity =
+  | "performer"
+  | "drama"
+  | "event"
+  | "location"
+  | "novel"
+  | "agency";
 
 /**
  * Что переводим у каждой сущности.
@@ -43,6 +58,10 @@ export type TranslatableEntity = "performer" | "event" | "location" | "novel" | 
  * находиться поиском).
  */
 export const TRANSLATABLE_FIELDS: Record<TranslatableEntity, TranslatableField[]> = {
+  drama: [
+    { name: "title", label: "Название", kind: "line", column: "titleRu" },
+    { name: "synopsis", label: "Описание", kind: "text", column: "synopsisRu" },
+  ],
   performer: [
     { name: "bio", label: "Биография", kind: "text" },
     { name: "placeOfBirth", label: "Место рождения", kind: "line" },
@@ -113,6 +132,31 @@ export function translatedList(
     return value.filter((v) => v.trim());
   }
   return original;
+}
+
+/**
+ * Значения формы перевода → колонки таблицы. Нужно там, где переводы
+ * лежат НЕ в json, а настоящими колонками (сериал: titleRu/synopsisRu).
+ *
+ * Пустое поле стирает колонку, а не оставляет старое значение: иначе
+ * снять ошибочный перевод из формы было бы нечем.
+ *
+ * Отдельной чистой функцией, а не строчками внутри экшена: форму
+ * сериала не удаётся прокликать автотестом (в dev страница тяжёлая и
+ * не доходит до «стабильного» состояния), и эта ветка иначе осталась бы
+ * непроверенной вовсе.
+ */
+export function translationColumns(
+  entity: TranslatableEntity,
+  values: Record<string, string | string[] | undefined>,
+): Record<string, string | null> {
+  const columns: Record<string, string | null> = {};
+  for (const field of TRANSLATABLE_FIELDS[entity]) {
+    if (!field.column) continue;
+    const value = values[field.name];
+    columns[field.column] = typeof value === "string" && value.trim() ? value : null;
+  }
+  return columns;
 }
 
 /**

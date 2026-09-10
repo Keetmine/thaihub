@@ -8,6 +8,7 @@ import { invalidateCatalogCache } from "@/lib/catalogCache";
 import {
   TRANSLATABLE_FIELDS,
   parseTranslations,
+  translationColumns,
   type TranslatableEntity,
 } from "@/lib/entityTranslations";
 
@@ -21,12 +22,27 @@ import {
 const TARGETS: Record<
   TranslatableEntity,
   {
+    /** null у сериала: его переводы лежат колонками, json не читаем. */
     load: (id: string) => Promise<{ translations: unknown } | null>;
     save: (id: string, translations: unknown) => Promise<unknown>;
+    /** Запись в настоящие колонки (`titleRu`…) — только у сериала. */
+    saveColumns?: (id: string, values: Record<string, string | null>) => Promise<unknown>;
     adminPath: (id: string) => string;
     label: string;
   }
 > = {
+  drama: {
+    // json у сериала не используется — грузим заглушку, чтобы общий
+    // код не расходился на две ветки ради одной сущности.
+    load: async (id) =>
+      (await prisma.drama.findUnique({ where: { id }, select: { id: true } }))
+        ? { translations: null }
+        : null,
+    save: async () => undefined,
+    saveColumns: (id, values) => prisma.drama.update({ where: { id }, data: values }),
+    adminPath: (id) => `/admin/dramas/${id}/edit`,
+    label: "Drama",
+  },
   performer: {
     load: (id) => prisma.performer.findUnique({ where: { id }, select: { translations: true } }),
     save: (id, translations) =>
@@ -93,11 +109,16 @@ export async function saveEntityTranslations(formData: FormData): Promise<void> 
         : raw;
   }
 
-  const next = { ...all, ru };
-  // Пустой перевод — это отсутствие перевода: не держим `{ ru: {} }`,
-  // чтобы «переведено 0 из 5» считалось одинаково и до, и после правки.
-  const cleaned = Object.keys(ru).length > 0 ? next : { ...all, ru: undefined };
-  await target.save(id, cleaned);
+  if (target.saveColumns) {
+    // Сериал: перевод — настоящие колонки (`titleRu`, `synopsisRu`).
+    await target.saveColumns(id, translationColumns(entity, ru));
+  } else {
+    const next = { ...all, ru };
+    // Пустой перевод — это отсутствие перевода: не держим `{ ru: {} }`,
+    // чтобы «переведено 0 из 5» считалось одинаково и до, и после правки.
+    const cleaned = Object.keys(ru).length > 0 ? next : { ...all, ru: undefined };
+    await target.save(id, cleaned);
+  }
 
   await logAudit({
     action: "UPDATE",

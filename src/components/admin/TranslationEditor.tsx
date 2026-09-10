@@ -25,13 +25,18 @@ export default function TranslationEditor({
   /** Оригиналы полей — по именам из TRANSLATABLE_FIELDS. */
   original,
   translations,
+  /** Готовые значения перевода для сущностей, чьи переводы лежат
+   *  КОЛОНКАМИ, а не в json (сериал: titleRu/synopsisRu). */
+  values,
 }: {
   entity: TranslatableEntity;
   id: string;
   original: Record<string, string | string[] | null | undefined>;
-  translations: unknown;
+  translations?: unknown;
+  values?: Record<string, string | null | undefined>;
 }) {
-  const ru = parseTranslations(translations).ru ?? {};
+  const ru: Record<string, string | string[] | null | undefined> =
+    values ?? parseTranslations(translations).ru ?? {};
   const fields = TRANSLATABLE_FIELDS[entity];
 
   const asText = (value: string | string[] | null | undefined): string =>

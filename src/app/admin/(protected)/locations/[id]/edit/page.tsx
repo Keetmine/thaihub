@@ -8,6 +8,7 @@ import { updateLocation, deleteLocation } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
 import TranslationEditor from "@/components/admin/TranslationEditor";
+import EntityTabs from "@/components/admin/EntityTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -51,54 +52,66 @@ export default async function EditLocationPage({
           Посмотреть на сайте ↗
         </a>
       </div>
-      <div className="d-flex flex-column gap-3">
-        {saved === "1" && <SavedBanner />}
-        <LocationForm
-          action={boundUpdate}
-          submitLabel="Сохранить изменения"
-          defaultValues={{
-            name: location.name,
-            description: location.description ?? "",
-            photoUrl: location.photoUrl ?? "",
-            latitude: location.latitude,
-            longitude: location.longitude,
-            category: location.category,
-            links: location.links.map((l) => ({ label: l.label, url: l.url })),
-            dramaIds: location.dramas.map((dl) => dl.dramaId),
-          }}
-          dramas={location.dramas.map((dl) => ({
-            id: dl.drama.id,
-            name: dl.drama.title,
-            photoUrl: dl.drama.posterUrl,
-          }))}
-        />
-        <ConfirmForm
-          action={boundDelete}
-          confirmMessage={`Удалить локацию «${location.name}»?`}
-          className="pt-2"
-        >
-          <button type="button" className="btn btn-outline-danger btn-sm">
-            Удалить локацию
-          </button>
-        </ConfirmForm>
-      </div>
-      {/* Перевод на русский — отдельным блоком со своей формой:
-          сохранять перевод, проходя валидацию всей карточки, не нужно
-          (правка владельца 2026-09-10). */}
-      <div className="mt-4">
-        <TranslationEditor
-          entity="location"
-          id={location.id}
-          original={{
-name: location.name,
-            description: location.description,
-          }}
-          translations={location.translations}
-        />
-      </div>
-      <div className="mt-4">
-        <AuditTrail entityType="Location" entityId={location.id} hideWhenEmpty />
-      </div>
+      {/* Вкладки «Запись / Перевод / История» — одинаково у всех
+          сущностей каталога (правка владельца 2026-09-10). */}
+      <EntityTabs
+        tabs={[
+          {
+            key: "record",
+            label: "Запись",
+            content: (
+              <div className="d-flex flex-column gap-3">
+          {saved === "1" && <SavedBanner />}
+          <LocationForm
+            action={boundUpdate}
+            submitLabel="Сохранить изменения"
+            defaultValues={{
+              name: location.name,
+              description: location.description ?? "",
+              photoUrl: location.photoUrl ?? "",
+              latitude: location.latitude,
+              longitude: location.longitude,
+              category: location.category,
+              links: location.links.map((l) => ({ label: l.label, url: l.url })),
+              dramaIds: location.dramas.map((dl) => dl.dramaId),
+            }}
+            dramas={location.dramas.map((dl) => ({
+              id: dl.drama.id,
+              name: dl.drama.title,
+              photoUrl: dl.drama.posterUrl,
+            }))}
+          />
+          <ConfirmForm
+            action={boundDelete}
+            confirmMessage={`Удалить локацию «${location.name}»?`}
+            className="pt-2"
+          >
+            <button type="button" className="btn btn-outline-danger btn-sm">
+              Удалить локацию
+            </button>
+          </ConfirmForm>
+              </div>
+            ),
+          },
+          {
+            key: "translation",
+            label: "Перевод",
+            content: (
+              <TranslationEditor
+                entity="location"
+                id={location.id}
+                original={{ name: location.name, description: location.description }}
+                translations={location.translations}
+              />
+            ),
+          },
+          {
+            key: "history",
+            label: "История",
+            content: <AuditTrail entityType="Location" entityId={location.id} />,
+          },
+        ]}
+      />
     </div>
   );
 }
