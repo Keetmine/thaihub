@@ -7731,3 +7731,117 @@ body::after {
 .bento-hello-name {
   color: var(--bs-primary-text-emphasis);
 }
+
+/* ---------- День рождения артиста ---------- */
+/* Праздничное оформление страницы в его день (просьба владельца
+   2026-09-10): рамка у фото, плашка под именем и одна вспышка конфетти
+   при заходе. Украшение лежит ПОВЕРХ обычной страницы и ничего не
+   двигает: в день рождения человек всё равно приходит за фильмографией,
+   и искать её среди праздника он не должен. */
+
+.birthday-frame {
+  /* Обнимает фото, а не колонку: на телефоне колонка во всю ширину, и
+     рамка-блок торчала градиентным полем справа от портрета. */
+  width: fit-content;
+  position: relative;
+  /* Радиус фото (.rounded-4 = 1rem) — рамка ложится по его краю. */
+  border-radius: 1rem;
+  /* Свечение — тенью: она вне потока и размеров не меняет. */
+  box-shadow: 0 10px 30px rgba(255, 86, 140, 0.2);
+}
+
+.birthday-frame > img {
+  display: block;
+}
+
+/* Рамка рисуется ПОВЕРХ фото, а не вокруг него (правка владельца
+   2026-09-10: «из-за рамки фото стало больше»). Отступ у обёртки
+   раздвигал колонку на свою толщину; псевдоэлемент лежит абсолютно и в
+   поток не входит, поэтому портрет остаётся ровно 15rem.
+   Градиентная рамка без внешнего блока делается маской: заливка видна
+   только в полосе между внешним краем и content-box. */
+.birthday-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 3px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 138, 76, 0.95),
+    rgba(255, 86, 140, 0.9) 45%,
+    rgba(122, 162, 255, 0.9)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  /* Рамка декоративная: клики уходят фото под ней. */
+  pointer-events: none;
+}
+
+.birthday-badge {
+  /* inline-block, а не inline-flex: строка должна ПЕРЕНОСИТЬСЯ. Ширина
+     ограничена шириной фото (15rem задан в artists/[id]/page.tsx) —
+     иначе плашка раздвигала колонку фото и отжимала факты вправо. */
+  display: inline-block;
+  max-width: 15rem;
+  text-align: center;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ffd7c2;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 138, 76, 0.22),
+    rgba(255, 86, 140, 0.22)
+  );
+  border: 1px solid rgba(255, 138, 76, 0.45);
+}
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  /* Ничего не перехватывает: кликать по странице во время анимации
+     можно как обычно. */
+  pointer-events: none;
+  /* Выше контента, но НИЖЕ модалок и куки-баннера — конфетти не должно
+     закрывать то, что требует ответа. */
+  z-index: 1030;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -6vh;
+  border-radius: 1px;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(var(--confetti-drift), 108vh, 0)
+      rotate(var(--confetti-spin));
+    opacity: 0;
+  }
+}
+
+/* Не «помедленнее», а совсем без анимации: падающая мелочь поперёк
+   экрана — не украшение для того, кто её попросил выключить. Компонент
+   и так не рендерится при reduced-motion, это второй рубеж. */
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}

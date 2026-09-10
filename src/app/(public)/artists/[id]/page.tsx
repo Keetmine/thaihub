@@ -19,6 +19,7 @@ import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
+import BirthdayConfetti from "@/components/BirthdayConfetti";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { getT } from "@/lib/i18n";
 import { formatDayLongMonth, formatLongDate } from "@/lib/dates";
@@ -463,6 +464,22 @@ export default async function PerformerPage({
     });
   }
 
+  /**
+   * Сегодня ли у него день рождения — от этого зависит праздничное
+   * оформление страницы (просьба владельца 2026-09-10).
+   *
+   * Дата рождения — НАСТЕННАЯ: в базе она лежит полуночью UTC, поэтому
+   * месяц и число из неё читаются UTC-геттерами (см. lib/dates.ts).
+   * Сегодняшний день, наоборот, берём по местному времени процесса
+   * (TZ=Europe/Moscow) — праздник должен начинаться в полночь у
+   * зрителя, а не в три часа ночи, когда наступит полночь по UTC.
+   */
+  const isBirthdayToday =
+    !isBand &&
+    !!performer.birthDate &&
+    now.getMonth() === performer.birthDate.getUTCMonth() &&
+    now.getDate() === performer.birthDate.getUTCDate();
+
   const currentAge = (d: Date) => {
     const today = new Date();
     let age = today.getFullYear() - d.getFullYear();
@@ -474,6 +491,19 @@ export default async function PerformerPage({
     }
     return t.catalog.artist.age(age);
   };
+
+  /* Плашка «Сегодня день рождения» — под фото и соцсетями (правка
+     владельца 2026-09-10): в шапке она разрывала имя и кнопки, а под
+     колонкой фото читается как подпись к портрету. Узел один на два
+     возможных места: без фото колонки нет, и плашка встаёт под именем. */
+  const birthdayBadge = isBirthdayToday ? (
+    // Возраста в плашке нет намеренно: он стоит строкой правее, в
+    // «Дата рождения: … (34 года)», а с ним подпись переносилась на две
+    // строки и «34 года» висело отдельной строчкой.
+    <p className="birthday-badge mb-0 align-self-center">
+      🎂 {t.catalog.artist.birthdayToday}
+    </p>
+  ) : null;
 
   // Бренды вынуты из общей кучи первыми: бренд может вести на инстаграм,
   // и без этого он превратился бы в безымянную иконку соцсети — то есть
@@ -524,6 +554,9 @@ export default async function PerformerPage({
 
   return (
     <div>
+      {/* Конфетти — клиентское и одноразовое, само снимается через
+          четыре секунды; при prefers-reduced-motion не рисуется вовсе. */}
+      {isBirthdayToday && <BirthdayConfetti />}
       <BackLink
         fallbackHref={isMascot ? "/artists?view=mascots" : "/artists"}
         fallbackLabel={
@@ -547,6 +580,9 @@ export default async function PerformerPage({
               </>
             )}
           </h1>
+          {/* Без фото плашке некуда встать в колонке — тогда она живёт
+              под именем. */}
+          {!displayPhoto && birthdayBadge}
         </div>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <FavoriteButton
@@ -585,27 +621,38 @@ export default async function PerformerPage({
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
         {displayPhoto && (
           <div className="flex-shrink-0 d-flex flex-column gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              loading="eager"
-              decoding="async"
-              src={displayPhoto}
-              alt={performer.name}
-              className="rounded-4"
-              style={{
-                width: "15rem",
-                aspectRatio: "3 / 4",
-                objectFit: "cover",
-              }}
-            />
+            {/* В день рождения фото в праздничной рамке. Рамку рисует
+                псевдоэлемент обёртки ПОВЕРХ фото: отступ раздвигал бы
+                колонку, а размер портрета меняться не должен. Само фото
+                при этом ничем не отличается от обычного дня. */}
+            <div className={isBirthdayToday ? "birthday-frame" : undefined}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                loading="eager"
+                decoding="async"
+                src={displayPhoto}
+                alt={performer.name}
+                className="rounded-4"
+                style={{
+                  width: "15rem",
+                  aspectRatio: "3 / 4",
+                  objectFit: "cover",
+                }}
+              />
+            </div>
             <SocialLinkIcons
               items={socialItems}
               className="justify-content-center"
             />
+            {birthdayBadge}
           </div>
         )}
         {/* Факты и био — просто текстом, без фона-карточки (фидбек
-            владельца). */}
+            владельца). Значения НЕ выделяются белым: у «Занятий»,
+            «Инструментов», «Сольного дебюта», роста и веса стоял
+            text-body, и половина блока была ярче другой половины
+            (правка владельца 2026-09-10). Теперь цвет один на весь
+            блок — он наследуется от text-secondary у самой строки. */}
         {hasFacts && (
         <div
           className="d-flex flex-column gap-2 flex-fill"
@@ -651,23 +698,19 @@ export default async function PerformerPage({
           {performer.occupation.length > 0 && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.occupation}</span>{" "}
-              <span className="text-body">
-                {performer.occupation.join(", ")}
-              </span>
+              {performer.occupation.join(", ")}
             </p>
           )}
           {performer.instruments.length > 0 && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.instruments}</span>{" "}
-              <span className="text-body">
-                {performer.instruments.join(", ")}
-              </span>
+              {performer.instruments.join(", ")}
             </p>
           )}
           {performer.soloDebut && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.soloDebut}</span>{" "}
-              <span className="text-body">{performer.soloDebut}</span>
+              {performer.soloDebut}
             </p>
           )}
           {(performer.height || performer.weight) && (
@@ -675,18 +718,14 @@ export default async function PerformerPage({
               {performer.height && (
                 <>
                   <span className="text-secondary">{t.catalog.artist.height}</span>{" "}
-                  <span className="text-body">
-                    {performer.height.replace(/\s*\(.*?\)/g, "").trim()}
-                  </span>
+                  {performer.height.replace(/\s*\(.*?\)/g, "").trim()}
                 </>
               )}
               {performer.height && performer.weight && " · "}
               {performer.weight && (
                 <>
                   <span className="text-secondary">{t.catalog.artist.weight}</span>{" "}
-                  <span className="text-body">
-                    {performer.weight.replace(/\s*\(.*?\)/g, "").trim()}
-                  </span>
+                  {performer.weight.replace(/\s*\(.*?\)/g, "").trim()}
                 </>
               )}
             </p>

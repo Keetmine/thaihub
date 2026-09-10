@@ -351,6 +351,7 @@ export const catalog: Dict["catalog"] = {
         back: "← Все артисты",
         backMascots: "← Все маскоты",
         birthDate: "Дата рождения:",
+        birthdayToday: "Сегодня день рождения",
         age: (years: number) => `${years} ${plural(years, ["год", "года", "лет"])}`,
         nationality: "Национальность:",
         alsoKnownAs: "Также известен как:",

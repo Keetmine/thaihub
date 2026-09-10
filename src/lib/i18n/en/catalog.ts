@@ -317,6 +317,9 @@ export const catalog = {
         back: "← All artists",
         backMascots: "← All mascots",
         birthDate: "Date of birth:",
+        /** Плашка и рамка в день рождения артиста (просьба владельца
+         *  2026-09-10). Без рода: подпись видят все. */
+        birthdayToday: "Birthday today",
         age: (years: number) => `${years} years old`,
         nationality: "Nationality:",
         alsoKnownAs: "Also known as:",
