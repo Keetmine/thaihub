@@ -95,11 +95,43 @@ async function callTelegram(method: string, body: unknown): Promise<Response> {
 }
 
 /**
+ * Уходят ли сообщения бота наружу.
+ *
+ * Локальная разработка ходит в ТОГО ЖЕ бота, что и прод: `TELEGRAM_BOT_TOKEN`
+ * в `.env` один и тот же, и владелец получал каждое админ-уведомление
+ * ДВАЖДЫ — с сервера и со своей машины (жалоба владельца 2026-09-10).
+ * Поэтому сообщения уходят только из production, а на машине пишутся в
+ * консоль. Проверить настоящую отправку локально — `TELEGRAM_ALLOW_OUTBOUND=1`
+ * в `.env`.
+ *
+ * Гейт стоит здесь, в единственной точке отправки: выше по стеку его
+ * пришлось бы повторять в админ-уведомлениях, напоминаниях о событиях,
+ * дайджестах, рассылке и вебхуке — и однажды забыть.
+ *
+ * Счета на оплату (`createInvoiceLink`) не глушатся: их создаёт человек,
+ * нажавший кнопку прямо сейчас, фоном они не рассылаются.
+ */
+function outboundMuted(): boolean {
+  if (process.env.TELEGRAM_ALLOW_OUTBOUND === "1") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
+/**
  * Отправляет личное сообщение от бота. Вернёт false (не бросит), если
  * пользователь не нажимал Start у бота (Telegram отвечает 403) — для
  * рассылки уведомлений это ожидаемый, а не аварийный случай.
  */
 export async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
+  if (outboundMuted()) {
+    // Возвращаем true, а не false: вызывающий по этому значению ведёт
+    // свою бухгалтерию (дедуп напоминаний, «разговор стал живым»), и
+    // локальный прогон должен вести себя как боевой — иначе половина
+    // сценариев на машине просто не проверяется.
+    console.info(
+      `[telegram] не отправлено (NODE_ENV=${process.env.NODE_ENV}), chat ${chatId}:\n${text}`,
+    );
+    return true;
+  }
   const res = await callTelegram("sendMessage", {
     chat_id: chatId,
     text,
