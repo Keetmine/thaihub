@@ -328,12 +328,13 @@ export default async function PerformerPage({
     </div>
   );
 
-  // Порядок сериалов (просьба владельца): анонсы — первыми (ближайшая
-  // премьера сверху, анонсы без даты — в конце своего блока), дальше
-  // вышедшие в порядке выхода, свежие сверху. Сортируем по полной дате
-  // старта (airedFrom), а не по голому году — два сериала одного года
-  // раньше вставали по алфавиту. Записи без дат и года (ещё не
-  // дозаполненные импортом) — в самом низу, как и раньше.
+  // Порядок сериалов (просьба владельца): сначала TBA — те, у кого нет
+  // ни даты старта, ни года (правка владельца 2026-09-10). Раньше они
+  // лежали в самом низу, а это как раз то, чего ждут: проекты, которые
+  // сняли или снимают, и премьеры у которых ещё нет. Дальше анонсы с
+  // датой — ближайшая премьера сверху, — и вышедшие, свежие сверху.
+  // Сортируем по полной дате старта (airedFrom), а не по голому году:
+  // два сериала одного года раньше вставали по алфавиту.
   const dramaAirTime = (d: (typeof performer.dramas)[number]["drama"]) =>
     d.airedFrom?.getTime() ?? (d.year != null ? Date.UTC(d.year, 0, 1) : null);
   const nowMs = now.getTime();
@@ -345,13 +346,20 @@ export default async function PerformerPage({
     d.status === "PILOT" ||
     (dramaAirTime(d) ?? -Infinity) > nowMs;
   const sortedDramas = [...performer.dramas].sort((a, b) => {
+    const tA = dramaAirTime(a.drama);
+    const tB = dramaAirTime(b.drama);
+    // TBA впереди всего — и статус тут не при чём: важно, что даты нет.
+    if ((tA == null) !== (tB == null)) return tA == null ? -1 : 1;
+    // Внутри TBA сравнивать нечем — по названию, чтобы порядок был
+    // устойчивым, а не «как легло из базы».
+    if (tA == null || tB == null) {
+      return dramaTitleForLocale(a.drama, locale).localeCompare(
+        dramaTitleForLocale(b.drama, locale),
+      );
+    }
     const annA = isAnnounced(a.drama);
     const annB = isAnnounced(b.drama);
     if (annA !== annB) return annA ? -1 : 1;
-    const tA = dramaAirTime(a.drama);
-    const tB = dramaAirTime(b.drama);
-    if (tA == null) return tB == null ? 0 : 1;
-    if (tB == null) return -1;
     return annA ? tA - tB : tB - tA;
   });
 
