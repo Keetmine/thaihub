@@ -671,7 +671,7 @@ export default async function PerformerPage({
             <p className="small text-secondary mb-0">
               <PinIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.catalog.artist.nationality}</span>{" "}
-              {performer.nationality}
+              {t.catalog.performerNationality(performer.nationality)}
             </p>
           )}
           {!isBand && performer.alsoKnownAs && (
@@ -698,13 +698,13 @@ export default async function PerformerPage({
           {performer.occupation.length > 0 && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.occupation}</span>{" "}
-              {performer.occupation.join(", ")}
+              {performer.occupation.map((o) => t.catalog.performerOccupation(o)).join(", ")}
             </p>
           )}
           {performer.instruments.length > 0 && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.instruments}</span>{" "}
-              {performer.instruments.join(", ")}
+              {performer.instruments.map((i) => t.catalog.performerInstrument(i)).join(", ")}
             </p>
           )}
           {performer.soloDebut && (

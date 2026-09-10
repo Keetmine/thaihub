@@ -181,18 +181,26 @@ export function dramaFilterDefs(t: Dict, o: DramaFilterOptions): FilterDef[] {
       key: "genres",
       title: t.filters.genres,
       kind: "multi",
-      options: plain(o.genres),
+      // ЗНАЧЕНИЕ остаётся сырым — по нему ищет каталог и живут ссылки;
+      // переводится только подпись (правка владельца 2026-09-10).
+      options: o.genres.map((v) => ({ value: v, label: t.catalog.dramaGenre(v) })),
       hint: t.filters.hints.genres,
     },
     {
       key: "country",
       title: t.filters.country,
       kind: "multi",
-      options: plain(o.countries),
+      options: o.countries.map((v) => ({ value: v, label: t.catalog.dramaCountry(v) })),
       hint: t.filters.hints.country,
       alwaysShow: true,
     },
-    { key: "type", title: t.filters.type, kind: "multi", options: plain(o.types), hint: t.filters.hints.type },
+    {
+      key: "type",
+      title: t.filters.type,
+      kind: "multi",
+      options: o.types.map((v) => ({ value: v, label: t.catalog.dramaType(v) })),
+      hint: t.filters.hints.type,
+    },
     {
       key: "status",
       title: t.filters.status,

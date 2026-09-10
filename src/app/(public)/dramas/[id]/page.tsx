@@ -794,7 +794,10 @@ export default async function DramaDetailPage({
                         href={`/search?section=dramas&genres=${encodeURIComponent(g)}`}
                         className="tag-chip text-decoration-none"
                       >
-                        {g}
+                        {/* Значение в ссылке — сырое (по нему ищет
+                            каталог), на экране — словарное (см.
+                            fromDict в i18n/ru/catalog.ts). */}
+                        {t.catalog.dramaGenre(g)}
                       </AppLink>
                     ))}
                   </span>

@@ -133,6 +133,15 @@ export const catalog = {
     /** Страна производства — MDL и так пишет по-английски. */
     dramaCountry: (raw: string): string => raw,
 
+    /* Словарные значения из импорта. Английская витрина показывает их
+       как есть: источники (MyDramaList, фандомные вики) пишут именно
+       по-английски, переводить нечего. Функции всё равно нужны — чтобы
+       у страниц была одна точка вызова на оба языка. */
+    dramaGenre: (raw: string): string => raw,
+    performerNationality: (raw: string): string => raw,
+    performerOccupation: (raw: string): string => raw,
+    performerInstrument: (raw: string): string => raw,
+
     /** Подписи колонок таблицы сериалов. Общие для каталога /dramas и
      *  вкладки «Сериалы» в профиле: таблицы задуманы роднёй, и два
      *  словаря разъехались бы («Статус просмотра» против «Статус»). */
