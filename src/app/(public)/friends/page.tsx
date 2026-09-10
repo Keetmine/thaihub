@@ -99,6 +99,11 @@ export default async function FriendsPage({
 
   const { q: rawQ } = await searchParams;
   const q = (rawQ ?? "").trim();
+  // Ник люди вводят и с собачкой — «@katerina3116» (правка владельца
+  // 2026-09-10): в профиле он показан именно так, её и копируют. Ищем
+  // по обоим вариантам сразу: по введённому и по нему же без «@».
+  // Имени с собачкой не бывает, так что лишних совпадений не будет.
+  const qBare = q.replace(/^@+/, "");
 
   const friendships = await prisma.friendship.findMany({
     where: { OR: [{ requesterId: user.id }, { addresseeId: user.id }] },
@@ -123,8 +128,8 @@ export default async function FriendsPage({
           // показывается вовсе (Э1.9).
           OR: [
             { name: { contains: q, mode: "insensitive" } },
-            { username: { contains: q, mode: "insensitive" } },
-            { email: { equals: q, mode: "insensitive" } },
+            { username: { contains: qBare, mode: "insensitive" } },
+            { email: { equals: qBare, mode: "insensitive" } },
           ],
         },
         take: 20,
