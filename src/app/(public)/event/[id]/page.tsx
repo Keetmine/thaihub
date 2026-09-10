@@ -1,4 +1,5 @@
 import ReviewsAndComments from "@/components/ReviewsAndComments";
+import { translatedText } from "@/lib/entityTranslations";
 import SourcesBlock from "@/components/SourcesBlock";
 import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
@@ -114,16 +115,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     // Участнику страницу отдаём, поисковику — никогда: встречу видят
     // только свои, и в индексе ей делать нечего.
     return pageMetadata({
-      title: event.title,
+      title: translatedText(event, "title", event.title, locale),
       description: t.communities.meetups.eventNoticeMembers,
       noIndex: true,
     });
   }
   return pageMetadata({
-    title: event.title,
+    title: translatedText(event, "title", event.title, locale),
     description:
-      event.description?.slice(0, 160) ??
-      t.events.detail.metaDescription(event.title, when, event.venue),
+      translatedText(event, "description", event.description, locale)?.slice(0, 160) ??
+      t.events.detail.metaDescription(
+        translatedText(event, "title", event.title, locale),
+        when,
+        translatedText(event, "venue", event.venue, locale),
+      ),
     path: `/event/${event.slug ?? id}`,
     image: event.posterUrl,
     type: "article",
@@ -165,6 +170,10 @@ export default async function EventDetailPage({
   const event = await getEvent(rawId);
 
   if (!event) notFound();
+  // Русские тексты записи: перевод, если он есть, иначе оригинал.
+  const eventTitle = translatedText(event, "title", event.title, locale);
+  const eventVenue = translatedText(event, "venue", event.venue, locale);
+  const eventDescription = translatedText(event, "description", event.description, locale);
 
   // --- own block: current user's favorite/attendance state for this event ---
   // АА4: пары среди тех, кто на событии (общий состав + лайнапы дней) —
@@ -486,7 +495,7 @@ export default async function EventDetailPage({
           блок информации, к площадке и организатору. */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-2 mb-4">
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
-          {event.title}
+          {eventTitle}
         </h1>
         <div className="d-flex align-items-center gap-2 flex-shrink-0">
           <FavoriteButton kind="event" id={event.id} isFavorited={isEventFavorited} variant="icon" />
@@ -515,7 +524,7 @@ export default async function EventDetailPage({
             админка, а не осознанный выбор автора. */}
         {(event.posterUrl || isMeetup) && (
           <div className="flex-shrink-0 d-flex flex-column gap-2" style={{ width: "15rem" }}>
-            <MeetupPoster title={event.title} posterUrl={event.posterUrl} />
+            <MeetupPoster title={eventTitle} posterUrl={event.posterUrl} />
             {event.presaleUrl && (
               <a
                 href={event.presaleUrl}
@@ -575,10 +584,10 @@ export default async function EventDetailPage({
                   className="link-body-emphasis"
                   title={t.events.detail.openOnMap}
                 >
-                  {event.venue}
+                  {eventVenue}
                 </a>
               ) : (
-                event.venue
+                eventVenue
               )}
               {event.address && (
                 <span className="text-secondary"> · {event.address}</span>
@@ -738,7 +747,7 @@ export default async function EventDetailPage({
 
       {/* Описание — НАД тремя фото (правка владельца 2026-09-05); без
           подложки-surface (прежняя просьба). */}
-      {event.description && (
+      {eventDescription && (
         <div id="description" className="anchor-target mb-4">
           <h2 className="section-heading mb-2">
             <InfoIcon className="icon-inline" /> {t.events.detail.description}
@@ -746,7 +755,7 @@ export default async function EventDetailPage({
           {/* pre-line: описания приходят с абзацами (и из формы, и из
               импорта по ссылке) — без него переносы схлопывались в
               сплошной текст (жалоба владельца). */}
-          <p className="mb-0" style={{ whiteSpace: "pre-line" }}>{event.description}</p>
+          <p className="mb-0" style={{ whiteSpace: "pre-line" }}>{eventDescription}</p>
         </div>
       )}
 

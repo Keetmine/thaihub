@@ -10,6 +10,7 @@ import { updatePerformer, deletePerformer } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import MusicManager from "../../MusicManager";
 import AuditTrail from "@/components/admin/AuditTrail";
+import TranslationEditor from "@/components/admin/TranslationEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -202,6 +203,24 @@ export default async function EditPerformerPage({
                     url: s.url,
                     albumId: s.albumId,
                   }))}
+                />
+              ),
+            },
+            {
+              key: "translation",
+              label: "Перевод",
+              content: (
+                <TranslationEditor
+                  entity="performer"
+                  id={performer.id}
+                  original={{
+                    bio: performer.bio,
+                    placeOfBirth: performer.placeOfBirth,
+                    trivia: performer.trivia,
+                    mvAppearances: performer.mvAppearances,
+                    soloDebut: performer.soloDebut,
+                  }}
+                  translations={performer.translations}
                 />
               ),
             },

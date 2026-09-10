@@ -7,6 +7,7 @@ import AgencyForm from "../../AgencyForm";
 import { updateAgency, deleteAgency } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
+import TranslationEditor from "@/components/admin/TranslationEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,19 @@ export default async function EditAgencyPage({
             Удалить агентство
           </button>
         </ConfirmForm>
+      </div>
+      {/* Перевод на русский — отдельным блоком со своей формой:
+          сохранять перевод, проходя валидацию всей карточки, не нужно
+          (правка владельца 2026-09-10). */}
+      <div className="mt-4">
+        <TranslationEditor
+          entity="agency"
+          id={agency.id}
+          original={{
+description: agency.description,
+          }}
+          translations={agency.translations}
+        />
       </div>
       <div className="mt-4">
         <AuditTrail entityType="Agency" entityId={agency.id} hideWhenEmpty />

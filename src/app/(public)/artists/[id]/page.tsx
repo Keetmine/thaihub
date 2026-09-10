@@ -1,5 +1,6 @@
 import { JsonLd, pageMetadata, personJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { getContentDict } from "@/lib/contentDictionary.server";
+import { translatedList, translatedText } from "@/lib/entityTranslations";
 import AppLink from "@/components/AppLink";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
@@ -148,6 +149,15 @@ export default async function PerformerPage({
   const performer = await getPerformer(rawId);
   if (!performer) notFound();
   const id = performer.id;
+  // Русские тексты записи (правка владельца 2026-09-10): перевод, если
+  // он есть, иначе оригинал — подстановка, а не перевод, как у сериалов.
+  // Считаем один раз здесь: значения нужны и в разметке, и в проверке
+  // «есть ли что показывать» (hasFacts).
+  const bio = translatedText(performer, "bio", performer.bio, locale);
+  const placeOfBirth = translatedText(performer, "placeOfBirth", performer.placeOfBirth, locale);
+  const soloDebut = translatedText(performer, "soloDebut", performer.soloDebut, locale);
+  const trivia = translatedList(performer, "trivia", performer.trivia, locale);
+  const mvAppearances = translatedList(performer, "mvAppearances", performer.mvAppearances, locale);
   // Фото, а если его нет — обложка последнего релиза (см.
   // lib/performerPhoto.ts). Альбомы уже загружены выше, отсортированы по
   // году — доп. запрос не нужен.
@@ -539,15 +549,15 @@ export default async function PerformerPage({
         performer.nationality ||
         performer.alsoKnownAs ||
         performer.musicAlias ||
-        performer.placeOfBirth
+        placeOfBirth
       )) ||
     performer.occupation.length > 0 ||
     performer.instruments.length > 0 ||
-    !!performer.soloDebut ||
+    !!soloDebut ||
     !!performer.height ||
     !!performer.weight ||
     performer.agencies.length > 0 ||
-    !!performer.bio ||
+    !!bio ||
     otherLinks.length > 0 ||
     brandLinks.length > 0 ||
     (isBand && performer.bandMembers.length > 0) ||
@@ -690,11 +700,11 @@ export default async function PerformerPage({
               {performer.musicAlias}
             </p>
           )}
-          {!isBand && performer.placeOfBirth && (
+          {!isBand && placeOfBirth && (
             <p className="small text-secondary mb-0">
               <PinIcon className="icon-inline" />{" "}
               <span className="text-secondary">{t.catalog.artist.placeOfBirth}</span>{" "}
-              {performer.placeOfBirth}
+              {placeOfBirth}
             </p>
           )}
           {performer.occupation.length > 0 && (
@@ -709,10 +719,10 @@ export default async function PerformerPage({
               {performer.instruments.map((i) => contentDict.instrument(i)).join(", ")}
             </p>
           )}
-          {performer.soloDebut && (
+          {soloDebut && (
             <p className="small text-secondary mb-0">
               <span className="text-secondary">{t.catalog.artist.soloDebut}</span>{" "}
-              {performer.soloDebut}
+              {soloDebut}
             </p>
           )}
           {(performer.height || performer.weight) && (
@@ -757,10 +767,10 @@ export default async function PerformerPage({
               сериала: текст в summary, details[open] снимает line-clamp,
               подпись «Читать дальше/Свернуть» рисует сам SynopsisFold.
               Короткая — как раньше, обычным абзацем. */}
-          {performer.bio &&
-            (performer.bio.length > 300 ? (
+          {bio &&
+            (bio.length > 300 ? (
               <SynopsisFold
-                text={performer.bio}
+                text={bio}
                 textClassName="small text-secondary"
                 preLine
               />
@@ -769,7 +779,7 @@ export default async function PerformerPage({
                 className="small text-secondary mb-0"
                 style={{ whiteSpace: "pre-line" }}
               >
-                {performer.bio}
+                {bio}
               </p>
             ))}
 
@@ -1219,11 +1229,11 @@ export default async function PerformerPage({
           прячется, когда пунктов меньше двух (нечего листать). */}
       <CareerTimeline items={careerItems} />
 
-      {performer.mvAppearances.length > 0 && (
+      {mvAppearances.length > 0 && (
         <div className="surface p-4 mb-3">
           <h2 className="section-heading mb-2">{t.catalog.artist.mvAppearances}</h2>
           <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
-            {performer.mvAppearances.map((mv, i) => (
+            {mvAppearances.map((mv, i) => (
               <li key={i}>{mv}</li>
             ))}
           </ul>
@@ -1271,11 +1281,11 @@ export default async function PerformerPage({
         </div>
       )}
 
-      {performer.trivia.length > 0 && (
+      {trivia.length > 0 && (
         <div className="surface p-4 mb-3">
           <h2 className="section-heading mb-2">{t.catalog.artist.trivia}</h2>
           <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
-            {performer.trivia.map((t, i) => (
+            {trivia.map((t, i) => (
               <li key={i}>{t}</li>
             ))}
           </ul>

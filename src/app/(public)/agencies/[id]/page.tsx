@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import { translatedText } from "@/lib/entityTranslations";
 import ScrollableTabs from "@/components/ScrollableTabs";
 import SourcesBlock from "@/components/SourcesBlock";
 import BackLink from "@/components/BackLink";
@@ -22,10 +23,11 @@ import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t } = await getT();
+  const { locale, t } = await getT();
   const agency = await prisma.agency.findFirst({
     where: slugOrIdWhere(id),
-    select: { name: true, description: true, logoUrl: true, slug: true },
+    // translations — ради русского описания в мете (см. entityTranslations).
+    select: { name: true, description: true, logoUrl: true, slug: true, translations: true },
   });
   if (!agency)
     return pageMetadata({
@@ -35,7 +37,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return pageMetadata({
     title: agency.name,
     description:
-      agency.description?.slice(0, 160) ?? t.catalog.agency.metaDescription(agency.name),
+      translatedText(agency, "description", agency.description, locale)?.slice(0, 160) ??
+      t.catalog.agency.metaDescription(agency.name),
     path: `/agencies/${agency.slug ?? id}`,
     image: agency.logoUrl,
   });
@@ -69,6 +72,8 @@ export default async function AgencyDetailPage({
   });
 
   if (!agency) notFound();
+  // Русский текст записи: перевод, если он есть, иначе оригинал.
+  const description = translatedText(agency, "description", agency.description, locale);
   const id = agency.id;
   const href = agencyHref(agency);
 
@@ -183,9 +188,9 @@ export default async function AgencyDetailPage({
       </div>
 
       {/* Лого переехало в hero — тут осталось только описание. */}
-      {agency.description && (
+      {description && (
         <p className="text-secondary mb-4" style={{ maxWidth: "40rem" }}>
-          {agency.description}
+          {description}
         </p>
       )}
 

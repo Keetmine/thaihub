@@ -1,4 +1,5 @@
 import ReviewsAndComments from "@/components/ReviewsAndComments";
+import { translatedText } from "@/lib/entityTranslations";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import BackLink from "@/components/BackLink";
@@ -25,16 +26,16 @@ const getNovel = cache(async (rawId: string) =>
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { t } = await getT();
+  const { locale, t } = await getT();
   const novel = await getNovel(id);
   // notFound() именно здесь: метадата считается до флаша ответа, и
   // несуществующий slug получает настоящий HTTP 404 — иначе loading.tsx
   // успевал отдать 200-shell до notFound() в самой странице (soft-404).
   if (!novel) notFound();
   return pageMetadata({
-    title: novel.title,
+    title: translatedText(novel, "title", novel.title, locale),
     description:
-      novel.description?.slice(0, 160) ??
+      translatedText(novel, "description", novel.description, locale)?.slice(0, 160) ??
       t.catalog.novel.metaDescription(
         `${novel.title}${novel.author ? ` — ${novel.author}` : ""}`,
       ),
@@ -58,6 +59,9 @@ export default async function NovelPage({
   // дёргается один раз на HTTP-запрос.
   const novel = await getNovel(rawId);
   if (!novel) notFound();
+  // Русские тексты записи: перевод, если он есть, иначе оригинал.
+  const title = translatedText(novel, "title", novel.title, locale);
+  const description = translatedText(novel, "description", novel.description, locale);
 
   return (
     <div>
@@ -67,8 +71,8 @@ export default async function NovelPage({
       <div className="mt-3">
         <DetailHero
           photoUrl={novel.coverUrl}
-          photoAlt={novel.title}
-          title={novel.title}
+          photoAlt={title}
+          title={title}
           chips={
             <>
               {novel.author && (
@@ -89,7 +93,7 @@ export default async function NovelPage({
       {(novel.tags.length > 0 ||
         novel.originalAuthor ||
         novel.size ||
-        novel.description) && (
+        description) && (
         <div className="surface p-4 mb-4">
           {novel.tags.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mb-3">
@@ -110,9 +114,9 @@ export default async function NovelPage({
               <span className="text-secondary">{t.catalog.novel.size}</span> {novel.size}
             </p>
           )}
-          {novel.description && (
+          {description && (
             <p className="text-secondary mb-0" style={{ whiteSpace: "pre-line" }}>
-              {novel.description}
+              {description}
             </p>
           )}
         </div>

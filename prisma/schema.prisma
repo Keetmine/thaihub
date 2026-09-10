@@ -98,6 +98,12 @@ model Event {
   @@index([createdById])
   @@index([dramaId])
   @@index([locationId])
+
+  /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
+  /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
+  /// же берут список и форма админки, и читалка. Пусто — показывается
+  /// оригинал.
+  translations   Json?
 }
 
 // Ж9: до трёх фото для покупающих билеты (схема зала, цены, бенефиты)
@@ -231,6 +237,12 @@ model Performer {
   updatedAt DateTime @updatedAt
 
   @@index([name])
+
+  /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
+  /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
+  /// же берут список и форма админки, и читалка. Пусто — показывается
+  /// оригинал.
+  translations   Json?
 }
 
 enum PerformerType {
@@ -326,6 +338,12 @@ model Agency {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
+  /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
+  /// же берут список и форма админки, и читалка. Пусто — показывается
+  /// оригинал.
+  translations   Json?
 }
 
 // Ссылки агентства — соцсети и сайт (правка владельца 2026-09-05).
@@ -455,6 +473,12 @@ model Novel {
   comments       Comment[]
 
   @@index([title])
+
+  /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
+  /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
+  /// же берут список и форма админки, и читалка. Пусто — показывается
+  /// оригинал.
+  translations   Json?
 }
 
 model NovelLink {
@@ -672,6 +696,12 @@ model Location {
 
   @@index([name])
   @@index([createdByUserId])
+
+  /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
+  /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
+  /// же берут список и форма админки, и читалка. Пусто — показывается
+  /// оригинал.
+  translations   Json?
 }
 
 model DramaLocation {

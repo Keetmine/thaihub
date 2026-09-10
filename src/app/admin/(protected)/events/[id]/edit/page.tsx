@@ -9,6 +9,7 @@ import EventForm from "../../EventForm";
 import { updateEvent, deleteEvent } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
+import TranslationEditor from "@/components/admin/TranslationEditor";
 
 export default async function EditEventPage({
   params,
@@ -131,6 +132,21 @@ export default async function EditEventPage({
           Удалить событие
         </button>
       </ConfirmForm>
+      {/* Перевод на русский — отдельным блоком со своей формой:
+          сохранять перевод, проходя валидацию всей карточки, не нужно
+          (правка владельца 2026-09-10). */}
+      <div className="mt-4">
+        <TranslationEditor
+          entity="event"
+          id={event.id}
+          original={{
+title: event.title,
+            description: event.description,
+            venue: event.venue,
+          }}
+          translations={event.translations}
+        />
+      </div>
       <div className="mt-4">
         <AuditTrail entityType="Event" entityId={event.id} hideWhenEmpty />
       </div>

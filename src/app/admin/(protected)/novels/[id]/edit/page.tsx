@@ -6,6 +6,7 @@ import NovelForm from "../../NovelForm";
 import { updateNovel } from "../../actions";
 import { novelHref } from "@/lib/slugHelpers";
 import AuditTrail from "@/components/admin/AuditTrail";
+import TranslationEditor from "@/components/admin/TranslationEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,20 @@ export default async function EditNovelPage({
           links: novel.links.map((l) => ({ label: l.label, url: l.url })),
         }}
       />
+      {/* Перевод на русский — отдельным блоком со своей формой:
+          сохранять перевод, проходя валидацию всей карточки, не нужно
+          (правка владельца 2026-09-10). */}
+      <div className="mt-4">
+        <TranslationEditor
+          entity="novel"
+          id={novel.id}
+          original={{
+title: novel.title,
+            description: novel.description,
+          }}
+          translations={novel.translations}
+        />
+      </div>
       <div className="mt-4">
         <AuditTrail entityType="Novel" entityId={novel.id} hideWhenEmpty />
       </div>

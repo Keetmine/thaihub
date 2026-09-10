@@ -1,4 +1,5 @@
 import AppLink from "@/components/AppLink";
+import { translatedText } from "@/lib/entityTranslations";
 import { locationHref } from "@/lib/slugHelpers";
 import BackLink from "@/components/BackLink";
 import DetailHero from "@/components/DetailHero";
@@ -60,16 +61,16 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { t } = await getT();
+  const { locale, t } = await getT();
   const location = await getLocation(id);
   // notFound() именно здесь: метадата считается до флаша ответа, и
   // несуществующий slug получает настоящий HTTP 404 — иначе loading.tsx
   // успевал отдать 200-shell до notFound() в самой странице (soft-404).
   if (!location) notFound();
   return pageMetadata({
-    title: location.name,
+    title: translatedText(location, "name", location.name, locale),
     description:
-      location.description?.slice(0, 160) ??
+      translatedText(location, "description", location.description, locale)?.slice(0, 160) ??
       t.catalog.location.metaDescription(location.name),
     path: `/locations/${location.slug ?? id}`,
     image: location.photoUrl,
@@ -98,6 +99,9 @@ export default async function LocationDetailPage({
 
   if (!location) notFound();
   const id = location.id;
+  // Русские тексты записи: перевод, если он есть, иначе оригинал.
+  const name = translatedText(location, "name", location.name, locale);
+  const description = translatedText(location, "description", location.description, locale);
 
   const dramaIds = location.dramas.map((dl) => dl.dramaId);
   const locationEventsRows = groupByEvent(
@@ -262,9 +266,9 @@ export default async function LocationDetailPage({
       <div className="mt-3">
         <DetailHero
           photoUrl={location.photoUrl}
-          photoAlt={location.name}
-          title={location.name}
-          subtitle={location.description}
+          photoAlt={name}
+          title={name}
+          subtitle={description}
           chips={
             <>
               {location.category && (

@@ -359,7 +359,12 @@ export async function mergeAgencies(keeperId: string, loserIds: string[]) {
       if (keeper && loser) {
         const data = fillBlanks(keeper, loser, ["logoUrl", "description"] as (keyof typeof keeper)[]);
         if (Object.keys(data).length > 0) {
-          await tx.agency.update({ where: { id: keeperId }, data });
+          // `as never`: fillBlanks возвращает срез строки таблицы, и с
+          // появлением json-колонки `translations` её тип перестал
+          // совпадать с UpdateInput (Json против JsonValue). Поля в
+          // срезе перечислены руками выше — подставляется ровно то, что
+          // названо.
+          await tx.agency.update({ where: { id: keeperId }, data: data as never });
         }
       }
       await reassignJoinRows(tx.performerAgency, "agencyId", "performerId", keeperId, loserId);

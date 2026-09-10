@@ -7,6 +7,7 @@ import LocationForm from "../../LocationForm";
 import { updateLocation, deleteLocation } from "../../actions";
 import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
+import TranslationEditor from "@/components/admin/TranslationEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,20 @@ export default async function EditLocationPage({
             Удалить локацию
           </button>
         </ConfirmForm>
+      </div>
+      {/* Перевод на русский — отдельным блоком со своей формой:
+          сохранять перевод, проходя валидацию всей карточки, не нужно
+          (правка владельца 2026-09-10). */}
+      <div className="mt-4">
+        <TranslationEditor
+          entity="location"
+          id={location.id}
+          original={{
+name: location.name,
+            description: location.description,
+          }}
+          translations={location.translations}
+        />
       </div>
       <div className="mt-4">
         <AuditTrail entityType="Location" entityId={location.id} hideWhenEmpty />
