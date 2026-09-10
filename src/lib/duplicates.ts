@@ -16,7 +16,12 @@ export function groupMemberKey(rows: { id: string }[]): string {
   return rows.map((r) => r.id).sort().join("|");
 }
 
-/** Groups of Performers sharing the exact same (normalized) name.
+/** Группы исполнителей-кандидатов в дубли. Три сетки, от сильного
+ *  сигнала к слабому: точное имя, общее РЕАЛЬНОЕ имя при разных никах и
+ *  имя с точностью до пробелов/дефисов/апострофов. Сольные и группы
+ *  идут ОДНИМ списком: «группа X» и «соло X», заведённый парсером, —
+ *  это и есть дубль (правка владельца 2026-09-10).
+ *
  *  Одинаковый ник при РАЗНЫХ реальных именах — не дубли (два разных
  *  человека с ником Pond): такие группы дробятся по реальному имени,
  *  записи без реального имени при конфликте отбрасываются как
@@ -54,8 +59,33 @@ export async function findDuplicatePerformerGroups(): Promise<
     .filter(([, rows]) => rows.length > 1)
     .map(([key, rows]) => ({ key: `real::${key}`, rows }))
     .filter((g) => !seenSets.has(g.rows.map((r) => r.id).sort().join("|")));
+  for (const g of realGroups) seenSets.add(g.rows.map((r) => r.id).sort().join("|"));
 
-  const groups = [...byNick, ...realGroups];
+  // Третья сетка: ОДНО имя с точностью до пробелов, дефисов и
+  // апострофов — «Yes'sirdays» ↔ «Yes'sir Days», «T Bone» ↔ «T-Bone»
+  // (правка владельца 2026-09-10: заготовки парсеров плодят именно
+  // такие расхождения, и точное сравнение их не ловило). Сигнал слабее
+  // точного совпадения, поэтому отдельным проходом и с тем же
+  // разведением по реальному имени; группы, уже найденные выше, не
+  // повторяем. Тип НЕ разводит: «группа X» и «соло X» из парсера — это
+  // ровно тот дубль, ради которого всё и затевалось.
+  const normLoose = (v: string) => v.toLowerCase().replace(/[-\s.'’]/g, "");
+  const byLoose = new Map<string, typeof performers>();
+  for (const p of performers) {
+    const key = normLoose(p.name);
+    // Один-два знака после нормализации — это не имя, а шум.
+    if (key.length < 3) continue;
+    if (!byLoose.has(key)) byLoose.set(key, []);
+    byLoose.get(key)!.push(p);
+  }
+  const looseGroups = [...byLoose.entries()]
+    .filter(([, rows]) => rows.length > 1)
+    .map(([key, rows]) => ({ key: `loose::${key}`, rows }))
+    .flatMap((g) => splitByDiscriminator(g, (p) => p.realName))
+    .filter((g) => !seenSets.has(g.rows.map((r) => r.id).sort().join("|")));
+  for (const g of looseGroups) seenSets.add(g.rows.map((r) => r.id).sort().join("|"));
+
+  const groups = [...byNick, ...realGroups, ...looseGroups];
   const countRows = await prisma.performer.findMany({
     where: { id: { in: groups.flatMap((g) => g.rows.map((r) => r.id)) } },
     select: { id: true, _count: { select: { events: true, dramas: true } } },
