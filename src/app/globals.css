@@ -4548,19 +4548,11 @@ button.hero-stat-toggle.is-open {
   scroll-margin-top: 5.5rem;
 }
 
-/* Свёрнутый синопсис: текст живёт в summary (контент details вне
-   summary в закрытом виде не рендерится вовсе), закрытый — клампится
-   на 4 строки, открытый — целиком. Подпись переключателя рисует CSS,
-   поэтому текст не дублируется и JS не нужен. */
-.synopsis-fold summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.synopsis-fold summary::-webkit-details-marker {
-  display: none;
-}
-
+/* Свёрнутый синопсис: закрытый клампится на 4 строки, открытый — целиком.
+   Переключает ТОЛЬКО кнопка «Читать дальше» (правка владельца
+   2026-09-10). Раньше это были details/summary с текстом внутри summary,
+   а клик по summary переключает его весь: человек выделял описание,
+   чтобы скопировать, и оно схлопывалось у него под рукой. */
 .synopsis-fold .synopsis-text {
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -4568,21 +4560,25 @@ button.hero-stat-toggle.is-open {
   overflow: hidden;
 }
 
-.synopsis-fold[open] .synopsis-text {
+.synopsis-fold[data-open="true"] .synopsis-text {
   display: block;
   overflow: visible;
 }
 
-/* Подпись переключателя рисует сам SynopsisFold: строка приходит из
-   словаря языка, поэтому content в CSS тут не годится. */
+/* Подпись переключателя — настоящая кнопка (доступность: Enter/Space и
+   aria-expanded), поэтому с неё снимается вся бутстраповская обвязка. */
 .synopsis-toggle-label {
   display: inline-block;
   margin-top: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
   font-size: 0.85rem;
   color: rgba(var(--accent-rgb), 0.9);
+  cursor: pointer;
 }
 
-.synopsis-fold summary:hover .synopsis-toggle-label {
+.synopsis-toggle-label:hover {
   color: rgb(var(--accent-rgb));
 }
 
