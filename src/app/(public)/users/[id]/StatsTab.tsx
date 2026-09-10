@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import AppLink from "@/components/AppLink";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { shortMonthNames } from "@/lib/dates";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import { performerHref } from "@/lib/performerSlug";
 
@@ -40,7 +42,8 @@ export type StatsForTab = {
   trips: number;
   daysInThailand: number;
   friends: number;
-  eventsByYear: { year: number; count: number }[];
+  /** `months` — двенадцать чисел, январь нулевой (разбивка внутри года). */
+  eventsByYear: { year: number; count: number; months: number[] }[];
 };
 
 /**
@@ -61,8 +64,20 @@ export default function StatsTab({
   viewer?: boolean;
 }) {
   const t = useT();
+  const locale = useLocale();
   const s = t.account.stats;
   const maxYear = Math.max(1, ...stats.eventsByYear.map((y) => y.count));
+  // По умолчанию раскрыт последний год: он самый интересный, а
+  // eventsByYear отсортирован по возрастанию.
+  const [activeYear, setActiveYear] = useState<number | null>(
+    stats.eventsByYear.length > 0
+      ? stats.eventsByYear[stats.eventsByYear.length - 1].year
+      : null,
+  );
+  const activeMonths =
+    stats.eventsByYear.find((y) => y.year === activeYear)?.months ?? null;
+  const maxMonth = Math.max(1, ...(activeMonths ?? [1]));
+  const monthNames = shortMonthNames(locale);
 
   const topGenres = stats.topGenres ?? [];
   const vsMdl = stats.ratingVsMdl;
@@ -141,24 +156,85 @@ export default function StatsTab({
       {stats.eventsByYear.length > 0 && (
         <>
           <h2 className="section-heading mb-2">{s.byYear}</h2>
-          <div className="d-flex align-items-end gap-3 mb-4" style={{ height: "6rem" }}>
-            {stats.eventsByYear.map((y) => (
-              <div key={y.year} className="text-center d-flex flex-column justify-content-end" style={{ height: "100%" }}>
-                <span className="small text-secondary d-block">{y.count}</span>
-                <div
-                  className="mx-auto"
-                  style={{
-                    width: "2rem",
-                    height: `${Math.max(8, (y.count / maxYear) * 60)}px`,
-                    background: "var(--bs-primary)",
-                    borderRadius: "0.3rem 0.3rem 0 0",
-                    opacity: 0.85,
-                  }}
-                />
-                <span className="small text-secondary d-block">{y.year}</span>
-              </div>
-            ))}
+          {/* Год — переключатель (правка владельца 2026-09-10): под
+              рядом лет раскрывается разбивка выбранного года по
+              месяцам. Двенадцать столбиков на КАЖДЫЙ год сразу дали бы
+              шестьдесят полосок в блоке размером с ладонь. */}
+          <div className="d-flex align-items-end gap-3 mb-3" style={{ height: "6rem" }}>
+            {stats.eventsByYear.map((y) => {
+              const active = y.year === activeYear;
+              return (
+                <button
+                  key={y.year}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setActiveYear(y.year)}
+                  className="stats-year-bar text-center d-flex flex-column justify-content-end"
+                  style={{ height: "100%" }}
+                >
+                  <span className="small text-secondary d-block">{y.count}</span>
+                  <div
+                    className="mx-auto"
+                    style={{
+                      width: "2rem",
+                      height: `${Math.max(8, (y.count / maxYear) * 60)}px`,
+                      background: "var(--bs-primary)",
+                      borderRadius: "0.3rem 0.3rem 0 0",
+                      opacity: active ? 1 : 0.45,
+                    }}
+                  />
+                  <span
+                    className={`small d-block ${active ? "text-white" : "text-secondary"}`}
+                  >
+                    {y.year}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+
+          {activeMonths && (
+            <div className="mb-4">
+              <p className="small text-secondary mb-2">{s.byMonth(activeYear!)}</p>
+              {/* Прокрутка, а не сжатие: на 390px двенадцать колонок
+                  ужимались до 23px, и «Янв» превращалось в «Ян…».
+                  Столбик не уже 2.25rem, ряд едет вбок общим тонким
+                  скроллом — как ряды постеров. */}
+              <div
+                className="d-flex align-items-end gap-2 thin-scroll"
+                style={{ height: "5.5rem", overflowX: "auto" }}
+              >
+                {activeMonths.map((count, i) => (
+                  <div
+                    key={i}
+                    className="text-center d-flex flex-column justify-content-end"
+                    style={{ height: "100%", flex: "1 0 auto", minWidth: "2.25rem" }}
+                    title={`${monthNames[i]}: ${count}`}
+                  >
+                    {/* Ноль подписью не рисуем: двенадцать нулей под
+                        пустыми столбиками — шум, а не данные. */}
+                    <span className="small text-secondary d-block">
+                      {count > 0 ? count : "\u00a0"}
+                    </span>
+                    <div
+                      style={{
+                        height: `${count > 0 ? Math.max(6, (count / maxMonth) * 40) : 2}px`,
+                        background: "var(--bs-primary)",
+                        borderRadius: "0.2rem 0.2rem 0 0",
+                        opacity: count > 0 ? 0.85 : 0.25,
+                      }}
+                    />
+                    <span
+                      className="text-secondary d-block text-truncate"
+                      style={{ fontSize: "0.7rem" }}
+                    >
+                      {monthNames[i]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 

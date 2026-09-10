@@ -87,6 +87,7 @@ export const account: Dict["account"] = {
     artistListsLocked: "Свои списки артистов — по подписке.",
 
     byYear: "События по годам",
+    byMonth: (year: number) => `По месяцам, ${year}`,
     visitedMap: "Карта посещённого",
     // На чужом профиле — без обращения к владельцу.
     visitedMapViewer: "Карта посещённых мест",

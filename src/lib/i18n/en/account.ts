@@ -105,6 +105,8 @@ export const account = {
     artistListsLocked: "Your own actor lists come with a subscription.",
 
     byYear: "Events by year",
+    /** Подпись над разбивкой выбранного года по месяцам. */
+    byMonth: (year: number) => `By month, ${year}`,
     visitedMap: "Map of where you've been",
     // На чужом профиле «вы» неуместно — своя подпись для зрителя.
     visitedMapViewer: "Map of visited places",

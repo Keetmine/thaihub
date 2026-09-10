@@ -51,7 +51,7 @@ export type UserStats = {
   longestTripDays: number;
   daysInThailand: number;
   friends: number;
-  eventsByYear: { year: number; count: number }[];
+  eventsByYear: { year: number; count: number; months: number[] }[];
   /**
    * Сообщества (АА25) — считаются ТОЛЬКО ради ачивок: во вкладке
    * «Статистика» этих чисел нет. Сообщества бесплатны и не про афишу, а
@@ -580,10 +580,18 @@ export async function computeUserStats(
       : null;
 
   const byYear = new Map<number, number>();
+  // Разбивка внутри года (правка владельца 2026-09-10): двенадцать
+  // чисел на год, январь — нулевой. Считаем здесь же, вторым проходом
+  // по тем же строкам ходить незачем.
+  const byYearMonths = new Map<number, number[]>();
   const attendedDays: string[] = [];
   for (const a of attended) {
     const d = a.occurrence.startsAt;
-    byYear.set(d.getFullYear(), (byYear.get(d.getFullYear()) ?? 0) + 1);
+    const year = d.getFullYear();
+    byYear.set(year, (byYear.get(year) ?? 0) + 1);
+    const months = byYearMonths.get(year) ?? Array<number>(12).fill(0);
+    months[d.getMonth()] += 1;
+    byYearMonths.set(year, months);
   }
   // «Дубль» — два РАЗНЫХ посещённых события в один день.
   for (const a of attendedRows) attendedDays.push(`${a.eventId}|${dateKey(a.occurrence.startsAt)}`);
@@ -672,7 +680,11 @@ export async function computeUserStats(
     daysInThailand: tripStats.daysInThailand,
     friends: friendships,
     eventsByYear: Array.from(byYear.entries())
-      .map(([year, count]) => ({ year, count }))
+      .map(([year, count]) => ({
+        year,
+        count,
+        months: byYearMonths.get(year) ?? Array<number>(12).fill(0),
+      }))
       .sort((a, b) => a.year - b.year),
     communitiesJoined,
     communitiesOwned: ownedCommunities,

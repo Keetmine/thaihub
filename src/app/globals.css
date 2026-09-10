@@ -7843,3 +7843,23 @@ body::after {
     display: none;
   }
 }
+
+/* Столбик года в статистике профиля — переключатель разбивки по
+   месяцам (правка владельца 2026-09-10). Кнопка, а не div: работает с
+   клавиатуры и говорит скринридеру aria-pressed. Всю бутстраповскую
+   обвязку с неё снимаем — выглядеть она должна ровно как прежний
+   столбик. */
+.stats-year-bar {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.stats-year-bar > div {
+  transition: opacity 0.15s ease;
+}
+
+.stats-year-bar:hover > div {
+  opacity: 1 !important;
+}
