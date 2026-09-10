@@ -590,16 +590,22 @@ export default async function DramaDetailPage({
         </div>
         {currentUser && (
           <div className="d-flex align-items-center gap-2 flex-shrink-0">
-            {/* Колокольчик серий — вплотную слева от кнопки статуса
-                (просьба владельца). */}
+            {/* Обычно тут только колокольчик серий: кнопка статуса
+                уехала под постер широкой подписанной кнопкой —
+                маленький «+» тут не находили. Но у записи без постера
+                колонки под ним нет вовсе, и тогда иконка возвращается
+                сюда: остаться совсем без кнопки статуса страница не
+                может. */}
             <EpisodeBellButton
               dramaId={drama.id}
               enabled={watchStatus?.notifyEpisodes ?? false}
             />
-            <DramaStatusButton
-              dramaId={drama.id}
-              status={watchStatus?.status ?? null}
-            />
+            {!drama.posterUrl && (
+              <DramaStatusButton
+                dramaId={drama.id}
+                status={watchStatus?.status ?? null}
+              />
+            )}
           </div>
         )}
       </div>
@@ -674,6 +680,21 @@ export default async function DramaDetailPage({
                   </span>
                 </span>
               </div>
+            )}
+            {/* Статус просмотра — ШИРОКОЙ подписанной кнопкой под
+                постером (фидбек пользователя 2026-09-10: «я сломала
+                себе глаза, чтобы найти кнопку, через которую можно
+                поставить статус, этот маленький плюсик лучше
+                превратить в кнопки»). Иконка «+» в шапке страницы
+                убрана — двух кнопок для одного и того же на экране
+                быть не должно; в списках и фильмографиях иконка
+                остаётся, там подписи негде взяться. */}
+            {currentUser && (
+              <DramaStatusButton
+                dramaId={drama.id}
+                status={watchStatus?.status ?? null}
+                variant="wide"
+              />
             )}
             {/* Кнопки «MyDramaList ↗» тут больше нет (правка владельца
                 2026-09-07): ссылка на источник и так стоит внизу
