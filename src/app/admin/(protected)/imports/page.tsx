@@ -30,7 +30,7 @@ import {
 } from "./mascotDraftActions";
 import { OPEN_MDL_REQUEST_WHERE } from "@/lib/mdlDramaRequests";
 import type { TtmEvent } from "@/lib/thaiticketmajor";
-import type { EventDraftMatch } from "@/lib/ttmCrawl";
+import type { EventDraftAmbiguity, EventDraftMatch } from "@/lib/ttmCrawl";
 import type { MascotDraftPayload } from "@/lib/gmmtvMascots";
 import type { MatchedMascotOwner } from "@/lib/performerMatching";
 import type { PossibleDuplicate } from "@/lib/eventDedupe";
@@ -679,8 +679,10 @@ export default async function AdminImportsPage({
                     rows={eventDrafts.map((draft) => {
                       const payload = draft.payload as Partial<TtmEvent> & {
                         possibleDuplicateOf?: PossibleDuplicate;
+                        ambiguousArtists?: EventDraftAmbiguity[];
                       };
                       const matched = (draft.matchedPerformers as EventDraftMatch[] | null) ?? [];
+                      const ambiguous = payload.ambiguousArtists ?? [];
                       const dupe = payload.possibleDuplicateOf;
                       const dates =
                         payload.dateRangeText ??
@@ -723,6 +725,29 @@ export default async function AdminImportsPage({
                                   className="event-chip"
                                 >
                                   {m.nickname}
+                                </Link>
+                              ))}
+                              {/* Тёзки: матчинг НЕ выбрал никого (правка
+                                  владельца 2026-09-10 — «берёт рандомного
+                                  гана»). Чип ведёт в список исполнителей с
+                                  этим именем: посмотреть, кто из них
+                                  выступает, и добрать состав руками после
+                                  одобрения. */}
+                              {ambiguous.map((a) => (
+                                <Link
+                                  key={a.nickname}
+                                  href={`/admin/performers?q=${encodeURIComponent(a.nickname)}`}
+                                  className="event-chip event-chip-warning"
+                                  data-tooltip={`Тёзки в каталоге: ${a.candidates
+                                    .map(
+                                      (c) =>
+                                        `${c.name}${c.realName ? ` (${c.realName})` : ""}${
+                                          c.birthYear ? `, ${c.birthYear}` : ""
+                                        }${c.type === "BAND" ? " — группа" : ""}`,
+                                    )
+                                    .join("; ")}. Матчинг не выбирает наугад — добавьте нужного в состав события после одобрения.`}
+                                >
+                                  {a.nickname}: тёзок {a.candidates.length}
                                 </Link>
                               ))}
                             </div>

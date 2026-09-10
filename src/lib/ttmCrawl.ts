@@ -38,6 +38,16 @@ const NO_MATCH_RECHECK_DAYS = 7;
 /** Совпавший артист в EventDraft.matchedPerformers. */
 export type EventDraftMatch = { performerId: string; nickname: string };
 
+/** Тёзки, между которыми матчинг не выбрал (правка владельца
+ *  2026-09-10). Едет в payload черновика, а не в matchedPerformers:
+ *  привязки тут нет, это вопрос владельцу — «который из пяти Gun'ов?».
+ *  Ответ даётся руками в карточке события после одобрения. */
+export type EventDraftAmbiguity = {
+  nickname: string;
+  fullName: string;
+  candidates: { id: string; name: string; realName: string | null; birthYear: number | null; type: string }[];
+};
+
 export type TtmCrawlResult = {
   /** Карточек на обеих списочных страницах (после дедупа). */
   cardsFound: number;
@@ -213,9 +223,16 @@ export async function runTtmCrawl(
       continue;
     }
 
-    const matched: EventDraftMatch[] = (await matchArtistsByNickname(scraped.artists))
+    const artistMatches = await matchArtistsByNickname(scraped.artists);
+    const matched: EventDraftMatch[] = artistMatches
       .filter((a) => a.matchedPerformerId !== null)
       .map((a) => ({ performerId: a.matchedPerformerId!, nickname: a.nickname }));
+    // Тёзки: раньше матчинг молча выбирал одного из них, и в состав
+    // события уезжал случайный человек. Теперь не выбирает никто —
+    // список едет в черновик, решает владелец (правка 2026-09-10).
+    const ambiguous: EventDraftAmbiguity[] = artistMatches
+      .filter((a) => a.via === "ambiguous")
+      .map((a) => ({ nickname: a.nickname, fullName: a.fullName, candidates: a.candidates }));
 
     // Слабое совпадение — решает владелец: черновик создаётся, но с
     // пометкой possibleDuplicateOf в payload — очередь рисует по ней
@@ -231,13 +248,17 @@ export async function runTtmCrawl(
       JSON.stringify({
         ...scraped,
         sourceUrl: card.url,
+        ...(ambiguous.length > 0 ? { ambiguousArtists: ambiguous } : {}),
         ...(dupe
           ? { possibleDuplicateOf: { eventId: dupe.eventId, eventTitle: dupe.eventTitle } }
           : {}),
       }),
     );
 
-    if (matched.length > 0) {
+    // Черновик с одними тёзками тоже идёт в очередь: раньше такое
+    // событие попадало в неё со СЛУЧАЙНОЙ привязкой, так что набор
+    // черновиков не растёт — растёт только их честность.
+    if (matched.length > 0 || ambiguous.length > 0) {
       const draft = await prisma.eventDraft.upsert({
         where: { sourceUrl: card.url },
         create: { sourceUrl: card.url, payload, matchedPerformers: matched, status: "PENDING" },

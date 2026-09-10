@@ -16,7 +16,13 @@ import {
   type TtmImportArtist,
 } from "@/app/admin/(protected)/events/importActions";
 
-type ArtistRow = TtmImportArtist & { include: boolean };
+type ArtistRow = TtmImportArtist & {
+  include: boolean;
+  /** Кем заводить нового: сольным или группой. Спрашиваем прямо здесь —
+   *  раньше всегда создавался SOLO, и концерт группы плодил её копию
+   *  среди актёров (правка владельца 2026-09-10). */
+  newType: "SOLO" | "BAND";
+};
 
 export default function TtmImportFlow({
   performers,
@@ -52,7 +58,7 @@ export default function TtmImportFlow({
     try {
       const result = await scrapeTtmEventPreview(url.trim());
       setPreview(result);
-      setArtistRows(result.artists.map((a) => ({ ...a, include: true })));
+      setArtistRows(result.artists.map((a) => ({ ...a, include: true, newType: "SOLO" as const })));
       setPresaleEnabled(Boolean(result.presaleDate));
       setExtraDates(result.extraDates);
     } catch (err) {
@@ -107,6 +113,7 @@ export default function TtmImportFlow({
             fullName: r.fullName,
             nickname: r.nickname,
             performerId: r.matchedPerformerId,
+            type: r.newType,
           })),
         extraPerformerIds,
       });
@@ -316,7 +323,17 @@ export default function TtmImportFlow({
                 />
                 <input
                   value={row.nickname}
-                  onChange={(e) => updateArtist(i, { nickname: e.target.value, matchedPerformerId: null })}
+                  // Правка ника обнуляет и результат матчинга: тёзки
+                  // относились к прежнему имени, показывать их дальше
+                  // значило бы врать.
+                  onChange={(e) =>
+                    updateArtist(i, {
+                      nickname: e.target.value,
+                      matchedPerformerId: null,
+                      via: null,
+                      candidates: [],
+                    })
+                  }
                   placeholder="Ник"
                   className="form-control form-control-sm"
                   style={{ width: "8rem" }}
@@ -328,11 +345,54 @@ export default function TtmImportFlow({
                   className="form-control form-control-sm"
                   style={{ width: "16rem" }}
                 />
-                <span
-                  className={`small ${row.matchedPerformerId ? "text-success" : "text-secondary"}`}
-                >
-                  {row.matchedPerformerId ? "уже есть в базе" : "будет создан новый"}
-                </span>
+                {row.matchedPerformerId ? (
+                  <span className="small text-success">уже есть в базе</span>
+                ) : row.via === "ambiguous" ? (
+                  // Тёзки: матчинг не выбирает наугад (правка владельца
+                  // 2026-09-10 — «берёт рандомного гана»), выбирает
+                  // человек. «Завести нового» тоже законный ответ: этого
+                  // артиста в каталоге может ещё не быть.
+                  <>
+                    <select
+                      className="form-select form-select-sm"
+                      style={{ width: "18rem" }}
+                      aria-label={`Кто такой ${row.nickname}`}
+                      value={row.matchedPerformerId ?? ""}
+                      onChange={(e) =>
+                        updateArtist(i, { matchedPerformerId: e.target.value || null })
+                      }
+                    >
+                      <option value="">Завести нового</option>
+                      {row.candidates.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                          {c.realName ? ` (${c.realName})` : ""}
+                          {c.birthYear ? `, ${c.birthYear}` : ""}
+                          {c.type === "BAND" ? " — группа" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="small text-warning">
+                      тёзок в каталоге: {row.candidates.length}
+                    </span>
+                  </>
+                ) : (
+                  <span className="small text-secondary">будет создан новый</span>
+                )}
+                {!row.matchedPerformerId && (
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: "7rem" }}
+                    aria-label={`Тип записи для ${row.nickname}`}
+                    value={row.newType}
+                    onChange={(e) =>
+                      updateArtist(i, { newType: e.target.value as "SOLO" | "BAND" })
+                    }
+                  >
+                    <option value="SOLO">соло</option>
+                    <option value="BAND">группа</option>
+                  </select>
+                )}
               </div>
             ))}
           </div>

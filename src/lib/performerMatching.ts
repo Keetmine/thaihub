@@ -7,31 +7,124 @@ import type { TtmArtist } from "@/lib/thaiticketmajor";
 // «этот артист — наш» должна быть одна реализация, а не две копии,
 // которые разъедутся.
 
+/** Тёзка, между которыми матчинг не выбрал, — показываем владельцу. */
+export type ArtistCandidate = {
+  id: string;
+  name: string;
+  realName: string | null;
+  birthYear: number | null;
+  type: "SOLO" | "BAND";
+};
+
 /** Артист со страницы события + найденный (или нет) исполнитель. */
 export type MatchedArtist = {
   fullName: string;
   nickname: string;
   matchedPerformerId: string | null;
+  /** Как совпало: по нику/алиасу, по разведённому реальному имени,
+   *  «тёзки» (не выбрали — привязки нет) или никого. */
+  via: "by-name" | "by-real-name" | "ambiguous" | null;
+  /** Только для `ambiguous`: между кем не выбрали. */
+  candidates: ArtistCandidate[];
 };
 
+/** Сравнение имён: регистр, лишние пробелы и дефисы значения не имеют
+ *  («Opas-iamkajorn» ↔ «Opasiamkajorn»), как в поиске дублей. */
+function loose(s: string): string {
+  return s.toLowerCase().replace(/[-\s.'’]/g, "");
+}
+
 /**
- * Матчит артистов по нику: точное совпадение без учёта регистра с
- * `Performer.name` (name — это и есть поле-ник, см.
- * docs/features/catalog.md). Никакого фаззи-поиска намеренно: ложная
- * привязка хуже пропуска — пропуск добирается руками, ложную ещё надо
- * заметить.
+ * Матчит артистов события с каталогом.
+ *
+ * Правила (правка владельца 2026-09-10 — «у нас может быть 10 gun, и
+ * парсер берёт рандомного»):
+ *
+ * 1. Кандидаты ищутся среди СОЛЬНЫХ И ГРУПП, по нику (`name`) и
+ *    музыкальному алиасу — раньше группы в матчинге не участвовали
+ *    осмысленно, и концерт группы заводил её копию в актёрах.
+ * 2. Ровно один кандидат — привязка.
+ * 3. Тёзки разводятся полным именем со страницы события
+ *    (`fullName` ↔ `realName`): «Gun Atthaphan» найдёт своего Gun'а.
+ * 4. Не развелись — привязки НЕТ, имя уходит в `ambiguous` вместе со
+ *    списком тёзок: решает владелец в очереди черновиков. Раньше здесь
+ *    строился Map по всем исполнителям сразу, и из десяти тёзок
+ *    выигрывал случайный — тот, что оказался последним в выборке.
+ *
+ * Никакого фаззи-поиска: ложная привязка хуже пропуска — пропуск
+ * добирается руками, ложную ещё надо заметить.
  */
 export async function matchArtistsByNickname(artists: TtmArtist[]): Promise<MatchedArtist[]> {
-  const existingPerformers = await prisma.performer.findMany({
-    select: { id: true, name: true },
-  });
-  const byNickname = new Map(existingPerformers.map((p) => [p.name.toLowerCase().trim(), p.id]));
+  const nicknames = [...new Set(artists.map((a) => a.nickname.trim()).filter(Boolean))];
+  if (nicknames.length === 0) {
+    return artists.map((a) => ({ ...a, matchedPerformerId: null, via: null, candidates: [] }));
+  }
 
-  return artists.map((a) => ({
-    fullName: a.fullName,
-    nickname: a.nickname,
-    matchedPerformerId: byNickname.get(a.nickname.toLowerCase().trim()) ?? null,
-  }));
+  // Выбираем ТОЛЬКО по спарсенным именам, а не весь каталог: раньше
+  // сюда приезжали все 17 тысяч исполнителей на каждое событие.
+  const rows = await prisma.performer.findMany({
+    where: {
+      // Маскоты не выступают (то же правило, что у лайнапа фестиваля).
+      type: { in: ["SOLO", "BAND"] },
+      OR: [
+        { name: { in: nicknames, mode: "insensitive" } },
+        { musicAlias: { in: nicknames, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, name: true, realName: true, birthDate: true, musicAlias: true, type: true },
+  });
+
+  const byNickname = new Map<string, ArtistCandidate[]>();
+  for (const r of rows) {
+    const candidate: ArtistCandidate = {
+      id: r.id,
+      name: r.name,
+      realName: r.realName,
+      birthYear: r.birthDate?.getUTCFullYear() ?? null,
+      type: r.type as "SOLO" | "BAND",
+    };
+    for (const n of [r.name, r.musicAlias]) {
+      if (!n) continue;
+      const key = n.toLowerCase().trim();
+      const list = byNickname.get(key) ?? [];
+      if (!list.some((c) => c.id === candidate.id)) list.push(candidate);
+      byNickname.set(key, list);
+    }
+  }
+
+  return artists.map((a) => {
+    const nickname = a.nickname.trim();
+    const found = byNickname.get(nickname.toLowerCase()) ?? [];
+    if (found.length === 0) {
+      return { ...a, matchedPerformerId: null, via: null, candidates: [] };
+    }
+    if (found.length === 1) {
+      return { ...a, matchedPerformerId: found[0].id, via: "by-name" as const, candidates: [] };
+    }
+
+    // Тёзки: разводим полным именем со страницы. Сравниваем и с самим
+    // реальным именем, и со склейкой «Ник Реальное Имя» — на билетных
+    // сайтах пишут и так, и так.
+    const fullName = a.fullName.trim();
+    if (fullName) {
+      const wanted = loose(fullName);
+      const narrowed = found.filter(
+        (c) =>
+          (c.realName && loose(c.realName) === wanted) ||
+          loose(`${c.name} ${c.realName ?? ""}`) === wanted,
+      );
+      if (narrowed.length === 1) {
+        return {
+          ...a,
+          matchedPerformerId: narrowed[0].id,
+          via: "by-real-name" as const,
+          candidates: [],
+        };
+      }
+    }
+
+    return { ...a, matchedPerformerId: null, via: "ambiguous" as const, candidates: found };
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -92,8 +92,16 @@ export type TtmImportSubmission = {
   presaleUrl: string;
   /** Страница события на ThaiTicketMajor — в блок «Источники». */
   sourceUrl: string;
-  /** Artists the admin kept checked in the review screen. */
-  artists: { fullName: string; nickname: string; performerId: string | null }[];
+  /** Artists the admin kept checked in the review screen. `type` — кем
+   *  заводить нового: сольным или группой (правка владельца
+   *  2026-09-10). Раньше здесь всегда стоял SOLO, и концерт группы
+   *  плодил её копию в актёрах. */
+  artists: {
+    fullName: string;
+    nickname: string;
+    performerId: string | null;
+    type?: "SOLO" | "BAND";
+  }[];
   /** Additional existing performers picked manually (not from the scrape). */
   extraPerformerIds: string[];
 };
@@ -155,7 +163,7 @@ export async function createEventFromTtmImport(
       if (!nickname) continue;
 
       const created = await tx.performer.create({
-        data: { name: nickname, realName: fullName || null, type: "SOLO" },
+        data: { name: nickname, realName: fullName || null, type: artist.type ?? "SOLO" },
       });
       performerIds.push(created.id);
     }
