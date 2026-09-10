@@ -37,6 +37,17 @@ import { notifyAdmins } from "@/lib/adminNotify";
 /** Потолок страниц фестивалей за прогон суточной задачи: свежих
  *  фестивалей за день единицы, а первый прогон пусть добирает хвост
  *  назавтра, чем висит час. Скрипт прошедших задаёт лимит сам. */
+/**
+ * Тип заготовки из лайнапа. Сайт группы от сольных не отличает, но это
+ * МУЗЫКАЛЬНЫЙ фестиваль — в лайнапе преобладают группы, и раньше все
+ * заготовки уезжали в «Актёры» сольниками (правка владельца 2026-09-10:
+ * «много копий групп в артистах»). Сольные исполнители правятся руками
+ * в списке заготовок — там же, где дописывается всё остальное.
+ * Заведённые до этой правки записи не трогаем: их разбирают по мере
+ * заполнения.
+ */
+const FESTIVAL_STUB_TYPE = "BAND" as const;
+
 const MAX_FESTIVALS_PER_RUN = 20;
 
 /** Потолок страниц списка (по 12 карточек) — страховка от бесконечного
@@ -545,7 +556,7 @@ export async function refreshMusicFestivalEvents(
         const created = await prisma.performer.create({
           data: {
             name: artist.name,
-            type: "SOLO",
+            type: FESTIVAL_STUB_TYPE,
             photoUrl,
             musicFestivalUrl: artist.url,
             stub: true,
@@ -797,12 +808,10 @@ async function createFestivalEvent(
         performerIds.add(existing.id);
         continue;
       }
-      // Тип — SOLO по умолчанию: сайт не различает группы и сольных
-      // артистов; владелец правит при заполнении заготовки.
       const performer = await tx.performer.create({
         data: {
           name: artist.name,
-          type: "SOLO",
+          type: FESTIVAL_STUB_TYPE,
           photoUrl: photos.get(artist.url) ?? null,
           musicFestivalUrl: artist.url,
           stub: true,
