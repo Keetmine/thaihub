@@ -129,9 +129,16 @@ and on pull requests (separate from `ci.yml`'s typecheck/lint/build and
    `next start -p 3001` (prod build, not dev; `output: "standalone"`
    only makes `next start` print a warning). `DATABASE_URL`, `APP_URL`
    and `BASE_URL` are set at the job level and inherited by the server;
-5. on failure uploads `playwright-report/` (the config adds an HTML
-   reporter when `CI` is set) plus `test-results/` traces as an
-   artifact.
+5. on failure uploads `playwright-report/` as an artifact (the config
+   adds an HTML reporter when `CI` is set), kept 3 days.
+
+   **Only that folder, and deliberately so.** The HTML report already
+   embeds the traces of failed tests — `test-results/` was a second copy
+   of the same megabytes. A trace is a screenshot per step, so a couple
+   of failed runs filled the free 0.5 GB of Actions storage on their own
+   (GitHub notice, 2026-09-12). Three days rather than seven for the
+   same reason: a report is for debugging a fresh failure, and by day
+   three it is either fixed or the run has been repeated.
 
 Expected skips in CI — these are not failures:
 

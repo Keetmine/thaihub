@@ -75,14 +75,20 @@ jobs:
       - run: npx tsx tests/e2e/create-admin-user.ts
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      # ТОЛЬКО playwright-report: HTML-отчёт УЖЕ содержит трейсы упавших
+      # тестов (html-репортер копирует их к себе в data/), и вторая копия
+      # из test-results/ просто удваивала вес. Трейс одного теста — это
+      # скриншот на каждый шаг, десятки мегабайт; пара упавших прогонов
+      # выбирала бесплатные 0,5 ГБ хранилища Actions целиком (письмо
+      # GitHub 2026-09-12).
+      #
+      # Хранение 3 дня, а не 7: отчёт нужен, чтобы разобрать свежее
+      # падение, а через три дня либо починено, либо прогон повторён.
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          # test-results — трейсы упавших тестов (trace: retain-on-failure).
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
+          path: playwright-report/
+          retention-days: 3
           if-no-files-found: ignore
