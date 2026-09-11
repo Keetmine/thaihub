@@ -3,6 +3,8 @@
  * карточки записей и общие для них компоненты (алфавитный список,
  * кнопка статуса просмотра, блок источников).
  */
+import { formatEpisodeNumbers } from "@/lib/episodeNumbers";
+
 export const catalog = {
     // Общее для каталожных страниц.
     eyebrow: "Catalogue",
@@ -265,8 +267,12 @@ export const catalog = {
                 if (days === 1) return "Tomorrow";
                 return `${days} days`;
             },
-            nextEpisodeTitle: (n: number, days: number): string =>
-                days <= 1 ? `Episode ${n}` : `Episode ${n} in`,
+            /** Серий в одну дату бывает несколько (двойные премьеры
+             *  по выходным) — тогда «Episodes 5–6». */
+            nextEpisodeTitle: (numbers: number[], days: number): string => {
+                const label = `${numbers.length > 1 ? "Episodes" : "Episode"} ${formatEpisodeNumbers(numbers)}`;
+                return days <= 1 ? label : `${label} in`;
+            },
         },
     },
 

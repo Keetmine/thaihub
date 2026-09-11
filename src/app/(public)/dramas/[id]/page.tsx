@@ -512,11 +512,18 @@ export default async function DramaDetailPage({
       (e) => e.airDate && dateKey(e.airDate) >= todayKey,
     );
     if (!next?.airDate) return null;
+    // В один день выходит СРАЗУ НЕСКОЛЬКО серий — у тайских сериалов это
+    // норма (двойные премьеры по выходным). Берём все с той же датой, а
+    // не первую попавшуюся: плашка писала «5 серия сегодня», хотя
+    // сегодня выходят пятая и шестая (замечено владельцем 2026-09-11).
+    const nextKey = dateKey(next.airDate);
+    const numbers = drama.episodeList
+      .filter((e) => e.airDate && dateKey(e.airDate) === nextKey)
+      .map((e) => e.number);
     const days = Math.round(
-      (parseDateKey(dateKey(next.airDate)).getTime() - today.getTime()) /
-        86_400_000,
+      (parseDateKey(nextKey).getTime() - today.getTime()) / 86_400_000,
     );
-    return { number: next.number, days };
+    return { numbers, days };
   })();
 
   // Строка «Эфир: 29 июл. 2026 (по четвергам)». Собрана отдельным
@@ -676,7 +683,7 @@ export default async function DramaDetailPage({
                       кусками. */}
                   <span className="next-episode-eyebrow">
                     {t.catalog.drama.schedule.nextEpisodeTitle(
-                      nextEpisode.number,
+                      nextEpisode.numbers,
                       nextEpisode.days,
                     )}
                   </span>

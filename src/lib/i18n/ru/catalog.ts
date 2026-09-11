@@ -1,3 +1,4 @@
+import { formatEpisodeNumbers } from "@/lib/episodeNumbers";
 import { plural, pluralized } from "@/lib/plural";
 import type { Dict } from "../en";
 
@@ -287,9 +288,18 @@ export const catalog: Dict["catalog"] = {
             /** Надзаголовок блока: номер серии и, если дальше идёт
              *  срок, «через» (правка владельца 2026-09-07). При
              *  «Сегодня» и «Завтра» слова «через» нет — «10 серия через
-             *  · Сегодня» звучало бы сломанно. */
-            nextEpisodeTitle: (n: number, days: number) =>
-                days <= 1 ? `${n} серия` : `${n} серия через`,
+             *  · Сегодня» звучало бы сломанно.
+             *
+             *  Серий в одну дату бывает несколько (двойные премьеры по
+             *  выходным) — тогда «5–6 серии» (правка владельца
+             *  2026-09-11). */
+            nextEpisodeTitle: (numbers: number[], days: number) => {
+                const label =
+                    numbers.length > 1
+                        ? `${formatEpisodeNumbers(numbers)} серии`
+                        : `${formatEpisodeNumbers(numbers)} серия`;
+                return days <= 1 ? label : `${label} через`;
+            },
         },
     },
 
