@@ -5,6 +5,7 @@ import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { MdlRunFetcher } from "@/lib/mdlClient";
 import { resolveMdlDramaRequests } from "@/lib/mdlDramaRequests";
 import { logAudit, diffRecords, fieldLabel } from "@/lib/audit";
+import { hasOriginalStoryRelation, parseDramaVersionTitle } from "@/lib/dramaVersionTitle";
 import {
   canonicalMdlUrl,
   fetchMdlDrama,
@@ -55,6 +56,32 @@ export type MdlDramaUpsertOptions = {
    *  кнопкой. */
   autoUpdate?: boolean;
 };
+
+/**
+ * Страница оказалась другой нарезкой уже известного сериала («… Uncut»,
+ * «… (Acoustic Ver.)») — заводить её в каталог не будем.
+ *
+ * Именно исключением, а не полем в результате: у `upsertDramaFromMdl`
+ * семь вызывающих, и все они сразу после вызова лезут в `res.id` за
+ * кастом и журналом. Пустышка с несуществующим id прошла бы мимо
+ * типов и всплыла бы где-нибудь в связях; исключение каждый обязан
+ * заметить — массовые прогоны ловят его отдельно от настоящих ошибок
+ * и считают пропуском, а не падением.
+ */
+export class MdlAlternateVersionError extends Error {
+  readonly base: string;
+  readonly marker: string;
+  constructor(title: string, base: string, marker: string) {
+    super(`«${title}» — это версия сериала «${base}» (${marker}), в каталог не заводим`);
+    this.name = "MdlAlternateVersionError";
+    this.base = base;
+    this.marker = marker;
+  }
+}
+
+export function isAlternateVersionError(e: unknown): e is MdlAlternateVersionError {
+  return e instanceof MdlAlternateVersionError;
+}
 
 /**
  * Ищет сериал, которому принадлежит страница MDL.
@@ -291,6 +318,27 @@ export function summarizeSchedule(s: MdlScheduleSync | null): string {
 }
 
 /**
+ * Обрывает импорт, если страница — другая нарезка уже известного
+ * сериала (см. `src/lib/dramaVersionTitle.ts`).
+ *
+ * Проверяем ТОЛЬКО когда записи ещё нет: у заведённых версий импорт
+ * обязан работать по-прежнему, иначе автообновление молча перестало бы
+ * освежать их до того дня, когда владелец их удалит.
+ *
+ * Подтверждение для слабого признака («Winter Fever Uncut» — маркер
+ * через пробел) берём из самой страницы: у нарезки в Related Content
+ * стоит «… original story» на базовый сериал. Настоящие сериалы со
+ * словом из словаря в названии («Love Uncut», «Behind Cut») такой
+ * связи не имеют, и мы их не трогаем.
+ */
+function assertNotAlternateVersion(mdl: MdlDrama): void {
+  const version = parseDramaVersionTitle(mdl.title);
+  if (!version) return;
+  if (version.needsProof && !hasOriginalStoryRelation(version.base, mdl.related)) return;
+  throw new MdlAlternateVersionError(mdl.title, version.base, version.marker);
+}
+
+/**
  * Создаёт или дозаполняет сериал по странице MyDramaList.
  *
  * Каст здесь НЕ трогаем намеренно: этим же кодом пользуется импорт
@@ -307,6 +355,10 @@ export function summarizeSchedule(s: MdlScheduleSync | null): string {
  * Блок Related Content пишется всегда и всеми путями импорта (см.
  * `syncDramaRelations`): лишних запросов к MDL он не стоит — связи уже
  * разобраны из той же страницы.
+ *
+ * НОВУЮ запись не заводит, если страница — другая нарезка сериала
+ * («… Uncut», «… (Acoustic Ver.)»): бросает `MdlAlternateVersionError`,
+ * см. `assertNotAlternateVersion`.
  */
 export async function upsertDramaFromMdl(
   url: string,
@@ -320,6 +372,7 @@ export async function upsertDramaFromMdl(
     ? parseMdlDramaPage(await opts.fetchHtml(sourceUrl), sourceUrl)
     : await fetchMdlDrama(sourceUrl);
   const existing = await findDramaForMdlPage(sourceUrl, mdl.title, mdl.year);
+  if (!existing) assertNotAlternateVersion(mdl);
 
   const parsedSchedule = (await shouldSyncSchedule(existing?.id ?? null, mdl.status))
     ? await fetchSchedule(sourceUrl, opts)

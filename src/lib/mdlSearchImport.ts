@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { MdlRunFetcher } from "@/lib/mdlClient";
-import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
+import { isAlternateVersionError, upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { linkMdlCast } from "@/lib/mdlCastLink";
 import {
   absMdlUrl,
@@ -167,6 +167,8 @@ export type MdlSearchImportResult = {
   created: number;
   updated: number;
   failed: number;
+  /** Пропущено нарезок («… Uncut»): не ошибка, а сознательный отказ. */
+  skippedVersions: number;
   /** Новых связей «актёр — сериал» и заведённых карточек актёров. */
   castLinked: number;
   performersCreated: number;
@@ -194,6 +196,7 @@ export async function importMdlSearch(
     let created = 0;
     let updated = 0;
     let failed = 0;
+    let skippedVersions = 0;
     let streak = 0;
     let castLinked = 0;
     let performersCreated = 0;
@@ -247,6 +250,14 @@ export async function importMdlSearch(
         }
       } catch (e) {
         if (isImportCancelledError(e)) throw e;
+        // Нарезка — не сбой: считаем отдельно и не копим серию ошибок,
+        // иначе десяток «uncut» подряд оборвал бы прогон по потолку
+        // FAILURE_STREAK_LIMIT.
+        if (isAlternateVersionError(e)) {
+          skippedVersions += 1;
+          streak = 0;
+          continue;
+        }
         failed += 1;
         streak += 1;
         if (streak >= FAILURE_STREAK_LIMIT) {
@@ -266,6 +277,7 @@ export async function importMdlSearch(
       created,
       updated,
       failed,
+      skippedVersions,
       castLinked,
       performersCreated,
       relationsLinked,
@@ -297,6 +309,8 @@ export type MdlWatchResult = {
   found: number;
   created: number;
   failed: number;
+  /** Пропущено нарезок («… Uncut»): не ошибка, а сознательный отказ. */
+  skippedVersions: number;
   castLinked: number;
   performersCreated: number;
   /** Названия заведённых — в сводку прогона. */
@@ -333,6 +347,7 @@ export async function runMdlWatchSearches(opts: {
     found: 0,
     created: 0,
     failed: 0,
+    skippedVersions: 0,
     castLinked: 0,
     performersCreated: 0,
     newTitles: [],
@@ -441,7 +456,8 @@ export async function runMdlWatchSearches(opts: {
           });
         } catch (e) {
           if (isImportCancelledError(e)) throw e;
-          result.failed += 1;
+          if (isAlternateVersionError(e)) result.skippedVersions += 1;
+          else result.failed += 1;
         }
       }
     }
@@ -460,6 +476,7 @@ export function summarizeMdlWatch(r: MdlWatchResult): string {
     `ссылок ${r.searches}, страниц ${r.pagesScanned}, новых ${r.found}` +
     (r.created ? `, заведено ${r.created}: ${r.newTitles.slice(0, 5).join(", ")}` : "") +
     (r.failed ? `, с ошибкой ${r.failed}` : "") +
+    (r.skippedVersions ? `, пропущено нарезок ${r.skippedVersions}` : "") +
     (r.castLinked ? `, каст +${r.castLinked}` : "") +
     (r.performersCreated ? ` (заведено актёров ${r.performersCreated})` : "") +
     (r.brokenSearches.length ? ` · не обошлись: ${r.brokenSearches.join("; ")}` : "")
@@ -472,6 +489,7 @@ export function summarizeMdlSearch(r: MdlSearchImportResult): string {
   return (
     `найдено ${r.found} на ${r.pagesScanned} стр., ` +
     `создано ${r.created}, обновлено ${r.updated}, с ошибкой ${r.failed}` +
+    (r.skippedVersions ? `, пропущено нарезок ${r.skippedVersions}` : "") +
     (r.castLinked ? `, каст +${r.castLinked}` : "") +
     (r.performersCreated ? ` (заведено актёров ${r.performersCreated})` : "") +
     (r.relationsLinked ? `, связей между сериалами +${r.relationsLinked}` : "") +

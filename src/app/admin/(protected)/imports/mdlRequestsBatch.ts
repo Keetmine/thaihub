@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { MdlRunFetcher } from "@/lib/mdlClient";
-import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
+import { isAlternateVersionError, upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { linkMdlCast } from "@/lib/mdlCastLink";
 
 // Пачка заявок «добавьте сериал» (MdlDramaRequest) ОДНИМ фоновым
@@ -31,6 +31,10 @@ export type MdlRequestsBatchResult = {
   /** Названия неудавшихся: их заявки остались открытыми — резолвит
    *  заявку только успешный upsertDramaFromMdl (хук внутри него). */
   failedTitles: string[];
+  /** Заявки на другую нарезку уже известного сериала («… Uncut»): не
+   *  ошибка ссылки, а наш сознательный отказ — заявка остаётся
+   *  открытой, разбирать её владельцу руками. */
+  skippedVersions: string[];
   castLinked: number;
   performersCreated: number;
   /** Прервались раньше времени: MDL перестал отдавать страницы. */
@@ -74,6 +78,7 @@ export async function importMdlRequestsBatch(
     imported: 0,
     failed: 0,
     failedTitles: [],
+    skippedVersions: [],
     castLinked: 0,
     performersCreated: 0,
     abortedAfter: null,
@@ -115,6 +120,13 @@ export async function importMdlRequestsBatch(
       } catch (e) {
         // Остановка кнопкой — не ошибка сериала: выходим целиком.
         if (isImportCancelledError(e)) throw e;
+        // Нарезка — не сбой: серию ошибок не копим, иначе отказы подряд
+        // оборвали бы пачку по FAILURE_STREAK_LIMIT.
+        if (isAlternateVersionError(e)) {
+          result.skippedVersions.push(req.title);
+          streak = 0;
+          continue;
+        }
         result.failed += 1;
         result.failedTitles.push(req.title);
         streak += 1;
@@ -141,6 +153,9 @@ export function summarizeMdlRequestsBatch(r: MdlRequestsBatchResult): string {
   return (
     `заявок ${r.total}: готово ${r.imported}, не вышло ${r.failed}` +
     (r.failedTitles.length > 0 ? ` (${r.failedTitles.join(", ").slice(0, 200)})` : "") +
+    (r.skippedVersions.length > 0
+      ? `, нарезки не заводим: ${r.skippedVersions.join(", ").slice(0, 200)}`
+      : "") +
     (r.castLinked ? `, каст +${r.castLinked}` : "") +
     (r.performersCreated ? ` (заведено актёров ${r.performersCreated})` : "") +
     (r.abortedAfter ? ` · ${r.abortedAfter}` : "")

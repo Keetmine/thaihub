@@ -5,7 +5,7 @@ import { privateUploadsDir } from "@/lib/privateUploads";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { MdlRunFetcher } from "@/lib/mdlClient";
 import { absMdlUrl, mdlSearchUrl, parseMdlSearchTitles } from "@/lib/mydramalist";
-import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
+import { isAlternateVersionError, upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { linkMdlCast } from "@/lib/mdlCastLink";
 // Карта «их русская страна → наша английская» уже есть у asiapoisk —
 // вторая копия разъехалась бы с первой.
@@ -294,6 +294,9 @@ async function findMdlUrl(
 
 type MdlImportOutcome =
   | { status: "no-mdl" }
+  /** Страница MDL оказалась другой нарезкой сериала («… Uncut») —
+   *  заводить нечего, и это не ошибка. */
+  | { status: "alternate-version"; note: string }
   | { status: "dry-run"; mdlUrl: string }
   | { status: "imported"; dramaId: string; slug: string | null; title: string; castLinked: number };
 
@@ -314,10 +317,16 @@ async function importMissingFromMdl(
   if (!opts.apply) return { status: "dry-run", mdlUrl };
 
   await sleep(MDL_DELAY_MS);
-  const result = await upsertDramaFromMdl(mdlUrl, {
-    fetchHtml: fetcher.fetchHtml,
-    autoUpdate: opts.autoUpdate,
-  });
+  let result;
+  try {
+    result = await upsertDramaFromMdl(mdlUrl, {
+      fetchHtml: fetcher.fetchHtml,
+      autoUpdate: opts.autoUpdate,
+    });
+  } catch (e) {
+    if (!isAlternateVersionError(e)) throw e;
+    return { status: "alternate-version", note: e.message };
+  }
   // Каст — из той же уже скачанной страницы, лишних запросов к MDL это
   // не добавляет. Только под журналом: linkMdlCast пишет заведённых
   // актёров в ImportedItem прогона, а у скрипта прогона нет.
@@ -593,6 +602,13 @@ export async function runDoramaLandDaily(opts: {
           log(`  нет на MDL: «${page.titleRu}» ${url}`);
           continue;
         }
+        if (outcome.status === "alternate-version") {
+          // Помним как «нет на MDL»: искать заново каждую ночь незачем,
+          // сама страница никуда не денется.
+          state.noMdl[url] = now.toISOString();
+          log(`  пропуск: ${outcome.note}`);
+          continue;
+        }
         result.importedFromMdl += 1;
         if (outcome.status === "dry-run") {
           if (result.importedTitles.length < 20) result.importedTitles.push(page.titleRu ?? url);
@@ -775,6 +791,10 @@ export async function runDoramaLandFullSync(opts: {
           });
           if (outcome.status === "no-mdl") {
             result.noMdl.push(page);
+            continue;
+          }
+          if (outcome.status === "alternate-version") {
+            log(`  [пропуск] ${outcome.note}`);
             continue;
           }
           result.importedFromMdl += 1;

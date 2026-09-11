@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { fetchMdlPerson, absMdlUrl, type MdlPerson } from "@/lib/mydramalist";
 import { oneProfilePlatformOf, socialLinkKey } from "@/lib/socialLinks";
-import { upsertDramaFromMdl } from "@/lib/mdlDramaImport";
+import { isAlternateVersionError, upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { logAudit, diffRecords, fieldLabel, type AuditChange } from "@/lib/audit";
@@ -283,7 +283,9 @@ export async function importMdlPerformer(
           // Отмену пробрасываем, остальное — не повод ронять импорт
           // актёра: связь с уже существующими сериалами важнее.
           if (isImportCancelledError(e)) throw e;
-          dramasFailed += 1;
+          // Нарезка («… Uncut») — не сбой: карточка не заведётся, и
+          // строка уйдёт в dramasSkipped ниже по `if (!drama)`.
+          if (!isAlternateVersionError(e)) dramasFailed += 1;
         }
       }
     }
