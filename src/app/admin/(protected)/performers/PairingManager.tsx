@@ -3,7 +3,7 @@
 import Link from "next/link";
 import LetterAvatar from "@/components/LetterAvatar";
 import { adminEntityHref } from "@/app/admin/entityHref";
-import { useId, useState } from "react";
+import { Fragment, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import EntitySelect from "@/components/EntitySelect";
 import { searchSoloPerformerOptions } from "./actions";
@@ -27,8 +27,8 @@ export default function PairingManager({
     /** Своё имя пары («GhostSheep») — плашкой рядом со статусом. */
     name: string | null;
     status: PairingStatus;
-    /** Второй в паре: его и показываем карточкой. */
-    partner: { id: string; name: string; photoUrl: string | null };
+    /** Оба участника в порядке пейринга: сначала A, потом B. */
+    performers: { id: string; name: string; photoUrl: string | null; self: boolean }[];
   }[];
   soloPerformers: PerformerOption[];
 }) {
@@ -83,15 +83,28 @@ export default function PairingManager({
               className="surface d-flex align-items-center justify-content-between gap-3 p-3"
             >
               <span className="font-display fw-medium text-white d-flex align-items-center flex-wrap gap-2">
-                {/* Партнёр карточкой: имя пары его не заменяет — по
-                    строке должно быть видно, с кем пара. */}
-                <Link
-                  href={adminEntityHref("Performer", pair.partner.id)!}
-                  className="event-chip performer-chip text-decoration-none"
-                >
-                  <LetterAvatar name={pair.partner.name} photoUrl={pair.partner.photoUrl} size={1.5} />
-                  {pair.partner.name}
-                </Link>
+                {/* Оба участника карточками, через «×» и в порядке
+                    пейринга: имя пары их не заменяет — по строке должно
+                    быть видно и с кем пара, и кто в ней первый. */}
+                {pair.performers.map((p, i) => (
+                  <Fragment key={p.id}>
+                    {i > 0 && <span className="text-secondary">×</span>}
+                    {p.self ? (
+                      <span className="event-chip performer-chip">
+                        <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.5} />
+                        {p.name}
+                      </span>
+                    ) : (
+                      <Link
+                        href={adminEntityHref("Performer", p.id)!}
+                        className="event-chip performer-chip text-decoration-none"
+                      >
+                        <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.5} />
+                        {p.name}
+                      </Link>
+                    )}
+                  </Fragment>
+                ))}
                 {pair.name && (
                   <span className="badge rounded-pill text-bg-primary" style={{ fontSize: "0.65rem" }}>
                     {pair.name}

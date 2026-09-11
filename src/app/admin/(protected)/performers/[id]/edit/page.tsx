@@ -70,20 +70,26 @@ export default async function EditPerformerPage({
 
   if (!performer) notFound();
 
-  // В строке пейринга показываем ПАРТНЁРА карточкой (фото + имя +
-  // ссылка), а имя пары — плашкой рядом со статусом (правка владельца
+  // В строке пейринга показываем ОБОИХ участников карточками (фото +
+  // имя), в том самом порядке, что записан в пейринге — «A × B» (правка
+  // владельца 2026-09-11). Раньше стоял только партнёр, но рядом живёт
+  // кнопка «поменять A и B местами», и по одному имени не видно, что
+  // она меняет. Имя пары — плашкой рядом со статусом (правка владельца
   // 2026-09-06). label остаётся для подтверждения удаления: там нужна
   // одна строка.
-  const currentPairings = pairings.map((pair) => {
-    const partner = pair.performerAId === id ? pair.performerB : pair.performerA;
-    return {
-      id: pair.id,
-      label: pairingLabel(pair),
-      name: pair.name,
-      status: pair.status,
-      partner: { id: partner.id, name: partner.name, photoUrl: partner.photoUrl },
-    };
-  });
+  const currentPairings = pairings.map((pair) => ({
+    id: pair.id,
+    label: pairingLabel(pair),
+    name: pair.name,
+    status: pair.status,
+    performers: [pair.performerA, pair.performerB].map((p) => ({
+      id: p.id,
+      name: p.name,
+      photoUrl: p.photoUrl,
+      // Сам редактируемый — без ссылки: она вела бы на эту же страницу.
+      self: p.id === id,
+    })),
+  }));
 
   const boundUpdate = updatePerformer.bind(null, id);
   const boundDelete = deletePerformer.bind(null, id);
