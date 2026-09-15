@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import AppLink from "@/components/AppLink";
 import { useT } from "@/components/LocaleProvider";
 import Analytics from "@/components/Analytics";
-import GoogleTagManager from "@/components/GoogleTagManager";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 // Куки согласия читают и другие места: instrumentation-client.ts решает
@@ -36,11 +35,9 @@ const serverSnapshot = () => null;
 
 export default function CookieConsent({
   metrikaId,
-  gtmId,
   gaId,
 }: {
   metrikaId: string | null;
-  gtmId: string | null;
   gaId: string | null;
 }) {
   const t = useT();
@@ -65,7 +62,16 @@ export default function CookieConsent({
   return (
     <>
       {choice === "all" && metrikaId && <Analytics id={metrikaId} />}
-      {choice === "all" && gtmId && <GoogleTagManager id={gtmId} />}
+      {/* Google Tag Manager отсюда УБРАН (2026-09-16). Контейнер
+          GTM-MS7GF6WQ на проде оказался пустым: замер показал ноль
+          сработавших тегов, в dataLayer только служебные gtm.js /
+          gtm.dom / gtm.load. То есть скрипт грузился и не делал
+          ничего. Счётчик GA4 при этом идёт мимо контейнера, прямо
+          через gtag.js ниже, — дублирования просмотров НЕ было
+          (проверено: один хит /g/collect, один tid).
+          Компонент GoogleTagManager не удалён и работает: если в
+          контейнер что-то положат, вернуть его — это проп gtmId и
+          строка здесь. */}
       {choice === "all" && gaId && <GoogleAnalytics id={gaId} />}
       {choice === "pending" && (
         <div

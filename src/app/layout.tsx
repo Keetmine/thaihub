@@ -140,12 +140,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             рерайт). */}
         <LocaleProvider locale={locale} contentOverrides={contentOverrides}>
           {children}
-          {/* Баннер согласия + аналитика: Метрика и Google Tag Manager
+          {/* Баннер согласия + аналитика: Метрика и Google Analytics
               грузятся только после «Принять все» (см. CookieConsent).
-              Внутри провайдера — баннеру нужен язык зрителя. */}
+              Внутри провайдера — баннеру нужен язык зрителя.
+
+              GTM_ID сюда больше НЕ передаётся: контейнер пустой, см.
+              CookieConsent. Переменная окружения на сервере может
+              остаться — её просто никто не читает. */}
           <CookieConsent
             metrikaId={process.env.YANDEX_METRIKA_ID ?? null}
-            gtmId={process.env.GTM_ID ?? null}
             gaId={process.env.GA_MEASUREMENT_ID ?? null}
           />
         </LocaleProvider>

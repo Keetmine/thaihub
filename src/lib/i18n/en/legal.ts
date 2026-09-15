@@ -101,7 +101,8 @@ export const legal = {
         "Sentry (servers outside Belarus and Russia) — automatic reports about site errors, so that we can fix them. Screen recording at the moment of an error — only with consent to analytics.",
       servicesTelegram:
         "Telegram — if you have linked your account: the bot sends you notifications by your id.",
-      servicesGoogle: "Google — only if you sign in with a Google account.",
+      servicesGoogle:
+        "Google — in two cases: if you sign in with a Google account, and Google Analytics (visit statistics, with its own cookies), which, like Metrica, is only loaded after you consent in the cookie banner.",
       servicesCrossBorder:
         "Some of these services operate outside Belarus and Russia — that is, a cross-border transfer of data takes place, and it is necessary for the site to work.",
 
