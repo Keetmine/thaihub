@@ -147,13 +147,7 @@ export default async function TripsPage() {
               }))}
             />
           </div>
-        ) : (
-          // Бесплатная поездка уже создана — вместо кнопки честный
-          // апселл: intro объясняет, что первая была бесплатной.
-          <div className="mb-4">
-            <PremiumUpsell feature={t.trips.paywallFeature} intro={t.trips.freeLimitIntro} />
-          </div>
-        )}
+        ) : null}
 
         {trips.length === 0 ? (
           <EmptyState
@@ -190,6 +184,16 @@ export default async function TripsPage() {
               }
               return <Fragment key={trip.id}>{card}</Fragment>;
             })}
+          </div>
+        )}
+
+        {/* Апселл — ПОД списком, как на витрине сообществ (правка
+            владельца 2026-09-15). Сверху он отодвигал сами поездки за
+            экран: «пользователь может даже не долистать до списка».
+            intro объясняет, что первая поездка была бесплатной. */}
+        {!canCreate && (
+          <div className="mt-5">
+            <PremiumUpsell feature={t.trips.paywallFeature} intro={t.trips.freeLimitIntro} />
           </div>
         )}
       </div>

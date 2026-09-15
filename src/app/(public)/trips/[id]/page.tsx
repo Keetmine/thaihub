@@ -319,6 +319,9 @@ const getTrip = cache(async (rawParam: string) => {
       personalEvents: {
         orderBy: { startsAt: "asc" },
         include: {
+          // Дни записи (правка владельца 2026-09-15): лента раскладывает
+          // запись по всем, форма правки показывает все строками.
+          dates: { orderBy: { startsAt: "asc" }, select: { startsAt: true } },
           location: { select: { id: true, name: true } },
           performers: {
             include: {
@@ -692,8 +695,13 @@ export default async function TripPage({
       note: p.note,
       location: p.location,
       startsAt: p.startsAt,
-      dateKey: dateKey(p.startsAt),
-      timeValue: formatTime(p.startsAt),
+      // Все дни записи — для формы правки; лента ниже раскладывает
+      // запись по ним же, подставляя каждой карточке свой день.
+      dates: (p.dates.length > 0 ? p.dates.map((d) => d.startsAt) : [p.startsAt]).map((at) => ({
+        at,
+        dateKey: dateKey(at),
+        timeValue: formatTime(at),
+      })),
       author: authorLabel(p.createdById),
       editableByOthers: p.editableByOthers,
       // Бейдж и форма правки показывают зажатое значение: обещать
@@ -817,13 +825,15 @@ export default async function TripPage({
     })),
     ...(showAll
       ? []
-      : personal.map((p) => ({
-          key: `own-${p.id}`,
-          startsAt: p.startsAt,
-          // У личной записи без времени startsAt хранит 00:00 — ровно
-          // тот же признак «на весь день», что и у событий.
-          hasTime: p.startsAt.getUTCHours() !== 0 || p.startsAt.getUTCMinutes() !== 0,
-        }))),
+      : personal.flatMap((p) =>
+          p.dates.map((d) => ({
+            key: `own-${p.id}-${d.dateKey}-${d.timeValue}`,
+            startsAt: d.at,
+            // У личной записи без времени день хранится в 00:00 — ровно
+            // тот же признак «на весь день», что и у событий.
+            hasTime: d.at.getUTCHours() !== 0 || d.at.getUTCMinutes() !== 0,
+          })),
+        )),
   ]);
 
   const timeline: TimelineItem[] = [
@@ -832,7 +842,22 @@ export default async function TripPage({
     // мешали (просьба владельца). Они живут в «Плане».
     ...(showAll
       ? []
-      : personal.map((p) => ({ kind: "personal" as const, startsAt: p.startsAt, key: `own-${p.id}`, personalEvent: p }))),
+      : personal.flatMap((p) =>
+          // Запись с несколькими днями встаёт в каждый свой день —
+          // как каталожное событие со своими датами. Карточке
+          // подставляем именно её день, чтобы дата в ней была верной.
+          p.dates.map((d) => ({
+            kind: "personal" as const,
+            startsAt: d.at,
+            key: `own-${p.id}-${d.dateKey}-${d.timeValue}`,
+            // Карточке подставляем ИМЕННО её день: `startsAt` самой
+            // записи — это первый день, и без подмены все карточки
+            // многодневной записи показывали бы одну и ту же дату.
+            // `dates` внутри остаётся полным — форма правки показывает
+            // все дни разом.
+            personalEvent: { ...p, startsAt: d.at },
+          })),
+        )),
     // Датированные дела попадают в хронологию плана.
     ...(showAll
       ? []

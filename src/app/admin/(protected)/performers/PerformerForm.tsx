@@ -19,7 +19,14 @@ import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
 import DatePickerInput from "@/components/DatePickerInput";
 
 
-export type PerformerLinkInput = { label: string; url: string; kind?: "OTHER" | "BRAND" };
+export type PerformerLinkInput = {
+  label: string;
+  url: string;
+  kind?: "OTHER" | "BRAND";
+  /** Заголовок своего блока ссылок («Питомцы», «Кафе») — пусто у
+   *  обычных ссылок и брендов. */
+  group?: string | null;
+};
 export type PerformerOption = { id: string; name: string; photoUrl?: string | null };
 
 type Tab = "general" | "dramas" | "events" | "pairing" | (string & {});
@@ -170,9 +177,16 @@ export default function PerformerForm({
   // адреса, поэтому в соцсети их разбирать нельзя — даже если бренд
   // ведёт на инстаграм.
   const brandDefaults: PerformerLinkInput[] = [];
+  // Ссылки своего блока («Питомцы», «Кафе») в соцсети не разбираем и в
+  // общий список не кладём: у них своё место на странице.
+  const groupedDefaults: PerformerLinkInput[] = [];
   for (const l of v?.links ?? []) {
     if (l.kind === "BRAND") {
       brandDefaults.push(l);
+      continue;
+    }
+    if (l.group?.trim()) {
+      groupedDefaults.push(l);
       continue;
     }
     const platform = detectSocialPlatform(l.url);
@@ -190,6 +204,28 @@ export default function PerformerForm({
   const [links, setLinks] = useState<PerformerLinkInput[]>(
     genericLinkDefaults.length > 0 ? genericLinkDefaults : [{ label: "", url: "" }],
   );
+
+  const [groupedLinks, setGroupedLinks] = useState<PerformerLinkInput[]>(groupedDefaults);
+
+  function addGroupedLink() {
+    // Новая строка наследует заголовок последней: блок обычно набирают
+    // подряд («Питомцы»: кот, потом собака), и перепечатывать его
+    // каждый раз — верный способ развести блок на два опечаткой.
+    setGroupedLinks((prev) => [
+      ...prev,
+      { label: "", url: "", group: prev.at(-1)?.group ?? "" },
+    ]);
+  }
+
+  function removeGroupedLink(index: number) {
+    setGroupedLinks((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateGroupedLink(index: number, field: "label" | "url" | "group", value: string) {
+    setGroupedLinks((prev) =>
+      prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)),
+    );
+  }
 
   function addLink() {
     setLinks((prev) => [...prev, { label: "", url: "" }]);
@@ -736,6 +772,75 @@ export default function PerformerForm({
             onClick={addBrand}
           >
             + Добавить бренд
+          </button>
+        </div>
+
+        <div>
+          {/* Заголовок группы, а не подпись поля: строк может не быть
+              вовсе — см. соседний блок брендов. */}
+          <div className="form-label d-block">Свои блоки ссылок</div>
+          <p className="text-secondary small mb-2">
+            Как бренды, только заголовок блока задаёте вы: «Питомцы» —
+            инстаграмы кота и собаки, «Кафе» — заведение артиста. Строки
+            с ОДИНАКОВЫМ заголовком собираются в один блок (регистр и
+            лишние пробелы не в счёт). Без заголовка или без названия
+            строка не сохранится.
+          </p>
+          <div className="d-flex flex-column gap-2">
+            {groupedLinks.map((row, i) => (
+              <div key={i} className="row g-2 align-items-center">
+                <div className="col-3">
+                  <input
+                    type="text"
+                    name="groupLinkGroup"
+                    placeholder="Заголовок блока"
+                    value={row.group ?? ""}
+                    onChange={(e) => updateGroupedLink(i, "group", e.target.value)}
+                    className="form-control"
+                    aria-label="Заголовок блока ссылок"
+                  />
+                </div>
+                <div className="col-3">
+                  <input
+                    type="text"
+                    name="groupLinkLabel"
+                    placeholder="Название ссылки"
+                    value={row.label}
+                    onChange={(e) => updateGroupedLink(i, "label", e.target.value)}
+                    className="form-control"
+                    aria-label="Название ссылки в блоке"
+                  />
+                </div>
+                <div className="col-5">
+                  <input
+                    type="url"
+                    name="groupLinkUrl"
+                    placeholder="https://…"
+                    value={row.url}
+                    onChange={(e) => updateGroupedLink(i, "url", e.target.value)}
+                    className="form-control"
+                    aria-label="Адрес ссылки в блоке"
+                  />
+                </div>
+                <div className="col-1">
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => removeGroupedLink(i)}
+                    aria-label="Удалить ссылку блока"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm mt-2"
+            onClick={addGroupedLink}
+          >
+            + Добавить ссылку в блок
           </button>
         </div>
         </FormSection>

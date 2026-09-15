@@ -183,7 +183,13 @@ export async function deletePerformer(id: string) {
   redirect("/admin/performers");
 }
 
-type LinkInput = { label: string; url: string; kind: PerformerLinkKind };
+type LinkInput = {
+  label: string;
+  url: string;
+  kind: PerformerLinkKind;
+  /** Заголовок своего блока ссылок — см. PerformerLink.group. */
+  group?: string;
+};
 
 // Instagram/TikTok/Twitter get their own named fields in the form
 // (SOCIAL_PLATFORM_LABELS gives each its display label) — merged back into
@@ -229,13 +235,30 @@ function getLinks(formData: FormData): LinkInput[] {
     links.push({ label, url, kind: "BRAND" });
   }
 
+  // Свои блоки ссылок («Питомцы», «Кафе» — правка владельца
+  // 2026-09-15): к паре «название + адрес» добавляется заголовок блока.
+  // Без заголовка строке нечего возглавлять, без названия кнопка
+  // «https://…» ничего не говорит — такие пропускаем, как у брендов.
+  const groupTitles = formData.getAll("groupLinkGroup").map(String);
+  const groupLabels = formData.getAll("groupLinkLabel").map(String);
+  const groupUrls = formData.getAll("groupLinkUrl").map(String);
+  for (let i = 0; i < Math.max(groupTitles.length, groupLabels.length, groupUrls.length); i++) {
+    const group = (groupTitles[i] ?? "").trim();
+    const label = (groupLabels[i] ?? "").trim();
+    const url = (groupUrls[i] ?? "").trim();
+    if (!group || !label || !url) continue;
+    links.push({ label, url, kind: "OTHER", group });
+  }
+
   // Один и тот же профиль мог прийти и из отдельного поля Instagram, и
   // из общего списка ссылок — храним по одной записи на адрес. Ключ
-  // включает вид: бренд и соцсеть по одному адресу — разные строки,
-  // иначе бренд молча пропадал бы, если его инстаграм уже в соцсетях.
+  // включает вид и заголовок блока: бренд, ссылка своего блока и
+  // соцсеть по одному адресу — разные строки. Иначе инстаграм кота,
+  // попавший заодно в соцсети артиста, молча пропадал бы из блока
+  // «Питомцы» (та же причина, по которой в ключ добавляли вид).
   const seen = new Set<string>();
   return links.filter((l) => {
-    const key = `${l.kind}:${socialLinkKey(l.url)}`;
+    const key = `${l.kind}:${l.group ?? ""}:${socialLinkKey(l.url)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -335,7 +358,7 @@ export async function createPerformer(formData: FormData) {
       photoUrl: photoUrl || null,
       ...getMusicProfileFields(formData),
       links: {
-        create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind })),
+        create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind, group: l.group ?? null })),
       },
       agencies: {
         create: agencyIds.map((agencyId) => ({ agencyId })),
@@ -490,7 +513,7 @@ export async function updatePerformer(id: string, formData: FormData) {
               stub: false,
               ...getMusicProfileFields(formData),
               links: {
-                create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind })),
+                create: links.map((l) => ({ label: l.label, url: l.url, kind: l.kind, group: l.group ?? null })),
               },
               bandMembers: {
                 create: memberIds.map((performerId) => ({ performerId })),

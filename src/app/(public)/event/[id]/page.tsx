@@ -441,7 +441,11 @@ export default async function EventDetailPage({
   //     наоборот — страница ДОРИСОВЫВАЛА участников группы подписью с её
   //     названием; владелец попросил обратного. Связи в базе не
   //     трогаются: на странице участника событие остаётся.
-  //   АА4 — пары стоят рядом, а не разъезжаются по популярности.
+  //   АА4 — пары стоят рядом, а не разъезжаются по популярности, и
+  //     идут ПЕРВЫМИ (`pairsFirst`, правка владельца 2026-09-15 — то же
+  //     правило, что на странице сериала): состав открывается парами,
+  //     ради которых на концерт и идут, а не самым «событийным»
+  //     артистом второго плана.
   const castCards = keepPairingsTogether(
     hideMembersOfListedBands(
       [...event.performers].sort(
@@ -454,6 +458,7 @@ export default async function EventDetailPage({
     ),
     (ep) => ep.performer.id,
     castPairings,
+    { pairsFirst: true },
   ).map(({ performer }) => ({
     id: performer.id,
     href: performerHref(performer),
@@ -490,6 +495,7 @@ export default async function EventDetailPage({
       ),
       (l) => l.performer.id,
       castPairings,
+      { pairsFirst: true },
     );
     return {
       id: o.id,

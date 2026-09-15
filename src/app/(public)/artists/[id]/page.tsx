@@ -44,6 +44,7 @@ import {
 import { isPremiumActive } from "@/lib/premium";
 import SeenLiveButton from "@/components/SeenLiveButton";
 import { toggleEventSeen, toggleOutsideSeen } from "@/app/(public)/artists/seenActions";
+import { buildLinkGroups } from "@/lib/performerLinkGroups";
 import { performerSeenEvents } from "@/lib/seenLive";
 import ListFold from "./ListFold";
 import CareerTimeline, { type CareerItem } from "./CareerTimeline";
@@ -544,7 +545,15 @@ export default async function PerformerPage({
   // и без этого он превратился бы в безымянную иконку соцсети — то есть
   // потерял бы ровно то, ради чего заведён, своё название.
   const brandLinks = performer.links.filter((l) => l.kind === "BRAND");
-  const nonBrandLinks = performer.links.filter((l) => l.kind !== "BRAND");
+  // Свои блоки ссылок (правка владельца 2026-09-15): «Питомцы» с
+  // инстаграмами кота и собаки, «Кафе» с заведением артиста. Заголовок
+  // задаёт владелец, поэтому из общего списка кнопок эти ссылки уходят —
+  // иначе стояли бы дважды.
+  const linkGroups = buildLinkGroups(performer.links.filter((l) => l.kind !== "BRAND"));
+  const groupedIds = new Set(linkGroups.flatMap((g) => g.links.map((l) => l.id)));
+  const nonBrandLinks = performer.links.filter(
+    (l) => l.kind !== "BRAND" && !groupedIds.has(l.id),
+  );
 
   const recognizedLinks = nonBrandLinks
     .map((l) => {
@@ -583,6 +592,7 @@ export default async function PerformerPage({
     !!bio ||
     otherLinks.length > 0 ||
     brandLinks.length > 0 ||
+    linkGroups.length > 0 ||
     (isBand && performer.bandMembers.length > 0) ||
     (isMascot && performer.mascotOwners.length > 0) ||
     (!displayPhoto && socialItems.length > 0);
@@ -832,6 +842,28 @@ export default async function PerformerPage({
               </div>
             </div>
           )}
+
+          {/* Свои блоки — тем же видом, что бренды, только заголовок
+              свой (правка владельца 2026-09-15). Стоят под брендами: те
+              про дело артиста, эти про всё остальное. */}
+          {linkGroups.map((group) => (
+            <div key={group.title} className="mt-3">
+              <h2 className="section-heading mb-2">{group.title}</h2>
+              <div className="d-flex flex-wrap gap-2">
+                {group.links.map((l) => (
+                  <a
+                    key={l.id}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chip-link"
+                  >
+                    {l.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
 
           {otherLinks.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-1">

@@ -23,18 +23,22 @@ import {
   ItemVisibilityField,
   type TripItemVisibilityValue,
 } from "./TripItemVisibility";
-import { shortMonthName, shortWeekdayName } from "@/lib/dates";
+import { formatTime, shortMonthName, shortWeekdayName } from "@/lib/dates";
 
 export type PersonalEventData = {
   id: string;
   title: string;
   note: string | null;
   location: { id: string; name: string } | null;
+  /** День, в котором карточка стоит: у записи с несколькими днями она
+   *  рисуется в каждом, и дата в ней — своя (правка владельца
+   *  2026-09-15). */
   startsAt: Date;
-  // "YYYY-MM-DD" и "HH:mm" для формы редактирования — сериализуем на
-  // сервере, чтобы не дублировать dateKey/formatTime в клиенте.
-  dateKey: string;
-  timeValue: string;
+  /** ВСЕ дни записи — для формы правки. "YYYY-MM-DD" и "HH:mm"
+   *  сериализуем на сервере, чтобы не дублировать dateKey/formatTime в
+   *  клиенте; `at` — тот же момент датой, им лента раскладывает
+   *  карточки по дням. */
+  dates: { at: Date; dateKey: string; timeValue: string }[];
   // Совместные поездки: имя автора (показывается, когда участников >1)
   // и разрешение другим участникам править/удалять запись.
   author: string | null;
@@ -57,6 +61,91 @@ export type PersonalEventData = {
   canEdit: boolean;
 };
 
+/**
+ * Дни записи — повторяемые строки «дата + время», как у каталожного
+ * события (правка владельца 2026-09-15: «в событиях поездки тоже
+ * добавим возможность добавлять несколько дней»). Запись одна — один
+ * ужин или фестиваль, — но случиться он может не единожды.
+ *
+ * Первая строка обязательна, остальные добавляются кнопкой и удаляются
+ * крестиком. Новая строка наследует время предыдущей: у трёхдневного
+ * фестиваля оно обычно одно, а перенабирать его трижды — лишняя работа.
+ */
+function PersonalEventDates({
+  uid,
+  defaults,
+}: {
+  uid: string;
+  defaults?: { dateKey: string; timeValue: string }[];
+}) {
+  const t = useT();
+  const [rows, setRows] = useState<{ dateKey: string; timeValue: string }[]>(
+    defaults && defaults.length > 0 ? defaults : [{ dateKey: "", timeValue: "" }],
+  );
+
+  return (
+    <div className="d-flex flex-column gap-2">
+      {rows.map((row, i) => (
+        <div className="row g-2 align-items-end" key={i}>
+          <div className={rows.length > 1 ? "col-6" : "col-7"}>
+            {/* Подпись — только у первой строки: остальные читаются как
+                её продолжение, и три «Дата» подряд только шумели бы. */}
+            {i === 0 && (
+              <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>
+                {t.trips.personal.date}
+              </label>
+            )}
+            <DatePickerInput
+              id={i === 0 ? `${uid}-date` : undefined}
+              name="date"
+              required={i === 0}
+              defaultValue={row.dateKey}
+            />
+          </div>
+          <div className="col-5">
+            {i === 0 && (
+              <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>
+                {t.trips.personal.time}
+              </label>
+            )}
+            <TimeInput
+              id={i === 0 ? `${uid}-time` : undefined}
+              name="time"
+              defaultValue={row.timeValue === "00:00" ? "" : row.timeValue}
+            />
+          </div>
+          {rows.length > 1 && (
+            <div className="col-1">
+              <button
+                type="button"
+                className="btn btn-outline-danger btn-sm"
+                onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+                aria-label={t.trips.personal.removeDay}
+              >
+                ×
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+      <div>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() =>
+            setRows((prev) => [
+              ...prev,
+              { dateKey: "", timeValue: prev.at(-1)?.timeValue ?? "" },
+            ])
+          }
+        >
+          {t.trips.personal.addDay}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Форма создания/редактирования — общая для обеих модалок.
  *  showShareToggle — галочка «участники могут редактировать» (совместные
  *  поездки); в соло-поездке не показываем, чтобы не путать. */
@@ -68,8 +157,9 @@ export function PersonalEventFields({
   defaults?: {
     title: string;
     note: string | null;
-    dateKey: string;
-    timeValue: string;
+    /** Дни записи строками формы. Пусто/не передано — одна пустая
+     *  строка (создание новой записи). */
+    dates?: { dateKey: string; timeValue: string }[];
     location?: { id: string; name: string } | null;
     performers?: { id: string; name: string; photoUrl?: string | null }[];
     editableByOthers?: boolean;
@@ -100,16 +190,7 @@ export function PersonalEventFields({
           className="form-control"
         />
       </div>
-      <div className="row g-2">
-        <div className="col-7">
-          <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>{t.trips.personal.date}</label>
-          <DatePickerInput id={`${uid}-date`} name="date" required defaultValue={defaults?.dateKey} />
-        </div>
-        <div className="col-5">
-          <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>{t.trips.personal.time}</label>
-          <TimeInput id={`${uid}-time`} name="time" defaultValue={defaults?.timeValue ?? ""} />
-        </div>
-      </div>
+      <PersonalEventDates uid={uid} defaults={defaults?.dates} />
       <LocationPickerField defaultLocation={defaults?.location} />
       <div>
         <label className="form-label small text-secondary" htmlFor={`${uid}-performers`}>
@@ -255,7 +336,10 @@ export default function PersonalEventCard({
       12,
     ),
   );
-  const hasTime = event.timeValue !== "00:00";
+  // Карточка стоит в конкретном дне: время берём из него, а не из
+  // первого дня записи (у многодневной они разные).
+  const dayTime = formatTime(event.startsAt);
+  const hasTime = dayTime !== "00:00";
 
   const boundUpdate = updateTripPersonalEvent.bind(null, tripId, event.id);
   const boundDelete = deleteTripPersonalEvent.bind(null, tripId, event.id);
@@ -376,7 +460,7 @@ export default function PersonalEventCard({
           )}
         </h3>
         <p className="small text-secondary mb-0">
-          {hasTime && event.timeValue}
+          {hasTime && dayTime}
           {hasTime && (event.note || event.location) && " · "}
           {event.location && (
             <AppLink
@@ -431,8 +515,7 @@ export default function PersonalEventCard({
             defaults={{
               title: event.title,
               note: event.note,
-              dateKey: event.dateKey,
-              timeValue: hasTime ? event.timeValue : "",
+              dates: event.dates,
               location: event.location,
               editableByOthers: event.editableByOthers,
               visibility: event.visibility,

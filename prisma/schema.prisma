@@ -413,6 +413,12 @@ model PerformerLink {
   label       String
   url         String
   kind        PerformerLinkKind @default(OTHER)
+  /// Заголовок СВОЕГО блока ссылок (правка владельца 2026-09-15):
+  /// «Питомцы» с инстаграмами кота и собаки, «Кафе» с заведением
+  /// артиста. Устроено как личные бренды, но заголовок задаёт владелец,
+  /// а не словарь. Пусто — обычная ссылка-кнопка в блоке фактов.
+  /// Ссылки с одинаковым заголовком собираются в один блок.
+  group       String?
   performer   Performer         @relation(fields: [performerId], references: [id], onDelete: Cascade)
 
   @@index([performerId])
@@ -1171,6 +1177,12 @@ model TripPersonalEvent {
   performers       TripPersonalEventPerformer[]
   // Отметки «я там буду» участников — см. TripPersonalEventAttendance.
   attendances      TripPersonalEventAttendance[]
+  /// Остальные дни записи (правка владельца 2026-09-15: «в событиях
+  /// поездки тоже добавим возможность добавлять несколько дней»).
+  /// `startsAt` выше — ПЕРВЫЙ день: по нему запись живёт во всём, что
+  /// знает про одну дату (блок «Вы идёте» на главной, «видела вживую»),
+  /// а лента поездки раскладывает её по всем дням разом.
+  dates            TripPersonalEventDate[]
   // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
   // перелёты и брони на главной не нужны, а встреча с друзьями — да.
   showOnHome       Boolean                       @default(false)
@@ -1187,6 +1199,26 @@ model TripPersonalEvent {
 
   @@index([tripId])
   @@index([locationId])
+}
+
+/**
+ * День записи поездки (правка владельца 2026-09-15). Устроено как
+ * EventOccurrence у каталожного события: запись ОДНА — одно название,
+ * одна картинка, одни артисты, одна отметка «я там буду», — а дней
+ * у неё может быть несколько (трёхдневный фестиваль, ужин дважды).
+ *
+ * Первый день продублирован в `TripPersonalEvent.startsAt`: туда
+ * смотрит всё, что знает про одну дату (главная, статистика), и
+ * переучивать эти места ради многодневных записей значило бы трогать
+ * половину проекта.
+ */
+model TripPersonalEventDate {
+  id              String            @id @default(cuid())
+  personalEventId String
+  personalEvent   TripPersonalEvent @relation(fields: [personalEventId], references: [id], onDelete: Cascade)
+  startsAt        DateTime
+
+  @@index([personalEventId])
 }
 
 // Пользовательская подборка локаций («где вкусная еда», «кафешки из

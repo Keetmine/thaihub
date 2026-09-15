@@ -185,7 +185,15 @@ export default async function EditPerformerPage({
             // kind обязателен: по нему форма раскладывает ссылки на
             // соцсети, прочие и бренды. Без него бренд приезжал бы в
             // «другие ссылки» и сохранением превращался в обычную.
-            links: performer.links.map((l) => ({ label: l.label, url: l.url, kind: l.kind })),
+            links: performer.links.map((l) => ({
+              label: l.label,
+              url: l.url,
+              kind: l.kind,
+              // Заголовок своего блока: без него строки «Питомцы» и
+              // «Кафе» приехали бы в форму обычными ссылками и при
+              // первом же сохранении потеряли бы блок.
+              group: l.group,
+            })),
           }}
           extraTabs={[
             {

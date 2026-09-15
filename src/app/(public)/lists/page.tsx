@@ -109,11 +109,7 @@ export default async function ListsPage() {
             <CreateListButton />
             <p className="small text-secondary mb-0 mt-2">{t.lists.freeFirstListHint}</p>
           </div>
-        ) : (
-          <div className="mb-4">
-            <PremiumUpsell feature={t.lists.paywallFeature} intro={t.lists.freeLimitIntro} />
-          </div>
-        )}
+        ) : null}
 
         {isEmpty ? (
           <EmptyState
@@ -218,6 +214,15 @@ export default async function ListsPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* Апселл — ПОД списком, как на витрине сообществ (правка
+            владельца 2026-09-15). Сверху он своей высотой отодвигал сам
+            список за экран, и человек мог до него не долистать. */}
+        {!canCreateList && (
+          <div className="mt-5">
+            <PremiumUpsell feature={t.lists.paywallFeature} intro={t.lists.freeLimitIntro} />
+          </div>
         )}
       </div>
 

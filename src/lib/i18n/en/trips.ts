@@ -160,7 +160,9 @@ export const trips = {
 
         title: "Title",
         titlePlaceholder: "Dinner with friends",
-        date: "Date",
+        addDay: "+ Another day",
+      removeDay: "Remove day",
+      date: "Date",
         time: "Time",
         note: "Note",
         image: "Image",
