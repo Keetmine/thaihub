@@ -1,6 +1,7 @@
 import type { AlbumType, Prisma } from "@/generated/prisma/client";
 import type { MusicFilterWhere } from "@/lib/catalogFilters";
 import { prisma } from "@/lib/prisma";
+import { compareMusicNews } from "@/lib/musicOrder";
 
 // «Что нового» — свежие релизы и песни, появившиеся в каталоге.
 // Наполняется в основном суточным обходом YouTube Music
@@ -44,6 +45,12 @@ const MUSIC_NEWS_YEARS = 1;
  * снимается. Иначе фильтр «2019» отвечал бы пустотой — витрина спорила
  * бы с тем, что у неё же и спросили.
  */
+/** Во сколько раз берём больше нужного из каждой таблицы: порядок
+ *  считается в памяти (см. compareMusicNews), и запрос, отрезавший ровно
+ *  `limit` по своему порядку, мог отсечь то, что после пересортировки
+ *  должно стоять выше. Таблицы маленькие — сотни строк. */
+const OVERFETCH = 4;
+
 export async function getMusicNews(options?: {
   limit?: number;
   userId?: string | null;
@@ -71,8 +78,11 @@ export async function getMusicNews(options?: {
             createdAt: true,
             performer: performerSelect,
           },
+          // Порядок и отбор считает compareMusicNews ниже — здесь
+          // важно лишь не отрезать лишнего: берём с запасом, потому что
+          // «свежие» по году и «свежие» по пачке — разные наборы.
           orderBy: [{ year: "desc" }, { createdAt: "desc" }],
-          take: limit,
+          take: limit * OVERFETCH,
         })
       : [],
     where.songs
@@ -87,7 +97,7 @@ export async function getMusicNews(options?: {
             performer: performerSelect,
           },
           orderBy: [{ year: "desc" }, { createdAt: "desc" }],
-          take: limit,
+          take: limit * OVERFETCH,
         })
       : [],
   ]);
@@ -117,11 +127,11 @@ export async function getMusicNews(options?: {
     })),
   ];
 
-  // Сначала год релиза, при равенстве — что позже завели у нас: внутри
-  // одного года «свежим» честно считать недавно добавленное.
-  return items
-    .sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || +b.addedAt - +a.addedAt)
-    .slice(0, limit);
+  // Порядок — общий compareMusicNews (src/lib/musicOrder.ts): год,
+  // свежесть пачки импорта, место внутри пачки. Раньше здесь стояло
+  // `addedAt desc`, и внутри одного прогона лента показывала релизы
+  // задом наперёд — самый старый первым.
+  return items.sort(compareMusicNews).slice(0, limit);
 }
 
 /** Сколько релизов под этим срезом всего — витрине нужно честное

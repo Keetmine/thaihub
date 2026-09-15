@@ -44,16 +44,37 @@ export default function TagRowFold({
   // тегам занять строку целиком, кнопка съезжала на следующую одна.
   // В потоке она ведёт себя как последнее слово абзаца и остаётся
   // вплотную за последним тегом, где бы тот ни оказался.
+  // Кнопка «ещё N» не должна оставаться на строке одна (правка
+  // владельца 2026-09-15). Неразрывного пробела перед ней НЕ хватает:
+  // кнопка — атомарный inline-block, и перенос случается на границе
+  // перед ней, а не на пробеле, который она якобы держит (проверено на
+  // /dramas/muteluv при 1280px). Помогает только `white-space: nowrap`
+  // на общей обёртке, поэтому последний видимый тег и кнопка едут
+  // одним куском: не влезли — переносятся вдвоём.
+  //
+  // Сам тег внутри обёртки переносится по-прежнему
+  // (`.tag-row-tail > * { white-space: normal }`): иначе длинный тег
+  // вроде «Student Supporting Character» не смог бы разорваться и на
+  // узком экране вылез бы за край — ровно тот горизонтальный скролл,
+  // который тут уже чинили.
+  const items = Children.toArray(visible);
+  const head = rest != null && !expanded ? items.slice(0, -1) : items;
+  const tail = rest != null && !expanded ? items.at(-1) : null;
+
   return (
     <div className="tag-row" style={{ minWidth: 0 }}>
-      {spaced(visible)}
+      {spaced(head)}
       {expanded && <> {spaced(rest)}</>}
-      {rest != null && !expanded && (
+      {tail != null && (
         <>
-          {" "}
-          <button type="button" className="tag-more-link" onClick={() => setExpanded(true)}>
-            {moreLabel}
-          </button>
+          {head.length > 0 ? " " : null}
+          <span className="tag-row-tail">
+            {tail}
+            {"\u00A0"}
+            <button type="button" className="tag-more-link" onClick={() => setExpanded(true)}>
+              {moreLabel}
+            </button>
+          </span>
         </>
       )}
     </div>

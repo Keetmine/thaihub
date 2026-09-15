@@ -25,7 +25,18 @@ import type { Prisma } from "@/generated/prisma/client";
  * значения отсекает whitelist внутри dramaFilterWhere), network,
  * agency; плюс поисковая строка q. Так ссылку на рулетку можно ставить
  * и с /dramas (кнопка проносит q), и со страницы результатов /search.
+ *
+ * Чего в адресе НЕ передали — подставляется из ROULETTE_DEFAULTS
+ * (правка владельца 2026-09-15): тайские, с тегом «LGBTQ+», за
+ * последние пять лет. Без них рулетка вытаскивала из всего каталога
+ * разом — вместе с корейскими драмами 2009 года и заготовками без
+ * описания, то есть отвечала совсем не на тот вопрос, который у неё
+ * написан на кнопке. Явный фильтр в адресе всегда сильнее умолчания:
+ * пришли со /search с `country=Japan` — значит, ищем японское.
  */
+
+/** Сколько лет назад заканчивается «последние N лет» у рулетки. */
+const ROULETTE_YEARS = 5;
 export async function GET(request: NextRequest) {
   const [user, { locale }] = await Promise.all([getCurrentUser(), getT()]);
 
@@ -45,6 +56,10 @@ export async function GET(request: NextRequest) {
     const v = sp.get(key);
     if (v) params[key] = v;
   }
+  // Умолчания — только для того, чего в адресе нет вовсе.
+  params.country ??= "Thailand";
+  params.tags ??= "LGBTQ+";
+  params.yearFrom ??= String(new Date().getFullYear() - ROULETTE_YEARS);
 
   const filters: Prisma.DramaWhereInput[] = dramaFilterWhere(params);
   const q = sp.get("q")?.trim();
@@ -71,12 +86,18 @@ export async function GET(request: NextRequest) {
   // в каталог, а не 404: адрес зовётся кнопкой, тупика за ней быть не
   // должно.
   const target = winner ? dramaHref(winner) : "/dramas";
-  const res = NextResponse.redirect(
-    new URL(localeHref(target, locale), request.url),
+  // Адрес ОТНОСИТЕЛЬНЫЙ, а не собранный от request.url: за Caddy
+  // приложение видит себя как http://0.0.0.0:3000, и абсолютный адрес
+  // уводил браузер ровно туда — на проде кнопка просто не работала
+  // (жалоба владельца 2026-09-15). Относительный Location разрешён
+  // стандартом и браузер достраивает его от текущего origin, каким бы
+  // тот ни был, — так же ведут себя и редиректы из proxy.ts.
+  const res = new NextResponse(null, {
     // Именно 302, а не дефолтный 307: адрес каждый раз ведёт в новое
     // место, и «временный» тут — точное слово.
-    302,
-  );
+    status: 302,
+    headers: { Location: localeHref(target, locale) },
+  });
   // Редирект со случайным исходом кэшировать нельзя: закэшированная
   // «рулетка» всегда выпадала бы одним и тем же сериалом.
   res.headers.set("Cache-Control", "no-store");
