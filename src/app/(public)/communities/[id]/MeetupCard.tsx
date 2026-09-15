@@ -28,6 +28,7 @@ export default async function MeetupCard({
   values,
   isFavorited,
   isGoing,
+  isMaybe,
   authorName,
   goingCount,
   canEdit,
@@ -38,6 +39,7 @@ export default async function MeetupCard({
   values: MeetupFormValues;
   isFavorited: boolean;
   isGoing: boolean;
+  isMaybe: boolean;
   authorName: string | null;
   goingCount: number;
   canEdit: boolean;
@@ -66,6 +68,7 @@ export default async function MeetupCard({
       event={event}
       isFavorited={isFavorited}
       isGoing={isGoing}
+      isMaybe={isMaybe}
       meta={meta}
       // Карандаш — слева от сердечка, в общем ряду значков карточки.
       // Удаление сюда не переехало: значок корзины рядом с сердечком

@@ -8,6 +8,7 @@ import { PinIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
 import LetterAvatar from "@/components/LetterAvatar";
 import GoingButton from "@/components/GoingButton";
+import MaybeButton from "@/components/MaybeButton";
 import EventRowCast from "@/components/EventRowCast";
 import { TzTimeText } from "@/components/MskTimeInfo";
 import { useLocale, useT } from "@/components/LocaleProvider";
@@ -16,6 +17,7 @@ export default function EventAgendaRow({
   event,
   isFavorited = false,
   isGoing = false,
+  isMaybe = false,
   friendsGoing = [],
   showDate = false,
   extraDates = 0,
@@ -23,6 +25,9 @@ export default function EventAgendaRow({
   event: EventWithPerformers;
   isFavorited?: boolean;
   isGoing?: boolean;
+  /** «Возможно пойду» на эту дату: кандидат, а не план. Карточка
+   *  приглушается и получает плашку — см. MaybeButton. */
+  isMaybe?: boolean;
   friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
   // Set on flat (non day-grouped) lists — home/day pages already show the
   // date as a section heading above a batch of rows, so only pages that
@@ -38,11 +43,19 @@ export default function EventAgendaRow({
   const hasTime = event.hasTime !== false;
 
   return (
-    <div className="agenda-row">
+    // Кандидат («возможно пойду») приглушается: в плане поездки он
+    // стоит рядом с твёрдыми планами, и по виду должно быть сразу
+    // понятно, что это ещё вариант (правка владельца 2026-09-15).
+    <div className={`agenda-row ${isMaybe && !isGoing ? "is-maybe-row" : ""}`}>
       <div className="corner-actions corner-actions-row">
         <span data-tour="favorite">
           <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
         </span>
+        {/* «Возможно» — только у будущих дат: у прошедшей отмечать
+            кандидата бессмысленно, там уже либо ходили, либо нет. */}
+        {event.startsAt >= new Date() && (
+          <MaybeButton occurrenceId={event.occurrenceId} isMaybe={isMaybe} />
+        )}
         <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>
       <AppLink href={eventHref(event)} className="flex-shrink-0 d-none d-sm-block" tabIndex={-1}>

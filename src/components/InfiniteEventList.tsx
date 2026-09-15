@@ -33,12 +33,14 @@ function MonthSections({
   events,
   favoritedIds,
   goingIds,
+  maybeIds,
   friendsGoing,
   locked,
 }: {
   events: EventWithPerformers[];
   favoritedIds: Set<string>;
   goingIds: Set<string>;
+  maybeIds: Set<string>;
   friendsGoing: Map<string, FriendGoing[]>;
   locked: boolean;
 }) {
@@ -58,6 +60,7 @@ function MonthSections({
                   event={ev}
                   isFavorited={favoritedIds.has(ev.id)}
                   isGoing={goingIds.has(ev.occurrenceId)}
+                  isMaybe={maybeIds.has(ev.occurrenceId)}
                   friendsGoing={friendsGoing.get(ev.id) ?? []}
                 />
               ),
@@ -89,6 +92,7 @@ export default function InfiniteEventList({
   const [past, setPast] = useState<EventWithPerformers[]>([]);
   const [favoritedIds, setFavoritedIds] = useState(() => new Set(initialPage.favoritedIds));
   const [goingIds, setGoingIds] = useState(() => new Set(initialPage.goingIds));
+  const [maybeIds, setMaybeIds] = useState(() => new Set(initialPage.maybeIds));
   const [friendsGoing, setFriendsGoing] = useState(() => new Map(initialPage.friendsGoing));
   const [next, setNext] = useState(initialPage.next);
   const [isLoading, setIsLoading] = useState(false);
@@ -110,6 +114,7 @@ export default function InfiniteEventList({
 
       setFavoritedIds((prev) => new Set([...prev, ...page.favoritedIds]));
       setGoingIds((prev) => new Set([...prev, ...page.goingIds]));
+      setMaybeIds((prev) => new Set([...prev, ...page.maybeIds]));
       setFriendsGoing((prev) => {
         const merged = new Map(prev);
         for (const [id, friends] of page.friendsGoing) merged.set(id, friends);
@@ -145,6 +150,7 @@ export default function InfiniteEventList({
         events={upcoming}
         favoritedIds={favoritedIds}
         goingIds={goingIds}
+        maybeIds={maybeIds}
         friendsGoing={friendsGoing}
         locked={initialPage.locked}
       />
@@ -161,6 +167,7 @@ export default function InfiniteEventList({
               events={past}
               favoritedIds={favoritedIds}
               goingIds={goingIds}
+              maybeIds={maybeIds}
               friendsGoing={friendsGoing}
               locked={initialPage.locked}
             />

@@ -2,7 +2,11 @@ import EmptyState from "@/components/EmptyState";
 import { dateKey, formatTime } from "@/lib/dates";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
 import { getT } from "@/lib/i18n";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
+} from "@/lib/favorites";
 import { canEditMeetup, communityRights } from "@/lib/meetups";
 import { prisma } from "@/lib/prisma";
 import type { EventWithPerformers } from "@/lib/types";
@@ -62,8 +66,12 @@ export default async function MeetupsTab({
 
   // Избранное и «иду» — теми же общими выборками, что кормят афишу:
   // карточка одна, и состояние её кнопок должно считаться одинаково.
-  const [goingIds, favoritedIds] = await Promise.all([
+  const [goingIds, maybeIds, favoritedIds] = await Promise.all([
     getGoingOccurrenceIds(
+      meetups.flatMap((m) => m.occurrences.map((o) => o.id)),
+      viewer?.id,
+    ),
+    getMaybeOccurrenceIds(
       meetups.flatMap((m) => m.occurrences.map((o) => o.id)),
       viewer?.id,
     ),
@@ -145,6 +153,7 @@ export default async function MeetupsTab({
         values={values}
         isFavorited={favoritedIds.has(m.id)}
         isGoing={goingIds.has(occurrence.id)}
+        isMaybe={maybeIds.has(occurrence.id)}
         authorName={m.createdBy?.name ?? null}
         goingCount={m._count.attendees}
         canEdit={canEditMeetup(m, viewer?.id, rights)}

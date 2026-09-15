@@ -10,6 +10,7 @@ import { communityHref } from "@/lib/slugHelpers";
 import { PinIcon, UsersIcon } from "@/components/icons";
 import FavoriteButton from "@/components/FavoriteButton";
 import GoingButton from "@/components/GoingButton";
+import MaybeButton from "@/components/MaybeButton";
 import MskTimeInfo from "@/components/MskTimeInfo";
 import EventRowCast from "@/components/EventRowCast";
 import { useLocale, useT } from "@/components/LocaleProvider";
@@ -23,6 +24,8 @@ export default function EventCard({
   event,
   isFavorited = false,
   isGoing = false,
+  isMaybe = false,
+  clashCount = 0,
   friendsGoing = [],
   actions,
   meta,
@@ -32,7 +35,14 @@ export default function EventCard({
   event: EventWithPerformers;
   isFavorited?: boolean;
   isGoing?: boolean;
+  /** «Возможно пойду» на эту дату: кандидат, а не план. Карточка
+   *  приглушается и получает плашку — см. MaybeButton. */
+  isMaybe?: boolean;
   friendsGoing?: { id: string; name: string | null; photoUrl: string | null }[];
+  /** Сколько других дел стоит в это же время — подсказка у кандидата:
+   *  ради неё кандидаты и выводятся в плане (правка владельца
+   *  2026-09-15: «в один день и одно время два эвента, пойду на один»). */
+  clashCount?: number;
   /** Дополнительные действия в углу карточки, СЛЕВА от сердечка —
    *  правка встречи сообщества (правка владельца 2026-09-09). Слотом, а
    *  не флагом: карточка одна на всю афишу и знать про сообщества ей
@@ -62,10 +72,15 @@ export default function EventCard({
   }, []);
 
   return (
-    <div className="event-card">
+    <div className={`event-card ${isMaybe && !isGoing ? "is-maybe-row" : ""}`}>
       <div className="corner-actions corner-actions-row">
         {actions}
         <FavoriteButton kind="event" id={event.id} isFavorited={isFavorited} variant="icon" />
+        {/* «Возможно» — только у будущих дат: у прошедшей отмечать
+            кандидата бессмысленно, там уже либо ходили, либо нет. */}
+        {event.startsAt >= new Date() && (
+          <MaybeButton occurrenceId={event.occurrenceId} isMaybe={isMaybe} />
+        )}
         <GoingButton occurrenceId={event.occurrenceId} isGoing={isGoing} isPast={event.startsAt < new Date()} variant="icon" />
       </div>
 
@@ -111,6 +126,17 @@ export default function EventCard({
               {event.title}
             </AppLink>
           </h3>
+          {/* Кандидат: плашка «возможно» и, если в это же время стоит
+              что-то ещё, — прямая подсказка про накладку. Пунктирная
+              рамка вместо заливки: это ещё не решение. */}
+          {isMaybe && !isGoing && (
+            <span className="maybe-badge">
+              {t.widgets.maybe.badge}
+              {clashCount > 0 && (
+                <span className="maybe-clash"> · {t.widgets.maybe.clash(clashCount)}</span>
+              )}
+            </span>
+          )}
           {/* Встреча сообщества: карточка остаётся обычной карточкой
               события (просьба владельца — «одинакового вида»), но рядом
               с названием стоит тихий чип с названием сообщества. В

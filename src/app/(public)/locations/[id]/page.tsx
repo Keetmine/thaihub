@@ -18,7 +18,11 @@ import PlaceListCard from "@/app/(public)/communities/[id]/PlaceListCard";
 import LocationMap from "@/components/LocationMapLoader";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
+} from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -189,7 +193,7 @@ export default async function LocationDetailPage({
       : t.catalog.location.distanceKm((m / 1000).toFixed(1));
 
   // Вторая волна: пользовательские отметки — все ждут только currentUser.
-  const [visit, myPlaceListsRaw, communityLists, favoritedIds, goingIds, friendIds] =
+  const [visit, myPlaceListsRaw, communityLists, favoritedIds, goingIds, maybeIds, friendIds] =
     await Promise.all([
       currentUser
         ? prisma.locationVisit.findUnique({
@@ -237,6 +241,7 @@ export default async function LocationDetailPage({
       }),
       getFavoritedEventIds(eventIds, currentUser?.id),
       getGoingOccurrenceIds(occIds, currentUser?.id),
+      getMaybeOccurrenceIds(occIds, currentUser?.id),
       getFriendIds(currentUser?.id),
     ]);
   const isVisited = !!visit;
@@ -381,6 +386,7 @@ export default async function LocationDetailPage({
                       event={row}
                       isFavorited={favoritedIds.has(row.id)}
                       isGoing={goingIds.has(row.occurrenceId)}
+                      isMaybe={maybeIds.has(row.occurrenceId)}
                       friendsGoing={
                         friendsGoingByEvent.get(row.occurrenceId) ?? []
                       }

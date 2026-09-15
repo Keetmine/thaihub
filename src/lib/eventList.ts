@@ -2,7 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { catalogEventsWhere, viewerEventsWhere, viewerMeetupsWhere } from "@/lib/catalogEvents";
 import { endOfDay, parseDateKey, startOfDay } from "@/lib/dates";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
+} from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import type { EventWithPerformers } from "@/lib/types";
 
@@ -29,6 +33,9 @@ export type EventListPage = {
   favoritedIds: string[];
   // occurrenceId'ы, на которые юзер идёт (отметка — per-дата).
   goingIds: string[];
+  /** «Возможно пойду» — кандидаты, а не план: карточки рисуют их
+   *  приглушённо (см. MaybeButton). */
+  maybeIds: string[];
   // Map не сериализуется через границу server action — массив пар.
   friendsGoing: [string, FriendGoing[]][];
   // Откуда продолжать: null — всё загружено.
@@ -189,9 +196,10 @@ export async function fetchEventListPage(
 
   const eventIds = isPremium ? events.map((ev) => ev.id) : [];
   const occurrenceIds = isPremium ? events.map((ev) => ev.occurrenceId) : [];
-  const [favoritedIds, goingIds, friendIds] = await Promise.all([
+  const [favoritedIds, goingIds, maybeIds, friendIds] = await Promise.all([
     getFavoritedEventIds(eventIds, userId),
     getGoingOccurrenceIds(occurrenceIds, userId),
+    getMaybeOccurrenceIds(occurrenceIds, userId),
     getFriendIds(userId),
   ]);
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(occurrenceIds, friendIds);
@@ -206,6 +214,7 @@ export async function fetchEventListPage(
     events,
     favoritedIds: Array.from(favoritedIds),
     goingIds: Array.from(goingIds),
+    maybeIds: Array.from(maybeIds),
     friendsGoing: Array.from(friendsGoingByEvent.entries()),
     next,
     locked: !isPremium,

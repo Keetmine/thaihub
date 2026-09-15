@@ -4,7 +4,11 @@ import LetterAvatar from "@/components/LetterAvatar";
 import { viewerMeetupsWhere } from "@/lib/catalogEvents";
 import { viewerCommunitiesWhere } from "@/lib/communities";
 import { formatShortDate } from "@/lib/dates";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
+} from "@/lib/favorites";
 import { getT } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { communityHref } from "@/lib/slugHelpers";
@@ -128,8 +132,12 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
   // Состояние кнопок карточки — теми же общими выборками, что кормят
   // афишу: карточка одна, и «иду» с сердечком должны считаться
   // одинаково везде. Запрос идёт по горстке уже найденных id.
-  const [goingIds, favoritedIds] = await Promise.all([
+  const [goingIds, maybeIds, favoritedIds] = await Promise.all([
     getGoingOccurrenceIds(
+      occurrences.map((o) => o.id),
+      userId,
+    ),
+    getMaybeOccurrenceIds(
       occurrences.map((o) => o.id),
       userId,
     ),
@@ -188,6 +196,7 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
                     key={o.id}
                     event={event}
                     isGoing={goingIds.has(o.id)}
+                    isMaybe={maybeIds.has(o.id)}
                     isFavorited={favoritedIds.has(o.event.id)}
                   />
                 );

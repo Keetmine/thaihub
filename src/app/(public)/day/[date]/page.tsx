@@ -14,7 +14,11 @@ import {
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
 import EventCard from "@/components/EventCard";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
+} from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import { dramaHref } from "@/lib/dramaSlug";
@@ -111,9 +115,10 @@ export default async function DayPage({
   const nextKey = dateKey(addDays(day, 1));
   const eventIds = events.map((ev) => ev.id);
   const occIds = events.map((ev) => ev.occurrenceId);
-  const [favoritedIds, goingIds, friendIds] = await Promise.all([
+  const [favoritedIds, goingIds, maybeIds, friendIds] = await Promise.all([
     getFavoritedEventIds(eventIds, currentUser?.id),
     getGoingOccurrenceIds(occIds, currentUser?.id),
+    getMaybeOccurrenceIds(occIds, currentUser?.id),
     getFriendIds(currentUser?.id),
   ]);
   const friendsGoingByEvent = await getFriendsGoingByOccurrence(occIds, friendIds);
@@ -157,6 +162,7 @@ export default async function DayPage({
                     event={ev}
                     isFavorited={favoritedIds.has(ev.id)}
                     isGoing={goingIds.has(ev.occurrenceId)}
+                    isMaybe={maybeIds.has(ev.occurrenceId)}
                     friendsGoing={friendsGoingByEvent.get(ev.occurrenceId) ?? []}
                   />
                 ))}

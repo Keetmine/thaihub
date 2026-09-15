@@ -506,11 +506,74 @@ export async function toggleGoing(occurrenceId: string): Promise<ActionResult> {
     await prisma.eventAttendance.create({
       data: { userId: user.id, occurrenceId, eventId: occurrence.eventId },
     });
+    // «Иду» отменяет «возможно»: решение принято, кандидатом эта дата
+    // больше не считается (см. toggleMaybe ниже).
+    await prisma.eventMaybe.deleteMany({ where: { userId: user.id, occurrenceId } });
     // Друзьям — «X идёт на …» (Г2). Fire-and-forget: сбой телеграма не
     // должен ломать саму отметку.
     void import("@/lib/telegramNotifications")
       .then((m) => m.notifyFriendsAboutGoing(user.id, occurrenceId))
       .catch(() => {});
+  }
+
+  revalidatePath("/account");
+  revalidatePath(`/event/${occurrence.eventId}`);
+  return { ok: true };
+}
+
+/**
+ * «Возможно пойду» — кандидат на конкретную дату.
+ *
+ * Третье состояние между сердечком («интересно вообще», на событие
+ * целиком) и «иду» («решено»): в один вечер два концерта, оба
+ * интересны, пойду на один. В плане поездки кандидаты стоят рядом с
+ * твёрдыми планами, приглушённо, — чтобы видеть расписание целиком
+ * (правка владельца 2026-09-15).
+ *
+ * Взаимоисключимо с «иду» в обе стороны: поставили «возможно» на дату,
+ * куда уже шли, — отметка «иду» снимается. Это не потеря данных, а
+ * понижение решения, и возвращается одним кликом.
+ *
+ * Нигде не считается: ни в статистике, ни в ачивках, ни в «видела
+ * вживую», ни в уведомлениях друзьям, ни в выгрузке в календарь.
+ * Поэтому и таблица своя — см. модель EventMaybe.
+ */
+export async function toggleMaybe(occurrenceId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const occurrence = await prisma.eventOccurrence.findUnique({
+    where: { id: occurrenceId },
+    include: { event: { select: { communityId: true } } },
+  });
+  if (!occurrence)
+    return { ok: false, error: (await getT()).t.events.going.dateNotFound };
+  // Та же калитка, что у «иду»: id даты угадать нельзя, но экшен
+  // вызывается и напрямую, мимо любой страницы (см. lib/meetups.ts).
+  if (!(await canSeeMeetup(occurrence.event, user.id))) {
+    return { ok: false, error: (await getT()).t.events.going.dateNotFound };
+  }
+
+  const existing = await prisma.eventMaybe.findUnique({
+    where: { userId_occurrenceId: { userId: user.id, occurrenceId } },
+  });
+
+  if (existing) {
+    await prisma.eventMaybe.delete({
+      where: { userId_occurrenceId: { userId: user.id, occurrenceId } },
+    });
+  } else {
+    // Планы вокруг события — часть подписки, как и «иду». Снятие
+    // свободно всегда: у истёкшей подписки человек иначе остался бы с
+    // кандидатами в поездке и без способа их убрать.
+    if (!occurrence.event.communityId && !isPremiumActive(user)) {
+      return { ok: false, error: (await getT()).t.events.going.premium };
+    }
+    await prisma.eventMaybe.create({
+      data: { userId: user.id, occurrenceId, eventId: occurrence.eventId },
+    });
+    // Кандидат отменяет твёрдое «иду» — состояния взаимоисключимы.
+    await prisma.eventAttendance.deleteMany({ where: { userId: user.id, occurrenceId } });
   }
 
   revalidatePath("/account");

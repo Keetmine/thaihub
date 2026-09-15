@@ -59,6 +59,23 @@ export async function getGoingOccurrenceIds(
   return new Set(attendances.map((a) => a.occurrenceId));
 }
 
+/** Даты, помеченные «возможно пойду» (EventMaybe) — кандидаты, а не
+ *  план: карточки в списках рисуют их приглушённо, и нигде не
+ *  считаются (см. экшен toggleMaybe). */
+export async function getMaybeOccurrenceIds(
+  occurrenceIds: string[],
+  userId: string | null | undefined,
+): Promise<Set<string>> {
+  if (occurrenceIds.length === 0 || !userId) return new Set();
+
+  const rows = await prisma.eventMaybe.findMany({
+    where: { userId, occurrenceId: { in: occurrenceIds } },
+    select: { occurrenceId: true },
+  });
+
+  return new Set(rows.map((r) => r.occurrenceId));
+}
+
 /** Один человек из сообщества зрителя, отметивший «иду». `community` —
  *  то сообщество, через которое зритель с ним и знаком: без него плашка
  *  отвечает «идёт какой-то Дима», а не «идёт Дима из „Лакорнов“». */

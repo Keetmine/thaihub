@@ -15,7 +15,11 @@ import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
 import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import SortSelect from "@/components/filters/SortSelect";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
+} from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getCurrentUser } from "@/lib/userAuth";
@@ -477,9 +481,10 @@ async function EventResults({
       </div>
     );
   }
-  const [favoritedIds, goingIds, friendIds] = await Promise.all([
+  const [favoritedIds, goingIds, maybeIds, friendIds] = await Promise.all([
     getFavoritedEventIds(rows.map((r) => r.id), currentUser?.id),
     getGoingOccurrenceIds(rows.map((r) => r.occurrenceId), currentUser?.id),
+    getMaybeOccurrenceIds(rows.map((r) => r.occurrenceId), currentUser?.id),
     getFriendIds(currentUser?.id),
   ]);
   const friendsGoing = await getFriendsGoingByOccurrence(
@@ -494,6 +499,7 @@ async function EventResults({
           event={row}
           isFavorited={favoritedIds.has(row.id)}
           isGoing={goingIds.has(row.occurrenceId)}
+          isMaybe={maybeIds.has(row.occurrenceId)}
           friendsGoing={friendsGoing.get(row.occurrenceId) ?? []}
           showDate
           extraDates={extraDates}

@@ -48,6 +48,7 @@ import {
   getDramaWatchStatuses,
   getFavoritedEventIds,
   getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
 } from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
@@ -292,6 +293,7 @@ export default async function DramaDetailPage({
     watchStatus,
     favoritedEventIds,
     goingEventIds,
+    maybeOccurrenceIds,
     similarStatuses,
     visits,
     friendStatuses,
@@ -303,6 +305,7 @@ export default async function DramaDetailPage({
       : null,
     getFavoritedEventIds(eventIds, currentUser?.id),
     getGoingOccurrenceIds(occIds, currentUser?.id),
+    getMaybeOccurrenceIds(occIds, currentUser?.id),
     // Кнопка статуса на карточках рекомендаций — как у сериалов на
     // странице артиста.
     getDramaWatchStatuses(
@@ -1142,6 +1145,7 @@ export default async function DramaDetailPage({
                   event={row}
                   isFavorited={favoritedEventIds.has(row.id)}
                   isGoing={goingEventIds.has(row.occurrenceId)}
+                  isMaybe={maybeOccurrenceIds.has(row.occurrenceId)}
                   showDate
                   extraDates={extraDates}
                 />

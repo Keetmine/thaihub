@@ -86,6 +86,7 @@ model Event {
   pairings                    EventPairing[]
   favoritedBy                 FavoriteEvent[]
   attendees                   EventAttendance[]
+  maybes                      EventMaybe[]
   seenPerformers              EventSeenPerformer[]
   notes                       EventNote[]
   presaleNotifications        TelegramPresaleNotification[]
@@ -135,6 +136,7 @@ model EventOccurrence {
   lineup                OccurrenceLineup[]
   telegramNotifications TelegramNotification[]
   attendances           EventAttendance[]
+  maybes                EventMaybe[]
   tickets               EventTicket[]
 
   @@index([eventId])
@@ -887,6 +889,7 @@ model User {
   notifications            Notification[]  @relation("UserNotifications")
   performersSeen           PerformerSeen[]
   eventSeenPerformers      EventSeenPerformer[]
+  eventMaybes              EventMaybe[]
   // Что дублировать в Telegram (уведомления на сайте приходят всегда).
   // Раньше набор поводов был зашит в код и одинаков для всех.
   tgNotifyInvites          Boolean         @default(true)
@@ -1632,6 +1635,38 @@ model EventTicket {
   @@index([eventId])
   @@index([occurrenceId])
   @@index([onlineBookingAt])
+}
+
+/**
+ * «Возможно пойду» — кандидат на дату (правка владельца 2026-09-15).
+ *
+ * Между сердечком («интересно вообще», на событие целиком) и «иду»
+ * («решено»). Смысл — увидеть свои варианты в расписании поездки: в один
+ * вечер два концерта, оба интересны, пойду на один. В общей афише они
+ * терялись среди чужого.
+ *
+ * ОТДЕЛЬНАЯ таблица, а не статус у EventAttendance: отметки «иду»
+ * читаются в трёх десятках мест (статистика, ачивки, «видела вживую»,
+ * уведомления друзьям, выгрузка в календарь), и любое пропущенное
+ * превратило бы «может быть» в посещённое событие. Здесь же «возможно»
+ * не считается НИГДЕ — это черновик планов.
+ *
+ * Взаимоисключимо с «иду»: экшены снимают встречную отметку.
+ */
+model EventMaybe {
+  userId       String
+  occurrenceId String
+  // Денормализовано, как в EventAttendance: выборки «есть ли кандидат
+  // на событие вообще» не должны ходить через даты.
+  eventId      String
+  createdAt    DateTime        @default(now())
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  occurrence   EventOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  event        Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, occurrenceId])
+  @@index([eventId])
+  @@index([occurrenceId])
 }
 
 model EventAttendance {

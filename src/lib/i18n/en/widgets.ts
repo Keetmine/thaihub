@@ -147,6 +147,13 @@ export const widgets = {
     empty:
       "You don't have any artist lists yet. You can create one in your profile — “seen live” or “want to go to a concert”, for example.",
   },
+  maybe: {
+    add: "Might go",
+    remove: "Remove “might go”",
+    short: "Might go",
+    badge: "might go",
+    clash: (n: number) => `${n} more at the same time`,
+  },
   seenLive: {
     mark: "Mark: seen live",
     unmark: "Seen live — remove the mark",

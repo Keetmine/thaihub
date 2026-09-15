@@ -239,6 +239,8 @@ export default async function EventDetailPage({
   const isPremium = isPremiumActive(currentUser);
   let isEventFavorited = false;
   let goingOccurrenceIds: string[] = [];
+  /** Свои «возможно пойду» по датам этого события — кандидаты, а не план. */
+  let maybeOccurrenceIds: string[] = [];
   let friendsGoing: { id: string; name: string | null; photoUrl: string | null }[] = [];
   let ownNote: { text: string; visibility: string } | null = null;
   let friendNotes: FriendNote[] = [];
@@ -415,7 +417,17 @@ export default async function EventDetailPage({
         .map(({ user }) => [user.id, user]),
     ).values(),
   ).sort((a, b) => Number(b.id === currentUser?.id) - Number(a.id === currentUser?.id));
-  if (currentUser) seenState = await eventSeenState(currentUser.id, event.id);
+  if (currentUser) {
+    const [seen, maybes] = await Promise.all([
+      eventSeenState(currentUser.id, event.id),
+      prisma.eventMaybe.findMany({
+        where: { userId: currentUser.id, eventId: event.id },
+        select: { occurrenceId: true },
+      }),
+    ]);
+    seenState = seen;
+    maybeOccurrenceIds = maybes.map((m) => m.occurrenceId);
+  }
   // --- end own block ---
 
   // Э2ф: свой осмысленный порядок у состава события не хранится —
@@ -667,6 +679,7 @@ export default async function EventDetailPage({
                 <GoingDateChips
                   occurrences={event.occurrences.map((o) => ({ id: o.id, startsAt: o.startsAt }))}
                   goingIds={goingOccurrenceIds}
+                  maybeIds={maybeOccurrenceIds}
                 />
               </div>
             )}

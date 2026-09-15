@@ -258,6 +258,7 @@ export default async function UserProfilePage({
   const [
     friendships,
     attendances,
+    maybeRows,
     favoritePerformersCount,
     watchRows,
     watchCount,
@@ -302,6 +303,15 @@ export default async function UserProfilePage({
         },
       },
     }),
+    // Кандидаты «возможно пойду» — только себе: на своей странице
+    // кнопка на строке должна показывать настоящее состояние, а чужие
+    // черновики планов не видны никому (см. модель EventMaybe).
+    isSelf
+      ? prisma.eventMaybe.findMany({
+          where: { userId: user.id },
+          select: { occurrenceId: true },
+        })
+      : [],
     // Число любимых артистов показывает только свой «Обзор».
     isSelf ? prisma.favoritePerformer.count({ where: { userId: user.id } }) : 0,
     showActivity
@@ -697,6 +707,7 @@ export default async function UserProfilePage({
     // здесь). Двух запросов «а что из этого списка отмечено» больше нет.
     const favoritedSet = new Set(favoriteEventRows.map((f) => f.eventId));
     const goingSet = new Set(attendances.map((a) => a.occurrenceId));
+    const maybeSet = new Set(maybeRows.map((m) => m.occurrenceId));
 
     // Списки событий — за подпиской (как в кабинете): без неё массивы
     // не рендерим вовсе, короткое пояснение вместо них.
@@ -722,6 +733,7 @@ export default async function UserProfilePage({
                 event={ev}
                 isFavorited={favoritedSet.has(ev.id)}
                 isGoing={goingSet.has(ev.occurrenceId)}
+                isMaybe={maybeSet.has(ev.occurrenceId)}
                 showDate
               />
             ))}
@@ -740,6 +752,7 @@ export default async function UserProfilePage({
                 event={ev}
                 isFavorited={favoritedSet.has(ev.id)}
                 isGoing={goingSet.has(ev.occurrenceId)}
+                isMaybe={maybeSet.has(ev.occurrenceId)}
                 showDate
               />
             ))}
@@ -758,6 +771,7 @@ export default async function UserProfilePage({
                 event={row}
                 isFavorited={favoritedSet.has(row.id)}
                 isGoing={goingSet.has(row.occurrenceId)}
+                isMaybe={maybeSet.has(row.occurrenceId)}
                 showDate
                 extraDates={extraDates}
               />

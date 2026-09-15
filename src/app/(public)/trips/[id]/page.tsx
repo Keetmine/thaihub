@@ -20,11 +20,12 @@ import { getT, type Dict, type Locale } from "@/lib/i18n";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import type { TripItemVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, itemVisibilityChoices } from "../itemVisibility";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import { getFavoritedEventIds, getGoingOccurrenceIds, getMaybeOccurrenceIds } from "@/lib/favorites";
 import { getFriendIds, getFriendsGoingByOccurrence } from "@/lib/friends";
 import { deleteTrip } from "../actions";
 import EmptyState from "@/components/EmptyState";
 import EventCard from "@/components/EventCard";
+import { countClashes } from "@/lib/timeClash";
 import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
@@ -520,13 +521,25 @@ export default async function TripPage({
           where: {
             ...rangeWhere,
             // План совместной поездки — отметки «иду» всех участников;
-            // «Только моё» сужает до текущего юзера.
+            // «Только моё» сужает до текущего юзера. Плюс СВОИ
+            // кандидаты «возможно пойду» (правка владельца 2026-09-15):
+            // они стоят в плане наравне с твёрдыми планами, только
+            // приглушённые, — чтобы видеть расписание целиком. Чужие
+            // кандидаты не показываем никому: это черновик планов, а не
+            // договорённость.
             ...(showAll
               ? {}
               : {
-                  attendances: {
-                    some: { userId: onlyMine && viewerId ? viewerId : { in: participantIds } },
-                  },
+                  OR: [
+                    {
+                      attendances: {
+                        some: {
+                          userId: onlyMine && viewerId ? viewerId : { in: participantIds },
+                        },
+                      },
+                    },
+                    ...(viewerId ? [{ maybes: { some: { userId: viewerId } } }] : []),
+                  ],
                 }),
           },
           include: { event: { include: { performers: { include: { performer: { select: { id: true, name: true, slug: true } } } } } } },
@@ -585,10 +598,11 @@ export default async function TripPage({
   // в карточку) есть только у залогиненного: гостю нечего показывать и
   // не за кем ходить в базу. Всё четыре зависят лишь от списка событий
   // и друг друга не ждут (аудит 2026-09, п.4).
-  const [favoritedIds, goingIds, friendIds, myTickets] = viewerId
+  const [favoritedIds, goingIds, maybeIds, friendIds, myTickets] = viewerId
     ? await Promise.all([
         getFavoritedEventIds(eventIds, viewerId),
         getGoingOccurrenceIds(occIds, viewerId),
+        getMaybeOccurrenceIds(occIds, viewerId),
         getFriendIds(viewerId),
         prisma.eventTicket.findMany({
           where: { userId: viewerId, occurrenceId: { in: occIds } },
@@ -596,6 +610,7 @@ export default async function TripPage({
         }),
       ])
     : [
+        new Set<string>(),
         new Set<string>(),
         new Set<string>(),
         [] as string[],
@@ -788,6 +803,28 @@ export default async function TripPage({
     | { kind: "stay"; startsAt: Date; key: string; label: string; dateLabel: string }
     | BookingEntry
     | { kind: "flightChain"; startsAt: Date; endsAt: Date; key: string; chain: FlightChainData };
+
+  // Накладки по времени: кандидат («возможно») получает подсказку «в это
+  // же время ещё N». Считаем по СОБЫТИЯМ и ЛИЧНЫМ записям — это то, что
+  // реально занимает вечер; дела, брони и отметки прилёта днём не
+  // занимают. Чистая функция — см. src/lib/timeClash.ts.
+  const clashes = countClashes([
+    ...events.map((ev) => ({
+      key: ev.occurrenceId,
+      startsAt: ev.startsAt,
+      endsAt: ev.endsAt,
+      hasTime: ev.hasTime !== false,
+    })),
+    ...(showAll
+      ? []
+      : personal.map((p) => ({
+          key: `own-${p.id}`,
+          startsAt: p.startsAt,
+          // У личной записи без времени startsAt хранит 00:00 — ровно
+          // тот же признак «на весь день», что и у событий.
+          hasTime: p.startsAt.getUTCHours() !== 0 || p.startsAt.getUTCMinutes() !== 0,
+        }))),
+  ]);
 
   const timeline: TimelineItem[] = [
     ...events.map((ev) => ({ kind: "public" as const, startsAt: ev.startsAt, key: `pub-${ev.occurrenceId}`, event: ev })),
@@ -1086,6 +1123,8 @@ export default async function TripPage({
               event={item.event}
               isFavorited={favoritedIds.has(item.event.id)}
               isGoing={goingIds.has(item.event.occurrenceId)}
+              isMaybe={maybeIds.has(item.event.occurrenceId)}
+              clashCount={clashes.get(item.event.occurrenceId) ?? 0}
               friendsGoing={friendsGoingByEvent.get(item.event.occurrenceId) ?? []}
               ticketUrl={ticketByOccurrence.get(item.event.occurrenceId) ?? null}
             />

@@ -18,7 +18,11 @@ import EventCardLocked from "@/components/EventCardLocked";
 import EntityMiniCard from "@/components/EntityMiniCard";
 import SocialLinkIcons from "@/components/SocialLinkIcons";
 import SubTabs from "@/components/SubTabs";
-import { getFavoritedEventIds, getGoingOccurrenceIds } from "@/lib/favorites";
+import {
+  getFavoritedEventIds,
+  getGoingOccurrenceIds,
+  getMaybeOccurrenceIds,
+} from "@/lib/favorites";
 import { flattenOccurrence, groupByEvent } from "@/lib/eventOccurrences";
 import { getDramaWatchStatuses } from "@/lib/favorites";
 import { detectSocialPlatform, type SocialPlatform } from "@/lib/socialLinks";
@@ -269,6 +273,7 @@ export default async function PerformerPage({
     favorite,
     favoritedEventIds,
     goingEventIds,
+    maybeOccurrenceIds,
     statusByDramaId,
   ] = await Promise.all([
     // «Видела вживую» — СПИСОК событий, где артист был в составе, и
@@ -296,6 +301,7 @@ export default async function PerformerPage({
       : null,
     getFavoritedEventIds(eventIds, currentUser?.id),
     getGoingOccurrenceIds(occIds, currentUser?.id),
+    getMaybeOccurrenceIds(occIds, currentUser?.id),
     getDramaWatchStatuses(
       performer.dramas.map((pd) => pd.dramaId),
       currentUser?.id,
@@ -1045,6 +1051,7 @@ export default async function PerformerPage({
                     event={row}
                     isFavorited={favoritedEventIds.has(row.id)}
                     isGoing={goingEventIds.has(row.occurrenceId)}
+                    isMaybe={maybeOccurrenceIds.has(row.occurrenceId)}
                     showDate
                     extraDates={extraDates}
                   />
