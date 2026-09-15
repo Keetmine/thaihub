@@ -18,11 +18,14 @@ export type MeetupFormValues = {
   venue: string;
   address: string | null;
   description: string | null;
-  /** Дата и время приходят готовыми строками с сервера: собирать их из
-   *  Date в браузере нельзя — у зрителя своя зона, и «19:00 в Бангкоке»
-   *  превратилось бы в 15:00. */
-  dateKey: string;
-  timeValue: string;
+  /** Дни встречи (правка владельца 2026-09-15): встреча одна, а идти
+   *  она может не один вечер. Дата и время приходят готовыми строками с
+   *  сервера: собирать их из Date в браузере нельзя — у зрителя своя
+   *  зона, и «19:00 в Бангкоке» превратилось бы в 15:00. `id` — строка
+   *  EventOccurrence: по нему правка переносит существующий день, а не
+   *  заводит второй (иначе за перенесённой встречей оставался бы
+   *  призрак старой даты с чужими отметками «иду»). */
+  dates: { id: string; dateKey: string; timeValue: string }[];
   posterUrl: string | null;
   drama: { id: string; name: string } | null;
   /** Онлайн-встреча: адреса нет, на карточке — бейдж «Онлайн». */
@@ -88,6 +91,16 @@ export default function MeetupForm({
   // просто перестаёт быть обязательным, — полупустое «Адрес» рядом с
   // «Онлайн» читалось бы как вопрос, на который всё-таки ждут ответа.
   const [isOnline, setIsOnline] = useState(meetup?.isOnline ?? false);
+  // Дни встречи. `key` — свой, а не индекс: строку удаляют из середины,
+  // и по индексу React переиспользовал бы поля соседа вместе с
+  // введённым в них.
+  const [days, setDays] = useState<
+    { key: string; id: string; dateKey: string; timeValue: string }[]
+  >(() =>
+    meetup && meetup.dates.length > 0
+      ? meetup.dates.map((d) => ({ key: d.id, ...d }))
+      : [{ key: "new", id: "", dateKey: "", timeValue: "" }],
+  );
   // Картинка встречи: адрес держим в состоянии и отдаём форме скрытым
   // полем. Без картинки карточка рисует первую букву названия — как у
   // обычных событий, отдельного «нет постера» не нужно.
@@ -196,28 +209,76 @@ export default function MeetupForm({
             onUploadingChange={setIsPosterUploading}
           />
 
-          <div className="row g-2">
-            <div className="col-7">
-              <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>
-                {s.dateLabel}
-              </label>
-              <DatePickerInput
-                id={`${uid}-date`}
-                name="date"
-                required
-                defaultValue={meetup?.dateKey}
-              />
-            </div>
-            <div className="col-5">
-              <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>
-                {s.timeLabel}
-              </label>
-              {/* Своё поле, а не type="time" (правка владельца
-                  2026-09-09): нативное пустое поле браузер рисовал как
-                  «12:30», и стереть эту подпись было нельзя. Подписи
-                  «оставьте пустым» тут тоже нет — пустое поле и так
-                  выглядит пустым. */}
-              <TimeInput id={`${uid}-time`} name="time" defaultValue={meetup?.timeValue ?? ""} />
+          {/* Дни встречи: строка = один вечер. У встречи, идущей два
+              дня подряд, это одна запись с двумя датами — как у
+              каталожного события (правка владельца 2026-09-15). */}
+          <div className="d-flex flex-column gap-2">
+            {days.map((day, i) => (
+              <div className="row g-2 align-items-end" key={day.key}>
+                {/* id существующего дня: по нему сервер правит ЕГО, а не
+                    заводит новый. У добавленной строки пусто. */}
+                <input type="hidden" name="occurrenceId" value={day.id} />
+                <div className={days.length > 1 ? "col-6" : "col-7"}>
+                  {/* Подпись — только у первой строки: остальные
+                      читаются как её продолжение. */}
+                  {i === 0 && (
+                    <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>
+                      {s.dateLabel}
+                    </label>
+                  )}
+                  <DatePickerInput
+                    id={i === 0 ? `${uid}-date` : undefined}
+                    name="date"
+                    required={i === 0}
+                    defaultValue={day.dateKey}
+                  />
+                </div>
+                <div className="col-5">
+                  {i === 0 && (
+                    <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>
+                      {s.timeLabel}
+                    </label>
+                  )}
+                  {/* Своё поле, а не type="time" (правка владельца
+                      2026-09-09): нативное пустое поле браузер рисовал
+                      как «12:30», и стереть эту подпись было нельзя.
+                      Подписи «оставьте пустым» тут тоже нет — пустое
+                      поле и так выглядит пустым. */}
+                  <TimeInput
+                    id={i === 0 ? `${uid}-time` : undefined}
+                    name="time"
+                    defaultValue={day.timeValue}
+                  />
+                </div>
+                {days.length > 1 && (
+                  <div className="col-1">
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={() => setDays((prev) => prev.filter((_, j) => j !== i))}
+                      aria-label={s.removeDay}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            <div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() =>
+                  setDays((prev) => [
+                    ...prev,
+                    // Новый день наследует время предыдущего: у встречи
+                    // два вечера подряд оно обычно одно.
+                    { key: `new-${prev.length}-${Date.now()}`, id: "", dateKey: "", timeValue: prev.at(-1)?.timeValue ?? "" },
+                  ])
+                }
+              >
+                {s.addDay}
+              </button>
             </div>
           </div>
 

@@ -824,46 +824,52 @@ export default async function PerformerPage({
               «ещё одна ссылка», а своё дело артиста, и у него есть имя,
               которое нужно показать. Соседние otherLinks остаются просто
               кнопками. */}
-          {brandLinks.length > 0 && (
-            <div className="mt-3">
-              <h2 className="section-heading mb-2">{t.catalog.artist.brands}</h2>
-              <div className="d-flex flex-wrap gap-2">
-                {brandLinks.map((l) => (
-                  <a
-                    key={l.id}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="chip-link"
-                  >
-                    {l.label}
-                  </a>
-                ))}
-              </div>
+          {/* Бренды и свои блоки («Питомцы», «Кафе») — ОДНИМ РЯДОМ
+              (правка владельца 2026-09-15): каждый блок это заголовок и
+              одна-две капсулы, и столбиком они растягивали страницу
+              пустотой. Ряд переносится, узкий экран складывает его в
+              столбик сам. Бренды идут первыми: это дело артиста, а
+              остальное — всё прочее. */}
+          {(brandLinks.length > 0 || linkGroups.length > 0) && (
+            <div className="link-group-row mt-3">
+              {brandLinks.length > 0 && (
+                <div className="link-group">
+                  <h2 className="section-heading mb-2">{t.catalog.artist.brands}</h2>
+                  <div className="d-flex flex-wrap gap-2">
+                    {brandLinks.map((l) => (
+                      <a
+                        key={l.id}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="chip-link"
+                      >
+                        {l.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {linkGroups.map((group) => (
+                <div key={group.title} className="link-group">
+                  <h2 className="section-heading mb-2">{group.title}</h2>
+                  <div className="d-flex flex-wrap gap-2">
+                    {group.links.map((l) => (
+                      <a
+                        key={l.id}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="chip-link"
+                      >
+                        {l.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-
-          {/* Свои блоки — тем же видом, что бренды, только заголовок
-              свой (правка владельца 2026-09-15). Стоят под брендами: те
-              про дело артиста, эти про всё остальное. */}
-          {linkGroups.map((group) => (
-            <div key={group.title} className="mt-3">
-              <h2 className="section-heading mb-2">{group.title}</h2>
-              <div className="d-flex flex-wrap gap-2">
-                {group.links.map((l) => (
-                  <a
-                    key={l.id}
-                    href={l.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="chip-link"
-                  >
-                    {l.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
 
           {otherLinks.length > 0 && (
             <div className="d-flex flex-wrap gap-2 mt-1">

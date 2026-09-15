@@ -692,12 +692,7 @@ function parsePersonalEventForm(
 ): {
   title: string;
   note: string | null;
-  /** ПЕРВЫЙ день записи — по нему она живёт всюду, где известна одна
-   *  дата (главная, «видела вживую»). Все дни — в `dates`. */
   startsAt: Date;
-  /** Дни записи по возрастанию, минимум один (правка владельца
-   *  2026-09-15: несколько дней у записи поездки). */
-  dates: Date[];
   locationId: string | null;
   editableByOthers: boolean;
   visibility: TripItemVisibility;
@@ -710,12 +705,8 @@ function parsePersonalEventForm(
 } | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
-  // Дни приходят параллельными массивами, как у каталожного события:
-  // строка формы = одна пара «дата + время».
-  const dateRows = formData.getAll("date").map(String);
-  const timeRows = formData.getAll("time").map((v) => String(v).trim());
-  // Первая строка обязательна — по ней и решаем, есть ли вообще дата.
-  const date = dateRows[0] ?? "";
+  const date = String(formData.get("date") ?? "");
+  const time = String(formData.get("time") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
   // Ссылка «куда посмотреть» (просьба владельца 2026-09-10): бронь на
   // сайте площадки, страница мероприятия, точка на карте. Только
@@ -732,29 +723,10 @@ function parsePersonalEventForm(
     .filter(Boolean);
   // Без времени событие встаёт на начало дня — в списке поездки такие
   // сортируются раньше всех событий этого дня.
-  //
-  // Пустые строки дат выбрасываем: в форме их можно добавить и не
-  // заполнить. Повторы схлопываем — два одинаковых дня в ленте были бы
-  // двумя одинаковыми карточками. Порядок — по возрастанию, чтобы
-  // первым днём (`startsAt`) оказался самый ранний, а не тот, который
-  // случайно набрали первым.
-  const dates = [
-    ...new Map(
-      dateRows
-        .map((d, i) => ({ d: d.trim(), t: timeRows[i] ?? "" }))
-        .filter((row) => row.d)
-        .map((row) => {
-          const at = combineDateTime(row.d, row.t || "00:00");
-          return [at.getTime(), at] as const;
-        }),
-    ).values(),
-  ].sort((a, b) => a.getTime() - b.getTime());
-  if (dates.length === 0) return null;
   return {
     title,
     note: note || null,
-    startsAt: dates[0],
-    dates,
+    startsAt: combineDateTime(date, time || "00:00"),
     locationId: locationId || null,
     editableByOthers: formData.get("editableByOthers") === "on",
     ...itemVisibilityData(
@@ -789,13 +761,12 @@ export async function createTripPersonalEvent(
   if (data.locationId && !(await canUseLocation(data.locationId, access.user.id))) {
     return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
   }
-  const { performerIds, attending, dates, ...fields } = data;
+  const { performerIds, attending, ...fields } = data;
   await prisma.tripPersonalEvent.create({
     data: {
       tripId: access.trip.id,
       createdById: access.user.id,
       ...fields,
-      dates: { create: dates.map((startsAt) => ({ startsAt })) },
       performers: { create: performerIds.map((performerId) => ({ performerId })) },
       ...(attending ? { attendances: { create: { userId: access.user.id } } } : {}),
     },
@@ -833,16 +804,11 @@ export async function updateTripPersonalEvent(
   if (data.locationId && data.locationId !== item.locationId && !(await canUseLocation(data.locationId, user.id))) {
     return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
   }
-  const { performerIds, attending, dates, ...fields } = data;
+  const { performerIds, attending, ...fields } = data;
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
     data: {
       ...fields,
-      // Дни, как и артисты, приходят из формы целиком — пересобираем.
-      dates: {
-        deleteMany: {},
-        create: dates.map((startsAt) => ({ startsAt })),
-      },
       // Список артистов приходит целиком — старые связи заменяются
       // новыми, а не дополняются.
       performers: {

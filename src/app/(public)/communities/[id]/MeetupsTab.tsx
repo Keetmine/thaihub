@@ -53,12 +53,16 @@ export default async function MeetupsTab({
     prisma.event.findMany({
       where: { communityId },
       include: {
-        occurrences: { orderBy: { startsAt: "asc" } },
         drama: { select: { id: true, slug: true, ...DRAMA_TITLE_SELECT } },
         createdBy: { select: { id: true, name: true } },
-        // Сколько народу идёт: у встречи одна дата, поэтому отметок
-        // ровно столько же, сколько людей.
-        _count: { select: { attendees: true } },
+        // Сколько народу идёт — по КАЖДОМУ дню отдельно: у встречи с
+        // двумя вечерами один человек мог отметиться на оба, и общее
+        // число отметок сказало бы «идут двое» про одного (правка
+        // владельца 2026-09-15, когда у встреч появились дни).
+        occurrences: {
+          orderBy: { startsAt: "asc" },
+          include: { _count: { select: { attendances: true } } },
+        },
       },
     }),
     communityRights(communityId, viewer?.id),
@@ -87,11 +91,12 @@ export default async function MeetupsTab({
     // событием, а `updateMeetup` правит ту же строку (см.
     // eventActions.ts). Строки без даты не бывает — но карточке афиши
     // нечего было бы показать в блоке дня, поэтому проверка явная.
-    .flatMap((m) => {
-      const occurrence = m.occurrences[0];
-      if (!occurrence) return [];
-      return [{ meetup: m, occurrence, startsAt: occurrence.startsAt }];
-    })
+    // Дней у встречи может быть несколько (правка владельца
+    // 2026-09-15) — в списке она встаёт в каждый свой день, как
+    // каталожное событие со своими датами. Встречи без дат не бывает,
+    // но карточке афиши нечего было бы показать в блоке дня, поэтому
+    // проверка явная.
+    .flatMap((m) => m.occurrences.map((occurrence) => ({ meetup: m, occurrence, startsAt: occurrence.startsAt })))
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
   const upcoming = rows.filter((r) => r.startsAt >= now);
   // Прошедшие — ниже и свёрнутыми: они не мусорят вкладку, но и не
@@ -108,11 +113,15 @@ export default async function MeetupsTab({
       posterUrl: m.posterUrl,
       address: m.address,
       description: m.description,
-      // Дата и время в форму уходят строками, посчитанными на сервере:
-      // в браузере зрителя своя зона, и «19:00» уехало бы на несколько
-      // часов (то же правило, что в личных событиях поездки).
-      dateKey: dateKey(occurrence.startsAt),
-      timeValue: occurrence.hasTime ? formatTime(occurrence.startsAt) : "",
+      // Дни в форму уходят строками, посчитанными на сервере: в
+      // браузере зрителя своя зона, и «19:00» уехало бы на несколько
+      // часов. В форме — ВСЕ дни встречи, а не тот, в котором стоит эта
+      // карточка: правка идёт по записи целиком.
+      dates: m.occurrences.map((o) => ({
+        id: o.id,
+        dateKey: dateKey(o.startsAt),
+        timeValue: o.hasTime ? formatTime(o.startsAt) : "",
+      })),
       drama: m.drama ? { id: m.drama.id, name: dramaTitleForLocale(m.drama, locale) } : null,
       isOnline: m.isOnline,
     };
@@ -143,11 +152,11 @@ export default async function MeetupsTab({
     // афишное «По подписке»: гейт здесь членство, участие бесплатное,
     // и звать человека платить было бы враньём (аудит 2026-09, п.2.1).
     if (locked) {
-      return <EventCardLocked key={m.id} startsAt={occurrence.startsAt} membersOnly />;
+      return <EventCardLocked key={occurrence.id} startsAt={occurrence.startsAt} membersOnly />;
     }
     return (
       <MeetupCard
-        key={m.id}
+        key={occurrence.id}
         communityId={communityId}
         event={event}
         values={values}
@@ -155,7 +164,7 @@ export default async function MeetupsTab({
         isGoing={goingIds.has(occurrence.id)}
         isMaybe={maybeIds.has(occurrence.id)}
         authorName={m.createdBy?.name ?? null}
-        goingCount={m._count.attendees}
+        goingCount={occurrence._count.attendances}
         canEdit={canEditMeetup(m, viewer?.id, rights)}
       />
     );

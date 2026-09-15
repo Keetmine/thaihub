@@ -31,10 +31,14 @@ import {
 export type ActionError = { ok: false; error: string };
 export type ActionResult = { ok: true } | ActionError;
 
+/** Один день встречи из формы. `occurrenceId` пуст у новой строки. */
+type MeetupDayInput = { occurrenceId: string; date: string; time: string };
+
 type MeetupInput = {
   title: string;
-  date: string;
-  time: string;
+  /** Дни встречи (правка владельца 2026-09-15): встреча одна, а
+   *  идти она может не один вечер. Минимум одна заполненная строка. */
+  days: MeetupDayInput[];
   venue: string;
   address: string;
   description: string;
@@ -49,10 +53,20 @@ type MeetupInput = {
 
 function readForm(formData: FormData): MeetupInput {
   const str = (key: string) => String(formData.get(key) ?? "").trim();
+  // Дни приходят параллельными массивами, как у каталожного события в
+  // админке: строка формы = «id даты + дата + время». id нужен, чтобы
+  // правка переносила СУЩЕСТВУЮЩУЮ дату, а не заводила вторую: иначе
+  // за перенесённой встречей оставался бы призрак старой даты с чужими
+  // отметками «иду».
+  const ids = formData.getAll("occurrenceId").map(String);
+  const dates = formData.getAll("date").map((v) => String(v).trim());
+  const times = formData.getAll("time").map((v) => String(v).trim());
+  const days: MeetupDayInput[] = dates
+    .map((date, i) => ({ occurrenceId: (ids[i] ?? "").trim(), date, time: times[i] ?? "" }))
+    .filter((d) => d.date);
   return {
     title: str("title").slice(0, MEETUP_TITLE_MAX),
-    date: str("date"),
-    time: str("time"),
+    days,
     venue: str("venue").slice(0, MEETUP_VENUE_MAX),
     // Отдельного поля адреса в форме больше нет (правка владельца
     // 2026-09-09) — всё живёт в venue. Старые значения форма склеивает
@@ -75,19 +89,27 @@ async function validate(input: MeetupInput) {
   if (!input.title) return { ok: false as const, error: s.titleRequired };
   // Онлайн-встрече адрес не нужен; офлайн — обязателен, как и раньше.
   if (!input.isOnline && !input.venue) return { ok: false as const, error: s.venueRequired };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { ok: false as const, error: s.dateRequired };
+  if (input.days.length === 0 || input.days.some((d) => !/^\d{4}-\d{2}-\d{2}$/.test(d.date))) {
+    return { ok: false as const, error: s.dateRequired };
+  }
   // Время приводим к «ЧЧ:ММ», а не требуем его в таком виде: половина
   // введённого («12» без минут) — это тоже время, а не повод ронять
   // форму (см. normalizeTimeValue). Пустое поле — законное «время не
-  // назначено».
-  const time = normalizeTimeValue(input.time);
-  // Время не указано — startsAt хранит 00:00 при hasTime=false (иначе
+  // назначено»; тогда startsAt хранит 00:00 при hasTime=false (иначе
   // полночь неотличима от «время не назначено», см. схему).
-  return {
-    ok: true as const,
-    startsAt: combineDateTime(input.date, time ?? "00:00"),
-    hasTime: !!time,
-  };
+  const days = input.days
+    .map((d) => {
+      const time = normalizeTimeValue(d.time);
+      return {
+        occurrenceId: d.occurrenceId,
+        startsAt: combineDateTime(d.date, time ?? "00:00"),
+        hasTime: !!time,
+      };
+    })
+    // Один и тот же момент дважды — две одинаковые карточки в списке.
+    .filter((d, i, all) => all.findIndex((x) => +x.startsAt === +d.startsAt) === i)
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  return { ok: true as const, days };
 }
 
 /** Сериал существует? Привязка необязательная, поэтому мусор в поле —
@@ -148,7 +170,9 @@ export async function createMeetup(
       // заняла бы там место, а номер выдавал бы, сколько ещё событий
       // называются так же. Ссылка на встречу — /event/<id>.
       slug: null,
-      occurrences: { create: { startsAt: parsed.startsAt, hasTime: parsed.hasTime } },
+      occurrences: {
+        create: parsed.days.map((d) => ({ startsAt: d.startsAt, hasTime: d.hasTime })),
+      },
     },
     select: { id: true },
   });
@@ -169,7 +193,7 @@ export async function updateMeetup(eventId: string, formData: FormData): Promise
       id: true,
       communityId: true,
       createdById: true,
-      occurrences: { orderBy: { startsAt: "asc" }, select: { id: true }, take: 1 },
+      occurrences: { orderBy: { startsAt: "asc" }, select: { id: true } },
     },
   });
   // Каталожное событие этим путём не правится вовсе: у него нет
@@ -203,19 +227,31 @@ export async function updateMeetup(eventId: string, formData: FormData): Promise
     },
   });
 
-  // Дата у встречи одна — правим ту же строку, а не заводим вторую:
-  // иначе перенос встречи оставлял бы за собой призрак старой даты с
-  // чужими отметками «иду».
-  const occurrenceId = event.occurrences[0]?.id;
-  if (occurrenceId) {
-    await prisma.eventOccurrence.update({
-      where: { id: occurrenceId },
-      data: { startsAt: parsed.startsAt, hasTime: parsed.hasTime },
+  // Дни синхронизируем, а не пересоздаём: строка с известным id
+  // ПРАВИТСЯ на месте, новая заводится, пропавшая удаляется. Иначе
+  // перенос встречи оставлял бы за собой призрак старой даты с чужими
+  // отметками «иду» — или, наоборот, стирал их вместе со строкой.
+  const known = new Set(event.occurrences.map((o) => o.id));
+  const kept = new Set<string>();
+  for (const day of parsed.days) {
+    if (day.occurrenceId && known.has(day.occurrenceId)) {
+      kept.add(day.occurrenceId);
+      await prisma.eventOccurrence.update({
+        where: { id: day.occurrenceId },
+        data: { startsAt: day.startsAt, hasTime: day.hasTime },
+      });
+      continue;
+    }
+    const created = await prisma.eventOccurrence.create({
+      data: { eventId, startsAt: day.startsAt, hasTime: day.hasTime },
     });
-  } else {
-    await prisma.eventOccurrence.create({
-      data: { eventId, startsAt: parsed.startsAt, hasTime: parsed.hasTime },
-    });
+    kept.add(created.id);
+  }
+  const removed = [...known].filter((id) => !kept.has(id));
+  if (removed.length > 0) {
+    // Отметки «иду» на убранный день уходят каскадом — это и есть
+    // смысл действия: дня больше нет.
+    await prisma.eventOccurrence.deleteMany({ where: { id: { in: removed } } });
   }
 
   revalidateMeetup(event.communityId, eventId);

@@ -183,7 +183,11 @@ export default async function CommunityPage({
               ...(access.canSeeInside ? {} : { isPrivate: false }),
             },
           }),
-          prisma.event.count({ where: { communityId: community.id } }),
+          // Считаем ДНИ, а не записи: у встречи их может быть несколько
+          // (правка владельца 2026-09-15), и в списке она стоит в
+          // каждом своём дне — «Встречи (1)» над двумя карточками
+          // читалось бы как ошибка.
+          prisma.eventOccurrence.count({ where: { event: { communityId: community.id } } }),
         ])
       : [0, 0];
   const withCount = (label: string, n: number) =>

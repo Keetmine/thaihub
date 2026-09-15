@@ -156,9 +156,7 @@ export const trips: Dict["trips"] = {
 
         title: "Название",
         titlePlaceholder: "Ужин с друзьями",
-        addDay: "+ Ещё день",
-      removeDay: "Убрать день",
-      date: "Дата",
+        date: "Дата",
         time: "Время",
         note: "Заметка",
         image: "Картинка",
