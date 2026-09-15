@@ -1456,6 +1456,55 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* Промо-период «пока всё открыто» (FREE_ACCESS в lib/premium.ts):
+   плашка FreeAccessBanner над содержимым страницы и та же оговорка
+   текстом в условиях и в теме «Подписка» ФАКа.
+
+   Плашка НЕ всплывашка и не фиксирована: нижний угол уже занят
+   баннером куки, а две всплывающие панели разом человек закрывает
+   не читая — что для предупреждения о будущем пейволле ровно
+   противоположно задаче. */
+.promo-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: var(--bs-border-radius-lg);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.promo-banner-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* Текст забирает остаток строки и переносится, кнопка не сжимается:
+   без flex-basis она на узком экране съезжала в собственную строку
+   вместе с половиной последнего слова. */
+.promo-banner-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+}
+
+.promo-banner-close {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.promo-note {
+  padding: 0.65rem 0.85rem;
+  border-left: 3px solid rgba(var(--accent-rgb), 0.6);
+  border-radius: var(--bs-border-radius);
+  background: rgba(var(--accent-rgb), 0.07);
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+}
+
 .event-card-locked-badge {
   position: absolute;
   top: 0.7rem;

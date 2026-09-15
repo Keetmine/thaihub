@@ -20,7 +20,7 @@ import LetterAvatar from "@/components/LetterAvatar";
 import FriendActionButton from "@/components/FriendActionButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import { CalendarIcon, CheckIcon, PinIcon, StarIcon } from "@/components/icons";
-import { isPremiumActive } from "@/lib/premium";
+import { hasPaidPremium, isPremiumActive } from "@/lib/premium";
 import { ONLINE_WINDOW_MS } from "@/lib/lastSeen";
 import { sendFriendRequest } from "../../friends/actions";
 import { logout } from "../../login/actions";
@@ -73,7 +73,7 @@ const loadProfileUser = cache(async (id: string) => {
   const viewer = await getCurrentUser();
   if (viewer && (looksLikeId ? viewer.id === id : viewer.username === id)) return viewer;
   return prisma.user.findUnique({
-    // Ник в адресе (/users/keetmine) — им делятся с друзьями; id
+    // Ник в адресе (/users/username) — им делятся с друзьями; id
     // остаётся рабочим для старых ссылок и аккаунтов без ника.
     where: looksLikeId ? { id } : { username: id },
   });
@@ -171,6 +171,11 @@ export default async function UserProfilePage({
   const isSelf = viewer?.id === user.id;
   const ownerPremium = isPremiumActive(user);
   const viewerPremium = viewer ? isPremiumActive(viewer) : false;
+  // Бейджи подписчика (звезда у имени, обводка фото, обводка аватарок
+  // друзей) спрашивают ОПЛАЧЕНО, а не ДОСТУПНО: в промо-период
+  // isPremiumActive верен для всех, и знак отличия загорелся бы у
+  // каждого, перестав что-либо значить. См. lib/premium.ts.
+  const ownerPaid = hasPaidPremium(user);
 
   // Друзья владельца — и счётчик, и сетка аватарок в левой колонке
   // (жалоба владельца: «друзей на профиле не видно»).
@@ -1325,7 +1330,7 @@ export default async function UserProfilePage({
         )}
         {/* Цветная обводка фото у подписчика (правка владельца п.6);
             тот же визуал у мини-аватарок — .premium-ring. */}
-        <div className={`profile-side-photo${ownerPremium ? " profile-side-photo-premium" : ""}`}>
+        <div className={`profile-side-photo${ownerPaid ? " profile-side-photo-premium" : ""}`}>
           {user.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={user.photoUrl} alt={displayName} loading="eager" decoding="async" />
@@ -1341,7 +1346,7 @@ export default async function UserProfilePage({
           {/* Подписка — иконкой со всплывающей расшифровкой, а не
               текстовым бейджем (правка владельца п.6). tabIndex — чтобы
               title/aria были достижимы и с клавиатуры. */}
-          {ownerPremium ? (
+          {ownerPaid ? (
             <span
               className="premium-badge-icon"
               title={user.premiumLifetime ? t.account.planLifetimeHint : t.account.planPremiumHint}
@@ -1535,7 +1540,7 @@ export default async function UserProfilePage({
                         // секунду и не показывается с клавиатуры.
                         // tooltip-wide — длинному «Имя (@ник)» нужен
                         // перенос, иначе он обрезается многоточием.
-                        className={`profile-friend tooltip-wide${isPremiumActive(f) ? " premium-ring" : ""}`}
+                        className={`profile-friend tooltip-wide${hasPaidPremium(f) ? " premium-ring" : ""}`}
                         data-tooltip={friendLabel}
                         // Ссылка состоит из одной картинки с пустым alt —
                         // без явной подписи скринридер читает её как

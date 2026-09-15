@@ -7,7 +7,7 @@ import { communityHref } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { getDict, isLocale, localeHref, DEFAULT_LOCALE } from "@/lib/i18n";
-import { isPremiumActive, premiumActiveWhere, type PremiumFields } from "@/lib/premium";
+import { isPremiumActive, premiumAccessWhere, type PremiumFields } from "@/lib/premium";
 import { getFriendIds } from "@/lib/friends";
 import { notifyUser } from "@/lib/notifications";
 import { buildDigestMessage } from "@/lib/botDigest";
@@ -729,9 +729,11 @@ export async function collectWeeklyDigests(): Promise<PreparedMessage[]> {
       telegramId: { not: null },
       tgNotifyDigest: true,
       deletedAt: null,
-      // Дайджест — платная функция, и условие подписки то же самое, что
-      // у всех остальных гейтов (см. lib/premium.ts).
-      ...premiumActiveWhere(),
+      // Дайджест — платная функция, и условие то же самое, что у всех
+      // остальных гейтов (см. lib/premium.ts): в промо-период оно пустое,
+      // и рассылка уходит всем, кто включил тумблер. Иначе настройки
+      // обещали бы дайджест бесплатному аккаунту, а он бы не приходил.
+      ...premiumAccessWhere(),
     },
     // Сборщику подборки нужны id и язык, отправке — telegramId; полные
     // строки User ради трёх полей не тянем.

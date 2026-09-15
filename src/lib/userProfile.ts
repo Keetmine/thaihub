@@ -40,7 +40,7 @@ export function userDisplayName(
   return user.name || user.username || t.userFallback;
 }
 
-/** Адрес профиля: /users/keetmine, с откатом на id — ник может быть ещё
+/** Адрес профиля: /users/username, с откатом на id — ник может быть ещё
  *  не задан (старые аккаунты, регистрация не доведена до конца).
  *
  *  Имени тут не просим намеренно: ссылке оно не нужно, а лишнее поле в

@@ -307,7 +307,7 @@ export async function syncAchievements(
   if (newlyUnlocked.length > 0) {
     void (async () => {
       // Ник для ссылки: страница принимает и id, но человек открывает
-      // уведомление и видит адрес — пусть это будет /users/keetmine, а
+      // уведомление и видит адрес — пусть это будет /users/username, а
       // не строка из букв и цифр (жалоба владельца 2026-09-06). Один
       // короткий запрос на разблокировку ачивки — событие редкое.
       const owner = await prisma.user.findUnique({

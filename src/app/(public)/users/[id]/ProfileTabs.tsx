@@ -86,7 +86,7 @@ export default function ProfileTabs({
             <a
               key={tab.key}
               // Первая вкладка — это сам профиль без параметра: адрес
-              // /users/keetmine должен оставаться чистым.
+              // /users/username должен оставаться чистым.
               href={tab.key === firstKey ? pathname : `${pathname}?tab=${tab.key}`}
               className={`tab-bar-item ${activeTab === tab.key ? "active" : ""}`}
               aria-current={activeTab === tab.key ? "page" : undefined}

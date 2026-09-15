@@ -1,4 +1,6 @@
 import { telegramBotUsername } from "@/lib/telegram";
+import { FREE_ACCESS } from "@/lib/premium";
+import FreeAccessBanner from "@/components/FreeAccessBanner";
 import TelegramPrompt from "@/components/TelegramPrompt";
 import { Fragment } from "react";
 import Link from "@/components/AppLink";
@@ -226,6 +228,10 @@ export default async function PublicLayout({ children }: { children: React.React
             </nav>
           </div>
           <main className="flex-fill container py-3 py-md-4 public-main">
+            {/* Плашка «пока всё открыто» — только на время промо
+                (FREE_ACCESS в lib/premium.ts). Гейт серверный: когда
+                промо кончится, компонент не поедет к клиенту вовсе. */}
+            {FREE_ACCESS && <FreeAccessBanner />}
             <TimezoneProvider timezone={user?.timezone ?? DEFAULT_TIMEZONE}>
               {children}
             </TimezoneProvider>

@@ -9,7 +9,7 @@ export const mdlImport: Dict["mdlImport"] = {
   intro:
     "Вставьте ссылку на свой публичный список на MyDramaList — мы перенесём сюда статусы просмотра (Смотрю, Просмотрено, Отложено, В планах, Брошено) и прогресс по сериям.",
   inputLabel: "Ссылка на список",
-  inputPlaceholder: "https://mydramalist.com/dramalist/keetmine",
+  inputPlaceholder: "https://mydramalist.com/dramalist/username",
   submit: "Импортировать",
   running: "Читаем ваш список…",
   runningProgress: (pages: number, rows: number) =>

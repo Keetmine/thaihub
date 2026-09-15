@@ -18,7 +18,10 @@ export async function generateMetadata() {
 
 type FaqLink = { href: string; label: string };
 type FaqItem = { id: string; q: string; a: string; links?: FaqLink[] };
-type FaqTopic = { id: string; title: string; items: FaqItem[] };
+/** `note` — плашка над вопросами темы: тем, где ответы описывают не
+ *  совсем сегодняшнее положение дел. Сейчас такая одна — «Подписка» в
+ *  промо-период (см. FREE_ACCESS в src/lib/premium.ts). */
+type FaqTopic = { id: string; title: string; note?: string; items: FaqItem[] };
 
 /**
  * Дерево вопросов собирается тут, а не в словаре, по двум причинам.
@@ -160,6 +163,7 @@ function buildFaq(t: Dict): FaqTopic[] {
     {
       id: "premium",
       title: p.premium.title,
+      note: p.premium.note,
       items: [
         { id: "premium-gives", ...p.premium.gives, links: [subscribe] },
         { id: "premium-free", ...p.premium.free },
@@ -224,6 +228,7 @@ export default async function HelpPage({
           {topics.map((topic) => (
             <section key={topic.id} id={`topic-${topic.id}`} className="surface p-4 faq-section">
               <h2 className="section-heading mb-2">{topic.title}</h2>
+              {topic.note && <p className="promo-note mb-3">{topic.note}</p>}
               {topic.items.map((item) => (
                 <details key={item.id} id={item.id} className="faq-item">
                   <summary>

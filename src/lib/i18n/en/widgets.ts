@@ -195,9 +195,8 @@ export const widgets = {
     create: "Your own on the site: places and place lists, artist lists and communities",
     heading: (feature: string) => `${feature} — with a subscription`,
     priceOneClick: (price: number) => `${price} Stars a month · renew in one tap`,
-    writeTelegram: "Message us on Telegram",
-    writeHint: "Drop us a line — we'll add the subscription to your account and explain how to pay.",
-    orForm: "Or use the form on the site",
+    writeHint: "Subscriptions are added by hand — get in touch",
+    orForm: "through the feedback form",
     subscribe: "Get the subscription",
     pay: "Pay in Telegram",
     paying: "Creating the invoice…",
@@ -207,5 +206,20 @@ export const widgets = {
     giftHint:
       "After payment a one-time promo code with a gift note arrives in your Telegram chat with the bot — forward it to the person you're gifting.",
     giftContactText: "Hi! I'd like to gift a MyBLHub subscription to a friend.",
+  },
+
+  /** Промо-плашка «сейчас всё открыто» (решение владельца 2026-09-15).
+   *  Текст обещает ровно две вещи, которые мы правда можем сдержать:
+   *  предупредить заранее и не отобрать уже созданное. Даты окончания
+   *  промо тут нет намеренно — её никто не назначал, а названная дата
+   *  стала бы обещанием. */
+  freeAccess: {
+    ariaLabel: "Promo: full access, on the house",
+    text: "Full access, on the house: every subscription feature is open to everyone — the whole event feed, the calendar, trips, lists and stats. Whatever you create stays yours.",
+    link: "What the subscription covers",
+    dismiss: "Thanks!",
+    heading: (feature: string) => `${feature} — on the house`,
+    signupCta: "Create an account",
+    signupHint: "All of it is open to everyone — an account is all you need.",
   },
 };

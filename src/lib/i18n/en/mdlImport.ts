@@ -10,7 +10,7 @@ export const mdlImport = {
   intro:
     "Paste a link to your public MyDramaList list — we will copy your watch statuses (Watching, Watched, On hold, Plan to watch, Dropped) and episode progress over here.",
   inputLabel: "List link",
-  inputPlaceholder: "https://mydramalist.com/dramalist/keetmine",
+  inputPlaceholder: "https://mydramalist.com/dramalist/username",
   submit: "Import",
   // Долгая операция: прогон ходит по чужому сайту постранично, форма
   // показывает живой счётчик, пока сервер не отчитается об итоге.

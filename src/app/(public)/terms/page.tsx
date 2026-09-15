@@ -32,6 +32,14 @@ export default async function TermsPage() {
 
         <section>
           <h2 className="section-heading mb-2">{t.legal.terms.subscriptionTitle}</h2>
+          {/* Акция «полный доступ в подарок»: подписка описана ниже
+              как есть, но сейчас ничего не закрывает. Оговорка идёт
+              ПЕРЕД списком — иначе человек прочтёт условия платного
+              доступа как действующие. Здесь же, в отличие от плашки и
+              ФАКа, сказано про предупреждение о завершении акции: это
+              обязательство, и место ему в условиях. Снимается вместе с
+              FREE_ACCESS (src/lib/premium.ts). */}
+          <p className="promo-note mb-3">{t.legal.terms.subscriptionFreeNow}</p>
           <ul className="text-secondary mb-0 d-flex flex-column gap-2">
             <li>{t.legal.terms.subscriptionAccess}</li>
             <li>{t.legal.terms.subscriptionOneOff}</li>

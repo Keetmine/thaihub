@@ -48,15 +48,9 @@ export const SETTING_KEYS = [
     group: "subscription",
     label: "Способ оплаты подписки",
     hint:
-      "stars — кнопка оплаты через Telegram Stars; promo — оплата " +
-      "договорная: кнопка «Написать в Telegram» и поле промокода. " +
-      "По умолчанию promo (Stars недоступны в Беларуси).",
-  },
-  {
-    key: "subscription_contact",
-    group: "subscription",
-    label: "Telegram для заявок на подписку",
-    hint: "Ник без @ — на него ведёт кнопка «Написать в Telegram» на пейволле.",
+      "stars — кнопка оплаты через Telegram Stars; promo — заявка через " +
+      "форму обращения и поле промокода. По умолчанию promo: приём Stars " +
+      "сейчас недоступен.",
   },
   {
     key: "admin_notify_email",
@@ -93,13 +87,8 @@ export async function getPremiumPriceStars(): Promise<number> {
  *  владельца бота и может быть недоступна — тогда пейволл не должен
  *  вести в ошибку Telegram, а честно звать написать нам. */
 export async function getPaymentMode(): Promise<"stars" | "promo"> {
-  // По умолчанию promo: приём Stars привязан к стране владельца бота и
-  // сейчас недоступен — кнопка оплаты вела бы прямо в ошибку Telegram.
+  // По умолчанию promo: приём Stars сейчас недоступен — кнопка оплаты
+  // вела бы прямо в ошибку Telegram.
   return (await getSetting("payment_mode")) === "stars" ? "stars" : "promo";
 }
 
-/** Ник в Telegram, куда идут заявки на подписку (без @). */
-export async function getSubscriptionContact(): Promise<string | null> {
-  const raw = (await getSetting("subscription_contact"))?.trim().replace(/^@/, "");
-  return raw || null;
-}

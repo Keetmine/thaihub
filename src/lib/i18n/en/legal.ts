@@ -19,6 +19,8 @@ export const legal = {
         "MyBLHub is a service for fans of series and their artists: a feed of concerts and fan meets, a catalogue of actors and series, filming locations, trip planning and reminders in Telegram. The catalogue is open to everyone; the full event feed and the personal sections are available with a subscription.",
 
       subscriptionTitle: "Subscription and payment",
+      subscriptionFreeNow:
+        "A promo is running: every subscription feature is open to any account free of charge. The section below sets out the terms of the subscription itself; we will give notice before the promo ends.",
       subscriptionAccess:
         "A subscription runs for 30 days from the moment of payment and opens up the full event feed, the calendar, trips and place lists without the free-trial limits, as well as the presale reminder and the weekly digest in Telegram.",
       subscriptionOneOff:
@@ -398,6 +400,7 @@ export const legal = {
 
         premium: {
           title: "Subscription",
+          note: "A promo is running: every subscription feature is open to everyone with an account. The answers below describe the subscription itself — what it covers and how it works.",
           gives: {
             q: "What does a subscription give?",
             a: "The full event feed with its filters, search and archive; the calendar and day pages; trips beyond the free one; the personal features around an event — “I'm going” marks, tickets, friends going, notes, the presale reminder and the calendar export; statistics and badges in the profile; the weekly digest in Telegram and the profile cover; and creating own places, lists of places beyond the first, lists of artists and communities.",
