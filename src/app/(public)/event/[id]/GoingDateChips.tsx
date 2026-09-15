@@ -113,7 +113,7 @@ export default function GoingDateChips({
                 active ? "btn-primary" : "btn-ghost"
               }`}
               aria-pressed={active}
-              title={
+              data-tooltip={
                 active
                   ? isPast
                     ? t.events.going.removePast
@@ -137,7 +137,11 @@ export default function GoingDateChips({
                 className={`btn btn-sm going-date-maybe ${isMaybe ? "btn-primary" : "btn-ghost"}`}
                 aria-pressed={isMaybe}
                 aria-label={isMaybe ? t.widgets.maybe.remove : t.widgets.maybe.add}
-                title={isMaybe ? t.widgets.maybe.remove : t.widgets.maybe.add}
+                // Свой хинт, а не нативный title: браузер показывает его
+                // через полторы секунды, и подпись выглядит как «не
+                // появляется» (правка владельца 2026-09-15). Общее
+                // правило проекта — [data-tooltip] в globals.css.
+                data-tooltip={isMaybe ? t.widgets.maybe.remove : t.widgets.maybe.add}
               >
                 <HelpIcon />
               </button>

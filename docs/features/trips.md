@@ -375,7 +375,10 @@ manually re-entering a date filter every time.
   `deleteMany` by `{id, userId}` so deleting someone else's trip is a
   no-op). No edit — recreate is cheap.
 - Nav: «Поездки» appears in the public nav only when logged in, plus a
-  «Мои поездки» item in the profile dropdown (`ProfileMenu.tsx`).
+  «Мои поездки» item in the profile dropdown (`ProfileMenu.tsx`). Стоит
+  ПОСЛЕ «Сообществ» (правка владельца 2026-09-15): пункт виден только
+  своим, а сообщества открыты и гостю — в конце ряда меньше дёргается
+  раскладка при входе и выходе.
 
 ## Visibility
 

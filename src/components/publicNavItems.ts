@@ -48,14 +48,6 @@ export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
     tourId: "locations",
     icon: PinIcon,
   },
-  {
-    href: "/trips",
-    labelKey: "trips",
-    matchPrefixes: ["/trips/"],
-    tourId: "trips",
-    requiresUser: true,
-    icon: PlaneIcon,
-  },
   // Сообщества видны и гостю: витрина открыта всем и работает на поиск
   // (см. docs/features/communities.md).
   {
@@ -63,6 +55,14 @@ export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
     labelKey: "communities",
     matchPrefixes: ["/communities/"],
     icon: UsersIcon,
+  },
+  {
+    href: "/trips",
+    labelKey: "trips",
+    matchPrefixes: ["/trips/"],
+    tourId: "trips",
+    requiresUser: true,
+    icon: PlaneIcon,
   },
 ];
 
