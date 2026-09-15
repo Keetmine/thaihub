@@ -1,48 +1,146 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Modal from "./Modal";
+import AppLink from "./AppLink";
 import { EyeIcon } from "@/components/icons";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { formatShortDate } from "@/lib/dates";
+
+export type SeenEventRow = {
+  id: string;
+  slug: string | null;
+  title: string;
+  /** ISO — считает сервер, рисуем на языке зрителя. */
+  date: string;
+  seen: boolean;
+};
 
 /**
- * «Видела вживую» — глазик на странице исполнителя. Показывает ИТОГОВОЕ
- * состояние: и автоматику (артисты посещённых событий афиши и личных
- * событий поездок), и ручное решение поверх неё. Поэтому им можно и
- * отметить концерт до регистрации на сайте, и снять одного из состава
- * события — «на концерте пятеро, а разглядела двоих» (см.
- * docs/features/gamification.md).
+ * «Видела вживую» на странице артиста — глазик со СЧЁТЧИКОМ и списком
+ * за ним (правка владельца 2026-09-15). Раньше это была одна кнопка на
+ * артиста, и снять её значило «не видела нигде»: Jeff Satur на пяти
+ * концертах и одном фестивале, где его не застали, — минус все шесть.
+ *
+ * Теперь по клику открывается список посещённых событий, где артист был
+ * в составе, и у каждого свой глазик: снять с фестиваля — снять именно
+ * там. Плюс «видели вне афиши» — отметка на артиста без события
+ * (концерт до регистрации, встреча, которой у нас нет), и личные
+ * события поездок — они считаются, но правятся в самой поездке.
  */
 export default function SeenLiveButton({
   performerId,
-  initialSeen,
-  toggle,
+  events,
+  outside,
+  personalEvents,
+  toggleEvent,
+  toggleOutside,
 }: {
   performerId: string;
-  initialSeen: boolean;
-  toggle: (performerId: string) => Promise<{ seen: boolean }>;
+  events: SeenEventRow[];
+  outside: boolean;
+  personalEvents: number;
+  toggleEvent: (eventId: string, performerId: string) => Promise<{ seen: boolean }>;
+  toggleOutside: (performerId: string) => Promise<{ seen: boolean }>;
 }) {
   const t = useT();
-  const [seen, setSeen] = useState(initialSeen);
+  const locale = useLocale();
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState(events);
+  const [isOutside, setIsOutside] = useState(outside);
   const [isPending, startTransition] = useTransition();
 
-  return (
-    <button
-      type="button"
-      className={`icon-btn ${seen ? "is-active" : ""}`}
-      aria-label={seen ? t.widgets.seenLive.unmark : t.widgets.seenLive.mark}
-      title={seen ? t.widgets.seenLive.short : t.widgets.seenLive.mark}
-      aria-pressed={seen}
-      disabled={isPending}
-      onClick={() =>
-        startTransition(async () => {
-          // Оптимистично: отметка личная, конфликтовать не с чем.
-          setSeen((prev) => !prev);
-          const result = await toggle(performerId).catch(() => null);
-          if (result) setSeen(result.seen);
-        })
+  const count = rows.filter((r) => r.seen).length + (isOutside ? 1 : 0) + personalEvents;
+  const seen = count > 0;
+
+  const flipEvent = (eventId: string) =>
+    startTransition(async () => {
+      setRows((prev) => prev.map((r) => (r.id === eventId ? { ...r, seen: !r.seen } : r)));
+      const result = await toggleEvent(eventId, performerId).catch(() => null);
+      if (result) {
+        setRows((prev) => prev.map((r) => (r.id === eventId ? { ...r, seen: result.seen } : r)));
       }
-    >
-      <EyeIcon filled={seen} />
-    </button>
+    });
+
+  const flipOutside = () =>
+    startTransition(async () => {
+      setIsOutside((prev) => !prev);
+      const result = await toggleOutside(performerId).catch(() => null);
+      if (result) setIsOutside(result.seen);
+    });
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`icon-btn seen-live-btn ${seen ? "is-active" : ""}`}
+        aria-label={t.widgets.seenLive.open}
+        title={seen ? t.widgets.seenLive.count(count) : t.widgets.seenLive.short}
+        aria-pressed={seen}
+        onClick={() => setOpen(true)}
+      >
+        <EyeIcon filled={seen} />
+        {count > 0 && <span className="seen-live-count">{count}</span>}
+      </button>
+
+      <Modal open={open} title={t.widgets.seenLive.short} onClose={() => setOpen(false)}>
+        <p className="small text-secondary mb-3">{t.widgets.seenLive.hint}</p>
+        {rows.length === 0 && personalEvents === 0 && (
+          <p className="small text-secondary mb-3">{t.widgets.seenLive.noEvents}</p>
+        )}
+        <div className="d-flex flex-column gap-2">
+          {rows.map((r) => (
+            <div
+              key={r.id}
+              className="surface d-flex align-items-center justify-content-between gap-3 p-3"
+            >
+              <span style={{ minWidth: 0 }}>
+                <AppLink
+                  href={`/event/${r.slug ?? r.id}`}
+                  className="link-body-emphasis d-block text-truncate"
+                >
+                  {r.title}
+                </AppLink>
+                <span className="small text-secondary">{formatShortDate(new Date(r.date), locale)}</span>
+              </span>
+              <button
+                type="button"
+                className={`icon-btn ${r.seen ? "is-active" : ""}`}
+                aria-label={r.seen ? t.widgets.seenLive.unmarkHere : t.widgets.seenLive.markHere}
+                title={r.seen ? t.widgets.seenLive.unmarkHere : t.widgets.seenLive.markHere}
+                aria-pressed={r.seen}
+                disabled={isPending}
+                onClick={() => flipEvent(r.id)}
+              >
+                <EyeIcon filled={r.seen} />
+              </button>
+            </div>
+          ))}
+          {personalEvents > 0 && (
+            <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
+              <span className="text-white">{t.widgets.seenLive.personal(personalEvents)}</span>
+              <span className="small text-secondary">{t.widgets.seenLive.personalHint}</span>
+            </div>
+          )}
+          <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
+            <span style={{ minWidth: 0 }}>
+              <span className="text-white d-block">{t.widgets.seenLive.outside}</span>
+              <span className="small text-secondary">{t.widgets.seenLive.outsideHint}</span>
+            </span>
+            <button
+              type="button"
+              className={`icon-btn ${isOutside ? "is-active" : ""}`}
+              aria-label={isOutside ? t.widgets.seenLive.unmark : t.widgets.seenLive.mark}
+              title={isOutside ? t.widgets.seenLive.unmark : t.widgets.seenLive.mark}
+              aria-pressed={isOutside}
+              disabled={isPending}
+              onClick={flipOutside}
+            >
+              <EyeIcon filled={isOutside} />
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

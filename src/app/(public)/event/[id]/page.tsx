@@ -36,6 +36,9 @@ import EventNoteSection, { type FriendNote } from "./EventNoteSection";
 import SiteGoersBlock, { type SiteGoer } from "./SiteGoersBlock";
 import EventPhotoGallery from "./EventPhotoGallery";
 import GoingDateChips from "./GoingDateChips";
+import SeenToggle from "@/components/SeenToggle";
+import { eventSeenState, type SeenEntry } from "@/lib/seenLive";
+import { toggleEventSeen, setDaySeen } from "@/app/(public)/artists/seenActions";
 import TicketSection, { type TicketRow } from "./TicketSection";
 import { getCoTravelerIds } from "@/lib/coTravelers";
 import { isPremiumActive } from "@/lib/premium";
@@ -214,6 +217,7 @@ export default async function EventDetailPage({
   ]);
   const viewerTz = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
+
   // Встреча сообщества (АА25). Закрытая — только участникам и админу
   // сайта (модерация; аудит 2026-09, п.1.9): посторонний получает
   // честный 404, как будто страницы нет (см. lib/meetups.ts).
@@ -239,6 +243,10 @@ export default async function EventDetailPage({
   let ownNote: { text: string; visibility: string } | null = null;
   let friendNotes: FriendNote[] = [];
   let ticketRows: TicketRow[] = [];
+  // Кого зритель видел на ЭТОМ событии (правка владельца 2026-09-15).
+  // Пусто — глазиков нет вовсе: не залогинен или не был ни на одной
+  // прошедшей дате.
+  let seenState = new Map<string, SeenEntry>();
   // Избранное — бесплатное: сердечко работает у любого залогиненного,
   // подписка на него не влияет (как на страницах артистов и сериалов).
   if (currentUser && !isPremium) {
@@ -407,6 +415,7 @@ export default async function EventDetailPage({
         .map(({ user }) => [user.id, user]),
     ).values(),
   ).sort((a, b) => Number(b.id === currentUser?.id) - Number(a.id === currentUser?.id));
+  if (currentUser) seenState = await eventSeenState(currentUser.id, event.id);
   // --- end own block ---
 
   // Э2ф: свой осмысленный порядок у состава события не хранится —
@@ -438,6 +447,7 @@ export default async function EventDetailPage({
     href: performerHref(performer),
     photoUrl: performer.photoUrl,
     name: performer.name,
+    seen: seenState.get(performer.id)?.seen,
   }));
   // Состав ЛЮБОГО размера живёт плашками в инфо-блоке (просьба
   // владельца — как на сериалах): большой прячет хвост за «показать
@@ -452,6 +462,13 @@ export default async function EventDetailPage({
   const castInCard = castCards.length > 0 && !hasDayLineups;
 
   // Расписание к виду страницы: день → сцены → выступления по времени.
+  // Свои отметки «иду» — из общей выборки, а НЕ из goingOccurrenceIds:
+  // тот список наполняется только под подпиской (кнопки «иду» платные),
+  // а отмечать увиденных на уже посещённом дне вправе и тот, у кого
+  // подписка кончилась, — это его собственная история.
+  const ownOccurrenceIds = new Set(
+    currentUser ? allAttendances.filter((a) => a.userId === currentUser.id).map((a) => a.occurrenceId) : [],
+  );
   const lineupDays: LineupDay[] = dayLineups.map((o) => {
     const rows = keepPairingsTogether(
       hideMembersOfListedBands(
@@ -466,6 +483,9 @@ export default async function EventDetailPage({
       id: o.id,
       dateLabel: formatHumanDate(o.startsAt, locale),
       countLabel: t.events.detail.performances(rows.length),
+      // Отмечать можно только свой ПРОШЕДШИЙ день: до события отмечать
+      // нечего, на чужой — тем более.
+      canMark: ownOccurrenceIds.has(o.id) && o.startsAt < new Date(),
       stages: groupLineupByStage(rows).map((group) => ({
         stage: group.stage,
         items: group.items.map((l) => ({
@@ -474,6 +494,7 @@ export default async function EventDetailPage({
           name: l.performer.name,
           photoUrl: l.performer.photoUrl,
           timeText: l.timeText,
+          seen: seenState.get(l.performer.id)?.seen,
         })),
       })),
     };
@@ -707,12 +728,21 @@ export default async function EventDetailPage({
                 </p>
                 <CastGrid chips clampRows={2}>
                   {castCards.map((c) => (
-                    <EntityMiniCard
-                      key={c.id}
-                      href={c.href}
-                      photoUrl={c.photoUrl}
-                      name={c.name}
-                    />
+                    // Глазик «видела здесь» — рядом с капсулой, у самого
+                    // списка (правка владельца 2026-09-15): раньше ради
+                    // одной отметки надо было идти на страницу артиста.
+                    <span key={c.id} className="cast-chip-seen">
+                      <EntityMiniCard href={c.href} photoUrl={c.photoUrl} name={c.name} />
+                      {c.seen !== undefined && (
+                        <SeenToggle
+                          eventId={event.id}
+                          performerId={c.id}
+                          initialSeen={c.seen}
+                          toggle={toggleEventSeen}
+                          size="chip"
+                        />
+                      )}
+                    </span>
                   ))}
                 </CastGrid>
                 {event.pairings.length > 0 && (
@@ -742,7 +772,12 @@ export default async function EventDetailPage({
           <h2 className="section-heading mb-3">
             <CalendarIcon className="icon-inline" /> {t.events.detail.lineupByDay}
           </h2>
-          <EventDayLineup days={lineupDays} />
+          <EventDayLineup
+            days={lineupDays}
+            eventId={event.id}
+            toggleSeen={toggleEventSeen}
+            setDaySeen={setDaySeen}
+          />
         </div>
       )}
 

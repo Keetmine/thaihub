@@ -4466,6 +4466,11 @@ button.hero-stat-toggle.is-open {
 }
 
 .cast-card-photo {
+  /* Это <span>: как флекс-элемент .cast-card он блокифицировался сам, но
+     внутри обёртки .cast-card-photo-wrap остался бы строчным — и ни
+     ширина, ни aspect-ratio к нему не применялись бы (фото вытягивалось
+     в столбик). */
+  display: block;
   width: 100%;
   max-width: 6.5rem;
   aspect-ratio: 1 / 1;
@@ -4820,6 +4825,89 @@ body::after {
   flex-shrink: 0;
 }
 
+/* ---------- Глазик «видела здесь» (правка владельца 2026-09-15) ---------- */
+/* Отметка живёт у СОБЫТИЯ, поэтому и кнопка стоит там, где человек
+   смотрит на состав, — на карточке артиста, а не на его странице. */
+.seen-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  background: rgba(12, 12, 16, 0.86);
+  color: var(--bs-secondary-color);
+  transition: all 0.15s ease;
+}
+
+.seen-toggle:hover {
+  color: var(--bs-body-color);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.seen-toggle.is-active {
+  color: var(--bs-primary-text-emphasis);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.22);
+}
+
+/* В сетке лайнапа — поверх фото, в правом верхнем углу: снизу у карточки
+   уже стоит плашка времени. Обёртка нужна, чтобы иконка крепилась к
+   КРУЖКУ ФОТО, а не к карточке: карточка шире кружка, и привязка к ней
+   уводила глазик вбок. */
+.cast-card-photo-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 6.5rem;
+}
+
+.seen-toggle-sm {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.cast-grid-sm .seen-toggle-sm,
+.lineup-slot .seen-toggle-sm {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Рядом с капсулой состава: капсула — ссылка, глазик — её сосед. */
+.cast-chip-seen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.seen-toggle-chip {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+}
+
+/* Счётчик на глазике в шапке артиста: «сколько событий», а не «да/нет». */
+.seen-live-btn {
+  position: relative;
+}
+
+.seen-live-count {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  min-width: 1.05rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.95);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .lineup-slot-time {
   position: relative;
   z-index: 1;
@@ -4841,6 +4929,12 @@ body::after {
 }
 
 .cast-grid-sm .cast-card-photo {
+  max-width: 4.25rem;
+}
+
+/* Обёртка глазика сужается вместе с фото — иначе иконка висела бы по
+   ширине обычной карточки. */
+.cast-grid-sm .cast-card-photo-wrap {
   max-width: 4.25rem;
 }
 

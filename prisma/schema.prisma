@@ -86,6 +86,7 @@ model Event {
   pairings                    EventPairing[]
   favoritedBy                 FavoriteEvent[]
   attendees                   EventAttendance[]
+  seenPerformers              EventSeenPerformer[]
   notes                       EventNote[]
   presaleNotifications        TelegramPresaleNotification[]
   performerEventNotifications PerformerEventNotification[]
@@ -200,6 +201,7 @@ model Performer {
   mascots           MascotOwner[]        @relation("PerformerMascots")
   inUserLists       PerformerListItem[]
   seenByUsers       PerformerSeen[]
+  seenAtEvents      EventSeenPerformer[]
   scheduledJobs     ScheduledJobTarget[]
   occurrenceLineups OccurrenceLineup[]
 
@@ -884,6 +886,7 @@ model User {
   auditLogs                AuditLog[]
   notifications            Notification[]  @relation("UserNotifications")
   performersSeen           PerformerSeen[]
+  eventSeenPerformers      EventSeenPerformer[]
   // Что дублировать в Telegram (уведомления на сайте приходят всегда).
   // Раньше набор поводов был зашит в код и одинаков для всех.
   tgNotifyInvites          Boolean         @default(true)
@@ -2124,26 +2127,53 @@ model DuplicateDismissal {
   @@unique([entityType, memberKey])
 }
 
-// Ручное РЕШЕНИЕ пользователя про «видела вживую» у конкретного артиста.
-// Строка перекрывает автоматические источники (артисты посещённых событий
-// афиши и личных событий поездок): seen=true — «видела», хотя автоматика
-// не знает; seen=false — «не видела», хотя артист был в составе события
-// (на концерте пятеро, а разглядела двоих). Согласное с автоматикой
-// решение строки не заводит — она удаляется, и глазик снова следует за
-// событиями. См. docs/features/gamification.md.
+// «Видели вживую ВНЕ нашей афиши»: концерт до регистрации на сайте,
+// случайная встреча, событие, которого у нас нет. Ручная отметка на
+// артиста, одна на человека. Считается как ещё одно «событие» в
+// статистике (+1 к счётчику артиста).
+//
+// До 2026-09-15 здесь же жило и «НЕ видела, хотя автоматика говорит
+// видела» (колонка seen=false) — на артиста целиком, без события. Это и
+// ломало счёт: снять Jeff Satur с одного фестиваля значило снять его со
+// всех шести концертов. Теперь спор с автоматикой живёт у события —
+// EventSeenPerformer ниже. См. docs/features/gamification.md.
 model PerformerSeen {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   performerId String
   performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
-  seen        Boolean   @default(true)
   seenAt      DateTime?
   note        String?
   createdAt   DateTime  @default(now())
 
   @@unique([userId, performerId])
   @@index([userId])
+  @@index([performerId])
+}
+
+// Решение человека «видела ЭТОГО артиста на ЭТОМ событии» — поверх
+// умолчания (правка владельца 2026-09-15). Умолчание считает
+// src/lib/seenLive.ts: у обычного концерта, на который стоит «иду»,
+// увидены все из состава; у дня фестиваля со своим лайнапом — никто
+// (три сцены, тридцать групп — отметить троих проще, чем снять
+// двадцать семь). Строка заводится только там, где человек с умолчанием
+// не согласен: seen=true — «видела» (отметила на фестивале), seen=false
+// — «не видела» (на концерте пятеро, разглядела двоих). Ключ — событие,
+// не день: сходили на оба дня, где артист играл дважды, — всё равно
+// «видели один раз».
+model EventSeenPerformer {
+  userId      String
+  eventId     String
+  performerId String
+  seen        Boolean
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  performer   Performer @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId, performerId])
+  @@index([eventId])
   @@index([performerId])
 }
 

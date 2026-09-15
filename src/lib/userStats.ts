@@ -3,6 +3,13 @@ import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { dateKey } from "@/lib/dates";
 import { DRAMA_TITLE_SELECT } from "@/lib/dramaLocale";
 import { tripDayStats } from "@/lib/tripDays";
+import {
+  resolveSeen,
+  toSeenRows,
+  SEEN_PERFORMER_SELECT,
+  type SeenCard,
+  type SeenPerformerRaw,
+} from "@/lib/seenLive";
 
 // Общий подсчёт статистики пользователя — питает и вкладку «Статистика»
 // (Д1), и условия ачивок (Д2). Всё считается из уже собираемых данных:
@@ -82,77 +89,11 @@ export type UserStats = {
   marathonWeek: boolean;
 };
 
-/** Состояние глазика «видела вживую» у ОДНОГО артиста: то же правило,
- *  что в своде, но без пересчёта всей статистики. */
-export type SeenLiveState = {
-  /** Итог, который показывает глазик. */
-  seen: boolean;
-  /** Даёт ли «видела» автоматика (событие афиши или личное событие
-   *  поездки) — от этого зависит, что делать по клику: завести
-   *  перекрывающую строку или, наоборот, удалить лишнюю. */
-  auto: boolean;
-};
-
-/** Считают ли артиста увиденным автоматические источники: артисты
- *  ПРОШЕДШИХ событий афиши с отметкой «иду» и артисты прошедших личных
- *  событий поездок со своей отметкой «я там буду» (те же условия, что в
- *  computeUserStats). */
-export async function autoSeenLive(userId: string, performerId: string): Promise<boolean> {
-  const now = new Date();
-  const [fromEvents, fromPersonal] = await Promise.all([
-    prisma.eventAttendance.count({
-      where: {
-        userId,
-        // Только афишные события: «видела вживую» и статистика профиля
-        // считаются по концертам и фанмитам, а не по домашним встречам
-        // сообществ (см. src/lib/catalogEvents.ts) — иначе достижения
-        // накручивались бы собственными встречами.
-        event: catalogEventsWhere(),
-        occurrence: {
-          startsAt: { lt: now },
-          // У дня фестиваля свой состав, и отметка «иду 25-го» не делает
-          // увиденными тех, кто играл 26-го (правка владельца
-          // 2026-09-06). Нет состава у дня — считаем по составу события,
-          // как было: у обычного концерта день и есть событие.
-          OR: [
-            { lineup: { some: { performerId } } },
-            {
-              lineup: { none: {} },
-              event: { performers: { some: { performerId } } },
-            },
-          ],
-        },
-      },
-    }),
-    prisma.tripPersonalEventPerformer.count({
-      where: {
-        performerId,
-        personalEvent: { startsAt: { lt: now }, attendances: { some: { userId } } },
-      },
-    }),
-  ]);
-  return fromEvents > 0 || fromPersonal > 0;
-}
-
-/** Итоговое состояние глазика: ручное решение (PerformerSeen) сильнее
- *  автоматики, а без него глазик просто следует за событиями. */
-export async function getSeenLiveState(
-  userId: string,
-  performerId: string,
-): Promise<SeenLiveState> {
-  const [auto, manual] = await Promise.all([
-    autoSeenLive(userId, performerId),
-    prisma.performerSeen.findUnique({
-      where: { userId_performerId: { userId, performerId } },
-      select: { seen: true },
-    }),
-  ]);
-  return { seen: manual ? manual.seen : auto, auto };
-}
-
 /** Артист в составе события/дня — одинаково в своде и в выборках,
- *  которые его кормят. */
-type StatsPerformer = { id: string; name: string; slug: string | null; photoUrl: string | null };
+ *  которые его кормят. Это СЫРАЯ строка Prisma (SEEN_PERFORMER_SELECT):
+ *  страницы отдают её как есть, в форму правила «видела вживую»
+ *  (lib/seenLive.ts) свод переводит сам. */
+type StatsPerformer = SeenPerformerRaw;
 
 /**
  * Строки, которые свод читает сам, — но страница профиля их УЖЕ выбрала
@@ -224,24 +165,28 @@ export async function computeUserStats(
   const attendancesPromise: Promise<StatsAttendanceRow[]> = preloaded?.attendances
     ? Promise.resolve(preloaded.attendances)
     : prisma.eventAttendance.findMany({
-        // Та же причина, что в autoSeenLive: статистика — про афишу.
+        // Статистика — про афишу, встречи сообществ не считаются.
         where: { userId, event: catalogEventsWhere() },
-        include: {
+        select: {
+          eventId: true,
+          createdAt: true,
           occurrence: {
-            include: {
+            select: {
+              startsAt: true,
               attendances: { select: { userId: true } },
               // Состав именно этого дня — по нему считаются увиденные
-              // артисты, если он у дня есть (см. ниже).
-              lineup: {
-                include: {
-                  performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
-                },
-              },
+              // артисты, если он у дня есть (см. lib/seenLive.ts).
+              lineup: { select: { performer: { select: SEEN_PERFORMER_SELECT } } },
             },
           },
           event: {
-            include: {
-              performers: { include: { performer: { select: { id: true, name: true, slug: true, photoUrl: true } } } },
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              venue: true,
+              presaleAt: true,
+              performers: { select: { performer: { select: SEEN_PERFORMER_SELECT } } },
             },
           },
         },
@@ -284,11 +229,11 @@ export async function computeUserStats(
     communityPosts,
     ownCommunityCrowd,
     meetupAttendances,
-    // Ручные решения «видела вживую» и артисты личных событий поездок
-    // раньше запрашивались ПОСЛЕ этой волны, хотя зависят только от
-    // userId и текущего момента: две лишние последовательные ступени
-    // на ровном месте.
-    manualSeen,
+    // Отметки «видели вне афиши», решения по событиям и артисты личных
+    // событий поездок зависят только от userId и текущего момента —
+    // идут в той же волне.
+    outsideSeen,
+    seenOverrides,
     personalEventSeen,
   ] = await Promise.all([
       attendancesPromise,
@@ -359,15 +304,18 @@ export async function computeUserStats(
         },
         select: { eventId: true, event: { select: { createdById: true } } },
       }),
-      // Ручные РЕШЕНИЯ «видела вживую» (PerformerSeen): перекрывают
-      // автоматику в обе стороны. seen=true — концерты до регистрации на
-      // сайте, случайные встречи и события вне нашей афиши; seen=false —
-      // «этого из состава я не видела» (на концерте пятеро, а разглядела
-      // двоих). Совпадающего с автоматикой решения в таблице не бывает —
-      // такую строку экшен удаляет.
+      // «Видели вне афиши» (PerformerSeen): концерты до регистрации на
+      // сайте, случайные встречи — событие, которого у нас нет. Считается
+      // ещё одним событием артиста.
       prisma.performerSeen.findMany({
         where: { userId },
-        select: { performerId: true, seen: true },
+        select: { performerId: true },
+      }),
+      // Решения по событиям — «видела/не видела ИМЕННО ЗДЕСЬ» — поверх
+      // умолчаний правила (см. lib/seenLive.ts).
+      prisma.eventSeenPerformer.findMany({
+        where: { userId },
+        select: { eventId: true, performerId: true, seen: true },
       }),
       // Третий источник — артисты на ЛИЧНЫХ событиях поездок (фанмит, ужин
       // с актёром: таких событий в нашей афише нет). Считаются только
@@ -383,7 +331,7 @@ export async function computeUserStats(
             attendances: { some: { userId } },
           },
         },
-        select: { performerId: true },
+        select: { performerId: true, personalEventId: true },
       }),
     ]);
 
@@ -407,75 +355,61 @@ export async function computeUserStats(
     attended.map((a) => a.event.venue.trim().toLowerCase()).filter(Boolean),
   );
 
-  const performerCounts = new Map<string, { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }>();
-  // Кого именно человек видел: у дня фестиваля свой состав, и отметка
-  // «иду 25-го» не приводит в увиденные тех, кто играл 26-го (правка
-  // владельца 2026-09-06). У дня без своего состава берётся состав
-  // события — у обычного концерта день и есть событие.
+  // Кого именно человек видел и сколько раз. Правило одно на весь сайт —
+  // lib/seenLive.ts: состав дня или события, умолчание по виду даты
+  // (концерт — все, день фестиваля с лайнапом — никто), группы
+  // раскрываются до участников-актёров, поверх — решения человека по
+  // событию. «Раз» — это событие: два дня одного фестиваля дают один.
   //
-  // Считаем по СОБЫТИЯМ, а не по отмеченным дням: сходил на оба дня
-  // фестиваля — артист, игравший там дважды, всё равно «видел один
-  // раз», как и было до расписаний.
-  const seenByEvent = new Map<
-    string,
-    Map<string, { id: string; name: string; slug: string | null; photoUrl: string | null }>
-  >();
-  for (const a of attendedRows) {
-    const dayCast =
-      a.occurrence.lineup.length > 0
-        ? a.occurrence.lineup.map((l) => l.performer)
-        : a.event.performers.map((ep) => ep.performer);
-    let bucket = seenByEvent.get(a.eventId);
-    if (!bucket) {
-      bucket = new Map();
-      seenByEvent.set(a.eventId, bucket);
-    }
-    for (const performer of dayCast) bucket.set(performer.id, performer);
+  // К афише прибавляются два источника без правил: личные события
+  // поездок (артист на встрече, которой в афише нет; каждое — +1) и
+  // отметка «видели вне афиши» (+1 к артисту).
+  const performerCounts = new Map<string, SeenCard & { count: number }>();
+  const bump = (card: SeenCard) => {
+    const cur = performerCounts.get(card.id);
+    if (cur) cur.count += 1;
+    else performerCounts.set(card.id, { ...card, count: 1 });
+  };
+  for (const entries of resolveSeen(toSeenRows(attendances), seenOverrides, now).values()) {
+    for (const entry of entries.values()) if (entry.seen) bump(entry.card);
   }
-  for (const bucket of seenByEvent.values()) {
-    for (const performer of bucket.values()) {
-      const cur = performerCounts.get(performer.id);
-      if (cur) cur.count += 1;
-      else performerCounts.set(performer.id, { ...performer, count: 1 });
-    }
+
+  // Личные события и «вне афиши» знают только id — карточки
+  // дозапрашиваем одним запросом ниже.
+  const idOnly = new Map<string, number>();
+  const personalSeenPairs = new Set(
+    personalEventSeen.map((m) => `${m.performerId}#${m.personalEventId}`),
+  );
+  for (const pair of personalSeenPairs) {
+    const performerId = pair.slice(0, pair.indexOf("#"));
+    idOnly.set(performerId, (idOnly.get(performerId) ?? 0) + 1);
   }
-  const excludedIds = new Set(manualSeen.filter((m) => !m.seen).map((m) => m.performerId));
-  const seenPerformerIds = new Set(
-    [
-      ...performerCounts.keys(),
-      ...manualSeen.filter((m) => m.seen).map((m) => m.performerId),
-      ...personalEventSeen.map((m) => m.performerId),
-    ].filter((id) => !excludedIds.has(id)),
-  );
-
-  // Топ-5 «кого видели чаще» — по посещённым событиям, но снятые вручную
-  // артисты из него уходят: они больше не «вживую», а число посещений
-  // события у них при этом самое большое.
-  const countedPerformers = Array.from(performerCounts.values()).filter(
-    (p) => !excludedIds.has(p.id),
-  );
-  const topPerformers = countedPerformers
-    .slice()
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  // Список «кого именно видели» под кликабельной плиткой профиля.
-  // Карточки артистов с посещённых событий уже собраны в performerCounts;
-  // у ручных отметок и личных событий там только id — дозапрашиваем.
-  const extraSeenIds = [...seenPerformerIds].filter((id) => !performerCounts.has(id));
-  const extraSeen = extraSeenIds.length
+  for (const m of outsideSeen) idOnly.set(m.performerId, (idOnly.get(m.performerId) ?? 0) + 1);
+  const missingIds = [...idOnly.keys()].filter((id) => !performerCounts.has(id));
+  const missingCards = missingIds.length
     ? await prisma.performer.findMany({
-        where: { id: { in: extraSeenIds } },
+        where: { id: { in: missingIds } },
         select: { id: true, name: true, slug: true, photoUrl: true },
       })
     : [];
-  const seenPerformers = [
-    ...countedPerformers
-      .slice()
-      .sort((a, b) => b.count - a.count)
-      .map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl })),
-    ...extraSeen.sort((a, b) => a.name.localeCompare(b.name)),
-  ];
+  for (const card of missingCards) performerCounts.set(card.id, { ...card, count: 0 });
+  for (const [performerId, extra] of idOnly) {
+    const cur = performerCounts.get(performerId);
+    if (cur) cur.count += extra;
+  }
+
+  const seenPerformerIds = new Set(performerCounts.keys());
+  const countedPerformers = Array.from(performerCounts.values());
+  // Топ-5 «кого видели чаще» — по числу событий.
+  const topPerformers = countedPerformers
+    .slice()
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, 5);
+  // Список «кого именно видели» под кликабельной плиткой профиля.
+  const seenPerformers = countedPerformers
+    .slice()
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl }));
 
   // Посещённые события списком, свежие сверху; при нескольких отмеченных
   // датах события берётся последняя посещённая.

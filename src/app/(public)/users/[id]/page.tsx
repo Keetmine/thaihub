@@ -31,6 +31,7 @@ import {
   syncAchievements,
 } from "@/lib/achievements";
 import { computeUserStats } from "@/lib/userStats";
+import { SEEN_PERFORMER_SELECT } from "@/lib/seenLive";
 import { getActivityFeed } from "@/lib/activityFeed";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
 import AchievementBadge from "@/components/AchievementBadge";
@@ -225,12 +226,13 @@ export default async function UserProfilePage({
       };
 
   const performerInEvent = {
-    // photoUrl нужен своду статистики («кого видели вживую») — он
-    // считается из ЭТИХ же строк, второй выборки отметок больше нет.
-    // Цена — лишнее поле в пропсах строк событий (их на профиле около
-    // десятка), и это заведомо дешевле второго запроса всех отметок с
-    // составами.
-    include: { performer: { select: { id: true, name: true, slug: true, photoUrl: true } } },
+    // Ровно тот состав, что нужен правилу «видела вживую»
+    // (SEEN_PERFORMER_SELECT в lib/seenLive.ts: фото для карточек плюс
+    // участники группы с признаком «актёр») — свод считается из ЭТИХ же
+    // строк, второй выборки отметок нет. Цена — лишние поля в пропсах
+    // строк событий (их на профиле около десятка), и это заведомо
+    // дешевле второго запроса всех отметок с составами.
+    select: { performer: { select: SEEN_PERFORMER_SELECT } },
   };
   const eventWithOccurrences = {
     include: {

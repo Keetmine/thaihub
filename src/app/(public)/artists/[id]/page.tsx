@@ -39,8 +39,8 @@ import {
 } from "@/components/icons";
 import { isPremiumActive } from "@/lib/premium";
 import SeenLiveButton from "@/components/SeenLiveButton";
-import { toggleSeenLive } from "@/app/(public)/artists/seenActions";
-import { getSeenLiveState } from "@/lib/userStats";
+import { toggleEventSeen, toggleOutsideSeen } from "@/app/(public)/artists/seenActions";
+import { performerSeenEvents } from "@/lib/seenLive";
 import ListFold from "./ListFold";
 import CareerTimeline, { type CareerItem } from "./CareerTimeline";
 import { performerPhoto } from "@/lib/performerPhoto";
@@ -176,9 +176,13 @@ export default async function PerformerPage({
   const isBand = performer.type === "BAND";
   const isMascot = performer.type === "MASCOT";
 
+  // Кого искать в составах событий: самого артиста и его группы —
+  // выступление группы это и его выступление тоже.
+  const eventPerformerIds = [id, ...performer.memberOfBands.map((m) => m.bandId)];
+
   // Первая волна: все запросы зависят только от id артиста — гоним их
   // одним Promise.all вместо четырёх последовательных await.
-  const [pairingMascotOwners, eventLinks, pairings, currentUser] =
+  const [pairingMascotOwners, performerEventRows, pairings, currentUser] =
     await Promise.all([
       // Маскоты актёра: привязанные напрямую + маскоты его пейрингов.
       isMascot
@@ -189,19 +193,33 @@ export default async function PerformerPage({
             },
             include: { mascot: true },
           }),
-      prisma.eventPerformer.findMany({
-        // Афиша артиста — только каталожные события. Встречу к артисту
-        // сейчас не привязать, но условие стоит здесь на будущее: одна
-        // общая калитка вместо «а вот тут не может протечь»
-        // (см. src/lib/catalogEvents.ts).
-        where: { performerId: id, event: catalogEventsWhere() },
-        include: {
-          event: {
-            include: {
-              performers: { include: { performer: true } },
-              occurrences: { orderBy: { startsAt: "asc" } },
+      // События артиста — ТРИ источника, а не один (правка владельца
+      // 2026-09-15: «если добавлена группа, у её участников этот эвент
+      // не отображается», и лайнап дня не показывался вовсе):
+      //   - общий состав события (EventPerformer);
+      //   - лайнап конкретного дня (OccurrenceLineup) — у фестиваля
+      //     артист часто есть только там;
+      //   - события ГРУПП, в которых артист состоит: на сцене был он.
+      // Афиша артиста — только каталожные события (см. catalogEvents.ts).
+      prisma.event.findMany({
+        where: {
+          AND: [
+            catalogEventsWhere(),
+            {
+              OR: [
+                { performers: { some: { performerId: { in: eventPerformerIds } } } },
+                {
+                  occurrences: {
+                    some: { lineup: { some: { performerId: { in: eventPerformerIds } } } },
+                  },
+                },
+              ],
             },
-          },
+          ],
+        },
+        include: {
+          performers: { include: { performer: true } },
+          occurrences: { orderBy: { startsAt: "asc" } },
         },
       }),
       // Pairings this performer is part of — solo-only, nice-to-have, additive.
@@ -221,10 +239,8 @@ export default async function PerformerPage({
   for (const m of [...performer.mascots, ...pairingMascotOwners]) {
     mascotCards.set(m.mascot.id, m.mascot);
   }
-  const performerEvents = eventLinks.flatMap((l) =>
-    l.event.occurrences.map((occ) =>
-      flattenOccurrence({ ...occ, event: l.event }),
-    ),
+  const performerEvents = performerEventRows.flatMap((ev) =>
+    ev.occurrences.map((occ) => flattenOccurrence({ ...occ, event: ev })),
   );
   // АА3. Пара со СВОИМ именем («GhostSheep») получает отдельный блок, и
   // заголовок ему — само имя: у названной пары имя и есть то, как её
@@ -248,16 +264,17 @@ export default async function PerformerPage({
   const eventIds = performerEvents.map((ev) => ev.id);
   const occIds = performerEvents.map((ev) => ev.occurrenceId);
   const [
-    seenLiveState,
+    seenLive,
     myListsRaw,
     favorite,
     favoritedEventIds,
     goingEventIds,
     statusByDramaId,
   ] = await Promise.all([
-    // «Видела вживую» — ИТОГ: автоматика (посещённые события афиши и
-    // личные события поездок) плюс ручное решение поверх неё.
-    currentUser ? getSeenLiveState(currentUser.id, performer.id) : null,
+    // «Видела вживую» — СПИСОК событий, где артист был в составе, и
+    // отметка у каждого: снять с фестиваля больше не значит снять со
+    // всех концертов (правка владельца 2026-09-15, см. lib/seenLive.ts).
+    currentUser ? performerSeenEvents(currentUser.id, performer.id) : null,
     // Списки пользователя для кнопки «+ в список» рядом с сердечком.
     currentUser
       ? prisma.performerList.findMany({
@@ -284,7 +301,6 @@ export default async function PerformerPage({
       currentUser?.id,
     ),
   ]);
-  const seenLive = seenLiveState?.seen ?? false;
   const myLists = myListsRaw.map((l) => ({
     id: l.id,
     title: l.title,
@@ -604,14 +620,18 @@ export default async function PerformerPage({
             isFavorited={isFavorited}
             variant="icon"
           />
-          {/* «Видела вживую»: глазик показывает итог вместе с
-              автоматикой по событиям и умеет её снимать — на концерте
-              пятеро, а разглядела двоих. */}
-          {currentUser && (
+          {/* «Видела вживую»: глазик со счётчиком, по клику — список
+              посещённых событий с этим артистом и отметка у каждого.
+              Снять на одном фестивале, оставив пять концертов, можно
+              только так (правка владельца 2026-09-15). */}
+          {currentUser && seenLive && (
             <SeenLiveButton
               performerId={performer.id}
-              initialSeen={seenLive}
-              toggle={toggleSeenLive}
+              events={seenLive.events}
+              outside={seenLive.outside}
+              personalEvents={seenLive.personalEvents}
+              toggleEvent={toggleEventSeen}
+              toggleOutside={toggleOutsideSeen}
             />
           )}
           {/* Добавить в свой список прямо отсюда. */}

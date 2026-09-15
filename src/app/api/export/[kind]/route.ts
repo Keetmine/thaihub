@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { loadSeenPerformerIds } from "@/lib/seenLive";
 import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import { csvFileName, formatDate, formatDateTime, toCsv } from "@/lib/csv";
@@ -192,17 +193,22 @@ async function buildCsv(kind: Kind, userId: string): Promise<string> {
       );
     }
     case "artists": {
-      const [favorites, seen] = await Promise.all([
+      // «Видел(а) вживую» считается тем же правилом, что и в профиле
+      // (lib/seenLive.ts): события афиши по составу дня, личные события
+      // поездок и отметки «вне афиши».
+      const [favorites, seenIds] = await Promise.all([
         prisma.favoritePerformer.findMany({
           where: { userId },
           include: { performer: { select: { name: true, realName: true, type: true, slug: true, id: true } } },
         }),
-        prisma.performerSeen.findMany({
-          where: { userId, seen: true },
-          include: { performer: { select: { name: true, realName: true, type: true, slug: true, id: true } } },
-        }),
+        loadSeenPerformerIds(userId),
       ]);
-      const seenIds = new Set(seen.map((s) => s.performerId));
+      const seenOnly = await prisma.performer.findMany({
+        where: {
+          id: { in: [...seenIds].filter((id) => !favorites.some((f) => f.performerId === id)) },
+        },
+        select: { name: true, realName: true, type: true, slug: true, id: true },
+      });
       const typeLabels: Record<string, string> = {
         SOLO: "человек", BAND: "группа", MASCOT: "маскот",
       };
@@ -214,13 +220,11 @@ async function buildCsv(kind: Kind, userId: string): Promise<string> {
             "да", seenIds.has(f.performerId) ? "да" : "",
             `https://myblhub.com/artists/${f.performer.slug ?? f.performer.id}`,
           ]),
-          ...seen
-            .filter((s) => !favorites.some((f) => f.performerId === s.performerId))
-            .map((s) => [
-              s.performer.name, s.performer.realName, typeLabels[s.performer.type] ?? s.performer.type,
-              "", "да",
-              `https://myblhub.com/artists/${s.performer.slug ?? s.performer.id}`,
-            ]),
+          ...seenOnly.map((p) => [
+            p.name, p.realName, typeLabels[p.type] ?? p.type,
+            "", "да",
+            `https://myblhub.com/artists/${p.slug ?? p.id}`,
+          ]),
         ],
       );
     }

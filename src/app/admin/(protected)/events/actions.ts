@@ -229,8 +229,13 @@ export async function createEvent(formData: FormData) {
   });
 
   // «У избранного артиста новое событие» — избравшим кого-то из
-  // состава. Ошибку рассылка ловит сама, создание не роняет.
-  await notifyFavoritersAboutEventPerformers(created.id, performerIds);
+  // состава. В состав идут и артисты ЛАЙНАПОВ ПО ДНЯМ: на фестивале
+  // общий состав часто пуст, а люди стоят по дням, и уведомление не
+  // уходило вовсе (правка владельца 2026-09-15). Ошибку рассылка ловит
+  // сама, создание не роняет.
+  await notifyFavoritersAboutEventPerformers(created.id, [
+    ...new Set([...performerIds, ...occurrences.flatMap((o) => o.lineup.map((l) => l.performerId))]),
+  ]);
 
   revalidatePath("/");
   revalidatePath("/admin/events");
@@ -328,14 +333,22 @@ export async function updateEvent(id: string, formData: FormData) {
   // Состав ДО правки: форма пересобирает связи целиком, а «новым
   // событием» для избравших считается только ВПЕРВЫЕ привязанный артист
   // — про остальных уведомление ушло ещё при создании.
-  const beforePerformerIds = new Set(
-    (
+  const beforePerformerIds = new Set([
+    ...(
       await prisma.eventPerformer.findMany({
         where: { eventId: id },
         select: { performerId: true },
       })
     ).map((p) => p.performerId),
-  );
+    // И лайнапы дней: артист, добавленный в состав дня, — такая же
+    // новость, как добавленный в общий (правка владельца 2026-09-15).
+    ...(
+      await prisma.occurrenceLineup.findMany({
+        where: { occurrence: { eventId: id } },
+        select: { performerId: true },
+      })
+    ).map((l) => l.performerId),
+  ]);
 
   await prisma.$transaction(async (tx) => {
     await tx.eventPerformer.deleteMany({ where: { eventId: id } });
@@ -390,11 +403,17 @@ export async function updateEvent(id: string, formData: FormData) {
     });
   }
 
-  // Избравшим — про впервые привязанных артистов; анти-дубль
-  // (userId, eventId) страхует от повторов при любом раскладе.
+  // Избравшим — про впервые привязанных артистов, и из общего состава,
+  // и из лайнапов дней; анти-дубль (userId, eventId) страхует от
+  // повторов при любом раскладе.
   await notifyFavoritersAboutEventPerformers(
     id,
-    performerIds.filter((pid) => !beforePerformerIds.has(pid)),
+    [
+      ...new Set([
+        ...performerIds,
+        ...occurrences.flatMap((o) => o.lineup.map((l) => l.performerId)),
+      ]),
+    ].filter((pid) => !beforePerformerIds.has(pid)),
   );
 
   revalidatePath("/");

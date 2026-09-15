@@ -1,5 +1,7 @@
 import AppLink from "@/components/AppLink";
 import UploadImage from "@/components/UploadImage";
+import SeenToggle from "@/components/SeenToggle";
+import SeenDayButton from "@/components/SeenDayButton";
 
 /** Один выход на сцену: кто, когда и куда ведёт карточка. */
 export type LineupSlotCard = {
@@ -9,6 +11,9 @@ export type LineupSlotCard = {
   photoUrl: string | null;
   /** Как на афише: «16:00-16:45». Пусто — время не объявлено. */
   timeText: string | null;
+  /** Видел ли зритель этого артиста на этом событии. undefined — глазик
+   *  не рисуем (не залогинен, не ходил, или день ещё впереди). */
+  seen?: boolean;
 };
 
 export type LineupDay = {
@@ -18,6 +23,11 @@ export type LineupDay = {
   /** Сколько выступлений в этот день, уже строкой со склонением. */
   countLabel: string;
   stages: { stage: string | null; items: LineupSlotCard[] }[];
+  /** Можно ли отмечать увиденных в этот день: зритель на нём был.
+   *  На фестивале с лайнапом по умолчанию не отмечен НИКТО, поэтому
+   *  рядом с датой появляется «видела всех» (правка владельца
+   *  2026-09-15). */
+  canMark?: boolean;
 };
 
 /**
@@ -48,7 +58,19 @@ const DAY_COLORS = [
   "250, 204, 21",
 ];
 
-export default function EventDayLineup({ days }: { days: LineupDay[] }) {
+export default function EventDayLineup({
+  days,
+  eventId,
+  toggleSeen,
+  setDaySeen,
+}: {
+  days: LineupDay[];
+  eventId: string;
+  /** Server actions прокидывает страница: компонент серверный, а сами
+   *  глазики — клиентские. */
+  toggleSeen?: (eventId: string, performerId: string) => Promise<{ seen: boolean }>;
+  setDaySeen?: (eventId: string, occurrenceId: string, seen: boolean) => Promise<{ ok: true }>;
+}) {
   return (
     <div className="lineup-days">
       {days.map((day, i) => (
@@ -60,6 +82,9 @@ export default function EventDayLineup({ days }: { days: LineupDay[] }) {
           <header className="lineup-day-head">
             <h3 className="lineup-day-date">{day.dateLabel}</h3>
             <span className="lineup-day-count">{day.countLabel}</span>
+            {day.canMark && setDaySeen && (
+              <SeenDayButton eventId={eventId} occurrenceId={day.id} action={setDaySeen} />
+            )}
           </header>
           {day.stages.map((group) => (
             <div key={group.stage ?? ""} className="lineup-stage">
@@ -79,13 +104,31 @@ export default function EventDayLineup({ days }: { days: LineupDay[] }) {
                     className="cast-card lineup-slot"
                     title={item.timeText ? `${item.name} — ${item.timeText}` : item.name}
                   >
-                    <span className="cast-card-photo">
-                      {item.photoUrl ? (
-                        <UploadImage src={item.photoUrl} alt="" sizes="4rem" />
-                      ) : (
-                        <span className="cast-card-letter">
-                          {item.name.charAt(0).toUpperCase()}
-                        </span>
+                    {/* Обёртка ровно по ширине фото: глазик крепится к
+                        КРУЖКУ, а не к карточке — карточка шире, и
+                        абсолютная привязка к ней уводила иконку в
+                        сторону. Внутрь самого фото её не положить:
+                        там overflow:hidden с круглой рамкой. */}
+                    <span className="cast-card-photo-wrap">
+                      <span className="cast-card-photo">
+                        {item.photoUrl ? (
+                          <UploadImage src={item.photoUrl} alt="" sizes="4rem" />
+                        ) : (
+                          <span className="cast-card-letter">
+                            {item.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+                      {/* Глазик «видела здесь» — у самого списка: ходить
+                          ради этого на страницу каждого артиста было
+                          невыносимо (правка владельца 2026-09-15). */}
+                      {item.seen !== undefined && toggleSeen && (
+                        <SeenToggle
+                          eventId={eventId}
+                          performerId={item.id}
+                          initialSeen={item.seen}
+                          toggle={toggleSeen}
+                        />
                       )}
                     </span>
                     {/* Плашка со временем налезает на низ фото — она

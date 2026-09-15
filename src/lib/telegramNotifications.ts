@@ -287,6 +287,13 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
  * новость). Встречи сообществ — НЕ триггер: их админка не заводит, но
  * калитка communityId стоит и здесь — одна общая, как в рассылках.
  *
+ * В состав идут и АРТИСТЫ ЛАЙНАПОВ ПО ДНЯМ, и участники привязанных
+ * ГРУПП (правка владельца 2026-09-15: «добавляем группы в лайнап по
+ * дням — не приходит уведомление»). Про лайнапы вызывающие заботятся
+ * сами (их id приходят сюда вместе с общим составом), а группы
+ * раскрываются здесь: избравший участника LYKN ждёт весточки о
+ * концерте LYKN, а не строки в базе.
+ *
  * Уведомление одно на пару (получатель, событие), сколько бы избранных
  * артистов ни оказалось в составе: дедуп — PerformerEventNotification,
  * отметка ставится ДО отправки, гонку параллельных сохранений судит
@@ -325,11 +332,19 @@ export async function notifyFavoritersAboutEventPerformers(
     const firstUpcoming = event.occurrences[0];
     if (!firstUpcoming) return;
 
+    // Группы раскрываем до участников: событие группы — событие каждого
+    // из них, и избравший участника должен узнать о концерте.
+    const members = await prisma.bandMember.findMany({
+      where: { bandId: { in: performerIds } },
+      select: { performerId: true },
+    });
+    const notifyAbout = [...new Set([...performerIds, ...members.map((m) => m.performerId)])];
+
     // Получатели — избравшие любого артиста из привязанных; данные для
     // notifyUser забираем тем же findMany, чтобы не перечитывать User на
     // каждое уведомление (N+1).
     const favorites = await prisma.favoritePerformer.findMany({
-      where: { performerId: { in: performerIds } },
+      where: { performerId: { in: notifyAbout } },
       select: {
         userId: true,
         performer: { select: { name: true } },

@@ -578,6 +578,10 @@ export async function refreshMusicFestivalEvents(
     if (worthDays) {
       const occurrenceByDate = new Map(event.occurrences.map((o) => [dateKey(o.startsAt), o]));
       const eventPerformerIds = new Set(event.performers.map((p) => p.performerId));
+      // Кого этот прогон впервые привязал к событию — им и уйдут
+      // уведомления избравшим (правка владельца 2026-09-15: лайнапы по
+      // дням не уведомляли вовсе).
+      const newlyLinked: string[] = [];
       let created = 0;
       let timed = 0;
       for (const [i, date] of festival.dates.entries()) {
@@ -605,6 +609,7 @@ export async function refreshMusicFestivalEvents(
                   data: { eventId: event.id, performerId },
                 });
                 eventPerformerIds.add(performerId);
+                newlyLinked.push(performerId);
               }
             }
             continue;
@@ -629,6 +634,15 @@ export async function refreshMusicFestivalEvents(
       result.slotsTimed += timed;
       if (created > 0) done.push(`состав дней: +${created}`);
       if (timed > 0) done.push(`время и сцена: ${timed}`);
+      // Избравшим — про артистов, впервые появившихся на этом фестивале.
+      // Анти-дубль (userId, eventId) внутри страхует от повторов на
+      // следующих прогонах обхода.
+      if (apply && newlyLinked.length > 0) {
+        const { notifyFavoritersAboutEventPerformers } = await import(
+          "@/lib/telegramNotifications"
+        );
+        await notifyFavoritersAboutEventPerformers(event.id, newlyLinked);
+      }
     }
 
     if (done.length > 0) {
