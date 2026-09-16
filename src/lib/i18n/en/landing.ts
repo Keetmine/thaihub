@@ -13,16 +13,23 @@ export const landing = {
     eventsChip: "next ones open to all",
     eventsBody:
       "Concerts and fan meets day by day, with on-sale times, tickets and Telegram reminders an hour before sales open. The next events and any event page are open without a subscription; the full feed with filters and archive comes with it.",
+    /* Промо-варианты (`FREE_ACCESS` в lib/premium.ts). Во время акции
+       подписка не закрывает НИЧЕГО: гейты пропускают любого
+       залогиненного. Продавать её с витрины, когда сверху висит плашка
+       «дарим полный доступ», — врать на входе. */
+    eventsChipFree: "everything open right now",
+    eventsBodyFree:
+      "Concerts and fan meets day by day, with on-sale times, tickets and Telegram reminders an hour before sales open. Right now the whole feed — filters, archive and all — is open to anyone with an account.",
     agendaEmpty: "New events are added every week.",
     artistsTitle: "Artists and favourites",
     artistsBody:
       "Profiles of actors and groups with filmographies and discographies. Tap the heart and their events and releases land in your feed.",
     seriesTitle: "Series and watch status",
     seriesBody:
-      "Watching, watched, plan to watch — follow new episodes in the calendar, and find the filming locations and the novels the series began as.",
+      "Watching, watched, plan to watch. The catalogue has the episode schedule day by day, filters by country and genre, and a picker for when you cannot decide what to start.",
     friendsTitle: "Friends and trips — because it's better together",
     friendsBody:
-      "See which of your friends is going to an event and plan a trip to Thailand around shared dates: events, hotels, place lists and things to see, all next to the dates in one plan.",
+      "See which of your friends is going to an event and plan a trip around shared dates: events, bookings, place lists and things to see — with the spending adding itself up as you go, all in one plan.",
     friendsCta: "Try it out",
 
     aboutEyebrow: "Who we are",
@@ -37,13 +44,17 @@ export const landing = {
     insideEvents: "A feed of concerts and fan meets — with presales and tickets",
     insideArtists: (count: string) => `${count} artists and groups with filmographies and music`,
     insideSeries: (count: string) => `${count} series with filming locations on the map`,
-    insideExtras: "Trips, place lists and a wiki for fans",
+    insideCatalog: "An episode schedule day by day and a picker for what to watch",
+    insideExtras: "Trips with expenses, place lists, communities and a fan wiki",
 
     howEyebrow: "How it works",
     howTitle: "Three steps and you're on top of it all",
     step1Title: "Sign up",
     step1Body:
       "Email and password — the catalogue, favourites and watch statuses are open to you straight away.",
+    /** Во время акции аккаунт открывает не часть, а всё. */
+    step1BodyFree:
+      "Email and password — and right now that opens everything: the feed, the calendar, trips and lists.",
     step2Title: "Find your people",
     step2Body: "Actors, groups, series — add them to your favourites in one click.",
     step3Title: "Follow the events",
@@ -55,4 +66,6 @@ export const landing = {
     finalBodyUser: "Look into the feed — everything happening soon is there.",
     finalBodyGuest:
       "Signing up takes less than a minute — email and password, no extra questions.",
+    finalBodyGuestFree:
+      "Everything is open to anyone with an account while the promo lasts. Signing up takes less than a minute — email and password, no extra questions.",
 };

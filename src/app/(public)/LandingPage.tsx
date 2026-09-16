@@ -7,11 +7,18 @@ import { eventHref } from "@/lib/eventSlug";
 import PosterTile from "@/components/PosterTile";
 import { formatShortDate } from "@/lib/dates";
 import { getT, type Locale } from "@/lib/i18n";
+import { FREE_ACCESS } from "@/lib/premium";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { CalendarIcon, HeartIcon, TvIcon } from "@/components/icons";
 
 // Лендинг (он же /about). Живые данные вместо выдуманных: постеры и
 // агенда — реальные ближайшие события, счётчики — реальный каталог.
+//
+// Часть текстов раздваивается по FREE_ACCESS (см. lib/premium.ts): во
+// время акции подписка не закрывает ничего, и витрина, которая её
+// продаёт, спорит с плашкой «дарим полный доступ» на том же экране.
+// Разводим не правкой строк, а парой ключей — когда акция кончится,
+// прежние формулировки вернутся сами.
 
 /**
  * Счётчик для витрины: округляем ВНИЗ до крупного шага — «9 500+».
@@ -170,10 +177,12 @@ export default async function LandingPage() {
                 <p className="font-display fw-medium text-white mb-0">
                   {t.landing.eventsTitle}
                 </p>
-                <span className="date-chip">{t.landing.eventsChip}</span>
+                <span className="date-chip">
+                  {FREE_ACCESS ? t.landing.eventsChipFree : t.landing.eventsChip}
+                </span>
               </div>
               <p className="small text-secondary mb-4" style={{ maxWidth: "28rem" }}>
-                {t.landing.eventsBody}
+                {FREE_ACCESS ? t.landing.eventsBodyFree : t.landing.eventsBody}
               </p>
               <div className="d-flex flex-column gap-2 mt-auto">
                 {agenda.map((occ) => (
@@ -276,6 +285,7 @@ export default async function LandingPage() {
                 <li>🎤 {t.landing.insideEvents}</li>
                 <li>✨ {t.landing.insideArtists(roundedCount(performersCount, locale))}</li>
                 <li>📺 {t.landing.insideSeries(roundedCount(dramasCount, locale))}</li>
+                <li>🗓 {t.landing.insideCatalog}</li>
                 <li>🗺 {t.landing.insideExtras}</li>
               </ul>
             </div>
@@ -293,7 +303,11 @@ export default async function LandingPage() {
         </div>
         <div className="row g-3 stagger">
           {[
-            { n: "01", title: t.landing.step1Title, body: t.landing.step1Body },
+            {
+              n: "01",
+              title: t.landing.step1Title,
+              body: FREE_ACCESS ? t.landing.step1BodyFree : t.landing.step1Body,
+            },
             { n: "02", title: t.landing.step2Title, body: t.landing.step2Body },
             { n: "03", title: t.landing.step3Title, body: t.landing.step3Body },
           ].map((s) => (
@@ -314,7 +328,11 @@ export default async function LandingPage() {
           {currentUser ? t.landing.finalTitleUser : t.landing.finalTitleGuest}
         </h2>
         <p className="text-secondary mx-auto mb-4" style={{ maxWidth: "28rem" }}>
-          {currentUser ? t.landing.finalBodyUser : t.landing.finalBodyGuest}
+          {currentUser
+            ? t.landing.finalBodyUser
+            : FREE_ACCESS
+              ? t.landing.finalBodyGuestFree
+              : t.landing.finalBodyGuest}
         </p>
         <div className="d-flex flex-wrap justify-content-center gap-2">{authCta}</div>
       </section>
