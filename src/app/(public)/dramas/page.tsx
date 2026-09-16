@@ -277,9 +277,21 @@ export default async function DramasPage({
   const dbSortKey = paged && sortKey && DB_SORTABLE.includes(sortKey) ? sortKey : null;
   const pagedOrderBy: Prisma.DramaOrderByWithRelationInput[] = dbSortKey
     ? [{ [dbSortKey]: { sort: sortDir, nulls: "last" } }, { title: "asc" }]
-    : // Умолчание — свежее сверху: каталог листают, чтобы посмотреть,
-      // что вышло, а не с буквы «А».
-      [{ year: { sort: "desc", nulls: "last" } }, { title: "asc" }];
+    : // Умолчание — ПО ПОПУЛЯРНОСТИ (правка владельца 2026-09-16):
+      // число отметок просмотра. Раньше сверху лежало самое свежее, и
+      // первая страница каталога набивалась тайтлами, о которых ещё
+      // никто ничего не знает. Популярность — единственный «наш» сигнал
+      // у сериала: сердечка у него нет (см. social.md).
+      //
+      // Год вторым ключом, а не единственным: у сотен записей отметок
+      // поровну (ноль), и без него порядок внутри этой массы задавала бы
+      // база — то есть он плавал бы между страницами, и одна и та же
+      // запись попадалась бы дважды.
+      [
+        { watchStatuses: { _count: "desc" } },
+        { year: { sort: "desc", nulls: "last" } },
+        { title: "asc" },
+      ];
 
   const pagedWhere: Prisma.DramaWhereInput = {
     AND: [kindWhere(kind), ...(q ? [dramaTitleWhere(q)] : []), ...dramaFilterWhere(filterParams)],
@@ -677,24 +689,18 @@ export default async function DramasPage({
               {t.catalog.all}
             </AppLink>
           )}
-          {/* «Популярное» (аудит 2026-09, п.6.5) — отдельная страница, а
-              не вкладка-фильтр: у неё свой адрес для поисковика и гостя.
-              Ссылка в том же ряду, чтобы топ было откуда найти.
-              Только в «Моём списке», где ряд вкладок и так есть: на
-              разделах каталога вкладок нет, и одинокая ссылка в пустом
-              ряду читалась бы заголовком списка — «Популярное» над
-              алфавитом фильмов. С разделов туда ведёт чип «Сериалы» →
-              ряд вкладок «Мой список». */}
-          {mine && (
-            <AppLink href="/dramas/top" prefetch={false} className="tab-bar-item">
-              {t.catalog.dramas.topLink}
-            </AppLink>
-          )}
         </ScrollableTabs>
         )}
-        {/* Поиск — СЛЕВА и крупный (правка владельца 2026-09-16): в
-            разделе на пять тысяч записей это основной инструмент, а не
-            кнопка в ряду. Кнопки подбора — справа. */}
+        {/* Поиск и кнопки подбора — ТОЛЬКО в разделах каталога (правка
+            владельца 2026-09-16: «календарь, поиск, подобрать сериал и
+            удиви меня убираем из мой список»). В своём списке они не про
+            то: искать там нечего — он и так перед глазами, а подбирать
+            новое из уже отмеченного бессмысленно.
+
+            Поиск — СЛЕВА и крупный: в разделе на пять тысяч записей это
+            основной инструмент, а не кнопка в ряду. */}
+        {!mine && (
+          <>
         <NameSearchBox
           action="/dramas"
           q={q}
@@ -734,7 +740,7 @@ export default async function DramasPage({
               календарь серий. */}
           {!showcase && (
             <AppLink
-              href="/calendar?view=series"
+              href="/calendar?view=series&from=catalog"
               className="btn btn-ghost btn-sm flex-shrink-0"
               aria-label={t.catalog.dramas.calendarLink}
               title={t.catalog.dramas.calendarLink}
@@ -742,7 +748,20 @@ export default async function DramasPage({
               <CalendarIcon />
             </AppLink>
           )}
+          {/* «Популярное» переехало сюда из ряда вкладок: оттуда его
+              убрали вместе с остальным (правка владельца 2026-09-16), а
+              оставить страницу без единой ссылки нельзя — /dramas/top
+              открыта гостю и индексируется. */}
+          <AppLink
+            href="/dramas/top"
+            prefetch={false}
+            className="btn btn-ghost btn-sm flex-shrink-0"
+          >
+            {t.catalog.dramas.topLink}
+          </AppLink>
         </div>
+          </>
+        )}
       </div>
 
       {/* Список строками, а не постерная сетка: сериалов много одиночных,

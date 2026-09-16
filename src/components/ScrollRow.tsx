@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 
 /**
@@ -71,6 +71,9 @@ export default function ScrollRow({
   showBar?: boolean;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  // Нужен полосе: роль scrollbar обязана указывать, чем управляет.
+  const rowId = useId();
   // Что растушёвывать: слева и/или справа осталось непоказанное.
   // Оба false — ряд влез целиком, краям делать нечего.
   const [more, setMore] = useState({ start: false, end: false });
@@ -159,6 +162,49 @@ export default function ScrollRow({
     bar.scrollBy({ left: direction * step, behavior: reduced ? "auto" : "smooth" });
   }, []);
 
+  /**
+   * Перетаскивание своего ползунка (правка владельца 2026-09-16: «когда
+   * скроллбар пытаешься тянуть — он не тянется»). Первая версия только
+   * рисовала положение, а человек по привычке хватал полосу мышью.
+   *
+   * Считаем от ДОЛИ по треку, а не от прироста в пикселях: трек и ряд
+   * разной ширины, и «сдвинул на 10px» означало бы у них разное. Клик по
+   * пустому месту трека — тоже переход: ползунок встаёт центром под
+   * курсор, как у нативной полосы.
+   */
+  const dragTo = useCallback((clientX: number) => {
+    const bar = barRef.current;
+    const track = trackRef.current;
+    if (!bar || !track) return;
+    const box = track.getBoundingClientRect();
+    if (box.width === 0) return;
+    const fraction = (clientX - box.left) / box.width;
+    // Ползунок ведём ЦЕНТРОМ: иначе схваченный за середину он прыгал бы
+    // левым краем под курсор.
+    const visible = bar.clientWidth / bar.scrollWidth;
+    const target = (fraction - visible / 2) * bar.scrollWidth;
+    bar.scrollLeft = Math.max(0, Math.min(target, bar.scrollWidth - bar.clientWidth));
+  }, []);
+
+  const onBarPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Захват указателя: иначе уход курсора за пределы трека (а он
+      // тонкий) обрывал бы перетаскивание на середине.
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragTo(e.clientX);
+    },
+    [dragTo],
+  );
+
+  const onBarPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Кнопка отпущена — это просто движение мыши над треком.
+      if (e.buttons === 0) return;
+      dragTo(e.clientX);
+    },
+    [dragTo],
+  );
+
   // Активный элемент — в видимую часть ряда (см. п.3 в шапке файла).
   useEffect(() => {
     const bar = barRef.current;
@@ -175,6 +221,7 @@ export default function ScrollRow({
   return (
     <div className={wrapperClassName}>
       <div
+        id={rowId}
         ref={barRef}
         className={`${rowClassName}${more.start ? " has-more-start" : ""}${
           more.end ? " has-more-end" : ""
@@ -186,9 +233,26 @@ export default function ScrollRow({
       {/* Своя линия прокрутки под рядом. Ползунок — доля видимого, его
           сдвиг — доля прокрученного; оба в процентах, поэтому полоса
           верна при любой ширине без пересчёта на ресайз. */}
-      {showBar && bar.width > 0 && (
-        <div className={`${btnPrefix}-bar`} aria-hidden>
-          <span style={{ width: `${bar.width}%`, left: `${bar.left}%` }} />
+      {/* Полоса рисуется ВСЕГДА, когда она включена, — даже если ряд
+          влез целиком и крутить нечего (правка владельца 2026-09-16:
+          «место под скролл захардкодим, чтобы когда пользователь листает
+          даты, страница не скакала»). В «Новых сериях» число сериалов
+          меняется с каждым днём, и полоса, то появляясь, то исчезая,
+          дёргала бы весь каталог под собой на семнадцать пикселей.
+          Пустая — без фона и без курсора, но место занимает. */}
+      {showBar && (
+        <div
+          ref={trackRef}
+          className={`${btnPrefix}-bar${bar.width > 0 ? "" : " is-idle"}`}
+          onPointerDown={bar.width > 0 ? onBarPointerDown : undefined}
+          onPointerMove={bar.width > 0 ? onBarPointerMove : undefined}
+          role="scrollbar"
+          aria-controls={rowId}
+          aria-orientation="horizontal"
+          aria-label={nextLabel}
+          aria-valuenow={Math.round(bar.left)}
+        >
+          {bar.width > 0 && <span style={{ width: `${bar.width}%`, left: `${bar.left}%` }} />}
         </div>
       )}
 

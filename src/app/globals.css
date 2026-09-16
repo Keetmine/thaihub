@@ -4181,23 +4181,13 @@ button.hero-stat-toggle.is-open {
      ниже. */
   scrollbar-width: none;
   padding-bottom: 0;
-  --row-fade-start: 0px;
-  --row-fade-end: 0px;
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 var(--row-fade-start),
-    #000 calc(100% - var(--row-fade-end)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 var(--row-fade-start),
-    #000 calc(100% - var(--row-fade-end)),
-    transparent 100%
-  );
 }
+
+/* Растушёвки краёв у лент постеров НЕТ (правка владельца 2026-09-16:
+   «мне затемнение не нравится, которое появляется по бокам»). У ряда
+   вкладок она осталась: там это единственный признак прокрутки, а тут
+   про неё говорят кнопки и своя линия под рядом, и обрезанный постер
+   читается продолжением сам по себе. */
 
 .scroll-row .poster-row::-webkit-scrollbar {
   display: none;
@@ -4218,34 +4208,45 @@ button.hero-stat-toggle.is-open {
   text-decoration: underline;
 }
 
+/* Полосу ТЯНУТ мышью (см. ScrollRow), поэтому у неё курсор-указатель и
+   прозрачная зона попадания сверху и снизу: в 4px мышью не попасть.
+   Зону даёт padding + background-clip, иначе фон трека растянулся бы на
+   всю зону и полоса выглядела бы толстой. */
 .scroll-row-bar {
   position: relative;
   height: 4px;
-  margin-top: 0.7rem;
-  border-radius: 999px;
+  box-sizing: content-box;
+  padding: 7px 0;
+  margin-top: 0.4rem;
   background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
+  background-clip: content-box;
+  border-radius: 999px;
+  cursor: pointer;
+  touch-action: none;
 }
 
 .scroll-row-bar > span {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: inherit;
+  top: 7px;
+  height: 4px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.34);
   transition: left 0.12s linear;
+  /* Ползунок не ловит указатель сам: тянуть должен ТРЕК — он один знает
+     свою ширину, а от неё считается доля прокрутки. */
+  pointer-events: none;
 }
 
 .scroll-row:hover .scroll-row-bar > span {
   background: rgba(var(--accent-rgb), 0.8);
 }
 
-.scroll-row .poster-row.has-more-start {
-  --row-fade-start: 3.25rem;
-}
-
-.scroll-row .poster-row.has-more-end {
-  --row-fade-end: 3.25rem;
+/* Крутить нечего — полоса пустая, но место держит: в «Новых сериях»
+   число сериалов меняется с каждым днём, и полоса, то появляясь, то
+   исчезая, дёргала бы каталог под собой. */
+.scroll-row-bar.is-idle {
+  background: transparent;
+  cursor: default;
 }
 
 .scroll-row-btn {
