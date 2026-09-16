@@ -1059,6 +1059,8 @@ model User {
   communityInvitesSent   CommunityInvite[] @relation("CommunityInviteBy")
   communityPosts         CommunityPost[]
   createdEvents          Event[]           @relation("EventAuthor")
+  tripExpenses         TripExpense[]
+  tripBudgets          TripBudget[]
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -1093,6 +1095,8 @@ model Trip {
   // Свои даты участников — см. TripStay.
   stays          TripStay[]
   bookings       TripBooking[]
+  expenses       TripExpense[]
+  budgets        TripBudget[]
 
   @@index([userId])
 }
@@ -2088,6 +2092,71 @@ model LocationLink {
 // почти совпадают (название, даты, ссылка, файл подтверждения,
 // заметка), а различаются только маршрутом. Раньше это был TripHotel
 // только под жильё.
+/// Валюты трат поездки (решение владельца 2026-09-16: «доллары, бел
+/// рубли, рос рубли и баты пока»). У всех четырёх два знака после
+/// запятой — на этом держится хранение суммы в минорных единицах.
+enum TripCurrency {
+  THB
+  RUB
+  BYN
+  USD
+}
+
+enum TripExpenseCategory {
+  FLIGHT
+  STAY
+  TICKETS
+  FOOD
+  SHOPPING
+  TRANSPORT
+  OTHER
+}
+
+/// Трата в поездке. ЛИЧНАЯ: «персонально у каждого свои траты»
+/// (решение владельца 2026-09-16), поэтому поля видимости тут нет —
+/// запись видна только своему автору по построению. Делёжки «кто кому
+/// должен» нет тоже, она отменена тем же решением.
+model TripExpense {
+  id     String @id @default(cuid())
+  tripId String
+  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  /// Чья трата. Выборка всегда идёт по паре (поездка, я).
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title  String
+  /// ЦЕЛЫЕ минорные единицы (сатанги, копейки, центы): дробные деньги в
+  /// double дают 0.1 + 0.2 = 0.30000000000000004, и итог по сотне строк
+  /// уезжал бы в копейках без причины.
+  amountMinor Int
+  currency    TripCurrency
+  category    TripExpenseCategory @default(OTHER)
+  /// День траты, без времени.
+  spentOn     DateTime?
+  /// Необязательная привязка к брони: перелёты и отели сайт уже знает.
+  /// SetNull — удалили бронь, трата осталась: деньги-то потрачены.
+  bookingId   String?
+  booking     TripBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  note        String?
+  createdAt   DateTime     @default(now())
+
+  @@index([tripId, userId])
+  @@index([bookingId])
+}
+
+/// Личный бюджет поездки — по одному на человека и валюту. Валюта в
+/// ключе нарочно: курсов мы не храним и не выдумываем, поэтому
+/// «потрачено из бюджета» считается внутри одной валюты.
+model TripBudget {
+  tripId      String
+  trip        Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency    TripCurrency
+  amountMinor Int
+
+  @@id([tripId, userId, currency])
+}
+
 enum TripBookingKind {
   HOTEL
   FLIGHT
@@ -2121,6 +2190,8 @@ model TripBooking {
   createdById String?
   visibility  TripItemVisibility @default(PARTICIPANTS)
   createdAt   DateTime           @default(now())
+
+  expenses    TripExpense[]
 
   @@index([tripId])
 }

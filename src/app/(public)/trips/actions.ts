@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { canUseLocation, createOwnLocation } from "@/lib/ownLocation";
 import { canAttachPrivateFile, unlinkPrivateFile } from "@/lib/privateFiles";
 import { revalidatePath } from "next/cache";
+import { parseAmount, parseCategory, parseCurrency } from "@/lib/tripMoney";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
-import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue, parseDateKey } from "@/lib/dates";
 import type { TripTodoKind, TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, isItemVisibility } from "./itemVisibility";
 import { FREE_TRIP_LIMIT, isPremiumActive } from "@/lib/premium";
@@ -1251,4 +1252,139 @@ function parseTripDate(value: FormDataEntryValue | null): Date | null {
   const [y, m, d] = raw.split("-").map(Number);
   if (!y || !m || !d) return null;
   return new Date(Date.UTC(y, m - 1, d));
+}
+
+// ---------- Деньги поездки (решение владельца 2026-09-16) ----------
+//
+// Траты ЛИЧНЫЕ: «персонально у каждого свои траты». Поэтому у них нет
+// ни поля видимости, ни права правки другими участниками — обе эти
+// механики у прочих записей поездки есть, а здесь были бы враньём.
+// Каждый запрос ниже фильтрует по паре (поездка, я), и чужую трату не
+// достать даже по прямому id.
+//
+// Делёжки «кто кому должен» нет тоже: владелец отменила её отдельно.
+
+/** Разбор полей формы траты. Общий для создания и правки — иначе
+ *  правила «что считать суммой» разъехались бы между ними. */
+async function parseExpenseForm(formData: FormData) {
+  const { t } = await getT();
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return { ok: false as const, error: t.trips.errors.expenseTitle };
+  const amountMinor = parseAmount(String(formData.get("amount") ?? ""));
+  if (amountMinor === null) return { ok: false as const, error: t.trips.errors.expenseAmount };
+  const spentRaw = String(formData.get("spentOn") ?? "").trim();
+  const bookingId = String(formData.get("bookingId") ?? "").trim();
+  return {
+    ok: true as const,
+    data: {
+      title,
+      amountMinor,
+      currency: parseCurrency(String(formData.get("currency") ?? "")),
+      category: parseCategory(String(formData.get("category") ?? "")),
+      spentOn: /^\d{4}-\d{2}-\d{2}$/.test(spentRaw) ? parseDateKey(spentRaw) : null,
+      note: String(formData.get("note") ?? "").trim() || null,
+      bookingId: bookingId || null,
+    },
+  };
+}
+
+/** Привязка к брони — только к брони ЭТОЙ поездки. Без проверки можно
+ *  было бы прицепить трату к чужой брони по подсмотренному id. */
+async function validBookingId(tripId: string, bookingId: string | null): Promise<string | null> {
+  if (!bookingId) return null;
+  const booking = await prisma.tripBooking.findFirst({
+    where: { id: bookingId, tripId },
+    select: { id: true },
+  });
+  return booking?.id ?? null;
+}
+
+export async function addTripExpense(tripId: string, formData: FormData): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const parsed = await parseExpenseForm(formData);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  await prisma.tripExpense.create({
+    data: {
+      ...parsed.data,
+      bookingId: await validBookingId(access.trip.id, parsed.data.bookingId),
+      tripId: access.trip.id,
+      userId: access.user.id,
+    },
+  });
+  revalidatePath(`/trips/${access.trip.id}`);
+  return { ok: true };
+}
+
+export async function updateTripExpense(
+  tripId: string,
+  expenseId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const parsed = await parseExpenseForm(formData);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+  // userId в условии — не для красоты: это единственное, что не даёт
+  // править чужую трату по её id.
+  const mine = await prisma.tripExpense.findFirst({
+    where: { id: expenseId, tripId: access.trip.id, userId: access.user.id },
+    select: { id: true },
+  });
+  if (!mine) return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
+  await prisma.tripExpense.update({
+    where: { id: expenseId },
+    data: {
+      ...parsed.data,
+      bookingId: await validBookingId(access.trip.id, parsed.data.bookingId),
+    },
+  });
+  revalidatePath(`/trips/${access.trip.id}`);
+  return { ok: true };
+}
+
+export async function deleteTripExpense(
+  tripId: string,
+  expenseId: string,
+): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const { count } = await prisma.tripExpense.deleteMany({
+    where: { id: expenseId, tripId: access.trip.id, userId: access.user.id },
+  });
+  if (count === 0) return { ok: false, error: (await getT()).t.trips.errors.cannotDeleteOthers };
+  revalidatePath(`/trips/${access.trip.id}`);
+  return { ok: true };
+}
+
+/**
+ * Личный бюджет поездки в одной валюте. Пустая сумма — снять бюджет:
+ * ноль тут значил бы «запланировала ноль», а это не то же самое.
+ */
+export async function setTripBudget(tripId: string, formData: FormData): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const currency = parseCurrency(String(formData.get("currency") ?? ""));
+  const raw = String(formData.get("amount") ?? "").trim();
+  const key = {
+    tripId_userId_currency: { tripId: access.trip.id, userId: access.user.id, currency },
+  };
+  if (!raw) {
+    await prisma.tripBudget.deleteMany({
+      where: { tripId: access.trip.id, userId: access.user.id, currency },
+    });
+    revalidatePath(`/trips/${access.trip.id}`);
+    return { ok: true };
+  }
+  const amountMinor = parseAmount(raw);
+  if (amountMinor === null) {
+    return { ok: false, error: (await getT()).t.trips.errors.expenseAmount };
+  }
+  await prisma.tripBudget.upsert({
+    where: key,
+    create: { tripId: access.trip.id, userId: access.user.id, currency, amountMinor },
+    update: { amountMinor },
+  });
+  revalidatePath(`/trips/${access.trip.id}`);
+  return { ok: true };
 }

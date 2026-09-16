@@ -30,6 +30,8 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AddPersonalEventButton from "../AddPersonalEventButton";
 import PersonalEventCard, { type PersonalEventData } from "../PersonalEventCard";
 import TripTodos, { AddTripTodoButton, TodoRow } from "../TripTodos";
+import TripExpenses from "../TripExpenses";
+import type { TripCurrencyValue, ExpenseCategoryValue } from "@/lib/tripMoney";
 import TripMembersButton, { TripInviteActions } from "../TripMembersControls";
 import TripStayButton from "../TripStayButton";
 import { VisibilitySelect } from "../TripVisibilityControls";
@@ -404,6 +406,8 @@ export default async function TripPage({
   // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
   const showPlaces = view === "places";
+  // «Деньги» — личные траты участника (решение владельца 2026-09-16).
+  const showMoney = view === "money";
   // У каждого списка своя вкладка: дела, чемодан, покупки (АА10/АА11 +
   // правка владельца 2026-09-06 — сегменты внутри одной вкладки читались
   // хуже, чем три честные вкладки).
@@ -680,6 +684,38 @@ export default async function TripPage({
   // Варианты для радио-группы в формах записи — тем же правилом. Пусто
   // в приватной соло-поездке: выбирать не из чего, поля в форме нет.
   const visibilityOptions = itemVisibilityChoices(trip.visibility, isShared);
+
+  /* ---------- Деньги (решение владельца 2026-09-16) ----------
+     Траты ЛИЧНЫЕ: выборка всегда по паре (поездка, я), поэтому у гостя
+     и у участника, который смотрит чужую поездку, список просто пуст —
+     отдельного правила видимости у траты нет и быть не должно. */
+  const [expenseRows, budgetRows] = user
+    ? await Promise.all([
+        prisma.tripExpense.findMany({
+          where: { tripId: trip.id, userId: user.id },
+          include: { booking: { select: { id: true, name: true } } },
+          // Свежие сверху; у трат без даты опорой остаётся момент ввода.
+          orderBy: [{ spentOn: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+        }),
+        prisma.tripBudget.findMany({ where: { tripId: trip.id, userId: user.id } }),
+      ])
+    : [[], []];
+  const expenseData = expenseRows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    amountMinor: row.amountMinor,
+    currency: row.currency as TripCurrencyValue,
+    category: row.category as ExpenseCategoryValue,
+    spentOn: row.spentOn ? row.spentOn.toISOString() : null,
+    note: row.note,
+    bookingId: row.bookingId,
+    bookingLabel: row.booking?.name ?? null,
+  }));
+  const budgetData = budgetRows.map((row) => ({
+    currency: row.currency as TripCurrencyValue,
+    amountMinor: row.amountMinor,
+  }));
+  const bookingOptions = trip.bookings.map((b) => ({ id: b.id, label: b.name }));
 
   // Публичные и личные события — одна хронологическая лента. Кого
   // пускать к личной записи, решает её собственная видимость.
@@ -1318,6 +1354,17 @@ export default async function TripPage({
           >
             {t.trips.detail.tabPlaces(placesCount)}
           </AppLink>
+          {/* «Деньги» — только участнику: траты личные, и постороннему
+              вкладка открылась бы всегда пустой. */}
+          {isParticipant && (
+            <AppLink
+              href={`${tripHref(trip)}?view=money`}
+              prefetch={false}
+              className={`tab-bar-item ${showMoney ? "active" : ""}`}
+            >
+              {t.trips.expenses.tab(expenseData.length)}
+            </AppLink>
+          )}
         </ScrollableTabs>
         {isShared && isParticipant && !showAll && !showPlaces && (
           <AppLink
@@ -1332,7 +1379,7 @@ export default async function TripPage({
 
       {/* Брони без дат: в ленте им негде встать, а видеть и дозаполнять
           их надо. Датированные стоят ниже, в ленте плана, в свои дни. */}
-      {!showTodos && !showPlaces && (
+      {!showTodos && !showPlaces && !showMoney && (
         <TripBookings
           tripId={trip.id}
           bookings={undatedBookings}
@@ -1340,7 +1387,15 @@ export default async function TripPage({
         />
       )}
 
-      {showTodos ? (
+      {showMoney ? (
+        <TripExpenses
+          tripId={trip.id}
+          expenses={expenseData}
+          budgets={budgetData}
+          bookings={bookingOptions}
+          canAdd={canContribute}
+        />
+      ) : showTodos ? (
         <TripTodos
           tripId={trip.id}
           todos={todoData.filter((item) => item.kind === activeList)}

@@ -4163,6 +4163,103 @@ button.hero-stat-toggle.is-open {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Деньги поездки (вкладка «Деньги») ---------- */
+/* Строка траты: значок категории, название с подписью, сумма справа,
+   кнопки правки. Сумма моноширинными цифрами — столбик чисел разной
+   ширины читается как случайный. */
+.expense-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.9rem;
+}
+
+.expense-row-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.expense-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.expense-row-sum {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Полоса бюджета. Перерасход красит её тревожным, но полоса всё равно
+   не вылезает за дорожку — цифру перерасхода пишем словами рядом. */
+.expense-budget-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.expense-budget-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgb(var(--accent-rgb));
+  transition: width 0.3s ease;
+}
+
+.expense-budget-bar.is-over > span {
+  background: var(--bs-danger);
+}
+
+/* Разбивка по категориям: название, полоса, сумма — тремя колонками,
+   чтобы полосы начинались и кончались на одной вертикали. */
+.expense-cat-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 9rem) 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.expense-cat-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expense-cat-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.expense-cat-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(var(--accent-rgb), 0.75);
+}
+
+.expense-cat-sum {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  /* На телефоне подпись категории занимает всю строку, полоса и сумма
+     уходят под неё: три колонки в 390px сжимали полосу в точку. */
+  .expense-cat-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .expense-cat-name {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ---------- Лента постеров со стрелками (ScrollRow) ----------
    Правка владельца 2026-09-16: «везде на прокрутке нужно добавить слева
    и справа кнопочки чтобы можно было листать — везде где такие блоки».
