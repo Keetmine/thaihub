@@ -2844,15 +2844,65 @@ svg[aria-hidden="true"] {
 }
 
 /* ---------- Награды и номинации (страница исполнителя) ---------- */
+/* Нижняя половина страницы артиста — в ДВЕ КОЛОНКИ на широком экране
+   (правка владельца 2026-09-16: «страница выходит очень длинная»).
+   Песни, клипы и награды — узкие списки в одну строку каждый, и
+   столбиком они растягивали страницу вдвое.
+
+   Многоколоночная раскладка, а не грид: блоки разной высоты она
+   балансирует сама, а грид оставлял бы дыру под коротким блоком.
+   break-inside обязателен — без него колонка рвёт блок посередине,
+   и заголовок «Награды» уезжает от своего списка. */
+@media (min-width: 992px) {
+  .artist-cols {
+    column-count: 2;
+    column-gap: 1.5rem;
+  }
+
+  .artist-cols > * {
+    break-inside: avoid;
+    /* Разрыв страницы печати — тот же механизм в старых движках. */
+    page-break-inside: avoid;
+  }
+}
+
+/* Строка награды — ОДНОСТРОЧНАЯ (правка владельца 2026-09-16: страница
+   артиста слишком длинная). Девять наград занимали 900px, целый экран
+   на список, где в каждой строке десяток слов: премия и категория шли
+   двумя абзацами, да ещё с крупными отступами. */
 .award-row {
   display: grid;
-  grid-template-columns: 3.25rem 1fr auto;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.7rem 0.9rem;
+  grid-template-columns: 2.9rem 1fr auto;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
   border-radius: var(--bs-border-radius);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--bs-border-color);
+  font-size: 0.85rem;
+}
+
+/* Премия и категория в одну строку через тихий разделитель; если не
+   влезли — категория переносится, а не рвёт саму премию. */
+.award-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.award-name {
+  color: #fff;
+  font-weight: 500;
+}
+
+.award-meta {
+  color: var(--bs-secondary-color);
+  font-size: 0.8rem;
+}
+
+.award-name + .award-meta::before {
+  content: "· ";
 }
 
 .award-year {

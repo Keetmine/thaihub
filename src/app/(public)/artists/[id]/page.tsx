@@ -32,6 +32,7 @@ import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { getT } from "@/lib/i18n";
 import { formatDayLongMonth, formatLongDate } from "@/lib/dates";
 import { performerHref } from "@/lib/performerSlug";
+import ScrollableTabs from "@/components/ScrollableTabs";
 import { agencyHref, eventHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
@@ -144,12 +145,20 @@ export default async function PerformerPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ events?: string }>;
+  searchParams: Promise<{ events?: string; view?: string }>;
 }) {
   const { id: rawId } = await params;
   const { locale, t } = await getT();
   const contentDict = await getContentDict();
-  const { events: eventsTab } = await searchParams;
+  const { events: eventsTab, view: lowerView } = await searchParams;
+  /* «Путь артиста» — ПЕРЕКЛЮЧАТЕЛЕМ, а не ещё одной лентой (правка
+     владельца 2026-09-16: страница выходит очень длинная).
+     Хроника собирается из той же фильмографии, тех же событий, альбомов
+     и наград, что уже показаны выше и ниже: 1092px, где нет ни одного
+     нового факта. Теперь это второй ВЗГЛЯД на то же, и виден один за
+     раз. В адресе, а не в состоянии: срез можно переслать, и страница
+     остаётся серверной. */
+  const showCareer = lowerView === "career";
   const showPastEvents = eventsTab === "past";
   // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
   // дёргается один раз на HTTP-запрос.
@@ -165,6 +174,12 @@ export default async function PerformerPage({
   const soloDebut = translatedText(performer, "soloDebut", performer.soloDebut, locale);
   const trivia = translatedList(performer, "trivia", performer.trivia, locale);
   const mvAppearances = translatedList(performer, "mvAppearances", performer.mvAppearances, locale);
+  /** Есть ли что показывать в нижней половине — песни, клипы, награды.
+   *  Пусто у всех трёх: переключать нечего, и ряд вкладок не рисуем. */
+  const hasLowerHalf =
+    performer.songs.length > 0 ||
+    mvAppearances.length > 0 ||
+    (Array.isArray(performer.awards) && performer.awards.length > 0);
   // Фото, а если его нет — обложка последнего релиза (см.
   // lib/performerPhoto.ts). Альбомы уже загружены выше, отсортированы по
   // году — доп. запрос не нужен.
@@ -821,6 +836,20 @@ export default async function PerformerPage({
               </p>
             ))}
 
+          {/* «Факты» стоят ЗДЕСЬ, под био (правка владельца 2026-09-16:
+              «интересные факты в самом низу, хотя их можно было бы и
+              наверх»). Раньше блок лежал на пятом экране, за девятьюстами
+              пикселями наград, — при том что это сто пикселей и
+              единственное человеческое на странице. По смыслу это
+              продолжение биографии, там ему и место. */}
+          {trivia.length > 0 && (
+            <ul className="small text-secondary mb-0 ps-3 d-flex flex-column gap-1">
+              {trivia.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          )}
+
           {/* Личные бренды — под описанием и своим заголовком: это не
               «ещё одна ссылка», а своё дело артиста, и у него есть имя,
               которое нужно показать. Соседние otherLinks остаются просто
@@ -1278,6 +1307,40 @@ export default async function PerformerPage({
         </div>
       )}
 
+      {/* Нижняя половина: два ВЗГЛЯДА на одно и то же. «Разделы» —
+          песни, клипы и награды по типам; «Путь артиста» — они же по
+          годам. Ряд рисуем только когда есть что переключать: у актёра
+          без музыки и наград хроника пустая, и переключатель был бы
+          обманом. */}
+      {hasLowerHalf && careerItems.length > 1 && (
+        <div className="tab-bar-row">
+          <ScrollableTabs>
+            <AppLink
+              href={performerHref(performer)}
+              prefetch={false}
+              className={`tab-bar-item ${showCareer ? "" : "active"}`}
+            >
+              {t.catalog.artist.viewSections}
+            </AppLink>
+            <AppLink
+              href={`${performerHref(performer)}?view=career`}
+              prefetch={false}
+              className={`tab-bar-item ${showCareer ? "active" : ""}`}
+            >
+              {t.catalog.artist.careerPath}
+            </AppLink>
+          </ScrollableTabs>
+        </div>
+      )}
+
+      {/* Две колонки на широком экране (правка владельца 2026-09-16):
+          песни, клипы и награды — узкие списки в одну строку каждый, и
+          в одну колонку они растягивали страницу вдвое. Многоколоночная
+          раскладка, а не грид: блоки разной высоты она балансирует сама,
+          а грид оставлял бы дыру под коротким блоком.
+          Ниже 992px колонка одна — см. .artist-cols в globals.css. */}
+      {!showCareer && (
+      <div className="artist-cols">
       {performer.songs.length > 0 && (
         <div className="mb-4">
           <h2 className="section-heading mb-2">
@@ -1297,11 +1360,6 @@ export default async function PerformerPage({
         </div>
       )}
 
-      {/* «Путь артиста» — после фильмографии и дискографии: хроника
-          собирает воедино то, что выше разложено по типам. Блок сам
-          прячется, когда пунктов меньше двух (нечего листать). */}
-      <CareerTimeline items={careerItems} />
-
       {mvAppearances.length > 0 && (
         <div className="surface p-4 mb-3">
           <h2 className="section-heading mb-2">{t.catalog.artist.mvAppearances}</h2>
@@ -1317,8 +1375,12 @@ export default async function PerformerPage({
         <div className="surface p-4 mb-3">
           <h2 className="section-heading mb-3">{t.catalog.artist.awards}</h2>
           {/* Не таблица: строки-карточки в общем стиле сайта — год слева,
-              премия/категория в центре, результат чипом справа. */}
-          <div className="d-flex flex-column gap-2">
+              премия/категория в центре, результат чипом справа.
+              С 2026-09-16 строка ОДНОСТРОЧНАЯ: премия и категория идут
+              в одну строку через разделитель, а не двумя абзацами.
+              Девять наград занимали 900px — целый экран на список, где
+              в каждой строке десяток слов. */}
+          <div className="d-flex flex-column gap-1">
             {(
               performer.awards as {
                 year: string;
@@ -1332,14 +1394,12 @@ export default async function PerformerPage({
               return (
                 <div key={i} className="award-row">
                   <span className="award-year">{a.year}</span>
-                  <div style={{ minWidth: 0 }}>
-                    {a.award && (
-                      <p className="mb-0 text-white fw-medium">{a.award}</p>
-                    )}
-                    <p className="small text-secondary mb-0">
+                  <div className="award-body" style={{ minWidth: 0 }}>
+                    {a.award && <span className="award-name">{a.award}</span>}
+                    <span className="award-meta">
                       {a.category}
                       {a.nominee && <> · {a.nominee}</>}
-                    </p>
+                    </span>
                   </div>
                   {a.result && (
                     <span className={`award-result ${won ? "is-won" : ""}`}>
@@ -1353,17 +1413,12 @@ export default async function PerformerPage({
           </div>
         </div>
       )}
-
-      {trivia.length > 0 && (
-        <div className="surface p-4 mb-3">
-          <h2 className="section-heading mb-2">{t.catalog.artist.trivia}</h2>
-          <ul className="small mb-0 ps-3 d-flex flex-column gap-1">
-            {trivia.map((t, i) => (
-              <li key={i}>{t}</li>
-            ))}
-          </ul>
-        </div>
+      </div>
       )}
+
+      {/* Хроника ВМЕСТО разделов: то же содержимое, только по годам.
+          Сам блок прячется, когда пунктов меньше двух. */}
+      {showCareer && <CareerTimeline items={careerItems} />}
 
       {(performer.sourceUrl ||
         performer.mydramalistUrl ||

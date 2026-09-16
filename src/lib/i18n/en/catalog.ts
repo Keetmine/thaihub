@@ -391,6 +391,7 @@ export const catalog = {
         mvAppearances: "Music video appearances",
         awards: "Awards and nominations",
         trivia: "Trivia",
+        viewSections: "Sections",
         careerPath: "Career timeline",
         // Small type captions on timeline entries — lowercase on purpose,
         // they read as a mark, not a heading.
