@@ -356,16 +356,10 @@ export const trips: Dict["trips"] = {
          *  2026-09-16): заполнили — строка сама появилась в расходах. */
         fieldPrice: "Сколько стоило",
         pricePlaceholder: "Можно не заполнять",
-        priceHint: "Если указать — попадёт в расходы поездки.",
         fromBooking: "из брони",
         fromEvent: "из события",
         add: "+ Трата",
         editTitle: "Правка траты",
-        budget: "Бюджет",
-        budgetHint: "Свой на каждую валюту: курсы мы не храним, поэтому баты с рублями не складываем. Пустое поле убирает бюджет.",
-        budgetPlaceholder: "Например, 50000",
-        ofBudget: (budget: string) => `из ${budget}`,
-        overBudget: (over: string) => `перерасход ${over}`,
         emptyTitle: "Трат пока нет",
         emptyHint: "Добавьте первую — итоги и разбивка по категориям соберутся сами.",
         deleteConfirm: "Удалить эту трату?",
@@ -375,9 +369,12 @@ export const trips: Dict["trips"] = {
         fieldCurrency: "Валюта",
         fieldCategory: "Категория",
         fieldDate: "Когда",
-        fieldBooking: "Из броней поездки",
-        noBooking: "Не привязывать",
+        fieldBooking: "К чему относится",
+        noBooking: "Ни к чему",
         fieldNote: "Заметка",
+        /** Только значок — в узком селекте формы (правка владельца
+         *  2026-09-16): четыре полных названия занимали половину строки. */
+        currencySign: { THB: "฿", RUB: "₽", BYN: "Br", USD: "$" },
         currency: {
             THB: "Баты ฿",
             RUB: "Рубли ₽",

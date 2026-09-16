@@ -27,7 +27,7 @@ export default function PriceFields({
   const e = t.trips.expenses;
   return (
     <div className="row g-2">
-      <div className="col-7">
+      <div className="col">
         <label className="form-label" htmlFor="price-amount">
           {e.fieldPrice}
         </label>
@@ -39,9 +39,10 @@ export default function PriceFields({
           placeholder={e.pricePlaceholder}
           className="form-control"
         />
-        <p className="form-text">{e.priceHint}</p>
       </div>
-      <div className="col-5">
+      {/* Валюта — узким селектом со ЗНАЧКАМИ (правка владельца
+          2026-09-16): полные названия занимали половину строки. */}
+      <div className="col-auto">
         <label className="form-label" htmlFor="price-currency">
           {e.fieldCurrency}
         </label>
@@ -49,11 +50,11 @@ export default function PriceFields({
           id="price-currency"
           name="priceCurrency"
           defaultValue={currency ?? "THB"}
-          className="form-select"
+          className="form-select expense-currency-select"
         >
           {TRIP_CURRENCIES.map((c) => (
             <option key={c} value={c}>
-              {e.currency[c]}
+              {e.currencySign[c]}
             </option>
           ))}
         </select>

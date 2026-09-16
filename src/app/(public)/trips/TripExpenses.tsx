@@ -13,14 +13,13 @@ import {
   EXPENSE_CATEGORIES,
   TRIP_CURRENCIES,
   amountToInput,
-  budgetProgress,
   byCategory,
   formatMoney,
   totalsByCurrency,
   type ExpenseCategoryValue,
   type TripCurrencyValue,
 } from "@/lib/tripMoney";
-import { addTripExpense, updateTripExpense, deleteTripExpense, setTripBudget } from "./actions";
+import { addTripExpense, updateTripExpense, deleteTripExpense } from "./actions";
 
 export type ExpenseData = {
   id: string;
@@ -31,11 +30,12 @@ export type ExpenseData = {
   /** ISO-строка: клиентский компонент, Date не сериализуем. */
   spentOn: string | null;
   note: string | null;
-  bookingId: string | null;
-  bookingLabel: string | null;
+  /** Одно значение на оба вида привязки: `booking:<id>` или
+   *  `occurrence:<id>`. Префикс нужен, потому что id брони и id даты
+   *  события живут в разных таблицах и перепутать их нельзя. */
+  link: string;
+  linkLabel: string | null;
 };
-
-export type BudgetData = { currency: TripCurrencyValue; amountMinor: number };
 
 /**
  * Строка расходов, пришедшая ИЗ ДРУГОЙ ЗАПИСИ — цены брони или личного
@@ -77,18 +77,17 @@ export default function TripExpenses({
   tripId,
   expenses,
   derived,
-  budgets,
-  bookings,
+  links,
   canAdd,
 }: {
   tripId: string;
   expenses: ExpenseData[];
   /** Цены броней и личных событий — см. DerivedExpense. */
   derived: DerivedExpense[];
-  budgets: BudgetData[];
-  /** Брони поездки — чтобы прицепить трату к уже известному перелёту
-   *  или отелю вместо того, чтобы вбивать его второй раз. */
-  bookings: { id: string; label: string }[];
+  /** К чему можно прицепить трату: брони поездки и события афиши в её
+   *  датах. Одним списком с готовыми значениями `booking:…` /
+   *  `occurrence:…` — форме не нужно знать, откуда что взялось. */
+  links: { value: string; label: string }[];
   canAdd: boolean;
 }) {
   const t = useT();
@@ -96,13 +95,11 @@ export default function TripExpenses({
   const e = t.trips.expenses;
   const [editing, setEditing] = useState<ExpenseData | null>(null);
   const [adding, setAdding] = useState(false);
-  const [budgetOpen, setBudgetOpen] = useState(false);
 
   // Итоги и разбивка считаются по ОБЕИМ половинам: цена брони — такие
   // же потраченные деньги, как трата, заведённая руками.
   const all = [...expenses, ...derived];
   const totals = totalsByCurrency(all);
-  const budgetByCurrency = new Map(budgets.map((b) => [b.currency, b.amountMinor]));
 
   // Единый список: сверху свежее по дате, записи без даты в хвосте.
   const rows = [
@@ -119,64 +116,60 @@ export default function TripExpenses({
     <div>
       {/* Итоги сверху: ради них вкладку и открывают. По строке на
           валюту — складывать баты с рублями нечем. */}
+      {/* Сводка ОДНИМ компактным блоком (правка владельца 2026-09-16:
+          «много места занимают»). Было по карточке на валюту, в каждой
+          крупное число, полоса бюджета и столбик категорий — на двух
+          валютах это занимало целый экран до самого списка.
+
+          Теперь: итоги в строку через разделитель, под ними категории
+          мелкой сеткой. Разбивка считается ВНУТРИ валюты (складывать
+          баты с рублями нечем), поэтому при двух валютах идут два
+          коротких блока с подписью валюты. */}
       {totals.length > 0 && (
-        <div className="d-flex flex-column gap-3 mb-4">
-          {totals.map(({ currency, total }) => {
-            const budget = budgetByCurrency.get(currency) ?? 0;
-            const { share, over } = budgetProgress(total, budget);
+        <section className="surface p-3 mb-3 expense-summary">
+          <p className="expense-summary-totals mb-0">
+            {totals.map(({ currency, total }, i) => (
+              <span key={currency}>
+                {i > 0 && <span className="expense-summary-sep" aria-hidden> · </span>}
+                {formatMoney(total, currency, locale)}
+              </span>
+            ))}
+          </p>
+
+          {totals.map(({ currency }) => {
             const cats = byCategory(all, currency);
+            if (cats.length === 0) return null;
             return (
-              <section key={currency} className="surface p-3">
-                <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
-                  <p className="h5 mb-0">{formatMoney(total, currency, locale)}</p>
-                  {budget > 0 && (
-                    <p className="small text-secondary mb-0">
-                      {over > 0
-                        ? e.overBudget(formatMoney(over, currency, locale))
-                        : e.ofBudget(formatMoney(budget, currency, locale))}
-                    </p>
-                  )}
-                </div>
-
-                {budget > 0 && (
-                  <div className={`expense-budget-bar mt-2${over > 0 ? " is-over" : ""}`}>
-                    <span style={{ width: `${Math.round(share * 100)}%` }} />
-                  </div>
+              <div key={currency} className="mt-2">
+                {totals.length > 1 && (
+                  <p className="expense-summary-cur mb-1">{e.currency[currency]}</p>
                 )}
-
-                {/* Разбивка по категориям — полосами, а не диаграммой:
-                    полоса читается с одного взгляда и не требует легенды. */}
-                {cats.length > 0 && (
-                  <ul className="list-unstyled d-flex flex-column gap-2 mt-3 mb-0">
-                    {cats.map((c) => (
-                      <li key={c.category} className="expense-cat-row">
-                        <span className="expense-cat-name">
-                          <span aria-hidden>{CATEGORY_EMOJI[c.category]}</span>{" "}
-                          {e.category[c.category]}
-                        </span>
-                        <span className="expense-cat-track">
-                          <span style={{ width: `${Math.max(2, Math.round(c.share * 100))}%` }} />
-                        </span>
-                        <span className="expense-cat-sum small text-secondary">
-                          {formatMoney(c.total, currency, locale)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
+                <ul className="list-unstyled d-flex flex-column gap-1 mb-0">
+                  {cats.map((c) => (
+                    <li key={c.category} className="expense-cat-row">
+                      <span className="expense-cat-name">
+                        <span aria-hidden>{CATEGORY_EMOJI[c.category]}</span>{" "}
+                        {e.category[c.category]}
+                      </span>
+                      <span className="expense-cat-track">
+                        <span style={{ width: `${Math.max(2, Math.round(c.share * 100))}%` }} />
+                      </span>
+                      <span className="expense-cat-sum">
+                        {formatMoney(c.total, currency, locale)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             );
           })}
-        </div>
+        </section>
       )}
 
       {canAdd && (
-        <div className="d-flex flex-wrap gap-2 mb-3">
+        <div className="mb-3">
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
             {e.add}
-          </button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBudgetOpen(true)}>
-            {e.budget}
           </button>
         </div>
       )}
@@ -207,7 +200,7 @@ export default function TripExpenses({
                       ? item.source === "booking"
                         ? e.fromBooking
                         : e.fromEvent
-                      : item.bookingLabel,
+                      : item.linkLabel,
                     item.kind === "manual" ? item.note : null,
                   ]
                     .filter(Boolean)
@@ -244,7 +237,7 @@ export default function TripExpenses({
 
       <ExpenseDialog
         tripId={tripId}
-        bookings={bookings}
+        links={links}
         item={editing}
         open={adding || editing !== null}
         onClose={() => {
@@ -253,12 +246,7 @@ export default function TripExpenses({
         }}
       />
 
-      <BudgetDialog
-        tripId={tripId}
-        budgets={budgets}
-        open={budgetOpen}
-        onClose={() => setBudgetOpen(false)}
-      />
+
     </div>
   );
 }
@@ -267,13 +255,13 @@ export default function TripExpenses({
  *  полями разъехались бы при первой правке. */
 function ExpenseDialog({
   tripId,
-  bookings,
+  links,
   item,
   open,
   onClose,
 }: {
   tripId: string;
-  bookings: { id: string; label: string }[];
+  links: { value: string; label: string }[];
   item: ExpenseData | null;
   open: boolean;
   onClose: () => void;
@@ -322,7 +310,7 @@ function ExpenseDialog({
         </div>
 
         <div className="row g-2">
-          <div className="col-7">
+          <div className="col">
             <label className="form-label" htmlFor="expense-amount">
               {e.fieldAmount}
             </label>
@@ -336,7 +324,10 @@ function ExpenseDialog({
               className="form-control"
             />
           </div>
-          <div className="col-5">
+          {/* Валюта — узким селектом со ЗНАЧКАМИ (правка владельца
+              2026-09-16): четыре полных названия занимали половину
+              строки, а «฿» понятно и так. */}
+          <div className="col-auto">
             <label className="form-label" htmlFor="expense-currency">
               {e.fieldCurrency}
             </label>
@@ -344,11 +335,11 @@ function ExpenseDialog({
               id="expense-currency"
               name="currency"
               defaultValue={item?.currency ?? "THB"}
-              className="form-select"
+              className="form-select expense-currency-select"
             >
               {TRIP_CURRENCIES.map((c) => (
                 <option key={c} value={c}>
-                  {e.currency[c]}
+                  {e.currencySign[c]}
                 </option>
               ))}
             </select>
@@ -384,23 +375,25 @@ function ExpenseDialog({
           />
         </div>
 
-        {/* Привязка к брони: перелёты и отели сайт уже знает, и вбивать
-            их второй раз не нужно. Пусто — обычная трата. */}
-        {bookings.length > 0 && (
+        {/* «К чему относится»: брони поездки и события афиши в её датах.
+            Один селект на два вида — сайт уже знает и про перелёт, и про
+            фестиваль, вбивать их названия руками незачем. Пусто —
+            обычная трата. */}
+        {links.length > 0 && (
           <div>
-            <label className="form-label" htmlFor="expense-booking">
+            <label className="form-label" htmlFor="expense-link">
               {e.fieldBooking}
             </label>
             <select
-              id="expense-booking"
-              name="bookingId"
-              defaultValue={item?.bookingId ?? ""}
+              id="expense-link"
+              name="link"
+              defaultValue={item?.link ?? ""}
               className="form-select"
             >
               <option value="">{e.noBooking}</option>
-              {bookings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.label}
+              {links.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
                 </option>
               ))}
             </select>
@@ -416,94 +409,6 @@ function ExpenseDialog({
 
         {error && <p className="text-danger small mb-0">{error}</p>}
 
-        <div className="d-flex gap-2">
-          <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>
-            {pending ? t.common.loading : t.common.save}
-          </button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-            {t.common.cancel}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-/** Бюджет — по одному на валюту: курсов мы не храним, сравнивать баты с
- *  рублями не через что. Пустое поле снимает бюджет. */
-function BudgetDialog({
-  tripId,
-  budgets,
-  open,
-  onClose,
-}: {
-  tripId: string;
-  budgets: BudgetData[];
-  open: boolean;
-  onClose: () => void;
-}) {
-  const t = useT();
-  const e = t.trips.expenses;
-  const router = useRouter();
-  const [currency, setCurrency] = useState<TripCurrencyValue>("THB");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const current = budgets.find((b) => b.currency === currency);
-
-  function submit(formData: FormData) {
-    start(async () => {
-      const res = await setTripBudget(tripId, formData);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setError(null);
-      onClose();
-      router.refresh();
-    });
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title={e.budget}>
-      <form action={submit} className="d-flex flex-column gap-3">
-        <p className="small text-secondary mb-0">{e.budgetHint}</p>
-        <div className="row g-2">
-          <div className="col-5">
-            <label className="form-label" htmlFor="budget-currency">
-              {e.fieldCurrency}
-            </label>
-            <select
-              id="budget-currency"
-              name="currency"
-              value={currency}
-              onChange={(ev) => setCurrency(ev.target.value as TripCurrencyValue)}
-              className="form-select"
-            >
-              {TRIP_CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {e.currency[c]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-7">
-            <label className="form-label" htmlFor="budget-amount">
-              {e.fieldAmount}
-            </label>
-            {/* key по валюте: иначе при переключении валюты в поле
-                оставалась сумма от прошлой. */}
-            <input
-              id="budget-amount"
-              key={currency}
-              name="amount"
-              inputMode="decimal"
-              defaultValue={current ? amountToInput(current.amountMinor) : ""}
-              placeholder={e.budgetPlaceholder}
-              className="form-control"
-            />
-          </div>
-        </div>
-        {error && <p className="text-danger small mb-0">{error}</p>}
         <div className="d-flex gap-2">
           <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>
             {pending ? t.common.loading : t.common.save}

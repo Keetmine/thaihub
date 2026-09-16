@@ -139,6 +139,8 @@ model EventOccurrence {
   maybes                EventMaybe[]
   tickets               EventTicket[]
 
+  tripExpenses TripExpense[]
+
   @@index([eventId])
   @@index([startsAt])
 }
@@ -1060,7 +1062,6 @@ model User {
   communityPosts         CommunityPost[]
   createdEvents          Event[]           @relation("EventAuthor")
   tripExpenses         TripExpense[]
-  tripBudgets          TripBudget[]
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -1096,7 +1097,6 @@ model Trip {
   stays          TripStay[]
   bookings       TripBooking[]
   expenses       TripExpense[]
-  budgets        TripBudget[]
 
   @@index([userId])
 }
@@ -2144,25 +2144,17 @@ model TripExpense {
   /// SetNull — удалили бронь, трата осталась: деньги-то потрачены.
   bookingId   String?
   booking     TripBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  /// Или к событию афиши: у фестиваля несколько дней, поэтому ссылка на
+  /// конкретную дату (EventOccurrence), а не на событие вообще.
+  /// Цены у самого события быть не может — оно общее для всех, а билет
+  /// и сумма у каждого свои.
+  occurrenceId String?
+  occurrence   EventOccurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
   note        String?
   createdAt   DateTime     @default(now())
 
   @@index([tripId, userId])
   @@index([bookingId])
-}
-
-/// Личный бюджет поездки — по одному на человека и валюту. Валюта в
-/// ключе нарочно: курсов мы не храним и не выдумываем, поэтому
-/// «потрачено из бюджета» считается внутри одной валюты.
-model TripBudget {
-  tripId      String
-  trip        Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currency    TripCurrency
-  amountMinor Int
-
-  @@id([tripId, userId, currency])
 }
 
 enum TripBookingKind {

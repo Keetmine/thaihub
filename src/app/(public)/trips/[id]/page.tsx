@@ -689,17 +689,17 @@ export default async function TripPage({
      Траты ЛИЧНЫЕ: выборка всегда по паре (поездка, я), поэтому у гостя
      и у участника, который смотрит чужую поездку, список просто пуст —
      отдельного правила видимости у траты нет и быть не должно. */
-  const [expenseRows, budgetRows] = user
-    ? await Promise.all([
-        prisma.tripExpense.findMany({
-          where: { tripId: trip.id, userId: user.id },
-          include: { booking: { select: { id: true, name: true } } },
-          // Свежие сверху; у трат без даты опорой остаётся момент ввода.
-          orderBy: [{ spentOn: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
-        }),
-        prisma.tripBudget.findMany({ where: { tripId: trip.id, userId: user.id } }),
-      ])
-    : [[], []];
+  const expenseRows = user
+    ? await prisma.tripExpense.findMany({
+        where: { tripId: trip.id, userId: user.id },
+        include: {
+          booking: { select: { id: true, name: true } },
+          occurrence: { select: { id: true, event: { select: { title: true } } } },
+        },
+        // Свежие сверху; у трат без даты опорой остаётся момент ввода.
+        orderBy: [{ spentOn: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+      })
+    : [];
   const expenseData = expenseRows.map((row) => ({
     id: row.id,
     title: row.title,
@@ -708,14 +708,14 @@ export default async function TripPage({
     category: row.category as ExpenseCategoryValue,
     spentOn: row.spentOn ? row.spentOn.toISOString() : null,
     note: row.note,
-    bookingId: row.bookingId,
-    bookingLabel: row.booking?.name ?? null,
+    // Одно значение на оба вида привязки — как в форме (см. actions).
+    link: row.bookingId
+      ? `booking:${row.bookingId}`
+      : row.occurrenceId
+        ? `occurrence:${row.occurrenceId}`
+        : "",
+    linkLabel: row.booking?.name ?? row.occurrence?.event.title ?? null,
   }));
-  const budgetData = budgetRows.map((row) => ({
-    currency: row.currency as TripCurrencyValue,
-    amountMinor: row.amountMinor,
-  }));
-  const bookingOptions = trip.bookings.map((b) => ({ id: b.id, label: b.name }));
 
   /* Цены броней и личных событий — строками расходов (правка владельца
      2026-09-16). Считываются, а не копируются в TripExpense: копию
@@ -726,6 +726,36 @@ export default async function TripPage({
      и есть автор — так же считает canTouchItem. */
   const isMineRecord = (createdById: string | null) =>
     !!user && (createdById ?? trip.userId) === user.id;
+  /* К чему можно прицепить трату: брони поездки и события афиши в её
+     датах — одним списком с готовыми значениями, форме не нужно знать,
+     откуда что взялось. События здесь, а не поле цены у самого события:
+     событие афиши общее для всех, а билет и сумма у каждого свои.
+
+     Запрос СВОЙ, а не переиспользованный `events`: тот собирает ПЛАН —
+     только то, где кто-то отметил «иду». Билет на фестиваль покупают и
+     до того, как поставили отметку, и без неё событие не попало бы в
+     список вовсе (поймано проверкой: в выборе было «Ни к чему» и один
+     перелёт). Здесь — всё, что идёт в даты поездки. */
+  const linkOccurrences = user
+    ? await prisma.eventOccurrence.findMany({
+        where: rangeWhere,
+        select: { id: true, startsAt: true, event: { select: { title: true } } },
+        orderBy: { startsAt: "asc" },
+        // Потолок на случай длинной поездки в разгар сезона: селект на
+        // двести строк — это не выбор, а прокрутка.
+        take: 60,
+      })
+    : [];
+  const expenseLinks = [
+    ...trip.bookings.map((b) => ({ value: `booking:${b.id}`, label: b.name })),
+    ...linkOccurrences.map((occ) => ({
+      value: `occurrence:${occ.id}`,
+      // Дата в подписи обязательна: у фестиваля несколько дней, и без
+      // неё в списке было бы три одинаковых строки.
+      label: `${occ.event.title} · ${formatShortDate(occ.startsAt, locale)}`,
+    })),
+  ];
+
   const derivedExpenses = user
     ? [
         ...trip.bookings
@@ -1434,8 +1464,7 @@ export default async function TripPage({
           tripId={trip.id}
           expenses={expenseData}
           derived={derivedExpenses}
-          budgets={budgetData}
-          bookings={bookingOptions}
+          links={expenseLinks}
           canAdd={canContribute}
         />
       ) : showTodos ? (

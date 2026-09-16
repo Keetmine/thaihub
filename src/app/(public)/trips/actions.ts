@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
-import { combineDateTime, normalizeTimeValue, parseDateKey } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue, parseDateKey, startOfDay, endOfDay } from "@/lib/dates";
 import type { TripTodoKind, TripItemVisibility, TripVisibility } from "@/generated/prisma/client";
 import { clampItemVisibility, isItemVisibility } from "./itemVisibility";
 import { FREE_TRIP_LIMIT, isPremiumActive } from "@/lib/premium";
@@ -1299,7 +1299,12 @@ async function parseExpenseForm(formData: FormData) {
   const amountMinor = parseAmount(String(formData.get("amount") ?? ""));
   if (amountMinor === null) return { ok: false as const, error: t.trips.errors.expenseAmount };
   const spentRaw = String(formData.get("spentOn") ?? "").trim();
-  const bookingId = String(formData.get("bookingId") ?? "").trim();
+  // Один селект «к чему относится» на два вида источника: значение
+  // приходит с префиксом, потому что id брони и id даты события живут в
+  // разных таблицах и перепутать их нельзя.
+  const linkRaw = String(formData.get("link") ?? "").trim();
+  const bookingId = linkRaw.startsWith("booking:") ? linkRaw.slice(8) : "";
+  const occurrenceId = linkRaw.startsWith("occurrence:") ? linkRaw.slice(11) : "";
   return {
     ok: true as const,
     data: {
@@ -1310,6 +1315,7 @@ async function parseExpenseForm(formData: FormData) {
       spentOn: /^\d{4}-\d{2}-\d{2}$/.test(spentRaw) ? parseDateKey(spentRaw) : null,
       note: String(formData.get("note") ?? "").trim() || null,
       bookingId: bookingId || null,
+      occurrenceId: occurrenceId || null,
     },
   };
 }
@@ -1325,6 +1331,25 @@ async function validBookingId(tripId: string, bookingId: string | null): Promise
   return booking?.id ?? null;
 }
 
+/** Привязка к дате события афиши — только к той, что попадает в даты
+ *  поездки. Иначе по подсмотренному id трату можно было бы прицепить к
+ *  чему угодно из каталога, и в расходах появилось бы событие, к
+ *  поездке отношения не имеющее. */
+async function validOccurrenceId(
+  trip: { id: string; startDate: Date; endDate: Date },
+  occurrenceId: string | null,
+): Promise<string | null> {
+  if (!occurrenceId) return null;
+  const row = await prisma.eventOccurrence.findFirst({
+    where: {
+      id: occurrenceId,
+      startsAt: { gte: startOfDay(trip.startDate), lte: endOfDay(trip.endDate) },
+    },
+    select: { id: true },
+  });
+  return row?.id ?? null;
+}
+
 export async function addTripExpense(tripId: string, formData: FormData): Promise<ActionResult> {
   const access = await requireTripAccess(tripId);
   if (!access.ok) return { ok: false, error: access.error };
@@ -1334,6 +1359,7 @@ export async function addTripExpense(tripId: string, formData: FormData): Promis
     data: {
       ...parsed.data,
       bookingId: await validBookingId(access.trip.id, parsed.data.bookingId),
+      occurrenceId: await validOccurrenceId(access.trip, parsed.data.occurrenceId),
       tripId: access.trip.id,
       userId: access.user.id,
     },
@@ -1363,6 +1389,7 @@ export async function updateTripExpense(
     data: {
       ...parsed.data,
       bookingId: await validBookingId(access.trip.id, parsed.data.bookingId),
+      occurrenceId: await validOccurrenceId(access.trip, parsed.data.occurrenceId),
     },
   });
   revalidatePath(`/trips/${access.trip.id}`);
@@ -1383,34 +1410,3 @@ export async function deleteTripExpense(
   return { ok: true };
 }
 
-/**
- * Личный бюджет поездки в одной валюте. Пустая сумма — снять бюджет:
- * ноль тут значил бы «запланировала ноль», а это не то же самое.
- */
-export async function setTripBudget(tripId: string, formData: FormData): Promise<ActionResult> {
-  const access = await requireTripAccess(tripId);
-  if (!access.ok) return { ok: false, error: access.error };
-  const currency = parseCurrency(String(formData.get("currency") ?? ""));
-  const raw = String(formData.get("amount") ?? "").trim();
-  const key = {
-    tripId_userId_currency: { tripId: access.trip.id, userId: access.user.id, currency },
-  };
-  if (!raw) {
-    await prisma.tripBudget.deleteMany({
-      where: { tripId: access.trip.id, userId: access.user.id, currency },
-    });
-    revalidatePath(`/trips/${access.trip.id}`);
-    return { ok: true };
-  }
-  const amountMinor = parseAmount(raw);
-  if (amountMinor === null) {
-    return { ok: false, error: (await getT()).t.trips.errors.expenseAmount };
-  }
-  await prisma.tripBudget.upsert({
-    where: key,
-    create: { tripId: access.trip.id, userId: access.user.id, currency, amountMinor },
-    update: { amountMinor },
-  });
-  revalidatePath(`/trips/${access.trip.id}`);
-  return { ok: true };
-}
