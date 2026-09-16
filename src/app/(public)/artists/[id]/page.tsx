@@ -32,7 +32,6 @@ import { DRAMA_STATUS_BADGE_CLASS } from "@/lib/dramaStatus";
 import { getT } from "@/lib/i18n";
 import { formatDayLongMonth, formatLongDate } from "@/lib/dates";
 import { performerHref } from "@/lib/performerSlug";
-import ScrollableTabs from "@/components/ScrollableTabs";
 import { agencyHref, eventHref, slugOrIdWhere } from "@/lib/slugHelpers";
 import { dramaHref } from "@/lib/dramaSlug";
 import { DRAMA_TITLE_SELECT, dramaTitleForLocale } from "@/lib/dramaLocale";
@@ -145,20 +144,12 @@ export default async function PerformerPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ events?: string; view?: string }>;
+  searchParams: Promise<{ events?: string }>;
 }) {
   const { id: rawId } = await params;
   const { locale, t } = await getT();
   const contentDict = await getContentDict();
-  const { events: eventsTab, view: lowerView } = await searchParams;
-  /* «Путь артиста» — ПЕРЕКЛЮЧАТЕЛЕМ, а не ещё одной лентой (правка
-     владельца 2026-09-16: страница выходит очень длинная).
-     Хроника собирается из той же фильмографии, тех же событий, альбомов
-     и наград, что уже показаны выше и ниже: 1092px, где нет ни одного
-     нового факта. Теперь это второй ВЗГЛЯД на то же, и виден один за
-     раз. В адресе, а не в состоянии: срез можно переслать, и страница
-     остаётся серверной. */
-  const showCareer = lowerView === "career";
+  const { events: eventsTab } = await searchParams;
   const showPastEvents = eventsTab === "past";
   // Тот же React.cache-запрос, что и в generateMetadata, — Prisma
   // дёргается один раз на HTTP-запрос.
@@ -174,26 +165,14 @@ export default async function PerformerPage({
   const soloDebut = translatedText(performer, "soloDebut", performer.soloDebut, locale);
   const trivia = translatedList(performer, "trivia", performer.trivia, locale);
   const mvAppearances = translatedList(performer, "mvAppearances", performer.mvAppearances, locale);
-  /** Есть ли что показывать в нижней половине — песни, клипы, награды.
-   *  Пусто у всех трёх: переключать нечего, и ряд вкладок не рисуем. */
-  const hasLowerHalf =
-    performer.songs.length > 0 ||
-    mvAppearances.length > 0 ||
-    (Array.isArray(performer.awards) && performer.awards.length > 0);
   // Фото, а если его нет — обложка последнего релиза (см.
   // lib/performerPhoto.ts). Альбомы уже загружены выше, отсортированы по
   // году — доп. запрос не нужен.
   const displayPhoto = performerPhoto(performer);
-  // Дискографию спарсили с YouTube Music — значит площадка заслужила
-  // строку в источниках наравне с tpop и MyDramaList. Признак — ссылки
-  // на релизы: сама по себе ссылка на канал в профиле могла быть
-  // проставлена руками, без всякого парсинга.
-  const ytmSource =
-    performer.albums.some((a) => a.url?.includes("music.youtube.com")) ||
-    performer.songs.some((sg) => sg.url?.includes("music.youtube.com"))
-      ? (performer.links.find((l) => /youtube\.com\/channel\//i.test(l.url))?.url ??
-        "https://music.youtube.com/")
-      : null;
+  // Вычисления ytmSource тут больше нет: оно жило ради строки
+  // «YouTube Music» в блоке «Источники», а сам блок убран со страницы
+  // (правка владельца 2026-09-16). Ссылки на релизы у альбомов и песен
+  // на месте — карточки по-прежнему ведут на площадку.
   const isBand = performer.type === "BAND";
   const isMascot = performer.type === "MASCOT";
 
@@ -613,6 +592,93 @@ export default async function PerformerPage({
     (isMascot && performer.mascotOwners.length > 0) ||
     (!displayPhoto && socialItems.length > 0);
 
+  /* Музыка — теми же под-табами, что фильмография (правка владельца
+     2026-09-16: «музыку перемещаем в те же табы, где сериалы и фильмы»).
+     Раньше альбомы и песни шли двумя отдельными блоками под лентой
+     сериалов, и страница росла на каждую роль артиста дважды.
+
+     Разметка вынесена в переменные, а не вписана в массив вкладок:
+     внутри и лента постеров, и свёрнутый список — в литерале массива
+     они читались бы как стена. */
+  const albumsContent = (
+          <PosterRow>
+            {performer.albums.map((album) => {
+              // Обложка и название ведут на релиз, если импорт сохранил
+              // ссылку. Без неё карточка остаётся обычным блоком: пустой
+              // <a> выглядел бы кликабельным и никуда не вёл.
+              const Card = album.url ? "a" : "div";
+              const cardProps = album.url
+                ? {
+                    href: album.url,
+                    target: "_blank" as const,
+                    rel: "noopener noreferrer",
+                    className: "text-decoration-none d-block album-card",
+                  }
+                : {};
+              return (
+              <Card key={album.id} {...cardProps}>
+                <div
+                  className="d-flex align-items-center justify-content-center"
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    borderRadius: "0.5rem",
+                    background: "var(--bs-secondary-bg)",
+                    overflow: "hidden",
+                  }}
+                >
+                  {album.coverUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      loading="lazy"
+                      decoding="async"
+                      src={album.coverUrl}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <span className="text-secondary fs-3">
+                      <MusicNoteIcon />
+                    </span>
+                  )}
+                </div>
+                <p
+                  className="small text-white mb-0 mt-2"
+                  style={{ lineHeight: 1.3 }}
+                >
+                  {album.title}
+                </p>
+                <p className="small text-secondary mb-0">
+                  {t.catalog.albumType[album.type]}
+                  {album.year ? ` · ${album.year}` : ""}
+                  {album.url ? " ↗" : ""}
+                </p>
+              </Card>
+              );
+            })}
+          </PosterRow>
+  );
+
+  const songsContent = (
+    <>
+      {/* Хвост дискографии свёрнут: у музыканта бывает под полсотни
+          песен, и вкладка уходила бы в бесконечность. */}
+      <ListFold
+        className="d-flex flex-column gap-2"
+        total={performer.songs.length}
+        visible={(songsCollapsed
+          ? performer.songs.slice(0, SONGS_PREVIEW)
+          : performer.songs
+        ).map(songRow)}
+        rest={songsCollapsed ? performer.songs.slice(SONGS_PREVIEW).map(songRow) : null}
+      />
+    </>
+  );
+
   return (
     <div>
       {/* Конфетти — клиентское и одноразовое, само снимается через
@@ -681,9 +747,11 @@ export default async function PerformerPage({
 
       {/* Фото слева + факты справа — как на странице сериала. Блок фото
           рисуем только при displayPhoto: без него факты занимают всю
-          ширину, а соцссылки живут внутри блока фактов. */}
-      {(displayPhoto || hasFacts) && (
-      <div className="d-flex flex-column flex-sm-row gap-4 mb-4">
+          ширину, а соцссылки живут внутри блока фактов.
+          Третьей колонкой — «Факты» (см. ниже): они встают под кнопками
+          сердечка/глаза/плюса, справа от общей информации. */}
+      {(displayPhoto || hasFacts || trivia.length > 0) && (
+      <div className="d-flex flex-column flex-sm-row gap-4 mb-4 align-items-start">
         {displayPhoto && (
           <div className="flex-shrink-0 d-flex flex-column gap-2">
             {/* В день рождения фото в праздничной рамке. Рамку рисует
@@ -836,20 +904,6 @@ export default async function PerformerPage({
               </p>
             ))}
 
-          {/* «Факты» стоят ЗДЕСЬ, под био (правка владельца 2026-09-16:
-              «интересные факты в самом низу, хотя их можно было бы и
-              наверх»). Раньше блок лежал на пятом экране, за девятьюстами
-              пикселями наград, — при том что это сто пикселей и
-              единственное человеческое на странице. По смыслу это
-              продолжение биографии, там ему и место. */}
-          {trivia.length > 0 && (
-            <ul className="small text-secondary mb-0 ps-3 d-flex flex-column gap-1">
-              {trivia.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          )}
-
           {/* Личные бренды — под описанием и своим заголовком: это не
               «ещё одна ссылка», а своё дело артиста, и у него есть имя,
               которое нужно показать. Соседние otherLinks остаются просто
@@ -959,6 +1013,29 @@ export default async function PerformerPage({
             </div>
           )}
         </div>
+        )}
+
+        {/* «Факты» — отдельной карточкой СПРАВА от общей информации
+            (правка владельца 2026-09-16: «под кнопками с сердечком,
+            глазом и плюсом, справа, аля плавающий блок, выделяющийся»).
+            Раньше они лежали на пятом экране, за наградами, — при том
+            что это единственное человеческое на странице.
+
+            Своя колонка, а не хвост био: в потоке текста факты
+            терялись, а тут они встают ровно под кнопками и держат
+            ширину. Ниже 576px колонка уходит под остальное: на телефоне
+            рядом ей места нет. */}
+        {trivia.length > 0 && (
+          <aside className="artist-trivia">
+            <p className="artist-trivia-title mb-2">
+              <span aria-hidden>💡</span> {t.catalog.artist.trivia}
+            </p>
+            <ul className="mb-0 ps-3 d-flex flex-column gap-1">
+              {trivia.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </aside>
         )}
       </div>
       )}
@@ -1133,19 +1210,23 @@ export default async function PerformerPage({
       )}
 
 
-      {/* Сериалы / Фильмы / Шоу — под-табами, а не тремя лентами друг
-          под другом (правка владельца: компактнее). Пустые типы пилюль
-          не получают; запись без Drama.type считается сериалом. */}
-      {!isBand && sortedDramas.length > 0 && (
+      {/* Сериалы / Фильмы / Шоу / Альбомы / Песни — под-табами, а не
+          пятью лентами друг под другом (правка владельца: компактнее;
+          музыка переехала сюда 2026-09-16). Пустые вкладки не рисуются;
+          запись без Drama.type считается сериалом. */}
+      {(!isBand && sortedDramas.length > 0) ||
+      performer.albums.length > 0 ||
+      performer.songs.length > 0 ? (
         <div className="mb-4">
           <SubTabs
             ariaLabel={t.catalog.artist.series}
             variant="bar"
-            tabs={(
+            tabs={[
+              ...((
               [
-                ["series", t.catalog.artist.series, seriesDramas],
-                ["movies", t.catalog.artist.movies, movieDramas],
-                ["shows", t.catalog.artist.shows, showDramas],
+                ["series", t.catalog.artist.series, isBand ? [] : seriesDramas],
+                ["movies", t.catalog.artist.movies, isBand ? [] : movieDramas],
+                ["shows", t.catalog.artist.shows, isBand ? [] : showDramas],
               ] as const
             ).flatMap(([key, label, rows]) =>
               rows.length === 0
@@ -1235,130 +1316,47 @@ export default async function PerformerPage({
                       ),
                     },
                   ],
-            )}
+            )),
+              // Музыка — теми же вкладками: содержимое собрано выше,
+              // здесь только подпись и счётчик.
+              ...(performer.albums.length > 0
+                ? [
+                    {
+                      key: "albums",
+                      label: t.catalog.artist.albums,
+                      count: performer.albums.length,
+                      content: albumsContent,
+                    },
+                  ]
+                : []),
+              ...(performer.songs.length > 0
+                ? [
+                    {
+                      key: "songs",
+                      label: t.catalog.artist.songs,
+                      count: performer.songs.length,
+                      content: songsContent,
+                    },
+                  ]
+                : []),
+            ]}
           />
         </div>
-      )}
-      {performer.albums.length > 0 && (
-        <div className="mb-4">
-          <h2 className="section-heading mb-2">
-            <MusicNoteIcon className="icon-inline" /> {t.catalog.artist.albums}
-          </h2>
-          <PosterRow>
-            {performer.albums.map((album) => {
-              // Обложка и название ведут на релиз, если импорт сохранил
-              // ссылку. Без неё карточка остаётся обычным блоком: пустой
-              // <a> выглядел бы кликабельным и никуда не вёл.
-              const Card = album.url ? "a" : "div";
-              const cardProps = album.url
-                ? {
-                    href: album.url,
-                    target: "_blank" as const,
-                    rel: "noopener noreferrer",
-                    className: "text-decoration-none d-block album-card",
-                  }
-                : {};
-              return (
-              <Card key={album.id} {...cardProps}>
-                <div
-                  className="d-flex align-items-center justify-content-center"
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    borderRadius: "0.5rem",
-                    background: "var(--bs-secondary-bg)",
-                    overflow: "hidden",
-                  }}
-                >
-                  {album.coverUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      loading="lazy"
-                      decoding="async"
-                      src={album.coverUrl}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    <span className="text-secondary fs-3">
-                      <MusicNoteIcon />
-                    </span>
-                  )}
-                </div>
-                <p
-                  className="small text-white mb-0 mt-2"
-                  style={{ lineHeight: 1.3 }}
-                >
-                  {album.title}
-                </p>
-                <p className="small text-secondary mb-0">
-                  {t.catalog.albumType[album.type]}
-                  {album.year ? ` · ${album.year}` : ""}
-                  {album.url ? " ↗" : ""}
-                </p>
-              </Card>
-              );
-            })}
-          </PosterRow>
-        </div>
-      )}
+      ) : null}
+      {/* Низ страницы — ДВЕ КОЛОНКИ: слева «Путь артиста», справа
+          награды и клипы (правка владельца 2026-09-16). Хроника из
+          вкладки вернулась в поток, но ширину ей ограничили: её строки
+          короткие, и во всю ширину она читалась как пустая простыня.
+          Награды рядом, а не под ней, — это и есть вторая половина
+          карьеры, и вместе они занимают один экран вместо двух.
 
-      {/* Нижняя половина: два ВЗГЛЯДА на одно и то же. «Разделы» —
-          песни, клипы и награды по типам; «Путь артиста» — они же по
-          годам. Ряд рисуем только когда есть что переключать: у актёра
-          без музыки и наград хроника пустая, и переключатель был бы
-          обманом. */}
-      {hasLowerHalf && careerItems.length > 1 && (
-        <div className="tab-bar-row">
-          <ScrollableTabs>
-            <AppLink
-              href={performerHref(performer)}
-              prefetch={false}
-              className={`tab-bar-item ${showCareer ? "" : "active"}`}
-            >
-              {t.catalog.artist.viewSections}
-            </AppLink>
-            <AppLink
-              href={`${performerHref(performer)}?view=career`}
-              prefetch={false}
-              className={`tab-bar-item ${showCareer ? "active" : ""}`}
-            >
-              {t.catalog.artist.careerPath}
-            </AppLink>
-          </ScrollableTabs>
-        </div>
-      )}
+          Ниже 992px колонки складываются в одну (.artist-lower). */}
+      <div className="artist-lower">
+      <div className="artist-lower-main">
+        <CareerTimeline items={careerItems} />
+      </div>
 
-      {/* Две колонки на широком экране (правка владельца 2026-09-16):
-          песни, клипы и награды — узкие списки в одну строку каждый, и
-          в одну колонку они растягивали страницу вдвое. Многоколоночная
-          раскладка, а не грид: блоки разной высоты она балансирует сама,
-          а грид оставлял бы дыру под коротким блоком.
-          Ниже 992px колонка одна — см. .artist-cols в globals.css. */}
-      {!showCareer && (
-      <div className="artist-cols">
-      {performer.songs.length > 0 && (
-        <div className="mb-4">
-          <h2 className="section-heading mb-2">
-            <MusicNoteIcon className="icon-inline" /> {t.catalog.artist.songs}
-          </h2>
-          {/* Хвост дискографии свёрнут: у музыканта бывает под полсотни
-              песен, и страница уходила в бесконечность. */}
-          <ListFold
-            className="d-flex flex-column gap-2"
-            total={performer.songs.length}
-            visible={(songsCollapsed
-              ? performer.songs.slice(0, SONGS_PREVIEW)
-              : performer.songs
-            ).map(songRow)}
-            rest={songsCollapsed ? performer.songs.slice(SONGS_PREVIEW).map(songRow) : null}
-          />
-        </div>
-      )}
+      <div className="artist-lower-side">
 
       {mvAppearances.length > 0 && (
         <div className="surface p-4 mb-3">
@@ -1414,87 +1412,20 @@ export default async function PerformerPage({
         </div>
       )}
       </div>
-      )}
+      </div>
 
-      {/* Хроника ВМЕСТО разделов: то же содержимое, только по годам.
-          Сам блок прячется, когда пунктов меньше двух. */}
-      {showCareer && <CareerTimeline items={careerItems} />}
-
-      {(performer.sourceUrl ||
-        performer.mydramalistUrl ||
-        performer.musicFestivalUrl ||
-        ytmSource ||
-        (Array.isArray(performer.references) &&
-          performer.references.length > 0)) && (
-        <div className="mb-3 sources-block">
-          <h2 className="section-heading mb-2" style={{ opacity: 0.55 }}>
-            {t.catalog.sources}
-          </h2>
-          <ol className="ps-3 mb-0 d-flex flex-column gap-1">
-            {(Array.isArray(performer.references)
-              ? (performer.references as {
-                  label: string;
-                  url: string | null;
-                }[])
-              : []
-            ).map((r, i) => (
-              <li key={i}>
-                {r.url ? (
-                  <a href={r.url} target="_blank" rel="noopener noreferrer">
-                    {r.label || r.url}
-                  </a>
-                ) : (
-                  r.label
-                )}
-              </li>
-            ))}
-            {/* Страницы-источники — обычными пунктами списка, следующими
-                номерами. Приписку «(Source: MyDramaList)» из тела био
-                убрали — атрибуция живёт здесь. */}
-            {performer.sourceUrl && (
-              <li>
-                <a
-                  href={performer.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  tpop.fandom.com (CC BY-SA)
-                </a>
-              </li>
-            )}
-            {performer.mydramalistUrl && (
-              <li>
-                <a
-                  href={performer.mydramalistUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  MyDramaList
-                </a>
-              </li>
-            )}
-            {performer.musicFestivalUrl && (
-              <li>
-                <a
-                  href={performer.musicFestivalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  musicfestival.in.th
-                </a>
-              </li>
-            )}
-            {ytmSource && (
-              <li>
-                <a href={ytmSource} target="_blank" rel="noopener noreferrer">
-                  music.youtube.com
-                </a>
-              </li>
-            )}
-          </ol>
-        </div>
-      )}
+      {/* Разметка Person для поисковика. Стояла внутри блока
+          «Источники» и чуть не уехала вместе с ним — к витрине она
+          отношения не имеет, живёт сама по себе. */}
       <JsonLd data={personJsonLd(performer)} />
+
+      {/* Блок «Источники» убран со страницы (правка владельца
+          2026-09-16). Двадцать сносок занимали 474px в самом низу и
+          читались как чужой академический хвост. Сами поля (sourceUrl,
+          mydramalistUrl, musicFestivalUrl, references) НЕ удалены: они
+          живут в базе, правятся в админке и остаются атрибуцией — если
+          понадобится показать их снова, вернуть блок будет откуда. */}
+
       {/* Крошки: ступень раздела повторяет ссылку-возврат вверху
           страницы — у маскотов она ведёт в свою вкладку каталога. */}
       <JsonLd
