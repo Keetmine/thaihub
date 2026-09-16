@@ -1007,8 +1007,10 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
       kind: parseTodoKind(formData.get("kind")),
       date,
       hasTime,
-      // Цена есть только у покупок — см. модель TripTodo.
+      // Цена есть только у покупок, описание и ссылка — только у дел
+      // (см. модель TripTodo). Поля нет в форме — приходит null.
       ...priceFromForm(formData),
+      ...noteAndUrlFromForm(formData),
       createdById: access.user.id,
       editableByOthers: formData.get("editableByOthers") === "on",
       ...itemVisibilityData(
@@ -1067,6 +1069,7 @@ export async function updateTripTodo(todoId: string, formData: FormData): Promis
       date,
       hasTime,
       ...priceFromForm(formData),
+      ...noteAndUrlFromForm(formData),
       editableByOthers: formData.get("editableByOthers") === "on",
       ...itemVisibilityData(
         parseItemVisibility(
@@ -1272,6 +1275,24 @@ function parseTripDate(value: FormDataEntryValue | null): Date | null {
 // достать даже по прямому id.
 //
 // Делёжки «кто кому должен» нет тоже: владелец отменила её отдельно.
+
+/**
+ * Описание и ссылка у дела (правка владельца 2026-09-16). Общий разбор
+ * на создание и правку: «записаться в визовый центр» без адреса и
+ * ссылки на запись — половина дела.
+ *
+ * Ссылка сохраняется только http(s): чужая схема вроде `javascript:`
+ * на странице, которую открывает участник поездки, — это уже атака на
+ * него (то же правило, что у личных событий и ссылок сообщества).
+ * Мусор молча отбрасываем: запись из-за него сохраняться не перестаёт.
+ */
+function noteAndUrlFromForm(formData: FormData): { note: string | null; url: string | null } {
+  const rawUrl = String(formData.get("url") ?? "").trim();
+  return {
+    note: String(formData.get("note") ?? "").trim() || null,
+    url: /^https?:\/\//i.test(rawUrl) ? rawUrl : null,
+  };
+}
 
 /**
  * Цена прямо в записи (бронь, личное событие) — правка владельца

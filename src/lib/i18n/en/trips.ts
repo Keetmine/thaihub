@@ -246,6 +246,10 @@ export const trips = {
 
     /** Дела поездки. */
     todos: {
+        note: "Description",
+        url: "Link",
+        urlPlaceholder: "https://…",
+        openLink: "Open link",
         markUndone: "Mark as not done",
         markDone: "Mark as done",
         /** Row-of-actions button: adds one to-do, not a list. */

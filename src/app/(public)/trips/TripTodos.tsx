@@ -46,6 +46,9 @@ export type TodoData = {
    *  отмечен купленным: список покупок это хотелки. */
   priceMinor?: number | null;
   priceCurrency?: "THB" | "RUB" | "BYN" | "USD" | null;
+  /** Описание и ссылка — только у дел (правка владельца 2026-09-16). */
+  note?: string | null;
+  url?: string | null;
 };
 
 /** Строка дела: чекбокс + текст + дата + правка/удаление. Используется
@@ -148,6 +151,29 @@ export function TodoRow({
         {todo.author && (
           <span className="small text-secondary ms-2">{todo.author}</span>
         )}
+        {/* Ссылка — иконкой сразу за текстом, а не отдельной строкой:
+            она есть у немногих дел, и своя строка раздувала бы список.
+            rel/noreferrer обязательны: ссылку вводит участник поездки,
+            и открывать чужой адрес с доступом к нашей вкладке нельзя. */}
+        {todo.url && (
+          <a
+            href={todo.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ms-2 small"
+            title={t.trips.todos.openLink}
+            aria-label={t.trips.todos.openLink}
+          >
+            🔗
+          </a>
+        )}
+        {/* Описание — строкой под делом, приглушённо: это пояснение, а
+            не сам пункт. */}
+        {todo.note && (
+          <span className="d-block small text-secondary" style={{ whiteSpace: "pre-wrap" }}>
+            {todo.note}
+          </span>
+        )}
       </span>
       {rowError && <span className="small text-danger flex-shrink-0">{rowError}</span>}
       {timeLabel && <span className="small text-secondary flex-shrink-0">{timeLabel}</span>}
@@ -214,6 +240,43 @@ export function TodoRow({
               значение им записать неоткуда. */}
           {todo.kind === "SHOPPING" && (
             <PriceFields priceMinor={todo.priceMinor} currency={todo.priceCurrency} />
+          )}
+          {/* Описание и ссылка — только у ДЕЛ (правка владельца
+              2026-09-16): «записаться в визовый центр» без адреса и
+              ссылки на запись — половина дела. У чемодана и покупок
+              полей нет, и записать им туда нечего. */}
+          {todo.kind === "TODO" && (
+            <>
+              <div>
+                <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>
+                  {t.trips.todos.note}
+                </label>
+                <textarea
+                  id={`${uid}-note`}
+                  name="note"
+                  rows={2}
+                  defaultValue={todo.note ?? ""}
+                  className="form-control"
+                />
+              </div>
+              <div>
+                <label className="form-label small text-secondary" htmlFor={`${uid}-url`}>
+                  {t.trips.todos.url}
+                </label>
+                {/* type="url" — чтобы на телефоне открывалась подходящая
+                    клавиатура; мусор без http(s) просто не сохраняется,
+                    запись из-за него не теряется. */}
+                <input
+                  id={`${uid}-url`}
+                  name="url"
+                  type="url"
+                  inputMode="url"
+                  defaultValue={todo.url ?? ""}
+                  placeholder={t.trips.todos.urlPlaceholder}
+                  className="form-control"
+                />
+              </div>
+            </>
           )}
           {/* Даты — только у дел: датированное дело уходит в ленту
               плана, а «взять переходник» на число не назначают (правка

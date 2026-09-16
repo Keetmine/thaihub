@@ -871,6 +871,8 @@ export default async function TripPage({
       visibility: effectiveVisibility(t.visibility),
       priceMinor: t.priceMinor,
       priceCurrency: t.priceCurrency,
+      note: t.note,
+      url: t.url,
     }));
 
   // ЕДИНСТВЕННАЯ точка, где брони попадают в разметку. Жильё и перелёты
