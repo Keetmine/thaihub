@@ -6,6 +6,7 @@ import CatalogKindChips from "@/components/CatalogKindChips";
 import PosterTile from "@/components/PosterTile";
 import { CalendarIcon } from "@/components/icons";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 // Собирает адрес от текущих параметров страницы (назван по месту
@@ -29,9 +30,20 @@ import { getT } from "@/lib/i18n";
 import { unstable_cache } from "next/cache";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
-import { kindWhere, parseKind, type CatalogKind } from "@/lib/catalogKinds";
-import { getNewEpisodes } from "@/lib/newEpisodes";
-import { getPeopleTop } from "@/lib/peopleTop";
+import { isDramaKind, kindWhere, parseKind, type CatalogKind } from "@/lib/catalogKinds";
+import { findNeighbourDay, getEpisodesOfDay } from "@/lib/newEpisodes";
+import EpisodeDayPicker from "@/components/EpisodeDayPicker";
+import FilterPanel from "@/components/filters/FilterPanel";
+import FilterDisclosure from "@/components/filters/FilterDisclosure";
+import CatalogPagination from "@/components/filters/CatalogPagination";
+import {
+  dramaFilterDefs,
+  dramaFilterWhere,
+  loadDramaFilterOptions,
+  type FilterParams,
+} from "@/lib/catalogFilters";
+import { PAGE_SIZE } from "@/lib/pagination";
+import { addDays, dateKey, parseDateKey, formatDayLongMonth } from "@/lib/dates";
 import styles from "./dramas.module.css";
 
 export async function generateMetadata({
@@ -93,25 +105,6 @@ const getGuestDramas = unstable_cache(
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
-/**
- * Малый раздел каталога целиком — фильмы (43 записи) и шоу (118).
- *
- * Правило «без поиска показываем только отмеченное» придумано для
- * пяти тысяч сериалов; на разделе в полсотни строк оно превращало бы
- * страницу в пустую. Такой раздат виден целиком и гостю, и своему —
- * список один на всех, поэтому из кэша.
- */
-const getDramasOfKind = unstable_cache(
-  async (kind: string) =>
-    prisma.drama.findMany({
-      where: kindWhere(kind as CatalogKind),
-      select: DRAMA_ROW_SELECT,
-      orderBy: [{ year: { sort: "desc", nulls: "last" } }, { title: "asc" }],
-    }),
-  ["dramas-by-kind-v1"],
-  { revalidate: 1800, tags: [CATALOG_TAG] },
-);
-
 const getDramasWatermarkNames = unstable_cache(
   async () =>
     (
@@ -162,6 +155,8 @@ export default async function DramasPage({
     sort?: string;
     dir?: string;
     kind?: string;
+    page?: string;
+    day?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -172,6 +167,8 @@ export default async function DramasPage({
     sort: rawSort,
     dir: rawDir,
     kind: rawKind,
+    page: rawPage,
+    day: rawDay,
   } = sp;
   const q = (rawQ ?? "").trim();
   const sortKey = SORT_KEYS.includes(rawSort as SortKey) ? (rawSort as SortKey) : null;
@@ -233,60 +230,98 @@ export default async function DramasPage({
   // шоу. Новеллы — свой адрес /novels, сюда не попадают. Во время
   // поиска раздел не подсвечен: ищем по всему каталогу (см. ниже).
   const kind: CatalogKind = parseKind(rawKind);
-  // Малый раздел показывается ЦЕЛИКОМ: правило «только отмеченное»
-  // придумано для пяти тысяч сериалов, а на полусотне фильмов оно
-  // оставляло бы пустую страницу. Вкладок статуса у такого раздела
-  // поэтому нет — фильтровать сорок три строки нечего.
-  const wholeKind = kind === "movie" || kind === "show";
+  // «Мой список» — не тип записи, а отметки просмотра. Гостю такого
+  // раздела нет: чип ему не показывается, а прямой адрес откатывается
+  // на «Сериалы» — иначе человек попадал бы на пустую страницу без
+  // объяснений.
+  const mine = kind === "mine" && !!currentUser;
+  // Разделы каталога (сериалы/фильмы/шоу) листаются постранично, с
+  // фильтрами — как выдача поиска. Прежнее правило «без поиска
+  // показываем только отмеченное» переехало в «Мой список»: оно решало
+  // задачу «не рендерить пять тысяч строк», а её теперь решает
+  // постраничная выдача (правка владельца 2026-09-16).
+  const paged = !mine && isDramaKind(kind);
+  const page = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
 
   // Вкладка по умолчанию — «Смотрю сейчас» (правка владельца
-  // 2026-09-08): в каталог заходят продолжить начатое, а не листать
-  // тысячи записей. «Все» стали отдельным адресом `?status=all` —
-  // без параметра теперь не «всё подряд», а именно смотримое.
-  //
-  // Гостю умолчание не подходит: своих отметок у него нет, и вкладка
-  // встретила бы его пустотой — ему по-прежнему открывается «Все».
-  // Поиск тоже всегда идёт по всему каталогу (Ж5): вкладка на время
-  // поиска сбрасывается, иначе «нашлось 0» при живом сериале в базе.
+  // 2026-09-08): в свой список заходят продолжить начатое. «Все» —
+  // отдельный адрес `?status=all`. Поиск сбрасывает вкладку (Ж5):
+  // иначе «нашлось 0» при живом сериале в базе.
   const status =
-    q || rawStatus === "all" || wholeKind
+    !mine || q || rawStatus === "all"
       ? null
       : WATCH_STATUS_ORDER.includes(rawStatus as DramaWatchStatusValue)
         ? (rawStatus as DramaWatchStatusValue)
-        : currentUser
-          ? "WATCHING"
-          : null;
+        : "WATCHING";
 
-  // The catalog has grown into the thousands of dramas — loading and
-  // rendering all of them by default made the page painfully slow.
-  // Without a search term, show only dramas already marked with some
-  // watch status; the full catalog is reachable through search instead
-  // of one giant always-rendered list.
-  const searchResults = q
-    ? await prisma.drama.findMany({
-        where: dramaTitleWhere(q),
-        orderBy: { title: "asc" },
-        take: SEARCH_RESULT_LIMIT,
-      })
-    : null;
+  /* ---------- выборка списка ---------- */
 
-  const dramas = searchResults
-    ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
-    : wholeKind
-      ? await getDramasOfKind(kind)
-      : currentUser
-        ? await prisma.drama.findMany({
-            where: {
-              ...kindWhere(kind),
-              watchStatuses: {
-                some: status ? { userId: currentUser.id, status } : { userId: currentUser.id },
-              },
-            },
-            orderBy: { title: "asc" },
-          })
-        : // Анониму (каталог открыт для SEO) — свежие по дате эфира, а не
-          // пустой список «ваших статусов». Список общий — из кэша.
-          await getGuestDramas();
+  // Фильтры каталога — те же, что на /search (жанры, страна, тип,
+  // статус, агентство, теги, годы): описания и сборка запроса живут в
+  // lib/catalogFilters.ts, здесь только вызов.
+  const filterParams = sp as FilterParams;
+  const filterOptions = paged ? await loadDramaFilterOptions() : null;
+  const filterDefs =
+    filterOptions && paged
+      ? dramaFilterDefs(t, filterOptions, await getContentDict())
+      : [];
+
+  // Порядок постраничной выдачи задают ЗАГОЛОВКИ КОЛОНОК — но только
+  // каталожные: статус, своя оценка и просмотренные серии лежат в
+  // отдельной таблице, на одного человека, и сортировать по ним всю
+  // выдачу нельзя. В «Моём списке» они по-прежнему сортируются — там
+  // список целиком в памяти (см. sortedDramas ниже).
+  const DB_SORTABLE: SortKey[] = ["title", "type", "year", "country"];
+  const dbSortKey = paged && sortKey && DB_SORTABLE.includes(sortKey) ? sortKey : null;
+  const pagedOrderBy: Prisma.DramaOrderByWithRelationInput[] = dbSortKey
+    ? [{ [dbSortKey]: { sort: sortDir, nulls: "last" } }, { title: "asc" }]
+    : // Умолчание — свежее сверху: каталог листают, чтобы посмотреть,
+      // что вышло, а не с буквы «А».
+      [{ year: { sort: "desc", nulls: "last" } }, { title: "asc" }];
+
+  const pagedWhere: Prisma.DramaWhereInput = {
+    AND: [kindWhere(kind), ...(q ? [dramaTitleWhere(q)] : []), ...dramaFilterWhere(filterParams)],
+  };
+
+  const [dramas, totalCount] = paged
+    ? await Promise.all([
+        prisma.drama.findMany({
+          where: pagedWhere,
+          select: DRAMA_ROW_SELECT,
+          orderBy: pagedOrderBy,
+          take: PAGE_SIZE,
+          skip: (page - 1) * PAGE_SIZE,
+        }),
+        prisma.drama.count({ where: pagedWhere }),
+      ])
+    : [
+        q
+          ? // Поиск внутри «моего списка» ищет по ВСЕМУ каталогу (Ж5):
+            // человек ищет сериал, чтобы его отметить, — значит его в
+            // списке ещё нет.
+            await prisma.drama.findMany({
+              where: dramaTitleWhere(q),
+              select: DRAMA_ROW_SELECT,
+              orderBy: { title: "asc" },
+              take: SEARCH_RESULT_LIMIT,
+            })
+          : currentUser
+            ? await prisma.drama.findMany({
+                where: {
+                  watchStatuses: {
+                    some: status
+                      ? { userId: currentUser.id, status }
+                      : { userId: currentUser.id },
+                  },
+                },
+                select: DRAMA_ROW_SELECT,
+                orderBy: { title: "asc" },
+              })
+            : // Сюда попадает только гость с `?kind=mine` в адресе —
+              // показываем ему обычную витрину сериалов.
+              await getGuestDramas(),
+        0,
+      ];
 
   const statusByDramaId = await getDramaWatchStatuses(
     dramas.map((d) => d.id),
@@ -304,23 +339,45 @@ export default async function DramasPage({
   // него нет). Популярность одна на всех — из кэша.
   const watermarkNames = await getDramasWatermarkNames();
 
-  // ---------- витрина каталога (решение владельца 2026-09-16) ----------
+  /* ---------- «Новые серии»: листалка по дням ---------- */
   //
   // Каталог открывался на «Смотрю сейчас», и у девяти зарегистрированных
   // из тринадцати там было пусто: новичок первым делом видел пустую
-  // страницу. Сверху теперь то, что есть у всех, — вышедшие за неделю
-  // серии и топ по оценкам, — а «своё» уехало вниз, под свой заголовок.
+  // страницу. Сверху теперь то, что есть у всех.
   //
-  // Витрина рисуется ТОЛЬКО на разделе «Сериалы» и только без поиска:
-  // на «Фильмах» лента вышедших серий говорила бы не о том разделе, в
-  // котором человек стоит, а в результатах поиска она отодвигала бы
-  // найденное за экран.
+  // Не неделя одной кучей, а ОДИН ДЕНЬ со стрелками (правка владельца
+  // 2026-09-16, «как календарь»): куча отвечала на вопрос «что вышло
+  // вообще», а не «что вышло в такой-то день», и завтрашние серии в неё
+  // не попадали вовсе.
+  //
+  // Блок рисуется только на разделе «Сериалы» и только без поиска: на
+  // «Фильмах» серии говорили бы не о том разделе, где стоит человек, а
+  // в результатах поиска отодвигали бы найденное за экран.
   const showcase = !q && kind === "series";
-  const [newEpisodes, peopleTop] = showcase
-    ? await Promise.all([getNewEpisodes(), getPeopleTop()])
-    : [[], null];
-  // Лента топа короткая: витрина зовёт на /dramas/top, а не заменяет её.
-  const topPreview = peopleTop ? peopleTop.rows.slice(0, 6) : [];
+  const today = new Date();
+  // Мусор в `?day=` — это сегодня, а не пятисотый год.
+  const day =
+    rawDay && /^\d{4}-\d{2}-\d{2}$/.test(rawDay) ? parseDateKey(rawDay) : today;
+  const [dayEpisodes, prevDay, nextDay] = showcase
+    ? await Promise.all([
+        getEpisodesOfDay(day),
+        findNeighbourDay(day, -1),
+        findNeighbourDay(day, 1),
+      ])
+    : [[], null, null];
+  // Подпись дня: «Сегодня» и соседи — словами, дальше датой. Человеку,
+  // который открыл каталог, «Сегодня» читается быстрее, чем «16 сентября».
+  const todayKey = dateKey(today);
+  const dayLabel =
+    dateKey(day) === todayKey
+      ? t.catalog.showcase.today
+      : dateKey(day) === dateKey(addDays(today, -1))
+        ? t.catalog.showcase.yesterday
+        : dateKey(day) === dateKey(addDays(today, 1))
+          ? t.catalog.showcase.tomorrow
+          : formatDayLongMonth(day, locale);
+  /** Адрес дня — от текущих параметров, чтобы не терять раздел и фильтры. */
+  const dayHref = (d: Date) => adminListHref("/dramas", sp, { day: dateKey(d), page: null });
 
   // ---------- сортировка по колонке таблицы ----------
   //
@@ -357,7 +414,11 @@ export default async function DramasPage({
         return null;
     }
   };
-  const sortedDramas = sortKey
+  // В постраничной выдаче порядок задаёт БАЗА (pagedOrderBy): досортируй
+  // мы тут — переставились бы тридцать строк одной открытой страницы, а
+  // человек прочёл бы это как «отсортировано». В «Моём списке» список
+  // целиком в памяти, и сортировка в JS честная.
+  const sortedDramas = !paged && sortKey
     ? [...dramas].sort((a, b) => {
         const av = sortValue(a);
         const bv = sortValue(b);
@@ -385,11 +446,14 @@ export default async function DramasPage({
     adminListHref(
       "/dramas",
       sp,
+      // `page: null` — старый номер страницы относился к другому
+      // порядку строк, и после смены сортировки вёл бы в середину
+      // незнакомого списка (то же правило в FilterPanel).
       sortKey !== key
-        ? { sort: key, dir: null }
+        ? { sort: key, dir: null, page: null }
         : sortDir === "asc"
-          ? { sort: key, dir: "desc" }
-          : { sort: null, dir: null },
+          ? { sort: key, dir: "desc", page: null }
+          : { sort: null, dir: null, page: null },
     );
 
   // Класс колонки — тот же, что у ячейки строки: подпись встаёт в свою
@@ -405,20 +469,77 @@ export default async function DramasPage({
     episodes: styles.colProgress,
   };
 
-  const columnHead = (key: SortKey) => (
-    <AppLink
-      key={key}
-      href={sortHref(key)}
-      prefetch={false}
-      className={`${styles.headCell} ${HEAD_COLUMN_CLASS[key]} ${
-        sortKey === key ? styles.headCellActive : ""
-      }`}
-    >
-      {t.catalog.dramaColumns[key]}
-      {sortKey === key && <span aria-hidden> {sortDir === "asc" ? "▲" : "▼"}</span>}
-    </AppLink>
-  );
+  const columnHead = (key: SortKey) => {
+    // В постраничной выдаче сортируют ТОЛЬКО каталожные колонки:
+    // статус, своя оценка и просмотренные серии лежат в отдельной
+    // таблице, на одного человека, и упорядочить по ним всю выдачу
+    // нельзя — отсортировалась бы одна открытая страница, что хуже, чем
+    // никакой сортировки. В «Моём списке» сортируются все: он целиком в
+    // памяти.
+    if (paged && !DB_SORTABLE.includes(key)) {
+      return (
+        <span key={key} className={`${styles.headCell} ${HEAD_COLUMN_CLASS[key]}`}>
+          {t.catalog.dramaColumns[key]}
+        </span>
+      );
+    }
+    return (
+      <AppLink
+        key={key}
+        href={sortHref(key)}
+        prefetch={false}
+        className={`${styles.headCell} ${HEAD_COLUMN_CLASS[key]} ${
+          sortKey === key ? styles.headCellActive : ""
+        }`}
+      >
+        {t.catalog.dramaColumns[key]}
+        {sortKey === key && <span aria-hidden> {sortDir === "asc" ? "▲" : "▼"}</span>}
+      </AppLink>
+    );
+  };
 
+
+  /* Список строками, а не постерная сетка: сериалов много одиночных,
+     карточки съедали место, а длинные названия обрезались. Строка «аля
+     таблица» (правка владельца 2026-09-05): миниатюра постера, название
+     (у выходящих — бейдж «Выходит»), справа колонки статус · тип · год ·
+     страна · оценка · прогресс. Геометрия — в dramas.module.css.
+
+     Вынесено в переменную, потому что рисуется в двух обёртках: голой (в
+     «Моём списке») и в колонке рядом с фильтрами (разделы каталога). */
+  const table = (
+    <>
+      {/* Шапка таблицы (правка владельца 2026-09-06): названия колонок —
+          ссылки, они же переключатели сортировки. Сетка та же, что у
+          колонок строки, поэтому подписи стоят ровно над своими
+          ячейками. */}
+      <div className={styles.head}>
+        <span className={styles.headTitleCell}>{columnHead("title")}</span>
+        <div className={styles.cols}>
+          {columnHead("status")}
+          {columnHead("type")}
+          {columnHead("year")}
+          {columnHead("country")}
+          {columnHead("rating")}
+          {columnHead("episodes")}
+        </div>
+      </div>
+
+      {sortedDramas.length === 0 ? (
+        <p className="text-secondary">
+          {q
+            ? t.common.nothingFound
+            : paged
+              ? t.filters.nothingMatched
+              : t.catalog.dramas.empty}
+        </p>
+      ) : (
+        <div className={`d-flex flex-column ${styles.rows}`}>
+          {sortedDramas.map((d) => renderRow(d))}
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div>
@@ -431,71 +552,90 @@ export default async function DramasPage({
         watermarkNames={watermarkNames}
       />
 
-      {showcase && (
-        <>
-          <section className="mb-5">
-            <h2 className="section-heading mb-3">{t.catalog.showcase.newEpisodes}</h2>
-            {newEpisodes.length === 0 ? (
-              <p className="text-secondary mb-0">{t.catalog.showcase.newEpisodesEmpty}</p>
-            ) : (
-              <div className="poster-grid">
-                {newEpisodes.map((d) => (
-                  <PosterTile
-                    key={d.id}
-                    href={dramaHref(d)}
-                    posterUrl={d.posterUrl}
-                    title={dramaTitleForLocale(d, locale)}
-                    subtitle={d.year ? String(d.year) : undefined}
-                    chip={t.catalog.showcase.episodeChip(d.numbers)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {topPreview.length > 0 && (
-            <section className="mb-5">
-              <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <h2 className="section-heading mb-0">{t.catalog.showcase.popular}</h2>
-                <AppLink href="/dramas/top" className="small text-secondary">
-                  {t.common.all}
-                </AppLink>
-              </div>
-              <div className="poster-grid">
-                {topPreview.map((row) => (
-                  <PosterTile
-                    key={row.id}
-                    href={dramaHref(row)}
-                    posterUrl={row.posterUrl}
-                    title={dramaTitleForLocale(row, locale)}
-                    subtitle={row.year ? String(row.year) : undefined}
-                    {...(row.score != null
-                      ? { chip: `★ ${row.score.toFixed(1)}` }
-                      : {})}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-        </>
-      )}
-
-      {/* Разделы каталога: сериалы · фильмы · шоу · новеллы.
-          Ряд стоит ВПЛОТНУЮ К СПИСКУ, а не под шапкой: он управляет
-          именно списком, а стоя над витриной выглядел бы так, будто
-          фильтрует и её — хотя «Новые серии» показывают всё, у чего на
-          неделе вышла серия, включая шоу.
+      {/* Разделы каталога: сериалы · фильмы · шоу · новеллы · мой
+          список. Ряд стоит СРАЗУ ПОД ШАПКОЙ (правка владельца
+          2026-09-16): это главный переключатель страницы, и всё
+          остальное — уже содержимое выбранного раздела.
           Во время поиска не подсвечен ни один: ищем по всему каталогу. */}
-      <CatalogKindChips active={q ? null : kind} />
+      <CatalogKindChips active={q ? null : kind} loggedIn={!!currentUser} />
 
-      {/* «Моё» — заголовок списка со вкладками статусов. Без него
-          таблица под витриной читалась бы её продолжением, хотя
-          показывает совсем другое: отмеченное этим человеком. Только на
-          «Сериалах»: у фильмов и шоу список показывает раздел целиком,
-          а не отмеченное, и заголовок врал бы. */}
-      {showcase && currentUser && (
-        <h2 className="section-heading mb-3">{t.catalog.showcase.mine}</h2>
+      {showcase && (
+        <section className="mb-5">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h2 className="section-heading mb-0">{t.catalog.showcase.newEpisodes}</h2>
+            {/* «Расписание» — кнопка с подписью, а не голая иконка
+                (правка владельца 2026-09-16): иконку рядом с поиском
+                никто не находил. Ведёт в календарь, открытый на виде
+                «Сериалы». */}
+            <AppLink
+              href="/calendar?view=series"
+              prefetch={false}
+              className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+            >
+              <CalendarIcon />
+              {t.catalog.showcase.schedule}
+            </AppLink>
+          </div>
+
+          {/* Листалка дней. Стрелки — обычные ссылки (работают без JS и
+              открываются в новой вкладке), выбор даты — крошечный
+              клиентский компонент с нативным календарём.
+              Стрелка прыгает на БЛИЖАЙШИЙ день с сериями, а не на
+              соседние сутки: в межсезонье иначе приходилось бы кликать
+              её пять раз подряд по пустым дням. Нет такого дня впереди —
+              стрелки нет вовсе. */}
+          <div className="episode-day-nav mb-3">
+            {prevDay ? (
+              <AppLink
+                href={dayHref(prevDay)}
+                prefetch={false}
+                className="btn btn-ghost btn-sm"
+                aria-label={t.catalog.showcase.prevDay}
+                title={t.catalog.showcase.prevDay}
+              >
+                ←
+              </AppLink>
+            ) : (
+              <span className="btn btn-ghost btn-sm disabled" aria-hidden>
+                ←
+              </span>
+            )}
+            <span className="episode-day-label small text-secondary">{dayLabel}</span>
+            {nextDay ? (
+              <AppLink
+                href={dayHref(nextDay)}
+                prefetch={false}
+                className="btn btn-ghost btn-sm"
+                aria-label={t.catalog.showcase.nextDay}
+                title={t.catalog.showcase.nextDay}
+              >
+                →
+              </AppLink>
+            ) : (
+              <span className="btn btn-ghost btn-sm disabled" aria-hidden>
+                →
+              </span>
+            )}
+            <EpisodeDayPicker day={dateKey(day)} />
+          </div>
+
+          {dayEpisodes.length === 0 ? (
+            <p className="text-secondary mb-0">{t.catalog.showcase.dayEmpty}</p>
+          ) : (
+            <div className="poster-grid">
+              {dayEpisodes.map((d) => (
+                <PosterTile
+                  key={d.id}
+                  href={dramaHref(d)}
+                  posterUrl={d.posterUrl}
+                  title={dramaTitleForLocale(d, locale)}
+                  subtitle={d.year ? String(d.year) : undefined}
+                  chip={t.catalog.showcase.episodeChip(d.numbers)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       <div className="tab-bar-row">
@@ -504,19 +644,19 @@ export default async function DramasPage({
               владельца 2026-09-08): каталог открывается на «Смотрю
               сейчас», и полный список стал не отправной точкой, а
               соседней вкладкой. */}
-          {currentUser && !wholeKind && WATCH_STATUS_ORDER.map((s) => (
+          {mine && WATCH_STATUS_ORDER.map((s) => (
             <AppLink
               key={s}
-              href={`/dramas?status=${s}`}
+              href={`/dramas?kind=mine&status=${s}`}
               prefetch={false}
               className={`tab-bar-item ${status === s ? "active" : ""}`}
             >
               {t.catalog.watchStatus[s]}
             </AppLink>
           ))}
-          {!wholeKind && (
+          {mine && (
             <AppLink
-              href={`/dramas?status=all${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              href={`/dramas?kind=mine&status=all${q ? `&q=${encodeURIComponent(q)}` : ""}`}
               prefetch={false}
               className={`tab-bar-item ${!status ? "active" : ""}`}
             >
@@ -526,12 +666,12 @@ export default async function DramasPage({
           {/* «Популярное» (аудит 2026-09, п.6.5) — отдельная страница, а
               не вкладка-фильтр: у неё свой адрес для поисковика и гостя.
               Ссылка в том же ряду, чтобы топ было откуда найти.
-              На фильмах и шоу её нет: вкладок статуса там тоже нет, и
-              одинокая ссылка в пустом ряду читалась бы заголовком
-              списка — «Популярное» над алфавитом фильмов. С «Сериалов»
-              топ по-прежнему в двух местах: тут и ссылкой «все» в
-              витрине. */}
-          {!wholeKind && (
+              Только в «Моём списке», где ряд вкладок и так есть: на
+              разделах каталога вкладок нет, и одинокая ссылка в пустом
+              ряду читалась бы заголовком списка — «Популярное» над
+              алфавитом фильмов. С разделов туда ведёт чип «Сериалы» →
+              ряд вкладок «Мой список». */}
+          {mine && (
             <AppLink href="/dramas/top" prefetch={false} className="tab-bar-item">
               {t.catalog.dramas.topLink}
             </AppLink>
@@ -563,14 +703,20 @@ export default async function DramasPage({
               {t.catalog.dramas.roulette}
             </span>
           </AppLink>
-          <AppLink
-            href="/calendar?view=series"
-            className="btn btn-ghost btn-sm flex-shrink-0"
-            aria-label={t.catalog.dramas.calendarLink}
-            title={t.catalog.dramas.calendarLink}
-          >
-            <CalendarIcon />
-          </AppLink>
+          {/* На «Сериалах» расписание уже есть кнопкой с подписью над
+              блоком «Новые серии» — второй раз иконкой не дублируем. На
+              остальных разделах она остаётся единственным входом в
+              календарь серий. */}
+          {!showcase && (
+            <AppLink
+              href="/calendar?view=series"
+              className="btn btn-ghost btn-sm flex-shrink-0"
+              aria-label={t.catalog.dramas.calendarLink}
+              title={t.catalog.dramas.calendarLink}
+            >
+              <CalendarIcon />
+            </AppLink>
+          )}
           <NameSearchBox
             action="/dramas"
             q={q}
@@ -591,39 +737,37 @@ export default async function DramasPage({
           литера на уровне первой строки группы, список визуально
           сплошной (на мобиле — маленькая строка-метка). */}
 
-      {/* Шапка таблицы (правка владельца 2026-09-06): названия колонок —
-          ссылки, они же переключатели сортировки. Сетка та же, что у
-          колонок строки, поэтому подписи стоят ровно над своими
-          ячейками. */}
-      <div className={styles.head}>
-        <span className={styles.headTitleCell}>{columnHead("title")}</span>
-        <div className={styles.cols}>
-          {columnHead("status")}
-          {columnHead("type")}
-          {columnHead("year")}
-          {columnHead("country")}
-          {columnHead("rating")}
-          {columnHead("episodes")}
+      {paged ? (
+        /* Раздел каталога — как выдача поиска: список слева, фильтры
+           колонкой справа, на телефоне колонка становится раскрывашкой
+           над списком (правка владельца 2026-09-16 — «мб вообще
+           объединим визуально со страницей поиска»). Фильтры и
+           сортировка живут в адресе, поэтому срез можно переслать. */
+        <div className="row g-4">
+          <div className="col-12 col-lg-9">
+            <p className="text-secondary small mb-3">{t.filters.results(totalCount)}</p>
+            {table}
+            <CatalogPagination
+              page={page}
+              pages={Math.max(1, Math.ceil(totalCount / PAGE_SIZE))}
+              params={filterParams}
+              basePath="/dramas"
+            />
+          </div>
+          <aside className="col-12 col-lg-3 order-first order-lg-last">
+            <div className="d-lg-none">
+              <FilterDisclosure title={t.filters.panelTitle}>
+                <FilterPanel defs={filterDefs} />
+              </FilterDisclosure>
+            </div>
+            <div className="d-none d-lg-block search-filter-aside">
+              <p className="section-heading mb-3">{t.filters.panelTitle}</p>
+              <FilterPanel defs={filterDefs} />
+            </div>
+          </aside>
         </div>
-      </div>
-
-      {/* Буквы убраны совсем (правка владельца 2026-09-06): ни жёлоба
-          слева, ни рейки справа — таблица читается сплошным списком, а
-          порядок задаёт шапка. Серверные страницы буквы (?letter=X)
-          живы: они нужны краулеру для перелинковки, туда ведут ссылки
-          из карты сайта. */}
-      {sortedDramas.length === 0 ? (
-        <p className="text-secondary">
-          {q
-            ? t.common.nothingFound
-            : wholeKind
-              ? t.catalog.dramas.emptyKind
-              : t.catalog.dramas.empty}
-        </p>
       ) : (
-        <div className={`d-flex flex-column ${styles.rows}`}>
-          {sortedDramas.map((d) => renderRow(d))}
-        </div>
+        table
       )}
     </div>
   );

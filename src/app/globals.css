@@ -4081,6 +4081,44 @@ button.hero-stat-toggle.is-open {
   transform: none;
 }
 
+/* Листалка дней у блока «Новые серии» (EpisodeDayPicker). Нативное
+   поле даты лежит ПОД кнопкой-календарём и растянуто на неё: клик
+   ловит кнопка (и зовёт showPicker), а там, где showPicker не
+   поддерживается, попадание приходится на само поле — и календарь
+   открывает браузер. Прятать поле через display:none нельзя: скрытому
+   полю браузер календарь не откроет. */
+.episode-day-pick {
+  position: relative;
+  display: inline-flex;
+}
+
+.episode-day-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Ряд «← дата →» над сеткой постеров. Подпись дня фиксированной
+   ширины: без неё стрелки прыгали бы при переходе с «Сегодня» на
+   «16 сентября». */
+.episode-day-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.episode-day-label {
+  min-width: 9rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Сетка постеров каталога: переносится по строкам (в отличие от
    горизонтальной ленты .poster-row). */
 .poster-grid {

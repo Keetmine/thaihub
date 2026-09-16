@@ -1,6 +1,11 @@
 import AppLink from "@/components/AppLink";
 import { getT } from "@/lib/i18n";
-import { CATALOG_KINDS, kindHref, type CatalogKind } from "@/lib/catalogKinds";
+import {
+  CATALOG_KINDS,
+  PUBLIC_CATALOG_KINDS,
+  kindHref,
+  type CatalogKind,
+} from "@/lib/catalogKinds";
 
 /**
  * Ряд разделов каталога: Сериалы · Фильмы · Шоу · Новеллы.
@@ -16,15 +21,20 @@ import { CATALOG_KINDS, kindHref, type CatalogKind } from "@/lib/catalogKinds";
  */
 export default async function CatalogKindChips({
   active,
+  loggedIn = false,
 }: {
   /** Подсвеченный раздел; `null` — ни один (страница поиска: ищем по
    *  всему каталогу, и подсветка врала бы). */
   active: CatalogKind | null;
+  /** Гостю «Мой список» не показываем: отмечать ему нечего, и чип вёл
+   *  бы на страницу входа из ряда разделов каталога. */
+  loggedIn?: boolean;
 }) {
   const { t } = await getT();
+  const kinds = loggedIn ? CATALOG_KINDS : PUBLIC_CATALOG_KINDS;
   return (
     <nav className="d-flex flex-wrap gap-2 mb-4" aria-label={t.catalog.kinds.aria}>
-      {CATALOG_KINDS.map((kind) => (
+      {kinds.map((kind) => (
         <AppLink
           key={kind}
           href={kindHref(kind)}

@@ -14,6 +14,7 @@ import EntityPosterCard from "@/components/EntityPosterCard";
 import UploadImage from "@/components/UploadImage";
 import FilterPanel from "@/components/filters/FilterPanel";
 import FilterDisclosure from "@/components/filters/FilterDisclosure";
+import CatalogPagination from "@/components/filters/CatalogPagination";
 import SortSelect from "@/components/filters/SortSelect";
 import {
   getFavoritedEventIds,
@@ -340,7 +341,7 @@ async function SectionResults({
         ) : (
           results
         )}
-        <Pagination page={page} pages={pages} params={params} t={t} />
+        <CatalogPagination page={page} pages={pages} params={params} basePath="/search" />
       </div>
       <aside className="col-12 col-lg-3 order-first order-lg-last">
         {/* Отдельных плашек выбранного нет (правка владельца):
@@ -355,48 +356,6 @@ async function SectionResults({
           <FilterPanel defs={defs} />
         </div>
       </aside>
-    </div>
-  );
-}
-
-/** Постранично: Prev/Next достаточно — глубокие переходы в выдаче не
- *  навигация, а листание. */
-function Pagination({
-  page,
-  pages,
-  params,
-  t,
-}: {
-  page: number;
-  pages: number;
-  params: FilterParams;
-  t: Dict;
-}) {
-  if (pages <= 1) return null;
-  const href = (p: number) => {
-    const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) {
-      if (typeof v === "string" && v) qs.set(k, v);
-    }
-    if (p > 1) qs.set("page", String(p));
-    else qs.delete("page");
-    return `/search?${qs}`;
-  };
-  return (
-    <div className="d-flex align-items-center gap-3 mt-4">
-      {page > 1 && (
-        <AppLink href={href(page - 1)} className="btn btn-ghost btn-sm">
-          ← {t.filters.prevPage}
-        </AppLink>
-      )}
-      <span className="small text-secondary">
-        {page} / {pages}
-      </span>
-      {page < pages && (
-        <AppLink href={href(page + 1)} className="btn btn-ghost btn-sm">
-          {t.filters.nextPage} →
-        </AppLink>
-      )}
     </div>
   );
 }

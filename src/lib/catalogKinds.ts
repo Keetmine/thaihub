@@ -19,11 +19,30 @@ import type { Prisma } from "@/generated/prisma/client";
  * Модуль чистый: тем же разбором пользуются страница, чипы и тест.
  */
 
-/** Раздел каталога. `novels` живёт на своей странице, остальные — на /dramas. */
-export type CatalogKind = "series" | "movie" | "show" | "novels";
+/**
+ * Раздел каталога. `novels` живёт на своей странице, остальные — на
+ * /dramas.
+ *
+ * `mine` — не тип записи, а «мой список»: то, что человек отметил
+ * статусом просмотра. Стоит в том же ряду (правка владельца
+ * 2026-09-16), потому что для читающего это такой же раздел каталога,
+ * как «Фильмы»; показывается только залогиненному — гостю отмечать
+ * нечего.
+ */
+export type CatalogKind = "series" | "movie" | "show" | "novels" | "mine";
 
-/** Порядок в ряду чипов: от самого большого раздела к самому малому. */
-export const CATALOG_KINDS: CatalogKind[] = ["series", "movie", "show", "novels"];
+/** Порядок в ряду чипов: от самого большого раздела к самому малому,
+ *  «Мой список» — последним, за разделами каталога. */
+export const CATALOG_KINDS: CatalogKind[] = ["series", "movie", "show", "novels", "mine"];
+
+/** Разделы, которые видит гость: свой список ему показывать нечем. */
+export const PUBLIC_CATALOG_KINDS: CatalogKind[] = CATALOG_KINDS.filter((k) => k !== "mine");
+
+/** Раздел — это тип записи в `Drama` (а не новеллы и не «моё»): такой
+ *  показывается списком с фильтрами и постраничной листалкой. */
+export function isDramaKind(kind: CatalogKind): kind is "series" | "movie" | "show" {
+  return kind === "series" || kind === "movie" || kind === "show";
+}
 
 /**
  * Значения `Drama.type`, которые относятся к разделу.
@@ -32,7 +51,7 @@ export const CATALOG_KINDS: CatalogKind[] = ["series", "movie", "show", "novels"
  * и то же — оба переводятся словарём как «Шоу» (см. contentDictionary),
  * поэтому и раздел у них общий.
  */
-const TYPES: Record<Exclude<CatalogKind, "novels">, string[]> = {
+const TYPES: Record<"series" | "movie" | "show", string[]> = {
   series: ["Drama"],
   movie: ["Movie"],
   show: ["TV Show", "TV Program"],
@@ -48,7 +67,7 @@ const TYPES: Record<Exclude<CatalogKind, "novels">, string[]> = {
  * в seenLive.ts, где «без типа» тоже значит «сериал».
  */
 export function kindWhere(kind: CatalogKind): Prisma.DramaWhereInput {
-  if (kind === "novels") return {};
+  if (!isDramaKind(kind)) return {};
   const type = { in: TYPES[kind] };
   return kind === "series" ? { OR: [{ type }, { type: null }] } : { type };
 }

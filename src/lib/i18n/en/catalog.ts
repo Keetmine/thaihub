@@ -175,14 +175,20 @@ export const catalog = {
         movie: "Films",
         show: "Shows",
         novels: "Novels",
+        mine: "My list",
     },
 
-    /** Витрина каталога: «Новые серии» и «Популярное» над списком. */
+    /** Витрина каталога: «Новые серии» с листалкой по дням. */
     showcase: {
         newEpisodes: "New episodes",
-        newEpisodesEmpty: "No new episodes aired this week.",
-        popular: "Popular",
-        mine: "Mine",
+        dayEmpty: "No episodes aired on this day.",
+        schedule: "Schedule",
+        pickDay: "Pick a day",
+        prevDay: "Previous day with episodes",
+        nextDay: "Next day with episodes",
+        today: "Today",
+        yesterday: "Yesterday",
+        tomorrow: "Tomorrow",
         episodeChip: (numbers: number[]) =>
             `${numbers.length === 1 ? "Episode" : "Episodes"} ${formatEpisodeNumbers(numbers)}`,
     },

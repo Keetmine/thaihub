@@ -4,9 +4,20 @@ import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
 import CatalogKindChips from "@/components/CatalogKindChips";
+import FilterPanel from "@/components/filters/FilterPanel";
+import FilterDisclosure from "@/components/filters/FilterDisclosure";
+import CatalogPagination from "@/components/filters/CatalogPagination";
+import {
+  loadNovelFilterOptions,
+  novelFilterDefs,
+  novelFilterWhere,
+  type FilterParams,
+} from "@/lib/catalogFilters";
+import { PAGE_SIZE } from "@/lib/pagination";
 import { novelHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
+import { getCurrentUser } from "@/lib/userAuth";
 import { unstable_cache } from "next/cache";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 
@@ -63,24 +74,57 @@ const getNovelsWatermarkNames = unstable_cache(
 export default async function NovelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const { t } = await getT();
-  const { q: rawQ } = await searchParams;
+  // Нужен только для чипа «Мой список»: гостю его в ряду не показываем.
+  const currentUser = await getCurrentUser();
+  const sp = await searchParams;
+  const { q: rawQ, page: rawPage } = sp;
   const q = (rawQ ?? "").trim();
+  const page = Math.max(1, Number.parseInt(rawPage ?? "1", 10) || 1);
 
-  const novels = q
-    ? await prisma.novel.findMany({
-        where: {
-          OR: [
-            { title: { contains: q, mode: "insensitive" } },
-            { author: { contains: q, mode: "insensitive" } },
-          ],
-        },
-        select: NOVEL_ROW_SELECT,
-        orderBy: { title: "asc" },
-      })
-    : await getNovelsList();
+  // Раздел каталога — значит фильтры и страницы, как у сериалов
+  // (правка владельца 2026-09-16). Новелл сейчас пять, и листалка с
+  // фильтрами не понадобится ни разу; смысл в другом — раздел устроен
+  // так же, как соседние, и не придётся переделывать его заново, когда
+  // новелл станет несколько сотен.
+  const filterParams = sp as FilterParams;
+  const filterOptions = await loadNovelFilterOptions();
+  const filterDefs = novelFilterDefs(t, filterOptions);
+  const where = {
+    AND: [
+      ...(q
+        ? [
+            {
+              OR: [
+                { title: { contains: q, mode: "insensitive" as const } },
+                { author: { contains: q, mode: "insensitive" as const } },
+              ],
+            },
+          ]
+        : []),
+      ...novelFilterWhere(filterParams),
+    ],
+  };
+  // Срез без запроса и без фильтров — тот же для всех, поэтому берётся
+  // из кэша (он же считает и общее число).
+  const plain = !q && where.AND.length === 0;
+  const [novels, total] = plain
+    ? await getNovelsList().then((rows) => [
+        rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        rows.length,
+      ] as const)
+    : await Promise.all([
+        prisma.novel.findMany({
+          where,
+          select: NOVEL_ROW_SELECT,
+          orderBy: { title: "asc" },
+          take: PAGE_SIZE,
+          skip: (page - 1) * PAGE_SIZE,
+        }),
+        prisma.novel.count({ where }),
+      ]);
 
   // Названия за шапкой. Внятной метрики популярности у новелл нет
   // (ни избранного, ни статусов — только отзывы, которых почти нет),
@@ -102,10 +146,12 @@ export default async function NovelsPage({
           («Каталог»), и новеллы — его четвёртый раздел. Свой адрес и
           свою страницу они при этом сохранили — переезжать URL после
           августовского падения трафика нельзя (docs/features/seo.md). */}
-      <CatalogKindChips active="novels" />
+      <CatalogKindChips active="novels" loggedIn={!!currentUser} />
 
       <NameSearchBox action="/novels" q={q} placeholder={t.catalog.novels.search} />
 
+      <div className="row g-4 mt-1">
+        <div className="col-12 col-lg-9">
       {novels.length === 0 ? (
         <p className="text-secondary">
           {q ? t.common.nothingFound : t.catalog.novels.empty}
@@ -160,6 +206,25 @@ export default async function NovelsPage({
           ))}
         </div>
       )}
+          <CatalogPagination
+            page={page}
+            pages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
+            params={filterParams}
+            basePath="/novels"
+          />
+        </div>
+        <aside className="col-12 col-lg-3 order-first order-lg-last">
+          <div className="d-lg-none">
+            <FilterDisclosure title={t.filters.panelTitle}>
+              <FilterPanel defs={filterDefs} />
+            </FilterDisclosure>
+          </div>
+          <div className="d-none d-lg-block search-filter-aside">
+            <p className="section-heading mb-3">{t.filters.panelTitle}</p>
+            <FilterPanel defs={filterDefs} />
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

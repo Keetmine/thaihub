@@ -162,14 +162,21 @@ export const catalog: Dict["catalog"] = {
         movie: "Фильмы",
         show: "Шоу",
         novels: "Новеллы",
+        mine: "Мой список",
     },
 
-    /** Витрина каталога: «Новые серии» и «Популярное» над списком. */
+    /** Витрина каталога: «Новые серии» с листалкой по дням. */
     showcase: {
         newEpisodes: "Новые серии",
-        newEpisodesEmpty: "На этой неделе новых серий не выходило.",
-        popular: "Популярное",
-        mine: "Моё",
+        /** Пусто именно в ВЫБРАННЫЙ день — текст про день, а не «ничего нет». */
+        dayEmpty: "В этот день серий не выходило.",
+        schedule: "Расписание",
+        pickDay: "Выбрать день",
+        prevDay: "Предыдущий день с сериями",
+        nextDay: "Следующий день с сериями",
+        today: "Сегодня",
+        yesterday: "Вчера",
+        tomorrow: "Завтра",
         episodeChip: (numbers: number[]) =>
             `${formatEpisodeNumbers(numbers)} ${plural(numbers.length, ["серия", "серии", "серий"])}`,
     },
