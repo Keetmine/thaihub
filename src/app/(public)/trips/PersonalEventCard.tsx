@@ -13,6 +13,7 @@ import {
   togglePersonalEventAttendance,
 } from "./actions";
 import LocationPickerField from "./LocationPickerField";
+import PriceFields from "@/components/PriceFields";
 import { performerHref } from "@/lib/performerSlug";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import { searchPerformersForList } from "@/app/(public)/artist-lists/actions";
@@ -78,6 +79,9 @@ export function PersonalEventFields({
     imageUrl?: string | null;
     url?: string | null;
     attending?: boolean;
+    /** Цена — она же строка в расходах поездки, если заполнена. */
+    priceMinor?: number | null;
+    priceCurrency?: "THB" | "RUB" | "BYN" | "USD" | null;
   };
   showShareToggle?: boolean;
   /** Что можно выбрать в «кто это видит» — уже урезано видимостью
@@ -130,6 +134,9 @@ export function PersonalEventFields({
           searchOptions={searchPerformersForList}
         />
       </div>
+      {/* Цена: заполнили — строка сама появилась в расходах поездки
+          (правка владельца 2026-09-16). Необязательная. */}
+      <PriceFields priceMinor={defaults?.priceMinor} currency={defaults?.priceCurrency} />
       <div>
         <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>{t.trips.personal.note}</label>
         <textarea id={`${uid}-note`} name="note" rows={2} defaultValue={defaults?.note ?? ""} className="form-control" />

@@ -7,9 +7,13 @@ import TimeInput from "@/components/TimeInput";
 import DatePickerInput from "@/components/DatePickerInput";
 import { saveTripBooking } from "../actions";
 import { useT } from "@/components/LocaleProvider";
+import PriceFields from "@/components/PriceFields";
 import { ItemVisibilityField, type TripItemVisibilityValue } from "../TripItemVisibility";
 
 export type TripBookingRow = {
+  /** Цена записи — она же строка в расходах поездки, если заполнена. */
+  priceMinor?: number | null;
+  priceCurrency?: "THB" | "RUB" | "BYN" | "USD" | null;
   id: string;
   kind: "HOTEL" | "FLIGHT";
   name: string;
@@ -186,6 +190,11 @@ export default function BookingForm({
             defaultValue={booking?.visibility ?? "PARTICIPANTS"}
             options={visibilityOptions}
           />
+        </div>
+        {/* Цена: заполнили — строка сама появилась в расходах поездки
+            (правка владельца 2026-09-16). Необязательная. */}
+        <div className="col-12">
+          <PriceFields priceMinor={booking?.priceMinor} currency={booking?.priceCurrency} />
         </div>
         <div className="col-12">
           <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>{t.trips.bookings.note}</label>

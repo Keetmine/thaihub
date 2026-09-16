@@ -717,6 +717,46 @@ export default async function TripPage({
   }));
   const bookingOptions = trip.bookings.map((b) => ({ id: b.id, label: b.name }));
 
+  /* Цены броней и личных событий — строками расходов (правка владельца
+     2026-09-16). Считываются, а не копируются в TripExpense: копию
+     пришлось бы держать в синхроне с записью.
+
+     Берём только СВОИ: у брони и события есть автор, и расходы личные.
+     У записей без автора (заведены до появления поля) владелец поездки
+     и есть автор — так же считает canTouchItem. */
+  const isMineRecord = (createdById: string | null) =>
+    !!user && (createdById ?? trip.userId) === user.id;
+  const derivedExpenses = user
+    ? [
+        ...trip.bookings
+          .filter((b) => b.priceMinor != null && b.priceCurrency && isMineRecord(b.createdById))
+          .map((b) => ({
+            id: b.id,
+            title: b.name,
+            amountMinor: b.priceMinor!,
+            currency: b.priceCurrency as TripCurrencyValue,
+            // Категория выводится из вида брони, а не спрашивается:
+            // перелёт — это перелёт, выбирать тут нечего.
+            category: (b.kind === "FLIGHT" ? "FLIGHT" : "STAY") as ExpenseCategoryValue,
+            spentOn: b.startAt ? b.startAt.toISOString() : null,
+            source: "booking" as const,
+          })),
+        ...trip.personalEvents
+          .filter((p) => p.priceMinor != null && p.priceCurrency && isMineRecord(p.createdById))
+          .map((p) => ({
+            id: p.id,
+            title: p.title,
+            amountMinor: p.priceMinor!,
+            currency: p.priceCurrency as TripCurrencyValue,
+            // Личное событие поездки — чаще всего фанмит или ужин;
+            // «Билеты» ближе по смыслу, чем «Прочее».
+            category: "TICKETS" as ExpenseCategoryValue,
+            spentOn: p.startsAt.toISOString(),
+            source: "event" as const,
+          })),
+      ]
+    : [];
+
   // Публичные и личные события — одна хронологическая лента. Кого
   // пускать к личной записи, решает её собственная видимость.
   const personal: PersonalEventData[] = trip.personalEvents
@@ -1322,7 +1362,9 @@ export default async function TripPage({
           <AppLink
             href={tripHref(trip)}
             prefetch={false}
-            className={`tab-bar-item ${!showAll && !showPlaces && !showTodos ? "active" : ""}`}
+            className={`tab-bar-item ${
+              !showAll && !showPlaces && !showTodos && !showMoney ? "active" : ""
+            }`}
           >
             {!isShared && isOwner ? t.trips.detail.tabMyPlan() : t.trips.detail.tabPlan()}
           </AppLink>
@@ -1362,7 +1404,7 @@ export default async function TripPage({
               prefetch={false}
               className={`tab-bar-item ${showMoney ? "active" : ""}`}
             >
-              {t.trips.expenses.tab(expenseData.length)}
+              {t.trips.expenses.tab(expenseData.length + derivedExpenses.length)}
             </AppLink>
           )}
         </ScrollableTabs>
@@ -1391,6 +1433,7 @@ export default async function TripPage({
         <TripExpenses
           tripId={trip.id}
           expenses={expenseData}
+          derived={derivedExpenses}
           budgets={budgetData}
           bookings={bookingOptions}
           canAdd={canContribute}

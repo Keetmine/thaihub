@@ -703,6 +703,8 @@ function parsePersonalEventForm(
   url: string | null;
   performerIds: string[];
   attending: boolean;
+  priceMinor: number | null;
+  priceCurrency: "THB" | "RUB" | "BYN" | "USD" | null;
 } | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
@@ -741,6 +743,8 @@ function parsePersonalEventForm(
     // умолчанию): планов создают больше, чем посещают, и артисты
     // события идут в «видел(а) вживую» только отметившимся.
     attending: formData.get("attending") === "on",
+    // Цена — она же строка в расходах поездки, если заполнена.
+    ...priceFromForm(formData),
   };
 }
 
@@ -1148,6 +1152,8 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
     // необязательное — без него остаётся чистая дата (00:00).
     startAt: parseTripDateTime(formData.get("startAt"), formData.get("startTime")),
     endAt: parseTripDateTime(formData.get("endAt"), formData.get("endTime")),
+    // Цена — она же строка в расходах поездки, если заполнена.
+    ...priceFromForm(formData),
   };
 
   if (id) {
@@ -1263,6 +1269,26 @@ function parseTripDate(value: FormDataEntryValue | null): Date | null {
 // достать даже по прямому id.
 //
 // Делёжки «кто кому должен» нет тоже: владелец отменила её отдельно.
+
+/**
+ * Цена прямо в записи (бронь, личное событие) — правка владельца
+ * 2026-09-16. Пусто — цены нет: ноль значил бы «стоило ноль», а у
+ * половины броней сумму просто не помнят, и врать в итогах нельзя.
+ *
+ * Непонятный ввод тоже снимает цену, а не роняет сохранение всей
+ * записи: человек заполнял бронь, а не бухгалтерию, и терять из-за
+ * опечатки в необязательном поле номер рейса было бы обидно.
+ */
+function priceFromForm(formData: FormData): {
+  priceMinor: number | null;
+  priceCurrency: "THB" | "RUB" | "BYN" | "USD" | null;
+} {
+  const raw = String(formData.get("priceAmount") ?? "").trim();
+  if (!raw) return { priceMinor: null, priceCurrency: null };
+  const priceMinor = parseAmount(raw);
+  if (priceMinor === null) return { priceMinor: null, priceCurrency: null };
+  return { priceMinor, priceCurrency: parseCurrency(String(formData.get("priceCurrency") ?? "")) };
+}
 
 /** Разбор полей формы траты. Общий для создания и правки — иначе
  *  правила «что считать суммой» разъехались бы между ними. */

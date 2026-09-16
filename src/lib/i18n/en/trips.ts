@@ -350,7 +350,12 @@ export const trips = {
 
     /** Ответы серверных экшенов — их показывают формы поездки. */
     expenses: {
-        tab: (n: number) => (n > 0 ? `Money · ${n}` : "Money"),
+        tab: (n: number) => (n > 0 ? `Expenses · ${n}` : "Expenses"),
+        fieldPrice: "What it cost",
+        pricePlaceholder: "Can be left empty",
+        priceHint: "Fill it in and it shows up in the trip's expenses.",
+        fromBooking: "from a booking",
+        fromEvent: "from an event",
         add: "+ Expense",
         editTitle: "Edit expense",
         budget: "Budget",

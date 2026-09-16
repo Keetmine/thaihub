@@ -38,6 +38,26 @@ export type ExpenseData = {
 export type BudgetData = { currency: TripCurrencyValue; amountMinor: number };
 
 /**
+ * Строка расходов, пришедшая ИЗ ДРУГОЙ ЗАПИСИ — цены брони или личного
+ * события (правка владельца 2026-09-16).
+ *
+ * Считывается, а не копируется в `TripExpense`: две записи об одних
+ * деньгах пришлось бы держать в синхроне, и однажды они бы разъехались.
+ * Поэтому такую строку здесь НЕ правят и не удаляют — цена меняется
+ * там, где заведена, и подпись прямо об этом говорит.
+ */
+export type DerivedExpense = {
+  id: string;
+  title: string;
+  amountMinor: number;
+  currency: TripCurrencyValue;
+  category: ExpenseCategoryValue;
+  spentOn: string | null;
+  /** Откуда пришла: бронь или личное событие. */
+  source: "booking" | "event";
+};
+
+/**
  * Вкладка «Деньги» поездки (решение владельца 2026-09-16).
  *
  * Траты ЛИЧНЫЕ — «персонально у каждого свои траты». Поэтому здесь нет
@@ -56,12 +76,15 @@ export type BudgetData = { currency: TripCurrencyValue; amountMinor: number };
 export default function TripExpenses({
   tripId,
   expenses,
+  derived,
   budgets,
   bookings,
   canAdd,
 }: {
   tripId: string;
   expenses: ExpenseData[];
+  /** Цены броней и личных событий — см. DerivedExpense. */
+  derived: DerivedExpense[];
   budgets: BudgetData[];
   /** Брони поездки — чтобы прицепить трату к уже известному перелёту
    *  или отелю вместо того, чтобы вбивать его второй раз. */
@@ -75,8 +98,22 @@ export default function TripExpenses({
   const [adding, setAdding] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
 
-  const totals = totalsByCurrency(expenses);
+  // Итоги и разбивка считаются по ОБЕИМ половинам: цена брони — такие
+  // же потраченные деньги, как трата, заведённая руками.
+  const all = [...expenses, ...derived];
+  const totals = totalsByCurrency(all);
   const budgetByCurrency = new Map(budgets.map((b) => [b.currency, b.amountMinor]));
+
+  // Единый список: сверху свежее по дате, записи без даты в хвосте.
+  const rows = [
+    ...derived.map((d) => ({ ...d, kind: "derived" as const })),
+    ...expenses.map((e2) => ({ ...e2, kind: "manual" as const })),
+  ].sort((a, b) => {
+    if (!a.spentOn && !b.spentOn) return 0;
+    if (!a.spentOn) return 1;
+    if (!b.spentOn) return -1;
+    return b.spentOn.localeCompare(a.spentOn);
+  });
 
   return (
     <div>
@@ -87,7 +124,7 @@ export default function TripExpenses({
           {totals.map(({ currency, total }) => {
             const budget = budgetByCurrency.get(currency) ?? 0;
             const { share, over } = budgetProgress(total, budget);
-            const cats = byCategory(expenses, currency);
+            const cats = byCategory(all, currency);
             return (
               <section key={currency} className="surface p-3">
                 <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2">
@@ -144,12 +181,12 @@ export default function TripExpenses({
         </div>
       )}
 
-      {expenses.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState emoji="💸" title={e.emptyTitle} hint={canAdd ? e.emptyHint : undefined} />
       ) : (
         <ul className="list-unstyled d-flex flex-column gap-2 mb-0">
-          {expenses.map((item) => (
-            <li key={item.id} className="surface surface-hover expense-row">
+          {rows.map((item) => (
+            <li key={`${item.kind}-${item.id}`} className="surface surface-hover expense-row">
               <span className="expense-row-emoji" aria-hidden>
                 {CATEGORY_EMOJI[item.category]}
               </span>
@@ -164,8 +201,14 @@ export default function TripExpenses({
                         )
                       : null,
                     e.category[item.category],
-                    item.bookingLabel,
-                    item.note,
+                    // Откуда пришла строка — говорим прямо: иначе
+                    // непонятно, почему её нельзя поправить здесь.
+                    item.kind === "derived"
+                      ? item.source === "booking"
+                        ? e.fromBooking
+                        : e.fromEvent
+                      : item.bookingLabel,
+                    item.kind === "manual" ? item.note : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -174,7 +217,9 @@ export default function TripExpenses({
               <span className="expense-row-sum">
                 {formatMoney(item.amountMinor, item.currency, locale)}
               </span>
-              {canAdd && (
+              {/* Правка и удаление — только у своих трат. Цену брони
+                  меняют в самой брони: копии здесь нет, править нечего. */}
+              {canAdd && item.kind === "manual" && (
                 <span className="d-flex align-items-center gap-1">
                   <button
                     type="button"
