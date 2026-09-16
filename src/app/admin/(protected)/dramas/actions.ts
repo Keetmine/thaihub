@@ -84,6 +84,11 @@ function getDramaDetailFields(formData: FormData) {
     duration: str("duration") || null,
     contentRating: str("contentRating") || null,
     network: str("network") || null,
+    // Страна и тип — свободные строки, как их присылает MDL: по ним идут
+    // фильтр каталога и деление на разделы, а переводит их словарь
+    // (contentDictionary). Пустой тип каталог считает сериалом.
+    country: str("country") || null,
+    type: str("type") || null,
     status: DRAMA_STATUSES.has(statusRaw) ? (statusRaw as DramaStatus) : null,
   };
 }

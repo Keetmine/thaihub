@@ -62,11 +62,19 @@ export default function DramaForm({
   defaultValues,
   defaultLocationIds,
   submitLabel,
+  countryOptions = [],
+  typeOptions = [],
 }: {
   /** Серверный экшен формы: ошибка приходит значением (см. DramaFormState). */
   action: (prev: DramaFormState, formData: FormData) => Promise<DramaFormState>;
   agencies: EntityOption[];
   locations: EntityOption[];
+  /** Значения `country` и `type`, уже встречающиеся в каталоге, — в
+   *  подсказки полей. Оба поля свободные (MDL присылает что угодно), но
+   *  набирать «Thailand» руками каждый раз значит однажды написать
+   *  «Thailandd» и получить лишнюю строку в фильтре. */
+  countryOptions?: string[];
+  typeOptions?: string[];
   /** Выбранная новелла (для триггера селекта); каталог ищется асинхронно. */
   novels?: EntityOption[];
   defaultValues?: {
@@ -91,6 +99,8 @@ export default function DramaForm({
     contentRating: string;
     network: string;
     status: string;
+    country: string;
+    type: string;
   };
   defaultLocationIds?: string[];
   submitLabel: string;
@@ -349,6 +359,54 @@ export default function DramaForm({
         <div className="col-6 col-md-3">
           <label className="form-label" htmlFor="drama-form-network">Канал / платформа</label>
           <input id="drama-form-network" name="network" defaultValue={v?.network} className="form-control" />
+        </div>
+        {/* Страна и тип записи (правка владельца 2026-09-16: «как будто
+            нигде не выводится страна»). Их и правда не было в форме
+            вовсе — оба поля писал только импорт, и поправить руками
+            ошибку MDL было негде.
+
+            Тип тут особенно важен: с 2026-09-16 он делит каталог на
+            разделы «Сериалы / Фильмы / Шоу» (см. docs/features/catalog.md),
+            и запись с неверным типом уезжает не в свой раздел.
+
+            Поля свободные, но со списком подсказок из того, что уже
+            есть в каталоге: значения сырые, по ним идёт фильтр, и
+            «Thailandd» с опечатки завёл бы отдельную строку. */}
+        <div className="col-6 col-md-3">
+          <label className="form-label" htmlFor="drama-form-country">Страна</label>
+          <input
+            id="drama-form-country"
+            name="country"
+            defaultValue={v?.country}
+            list="drama-form-country-options"
+            placeholder="Thailand"
+            className="form-control"
+          />
+          <datalist id="drama-form-country-options">
+            {countryOptions.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </div>
+        <div className="col-6 col-md-3">
+          <label className="form-label" htmlFor="drama-form-type">Тип записи</label>
+          <input
+            id="drama-form-type"
+            name="type"
+            defaultValue={v?.type}
+            list="drama-form-type-options"
+            placeholder="Drama"
+            className="form-control"
+          />
+          <datalist id="drama-form-type-options">
+            {typeOptions.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <p className="form-text">
+            По нему каталог делит разделы: Drama — сериалы, Movie — фильмы,
+            TV Show и TV Program — шоу. Пусто значит «сериал».
+          </p>
         </div>
         <div className="col-12 col-md-6">
           <label className="form-label" htmlFor="drama-form-contentRating">Возрастной рейтинг</label>

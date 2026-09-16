@@ -9,6 +9,7 @@ import ConfirmForm from "@/components/ConfirmForm";
 import AuditTrail from "@/components/admin/AuditTrail";
 import TranslationEditor from "@/components/admin/TranslationEditor";
 import EntityTabs from "@/components/admin/EntityTabs";
+import { loadDramaFilterOptions } from "@/lib/catalogFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,9 @@ export default async function EditDramaPage({
   const { id } = await params;
   const { saved } = await searchParams;
 
-  const [drama, agencies] = await Promise.all([
+  // Подсказки для полей «Страна» и «Тип записи» — те же значения, по
+  // которым фильтруется публичный каталог (кэш на полчаса, тег catalog).
+  const [drama, agencies, filterOptions] = await Promise.all([
     prisma.drama.findUnique({
       where: { id },
       include: {
@@ -36,6 +39,7 @@ export default async function EditDramaPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true, logoUrl: true },
     }),
+    loadDramaFilterOptions(),
   ]);
 
   if (!drama) notFound();
@@ -80,6 +84,8 @@ export default async function EditDramaPage({
             locations={drama.locations.map((dl) => dl.location)}
             novels={drama.novel ? [{ id: drama.novel.id, name: drama.novel.title, photoUrl: drama.novel.coverUrl }] : []}
             defaultLocationIds={drama.locations.map((dl) => dl.location.id)}
+            countryOptions={filterOptions.countries}
+            typeOptions={filterOptions.types}
             submitLabel="Сохранить изменения"
             defaultValues={{
               title: drama.title,
@@ -102,6 +108,8 @@ export default async function EditDramaPage({
               contentRating: drama.contentRating ?? "",
               network: drama.network ?? "",
               status: drama.status ?? "",
+              country: drama.country ?? "",
+              type: drama.type ?? "",
               cast: drama.performers.map((p) => ({
                 id: p.performerId,
                 name: p.performer.name,
