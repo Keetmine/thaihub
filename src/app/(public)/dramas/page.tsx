@@ -748,17 +748,6 @@ export default async function DramasPage({
               <CalendarIcon />
             </AppLink>
           )}
-          {/* «Популярное» переехало сюда из ряда вкладок: оттуда его
-              убрали вместе с остальным (правка владельца 2026-09-16), а
-              оставить страницу без единой ссылки нельзя — /dramas/top
-              открыта гостю и индексируется. */}
-          <AppLink
-            href="/dramas/top"
-            prefetch={false}
-            className="btn btn-ghost btn-sm flex-shrink-0"
-          >
-            {t.catalog.dramas.topLink}
-          </AppLink>
         </div>
           </>
         )}

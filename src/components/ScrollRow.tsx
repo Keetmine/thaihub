@@ -72,13 +72,20 @@ export default function ScrollRow({
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLSpanElement>(null);
+  // Кадр, в котором пересчитаем полосу. События прокрутки за один жест
+  // приходят чаще, чем браузер рисует, и без этой заслонки мы считали
+  // бы одно и то же по нескольку раз на кадр.
+  const frameRef = useRef<number | null>(null);
   // Нужен полосе: роль scrollbar обязана указывать, чем управляет.
   const rowId = useId();
   // Что растушёвывать: слева и/или справа осталось непоказанное.
   // Оба false — ряд влез целиком, краям делать нечего.
   const [more, setMore] = useState({ start: false, end: false });
-  // Своя полоса: доля видимого и сдвиг, обе в процентах ширины ряда.
-  const [bar, setBar] = useState({ width: 0, left: 0 });
+  // Есть ли вообще куда крутить. ТОЛЬКО это про полосу живёт в React:
+  // меняется оно редко (смена дня, ресайз), а положение ползунка — по
+  // многу раз в секунду, и гонять через состояние его нельзя.
+  const [scrollable, setScrollable] = useState(false);
 
   const syncMore = useCallback(() => {
     const bar = barRef.current;
@@ -92,29 +99,43 @@ export default function ScrollRow({
     // бы страницу впустую.
     setMore((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
 
-    // Ползунок своей полосы. Ряд влез целиком — ширина 0, и полосы нет.
     const visible = bar.scrollWidth > 0 ? bar.clientWidth / bar.scrollWidth : 1;
-    const nextBar =
-      visible >= 1
-        ? { width: 0, left: 0 }
-        : {
-            width: visible * 100,
-            left: (bar.scrollLeft / bar.scrollWidth) * 100,
-          };
-    setBar((prev) =>
-      // Округляем до десятых процента: иначе дробный scrollLeft после
-      // плавной прокрутки давал бы новый объект на каждом кадре.
-      Math.abs(prev.width - nextBar.width) < 0.1 && Math.abs(prev.left - nextBar.left) < 0.1
-        ? prev
-        : nextBar,
-    );
+    const can = visible < 1;
+    setScrollable((prev) => (prev === can ? prev : can));
+
+    // Ползунок двигаем ПРЯМО В DOM, без состояния и без перерисовки
+    // (жалоба владельца 2026-09-16: «скролл по-дурацки работает, не
+    // плавный и как будто заедает»). Через `useState` каждое событие
+    // прокрутки тянуло за собой рендер всего ряда с его детьми —
+    // ползунок отставал от пальца и дёргался. Здесь же за жест не
+    // происходит ни одного рендера: меняются две строки стиля.
+    const thumb = thumbRef.current;
+    if (thumb && can) {
+      const left = (bar.scrollLeft / bar.scrollWidth) * 100;
+      thumb.style.width = `${visible * 100}%`;
+      thumb.style.left = `${left}%`;
+      // Роль scrollbar обязана сообщать положение. Атрибут ставим здесь
+      // же, а не пропсом: иначе он вернул бы состояние в React и вместе
+      // с ним рендер на каждый кадр прокрутки.
+      trackRef.current?.setAttribute("aria-valuenow", String(Math.round(left)));
+    }
   }, []);
+
+  /** Пересчёт не чаще кадра: за один жест прокрутки событий больше,
+   *  чем браузер успевает нарисовать. */
+  const scheduleSync = useCallback(() => {
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      syncMore();
+    });
+  }, [syncMore]);
 
   useEffect(() => {
     const bar = barRef.current;
     if (!bar) return;
     syncMore();
-    bar.addEventListener("scroll", syncMore, { passive: true });
+    bar.addEventListener("scroll", scheduleSync, { passive: true });
 
     // Ряд меняет ширину не только с окном: слева от него бывает
     // грид-колонка, а внутри — подписи и картинки, которые дорисовываются
@@ -122,7 +143,7 @@ export default function ScrollRow({
     // подгрузки шрифта не меняется (он растянут на колонку), а вот
     // содержимое разъезжается — и без наблюдения за ним «есть куда
     // крутить» осталось бы посчитанным по неготовой разметке.
-    const resize = new ResizeObserver(syncMore);
+    const resize = new ResizeObserver(scheduleSync);
     const observeAll = () => {
       resize.disconnect();
       resize.observe(bar);
@@ -134,16 +155,17 @@ export default function ScrollRow({
     // новыми детьми, а не за выброшенными.
     const mutation = new MutationObserver(() => {
       observeAll();
-      syncMore();
+      scheduleSync();
     });
     mutation.observe(bar, { childList: true });
 
     return () => {
-      bar.removeEventListener("scroll", syncMore);
+      bar.removeEventListener("scroll", scheduleSync);
       resize.disconnect();
       mutation.disconnect();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     };
-  }, [syncMore]);
+  }, [syncMore, scheduleSync]);
 
   // Шаг — почти целый экран ряда, но с запасом, чтобы крайний элемент
   // остался виден и было понятно, что это продолжение того же ряда, а не
@@ -183,6 +205,9 @@ export default function ScrollRow({
     // левым краем под курсор.
     const visible = bar.clientWidth / bar.scrollWidth;
     const target = (fraction - visible / 2) * bar.scrollWidth;
+    // scrollLeft напрямую, а не scrollTo({behavior:"smooth"}): за
+    // курсором ползунок обязан идти без задержки, иначе тянешь — а он
+    // догоняет.
     bar.scrollLeft = Math.max(0, Math.min(target, bar.scrollWidth - bar.clientWidth));
   }, []);
 
@@ -243,16 +268,18 @@ export default function ScrollRow({
       {showBar && (
         <div
           ref={trackRef}
-          className={`${btnPrefix}-bar${bar.width > 0 ? "" : " is-idle"}`}
-          onPointerDown={bar.width > 0 ? onBarPointerDown : undefined}
-          onPointerMove={bar.width > 0 ? onBarPointerMove : undefined}
+          className={`${btnPrefix}-bar${scrollable ? "" : " is-idle"}`}
+          onPointerDown={scrollable ? onBarPointerDown : undefined}
+          onPointerMove={scrollable ? onBarPointerMove : undefined}
           role="scrollbar"
           aria-controls={rowId}
           aria-orientation="horizontal"
           aria-label={nextLabel}
-          aria-valuenow={Math.round(bar.left)}
+          aria-valuenow={0}
         >
-          {bar.width > 0 && <span style={{ width: `${bar.width}%`, left: `${bar.left}%` }} />}
+          {/* Ширину и сдвиг ставит syncMore прямо в стиль — см. там же,
+              почему не через состояние. */}
+          <span ref={thumbRef} hidden={!scrollable} />
         </div>
       )}
 

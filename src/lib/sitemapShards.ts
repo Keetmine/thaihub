@@ -144,14 +144,14 @@ const getSectionCounts = unstable_cache(
  *  получает пейволл, а страница помечена noIndex (не витрина, решение
  *  из аудита 2026-09). /events и /communities — гостевые витрины,
  *  /locations/map — карта каталога, /privacy и /terms — правовые
- *  тексты, /dramas/top — «Популярное» по нашим оценкам: всё публичное
- *  и индексируемое. */
+ *  тексты: всё публичное и индексируемое.
+ *  /dramas/top отсюда убран вместе с самой страницей (2026-09-16) — он
+ *  редиректится на /dramas, а редиректы в карте сайта не место. */
 const STATIC_PATHS = [
   "/",
   "/about",
   "/help",
   "/dramas",
-  "/dramas/top",
   "/artists",
   "/novels",
   "/locations",
