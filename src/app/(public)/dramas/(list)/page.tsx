@@ -22,7 +22,7 @@ import { episodeProgress } from "@/lib/watchStatus";
 import { getCurrentUser } from "@/lib/userAuth";
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { getDramaWatchStatuses } from "@/lib/favorites";
-import type { DramaWatchStatusValue } from "../favorites/actions";
+import type { DramaWatchStatusValue } from "../../favorites/actions";
 import { SEARCH_RESULT_LIMIT } from "@/lib/pagination";
 import { dramaHref } from "@/lib/dramaSlug";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
@@ -46,7 +46,7 @@ import {
 } from "@/lib/catalogFilters";
 import { PAGE_SIZE } from "@/lib/pagination";
 import { addDays, dateKey, parseDateKey, formatDayLongMonth } from "@/lib/dates";
-import styles from "./dramas.module.css";
+import styles from "../dramas.module.css";
 
 export async function generateMetadata({
   searchParams,

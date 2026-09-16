@@ -12,7 +12,7 @@ import { communityHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
 import { CATALOG_TAG } from "@/lib/catalogCache";
-import CreateCommunityButton from "./CreateCommunityButton";
+import CreateCommunityButton from "../CreateCommunityButton";
 
 export async function generateMetadata() {
   const { t } = await getT();
