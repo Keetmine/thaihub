@@ -27,6 +27,29 @@ const USER_COOKIE = "user_session";
 // открыта гостю по той же логике «явно, а не совпадением».
 const PUBLIC_PATHS = new Set(["/", "/about", "/wiki", "/help", "/game", "/login", "/signup", "/terms", "/privacy", "/forgot-password", "/manifest.webmanifest", "/robots.txt", "/sitemap.xml", "/sw.js"]);
 
+/**
+ * Переехавшие адреса: старый путь → новый, оба БЕЗ языкового префикса.
+ *
+ * Живут здесь, а не в `redirects()` из next.config, и это не вкусовщина.
+ * Тот сравнивает СЫРОЙ путь, а русские страницы приходят с `/ru`, и
+ * правило `/performers` мимо `/ru/performers` промахивалось: проверено
+ * на проде — `/performers` отдаёт 308, `/ru/performers` отдавал 200 с
+ * ненайденной страницей. Половина переездов молча не работала для
+ * половины сайта. Здесь путь уже очищен от префикса, а `localeHref`
+ * возвращает его обратно — одно правило закрывает оба языка.
+ */
+function movedTo(pathname: string): string | null {
+  // Раздел /performers переименован в /artists.
+  if (pathname === "/performers") return "/artists";
+  const performer = pathname.match(/^\/performers\/([^/]+)$/);
+  if (performer) return `/artists/${performer[1]}`;
+  // «Популярное» удалено 2026-09-16: каталог и так сортируется по
+  // популярности. Не 404: страница была открыта гостю, лежала в карте
+  // сайта и успела попасть в индекс (см. docs/features/seo.md).
+  if (pathname === "/dramas/top") return "/dramas";
+  return null;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname: rawPathname } = request.nextUrl;
 
@@ -65,6 +88,19 @@ export function proxy(request: NextRequest) {
     const url = new URL(request.url);
     url.pathname = `/ru${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(url);
+  }
+
+  // Переезды — до всего остального: на старом адресе нечего проверять
+  // ни на права, ни на язык содержимого.
+  if (isAppRoute) {
+    const moved = movedTo(pathname);
+    if (moved) {
+      const url = new URL(request.url);
+      url.pathname = localeHref(moved, locale);
+      // 308, а не 307: адрес сменился навсегда, и поисковик должен
+      // перенести на новый накопленный вес.
+      return NextResponse.redirect(url, 308);
+    }
   }
 
   const withLocale = (res: NextResponse) => {
