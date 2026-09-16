@@ -3199,6 +3199,42 @@ button.hero-stat-toggle.is-open {
   }
 }
 
+/* Крупный ряд — «Новые серии» в каталоге (правка владельца 2026-09-16:
+   «увеличим размер сериалов и будем выводить 6 в ряд»). Своим классом,
+   а не правкой .poster-row: тот же ряд стоит на странице артиста, где
+   карточек мало и крупные распирали бы блок.
+
+   Каждая ступень на одну карточку шире базовой — шаг сетки тот же, а
+   постер выходит крупнее. Ниже 480px остаются две: третья на телефоне
+   ужимает постер до миниатюры. */
+.poster-row-lg {
+  grid-auto-columns: calc((100% - 5 * 1rem) / 6);
+}
+
+@media (max-width: 1399.98px) {
+  .poster-row-lg {
+    grid-auto-columns: calc((100% - 4 * 1rem) / 5);
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .poster-row-lg {
+    grid-auto-columns: calc((100% - 3 * 1rem) / 4);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .poster-row-lg {
+    grid-auto-columns: calc((100% - 2 * 1rem) / 3);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .poster-row-lg {
+    grid-auto-columns: calc((100% - 1rem) / 2);
+  }
+}
+
 /* ---------- Выбранные записи карточками (сериалы, события) ---------- */
 .selected-card {
   display: inline-flex;
@@ -4101,11 +4137,14 @@ button.hero-stat-toggle.is-open {
    Ширину поджимаем: в ряду со стрелками ему хватает даты. */
 .episode-day-pick {
   display: inline-flex;
-  max-width: 11rem;
 }
 
-.episode-day-pick input {
-  font-size: 0.85rem;
+/* Кнопка-иконка вместо поля с датой (DatePickerInput iconOnly): сам
+   день написан слева, между стрелками, и второй раз в ряду не нужен. */
+.date-picker-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Ряд «← дата →» над сеткой постеров. Подпись дня фиксированной
@@ -4135,8 +4174,13 @@ button.hero-stat-toggle.is-open {
 }
 
 .scroll-row .poster-row {
-  /* Полосу прячем — о прокрутке говорят растушёванный край и кнопки. */
+  /* Нативную полосу прячем: на macOS она наплывающая — появляется на
+     полсекунды во время жеста и пропадает, всегда видимой её не сделать
+     (проверено: ни `overflow-x: scroll`, ни непрозрачный трек места ей
+     не резервируют). Вместо неё ScrollRow рисует свою — .scroll-row-bar
+     ниже. */
   scrollbar-width: none;
+  padding-bottom: 0;
   --row-fade-start: 0px;
   --row-fade-end: 0px;
   -webkit-mask-image: linear-gradient(
@@ -4159,12 +4203,49 @@ button.hero-stat-toggle.is-open {
   display: none;
 }
 
+/* Своя линия прокрутки: рисует ScrollRow (showBar). Лежит ПОД рядом, а
+   не поверх него, и не попадает под маску растушёвки — иначе у краёв
+   она истаивала бы в ничто вместе с постерами. */
+/* «+3 ещё» в клетке календаря серий — ссылка в каталог на этот день.
+   Подчёркивание по наведению, а не всегда: в плотной клетке постоянная
+   черта спорила бы с чипами серий над ней. */
+.calendar-more-link {
+  text-decoration: none;
+}
+
+.calendar-more-link:hover {
+  color: var(--bs-body-color);
+  text-decoration: underline;
+}
+
+.scroll-row-bar {
+  position: relative;
+  height: 4px;
+  margin-top: 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.scroll-row-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.34);
+  transition: left 0.12s linear;
+}
+
+.scroll-row:hover .scroll-row-bar > span {
+  background: rgba(var(--accent-rgb), 0.8);
+}
+
 .scroll-row .poster-row.has-more-start {
-  --row-fade-start: 2.5rem;
+  --row-fade-start: 3.25rem;
 }
 
 .scroll-row .poster-row.has-more-end {
-  --row-fade-end: 2.5rem;
+  --row-fade-end: 3.25rem;
 }
 
 .scroll-row-btn {
@@ -4184,16 +4265,19 @@ button.hero-stat-toggle.is-open {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.1rem;
-    height: 2.1rem;
+    /* Крупные (правка владельца 2026-09-16: «кнопки на скроле делаем
+       больше»): эти лежат поверх постеров, а не поверх подписей вкладок,
+       и мелкий кружок на картинке терялся. */
+    width: 3rem;
+    height: 3rem;
     padding: 0;
     border-radius: 50%;
     border: 1px solid var(--bs-border-color);
-    background: rgba(18, 18, 22, 0.72);
+    background: rgba(18, 18, 22, 0.78);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    color: var(--bs-secondary-color);
-    font-size: 0.9rem;
+    color: #fff;
+    font-size: 1.15rem;
     line-height: 1;
     cursor: pointer;
     transition:

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dateKey, getMonthGrid, parseDateKey, shortMonthNames, weekdayNames } from "@/lib/dates";
 import { useT } from "@/components/LocaleProvider";
+import { CalendarIcon } from "@/components/icons";
 import { useLocale } from "@/components/LocaleProvider";
 
 
@@ -136,6 +137,8 @@ export default function DatePickerInput({
   onValueChange,
   yearsBack = 3,
   yearsForward = 5,
+  iconOnly = false,
+  iconLabel,
 }: {
   /** Ложится на ВИДИМОЕ поле, а не на скрытое: подпись должна вести
    *  туда, куда попадает фокус. */
@@ -157,6 +160,13 @@ export default function DatePickerInput({
   yearsBack?: number;
   /** Насколько далеко вперёд. Для дат рождения — 0. */
   yearsForward?: number;
+  /** Вместо поля с датой — кнопка-иконка (правка владельца 2026-09-16
+   *  для листалки «Новые серии»: выбранный день там уже написан слева,
+   *  между стрелками, и поле повторяло его второй раз). Календарь и всё
+   *  его поведение те же — меняется только то, за что нажимают. */
+  iconOnly?: boolean;
+  /** Подпись кнопки-иконки для скринридера и тултипа. */
+  iconLabel?: string;
 }) {
   const t = useT();
   // Подпись по умолчанию берём здесь, а не в параметрах: там словаря
@@ -177,7 +187,9 @@ export default function DatePickerInput({
   // создания поездки).
   const [dropdownPos, setDropdownPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Тип шире HTMLInputElement: в режиме iconOnly за ту же роль отвечает
+  // кнопка, а всё, что от узла нужно, — getBoundingClientRect и focus.
+  const inputRef = useRef<HTMLInputElement | HTMLButtonElement>(null);
   // Узел выпадашки: она в портале, вне дерева ref — см. onBlur ниже.
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -237,9 +249,24 @@ export default function DatePickerInput({
           контролируемое с onChange-noop: набор с клавиатуры ничего не
           меняет, зато нативная required-валидация работает (readOnly её
           бы отключил — readonly-поля исключены из constraint validation). */}
+      {iconOnly ? (
+        <button
+          id={id}
+          ref={inputRef as React.RefObject<HTMLButtonElement>}
+          type="button"
+          className="btn btn-ghost btn-sm date-picker-icon"
+          aria-label={iconLabel ?? placeholderText}
+          title={iconLabel ?? placeholderText}
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          onClick={() => (isOpen ? setIsOpen(false) : open())}
+        >
+          <CalendarIcon />
+        </button>
+      ) : (
       <input
         id={id}
-        ref={inputRef}
+        ref={inputRef as React.RefObject<HTMLInputElement>}
         type="text"
         className="form-control date-picker-toggle"
         value={value ? formatDisplay(value) : ""}
@@ -270,6 +297,7 @@ export default function DatePickerInput({
           setIsOpen(false);
         }}
       />
+      )}
 
       {isOpen && dropdownPos && createPortal(
         <div

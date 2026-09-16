@@ -402,10 +402,20 @@ export default async function CalendarPage({
                           {dramaTitleForLocale(ep.drama, locale)}
                         </AppLink>
                       ))}
+                      {/* «+3 ещё» — ССЫЛКА в каталог на этот день (правка
+                          владельца 2026-09-16): раньше это была глухая
+                          подпись, и посмотреть остальные серии дня было
+                          неоткуда — приходилось гадать, какие именно
+                          спрятаны. Ведёт в блок «Новые серии», открытый
+                          на нужной дате. */}
                       {dayEpisodes.length > 3 && (
-                        <span className="small text-secondary d-none d-sm-inline">
+                        <AppLink
+                          href={`/dramas?day=${key}`}
+                          prefetch={false}
+                          className="small text-secondary d-none d-sm-inline calendar-more-link"
+                        >
                           {t.events.calendar.more(dayEpisodes.length - 3)}
-                        </span>
+                        </AppLink>
                       )}
                     </div>
                   </div>

@@ -48,6 +48,7 @@ export default function ScrollRow({
    *  часть при монтировании и при смене `activeKey`. */
   activeSelector,
   activeKey,
+  showBar = false,
 }: {
   children: ReactNode;
   rowClassName: string;
@@ -57,11 +58,24 @@ export default function ScrollRow({
   nextLabel: string;
   activeSelector?: string;
   activeKey?: string;
+  /** Рисовать под рядом СВОЮ полосу прокрутки (правка владельца
+   *  2026-09-16: «саму линию скрола тоже добавляем»).
+   *
+   *  Своя, а не нативная, потому что нативную на macOS показать всегда
+   *  нельзя: система рисует её наплывающей — появляется на полсекунды
+   *  во время жеста и пропадает. Ни `overflow-x: scroll`, ни
+   *  `::-webkit-scrollbar` с непрозрачным треком этого не меняют
+   *  (проверено: `offsetHeight === clientHeight`, места полоса не
+   *  занимает). А линия нужна затем, чтобы было видно, СКОЛЬКО ещё
+   *  осталось, — растушёванный край и кнопки этого не говорят. */
+  showBar?: boolean;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   // Что растушёвывать: слева и/или справа осталось непоказанное.
   // Оба false — ряд влез целиком, краям делать нечего.
   const [more, setMore] = useState({ start: false, end: false });
+  // Своя полоса: доля видимого и сдвиг, обе в процентах ширины ряда.
+  const [bar, setBar] = useState({ width: 0, left: 0 });
 
   const syncMore = useCallback(() => {
     const bar = barRef.current;
@@ -74,6 +88,23 @@ export default function ScrollRow({
     // прокрутки за один жест десятки, и каждый новый объект перерисовывал
     // бы страницу впустую.
     setMore((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
+
+    // Ползунок своей полосы. Ряд влез целиком — ширина 0, и полосы нет.
+    const visible = bar.scrollWidth > 0 ? bar.clientWidth / bar.scrollWidth : 1;
+    const nextBar =
+      visible >= 1
+        ? { width: 0, left: 0 }
+        : {
+            width: visible * 100,
+            left: (bar.scrollLeft / bar.scrollWidth) * 100,
+          };
+    setBar((prev) =>
+      // Округляем до десятых процента: иначе дробный scrollLeft после
+      // плавной прокрутки давал бы новый объект на каждом кадре.
+      Math.abs(prev.width - nextBar.width) < 0.1 && Math.abs(prev.left - nextBar.left) < 0.1
+        ? prev
+        : nextBar,
+    );
   }, []);
 
   useEffect(() => {
@@ -151,6 +182,15 @@ export default function ScrollRow({
       >
         {children}
       </div>
+
+      {/* Своя линия прокрутки под рядом. Ползунок — доля видимого, его
+          сдвиг — доля прокрученного; оба в процентах, поэтому полоса
+          верна при любой ширине без пересчёта на ресайз. */}
+      {showBar && bar.width > 0 && (
+        <div className={`${btnPrefix}-bar`} aria-hidden>
+          <span style={{ width: `${bar.width}%`, left: `${bar.left}%` }} />
+        </div>
+      )}
 
       {/* Кнопки лежат ПОВЕРХ края ряда, а не в потоке слева и справа от
           него: в потоке их появление и исчезновение дёргало бы ширину

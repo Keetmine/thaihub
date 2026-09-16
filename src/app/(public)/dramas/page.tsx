@@ -631,7 +631,7 @@ export default async function DramasPage({
           {dayEpisodes.length === 0 ? (
             <p className="text-secondary mb-0">{t.catalog.showcase.dayEmpty}</p>
           ) : (
-            <PosterRow>
+            <PosterRow size="lg">
               {dayEpisodes.map((d) => (
                 <PosterTile
                   key={d.id}

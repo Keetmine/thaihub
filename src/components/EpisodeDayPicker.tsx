@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import DatePickerInput from "@/components/DatePickerInput";
+import { useT } from "@/components/LocaleProvider";
 
 /**
  * Выбор дня для блока «Новые серии».
@@ -11,6 +12,11 @@ import DatePickerInput from "@/components/DatePickerInput";
  * рисует браузер, и выглядит он в каждом по-своему — посреди тёмной
  * витрины это читалось чужой деталью. `DatePickerInput` — тот же
  * календарь, что в поездках и событиях, с выбором месяца и года.
+ *
+ * Нажимают на ИКОНКУ, а не на поле с датой (правка владельца
+ * 2026-09-16: «не выводим текущую дату, а возвращаем иконку
+ * календаря»): выбранный день уже написан слева, между стрелками, и
+ * поле повторяло его второй раз в том же ряду.
  *
  * День уезжает в адрес (`?day=2026-09-16`) — как и стрелки рядом.
  * Своего состояния у компонента нет: срез можно переслать и положить в
@@ -31,11 +37,19 @@ export default function EpisodeDayPicker({ day }: { day: string }) {
     router.replace(`${pathname}?${params}`, { scroll: false });
   }
 
+  const t = useT();
   return (
     <span className="episode-day-pick">
       {/* Годы — от начала каталога и на пару вперёд: расписание ведут
           заранее, и «через год» в нём встречается. */}
-      <DatePickerInput value={day} onValueChange={go} yearsBack={12} yearsForward={2} />
+      <DatePickerInput
+        value={day}
+        onValueChange={go}
+        yearsBack={12}
+        yearsForward={2}
+        iconOnly
+        iconLabel={t.catalog.showcase.pickDay}
+      />
     </span>
   );
 }

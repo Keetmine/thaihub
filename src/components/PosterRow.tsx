@@ -11,15 +11,29 @@ import { getT } from "@/lib/i18n";
  * артиста), и набор классов у них обязан совпадать — разъедется он
  * молча, а заметно станет только на узком экране.
  */
-export default async function PosterRow({ children }: { children: React.ReactNode }) {
+export default async function PosterRow({
+  children,
+  size = "md",
+}: {
+  children: React.ReactNode;
+  /** `lg` — крупные карточки, шесть в ряд на широком экране (правка
+   *  владельца 2026-09-16 для блока «Новые серии»). Ряды на странице
+   *  артиста остаются базовыми: карточек там мало, и крупные распирали
+   *  бы блок. */
+  size?: "md" | "lg";
+}) {
   const { t } = await getT();
   return (
     <ScrollRow
       wrapperClassName="scroll-row"
-      rowClassName="poster-row thin-scroll"
+      // Без .thin-scroll: нативную полосу прячем совсем, вместо неё
+      // ScrollRow рисует свою (showBar) — нативная на macOS наплывающая
+      // и всегда видимой быть не может.
+      rowClassName={`poster-row${size === "lg" ? " poster-row-lg" : ""}`}
       btnPrefix="scroll-row"
       prevLabel={t.common.scrollPrev}
       nextLabel={t.common.scrollNext}
+      showBar
     >
       {children}
     </ScrollRow>
