@@ -164,6 +164,30 @@ export default async function PerformerPage({
   const placeOfBirth = translatedText(performer, "placeOfBirth", performer.placeOfBirth, locale);
   const soloDebut = translatedText(performer, "soloDebut", performer.soloDebut, locale);
   const trivia = translatedList(performer, "trivia", performer.trivia, locale);
+  /* От четырёх фактов — три колонки заметок, и раскладываем их ЗДЕСЬ,
+     а не CSS-колонками: Chrome с `break-inside: avoid` балансирует
+     криво — у Jeff десять карточек легли в три колонки из четырёх, и
+     четвёртая осталась пустой. Жадно: каждый факт — в самую короткую
+     на этот момент колонку (по длине текста плюс отступы карточки),
+     сначала длинные — так остаток из коротких ровняет колонки, а не
+     наоборот. Высоты сходятся с точностью до строки; порядок фактам
+     не важен. Номер в отсортированном ряду уходит в CSS `order`: ниже
+     992px колонки распущены в общий грид (см. globals.css), и без него
+     карточки шли бы по колонкам — самый длинный факт рядом с коротким. */
+  const triviaColumns =
+    trivia.length >= 4
+      ? [...trivia]
+          .sort((a, b) => b.length - a.length)
+          .reduce<{ items: { text: string; order: number }[]; weight: number }[]>(
+            (cols, text, order) => {
+              const shortest = cols.reduce((a, b) => (b.weight < a.weight ? b : a));
+              shortest.items.push({ text, order });
+              shortest.weight += text.length + 40;
+              return cols;
+            },
+            [0, 1, 2].map(() => ({ items: [], weight: 0 })),
+          )
+      : null;
   const mvAppearances = translatedList(performer, "mvAppearances", performer.mvAppearances, locale);
   // Фото, а если его нет — обложка последнего релиза (см.
   // lib/performerPhoto.ts). Альбомы уже загружены выше, отсортированы по
@@ -590,6 +614,7 @@ export default async function PerformerPage({
     linkGroups.length > 0 ||
     (isBand && performer.bandMembers.length > 0) ||
     (isMascot && performer.mascotOwners.length > 0) ||
+    trivia.length > 0 ||
     (!displayPhoto && socialItems.length > 0);
 
   /* Музыка — теми же под-табами, что фильмография (правка владельца
@@ -747,10 +772,8 @@ export default async function PerformerPage({
 
       {/* Фото слева + факты справа — как на странице сериала. Блок фото
           рисуем только при displayPhoto: без него факты занимают всю
-          ширину, а соцссылки живут внутри блока фактов.
-          Третьей колонкой — «Факты» (см. ниже): они встают под кнопками
-          сердечка/глаза/плюса, справа от общей информации. */}
-      {(displayPhoto || hasFacts || trivia.length > 0) && (
+          ширину, а соцссылки живут внутри блока фактов. */}
+      {(displayPhoto || hasFacts) && (
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4 align-items-start">
         {displayPhoto && (
           <div className="flex-shrink-0 d-flex flex-column gap-2">
@@ -903,6 +926,47 @@ export default async function PerformerPage({
                 {bio}
               </p>
             ))}
+          {/* «Факты» — стеной заметок под биографией (правка владельца
+              2026-09-16). Отдельная колонка справа не прижилась: у
+              большинства один факт, но бывает и десять, и узкий столбик
+              либо пустовал, либо вытягивался ниже фото, а страница
+              ломалась на три жёстких колонки. Обтекание текстом — та же
+              беда: при десяти фактах плавающий блок снова высокий.
+              Карточки растут ВШИРЬ, а не вниз: до трёх — ряд с
+              переносом, от четырёх — три колонки (triviaColumns). Факты
+              короткие (в среднем строка), и каждому хватает карточки. */}
+          {trivia.length > 0 && (
+            <div className="mt-2">
+              <p className="artist-trivia-title mb-2">
+                <span aria-hidden>💡</span> {t.catalog.artist.trivia}
+              </p>
+              {triviaColumns ? (
+                <div className="trivia-wall-many">
+                  {triviaColumns.map((col, c) => (
+                    <ul key={c} className="trivia-col list-unstyled mb-0">
+                      {col.items.map((item) => (
+                        <li
+                          key={item.order}
+                          className="trivia-note"
+                          style={{ order: item.order }}
+                        >
+                          {item.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ))}
+                </div>
+              ) : (
+                <ul className="trivia-wall list-unstyled mb-0">
+                  {trivia.map((item, i) => (
+                    <li key={i} className="trivia-note">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Личные бренды — под описанием и своим заголовком: это не
               «ещё одна ссылка», а своё дело артиста, и у него есть имя,
@@ -1015,28 +1079,6 @@ export default async function PerformerPage({
         </div>
         )}
 
-        {/* «Факты» — отдельной карточкой СПРАВА от общей информации
-            (правка владельца 2026-09-16: «под кнопками с сердечком,
-            глазом и плюсом, справа, аля плавающий блок, выделяющийся»).
-            Раньше они лежали на пятом экране, за наградами, — при том
-            что это единственное человеческое на странице.
-
-            Своя колонка, а не хвост био: в потоке текста факты
-            терялись, а тут они встают ровно под кнопками и держат
-            ширину. Ниже 576px колонка уходит под остальное: на телефоне
-            рядом ей места нет. */}
-        {trivia.length > 0 && (
-          <aside className="artist-trivia">
-            <p className="artist-trivia-title mb-2">
-              <span aria-hidden>💡</span> {t.catalog.artist.trivia}
-            </p>
-            <ul className="mb-0 ps-3 d-flex flex-column gap-1">
-              {trivia.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </aside>
-        )}
       </div>
       )}
 

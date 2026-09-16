@@ -2851,23 +2851,74 @@ svg[aria-hidden="true"] {
 
    Подсветка акцентом, а не обычная .surface: блок обязан выделяться из
    ряда серых фактов слева. */
-.artist-trivia {
-  flex: 0 0 auto;
-  width: 100%;
-  border-radius: var(--bs-border-radius-lg);
-  border: 1px solid rgba(var(--accent-rgb), 0.35);
-  background: rgba(var(--accent-rgb), 0.07);
-  padding: 0.9rem 1.1rem;
-  font-size: 0.85rem;
-  color: var(--bs-secondary-color);
+/* «Факты» на странице артиста — стена заметок под биографией
+   (правка владельца 2026-09-16). Карточки укладываются в ряды и растут
+   вширь: десять фактов — три ряда, один — одна заметка, и высота
+   блока не зависит от их числа так, как зависела у столбика справа.
+   Последний ряд не растягивается на всю ширину: одна заметка на
+   1000px читалась бы пустой полосой. */
+.trivia-wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-@media (min-width: 576px) {
-  /* Своя колонка появляется только там, где для неё есть место: на
-     телефоне карточка уходит под фото и факты. */
-  .artist-trivia {
-    width: 17rem;
+/* От четырёх фактов — три колонки, а не ряды: в рядах один длинный
+   факт растягивал соседей, и в коротких карточках зияла пустота (NANON:
+   абзац про футбольную команду рядом с «любимые цвета — красный и
+   чёрный»). По колонкам факты раскладывает страница (см. page.tsx,
+   triviaColumns), CSS-колонки не годятся: Chrome с `break-inside:
+   avoid` оставлял последнюю пустой. Уже 11rem на колонку они
+   складываются друг под друга: на планшете рядом с фото две колонки,
+   на телефоне одна. */
+.trivia-wall-many {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.trivia-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.trivia-col .trivia-note {
+  /* Внутри вертикального флекса flex-basis стал бы ВЫСОТОЙ карточки:
+     13rem на факт вместо строки. */
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+@media (max-width: 991.98px) {
+  /* Уже 992px трёх колонок нет, и третья уходила под первую, оставляя
+     справа дыру. Колонки распускаем: карточки становятся ячейками
+     общего грида по два в ряд. Они уже отсортированы по длине, поэтому
+     соседи в ряду похожи по высоте, и рваного низа почти нет. */
+  .trivia-col {
+    display: contents;
   }
+}
+
+.trivia-note {
+  display: inline-block;
+  width: 100%;
+  max-width: none;
+  break-inside: avoid;
+  margin-bottom: 0.5rem;
+}
+
+.trivia-note {
+  flex: 1 1 13rem;
+  max-width: 22rem;
+  border-radius: var(--bs-border-radius-lg);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.07);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--bs-secondary-color);
 }
 
 .artist-trivia-title {
