@@ -3,6 +3,7 @@ import type { Dict } from "../en";
 export const nav: Dict["nav"] = {
     events: "Афиша",
     artists: "Артисты",
+    catalogue: "Каталог",
     series: "Сериалы",
     novels: "Новеллы",
     locations: "Локации",

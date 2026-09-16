@@ -167,6 +167,26 @@ export const catalog = {
         Sunday: "Sundays",
     },
 
+    /** Разделы объединённого каталога (решение владельца 2026-09-16):
+     *  ряд чипов над списком, общий для /dramas и /novels. */
+    kinds: {
+        aria: "Catalogue sections",
+        series: "Series",
+        movie: "Films",
+        show: "Shows",
+        novels: "Novels",
+    },
+
+    /** Витрина каталога: «Новые серии» и «Популярное» над списком. */
+    showcase: {
+        newEpisodes: "New episodes",
+        newEpisodesEmpty: "No new episodes aired this week.",
+        popular: "Popular",
+        mine: "Mine",
+        episodeChip: (numbers: number[]) =>
+            `${numbers.length === 1 ? "Episode" : "Episodes"} ${formatEpisodeNumbers(numbers)}`,
+    },
+
     dramas: {
         calendarLink: "Episode calendar",
         // Рулетка «что посмотреть» (аудит, п. 6.3): кнопка у поиска ведёт
@@ -175,13 +195,9 @@ export const catalog = {
         metaTitle: "Series",
         metaDescription:
             "Series: what they are about, who stars in them, when they aired and where they were filmed.",
-        title: "Series",
+        title: "Catalogue",
         empty: "Nothing marked yet. Use the search to find a series.",
-        // Подпись справа от заголовка идёт тремя строками, и переносы
-        // прибиты разметкой (макет владельца): три ключа, три абзаца.
-        heroLead1: "Only the series you",
-        heroLead2: "have marked are here.",
-        heroCta: "Not on the list — search by title.",
+        emptyKind: "Nothing here yet.",
         // Ссылка-вкладка на народный топ (/dramas/top) в ряду статусов.
         topLink: "Popular",
     },

@@ -2,6 +2,8 @@ import UploadImage from "@/components/UploadImage";
 import { getContentDict } from "@/lib/contentDictionary.server";
 import AppLink from "@/components/AppLink";
 import ScrollableTabs from "@/components/ScrollableTabs";
+import CatalogKindChips from "@/components/CatalogKindChips";
+import PosterTile from "@/components/PosterTile";
 import { CalendarIcon } from "@/components/icons";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
@@ -27,6 +29,9 @@ import { getT } from "@/lib/i18n";
 import { unstable_cache } from "next/cache";
 import { CATALOG_TAG } from "@/lib/catalogCache";
 import { CATALOG_LETTERS, isCatalogLetter, letterPrefixes } from "@/lib/catalogLetters";
+import { kindWhere, parseKind, type CatalogKind } from "@/lib/catalogKinds";
+import { getNewEpisodes } from "@/lib/newEpisodes";
+import { getPeopleTop } from "@/lib/peopleTop";
 import styles from "./dramas.module.css";
 
 export async function generateMetadata({
@@ -71,18 +76,39 @@ const DRAMA_ROW_SELECT = {
   status: true,
 } as const;
 
-/** Гостевой список без поиска: свежие по дате эфира. */
+/** Гостевой список без поиска: свежие по дате эфира. Только сериалы —
+ *  гостю он показывается на разделе «Сериалы», а фильмы и шоу малы
+ *  настолько, что показываются целиком (см. getDramasOfKind). */
 const getGuestDramas = unstable_cache(
   async () =>
     prisma.drama.findMany({
-      where: { airedFrom: { not: null } },
+      where: { ...kindWhere("series"), airedFrom: { not: null } },
       select: DRAMA_ROW_SELECT,
       orderBy: { airedFrom: "desc" },
       take: 60,
     }),
-  // v2: ключ сменён вместе с составом полей (тип/страна/статус в
-  // строке) — иначе до истечения кэша строки шли без новых колонок.
-  ["dramas-guest-list-v2"],
+  // v3: ключ сменён вместе с фильтром по типу (2026-09-16) — иначе до
+  // истечения кэша в списке оставались бы фильмы и шоу.
+  ["dramas-guest-list-v3"],
+  { revalidate: 1800, tags: [CATALOG_TAG] },
+);
+
+/**
+ * Малый раздел каталога целиком — фильмы (43 записи) и шоу (118).
+ *
+ * Правило «без поиска показываем только отмеченное» придумано для
+ * пяти тысяч сериалов; на разделе в полсотни строк оно превращало бы
+ * страницу в пустую. Такой раздат виден целиком и гостю, и своему —
+ * список один на всех, поэтому из кэша.
+ */
+const getDramasOfKind = unstable_cache(
+  async (kind: string) =>
+    prisma.drama.findMany({
+      where: kindWhere(kind as CatalogKind),
+      select: DRAMA_ROW_SELECT,
+      orderBy: [{ year: { sort: "desc", nulls: "last" } }, { title: "asc" }],
+    }),
+  ["dramas-by-kind-v1"],
   { revalidate: 1800, tags: [CATALOG_TAG] },
 );
 
@@ -135,10 +161,18 @@ export default async function DramasPage({
     letter?: string;
     sort?: string;
     dir?: string;
+    kind?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const { q: rawQ, status: rawStatus, letter: rawLetter, sort: rawSort, dir: rawDir } = sp;
+  const {
+    q: rawQ,
+    status: rawStatus,
+    letter: rawLetter,
+    sort: rawSort,
+    dir: rawDir,
+    kind: rawKind,
+  } = sp;
   const q = (rawQ ?? "").trim();
   const sortKey = SORT_KEYS.includes(rawSort as SortKey) ? (rawSort as SortKey) : null;
   const sortDir: "asc" | "desc" = rawDir === "desc" ? "desc" : "asc";
@@ -195,6 +229,16 @@ export default async function DramasPage({
   const { t, locale } = await getT();
   const currentUser = await getCurrentUser();
 
+  // Раздел каталога (решение владельца 2026-09-16): сериалы, фильмы,
+  // шоу. Новеллы — свой адрес /novels, сюда не попадают. Во время
+  // поиска раздел не подсвечен: ищем по всему каталогу (см. ниже).
+  const kind: CatalogKind = parseKind(rawKind);
+  // Малый раздел показывается ЦЕЛИКОМ: правило «только отмеченное»
+  // придумано для пяти тысяч сериалов, а на полусотне фильмов оно
+  // оставляло бы пустую страницу. Вкладок статуса у такого раздела
+  // поэтому нет — фильтровать сорок три строки нечего.
+  const wholeKind = kind === "movie" || kind === "show";
+
   // Вкладка по умолчанию — «Смотрю сейчас» (правка владельца
   // 2026-09-08): в каталог заходят продолжить начатое, а не листать
   // тысячи записей. «Все» стали отдельным адресом `?status=all` —
@@ -205,7 +249,7 @@ export default async function DramasPage({
   // Поиск тоже всегда идёт по всему каталогу (Ж5): вкладка на время
   // поиска сбрасывается, иначе «нашлось 0» при живом сериале в базе.
   const status =
-    q || rawStatus === "all"
+    q || rawStatus === "all" || wholeKind
       ? null
       : WATCH_STATUS_ORDER.includes(rawStatus as DramaWatchStatusValue)
         ? (rawStatus as DramaWatchStatusValue)
@@ -228,18 +272,21 @@ export default async function DramasPage({
 
   const dramas = searchResults
     ? searchResults.slice(0, SEARCH_RESULT_LIMIT)
-    : currentUser
-      ? await prisma.drama.findMany({
-          where: {
-            watchStatuses: {
-              some: status ? { userId: currentUser.id, status } : { userId: currentUser.id },
+    : wholeKind
+      ? await getDramasOfKind(kind)
+      : currentUser
+        ? await prisma.drama.findMany({
+            where: {
+              ...kindWhere(kind),
+              watchStatuses: {
+                some: status ? { userId: currentUser.id, status } : { userId: currentUser.id },
+              },
             },
-          },
-          orderBy: { title: "asc" },
-        })
-      : // Анониму (каталог открыт для SEO) — свежие по дате эфира, а не
-        // пустой список «ваших статусов». Список общий — из кэша.
-        await getGuestDramas();
+            orderBy: { title: "asc" },
+          })
+        : // Анониму (каталог открыт для SEO) — свежие по дате эфира, а не
+          // пустой список «ваших статусов». Список общий — из кэша.
+          await getGuestDramas();
 
   const statusByDramaId = await getDramaWatchStatuses(
     dramas.map((d) => d.id),
@@ -256,6 +303,24 @@ export default async function DramasPage({
   // статуса просмотра (единственный «мой» сигнал у сериала, сердечка у
   // него нет). Популярность одна на всех — из кэша.
   const watermarkNames = await getDramasWatermarkNames();
+
+  // ---------- витрина каталога (решение владельца 2026-09-16) ----------
+  //
+  // Каталог открывался на «Смотрю сейчас», и у девяти зарегистрированных
+  // из тринадцати там было пусто: новичок первым делом видел пустую
+  // страницу. Сверху теперь то, что есть у всех, — вышедшие за неделю
+  // серии и топ по оценкам, — а «своё» уехало вниз, под свой заголовок.
+  //
+  // Витрина рисуется ТОЛЬКО на разделе «Сериалы» и только без поиска:
+  // на «Фильмах» лента вышедших серий говорила бы не о том разделе, в
+  // котором человек стоит, а в результатах поиска она отодвигала бы
+  // найденное за экран.
+  const showcase = !q && kind === "series";
+  const [newEpisodes, peopleTop] = showcase
+    ? await Promise.all([getNewEpisodes(), getPeopleTop()])
+    : [[], null];
+  // Лента топа короткая: витрина зовёт на /dramas/top, а не заменяет её.
+  const topPreview = peopleTop ? peopleTop.rows.slice(0, 6) : [];
 
   // ---------- сортировка по колонке таблицы ----------
   //
@@ -362,24 +427,76 @@ export default async function DramasPage({
         title={t.catalog.dramas.title}
         size="lg"
         gapOnTitle
-        watermark="Series"
+        watermark="Catalogue"
         watermarkNames={watermarkNames}
-        action={
-          // Подпись про наполнение списка — как на актёрах. Условий два,
-          // и оба про правдивость: в результатах поиска виден весь
-          // каталог, а гостю без входа показываются свежие премьеры, а не
-          // «его» сериалы — и в обоих случаях подпись врала бы.
-          !q && currentUser ? (
-            <div className="hero-note">
-              {/* Три абзаца, а не два: перенос первой реплики прибит
-                  разметкой — так в макете владельца. */}
-              <p className="hero-note-lead">{t.catalog.dramas.heroLead1}</p>
-              <p className="hero-note-lead">{t.catalog.dramas.heroLead2}</p>
-              <p className="hero-note-cta">{t.catalog.dramas.heroCta}</p>
-            </div>
-          ) : undefined
-        }
       />
+
+      {showcase && (
+        <>
+          <section className="mb-5">
+            <h2 className="section-heading mb-3">{t.catalog.showcase.newEpisodes}</h2>
+            {newEpisodes.length === 0 ? (
+              <p className="text-secondary mb-0">{t.catalog.showcase.newEpisodesEmpty}</p>
+            ) : (
+              <div className="poster-grid">
+                {newEpisodes.map((d) => (
+                  <PosterTile
+                    key={d.id}
+                    href={dramaHref(d)}
+                    posterUrl={d.posterUrl}
+                    title={dramaTitleForLocale(d, locale)}
+                    subtitle={d.year ? String(d.year) : undefined}
+                    chip={t.catalog.showcase.episodeChip(d.numbers)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {topPreview.length > 0 && (
+            <section className="mb-5">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <h2 className="section-heading mb-0">{t.catalog.showcase.popular}</h2>
+                <AppLink href="/dramas/top" className="small text-secondary">
+                  {t.common.all}
+                </AppLink>
+              </div>
+              <div className="poster-grid">
+                {topPreview.map((row) => (
+                  <PosterTile
+                    key={row.id}
+                    href={dramaHref(row)}
+                    posterUrl={row.posterUrl}
+                    title={dramaTitleForLocale(row, locale)}
+                    subtitle={row.year ? String(row.year) : undefined}
+                    {...(row.score != null
+                      ? { chip: `★ ${row.score.toFixed(1)}` }
+                      : {})}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+        </>
+      )}
+
+      {/* Разделы каталога: сериалы · фильмы · шоу · новеллы.
+          Ряд стоит ВПЛОТНУЮ К СПИСКУ, а не под шапкой: он управляет
+          именно списком, а стоя над витриной выглядел бы так, будто
+          фильтрует и её — хотя «Новые серии» показывают всё, у чего на
+          неделе вышла серия, включая шоу.
+          Во время поиска не подсвечен ни один: ищем по всему каталогу. */}
+      <CatalogKindChips active={q ? null : kind} />
+
+      {/* «Моё» — заголовок списка со вкладками статусов. Без него
+          таблица под витриной читалась бы её продолжением, хотя
+          показывает совсем другое: отмеченное этим человеком. Только на
+          «Сериалах»: у фильмов и шоу список показывает раздел целиком,
+          а не отмеченное, и заголовок врал бы. */}
+      {showcase && currentUser && (
+        <h2 className="section-heading mb-3">{t.catalog.showcase.mine}</h2>
+      )}
 
       <div className="tab-bar-row">
         <ScrollableTabs>
@@ -387,7 +504,7 @@ export default async function DramasPage({
               владельца 2026-09-08): каталог открывается на «Смотрю
               сейчас», и полный список стал не отправной точкой, а
               соседней вкладкой. */}
-          {currentUser && WATCH_STATUS_ORDER.map((s) => (
+          {currentUser && !wholeKind && WATCH_STATUS_ORDER.map((s) => (
             <AppLink
               key={s}
               href={`/dramas?status=${s}`}
@@ -397,19 +514,28 @@ export default async function DramasPage({
               {t.catalog.watchStatus[s]}
             </AppLink>
           ))}
-          <AppLink
-            href={`/dramas?status=all${q ? `&q=${encodeURIComponent(q)}` : ""}`}
-            prefetch={false}
-            className={`tab-bar-item ${!status ? "active" : ""}`}
-          >
-            {t.catalog.all}
-          </AppLink>
+          {!wholeKind && (
+            <AppLink
+              href={`/dramas?status=all${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              prefetch={false}
+              className={`tab-bar-item ${!status ? "active" : ""}`}
+            >
+              {t.catalog.all}
+            </AppLink>
+          )}
           {/* «Популярное» (аудит 2026-09, п.6.5) — отдельная страница, а
               не вкладка-фильтр: у неё свой адрес для поисковика и гостя.
-              Ссылка в том же ряду, чтобы топ было откуда найти. */}
-          <AppLink href="/dramas/top" prefetch={false} className="tab-bar-item">
-            {t.catalog.dramas.topLink}
-          </AppLink>
+              Ссылка в том же ряду, чтобы топ было откуда найти.
+              На фильмах и шоу её нет: вкладок статуса там тоже нет, и
+              одинокая ссылка в пустом ряду читалась бы заголовком
+              списка — «Популярное» над алфавитом фильмов. С «Сериалов»
+              топ по-прежнему в двух местах: тут и ссылкой «все» в
+              витрине. */}
+          {!wholeKind && (
+            <AppLink href="/dramas/top" prefetch={false} className="tab-bar-item">
+              {t.catalog.dramas.topLink}
+            </AppLink>
+          )}
         </ScrollableTabs>
         {/* И10: из каталога сериалов в их расписание раньше было не
             попасть — иконка ведёт на вкладку «Сериалы» календаря.
@@ -487,7 +613,13 @@ export default async function DramasPage({
           живы: они нужны краулеру для перелинковки, туда ведут ссылки
           из карты сайта. */}
       {sortedDramas.length === 0 ? (
-        <p className="text-secondary">{q ? t.common.nothingFound : t.catalog.dramas.empty}</p>
+        <p className="text-secondary">
+          {q
+            ? t.common.nothingFound
+            : wholeKind
+              ? t.catalog.dramas.emptyKind
+              : t.catalog.dramas.empty}
+        </p>
       ) : (
         <div className={`d-flex flex-column ${styles.rows}`}>
           {sortedDramas.map((d) => renderRow(d))}

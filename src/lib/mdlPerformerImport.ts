@@ -242,11 +242,20 @@ export async function importMdlPerformer(
     });
 
     // Тип записи — из секции фильмографии (Drama/Movie/TV Show): у
-    // записей, заведённых не с MDL, он пуст, и без него фильмы с шоу
-    // не отделить от сериалов на странице артиста. Только дозаполняем —
-    // тип со страницы самого тайтла (Details → Type) точнее и не
-    // перетирается.
-    if (drama && !drama.type && row.section) {
+    // записей, заведённых не с MDL, тип неизвестен, и без него фильмы с
+    // шоу не отделить от сериалов на странице артиста.
+    //
+    // С 2026-09-16 «неизвестен» пишется как "Drama" (умолчание
+    // каталога, миграция 20260916T01), поэтому дозаполнять только
+    // ПУСТОЙ тип уже недостаточно: у фильма, заведённого с TMDB, стоит
+    // умолчание «Drama», и фильмография MDL — единственный шанс это
+    // поправить. Значит, "Drama" секция тоже вправе переписать на
+    // Movie / TV Show. А вот Movie или TV Show обратно в Drama не
+    // трогаем: такое значение могло прийти только явно — с карточки
+    // самого тайтла (Details → Type), а она точнее секции.
+    const typeFromSection =
+      row.section && row.section !== "Drama" && (!drama?.type || drama.type === "Drama");
+    if (drama && (!drama.type || typeFromSection) && row.section) {
       await prisma.drama.update({
         where: { id: drama.id },
         data: { type: row.section },
@@ -256,7 +265,7 @@ export async function importMdlPerformer(
         entityType: "Drama",
         entityId: drama.id,
         entityLabel: row.title,
-        changes: [{ field: "type", label: fieldLabel("type"), from: null, to: row.section }],
+        changes: [{ field: "type", label: fieldLabel("type"), from: drama.type, to: row.section }],
         note: "секция фильмографии MyDramaList",
       });
     }

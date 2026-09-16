@@ -30,7 +30,12 @@ copy — read the schema file for exact field types/nullability.
   time — see [catalog.md](features/catalog.md#agencies). No current/past
   status field yet; every row just means "associated with", left simple
   until that distinction is needed.
-- **`Drama`** — a BL series. `blsceneUrl` (unique, nullable) links it back
+- **`Drama`** — a BL series, film or show; which one is `type`
+  (`"Drama" | "Movie" | "TV Show" | "TV Program"`, MyDramaList wording),
+  and it drives the catalogue sections — see
+  [catalog.md](features/catalog.md). Default is `"Drama"`: a row without
+  a type is a series (migration `20260916T01` backfilled 3387 such rows
+  and set the column default). `blsceneUrl` (unique, nullable) links it back
   to its blscene.com source page when it came from the importer — see
   [blscene-import.md](features/blscene-import.md) for why that's a
   separate field from `title` rather than matching on title text.

@@ -4068,6 +4068,19 @@ button.hero-stat-toggle.is-open {
   transform: translateY(-1px);
 }
 
+/* Выбранный раздел каталога (CatalogKindChips): сериалы · фильмы ·
+   шоу · новеллы. Заливка акцентом, а не только рамка — ряд стоит над
+   списком, и по нему нужно читать, что именно сейчас показано. */
+.chip-link.is-active {
+  border-color: rgba(var(--accent-rgb), 0.75);
+  background: rgba(var(--accent-rgb), 0.16);
+  color: #fff;
+}
+
+.chip-link.is-active:hover {
+  transform: none;
+}
+
 /* Сетка постеров каталога: переносится по строкам (в отличие от
    горизонтальной ленты .poster-row). */
 .poster-grid {

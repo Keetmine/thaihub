@@ -406,7 +406,9 @@ export async function upsertDramaFromMdl(
     duration: mdl.duration,
     contentRating: mdl.contentRating,
     country: mdl.country,
-    type: mdl.type,
+    // Пустой тип с карточки — сериал (правило каталога с 2026-09-16,
+    // см. миграцию 20260916T01): явный null обошёл бы default колонки.
+    type: mdl.type ?? "Drama",
     year: mdl.year,
     status: mdl.status,
     mdlScore: mdl.rating,

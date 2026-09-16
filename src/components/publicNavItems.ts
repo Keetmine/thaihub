@@ -4,7 +4,6 @@
 import type { ReactNode } from "react";
 import type { Dict } from "@/lib/i18n";
 import {
-  BookIcon,
   PinIcon,
   PlaneIcon,
   TicketIcon,
@@ -39,8 +38,24 @@ export const PUBLIC_NAV_ITEMS: PublicNavItem[] = [
     tourId: "artists",
     icon: UsersIcon,
   },
-  { href: "/dramas", labelKey: "series", matchPrefixes: ["/dramas/"], tourId: "series", icon: TvIcon },
-  { href: "/novels", labelKey: "novels", matchPrefixes: ["/novels/"], icon: BookIcon },
+  // Один «Каталог» вместо «Сериалов» и «Новелл» (решение владельца
+  // 2026-09-16). Новеллы вели в раздел из пяти записей — вывеска над
+  // пустой комнатой; фильмы и шоу лежали в той же таблице, что
+  // сериалы, и отдельного входа не имели вовсе. Теперь всё это разделы
+  // одной страницы (см. CatalogKindChips), а меню похудело до шести
+  // пунктов — семь в десктопный ряд и не влезали.
+  //
+  // Адрес прежний: /dramas. Переезжать URL нельзя, пока не отыгран
+  // августовский обвал трафика (docs/features/seo.md). Поэтому у пункта
+  // в префиксах и /novels — чтобы «Каталог» подсвечивался и на
+  // странице новеллы.
+  {
+    href: "/dramas",
+    labelKey: "catalogue",
+    matchPrefixes: ["/dramas/", "/novels", "/novels/"],
+    tourId: "series",
+    icon: TvIcon,
+  },
   {
     href: "/locations",
     labelKey: "locations",
@@ -78,6 +93,14 @@ export const NAV_PREFIXES: Record<string, string[]> = {
   ...Object.fromEntries(
     PUBLIC_NAV_ITEMS.filter((i) => i.matchPrefixes).map((i) => [i.href, i.matchPrefixes!]),
   ),
+  // Футер перечисляет «Сериалы» и «Новеллы» ОТДЕЛЬНЫМИ ссылками (ему
+  // это можно: он же карта сайта, и перелинковка для краулера тут
+  // полезна), поэтому у них свои префиксы — те, что были до слияния
+  // пунктов меню. Без этой пары шапочный список префиксов «Каталога»
+  // протёк бы в футер, и на странице новеллы подсветились бы СРАЗУ ДВЕ
+  // ссылки (ровно это ловит tests/e2e/nav-active.spec.ts).
+  "/dramas": ["/dramas/"],
+  "/novels": ["/novels/"],
   "/wiki": ["/wiki/"],
   "/lists": ["/lists/"],
   "/artist-lists": ["/artist-lists/"],

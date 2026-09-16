@@ -3,6 +3,7 @@ import AppLink from "@/components/AppLink";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
+import CatalogKindChips from "@/components/CatalogKindChips";
 import { novelHref } from "@/lib/slugHelpers";
 import { pageMetadata } from "@/lib/seo";
 import { getT } from "@/lib/i18n";
@@ -96,6 +97,12 @@ export default async function NovelsPage({
         watermark="Novels"
         watermarkNames={watermarkNames}
       />
+
+      {/* Тот же ряд разделов, что и на /dramas: пункт меню теперь один
+          («Каталог»), и новеллы — его четвёртый раздел. Свой адрес и
+          свою страницу они при этом сохранили — переезжать URL после
+          августовского падения трафика нельзя (docs/features/seo.md). */}
+      <CatalogKindChips active="novels" />
 
       <NameSearchBox action="/novels" q={q} placeholder={t.catalog.novels.search} />
 

@@ -1,6 +1,7 @@
 export const nav = {
     events: "Events",
     artists: "Artists",
+    catalogue: "Catalogue",
     series: "Series",
     novels: "Novels",
     locations: "Locations",
