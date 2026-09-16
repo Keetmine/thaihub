@@ -756,6 +756,26 @@ export default async function TripPage({
     })),
   ];
 
+  /* Ещё НЕ купленные покупки с ценой — это план, а не расход. В итог
+     они не идут, но и пропасть не должны: иначе человек проставил цены
+     и не понимает, куда они делись. Отдельной тихой строкой в сводке. */
+  const plannedShopping = user
+    ? todos
+        .filter(
+          (item) =>
+            item.kind === "SHOPPING" &&
+            !item.done &&
+            item.priceMinor != null &&
+            item.priceCurrency &&
+            (item.createdById ?? trip.userId) === user.id,
+        )
+        .map((item) => ({
+          amountMinor: item.priceMinor!,
+          currency: item.priceCurrency as TripCurrencyValue,
+          category: "SHOPPING" as ExpenseCategoryValue,
+        }))
+    : [];
+
   const derivedExpenses = user
     ? [
         ...trip.bookings
@@ -770,6 +790,27 @@ export default async function TripPage({
             category: (b.kind === "FLIGHT" ? "FLIGHT" : "STAY") as ExpenseCategoryValue,
             spentOn: b.startAt ? b.startAt.toISOString() : null,
             source: "booking" as const,
+          })),
+        // КУПЛЕННЫЕ покупки с ценой. Только `done`: список покупок —
+        // это хотелки, и неотмеченный пункт остаётся планом. Считать
+        // список желаний потраченным значило бы раздувать итог.
+        ...todos
+          .filter(
+            (item) =>
+              item.kind === "SHOPPING" &&
+              item.done &&
+              item.priceMinor != null &&
+              item.priceCurrency &&
+              isMineRecord(item.createdById),
+          )
+          .map((item) => ({
+            id: item.id,
+            title: item.text,
+            amountMinor: item.priceMinor!,
+            currency: item.priceCurrency as TripCurrencyValue,
+            category: "SHOPPING" as ExpenseCategoryValue,
+            spentOn: item.date ? item.date.toISOString() : null,
+            source: "shopping" as const,
           })),
         ...trip.personalEvents
           .filter((p) => p.priceMinor != null && p.priceCurrency && isMineRecord(p.createdById))
@@ -828,6 +869,8 @@ export default async function TripPage({
       canEdit: canTouch(t),
       editableByOthers: t.editableByOthers,
       visibility: effectiveVisibility(t.visibility),
+      priceMinor: t.priceMinor,
+      priceCurrency: t.priceCurrency,
     }));
 
   // ЕДИНСТВЕННАЯ точка, где брони попадают в разметку. Жильё и перелёты
@@ -1464,6 +1507,7 @@ export default async function TripPage({
           tripId={trip.id}
           expenses={expenseData}
           derived={derivedExpenses}
+          plannedShopping={plannedShopping}
           links={expenseLinks}
           canAdd={canContribute}
         />

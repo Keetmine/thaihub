@@ -8,6 +8,8 @@ import TimeInput from "@/components/TimeInput";
 import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
+import PriceFields from "@/components/PriceFields";
+import { TRIP_CURRENCIES, type TripCurrencyValue } from "@/lib/tripMoney";
 import { TrashIcon, PencilIcon } from "@/components/icons";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import {
@@ -40,6 +42,10 @@ export type TodoData = {
   visibility: TripItemVisibilityValue;
   /** Какой список: дела, чемодан, покупки (АА10/АА11). */
   kind: TripTodoKind;
+  /** Цена — только у покупок. В расходы поездки уходит, когда пункт
+   *  отмечен купленным: список покупок это хотелки. */
+  priceMinor?: number | null;
+  priceCurrency?: "THB" | "RUB" | "BYN" | "USD" | null;
 };
 
 /** Строка дела: чекбокс + текст + дата + правка/удаление. Используется
@@ -202,6 +208,13 @@ export function TodoRow({
             <label className="form-label small text-secondary" htmlFor={`${uid}-text`}>{t.trips.todos.text}</label>
             <input id={`${uid}-text`} name="text" required defaultValue={todo.text} className="form-control" />
           </div>
+          {/* Цена — только у ПОКУПОК (правка владельца 2026-09-16):
+              «взять переходник» на сумму не назначают, а у дела цены не
+              бывает. У остальных списков поля нет вовсе, и прежнее
+              значение им записать неоткуда. */}
+          {todo.kind === "SHOPPING" && (
+            <PriceFields priceMinor={todo.priceMinor} currency={todo.priceCurrency} />
+          )}
           {/* Даты — только у дел: датированное дело уходит в ленту
               плана, а «взять переходник» на число не назначают (правка
               владельца 2026-09-06). У старых записей чемодана дата
@@ -418,23 +431,34 @@ function TripTodoQuickAdd({
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Цена — только у покупок (правка владельца 2026-09-16). Необязательная:
+  // в список часто кладут хотелку, не зная, сколько она стоит.
+  const [price, setPrice] = useState("");
+  const [priceCurrency, setPriceCurrency] = useState<TripCurrencyValue>("THB");
 
   function add() {
     const value = text.trim();
     if (!value || pending) return;
     setError(null);
-    // Поле очищаем сразу: строка появится после refresh, а вводить
+    // Поля очищаем сразу: строка появится после refresh, а вводить
     // следующую вещь можно уже сейчас.
     setText("");
+    const priceValue = price.trim();
+    setPrice("");
     startTransition(async () => {
       const fd = new FormData();
       fd.set("text", value);
       fd.set("kind", kind);
       fd.set("visibility", visibility);
+      if (priceValue) {
+        fd.set("priceAmount", priceValue);
+        fd.set("priceCurrency", priceCurrency);
+      }
       const result = await createTripTodo(tripId, fd);
       if (!result.ok) {
         setError(result.error);
         setText(value);
+        setPrice(priceValue);
         return;
       }
       router.refresh();
@@ -460,6 +484,40 @@ function TripTodoQuickAdd({
           placeholder={kind === "PACKING" ? l.quickAddPacking : l.quickAddShopping}
           aria-label={l.quickAddAria}
         />
+        {/* Цена прямо в строке быстрого ввода — но только у покупок:
+            у чемодана суммы не бывает. Узкое поле и селект-значок,
+            чтобы строка не разрослась (правка владельца 2026-09-16). */}
+        {kind === "SHOPPING" && (
+          <>
+            <input
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  add();
+                }
+              }}
+              inputMode="decimal"
+              className="form-control flex-shrink-0"
+              style={{ width: "6.5rem" }}
+              placeholder={t.trips.expenses.fieldPrice}
+              aria-label={t.trips.expenses.fieldPrice}
+            />
+            <select
+              className="form-select flex-shrink-0 expense-currency-select"
+              value={priceCurrency}
+              onChange={(e) => setPriceCurrency(e.target.value as TripCurrencyValue)}
+              aria-label={t.trips.expenses.fieldCurrency}
+            >
+              {TRIP_CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {t.trips.expenses.currencySign[c]}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         {visibilityOptions.length > 1 && (
           <select
             className="form-select flex-shrink-0"

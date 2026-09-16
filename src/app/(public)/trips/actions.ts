@@ -1007,6 +1007,8 @@ export async function createTripTodo(tripId: string, formData: FormData): Promis
       kind: parseTodoKind(formData.get("kind")),
       date,
       hasTime,
+      // Цена есть только у покупок — см. модель TripTodo.
+      ...priceFromForm(formData),
       createdById: access.user.id,
       editableByOthers: formData.get("editableByOthers") === "on",
       ...itemVisibilityData(
@@ -1064,6 +1066,7 @@ export async function updateTripTodo(todoId: string, formData: FormData): Promis
       text,
       date,
       hasTime,
+      ...priceFromForm(formData),
       editableByOthers: formData.get("editableByOthers") === "on",
       ...itemVisibilityData(
         parseItemVisibility(

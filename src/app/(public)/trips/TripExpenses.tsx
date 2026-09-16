@@ -17,6 +17,7 @@ import {
   formatMoney,
   totalsByCurrency,
   type ExpenseCategoryValue,
+  type ExpenseLike,
   type TripCurrencyValue,
 } from "@/lib/tripMoney";
 import { addTripExpense, updateTripExpense, deleteTripExpense } from "./actions";
@@ -53,8 +54,8 @@ export type DerivedExpense = {
   currency: TripCurrencyValue;
   category: ExpenseCategoryValue;
   spentOn: string | null;
-  /** Откуда пришла: бронь или личное событие. */
-  source: "booking" | "event";
+  /** Откуда пришла: бронь, личное событие или КУПЛЕННЫЙ пункт покупок. */
+  source: "booking" | "event" | "shopping";
 };
 
 /**
@@ -70,20 +71,30 @@ export type DerivedExpense = {
  * постановке задачи.
  *
  * Итоги считаются ПО КАЖДОЙ ВАЛЮТЕ отдельно — курсов мы не храним и не
- * выдумываем (см. src/lib/tripMoney.ts). Поэтому и бюджет свой на каждую
- * валюту: сравнивать баты с рублями не через что.
+ * выдумываем (см. src/lib/tripMoney.ts): сравнивать баты с рублями не
+ * через что, поэтому сводка идёт по валютам отдельно.
+ *
+ * Три источника строк: траты, заведённые руками; цены броней и личных
+ * событий; КУПЛЕННЫЕ пункты списка покупок. Последние — только
+ * купленные: список покупок это хотелки, и неотмеченный пункт остаётся
+ * планом (он показан отдельной тихой строкой, но в итог не идёт).
  */
 export default function TripExpenses({
   tripId,
   expenses,
   derived,
+  plannedShopping,
   links,
   canAdd,
 }: {
   tripId: string;
   expenses: ExpenseData[];
-  /** Цены броней и личных событий — см. DerivedExpense. */
+  /** Цены броней, личных событий и купленных покупок — см. DerivedExpense. */
   derived: DerivedExpense[];
+  /** Ещё НЕ купленные покупки с ценой: это план, а не расход. В итог не
+   *  идут, но и пропасть не должны — иначе человек проставил цены и не
+   *  понимает, куда они делись. */
+  plannedShopping: ExpenseLike[];
   /** К чему можно прицепить трату: брони поездки и события афиши в её
    *  датах. Одним списком с готовыми значениями `booking:…` /
    *  `occurrence:…` — форме не нужно знать, откуда что взялось. */
@@ -100,6 +111,7 @@ export default function TripExpenses({
   // же потраченные деньги, как трата, заведённая руками.
   const all = [...expenses, ...derived];
   const totals = totalsByCurrency(all);
+  const plannedTotals = totalsByCurrency(plannedShopping);
 
   // Единый список: сверху свежее по дате, записи без даты в хвосте.
   const rows = [
@@ -135,6 +147,18 @@ export default function TripExpenses({
               </span>
             ))}
           </p>
+
+          {/* План отдельной тихой строкой: это ещё не потраченное, и
+              складывать его с итогом нельзя. */}
+          {plannedTotals.length > 0 && (
+            <p className="small text-secondary mb-0 mt-1">
+              {e.planned(
+                plannedTotals
+                  .map((pt) => formatMoney(pt.total, pt.currency, locale))
+                  .join(" · "),
+              )}
+            </p>
+          )}
 
           {totals.map(({ currency }) => {
             const cats = byCategory(all, currency);
@@ -199,7 +223,9 @@ export default function TripExpenses({
                     item.kind === "derived"
                       ? item.source === "booking"
                         ? e.fromBooking
-                        : e.fromEvent
+                        : item.source === "shopping"
+                          ? e.fromShopping
+                          : e.fromEvent
                       : item.linkLabel,
                     item.kind === "manual" ? item.note : null,
                   ]

@@ -358,6 +358,9 @@ export const trips: Dict["trips"] = {
         pricePlaceholder: "Можно не заполнять",
         fromBooking: "из брони",
         fromEvent: "из события",
+        fromShopping: "из покупок",
+        /** Ещё не купленные покупки с ценой: это план, а не расход. */
+        planned: (sum: string) => `В планах ещё ${sum}`,
         add: "+ Трата",
         editTitle: "Правка траты",
         emptyTitle: "Трат пока нет",

@@ -355,6 +355,8 @@ export const trips = {
         pricePlaceholder: "Can be left empty",
         fromBooking: "from a booking",
         fromEvent: "from an event",
+        fromShopping: "from the shopping list",
+        planned: (sum: string) => `${sum} still planned`,
         add: "+ Expense",
         editTitle: "Edit expense",
         emptyTitle: "No expenses yet",

@@ -1328,6 +1328,12 @@ model TripTodo {
   hasTime          Boolean            @default(false)
   createdAt        DateTime           @default(now())
 
+  /// Цена пункта ПОКУПОК (у дел и чемодана поля в форме нет).
+  /// В расходы поездки попадает только купленное (`done`): список
+  /// покупок — это хотелки, и неотмеченный пункт остаётся планом.
+  priceMinor    Int?
+  priceCurrency TripCurrency?
+
   @@index([tripId])
 }
 
