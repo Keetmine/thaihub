@@ -1,28 +1,25 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useRef } from "react";
-import { useT } from "@/components/LocaleProvider";
-import { CalendarIcon } from "@/components/icons";
+import DatePickerInput from "@/components/DatePickerInput";
 
 /**
- * Выбор дня для блока «Новые серии»: маленькая кнопка-календарь, за
- * которой прячется нативный `input[type=date]`.
+ * Выбор дня для блока «Новые серии».
  *
- * Нативный, а не наш DatePickerInput: тот рисует полноценную выпадашку
- * с месяцем и годом, и в ряду со стрелками она перевешивала бы сам
- * блок. Здесь нужно ровно «открыть календарь и выбрать день».
+ * Календарь СВОЙ, а не нативный `input[type=date]` (правка владельца
+ * 2026-09-16: «календарь делаем кастомный с выбором дат»). Нативный
+ * рисует браузер, и выглядит он в каждом по-своему — посреди тёмной
+ * витрины это читалось чужой деталью. `DatePickerInput` — тот же
+ * календарь, что в поездках и событиях, с выбором месяца и года.
  *
- * День уезжает в адрес (`?day=2026-09-16`) — как и стрелки рядом. Своего
- * состояния у компонента нет: срез можно переслать и положить в
+ * День уезжает в адрес (`?day=2026-09-16`) — как и стрелки рядом.
+ * Своего состояния у компонента нет: срез можно переслать и положить в
  * закладки, а страница остаётся серверной.
  */
 export default function EpisodeDayPicker({ day }: { day: string }) {
-  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const inputRef = useRef<HTMLInputElement>(null);
 
   function go(value: string) {
     if (!value) return;
@@ -36,31 +33,9 @@ export default function EpisodeDayPicker({ day }: { day: string }) {
 
   return (
     <span className="episode-day-pick">
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        aria-label={t.catalog.showcase.pickDay}
-        title={t.catalog.showcase.pickDay}
-        onClick={() => {
-          // showPicker есть не везде (Safari до 16, старый Firefox) —
-          // там остаётся обычный клик по самому полю, оно лежит под
-          // кнопкой и ловит его само.
-          const el = inputRef.current;
-          if (!el) return;
-          if (typeof el.showPicker === "function") el.showPicker();
-          else el.focus();
-        }}
-      >
-        <CalendarIcon />
-      </button>
-      <input
-        ref={inputRef}
-        type="date"
-        className="episode-day-input"
-        value={day}
-        aria-label={t.catalog.showcase.pickDay}
-        onChange={(e) => go(e.target.value)}
-      />
+      {/* Годы — от начала каталога и на пару вперёд: расписание ведут
+          заранее, и «через год» в нём встречается. */}
+      <DatePickerInput value={day} onValueChange={go} yearsBack={12} yearsForward={2} />
     </span>
   );
 }

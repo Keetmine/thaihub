@@ -4,6 +4,8 @@ import AppLink from "@/components/AppLink";
 import ScrollableTabs from "@/components/ScrollableTabs";
 import CatalogKindChips from "@/components/CatalogKindChips";
 import PosterTile from "@/components/PosterTile";
+import PosterRow from "@/components/PosterRow";
+import PickDramaButton from "@/components/PickDramaButton";
 import { CalendarIcon } from "@/components/icons";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import type { Prisma } from "@/generated/prisma/client";
@@ -561,29 +563,19 @@ export default async function DramasPage({
 
       {showcase && (
         <section className="mb-5">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h2 className="section-heading mb-0">{t.catalog.showcase.newEpisodes}</h2>
-            {/* «Расписание» — кнопка с подписью, а не голая иконка
-                (правка владельца 2026-09-16): иконку рядом с поиском
-                никто не находил. Ведёт в календарь, открытый на виде
-                «Сериалы». */}
-            <AppLink
-              href="/calendar?view=series"
-              prefetch={false}
-              className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
-            >
-              <CalendarIcon />
-              {t.catalog.showcase.schedule}
-            </AppLink>
-          </div>
+          <h2 className="section-heading mb-3">{t.catalog.showcase.newEpisodes}</h2>
 
-          {/* Листалка дней. Стрелки — обычные ссылки (работают без JS и
-              открываются в новой вкладке), выбор даты — крошечный
-              клиентский компонент с нативным календарём.
+          {/* Один ряд управления (правка владельца 2026-09-16): слева
+              листалка дней с календарём, справа — «Расписание». Раньше
+              кнопка стояла строкой выше, у заголовка, и ряд под ней
+              выглядел оторванным.
+
+              Стрелки — обычные ссылки (работают без JS и открываются в
+              новой вкладке), выбор даты — свой календарь проекта.
               Стрелка прыгает на БЛИЖАЙШИЙ день с сериями, а не на
               соседние сутки: в межсезонье иначе приходилось бы кликать
               её пять раз подряд по пустым дням. Нет такого дня впереди —
-              стрелки нет вовсе. */}
+              стрелка гаснет. */}
           <div className="episode-day-nav mb-3">
             {prevDay ? (
               <AppLink
@@ -617,12 +609,29 @@ export default async function DramasPage({
               </span>
             )}
             <EpisodeDayPicker day={dateKey(day)} />
+
+            {/* «Расписание» — кнопка с подписью, а не голая иконка:
+                иконку рядом с поиском никто не находил (жалоба
+                владельца). Прижата к правому краю ряда. `from=catalog` —
+                чтобы «назад» в календаре вернуло сюда, а не в афишу. */}
+            <AppLink
+              href="/calendar?view=series&from=catalog"
+              prefetch={false}
+              className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2 ms-auto"
+            >
+              <CalendarIcon />
+              {t.catalog.showcase.schedule}
+            </AppLink>
           </div>
 
+          {/* ОДИН РЯД с прокруткой, а не сетка в несколько строк
+              (правка владельца 2026-09-16): в день выходит и десять
+              серий, и сетка отжимала бы каталог на второй экран.
+              Стрелки листания рисует PosterRow. */}
           {dayEpisodes.length === 0 ? (
             <p className="text-secondary mb-0">{t.catalog.showcase.dayEmpty}</p>
           ) : (
-            <div className="poster-grid">
+            <PosterRow>
               {dayEpisodes.map((d) => (
                 <PosterTile
                   key={d.id}
@@ -633,12 +642,17 @@ export default async function DramasPage({
                   chip={t.catalog.showcase.episodeChip(d.numbers)}
                 />
               ))}
-            </div>
+            </PosterRow>
           )}
         </section>
       )}
 
       <div className="tab-bar-row">
+        {/* Ряд вкладок есть только в «Моём списке»: у разделов каталога
+            вкладок статуса нет. Пустую обёртку не рисуем вовсе — у неё
+            `flex: 1`, и она отжимала поиск в середину строки вместо
+            левого края. */}
+        {mine && (
         <ScrollableTabs>
           {/* Статусы идут первыми, «Все» — последней справа (правка
               владельца 2026-09-08): каталог открывается на «Смотрю
@@ -677,12 +691,18 @@ export default async function DramasPage({
             </AppLink>
           )}
         </ScrollableTabs>
-        {/* И10: из каталога сериалов в их расписание раньше было не
-            попасть — иконка ведёт на вкладку «Сериалы» календаря.
-            Календарь и поиск — одной группой у правого края: врозь
-            space-between ронял иконку в центр ряда (жалоба владельца —
-            она должна стоять чуть левее поиска). */}
-        <div className="d-flex align-items-center gap-2 flex-shrink-0">
+        )}
+        {/* Поиск — СЛЕВА и крупный (правка владельца 2026-09-16): в
+            разделе на пять тысяч записей это основной инструмент, а не
+            кнопка в ряду. Кнопки подбора — справа. */}
+        <NameSearchBox
+          action="/dramas"
+          q={q}
+          big
+          placeholder={t.catalog.searchByTitle}
+          className="catalog-search"
+        />
+        <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
           {/* Рулетка «что посмотреть» (аудит, п. 6.3): 302 на случайный
               сериал (роут /dramas/random), у залогиненного — без уже
               отмеченных. Кнопка проносит поисковый запрос q — других
@@ -691,6 +711,11 @@ export default async function DramasPage({
               prefetch выключен: префетч ссылки дёргал бы редирект со
               случайным исходом впустую. Текст прячется на узком экране —
               в ряду с поиском ему не хватает места, кость остаётся. */}
+          {/* «Подобрать сериал» — квиз в попапе (правка владельца
+              2026-09-16). Стоит слева от рулетки: рулетка отдаёт
+              случайное, а квиз спрашивает, чего человек хочет, и это
+              более «главное» действие из двух. */}
+          <PickDramaButton loggedIn={!!currentUser} />
           <AppLink
             href={`/dramas/random${q ? `?q=${encodeURIComponent(q)}` : ""}`}
             prefetch={false}
@@ -717,12 +742,6 @@ export default async function DramasPage({
               <CalendarIcon />
             </AppLink>
           )}
-          <NameSearchBox
-            action="/dramas"
-            q={q}
-            placeholder={t.catalog.searchByTitle}
-            className=""
-          />
         </div>
       </div>
 
@@ -745,7 +764,10 @@ export default async function DramasPage({
            сортировка живут в адресе, поэтому срез можно переслать. */
         <div className="row g-4">
           <div className="col-12 col-lg-9">
-            <p className="text-secondary small mb-3">{t.filters.results(totalCount)}</p>
+            {/* Счётчика «Найдено: N» тут нет (правка владельца
+                2026-09-16): на витрине каталога число записей ничего не
+                решает, а строка над таблицей отодвигала её вниз. На
+                /search он остаётся — там это результат запроса. */}
             {table}
             <CatalogPagination
               page={page}

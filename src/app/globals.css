@@ -2447,6 +2447,20 @@ svg[aria-hidden="true"] {
   margin-bottom: 0.6rem;
 }
 
+/* Поиск каталога — слева и крупный (правка владельца 2026-09-16): в
+   разделе на пять тысяч записей это основной инструмент страницы, а не
+   кнопка в ряду. Перебивает общее правило .tab-bar-row выше, поэтому
+   стоит после него. */
+.tab-bar-row .catalog-search {
+  flex: 1 1 18rem;
+  min-width: 0;
+  margin-bottom: 0.6rem;
+}
+
+.tab-bar-row .catalog-search .search-box {
+  max-width: 26rem;
+}
+
 /* ---------- File dropzone (image uploads) ---------- */
 .file-dropzone {
   display: flex;
@@ -4081,26 +4095,17 @@ button.hero-stat-toggle.is-open {
   transform: none;
 }
 
-/* Листалка дней у блока «Новые серии» (EpisodeDayPicker). Нативное
-   поле даты лежит ПОД кнопкой-календарём и растянуто на неё: клик
-   ловит кнопка (и зовёт showPicker), а там, где showPicker не
-   поддерживается, попадание приходится на само поле — и календарь
-   открывает браузер. Прятать поле через display:none нельзя: скрытому
-   полю браузер календарь не откроет. */
+/* Выбор дня у блока «Новые серии» (EpisodeDayPicker) — свой календарь
+   проекта (DatePickerInput), а не нативное поле даты: нативное рисует
+   браузер, и посреди тёмной витрины оно читалось чужой деталью.
+   Ширину поджимаем: в ряду со стрелками ему хватает даты. */
 .episode-day-pick {
-  position: relative;
   display: inline-flex;
+  max-width: 11rem;
 }
 
-.episode-day-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
+.episode-day-pick input {
+  font-size: 0.85rem;
 }
 
 /* Ряд «← дата →» над сеткой постеров. Подпись дня фиксированной
@@ -4117,6 +4122,115 @@ button.hero-stat-toggle.is-open {
   min-width: 9rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Лента постеров со стрелками (ScrollRow) ----------
+   Правка владельца 2026-09-16: «везде на прокрутке нужно добавить слева
+   и справа кнопочки чтобы можно было листать — везде где такие блоки».
+   Движок тот же, что у ряда вкладок (см. ScrollRow.tsx), поэтому и
+   правила зеркальны: маска вместо заливки, кнопки только на устройстве
+   с курсором. */
+.scroll-row {
+  position: relative;
+}
+
+.scroll-row .poster-row {
+  /* Полосу прячем — о прокрутке говорят растушёванный край и кнопки. */
+  scrollbar-width: none;
+  --row-fade-start: 0px;
+  --row-fade-end: 0px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--row-fade-start),
+    #000 calc(100% - var(--row-fade-end)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--row-fade-start),
+    #000 calc(100% - var(--row-fade-end)),
+    transparent 100%
+  );
+}
+
+.scroll-row .poster-row::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-row .poster-row.has-more-start {
+  --row-fade-start: 2.5rem;
+}
+
+.scroll-row .poster-row.has-more-end {
+  --row-fade-end: 2.5rem;
+}
+
+.scroll-row-btn {
+  display: none;
+}
+
+@media (hover: hover) {
+  .scroll-row-btn {
+    position: absolute;
+    /* По центру КАРТИНКИ, а не всего блока: под постером живут название
+       и год, и кнопка, встав по центру высоты, наползала бы на подпись.
+       Постер — 3/4 от ширины колонки, так что центр картинки заметно
+       выше середины карточки; 42% подобраны по факту. */
+    top: 42%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--bs-border-color);
+    background: rgba(18, 18, 22, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--bs-secondary-color);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .scroll-row-btn:hover {
+    color: #fff;
+    border-color: var(--bs-primary);
+    background: rgba(18, 18, 22, 0.9);
+  }
+
+  .scroll-row-btn:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+    color: #fff;
+  }
+
+  /* Тот же шеврон, что и везде, повёрнутый: две иконки ради двух углов
+     заводить незачем. */
+  .scroll-row-btn-start {
+    left: -0.6rem;
+  }
+
+  .scroll-row-btn-start svg {
+    transform: rotate(90deg);
+  }
+
+  .scroll-row-btn-end {
+    right: -0.6rem;
+  }
+
+  .scroll-row-btn-end svg {
+    transform: rotate(-90deg);
+  }
 }
 
 /* Сетка постеров каталога: переносится по строкам (в отличие от

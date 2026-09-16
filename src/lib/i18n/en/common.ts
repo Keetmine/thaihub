@@ -25,4 +25,7 @@ export const common = {
   deletedAccount: "Deleted account",
     year: "year",
     language: "Language",
+  /** Кнопки листания горизонтальных лент (ScrollRow). */
+  scrollPrev: "Scroll left",
+  scrollNext: "Scroll right",
 };

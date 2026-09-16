@@ -45,10 +45,18 @@ export const dynamic = "force-dynamic";
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string; view?: string; mine?: string }>;
+  searchParams: Promise<{
+    year?: string;
+    month?: string;
+    view?: string;
+    mine?: string;
+    /** Откуда пришли — влияет только на ссылку «назад». */
+    from?: string;
+  }>;
 }) {
   const { locale, t } = await getT();
   const params = await searchParams;
+  const fromCatalog = params.from === "catalog";
   const now = new Date();
 
   // Календарь — платная функция (см. PremiumUpsell / /admin/users).
@@ -203,8 +211,18 @@ export default async function CalendarPage({
     <div>
       <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
         <div>
-          <AppLink href="/" className="eyebrow text-decoration-none">
-            {t.events.calendar.backToEvents}
+          {/* Куда ведёт «назад» — зависит от того, откуда пришли
+              (правка владельца 2026-09-16: «если с каталога перейти в
+              расписание, то кнопка назад ведёт на все события»). Из
+              каталога — обратно в каталог; отовсюду ещё — как было.
+              Признак приходит параметром `from=catalog`: реферер до
+              сервера не доезжает, а держать его в куке ради одной
+              ссылки — перебор. */}
+          <AppLink
+            href={fromCatalog ? "/dramas" : "/"}
+            className="eyebrow text-decoration-none"
+          >
+            {fromCatalog ? t.events.calendar.backToCatalog : t.events.calendar.backToEvents}
           </AppLink>
           <h1 className="display-1-tight text-capitalize mt-3 mb-0" style={{ fontSize: "2.75rem" }}>
             {monthLabel(year, month, locale)}

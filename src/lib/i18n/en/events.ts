@@ -32,6 +32,7 @@ export const events = {
     metaDescription:
       "A calendar of the actors' concerts and fan meets, birthdays and episode air dates included.",
     backToEvents: "← All events",
+    backToCatalog: "← Catalogue",
     title: "Calendar",
     paywallFeature: "The calendar",
     prev: "← Prev",

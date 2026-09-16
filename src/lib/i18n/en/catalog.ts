@@ -193,6 +193,51 @@ export const catalog = {
             `${numbers.length === 1 ? "Episode" : "Episodes"} ${formatEpisodeNumbers(numbers)}`,
     },
 
+    /** Квиз «Подобрать сериал» (правка владельца 2026-09-16). */
+    picker: {
+        open: "Find me a series",
+        title: "Let's find you something",
+        step: (n: number, total: number) => `Question ${n} of ${total}`,
+        back: "Back",
+        skip: "Doesn't matter",
+        again: "Other options",
+        restart: "Start over",
+        searching: "Looking…",
+        failed: "That didn't work — please try again.",
+        relaxed: "Nothing matched exactly — here's what comes close.",
+        results: "Here's what we found",
+        moodTitle: "What are you in the mood for?",
+        mood: {
+            romance: "Falling in love",
+            funny: "A laugh",
+            tense: "Something gripping",
+            cry: "A good cry",
+            escape: "Escaping reality",
+            any: "Doesn't matter",
+        },
+        genreTitle: "Anything from this list?",
+        genre: {
+            Youth: "Young leads",
+            Historical: "Historical",
+            Fantasy: "Fantasy",
+            Action: "Action",
+            Music: "About music",
+            Sports: "About sport",
+            any: "Doesn't matter",
+        },
+        seenTitle: "Something new, or a rewatch?",
+        seen: {
+            fresh: "Something new",
+            rewatch: "A rewatch",
+            any: "Doesn't matter",
+        },
+        airTitle: "Finished or still airing?",
+        air: {
+            finished: "Finished",
+            ongoing: "Still airing",
+            any: "Doesn't matter",
+        },
+    },
     dramas: {
         calendarLink: "Episode calendar",
         // Рулетка «что посмотреть» (аудит, п. 6.3): кнопка у поиска ведёт

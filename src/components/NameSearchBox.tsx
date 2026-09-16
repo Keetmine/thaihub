@@ -16,11 +16,16 @@ export default function NameSearchBox({
   placeholder,
   className = "mb-4",
   quickKind,
+  big = false,
 }: {
   action: string;
   q: string;
   hiddenFields?: Record<string, string>;
   placeholder?: string;
+  /** Крупное поле, как на странице поиска (.search-page-box): там, где
+   *  поиск — основной инструмент раздела, а не второстепенная кнопка в
+   *  ряду (правка владельца 2026-09-16 для каталога). */
+  big?: boolean;
   /** Defaults to "mb-4" for standalone use; pass "" when placed inside a
    *  .tab-bar-row alongside tabs, which spaces itself. */
   className?: string;
@@ -131,7 +136,7 @@ export default function NameSearchBox({
         Object.entries(hiddenFields).map(([name, fieldValue]) => (
           <input key={name} type="hidden" name={name} value={fieldValue} />
         ))}
-      <div className="search-box">
+      <div className={`search-box${big ? " search-page-box" : ""}`}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="7" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />

@@ -3,6 +3,7 @@ import { pairingNames } from "@/lib/pairingLabel";
 import { getContentDict } from "@/lib/contentDictionary.server";
 import { translatedList, translatedText } from "@/lib/entityTranslations";
 import AppLink from "@/components/AppLink";
+import PosterRow from "@/components/PosterRow";
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -1126,7 +1127,7 @@ export default async function PerformerPage({
                       label,
                       count: rows.length,
                       content: (
-          <div className="poster-row thin-scroll">
+          <PosterRow>
             {rows.map((pd) => {
               return (
               <div key={pd.dramaId} style={{ position: "relative" }}>
@@ -1201,7 +1202,7 @@ export default async function PerformerPage({
               </div>
               );
             })}
-          </div>
+          </PosterRow>
                       ),
                     },
                   ],
@@ -1214,7 +1215,7 @@ export default async function PerformerPage({
           <h2 className="section-heading mb-2">
             <MusicNoteIcon className="icon-inline" /> {t.catalog.artist.albums}
           </h2>
-          <div className="poster-row thin-scroll">
+          <PosterRow>
             {performer.albums.map((album) => {
               // Обложка и название ведут на релиз, если импорт сохранил
               // ссылку. Без неё карточка остаётся обычным блоком: пустой
@@ -1273,7 +1274,7 @@ export default async function PerformerPage({
               </Card>
               );
             })}
-          </div>
+          </PosterRow>
         </div>
       )}
 
