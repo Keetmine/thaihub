@@ -15,7 +15,7 @@ export const trips = {
         metaDescription: "Your trips and the plans you share with friends.",
         title: "My trips",
         intro:
-            "A trip is the dates you are in Thailand: its page gathers every event that falls inside them.",
+            "A trip is the dates you are away: its page gathers every event that falls inside them.",
         invites: "Invitations",
         invitedBy: (name: string) => `invited by ${name}`,
         emptyTitle: "No trips yet",

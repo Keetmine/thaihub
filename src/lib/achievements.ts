@@ -55,7 +55,7 @@ export const METRICS = {
   },
   trips: { label: "Поездки", kind: "counter", get: (s) => s.trips },
   longestTripDays: { label: "Самая длинная поездка (дней)", kind: "counter", get: (s) => s.longestTripDays },
-  daysInThailand: { label: "Дни в Таиланде", kind: "counter", get: (s) => s.daysInThailand },
+  daysInThailand: { label: "Дни в поездках", kind: "counter", get: (s) => s.daysInThailand },
   friends: { label: "Друзья", kind: "counter", get: (s) => s.friends },
   // Приглашённые по реферальной ссылке (/signup?ref=…): счёт по
   // User.referredById, живые аккаунты (см. syncAchievements).
@@ -142,7 +142,7 @@ export const ACHIEVEMENT_SEED: AchievementSeed<MetricKey>[] = [
   // Поездки
   { key: "first-trip", emoji: "✈️", title: "Первая поездка", hint: "Создать первую поездку", metric: "trips", threshold: 1, sort: 180 },
   { key: "trips-3", emoji: "🧳", title: "Частый гость", hint: "Три поездки", metric: "trips", threshold: 3, sort: 190 },
-  { key: "thai-week", emoji: "🌴", title: "Неделя в Таиланде", hint: "Поездка на 7+ дней", metric: "longestTripDays", threshold: 7, sort: 200 },
+  { key: "thai-week", emoji: "🌴", title: "Неделя в поездке", hint: "Поездка на 7+ дней", metric: "longestTripDays", threshold: 7, sort: 200 },
   // Соц
   { key: "first-friend", emoji: "🤝", title: "Первый друг", hint: "Добавить первого друга", metric: "friends", threshold: 1, sort: 210 },
   // Рефералка (аудит 2026-09 п.7). sort между «другом» и «компанией» —

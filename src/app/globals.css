@@ -3144,50 +3144,17 @@ button.hero-stat-toggle.is-open {
   border-color: rgba(var(--accent-rgb), 0.5);
 }
 
-/* Верхняя строка плитки: иконка тонированным кружком слева, стрелка
-   раскрытия справа (переделка 2026-09-17). */
-.hero-stat-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.55rem;
-}
-
 .hero-stat-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 50%;
-  background: rgba(var(--accent-rgb), 0.16);
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1;
-}
-
-.hero-stat-chevron {
-  color: var(--bs-secondary-color);
-  font-size: 0.9rem;
-  line-height: 1;
-  transition: transform 0.2s ease, color 0.15s ease;
-}
-
-button.hero-stat-toggle:hover .hero-stat-chevron,
-button.hero-stat-toggle.is-open .hero-stat-chevron {
-  color: rgb(var(--accent-rgb));
-}
-
-button.hero-stat-toggle.is-open .hero-stat-chevron {
-  transform: rotate(180deg);
 }
 
 .hero-stat-value {
   font-family: var(--font-display, inherit);
   font-weight: 700;
-  font-size: 2.4rem;
+  font-size: 2.1rem;
   line-height: 1;
   color: #fff;
-  font-variant-numeric: tabular-nums;
 }
 
 .hero-stat-label {
@@ -3200,83 +3167,95 @@ button.hero-stat-toggle.is-open .hero-stat-chevron {
   color: var(--bs-secondary-color);
 }
 
-/* Полоса счётчиков статистики профиля (вместо плиток, 2026-09-17).
-   Грид с щелью в 1px на фоне цвета рамки — разделители встают сами и
-   между колонками, и между рядами. */
-.stats-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
-  gap: 1px;
-  background: var(--bs-border-color);
-  border: 1px solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius-lg);
-  overflow: hidden;
+/* Цифры внутри карточки статистики (2026-09-17, после трёх редакций
+   плиток над карточками): крупное число и подпись, ряд через отступ,
+   без рамок. Кликабельная цифра — кнопка со стрелкой, под рядом
+   раскрывается список. */
+.stats-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin-bottom: 1rem;
 }
 
-.stats-strip-item {
+.stats-figure {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: 0.9rem 1.1rem;
-  background: var(--bs-tertiary-bg);
-  text-align: left;
+  padding: 0;
   border: 0;
+  background: none;
+  text-align: left;
   color: inherit;
   min-width: 0;
 }
 
-button.stats-strip-toggle {
+button.stats-figure-toggle {
   cursor: pointer;
-  transition: background-color 0.15s ease;
 }
 
-button.stats-strip-toggle:hover,
-button.stats-strip-toggle.is-open {
-  background: rgba(var(--accent-rgb), 0.08);
-}
-
-.stats-strip-value {
+.stats-figure-value {
   font-family: var(--font-display, inherit);
   font-weight: 700;
-  font-size: 1.9rem;
+  font-size: 2rem;
   line-height: 1;
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
 
-.stats-strip-label {
-  font-size: 0.86rem;
+.stats-figure-label {
+  font-size: 0.82rem;
+  color: var(--bs-secondary-color);
+  transition: color 0.15s ease;
+}
+
+button.stats-figure-toggle:hover .stats-figure-label,
+button.stats-figure-toggle.is-open .stats-figure-label {
   color: var(--bs-body-color);
 }
 
-.stats-strip-hint {
-  font-size: 0.72rem;
-  color: var(--bs-secondary-color);
-}
-
-.stats-strip-chevron {
+.stats-figure-chevron {
   display: inline-block;
   margin-left: 0.3rem;
+  color: rgb(var(--accent-rgb));
   transition: transform 0.2s ease;
 }
 
-button.stats-strip-toggle.is-open .stats-strip-chevron {
+button.stats-figure-toggle.is-open .stats-figure-chevron {
   transform: rotate(180deg);
+}
+
+/* Раскрытый список под цифрами. Высота ограничена — при сорока
+   событиях список иначе занимал бы экран целиком; дальше прокрутка
+   внутри. Сверху отделён тонкой линией от ряда цифр. */
+.stats-expand {
+  max-height: 15rem;
+  overflow-y: auto;
+  padding-top: 0.75rem;
+  margin-bottom: 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.stats-trip-row {
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.stats-trip-title {
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.stats-trip-row:hover .stats-trip-title {
   color: rgb(var(--accent-rgb));
 }
 
-@media (max-width: 575.98px) {
-  .stats-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* Раскрытые панели под полосой: события строками с постером, артисты
-   сеткой круглых фото. Высота ограничена — при сорока событиях панель
-   иначе занимала бы экран целиком; дальше прокрутка внутри. */
-.hero-expand {
-  max-height: 17rem;
-  overflow-y: auto;
+.stats-trip-meta {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
 }
 
 .hero-event-list {
@@ -9099,8 +9078,7 @@ body::after {
   .stats-heat-cell:hover {
     transform: none;
   }
-  .hero-stat-chevron,
-  .stats-strip-chevron {
+  .stats-figure-chevron {
     transition: none;
   }
 }

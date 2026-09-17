@@ -49,22 +49,15 @@ export const account = {
   // Обзор профиля: крупные «герои» сверху и чипы-ссылки под ними.
   overview: {
     heroEvents: (n: number) => `${n === 1 ? "event" : "events"} live`,
-    heroEventsHint: "attended",
     heroArtists: (n: number) => `${n === 1 ? "artist" : "artists"} live`,
-    heroArtistsHint: "seen in person",
-    heroDays: (n: number) => `${n === 1 ? "day" : "days"} in Thailand`,
-    heroDaysHint: "across your trips",
+    heroDays: (n: number) => `${n === 1 ? "day" : "days"} on trips`,
     // «series» не меняется по числу, но параметр обязан остаться: тип
     // функции задаёт en-словарь, а русскому переводу число нужно.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     heroDramas: (_n: number): string => "series finished",
-    heroDramasHint: "marked as watched",
     // Серии и часы у экрана — подпись той же плитки, когда есть что считать.
-    heroDramasEpisodes: (episodes: number, hours: number) =>
-      `${episodes} ${episodes === 1 ? "episode" : "episodes"} · ~${hours} h`,
     // Пересмотры: плитка появляется, только когда они есть.
     heroRewatches: (n: number): string => (n === 1 ? "rewatch" : "rewatches"),
-    heroRewatchesHint: "series watched more than once",
     heroRewatchesTop: (title: string, count: number) => `Most rewatched: ${title} ×${count}`,
 
     chipGoing: "going",
@@ -82,7 +75,7 @@ export const account = {
 
     lockedTitle: "Your own stats come with a subscription",
     lockedDescription:
-      "How many events and artists you caught live, days spent in Thailand, a map of where you have been, and achievements.",
+      "How many events and artists you caught live, days spent on trips, a map of where you have been, and achievements.",
   },
 
   stats: {
@@ -108,6 +101,11 @@ export const account = {
     monthTitle: (month: string, year: number, n: number) =>
       `${month} ${year}: ${n} ${n === 1 ? "event" : "events"}`,
     seriesTitle: "Series",
+    /** Подпись под цифрой серий: часы у экрана. */
+    episodesFigure: (hours: number) => `episodes · about ${hours} h`,
+    tripsTitle: "Trips",
+    tripsFigure: (n: number): string => (n === 1 ? "trip" : "trips"),
+    tripDays: (n: number) => `${n} ${n === 1 ? "day" : "days"}`,
     libraryLead: (n: number) => `${n} ${n === 1 ? "series" : "series"} in the library`,
     episodesHours: (episodes: number, hours: number) =>
       `${episodes} ${episodes === 1 ? "episode" : "episodes"} · about ${hours} h of screen time`,

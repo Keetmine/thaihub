@@ -307,7 +307,7 @@ export const legal = {
           },
           stay: {
             q: "What if participants travel on different dates?",
-            a: "Every participant has a “My dates” button that sets the period they are actually there. The trip itself stays a single trip, while arrival markers appear in the plan on the right days, showing from which date participants overlap. The “days in Thailand” statistic counts personal dates rather than the whole trip.",
+            a: "Every participant has a “My dates” button that sets the period they are actually there. The trip itself stays a single trip, while arrival markers appear in the plan on the right days, showing from which date participants overlap. The “days on trips” statistic counts personal dates rather than the whole trip.",
           },
           lists: {
             q: "What are the packing and shopping lists in a trip?",
@@ -379,7 +379,7 @@ export const legal = {
           },
           stats: {
             q: "What do the profile statistics count?",
-            a: "Events attended, artists seen live, days spent in Thailand, series finished with their episode and hour counts, a breakdown by year and a map of visited places. Everything is derived from marks already made, with nothing extra to fill in. The statistics tab requires a subscription.",
+            a: "Events attended, artists seen live, days spent on trips, series finished with their episode and hour counts, a breakdown by year and a map of visited places. Everything is derived from marks already made, with nothing extra to fill in. The statistics tab requires a subscription.",
           },
           achievements: {
             q: "How are badges earned?",

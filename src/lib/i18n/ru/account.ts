@@ -42,17 +42,12 @@ export const account: Dict["account"] = {
 
   overview: {
     heroEvents: (n: number) => `${plural(n, ["событие", "события", "событий"])} вживую`,
-    heroEventsHint: "посещено",
     heroArtists: (n: number) => `${plural(n, ["артист", "артиста", "артистов"])} вживую`,
-    heroArtistsHint: "увидели лично",
-    heroDays: (n: number) => `${plural(n, ["день", "дня", "дней"])} в Таиланде`,
-    heroDaysHint: "по поездкам",
+    // «В поездках», а не «в Таиланде» (правка владельца 2026-09-17):
+    // поездку через сервис можно планировать в любую страну.
+    heroDays: (n: number) => `${plural(n, ["день", "дня", "дней"])} в поездках`,
     heroDramas: (n: number) => `${plural(n, ["сериал", "сериала", "сериалов"])} досмотрено`,
-    heroDramasHint: "статус «просмотрено»",
-    heroDramasEpisodes: (episodes: number, hours: number) =>
-      `${pluralized(episodes, ["серия", "серии", "серий"])} · ~${hours} ч`,
     heroRewatches: (n: number) => plural(n, ["пересмотр", "пересмотра", "пересмотров"]),
-    heroRewatchesHint: "сериалы, которые смотрели не раз",
     heroRewatchesTop: (title: string, count: number) =>
       `Чаще всего пересматриваю: ${title} ×${count}`,
 
@@ -67,7 +62,7 @@ export const account: Dict["account"] = {
 
     lockedTitle: "Личная статистика — по подписке",
     lockedDescription:
-      "Сколько событий и артистов вы застали вживую, дни в Таиланде, карта посещённого и достижения.",
+      "Сколько событий и артистов вы застали вживую, дни в поездках, карта посещённого и достижения.",
   },
 
   stats: {
@@ -85,6 +80,10 @@ export const account: Dict["account"] = {
     monthTitle: (month: string, year: number, n: number) =>
       `${month} ${year}: ${pluralized(n, ["событие", "события", "событий"])}`,
     seriesTitle: "Сериалы",
+    episodesFigure: (hours: number) => `серий · около ${hours} ч`,
+    tripsTitle: "Поездки",
+    tripsFigure: (n: number) => plural(n, ["поездка", "поездки", "поездок"]),
+    tripDays: (n: number) => pluralized(n, ["день", "дня", "дней"]),
     libraryLead: (n: number) => `${pluralized(n, ["сериал", "сериала", "сериалов"])} в библиотеке`,
     episodesHours: (episodes: number, hours: number) =>
       `${pluralized(episodes, ["серия", "серии", "серий"])} · около ${hours} ч у экрана`,

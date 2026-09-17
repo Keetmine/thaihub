@@ -17,6 +17,7 @@ import {
 
 import { WATCH_STATUS_KEYS, type WatchStatusKey } from "@/lib/watchStatuses";
 import { keepPairingsTogether } from "@/lib/castLineup";
+import { tripDays } from "@/lib/tripDays";
 
 export type UserStats = {
   attendedEvents: number;
@@ -75,6 +76,11 @@ export type UserStats = {
     dramas: { id: string; slug: string | null; title: string; titleRu: string | null }[];
   }[];
   trips: number;
+  /** Поездки списком под счётчиком (правка владельца 2026-09-17):
+   *  название, даты, длина в днях по СВОЕМУ окну присутствия. Свежие
+   *  сверху. Страница отдаёт список только владельцу профиля — у
+   *  поездок своя видимость, и в чужую статистику они не утекают. */
+  tripsList: { id: string; slug: string | null; title: string; start: string; end: string; days: number }[];
   longestTripDays: number;
   daysInThailand: number;
   friends: number;
@@ -298,6 +304,9 @@ export async function computeUserStats(
           OR: [{ userId }, { members: { some: { userId, status: "ACCEPTED" } } }],
         },
         select: {
+          id: true,
+          slug: true,
+          title: true,
           startDate: true,
           endDate: true,
           // Своё окно присутствия, если человек летел не на все дни
@@ -682,6 +691,19 @@ export async function computeUserStats(
       dramas: v.location.dramas.map((dl) => dl.drama),
     })),
     trips: tripStats.trips,
+    tripsList: trips
+      .map((trip) => {
+        const range = trip.stays[0] ?? { startDate: trip.startDate, endDate: trip.endDate };
+        return {
+          id: trip.id,
+          slug: trip.slug,
+          title: trip.title,
+          start: range.startDate.toISOString(),
+          end: range.endDate.toISOString(),
+          days: tripDays(range),
+        };
+      })
+      .sort((a, b) => b.start.localeCompare(a.start)),
     longestTripDays: tripStats.longestTripDays,
     daysInThailand: tripStats.daysInThailand,
     friends: friendships,
