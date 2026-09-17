@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/userAuth";
-import { performerNameWhere, performerOptionLabel } from "@/lib/searchWhere";
+import { rankedPerformerSearch } from "@/lib/performerSearch";
 import { artistListHref } from "@/lib/slugHelpers";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { isPremiumActive } from "@/lib/premium";
@@ -134,11 +134,7 @@ export async function searchPerformersForList(
   if (!user) return [];
   const q = query.trim();
   if (q.length < 2) return [];
-  const rows = await prisma.performer.findMany({
-    where: performerNameWhere(q),
-    select: { id: true, name: true, realName: true, photoUrl: true },
-    orderBy: { name: "asc" },
-    take: 20,
-  });
-  return rows.map((p) => ({ id: p.id, name: performerOptionLabel(p), photoUrl: p.photoUrl }));
+  // Ранжированный поиск, как в админке (правка владельца 2026-09-17):
+  // простой contains по алфавиту хоронил «Tay» под «Amart-tay-akul».
+  return rankedPerformerSearch(q, {});
 }
