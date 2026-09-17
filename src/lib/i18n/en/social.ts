@@ -52,9 +52,10 @@ export const social = {
     },
 
     mine: "My friends",
-    lead: "Friends see what you watch and where you go, and you see their plans: an event page shows which friends will be there.",
+    lead: "Add people you know — and you'll see who of them is going to the same event, what they watch and where they're headed.",
     count: (n: number) => `${n} ${n === 1 ? "friend" : "friends"}`,
     findTitle: "Find people",
+    findHint: "By name, handle or exact email.",
     suggestions: "People you may know",
     suggestionsHint: "Friends of your friends",
     mutual: (n: number) => `${n} mutual ${n === 1 ? "friend" : "friends"}`,

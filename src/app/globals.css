@@ -7517,6 +7517,24 @@ a.profile-friend-more:hover {
   }
 }
 
+/* Поле поиска на странице друзей — ещё крупнее «большого» варианта:
+   здесь это главный инструмент раздела (правка владельца: «сам блок
+   поиска больше»). */
+.friends-side .search-page-box {
+  max-width: none;
+}
+
+.friends-side .search-page-box .pill-search {
+  font-size: 1.05rem;
+  padding: 0.85rem 1.1rem 0.85rem 2.7rem;
+}
+
+.friends-side .search-page-box svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  left: 1.05rem;
+}
+
 .friend-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));

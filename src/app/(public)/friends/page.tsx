@@ -192,10 +192,24 @@ export default async function FriendsPage({
     userDisplayName(other(a), locale).localeCompare(userDisplayName(other(b), locale), locale),
   );
 
+  // Поиск — акцентной панелью с крупным полем (правка владельца
+  // 2026-09-17: «надо заметнее и сам блок поиска больше»): на этой
+  // странице он главный инструмент, а не второстепенное поле сбоку.
+  // Единственный glow-panel на странице — правило «один акцентный
+  // градиент на экран» соблюдено.
   const searchBlock = (
-    <>
-      <h2 className="section-heading mb-2">{f.findTitle}</h2>
-      <NameSearchBox action="/friends" q={q} placeholder={f.searchPlaceholder} />
+    <div className="glow-panel p-4">
+      <h2 className="display-1-tight mb-1" style={{ fontSize: "1.35rem" }}>
+        {f.findTitle}
+      </h2>
+      <p className="small text-secondary mb-3">{f.findHint}</p>
+      <NameSearchBox
+        action="/friends"
+        q={q}
+        placeholder={f.searchPlaceholder}
+        big
+        className={q ? "mb-3" : "mb-0"}
+      />
       {q && (
         <>
           <h3 className="section-heading mb-2">{f.searchResults}</h3>
@@ -223,7 +237,7 @@ export default async function FriendsPage({
           )}
         </>
       )}
-    </>
+    </div>
   );
 
   return (
@@ -370,7 +384,7 @@ export default async function FriendsPage({
       <aside className="friends-side">
         {searchBlock}
         {suggestions.length > 0 && (
-          <div className="surface p-3 mt-4">
+          <div className="surface p-3 mt-3">
             <h2 className="section-heading mb-0">{f.suggestions}</h2>
             <p className="small text-secondary mb-2">{f.suggestionsHint}</p>
             <div className="d-flex flex-column">
