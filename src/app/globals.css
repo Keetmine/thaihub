@@ -3167,73 +3167,117 @@ button.hero-stat-toggle.is-open {
   color: var(--bs-secondary-color);
 }
 
-/* Цифры внутри карточки статистики (2026-09-17, после трёх редакций
-   плиток над карточками): крупное число и подпись, ряд через отступ,
-   без рамок. Кликабельная цифра — кнопка со стрелкой, под рядом
-   раскрывается список. */
-.stats-figures {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 2rem;
-  margin-bottom: 1rem;
+/* Плитки счётчиков над карточками статистики — четвёртая редакция
+   (2026-09-17). У каждой свой цвет в духе значков достижений: цвет
+   задаёт модификатор через --tile-rgb, всё остальное — общее правило.
+   Иконка — крупным полупрозрачным водяным знаком в правом верхнем
+   углу, число крупное, подпись и подсказка под ним. */
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.6rem;
 }
 
-.stats-figure {
+.stat-tile {
+  --tile-rgb: var(--accent-rgb);
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  text-align: left;
+  padding: 1rem 1.1rem 0.95rem;
+  border-radius: var(--bs-border-radius-lg);
+  border: 1px solid rgba(var(--tile-rgb), 0.35);
+  background:
+    linear-gradient(160deg, rgba(var(--tile-rgb), 0.24), rgba(var(--tile-rgb), 0.05) 70%),
+    var(--bs-tertiary-bg);
   color: inherit;
+  text-align: left;
   min-width: 0;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
-button.stats-figure-toggle {
+.stat-tile--events {
+  --tile-rgb: var(--accent-rgb);
+}
+.stat-tile--artists {
+  --tile-rgb: 236, 72, 153;
+}
+.stat-tile--trips {
+  --tile-rgb: 52, 199, 123;
+}
+.stat-tile--series {
+  --tile-rgb: 96, 165, 250;
+}
+.stat-tile--rewatch {
+  --tile-rgb: 167, 139, 250;
+}
+
+button.stat-tile-toggle {
   cursor: pointer;
 }
 
-.stats-figure-value {
+button.stat-tile-toggle:hover,
+button.stat-tile-toggle.is-open {
+  border-color: rgba(var(--tile-rgb), 0.85);
+}
+
+.stat-tile-icon {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.55rem;
+  font-size: 2.6rem;
+  line-height: 1;
+  opacity: 0.28;
+  pointer-events: none;
+  filter: saturate(0.8);
+}
+
+.stat-tile-value {
   font-family: var(--font-display, inherit);
   font-weight: 700;
-  font-size: 2rem;
+  font-size: 2.5rem;
   line-height: 1;
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
 
-.stats-figure-label {
-  font-size: 0.82rem;
-  color: var(--bs-secondary-color);
-  transition: color 0.15s ease;
-}
-
-button.stats-figure-toggle:hover .stats-figure-label,
-button.stats-figure-toggle.is-open .stats-figure-label {
+.stat-tile-label {
+  font-size: 0.86rem;
   color: var(--bs-body-color);
 }
 
-.stats-figure-chevron {
+.stat-tile-hint {
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+}
+
+.stat-tile-chevron {
   display: inline-block;
   margin-left: 0.3rem;
-  color: rgb(var(--accent-rgb));
+  color: rgb(var(--tile-rgb));
   transition: transform 0.2s ease;
 }
 
-button.stats-figure-toggle.is-open .stats-figure-chevron {
+button.stat-tile-toggle.is-open .stat-tile-chevron {
   transform: rotate(180deg);
 }
 
-/* Раскрытый список под цифрами. Высота ограничена — при сорока
-   событиях список иначе занимал бы экран целиком; дальше прокрутка
-   внутри. Сверху отделён тонкой линией от ряда цифр. */
-.stats-expand {
+@media (max-width: 575.98px) {
+  .stat-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stat-tile-value {
+    font-size: 2.1rem;
+  }
+}
+
+/* Раскрытая панель под плитками. Высота ограничена — при сорока
+   событиях панель иначе занимала бы экран целиком; дальше прокрутка
+   внутри. */
+.stat-tile-expand {
   max-height: 15rem;
   overflow-y: auto;
-  padding-top: 0.75rem;
-  margin-bottom: 1rem;
-  border-top: 1px solid var(--bs-border-color);
 }
 
 .stats-trip-row {
@@ -9078,7 +9122,10 @@ body::after {
   .stats-heat-cell:hover {
     transform: none;
   }
-  .stats-figure-chevron {
+  .stat-tile-chevron {
+    transition: none;
+  }
+  .stat-tile {
     transition: none;
   }
 }

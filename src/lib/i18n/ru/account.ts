@@ -42,12 +42,18 @@ export const account: Dict["account"] = {
 
   overview: {
     heroEvents: (n: number) => `${plural(n, ["событие", "события", "событий"])} вживую`,
+    heroEventsHint: "посещено",
     heroArtists: (n: number) => `${plural(n, ["артист", "артиста", "артистов"])} вживую`,
+    heroArtistsHint: "увидели лично",
     // «В поездках», а не «в Таиланде» (правка владельца 2026-09-17):
     // поездку через сервис можно планировать в любую страну.
     heroDays: (n: number) => `${plural(n, ["день", "дня", "дней"])} в поездках`,
     heroDramas: (n: number) => `${plural(n, ["сериал", "сериала", "сериалов"])} досмотрено`,
+    heroDramasHint: "статус «просмотрено»",
+    heroDramasEpisodes: (episodes: number, hours: number) =>
+      `${pluralized(episodes, ["серия", "серии", "серий"])} · ~${hours} ч`,
     heroRewatches: (n: number) => plural(n, ["пересмотр", "пересмотра", "пересмотров"]),
+    heroRewatchesHint: "сериалы, которые смотрели не раз",
     heroRewatchesTop: (title: string, count: number) =>
       `Чаще всего пересматриваю: ${title} ×${count}`,
 

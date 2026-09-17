@@ -45,6 +45,7 @@ import { getT, type Dict, type Locale } from "@/lib/i18n";
 import ActivityList from "./ActivityList";
 import ProfileTabs, { type ProfileTabKey } from "./ProfileTabs";
 import ProfileOverview from "./ProfileOverview";
+import StatsHero from "./StatsHero";
 import StatsTab, { type StatsForTab } from "./StatsTab";
 import ReviewsTab, { type MyReviewRow } from "./ReviewsTab";
 import CommentsTab, { type MyCommentRow } from "./CommentsTab";
@@ -1041,9 +1042,13 @@ export default async function UserProfilePage({
               description={t.account.overview.lockedDescription}
             />
           ) : statsForTab ? (
-            // Счётчики живут внутри карточек вкладки — отдельного ряда
-            // плиток над ней больше нет (правка владельца 2026-09-17).
-            <StatsTab stats={statsForTab} viewer={!isSelf} />
+            <div>
+              {/* Плитки счётчиков — одни и те же у владельца и зрителя
+                  (правка владельца п.8): раньше владелец видел их в
+                  «Обзоре», а зритель — здесь, и вкладки разъезжались. */}
+              <StatsHero stats={statsForTab} />
+              <StatsTab stats={statsForTab} viewer={!isSelf} />
+            </div>
           ) : null,
       });
     }

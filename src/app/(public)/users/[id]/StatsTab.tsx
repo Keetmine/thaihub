@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import AppLink from "@/components/AppLink";
 import { useLocale, useT } from "@/components/LocaleProvider";
-import { formatDateWithYear, shortMonthNames } from "@/lib/dates";
+import { shortMonthNames } from "@/lib/dates";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import { performerHref } from "@/lib/performerSlug";
 import { WATCH_STATUS_KEYS, type WatchStatusKey } from "@/lib/watchStatuses";
-import { dramaHref, eventHref, locationHref, tripHref } from "@/lib/slugHelpers";
+import { dramaHref, locationHref } from "@/lib/slugHelpers";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 
 // Сериализуемые версии для клиентской вкладки (Д1). Переехали из
@@ -78,64 +77,17 @@ const STATUS_ALPHA: Record<WatchStatusKey, number> = {
   DROPPED: 0.16,
 };
 
-type Expanded = "events" | "artists" | "trips" | null;
-
-/** Крупная цифра с подписью внутри карточки. С `onToggle` — кнопка со
- *  стрелкой, раскрывающая список под рядом цифр. */
-function Figure({
-  value,
-  label,
-  open,
-  onToggle,
-}: {
-  value: number;
-  label: string;
-  open?: boolean;
-  onToggle?: () => void;
-}) {
-  const inner = (
-    <>
-      <span className="stats-figure-value">{value}</span>
-      <span className="stats-figure-label">
-        {label}
-        {onToggle && (
-          <span className="stats-figure-chevron" aria-hidden>
-            ▾
-          </span>
-        )}
-      </span>
-    </>
-  );
-  return onToggle ? (
-    <button
-      type="button"
-      className={`stats-figure stats-figure-toggle${open ? " is-open" : ""}`}
-      aria-expanded={open}
-      onClick={onToggle}
-    >
-      {inner}
-    </button>
-  ) : (
-    <div className="stats-figure">{inner}</div>
-  );
-}
-
 /**
  * «Статистика» — чистый рендер свода `computeUserStats` сеткой карточек
- * (переделка 2026-09-17): «Вживую» (события и артисты цифрами, под ними
- * раскрывающиеся списки, рейтинг артистов, календарь событий), «Сериалы»
- * (досмотрено и серии цифрами, библиотека по статусам, жанры),
- * «Поездки» (поездки и дни цифрами, список поездок) и карта посещённого
- * со списком мест. Кто и что имеет право видеть, решает СТРАНИЦА
+ * (переделка 2026-09-17): «Вживую» (рейтинг артистов, календарь
+ * событий), «Сериалы» (библиотека по статусам, жанры) и карта
+ * посещённого со списком мест. Счётчики (события, артисты, дни в
+ * поездках, сериалы) — плитками над карточками, см. StatsHero.tsx: там
+ * же раскрываются списки. Кто и что имеет право видеть, решает СТРАНИЦА
  * (свой/чужой, подписка, приватность): сюда приезжают уже
  * отфильтрованные данные — например, зрителю при скрытых «посещённых
  * местах» пины карты не передаются вовсе, а список поездок отдаётся
  * только владельцу.
- *
- * Отдельного ряда плиток над карточками больше нет: три редакции подряд
- * владельцу не понравились («не знаю что именно, но не нравится»), и
- * причина, похоже, в самом ряду счётчиков-коробок. Цифры теперь стоят
- * внутри карточки, к которой относятся, — там же и раскрываются.
  *
  * Календарь — тепловая полоса «год × месяц», а не столбики с
  * переключателем года: при одном-двух годах столбики читались
@@ -154,11 +106,7 @@ export default function StatsTab({
   const t = useT();
   const locale = useLocale();
   const s = t.account.stats;
-  const o = t.account.overview;
   const monthNames = shortMonthNames(locale);
-  const [expanded, setExpanded] = useState<Expanded>(null);
-  const toggle = (key: Exclude<Expanded, null>) => () =>
-    setExpanded((cur) => (cur === key ? null : key));
 
   // ---- Вживую ----
   // Календарь считает афишу И встречи сообществ (правка владельца
@@ -173,20 +121,16 @@ export default function StatsTab({
   // Не было ни одного события — ни афишного, ни встречи — календаря нет;
   // нет и увиденных артистов — нет всей карточки.
   const showCalendar = calendarTotal > 0;
-  const showLive = showCalendar || stats.attendedEvents > 0 || stats.performersSeenLive > 0;
+  const showLive = showCalendar || topRank.length > 0;
 
   // ---- Сериалы ----
   const libraryTotal = WATCH_STATUS_KEYS.reduce((sum, k) => sum + stats.watchByStatus[k], 0);
   const topGenres = stats.topGenres ?? [];
   const showSeries = libraryTotal > 0;
 
-  // ---- Поездки ----
-  const showTrips = stats.trips > 0;
-  const canExpandTrips = stats.tripsList.length > 0;
-
   const showMap = stats.visitedLocationPins.length > 0;
 
-  if (!showLive && !showSeries && !showTrips && !showMap) return null;
+  if (!showLive && !showSeries && !showMap) return null;
 
   return (
     <div className="row g-3">
@@ -195,84 +139,10 @@ export default function StatsTab({
           <div className="surface stats-card">
             <div className="stats-card-head">
               <h2 className="section-heading">{s.liveTitle}</h2>
+              <span className="stats-card-meta">
+                {s.yearTotal(calendarTotal)} · {s.artistsCount(stats.performersSeenLive)}
+              </span>
             </div>
-
-            <div className="stats-figures">
-              <Figure
-                value={stats.attendedEvents}
-                label={o.heroEvents(stats.attendedEvents)}
-                open={expanded === "events"}
-                onToggle={stats.attendedEventsList.length > 0 ? toggle("events") : undefined}
-              />
-              <Figure
-                value={stats.performersSeenLive}
-                label={o.heroArtists(stats.performersSeenLive)}
-                open={expanded === "artists"}
-                onToggle={stats.seenPerformers.length > 0 ? toggle("artists") : undefined}
-              />
-            </div>
-
-            {/* Раскрытые списки — под цифрами, не выше своей высоты, дальше
-                прокрутка внутри (правка владельца: «если будет 20–40
-                событий, оно будет занимать всю страницу»). События —
-                строками с постером, датой и площадкой; артисты — сеткой
-                круглых фото, порядок по пейрингам задаёт свод. */}
-            {expanded === "events" && (
-              <div className="stats-expand thin-scroll">
-                <div className="hero-event-list">
-                  {stats.attendedEventsList.map((ev) => (
-                    <AppLink key={ev.id} href={eventHref(ev)} className="hero-event-row">
-                      {ev.posterUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          loading="lazy"
-                          decoding="async"
-                          src={ev.posterUrl}
-                          alt=""
-                          className="hero-event-poster"
-                        />
-                      ) : (
-                        <span className="hero-event-poster hero-event-fallback">
-                          {ev.title.slice(0, 1)}
-                        </span>
-                      )}
-                      <span className="hero-event-body">
-                        <span className="hero-event-title">{ev.title}</span>
-                        <span className="hero-event-meta">
-                          {formatDateWithYear(new Date(ev.date), locale)}
-                          {ev.venue && ` · ${ev.venue}`}
-                        </span>
-                      </span>
-                    </AppLink>
-                  ))}
-                </div>
-              </div>
-            )}
-            {expanded === "artists" && (
-              <div className="stats-expand thin-scroll">
-                <div className="hero-artist-grid">
-                  {stats.seenPerformers.map((p) => (
-                    <AppLink key={p.id} href={performerHref(p)} className="hero-artist">
-                      {p.photoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          loading="lazy"
-                          decoding="async"
-                          src={p.photoUrl}
-                          alt=""
-                          className="hero-artist-photo"
-                        />
-                      ) : (
-                        <span className="hero-artist-photo hero-artist-fallback">
-                          {p.name.slice(0, 1)}
-                        </span>
-                      )}
-                      <span className="hero-artist-name">{p.name}</span>
-                    </AppLink>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {topRank.length > 0 && (
               <>
@@ -305,10 +175,7 @@ export default function StatsTab({
 
             {showCalendar && (
               <>
-                <div className="d-flex justify-content-between align-items-baseline gap-3 mb-2">
-                  <p className="small text-secondary mb-0">{s.calendarTitle}</p>
-                  <span className="stats-card-meta">{s.yearTotal(calendarTotal)}</span>
-                </div>
+                <p className="small text-secondary mb-2">{s.calendarTitle}</p>
                 <div className="stats-heat">
                   <div className="stats-heat-row stats-heat-months" aria-hidden>
                     <span />
@@ -346,13 +213,6 @@ export default function StatsTab({
               <span className="stats-card-meta">{s.libraryLead(libraryTotal)}</span>
             </div>
 
-            <div className="stats-figures">
-              <Figure value={stats.completedDramas} label={o.heroDramas(stats.completedDramas)} />
-              {stats.episodesWatched > 0 && (
-                <Figure value={stats.episodesWatched} label={s.episodesFigure(stats.hoursWatched)} />
-              )}
-            </div>
-
             {/* Полоса библиотеки: пять сегментов по статусам, ширина —
                 доля от всех отметок. Нулевые статусы не рисуются ни на
                 полосе, ни в легенде. */}
@@ -381,19 +241,6 @@ export default function StatsTab({
               ))}
             </div>
 
-            {/* Пересмотры — строкой и только когда они есть: у большинства
-                их нет вовсе, а ноль ничего не сообщает (правка владельца). */}
-            {stats.rewatchTotal ? (
-              <p className="small text-secondary mt-3 mb-0">
-                {stats.rewatchTotal} {o.heroRewatches(stats.rewatchTotal)}
-                {stats.mostRewatched &&
-                  ` · ${o.heroRewatchesTop(
-                    dramaTitleForLocale(stats.mostRewatched, locale),
-                    stats.mostRewatched.count,
-                  )}`}
-              </p>
-            ) : null}
-
             {topGenres.length > 0 && (
               <>
                 <p className="small text-secondary mt-3 mb-2">{s.genresLead}</p>
@@ -417,44 +264,8 @@ export default function StatsTab({
         </div>
       )}
 
-      {showTrips && (
-        <div className={showMap ? "col-12 col-lg-4" : "col-12 col-lg-5"}>
-          <div className="surface stats-card">
-            <div className="stats-card-head">
-              <h2 className="section-heading">{s.tripsTitle}</h2>
-            </div>
-            <div className="stats-figures">
-              <Figure
-                value={stats.trips}
-                label={s.tripsFigure(stats.trips)}
-                open={expanded === "trips"}
-                onToggle={canExpandTrips ? toggle("trips") : undefined}
-              />
-              <Figure value={stats.daysInThailand} label={o.heroDays(stats.daysInThailand)} />
-            </div>
-            {/* Список поездок — только владельцу (у поездок своя
-                видимость): название, даты, длина по своему окну. */}
-            {expanded === "trips" && (
-              <div className="stats-expand thin-scroll mb-0">
-                <div className="d-flex flex-column gap-1">
-                  {stats.tripsList.map((trip) => (
-                    <AppLink key={trip.id} href={tripHref(trip)} className="stats-trip-row">
-                      <span className="stats-trip-title">{trip.title}</span>
-                      <span className="stats-trip-meta">
-                        {formatDateWithYear(new Date(trip.start), locale)} —{" "}
-                        {formatDateWithYear(new Date(trip.end), locale)} · {s.tripDays(trip.days)}
-                      </span>
-                    </AppLink>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {showMap && (
-        <div className={showTrips ? "col-12 col-lg-8" : "col-12"}>
+        <div className="col-12">
           <div className="surface stats-card">
             <div className="stats-card-head">
               <h2 className="section-heading">{viewer ? s.visitedMapViewer : s.visitedMap}</h2>

@@ -49,15 +49,21 @@ export const account = {
   // Обзор профиля: крупные «герои» сверху и чипы-ссылки под ними.
   overview: {
     heroEvents: (n: number) => `${n === 1 ? "event" : "events"} live`,
+    heroEventsHint: "attended",
     heroArtists: (n: number) => `${n === 1 ? "artist" : "artists"} live`,
+    heroArtistsHint: "seen in person",
     heroDays: (n: number) => `${n === 1 ? "day" : "days"} on trips`,
     // «series» не меняется по числу, но параметр обязан остаться: тип
     // функции задаёт en-словарь, а русскому переводу число нужно.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     heroDramas: (_n: number): string => "series finished",
+    heroDramasHint: "marked as watched",
+    heroDramasEpisodes: (episodes: number, hours: number) =>
+      `${episodes} ${episodes === 1 ? "episode" : "episodes"} · ~${hours} h`,
     // Серии и часы у экрана — подпись той же плитки, когда есть что считать.
     // Пересмотры: плитка появляется, только когда они есть.
     heroRewatches: (n: number): string => (n === 1 ? "rewatch" : "rewatches"),
+    heroRewatchesHint: "series watched more than once",
     heroRewatchesTop: (title: string, count: number) => `Most rewatched: ${title} ×${count}`,
 
     chipGoing: "going",
