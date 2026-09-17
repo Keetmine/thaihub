@@ -7887,6 +7887,12 @@ a.profile-friend-more:hover {
   align-items: start;
 }
 
+/* Лента без левой колонки: не шире половины, иначе шесть строк на всю
+   ширину читались бы одним огромным блоком. */
+.profile-overview-feed-alone {
+  max-width: 40rem;
+}
+
 /* В узкой колонке ленте хватает уплотнённых строк. */
 .profile-overview-feed .activity-row {
   padding: 0.5rem 0.7rem;

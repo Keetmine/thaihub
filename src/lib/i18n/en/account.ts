@@ -66,6 +66,19 @@ export const account = {
     heroRewatchesHint: "series watched more than once",
     heroRewatchesTop: (title: string, count: number) => `Most rewatched: ${title} ×${count}`,
 
+    chipGoing: "going",
+    chipFavoriteEvents: "in favourites",
+    chipPerformers: (n: number) => `favourite ${n === 1 ? "artist" : "artists"}`,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    chipDramas: (_n: number): string => "series on your list",
+    // Возвращаемый тип задан явно: иначе TypeScript выводит union из двух
+    // строковых литералов, и русский перевод в него не укладывается.
+    chipFriends: (n: number): string => (n === 1 ? "friend" : "friends"),
+    chipTrips: (n: number): string => (n === 1 ? "trip" : "trips"),
+    // chipVenues удалён: площадки из статистики профиля убраны (правка
+    // владельца).
+    chipLocations: (n: number) => `filming ${n === 1 ? "location" : "locations"}`,
+
     lockedTitle: "Your own stats come with a subscription",
     lockedDescription:
       "How many events and artists you caught live, days spent on trips, a map of where you have been, and achievements.",

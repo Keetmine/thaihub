@@ -57,6 +57,15 @@ export const account: Dict["account"] = {
     heroRewatchesTop: (title: string, count: number) =>
       `Чаще всего пересматриваю: ${title} ×${count}`,
 
+    chipGoing: "иду",
+    chipFavoriteEvents: "в избранном",
+    chipPerformers: (n: number) =>
+      plural(n, ["любимый артист", "любимых артиста", "любимых артистов"]),
+    chipDramas: (n: number) => `${plural(n, ["сериал", "сериала", "сериалов"])} в списке`,
+    chipFriends: (n: number) => plural(n, ["друг", "друга", "друзей"]),
+    chipTrips: (n: number) => plural(n, ["поездка", "поездки", "поездок"]),
+    chipLocations: (n: number) => `${plural(n, ["локация", "локации", "локаций"])} съёмок`,
+
     lockedTitle: "Личная статистика — по подписке",
     lockedDescription:
       "Сколько событий и артистов вы застали вживую, дни в поездках, карта посещённого и достижения.",

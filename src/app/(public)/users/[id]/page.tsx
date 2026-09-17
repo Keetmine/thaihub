@@ -51,6 +51,7 @@ import CommentsTab, { type MyCommentRow } from "./CommentsTab";
 import TicketsTab from "./TicketsTab";
 import EpisodeProgress from "@/components/EpisodeProgress";
 import PosterTile from "@/components/PosterTile";
+import ProfileOverview from "./ProfileOverview";
 import DramasTable from "./DramasTable";
 import CommunitiesTab from "./CommunitiesTab";
 import SubTabs from "@/components/SubTabs";
@@ -276,6 +277,7 @@ export default async function UserProfilePage({
     friendships,
     attendances,
     maybeRows,
+    favoritePerformersCount,
     watchRows,
     watchCount,
     trips,
@@ -329,6 +331,7 @@ export default async function UserProfilePage({
         })
       : [],
     // Число любимых артистов показывает только свой «Обзор».
+    isSelf ? prisma.favoritePerformer.count({ where: { userId: user.id } }) : 0,
     showActivity
       ? prisma.dramaWatchStatus.findMany({
           where: { userId: user.id },
@@ -633,7 +636,7 @@ export default async function UserProfilePage({
             achievements: showAchievements,
             tripVisibilities,
           },
-          10,
+          6,
           {
             watches: watchRows,
             going: goingVisible ? attendances : [],
@@ -987,25 +990,42 @@ export default async function UserProfilePage({
     // ближайшие «иду», свежие отзывы; любимые актёры — компактным
     // раскрывашкой внизу (блок-список убран, п.2, но путь к ним
     // сохранён). ----------
-    // Переделка «Обзора» 2026-09-17 (правка владельца): ряд чипов-счётчиков
-    // над колонками убран — те же числа уже стоят в подписях вкладок, а
-    // ряд читался стеной цифр (ProfileOverview.tsx удалён). «Сейчас в
-    // просмотре» — постерами с полосой прогресса на всю ширину, как
-    // на главной, а не компактными строками: обложка узнаётся быстрее
-    // названия. Ниже две колонки: слева ближайшие «иду» с отсчётом
-    // «через N дней» и свежие отзывы, справа лента обновлений.
+    // Переделка «Обзора» 2026-09-17 (правка владельца). Ряд чипов-ссылок
+    // (иду, в избранном, любимые артисты…) остаётся сверху — владелец
+    // попросила его вернуть после того, как он был убран: это быстрые
+    // ходы в разделы, а не счётчики. «Сейчас в просмотре» — постерами с
+    // полосой прогресса на всю ширину, как на главной, а не компактными
+    // строками: обложка узнаётся быстрее названия. Ниже две колонки:
+    // слева ближайшие «иду» с отсчётом «через N дней» и свежие отзывы,
+    // справа лента обновлений — шесть записей, не десять («слишком
+    // гигантский»), а без левой колонки ещё и не шире 40rem.
     const watchingNow = watchRows.filter((w) => w.status === "WATCHING").slice(0, 6);
     // «Иду» — платная лента для зрителя, тот же гейт, что у вкладки
     // «События».
     const overviewGoing = isSelf || viewerPremium ? upcomingGoing.slice(0, 3) : [];
     const overviewReviews = reviews.slice(0, 3);
     const hasOverviewLeft = overviewGoing.length > 0 || overviewReviews.length > 0;
+    const goingEventIds = new Set(attendances.map((a) => a.eventId));
+    const favoriteEventsCount = favoriteEventRows.length;
 
     tabs.push({
       key: "overview",
       label: p.tabs.overview,
       content: (
         <div>
+          {isSelf && statsForTab && (
+            <ProfileOverview
+              nav={{
+                going: goingEventIds.size,
+                favoriteEvents: favoriteEventsCount,
+                favoritePerformers: favoritePerformersCount,
+                dramas: watchCount,
+                friends: friends.length,
+                trips: trips.length,
+                locations: statsForTab.visitedLocations,
+              }}
+            />
+          )}
           {watchingNow.length > 0 && (
             <section className="mb-4">
               <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -1067,7 +1087,7 @@ export default async function UserProfilePage({
                 )}
               </div>
             )}
-            <aside className="profile-overview-feed">
+            <aside className={`profile-overview-feed${hasOverviewLeft ? "" : " profile-overview-feed-alone"}`}>
               <h2 className="section-heading mb-2">{p.activity.title}</h2>
               <ActivityList
                 items={activityItems}
