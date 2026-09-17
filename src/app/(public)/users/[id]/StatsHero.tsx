@@ -14,14 +14,14 @@ type Expanded = "events" | "artists" | "trips" | null;
  *  и зрителя (правка владельца п.8 — обзор и чужая статистика показывали
  *  разное).
  *
- *  Четвёртая редакция внешнего вида (2026-09-17). Владелец: «мне
- *  нравится, что это отдельно статистика, но надо визуально переделать».
- *  Тёмные коробки с оранжевым свечением, полоса с разделителями и цифры
- *  внутри карточек — не подошло ничего. Теперь у каждой плитки свой цвет
- *  в духе значков достижений слева (события — акцент, артисты — розовый,
- *  поездки — зелёный, сериалы — синий, пересмотры — фиолетовый), иконка
- *  — крупным полупрозрачным водяным знаком в углу, число крупнее. Цвета
- *  живут в CSS-модификаторах `.stat-tile--*`, не в инлайне.
+ *  Пятая редакция внешнего вида (2026-09-17). Владелец: «мне нравится,
+ *  что это отдельно статистика, но надо визуально переделать». Тёмные
+ *  коробки с оранжевым свечением, полоса с разделителями, цифры внутри
+ *  карточек, потом цветные плитки («слишком выделяются») — итог:
+ *  нейтральная поверхность как у остальных карточек, иконка крупным
+ *  полупрозрачным водяным знаком в углу, число крупное, а раскрытие
+ *  обозначено явной круглой кнопкой со стрелкой в углу плитки — прежний
+ *  символ рядом с подсказкой был «очень маленький, непонятно, что там».
  *
  *  Раскрытие — под рядом: события строками с постером, артисты сеткой
  *  круглых фото (порядок по пейрингам задаёт свод), поездки — название,
@@ -36,7 +36,6 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
 
   const tiles: {
     key: string;
-    tone: "events" | "artists" | "trips" | "series" | "rewatch";
     icon: string;
     value: number;
     label: string;
@@ -45,7 +44,6 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
   }[] = [
     {
       key: "events",
-      tone: "events",
       icon: "🎤",
       value: stats.attendedEvents,
       label: o.heroEvents(stats.attendedEvents),
@@ -54,7 +52,6 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
     },
     {
       key: "artists",
-      tone: "artists",
       icon: "👀",
       value: stats.performersSeenLive,
       label: o.heroArtists(stats.performersSeenLive),
@@ -63,7 +60,6 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
     },
     {
       key: "trips",
-      tone: "trips",
       icon: "🧳",
       value: stats.daysInThailand,
       label: o.heroDays(stats.daysInThailand),
@@ -74,7 +70,6 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
     },
     {
       key: "series",
-      tone: "series",
       icon: "📺",
       value: stats.completedDramas,
       label: o.heroDramas(stats.completedDramas),
@@ -91,7 +86,6 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
   if (stats.rewatchTotal) {
     tiles.push({
       key: "rewatch",
-      tone: "rewatch",
       icon: "🔁",
       value: stats.rewatchTotal,
       label: o.heroRewatches(stats.rewatchTotal),
@@ -115,17 +109,17 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
               </span>
               <span className="stat-tile-value">{tile.value}</span>
               <span className="stat-tile-label">{tile.label}</span>
-              <span className="stat-tile-hint">
-                {tile.hint}
-                {tile.expandKey && (
-                  <span className="stat-tile-chevron" aria-hidden>
-                    ▾
-                  </span>
-                )}
-              </span>
+              <span className="stat-tile-hint">{tile.hint}</span>
+              {tile.expandKey && (
+                <span className="stat-tile-chevron" aria-hidden>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6l5 5 5-5" />
+                  </svg>
+                </span>
+              )}
             </>
           );
-          const cls = `stat-tile stat-tile--${tile.tone}`;
+          const cls = "stat-tile";
           return tile.expandKey ? (
             <button
               key={tile.key}

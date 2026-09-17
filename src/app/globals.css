@@ -3167,11 +3167,11 @@ button.hero-stat-toggle.is-open {
   color: var(--bs-secondary-color);
 }
 
-/* Плитки счётчиков над карточками статистики — четвёртая редакция
-   (2026-09-17). У каждой свой цвет в духе значков достижений: цвет
-   задаёт модификатор через --tile-rgb, всё остальное — общее правило.
-   Иконка — крупным полупрозрачным водяным знаком в правом верхнем
-   углу, число крупное, подпись и подсказка под ним. */
+/* Плитки счётчиков над карточками статистики — пятая редакция
+   (2026-09-17). Нейтральная поверхность как у .surface: цветные плитки
+   владелец отвергла («слишком выделяются»). Иконка — крупным
+   полупрозрачным водяным знаком в правом верхнем углу, число крупное,
+   раскрытие — явной круглой кнопкой со стрелкой в правом нижнем углу. */
 .stat-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
@@ -3179,7 +3179,6 @@ button.hero-stat-toggle.is-open {
 }
 
 .stat-tile {
-  --tile-rgb: var(--accent-rgb);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -3187,39 +3186,25 @@ button.hero-stat-toggle.is-open {
   gap: 0.15rem;
   padding: 1rem 1.1rem 0.95rem;
   border-radius: var(--bs-border-radius-lg);
-  border: 1px solid rgba(var(--tile-rgb), 0.35);
+  border: 1px solid var(--bs-border-color);
   background:
-    linear-gradient(160deg, rgba(var(--tile-rgb), 0.24), rgba(var(--tile-rgb), 0.05) 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
     var(--bs-tertiary-bg);
   color: inherit;
   text-align: left;
   min-width: 0;
-  transition: border-color 0.15s ease, transform 0.15s ease;
-}
-
-.stat-tile--events {
-  --tile-rgb: var(--accent-rgb);
-}
-.stat-tile--artists {
-  --tile-rgb: 236, 72, 153;
-}
-.stat-tile--trips {
-  --tile-rgb: 52, 199, 123;
-}
-.stat-tile--series {
-  --tile-rgb: 96, 165, 250;
-}
-.stat-tile--rewatch {
-  --tile-rgb: 167, 139, 250;
+  transition: border-color 0.15s ease;
 }
 
 button.stat-tile-toggle {
   cursor: pointer;
+  /* Место под кнопку-стрелку справа внизу, чтобы подсказка не легла под неё. */
+  padding-right: 3rem;
 }
 
 button.stat-tile-toggle:hover,
 button.stat-tile-toggle.is-open {
-  border-color: rgba(var(--tile-rgb), 0.85);
+  border-color: rgba(var(--accent-rgb), 0.55);
 }
 
 .stat-tile-icon {
@@ -3228,9 +3213,9 @@ button.stat-tile-toggle.is-open {
   right: 0.55rem;
   font-size: 2.6rem;
   line-height: 1;
-  opacity: 0.28;
+  opacity: 0.22;
   pointer-events: none;
-  filter: saturate(0.8);
+  filter: saturate(0.7);
 }
 
 .stat-tile-value {
@@ -3252,14 +3237,32 @@ button.stat-tile-toggle.is-open {
   color: var(--bs-secondary-color);
 }
 
+/* Кнопка раскрытия: круг с акцентной стрелкой, всегда виден — это и
+   есть подсказка «тут есть список». В открытом состоянии круг
+   заливается акцентом, стрелка переворачивается. */
 .stat-tile-chevron {
-  display: inline-block;
-  margin-left: 0.3rem;
-  color: rgb(var(--tile-rgb));
-  transition: transform 0.2s ease;
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--accent-rgb), 0.6);
+  color: rgb(var(--accent-rgb));
+  background: rgba(var(--accent-rgb), 0.1);
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.2s ease;
+}
+
+button.stat-tile-toggle:hover .stat-tile-chevron {
+  background: rgba(var(--accent-rgb), 0.22);
 }
 
 button.stat-tile-toggle.is-open .stat-tile-chevron {
+  background: rgb(var(--accent-rgb));
+  color: #fff;
   transform: rotate(180deg);
 }
 
