@@ -52,9 +52,15 @@ export const social = {
     },
 
     mine: "My friends",
+    lead: "Friends see what you watch and where you go, and you see their plans: an event page shows which friends will be there.",
+    count: (n: number) => `${n} ${n === 1 ? "friend" : "friends"}`,
+    findTitle: "Find people",
+    suggestions: "People you may know",
+    suggestionsHint: "Friends of your friends",
+    mutual: (n: number) => `${n} mutual ${n === 1 ? "friend" : "friends"}`,
     emptyTitle: "No friends yet",
     emptyHint:
-      "Find people you know by name or handle in the search above — and see what they are going to.",
+      "Find people you know by name or handle — or share the invite link from your settings: whoever joins through it becomes your friend right away.",
     remove: "Remove from friends",
     removeConfirm: (name: string) => `Remove “${name}” from your friends?`,
     backToProfile: "← Back to your profile",
@@ -192,8 +198,8 @@ export const social = {
     /* Переделка блока 2026-09-17: последнее достижение карточкой,
        «есть у N фанатов», ближайшее с прогрессом (только себе). */
     achievementsLatest: "Latest",
-    achievementsNext: "Up next",
-    achievementsHolders: (n: number) => `${n} ${n === 1 ? "fan has it" : "fans have it"}`,
+    achievementsHolders: (n: number) => `${n} ${n === 1 ? "person has it" : "people have it"}`,
+    friendsMore: (n: number) => `${n} more`,
     going: "Going to",
     goingLocked: "🔒 Event lists come with a subscription.",
     goingLockedWithCount: (n: number) =>

@@ -5181,10 +5181,11 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
    полосой прогресса (та же .episode-progress-bar, что у серий). */
 .achv-featured {
   display: grid;
-  grid-template-columns: 3.4rem minmax(0, 1fr);
-  column-gap: 0.75rem;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  column-gap: 0.6rem;
   align-items: center;
-  padding: 0.7rem 0.8rem;
+  /* Компактнее первой редакции (правка владельца: «чуть уменьшим»). */
+  padding: 0.5rem 0.65rem;
   border-radius: var(--bs-border-radius-lg);
   border: 1px solid var(--bs-border-color);
   background:
@@ -5194,9 +5195,9 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
 
 .achv-featured-coin {
   display: inline-block;
-  width: 3.4rem;
-  height: 3.4rem;
-  font-size: 1.55rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  font-size: 1.2rem;
 }
 
 .achv-featured-body {
@@ -5206,9 +5207,8 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
   min-width: 0;
 }
 
-.achv-featured-eyebrow,
-.achv-next-eyebrow {
-  font-size: 0.66rem;
+.achv-featured-eyebrow {
+  font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: rgb(var(--accent-rgb));
@@ -5217,45 +5217,19 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
 .achv-featured-title {
   font-family: var(--font-display, inherit);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.achv-featured-meta,
-.achv-next-hint {
-  font-size: 0.74rem;
+.achv-featured-meta {
+  font-size: 0.72rem;
   color: var(--bs-secondary-color);
-}
-
-.achv-next {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.achv-next-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.achv-next-count {
-  font-size: 0.74rem;
-  color: var(--bs-secondary-color);
-  font-variant-numeric: tabular-nums;
-}
-
-.achv-next-title {
-  font-size: 0.9rem;
-  color: var(--bs-body-color);
-}
-
-.achv-next-bar {
-  margin: 0.1rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* «Монетка» ачивки (AchievementCoin): сам эмодзи размытым фоном +
@@ -7498,6 +7472,98 @@ body::after {
   grid-template-columns: repeat(auto-fill, minmax(2.8rem, 1fr));
   /* Чуть больше воздуха — правка владельца: «всё слипшееся». */
   gap: 0.65rem;
+}
+
+/* Плитка «+N» сверх двенадцати аватарок (2026-09-17). */
+.profile-friend-more {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--bs-border-color);
+  color: var(--bs-body-color);
+  font-size: 0.74rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+a.profile-friend-more:hover {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  color: #fff;
+}
+
+/* Страница друзей (переделка 2026-09-17): слева список карточками,
+   справа поиск и «кого вы можете знать». Ниже 992px колонки
+   складываются, поиск уходит наверх (order). */
+.friends-layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 992px) {
+  .friends-layout {
+    grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
+    align-items: start;
+  }
+  .friends-side {
+    position: sticky;
+    top: 5.5rem;
+  }
+}
+
+@media (max-width: 991.98px) {
+  /* На телефоне поиск и подсказки — над списком: искать человека
+     нужно чаще, чем листать сотню карточек до поля внизу. */
+  .friends-side {
+    order: -1;
+  }
+}
+
+.friend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap: 0.6rem;
+}
+
+.friend-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr);
+  column-gap: 0.7rem;
+  align-items: center;
+  padding: 0.7rem 2.6rem 0.7rem 0.8rem;
+}
+
+.friend-card-name {
+  font-family: var(--font-display, inherit);
+  font-weight: 500;
+  color: #fff;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-card-nick,
+.friend-card-mutual {
+  font-size: 0.76rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-card-action {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+}
+
+.friend-suggestion {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  column-gap: 0.6rem;
+  align-items: center;
+  padding: 0.5rem 0;
 }
 
 .profile-friend {

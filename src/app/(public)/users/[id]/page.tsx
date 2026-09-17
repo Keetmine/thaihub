@@ -27,9 +27,7 @@ import { logout } from "../../login/actions";
 import FriendNotifyToggle from "./FriendNotifyToggle";
 import {
   achievementsSyncDue,
-  getEnabledAchievements,
   getUnlockedAchievements,
-  metricValue,
   syncAchievements,
 } from "@/lib/achievements";
 import { computeUserStats } from "@/lib/userStats";
@@ -502,10 +500,9 @@ export default async function UserProfilePage({
     showAchievements
       ? prisma.userAchievement.findMany({ where: { userId: user.id } })
       : [],
-    // Приглашённые по реферальной ссылке — метрика ачивок: нужна
-    // пересчёту и «ближайшему достижению» в левой колонке, то есть
-    // только себе.
-    isSelf ? prisma.user.count({ where: { referredById: user.id, deletedAt: null } }) : 0,
+    // Приглашённые по реферальной ссылке — метрика только для пересчёта,
+    // поэтому и спрашиваем только когда он будет.
+    syncDue ? prisma.user.count({ where: { referredById: user.id, deletedAt: null } }) : 0,
     // Молчалка уведомлений о друге и висящая заявка: спрашиваем у любого
     // залогиненного не-себя, а показываем по правам ниже — так они не
     // ждут списка друзей отдельной ступенью. Гостю искать нечего: у него
@@ -670,44 +667,6 @@ export default async function UserProfilePage({
       ? datedBadges.reduce((a, b) => (b.unlockedAt > a.unlockedAt ? b : a))
       : null;
   const restBadges = latestBadge ? unlockedBadges.filter((b) => b.key !== latestBadge.key) : [];
-  // «Ближайшее достижение» — ОДНО, только себе и только начатое: та же
-  // логика, что у прогресса в сообществе (см. docs/features/gamification.md,
-  // АА25) — полный список остаётся сюрпризом, дальние не называем.
-  // Считается из уже готового свода и кэшированного каталога — новых
-  // запросов нет.
-  const nextGoal =
-    isSelf && ownerPremium && fullStats
-      ? await (async () => {
-          const defs = await getEnabledAchievements();
-          const unlockedKeys = new Set([
-            ...unlockedRows.map((r) => r.key),
-            ...(achievementStates?.filter((a) => a.unlocked).map((a) => a.key) ?? []),
-          ]);
-          const stats = { ...fullStats, referrals };
-          let best: {
-            key: string;
-            emoji: string;
-            title: string;
-            hint: string;
-            value: number;
-            target: number;
-          } | null = null;
-          for (const def of defs) {
-            if (unlockedKeys.has(def.key)) continue;
-            const target = Math.max(def.threshold, 1);
-            const value = Math.min(metricValue(def.metric, stats), target);
-            if (value <= 0 || value >= target) continue;
-            const better =
-              !best ||
-              value / target > best.value / best.target ||
-              (value / target === best.value / best.target && target < best.target);
-            if (better) {
-              best = { key: def.key, emoji: def.emoji, title: def.title, hint: def.hint, value, target };
-            }
-          }
-          return best;
-        })()
-      : null;
 
   const statsForTab: StatsForTab | null = fullStats
     ? {
@@ -1421,13 +1380,10 @@ export default async function UserProfilePage({
             >
               <StarIcon />
             </span>
-          ) : (
-            isSelf && (
-              <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.65rem" }}>
-                {t.account.planFree}
-              </span>
-            )
-          )}
+          ) : null}
+          {/* Бейджа «Базовый» у профиля нет (правка владельца 2026-09-17):
+              отсутствие подписки — не статус, который стоит подписывать
+              рядом с именем. */}
         </div>
 
         {/* Инфо-блок подписями (правка владельца, образец MDL):
@@ -1542,10 +1498,12 @@ export default async function UserProfilePage({
                 человека ещё нет, и рядом с полученными медалями он
                 читался как недобор. */}
             <h2 className="section-heading mb-2">{p.achievements}</h2>
-            {/* Переделка 2026-09-17: последнее достижение — карточкой с
-                названием, датой и «есть у N фанатов»; остальные —
-                монетами с тултипом, как раньше; себе внизу — ОДНО
-                ближайшее с полосой прогресса (см. nextGoal выше). */}
+            {/* Переделка 2026-09-17: последнее достижение — компактной
+                карточкой с названием, датой и «есть у N человек»;
+                остальные — монетами с тултипом, как раньше. «Ближайшее»
+                с прогрессом было и снято тем же днём (правка владельца:
+                не показываем) — какие достижения существуют, остаётся
+                сюрпризом целиком. */}
             {latestBadge && (
               <div className="achv-featured mb-2">
                 <span className="achv-featured-coin">
@@ -1577,23 +1535,6 @@ export default async function UserProfilePage({
                     locale={locale}
                   />
                 ))}
-              </div>
-            )}
-            {nextGoal && (
-              <div className="achv-next mt-3">
-                <div className="achv-next-head">
-                  <span className="achv-next-eyebrow">{p.achievementsNext}</span>
-                  <span className="achv-next-count">
-                    {nextGoal.value}/{nextGoal.target}
-                  </span>
-                </div>
-                <span className="achv-next-title">
-                  <span aria-hidden>{nextGoal.emoji}</span> {nextGoal.title}
-                </span>
-                <span className="episode-progress-bar achv-next-bar" aria-hidden>
-                  <span style={{ width: `${Math.round((nextGoal.value / nextGoal.target) * 100)}%` }} />
-                </span>
-                <span className="achv-next-hint">{nextGoal.hint}</span>
               </div>
             )}
           </div>
@@ -1662,6 +1603,25 @@ export default async function UserProfilePage({
                       </AppLink>
                     );
                   })}
+                  {/* Сверх двенадцати — одна плитка «+N» (правка
+                      владельца 2026-09-17: «если их будет 100+, список
+                      будет гигантский»). Себе — ссылкой на /friends;
+                      чужого списка друзей как страницы нет, поэтому
+                      зрителю просто число. */}
+                  {friends.length > 12 &&
+                    (isSelf ? (
+                      <AppLink
+                        href="/friends"
+                        className="profile-friend profile-friend-more"
+                        aria-label={p.friendsAll}
+                      >
+                        +{friends.length - 12}
+                      </AppLink>
+                    ) : (
+                      <span className="profile-friend profile-friend-more">
+                        +{friends.length - 12}
+                      </span>
+                    ))}
                 </div>
                 {isSelf && (
                   <AppLink href="/friends" className="small link-body-emphasis d-inline-block mt-3">

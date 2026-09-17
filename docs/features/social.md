@@ -231,6 +231,17 @@ event. Toggle UI: `GoingButton.tsx`. Drives:
 `Friendship` is a directed request row (`requesterId` → `addresseeId`,
 `status: PENDING | ACCEPTED`) — an accepted row *is* the friendship, there
 is no mirrored second row for the other direction. UI:
+`src/app/(public)/friends/page.tsx` — переделана 2026-09-17 (правка
+владельца: «пустая и непонятная»). Подводка, что даёт дружба; две
+колонки от 992px: слева заявки (входящие/исходящие) и **друзья
+карточками** в сетке `.friend-grid` (по имени, счётчик в заголовке,
+удаление иконкой в углу — сто друзей в четырёх колонках, а не сто
+строк); справа — липкий блок «Найти людей» (поиск как раньше) и **«Кого
+вы можете знать»**: друзья друзей, кого ещё нет ни в друзьях, ни в
+заявках, с числом общих друзей, до шести, кнопка «Добавить». Один
+запрос по дружбам своих друзей, счёт общих в памяти. Пустое состояние
+теперь зовёт и к ссылке-приглашению из настроек. Прежнее описание
+ниже — про заявки и экшены, они не менялись:
 `src/app/(public)/friends/page.tsx` (search by name/email, incoming/outgoing
 requests, accepted list), actions in
 `src/app/(public)/friends/actions.ts`.
@@ -309,7 +320,10 @@ intentionally the closest existing destination rather than a dead link.
   ачивки **только иконками** (`AchievementBadge iconOnly`: монета с
   названием и описанием в title/aria-label, элемент фокусируемый;
   себе — счётчик «N из M», строки «остальные пока секрет» больше нет) и
-  **блок друзей**: сетка круглых аватарок `.profile-friend-grid` +
+  **блок друзей**: сетка круглых аватарок `.profile-friend-grid` (не
+  больше двенадцати; сверх — одна плитка «+N», себе ссылкой на
+  `/friends`, зрителю просто число — правка владельца 2026-09-17: «если
+  их будет 100+, список будет гигантский») +
   счётчик (аватарки подписчиков — с цветной обводкой `.premium-ring`;
   тот же класс вешает opt-in-проп `premiumRing` у `LetterAvatar` —
   задел, за пределами профиля пока не включён), себе — ссылка «Все

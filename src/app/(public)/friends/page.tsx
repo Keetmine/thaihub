@@ -12,6 +12,8 @@ import { sendFriendRequest, acceptFriendRequest, removeFriendship } from "./acti
 import { pageMetadata } from "@/lib/seo";
 import { getT, localeHref, type Locale } from "@/lib/i18n";
 import { userHref, userDisplayName } from "@/lib/userProfile";
+import LetterAvatar from "@/components/LetterAvatar";
+import { hasPaidPremium } from "@/lib/premium";
 
 export async function generateMetadata() {
   const { locale, t } = await getT();
@@ -136,15 +138,67 @@ export default async function FriendsPage({
       })
     : [];
 
-  return (
-    <div>
-      <PageHeader eyebrow={f.eyebrow} title={f.title} className="mb-5" />
+  // «Кого вы можете знать» — друзья друзей, кого ещё нет ни в друзьях,
+  // ни в заявках (переделка страницы 2026-09-17: без этого она была
+  // «пустой и непонятной» — поиск и список, и всё). Один запрос по
+  // дружбам своих друзей, счёт общих — в памяти, до шести человек.
+  const friendIds = accepted.map((fr) => other(fr).id);
+  const fofRows =
+    friendIds.length > 0
+      ? await prisma.friendship.findMany({
+          where: {
+            status: "ACCEPTED",
+            OR: [{ requesterId: { in: friendIds } }, { addresseeId: { in: friendIds } }],
+          },
+          select: { requesterId: true, addresseeId: true },
+        })
+      : [];
+  const friendIdSet = new Set(friendIds);
+  const mutualCount = new Map<string, number>();
+  for (const row of fofRows) {
+    // Обе стороны могут быть моими друзьями — тогда это не кандидат.
+    const candidates = [row.requesterId, row.addresseeId].filter((id) => !friendIdSet.has(id));
+    for (const id of candidates) {
+      if (excludedIds.has(id)) continue;
+      mutualCount.set(id, (mutualCount.get(id) ?? 0) + 1);
+    }
+  }
+  const suggestionIds = Array.from(mutualCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([id]) => id);
+  const suggestionUsers =
+    suggestionIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: suggestionIds }, deletedAt: null },
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            photoUrl: true,
+            deletedAt: true,
+            premiumUntil: true,
+            premiumLifetime: true,
+          },
+        })
+      : [];
+  const suggestions = suggestionIds
+    .map((id) => suggestionUsers.find((u) => u.id === id))
+    .filter((u): u is (typeof suggestionUsers)[number] => !!u);
 
+  // Список друзей — по имени, а не по дате дружбы: карточек много, и
+  // искать глазами знакомое имя проще в алфавите.
+  const acceptedSorted = [...accepted].sort((a, b) =>
+    userDisplayName(other(a), locale).localeCompare(userDisplayName(other(b), locale), locale),
+  );
+
+  const searchBlock = (
+    <>
+      <h2 className="section-heading mb-2">{f.findTitle}</h2>
       <NameSearchBox action="/friends" q={q} placeholder={f.searchPlaceholder} />
-
       {q && (
         <>
-          <h2 className="section-heading mb-2">{f.searchResults}</h2>
+          <h3 className="section-heading mb-2">{f.searchResults}</h3>
           {searchResults.length === 0 ? (
             <p className="small text-secondary mb-4">{t.common.nobodyFound}</p>
           ) : (
@@ -169,6 +223,20 @@ export default async function FriendsPage({
           )}
         </>
       )}
+    </>
+  );
+
+  return (
+    <div>
+      <PageHeader eyebrow={f.eyebrow} title={f.title} className="mb-3" />
+      {/* Подводка: что вообще даёт дружба на сайте. Страница открывалась
+          голым поиском, и было непонятно, зачем тут кто-то нужен. */}
+      <p className="text-secondary mb-4" style={{ maxWidth: "38rem" }}>
+        {f.lead}
+      </p>
+
+      <div className="friends-layout">
+      <div className="friends-main">
 
       {incoming.length > 0 && (
         <>
@@ -234,20 +302,45 @@ export default async function FriendsPage({
         </>
       )}
 
-      <h2 className="section-heading mb-2">{f.mine}</h2>
+      <h2 className="section-heading mb-2">
+        {f.mine}
+        {accepted.length > 0 && (
+          <span className="text-secondary ms-2" style={{ letterSpacing: 0 }}>
+            {accepted.length}
+          </span>
+        )}
+      </h2>
       {accepted.length === 0 ? (
         <EmptyState emoji="👥" title={f.emptyTitle} hint={f.emptyHint} compact />
       ) : (
-        <div className="d-flex flex-column gap-2">
-          {accepted.map((friendship) => {
+        /* Карточки сеткой, а не строки на всю ширину: сто друзей —
+           это сто строк по пятьдесят пикселей, а в сетке они умещаются
+           в четыре колонки. Удаление — тихой иконкой в углу карточки. */
+        <div className="friend-grid">
+          {acceptedSorted.map((friendship) => {
             const friend = other(friendship);
+            const friendName = friend.deletedAt
+              ? userDisplayName(friend, locale)
+              : friend.name || (friend.username ? `@${friend.username}` : f.noName);
             return (
-              <UserRow
-                key={friendship.id}
-                person={friend}
-                locale={locale}
-                noName={f.noName}
-                action={
+              <div key={friendship.id} className="surface friend-card">
+                <AppLink href={userHref(friend)} aria-label={friendName} className="d-block">
+                  <LetterAvatar
+                    name={friendName}
+                    photoUrl={friend.photoUrl}
+                    size={2.8}
+                    premiumRing={hasPaidPremium(friend)}
+                  />
+                </AppLink>
+                <div className="min-w-0">
+                  <AppLink href={userHref(friend)} className="friend-card-name d-block text-decoration-none">
+                    {friendName}
+                  </AppLink>
+                  {!friend.deletedAt && friend.name && friend.username && (
+                    <span className="friend-card-nick d-block">@{friend.username}</span>
+                  )}
+                </div>
+                <div className="friend-card-action">
                   <ConfirmForm
                     action={removeFriendship.bind(null, friendship.id)}
                     confirmMessage={f.removeConfirm(
@@ -260,18 +353,61 @@ export default async function FriendsPage({
                       <TrashIcon />
                     </button>
                   </ConfirmForm>
-                }
-              />
+                </div>
+              </div>
             );
           })}
         </div>
       )}
 
-      <p className="small text-secondary mt-4">
+      <p className="small text-secondary mt-4 mb-0">
         <AppLink href="/account" className="link-body-emphasis">
           {f.backToProfile}
         </AppLink>
       </p>
+      </div>
+
+      <aside className="friends-side">
+        {searchBlock}
+        {suggestions.length > 0 && (
+          <div className="surface p-3 mt-4">
+            <h2 className="section-heading mb-0">{f.suggestions}</h2>
+            <p className="small text-secondary mb-2">{f.suggestionsHint}</p>
+            <div className="d-flex flex-column">
+              {suggestions.map((u) => {
+                const uName = u.name || (u.username ? `@${u.username}` : f.noName);
+                return (
+                  <div key={u.id} className="friend-suggestion">
+                    <AppLink href={userHref(u)} aria-label={uName} className="d-block">
+                      <LetterAvatar
+                        name={uName}
+                        photoUrl={u.photoUrl}
+                        size={2.5}
+                        premiumRing={hasPaidPremium(u)}
+                      />
+                    </AppLink>
+                    <div className="min-w-0">
+                      <AppLink href={userHref(u)} className="friend-card-name d-block text-decoration-none">
+                        {uName}
+                      </AppLink>
+                      <span className="friend-card-mutual d-block">
+                        {f.mutual(mutualCount.get(u.id) ?? 0)}
+                      </span>
+                    </div>
+                    <FriendActionButton
+                      action={sendFriendRequest}
+                      id={u.id}
+                      label={f.add}
+                      pendingLabel={f.adding}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </aside>
+      </div>
     </div>
   );
 }
