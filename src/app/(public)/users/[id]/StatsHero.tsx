@@ -140,8 +140,16 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
         })}
       </div>
 
-      {expanded === "events" && (
-        <div className="surface p-3 mb-3 stat-tile-expand thin-scroll">
+      {/* Панели всегда в DOM и раскрываются плавно по высоте (грид
+          0fr → 1fr, см. .stat-tile-panel): условный рендер появлялся
+          рывком (правка владельца 2026-09-17: «не плавно»). Закрытая
+          панель — inert, чтобы ссылки внутри не ловили фокус. */}
+      <div
+        className={`stat-tile-panel${expanded === "events" ? " is-open" : ""}`}
+        inert={expanded !== "events"}
+      >
+        <div className="stat-tile-panel-inner">
+        <div className="surface p-3 stat-tile-expand thin-scroll">
           <div className="hero-event-list">
             {stats.attendedEventsList.map((ev) => (
               <AppLink key={ev.id} href={eventHref(ev)} className="hero-event-row">
@@ -168,9 +176,14 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
             ))}
           </div>
         </div>
-      )}
-      {expanded === "artists" && (
-        <div className="surface p-3 mb-3 stat-tile-expand thin-scroll">
+        </div>
+      </div>
+      <div
+        className={`stat-tile-panel${expanded === "artists" ? " is-open" : ""}`}
+        inert={expanded !== "artists"}
+      >
+        <div className="stat-tile-panel-inner">
+        <div className="surface p-3 stat-tile-expand thin-scroll">
           <div className="hero-artist-grid">
             {stats.seenPerformers.map((p) => (
               <AppLink key={p.id} href={performerHref(p)} className="hero-artist">
@@ -191,9 +204,14 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
             ))}
           </div>
         </div>
-      )}
-      {expanded === "trips" && (
-        <div className="surface p-3 mb-3 stat-tile-expand thin-scroll">
+        </div>
+      </div>
+      <div
+        className={`stat-tile-panel${expanded === "trips" ? " is-open" : ""}`}
+        inert={expanded !== "trips"}
+      >
+        <div className="stat-tile-panel-inner">
+        <div className="surface p-3 stat-tile-expand thin-scroll">
           <div className="hero-event-list">
             {stats.tripsList.map((trip) => (
               <AppLink key={trip.id} href={tripHref(trip)} className="stats-trip-row">
@@ -206,7 +224,8 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
             ))}
           </div>
         </div>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

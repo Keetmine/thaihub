@@ -3250,20 +3250,55 @@ button.stat-tile-toggle.is-open {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 50%;
-  border: 1px solid rgba(var(--accent-rgb), 0.6);
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
   color: rgb(var(--accent-rgb));
   background: rgba(var(--accent-rgb), 0.1);
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Сама стрелка поворачивается, а не круг: круг остаётся на месте и
+   лишь теплеет. Без сплошной заливки — она щёлкала цветом вместе с
+   поворотом и читалась как рывок (правка владельца 2026-09-17). */
+.stat-tile-chevron svg {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 button.stat-tile-toggle:hover .stat-tile-chevron {
-  background: rgba(var(--accent-rgb), 0.22);
+  background: rgba(var(--accent-rgb), 0.2);
 }
 
 button.stat-tile-toggle.is-open .stat-tile-chevron {
-  background: rgb(var(--accent-rgb));
-  color: #fff;
+  background: rgba(var(--accent-rgb), 0.28);
+  border-color: rgba(var(--accent-rgb), 0.9);
+}
+
+button.stat-tile-toggle.is-open .stat-tile-chevron svg {
   transform: rotate(180deg);
+}
+
+/* Панель под плитками раскрывается по высоте плавно: грид 0fr → 1fr
+   анимируется, в отличие от height: auto. Панель всегда в DOM;
+   закрытая — без отступа и прозрачная, чтобы не оставлять щель. */
+.stat-tile-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: 0;
+  transition:
+    grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease,
+    margin-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-tile-panel.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-bottom: 1rem;
+}
+
+.stat-tile-panel-inner {
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 575.98px) {
@@ -9125,9 +9160,9 @@ body::after {
   .stats-heat-cell:hover {
     transform: none;
   }
-  .stat-tile-chevron {
-    transition: none;
-  }
+  .stat-tile-chevron,
+  .stat-tile-chevron svg,
+  .stat-tile-panel,
   .stat-tile {
     transition: none;
   }
