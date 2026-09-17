@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTimeInZone, tzShortLabel } from "@/lib/timezones";
+import { EVENT_DEFAULT_TIMEZONE, formatTimeInZone, sameOffset, tzShortLabel } from "@/lib/timezones";
 import { formatTime } from "@/lib/dates";
 import { useViewerTimezone } from "./TimezoneProvider";
 import { useT, useLocale } from "@/components/LocaleProvider";
@@ -14,10 +14,15 @@ import { InfoIcon } from "@/components/icons";
 export default function MskTimeInfo({
   startsAt,
   endsAt,
+  timezone = EVENT_DEFAULT_TIMEZONE,
   className,
 }: {
   startsAt: Date | string;
   endsAt?: Date | string | null;
+  /** Зона события (Event.timezone). Каталог — Бангкок; у встречи
+   *  сообщества своя, и подсказка говорит «время по Минску», а не
+   *  «тайское время» (правка владельца 2026-09-17). */
+  timezone?: string;
   className?: string;
 }) {
   const t = useT();
@@ -26,12 +31,17 @@ export default function MskTimeInfo({
   const start = new Date(startsAt);
   const end = endsAt ? new Date(endsAt) : null;
   const short = tzShortLabel(tz, locale);
-  const label = t.events.card.thaiTime(
-    short,
-    end
-      ? `${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
-      : formatTimeInZone(start, tz),
-  );
+  const converted = end
+    ? `${formatTimeInZone(start, tz, timezone)}–${formatTimeInZone(end, tz, timezone)}`
+    : formatTimeInZone(start, tz, timezone);
+  // Зоны совпадают по смещению — «МСК: 12:00» рядом с «время: МСК»
+  // повторяло бы то же число; остаётся только чья зона.
+  const label =
+    timezone === EVENT_DEFAULT_TIMEZONE
+      ? t.events.card.thaiTime(short, converted)
+      : sameOffset(timezone, tz, start)
+        ? t.events.card.zoneTimeSame(tzShortLabel(timezone, locale))
+        : t.events.card.zoneTime(tzShortLabel(timezone, locale), short, converted);
 
   return (
     <span className={`agenda-time-info ${className ?? ""}`} data-tooltip={label} tabIndex={0}>
@@ -46,10 +56,13 @@ export default function MskTimeInfo({
 export function TzTimeText({
   startsAt,
   endsAt,
+  timezone = EVENT_DEFAULT_TIMEZONE,
   className,
 }: {
   startsAt: Date | string;
   endsAt?: Date | string | null;
+  /** Зона события — см. MskTimeInfo. */
+  timezone?: string;
   className?: string;
 }) {
   const t = useT();
@@ -58,12 +71,17 @@ export function TzTimeText({
   const start = new Date(startsAt);
   const end = endsAt ? new Date(endsAt) : null;
   const short = tzShortLabel(tz, locale);
-  const label = t.events.card.thaiTime(
-    short,
-    end
-      ? `${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)}`
-      : formatTimeInZone(start, tz),
-  );
+  const converted = end
+    ? `${formatTimeInZone(start, tz, timezone)}–${formatTimeInZone(end, tz, timezone)}`
+    : formatTimeInZone(start, tz, timezone);
+  // Зоны совпадают по смещению — «МСК: 12:00» рядом с «время: МСК»
+  // повторяло бы то же число; остаётся только чья зона.
+  const label =
+    timezone === EVENT_DEFAULT_TIMEZONE
+      ? t.events.card.thaiTime(short, converted)
+      : sameOffset(timezone, tz, start)
+        ? t.events.card.zoneTimeSame(tzShortLabel(timezone, locale))
+        : t.events.card.zoneTime(tzShortLabel(timezone, locale), short, converted);
   // Строго formatTime (UTC-часы): по соглашению проекта в базе лежит
   // тайское «настенное» время, и все остальные подписи читают его так
   // же. Раньше здесь стояло d.getHours() — время браузера, и зритель из

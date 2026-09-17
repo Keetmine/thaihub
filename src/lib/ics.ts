@@ -15,21 +15,17 @@ function escapeICSText(text: string): string {
     .replace(/\n/g, "\\n");
 }
 
-// Время события в базе — тайские «настенные» часы, разложенные по
-// UTC-полям (см. lib/dates.ts): 11:00 в Бангкоке лежит как 11:00Z.
-// Календарю же нужен НАСТОЯЩИЙ момент, поэтому перед выгрузкой снимаем
-// смещение Бангкока. Без этого календарь читал 11:00 как 11:00 UTC и
-// показывал москвичу 14:00 вместо 07:00 (правка 2026-09-09, находка
-// владельца на препродаже билетов).
-//
-// Константой, а не библиотекой зон: в Таиланде нет перехода на летнее
-// время, смещение +7 постоянно — как и четыре часа до Москвы, которые
-// вычитает formatTimeWithMsk.
-const BANGKOK_OFFSET_MINUTES = 7 * 60;
+import { wallClockToInstant } from "./timezones";
 
-function toICSDate(d: Date): string {
-  const utc = new Date(d.getTime() - BANGKOK_OFFSET_MINUTES * 60 * 1000);
-  return toICSInstant(utc);
+// Время события в базе — «настенные» часы в зоне события, разложенные
+// по UTC-полям (см. lib/dates.ts): 11:00 в Бангкоке лежит как 11:00Z.
+// Календарю же нужен НАСТОЯЩИЙ момент, поэтому перед выгрузкой снимаем
+// смещение зоны события (`Event.timezone`; каталог — Бангкок, встречи
+// сообществ — своя зона с 2026-09-17). Без этого календарь читал 11:00
+// как 11:00 UTC и показывал москвичу 14:00 вместо 07:00 (правка
+// 2026-09-09, находка владельца на препродаже билетов).
+function toICSDate(d: Date, tz?: string): string {
+  return toICSInstant(wallClockToInstant(d, tz));
 }
 
 /** Настоящий момент времени — без пересчёта. Для DTSTAMP: он про то,
@@ -49,6 +45,8 @@ type IcsEvent = {
   title: string;
   venue: string;
   description: string | null;
+  /** Зона времени события (Event.timezone); нет — Бангкок. */
+  timezone?: string;
   occurrences: { id: string; startsAt: Date; endsAt: Date | null; hasTime?: boolean }[];
 };
 
@@ -76,7 +74,7 @@ function buildVEvents(event: IcsEvent): string[] {
             `DTSTART;VALUE=DATE:${toICSDay(occ.startsAt)}`,
             `DTEND;VALUE=DATE:${toICSDay(nextDay(occ.endsAt ?? occ.startsAt))}`,
           ]
-        : [`DTSTART:${toICSDate(occ.startsAt)}`, `DTEND:${toICSDate(end)}`]),
+        : [`DTSTART:${toICSDate(occ.startsAt, event.timezone)}`, `DTEND:${toICSDate(end, event.timezone)}`]),
       `SUMMARY:${escapeICSText(event.title)}`,
       `LOCATION:${escapeICSText(event.venue)}`,
       ...(event.description ? [`DESCRIPTION:${escapeICSText(event.description)}`] : []),

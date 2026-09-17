@@ -94,6 +94,7 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
             venue: true,
             // Онлайн-встреча: бейдж «Онлайн» на месте площадки.
             isOnline: true,
+            timezone: true,
             description: true,
             posterUrl: true,
             community: { select: { id: true, slug: true, title: true } },
@@ -183,6 +184,7 @@ export default async function HomeCommunities({ userId }: { userId: string }) {
                   startsAt: o.startsAt,
                   hasTime: o.hasTime,
                   endsAt: o.endsAt,
+                  timezone: o.event.timezone,
                   // Артистов на домашней встрече не бывает.
                   performers: [],
                   // А вот сообщество здесь нужно (в отличие от вкладки

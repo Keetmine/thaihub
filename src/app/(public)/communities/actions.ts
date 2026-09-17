@@ -133,6 +133,9 @@ export async function createCommunity(formData: FormData): Promise<ActionError |
       coverUrl: cover.url,
       country: place.country,
       city: place.city,
+      // Зона встреч — зона того, кто заводит сообщество; дальше
+      // правится в «Управлении» рядом со страной и городом.
+      timezone: user.timezone,
       visibility: parseVisibility(formData.get("visibility")),
       joinMode: parseJoinMode(formData.get("joinMode")),
       // Ссылки — той же записью: за ссылкой обычно чат, ради которого

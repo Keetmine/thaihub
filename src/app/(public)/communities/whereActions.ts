@@ -7,9 +7,12 @@ import { communityHref } from "@/lib/slugHelpers";
 import { parseCommunityPlace } from "@/lib/communities";
 import { requireManagedCommunity } from "@/lib/communities.server";
 import { invalidateCatalogCache } from "@/lib/catalogCache";
+import { DEFAULT_TIMEZONE, isKnownTimezone } from "@/lib/timezones";
 
 /**
- * Где живёт сообщество — страна и город (АА25).
+ * Где живёт сообщество — страна и город (АА25), а с 2026-09-17 ещё и
+ * таймзона встреч (правка владельца: время встречи по Минску
+ * показывалось как тайское).
  *
  * Раньше рядом с этим жили ещё привязки к артистам и сериалам, но
  * владелец их отменила (2026-09-09): «я могу любить 20 актёров и
@@ -24,7 +27,9 @@ import { invalidateCatalogCache } from "@/lib/catalogCache";
 export type ActionError = { ok: false; error: string };
 export type ActionResult = { ok: true } | ActionError;
 
-export type CommunityPlaceState = { ok: true; country: string; city: string } | ActionError;
+export type CommunityPlaceState =
+  | { ok: true; country: string; city: string; timezone: string }
+  | ActionError;
 
 // Правит тот же круг, что и название: владелец и действующий модератор —
 // общий requireManagedCommunity из lib/communities.server.ts. Своя копия
@@ -37,7 +42,12 @@ export async function loadCommunityPlace(communityId: string): Promise<Community
   const managed = await requireManagedCommunity(communityId);
   if (!managed) return { ok: false, error: t.communities.errors.notFound };
   const { community } = managed;
-  return { ok: true, country: community.country ?? "", city: community.city ?? "" };
+  return {
+    ok: true,
+    country: community.country ?? "",
+    city: community.city ?? "",
+    timezone: community.timezone ?? DEFAULT_TIMEZONE,
+  };
 }
 
 export async function saveCommunityPlace(
@@ -54,9 +64,13 @@ export async function saveCommunityPlace(
   const place = parseCommunityPlace(formData.get("country"), formData.get("city"));
   if (!place.ok) return { ok: false, error: t.communities.topics.errors.cityWithoutCountry };
 
+  // Зона встреч — из того же окна, что страна и город: где сообщество,
+  // по тем часам и собирается. Неизвестное значение не пишем.
+  const rawTz = String(formData.get("timezone") ?? "");
+  const timezone = isKnownTimezone(rawTz) ? rawTz : undefined;
   await prisma.community.update({
     where: { id: managed.community.id },
-    data: { country: place.country, city: place.city },
+    data: { country: place.country, city: place.city, ...(timezone ? { timezone } : {}) },
   });
   revalidatePath(communityHref(managed.community));
   revalidatePath("/communities");

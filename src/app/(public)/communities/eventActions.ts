@@ -120,6 +120,16 @@ async function resolveDramaId(dramaId: string): Promise<string | null> {
   return drama?.id ?? null;
 }
 
+/** Зона, в которой вводится время встречи: у сообщества, иначе — у
+ *  автора (старые сообщества до бэкфила). */
+async function meetupTimezone(communityId: string, fallback: string): Promise<string> {
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+    select: { timezone: true },
+  });
+  return community?.timezone ?? fallback;
+}
+
 /** Что перерисовать после изменения встречи. Открытая встреча попадает
  *  ещё и в блок афиши — его страницу тоже сбрасываем. */
 function revalidateMeetup(communityId: string, eventId: string) {
@@ -151,6 +161,10 @@ export async function createMeetup(
     data: {
       communityId,
       createdById: user.id,
+      // Время встречи введено по часам сообщества (правка владельца
+      // 2026-09-17): зона — сообщества, а у старых записей без неё —
+      // того, кто создаёт.
+      timezone: await meetupTimezone(communityId, user.timezone),
       // Только наша же загрузка: адрес уходит прямо в <img src> на
       // странице встречи, и чужой хост тут был бы дырой.
       posterUrl: /^\/uploads\//.test(input.posterUrl) && !input.posterUrl.includes("..")
@@ -210,6 +224,9 @@ export async function updateMeetup(eventId: string, formData: FormData): Promise
   await prisma.event.update({
     where: { id: eventId },
     data: {
+      // Зона пересчитывается при каждой правке: сменили зону сообщества
+      // — следующая правка встречи её подхватит.
+      timezone: await meetupTimezone(event.communityId, user.timezone),
       // Только наша же загрузка: адрес уходит прямо в <img src> на
       // странице встречи, и чужой хост тут был бы дырой.
       posterUrl: /^\/uploads\//.test(input.posterUrl) && !input.posterUrl.includes("..")

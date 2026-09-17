@@ -21,6 +21,9 @@ export type EventWithPerformers = {
   startsAt: Date;
   /** false — время не указано (startsAt хранит 00:00). */
   hasTime?: boolean;
+  /** Зона, в которой лежит время (Event.timezone). Каталожные списки
+   *  поле не тянут — там всегда Бангкок; у встреч сообществ своя. */
+  timezone?: string;
   endsAt: Date | null;
   posterUrl: string | null;
   performers: { performer: { id: string; name: string; slug: string | null } }[];

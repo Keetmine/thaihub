@@ -14,6 +14,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import MeetupCard from "./MeetupCard";
 import EventCardLocked from "@/components/EventCardLocked";
 import MeetupForm, { type MeetupFormValues } from "./MeetupForm";
+import { DEFAULT_TIMEZONE, TIMEZONES } from "@/lib/timezones";
 
 /**
  * Вкладка «Встречи» — события сообщества (АА25, этап 3).
@@ -49,7 +50,7 @@ export default async function MeetupsTab({
   const s = t.communities.meetups;
   const viewer = await getCurrentUser();
 
-  const [meetups, rights] = await Promise.all([
+  const [meetups, rights, communityZone] = await Promise.all([
     prisma.event.findMany({
       where: { communityId },
       include: {
@@ -66,7 +67,12 @@ export default async function MeetupsTab({
       },
     }),
     communityRights(communityId, viewer?.id),
+    // Зона встреч — подсказка «По часам: Минск» под полем времени в
+    // форме (правка владельца 2026-09-17).
+    prisma.community.findUnique({ where: { id: communityId }, select: { timezone: true } }),
   ]);
+  const zoneValue = communityZone?.timezone ?? DEFAULT_TIMEZONE;
+  const timezoneLabel = TIMEZONES.find((z) => z.value === zoneValue)?.label[locale] ?? zoneValue;
 
   // Избранное и «иду» — теми же общими выборками, что кормят афишу:
   // карточка одна, и состояние её кнопок должно считаться одинаково.
@@ -143,6 +149,7 @@ export default async function MeetupsTab({
       startsAt: occurrence.startsAt,
       hasTime: occurrence.hasTime,
       endsAt: occurrence.endsAt,
+      timezone: m.timezone,
       performers: [],
       community: null,
     };
@@ -166,6 +173,7 @@ export default async function MeetupsTab({
         authorName={m.createdBy?.name ?? null}
         goingCount={occurrence._count.attendances}
         canEdit={canEditMeetup(m, viewer?.id, rights)}
+        timezoneLabel={timezoneLabel}
       />
     );
   };
@@ -174,7 +182,7 @@ export default async function MeetupsTab({
     <div className="d-flex flex-column gap-3">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h2 className="section-heading mb-0">{s.heading}</h2>
-        {canCreate && !locked && <MeetupForm communityId={communityId} />}
+        {canCreate && !locked && <MeetupForm communityId={communityId} timezoneLabel={timezoneLabel} />}
       </div>
 
       {rows.length === 0 ? (

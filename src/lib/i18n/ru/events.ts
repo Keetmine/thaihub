@@ -216,6 +216,10 @@ export const events: Dict["events"] = {
     lockedMembersAria: "Встреча видна только участникам сообщества",
     lockedBadgeMembers: "Для участников сообщества",
     thaiTime: (zone: string, time: string) => `Тайское время. ${zone}: ${time}`,
+    /** Встреча в своей зоне (не тайской): «Время по Минску. МСК: 18:10». */
+    zoneTime: (eventZone: string, zone: string, time: string) =>
+      `Время: ${eventZone}. ${zone}: ${time}`,
+    zoneTimeSame: (eventZone: string) => `Время: ${eventZone}`,
   },
 
   filter: {

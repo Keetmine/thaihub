@@ -169,7 +169,7 @@ export default function EventCard({
             <span className="date-chip event-row-time">
               {formatTime(event.startsAt)}
               {event.endsAt && <>–{formatTime(event.endsAt)}</>}
-              <MskTimeInfo startsAt={event.startsAt} endsAt={event.endsAt} />
+              <MskTimeInfo startsAt={event.startsAt} endsAt={event.endsAt} timezone={event.timezone} />
             </span>
           )}
           {/* Онлайн-встреча: на месте площадки — бейдж «Онлайн» (venue у

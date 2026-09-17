@@ -139,13 +139,28 @@ export function formatTimeRangeWithMsk(start: Date, end: Date | null): string {
 
 // Zone-версии тех же подписей: «в скобках» — время в выбранной юзером
 // таймзоне (User.timezone, настройки → Профиль), а не жёсткий МСК.
-import { formatTimeInZone, tzShortLabel } from "./timezones";
+import { EVENT_DEFAULT_TIMEZONE, formatTimeInZone, sameOffset, tzShortLabel } from "./timezones";
 
-// Язык — последним необязательным аргументом, как у остальных
-// форматтеров: от него зависит только подпись зоны в скобках («МСК» /
-// «MSK»), само время не меняется.
-export function formatTimeWithZone(d: Date, tz: string, locale: Locale = "ru"): string {
-  return `${formatTime(d)} (${tzShortLabel(tz, locale)} ${formatTimeInZone(d, tz)})`;
+// Язык — необязательным аргументом, как у остальных форматтеров: от
+// него зависит только подпись зоны в скобках («МСК» / «MSK»), само
+// время не меняется. `eventTz` — зона, в которой лежит время события
+// (Event.timezone; каталог — Бангкок). У тайского события подпись
+// прежняя: «22:10 (МСК 18:10)». У встречи в другой зоне время идёт со
+// своей подписью — «18:10 Минск», — а скобки со зрительской зоной
+// добавляются только когда смещения различаются: «18:10 (МСК 18:10)»
+// у минской встречи было бы шумом (правка владельца 2026-09-17).
+export function formatTimeWithZone(
+  d: Date,
+  tz: string,
+  locale: Locale = "ru",
+  eventTz: string = EVENT_DEFAULT_TIMEZONE,
+): string {
+  if (eventTz === EVENT_DEFAULT_TIMEZONE) {
+    return `${formatTime(d)} (${tzShortLabel(tz, locale)} ${formatTimeInZone(d, tz)})`;
+  }
+  const own = `${formatTime(d)} ${tzShortLabel(eventTz, locale)}`;
+  if (sameOffset(eventTz, tz, d)) return own;
+  return `${own} (${tzShortLabel(tz, locale)} ${formatTimeInZone(d, tz, eventTz)})`;
 }
 
 export function formatTimeRangeWithZone(
@@ -153,9 +168,16 @@ export function formatTimeRangeWithZone(
   end: Date | null,
   tz: string,
   locale: Locale = "ru",
+  eventTz: string = EVENT_DEFAULT_TIMEZONE,
 ): string {
-  if (!end) return formatTimeWithZone(start, tz, locale);
-  return `${formatTime(start)}–${formatTime(end)} (${tzShortLabel(tz, locale)} ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)})`;
+  if (!end) return formatTimeWithZone(start, tz, locale, eventTz);
+  const range = `${formatTime(start)}–${formatTime(end)}`;
+  if (eventTz === EVENT_DEFAULT_TIMEZONE) {
+    return `${range} (${tzShortLabel(tz, locale)} ${formatTimeInZone(start, tz)}–${formatTimeInZone(end, tz)})`;
+  }
+  const own = `${range} ${tzShortLabel(eventTz, locale)}`;
+  if (sameOffset(eventTz, tz, start)) return own;
+  return `${own} (${tzShortLabel(tz, locale)} ${formatTimeInZone(start, tz, eventTz)}–${formatTimeInZone(end, tz, eventTz)})`;
 }
 
 // Compact "24 окт" / "24 Oct" form, for flat (non day-grouped) event lists

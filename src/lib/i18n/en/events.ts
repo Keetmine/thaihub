@@ -228,6 +228,9 @@ export const events = {
     lockedMembersAria: "This meetup is visible to community members only",
     lockedBadgeMembers: "Community members only",
     thaiTime: (zone: string, time: string) => `Thai time. ${zone}: ${time}`,
+    zoneTime: (eventZone: string, zone: string, time: string) =>
+      `Time: ${eventZone}. ${zone}: ${time}`,
+    zoneTimeSame: (eventZone: string) => `Time: ${eventZone}`,
   },
 
   /** Фильтр по датам над списком */

@@ -53,7 +53,11 @@ copy — read the schema file for exact field types/nullability.
 ## Events
 
 - **`Event`** — no date/time fields of its own; see `EventOccurrence`
-  below. See [events.md](features/events.md) for the full picture
+  below. `timezone` (IANA, default `Asia/Bangkok`) — зона, в которой
+  лежат его часы: каталог — Бангкок, встреча сообщества — зона
+  сообщества (`Community.timezone`, nullable, заполняется зоной
+  создателя). См. «Таймзона события и зрителя» в
+  [events.md](features/events.md). See [events.md](features/events.md) for the full picture
   (multi-day creation, presale, ICS export). Optionally linked to a
   `Drama` (`dramaId`) and/or a `Location` (`locationId`) — both nullable,
   independent of each other. `sourceUrl` — страница-источник (импорт по

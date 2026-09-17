@@ -32,8 +32,11 @@ export default async function MeetupCard({
   authorName,
   goingCount,
   canEdit,
+  timezoneLabel,
 }: {
   communityId: string;
+  /** Зона сообщества для подсказки в форме правки. */
+  timezoneLabel?: string;
   event: EventWithPerformers;
   /** Заготовка для формы правки — нужна только тем, кто вправе править. */
   values: MeetupFormValues;
@@ -81,6 +84,7 @@ export default async function MeetupCard({
             meetup={values}
             canDelete
             compact
+            timezoneLabel={timezoneLabel}
           />
         ) : undefined
       }

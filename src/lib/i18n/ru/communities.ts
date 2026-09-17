@@ -95,6 +95,9 @@ export const communities: Dict["communities"] = {
         countryPlaceholder: "Таиланд",
         cityLabel: "Город",
         cityPlaceholder: "Бангкок",
+        /** Зона встреч (правка владельца 2026-09-17). */
+        timezoneLabel: "Часовой пояс встреч",
+        timezoneHint: "По этим часам вводится и показывается время встреч сообщества.",
         save: "Сохранить",
         loading: "Загружаем…",
 
@@ -129,6 +132,8 @@ export const communities: Dict["communities"] = {
       removeDay: "Убрать день",
       dateLabel: "Дата",
         timeLabel: "Время",
+        /** Подсказка под полем времени: по часам какой зоны вводить. */
+        timeZoneHint: (zone: string) => `По часам: ${zone}`,
         addressLabel: "Адрес",
         addressPlaceholder: "Улица, дом, код от подъезда",
         descriptionLabel: "Подробности",

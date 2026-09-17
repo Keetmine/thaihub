@@ -94,6 +94,8 @@ export const communities = {
         countryPlaceholder: "Thailand",
         cityLabel: "City",
         cityPlaceholder: "Bangkok",
+        timezoneLabel: "Meetup time zone",
+        timezoneHint: "Meetup times are entered and shown in this zone.",
         save: "Save",
         loading: "Loading…",
 
@@ -132,6 +134,7 @@ export const communities = {
       removeDay: "Remove day",
       dateLabel: "Date",
         timeLabel: "Time",
+        timeZoneHint: (zone: string) => `Local time: ${zone}`,
         addressLabel: "Address",
         addressPlaceholder: "Street, building, entrance code",
         descriptionLabel: "Details",

@@ -76,7 +76,7 @@ export default function EventAgendaRow({
             <span className="date-chip event-row-time">
               {showDate && formatShortDate(event.startsAt, locale)}
               {hasTime && (
-                <TzTimeText startsAt={event.startsAt} endsAt={event.endsAt} />
+                <TzTimeText startsAt={event.startsAt} endsAt={event.endsAt} timezone={event.timezone} />
               )}
             </span>
           )}

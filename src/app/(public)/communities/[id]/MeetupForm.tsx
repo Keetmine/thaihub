@@ -63,11 +63,15 @@ export default function MeetupForm({
   meetup,
   canDelete = false,
   compact = false,
+  timezoneLabel,
 }: {
   communityId: string;
   /** Есть — правим эту встречу, нет — заводим новую. */
   meetup?: MeetupFormValues;
   canDelete?: boolean;
+  /** Название зоны сообщества («Минск (UTC+3)») — подсказка под полем
+   *  времени: по каким часам вводить (правка владельца 2026-09-17). */
+  timezoneLabel?: string;
   /** Иконка-карандаш вместо подписанной кнопки — для угла карточки в
    *  списке встреч (правка владельца 2026-09-09). Ровно тот же приём и
    *  та же причина, что у правки темы обсуждения (`PostEditForm`): в
@@ -249,6 +253,9 @@ export default function MeetupForm({
                     name="time"
                     defaultValue={day.timeValue}
                   />
+                  {i === 0 && timezoneLabel && (
+                    <p className="small text-secondary mb-0 mt-1">{s.timeZoneHint(timezoneLabel)}</p>
+                  )}
                 </div>
                 {days.length > 1 && (
                   <div className="col-1">

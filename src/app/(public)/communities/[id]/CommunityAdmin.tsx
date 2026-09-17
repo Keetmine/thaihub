@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Modal from "@/components/Modal";
 import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
-import { useT } from "@/components/LocaleProvider";
+import { useT, useLocale } from "@/components/LocaleProvider";
 import {
   addCommunityLink,
   deleteCommunity,
@@ -22,6 +22,7 @@ import {
 // показывать то, что окажется на странице, а форма создания и форма
 // правки должны кадрировать ОДИНАКОВО.
 import { COMMUNITY_COVER_RATIO_H, COMMUNITY_COVER_RATIO_W } from "@/lib/communities";
+import { TIMEZONES } from "@/lib/timezones";
 
 /** Загруженное место — только успешная ветка ответа экшена: ошибку окно
  *  показывает отдельной строкой, а не подставляет в поля. */
@@ -53,6 +54,7 @@ export default function CommunityAdmin({
 }) {
   const uid = useId();
   const t = useT();
+  const locale = useLocale();
   const s = t.communities;
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -314,6 +316,22 @@ export default function CommunityAdmin({
                     placeholder={s.topics.cityPlaceholder}
                     className="form-control"
                   />
+                </div>
+                {/* Зона встреч (правка владельца 2026-09-17): по этим
+                    часам вводится время встреч. Тот же список зон, что
+                    в настройках профиля. */}
+                <div className="col-12">
+                  <label className="form-label small text-secondary" htmlFor={`${uid}-tz`}>
+                    {s.topics.timezoneLabel}
+                  </label>
+                  <select id={`${uid}-tz`} name="timezone" defaultValue={topics.timezone} className="form-select">
+                    {TIMEZONES.map((zone) => (
+                      <option key={zone.value} value={zone.value}>
+                        {zone.label[locale]}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="small text-secondary mb-0 mt-1">{s.topics.timezoneHint}</p>
                 </div>
               </div>
 

@@ -676,7 +676,9 @@ export default async function EventDetailPage({
                       locale,
                     )
                   )}
-                  {first.hasTime && <> · {formatTimeRangeWithZone(first.startsAt, first.endsAt, viewerTz, locale)}</>}
+                  {/* Зона события: у встречи сообщества — своя, и
+                      «18:10 Минск» вместо «22:10 (МСК 18:10)». */}
+                  {first.hasTime && <> · {formatTimeRangeWithZone(first.startsAt, first.endsAt, viewerTz, locale, event.timezone)}</>}
                 </p>
               );
             })}
