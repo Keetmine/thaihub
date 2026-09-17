@@ -86,11 +86,22 @@ export const account: Dict["account"] = {
     artistListsHint: "Создайте свой список — «видела вживую», «пили пиво»…",
     artistListsLocked: "Свои списки артистов — по подписке.",
 
-    byYear: "События по годам",
-    byMonth: (year: number) => `По месяцам, ${year}`,
+    liveTitle: "Вживую",
+    calendarTitle: "Календарь событий",
+    calendarEmpty: "Посещённых событий пока нет — календарь заполнится от отметок «Я пойду».",
+    yearTotal: (n: number) => pluralized(n, ["событие", "события", "событий"]),
+    artistsCount: (n: number) => pluralized(n, ["артист", "артиста", "артистов"]),
+    monthTitle: (month: string, year: number, n: number) =>
+      `${month} ${year}: ${pluralized(n, ["событие", "события", "событий"])}`,
+    seriesTitle: "Сериалы",
+    libraryLead: (n: number) => `${pluralized(n, ["сериал", "сериала", "сериалов"])} в библиотеке`,
+    episodesHours: (episodes: number, hours: number) =>
+      `${pluralized(episodes, ["серия", "серии", "серий"])} · около ${hours} ч у экрана`,
+    genresLead: "Чаще всего досматривали",
     visitedMap: "Карта посещённого",
     // На чужом профиле — без обращения к владельцу.
     visitedMapViewer: "Карта посещённых мест",
+    visitedCount: (n: number) => pluralized(n, ["место", "места", "мест"]),
 
     achievements: "Достижения",
     // achievementsSecret удалён — правка владельца: строки про «секрет»

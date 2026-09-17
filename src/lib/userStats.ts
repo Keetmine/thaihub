@@ -15,6 +15,8 @@ import {
 // (Д1), и условия ачивок (Д2). Всё считается из уже собираемых данных:
 // посещения, локации, watch-статусы, поездки, друзья.
 
+import { WATCH_STATUS_KEYS, type WatchStatusKey } from "@/lib/watchStatuses";
+
 export type UserStats = {
   attendedEvents: number;
   upcomingEvents: number;
@@ -30,6 +32,11 @@ export type UserStats = {
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
   completedDramas: number;
   anyStatusDramas: number;
+  /** Сколько сериалов в каждом статусе — полоса «библиотеки» на вкладке
+   *  статистики (переделка 2026-09-17). Ключи — все пять статусов,
+   *  даже с нулём: полоса и легенда рисуются одним проходом по
+   *  фиксированному порядку, а не по тому, что нашлось. */
+  watchByStatus: Record<WatchStatusKey, number>;
   /** Серии и часы у экрана: по episodesWatched (у «просмотрено» без
    *  прогресса — по числу серий сериала) плюс пересмотры и длительности
    *  серии с MDL. */
@@ -337,6 +344,12 @@ export async function computeUserStats(
 
   const completedDramas =
     completedCount ?? watchRows.filter((r) => r.status === "COMPLETED").length;
+  const watchByStatus = Object.fromEntries(
+    WATCH_STATUS_KEYS.map((k) => [k, 0]),
+  ) as Record<WatchStatusKey, number>;
+  for (const r of watchRows) {
+    if (r.status in watchByStatus) watchByStatus[r.status as WatchStatusKey] += 1;
+  }
 
   // «Иду» теперь per-дата: «посещено» — прошедшие отмеченные даты,
   // событие считается один раз даже при нескольких отмеченных днях.
@@ -603,6 +616,7 @@ export async function computeUserStats(
       })),
     completedDramas,
     anyStatusDramas: watchRows.length,
+    watchByStatus,
     episodesWatched,
     hoursWatched,
     rewatchTotal,

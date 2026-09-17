@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import AppLink from "@/components/AppLink";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { shortMonthNames } from "@/lib/dates";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import { performerHref } from "@/lib/performerSlug";
+import { WATCH_STATUS_KEYS, type WatchStatusKey } from "@/lib/watchStatuses";
 
 // Сериализуемые версии для клиентской вкладки (Д1). Переехали из
 // кабинета (/account) вместе с самой вкладкой — профиль теперь единая
@@ -24,6 +24,8 @@ export type StatsForTab = {
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
   completedDramas: number;
+  /** Сколько сериалов в каждом статусе — полоса библиотеки. */
+  watchByStatus: Record<WatchStatusKey, number>;
   episodesWatched: number;
   hoursWatched: number;
   /** Пересмотры: сколько всего и что пересматривали чаще прочего.
@@ -46,14 +48,32 @@ export type StatsForTab = {
   eventsByYear: { year: number; count: number; months: number[] }[];
 };
 
+/** Альфа сегмента по статусу: порядок «смотрю → просмотрено → буду →
+ *  отложено → заброшено», яркость падает по нему же. Один акцентный
+ *  цвет на пять сегментов — палитра сайта одноцветная, второй цвет
+ *  на полосе выглядел бы чужим. */
+const STATUS_ALPHA: Record<WatchStatusKey, number> = {
+  WATCHING: 1,
+  COMPLETED: 0.72,
+  PLAN_TO_WATCH: 0.48,
+  ON_HOLD: 0.3,
+  DROPPED: 0.16,
+};
+
 /**
- * «Статистика» — чистый рендер свода `computeUserStats`: топ артистов,
- * бары по годам, карта посещённого. Кто и что имеет право видеть,
+ * «Статистика» — чистый рендер свода `computeUserStats` сеткой карточек
+ * (переделка 2026-09-17): «Вживую» (рейтинг артистов + календарь
+ * событий), «Сериалы» (библиотека по статусам, серии и часы, жанры,
+ * оценка против MDL) и карта посещённого. Кто и что имеет право видеть,
  * решает СТРАНИЦА (свой/чужой, подписка, приватность): сюда приезжают
  * уже отфильтрованные данные — например, зрителю при скрытых
  * «посещённых местах» пины карты не передаются вовсе.
- * Ачивки и списки актёров из вкладки уехали: медали — в левой колонке
- * профиля, списки — во вкладке «Места и списки».
+ *
+ * Календарь — тепловая полоса «год × месяц», а не столбики с
+ * переключателем года: при одном-двух годах столбики читались
+ * сломанным виджетом, а двенадцать полосок месяца были почти все
+ * пустые. Полоса одинаково выглядит для одного года и для десяти и не
+ * требует кликов.
  */
 export default function StatsTab({
   stats,
@@ -66,19 +86,19 @@ export default function StatsTab({
   const t = useT();
   const locale = useLocale();
   const s = t.account.stats;
-  const maxYear = Math.max(1, ...stats.eventsByYear.map((y) => y.count));
-  // По умолчанию раскрыт последний год: он самый интересный, а
-  // eventsByYear отсортирован по возрастанию.
-  const [activeYear, setActiveYear] = useState<number | null>(
-    stats.eventsByYear.length > 0
-      ? stats.eventsByYear[stats.eventsByYear.length - 1].year
-      : null,
-  );
-  const activeMonths =
-    stats.eventsByYear.find((y) => y.year === activeYear)?.months ?? null;
-  const maxMonth = Math.max(1, ...(activeMonths ?? [1]));
   const monthNames = shortMonthNames(locale);
 
+  // ---- Вживую ----
+  const years = stats.eventsByYear;
+  // Интенсивность — от самого насыщенного месяца ЗА ВСЕ годы: иначе два
+  // события в тихом году светились бы так же, как восемь в громком.
+  const maxMonth = Math.max(1, ...years.flatMap((y) => y.months));
+  const topRank = stats.topPerformers.slice(0, 5);
+  const maxRank = Math.max(1, ...topRank.map((p) => p.count));
+  const showLive = stats.attendedEvents > 0 || topRank.length > 0;
+
+  // ---- Сериалы ----
+  const libraryTotal = WATCH_STATUS_KEYS.reduce((sum, k) => sum + stats.watchByStatus[k], 0);
   const topGenres = stats.topGenres ?? [];
   const vsMdl = stats.ratingVsMdl;
   // Знак diff читается словом: минус — строже MyDramaList, плюс —
@@ -92,159 +112,162 @@ export default function StatsTab({
           ? s.tasteKinder(vsMdl.diff.toFixed(1))
           : s.tasteSame)
     : null;
+  const showSeries = libraryTotal > 0;
+
+  const showMap = stats.visitedLocationPins.length > 0;
+
+  if (!showLive && !showSeries && !showMap) return null;
 
   return (
-    <div>
-      {/* Вкусовой профиль (п.6.2): жанры — теми же чипами, что артисты
-          ниже; ссылки ведут в поиск с фильтром жанра, как чипы жанров на
-          странице сериала. Значения не переводятся — данные каталога. */}
-      {(topGenres.length > 0 || vsMdlLine) && (
-        <>
-          <h2 className="section-heading mb-2">{s.tasteTitle}</h2>
-          {topGenres.length > 0 && (
-            <div className={`d-flex flex-wrap gap-2 ${vsMdlLine ? "mb-2" : "mb-4"}`}>
-              {topGenres.map((g) => (
-                <AppLink
-                  key={g.genre}
-                  href={`/search?section=dramas&genres=${encodeURIComponent(g.genre)}`}
-                  className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 pe-3"
-                >
-                  <span className="small text-white">{g.genre}</span>
-                  <span className="small text-secondary">×{g.count}</span>
-                </AppLink>
-              ))}
+    <div className="row g-3">
+      {showLive && (
+        <div className={showSeries ? "col-12 col-lg-7" : "col-12"}>
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">{s.liveTitle}</h2>
+              <span className="stats-card-meta">
+                {s.yearTotal(stats.attendedEvents)} · {s.artistsCount(stats.performersSeenLive)}
+              </span>
             </div>
-          )}
-          {vsMdlLine && <p className="small text-secondary mb-4">{vsMdlLine}</p>}
-        </>
-      )}
 
-      {stats.topPerformers.length > 0 && (
-        <>
-          <h2 className="section-heading mb-2">{s.topPerformers}</h2>
-          <div className="d-flex flex-wrap gap-2 mb-4">
-            {stats.topPerformers.map((p) => (
-              <AppLink
-                key={p.id}
-                href={performerHref(p)}
-                className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 pe-3"
-              >
-                {p.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    loading="lazy"
-                    decoding="async"
-                    src={p.photoUrl}
-                    alt=""
-                    className="rounded-circle"
-                    style={{ width: "2.2rem", height: "2.2rem", objectFit: "cover" }}
-                  />
-                ) : (
-                  <span
-                    className="rounded-circle d-inline-block"
-                    style={{ width: "2.2rem", height: "2.2rem", background: "var(--bs-secondary-bg)" }}
-                  />
-                )}
-                <span className="small text-white">{p.name}</span>
-                <span className="small text-secondary">×{p.count}</span>
-              </AppLink>
-            ))}
-          </div>
-        </>
-      )}
+            {topRank.length > 0 && (
+              <>
+                <p className="small text-secondary mb-2">{s.topPerformers}</p>
+                <div className={`stats-rank ${years.length > 0 ? "mb-4" : ""}`}>
+                  {topRank.map((p) => (
+                    <AppLink key={p.id} href={performerHref(p)} className="stats-rank-row">
+                      {p.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          loading="lazy"
+                          decoding="async"
+                          src={p.photoUrl}
+                          alt=""
+                          className="stats-rank-photo"
+                        />
+                      ) : (
+                        <span className="stats-rank-photo" />
+                      )}
+                      <span className="stats-rank-name">{p.name}</span>
+                      <span className="stats-rank-count">×{p.count}</span>
+                      <span className="stats-rank-bar">
+                        <span style={{ width: `${(p.count / maxRank) * 100}%` }} />
+                      </span>
+                    </AppLink>
+                  ))}
+                </div>
+              </>
+            )}
 
-      {stats.eventsByYear.length > 0 && (
-        <>
-          <h2 className="section-heading mb-2">{s.byYear}</h2>
-          {/* Год — переключатель (правка владельца 2026-09-10): под
-              рядом лет раскрывается разбивка выбранного года по
-              месяцам. Двенадцать столбиков на КАЖДЫЙ год сразу дали бы
-              шестьдесят полосок в блоке размером с ладонь. */}
-          <div className="d-flex align-items-end gap-3 mb-3" style={{ height: "6rem" }}>
-            {stats.eventsByYear.map((y) => {
-              const active = y.year === activeYear;
-              return (
-                <button
-                  key={y.year}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setActiveYear(y.year)}
-                  className="stats-year-bar text-center d-flex flex-column justify-content-end"
-                  style={{ height: "100%" }}
-                >
-                  <span className="small text-secondary d-block">{y.count}</span>
-                  <div
-                    className="mx-auto"
-                    style={{
-                      width: "2rem",
-                      height: `${Math.max(8, (y.count / maxYear) * 60)}px`,
-                      background: "var(--bs-primary)",
-                      borderRadius: "0.3rem 0.3rem 0 0",
-                      opacity: active ? 1 : 0.45,
-                    }}
-                  />
-                  <span
-                    className={`small d-block ${active ? "text-white" : "text-secondary"}`}
-                  >
-                    {y.year}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {activeMonths && (
-            <div className="mb-4">
-              <p className="small text-secondary mb-2">{s.byMonth(activeYear!)}</p>
-              {/* Прокрутка, а не сжатие: на 390px двенадцать колонок
-                  ужимались до 23px, и «Янв» превращалось в «Ян…».
-                  Столбик не уже 2.25rem, ряд едет вбок общим тонким
-                  скроллом — как ряды постеров. */}
-              <div
-                className="d-flex align-items-end gap-2 thin-scroll"
-                style={{ height: "5.5rem", overflowX: "auto" }}
-              >
-                {activeMonths.map((count, i) => (
-                  <div
-                    key={i}
-                    className="text-center d-flex flex-column justify-content-end"
-                    style={{ height: "100%", flex: "1 0 auto", minWidth: "2.25rem" }}
-                    title={`${monthNames[i]}: ${count}`}
-                  >
-                    {/* Ноль подписью не рисуем: двенадцать нулей под
-                        пустыми столбиками — шум, а не данные. */}
-                    <span className="small text-secondary d-block">
-                      {count > 0 ? count : "\u00a0"}
-                    </span>
-                    <div
-                      style={{
-                        height: `${count > 0 ? Math.max(6, (count / maxMonth) * 40) : 2}px`,
-                        background: "var(--bs-primary)",
-                        borderRadius: "0.2rem 0.2rem 0 0",
-                        opacity: count > 0 ? 0.85 : 0.25,
-                      }}
-                    />
-                    <span
-                      className="text-secondary d-block text-truncate"
-                      style={{ fontSize: "0.7rem" }}
-                    >
-                      {monthNames[i]}
-                    </span>
+            <p className="small text-secondary mb-2">{s.calendarTitle}</p>
+            {years.length > 0 ? (
+              <div className="stats-heat">
+                <div className="stats-heat-row stats-heat-months" aria-hidden>
+                  <span />
+                  {monthNames.map((m) => (
+                    <span key={m}>{m}</span>
+                  ))}
+                  <span />
+                </div>
+                {years.map((y) => (
+                  <div key={y.year} className="stats-heat-row">
+                    <span className="stats-heat-year">{y.year}</span>
+                    {y.months.map((count, i) => (
+                      <span
+                        key={i}
+                        className={`stats-heat-cell${count === 0 ? " is-empty" : ""}`}
+                        style={{ "--heat": count / maxMonth } as React.CSSProperties}
+                        title={s.monthTitle(monthNames[i], y.year, count)}
+                      />
+                    ))}
+                    <span className="stats-heat-total">{s.yearTotal(y.count)}</span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </>
+            ) : (
+              <p className="small text-secondary mb-0">{s.calendarEmpty}</p>
+            )}
+          </div>
+        </div>
       )}
 
-      {stats.visitedLocationPins.length > 0 && (
-        <>
-          <h2 className="section-heading mb-2">{viewer ? s.visitedMapViewer : s.visitedMap}</h2>
-          <div className="mb-4">
-            <LocationMapLoader locations={stats.visitedLocationPins} height="20rem" />
+      {showSeries && (
+        <div className={showLive ? "col-12 col-lg-5" : "col-12"}>
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">{s.seriesTitle}</h2>
+              <span className="stats-card-meta">{s.libraryLead(libraryTotal)}</span>
+            </div>
+
+            {/* Полоса библиотеки: пять сегментов по статусам, ширина —
+                доля от всех отметок. Нулевые статусы не рисуются ни на
+                полосе, ни в легенде. */}
+            <div className="stats-library" role="img" aria-label={s.libraryLead(libraryTotal)}>
+              {WATCH_STATUS_KEYS.filter((k) => stats.watchByStatus[k] > 0).map((k) => (
+                <span
+                  key={k}
+                  style={
+                    {
+                      flex: `${stats.watchByStatus[k]} 1 0`,
+                      "--alpha": STATUS_ALPHA[k],
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+            </div>
+            <div className="stats-legend">
+              {WATCH_STATUS_KEYS.filter((k) => stats.watchByStatus[k] > 0).map((k) => (
+                <span key={k}>
+                  <span
+                    className="stats-legend-dot"
+                    style={{ "--alpha": STATUS_ALPHA[k] } as React.CSSProperties}
+                  />
+                  {t.catalog.watchStatus[k]} <b>{stats.watchByStatus[k]}</b>
+                </span>
+              ))}
+            </div>
+
+            {stats.episodesWatched > 0 && (
+              <p className="small text-secondary mt-3 mb-0">
+                {s.episodesHours(stats.episodesWatched, stats.hoursWatched)}
+              </p>
+            )}
+
+            {topGenres.length > 0 && (
+              <>
+                <p className="small text-secondary mt-3 mb-2">{s.genresLead}</p>
+                {/* Ссылки ведут в поиск с фильтром жанра, как чипы жанров
+                    на странице сериала. Значения не переводятся — данные
+                    каталога. */}
+                <div className="stats-genres">
+                  {topGenres.map((g) => (
+                    <AppLink
+                      key={g.genre}
+                      href={`/search?section=dramas&genres=${encodeURIComponent(g.genre)}`}
+                      className="stats-genre"
+                    >
+                      {g.genre} <small>×{g.count}</small>
+                    </AppLink>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {vsMdlLine && <p className="small text-secondary mt-3 mb-0">{vsMdlLine}</p>}
           </div>
-        </>
+        </div>
+      )}
+
+      {showMap && (
+        <div className="col-12">
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">{viewer ? s.visitedMapViewer : s.visitedMap}</h2>
+              <span className="stats-card-meta">{s.visitedCount(stats.visitedLocationPins.length)}</span>
+            </div>
+            <LocationMapLoader locations={stats.visitedLocationPins} height="16rem" />
+          </div>
+        </div>
       )}
     </div>
   );

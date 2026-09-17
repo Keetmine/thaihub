@@ -8568,17 +8568,239 @@ body::after {
    клавиатуры и говорит скринридеру aria-pressed. Всю бутстраповскую
    обвязку с неё снимаем — выглядеть она должна ровно как прежний
    столбик. */
-.stats-year-bar {
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
+/* ---------- Вкладка «Статистика» профиля (переделка 2026-09-17) ----------
+   Сетка карточек вместо плоского списка. Карточка — тот же .surface, что
+   везде; внутри три своих примитива: рейтинг полосками (.stats-rank),
+   тепловая полоса календаря (.stats-heat) и полоса библиотеки
+   (.stats-library). Цвета только через акцентный токен: интенсивность —
+   альфа, а не второй цвет. */
+.stats-card {
+  height: 100%;
+  padding: 1.1rem 1.2rem;
 }
 
-.stats-year-bar > div {
-  transition: opacity 0.15s ease;
+.stats-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
 }
 
-.stats-year-bar:hover > div {
-  opacity: 1 !important;
+.stats-card-head .section-heading {
+  margin-bottom: 0;
 }
+
+.stats-card-meta {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}
+
+/* Рейтинг артистов: строка = аватар, имя, число и полоска длиной
+   пропорционально лидеру. Полоска идёт под именем, а не отдельной
+   колонкой: колонка на 390px съедала бы имя. */
+.stats-rank {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.stats-rank-row {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+  column-gap: 0.65rem;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.stats-rank-photo {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bs-secondary-bg);
+  grid-row: span 2;
+}
+
+.stats-rank-name {
+  font-size: 0.9rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-rank-count {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-rank-bar {
+  grid-column: 2 / span 2;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.stats-rank-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(var(--accent-rgb), 0.85);
+  transition: width 0.2s ease;
+}
+
+.stats-rank-row:hover .stats-rank-bar > span {
+  background: rgb(var(--accent-rgb));
+}
+
+/* Тепловая полоса: год = строка из двенадцати ячеек, интенсивность —
+   доля от самого насыщенного месяца (--heat, 0…1). Ноль — еле заметная
+   ячейка, а не пустота: пустой месяц тоже данные. Годы идут строками,
+   поэтому один год и десять занимают одну и ту же ширину. */
+.stats-heat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stats-heat-row {
+  display: grid;
+  grid-template-columns: 3rem repeat(12, minmax(0, 1fr)) 4.5rem;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.stats-heat-year {
+  font-size: 0.8rem;
+  color: var(--bs-body-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-heat-cell {
+  aspect-ratio: 1.6 / 1;
+  border-radius: 0.3rem;
+  background: rgba(var(--accent-rgb), calc(0.12 + var(--heat, 0) * 0.88));
+  transition: transform 0.15s ease;
+}
+
+.stats-heat-cell.is-empty {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stats-heat-cell:hover {
+  transform: scale(1.08);
+}
+
+.stats-heat-total {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Подписи месяцев — одной строкой над ячейками, той же сеткой. */
+.stats-heat-months {
+  /* 0.6rem без трекинга: при 0.68 в колонке контента на 1440px
+     «ИЮН ИЮЛ» слипались — ячейка там всего ~2rem. */
+  font-size: 0.6rem;
+  color: var(--bs-secondary-color);
+  text-align: center;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+
+@media (max-width: 575.98px) {
+  /* На телефоне подписи месяцев не влезают: оставляем ячейки, месяц
+     читается по всплывающему title и легенде «янв … дек». */
+  .stats-heat-months {
+    display: none;
+  }
+  .stats-heat-row {
+    grid-template-columns: 2.6rem repeat(12, minmax(0, 1fr)) 3.6rem;
+    gap: 0.18rem;
+  }
+}
+
+/* Полоса библиотеки: пять сегментов по статусам просмотра. Порядок
+   фиксирован (смотрю → просмотрено → буду → отложено → заброшено) и
+   альфа падает по нему же — легенда ниже повторяет порядок и цвет. */
+.stats-library {
+  display: flex;
+  height: 0.7rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  gap: 2px;
+}
+
+.stats-library > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: rgba(var(--accent-rgb), var(--alpha, 0.5));
+  transition: flex-basis 0.2s ease;
+}
+
+.stats-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.stats-legend-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  background: rgba(var(--accent-rgb), var(--alpha, 0.5));
+  vertical-align: -0.05em;
+}
+
+.stats-legend b {
+  color: var(--bs-body-color);
+  font-weight: 500;
+}
+
+.stats-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.stats-genre {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--bs-border-color);
+  font-size: 0.8rem;
+  color: #fff;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.stats-genre:hover {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: #fff;
+}
+
+.stats-genre small {
+  color: var(--bs-secondary-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats-heat-cell:hover {
+    transform: none;
+  }
+}
+

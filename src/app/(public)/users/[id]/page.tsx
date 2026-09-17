@@ -660,6 +660,7 @@ export default async function UserProfilePage({
         visitedLocations: showVisited ? fullStats.visitedLocations : 0,
         visitedLocationPins: showVisited ? fullStats.visitedLocationPins : [],
         completedDramas: fullStats.completedDramas,
+        watchByStatus: fullStats.watchByStatus,
         episodesWatched: fullStats.episodesWatched,
         hoursWatched: fullStats.hoursWatched,
         rewatchTotal: fullStats.rewatchTotal,

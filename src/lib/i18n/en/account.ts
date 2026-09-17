@@ -104,12 +104,30 @@ export const account = {
     artistListsHint: "Start a list of your own — “seen live”, “had a beer with”…",
     artistListsLocked: "Your own actor lists come with a subscription.",
 
-    byYear: "Events by year",
-    /** Подпись над разбивкой выбранного года по месяцам. */
-    byMonth: (year: number) => `By month, ${year}`,
+    /* Вкладка «Статистика» переделана 2026-09-17 в сетку карточек:
+       «Вживую» (рейтинг артистов полосками + календарь событий тепловой
+       полосой по годам и месяцам), «Сериалы» (полоса библиотеки по пяти
+       статусам, серии и часы, жанры, оценка против MDL), карта. Прежние
+       столбики по годам с переключателем месяца убраны — при одном-двух
+       годах они читались сломанным виджетом. */
+    liveTitle: "Live",
+    calendarTitle: "Event calendar",
+    calendarEmpty: "No attended events yet — the calendar fills in as you mark “I'm going”.",
+    yearTotal: (n: number) => `${n} ${n === 1 ? "event" : "events"}`,
+    /** Шапка карточки «Вживую»: «6 событий · 43 артиста» — без слова
+     *  «вживую», оно уже в заголовке карточки и в плитках выше. */
+    artistsCount: (n: number) => `${n} ${n === 1 ? "artist" : "artists"}`,
+    monthTitle: (month: string, year: number, n: number) =>
+      `${month} ${year}: ${n} ${n === 1 ? "event" : "events"}`,
+    seriesTitle: "Series",
+    libraryLead: (n: number) => `${n} ${n === 1 ? "series" : "series"} in the library`,
+    episodesHours: (episodes: number, hours: number) =>
+      `${episodes} ${episodes === 1 ? "episode" : "episodes"} · about ${hours} h of screen time`,
+    genresLead: "Genres finished most",
     visitedMap: "Map of where you've been",
     // На чужом профиле «вы» неуместно — своя подпись для зрителя.
     visitedMapViewer: "Map of visited places",
+    visitedCount: (n: number) => `${n} ${n === 1 ? "place" : "places"}`,
 
     achievements: "Achievements",
     // achievementsSecret удалён — правка владельца: строки про «секрет»
