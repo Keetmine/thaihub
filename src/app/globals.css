@@ -3799,7 +3799,9 @@ a.notif-row:hover {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  flex-grow: 1;
+  /* Базис 0, а не auto: с auto длинный заголовок задавал ширину по
+     содержимому, и на телефоне тело переносилось под иконку. */
+  flex: 1 1 0;
 }
 
 .notif-row-title {
