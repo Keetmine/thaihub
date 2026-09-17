@@ -332,34 +332,19 @@ export default async function FriendsPage({
       {accepted.length === 0 ? (
         <EmptyState emoji="👥" title={f.emptyTitle} hint={f.emptyHint} compact />
       ) : (
-        /* Карточки сеткой, а не строки на всю ширину: сто друзей —
-           это сто строк по пятьдесят пикселей, а в сетке они умещаются
-           в четыре колонки. Удаление — тихой иконкой в углу карточки. */
-        <div className="friend-grid">
+        /* Строки на всю ширину, как было изначально: карточки в сетке и
+           сетку людей владелец отвергла в тот же день («давай списком
+           выводить, как раньше»). Порядок — по имени. */
+        <div className="d-flex flex-column gap-2">
           {acceptedSorted.map((friendship) => {
             const friend = other(friendship);
-            const friendName = friend.deletedAt
-              ? userDisplayName(friend, locale)
-              : friend.name || (friend.username ? `@${friend.username}` : f.noName);
             return (
-              <div key={friendship.id} className="surface friend-card">
-                <AppLink href={userHref(friend)} aria-label={friendName} className="d-block">
-                  <LetterAvatar
-                    name={friendName}
-                    photoUrl={friend.photoUrl}
-                    size={2.8}
-                    premiumRing={hasPaidPremium(friend)}
-                  />
-                </AppLink>
-                <div className="min-w-0">
-                  <AppLink href={userHref(friend)} className="friend-card-name d-block text-decoration-none">
-                    {friendName}
-                  </AppLink>
-                  {!friend.deletedAt && friend.name && friend.username && (
-                    <span className="friend-card-nick d-block">@{friend.username}</span>
-                  )}
-                </div>
-                <div className="friend-card-action">
+              <UserRow
+                key={friendship.id}
+                person={friend}
+                locale={locale}
+                noName={f.noName}
+                action={
                   <ConfirmForm
                     action={removeFriendship.bind(null, friendship.id)}
                     confirmMessage={f.removeConfirm(
@@ -372,8 +357,8 @@ export default async function FriendsPage({
                       <TrashIcon />
                     </button>
                   </ConfirmForm>
-                </div>
-              </div>
+                }
+              />
             );
           })}
         </div>
