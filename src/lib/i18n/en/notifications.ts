@@ -18,6 +18,7 @@ export const notifications = {
     TRIP_INVITE_ACCEPTED: (who: string) => `${who} accepted your trip invitation`,
     TRIP_REMOVED: (trip: string) => `You were removed from “${trip}” — your copy is saved`,
     FRIEND_GOING: (who: string, event: string) => `${who} is going to "${event}"`,
+    FRIEND_ATTENDED: (who: string, event: string) => `${who} was at "${event}"`,
     ACHIEVEMENT: (name: string) => `New achievement: ${name}`,
     PREMIUM_GRANTED: "Your subscription is active",
     // Бессрочная выдача из админки — праздничный тон по просьбе владельца.

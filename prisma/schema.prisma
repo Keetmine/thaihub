@@ -2025,6 +2025,10 @@ enum NotificationKind {
   COMMENT_REPLY
   COMMENT_LIKE
   FRIEND_GOING
+  // «Друг побывал(а) на событии»: та же отметка «иду», но поставленная
+  // на УЖЕ прошедшую дату (правка владельца 2026-09-17: уведомление и
+  // страница события говорили «идёт» о том, что давно прошло).
+  FRIEND_ATTENDED
   PREMIUM_GRANTED
   ACHIEVEMENT
   PERFORMER_BIRTHDAY

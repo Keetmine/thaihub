@@ -104,6 +104,9 @@ export const events: Dict["events"] = {
     photoFullSize: "Открыть в полном размере",
     friendGoing: "Друг идёт",
     friendsGoing: "Друзья идут",
+    // Прошедшее событие — прошедшее время (правка владельца 2026-09-17).
+    friendWent: "Друг побывал(а)",
+    friendsWent: "Друзья побывали",
     unnamedFriend: "Без имени",
     /** «Идут с сайта» — витрина живых людей на событии, видна и гостю. */
     siteGoing: "Идут с сайта",
@@ -196,6 +199,10 @@ export const events: Dict["events"] = {
     oneFriendGoing: (name: string) => `${name} идёт`,
     manyFriendsGoing: (count: number) =>
       `${pluralized(count, ["друг", "друга", "друзей"])} ${plural(count, ["идёт", "идут", "идут"])}`,
+    // Прошедшая дата — прошедшее время (правка владельца 2026-09-17).
+    oneFriendWent: (name: string) => `${name} побывал(а)`,
+    manyFriendsWent: (count: number) =>
+      `${pluralized(count, ["друг", "друга", "друзей"])} ${plural(count, ["побывал(а)", "побывали", "побывали"])}`,
     extraDates: (count: number) =>
       `+${count} ${plural(count, ["дата", "даты", "дат"])}`,
     // Подсказка на чипе сообщества у названия встречи: сам чип

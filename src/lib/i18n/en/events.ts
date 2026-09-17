@@ -110,6 +110,8 @@ export const events = {
     photoFullSize: "Open full size",
     friendGoing: "A friend is going",
     friendsGoing: "Friends are going",
+    friendWent: "A friend was here",
+    friendsWent: "Friends were here",
     unnamedFriend: "Unnamed",
     /** «Идут с сайта» — витрина живых людей на событии, видна и гостю. */
     siteGoing: "Going from MyBLHub",
@@ -212,6 +214,8 @@ export const events = {
     friend: "Friend",
     oneFriendGoing: (name: string) => `${name} is going`,
     manyFriendsGoing: (count: number) => `${count} friends are going`,
+    oneFriendWent: (name: string) => `${name} was there`,
+    manyFriendsWent: (count: number) => `${count} friends were there`,
     extraDates: (count: number) =>
       count === 1 ? "+1 more date" : `+${count} more dates`,
     // Подсказка на чипе сообщества у названия встречи (см.

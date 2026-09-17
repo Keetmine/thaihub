@@ -227,7 +227,8 @@ export async function sendPresaleReminders(): Promise<number> {
 }
 
 /**
- * Уведомление друзьям «X идёт на событие» (Г2) — вызывается из
+ * Уведомление друзьям «X идёт на событие» (Г2; для прошедшей даты —
+ * «X побывал(а) на событии») — вызывается из
  * toggleGoing сразу после отметки (fire-and-forget). Получают друзья с
  * Telegram и подпиской, не отключившие уведомления об этом человеке
  * (FriendNotificationMute).
@@ -268,7 +269,10 @@ export async function notifyFriendsAboutGoing(userId: string, occurrenceId: stri
       // перечитывать её ради своих полей.
       user: friend,
       actorId: userId,
-      kind: "FRIEND_GOING",
+      // Прошедшая дата — «побывал(а)», а не «идёт» (правка владельца
+      // 2026-09-17): отметку ставят и задним числом, и друзьям
+      // приходило будущее время о том, что давно прошло.
+      kind: occurrence.startsAt < new Date() ? "FRIEND_ATTENDED" : "FRIEND_GOING",
       actorName: name,
       subject: event.title,
       body: (_t, locale) => formatHumanDate(occurrence.startsAt, locale),

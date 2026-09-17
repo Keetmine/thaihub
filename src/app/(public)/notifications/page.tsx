@@ -36,6 +36,7 @@ const KIND_ICONS: Record<string, string> = {
   COMMENT_REPLY: "💬",
   COMMENT_LIKE: "❤️",
   FRIEND_GOING: "👥",
+  FRIEND_ATTENDED: "🎫",
   PREMIUM_GRANTED: "✨",
   ACHIEVEMENT: "🏆",
   PERFORMER_BIRTHDAY: "🎂",

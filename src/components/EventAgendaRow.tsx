@@ -97,8 +97,12 @@ export default function EventAgendaRow({
             >
               <UsersIcon className="icon-inline" />
               {friendsGoing.length === 1
-                ? t.events.card.oneFriendGoing(friendsGoing[0].name || t.events.card.friend)
-                : t.events.card.manyFriendsGoing(friendsGoing.length)}
+                ? (event.startsAt < new Date()
+                    ? t.events.card.oneFriendWent
+                    : t.events.card.oneFriendGoing)(friendsGoing[0].name || t.events.card.friend)
+                : (event.startsAt < new Date()
+                    ? t.events.card.manyFriendsWent
+                    : t.events.card.manyFriendsGoing)(friendsGoing.length)}
             </span>
           )}
         </p>

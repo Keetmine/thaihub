@@ -249,7 +249,12 @@ export default async function FriendsPage({
         {f.lead}
       </p>
 
-      <div className="friends-layout">
+      {/* Поиск — над списком, на всю ширину (правка владельца 2026-09-17:
+          «сверху привычнее»); сбоку остаются только подсказки «кого вы
+          можете знать», и колонка нужна лишь когда они есть. */}
+      <div className="friends-search mb-4">{searchBlock}</div>
+
+      <div className={suggestions.length > 0 ? "friends-layout" : ""}>
       <div className="friends-main">
 
       {incoming.length > 0 && (
@@ -381,10 +386,10 @@ export default async function FriendsPage({
       </p>
       </div>
 
+      {suggestions.length > 0 && (
       <aside className="friends-side">
-        {searchBlock}
-        {suggestions.length > 0 && (
-          <div className="surface p-3 mt-3">
+        {(
+          <div className="surface p-3">
             <h2 className="section-heading mb-0">{f.suggestions}</h2>
             <p className="small text-secondary mb-2">{f.suggestionsHint}</p>
             <div className="d-flex flex-column">
@@ -421,6 +426,7 @@ export default async function FriendsPage({
           </div>
         )}
       </aside>
+      )}
       </div>
     </div>
   );

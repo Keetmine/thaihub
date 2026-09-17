@@ -20,6 +20,7 @@ const TELEGRAM_KINDS: Partial<Record<NotificationKind, keyof TelegramPrefs>> = {
   FRIEND_REQUEST: "tgNotifyFriends",
   COMMENT_REPLY: "tgNotifyReplies",
   FRIEND_GOING: "tgNotifyEvents",
+  FRIEND_ATTENDED: "tgNotifyEvents",
   PREMIUM_GRANTED: "tgNotifyInvites",
   PERFORMER_BIRTHDAY: "tgNotifyBirthdays",
   EPISODE_AIRED: "tgNotifyEpisodes",

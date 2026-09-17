@@ -847,9 +847,16 @@ export default async function EventDetailPage({
             className="section-heading mb-2 d-flex align-items-center gap-2"
           >
             <UsersIcon />{" "}
-            {friendsGoing.length === 1
-              ? t.events.detail.friendGoing
-              : t.events.detail.friendsGoing}
+            {/* Все даты прошли — прошедшее время (правка владельца
+                2026-09-17): «идёт» о вчерашнем концерте читалось как
+                ошибка. */}
+            {event.occurrences.every((o) => o.startsAt < new Date())
+              ? friendsGoing.length === 1
+                ? t.events.detail.friendWent
+                : t.events.detail.friendsWent
+              : friendsGoing.length === 1
+                ? t.events.detail.friendGoing
+                : t.events.detail.friendsGoing}
           </h2>
           <div className="d-flex flex-wrap gap-2">
             {friendsGoing.map((f) => (

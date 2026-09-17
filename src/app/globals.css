@@ -7509,27 +7509,21 @@ a.profile-friend-more:hover {
   }
 }
 
-@media (max-width: 991.98px) {
-  /* На телефоне поиск и подсказки — над списком: искать человека
-     нужно чаще, чем листать сотню карточек до поля внизу. */
-  .friends-side {
-    order: -1;
-  }
+/* Поиск над списком на всю ширину; поле не шире 40rem, иначе на
+   широком экране строка ввода растягивается в ленту. */
+.friends-search .search-page-box {
+  max-width: 40rem;
 }
 
 /* Поле поиска на странице друзей — ещё крупнее «большого» варианта:
    здесь это главный инструмент раздела (правка владельца: «сам блок
    поиска больше»). */
-.friends-side .search-page-box {
-  max-width: none;
-}
-
-.friends-side .search-page-box .pill-search {
+.friends-search .search-page-box .pill-search {
   font-size: 1.05rem;
   padding: 0.85rem 1.1rem 0.85rem 2.7rem;
 }
 
-.friends-side .search-page-box svg {
+.friends-search .search-page-box svg {
   width: 1.1rem;
   height: 1.1rem;
   left: 1.05rem;

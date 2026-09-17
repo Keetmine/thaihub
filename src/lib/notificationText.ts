@@ -41,6 +41,8 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       return who && subject ? titles.TRIP_INVITE(who, subject) : n.title;
     case "FRIEND_GOING":
       return who && subject ? titles.FRIEND_GOING(who, subject) : n.title;
+    case "FRIEND_ATTENDED":
+      return who && subject ? titles.FRIEND_ATTENDED(who, subject) : n.title;
     case "ACHIEVEMENT":
       return subject ? titles.ACHIEVEMENT(subject) : n.title;
     case "PREMIUM_GRANTED":
