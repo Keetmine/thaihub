@@ -18,10 +18,16 @@ export const dynamic = "force-dynamic";
  */
 const TAB_MAP: Record<string, string> = {
   profile: "overview",
+  overview: "overview",
   stats: "stats",
+  dramas: "dramas",
   events: "events",
-  reviews: "reviews",
+  communities: "communities",
+  trips: "trips",
+  places: "places",
   tickets: "tickets",
+  reviews: "reviews",
+  comments: "comments",
 };
 
 export default async function AccountPage({

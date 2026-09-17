@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "@/components/AppLink";
-import { createContext, useContext, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { createContext, useContext, useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { BellIcon } from "@/components/icons";
-import { useT } from "@/components/LocaleProvider";
+import { useLocale, useT } from "@/components/LocaleProvider";
+import { formatShortDate, formatTime } from "@/lib/dates";
+import { markAllNotificationsRead } from "@/app/(public)/notifications/actions";
+import type { RecentNotification } from "@/app/api/notifications/recent/route";
 
 // Раз в столько миллисекунд перепрашиваем счётчик. Минуты достаточно:
 // уведомления не чат, а частый опрос — лишняя нагрузка с каждой
@@ -119,27 +122,156 @@ export function NotificationBellProvider({
   return <UnreadContext.Provider value={unread}>{children}</UnreadContext.Provider>;
 }
 
-/** Колокольчик в шапке со счётчиком непрочитанного. Ведёт на ленту
- *  активностей — приглашения в поездки, заявки в друзья, ответы.
- *  Число берёт из общего контекста: оно приходит с сервера при рендере,
- *  а дальше обновляется само — иначе о новом уведомлении было не узнать
- *  без перезагрузки страницы (Ж8). */
+/**
+ * Колокольчик в шапке со счётчиком непрочитанного. По клику — выпадающий
+ * блок с последними уведомлениями, кнопкой «Прочитать все» и ссылкой на
+ * полную ленту (правка владельца 2026-09-17: раньше колокольчик просто
+ * вёл на /notifications, и ради одной строки приходилось уходить со
+ * страницы). Список приезжает с /api/notifications/recent при каждом
+ * открытии — блок открывают редко, а свежесть важнее кэша. Число берёт
+ * из общего контекста: оно приходит с сервера при рендере, а дальше
+ * обновляется само (Ж8).
+ *
+ * Клик по строке — та же логика, что в ленте: непрочитанная идёт через
+ * /notifications/go/[id] (пометка без JS), прочитанная — прямо по href.
+ */
 export default function NotificationBell() {
   const t = useT();
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const unread = useUnreadCount();
+  const n = t.account.notifications;
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<RecentNotification[] | null>(null);
+  const [pending, startTransition] = useTransition();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Ушли на другую страницу — блок закрывается.
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (pathname !== prevPath) {
+    setPrevPath(pathname);
+    setOpen(false);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch(`/api/notifications/recent?locale=${locale}`, { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ items: RecentNotification[] }>) : null))
+      .then((data) => {
+        if (!cancelled) setItems(data?.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      });
+    // Клик мимо блока и Escape закрывают его.
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, locale]);
+
+  const markAll = () =>
+    startTransition(async () => {
+      await markAllNotificationsRead();
+      // Строки в блоке гасим сразу, счётчик будим событием (его слушает
+      // провайдер), серверные части — refresh.
+      setItems((cur) => cur?.map((i) => ({ ...i, read: true })) ?? null);
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+      router.refresh();
+    });
 
   return (
-    <Link
-      href="/notifications"
-      prefetch={false}
-      className="icon-btn position-relative"
-      aria-label={unread > 0 ? t.common.notificationsUnread(unread) : t.nav.notifications}
-      data-tooltip={t.nav.notifications}
-    >
-      <BellIcon />
-      {unread > 0 && (
-        <span className="notification-dot">{unread > 9 ? "9+" : unread}</span>
+    <div ref={rootRef} className="notif-root">
+      <button
+        type="button"
+        className={`icon-btn position-relative${open ? " is-active" : ""}`}
+        aria-label={unread > 0 ? t.common.notificationsUnread(unread) : t.nav.notifications}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        data-tooltip={open ? undefined : t.nav.notifications}
+        onClick={() => {
+          // Список сбрасываем при открытии здесь, а не в эффекте: он
+          // перечитывается каждый раз, и до ответа показывается «…».
+          setItems(null);
+          setOpen((cur) => !cur);
+        }}
+      >
+        <BellIcon />
+        {unread > 0 && (
+          <span className="notification-dot">{unread > 9 ? "9+" : unread}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="notif-popover" role="dialog" aria-label={n.title}>
+          <div className="notif-popover-head">
+            <span className="notif-popover-title">{n.title}</span>
+            {unread > 0 && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm notif-popover-mark"
+                disabled={pending}
+                onClick={markAll}
+              >
+                {n.markAllReadShort}
+              </button>
+            )}
+          </div>
+          <div className="notif-popover-list">
+            {items === null ? (
+              <div className="notif-popover-empty">…</div>
+            ) : items.length === 0 ? (
+              <div className="notif-popover-empty">{n.emptyTitle}</div>
+            ) : (
+              items.map((item) => {
+                const inner = (
+                  <>
+                    <span className="notif-row-icon" aria-hidden>
+                      {item.icon}
+                    </span>
+                    <span className="notif-row-body">
+                      <span className="notif-row-title">{item.title}</span>
+                      {item.body && <span className="notif-row-text">{item.body}</span>}
+                      <span className="notif-row-date">
+                        {formatShortDate(new Date(item.createdAt), locale)}, {formatTime(new Date(item.createdAt))}
+                      </span>
+                    </span>
+                  </>
+                );
+                const cls = `notif-row${item.read ? "" : " is-unread"}`;
+                // Непрочитанная — через go-маршрут (пометит и передаст
+                // дальше, даже без href), прочитанная — прямо по цели.
+                const rowHref = item.read ? item.href : `/notifications/go/${item.id}`;
+                return rowHref ? (
+                  <Link key={item.id} href={rowHref} prefetch={false} className={cls}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <div key={item.id} className={cls}>
+                    {inner}
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="notif-popover-foot">
+            <Link href="/notifications" prefetch={false} className="btn btn-ghost btn-sm w-100">
+              {n.allNotifications}
+            </Link>
+          </div>
+        </div>
       )}
-    </Link>
+    </div>
   );
 }

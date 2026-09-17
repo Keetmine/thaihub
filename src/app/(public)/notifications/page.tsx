@@ -11,6 +11,7 @@ import Pagination from "@/components/Pagination";
 import { formatShortDate, formatTime } from "@/lib/dates";
 import { getT, localeHref } from "@/lib/i18n";
 import MarkAllReadButton from "./MarkAllReadButton";
+import { notificationIcon } from "@/lib/notificationIcons";
 
 export const dynamic = "force-dynamic";
 
@@ -27,26 +28,6 @@ export async function generateMetadata() {
 
 const PAGE_SIZE = 30;
 
-const KIND_ICONS: Record<string, string> = {
-  TRIP_INVITE: "✈️",
-  TRIP_INVITE_ACCEPTED: "✅",
-  TRIP_REMOVED: "🧳",
-  FRIEND_REQUEST: "👋",
-  FRIEND_ACCEPTED: "🤝",
-  COMMENT_REPLY: "💬",
-  COMMENT_LIKE: "❤️",
-  FRIEND_GOING: "👥",
-  FRIEND_ATTENDED: "🎫",
-  PREMIUM_GRANTED: "✨",
-  ACHIEVEMENT: "🏆",
-  PERFORMER_BIRTHDAY: "🎂",
-  EPISODE_AIRED: "📺",
-  DRAMA_ADDED: "🎬",
-  ONLINE_BOOKING: "🎟",
-  COMMUNITY_JOIN_REQUEST: "🙋",
-  COMMUNITY_JOIN_ANSWER: "🫂",
-  COMMUNITY_POST: "📝",
-};
 
 // Лента активностей: приглашения в поездки, заявки в друзья, ответы и
 // лайки. До неё всё это проходило молча — узнать можно было, только
@@ -98,34 +79,27 @@ export default async function NotificationsPage({
           compact
         />
       ) : (
-        <div className="d-flex flex-column gap-2">
+        <div className="notif-list surface">
           {items.map((n) => {
             const inner = (
-              // Компактная строка (правка владельца: страница была очень длинной). Один этаж: иконка,
-              // аватар, заголовок с датой в линию, текст одной строкой с
-              // многоточием — полный текст открывается по клику на цели
-              // уведомления.
-              <div
-                className={`surface d-flex align-items-center gap-2 p-2 ${n.readAt ? "" : "notification-unread"}`}
-              >
-                <span style={{ fontSize: "1rem", lineHeight: 1 }} aria-hidden="true">
-                  {KIND_ICONS[n.kind] ?? "🔔"}
+              // Плотная строка без своей плашки (правка владельца
+              // 2026-09-17: «они очень большие»): один список с
+              // разделителями, те же классы, что у выпадающего блока
+              // колокольчика. Иконка, аватар, заголовок, текст одной
+              // строкой, дата тихо справа.
+              <>
+                <span className="notif-row-icon" aria-hidden="true">
+                  {notificationIcon(n.kind)}
                 </span>
                 {n.actor && (
-                  <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={1.75} />
+                  <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={1.6} />
                 )}
-                <div style={{ minWidth: 0 }} className="flex-grow-1">
-                  <span className="d-flex align-items-baseline gap-2">
-                    <span className="text-white text-truncate">{notificationTitle(n, t)}</span>
-                    <span className="small text-secondary flex-shrink-0 ms-auto">
-                      {fmt(n.createdAt)}
-                    </span>
-                  </span>
-                  {n.body && (
-                    <span className="small text-secondary d-block text-truncate">{n.body}</span>
-                  )}
-                </div>
-              </div>
+                <span className="notif-row-body">
+                  <span className="notif-row-title">{notificationTitle(n, t)}</span>
+                  {n.body && <span className="notif-row-text">{n.body}</span>}
+                </span>
+                <span className="notif-row-date notif-row-date-side">{fmt(n.createdAt)}</span>
+              </>
             );
             // Непрочитанная строка идёт через /notifications/go/[id]:
             // тот отметит её прочитанной и передаст дальше по href, так
@@ -134,20 +108,18 @@ export default async function NotificationsPage({
             // go вернёт обратно в ленту, уже с пометкой; прочитанная без
             // href — просто строка.
             const rowHref = n.readAt ? n.href : `/notifications/go/${n.id}`;
+            const cls = `notif-row${n.readAt ? "" : " is-unread"}`;
             return rowHref ? (
               // prefetch выключен: go-страница помечает при РЕНДЕРЕ, и
               // префетч (Link префетчит из вьюпорта) прочитал бы всю
               // ленту без единого клика.
-              <AppLink
-                key={n.id}
-                href={rowHref}
-                prefetch={false}
-                className="text-decoration-none"
-              >
+              <AppLink key={n.id} href={rowHref} prefetch={false} className={cls}>
                 {inner}
               </AppLink>
             ) : (
-              <div key={n.id}>{inner}</div>
+              <div key={n.id} className={cls}>
+                {inner}
+              </div>
             );
           })}
         </div>

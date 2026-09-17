@@ -3705,7 +3705,153 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
   text-align: center;
 }
 
-/* Непрочитанное уведомление в ленте. */
+/* Выпадающий блок у колокольчика (2026-09-17) и плотные строки
+   уведомлений — общие для блока и страницы /notifications. */
+.notif-root {
+  position: relative;
+  display: inline-flex;
+}
+
+.notif-popover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 60;
+  width: min(24rem, calc(100vw - 1.5rem));
+  border-radius: var(--bs-border-radius-lg);
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.notif-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.6rem 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.notif-popover-title {
+  font-family: var(--font-display, inherit);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.notif-popover-list {
+  max-height: min(22rem, 60vh);
+  overflow-y: auto;
+}
+
+.notif-popover-empty {
+  padding: 1rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  text-align: center;
+}
+
+.notif-popover-foot {
+  padding: 0.45rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.15rem 0;
+}
+
+.notif-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.9rem;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--bs-border-color);
+  transition: background-color 0.15s ease;
+}
+
+.notif-row:last-child {
+  border-bottom: 0;
+}
+
+a.notif-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+}
+
+.notif-row.is-unread {
+  background: rgba(var(--accent-rgb), 0.06);
+  box-shadow: inset 2px 0 0 rgb(var(--accent-rgb));
+}
+
+.notif-row-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.notif-row-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex-grow: 1;
+}
+
+.notif-row-title {
+  font-size: 0.86rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notif-row-text {
+  font-size: 0.76rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notif-row-date {
+  font-size: 0.7rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}
+
+.notif-row-date-side {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 575.98px) {
+  /* На телефоне блок не привязан к колокольчику (он стоит посреди
+     шапки, и блок уезжал за левый край), а растянут по ширине экрана
+     под шапкой. */
+  .notif-popover {
+    position: fixed;
+    top: 4.6rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+  }
+  /* На телефоне дата справа съедала бы половину строки — под текст. */
+  .notif-row {
+    flex-wrap: wrap;
+  }
+  .notif-row-date-side {
+    margin-left: 2.1rem;
+    width: 100%;
+  }
+}
+
+/* Непрочитанное уведомление в ленте (старые плашки; класс оставлен
+   для тура и стилей вне ленты). */
 .notification-unread {
   border-color: rgba(var(--accent-rgb), 0.45);
   background: rgba(var(--accent-rgb), 0.05);

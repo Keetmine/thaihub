@@ -219,7 +219,6 @@ export const social = {
     placeCount: (n: number) => `${n} ${n === 1 ? "place" : "places"}`,
     artistLists: "Actor lists",
     artistCount: (n: number) => `${n} ${n === 1 ? "actor" : "actors"}`,
-    visitedPlaces: "Places visited",
     favoritePerformers: "Favourite actors",
   },
 };

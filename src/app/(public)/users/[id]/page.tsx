@@ -37,7 +37,7 @@ import { flattenOccurrence } from "@/lib/eventOccurrences";
 import AchievementBadge, { AchievementCoin } from "@/components/AchievementBadge";
 import StatsUpsell from "./StatsUpsell";
 import CreateArtistListButton from "@/app/(public)/artist-lists/CreateArtistListButton";
-import { listHref, tripHref, locationHref, artistListHref, dramaHref, novelHref } from "@/lib/slugHelpers";
+import { listHref, tripHref, artistListHref, dramaHref, novelHref } from "@/lib/slugHelpers";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { pageMetadata } from "@/lib/seo";
@@ -283,7 +283,6 @@ export default async function UserProfilePage({
     trips,
     placeLists,
     artistLists,
-    visitedPlaces,
     reviewRows,
     commentRows,
     commentCount,
@@ -402,14 +401,6 @@ export default async function UserProfilePage({
       include: { _count: { select: { items: true } } },
       orderBy: { createdAt: "desc" },
     }),
-    showVisited
-      ? prisma.locationVisit.findMany({
-          where: { userId: user.id },
-          include: { location: { select: { id: true, slug: true, name: true } } },
-          orderBy: { createdAt: "desc" },
-          take: 24,
-        })
-      : [],
     // Отзывы: чужой приватный не попадает даже в HTML — фильтр в выборке.
     // Эти же строки уходят в ленту обновлений — второй выборки отзывов
     // на странице нет.
@@ -1030,8 +1021,11 @@ export default async function UserProfilePage({
             <section className="mb-4">
               <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
                 <h2 className="section-heading mb-0">{p.overviewWatching}</h2>
+                {/* Прямо на вкладку, а не через /account: у редиректа
+                    кабинета не было ключа dramas, и «все» открывало
+                    профиль без вкладки (жалоба владельца 2026-09-17). */}
                 {isSelf && (
-                  <AppLink href="/account?tab=dramas" className="small text-secondary">
+                  <AppLink href={`${userHref(user)}?tab=dramas`} className="small text-secondary">
                     {t.common.all}
                   </AppLink>
                 )}
@@ -1249,7 +1243,7 @@ export default async function UserProfilePage({
       label: p.tabs.places(placeLists.length + artistLists.length),
       content: (
         <div>
-          {placeLists.length === 0 && artistLists.length === 0 && visitedPlaces.length === 0 ? (
+          {placeLists.length === 0 && artistLists.length === 0 ? (
             <EmptyState
               emoji="📍"
               title={p.placesTab.emptyTitle}
@@ -1326,22 +1320,6 @@ export default async function UserProfilePage({
                 </>
               )}
 
-              {visitedPlaces.length > 0 && (
-                <>
-                  <h2 className="section-heading mb-2">{p.visitedPlaces}</h2>
-                  <div className="d-flex flex-wrap gap-2 mb-4">
-                    {visitedPlaces.map((v) => (
-                      <AppLink
-                        key={v.locationId}
-                        href={locationHref(v.location)}
-                        className="event-chip text-decoration-none"
-                      >
-                        📍 {v.location.name}
-                      </AppLink>
-                    ))}
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>

@@ -222,7 +222,6 @@ export const social: Dict["social"] = {
     placeCount: (n: number) => `${n} ${plural(n, ["место", "места", "мест"])}`,
     artistLists: "Списки актёров",
     artistCount: (n: number) => `${n} ${plural(n, ["актёр", "актёра", "актёров"])}`,
-    visitedPlaces: "Посещённые места",
     favoritePerformers: "Любимые актёры",
   },
 };

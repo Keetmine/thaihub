@@ -276,6 +276,8 @@ export const account = {
     eyebrow: "Personal",
     title: "Notifications",
     markAllRead: (n: number) => `Mark as read (${n})`,
+    markAllReadShort: "Mark all read",
+    allNotifications: "All notifications",
     emptyTitle: "Nothing here yet",
     emptyHint:
       "Trip invitations, friend requests and replies to your comments will show up here.",

@@ -257,6 +257,9 @@ export const account: Dict["account"] = {
     eyebrow: "Личное",
     title: "Уведомления",
     markAllRead: (n: number) => `Отметить прочитанными (${n})`,
+    /** Выпадающий блок у колокольчика (2026-09-17). */
+    markAllReadShort: "Прочитать все",
+    allNotifications: "Все уведомления",
     emptyTitle: "Пока пусто",
     emptyHint:
       "Здесь появятся приглашения в поездки, заявки в друзья и ответы на ваши комментарии.",
