@@ -64,7 +64,6 @@ export const social = {
       "Find people you know by name or handle — or share the invite link from your settings: whoever joins through it becomes your friend right away.",
     remove: "Remove from friends",
     removeConfirm: (name: string) => `Remove “${name}” from your friends?`,
-    backToProfile: "← Back to your profile",
   },
 
   profile: {

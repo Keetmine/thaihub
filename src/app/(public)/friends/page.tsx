@@ -364,11 +364,6 @@ export default async function FriendsPage({
         </div>
       )}
 
-      <p className="small text-secondary mt-4 mb-0">
-        <AppLink href="/account" className="link-body-emphasis">
-          {f.backToProfile}
-        </AppLink>
-      </p>
       </div>
 
       {suggestions.length > 0 && (
