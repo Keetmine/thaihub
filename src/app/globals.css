@@ -7952,17 +7952,6 @@ a.profile-friend-more:hover {
   opacity: 0.7;
 }
 
-/* --- Компактная строка сериала (вкладка «Сериалы» и «Сейчас в
-   просмотре» обзора) — та же плотность, что каталог /dramas
-   (dramas.module.css). --- */
-.profile-drama-row {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.25rem 0.6rem 0.25rem 0.4rem;
-}
-
 .profile-drama-poster {
   width: 1.7rem;
   height: 2.3rem;

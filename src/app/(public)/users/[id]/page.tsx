@@ -39,18 +39,18 @@ import StatsUpsell from "./StatsUpsell";
 import CreateArtistListButton from "@/app/(public)/artist-lists/CreateArtistListButton";
 import { listHref, tripHref, locationHref, artistListHref, dramaHref, novelHref } from "@/lib/slugHelpers";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
-import { WATCH_STATUS_ORDER, episodeProgress } from "@/lib/watchStatus";
+import { WATCH_STATUS_ORDER } from "@/lib/watchStatus";
 import { pageMetadata } from "@/lib/seo";
 import { getT, type Dict, type Locale } from "@/lib/i18n";
 import ActivityList from "./ActivityList";
 import ProfileTabs, { type ProfileTabKey } from "./ProfileTabs";
-import ProfileOverview from "./ProfileOverview";
 import StatsHero from "./StatsHero";
 import StatsTab, { type StatsForTab } from "./StatsTab";
 import ReviewsTab, { type MyReviewRow } from "./ReviewsTab";
 import CommentsTab, { type MyCommentRow } from "./CommentsTab";
 import TicketsTab from "./TicketsTab";
 import EpisodeProgress from "@/components/EpisodeProgress";
+import PosterTile from "@/components/PosterTile";
 import DramasTable from "./DramasTable";
 import CommunitiesTab from "./CommunitiesTab";
 import SubTabs from "@/components/SubTabs";
@@ -142,6 +142,18 @@ function countryName(code: string, locale: Locale): string | null {
  * получают чужих приватных данных даже в пропсах (приватные отзывы,
  * невидимые поездки/списки, email, билеты).
  */
+/** «через 3 дня» / «завтра» / «уже идёт» — отсчёт до события в
+ *  «Обзоре» (переделка 2026-09-17): сухая дата сама по себе не отвечает
+ *  на вопрос «а скоро ли». Тот же помощник, что у поездок на главной. */
+function countdown(start: Date, t: Dict): string {
+  const days = Math.ceil((start.getTime() - Date.now()) / 86_400_000);
+  if (days <= 0) return t.home.countdownToday;
+  if (days === 1) return t.home.countdownTomorrow;
+  if (days < 31) return t.home.countdownDays(days);
+  const months = Math.round(days / 30);
+  return months <= 1 ? t.home.countdownMonth : t.home.countdownMonths(months);
+}
+
 export default async function UserProfilePage({
   params,
   searchParams,
@@ -264,7 +276,6 @@ export default async function UserProfilePage({
     friendships,
     attendances,
     maybeRows,
-    favoritePerformersCount,
     watchRows,
     watchCount,
     trips,
@@ -318,7 +329,6 @@ export default async function UserProfilePage({
         })
       : [],
     // Число любимых артистов показывает только свой «Обзор».
-    isSelf ? prisma.favoritePerformer.count({ where: { userId: user.id } }) : 0,
     showActivity
       ? prisma.dramaWatchStatus.findMany({
           where: { userId: user.id },
@@ -552,7 +562,6 @@ export default async function UserProfilePage({
   const pendingFriendship = isFriend ? null : pendingRow;
 
   const now = new Date();
-  const goingEventIds = new Set(attendances.map((a) => a.eventId));
 
   // ---------- Совместимость вкусов (чужой профиль) ----------
   // Пересечение отмеченных сериалов зрителя и владельца + совпавшие
@@ -913,7 +922,6 @@ export default async function UserProfilePage({
   // ---------- Сборка вкладок ----------
   // Счётчик избранных событий считает ровно то, что выбрано выше (тот же
   // where), — отдельного count ему не нужно.
-  const favoriteEventsCount = favoriteEventRows.length;
 
   const myCommunities = communityMemberships.map((m) => ({
     id: m.community.id,
@@ -945,7 +953,13 @@ export default async function UserProfilePage({
         <div style={{ minWidth: 0 }} className="flex-grow-1">
           {/* Одна строка с многоточием — правка владельца: длинное
               название не ломает строку события. */}
-          <p className="font-display fw-medium text-white mb-0 text-truncate">{event.title}</p>
+          <p className="font-display fw-medium text-white mb-0 text-truncate">
+            {event.title}
+            {/* Отсчёт до первой даты — чипом после названия. */}
+            {first && (
+              <span className="date-chip ms-2 align-middle">{countdown(first.startsAt, t)}</span>
+            )}
+          </p>
           {/* first-letter-cap, а не text-capitalize: капитализироваться
               должен только день недели, не месяц («25 Октября»). */}
           <p className="small text-secondary mb-0 first-letter-cap">
@@ -973,49 +987,72 @@ export default async function UserProfilePage({
     // ближайшие «иду», свежие отзывы; любимые актёры — компактным
     // раскрывашкой внизу (блок-список убран, п.2, но путь к ним
     // сохранён). ----------
+    // Переделка «Обзора» 2026-09-17 (правка владельца): ряд чипов-счётчиков
+    // над колонками убран — те же числа уже стоят в подписях вкладок, а
+    // ряд читался стеной цифр (ProfileOverview.tsx удалён). «Сейчас в
+    // просмотре» — постерами с полосой прогресса на всю ширину, как
+    // на главной, а не компактными строками: обложка узнаётся быстрее
+    // названия. Ниже две колонки: слева ближайшие «иду» с отсчётом
+    // «через N дней» и свежие отзывы, справа лента обновлений.
     const watchingNow = watchRows.filter((w) => w.status === "WATCHING").slice(0, 6);
     // «Иду» — платная лента для зрителя, тот же гейт, что у вкладки
     // «События».
     const overviewGoing = isSelf || viewerPremium ? upcomingGoing.slice(0, 3) : [];
     const overviewReviews = reviews.slice(0, 3);
-    const hasOverviewLeft =
-      watchingNow.length > 0 ||
-      overviewGoing.length > 0 ||
-      overviewReviews.length > 0;
+    const hasOverviewLeft = overviewGoing.length > 0 || overviewReviews.length > 0;
 
     tabs.push({
       key: "overview",
       label: p.tabs.overview,
       content: (
         <div>
-          {isSelf && statsForTab && (
-            <ProfileOverview
-              nav={{
-                going: goingEventIds.size,
-                favoriteEvents: favoriteEventsCount,
-                favoritePerformers: favoritePerformersCount,
-                dramas: watchCount,
-                friends: friends.length,
-                trips: trips.length,
-                locations: statsForTab.visitedLocations,
-              }}
-            />
+          {watchingNow.length > 0 && (
+            <section className="mb-4">
+              <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                <h2 className="section-heading mb-0">{p.overviewWatching}</h2>
+                {isSelf && (
+                  <AppLink href="/account?tab=dramas" className="small text-secondary">
+                    {t.common.all}
+                  </AppLink>
+                )}
+              </div>
+              <div className="row g-3 stagger">
+                {watchingNow.map((w) => (
+                  <div key={w.drama.id} className="col-4 col-sm-3 col-md-2 poster-tile-cell">
+                    <PosterTile
+                      href={dramaHref(w.drama)}
+                      posterUrl={w.drama.posterUrl}
+                      title={dramaTitleForLocale(w.drama, locale)}
+                      progress={
+                        w.drama.episodes && w.episodesWatched != null
+                          ? {
+                              watched: w.episodesWatched,
+                              total: w.drama.episodes,
+                              label: t.catalog.episodes.of(w.episodesWatched, w.drama.episodes),
+                            }
+                          : null
+                      }
+                    />
+                    {/* Счётчик серий поверх постера — только себе: чужой
+                        прогресс не правят. Позиционирует .poster-tile-cell. */}
+                    {isSelf && (
+                      <EpisodeProgress
+                        dramaId={w.drama.id}
+                        total={w.drama.episodes}
+                        watched={w.episodesWatched ?? 0}
+                        variant="card"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
-          {/* Пустому профилю двухколонник не нужен: лента с её
-              EmptyState занимает всю ширину, как раньше. */}
+          {/* Пустой левой колонке двухколонник не нужен: лента с её
+              EmptyState занимает всю ширину. */}
           <div className={hasOverviewLeft ? "profile-overview-grid" : undefined}>
             {hasOverviewLeft && (
               <div className="profile-overview-main">
-                {watchingNow.length > 0 && (
-                  <section className="mb-4">
-                    <h2 className="section-heading mb-2">{p.overviewWatching}</h2>
-                    <div className="d-flex flex-column gap-1">
-                      {watchingNow.map((w) => (
-                        <DramaRow key={w.drama.id} w={w} t={t} locale={locale} editable={isSelf} />
-                      ))}
-                    </div>
-                  </section>
-                )}
                 {overviewGoing.length > 0 && (
                   <section className="mb-4">
                     <h2 className="section-heading mb-2">{p.overviewGoing}</h2>
@@ -1028,10 +1065,6 @@ export default async function UserProfilePage({
                     <ReviewsTab reviews={overviewReviews} viewer={!isSelf} />
                   </section>
                 )}
-                {/* Блока «Любимые актёры» здесь больше нет — решение
-                    владельца (2026-09-04, вторая итерация): к любимым
-                    ведёт бейдж/чип «любимые артисты», дублировать
-                    списком незачем. */}
               </div>
             )}
             <aside className="profile-overview-feed">
@@ -1674,76 +1707,6 @@ type ProfileWatchRow = {
   };
 };
 
-/** Компактная строка сериала — та же плотность, что у каталога /dramas
- *  (мелкая миниатюра, прогресс одним потоком с названием); используется
- *  вкладкой «Сериалы» и блоком «Смотрю сейчас» в обзоре. Геометрия —
- *  .profile-drama-row в globals.css. */
-function DramaRow({
-  w,
-  t,
-  locale,
-  editable = false,
-}: {
-  w: ProfileWatchRow;
-  t: Dict;
-  locale: Locale;
-  /** Свой профиль: серии отмечаются прямо здесь (правка владельца
-   *  2026-09-06). У чужого — просто «3/10». */
-  editable?: boolean;
-}) {
-  const p = t.social.profile;
-  const progress = episodeProgress(
-    { status: w.status, episodesWatched: w.episodesWatched },
-    w.drama.episodes,
-  );
-  return (
-    // Строка — контейнер, а не одна большая ссылка: счётчик серий
-    // интерактивный, и внутри ссылки каждый его «плюс» уводил бы на
-    // страницу сериала. Ссылка осталась на постере с названием.
-    <div className="surface surface-hover profile-drama-row">
-      <AppLink
-        href={dramaHref(w.drama)}
-        className="text-decoration-none d-flex align-items-center gap-2 flex-fill"
-        style={{ minWidth: 0 }}
-      >
-        <span className="profile-drama-poster" aria-hidden={!w.drama.posterUrl}>
-          {w.drama.posterUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img loading="lazy" decoding="async" src={w.drama.posterUrl} alt="" />
-          ) : (
-            <span className="profile-drama-poster-fallback font-display fw-bold" aria-hidden>
-              {dramaTitleForLocale(w.drama, locale).trim().charAt(0).toUpperCase()}
-            </span>
-          )}
-        </span>
-        <span className="profile-drama-title">
-          <span className="text-white fw-medium">{dramaTitleForLocale(w.drama, locale)}</span>
-        </span>
-      </AppLink>
-      {/* Справа — прогресс, а не дата (правка владельца): «когда
-          отметил» ничего не говорит, «сколько просмотрено» — говорит.
-          Себе это рабочий счётчик: «Смотрю сейчас» — ровно то место,
-          где отмечают серию, и ради этого не должно приходиться
-          открывать сериал. */}
-      {editable ? (
-        <span className="flex-shrink-0 ms-auto">
-          <EpisodeProgress
-            dramaId={w.drama.id}
-            total={w.drama.episodes}
-            watched={w.episodesWatched}
-            variant="inline"
-          />
-        </span>
-      ) : (
-        progress && (
-          <span className="small text-secondary flex-shrink-0 ms-auto">
-            {p.activity.episodes(progress.watched, progress.total)}
-          </span>
-        )
-      )}
-    </div>
-  );
-}
 
 /** Вкладка «Сериалы»: под-табы по статусам (Все/Смотрю/Просмотрено/…)
  *  и ТАБЛИЦА с сортируемой шапкой — правка владельца 2026-09-06
