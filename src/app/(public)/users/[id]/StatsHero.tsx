@@ -79,16 +79,25 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
     <div className="mb-4">
       <div className="row g-2 mb-3">
         {heroes.map((h) => {
+          // Переделка 2026-09-17: иконка — тонированным кружком в углу, а
+          // не эмодзи перед подписью; число крупнее; у раскрывающихся
+          // плиток стрелка живёт в правом верхнем углу и поворачивается,
+          // а не приклеена к подсказке.
           const inner = (
             <>
+              <span className="hero-stat-top">
+                <span className="hero-stat-icon" aria-hidden>
+                  {h.icon}
+                </span>
+                {h.expandKey && (
+                  <span className="hero-stat-chevron" aria-hidden>
+                    ▾
+                  </span>
+                )}
+              </span>
               <span className="hero-stat-value">{h.value}</span>
-              <span className="hero-stat-label">
-                <span className="hero-stat-icon">{h.icon}</span> {h.label}
-              </span>
-              <span className="hero-stat-hint">
-                {h.hint}
-                {h.expandKey && <span aria-hidden> {expanded === h.expandKey ? "▴" : "▾"}</span>}
-              </span>
+              <span className="hero-stat-label">{h.label}</span>
+              <span className="hero-stat-hint">{h.hint}</span>
             </>
           );
           return (
@@ -110,20 +119,33 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
         })}
       </div>
 
-      {/* Раскрытый список под плиткой: события — строками с датой,
-          артисты — теми же чипами, что «Чаще всего видела вживую». */}
+      {/* Раскрытые панели (переделка 2026-09-17). События — строками с
+          постером, названием, площадкой и датой, свежие сверху; артисты
+          — сеткой круглых фото с именем под ними, как ряд друзей в
+          профиле. Раньше и то и другое было чипами и голыми строками. */}
       {expanded === "events" && (
-        <div className="surface p-3 mb-3">
-          <div className="d-flex flex-column gap-1">
+        <div className="surface p-3 mb-3 hero-expand">
+          <div className="hero-event-list">
             {stats.attendedEventsList.map((ev) => (
-              <AppLink
-                key={ev.id}
-                href={eventHref(ev)}
-                className="d-flex justify-content-between gap-3 text-decoration-none py-1"
-              >
-                <span className="text-white text-truncate">{ev.title}</span>
-                <span className="small text-secondary flex-shrink-0">
-                  {formatDateWithYear(new Date(ev.date), locale)}
+              <AppLink key={ev.id} href={eventHref(ev)} className="hero-event-row">
+                {ev.posterUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    loading="lazy"
+                    decoding="async"
+                    src={ev.posterUrl}
+                    alt=""
+                    className="hero-event-poster"
+                  />
+                ) : (
+                  <span className="hero-event-poster hero-event-fallback">{ev.title.slice(0, 1)}</span>
+                )}
+                <span className="hero-event-body">
+                  <span className="hero-event-title">{ev.title}</span>
+                  <span className="hero-event-meta">
+                    {formatDateWithYear(new Date(ev.date), locale)}
+                    {ev.venue && ` · ${ev.venue}`}
+                  </span>
                 </span>
               </AppLink>
             ))}
@@ -131,32 +153,26 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
         </div>
       )}
       {expanded === "artists" && (
-        <div className="surface p-3 mb-3 d-flex flex-wrap gap-2">
-          {stats.seenPerformers.map((p) => (
-            <AppLink
-              key={p.id}
-              href={performerHref(p)}
-              className="surface surface-hover text-decoration-none d-flex align-items-center gap-2 p-2 pe-3"
-            >
-              {p.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  loading="lazy"
-                  decoding="async"
-                  src={p.photoUrl}
-                  alt=""
-                  className="rounded-circle"
-                  style={{ width: "2.2rem", height: "2.2rem", objectFit: "cover" }}
-                />
-              ) : (
-                <span
-                  className="rounded-circle d-inline-block"
-                  style={{ width: "2.2rem", height: "2.2rem", background: "var(--bs-secondary-bg)" }}
-                />
-              )}
-              <span className="small text-white">{p.name}</span>
-            </AppLink>
-          ))}
+        <div className="surface p-3 mb-3 hero-expand">
+          <div className="hero-artist-grid">
+            {stats.seenPerformers.map((p) => (
+              <AppLink key={p.id} href={performerHref(p)} className="hero-artist">
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    loading="lazy"
+                    decoding="async"
+                    src={p.photoUrl}
+                    alt=""
+                    className="hero-artist-photo"
+                  />
+                ) : (
+                  <span className="hero-artist-photo hero-artist-fallback">{p.name.slice(0, 1)}</span>
+                )}
+                <span className="hero-artist-name">{p.name}</span>
+              </AppLink>
+            ))}
+          </div>
         </div>
       )}
     </div>

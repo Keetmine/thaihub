@@ -3118,8 +3118,8 @@ svg[aria-hidden="true"] {
 .hero-stat {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding: 1.1rem 1.2rem;
+  gap: 0.15rem;
+  padding: 1rem 1.1rem 1.1rem;
   border-radius: var(--bs-border-radius-lg, 1rem);
   border: 1px solid var(--bs-border-color);
   background:
@@ -3144,17 +3144,50 @@ button.hero-stat-toggle.is-open {
   border-color: rgba(var(--accent-rgb), 0.5);
 }
 
+/* Верхняя строка плитки: иконка тонированным кружком слева, стрелка
+   раскрытия справа (переделка 2026-09-17). */
+.hero-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+}
+
 .hero-stat-icon {
-  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.16);
+  font-size: 1rem;
   line-height: 1;
+}
+
+.hero-stat-chevron {
+  color: var(--bs-secondary-color);
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: transform 0.2s ease, color 0.15s ease;
+}
+
+button.hero-stat-toggle:hover .hero-stat-chevron,
+button.hero-stat-toggle.is-open .hero-stat-chevron {
+  color: rgb(var(--accent-rgb));
+}
+
+button.hero-stat-toggle.is-open .hero-stat-chevron {
+  transform: rotate(180deg);
 }
 
 .hero-stat-value {
   font-family: var(--font-display, inherit);
   font-weight: 700;
-  font-size: 2.1rem;
+  font-size: 2.4rem;
   line-height: 1;
   color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 
 .hero-stat-label {
@@ -3165,6 +3198,109 @@ button.hero-stat-toggle.is-open {
 .hero-stat-hint {
   font-size: 0.72rem;
   color: var(--bs-secondary-color);
+}
+
+/* Раскрытые панели под плитками: события строками с постером, артисты
+   сеткой круглых фото. */
+.hero-event-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.hero-event-row {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  column-gap: 0.7rem;
+  align-items: center;
+  padding: 0.3rem 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.hero-event-poster {
+  width: 2.6rem;
+  aspect-ratio: 3 / 4;
+  border-radius: 0.45rem;
+  object-fit: cover;
+  background: var(--bs-secondary-bg);
+}
+
+.hero-event-fallback,
+.hero-artist-fallback,
+.stats-place-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--accent-rgb));
+  font-family: var(--font-display, inherit);
+  font-weight: 700;
+}
+
+.hero-event-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hero-event-title {
+  font-size: 0.9rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-event-row:hover .hero-event-title {
+  color: rgb(var(--accent-rgb));
+}
+
+.hero-event-meta {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-artist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr));
+  gap: 0.75rem 0.5rem;
+}
+
+.hero-artist {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+}
+
+.hero-artist-photo {
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bs-secondary-bg);
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.hero-artist:hover .hero-artist-photo {
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.hero-artist-name {
+  font-size: 0.78rem;
+  color: var(--bs-body-color);
+  max-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-chip {
@@ -8798,9 +8934,96 @@ body::after {
   color: var(--bs-secondary-color);
 }
 
+/* Карта + список мест: на десктопе рядом, список прокручивается в
+   высоту карты; ниже 768px список встаёт под карту и ограничен тремя
+   с половиной строками — дальше тот же скролл. */
+.stats-map-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.stats-places {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.stats-place {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  column-gap: 0.7rem;
+  align-items: center;
+}
+
+.stats-place-photo-link {
+  display: block;
+  line-height: 0;
+}
+
+.stats-place-photo {
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 0.6rem;
+  object-fit: cover;
+  background: var(--bs-secondary-bg);
+}
+
+.stats-place-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stats-place-name {
+  font-size: 0.9rem;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-place-name:hover {
+  color: rgb(var(--accent-rgb));
+}
+
+.stats-place-drama {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-place-drama a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.stats-place-drama a:hover {
+  color: var(--bs-body-color);
+}
+
+@media (max-width: 767.98px) {
+  .stats-map-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stats-places {
+    max-height: 13rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stats-heat-cell:hover {
     transform: none;
+  }
+  .hero-stat-chevron {
+    transition: none;
   }
 }
 

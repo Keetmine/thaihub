@@ -88,17 +88,6 @@ export const account = {
   stats: {
     topPerformers: "Seen live most often",
 
-    // Вкусовой профиль (аудит 2026-09, п.6.2): заголовок секции, начало
-    // строки про среднюю оценку (своё/зрительское — без «your» на чужом
-    // профиле) и три хвоста по знаку разницы с MyDramaList. Строка
-    // собирается из половин в StatsTab — в обоих языках это
-    // «начало + хвост», поэтому склейка грамматику не ломает.
-    tasteTitle: "Taste profile",
-    tasteAvgSelf: (avg: string) => `Your average rating is ${avg}`,
-    tasteAvgViewer: (avg: string) => `Average rating ${avg}`,
-    tasteStricter: (diff: string) => ` — ${diff} stricter than MyDramaList`,
-    tasteKinder: (diff: string) => ` — ${diff} more generous than MyDramaList`,
-    tasteSame: " — right in line with MyDramaList",
 
     artistLists: "My actor lists",
     artistListsHint: "Start a list of your own — “seen live”, “had a beer with”…",
@@ -112,7 +101,6 @@ export const account = {
        годах они читались сломанным виджетом. */
     liveTitle: "Live",
     calendarTitle: "Event calendar",
-    calendarEmpty: "No attended events yet — the calendar fills in as you mark “I'm going”.",
     yearTotal: (n: number) => `${n} ${n === 1 ? "event" : "events"}`,
     /** Шапка карточки «Вживую»: «6 событий · 43 артиста» — без слова
      *  «вживую», оно уже в заголовке карточки и в плитках выше. */

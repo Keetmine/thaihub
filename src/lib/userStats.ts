@@ -25,7 +25,14 @@ export type UserStats = {
   /** Что именно стоит за счётчиками «вживую» — списки под кликабельными
    *  плитками профиля: голое число вызывало вопрос «а какие?». Дата —
    *  ISO-строкой: список уезжает в клиентский компонент как есть. */
-  attendedEventsList: { id: string; slug: string | null; title: string; date: string }[];
+  attendedEventsList: {
+    id: string;
+    slug: string | null;
+    title: string;
+    date: string;
+    posterUrl: string | null;
+    venue: string;
+  }[];
   seenPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
   topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
@@ -55,12 +62,17 @@ export type UserStats = {
    *  ДОСМОТРЕННОМУ. Жанры — сырые строки с MDL (`Drama.genres`), как и
    *  везде на сайте они не переводятся. Пусто — блока в профиле нет. */
   topGenres: { genre: string; count: number }[];
-  /** Своя средняя оценка против MyDramaList по ТЕМ ЖЕ тайтлам: own —
-   *  средняя своих оценок, diff — own минус средняя mdlScore (то есть
-   *  минус = строже, плюс = щедрее), оба округлены до десятой. null —
-   *  пар «своя оценка + оценка MDL» меньше пяти: на трёх оценках
-   *  «строже на 2.1» звучит как диагноз, а это случайность. */
-  ratingVsMdl: { own: number; diff: number; count: number } | null;
+  /** Посещённые места списком рядом с картой (правка владельца
+   *  2026-09-17): фото, название и из какого сериала. Порядок — по
+   *  свежести отметки «была здесь». Сериалов у места бывает несколько,
+   *  показываем до двух. */
+  visitedPlaces: {
+    id: string;
+    slug: string | null;
+    name: string;
+    photoUrl: string | null;
+    dramas: { id: string; slug: string | null; title: string; titleRu: string | null }[];
+  }[];
   trips: number;
   longestTripDays: number;
   daysInThailand: number;
@@ -125,6 +137,7 @@ export type StatsAttendanceRow = {
     slug: string | null;
     title: string;
     venue: string;
+    posterUrl: string | null;
     presaleAt: Date | null;
     performers: { performer: StatsPerformer }[];
   };
@@ -192,6 +205,7 @@ export async function computeUserStats(
               slug: true,
               title: true,
               venue: true,
+              posterUrl: true,
               presaleAt: true,
               performers: { select: { performer: { select: SEEN_PERFORMER_SELECT } } },
             },
@@ -246,7 +260,27 @@ export async function computeUserStats(
       attendancesPromise,
       prisma.locationVisit.findMany({
         where: { userId },
-        include: { location: { select: { id: true, name: true, latitude: true, longitude: true } } },
+        orderBy: { createdAt: "desc" },
+        include: {
+          location: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              photoUrl: true,
+              latitude: true,
+              longitude: true,
+              // Из какого сериала место — подпись в списке рядом с
+              // картой. До двух: у кафе из пяти сериалов подпись иначе
+              // растянется в абзац.
+              dramas: {
+                take: 2,
+                orderBy: { createdAt: "asc" },
+                select: { drama: { select: { id: true, slug: true, title: true, titleRu: true } } },
+              },
+            },
+          },
+        },
       }),
       // «Досмотрено» — отдельный count только тогда, когда статусы
       // приходится читать самим: из готовых строк это фильтр в памяти.
@@ -309,7 +343,13 @@ export async function computeUserStats(
           event: { communityId: { not: null } },
           occurrence: { startsAt: { lt: now } },
         },
-        select: { eventId: true, event: { select: { createdById: true } } },
+        select: {
+          eventId: true,
+          event: { select: { createdById: true } },
+          // Дата — для календаря событий: встречи сообществ в нём
+          // считаются наравне с афишей (правка владельца 2026-09-17).
+          occurrence: { select: { startsAt: true } },
+        },
       }),
       // «Видели вне афиши» (PerformerSeen): концерты до регистрации на
       // сайте, случайные встречи — событие, которого у нас нет. Считается
@@ -438,6 +478,8 @@ export async function computeUserStats(
       slug: a.event.slug,
       title: a.event.title,
       date: a.occurrence.startsAt.toISOString(),
+      posterUrl: a.event.posterUrl,
+      venue: a.event.venue,
     }));
 
   // Серии и часы у экрана. Длительность серии приходит с MDL текстом
@@ -492,7 +534,6 @@ export async function computeUserStats(
   // Вкусовой профиль (п.6.2) — из тех же watchRows. Жанры считаются
   // только по ДОСМОТРЕННОМУ: «в планах» лежит что попало, а досмотренное
   // человек выбрал и вытерпел до конца — это и есть вкус.
-  const round1 = (n: number) => Math.round(n * 10) / 10;
   const genreCounts = new Map<string, number>();
   for (const row of watchRows) {
     if (row.status !== "COMPLETED") continue;
@@ -507,38 +548,29 @@ export async function computeUserStats(
     .slice(0, 5)
     .map(([genre, count]) => ({ genre, count }));
 
-  // «Строже/щедрее MDL»: сравниваем средние ПО ОДНИМ И ТЕМ ЖЕ тайтлам —
-  // своя средняя по всему списку против общей средней MDL сравнивала бы
-  // разные множества сериалов и была бы просто неправдой.
-  const ratedPairs = watchRows.filter(
-    (row): row is (typeof watchRows)[number] & { rating: number } =>
-      row.rating != null && row.drama.mdlScore != null,
-  );
-  const ratingVsMdl =
-    ratedPairs.length >= 5
-      ? {
-          own: round1(ratedPairs.reduce((sum, r) => sum + r.rating, 0) / ratedPairs.length),
-          diff: round1(
-            ratedPairs.reduce((sum, r) => sum + (r.rating - r.drama.mdlScore!), 0) /
-              ratedPairs.length,
-          ),
-          count: ratedPairs.length,
-        }
-      : null;
-
   const byYear = new Map<number, number>();
   // Разбивка внутри года (правка владельца 2026-09-10): двенадцать
   // чисел на год, январь — нулевой. Считаем здесь же, вторым проходом
   // по тем же строкам ходить незачем.
   const byYearMonths = new Map<number, number[]>();
   const attendedDays: string[] = [];
-  for (const a of attended) {
-    const d = a.occurrence.startsAt;
+  const countInCalendar = (d: Date) => {
     const year = d.getFullYear();
     byYear.set(year, (byYear.get(year) ?? 0) + 1);
     const months = byYearMonths.get(year) ?? Array<number>(12).fill(0);
     months[d.getMonth()] += 1;
     byYearMonths.set(year, months);
+  };
+  for (const a of attended) countInCalendar(a.occurrence.startsAt);
+  // Встречи сообществ — тоже события, на которые человек ходил (правка
+  // владельца 2026-09-17): в календаре они наравне с афишей, по одной
+  // на событие (см. communityMeetups ниже про дубли отметок). Счётчики
+  // «событий вживую» при этом остаются афишными — там же и списки.
+  const seenMeetups = new Set<string>();
+  for (const a of meetupAttendances) {
+    if (seenMeetups.has(a.eventId)) continue;
+    seenMeetups.add(a.eventId);
+    countInCalendar(a.occurrence.startsAt);
   }
   // «Дубль» — два РАЗНЫХ посещённых события в один день.
   for (const a of attendedRows) attendedDays.push(`${a.eventId}|${dateKey(a.occurrence.startsAt)}`);
@@ -622,7 +654,13 @@ export async function computeUserStats(
     rewatchTotal,
     mostRewatched,
     topGenres,
-    ratingVsMdl,
+    visitedPlaces: visits.map((v) => ({
+      id: v.location.id,
+      slug: v.location.slug,
+      name: v.location.name,
+      photoUrl: v.location.photoUrl,
+      dramas: v.location.dramas.map((dl) => dl.drama),
+    })),
     trips: tripStats.trips,
     longestTripDays: tripStats.longestTripDays,
     daysInThailand: tripStats.daysInThailand,

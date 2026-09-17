@@ -6,6 +6,8 @@ import { shortMonthNames } from "@/lib/dates";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import { performerHref } from "@/lib/performerSlug";
 import { WATCH_STATUS_KEYS, type WatchStatusKey } from "@/lib/watchStatuses";
+import { dramaHref, locationHref } from "@/lib/slugHelpers";
+import { dramaTitleForLocale } from "@/lib/dramaLocale";
 
 // Сериализуемые версии для клиентской вкладки (Д1). Переехали из
 // кабинета (/account) вместе с самой вкладкой — профиль теперь единая
@@ -18,11 +20,26 @@ export type StatsForTab = {
   performersSeenLive: number;
   /** Списки под кликабельными плитками обзора: какие события посещены и
    *  кого видели вживую (дата — ISO-строкой, серверная сериализация). */
-  attendedEventsList: { id: string; slug: string | null; title: string; date: string }[];
+  attendedEventsList: {
+    id: string;
+    slug: string | null;
+    title: string;
+    date: string;
+    posterUrl: string | null;
+    venue: string;
+  }[];
   seenPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
   topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
+  /** Список рядом с картой: фото, название, из какого сериала. */
+  visitedPlaces: {
+    id: string;
+    slug: string | null;
+    name: string;
+    photoUrl: string | null;
+    dramas: { id: string; slug: string | null; title: string; titleRu: string | null }[];
+  }[];
   completedDramas: number;
   /** Сколько сериалов в каждом статусе — полоса библиотеки. */
   watchByStatus: Record<WatchStatusKey, number>;
@@ -35,12 +52,10 @@ export type StatsForTab = {
    *  его сама плитка (dramaTitleForLocale). */
   rewatchTotal?: number;
   mostRewatched?: { title: string; titleRu: string | null; count: number } | null;
-  /** Вкусовой профиль (аудит 2026-09, п.6.2): топ-жанры по досмотренному
-   *  и «своя средняя против MyDramaList». Необязательные по той же
-   *  причине, что пересмотры: пустой блок — шум, рисуемся только когда
-   *  есть что сказать (жанров нет / оценок с парой MDL меньше пяти). */
+  /** Топ-жанры по досмотренному. Необязательные по той же причине, что
+   *  пересмотры: пустой блок — шум. Сравнение своей средней оценки с
+   *  MyDramaList убрано с сайта целиком (правка владельца 2026-09-17). */
   topGenres?: { genre: string; count: number }[];
-  ratingVsMdl?: { own: number; diff: number; count: number } | null;
   trips: number;
   daysInThailand: number;
   friends: number;
@@ -89,29 +104,24 @@ export default function StatsTab({
   const monthNames = shortMonthNames(locale);
 
   // ---- Вживую ----
+  // Календарь считает афишу И встречи сообществ (правка владельца
+  // 2026-09-17), поэтому итог в шапке — сумма календаря, а не афишный
+  // счётчик плиток: иначе шапка спорила бы с полосой под ней.
   const years = stats.eventsByYear;
+  const calendarTotal = years.reduce((sum, y) => sum + y.count, 0);
   // Интенсивность — от самого насыщенного месяца ЗА ВСЕ годы: иначе два
   // события в тихом году светились бы так же, как восемь в громком.
   const maxMonth = Math.max(1, ...years.flatMap((y) => y.months));
   const topRank = stats.topPerformers.slice(0, 5);
   const maxRank = Math.max(1, ...topRank.map((p) => p.count));
-  const showLive = stats.attendedEvents > 0 || topRank.length > 0;
+  // Не было ни одного события — ни афишного, ни встречи — календаря нет;
+  // нет и увиденных артистов — нет всей карточки.
+  const showCalendar = calendarTotal > 0;
+  const showLive = showCalendar || topRank.length > 0;
 
   // ---- Сериалы ----
   const libraryTotal = WATCH_STATUS_KEYS.reduce((sum, k) => sum + stats.watchByStatus[k], 0);
   const topGenres = stats.topGenres ?? [];
-  const vsMdl = stats.ratingVsMdl;
-  // Знак diff читается словом: минус — строже MyDramaList, плюс —
-  // щедрее, ноль после округления — вровень. Само число показываем без
-  // знака, знак уже в слове.
-  const vsMdlLine = vsMdl
-    ? (viewer ? s.tasteAvgViewer : s.tasteAvgSelf)(vsMdl.own.toFixed(1)) +
-      (vsMdl.diff < 0
-        ? s.tasteStricter(Math.abs(vsMdl.diff).toFixed(1))
-        : vsMdl.diff > 0
-          ? s.tasteKinder(vsMdl.diff.toFixed(1))
-          : s.tasteSame)
-    : null;
   const showSeries = libraryTotal > 0;
 
   const showMap = stats.visitedLocationPins.length > 0;
@@ -126,14 +136,14 @@ export default function StatsTab({
             <div className="stats-card-head">
               <h2 className="section-heading">{s.liveTitle}</h2>
               <span className="stats-card-meta">
-                {s.yearTotal(stats.attendedEvents)} · {s.artistsCount(stats.performersSeenLive)}
+                {s.yearTotal(calendarTotal)} · {s.artistsCount(stats.performersSeenLive)}
               </span>
             </div>
 
             {topRank.length > 0 && (
               <>
                 <p className="small text-secondary mb-2">{s.topPerformers}</p>
-                <div className={`stats-rank ${years.length > 0 ? "mb-4" : ""}`}>
+                <div className={`stats-rank ${showCalendar ? "mb-4" : ""}`}>
                   {topRank.map((p) => (
                     <AppLink key={p.id} href={performerHref(p)} className="stats-rank-row">
                       {p.photoUrl ? (
@@ -159,33 +169,33 @@ export default function StatsTab({
               </>
             )}
 
-            <p className="small text-secondary mb-2">{s.calendarTitle}</p>
-            {years.length > 0 ? (
-              <div className="stats-heat">
-                <div className="stats-heat-row stats-heat-months" aria-hidden>
-                  <span />
-                  {monthNames.map((m) => (
-                    <span key={m}>{m}</span>
-                  ))}
-                  <span />
-                </div>
-                {years.map((y) => (
-                  <div key={y.year} className="stats-heat-row">
-                    <span className="stats-heat-year">{y.year}</span>
-                    {y.months.map((count, i) => (
-                      <span
-                        key={i}
-                        className={`stats-heat-cell${count === 0 ? " is-empty" : ""}`}
-                        style={{ "--heat": count / maxMonth } as React.CSSProperties}
-                        title={s.monthTitle(monthNames[i], y.year, count)}
-                      />
+            {showCalendar && (
+              <>
+                <p className="small text-secondary mb-2">{s.calendarTitle}</p>
+                <div className="stats-heat">
+                  <div className="stats-heat-row stats-heat-months" aria-hidden>
+                    <span />
+                    {monthNames.map((m) => (
+                      <span key={m}>{m}</span>
                     ))}
-                    <span className="stats-heat-total">{s.yearTotal(y.count)}</span>
+                    <span />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="small text-secondary mb-0">{s.calendarEmpty}</p>
+                  {years.map((y) => (
+                    <div key={y.year} className="stats-heat-row">
+                      <span className="stats-heat-year">{y.year}</span>
+                      {y.months.map((count, i) => (
+                        <span
+                          key={i}
+                          className={`stats-heat-cell${count === 0 ? " is-empty" : ""}`}
+                          style={{ "--heat": count / maxMonth } as React.CSSProperties}
+                          title={s.monthTitle(monthNames[i], y.year, count)}
+                        />
+                      ))}
+                      <span className="stats-heat-total">{s.yearTotal(y.count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -253,7 +263,6 @@ export default function StatsTab({
               </>
             )}
 
-            {vsMdlLine && <p className="small text-secondary mt-3 mb-0">{vsMdlLine}</p>}
           </div>
         </div>
       )}
@@ -265,7 +274,51 @@ export default function StatsTab({
               <h2 className="section-heading">{viewer ? s.visitedMapViewer : s.visitedMap}</h2>
               <span className="stats-card-meta">{s.visitedCount(stats.visitedLocationPins.length)}</span>
             </div>
-            <LocationMapLoader locations={stats.visitedLocationPins} height="16rem" />
+            {/* Карта слева, список мест справа (правка владельца
+                2026-09-17): фото, название и из какого сериала. Список
+                прокручивается внутри своей высоты, чтобы карточка не
+                росла с каждым новым местом; на телефоне встаёт под
+                карту. */}
+            <div className="stats-map-grid">
+              <LocationMapLoader locations={stats.visitedLocationPins} height="18rem" />
+              <ul className="stats-places list-unstyled mb-0 thin-scroll">
+                {stats.visitedPlaces.map((pl) => (
+                  <li key={pl.id} className="stats-place">
+                    <AppLink href={locationHref(pl)} className="stats-place-photo-link">
+                      {pl.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          loading="lazy"
+                          decoding="async"
+                          src={pl.photoUrl}
+                          alt=""
+                          className="stats-place-photo"
+                        />
+                      ) : (
+                        <span className="stats-place-photo stats-place-fallback">
+                          {pl.name.slice(0, 1)}
+                        </span>
+                      )}
+                    </AppLink>
+                    <div className="stats-place-body">
+                      <AppLink href={locationHref(pl)} className="stats-place-name">
+                        {pl.name}
+                      </AppLink>
+                      {pl.dramas.length > 0 && (
+                        <span className="stats-place-drama">
+                          {pl.dramas.map((d, i) => (
+                            <span key={d.id}>
+                              {i > 0 && " · "}
+                              <AppLink href={dramaHref(d)}>{dramaTitleForLocale(d, locale)}</AppLink>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       )}

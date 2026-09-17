@@ -659,6 +659,7 @@ export default async function UserProfilePage({
         // пропсах — вычищаем из свода, а не прячем при отрисовке.
         visitedLocations: showVisited ? fullStats.visitedLocations : 0,
         visitedLocationPins: showVisited ? fullStats.visitedLocationPins : [],
+        visitedPlaces: showVisited ? fullStats.visitedPlaces : [],
         completedDramas: fullStats.completedDramas,
         watchByStatus: fullStats.watchByStatus,
         episodesWatched: fullStats.episodesWatched,
@@ -666,7 +667,6 @@ export default async function UserProfilePage({
         rewatchTotal: fullStats.rewatchTotal,
         mostRewatched: fullStats.mostRewatched,
         topGenres: fullStats.topGenres,
-        ratingVsMdl: fullStats.ratingVsMdl,
         trips: fullStats.trips,
         daysInThailand: fullStats.daysInThailand,
         friends: fullStats.friends,
