@@ -747,9 +747,10 @@ export default async function EventDetailPage({
                 </p>
                 <CastGrid chips clampRows={2}>
                   {castCards.map((c) => (
-                    // Глазик «видела здесь» — рядом с капсулой, у самого
-                    // списка (правка владельца 2026-09-15): раньше ради
-                    // одной отметки надо было идти на страницу артиста.
+                    // Глазик «видела здесь» — на самой капсуле, на углу
+                    // фото (правка владельца 2026-09-17; до этого стоял
+                    // соседом справа, а ещё раньше — только на странице
+                    // артиста). Позиционирует .seen-toggle-chip.
                     <span key={c.id} className="cast-chip-seen">
                       <EntityMiniCard href={c.href} photoUrl={c.photoUrl} name={c.name} />
                       {c.seen !== undefined && (

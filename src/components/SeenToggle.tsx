@@ -26,7 +26,8 @@ export default function SeenToggle({
   performerId: string;
   initialSeen: boolean;
   toggle: (eventId: string, performerId: string) => Promise<{ seen: boolean }>;
-  /** "sm" — поверх фото в каст-сетке; "chip" — рядом с капсулой. */
+  /** "sm" — поверх фото в каст-сетке; "chip" — на углу фото в капсуле
+   *  состава (обёртка .cast-chip-seen). */
   size?: "sm" | "chip";
   className?: string;
 }) {
