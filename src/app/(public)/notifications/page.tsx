@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 import EmptyState from "@/components/EmptyState";
 import LetterAvatar from "@/components/LetterAvatar";
 import Pagination from "@/components/Pagination";
-import { formatShortDate, formatTime } from "@/lib/dates";
+import { DEFAULT_TIMEZONE, isKnownTimezone } from "@/lib/timezones";
 import { getT, localeHref } from "@/lib/i18n";
 import MarkAllReadButton from "./MarkAllReadButton";
 import { notificationIcon } from "@/lib/notificationIcons";
@@ -55,8 +55,45 @@ export default async function NotificationsPage({
     prisma.notification.count({ where: { userId: user.id, readAt: null } }),
   ]);
 
-  // Дата + время — теми же форматтерами, что и всюду на сайте.
-  const fmt = (d: Date) => `${formatShortDate(d, locale)}, ${formatTime(d)}`;
+  // Лента по дням (правка владельца 2026-09-17: «слишком серая таблица»):
+  // записи группируются под заголовками «Сегодня», «Вчера» и датой, в
+  // строке остаётся только время. День и время — в ТАЙМЗОНЕ ЧИТАТЕЛЯ
+  // (User.timezone из настроек), а не в тайском: createdAt — настоящий
+  // момент, а не тайские «часы на стене» событий, и «сегодня» у
+  // человека в Минске — его сегодня. Помощники дат сайта (formatTime,
+  // dateKey) заточены под тайские даты событий и здесь не годятся.
+  const tz = isKnownTimezone(user.timezone) ? user.timezone : DEFAULT_TIMEZONE;
+  const intlLocale = locale === "ru" ? "ru-RU" : "en-GB";
+  const keyFmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const timeFmt = new Intl.DateTimeFormat(intlLocale, { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+  const longFmt = new Intl.DateTimeFormat(intlLocale, {
+    timeZone: tz,
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const dayOf = (d: Date) => keyFmt.format(d);
+  const now = new Date();
+  const todayKey = dayOf(now);
+  const yesterdayKey = dayOf(new Date(now.getTime() - 86_400_000));
+  const dayLabel = (d: Date) => {
+    const key = dayOf(d);
+    if (key === todayKey) return t.account.notifications.today;
+    if (key === yesterdayKey) return t.account.notifications.yesterday;
+    return longFmt.format(d);
+  };
+  const groups: { key: string; label: string; items: typeof items }[] = [];
+  for (const n of items) {
+    const key = dayOf(n.createdAt);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.items.push(n);
+    else groups.push({ key, label: dayLabel(n.createdAt), items: [n] });
+  }
 
   return (
     <div>
@@ -79,49 +116,54 @@ export default async function NotificationsPage({
           compact
         />
       ) : (
-        <div className="notif-list surface">
-          {items.map((n) => {
-            const inner = (
-              // Плотная строка без своей плашки (правка владельца
-              // 2026-09-17: «они очень большие»): один список с
-              // разделителями, те же классы, что у выпадающего блока
-              // колокольчика. Иконка, аватар, заголовок, текст одной
-              // строкой, дата тихо справа.
-              <>
-                <span className="notif-row-icon" aria-hidden="true">
-                  {notificationIcon(n.kind)}
-                </span>
-                {n.actor && (
-                  <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={1.6} />
-                )}
-                <span className="notif-row-body">
-                  <span className="notif-row-title">{notificationTitle(n, t)}</span>
-                  {n.body && <span className="notif-row-text">{n.body}</span>}
-                </span>
-                <span className="notif-row-date notif-row-date-side">{fmt(n.createdAt)}</span>
-              </>
-            );
-            // Непрочитанная строка идёт через /notifications/go/[id]:
-            // тот отметит её прочитанной и передаст дальше по href, так
-            // что пометка не требует JS. Прочитанная — прямой ссылкой,
-            // без лишнего захода. Непрочитанная БЕЗ href тоже кликабельна:
-            // go вернёт обратно в ленту, уже с пометкой; прочитанная без
-            // href — просто строка.
-            const rowHref = n.readAt ? n.href : `/notifications/go/${n.id}`;
-            const cls = `notif-row${n.readAt ? "" : " is-unread"}`;
-            return rowHref ? (
-              // prefetch выключен: go-страница помечает при РЕНДЕРЕ, и
-              // префетч (Link префетчит из вьюпорта) прочитал бы всю
-              // ленту без единого клика.
-              <AppLink key={n.id} href={rowHref} prefetch={false} className={cls}>
-                {inner}
-              </AppLink>
-            ) : (
-              <div key={n.id} className={cls}>
-                {inner}
+        <div className="notif-feed">
+          {groups.map((group) => (
+            <section key={group.key} className="notif-day">
+              <h2 className="notif-day-title">{group.label}</h2>
+              <div className="notif-list">
+                {group.items.map((n) => {
+                  const inner = (
+                    // Строка ленты: иконка в тонированном кружке, аватар
+                    // того, кто это сделал, заголовок, текст одной строкой,
+                    // время тихо справа. Непрочитанная — точка у иконки и
+                    // лёгкий тёплый фон, не рамка.
+                    <>
+                      <span className="notif-row-icon" aria-hidden="true">
+                        {notificationIcon(n.kind)}
+                      </span>
+                      {n.actor && (
+                        <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={1.6} />
+                      )}
+                      <span className="notif-row-body">
+                        <span className="notif-row-title">{notificationTitle(n, t)}</span>
+                        {n.body && <span className="notif-row-text">{n.body}</span>}
+                      </span>
+                      <span className="notif-row-date notif-row-date-side">{timeFmt.format(n.createdAt)}</span>
+                    </>
+                  );
+                  // Непрочитанная строка идёт через /notifications/go/[id]:
+                  // тот отметит её прочитанной и передаст дальше по href,
+                  // так что пометка не требует JS. Прочитанная — прямой
+                  // ссылкой. Непрочитанная БЕЗ href тоже кликабельна: go
+                  // вернёт обратно в ленту, уже с пометкой; прочитанная без
+                  // href — просто строка.
+                  const rowHref = n.readAt ? n.href : `/notifications/go/${n.id}`;
+                  const cls = `notif-row${n.readAt ? "" : " is-unread"}`;
+                  return rowHref ? (
+                    // prefetch выключен: go-страница помечает при РЕНДЕРЕ, и
+                    // префетч прочитал бы всю ленту без единого клика.
+                    <AppLink key={n.id} href={rowHref} prefetch={false} className={cls}>
+                      {inner}
+                    </AppLink>
+                  ) : (
+                    <div key={n.id} className={cls}>
+                      {inner}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </section>
+          ))}
         </div>
       )}
 

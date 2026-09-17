@@ -259,6 +259,9 @@ export const account: Dict["account"] = {
     markAllRead: (n: number) => `Отметить прочитанными (${n})`,
     /** Выпадающий блок у колокольчика (2026-09-17). */
     markAllReadShort: "Прочитать все",
+    /** Заголовки дней в ленте (переделка 2026-09-17: лента, не таблица). */
+    today: "Сегодня",
+    yesterday: "Вчера",
     allNotifications: "Все уведомления",
     emptyTitle: "Пока пусто",
     emptyHint:

@@ -277,6 +277,8 @@ export const account = {
     title: "Notifications",
     markAllRead: (n: number) => `Mark as read (${n})`,
     markAllReadShort: "Mark all read",
+    today: "Today",
+    yesterday: "Yesterday",
     allNotifications: "All notifications",
     emptyTitle: "Nothing here yet",
     emptyHint:
