@@ -23,6 +23,9 @@ export type AchievementBadgeProps = {
    *  иконками): название и описание живут в title/aria-label, элемент
    *  фокусируемый — текст доступен и с клавиатуры. */
   iconOnly?: boolean;
+  /** Сколько людей получили эту медаль — строка «есть у N фанатов» в
+   *  тултипе (переделка блока 2026-09-17). Без числа строки нет. */
+  holders?: number;
   /** Язык — пропом, а не хуком: компонент рендерят и сервер (публичный
    *  профиль), и клиент (кабинет), а useLocale с сервера не зовётся —
    *  профиль падал с «Attempted to call useLocale() from the server». */
@@ -42,6 +45,15 @@ export function AchievementCoin({ emoji }: { emoji: string }) {
   );
 }
 
+/** «Есть у N фанатов» — без словаря: компонент рендерят и сервер, и
+ *  клиент, а хуки словаря с сервера не зовутся (см. locale выше). */
+function holdersLabel(n: number, locale: Locale): string {
+  if (locale === "en") return `${n} ${n === 1 ? "fan has it" : "fans have it"}`;
+  // После «у» — родительный: «у 1 фаната», «у 2 фанатов», «у 21 фаната».
+  const one = n % 10 === 1 && n % 100 !== 11;
+  return `есть у ${n} ${one ? "фаната" : "фанатов"}`;
+}
+
 export default function AchievementBadge({
   emoji,
   title,
@@ -50,6 +62,7 @@ export default function AchievementBadge({
   unlockedAt = null,
   compact = false,
   iconOnly = false,
+  holders,
   locale,
 }: AchievementBadgeProps) {
   const stateClass = unlocked ? "achv-medal-unlocked" : "achv-medal-locked";
@@ -75,6 +88,7 @@ export default function AchievementBadge({
           {unlocked && unlockedAt && (
             <span className="achv-tip-date">
               {formatShortDate(unlockedAt, locale)} {unlockedAt.getFullYear()}
+              {holders && holders > 0 ? ` · ${holdersLabel(holders, locale)}` : ""}
             </span>
           )}
         </span>

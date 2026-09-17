@@ -190,6 +190,9 @@ export const social: Dict["social"] = {
 
     hidden: "Этот профиль скрывает свою активность.",
     achievements: "Достижения",
+    achievementsLatest: "Последнее",
+    achievementsNext: "Ближайшее",
+    achievementsHolders: (n: number) => `есть у ${n} ${plural(n, ["фаната", "фанатов", "фанатов"])}`,
     going: "Идёт на события",
     goingLocked: "🔒 Списки событий доступны по подписке.",
     goingLockedWithCount: (n: number) =>

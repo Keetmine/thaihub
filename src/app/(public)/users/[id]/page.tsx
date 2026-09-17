@@ -27,14 +27,16 @@ import { logout } from "../../login/actions";
 import FriendNotifyToggle from "./FriendNotifyToggle";
 import {
   achievementsSyncDue,
+  getEnabledAchievements,
   getUnlockedAchievements,
+  metricValue,
   syncAchievements,
 } from "@/lib/achievements";
 import { computeUserStats } from "@/lib/userStats";
 import { SEEN_PERFORMER_SELECT } from "@/lib/seenLive";
 import { getActivityFeed } from "@/lib/activityFeed";
 import { flattenOccurrence } from "@/lib/eventOccurrences";
-import AchievementBadge from "@/components/AchievementBadge";
+import AchievementBadge, { AchievementCoin } from "@/components/AchievementBadge";
 import StatsUpsell from "./StatsUpsell";
 import CreateArtistListButton from "@/app/(public)/artist-lists/CreateArtistListButton";
 import { listHref, tripHref, locationHref, artistListHref, dramaHref, novelHref } from "@/lib/slugHelpers";
@@ -500,9 +502,10 @@ export default async function UserProfilePage({
     showAchievements
       ? prisma.userAchievement.findMany({ where: { userId: user.id } })
       : [],
-    // Приглашённые по реферальной ссылке — метрика только для пересчёта,
-    // поэтому и спрашиваем только когда он будет.
-    syncDue ? prisma.user.count({ where: { referredById: user.id, deletedAt: null } }) : 0,
+    // Приглашённые по реферальной ссылке — метрика ачивок: нужна
+    // пересчёту и «ближайшему достижению» в левой колонке, то есть
+    // только себе.
+    isSelf ? prisma.user.count({ where: { referredById: user.id, deletedAt: null } }) : 0,
     // Молчалка уведомлений о друге и висящая заявка: спрашиваем у любого
     // залогиненного не-себя, а показываем по правам ниже — так они не
     // ждут списка друзей отдельной ступенью. Гостю искать нечего: у него
@@ -609,7 +612,7 @@ export default async function UserProfilePage({
       })
     : null;
 
-  const [fullStats, achievementStates, activityItems] = await Promise.all([
+  const [fullStats, achievementStates, activityItems, holderRows] = await Promise.all([
     statsPromise,
     isSelf && statsPromise && syncDue
       ? syncAchievements(user.id, statsPromise, { referrals, unlockedRows })
@@ -634,6 +637,13 @@ export default async function UserProfilePage({
           },
         )
       : [],
+    // Сколько людей получили каждую медаль — «есть у N фанатов» в
+    // тултипе и у последнего достижения (переделка блока 2026-09-17).
+    // Один groupBy на все ключи; ключи выключенных ачивок просто не
+    // спрашиваются при показе.
+    showAchievements
+      ? prisma.userAchievement.groupBy({ by: ["key"], _count: { _all: true } })
+      : [],
   ]);
 
   const unlockedBadges = isSelf
@@ -646,6 +656,58 @@ export default async function UserProfilePage({
     : showAchievements
       ? await getUnlockedAchievements(user.id, unlockedRows)
       : [];
+  const holdersByKey = new Map(holderRows.map((r) => [r.key, r._count._all]));
+  // Последнее полученное — крупной карточкой над рядом монет (переделка
+  // блока 2026-09-17: «мб что интереснее придумаем»). Остальные — монетами,
+  // как раньше; последнее из ряда убрано, чтобы не стояло дважды.
+  // У состояния пересчёта дата может быть null (медаль ещё не
+  // зафиксирована) — такие в «последнее» не идут.
+  const datedBadges = unlockedBadges.filter(
+    (b): b is typeof b & { unlockedAt: Date } => b.unlockedAt != null,
+  );
+  const latestBadge =
+    datedBadges.length > 0
+      ? datedBadges.reduce((a, b) => (b.unlockedAt > a.unlockedAt ? b : a))
+      : null;
+  const restBadges = latestBadge ? unlockedBadges.filter((b) => b.key !== latestBadge.key) : [];
+  // «Ближайшее достижение» — ОДНО, только себе и только начатое: та же
+  // логика, что у прогресса в сообществе (см. docs/features/gamification.md,
+  // АА25) — полный список остаётся сюрпризом, дальние не называем.
+  // Считается из уже готового свода и кэшированного каталога — новых
+  // запросов нет.
+  const nextGoal =
+    isSelf && ownerPremium && fullStats
+      ? await (async () => {
+          const defs = await getEnabledAchievements();
+          const unlockedKeys = new Set([
+            ...unlockedRows.map((r) => r.key),
+            ...(achievementStates?.filter((a) => a.unlocked).map((a) => a.key) ?? []),
+          ]);
+          const stats = { ...fullStats, referrals };
+          let best: {
+            key: string;
+            emoji: string;
+            title: string;
+            hint: string;
+            value: number;
+            target: number;
+          } | null = null;
+          for (const def of defs) {
+            if (unlockedKeys.has(def.key)) continue;
+            const target = Math.max(def.threshold, 1);
+            const value = Math.min(metricValue(def.metric, stats), target);
+            if (value <= 0 || value >= target) continue;
+            const better =
+              !best ||
+              value / target > best.value / best.target ||
+              (value / target === best.value / best.target && target < best.target);
+            if (better) {
+              best = { key: def.key, emoji: def.emoji, title: def.title, hint: def.hint, value, target };
+            }
+          }
+          return best;
+        })()
+      : null;
 
   const statsForTab: StatsForTab | null = fullStats
     ? {
@@ -1480,22 +1542,60 @@ export default async function UserProfilePage({
                 человека ещё нет, и рядом с полученными медалями он
                 читался как недобор. */}
             <h2 className="section-heading mb-2">{p.achievements}</h2>
-            {/* Только иконки; название и описание — в title/aria-label
-                медали (правка владельца п.3). Строки «остальные пока
-                секрет» больше нет. */}
-            <div className="d-flex flex-wrap gap-2">
-              {unlockedBadges.map((b) => (
-                <AchievementBadge
-                  key={b.key}
-                  emoji={b.emoji}
-                  title={b.title}
-                  hint={b.hint}
-                  unlockedAt={b.unlockedAt}
-                  iconOnly
-                  locale={locale}
-                />
-              ))}
-            </div>
+            {/* Переделка 2026-09-17: последнее достижение — карточкой с
+                названием, датой и «есть у N фанатов»; остальные —
+                монетами с тултипом, как раньше; себе внизу — ОДНО
+                ближайшее с полосой прогресса (см. nextGoal выше). */}
+            {latestBadge && (
+              <div className="achv-featured mb-2">
+                <span className="achv-featured-coin">
+                  <AchievementCoin emoji={latestBadge.emoji} />
+                </span>
+                <div className="achv-featured-body">
+                  <span className="achv-featured-eyebrow">{p.achievementsLatest}</span>
+                  <span className="achv-featured-title">{latestBadge.title}</span>
+                  <span className="achv-featured-meta">
+                    {formatShortDate(latestBadge.unlockedAt, locale)}{" "}
+                    {latestBadge.unlockedAt.getFullYear()}
+                    {(holdersByKey.get(latestBadge.key) ?? 0) > 0 &&
+                      ` · ${p.achievementsHolders(holdersByKey.get(latestBadge.key)!)}`}
+                  </span>
+                </div>
+              </div>
+            )}
+            {restBadges.length > 0 && (
+              <div className="d-flex flex-wrap gap-2">
+                {restBadges.map((b) => (
+                  <AchievementBadge
+                    key={b.key}
+                    emoji={b.emoji}
+                    title={b.title}
+                    hint={b.hint}
+                    unlockedAt={b.unlockedAt}
+                    holders={holdersByKey.get(b.key)}
+                    iconOnly
+                    locale={locale}
+                  />
+                ))}
+              </div>
+            )}
+            {nextGoal && (
+              <div className="achv-next mt-3">
+                <div className="achv-next-head">
+                  <span className="achv-next-eyebrow">{p.achievementsNext}</span>
+                  <span className="achv-next-count">
+                    {nextGoal.value}/{nextGoal.target}
+                  </span>
+                </div>
+                <span className="achv-next-title">
+                  <span aria-hidden>{nextGoal.emoji}</span> {nextGoal.title}
+                </span>
+                <span className="episode-progress-bar achv-next-bar" aria-hidden>
+                  <span style={{ width: `${Math.round((nextGoal.value / nextGoal.target) * 100)}%` }} />
+                </span>
+                <span className="achv-next-hint">{nextGoal.hint}</span>
+              </div>
+            )}
           </div>
         )}
 

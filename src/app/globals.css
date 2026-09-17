@@ -3199,7 +3199,7 @@ button.hero-stat-toggle.is-open {
 button.stat-tile-toggle {
   cursor: pointer;
   /* Место под кнопку-стрелку справа внизу, чтобы подсказка не легла под неё. */
-  padding-right: 3rem;
+  padding-right: 2.5rem;
 }
 
 button.stat-tile-toggle:hover,
@@ -3247,8 +3247,8 @@ button.stat-tile-toggle.is-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.4rem;
+  height: 1.4rem;
   border-radius: 50%;
   border: 1px solid rgba(var(--accent-rgb), 0.5);
   color: rgb(var(--accent-rgb));
@@ -5173,6 +5173,89 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
   .online-dot {
     animation: none;
   }
+}
+
+/* Блок достижений в левой колонке профиля (переделка 2026-09-17):
+   последнее полученное — карточкой с крупной монетой, названием, датой
+   и «есть у N фанатов»; ниже ряд монет; себе внизу — ОДНО ближайшее с
+   полосой прогресса (та же .episode-progress-bar, что у серий). */
+.achv-featured {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  column-gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--bs-border-radius-lg);
+  border: 1px solid var(--bs-border-color);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    var(--bs-tertiary-bg);
+}
+
+.achv-featured-coin {
+  display: inline-block;
+  width: 3.4rem;
+  height: 3.4rem;
+  font-size: 1.55rem;
+}
+
+.achv-featured-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.achv-featured-eyebrow,
+.achv-next-eyebrow {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(var(--accent-rgb));
+}
+
+.achv-featured-title {
+  font-family: var(--font-display, inherit);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.achv-featured-meta,
+.achv-next-hint {
+  font-size: 0.74rem;
+  color: var(--bs-secondary-color);
+}
+
+.achv-next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.achv-next-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.achv-next-count {
+  font-size: 0.74rem;
+  color: var(--bs-secondary-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.achv-next-title {
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+}
+
+.achv-next-bar {
+  margin: 0.1rem 0;
 }
 
 /* «Монетка» ачивки (AchievementCoin): сам эмодзи размытым фоном +

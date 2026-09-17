@@ -112,7 +112,7 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
               <span className="stat-tile-hint">{tile.hint}</span>
               {tile.expandKey && (
                 <span className="stat-tile-chevron" aria-hidden>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6l5 5 5-5" />
                   </svg>
                 </span>

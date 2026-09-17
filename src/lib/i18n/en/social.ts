@@ -189,6 +189,11 @@ export const social = {
 
     hidden: "This profile keeps its activity private.",
     achievements: "Achievements",
+    /* Переделка блока 2026-09-17: последнее достижение карточкой,
+       «есть у N фанатов», ближайшее с прогрессом (только себе). */
+    achievementsLatest: "Latest",
+    achievementsNext: "Up next",
+    achievementsHolders: (n: number) => `${n} ${n === 1 ? "fan has it" : "fans have it"}`,
     going: "Going to",
     goingLocked: "🔒 Event lists come with a subscription.",
     goingLockedWithCount: (n: number) =>
