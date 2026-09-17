@@ -16,6 +16,7 @@ import {
 // посещения, локации, watch-статусы, поездки, друзья.
 
 import { WATCH_STATUS_KEYS, type WatchStatusKey } from "@/lib/watchStatuses";
+import { keepPairingsTogether } from "@/lib/castLineup";
 
 export type UserStats = {
   attendedEvents: number;
@@ -458,11 +459,30 @@ export async function computeUserStats(
     .slice()
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
     .slice(0, 5);
-  // Список «кого именно видели» под кликабельной плиткой профиля.
-  const seenPerformers = countedPerformers
-    .slice()
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-    .map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl }));
+  // Список «кого именно видели» под счётчиком профиля. Порядок — по
+  // числу событий, но пары стоят рядом и в порядке самого пейринга
+  // (правка владельца 2026-09-17: «сортировать по пейрингам, как и
+  // везде актёров» — правило АА4, см. lib/castLineup.ts). Рёбра
+  // пейрингов — один запрос по увиденным id; helper сам отбрасывает
+  // пары, где второй участник в списке не встречается.
+  const seenIds = countedPerformers.map((p) => p.id);
+  const seenPairings =
+    seenIds.length > 1
+      ? await prisma.pairing.findMany({
+          where: {
+            OR: [{ performerAId: { in: seenIds } }, { performerBId: { in: seenIds } }],
+          },
+          orderBy: { createdAt: "asc" },
+          select: { performerAId: true, performerBId: true },
+        })
+      : [];
+  const seenPerformers = keepPairingsTogether(
+    countedPerformers
+      .slice()
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+    (p) => p.id,
+    seenPairings,
+  ).map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl }));
 
   // Посещённые события списком, свежие сверху; при нескольких отмеченных
   // датах события берётся последняя посещённая.

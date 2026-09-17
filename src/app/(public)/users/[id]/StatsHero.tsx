@@ -77,43 +77,44 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
 
   return (
     <div className="mb-4">
-      <div className="row g-2 mb-3">
+      {/* Полоса счётчиков, а не четыре плитки-коробки (правка владельца
+          2026-09-17, вторая по счёту: «всё ещё не нравятся плитки»).
+          Одна поверхность, счётчики через тонкие разделители — число,
+          подпись, подсказка. Подробности и так лежат в карточках ниже,
+          верхней полосе незачем быть тяжёлой. Разделители — щели грида
+          на фоне цвета рамки: они сами встают и между колонками, и
+          между рядами, когда на телефоне полоса складывается в 2×2. */}
+      <div className="stats-strip mb-3">
         {heroes.map((h) => {
-          // Переделка 2026-09-17: иконка — тонированным кружком в углу, а
-          // не эмодзи перед подписью; число крупнее; у раскрывающихся
-          // плиток стрелка живёт в правом верхнем углу и поворачивается,
-          // а не приклеена к подсказке.
           const inner = (
             <>
-              <span className="hero-stat-top">
-                <span className="hero-stat-icon" aria-hidden>
-                  {h.icon}
-                </span>
+              <span className="stats-strip-value">{h.value}</span>
+              <span className="stats-strip-label">
+                <span aria-hidden>{h.icon}</span> {h.label}
+              </span>
+              <span className="stats-strip-hint">
+                {h.hint}
                 {h.expandKey && (
-                  <span className="hero-stat-chevron" aria-hidden>
+                  <span className="stats-strip-chevron" aria-hidden>
                     ▾
                   </span>
                 )}
               </span>
-              <span className="hero-stat-value">{h.value}</span>
-              <span className="hero-stat-label">{h.label}</span>
-              <span className="hero-stat-hint">{h.hint}</span>
             </>
           );
-          return (
-            <div key={h.label} className="col-6 col-xl-3">
-              {h.expandKey ? (
-                <button
-                  type="button"
-                  className={`hero-stat hero-stat-toggle h-100 w-100${expanded === h.expandKey ? " is-open" : ""}`}
-                  aria-expanded={expanded === h.expandKey}
-                  onClick={() => setExpanded((cur) => (cur === h.expandKey ? null : h.expandKey!))}
-                >
-                  {inner}
-                </button>
-              ) : (
-                <div className="hero-stat h-100">{inner}</div>
-              )}
+          return h.expandKey ? (
+            <button
+              key={h.label}
+              type="button"
+              className={`stats-strip-item stats-strip-toggle${expanded === h.expandKey ? " is-open" : ""}`}
+              aria-expanded={expanded === h.expandKey}
+              onClick={() => setExpanded((cur) => (cur === h.expandKey ? null : h.expandKey!))}
+            >
+              {inner}
+            </button>
+          ) : (
+            <div key={h.label} className="stats-strip-item">
+              {inner}
             </div>
           );
         })}
@@ -122,9 +123,12 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
       {/* Раскрытые панели (переделка 2026-09-17). События — строками с
           постером, названием, площадкой и датой, свежие сверху; артисты
           — сеткой круглых фото с именем под ними, как ряд друзей в
-          профиле. Раньше и то и другое было чипами и голыми строками. */}
+          профиле. Обе панели ограничены по высоте и прокручиваются
+          внутри (правка владельца: «если будет 20–40 событий, оно будет
+          занимать всю страницу»). Порядок артистов — по пейрингам, как
+          везде на витрине; его задаёт свод. */}
       {expanded === "events" && (
-        <div className="surface p-3 mb-3 hero-expand">
+        <div className="surface p-3 mb-3 hero-expand thin-scroll">
           <div className="hero-event-list">
             {stats.attendedEventsList.map((ev) => (
               <AppLink key={ev.id} href={eventHref(ev)} className="hero-event-row">
@@ -153,7 +157,7 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
         </div>
       )}
       {expanded === "artists" && (
-        <div className="surface p-3 mb-3 hero-expand">
+        <div className="surface p-3 mb-3 hero-expand thin-scroll">
           <div className="hero-artist-grid">
             {stats.seenPerformers.map((p) => (
               <AppLink key={p.id} href={performerHref(p)} className="hero-artist">
