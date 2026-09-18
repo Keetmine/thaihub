@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { decodeHtmlEntities } from "@/lib/eventDedupe";
 import { prisma } from "@/lib/prisma";
 import { scrapeEventByUrl } from "@/lib/eventTicketSites";
 import { combineDateTime } from "@/lib/dates";
@@ -58,7 +59,9 @@ export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPrevi
   const artists: TtmImportArtist[] = await matchArtistsByNickname(scraped.artists);
 
   return {
-    title: scraped.title,
+    // Старые черновики в очереди могли лечь с мнемониками — раскодируем
+    // и на выходе, а не только при обходе (см. ttmCrawl.ts).
+    title: decodeHtmlEntities(scraped.title),
     venue: scraped.venue ?? "",
     date: scraped.date ?? "",
     startTime: scraped.startTime ?? "",

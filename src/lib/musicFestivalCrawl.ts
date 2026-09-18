@@ -14,7 +14,7 @@ import {
   type MusicFestivalCard,
 } from "@/lib/musicFestival";
 import { matchFestivalArtists, type MatchedFestivalArtist } from "@/lib/performerMatching";
-import { findCatalogDuplicate } from "@/lib/eventDedupe";
+import { decodeHtmlEntities, findCatalogDuplicate } from "@/lib/eventDedupe";
 import { checkImportCancelled } from "@/lib/importRun";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { combineDateTime, dateKey } from "@/lib/dates";
@@ -229,6 +229,12 @@ export async function runMusicFestivalCrawl(
       continue;
     }
     if (!festival.title) festival = { ...festival, title: card.title };
+    // Мнемоники из HTML — в текст (см. ttmCrawl.ts).
+    festival = {
+      ...festival,
+      title: decodeHtmlEntities(festival.title),
+      venue: festival.venue ? decodeHtmlEntities(festival.venue) : festival.venue,
+    };
     if (festival.dates.length === 0) {
       // Без даты событие не завести (EventOccurrence обязателен); адрес
       // не запоминается — дата появится, страница перечитается.

@@ -7,7 +7,7 @@ import {
   type TtmListingCard,
 } from "@/lib/thaiticketmajor";
 import { matchArtistsByNickname } from "@/lib/performerMatching";
-import { findCatalogDuplicate } from "@/lib/eventDedupe";
+import { decodeHtmlEntities, findCatalogDuplicate } from "@/lib/eventDedupe";
 import { checkImportCancelled } from "@/lib/importRun";
 import { notifyAdmins } from "@/lib/adminNotify";
 
@@ -182,6 +182,13 @@ export async function runTtmCrawl(
     // Название с самой страницы события надёжнее карточки списка, но
     // бывает пустым при смене вёрстки — тогда берём карточку.
     if (!scraped.title) scraped = { ...scraped, title: card.title };
+    // HTML-мнемоники (&#39;, &amp;) из JSON-LD и заголовков — в текст,
+    // иначе «KRIST &#39;SILHOUETTES&#39;» доезжало до карточки как есть.
+    scraped = {
+      ...scraped,
+      title: decodeHtmlEntities(scraped.title),
+      venue: scraped.venue ? decodeHtmlEntities(scraped.venue) : scraped.venue,
+    };
 
     // Дедуп по СОДЕРЖИМОМУ, не только по sourceUrl: у событий,
     // импортированных до того, как ссылка-источник начала сохраняться,

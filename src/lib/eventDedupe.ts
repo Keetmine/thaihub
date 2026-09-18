@@ -72,7 +72,11 @@ const NAMED_ENTITIES: Record<string, string> = {
   nbsp: " ",
 };
 
-function decodeHtmlEntities(s: string): string {
+/** Экспорт — для краулеров: названия и площадки с чужих страниц
+ *  приходят с мнемониками (&#39;, &amp;), и без раскодирования они
+ *  доезжали до карточки события как есть (жалоба владельца 2026-09-18:
+ *  «KRIST &#39;SILHOUETTES&#39; … пришлось руками править»). */
+export function decodeHtmlEntities(s: string): string {
   return s
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
