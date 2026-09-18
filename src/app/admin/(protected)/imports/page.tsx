@@ -42,6 +42,7 @@ import StopImportButton from "./StopImportButton";
 import TabRunsJournal from "./TabRunsJournal";
 import TtmImportFlow from "./ttm/TtmImportFlow";
 import MusicFestivalUrlImport from "./MusicFestivalUrlImport";
+import { startThaiStarXArchiveCrawl } from "./thaiStarXActions";
 import SubmitButton from "@/components/admin/SubmitButton";
 import ConfirmForm from "@/components/ConfirmForm";
 import BulkList from "@/components/admin/BulkList";
@@ -70,9 +71,20 @@ const KIND_LABELS: Record<string, string> = {
   "event-drafts": "Черновики событий: одобрение",
   "gmmtv-mascots": "GMMTV: маскоты с вики",
   "musicfestival-crawl": "musicfestival.in.th: фестивали",
+  "thaistarx-crawl": "ThaiStarX: фан-события по миру",
   "tpop-agency": "fandom.com: агентство",
   "tpop-artist": "fandom.com: артист",
 };
+
+/** Хост источника черновика — в строке очереди видно, откуда он:
+ *  thaiticketmajor.com или thaistarx.com. */
+function sourceHost(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
 
 // Куда вести из ленты «последнего спарсенного» — на админ-редактирование.
 const ITEM_EDIT_HREF: Record<string, (id: string) => string> = {
@@ -136,7 +148,7 @@ const TAB_RUN_KINDS: Record<Exclude<Tab, "log">, readonly string[]> = {
     "blscene",
   ],
   music: ["youtube-music", "tpop-artist", "tpop-agency"],
-  events: ["ttm-event", "ttm-crawl", "event-drafts", "musicfestival-crawl"],
+  events: ["ttm-event", "ttm-crawl", "event-drafts", "musicfestival-crawl", "thaistarx-crawl"],
   mascots: ["gmmtv-mascots"],
   requests: ["mdl-requests"],
 };
@@ -646,6 +658,40 @@ export default async function AdminImportsPage({
               </div>
             </div>
 
+            {/* Краулер thaistarx.com (задача «thaistarx-crawl», см.
+                docs/features/thaistarx-crawl.md): фан-события тайских
+                артистов по всему миру. Как у TTM — черновики в очередь
+                ниже, само в афишу не попадает. Кнопка — разовый обход
+                архива (все прошедшие), суточная задача листает только
+                свежее. */}
+            <div className="col-12">
+              <div className="surface p-4 h-100">
+                <h2 className="section-heading mb-2">ThaiStarX: фан-события по миру</h2>
+                <p className="small text-secondary mb-3">
+                  Трекер фанмитов, концертов, фанконов и премьер тайских артистов —
+                  Тайбэй, Макао, Манила, Токио, Сингапур и дальше. Суточная задача
+                  забирает новые посты и кладёт их черновиками в очередь ниже: состав
+                  берётся из тегов поста, а если в посте есть ссылка на ThaiTicketMajor,
+                  оттуда дочитываются время, цены и полный состав. У черновика есть
+                  часовой пояс площадки — событие получит его при одобрении.
+                  «Обойти архив» — разовый проход по всем прошедшим событиям сайта, идёт
+                  фоном несколько минут; ход и «Остановить» — в журнале.
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  <form action={startThaiStarXArchiveCrawl}>
+                    <SubmitButton
+                      label="Обойти архив (все прошедшие)"
+                      busyLabel="Запускаем…"
+                      className="btn btn-primary btn-sm"
+                    />
+                  </form>
+                  <Link href="/admin/schedule?tab=thaistarx-crawl" className="btn btn-sm btn-outline-secondary">
+                    Задача в расписании
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             {/* Очередь краулера афиши TTM (задача «ttm-crawl», см.
                 docs/features/ttm-crawl.md): черновики с совпавшими
                 артистами ждут решения владельца. Массовые действия —
@@ -660,8 +706,8 @@ export default async function AdminImportsPage({
                   Черновики событий ({pendingDraftCount})
                 </h2>
                 <p className="small text-secondary mb-3">
-                  Найдены обходом афиши ThaiTicketMajor: в составе есть кто-то из
-                  нашего каталога. «Одобрить» — событие создастся с постером и
+                  Найдены обходом афиши ThaiTicketMajor и трекера ThaiStarX: в составе
+                  есть кто-то из нашего каталога. «Одобрить» — событие создастся с постером и
                   совпавшими артистами (остальной состав добирается руками в
                   карточке события); «Отклонить» — событие больше не предложится.
                   Массовое одобрение выбранных идёт одним фоновым прогоном — ход
@@ -672,7 +718,7 @@ export default async function AdminImportsPage({
                 {eventDrafts.length === 0 ? (
                   <p className="small text-secondary mb-0">
                     Очередь пуста — новые черновики появятся после ближайшего обхода
-                    афиши (задача «ThaiTicketMajor: обход афиши» в расписании).
+                    (задачи «ThaiTicketMajor: обход афиши» и «ThaiStarX» в расписании).
                   </p>
                 ) : (
                   <BulkList
@@ -680,6 +726,7 @@ export default async function AdminImportsPage({
                       const payload = draft.payload as Partial<TtmEvent> & {
                         possibleDuplicateOf?: PossibleDuplicate;
                         ambiguousArtists?: EventDraftAmbiguity[];
+                        timezone?: string | null;
                       };
                       const matched = (draft.matchedPerformers as EventDraftMatch[] | null) ?? [];
                       const ambiguous = payload.ambiguousArtists ?? [];
@@ -713,7 +760,15 @@ export default async function AdminImportsPage({
                               {payload.title || draft.sourceUrl} ↗
                             </a>
                             <div className="small text-secondary">
-                              {[dates, payload.startTime, payload.venue]
+                              {[
+                                dates,
+                                payload.startTime,
+                                payload.venue,
+                                // Зона — только не бангкокская: черновики
+                                // ThaiStarX бывают из Тайбэя и Манилы.
+                                payload.timezone && payload.timezone !== "Asia/Bangkok" ? payload.timezone : null,
+                                sourceHost(draft.sourceUrl),
+                              ]
                                 .filter(Boolean)
                                 .join(" · ")}
                             </div>

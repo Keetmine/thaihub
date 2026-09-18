@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { decodeHtmlEntities } from "@/lib/eventDedupe";
 import { prisma } from "@/lib/prisma";
 import { scrapeEventByUrl } from "@/lib/eventTicketSites";
-import { combineDateTime } from "@/lib/dates";
+import { combineDateTime, normalizeTimeValue } from "@/lib/dates";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -93,8 +93,11 @@ export type TtmImportSubmission = {
   presaleDate: string;
   presaleTime: string;
   presaleUrl: string;
-  /** Страница события на ThaiTicketMajor — в блок «Источники». */
+  /** Страница события на билетном сайте или трекере — в блок «Источники». */
   sourceUrl: string;
+  /** IANA-зона площадки (черновики ThaiStarX: событие бывает в Тайбэе
+   *  или Маниле). Пусто — зона по умолчанию (Бангкок). */
+  timezone?: string | null;
   /** Artists the admin kept checked in the review screen. `type` — кем
    *  заводить нового: сольным или группой (правка владельца
    *  2026-09-10). Раньше здесь всегда стоял SOLO, и концерт группы
@@ -129,9 +132,13 @@ export async function createEventFromTtmImport(
   await requireAdmin();
   const title = data.title.trim();
   const venue = data.venue.trim();
-  if (!title || !venue || !data.date || !data.startTime) {
-    throw new Error("Заполните обязательные поля: название, место, дата, время начала");
+  if (!title || !venue || !data.date) {
+    throw new Error("Заполните обязательные поля: название, место, дата");
   }
+  // Времени может не быть (черновики ThaiStarX: у половины постов
+  // только дата) — тогда 00:00 и hasTime=false, как у пустого времени
+  // в ручной форме события и у фестивалей musicfestival.in.th.
+  const hasTime = Boolean(normalizeTimeValue(data.startTime));
 
   const dates = Array.from(new Set([data.date, ...data.extraDates]));
 
@@ -147,7 +154,13 @@ export async function createEventFromTtmImport(
   // постер своим файлом) downloadRemoteImage вернёт как есть, а если
   // чужой хост не ответил — вернёт исходную ссылку, и событие всё равно
   // создастся.
-  const posterUrl = await downloadRemoteImage(data.posterUrl.trim() || null, "posters");
+  // У постеров с thaistarx.com имя файла бывает общим («1-Poster.jpg»),
+  // а помощник считает «уже на диске» по имени — без своего имени
+  // второе событие получило бы постер первого (тот же случай, что у
+  // фестивалей, см. localImage.ts). Имя — из слага поста.
+  const posterUrl = await downloadRemoteImage(data.posterUrl.trim() || null, "posters", {
+    localBase: posterLocalBase(data.sourceUrl),
+  });
 
   // Итоговый состав события — виден и после транзакции: по нему уходит
   // «у избранного артиста новое событие» (свежесозданные в этой же
@@ -184,10 +197,12 @@ export async function createEventFromTtmImport(
         presaleAt,
         presaleUrl: data.presaleUrl.trim() || null,
         sourceUrl: data.sourceUrl.trim() || null,
+        ...(data.timezone ? { timezone: data.timezone } : {}),
         occurrences: {
           create: dates.map((dateStr) => ({
-            startsAt: combineDateTime(dateStr, data.startTime),
-            endsAt: data.endTime ? combineDateTime(dateStr, data.endTime) : null,
+            startsAt: combineDateTime(dateStr, hasTime ? data.startTime : "00:00"),
+            endsAt: hasTime && data.endTime ? combineDateTime(dateStr, data.endTime) : null,
+            hasTime,
           })),
         },
         performers: {
@@ -247,3 +262,18 @@ export async function importMusicFestivalEvent(
   }
   return result;
 }
+
+/** Своё имя локального файла постера для источников с неуникальными
+ *  именами картинок: thaistarx.com → «thaistarx-<слаг поста>». Для
+ *  остальных — undefined, имя берётся из удалённого файла, как раньше. */
+function posterLocalBase(sourceUrl: string): string | undefined {
+  try {
+    const u = new URL(sourceUrl.trim());
+    if (!/(^|\.)thaistarx\.com$/i.test(u.hostname)) return undefined;
+    const slug = u.pathname.split("/").filter(Boolean).pop();
+    return slug ? `thaistarx-${slug}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+

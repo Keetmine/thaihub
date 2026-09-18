@@ -599,7 +599,8 @@
 сериалам без русского названия и импорт через MDL их сериалов, которых
 у нас нет, — см. doramaland-import.md), «Афиша TTM» (ttm-crawl.md),
 «Маскоты GMMTV» (gmmtv-mascots-import.md), «Фестивали» (суточный
-обход musicfestival.in.th, см. musicfestival-import.md) и
+обход musicfestival.in.th, см. musicfestival-import.md), «ThaiStarX»
+(суточный обход трекера фан-событий по миру, см. thaistarx-crawl.md) и
 «Чистка» (просроченные сессии/токены и ротация журналов).
 Старые ссылки без `?tab` открывают первую вкладку; у вкладки задачи с
 упавшим последним прогоном — красная точка. Досинки TMDB в расписание не

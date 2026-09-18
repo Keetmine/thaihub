@@ -144,6 +144,22 @@ async function main() {
     });
     assert.equal(withPresale.presaleUrl, url("presale"));
 
+    // Черновик ThaiStarX: своя ссылка на продажи и часовой пояс едут в
+    // событие; нет билетной ссылки — пусто, а не адрес самого поста.
+    const tsx = ttmDraftSubmission({
+      sourceUrl: "https://thaistarx.com/en/some-post/",
+      payload: { title: "T", presaleDate: "2030-01-01", presaleTime: "10:00", presaleUrl: null, timezone: "Asia/Taipei" },
+      matchedPerformers: [],
+    });
+    assert.equal(tsx.presaleUrl, "", "без билетной ссылки — пусто, не сам пост");
+    assert.equal(tsx.timezone, "Asia/Taipei");
+    const tsxLink = ttmDraftSubmission({
+      sourceUrl: "https://thaistarx.com/en/some-post/",
+      payload: { title: "T", presaleUrl: "https://kktix.com/x", timezone: null },
+      matchedPerformers: [],
+    });
+    assert.equal(tsxLink.presaleUrl, "https://kktix.com/x", "билетная ссылка — и без даты старта продаж");
+
     console.log("ok: eventDraftsBatch");
   } finally {
     await cleanup();

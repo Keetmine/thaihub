@@ -184,13 +184,19 @@ npx tsx --env-file=.env scripts/dedupe-event-drafts.ts --apply  # примени
 
 ## Очередь в админке
 
-`/admin/imports?tab=events`, блок «Черновики событий (N)». Карточка:
+`/admin/imports?tab=events`, блок «Черновики событий (N)». Очередь
+**общая с краулером thaistarx.com** (см. [thaistarx-crawl.md](thaistarx-crawl.md)):
+в строке черновика виден хост источника и часовой пояс, если он не
+бангкокский. Карточка:
 постер-превью, название ссылкой на TTM, даты/время/площадка, чипы
 совпавших артистов (ссылки на их админ-карточки).
 
 - **«Одобрить»** — создаёт событие **существующим путём**
   `createEventFromTtmImport` (одна транзакция, постер скачивается к нам
-  через `downloadRemoteImage`, мультидень из `extraDates`, пресейл);
+  через `downloadRemoteImage`, мультидень из `extraDates`, пресейл;
+  время начала не обязательно — без него `hasTime: false`, а
+  `payload.timezone`/`presaleUrl` черновиков ThaiStarX уезжают в
+  событие);
   черновик → APPROVED + `eventId`. К событию привязываются **только
   совпавшие** артисты (`extraPerformerIds`): остальной состав спарсен
   эвристикой `parseArtistLine`, и новых исполнителей без ручной

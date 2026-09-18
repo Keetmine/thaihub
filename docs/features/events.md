@@ -953,6 +953,11 @@ scrape itself is read-only. Если событие с этим sourceUrl уже
   `$transaction`: any artist without a match gets a new `Performer`
   (`type: SOLO`), then the `Event` is created linking every included
   artist plus any extra performers picked manually in the review screen.
+  Required: title, venue, date. Start time is optional since 2026-09-18
+  (ThaiStarX drafts often have only a date): empty time → occurrences at
+  00:00 with `hasTime: false`, same as the manual form. An optional
+  `timezone` on the submission becomes `Event.timezone` (fan meetings in
+  Taipei or Manila keep their local clock).
 - **The poster is downloaded before the write, never stored as a
   thaiticketmajor.com link** — `downloadRemoteImage(url, "posters")`
   (`src/lib/localImage.ts`, the same helper every other importer uses;

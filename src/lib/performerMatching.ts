@@ -286,3 +286,194 @@ export async function matchFestivalArtists(
     return { ...a, performerId: [...ids][0], via: "by-name" };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Теги thaistarx.com (краулер src/lib/thaiStarXCrawl.ts, см.
+// docs/features/thaistarx-crawl.md). У поста о событии в CSS-классах
+// `<article>` лежат теги — слаги артистов, пейрингов и агентств:
+// `forcebook`, `namtan-tipnaree`, `lykn`, `jasp-er`, `gmmtv`. Состав
+// события в прозе поста ненадёжен («Presented by … Force Jiratchapong
+// Srisang and Book …»), а теги проставляет редакция — по ним и матчим.
+//
+// Отдельно от matchArtistsByNickname: там на входе «ник + полное имя» со
+// строки билетного сайта, здесь — слаг, который бывает пейрингом
+// («milklove» = Milk + Love), и сравнивать надо без дефисов и регистра.
+// Правила те же по духу: одно точное совпадение — привязка, тёзки —
+// вопрос владельцу, никакого фаззи.
+
+export type TagCatalog = {
+  performers: { id: string; name: string; realName: string | null; musicAlias: string | null; birthYear: number | null; type: "SOLO" | "BAND" }[];
+  pairings: { performerAId: string; performerBId: string; nameA: string; nameB: string }[];
+};
+
+export type TagMatchResult = {
+  /** Привязанные исполнители: performerId + ник, как в EventDraft.matchedPerformers. */
+  matched: { performerId: string; nickname: string }[];
+  /** Теги, у которых несколько кандидатов и полное имя не развело. */
+  ambiguous: { nickname: string; fullName: string; candidates: ArtistCandidate[] }[];
+  /** Теги, которые ни на кого не похожи (агентства, даты турне и т.п.). */
+  unmatched: string[];
+};
+
+/** Каталог для матчинга тегов — один раз на прогон, не на каждое
+ *  событие: сравнение без дефисов в SQL не выразить, а исполнителей
+ *  десять тысяч. */
+export async function loadTagCatalog(): Promise<TagCatalog> {
+  const [performers, pairings] = await Promise.all([
+    prisma.performer.findMany({
+      where: { type: { in: ["SOLO", "BAND"] } },
+      select: { id: true, name: true, realName: true, musicAlias: true, birthDate: true, type: true },
+    }),
+    prisma.pairing.findMany({
+      select: {
+        performerAId: true,
+        performerBId: true,
+        performerA: { select: { name: true } },
+        performerB: { select: { name: true } },
+      },
+    }),
+  ]);
+  return {
+    performers: performers.map((p) => ({
+      id: p.id,
+      name: p.name,
+      realName: p.realName,
+      musicAlias: p.musicAlias,
+      birthYear: p.birthDate?.getUTCFullYear() ?? null,
+      type: p.type as "SOLO" | "BAND",
+    })),
+    pairings: pairings.map((p) => ({
+      performerAId: p.performerAId,
+      performerBId: p.performerBId,
+      nameA: p.performerA.name,
+      nameB: p.performerB.name,
+    })),
+  };
+}
+
+/**
+ * Чистый матчинг тегов по каталогу (тестируется без БД).
+ *
+ * Для каждого тега (даты «20260404» отбрасываются заранее):
+ * 1. **Пейринг**: слаг равен склейке ников участников в любом порядке
+ *    («williamest» = William + Est) — привязываются оба.
+ * 2. **Исполнитель целиком**: слаг равен нику или музыкальному алиасу
+ *    без дефисов/точек/регистра («jasp-er» = JASP.ER, «lykn» = LYKN).
+ * 2б. **Склейка двух ников** без пейринга в каталоге («milklove» = Milk +
+ *    Love, «lingorm» = Ling + Orm): слаг режется на две части, каждая —
+ *    ровно один исполнитель по нику (обе части не короче трёх знаков).
+ *    Сухой прогон 2026-09-18 показал, что почти все «без совпадений» —
+ *    именно такие GL-пары: актрисы в каталоге есть, пейринга нет. Правило
+ *    идёт после «целиком», поэтому «namtan» не режется на Nam + Tan.
+ * 3. **«ник-имя»**: слаг вида «namtan-tipnaree» — первая часть ник,
+ *    остальное подсказка к реальному имени. Кандидаты по нику; несколько
+ *    — разводим по началу реального имени («tipnaree» ↔ «Tipnaree
+ *    Weerasakchai»). Ровно один — привязка, иначе тёзки.
+ * Ни одно правило не сработало — тег в unmatched (так уходят агентства:
+ * «gmmtv», «ch3-thailand» — они и не должны совпадать).
+ */
+export function matchTagsAgainstCatalog(tags: string[], catalog: TagCatalog): TagMatchResult {
+  const norm = (s: string) => s.toLowerCase().replace(/[-\s.'’_]/g, "");
+  const byLoose = new Map<string, TagCatalog["performers"]>();
+  for (const p of catalog.performers) {
+    for (const n of [p.name, p.musicAlias]) {
+      if (!n) continue;
+      const key = norm(n);
+      if (!key) continue;
+      const list = byLoose.get(key) ?? [];
+      if (!list.some((c) => c.id === p.id)) list.push(p);
+      byLoose.set(key, list);
+    }
+  }
+  const pairingByKey = new Map<string, TagCatalog["pairings"][number]>();
+  for (const pr of catalog.pairings) {
+    pairingByKey.set(norm(pr.nameA + pr.nameB), pr);
+    pairingByKey.set(norm(pr.nameB + pr.nameA), pr);
+  }
+  const byId = new Map(catalog.performers.map((p) => [p.id, p]));
+  const toCandidate = (p: TagCatalog["performers"][number]): ArtistCandidate => ({
+    id: p.id,
+    name: p.name,
+    realName: p.realName,
+    birthYear: p.birthYear,
+    type: p.type,
+  });
+
+  const matched: TagMatchResult["matched"] = [];
+  const ambiguous: TagMatchResult["ambiguous"] = [];
+  const unmatched: string[] = [];
+  const add = (performerId: string, nickname: string) => {
+    if (!matched.some((m) => m.performerId === performerId)) matched.push({ performerId, nickname });
+  };
+
+  for (const raw of tags) {
+    const tag = raw.trim().toLowerCase();
+    if (!tag || /^\d{8}$/.test(tag)) continue;
+    const key = norm(tag);
+
+    // 1. Пейринг — оба участника.
+    const pairing = pairingByKey.get(key);
+    if (pairing) {
+      add(pairing.performerAId, byId.get(pairing.performerAId)?.name ?? pairing.nameA);
+      add(pairing.performerBId, byId.get(pairing.performerBId)?.name ?? pairing.nameB);
+      continue;
+    }
+
+    // 2. Ник/алиас целиком.
+    const whole = byLoose.get(key) ?? [];
+    if (whole.length === 1) {
+      add(whole[0].id, whole[0].name);
+      continue;
+    }
+
+    // 2б. Склейка двух ников без пейринга в каталоге. Только когда тег
+    // не содержит дефиса (иначе это «ник-имя», правило 3) и целиком ни
+    // на кого не похож.
+    if (whole.length === 0 && !tag.includes("-") && key.length >= 6) {
+      let split: [TagCatalog["performers"][number], TagCatalog["performers"][number]] | null = null;
+      let splits = 0;
+      for (let i = 3; i <= key.length - 3; i++) {
+        const a = byLoose.get(key.slice(0, i)) ?? [];
+        const b = byLoose.get(key.slice(i)) ?? [];
+        if (a.length === 1 && b.length === 1 && a[0].id !== b[0].id) {
+          splits++;
+          split = [a[0], b[0]];
+        }
+      }
+      // Ровно одно разбиение — иначе неясно, где граница.
+      if (split && splits === 1) {
+        add(split[0].id, split[0].name);
+        add(split[1].id, split[1].name);
+        continue;
+      }
+    }
+
+    // 3. «ник-имя».
+    const dash = tag.indexOf("-");
+    if (dash > 0) {
+      const nick = tag.slice(0, dash);
+      const hint = norm(tag.slice(dash + 1));
+      const found = byLoose.get(norm(nick)) ?? [];
+      if (found.length === 1) {
+        add(found[0].id, found[0].name);
+        continue;
+      }
+      if (found.length > 1) {
+        const narrowed = found.filter((c) => c.realName && norm(c.realName).startsWith(hint));
+        if (narrowed.length === 1) {
+          add(narrowed[0].id, narrowed[0].name);
+          continue;
+        }
+        ambiguous.push({ nickname: nick, fullName: tag.slice(dash + 1).replace(/-/g, " "), candidates: found.map(toCandidate) });
+        continue;
+      }
+    }
+
+    if (whole.length > 1) {
+      ambiguous.push({ nickname: tag, fullName: "", candidates: whole.map(toCandidate) });
+      continue;
+    }
+    unmatched.push(tag);
+  }
+  return { matched, ambiguous, unmatched };
+}

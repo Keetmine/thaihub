@@ -297,6 +297,31 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "thaistarx-crawl",
+    title: "ThaiStarX: фан-события по миру",
+    description:
+      "Обходит трекер thaistarx.com — фанмиты, концерты, фанконы и премьеры тайских " +
+      "артистов по всему миру — и кладёт новые события черновиками в очередь на " +
+      "проверку (вкладка «События» в импортах): состав из тегов поста, а если есть " +
+      "ссылка на ThaiTicketMajor — время, цены и состав дочитываются оттуда. Само в " +
+      "афишу ничего не попадает. Листает список с первой страницы и останавливается, " +
+      "где всё уже знакомо; события без совпадений перепроверяются раз в неделю. " +
+      "Архив (все прошедшие) забирается разово кнопкой на странице импортов.",
+    supportsTargets: false,
+    logKind: "thaistarx-crawl",
+    logsItems: true,
+    run: async () => {
+      const { runThaiStarXCrawl, summarizeThaiStarXCrawl } = await import("@/lib/thaiStarXCrawl");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "thaistarx-crawl",
+        (runId) => runThaiStarXCrawl({ listing: "recent", runId }),
+        summarizeThaiStarXCrawl,
+      );
+      return result ? summarizeThaiStarXCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "gmmtv-mascots",
     title: "GMMTV: маскоты с вики",
     description:

@@ -36,11 +36,11 @@ export async function GET(req: NextRequest): Promise<Response> {
   } catch {
     return new NextResponse("Not found", { status: 404 });
   }
+  // Хосты постеров черновиков: TTM и thaistarx.com (wp-content) — тот
+  // же прокси, чтобы очередь не хотлинкала чужие картинки напрямую.
   const host = parsed.hostname.toLowerCase();
-  if (
-    parsed.protocol !== "https:" ||
-    (host !== "thaiticketmajor.com" && !host.endsWith(".thaiticketmajor.com"))
-  ) {
+  const allowed = ["thaiticketmajor.com", "thaistarx.com"].some((h) => host === h || host.endsWith(`.${h}`));
+  if (parsed.protocol !== "https:" || !allowed) {
     return new NextResponse("Not found", { status: 404 });
   }
 

@@ -30,6 +30,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Payload черновика — распарс TtmEvent плюс пометка матчинга дублей. */
 export type EventDraftPayload = Partial<TtmEvent> & {
   possibleDuplicateOf?: PossibleDuplicate;
+  /** Черновики ThaiStarX (src/lib/thaiStarXCrawl.ts): своя ссылка на
+   *  продажи и часовой пояс площадки. У черновиков TTM их нет. */
+  presaleUrl?: string | null;
+  timezone?: string | null;
 };
 
 /**
@@ -59,9 +63,15 @@ export function ttmDraftSubmission(draft: {
     posterUrl: payload.posterUrl ?? "",
     presaleDate: hasPresale ? payload.presaleDate! : "",
     presaleTime: hasPresale ? payload.presaleTime! : "",
-    // Как в ручном импорте: покупают билеты на самой странице TTM.
-    presaleUrl: hasPresale ? draft.sourceUrl : "",
+    // Как в ручном импорте: покупают билеты на самой странице TTM. У
+    // черновика ThaiStarX (ключ presaleUrl в payload есть всегда) ссылка
+    // своя — TTM или другая платформа — и нужна даже без даты старта
+    // продаж, это «где купить»; а нет билетной ссылки — пусто, сам пост
+    // трекера билетами не торгует.
+    presaleUrl:
+      payload.presaleUrl !== undefined ? (payload.presaleUrl ?? "") : hasPresale ? draft.sourceUrl : "",
     sourceUrl: draft.sourceUrl,
+    timezone: payload.timezone ?? null,
     artists: [],
     extraPerformerIds: matched.map((m) => m.performerId),
   };

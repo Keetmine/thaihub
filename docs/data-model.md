@@ -70,10 +70,13 @@ copy — read the schema file for exact field types/nullability.
   Cascade-deletes with its `Event`.
 - **`EventPerformer`** / **`EventPairing`** — join tables, event ↔
   performer / event ↔ pairing.
-- **`EventDraft`** — черновик события из краулера афиши ThaiTicketMajor
-  и заодно память краулера (PENDING/APPROVED/REJECTED/NO_MATCH); своя
-  таблица, а не флаг на `Event` — до одобрения владельцем публичная
-  таблица не трогается. См. [ttm-crawl.md](features/ttm-crawl.md).
+- **`EventDraft`** — черновик события из краулеров афиши ThaiTicketMajor
+  и трекера thaistarx.com (у второго в `payload` ещё `presaleUrl`,
+  `timezone` и блок `thaiStarX` с тегами и билетными ссылками) и заодно
+  память краулеров (PENDING/APPROVED/REJECTED/NO_MATCH); своя таблица, а
+  не флаг на `Event` — до одобрения владельцем публичная таблица не
+  трогается. См. [ttm-crawl.md](features/ttm-crawl.md) и
+  [thaistarx-crawl.md](features/thaistarx-crawl.md).
   Краулер фестивалей musicfestival.in.th черновиков не создаёт, но той
   же таблицей (строка APPROVED с `eventId`) запоминает адреса фестивалей,
   оказавшихся дублями уже существующих событий.
