@@ -1,16 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffe3bd"/>
-      <stop offset="1" stop-color="#ffd096"/>
+      <stop offset="0" stop-color="#ff9a40"/>
+      <stop offset="1" stop-color="#ff7a2a"/>
     </linearGradient>
-    <linearGradient id="c1" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffb469"/>
-      <stop offset="1" stop-color="#ff9040"/>
+    <linearGradient id="pink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffc98f"/>
+      <stop offset="1" stop-color="#ffad63"/>
     </linearGradient>
-    <linearGradient id="c2" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ff8f45"/>
+    <linearGradient id="coral" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff7a3d"/>
       <stop offset="1" stop-color="#f96a1b"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#f25a1f"/>
+      <stop offset="1" stop-color="#e8431f"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffb469"/>
+      <stop offset="1" stop-color="#ff9a40"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d63a18"/>
+      <stop offset="1" stop-color="#c22f12"/>
     </linearGradient>
     <clipPath id="clip">
       <rect width="512" height="512" rx="118"/>
@@ -18,14 +30,15 @@
   </defs>
   <rect width="512" height="512" rx="118" fill="url(#bg)"/>
   <g clip-path="url(#clip)">
-    <g transform="translate(170 330) scale(3.6) translate(-170 -334)">
-      <path fill="url(#c1)" opacity="0.55" d="M170 414c-4 0-8-1.6-11-4.6-11.4-10.8-42-37.6-56-56C92 339 86 324 86 308c0-31 24-54 53-54 12.6 0 24.4 5 31 14 6.6-9 18.4-14 31-14 29 0 53 23 53 54 0 16-6 31-17 45.4-14 18.4-44.6 45.2-56 56-3 3-7 4.6-11 4.6z"/>
-    </g>
-    <g transform="translate(170 330) scale(2.2) translate(-170 -334)">
-      <path fill="url(#c2)" opacity="0.75" d="M170 414c-4 0-8-1.6-11-4.6-11.4-10.8-42-37.6-56-56C92 339 86 324 86 308c0-31 24-54 53-54 12.6 0 24.4 5 31 14 6.6-9 18.4-14 31-14 29 0 53 23 53 54 0 16-6 31-17 45.4-14 18.4-44.6 45.2-56 56-3 3-7 4.6-11 4.6z"/>
-    </g>
+    <path fill="url(#pink)" d="M-40-40H330C400 30 330 150 200 170C80 190-10 130-40 60Z"/>
+    <path fill="url(#coral)" d="M-40 560V320C90 260 190 420 330 330C420 270 500 140 560 40V560Z"/>
+    <path fill="url(#orange)" d="M-40 560V440C110 400 240 520 380 430C460 380 520 300 560 230V560Z"/>
+    <path fill="url(#gold)" d="M150 560C240 490 400 470 560 360V560Z"/>
+    <path fill="url(#mint)" d="M-40 560V425C70 410 170 465 250 560Z"/>
   </g>
-  <g transform="translate(170 330) scale(1.18) translate(-170 -334)">
-    <path fill="#e8431f" d="M170 414c-4 0-8-1.6-11-4.6-11.4-10.8-42-37.6-56-56C92 339 86 324 86 308c0-31 24-54 53-54 12.6 0 24.4 5 31 14 6.6-9 18.4-14 31-14 29 0 53 23 53 54 0 16-6 31-17 45.4-14 18.4-44.6 45.2-56 56-3 3-7 4.6-11 4.6z"/>
+  <g fill="#fff" fill-rule="evenodd" transform="translate(-5 0)">
+    <path d="M81 331V181h38l21 66 21-66h38v150h-34v-87l-18 58h-14l-18-58v87z"/>
+    <path d="M219 331V181h52c30 0 48 16 48 40 0 15-8 26-20 31 16 5 26 18 26 36 0 26-20 43-52 43zm34-119v32h16c12 0 18-6 18-16s-6-16-18-16zm0 62v27h20c13 0 20-6 20-14s-7-13-20-13z"/>
+    <path d="M345 331V181h34v56h28v-56h34v150h-34v-60h-28v60z"/>
   </g>
 </svg>

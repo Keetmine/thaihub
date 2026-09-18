@@ -21,12 +21,20 @@ The tab bar and the burger drawer show below `lg` (992px) — see
   the browser remembers the name at install time: reading the locale
   cookie here would mean the home-screen shortcut is labelled in whatever
   language happened to be selected that day.
-- **`public/icons/icon-192.png`** / **`icon-512.png`** — generated once
-  by rendering the app's existing brand mark (the pin+dot from
-  `src/components/Logo.tsx`) to HTML and screenshotting it with
-  Playwright at each size (no image-editing tool involved — see git
-  history around when this was added if you need to regenerate them at a
-  different size).
+- **`public/icons/icon-192.png`** / **`icon-512.png`** — растеризуются
+  sharp-ом из `public/icons/logo.svg` (тот же знак, что в
+  `src/components/Logo.tsx` и `src/app/icon.svg`). Знак переделан
+  2026-09-18 по референсу владельца (иконка 1.1.1.1): скруглённый
+  квадрат, дуги, которые закручиваются и пересекаются, в оранжевой
+  гамме прежнего знака (персиковый завиток, фирменная оранжевая
+  основа, дуги к красно-оранжевому `#e8431f`), и белая монограмма
+  **MBH** — короткая марка бренда; полное имя MyBLHub остаётся в
+  вордмарке рядом со знаком и в домене. Радужные версии (пастельная,
+  тёплая, в порядке прайд-флага, инвертированная маской внутри букв)
+  владелец посмотрела и вернулась к оранжевой. Буквы нарисованы
+  контурами, не шрифтом: в SVG-файлах веб-шрифта нет, и текст поплыл
+  бы. Пересобрать PNG: `node -e` со sharp (`resize(192/512)` из svg,
+  density 300) — так же сделан `public/apple-touch-icon.png` (180).
 - **`src/app/layout.tsx`** — `icons` in `generateMetadata()` (favicon +
   apple-touch-icon, both pointing at the 192px icon) and a separate `viewport` export for
   `themeColor` (this Next.js version deprecated `metadata.themeColor` in
