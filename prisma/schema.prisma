@@ -196,7 +196,7 @@ model Performer {
   links                 PerformerLink[]
   favoritedBy           FavoritePerformer[]
   birthdayNotifications BirthdayNotification[]
-  personalEvents        TripPersonalEventPerformer[]
+  personalEventDays     TripPersonalEventDayPerformer[]
   pairingsAsA           Pairing[]                    @relation("PairingA")
   pairingsAsB           Pairing[]                    @relation("PairingB")
 
@@ -1187,10 +1187,14 @@ model TripPersonalEvent {
   // Историческое поле, его заменяет visibility.
   isPrivate        Boolean                       @default(false)
   visibility       TripItemVisibility            @default(PARTICIPANTS)
-  // Кто из артистов будет на событии (фанмит, ужин с актёром): после
-  // даты события они попадают в «видел(а) вживую» создателя записи —
-  // см. lib/userStats.ts.
-  performers       TripPersonalEventPerformer[]
+  // Дни события (правка владельца 2026-09-18: «на личные даты тоже
+  // несколько дней и на каждый день свой актёрский состав»). У каждого
+  // дня свои дата, время и артисты; startsAt выше — первый день,
+  // держится в синхроне при сохранении (по нему сортировка, главная и
+  // расходы). Артисты дня после его даты попадают в «видел(а) вживую»
+  // отметившимся — см. lib/userStats.ts. Запись без дней (старые
+  // сиды тестов) лента считает однодневной по startsAt.
+  days             TripPersonalEventDay[]
   // Отметки «я там буду» участников — см. TripPersonalEventAttendance.
   attendances      TripPersonalEventAttendance[]
   // Показывать в блоке «Вы идёте» на главной (Ж11) — по желанию:
@@ -2231,14 +2235,29 @@ model TripBooking {
 // «Видела вживую» вручную: концерты до регистрации на сайте, случайные
 // встречи и события, которых нет в нашей афише. Считается в статистике
 // наравне с отметками «я ходил(а)» — см. features/gamification.md.
-model TripPersonalEventPerformer {
-  id              String            @id @default(cuid())
+/// День личного события: дата, время и СВОЙ состав. Фестиваль на три
+/// дня с разными артистами каждый день — три строки; ужин с актёром —
+/// одна.
+model TripPersonalEventDay {
+  id              String                          @id @default(cuid())
   personalEventId String
-  personalEvent   TripPersonalEvent @relation(fields: [personalEventId], references: [id], onDelete: Cascade)
-  performerId     String
-  performer       Performer         @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  personalEvent   TripPersonalEvent               @relation(fields: [personalEventId], references: [id], onDelete: Cascade)
+  /// Настенное время в UTC-слоте, как у всей поездки; без времени —
+  /// 00:00 (та же договорённость, что у самого события).
+  startsAt        DateTime
+  performers      TripPersonalEventDayPerformer[]
 
-  @@unique([personalEventId, performerId])
+  @@index([personalEventId])
+}
+
+model TripPersonalEventDayPerformer {
+  id          String               @id @default(cuid())
+  dayId       String
+  day         TripPersonalEventDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  performerId String
+  performer   Performer            @relation(fields: [performerId], references: [id], onDelete: Cascade)
+
+  @@unique([dayId, performerId])
   @@index([performerId])
 }
 

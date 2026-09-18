@@ -605,7 +605,7 @@ async function createTripCopyFor(tripId: string, userId: string): Promise<string
       stays: { where: { userId }, select: { startDate: true, endDate: true } },
       personalEvents: {
         where: { createdById: userId },
-        include: { performers: { select: { performerId: true } } },
+        include: { days: { include: { performers: { select: { performerId: true } } } } },
       },
       todos: { where: { createdById: userId } },
       bookings: { where: { createdById: userId } },
@@ -631,7 +631,12 @@ async function createTripCopyFor(tripId: string, userId: string): Promise<string
           locationId: e.locationId,
           createdById: userId,
           visibility: e.visibility,
-          performers: { create: e.performers.map((p) => ({ performerId: p.performerId })) },
+          days: {
+            create: e.days.map((d) => ({
+              startsAt: d.startsAt,
+              performers: { create: d.performers.map((p) => ({ performerId: p.performerId })) },
+            })),
+          },
         })),
       },
       todos: {
@@ -693,7 +698,13 @@ function parsePersonalEventForm(
 ): {
   title: string;
   note: string | null;
+  /** Первый день — для сортировки, главной и расходов. */
   startsAt: Date;
+  /** Дни события: дата, время и СВОЙ состав у каждого (правка владельца
+   *  2026-09-18). Поля формы индексные: day-0-date, day-0-time,
+   *  day-0-performerIds (много), day-0-id — id существующего дня при
+   *  правке, чтобы день правился, а не заводился заново. */
+  days: { id: string | null; startsAt: Date; performerIds: string[] }[];
   locationId: string | null;
   editableByOthers: boolean;
   visibility: TripItemVisibility;
@@ -701,16 +712,30 @@ function parsePersonalEventForm(
   showOnHome: boolean;
   imageUrl: string | null;
   url: string | null;
-  performerIds: string[];
   attending: boolean;
   priceMinor: number | null;
   priceCurrency: "THB" | "RUB" | "BYN" | "USD" | null;
 } | null {
   const title = String(formData.get("title") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
-  const date = String(formData.get("date") ?? "");
-  const time = String(formData.get("time") ?? "").trim();
   const locationId = String(formData.get("locationId") ?? "").trim();
+  // Дни — индексные поля day-N-*; читаем подряд, пока есть дата.
+  // Строка без даты пропускается (пустой добавленный ряд), дубли дат
+  // схлопываются: два одинаковых дня — это один день.
+  const days: { id: string | null; startsAt: Date; performerIds: string[] }[] = [];
+  for (let i = 0; i < 31; i++) {
+    const date = String(formData.get(`day-${i}-date`) ?? "").trim();
+    if (!date) continue;
+    const time = String(formData.get(`day-${i}-time`) ?? "").trim();
+    const performerIds = formData
+      .getAll(`day-${i}-performerIds`)
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+    const startsAt = combineDateTime(date, time || "00:00");
+    if (days.some((d) => +d.startsAt === +startsAt)) continue;
+    days.push({ id: String(formData.get(`day-${i}-id`) ?? "").trim() || null, startsAt, performerIds });
+  }
+  days.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
   // Ссылка «куда посмотреть» (просьба владельца 2026-09-10): бронь на
   // сайте площадки, страница мероприятия, точка на карте. Только
   // http(s) — `javascript:` и `data:` в ссылке, которую откроет другой
@@ -719,17 +744,14 @@ function parsePersonalEventForm(
   // сохраняться не перестаёт.
   const rawUrl = String(formData.get("url") ?? "").trim();
   const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : null;
-  if (!title || !date) return null;
-  const performerIds = formData
-    .getAll("performerIds")
-    .map((v) => String(v).trim())
-    .filter(Boolean);
+  if (!title || days.length === 0) return null;
   // Без времени событие встаёт на начало дня — в списке поездки такие
   // сортируются раньше всех событий этого дня.
   return {
     title,
     note: note || null,
-    startsAt: combineDateTime(date, time || "00:00"),
+    startsAt: days[0].startsAt,
+    days,
     locationId: locationId || null,
     editableByOthers: formData.get("editableByOthers") === "on",
     ...itemVisibilityData(
@@ -738,7 +760,6 @@ function parsePersonalEventForm(
     showOnHome: formData.get("showOnHome") === "on",
     imageUrl: String(formData.get("imageUrl") ?? "").trim() || null,
     url,
-    performerIds,
     // «Я там буду» — СВОЯ отметка редактирующего (в форме включена по
     // умолчанию): планов создают больше, чем посещают, и артисты
     // события идут в «видел(а) вживую» только отметившимся.
@@ -766,13 +787,18 @@ export async function createTripPersonalEvent(
   if (data.locationId && !(await canUseLocation(data.locationId, access.user.id))) {
     return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
   }
-  const { performerIds, attending, ...fields } = data;
+  const { days, attending, ...fields } = data;
   await prisma.tripPersonalEvent.create({
     data: {
       tripId: access.trip.id,
       createdById: access.user.id,
       ...fields,
-      performers: { create: performerIds.map((performerId) => ({ performerId })) },
+      days: {
+        create: days.map((d) => ({
+          startsAt: d.startsAt,
+          performers: { create: d.performerIds.map((performerId) => ({ performerId })) },
+        })),
+      },
       ...(attending ? { attendances: { create: { userId: access.user.id } } } : {}),
     },
   });
@@ -791,6 +817,7 @@ export async function updateTripPersonalEvent(
   // where включает tripId — id чужого события с чужой поездкой не пройдёт.
   const item = await prisma.tripPersonalEvent.findFirst({
     where: { id: personalEventId, tripId: trip.id },
+    include: { days: { select: { id: true } } },
   });
   if (!item || !canTouchItem(item, user.id, trip.userId)) {
     return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
@@ -809,17 +836,45 @@ export async function updateTripPersonalEvent(
   if (data.locationId && data.locationId !== item.locationId && !(await canUseLocation(data.locationId, user.id))) {
     return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
   }
-  const { performerIds, attending, ...fields } = data;
+  const { days, attending, ...fields } = data;
+  // Дни синхронизируем по id, как даты встречи сообщества: известный
+  // день правится на месте, новый заводится, пропавший удаляется.
+  // Состав дня приходит целиком — старые связи заменяются новыми.
+  const known = new Set(item.days.map((d) => d.id));
+  const kept = new Set<string>();
+  for (const day of days) {
+    if (day.id && known.has(day.id)) {
+      kept.add(day.id);
+      await prisma.tripPersonalEventDay.update({
+        where: { id: day.id },
+        data: {
+          startsAt: day.startsAt,
+          performers: {
+            deleteMany: {},
+            create: day.performerIds.map((performerId) => ({ performerId })),
+          },
+        },
+      });
+      continue;
+    }
+    const created = await prisma.tripPersonalEventDay.create({
+      data: {
+        personalEventId,
+        startsAt: day.startsAt,
+        performers: { create: day.performerIds.map((performerId) => ({ performerId })) },
+      },
+      select: { id: true },
+    });
+    kept.add(created.id);
+  }
+  const removed = [...known].filter((id) => !kept.has(id));
+  if (removed.length > 0) {
+    await prisma.tripPersonalEventDay.deleteMany({ where: { id: { in: removed } } });
+  }
   await prisma.tripPersonalEvent.update({
     where: { id: personalEventId },
     data: {
       ...fields,
-      // Список артистов приходит целиком — старые связи заменяются
-      // новыми, а не дополняются.
-      performers: {
-        deleteMany: {},
-        create: performerIds.map((performerId) => ({ performerId })),
-      },
       // Правится только СВОЯ отметка: галочка в форме — про редактора,
       // отметки других участников не трогаем.
       attendances: attending

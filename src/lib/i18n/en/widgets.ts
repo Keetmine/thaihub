@@ -168,7 +168,7 @@ export const widgets = {
     unmarkHere: "Not seen here",
     outside: "Seen outside the feed",
     outsideHint: "A concert before you joined, a chance meeting",
-    personal: (n: number) => `Personal events on trips: ${n}`,
+    personalTitle: "Personal events on trips",
     personalHint: "edited inside the trip",
   },
   commentLike: {

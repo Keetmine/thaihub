@@ -52,7 +52,16 @@ export type PersonalEventData = {
   url: string | null;
   // Артисты на событии: после даты события попадают в «видел(а)
   // вживую» — но только отметившимся «я там буду».
-  performers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
+  /** Дни события с составом каждого (правка владельца 2026-09-18).
+   *  Порядок — по дате; у записи без дней в базе (старые сиды) страница
+   *  подставляет один день из startsAt. */
+  days: {
+    id: string;
+    startsAt: Date;
+    dateKey: string;
+    timeValue: string;
+    performers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
+  }[];
   /** СВОЯ отметка «я там буду» смотрящего (у каждого участника своя). */
   attending: boolean;
   canEdit: boolean;
@@ -69,10 +78,14 @@ export function PersonalEventFields({
   defaults?: {
     title: string;
     note: string | null;
-    dateKey: string;
-    timeValue: string;
+    /** Дни с составом; пусто — форма создания с одним пустым днём. */
+    days?: {
+      id: string | null;
+      dateKey: string;
+      timeValue: string;
+      performers: { id: string; name: string; photoUrl?: string | null }[];
+    }[];
     location?: { id: string; name: string } | null;
-    performers?: { id: string; name: string; photoUrl?: string | null }[];
     editableByOthers?: boolean;
     visibility?: TripItemVisibilityValue;
     showOnHome?: boolean;
@@ -90,6 +103,20 @@ export function PersonalEventFields({
 }) {
   const t = useT();
   const uid = useId();
+  // Дни — локальное состояние формы: ряд «дата · время · артисты» на
+  // день, «+ Ещё день» добавляет ряд. Имена полей индексные по ПОЗИЦИИ
+  // ряда (day-0-…), экшен читает их подряд, поэтому после удаления
+  // ряда индексы пересчитываются сами при рендере.
+  const [days, setDays] = useState<
+    { key: number; id: string | null; dateKey: string; timeValue: string; performers: { id: string; name: string; photoUrl?: string | null }[] }[]
+  >(() =>
+    defaults?.days && defaults.days.length > 0
+      ? defaults.days.map((d, i) => ({ key: i, ...d }))
+      : [{ key: 0, id: null, dateKey: "", timeValue: "", performers: [] }],
+  );
+  const [nextKey, setNextKey] = useState(days.length);
+  // Какие дни раскрыли поле артистов (по ключу ряда).
+  const [openPerformers, setOpenPerformers] = useState<Set<number>>(() => new Set());
   return (
     <>
       <div>
@@ -104,36 +131,91 @@ export function PersonalEventFields({
           className="form-control"
         />
       </div>
-      <div className="row g-2">
-        <div className="col-7">
-          <label className="form-label small text-secondary" htmlFor={`${uid}-date`}>{t.trips.personal.date}</label>
-          <DatePickerInput id={`${uid}-date`} name="date" required defaultValue={defaults?.dateKey} />
-        </div>
-        <div className="col-5">
-          <label className="form-label small text-secondary" htmlFor={`${uid}-time`}>{t.trips.personal.time}</label>
-          <TimeInput id={`${uid}-time`} name="time" defaultValue={defaults?.timeValue ?? ""} />
+      {/* Дни события (правка владельца 2026-09-18): у каждого своя дата,
+          время и состав. Один ряд — обычный ужин с актёром; три ряда —
+          фестиваль, где каждый день выступают разные. Артисты выбираются
+          общим комбобоксом с серверным поиском, уже выбранные приезжают
+          options'ами, чтобы капсулы нарисовались сразу. */}
+      <div className="d-flex flex-column gap-3">
+        {days.map((day, i) => (
+          <div key={day.key} className="personal-day">
+            {days.length > 1 && (
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <span className="small text-secondary">{t.trips.personal.dayN(i + 1)}</span>
+                <button
+                  type="button"
+                  className="btn-link-accent small"
+                  onClick={() => setDays((prev) => prev.filter((_, j) => j !== i))}
+                >
+                  {t.trips.personal.removeDay}
+                </button>
+              </div>
+            )}
+            {day.id && <input type="hidden" name={`day-${i}-id`} value={day.id} />}
+            <div className="row g-2">
+              <div className="col-7">
+                <label className="form-label small text-secondary" htmlFor={`${uid}-day-${i}-date`}>
+                  {t.trips.personal.date}
+                </label>
+                <DatePickerInput
+                  id={`${uid}-day-${i}-date`}
+                  name={`day-${i}-date`}
+                  required={i === 0}
+                  defaultValue={day.dateKey || undefined}
+                />
+              </div>
+              <div className="col-5">
+                <label className="form-label small text-secondary" htmlFor={`${uid}-day-${i}-time`}>
+                  {t.trips.personal.time}
+                </label>
+                <TimeInput id={`${uid}-day-${i}-time`} name={`day-${i}-time`} defaultValue={day.timeValue} />
+              </div>
+            </div>
+            {/* Артисты — свёрнуты по умолчанию, как в админке (правка
+                владельца 2026-09-18): у большинства записей состава нет,
+                и поле только удлиняло форму. День с уже выбранными
+                артистами открыт сразу. */}
+            {day.performers.length > 0 || openPerformers.has(day.key) ? (
+              <div className="mt-2">
+                <label className="form-label small text-secondary" htmlFor={`${uid}-day-${i}-performers`}>
+                  {t.trips.personal.performers}
+                </label>
+                <EntityMultiSelect
+                  id={`${uid}-day-${i}-performers`}
+                  name={`day-${i}-performerIds`}
+                  options={day.performers}
+                  defaultSelectedIds={day.performers.map((p) => p.id)}
+                  placeholder={t.trips.personal.performersPlaceholder}
+                  searchOptions={searchPerformersForList}
+                />
+              </div>
+            ) : (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className="btn-link-accent small"
+                  onClick={() => setOpenPerformers((prev) => new Set(prev).add(day.key))}
+                >
+                  {t.trips.personal.showPerformers}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        <div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setDays((prev) => [...prev, { key: nextKey, id: null, dateKey: "", timeValue: "", performers: [] }]);
+              setNextKey((k) => k + 1);
+            }}
+          >
+            {t.trips.personal.addDay}
+          </button>
         </div>
       </div>
       <LocationPickerField defaultLocation={defaults?.location} />
-      <div>
-        <label className="form-label small text-secondary" htmlFor={`${uid}-performers`}>
-          {t.trips.personal.performers}
-        </label>
-        <p className="small text-secondary mb-1" style={{ opacity: 0.75 }}>
-          {t.trips.personal.performersHint}
-        </p>
-        {/* Каталог артистов не приезжает пропсом (их тысячи) — общий
-            комбобокс ищет на сервере по мере ввода; уже выбранные
-            приходят options'ами, чтобы капсулы нарисовались сразу. */}
-        <EntityMultiSelect
-          id={`${uid}-performers`}
-          name="performerIds"
-          options={defaults?.performers ?? []}
-          defaultSelectedIds={(defaults?.performers ?? []).map((p) => p.id)}
-          placeholder={t.trips.personal.performersPlaceholder}
-          searchOptions={searchPerformersForList}
-        />
-      </div>
       {/* Цена: заполнили — строка сама появилась в расходах поездки
           (правка владельца 2026-09-16). Необязательная. */}
       <PriceFields priceMinor={defaults?.priceMinor} currency={defaults?.priceCurrency} />
@@ -228,6 +310,7 @@ export function PersonalEventFields({
 export default function PersonalEventCard({
   tripId,
   event,
+  dayIndex = 0,
   canEdit = true,
   canAttend = false,
   showShareToggle = false,
@@ -241,10 +324,18 @@ export default function PersonalEventCard({
   canAttend?: boolean;
   showShareToggle?: boolean;
   visibilityOptions: readonly TripItemVisibilityValue[];
+  /** Какой день события рисует эта карточка: в ленте поездки у
+   *  многодневного события карточка на каждый день, со своей датой и
+   *  составом. */
+  dayIndex?: number;
 }) {
   const t = useT();
   const locale = useLocale();
   const [isEditing, setIsEditing] = useState(false);
+  const day = event.days[dayIndex] ?? event.days[0];
+  const dayStartsAt = day?.startsAt ?? event.startsAt;
+  const dayTime = day?.timeValue ?? event.timeValue;
+  const dayPerformers = day?.performers ?? [];
   // Файл мог не открыться (удалён, нет прав) — тогда вместо битой
   // картинки показываем ссылку.
   const [thumbFailed, setThumbFailed] = useState(false);
@@ -256,13 +347,13 @@ export default function PersonalEventCard({
   // остаётся тем же днём.
   const d = new Date(
     Date.UTC(
-      event.startsAt.getUTCFullYear(),
-      event.startsAt.getUTCMonth(),
-      event.startsAt.getUTCDate(),
+      dayStartsAt.getUTCFullYear(),
+      dayStartsAt.getUTCMonth(),
+      dayStartsAt.getUTCDate(),
       12,
     ),
   );
-  const hasTime = event.timeValue !== "00:00";
+  const hasTime = dayTime !== "00:00";
 
   const boundUpdate = updateTripPersonalEvent.bind(null, tripId, event.id);
   const boundDelete = deleteTripPersonalEvent.bind(null, tripId, event.id);
@@ -383,7 +474,7 @@ export default function PersonalEventCard({
           )}
         </h3>
         <p className="small text-secondary mb-0">
-          {hasTime && event.timeValue}
+          {hasTime && dayTime}
           {hasTime && (event.note || event.location) && " · "}
           {event.location && (
             <AppLink
@@ -410,10 +501,18 @@ export default function PersonalEventCard({
             </a>
           </p>
         )}
-        {event.performers.length > 0 && (
+        {/* Многодневное: какой это день из скольких — карточка на каждый
+            день стоит в своей дате ленты, и без подписи два «Фестиваля»
+            читались бы как дубль. */}
+        {event.days.length > 1 && (
+          <p className="small text-secondary mb-0">
+            {t.trips.personal.dayOf(dayIndex + 1, event.days.length)}
+          </p>
+        )}
+        {dayPerformers.length > 0 && (
           <p className="event-row-cast mb-0">
             <UserIcon className="icon-inline" />{" "}
-            {event.performers.map((p, i) => (
+            {dayPerformers.map((p, i) => (
               <span key={p.id}>
                 {i > 0 && ", "}
                 <AppLink href={performerHref(p)} className="agenda-performer-link">
@@ -438,15 +537,18 @@ export default function PersonalEventCard({
             defaults={{
               title: event.title,
               note: event.note,
-              dateKey: event.dateKey,
-              timeValue: hasTime ? event.timeValue : "",
+              days: event.days.map((dd) => ({
+                id: dd.id,
+                dateKey: dd.dateKey,
+                timeValue: dd.timeValue !== "00:00" ? dd.timeValue : "",
+                performers: dd.performers,
+              })),
               location: event.location,
               editableByOthers: event.editableByOthers,
               visibility: event.visibility,
               showOnHome: event.showOnHome,
               imageUrl: event.imageUrl,
               url: event.url,
-              performers: event.performers,
               attending: event.attending,
             }}
             showShareToggle={showShareToggle}

@@ -381,15 +381,19 @@ export async function computeUserStats(
       // (владелец: планов создают больше, чем посещают; в совместной
       // поездке каждый отмечается сам). Автору отметка ставится при
       // создании записи по умолчанию, бэкфилл покрыл старые записи.
-      prisma.tripPersonalEventPerformer.findMany({
-        where: {
-          personalEvent: {
-            startsAt: { lt: now },
-            attendances: { some: { userId } },
+      // По ДНЯМ события (2026-09-18): на трёхдневном фестивале артист
+      // второго дня засчитывается, когда прошёл его день, а не первый.
+      prisma.tripPersonalEventDayPerformer
+        .findMany({
+          where: {
+            day: {
+              startsAt: { lt: now },
+              personalEvent: { attendances: { some: { userId } } },
+            },
           },
-        },
-        select: { performerId: true, personalEventId: true },
-      }),
+          select: { performerId: true, day: { select: { personalEventId: true } } },
+        })
+        .then((rows) => rows.map((r) => ({ performerId: r.performerId, personalEventId: r.day.personalEventId }))),
     ]);
 
   const completedDramas =

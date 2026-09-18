@@ -119,11 +119,25 @@ manually re-entering a date filter every time.
   статус у `EventAttendance`: отметки «иду» читаются в трёх десятках
   мест, и любое пропущенное превратило бы «может быть» в посещённое
   событие.
-- **Personal events** (`TripPersonalEvent`: title, optional note, one
-  `startsAt`; cascade-deleted with the trip): the owner's own private
-  entries — flights, reservations, meetups — created via the «+ Личное
-  событие» modal on the trip page and merged into the same chronological
-  timeline as the public events. Rendered by `PersonalEventCard.tsx`
+- **Personal events** (`TripPersonalEvent`: title, optional note,
+  `startsAt` = первый день; cascade-deleted with the trip): the owner's
+  own private entries — flights, reservations, meetups — created via the
+  «+ Личное событие» modal on the trip page and merged into the same
+  chronological timeline as the public events. **У записи несколько
+  дней** (`TripPersonalEventDay`, правка владельца 2026-09-18: «на
+  личные даты тоже несколько дней и на каждый день свой актёрский
+  состав»): у каждого дня своя дата, время и артисты
+  (`TripPersonalEventDayPerformer`; старой таблицы
+  `TripPersonalEventPerformer` больше нет — миграция
+  `20260918T01_personal_event_days` перенесла состав в день). В форме
+  ряд «дата · время · артисты» на день и «+ Ещё день»; поля индексные
+  (`day-N-date/time/performerIds/id`), экшен синхронизирует дни по id,
+  как даты встречи сообщества. В ленте плана многодневная запись даёт
+  **карточку на каждый день** в своей дате, с составом этого дня и
+  подписью «День 2 из 3»; правка и удаление — у всей записи.
+  `startsAt` записи держится равным первому дню — по нему сортировка,
+  блок «Вы идёте» на главной и дата траты в расходах. Запись без дней
+  (старые сиды тестов) лента считает однодневной по `startsAt`. Rendered by `PersonalEventCard.tsx`
   (same `.event-card` layout, a «личное» badge, corner edit/delete
   buttons instead of favorite/going; editing opens a prefilled modal).
   A personal event without a time is stored at 00:00, sorting before

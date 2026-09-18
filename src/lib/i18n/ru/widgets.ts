@@ -158,7 +158,7 @@ export const widgets: Dict["widgets"] = {
     unmarkHere: "Не видела здесь",
     outside: "Видела вне афиши",
     outsideHint: "Концерт до регистрации, случайная встреча",
-    personal: (n: number) => `Личные события в поездках: ${n}`,
+    personalTitle: "Личные события в поездках",
     personalHint: "правится в поездке",
   },
   commentLike: {

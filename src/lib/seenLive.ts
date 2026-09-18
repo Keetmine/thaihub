@@ -225,9 +225,11 @@ export async function loadSeenPerformerIds(userId: string): Promise<Set<string>>
     loadSeenAttendances(userId),
     loadSeenOverrides(userId),
     prisma.performerSeen.findMany({ where: { userId }, select: { performerId: true } }),
-    prisma.tripPersonalEventPerformer.findMany({
+    // По дням события (2026-09-18): артист дня засчитан, когда прошёл
+    // именно его день.
+    prisma.tripPersonalEventDayPerformer.findMany({
       where: {
-        personalEvent: { startsAt: { lt: now }, attendances: { some: { userId } } },
+        day: { startsAt: { lt: now }, personalEvent: { attendances: { some: { userId } } } },
       },
       select: { performerId: true },
     }),
@@ -347,6 +349,16 @@ export type PerformerSeenEvent = {
   seen: boolean;
 };
 
+/** Личное событие поездки, где артист был в составе дня и человек
+ *  отметился «я там буду» (правка владельца 2026-09-18: раньше был только
+ *  счётчик — «иногда не вспомнишь, где там что было»). */
+export type PerformerSeenPersonal = {
+  id: string;
+  title: string;
+  /** Последний прошедший день с этим артистом — ISO. */
+  date: string;
+  trip: { id: string; slug: string | null; title: string };
+};
 /**
  * Страница артиста: на каких посещённых событиях он был в составе и где
  * человек его видел. Считает по ВСЕМ отметкам человека — их единицы, а
@@ -355,7 +367,7 @@ export type PerformerSeenEvent = {
 export async function performerSeenEvents(
   userId: string,
   performerId: string,
-): Promise<{ events: PerformerSeenEvent[]; outside: boolean; personalEvents: number }> {
+): Promise<{ events: PerformerSeenEvent[]; outside: boolean; personalEvents: PerformerSeenPersonal[] }> {
   const now = new Date();
   const [rows, overrides, outside, personal] = await Promise.all([
     prisma.eventAttendance.findMany({
@@ -383,10 +395,22 @@ export async function performerSeenEvents(
       where: { userId_performerId: { userId, performerId } },
       select: { id: true },
     }),
-    prisma.tripPersonalEventPerformer.count({
+    // Личные события поездок — списком, по ДНЯМ: артист дня засчитан,
+    // когда прошёл его день и человек отметился на событии.
+    prisma.tripPersonalEventDayPerformer.findMany({
       where: {
         performerId,
-        personalEvent: { startsAt: { lt: now }, attendances: { some: { userId } } },
+        day: { startsAt: { lt: now }, personalEvent: { attendances: { some: { userId } } } },
+      },
+      select: {
+        day: {
+          select: {
+            startsAt: true,
+            personalEvent: {
+              select: { id: true, title: true, trip: { select: { id: true, slug: true, title: true } } },
+            },
+          },
+        },
       },
     }),
   ]);
@@ -413,5 +437,15 @@ export async function performerSeenEvents(
     });
   }
   events.sort((a, b) => b.date.localeCompare(a.date));
-  return { events, outside: !!outside, personalEvents: personal };
+  // Одно событие — одна строка, даже если артист был в составе трёх
+  // его дней; дата — последнего прошедшего дня.
+  const personalByEvent = new Map<string, PerformerSeenPersonal>();
+  for (const row of personal) {
+    const ev = row.day.personalEvent;
+    const date = row.day.startsAt.toISOString();
+    const cur = personalByEvent.get(ev.id);
+    if (!cur || date > cur.date) personalByEvent.set(ev.id, { id: ev.id, title: ev.title, date, trip: ev.trip });
+  }
+  const personalEvents = [...personalByEvent.values()].sort((a, b) => b.date.localeCompare(a.date));
+  return { events, outside: !!outside, personalEvents };
 }

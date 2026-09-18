@@ -322,9 +322,15 @@ const getTrip = cache(async (rawParam: string) => {
         orderBy: { startsAt: "asc" },
         include: {
           location: { select: { id: true, name: true } },
-          performers: {
+          // Дни события с составом каждого (правка владельца 2026-09-18).
+          days: {
+            orderBy: { startsAt: "asc" },
             include: {
-              performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
+              performers: {
+                include: {
+                  performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
+                },
+              },
             },
           },
           // Своя отметка «я там буду». У гостя её быть не может —
@@ -849,7 +855,18 @@ export default async function TripPage({
       showOnHome: p.showOnHome,
       imageUrl: p.imageUrl,
       url: p.url,
-      performers: p.performers.map((link) => link.performer),
+      // Запись без дней (старые сиды тестов) — однодневная по startsAt,
+      // без состава; id дня пустой, форма заведёт день заново.
+      days: (p.days.length > 0
+        ? p.days
+        : [{ id: "", startsAt: p.startsAt, performers: [] as typeof p.days[number]["performers"] }]
+      ).map((d) => ({
+        id: d.id,
+        startsAt: d.startsAt,
+        dateKey: dateKey(d.startsAt),
+        timeValue: formatTime(d.startsAt),
+        performers: d.performers.map((link) => link.performer),
+      })),
       attending: p.attendances.length > 0,
       canEdit: canTouch(p),
     }));
@@ -945,7 +962,7 @@ export default async function TripPage({
   };
   type TimelineItem =
     | { kind: "public"; startsAt: Date; key: string; event: (typeof events)[number] }
-    | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData }
+    | { kind: "personal"; startsAt: Date; key: string; personalEvent: PersonalEventData; dayIndex: number }
     | { kind: "todo"; startsAt: Date; key: string; todo: (typeof todoData)[number] }
     // АА17: «прилетает Аня» / «вы улетаете» — отметка в своём дне.
     // `dateLabel` — само число: у соседей по ленте дата своя (карточка
@@ -968,22 +985,34 @@ export default async function TripPage({
     })),
     ...(showAll
       ? []
-      : personal.map((p) => ({
-          key: `own-${p.id}`,
-          startsAt: p.startsAt,
-          // У личной записи без времени startsAt хранит 00:00 — ровно
-          // тот же признак «на весь день», что и у событий.
-          hasTime: p.startsAt.getUTCHours() !== 0 || p.startsAt.getUTCMinutes() !== 0,
-        }))),
+      : personal.flatMap((p) =>
+          p.days.map((d) => ({
+            key: `own-${p.id}-${d.id}`,
+            startsAt: d.startsAt,
+            // У дня без времени startsAt хранит 00:00 — ровно тот же
+            // признак «на весь день», что и у событий.
+            hasTime: d.startsAt.getUTCHours() !== 0 || d.startsAt.getUTCMinutes() !== 0,
+          })),
+        )),
   ]);
 
   const timeline: TimelineItem[] = [
     ...events.map((ev) => ({ kind: "public" as const, startsAt: ev.startsAt, key: `pub-${ev.occurrenceId}`, event: ev })),
     // Вкладка «Афиша» — только события афиши: личные записи и дела там
     // мешали (просьба владельца). Они живут в «Плане».
+    // Многодневное личное событие — карточка на КАЖДЫЙ день, в своей
+    // дате ленты, со своим составом (правка владельца 2026-09-18).
     ...(showAll
       ? []
-      : personal.map((p) => ({ kind: "personal" as const, startsAt: p.startsAt, key: `own-${p.id}`, personalEvent: p }))),
+      : personal.flatMap((p) =>
+          p.days.map((d, dayIndex) => ({
+            kind: "personal" as const,
+            startsAt: d.startsAt,
+            key: `own-${p.id}-${d.id || dayIndex}`,
+            personalEvent: p,
+            dayIndex,
+          })),
+        )),
     // Датированные дела попадают в хронологию плана.
     ...(showAll
       ? []
@@ -1289,6 +1318,7 @@ export default async function TripPage({
           <PersonalEventCard
             tripId={trip.id}
             event={item.personalEvent}
+            dayIndex={item.dayIndex}
             canEdit={item.personalEvent.canEdit}
             canAttend={isParticipant}
             showShareToggle={isShared}

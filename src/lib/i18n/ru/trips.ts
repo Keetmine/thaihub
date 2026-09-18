@@ -147,8 +147,6 @@ export const trips: Dict["trips"] = {
         saveFailed: "Не удалось сохранить — попробуйте ещё раз",
         badge: "личное",
         performers: "Артисты на событии",
-        performersHint:
-          "Кого вы там увидите — после даты события они попадут в «видела вживую», если стоит «я там буду».",
         performersPlaceholder: "Начните вводить имя…",
         deleteConfirm: (title: string) => `Удалить «${title}»?`,
         attachmentOf: (title: string) => `Вложение к записи «${title}»`,
@@ -158,6 +156,15 @@ export const trips: Dict["trips"] = {
         titlePlaceholder: "Ужин с друзьями",
         date: "Дата",
         time: "Время",
+        /** Дни события (правка владельца 2026-09-18): у каждого свои
+         *  дата, время и состав. */
+        dayN: (n: number) => `День ${n}`,
+        dayOf: (i: number, n: number) => `День ${i} из ${n}`,
+        addDay: "+ Ещё день",
+        /** Поле артистов свёрнуто по умолчанию, как в админке (правка
+         *  владельца 2026-09-18). */
+        showPerformers: "+ Артисты на событии",
+        removeDay: "Убрать день",
         note: "Заметка",
         image: "Картинка",
         url: "Ссылка",
@@ -359,7 +366,7 @@ export const trips: Dict["trips"] = {
         tab: (n: number) => (n > 0 ? `Расходы · ${n}` : "Расходы"),
         /** Цена прямо в брони и в личном событии (правка владельца
          *  2026-09-16): заполнили — строка сама появилась в расходах. */
-        fieldPrice: "Сколько стоило",
+        fieldPrice: "Цена",
         pricePlaceholder: "Можно не заполнять",
         fromBooking: "из брони",
         fromEvent: "из события",

@@ -151,8 +151,6 @@ export const trips = {
         saveFailed: "Couldn't save — try again",
         badge: "personal",
         performers: "Artists at the event",
-        performersHint:
-          "Who you will see there — once the date passes, they join your “seen live” list if “I’ll be there” is on.",
         performersPlaceholder: "Start typing a name…",
         deleteConfirm: (title: string) => `Delete "${title}"?`,
         attachmentOf: (title: string) => `Attachment on "${title}"`,
@@ -162,6 +160,11 @@ export const trips = {
         titlePlaceholder: "Dinner with friends",
         date: "Date",
         time: "Time",
+        dayN: (n: number) => `Day ${n}`,
+        dayOf: (i: number, n: number) => `Day ${i} of ${n}`,
+        addDay: "+ Another day",
+        showPerformers: "+ Artists at the event",
+        removeDay: "Remove day",
         note: "Note",
         image: "Image",
         /** Ссылка у личного события: бронь, страница мероприятия, карта. */
@@ -355,7 +358,7 @@ export const trips = {
     /** Ответы серверных экшенов — их показывают формы поездки. */
     expenses: {
         tab: (n: number) => (n > 0 ? `Expenses · ${n}` : "Expenses"),
-        fieldPrice: "What it cost",
+        fieldPrice: "Price",
         pricePlaceholder: "Can be left empty",
         fromBooking: "from a booking",
         fromEvent: "from an event",

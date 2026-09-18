@@ -6,6 +6,14 @@ import AppLink from "./AppLink";
 import { EyeIcon } from "@/components/icons";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import { formatShortDate } from "@/lib/dates";
+import { tripHref } from "@/lib/slugHelpers";
+
+export type SeenPersonalRow = {
+  id: string;
+  title: string;
+  date: string;
+  trip: { id: string; slug: string | null; title: string };
+};
 
 export type SeenEventRow = {
   id: string;
@@ -39,7 +47,9 @@ export default function SeenLiveButton({
   performerId: string;
   events: SeenEventRow[];
   outside: boolean;
-  personalEvents: number;
+  /** Личные события поездок с этим артистом — списком со ссылкой на
+   *  поездку (правка владельца 2026-09-18); правятся в самой поездке. */
+  personalEvents: SeenPersonalRow[];
   toggleEvent: (eventId: string, performerId: string) => Promise<{ seen: boolean }>;
   toggleOutside: (performerId: string) => Promise<{ seen: boolean }>;
 }) {
@@ -50,7 +60,7 @@ export default function SeenLiveButton({
   const [isOutside, setIsOutside] = useState(outside);
   const [isPending, startTransition] = useTransition();
 
-  const count = rows.filter((r) => r.seen).length + (isOutside ? 1 : 0) + personalEvents;
+  const count = rows.filter((r) => r.seen).length + (isOutside ? 1 : 0) + personalEvents.length;
   const seen = count > 0;
 
   const flipEvent = (eventId: string) =>
@@ -85,7 +95,7 @@ export default function SeenLiveButton({
 
       <Modal open={open} title={t.widgets.seenLive.short} onClose={() => setOpen(false)}>
         <p className="small text-secondary mb-3">{t.widgets.seenLive.hint}</p>
-        {rows.length === 0 && personalEvents === 0 && (
+        {rows.length === 0 && personalEvents.length === 0 && (
           <p className="small text-secondary mb-3">{t.widgets.seenLive.noEvents}</p>
         )}
         <div className="d-flex flex-column gap-2">
@@ -116,11 +126,27 @@ export default function SeenLiveButton({
               </button>
             </div>
           ))}
-          {personalEvents > 0 && (
-            <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
-              <span className="text-white">{t.widgets.seenLive.personal(personalEvents)}</span>
-              <span className="small text-secondary">{t.widgets.seenLive.personalHint}</span>
-            </div>
+          {personalEvents.length > 0 && (
+            <>
+              <p className="small text-secondary mt-2 mb-0">{t.widgets.seenLive.personalTitle}</p>
+              {personalEvents.map((pe) => (
+                <div
+                  key={pe.id}
+                  className="surface d-flex align-items-center justify-content-between gap-3 p-3"
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span className="text-white d-block text-truncate">{pe.title}</span>
+                    <span className="small text-secondary d-block text-truncate">
+                      {formatShortDate(new Date(pe.date), locale)} ·{" "}
+                      <AppLink href={tripHref(pe.trip)} className="link-body-emphasis">
+                        {pe.trip.title}
+                      </AppLink>
+                    </span>
+                  </span>
+                  <span className="small text-secondary flex-shrink-0">{t.widgets.seenLive.personalHint}</span>
+                </div>
+              ))}
+            </>
           )}
           <div className="surface d-flex align-items-center justify-content-between gap-3 p-3">
             <span style={{ minWidth: 0 }}>
