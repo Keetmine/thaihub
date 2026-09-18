@@ -194,7 +194,7 @@ export default async function ProtectedAdminLayout({
           prefetch={false}
           className="admin-sidebar-brand d-inline-flex align-items-center gap-2 text-decoration-none"
         >
-          <Logo />
+          <Logo variant="admin" />
           <span className="admin-badge badge rounded-pill fw-semibold">{isAdmin ? "ADMIN" : "MANAGER"}</span>
         </Link>
 
@@ -238,7 +238,7 @@ export default async function ProtectedAdminLayout({
               prefetch={false}
               className="navbar-brand d-inline-flex align-items-center gap-2 mb-0 text-decoration-none"
             >
-              <Logo />
+              <Logo variant="admin" />
               <span className="admin-badge badge rounded-pill fw-semibold">{isAdmin ? "ADMIN" : "MANAGER"}</span>
             </Link>
             <QuickSearchButton compact />

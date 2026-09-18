@@ -33,6 +33,18 @@ const ORANGE: Palette = {
   mint: ["#d63a18", "#c22f12"],
 };
 
+// Админка (правка владельца 2026-09-18): та же композиция в её
+// фиолетовой гамме — тон в тон с --accent-rgb (139, 92, 246) из
+// admin.css. Пасхалки там нет: знак в админке не переключается.
+const VIOLET: Palette = {
+  bg: ["#8b5cf6", "#7c3aed"],
+  pink: ["#c4b5fd", "#a78bfa"],
+  coral: ["#7c4ddb", "#6d3fd0"],
+  orange: ["#6d28d9", "#5b21b6"],
+  gold: ["#a78bfa", "#8b5cf6"],
+  mint: ["#4c1d95", "#3b1680"],
+};
+
 const RAINBOW: Palette = {
   pink: ["#ff4d63", "#ff6f6a"],
   bg: ["#ff7b58", "#ffa04a"],
@@ -77,8 +89,9 @@ function subscribe(cb: () => void) {
   };
 }
 
-export default function Logo() {
+export default function Logo({ variant = "public" }: { variant?: "public" | "admin" }) {
   const rainbow = useSyncExternalStore(subscribe, readRainbow, () => false);
+  const admin = variant === "admin";
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fired = useRef(false);
 
@@ -95,7 +108,9 @@ export default function Logo() {
     }, HOLD_MS);
   };
 
-  const p = rainbow ? RAINBOW : ORANGE;
+  // В админке — своя фиолетовая гамма и без пасхалки: там знак
+  // подчинён теме раздела, а не вкусу зрителя.
+  const p = admin ? VIOLET : rainbow ? RAINBOW : ORANGE;
   const grad = (key: keyof Palette) => (
     <linearGradient id={`logo-${key}`} x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stopColor={p[key][0]} />
@@ -109,16 +124,16 @@ export default function Logo() {
         width="1.9rem"
         height="1.9rem"
         viewBox="0 0 512 512"
-        className={`flex-shrink-0 logo-mark${rainbow ? " is-rainbow" : ""}`}
+        className={`flex-shrink-0 logo-mark${!admin && rainbow ? " is-rainbow" : ""}`}
         aria-hidden="true"
-        onPointerDown={start}
-        onPointerUp={clear}
-        onPointerLeave={clear}
-        onPointerCancel={clear}
+        onPointerDown={admin ? undefined : start}
+        onPointerUp={admin ? undefined : clear}
+        onPointerLeave={admin ? undefined : clear}
+        onPointerCancel={admin ? undefined : clear}
         // Сработало удержание — клик по ссылке-обёртке не должен увести
         // на главную. Флаг сбрасывается на следующем нажатии.
         onClickCapture={(e) => {
-          if (fired.current) {
+          if (!admin && fired.current) {
             e.preventDefault();
             e.stopPropagation();
             fired.current = false;
