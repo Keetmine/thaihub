@@ -322,6 +322,43 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "ticketmelon-crawl",
+    title: "Ticketmelon: обход афиши",
+    description:
+      "Обходит карту сайта ticketmelon.com (по 60 новых страниц за прогон, с паузами) и " +
+      "ищет артистов каталога в названии и описании события — состав там не размечен. " +
+      "Нашёлся — черновик в очереди на проверку (вкладка «События» в импортах); прошедшие " +
+      "события запоминаются и больше не предлагаются; без совпадений — перепроверка раз в " +
+      "неделю. Вся карта сайта разово — кнопкой на странице импортов.",
+    supportsTargets: false,
+    logKind: "ticketmelon-crawl",
+    logsItems: true,
+    run: async () => {
+      const { runTicketmelonCrawl, summarizeTicketSiteCrawl } = await import("@/lib/ticketSiteCrawl");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun("ticketmelon-crawl", (runId) => runTicketmelonCrawl({ runId }), summarizeTicketSiteCrawl);
+      return result ? summarizeTicketSiteCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
+    key: "allticket-crawl",
+    title: "AllTicket: обход афиши",
+    description:
+      "Открывает концертный раздел allticket.com настоящим браузером (их список за " +
+      "JS-проверкой AWS WAF, которую проходит только браузер), берёт карточки событий и " +
+      "ищет артистов каталога в названии и описании. Нашёлся — черновик в очереди на " +
+      "проверку; прошедшие запоминаются; без совпадений — перепроверка раз в неделю.",
+    supportsTargets: false,
+    logKind: "allticket-crawl",
+    logsItems: true,
+    run: async () => {
+      const { runAllticketCrawl, summarizeTicketSiteCrawl } = await import("@/lib/ticketSiteCrawl");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun("allticket-crawl", (runId) => runAllticketCrawl({ runId }), summarizeTicketSiteCrawl);
+      return result ? summarizeTicketSiteCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "gmmtv-mascots",
     title: "GMMTV: маскоты с вики",
     description:

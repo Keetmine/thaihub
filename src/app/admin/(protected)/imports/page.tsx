@@ -43,6 +43,7 @@ import TabRunsJournal from "./TabRunsJournal";
 import TtmImportFlow from "./ttm/TtmImportFlow";
 import MusicFestivalUrlImport from "./MusicFestivalUrlImport";
 import { startThaiStarXArchiveCrawl } from "./thaiStarXActions";
+import { startTicketmelonFullCrawl } from "./ticketSiteActions";
 import SubmitButton from "@/components/admin/SubmitButton";
 import ConfirmForm from "@/components/ConfirmForm";
 import BulkList from "@/components/admin/BulkList";
@@ -72,6 +73,8 @@ const KIND_LABELS: Record<string, string> = {
   "gmmtv-mascots": "GMMTV: маскоты с вики",
   "musicfestival-crawl": "musicfestival.in.th: фестивали",
   "thaistarx-crawl": "ThaiStarX: фан-события по миру",
+  "ticketmelon-crawl": "Ticketmelon: обход афиши",
+  "allticket-crawl": "AllTicket: обход афиши",
   "tpop-agency": "fandom.com: агентство",
   "tpop-artist": "fandom.com: артист",
 };
@@ -148,7 +151,7 @@ const TAB_RUN_KINDS: Record<Exclude<Tab, "log">, readonly string[]> = {
     "blscene",
   ],
   music: ["youtube-music", "tpop-artist", "tpop-agency"],
-  events: ["ttm-event", "ttm-crawl", "event-drafts", "musicfestival-crawl", "thaistarx-crawl"],
+  events: ["ttm-event", "ttm-crawl", "event-drafts", "musicfestival-crawl", "thaistarx-crawl", "ticketmelon-crawl", "allticket-crawl"],
   mascots: ["gmmtv-mascots"],
   requests: ["mdl-requests"],
 };
@@ -692,6 +695,37 @@ export default async function AdminImportsPage({
               </div>
             </div>
 
+            {/* Краулеры Ticketmelon и AllTicket (задачи «ticketmelon-crawl»
+                и «allticket-crawl», см. docs/features/ticket-site-crawl.md):
+                состав на этих сайтах не размечен, артисты ищутся в
+                названии и описании; черновики — в очередь ниже. */}
+            <div className="col-12">
+              <div className="surface p-4 h-100">
+                <h2 className="section-heading mb-2">Ticketmelon и AllTicket: обход афиши</h2>
+                <p className="small text-secondary mb-3">
+                  Суточные задачи обходят карту сайта Ticketmelon (по 60 страниц за прогон)
+                  и концертный раздел AllTicket. Состав на этих сайтах не размечен, поэтому
+                  артисты ищутся в названии и описании события: по реальному имени, по нику
+                  с фамилией, по склейке пейринга и по группам; одиночные короткие ники вроде
+                  «Off» или «New» в тексте не ищутся — слишком похожи на обычные слова.
+                  Нашёлся кто-то из каталога — черновик в очереди ниже, прошедшие события
+                  запоминаются и больше не предлагаются. «Обойти Ticketmelon целиком» —
+                  разовый проход по всей карте сайта, идёт фоном около получаса.
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  <form action={startTicketmelonFullCrawl}>
+                    <SubmitButton label="Обойти Ticketmelon целиком" busyLabel="Запускаем…" className="btn btn-primary btn-sm" />
+                  </form>
+                  <Link href="/admin/schedule?tab=ticketmelon-crawl" className="btn btn-sm btn-outline-secondary">
+                    Задача Ticketmelon
+                  </Link>
+                  <Link href="/admin/schedule?tab=allticket-crawl" className="btn btn-sm btn-outline-secondary">
+                    Задача AllTicket
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             {/* Очередь краулера афиши TTM (задача «ttm-crawl», см.
                 docs/features/ttm-crawl.md): черновики с совпавшими
                 артистами ждут решения владельца. Массовые действия —
@@ -706,8 +740,8 @@ export default async function AdminImportsPage({
                   Черновики событий ({pendingDraftCount})
                 </h2>
                 <p className="small text-secondary mb-3">
-                  Найдены обходом афиши ThaiTicketMajor и трекера ThaiStarX: в составе
-                  есть кто-то из нашего каталога. «Одобрить» — событие создастся с постером и
+                  Найдены обходом ThaiTicketMajor, ThaiStarX, Ticketmelon и AllTicket: в
+                  составе (или в тексте события) есть кто-то из нашего каталога. «Одобрить» — событие создастся с постером и
                   совпавшими артистами (остальной состав добирается руками в
                   карточке события); «Отклонить» — событие больше не предложится.
                   Массовое одобрение выбранных идёт одним фоновым прогоном — ход
@@ -718,7 +752,7 @@ export default async function AdminImportsPage({
                 {eventDrafts.length === 0 ? (
                   <p className="small text-secondary mb-0">
                     Очередь пуста — новые черновики появятся после ближайшего обхода
-                    (задачи «ThaiTicketMajor: обход афиши» и «ThaiStarX» в расписании).
+                    (задачи обхода афиш в расписании: ThaiTicketMajor, ThaiStarX, Ticketmelon, AllTicket).
                   </p>
                 ) : (
                   <BulkList

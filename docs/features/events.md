@@ -825,6 +825,10 @@ never visually changed (a real bug, not hypothetical).
 
 ## Импорт события по ссылке (TTM, Eventpop, Ticketmelon, AllTicket, Eventpass)
 
+С 2026-09-18 у Ticketmelon и AllTicket есть и **обход списков** —
+черновики в очередь, артисты ищутся в тексте события; см.
+[ticket-site-crawl.md](ticket-site-crawl.md). Парсеры страниц ниже — общие.
+
 Карточка «Событие по ссылке» на `/admin/imports` — ОДНО поле на пять
 сайтов, сайт распознаётся по домену (`detectEventSite` /
 `scrapeEventByUrl` в `src/lib/eventTicketSites.ts`); дальше тот же

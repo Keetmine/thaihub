@@ -477,3 +477,140 @@ export function matchTagsAgainstCatalog(tags: string[], catalog: TagCatalog): Ta
   }
   return { matched, ambiguous, unmatched };
 }
+
+// ---------------------------------------------------------------------------
+// Артисты каталога в СВОБОДНОМ ТЕКСТЕ события — для билетных сайтов без
+// размеченного состава (Ticketmelon, AllTicket: краулеры
+// src/lib/ticketSiteCrawl.ts). Там имена живут в названии и описании:
+// «BOY SOMPOB WORLD Y TOUR», «Joining the lineup: … Phum Viphurit»,
+// «KristSingto Fan Meeting». Правила от сильного к слабому; одиночный
+// ник — самое слабое и потому с оговорками: «Off», «Gun», «New», «Win»,
+// «Earth», «Film» — обычные английские слова, по ним в тексте нельзя.
+
+/** Ники-слова, которые нельзя искать поодиночке: они встречаются в
+ *  любом английском тексте и без фамилии ничего не значат. Не полный
+ *  словарь — только то, что реально есть в каталоге и бьёт по тексту.
+ *  Короче пяти знаков и так не ищется (см. правило 5). */
+const TEXT_MATCH_STOPWORDS = new Set([
+  // Сухой прогон Ticketmelon 2026-09-18 поймал именно эти: «Touch»,
+  // «Build», «Chance», «Fresh», «Friend», «Alpha», «Sydney», «Rooftop»,
+  // «Artist» — всё ники из каталога и всё обычные слова афиши.
+  "touch", "build", "chance", "fresh", "friend", "alpha", "sydney", "rooftop", "artist", "artists",
+  "membership", "member", "family", "brother", "sister", "mother", "father", "baby", "honey",
+  "lucky", "magic", "super", "ultra", "mega", "grand", "royal", "crown", "empire", "legend",
+  "hero", "heroes", "storm", "thunder", "flash", "spark", "fire", "water", "stone", "river",
+  "mountain", "island", "garden", "forest", "flower", "lotus", "rose", "jasmine", "orchid",
+  "nature", "planet", "galaxy", "cosmos", "space", "rocket", "engine", "motor", "racing",
+  "junction", "station", "avenue", "street", "bridge", "tower", "palace", "castle", "temple",
+  "market", "bazaar", "studio", "gallery", "theatre", "theater", "cinema", "arena", "stadium",
+  "camping", "picnic", "dinner", "brunch", "coffee", "sunset", "sunrise", "midnight", "morning",
+  "monday", "friday", "sunday", "august", "october", "december", "january", "february",
+  "first", "fourth", "force", "earth", "great", "smile", "bright", "ocean", "dream", "night",
+  "sunny", "title", "model", "plane", "story", "heart", "happy", "money", "music", "peach",
+  "apple", "cherry", "candy", "honey", "sugar", "angel", "queen", "prince", "tiger", "cream",
+  "seven", "eight", "three", "world", "party", "final", "stage", "sound", "light", "front",
+  "point", "power", "focus", "frame", "green", "white", "black", "brown", "silver", "golden",
+  "pearl", "north", "south", "summer", "winter", "spring", "nurse", "doctor", "captain",
+  "junior", "senior", "master", "mister", "chief", "major", "minor", "singer", "dancer",
+  "guitar", "piano", "drums", "ticket", "event", "concert", "festival", "special", "premium",
+]);
+
+const TEXT_MATCH_MIN_NICK = 5;
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Слово/фраза целиком, без учёта регистра; границы — не буквы и не
+ *  цифры (тайские буквы тоже граница: «Krist» внутри «บัตรKrist» найдётся). */
+function phraseRe(phrase: string): RegExp {
+  const inner = escapeRe(phrase.trim()).replace(/\s+/g, "\\s+");
+  return new RegExp(`(^|[^A-Za-z0-9])${inner}(?=$|[^A-Za-z0-9])`, "i");
+}
+
+/**
+ * Ищет артистов каталога в тексте (название + описание события).
+ *
+ * 1. **Реальное имя** из двух и более слов как фраза («Perawat Sangpotirat»).
+ * 2. **Ник + первое слово реального имени** («Krist Perawat», «Off Jumpol»).
+ * 3. **Склейка ников пейринга** как слово («KristSingto», «OffGun»).
+ * 4. **Группа** (`type: BAND`) по названию/алиасу целиком, от четырёх знаков
+ *    («LYKN», «PERSES», «BOSS.CKM»).
+ * 5. **Одиночный ник** — только от пяти знаков, единственный в каталоге и
+ *    не из стоп-слов («Singto», «Nanon», «Phuwin»); тёзки по одному нику
+ *    не ищутся вовсе — в тексте развести их нечем.
+ *
+ * Чистая функция, каталог тот же, что у тегов ThaiStarX (`loadTagCatalog`).
+ */
+export function matchCatalogInText(text: string, catalog: TagCatalog): TagMatchResult {
+  const hay = text.replace(/\s+/g, " ");
+  const matched: TagMatchResult["matched"] = [];
+  const add = (performerId: string, nickname: string) => {
+    if (!matched.some((m) => m.performerId === performerId)) matched.push({ performerId, nickname });
+  };
+  const loose = (s: string) => s.toLowerCase().replace(/[-\s.'’_]/g, "");
+  const byLoose = new Map<string, number>();
+  for (const p of catalog.performers) {
+    for (const n of [p.name, p.musicAlias]) {
+      if (!n) continue;
+      byLoose.set(loose(n), (byLoose.get(loose(n)) ?? 0) + 1);
+    }
+  }
+
+  // 3. Пейринги — раньше сольных: «KristSingto» даёт обоих сразу. И
+  // через пробел («Tay New», «Sea Keen»): два коротких ника рядом в
+  // таком порядке — это пейринг, хотя каждый поодиночке не ищется.
+  const byId = new Map(catalog.performers.map((p) => [p.id, p]));
+  for (const pr of catalog.pairings) {
+    for (const phrase of [pr.nameA + pr.nameB, pr.nameB + pr.nameA, `${pr.nameA} ${pr.nameB}`, `${pr.nameB} ${pr.nameA}`]) {
+      if (phrase.replace(/\s/g, "").length < 6) continue;
+      if (phraseRe(phrase).test(hay)) {
+        add(pr.performerAId, byId.get(pr.performerAId)?.name ?? pr.nameA);
+        add(pr.performerBId, byId.get(pr.performerBId)?.name ?? pr.nameB);
+        break;
+      }
+    }
+  }
+
+  for (const p of catalog.performers) {
+    if (matched.some((m) => m.performerId === p.id)) continue;
+    const real = (p.realName ?? "").trim();
+    const realWords = real.split(/\s+/).filter(Boolean);
+    // 1. Реальное имя целиком.
+    if (realWords.length >= 2 && real.length >= 8 && phraseRe(real).test(hay)) {
+      add(p.id, p.name);
+      continue;
+    }
+    // 2. Ник + первое слово реального имени.
+    if (realWords.length >= 1 && realWords[0].length >= 3 && p.name.trim().length >= 2) {
+      if (phraseRe(`${p.name.trim()} ${realWords[0]}`).test(hay)) {
+        add(p.id, p.name);
+        continue;
+      }
+    }
+    // 4. Группа целиком.
+    if (p.type === "BAND") {
+      for (const n of [p.name, p.musicAlias]) {
+        if (!n || n.trim().length < 4 || TEXT_MATCH_STOPWORDS.has(n.trim().toLowerCase())) continue;
+        if (byLoose.get(loose(n)) === 1 && phraseRe(n).test(hay)) {
+          add(p.id, p.name);
+          break;
+        }
+      }
+      continue;
+    }
+    // 5. Одиночный ник — с оговорками.
+    for (const n of [p.name, p.musicAlias]) {
+      if (!n) continue;
+      const nick = n.trim();
+      if (nick.length < TEXT_MATCH_MIN_NICK) continue;
+      if (TEXT_MATCH_STOPWORDS.has(nick.toLowerCase())) continue;
+      if (byLoose.get(loose(nick)) !== 1) continue;
+      if (phraseRe(nick).test(hay)) {
+        add(p.id, p.name);
+        break;
+      }
+    }
+  }
+  return { matched, ambiguous: [], unmatched: [] };
+}

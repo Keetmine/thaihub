@@ -300,6 +300,47 @@ async function scrapeTicketmelon(url: string): Promise<TtmEvent> {
   return parseTicketmelonHtml(await fetchText(url), url);
 }
 
+/** То из __NEXT_DATA__, что нужно КРАУЛЕРУ (src/lib/ticketSiteCrawl.ts),
+ *  а экрану импорта — нет: рубрики, статус публикации, момент начала и
+ *  слаги. Отдельная функция, чтобы не раздувать TtmEvent полями одного
+ *  сайта. Не страница события (организатор, список) — null. */
+export type TicketmelonEventMeta = {
+  categories: string[];
+  status: string | null;
+  isActive: boolean;
+  /** Инстант начала шоу (мс) или null, если сайт его не дал. */
+  showStartMs: number | null;
+  eoSlug: string | null;
+  slug: string | null;
+};
+
+export function parseTicketmelonEventMeta(html: string): TicketmelonEventMeta | null {
+  const m = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  let ev: Record<string, unknown> | undefined;
+  try {
+    ev = (JSON.parse(m[1]) as { props?: { pageProps?: { event?: Record<string, unknown> } } }).props?.pageProps?.event;
+  } catch {
+    return null;
+  }
+  if (!ev) return null;
+  const str = (k: string) => (typeof ev[k] === "string" ? (ev[k] as string).trim() || null : null);
+  return {
+    categories: Array.isArray(ev.categories) ? ev.categories.filter((c): c is string => typeof c === "string") : [],
+    status: str("status"),
+    isActive: ev.is_active !== false,
+    showStartMs: typeof ev.show_starttime === "number" && ev.show_starttime > 0 ? ev.show_starttime : null,
+    eoSlug: str("eo_slug"),
+    slug: str("slug"),
+  };
+}
+
+/** Страница события Ticketmelon целиком — для краулера: и TtmEvent, и мета. */
+export async function scrapeTicketmelonForCrawl(url: string): Promise<{ event: TtmEvent; meta: TicketmelonEventMeta | null }> {
+  const html = await fetchText(url);
+  return { event: parseTicketmelonHtml(html, url), meta: parseTicketmelonEventMeta(html) };
+}
+
 // --------------------------------------------------------------- allticket
 
 type AllticketInfo = {
@@ -334,7 +375,7 @@ export function parseAllticketInfo(info: AllticketInfo, sourceUrl: string): TtmE
   return event;
 }
 
-async function scrapeAllticket(url: string): Promise<TtmEvent> {
+export async function scrapeAllticket(url: string): Promise<TtmEvent> {
   const slug = new URL(url).pathname.match(/\/event\/([^/]+)/)?.[1];
   if (!slug) throw new Error("allticket: в ссылке нет /event/<код события>");
   const body = await fetchText(

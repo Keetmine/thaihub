@@ -185,7 +185,8 @@ npx tsx --env-file=.env scripts/dedupe-event-drafts.ts --apply  # примени
 ## Очередь в админке
 
 `/admin/imports?tab=events`, блок «Черновики событий (N)». Очередь
-**общая с краулером thaistarx.com** (см. [thaistarx-crawl.md](thaistarx-crawl.md)):
+**общая с краулерами thaistarx.com, Ticketmelon и AllTicket** (см.
+[thaistarx-crawl.md](thaistarx-crawl.md), [ticket-site-crawl.md](ticket-site-crawl.md)):
 в строке черновика виден хост источника и часовой пояс, если он не
 бангкокский. Карточка:
 постер-превью, название ссылкой на TTM, даты/время/площадка, чипы
