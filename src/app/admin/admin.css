@@ -255,42 +255,125 @@ details.admin-section[open] > summary.admin-section-head::before {
 }
 
 /* ---------- Дашборд: «Требует внимания» ---------- */
-.attention-card {
+/* Очередь работы на дашборде — строками внутри карточки (переделка
+   2026-09-18): прежние широкие карточки-плитки занимали целый экран
+   ещё до того, как начиналась статистика. Срочные — красным числом. */
+.attention-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 9rem;
-  padding: 0.75rem 1rem;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
   border-radius: var(--bs-border-radius);
-  border: 1px solid var(--bs-border-color);
-  background: rgba(255, 255, 255, 0.03);
   color: var(--bs-secondary-color);
+  transition: background-color 0.15s ease;
 }
 
-.attention-card:hover {
-  border-color: rgba(var(--accent-rgb), 0.5);
-  background: rgba(var(--accent-rgb), 0.07);
+.attention-row:hover {
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--bs-body-color);
 }
 
-.attention-card.is-urgent {
-  border-color: rgba(229, 72, 77, 0.45);
-  background: rgba(229, 72, 77, 0.08);
-}
-
-.attention-count {
+.attention-row-count {
+  flex-shrink: 0;
+  min-width: 2.4rem;
   font-family: var(--font-display, inherit);
   font-weight: 700;
-  font-size: 1.6rem;
-  line-height: 1;
+  font-size: 1.15rem;
+  line-height: 1.2;
   color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 
-.attention-card.is-urgent .attention-count {
+.attention-row.is-urgent .attention-row-count {
   color: #ff8f96;
 }
 
-.attention-label {
-  font-size: 0.78rem;
+.attention-row-label {
+  font-size: 0.86rem;
+}
+
+/* Числа внутри карточки дашборда: сетка 2×2, крупная цифра и тихая
+   подпись. Отдельно от .kpi-tile — те стоят рядом наверху и носят
+   рамку, а эти живут ВНУТРИ карточки, где рамка была бы второй. */
+.admin-figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.admin-figure {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-figure-value {
+  font-family: var(--font-display, inherit);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-figure-label {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+
+/* Компактный тепловой календарь регистраций (правка владельца
+   2026-09-18: «сильно меньше»). Ячейки квадратные и мелкие, подписи
+   месяцев сняты — вместо них ось «янв → дек» под календарём, а точный
+   месяц читается по подсказке ячейки. */
+.stats-heat-compact .stats-heat-row {
+  grid-template-columns: 2.4rem repeat(12, minmax(0, 1fr)) 1.9rem;
+  gap: 2px;
+}
+
+.stats-heat-compact .stats-heat-cell {
+  aspect-ratio: 1;
+  border-radius: 0.2rem;
+}
+
+.stats-heat-compact .stats-heat-year,
+.stats-heat-compact .stats-heat-total {
+  font-size: 0.72rem;
+}
+
+.stats-heat-axis {
+  margin-top: 0.4rem;
+  font-size: 0.68rem;
+  color: var(--bs-secondary-color);
+}
+
+/* Строки списков «последние добавленные» в админке плотнее публичных:
+   четыре карточки стоят в сетке, и каждая лишняя пара пикселей
+   множится на четыре. */
+.admin-shell .activity-row {
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.admin-shell .activity-row-icon {
+  width: 1.8rem;
+  height: 1.8rem;
+  font-size: 0.95rem;
+}
+
+.admin-shell .activity-row-title {
+  font-size: 0.9rem;
+}
+
+/* Полоски разделов каталога: ряд без фото, поэтому сетка на две
+   колонки, а не на три, как в рейтинге артистов профиля. */
+.stats-rank-row.is-flat {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.15rem 0;
+}
+
+.stats-rank-row.is-flat .stats-rank-bar {
+  grid-column: 1 / span 2;
 }
 
 /* ---------- Кнопка вызова быстрого поиска ---------- */

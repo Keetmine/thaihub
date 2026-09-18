@@ -3206,18 +3206,21 @@ button.hero-stat-toggle.is-open {
   color: var(--bs-secondary-color);
 }
 
-/* Плитки счётчиков над карточками статистики — пятая редакция
+/* Плитки счётчиков (`.kpi-tile*`) — профиль и админ-дашборд. Имя своё,
+   не `.stat-tile`: так называются плитки админки в admin.css, и общие
+   правила из globals перебивали их (поймано 2026-09-18).
+   Пятая редакция вида
    (2026-09-17). Нейтральная поверхность как у .surface: цветные плитки
    владелец отвергла («слишком выделяются»). Иконка — крупным
    полупрозрачным водяным знаком в правом верхнем углу, число крупное,
    раскрытие — явной круглой кнопкой со стрелкой в правом нижнем углу. */
-.stat-tiles {
+.kpi-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 0.6rem;
 }
 
-.stat-tile {
+.kpi-tile {
   position: relative;
   overflow: hidden;
   display: flex;
@@ -3235,18 +3238,18 @@ button.hero-stat-toggle.is-open {
   transition: border-color 0.15s ease;
 }
 
-button.stat-tile-toggle {
+button.kpi-tile-toggle {
   cursor: pointer;
   /* Место под кнопку-стрелку справа внизу, чтобы подсказка не легла под неё. */
   padding-right: 2.5rem;
 }
 
-button.stat-tile-toggle:hover,
-button.stat-tile-toggle.is-open {
+button.kpi-tile-toggle:hover,
+button.kpi-tile-toggle.is-open {
   border-color: rgba(var(--accent-rgb), 0.55);
 }
 
-.stat-tile-icon {
+.kpi-tile-icon {
   position: absolute;
   top: 0.35rem;
   right: 0.55rem;
@@ -3257,7 +3260,7 @@ button.stat-tile-toggle.is-open {
   filter: saturate(0.7);
 }
 
-.stat-tile-value {
+.kpi-tile-value {
   font-family: var(--font-display, inherit);
   font-weight: 700;
   font-size: 2.5rem;
@@ -3266,12 +3269,12 @@ button.stat-tile-toggle.is-open {
   font-variant-numeric: tabular-nums;
 }
 
-.stat-tile-label {
+.kpi-tile-label {
   font-size: 0.86rem;
   color: var(--bs-body-color);
 }
 
-.stat-tile-hint {
+.kpi-tile-hint {
   font-size: 0.72rem;
   color: var(--bs-secondary-color);
 }
@@ -3279,7 +3282,7 @@ button.stat-tile-toggle.is-open {
 /* Кнопка раскрытия: круг с акцентной стрелкой, всегда виден — это и
    есть подсказка «тут есть список». В открытом состоянии круг
    заливается акцентом, стрелка переворачивается. */
-.stat-tile-chevron {
+.kpi-tile-chevron {
   position: absolute;
   right: 0.75rem;
   bottom: 0.75rem;
@@ -3298,27 +3301,27 @@ button.stat-tile-toggle.is-open {
 /* Сама стрелка поворачивается, а не круг: круг остаётся на месте и
    лишь теплеет. Без сплошной заливки — она щёлкала цветом вместе с
    поворотом и читалась как рывок (правка владельца 2026-09-17). */
-.stat-tile-chevron svg {
+.kpi-tile-chevron svg {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-button.stat-tile-toggle:hover .stat-tile-chevron {
+button.kpi-tile-toggle:hover .kpi-tile-chevron {
   background: rgba(var(--accent-rgb), 0.2);
 }
 
-button.stat-tile-toggle.is-open .stat-tile-chevron {
+button.kpi-tile-toggle.is-open .kpi-tile-chevron {
   background: rgba(var(--accent-rgb), 0.28);
   border-color: rgba(var(--accent-rgb), 0.9);
 }
 
-button.stat-tile-toggle.is-open .stat-tile-chevron svg {
+button.kpi-tile-toggle.is-open .kpi-tile-chevron svg {
   transform: rotate(180deg);
 }
 
 /* Панель под плитками раскрывается по высоте плавно: грид 0fr → 1fr
    анимируется, в отличие от height: auto. Панель всегда в DOM;
    закрытая — без отступа и прозрачная, чтобы не оставлять щель. */
-.stat-tile-panel {
+.kpi-tile-panel {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
@@ -3329,22 +3332,22 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
     margin-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.stat-tile-panel.is-open {
+.kpi-tile-panel.is-open {
   grid-template-rows: 1fr;
   opacity: 1;
   margin-bottom: 1rem;
 }
 
-.stat-tile-panel-inner {
+.kpi-tile-panel-inner {
   min-height: 0;
   overflow: hidden;
 }
 
 @media (max-width: 575.98px) {
-  .stat-tiles {
+  .kpi-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .stat-tile-value {
+  .kpi-tile-value {
     font-size: 2.1rem;
   }
 }
@@ -3352,7 +3355,7 @@ button.stat-tile-toggle.is-open .stat-tile-chevron svg {
 /* Раскрытая панель под плитками. Высота ограничена — при сорока
    событиях панель иначе занимала бы экран целиком; дальше прокрутка
    внутри. */
-.stat-tile-expand {
+.kpi-tile-expand {
   max-height: 15rem;
   overflow-y: auto;
 }
@@ -6159,7 +6162,6 @@ body::after {
 /* Ниже — элементы, у которых :hover менял цвет/фон/рамку рывком: сам
    transition в базовом правиле отсутствовал. Значения совпадают с уже
    принятыми в файле (0.15–0.18 с ease). */
-.attention-card,
 .nav-chip-link,
 .profile-menu-item,
 .audit-link .surface {
@@ -6187,7 +6189,6 @@ body::after {
     animation: none;
   }
 
-  .attention-card,
   .nav-chip-link,
   .profile-menu-item,
   .audit-link .surface,
@@ -9563,10 +9564,10 @@ a.profile-friend-more:hover {
   .stats-heat-cell:hover {
     transform: none;
   }
-  .stat-tile-chevron,
-  .stat-tile-chevron svg,
-  .stat-tile-panel,
-  .stat-tile {
+  .kpi-tile-chevron,
+  .kpi-tile-chevron svg,
+  .kpi-tile-panel,
+  .kpi-tile {
     transition: none;
   }
 }

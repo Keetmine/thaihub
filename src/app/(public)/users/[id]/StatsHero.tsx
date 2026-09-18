@@ -100,18 +100,18 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
 
   return (
     <div className="mb-4">
-      <div className="stat-tiles mb-3">
+      <div className="kpi-tiles mb-3">
         {tiles.map((tile) => {
           const inner = (
             <>
-              <span className="stat-tile-icon" aria-hidden>
+              <span className="kpi-tile-icon" aria-hidden>
                 {tile.icon}
               </span>
-              <span className="stat-tile-value">{tile.value}</span>
-              <span className="stat-tile-label">{tile.label}</span>
-              <span className="stat-tile-hint">{tile.hint}</span>
+              <span className="kpi-tile-value">{tile.value}</span>
+              <span className="kpi-tile-label">{tile.label}</span>
+              <span className="kpi-tile-hint">{tile.hint}</span>
               {tile.expandKey && (
-                <span className="stat-tile-chevron" aria-hidden>
+                <span className="kpi-tile-chevron" aria-hidden>
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6l5 5 5-5" />
                   </svg>
@@ -119,12 +119,12 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
               )}
             </>
           );
-          const cls = "stat-tile";
+          const cls = "kpi-tile";
           return tile.expandKey ? (
             <button
               key={tile.key}
               type="button"
-              className={`${cls} stat-tile-toggle${expanded === tile.expandKey ? " is-open" : ""}`}
+              className={`${cls} kpi-tile-toggle${expanded === tile.expandKey ? " is-open" : ""}`}
               aria-expanded={expanded === tile.expandKey}
               onClick={() =>
                 setExpanded((cur) => (cur === tile.expandKey ? null : tile.expandKey!))
@@ -141,15 +141,15 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
       </div>
 
       {/* Панели всегда в DOM и раскрываются плавно по высоте (грид
-          0fr → 1fr, см. .stat-tile-panel): условный рендер появлялся
+          0fr → 1fr, см. .kpi-tile-panel): условный рендер появлялся
           рывком (правка владельца 2026-09-17: «не плавно»). Закрытая
           панель — inert, чтобы ссылки внутри не ловили фокус. */}
       <div
-        className={`stat-tile-panel${expanded === "events" ? " is-open" : ""}`}
+        className={`kpi-tile-panel${expanded === "events" ? " is-open" : ""}`}
         inert={expanded !== "events"}
       >
-        <div className="stat-tile-panel-inner">
-        <div className="surface p-3 stat-tile-expand thin-scroll">
+        <div className="kpi-tile-panel-inner">
+        <div className="surface p-3 kpi-tile-expand thin-scroll">
           <div className="hero-event-list">
             {stats.attendedEventsList.map((ev) => (
               <AppLink key={ev.id} href={eventHref(ev)} className="hero-event-row">
@@ -179,11 +179,11 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
         </div>
       </div>
       <div
-        className={`stat-tile-panel${expanded === "artists" ? " is-open" : ""}`}
+        className={`kpi-tile-panel${expanded === "artists" ? " is-open" : ""}`}
         inert={expanded !== "artists"}
       >
-        <div className="stat-tile-panel-inner">
-        <div className="surface p-3 stat-tile-expand thin-scroll">
+        <div className="kpi-tile-panel-inner">
+        <div className="surface p-3 kpi-tile-expand thin-scroll">
           <div className="hero-artist-grid">
             {stats.seenPerformers.map((p) => (
               <AppLink key={p.id} href={performerHref(p)} className="hero-artist">
@@ -207,11 +207,11 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
         </div>
       </div>
       <div
-        className={`stat-tile-panel${expanded === "trips" ? " is-open" : ""}`}
+        className={`kpi-tile-panel${expanded === "trips" ? " is-open" : ""}`}
         inert={expanded !== "trips"}
       >
-        <div className="stat-tile-panel-inner">
-        <div className="surface p-3 stat-tile-expand thin-scroll">
+        <div className="kpi-tile-panel-inner">
+        <div className="surface p-3 kpi-tile-expand thin-scroll">
           <div className="hero-event-list">
             {stats.tripsList.map((trip) => (
               <AppLink key={trip.id} href={tripHref(trip)} className="stats-trip-row">
