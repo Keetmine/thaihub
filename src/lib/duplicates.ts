@@ -16,9 +16,56 @@ export function groupMemberKey(rows: { id: string }[]): string {
   return rows.map((r) => r.id).sort().join("|");
 }
 
-/** Группы исполнителей-кандидатов в дубли. Три сетки, от сильного
- *  сигнала к слабому: точное имя, общее РЕАЛЬНОЕ имя при разных никах и
- *  имя с точностью до пробелов/дефисов/апострофов. Сольные и группы
+/** Имя в «слова» для сетки «ник приклеен к имени». Дефис НЕ режем
+ *  намеренно: у корейских имён он внутри личного имени, и с разрезанием
+ *  «Kim Seok» ложно входил бы в «Kim Dong-seok», а «Joo Ho» — в «Yang
+ *  Joo-ho» (это РАЗНЫЕ люди). Точки и апострофы убираем — они шум. */
+function nameTokens(name: string): string[] {
+  return name.toLowerCase().replace(/[.'’`]/g, "").split(/[\s_]+/).filter(Boolean);
+}
+
+/**
+ * Сетка «ник приклеен к имени» (правка владельца 2026-09-18: «реальное
+ * имя указано в нике, и отдельно профиль с ником и реальным именем, а
+ * оно не понимает, что это дубли»).
+ *
+ * Ловит пары вида «Nuntapong Wongsakulyong» ↔ «Copter Nuntapong
+ * Wongsakulyong»: одно имя — ХВОСТ другого, то есть второе отличается
+ * приписанным спереди ником. Таких записей в каталоге сотни: парсеры
+ * заводят человека то по паспортному имени, то по «ник + имя».
+ *
+ * Хвост — минимум два слова: одного слова мало («Ohm» — нік доброй
+ * половины тайских актёров, и «Ohm» ⊂ «Ohm Atshar Nampan» свело бы
+ * двух РАЗНЫХ Ohm-ов). Сравниваются последовательности, а не множества
+ * слов: у «Kim Young-ho» и «Kim Ho-young» набор слов одинаковый, но это
+ * разные люди.
+ *
+ * Чистая функция — проверяется юнит-тестом tests/unit/duplicates.test.ts.
+ */
+export function nicknamePrefixGroups<T extends { id: string; name: string }>(
+  rows: T[],
+): DuplicateGroup<T>[] {
+  // Каждая запись регистрируется под всеми своими хвостами длиной 2+
+  // слова, включая полное имя: группа — это хвост, под которым оказалось
+  // больше одной записи.
+  const byTail = new Map<string, T[]>();
+  for (const row of rows) {
+    const tokens = nameTokens(row.name);
+    for (let i = 0; i + 2 <= tokens.length; i++) {
+      const key = tokens.slice(i).join(" ");
+      if (!byTail.has(key)) byTail.set(key, []);
+      byTail.get(key)!.push(row);
+    }
+  }
+  return [...byTail.entries()]
+    .filter(([, group]) => group.length > 1)
+    .map(([key, group]) => ({ key: `tail::${key}`, rows: group }));
+}
+
+/** Группы исполнителей-кандидатов в дубли. Пять сеток, от сильного
+ *  сигнала к слабому: точное имя, общее РЕАЛЬНОЕ имя при разных никах,
+ *  имя с точностью до пробелов/дефисов/апострофов, «ник приклеен к
+ *  имени» и «ник одного = реальное имя другого». Сольные и группы
  *  идут ОДНИМ списком: «группа X» и «соло X», заведённый парсером, —
  *  это и есть дубль (правка владельца 2026-09-10).
  *
@@ -85,7 +132,43 @@ export async function findDuplicatePerformerGroups(): Promise<
     .filter((g) => !seenSets.has(g.rows.map((r) => r.id).sort().join("|")));
   for (const g of looseGroups) seenSets.add(g.rows.map((r) => r.id).sort().join("|"));
 
-  const groups = [...byNick, ...realGroups, ...looseGroups];
+  // Четвёртая сетка: «ник приклеен к имени» — «Nuntapong Wongsakulyong»
+  // ↔ «Copter Nuntapong Wongsakulyong» (см. nicknamePrefixGroups выше).
+  const tailGroups = nicknamePrefixGroups(performers)
+    .flatMap((g) => splitByDiscriminator(g, (p) => p.realName))
+    .filter((g) => !seenSets.has(g.rows.map((r) => r.id).sort().join("|")));
+  for (const g of tailGroups) seenSets.add(g.rows.map((r) => r.id).sort().join("|"));
+
+  // Пятая сетка: ник ОДНОГО равен реальному имени ДРУГОГО — «Jeff»
+  // (реальное: Jeff Satur) ↔ «Jeff Satur» без реального имени (правка
+  // владельца 2026-09-18). Пять знаков после нормализации — чтобы
+  // короткий ник вроде «Ice» не сцеплял пол-каталога.
+  const byNormName = new Map<string, typeof performers>();
+  for (const p of performers) {
+    const key = normReal(p.name);
+    if (key.length < 5) continue;
+    if (!byNormName.has(key)) byNormName.set(key, []);
+    byNormName.get(key)!.push(p);
+  }
+  const crossPairs = new Map<string, typeof performers>();
+  for (const p of performers) {
+    if (!p.realName || p.realName.trim().length < 5) continue;
+    const key = normReal(p.realName);
+    const others = (byNormName.get(key) ?? []).filter((o) => o.id !== p.id);
+    if (others.length === 0) continue;
+    // Ключ — по реальному имени: если таких записей несколько, они все
+    // про одного человека и идут одной группой.
+    if (!crossPairs.has(key)) crossPairs.set(key, [...others]);
+    const bucket = crossPairs.get(key)!;
+    if (!bucket.some((r) => r.id === p.id)) bucket.push(p);
+  }
+  const crossGroups = [...crossPairs.entries()]
+    .filter(([, rows]) => rows.length > 1)
+    .map(([key, rows]) => ({ key: `cross::${key}`, rows }))
+    .filter((g) => !seenSets.has(g.rows.map((r) => r.id).sort().join("|")));
+  for (const g of crossGroups) seenSets.add(g.rows.map((r) => r.id).sort().join("|"));
+
+  const groups = [...byNick, ...realGroups, ...looseGroups, ...tailGroups, ...crossGroups];
   const countRows = await prisma.performer.findMany({
     where: { id: { in: groups.flatMap((g) => g.rows.map((r) => r.id)) } },
     select: { id: true, _count: { select: { events: true, dramas: true } } },
