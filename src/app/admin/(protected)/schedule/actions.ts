@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { jobDefinition, runDueJobs } from "@/lib/scheduledJobs";
+import { jobDefinition, jobOutcome, runDueJobs } from "@/lib/scheduledJobs";
 
 /** Сохранить расписание одной задачи: включена ли, в котором часу и по
  *  кому работает. */
@@ -106,10 +106,18 @@ export async function runJobNow(key: string): Promise<void> {
   });
 
   try {
-    const summary = await def.run(targetIds);
+    const outcome = jobOutcome(await def.run(targetIds));
     await prisma.scheduledJob.update({
       where: { key },
-      data: { lastStatus: "DONE", lastSummary: summary },
+      data: {
+        lastStatus: "DONE",
+        lastSummary: outcome.summary,
+        // Кнопка «Запустить сейчас» ведёт себя как обычный прогон: взяла
+        // пачку, осталось ещё — планировщик подхватит остаток сам.
+        resumeAt: outcome.resumeInMinutes
+          ? new Date(Date.now() + outcome.resumeInMinutes * 60_000)
+          : null,
+      },
     });
   } catch (err) {
     await prisma.scheduledJob.update({
@@ -117,6 +125,7 @@ export async function runJobNow(key: string): Promise<void> {
       data: {
         lastStatus: "FAILED",
         lastSummary: err instanceof Error ? err.message : String(err),
+        resumeAt: null,
       },
     });
     throw err;

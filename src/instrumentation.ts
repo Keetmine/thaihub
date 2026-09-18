@@ -37,11 +37,31 @@ export async function register() {
       },
     });
     if (stale.count > 0) console.log(`import runs: закрыто зависших после перезапуска: ${stale.count}`);
+
+    // Та же беда у задач расписания, только дороже: строка остаётся
+    // RUNNING, отметка «сегодня уже запускалась» стоит — и оборванная
+    // деплоем задача ждала бы СУТОК. Просим планировщик продолжить
+    // через пару минут (правка владельца 2026-09-18).
+    const revived = await prisma.scheduledJob.updateMany({
+      where: { lastStatus: "RUNNING" },
+      data: {
+        lastStatus: "FAILED",
+        lastSummary: "Прерван перезапуском сервера — продолжим с того же места",
+        resumeAt: new Date(Date.now() + 2 * 60_000),
+      },
+    });
+    if (revived.count > 0) console.log(`scheduler: задач продолжится после перезапуска: ${revived.count}`);
   } catch (err) {
     console.warn(`stale import runs cleanup failed: ${err instanceof Error ? err.message : err}`);
   }
 
-  if (!process.env.TELEGRAM_BOT_TOKEN) return;
+  // Планировщик и телеграм-цикл поднимаются ниже. ВАЖНО: ранний выход
+  // без токена гасит и планировщик тоже — задачи расписания к телеграму
+  // отношения не имеют, но живут в том же register().
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    console.warn("TELEGRAM_BOT_TOKEN не задан: планировщик и напоминания не запущены");
+    return;
+  }
 
   /**
    * Фоновые задачи — ТОЛЬКО в production (правка владельца 2026-09-10,

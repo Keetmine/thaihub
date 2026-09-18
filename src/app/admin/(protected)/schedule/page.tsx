@@ -188,6 +188,9 @@ export default async function AdminSchedulePage({
             {job.lastStatus ? (
               <>
                 {STATUS_LABELS[job.lastStatus] ?? job.lastStatus} · {fmt(job.lastRunAt)}
+                {/* Задача разобрала пачку и попросила продолжить — видно,
+                    что круг ещё не пройден и когда будет следующая. */}
+                {job.resumeAt && <> · продолжит {fmt(job.resumeAt)}</>}
               </>
             ) : (
               "ещё не запускалась"

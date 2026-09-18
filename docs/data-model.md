@@ -70,6 +70,14 @@ copy — read the schema file for exact field types/nullability.
   Cascade-deletes with its `Event`.
 - **`EventPerformer`** / **`EventPairing`** — join tables, event ↔
   performer / event ↔ pairing.
+- **`ScheduledJob.resumeAt`** — «этой задаче есть что доделать, продолжи
+  в это время». Ставится, когда прогон разобрал свою пачку, но круг не
+  пройден (обновление MDL берёт по 300 карточек из ~600), или когда
+  задачу оборвал перезапуск. Планировщик тикает раз в 10 минут и по
+  наступившему `resumeAt` запускает задачу ВНЕ суточного правила. Пусто
+  — обычное «раз в сутки в свой час». См.
+  [features/admin-panel.md](features/admin-panel.md).
+
 - **`EventDraft`** — черновик события из краулеров афиши ThaiTicketMajor,
   трекера thaistarx.com (у него в `payload` ещё `presaleUrl`,
   `timezone` и блок `thaiStarX` с тегами и билетными ссылками) и афиш

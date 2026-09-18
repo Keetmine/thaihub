@@ -593,8 +593,11 @@ export type MdlAutoUpdateResult = {
   /** Сколько серий за прогон добавилось и сколько уточнило дату. */
   episodesAdded: number;
   episodesChanged: number;
-  /** Осталось за потолком прогона — доберём в следующую ночь. */
-  pending: number;
+  /** Сколько помеченных сериалов ещё НЕ обошли в этом круге: их
+   *  `mdlSyncedAt` старше начала прогона. Не «total − checked»: при
+   *  продолжении пачками следующая пачка берёт тех же самых, и
+   *  разность от общего числа никогда бы не дошла до нуля. */
+  remaining: number;
   /** Прервались раньше времени: MDL перестал отдавать страницы. */
   abortedAfter: string | null;
 };
@@ -622,7 +625,9 @@ export async function refreshMdlAutoUpdateDramas(opts: {
   onProgress?: (message: string) => void;
 }): Promise<MdlAutoUpdateResult> {
   const where = { mdlAutoUpdate: true, mdlUrl: { not: null } };
-  const total = await prisma.drama.count({ where });
+  // Начало пачки — граница круга: всё, что после неё не переоткрыли,
+  // считается необойдённым (см. remaining в конце).
+  const startedAt = new Date();
   const dramas = await prisma.drama.findMany({
     where,
     select: { id: true, title: true, mdlUrl: true },
@@ -676,6 +681,12 @@ export async function refreshMdlAutoUpdateDramas(opts: {
     await fetcher.close();
   }
 
+  // Кого ещё не обошли в этом круге. Считаем ПОСЛЕ пачки: по нему
+  // планировщик решает, брать ли следующую (см. scheduledJobs.ts).
+  const remaining = await prisma.drama.count({
+    where: { ...where, OR: [{ mdlSyncedAt: null }, { mdlSyncedAt: { lt: startedAt } }] },
+  });
+
   return {
     checked,
     updated,
@@ -683,7 +694,7 @@ export async function refreshMdlAutoUpdateDramas(opts: {
     scheduleChanged,
     episodesAdded,
     episodesChanged,
-    pending: Math.max(0, total - checked),
+    remaining,
     abortedAfter,
   };
 }

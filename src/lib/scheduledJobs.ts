@@ -21,6 +21,32 @@ export const JOB_GROUPS = [
 ] as const;
 export type JobGroup = (typeof JOB_GROUPS)[number]["key"];
 
+/**
+ * Что задача вернула планировщику. Строка — «сделала всё, сводка вот»
+ * (так возвращают почти все). Объект с `resumeInMinutes` — «взяла
+ * пачку, осталось ещё; разбуди меня через столько-то минут», и тогда
+ * планировщик запустит её ВНЕ суточного правила (правка владельца
+ * 2026-09-18: «пока не будут спарсены все»).
+ */
+export type JobRunOutcome = { summary: string; resumeInMinutes?: number };
+
+export function jobOutcome(result: string | JobRunOutcome): JobRunOutcome {
+  return typeof result === "string" ? { summary: result } : result;
+}
+
+/** Сколько пачек задача уже отработала с начала суток — потолок на
+ *  продолжение (см. mdl-auto-update ниже). Считаем по журналу прогонов:
+ *  своей колонки под счётчик заводить незачем. */
+async function countRunsSinceDayStart(kind: string): Promise<number> {
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return prisma.importRun.count({ where: { kind, startedAt: { gte: dayStart } } });
+}
+
+/** Потолок пачек обновления MDL за сутки: 585 помеченных карточек — это
+ *  две пачки по 300, шесть с запасом покрывают рост каталога. */
+const MDL_MAX_BATCHES_PER_DAY = 6;
+
 export type JobDefinition = {
   key: string;
   /** Группа на страницах расписания и импортов (см. JOB_GROUPS). */
@@ -51,7 +77,7 @@ export type JobDefinition = {
    *  /admin/schedule. Не задан — общие 4 утра: ночь удобна парсерам, но
    *  не рассылке, которую человек читает. */
   defaultHour?: number;
-  run: (targetIds: string[] | null) => Promise<string>;
+  run: (targetIds: string[] | null) => Promise<string | JobRunOutcome>;
 };
 
 /**
@@ -108,8 +134,11 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
       "Заодно обновляется расписание серий (какая серия на какое число) — " +
       "у выходящего сериала даты следующих серий появляются неделя за неделей. " +
       "Пометку ставит вторая кнопка в импортах — и у одиночного сериала, и у импорта " +
-      "со страницы поиска. За один прогон обходится до 300 карточек, начиная с тех, " +
-      "которые дольше всех не открывали.",
+      "со страницы поиска. Обход идёт ПАЧКАМИ по 300 карточек, начиная с тех, которые " +
+      "дольше всех не открывали: осталось необойдённое — планировщик берёт следующую " +
+      "пачку через десять минут, и так пока круг не пройден целиком (до шести пачек за " +
+      "сутки). Прерванная деплоем задача продолжается через пару минут после запуска, " +
+      "а не ждёт следующего дня.",
     // Отбор идёт по флагу в карточке сериала, а список выбираемых
     // целей на /admin/schedule — про исполнителей.
     supportsTargets: false,
@@ -127,14 +156,14 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
         scheduleChanged: number;
         episodesAdded: number;
         episodesChanged: number;
-        pending: number;
+        remaining: number;
         abortedAfter: string | null;
       }) =>
         `проверено ${r.checked}, с изменениями ${r.updated}, ошибок ${r.failed}` +
         (r.scheduleChanged
           ? `, расписание уточнилось у ${r.scheduleChanged} (серий +${r.episodesAdded}, дат ${r.episodesChanged})`
           : "") +
-        (r.pending ? `, отложено до следующего прогона ${r.pending}` : "") +
+        (r.remaining ? `, осталось обойти ${r.remaining} — продолжим следующей пачкой` : ", круг пройден целиком") +
         (r.abortedAfter ? ` · ${r.abortedAfter}` : "");
 
       const result = await logImportRun(
@@ -143,7 +172,24 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
         summarize,
       );
       // null — прогон остановили кнопкой в /admin/imports.
-      return result ? summarize(result) : "остановлено вручную";
+      if (!result) return "остановлено вручную";
+
+      // Осталось необойдённое — просим планировщик продолжить, он
+      // тикает раз в десять минут (правка владельца 2026-09-18: «потом
+      // через таймер следующий прогон, и так пока не будут спарсены
+      // все»). Потолок пачек за сутки — чтобы вечно падающая карточка,
+      // которая всегда первая в очереди и всегда роняет свой запрос, не
+      // гоняла задачу по кругу до утра; MDL закрылся проверкой
+      // (abortedAfter) — тоже ждём завтрашнего дня.
+      const batchesToday = await countRunsSinceDayStart("mdl-auto-update");
+      const keepGoing =
+        result.remaining > 0 && !result.abortedAfter && batchesToday < MDL_MAX_BATCHES_PER_DAY;
+      return {
+        summary:
+          summarize(result) +
+          (result.remaining > 0 && !keepGoing ? " · пачек за сутки хватит, остальное завтра" : ""),
+        resumeInMinutes: keepGoing ? 1 : undefined,
+      };
     },
   },
   {
@@ -627,6 +673,7 @@ export async function listJobs() {
       lastRunAt: row?.lastRunAt ?? null,
       lastStatus: row?.lastStatus ?? null,
       lastSummary: row?.lastSummary ?? null,
+      resumeAt: row?.resumeAt ?? null,
     };
   });
 }
@@ -639,6 +686,10 @@ export async function listJobs() {
  * местные 4 утра; Math.round гасит сдвиг перехода на летнее время.
  * Экспортирована ради юнит-теста недельного интервала.
  *
+ * `resumeAt` (см. ScheduledJob.resumeAt) перебивает оба правила: задача
+ * отработала пачку и попросила продолжить — продолжаем, как только
+ * настанет это время.
+ *
  * `weekday` (0 — воскресенье) добавляет к этому жёсткий день недели: в
  * другие дни задача не due вовсе, сколько бы времени ни прошло. День
  * берётся в той же зоне процесса, что и час, — иначе воскресный
@@ -650,7 +701,12 @@ export function isDue(
   now: Date,
   intervalDays = 1,
   weekday?: number,
+  resumeAt?: Date | null,
 ): boolean {
+  // Недоделанная пачка продолжается, как только настал её час «разбуди
+  // меня»: ни расписание, ни «раз в сутки» тут не при чём — круг уже
+  // начат, и бросать его на середине до завтра незачем.
+  if (resumeAt) return now.getTime() >= resumeAt.getTime();
   if (now.getHours() < hour) return false;
   if (weekday !== undefined && now.getDay() !== weekday) return false;
   if (!lastRunAt) return true;
@@ -671,7 +727,9 @@ async function claimJob(key: string, hour: number, lastRunAt: Date | null, now: 
     // lastRunAt: null в фильтре — это IS NULL: строка есть, но задача
     // ещё ни разу не запускалась.
     where: { key, lastRunAt },
-    data: { lastRunAt: now, lastStatus: "RUNNING" },
+    // resumeAt гасим при захвате: просьбу продолжить задача поставит
+    // заново, если ей и после этой пачки будет что делать.
+    data: { lastRunAt: now, lastStatus: "RUNNING", resumeAt: null },
   });
   if (claimed.count > 0) return true;
   if (lastRunAt !== null) return false; // отметку успел поставить другой тик
@@ -709,7 +767,10 @@ async function runDueJobsInner(now: Date): Promise<string[]> {
   const started: string[] = [];
 
   for (const job of jobs) {
-    if (!job.enabled || !isDue(job.hour, job.lastRunAt, now, job.intervalDays ?? 1, job.weekday))
+    if (
+      !job.enabled ||
+      !isDue(job.hour, job.lastRunAt, now, job.intervalDays ?? 1, job.weekday, job.resumeAt)
+    )
       continue;
     // Отметку ставим ДО запуска: прогон длинный, и при перезапуске
     // приложения задача не должна стартовать второй раз за сутки.
@@ -722,10 +783,18 @@ async function runDueJobsInner(now: Date): Promise<string[]> {
         : null;
 
     try {
-      const summary = await job.run(targetIds);
+      const outcome = jobOutcome(await job.run(targetIds));
       await prisma.scheduledJob.update({
         where: { key: job.key },
-        data: { lastStatus: "DONE", lastSummary: summary },
+        data: {
+          lastStatus: "DONE",
+          lastSummary: outcome.summary,
+          // Задача попросила продолжить — следующий тик после этого
+          // времени возьмёт следующую пачку.
+          resumeAt: outcome.resumeInMinutes
+            ? new Date(Date.now() + outcome.resumeInMinutes * 60_000)
+            : null,
+        },
       });
     } catch (err) {
       await prisma.scheduledJob.update({
@@ -733,6 +802,10 @@ async function runDueJobsInner(now: Date): Promise<string[]> {
         data: {
           lastStatus: "FAILED",
           lastSummary: err instanceof Error ? err.message : String(err),
+          // Упавшую задачу пачками не догоняем: следующая попытка — в
+          // свой час завтра, иначе сломанный источник долбился бы
+          // каждые десять минут до утра.
+          resumeAt: null,
         },
       });
       console.warn(`scheduled job ${job.key} failed:`, err);
