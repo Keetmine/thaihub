@@ -307,6 +307,112 @@ details.admin-section[open] > summary.admin-section-head::before {
   }
 }
 
+/* Ряды вкладок по группам (расписание и импорты): подпись группы над
+   своим рядом, общая нижняя черта у всего блока. Пятнадцать задач одной
+   полосой заворачивались в три строки без всякого порядка. */
+.tab-bar-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.tab-bar-group {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+}
+
+.tab-bar-group-label {
+  flex: 0 0 9.5rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+  opacity: 0.8;
+}
+
+.tab-bar-group .tab-bar {
+  border-bottom: none;
+  margin-bottom: 0;
+  gap: 1.25rem;
+}
+
+.tab-bar-group .tab-bar-item {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+/* Список «Обходы по расписанию» на импортах: строка на задачу — имя,
+   одна фраза, последний результат, кнопки. */
+.crawler-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.crawler-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 0.5rem 1.25rem;
+  align-items: center;
+  padding: 0.8rem 1.1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.crawler-row:first-child {
+  border-top: none;
+}
+
+.crawler-row-title {
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+}
+
+.crawler-row-title:hover {
+  color: var(--bs-primary-text-emphasis);
+}
+
+.crawler-row-blurb,
+.crawler-row-last {
+  font-size: 0.82rem;
+  color: var(--bs-secondary-color);
+}
+
+.crawler-row-last .is-failed {
+  color: #ff8f96;
+}
+
+.crawler-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.admin-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+@media (max-width: 767.98px) {
+  .crawler-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .crawler-row-actions {
+    justify-content: flex-start;
+  }
+
+  .tab-bar-group-label {
+    flex-basis: 100%;
+  }
+}
+
 /* Блок управления в карточке пользователя: прижат вправо от шапки на
    широком экране, под ней — на узком. */
 .admin-user-controls {

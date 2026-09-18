@@ -36,10 +36,10 @@ ThaiTicketMajor (см. [ttm-crawl.md](ttm-crawl.md)). Владелец одоб�
   `startThaiStarXArchiveCrawl`: разовый обход архива фоном (одна
   карточка в журнале, «Остановить» там же; второй параллельный не
   запускается).
-- **`src/app/admin/(protected)/imports/page.tsx`** — карточка «ThaiStarX:
-  фан-события по миру» с кнопкой архива и ссылкой на задачу; очередь
-  черновиков общая с TTM, в строке черновика виден хост источника и
-  часовой пояс (если не Бангкок).
+- **`src/app/admin/(protected)/imports/page.tsx`** — строка задачи в
+  списке «Обходы по расписанию» вкладки «События» с кнопкой «Обойти
+  архив»; очередь черновиков общая с TTM, в строке черновика виден хост
+  источника и часовой пояс (если не Бангкок).
 - **`src/app/admin/(protected)/imports/ttm-poster/route.ts`** — прокси
   постера принимает и `thaistarx.com`.
 - **`src/app/admin/(protected)/events/importActions.ts`** и

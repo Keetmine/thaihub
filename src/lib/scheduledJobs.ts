@@ -7,8 +7,24 @@ import { prisma } from "@/lib/prisma";
 // на новинки, было нельзя вовсе. Теперь расписание живёт в БД и
 // правится на /admin/schedule.
 
+/** Группы задач — ими размечены ряды вкладок на /admin/schedule и списки
+ *  «Обходы по расписанию» на /admin/imports (правка владельца 2026-09-18:
+ *  «сгруппировать, где кто что — сейчас каша»). Порядок — порядок на
+ *  странице. */
+export const JOB_GROUPS = [
+  { key: "series", label: "Сериалы и актёры" },
+  { key: "music", label: "Музыка" },
+  { key: "events", label: "Афиша событий" },
+  { key: "mascots", label: "Маскоты" },
+  { key: "digests", label: "Рассылки" },
+  { key: "service", label: "Служебное" },
+] as const;
+export type JobGroup = (typeof JOB_GROUPS)[number]["key"];
+
 export type JobDefinition = {
   key: string;
+  /** Группа на страницах расписания и импортов (см. JOB_GROUPS). */
+  group: JobGroup;
   title: string;
   description: string;
   /** Задача умеет работать по списку артистов (иначе — только «все»). */
@@ -49,6 +65,7 @@ export type JobDefinition = {
 export const JOB_DEFINITIONS: JobDefinition[] = [
   {
     key: "youtube-music",
+    group: "music",
     title: "YouTube Music: новинки",
     description:
       "Обходит артистов со ссылкой на канал и подтягивает новые релизы, песни и обложки. Появившееся попадает в «Что нового» на главной.",
@@ -83,6 +100,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "mdl-auto-update",
+    group: "series",
     title: "MyDramaList: обновление сериалов",
     description:
       "Переоткрывает страницы сериалов с пометкой «обновлять по расписанию»: " +
@@ -130,6 +148,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "mdl-new-searches",
+    group: "series",
     title: "MyDramaList: новинки по поискам",
     description:
       "Раз в день проверяет сохранённые ссылки на страницы поиска MDL (задаются ниже, " +
@@ -158,6 +177,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "doramaland-sync",
+    group: "series",
     title: "dorama.land: русские переводы",
     description:
       "Раз в день сверяет их каталог с нашим. Из sitemap dorama.land берутся только " +
@@ -190,6 +210,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "asiapoisk-sync",
+    group: "series",
     title: "asiapoisk: русские названия и страны",
     description:
       "Раз в день сверяет их каталог с нашим и дописывает то, чего у нас нет: русское " +
@@ -216,6 +237,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "blscene-locations",
+    group: "series",
     title: "blscene: новые места съёмок",
     description:
       "Раз в день обходит страницы сериалов на blscene.com и подтягивает места съёмок, " +
@@ -269,6 +291,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "ttm-crawl",
+    group: "events",
     title: "ThaiTicketMajor: обход афиши",
     description:
       "Обходит афишу концертов и шоу на thaiticketmajor.com и ищет в составе каждого " +
@@ -298,6 +321,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "thaistarx-crawl",
+    group: "events",
     title: "ThaiStarX: фан-события по миру",
     description:
       "Обходит трекер thaistarx.com — фанмиты, концерты, фанконы и премьеры тайских " +
@@ -323,6 +347,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "ticketmelon-crawl",
+    group: "events",
     title: "Ticketmelon: обход афиши",
     description:
       "Обходит карту сайта ticketmelon.com (по 60 новых страниц за прогон, с паузами) и " +
@@ -342,6 +367,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "allticket-crawl",
+    group: "events",
     title: "AllTicket: обход афиши",
     description:
       "Открывает концертный раздел allticket.com настоящим браузером (их список за " +
@@ -360,6 +386,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "gmmtv-mascots",
+    group: "mascots",
     title: "GMMTV: маскоты с вики",
     description:
       "Раз в неделю проверяет страницу Mascots фан-вики GMMTV (официальный MediaWiki API). " +
@@ -391,6 +418,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "musicfestival-crawl",
+    group: "events",
     title: "musicfestival.in.th: фестивали",
     description:
       "Раз в день открывает список будущих фестивалей на musicfestival.in.th и заводит " +
@@ -419,6 +447,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "weekly-digest",
+    group: "digests",
     title: "Недельный дайджест подписчикам",
     description:
       "По воскресеньям утром рассылает подписчикам «Вашу неделю» в Telegram: серии " +
@@ -449,6 +478,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "community-digest",
+    group: "digests",
     title: "Месячная сводка владельцам сообществ",
     description:
       "Раз в месяц пишет создателю каждого сообщества в Telegram, что у него за 30 дней " +
@@ -469,6 +499,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "cleanup-expired",
+    group: "service",
     title: "Чистка просроченного",
     description:
       "Удаляет из БД просроченные сессии и токены сброса пароля, а заодно ротирует журналы: " +

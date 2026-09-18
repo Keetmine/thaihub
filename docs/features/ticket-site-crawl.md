@@ -31,9 +31,9 @@ ThaiStarX ([thaistarx-crawl.md](thaistarx-crawl.md)). Владелец одоб�
   `allticket-crawl` (раз в сутки, `logsItems: true`).
 - **`src/app/admin/(protected)/imports/ticketSiteActions.ts`** —
   `startTicketmelonFullCrawl`: разовый обход всей карты сайта фоном.
-- **`src/app/admin/(protected)/imports/page.tsx`** — карточка «Ticketmelon
-  и AllTicket: обход афиши» (кнопка «Обойти Ticketmelon целиком», ссылки на
-  задачи); **`ttm-poster/route.ts`** — прокси постера принимает хосты
+- **`src/app/admin/(protected)/imports/page.tsx`** — строки обеих задач в
+  списке «Обходы по расписанию» вкладки «События» (у Ticketmelon кнопка
+  «Обойти всю карту сайта»); **`ttm-poster/route.ts`** — прокси постера принимает хосты
   Ticketmelon (свой домен и S3-бакет) и `atkmedia.allticket.com`.
 
 ## Источники списков

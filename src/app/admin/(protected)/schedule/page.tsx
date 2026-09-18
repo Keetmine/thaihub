@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPage } from "@/lib/auth";
-import { listJobs } from "@/lib/scheduledJobs";
+import { JOB_GROUPS, listJobs } from "@/lib/scheduledJobs";
 import { adminListHref } from "@/lib/adminListHref";
 import { DENSE_PAGE_SIZE } from "@/lib/pagination";
 import ConfirmForm from "@/components/ConfirmForm";
@@ -144,28 +144,41 @@ export default async function AdminSchedulePage({
         чему пришло время.
       </p>
 
-      <div className="tab-bar-row">
-        <div className="tab-bar">
-          {jobs.map((j) => (
-            <Link
-              key={j.key}
-              href={tabHref(j.key)}
-              prefetch={false}
-              className={`tab-bar-item ${job.key === j.key ? "active" : ""}`}
-            >
-              {TAB_LABELS[j.key] ?? j.title}
-              {/* Красная точка — последний прогон задачи упал: видно,
-                  куда идти, не открывая каждую вкладку. */}
-              {j.lastStatus === "FAILED" && (
-                <span
-                  className="d-inline-block rounded-circle bg-danger ms-2"
-                  style={{ width: "0.45rem", height: "0.45rem", verticalAlign: "middle" }}
-                  data-tooltip="последний прогон упал"
-                />
-              )}
-            </Link>
-          ))}
-        </div>
+      {/* Вкладки — рядами по группам (JOB_GROUPS), с подписью группы
+          слева: пятнадцать задач одной полосой заворачивались в три
+          строки без порядка, и нужную искали глазами (правка владельца
+          2026-09-18). */}
+      <div className="tab-bar-groups">
+        {JOB_GROUPS.map((g) => {
+          const inGroup = jobs.filter((j) => j.group === g.key);
+          if (inGroup.length === 0) return null;
+          return (
+            <div key={g.key} className="tab-bar-group">
+              <span className="tab-bar-group-label">{g.label}</span>
+              <div className="tab-bar">
+                {inGroup.map((j) => (
+                  <Link
+                    key={j.key}
+                    href={tabHref(j.key)}
+                    prefetch={false}
+                    className={`tab-bar-item ${job.key === j.key ? "active" : ""}`}
+                  >
+                    {TAB_LABELS[j.key] ?? j.title}
+                    {/* Красная точка — последний прогон задачи упал: видно,
+                        куда идти, не открывая каждую вкладку. */}
+                    {j.lastStatus === "FAILED" && (
+                      <span
+                        className="d-inline-block rounded-circle bg-danger ms-2"
+                        style={{ width: "0.45rem", height: "0.45rem", verticalAlign: "middle" }}
+                        data-tooltip="последний прогон упал"
+                      />
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <section className="admin-section mb-3">

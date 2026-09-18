@@ -44,6 +44,8 @@ import TtmImportFlow from "./ttm/TtmImportFlow";
 import MusicFestivalUrlImport from "./MusicFestivalUrlImport";
 import { startThaiStarXArchiveCrawl } from "./thaiStarXActions";
 import { startTicketmelonFullCrawl } from "./ticketSiteActions";
+import CrawlerRows from "./CrawlerRows";
+import { listJobs } from "@/lib/scheduledJobs";
 import SubmitButton from "@/components/admin/SubmitButton";
 import ConfirmForm from "@/components/ConfirmForm";
 import BulkList from "@/components/admin/BulkList";
@@ -306,6 +308,9 @@ export default async function AdminImportsPage({
   const fmt = (d: Date) =>
     d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+  // Задачи расписания — для списков «Обходы по расписанию» на вкладках.
+  const jobs = await listJobs();
+
   return (
     <div>
       <span className="eyebrow">Сервис</span>
@@ -347,10 +352,11 @@ export default async function AdminImportsPage({
           <p className="small text-secondary mb-3">
             Карточка сериала, его состав, актёры и места съёмок.
           </p>
+          <h2 className="section-heading mb-2">Запустить руками</h2>
           <div className="row g-3 mb-4">
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">MyDramaList: импорт сериала</h2>
+                <h3 className="admin-card-title mb-2">MyDramaList: импорт сериала</h3>
                 <p className="small text-secondary mb-3">
                   Ссылка на страницу сериала (mydramalist.com/12345-title) — заберём
                   оригинальное название, описание, постер, жанры, режиссёра и
@@ -388,7 +394,7 @@ export default async function AdminImportsPage({
 
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">dorama.land: русский перевод</h2>
+                <h3 className="admin-card-title mb-2">dorama.land: русский перевод</h3>
                 <p className="small text-secondary mb-3">
                   Ссылка на страницу сериала (dorama.land/…) — найдём его в нашем
                   каталоге по названию и году и подтянем русское название, описание
@@ -415,7 +421,7 @@ export default async function AdminImportsPage({
 
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">MyDramaList: импорт со страницы поиска</h2>
+                <h3 className="admin-card-title mb-2">MyDramaList: импорт со страницы поиска</h3>
                 <p className="small text-secondary mb-3">
                   Ссылка на страницу поиска MDL — заберём все найденные сериалы,
                   каждый как обычный импорт карточки с составом. Фильтры собирайте
@@ -452,7 +458,7 @@ export default async function AdminImportsPage({
 
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">MyDramaList: импорт актёра</h2>
+                <h3 className="admin-card-title mb-2">MyDramaList: импорт актёра</h3>
                 <p className="small text-secondary mb-3">
                   Ссылка на профиль человека (mydramalist.com/people/…) — заберём
                   настоящее имя, дату рождения, биографию, фото и соцсети.
@@ -505,7 +511,7 @@ export default async function AdminImportsPage({
 
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">blscene: новые локации съёмок</h2>
+                <h3 className="admin-card-title mb-2">blscene: новые локации съёмок</h3>
                 <p className="small text-secondary mb-3">
                   Разовая проверка «не появилось ли новых мест». Обходим на blscene
                   страницы тех сериалов, что УЖЕ есть в каталоге, и добавляем
@@ -518,6 +524,13 @@ export default async function AdminImportsPage({
               </div>
             </div>
           </div>
+          <h2 className="section-heading mb-2">Обходы по расписанию</h2>
+          <div className="mb-4">
+            <CrawlerRows jobs={jobs.filter((j) => j.group === "series")} />
+          </div>
+
+
+
 
           {/* Журнал прогонов этой вкладки — сразу под её блоками
               импорта (просьба владельца 2026-09-06). */}
@@ -530,10 +543,11 @@ export default async function AdminImportsPage({
           <p className="small text-secondary mb-3">
             Карточка артиста или группы: профиль, соцсети, дискография.
           </p>
+          <h2 className="section-heading mb-2">Запустить руками</h2>
           <div className="row g-3 mb-4">
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">Fandom: импорт артиста</h2>
+                <h3 className="admin-card-title mb-2">Fandom: импорт артиста</h3>
                 <p className="small text-secondary mb-3">
                   Страница артиста или группы на ЛЮБОЙ вики Fandom
                   (tpop.fandom.com/wiki/TYTAN, thiphop.fandom.com/wiki/1MILL и
@@ -559,7 +573,7 @@ export default async function AdminImportsPage({
             </div>
             <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">YouTube Music: дискография</h2>
+                <h3 className="admin-card-title mb-2">YouTube Music: дискография</h3>
                 <p className="small text-secondary mb-3">
                   Ссылка на канал артиста — и вида /channel/UC…, и с хендлом
                   (music.youtube.com/@FREEZEDROP): по хендлу id канала найдём
@@ -604,6 +618,11 @@ export default async function AdminImportsPage({
               </div>
             </div>
           </div>
+          <h2 className="section-heading mb-2">Обходы по расписанию</h2>
+          <div className="mb-4">
+            <CrawlerRows jobs={jobs.filter((j) => j.group === "music")} />
+          </div>
+
 
           {/* Журнал прогонов этой вкладки — сразу под её блоками
               импорта (просьба владельца 2026-09-06). */}
@@ -614,10 +633,11 @@ export default async function AdminImportsPage({
       {tab === "events" && (
         <>
           <p className="small text-secondary mb-3">Афиша: концерты и фанмиты.</p>
+          <h2 className="section-heading mb-2">Запустить руками</h2>
           <div className="row g-3 mb-4">
             <div className="col-12">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">Событие по ссылке</h2>
+                <h3 className="admin-card-title mb-2">Событие по ссылке</h3>
                 <p className="small text-secondary mb-3">
                   Одно поле на пять сайтов — ThaiTicketMajor, Eventpop, Ticketmelon,
                   AllTicket, Eventpass: сайт распознаётся по домену. Подтянем
@@ -630,102 +650,56 @@ export default async function AdminImportsPage({
               </div>
             </div>
 
-            {/* Краулер фестивалей musicfestival.in.th (задача
-                «musicfestival-crawl», см. docs/features/musicfestival-import.md):
-                очереди нет — события создаются сразу, здесь только
-                счётчик заготовок исполнителей и ссылки. */}
-            <div className="col-12">
+            <div className="col-12 col-xl-6">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">Фестивали musicfestival.in.th</h2>
-                <p className="small text-secondary mb-3">
-                  Суточная задача заводит события по новым фестивалям сразу, без
-                  очереди: название, даты, описание, площадка, цены, постер и весь
-                  лайнап. Артисты, которых не было в каталоге, заведены
-                  заготовками — одно имя и фото — и ждут, когда вы их дополните;
-                  после сохранения профиля запись из списка выпадает.
+                <h3 className="admin-card-title mb-2">Фестиваль по ссылке</h3>
+                <p className="small text-secondary mb-0">
+                  Один фестиваль musicfestival.in.th сразу в афишу, не дожидаясь суточной
+                  задачи: название, даты, площадка, цены, постер и весь лайнап; артистов,
+                  которых нет в каталоге, заводит заготовками.
                 </p>
-                <div className="d-flex flex-wrap gap-2">
+                <MusicFestivalUrlImport />
+              </div>
+            </div>
+          </div>
+
+          {/* Все обходы афиш — одним списком (CrawlerRows): что делает
+              задача, чем кончился последний прогон, кнопки задачи. Раньше
+              у каждого краулера была своя карточка на свой лад, и нужную
+              кнопку искали по всей странице (правка владельца 2026-09-18). */}
+          <h2 className="section-heading mb-2">Обходы по расписанию</h2>
+          <p className="small text-secondary mb-2">
+            Идут сами раз в сутки. Найденное попадает в очередь ниже черновиками — кроме
+            фестивалей, они заводятся сразу. Настройка времени и история — по ссылке задачи.
+          </p>
+          <div className="mb-4">
+            <CrawlerRows
+              jobs={jobs.filter((j) => j.group === "events")}
+              extras={{
+                "musicfestival-crawl": (
                   <Link
                     href="/admin/performers?stub=1"
                     className={`btn btn-sm ${stubPerformerCount > 0 ? "btn-primary" : "btn-outline-secondary"}`}
                   >
                     Заготовки исполнителей: {stubPerformerCount}
                   </Link>
-                  <Link href="/admin/schedule?tab=musicfestival-crawl" className="btn btn-sm btn-outline-secondary">
-                    Задача в расписании
-                  </Link>
-                </div>
-                {/* Отдельный фестиваль по ссылке — когда ждать суточную
-                    задачу не хочется (просьба владельца 2026-09-06). */}
-                <MusicFestivalUrlImport />
-              </div>
-            </div>
-
-            {/* Краулер thaistarx.com (задача «thaistarx-crawl», см.
-                docs/features/thaistarx-crawl.md): фан-события тайских
-                артистов по всему миру. Как у TTM — черновики в очередь
-                ниже, само в афишу не попадает. Кнопка — разовый обход
-                архива (все прошедшие), суточная задача листает только
-                свежее. */}
-            <div className="col-12">
-              <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">ThaiStarX: фан-события по миру</h2>
-                <p className="small text-secondary mb-3">
-                  Трекер фанмитов, концертов, фанконов и премьер тайских артистов —
-                  Тайбэй, Макао, Манила, Токио, Сингапур и дальше. Суточная задача
-                  забирает новые посты и кладёт их черновиками в очередь ниже: состав
-                  берётся из тегов поста, а если в посте есть ссылка на ThaiTicketMajor,
-                  оттуда дочитываются время, цены и полный состав. У черновика есть
-                  часовой пояс площадки — событие получит его при одобрении.
-                  «Обойти архив» — разовый проход по всем прошедшим событиям сайта, идёт
-                  фоном несколько минут; ход и «Остановить» — в журнале.
-                </p>
-                <div className="d-flex flex-wrap gap-2">
+                ),
+                "thaistarx-crawl": (
                   <form action={startThaiStarXArchiveCrawl}>
-                    <SubmitButton
-                      label="Обойти архив (все прошедшие)"
-                      busyLabel="Запускаем…"
-                      className="btn btn-primary btn-sm"
-                    />
+                    <SubmitButton label="Обойти архив" busyLabel="Запускаем…" className="btn btn-sm btn-primary" />
                   </form>
-                  <Link href="/admin/schedule?tab=thaistarx-crawl" className="btn btn-sm btn-outline-secondary">
-                    Задача в расписании
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Краулеры Ticketmelon и AllTicket (задачи «ticketmelon-crawl»
-                и «allticket-crawl», см. docs/features/ticket-site-crawl.md):
-                состав на этих сайтах не размечен, артисты ищутся в
-                названии и описании; черновики — в очередь ниже. */}
-            <div className="col-12">
-              <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">Ticketmelon и AllTicket: обход афиши</h2>
-                <p className="small text-secondary mb-3">
-                  Суточные задачи обходят карту сайта Ticketmelon (по 60 страниц за прогон)
-                  и концертный раздел AllTicket. Состав на этих сайтах не размечен, поэтому
-                  артисты ищутся в названии и описании события: по реальному имени, по нику
-                  с фамилией, по склейке пейринга и по группам; одиночные короткие ники вроде
-                  «Off» или «New» в тексте не ищутся — слишком похожи на обычные слова.
-                  Нашёлся кто-то из каталога — черновик в очереди ниже, прошедшие события
-                  запоминаются и больше не предлагаются. «Обойти Ticketmelon целиком» —
-                  разовый проход по всей карте сайта, идёт фоном около получаса.
-                </p>
-                <div className="d-flex flex-wrap gap-2">
+                ),
+                "ticketmelon-crawl": (
                   <form action={startTicketmelonFullCrawl}>
-                    <SubmitButton label="Обойти Ticketmelon целиком" busyLabel="Запускаем…" className="btn btn-primary btn-sm" />
+                    <SubmitButton label="Обойти всю карту сайта" busyLabel="Запускаем…" className="btn btn-sm btn-primary" />
                   </form>
-                  <Link href="/admin/schedule?tab=ticketmelon-crawl" className="btn btn-sm btn-outline-secondary">
-                    Задача Ticketmelon
-                  </Link>
-                  <Link href="/admin/schedule?tab=allticket-crawl" className="btn btn-sm btn-outline-secondary">
-                    Задача AllTicket
-                  </Link>
-                </div>
-              </div>
-            </div>
+                ),
+              }}
+            />
+          </div>
 
+          <h2 className="section-heading mb-2">Очередь на проверку</h2>
+          <div className="row g-3 mb-4">
             {/* Очередь краулера афиши TTM (задача «ttm-crawl», см.
                 docs/features/ttm-crawl.md): черновики с совпавшими
                 артистами ждут решения владельца. Массовые действия —
@@ -736,9 +710,7 @@ export default async function AdminImportsPage({
                 обычные. */}
             <div className="col-12">
               <div className="surface p-4 h-100">
-                <h2 className="section-heading mb-2">
-                  Черновики событий ({pendingDraftCount})
-                </h2>
+                <h3 className="admin-card-title mb-2">Черновики событий ({pendingDraftCount})</h3>
                 <p className="small text-secondary mb-3">
                   Найдены обходом ThaiTicketMajor, ThaiStarX, Ticketmelon и AllTicket: в
                   составе (или в тексте события) есть кто-то из нашего каталога. «Одобрить» — событие создастся с постером и
@@ -917,8 +889,9 @@ export default async function AdminImportsPage({
 
       {tab === "mascots" && (
         <>
+        <h2 className="section-heading mb-2">Очередь на проверку</h2>
         <div className="surface p-4 mb-4">
-          <h2 className="section-heading mb-2">Черновики маскотов ({pendingMascotCount})</h2>
+          <h3 className="admin-card-title mb-2">Черновики маскотов ({pendingMascotCount})</h3>
           <p className="small text-secondary mb-3">
             Найдены недельным обходом страницы Mascots фан-вики GMMTV (задача
             «GMMTV: маскоты с вики» в расписании). «Одобрить» — маскот появится
@@ -1041,6 +1014,11 @@ export default async function AdminImportsPage({
             />
           )}
         </div>
+          <h2 className="section-heading mb-2">Обходы по расписанию</h2>
+          <div className="mb-4">
+            <CrawlerRows jobs={jobs.filter((j) => j.group === "mascots")} />
+          </div>
+
 
           {/* Журнал прогонов этой вкладки — сразу под её блоками
               импорта (просьба владельца 2026-09-06). */}
