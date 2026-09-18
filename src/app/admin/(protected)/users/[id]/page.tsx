@@ -7,7 +7,6 @@ import PremiumToggle from "../PremiumToggle";
 import AdminRoleToggle from "./AdminRoleToggle";
 import BanControls from "../BanControls";
 import ConfirmForm from "@/components/ConfirmForm";
-import StatTile from "@/components/StatTile";
 import { TrashIcon } from "@/components/icons";
 import { formatShortDate } from "@/lib/dates";
 import { isOnlineNow, lastSeenExact, lastSeenLabel } from "../lastSeenLabel";
@@ -93,8 +92,12 @@ export default async function AdminUserPage({
         ← Все пользователи
       </Link>
 
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
+      {/* Шапка и управление — одной карточкой (переделка 2026-09-18 по
+          просьбе владельца, в языке дашборда): кто это, как с ним
+          связаться и что с ним можно сделать — один взгляд, а не три
+          разных блока подряд. */}
+      <div className="surface stats-card mt-3 mb-3">
+        <div className="d-flex flex-wrap align-items-center gap-3">
           {user.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -145,12 +148,11 @@ export default async function AdminUserPage({
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Управление — подписанные группы вместо каши кнопок в шапке
-          (фидбек владельца: роль, подписка и удаление сливались в одну
-          нечитаемую строку). */}
-      <div className="surface p-3 mb-4 d-flex flex-wrap align-items-end column-gap-5 row-gap-3">
+        {/* Управление — подписанными группами, а не кашей кнопок
+            (фидбек владельца: роль, подписка и удаление сливались в одну
+            нечитаемую строку). */}
+        <div className="admin-user-controls d-flex flex-wrap align-items-end column-gap-4 row-gap-3">
         <div>
           <p className="small text-secondary mb-1">Роль</p>
           <AdminRoleToggle
@@ -201,24 +203,57 @@ export default async function AdminUserPage({
             </button>
           </ConfirmForm>
         </div>
+        </div>
       </div>
 
-      <div className="d-flex flex-wrap gap-2 mb-4">
-        <StatTile value={user._count.eventAttendances} label="идёт" />
-        <StatTile value={user._count.favoriteEvents} label="избр. событий" />
-        <StatTile value={user._count.favoritePerformers} label="избр. артистов" />
-        <StatTile value={user._count.dramaWatchStatuses} label="сериалов" />
-        <StatTile value={user._count.eventNotes} label="заметок" />
-        <StatTile value={user._count.placeLists} label="списков" />
-        <StatTile value={user._count.createdLocations} label="своих мест" />
-        <StatTile value={user._count.trips} label="поездок" />
+      {/* Чем человек живёт на сайте — ряд цифр, как на дашборде.
+          Остальные счётчики (заметки, списки, места, поездки) стоят в
+          шапках своих карточек ниже: дублировать их плитками незачем. */}
+      <div className="kpi-tiles mb-3">
+        <div className="kpi-tile">
+          <span className="kpi-tile-icon" aria-hidden>
+            🎤
+          </span>
+          <span className="kpi-tile-value">{user._count.eventAttendances}</span>
+          <span className="kpi-tile-label">отметок «иду»</span>
+          <span className="kpi-tile-hint">{user._count.favoriteEvents} событий в избранном</span>
+        </div>
+        <div className="kpi-tile">
+          <span className="kpi-tile-icon" aria-hidden>
+            📺
+          </span>
+          <span className="kpi-tile-value">{user._count.dramaWatchStatuses}</span>
+          <span className="kpi-tile-label">сериалов в списке</span>
+        </div>
+        <div className="kpi-tile">
+          <span className="kpi-tile-icon" aria-hidden>
+            ✨
+          </span>
+          <span className="kpi-tile-value">{user._count.favoritePerformers}</span>
+          <span className="kpi-tile-label">любимых артистов</span>
+        </div>
+        <div className="kpi-tile">
+          <span className="kpi-tile-icon" aria-hidden>
+            🧳
+          </span>
+          <span className="kpi-tile-value">{user._count.trips}</span>
+          <span className="kpi-tile-label">поездок</span>
+          <span className="kpi-tile-hint">{user._count.placeLists} списков мест</span>
+        </div>
       </div>
 
-      <div className="row g-4">
-        <div className="col-12 col-lg-6">
-          <h2 className="section-heading mb-2">Заметки к событиям</h2>
+      {/* Содержимое — карточками в две колонки, у каждой счётчик в
+          шапке: пустые больше не занимают экран заголовком и фразой
+          «нет заметок» на всю ширину. */}
+      <div className="row g-3 align-items-start">
+        <div className="col-12 col-lg-6 d-flex flex-column gap-3">
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">Заметки к событиям</h2>
+              <span className="stats-card-meta">{user._count.eventNotes}</span>
+            </div>
           {user.eventNotes.length === 0 ? (
-            <p className="small text-secondary">Нет заметок.</p>
+            <p className="small text-secondary mb-0">Нет заметок.</p>
           ) : (
             <div className="d-flex flex-column gap-2">
               {user.eventNotes.map((n) => (
@@ -246,9 +281,15 @@ export default async function AdminUserPage({
             </div>
           )}
 
-          <h2 className="section-heading mb-2 mt-4">Списки мест</h2>
+          </div>
+
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">Списки мест</h2>
+              <span className="stats-card-meta">{user._count.placeLists}</span>
+            </div>
           {user.placeLists.length === 0 ? (
-            <p className="small text-secondary">Нет списков.</p>
+            <p className="small text-secondary mb-0">Нет списков.</p>
           ) : (
             <div className="d-flex flex-column gap-2">
               {user.placeLists.map((l) => (
@@ -278,9 +319,15 @@ export default async function AdminUserPage({
             </div>
           )}
 
-          <h2 className="section-heading mb-2 mt-4">Свои места</h2>
+          </div>
+
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">Свои места</h2>
+              <span className="stats-card-meta">{user._count.createdLocations}</span>
+            </div>
           {user.createdLocations.length === 0 ? (
-            <p className="small text-secondary">Нет своих мест.</p>
+            <p className="small text-secondary mb-0">Нет своих мест.</p>
           ) : (
             <div className="d-flex flex-column gap-2">
               {user.createdLocations.map((loc) => (
@@ -307,9 +354,15 @@ export default async function AdminUserPage({
             </div>
           )}
 
-          <h2 className="section-heading mb-2 mt-4">Поездки</h2>
+          </div>
+
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">Поездки</h2>
+              <span className="stats-card-meta">{user._count.trips}</span>
+            </div>
           {user.trips.length === 0 ? (
-            <p className="small text-secondary">Нет поездок.</p>
+            <p className="small text-secondary mb-0">Нет поездок.</p>
           ) : (
             <div className="d-flex flex-column gap-2">
               {user.trips.map((t) => (
@@ -336,12 +389,17 @@ export default async function AdminUserPage({
               ))}
             </div>
           )}
+          </div>
         </div>
 
-        <div className="col-12 col-lg-6">
-          <h2 className="section-heading mb-2">Избранные артисты</h2>
+        <div className="col-12 col-lg-6 d-flex flex-column gap-3">
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">Избранные артисты</h2>
+              <span className="stats-card-meta">{user._count.favoritePerformers}</span>
+            </div>
           {user.favoritePerformers.length === 0 ? (
-            <p className="small text-secondary">Нет избранных артистов.</p>
+            <p className="small text-secondary mb-0">Нет избранных артистов.</p>
           ) : (
             <div className="d-flex flex-wrap gap-2 mb-2">
               {user.favoritePerformers.map(({ performer }) => (
@@ -358,9 +416,15 @@ export default async function AdminUserPage({
             </div>
           )}
 
-          <h2 className="section-heading mb-2 mt-4">Идёт на события</h2>
+          </div>
+
+          <div className="surface stats-card">
+            <div className="stats-card-head">
+              <h2 className="section-heading">Идёт на события</h2>
+              <span className="stats-card-meta">{user._count.eventAttendances}</span>
+            </div>
           {user.eventAttendances.length === 0 ? (
-            <p className="small text-secondary">Нет отметок «иду».</p>
+            <p className="small text-secondary mb-0">Нет отметок «иду».</p>
           ) : (
             <div className="d-flex flex-column gap-2">
               {user.eventAttendances.map((a) => (
@@ -380,6 +444,7 @@ export default async function AdminUserPage({
               ))}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

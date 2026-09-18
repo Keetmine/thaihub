@@ -790,6 +790,10 @@ export function adminUserFilterDefs(): FilterDef[] {
       kind: "select",
       options: [
         { value: "active", label: "Активна" },
+        // Бессрочная — отдельным вариантом (правка владельца
+        // 2026-09-18): её выдают руками друзьям и команде, и «кому
+        // выдана навсегда» — свой вопрос, а не срез активных.
+        { value: "lifetime", label: "Бессрочная" },
         { value: "none", label: "Нет или истекла" },
       ],
     },
@@ -815,6 +819,7 @@ export function adminUserFilterWhere(p: FilterParams, now = new Date()): Prisma.
   if (role === "user") w.push({ isAdmin: false, isManager: false });
   const premium = one(p.premium);
   if (premium === "active") w.push(premiumActiveWhere(now));
+  if (premium === "lifetime") w.push({ premiumLifetime: true });
   if (premium === "none") w.push(premiumInactiveWhere(now));
   const loc = one(p.userLocale);
   if (loc === "en" || loc === "ru") w.push({ locale: loc });

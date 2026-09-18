@@ -115,17 +115,15 @@ export default async function AdminUsersPage({
         <span className="text-secondary small">Всего: {usersTotal}</span>
       </div>
 
-      <div className="d-flex flex-wrap gap-2 mb-2">
+      {/* Плитки считают ВСЕ аккаунты, а не текущую страницу выдачи.
+          Сноска про пустое «последний заход» убрана (правка владельца
+          2026-09-18): объяснение читалось дольше самих чисел. */}
+      <div className="d-flex flex-wrap gap-2 mb-4">
         <StatTile value={activeWeek} label="заходили за 7 дней" />
         <StatTile value={activeMonth} label="за 30 дней" />
         <StatTile value={neverSeen} label="ни разу не заходили" />
         <StatTile value={bannedCount} label="заблокированы" />
       </div>
-      <p className="small text-secondary mb-4">
-        По всем аккаунтам, независимо от поиска и страницы. У тех, кто не заходил с тех пор, как
-        появились отметки, поле пустое — это ещё не значит, что человек ушёл.
-      </p>
-
       {/* Ссылки сортировки строят адрес от текущего (adminListHref):
           поиск и фильтры остаются, а страница сбрасывается — другой
           порядок смотрят с начала. Дефолтный вариант первым. */}
@@ -274,7 +272,10 @@ export default async function AdminUsersPage({
                     </p>
                   </div>
                 </div>
-                <div className="d-flex align-items-center gap-3 flex-shrink-0">
+                {/* На телефоне кнопки строки не влезали и уводили ВСЮ
+                    страницу вбок на 280px (поймано 2026-09-18): ряд
+                    больше не «не сжимай меня», а переносится под имя. */}
+                <div className="admin-user-row-actions d-flex align-items-center gap-3">
                   <BanControls
                     userId={u.id}
                     userLabel={displayName}

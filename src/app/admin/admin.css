@@ -292,6 +292,34 @@ details.admin-section[open] > summary.admin-section-head::before {
   font-size: 0.86rem;
 }
 
+/* Кнопки в строке списка пользователей: на широком экране прижаты
+   вправо и не сжимаются, на телефоне переносятся под имя — иначе
+   строка уносила всю страницу вбок. */
+.admin-user-row-actions {
+  flex-shrink: 0;
+}
+
+@media (max-width: 575.98px) {
+  .admin-user-row-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.75rem !important;
+  }
+}
+
+/* Блок управления в карточке пользователя: прижат вправо от шапки на
+   широком экране, под ней — на узком. */
+.admin-user-controls {
+  margin-left: auto;
+}
+
+@media (max-width: 991.98px) {
+  .admin-user-controls {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
 /* Числа внутри карточки дашборда: сетка 2×2, крупная цифра и тихая
    подпись. Отдельно от .kpi-tile — те стоят рядом наверху и носят
    рамку, а эти живут ВНУТРИ карточки, где рамка была бы второй. */
