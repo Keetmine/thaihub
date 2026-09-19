@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { nicknamePrefixGroups } from "../../src/lib/duplicates";
+import { nicknamePrefixGroups, fullNameInclusionPairs } from "../../src/lib/duplicates";
 
 // Сетка «ник приклеен к имени» на странице дублей
 // (docs/features/duplicates.md). Без базы:
@@ -62,3 +62,77 @@ assert.deepEqual(
 );
 
 console.log("duplicates: ok");
+
+// ---------- fullNameInclusionPairs: что можно слить не глядя ----------
+
+// Разовый прогон слияния (scripts/merge-nickname-duplicates.ts) берёт
+// только ПОЛНОЕ вхождение имени: из такой пары видно и полное имя, и ник.
+const pairsOf = (rows: { id: string; name: string }[]) =>
+  fullNameInclusionPairs(rows).pairs.map((p) => `${p.long.id}>${p.short.id}:${p.nickname}`).sort();
+const ambiguousOf = (rows: { id: string; name: string }[]) =>
+  fullNameInclusionPairs(rows).ambiguous.map((g) => g.rows.map((r) => r.id).sort().join("+")).sort();
+
+assert.deepEqual(
+  pairsOf([
+    p("a", "Smile Parada Thitawachira"),
+    p("b", "Parada Thitawachira"),
+    p("c", "Somchai Prasert"),
+  ]),
+  ["a>b:Smile"],
+  "ник спереди + полное имя — пара, ник вырезан из исходной строки",
+);
+
+// Общий хвост без базовой записи страница дублей показывает, а прогон
+// слияния не трогает: какое из имён полное — неизвестно.
+assert.deepEqual(
+  pairsOf([p("a", "Kat Focus Jirakul"), p("b", "Fluke Focus Jirakul")]),
+  [],
+  "два ника без базовой записи — не наш случай",
+);
+
+// Три записи на одно имя владелец разбирает сама.
+assert.deepEqual(
+  pairsOf([
+    p("a", "Smile Parada Thitawachira"),
+    p("b", "Parada Thitawachira"),
+    p("c", "Mild Parada Thitawachira"),
+  ]),
+  [],
+  "три дубля — не сливаем",
+);
+assert.deepEqual(
+  ambiguousOf([
+    p("a", "Smile Parada Thitawachira"),
+    p("b", "Parada Thitawachira"),
+    p("c", "Mild Parada Thitawachira"),
+  ]),
+  [["a", "b", "c"].join("+")],
+  "три дубля — одной группой в «разобрать руками»",
+);
+
+// Ник из двух слов — тоже пара; регистр и дефисы берутся из исходного имени.
+assert.deepEqual(
+  pairsOf([p("a", "Nan-Nan Chanya Wongsakul"), p("b", "Chanya Wongsakul")]),
+  ["a>b:Nan-Nan"],
+  "ник с дефисом сохраняется как есть",
+);
+
+// Одно слово хвоста — мало: «Ohm» носит половина каталога.
+assert.deepEqual(
+  pairsOf([p("a", "Ohm Atshar Nampan"), p("b", "Nampan")]),
+  [],
+  "хвост из одного слова не считается",
+);
+
+// Две записи с буквально одинаковым именем — другая сетка.
+assert.deepEqual(
+  pairsOf([
+    p("a", "Smile Parada Thitawachira"),
+    p("b", "Parada Thitawachira"),
+    p("c", "Parada Thitawachira"),
+  ]),
+  [],
+  "точные тёзки — не этот прогон",
+);
+
+console.log("duplicates: все проверки прошли");

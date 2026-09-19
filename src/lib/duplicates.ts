@@ -62,6 +62,105 @@ export function nicknamePrefixGroups<T extends { id: string; name: string }>(
     .map(([key, group]) => ({ key: `tail::${key}`, rows: group }));
 }
 
+/** Пара «ник + имя» ↔ «имя»: `long` отличается от `short` ровно
+ *  приписанным спереди ником. */
+export type NicknamePair<T> = { long: T; short: T; nickname: string };
+
+/**
+ * Пары ПОЛНОГО вхождения имени (просьба владельца 2026-09-19: «слить
+ * все дубли, где полное имя полностью сходится — Smile Parada
+ * Thitawachira и Parada Thitawachira; остальные оставляем в дублях»).
+ *
+ * Отличие от `nicknamePrefixGroups`, которая питает страницу дублей:
+ * та собирает всех, у кого совпал ХВОСТ («Kat Focus Jirakul» ↔ «Fluke
+ * Focus Jirakul» — общий хвост, но базовой записи нет). Здесь же
+ * требуется, чтобы имя одной записи было ЦЕЛИКОМ именем другой с
+ * приписанным ником: только такую пару можно слить не глядя, потому
+ * что из неё видно и полное имя, и ник.
+ *
+ * Возвращает только однозначные пары «один к одному». Всё, где на один
+ * хвост нашлось несколько записей (три дубля, два разных ника) или где
+ * имена повторяются буквально, уходит в `ambiguous` — это разбирают
+ * руками на странице дублей.
+ *
+ * Чистая функция — юнит-тест tests/unit/duplicates.test.ts.
+ */
+export function fullNameInclusionPairs<T extends { id: string; name: string }>(
+  rows: T[],
+): { pairs: NicknamePair<T>[]; ambiguous: DuplicateGroup<T>[] } {
+  // Запись под своим полным именем: именно ПОЛНОЕ имя одной должно
+  // оказаться хвостом другой.
+  const byFullName = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = nameTokens(row.name).join(" ");
+    if (!key) continue;
+    if (!byFullName.has(key)) byFullName.set(key, []);
+    byFullName.get(key)!.push(row);
+  }
+
+  // Кандидаты: длинная запись → её короткие «хвостовые» двойники.
+  const shortsOf = new Map<string, { long: T; short: T; nickname: string }[]>();
+  const longsOf = new Map<string, T[]>();
+  for (const long of rows) {
+    const tokens = nameTokens(long.name);
+    const words = long.name.split(/[\s_]+/).filter(Boolean);
+    // Слова и токены должны идти один в один: иначе ник из исходной
+    // строки не вырезать (а придумывать его из нормализованной — значит
+    // потерять регистр и дефисы).
+    if (tokens.length !== words.length) continue;
+    // Хвост — минимум два слова, ник — минимум одно: то же правило, что
+    // у сетки на странице дублей («Ohm» ⊂ «Ohm Atshar Nampan» свело бы
+    // двух РАЗНЫХ Ohm-ов).
+    for (let i = 1; i + 2 <= tokens.length; i++) {
+      const key = tokens.slice(i).join(" ");
+      for (const short of byFullName.get(key) ?? []) {
+        if (short.id === long.id) continue;
+        const pair = { long, short, nickname: words.slice(0, i).join(" ") };
+        if (!shortsOf.has(long.id)) shortsOf.set(long.id, []);
+        shortsOf.get(long.id)!.push(pair);
+        if (!longsOf.has(short.id)) longsOf.set(short.id, []);
+        longsOf.get(short.id)!.push(long);
+      }
+    }
+  }
+
+  const pairs: NicknamePair<T>[] = [];
+  const ambiguous: DuplicateGroup<T>[] = [];
+  const seenAmbiguous = new Set<string>();
+  const addAmbiguous = (key: string, group: T[]) => {
+    const memberKey = groupMemberKey(group);
+    if (seenAmbiguous.has(memberKey)) return;
+    seenAmbiguous.add(memberKey);
+    ambiguous.push({ key, rows: group });
+  };
+
+  for (const [longId, candidates] of shortsOf) {
+    const long = candidates[0].long;
+    const shorts = candidates.map((c) => c.short);
+    // Две записи с буквально одинаковым именем — это другая сетка
+    // (точное совпадение), сливать их этим прогоном не наше дело.
+    const twins = byFullName.get(nameTokens(long.name).join(" ")) ?? [];
+    if (candidates.length > 1 || twins.length > 1) {
+      addAmbiguous(`multi::${longId}`, [long, ...shorts, ...twins.filter((t) => t.id !== longId)]);
+      continue;
+    }
+    const pair = candidates[0];
+    const otherLongs = longsOf.get(pair.short.id) ?? [];
+    const shortTwins = byFullName.get(nameTokens(pair.short.name).join(" ")) ?? [];
+    if (otherLongs.length > 1 || shortTwins.length > 1) {
+      addAmbiguous(`multi::${pair.short.id}`, [
+        pair.short,
+        ...otherLongs,
+        ...shortTwins.filter((t) => t.id !== pair.short.id),
+      ]);
+      continue;
+    }
+    pairs.push(pair);
+  }
+
+  return { pairs, ambiguous };
+}
+
 /** Группы исполнителей-кандидатов в дубли. Пять сеток, от сильного
  *  сигнала к слабому: точное имя, общее РЕАЛЬНОЕ имя при разных никах,
  *  имя с точностью до пробелов/дефисов/апострофов, «ник приклеен к
