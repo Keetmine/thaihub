@@ -45,6 +45,7 @@ export const trips: Dict["trips"] = {
          *  скобки только шумят. */
         tabPlaces: (n: number) => (n > 0 ? `Что посетить (${n})` : "Что посетить"),
         onlyMine: "Только моё",
+        onlyFavorites: "С избранными артистами",
         deleteTrip: "Удалить поездку",
         deleteConfirm: (title: string) => `Удалить поездку «${title}»?`,
 

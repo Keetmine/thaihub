@@ -45,6 +45,7 @@ export const trips = {
         tabShopping: (n: number) => `Shopping (${n})`,
         tabPlaces: (n: number) => (n > 0 ? `Places to go (${n})` : "Places to go"),
         onlyMine: "Only mine",
+        onlyFavorites: "Favourite artists only",
         deleteTrip: "Delete trip",
         deleteConfirm: (title: string) => `Delete the trip "${title}"?`,
 

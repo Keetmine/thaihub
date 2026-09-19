@@ -392,7 +392,7 @@ export default async function TripPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string; mine?: string }>;
+  searchParams: Promise<{ view?: string; mine?: string; fav?: string }>;
 }) {
   const { locale, t } = await getT();
   // Гостя со страницы больше не гоним: ПУБЛИЧНОЙ поездкой делятся
@@ -404,13 +404,17 @@ export default async function TripPage({
   const viewerId = user?.id ?? null;
 
   const { id: rawParam } = await params;
-  const { view, mine } = await searchParams;
+  const { view, mine, fav } = await searchParams;
   // «Мой план» (по умолчанию) — только события, куда идёт владелец
   // поездки; ?view=all — вкладка «Афиша», все события этих дат из
   // афиши (без личных записей и дел); ?view=places — «что
   // посетить»: локации съёмок сериалов владельца. Для гостей план
   // владельца — и есть смысл расшаренной поездки.
   const showAll = view === "all";
+  // «С избранными артистами» на афише (правка владельца 2026-09-19):
+  // в афише за две недели полсотни событий, а интересны те, где кто-то
+  // из своих избранных. Только залогиненному — у гостя избранного нет.
+  const onlyFavorites = showAll && fav === "1" && !!viewerId;
   const showPlaces = view === "places";
   // «Деньги» — личные траты участника (решение владельца 2026-09-16).
   const showMoney = view === "money";
@@ -600,7 +604,23 @@ export default async function TripPage({
         select: { id: true },
       }),
     ]);
-  const events = occurrences.map(flattenOccurrence);
+  // Фильтр афиши по избранным: событие остаётся, если в его составе
+  // хоть один артист из избранного смотрящего. Счётчик на вкладке
+  // остаётся общим — он про афишу, а не про фильтр.
+  const favoritePerformerIds = onlyFavorites
+    ? new Set(
+        (
+          await prisma.favoritePerformer.findMany({
+            where: { userId: viewerId! },
+            select: { performerId: true },
+          })
+        ).map((f) => f.performerId),
+      )
+    : null;
+  const shownOccurrences = favoritePerformerIds
+    ? occurrences.filter((o) => o.event.performers.some((p) => favoritePerformerIds.has(p.performer.id)))
+    : occurrences;
+  const events = shownOccurrences.map(flattenOccurrence);
 
   const eventIds = events.map((ev) => ev.id);
   const occIds = events.map((ev) => ev.occurrenceId);
@@ -1432,36 +1452,6 @@ export default async function TripPage({
         </div>
       )}
 
-      {/* Ряд добавления стоит НАД вкладками и виден на любой из них
-          (просьба владельца): раньше он жил внутри плана, и с «Дел» или
-          «Что посетить» добавить событие было нельзя, не вернувшись
-          назад. Кнопок нет вовсе у тех, кому нечего вносить, — у гостя
-          и у участника без подписки. «+ Событие» акцентная: её жмут
-          чаще всего. «+ Дело» стоит здесь же и внутри вкладки «Дела»
-          больше не дублируется (просьба владельца). */}
-      {canContribute && (
-        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-          <AddPersonalEventButton
-            tripId={trip.id}
-            showShareToggle={isShared}
-            visibilityOptions={visibilityOptions}
-            label={t.trips.personal.addShort}
-            accent
-          />
-          <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
-          <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
-          {/* Дело заводят и с плана, и из «Что посетить» — его кнопка
-              живёт в общем ряду и всегда зовётся одинаково. У чемодана и
-              покупок добавление своё, внутри их вкладок. */}
-          <AddTripTodoButton
-            tripId={trip.id}
-            showShareToggle={isShared}
-            visibilityOptions={visibilityOptions}
-          />
-          <AddTripPlaceButton tripId={trip.id} />
-        </div>
-      )}
-
       <div className="tab-bar-row">
         <ScrollableTabs>
           <AppLink
@@ -1522,7 +1512,38 @@ export default async function TripPage({
             {t.trips.detail.onlyMine}
           </AppLink>
         )}
+        {/* Афиша: «С избранными артистами» — тот же переключатель, что
+            «Только моё» у плана, на своём месте справа от вкладок. */}
+        {showAll && viewerId && (
+          <AppLink
+            href={`${tripHref(trip)}?view=all${onlyFavorites ? "" : "&fav=1"}`}
+            prefetch={false}
+            className={`btn btn-sm ${onlyFavorites ? "btn-primary" : "btn-ghost"}`}
+          >
+            {t.trips.detail.onlyFavorites}
+          </AppLink>
+        )}
       </div>
+
+      {/* Кнопки добавления живут В СВОИХ вкладках (правка владельца
+          2026-09-19: «уберём кнопки из шапки и перенесём в нужные
+          табы»): событие, перелёт и отель — в плане, дело — в делах,
+          место — в «Что посетить». Раньше все пять стояли одним рядом
+          над вкладками и читались кашей. Кнопок нет вовсе у тех, кому
+          нечего вносить (гость, участник без подписки). */}
+      {canContribute && !showAll && !showTodos && !showPlaces && !showMoney && (
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <AddPersonalEventButton
+            tripId={trip.id}
+            showShareToggle={isShared}
+            visibilityOptions={visibilityOptions}
+            label={t.trips.personal.addShort}
+            accent
+          />
+          <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
+          <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
+        </div>
+      )}
 
       {/* Брони без дат: в ленте им негде встать, а видеть и дозаполнять
           их надо. Датированные стоят ниже, в ленте плана, в свои дни. */}
@@ -1544,14 +1565,27 @@ export default async function TripPage({
           canAdd={canContribute}
         />
       ) : showTodos ? (
-        <TripTodos
-          tripId={trip.id}
-          todos={todoData.filter((item) => item.kind === activeList)}
-          activeList={activeList}
-          canAdd={canContribute}
-          showShareToggle={isShared}
-          visibilityOptions={visibilityOptions}
-        />
+        <>
+          {/* «+ Дело» — в своей вкладке; у чемодана и покупок добавление
+              строкой быстрого ввода внутри TripTodos. */}
+          {canContribute && activeList === "TODO" && (
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+              <AddTripTodoButton
+                tripId={trip.id}
+                showShareToggle={isShared}
+                visibilityOptions={visibilityOptions}
+              />
+            </div>
+          )}
+          <TripTodos
+            tripId={trip.id}
+            todos={todoData.filter((item) => item.kind === activeList)}
+            activeList={activeList}
+            canAdd={canContribute}
+            showShareToggle={isShared}
+            visibilityOptions={visibilityOptions}
+          />
+        </>
       ) : showPlaces ? (
         (() => {
           const pinMap = new Map<string, { id: string; name: string; latitude: number; longitude: number }>();
@@ -1574,11 +1608,12 @@ export default async function TripPage({
           />
         ) : (
           <>
-            {/* Поиск места и «своё место» переехали в кнопку «+ Что посетить»
-                над вкладками — здесь остался только тот способ, которого
-                там нет: прикрепить готовый список. */}
+            {/* Оба способа добавить место — здесь, в своей вкладке:
+                «+ Что посетить» (поиск по каталогу и своим местам, «своё
+                место» по ссылке) и прикрепление готового списка. */}
             {canContribute && (
               <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <AddTripPlaceButton tripId={trip.id} />
                 <AttachListSelect tripId={trip.id} availableLists={availableLists} />
               </div>
             )}

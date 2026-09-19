@@ -463,7 +463,10 @@ export default function PersonalEventCard({
       )}
 
       <div className="event-card-body">
-        <h3 className="h5 font-display mb-1 d-flex align-items-center gap-2">
+        {/* flex-wrap и min-width: 0 — на телефоне длинное название с
+            бейджами и именем автора не переносилось и уносило страницу
+            вбок на 20px (поймано 2026-09-19). */}
+        <h3 className="h5 font-display mb-1 d-flex flex-wrap align-items-center gap-2" style={{ minWidth: 0 }}>
           {event.title}
           <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
             {t.trips.personal.badge}
