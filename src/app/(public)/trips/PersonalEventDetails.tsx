@@ -7,7 +7,16 @@ import EntityMiniCard from "@/components/EntityMiniCard";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import SeenToggle from "@/components/SeenToggle";
 import AppLink from "@/components/AppLink";
-import { CheckIcon, PlusIcon, PencilIcon, UsersIcon } from "@/components/icons";
+import {
+  CheckIcon,
+  PlusIcon,
+  PencilIcon,
+  UsersIcon,
+  CalendarIcon,
+  PinIcon,
+  TicketIcon,
+  FileIcon,
+} from "@/components/icons";
 import { searchPerformersForList } from "@/app/(public)/artist-lists/actions";
 import { performerHref } from "@/lib/performerSlug";
 import { formatDayLongMonth, shortWeekdayName } from "@/lib/dates";
@@ -81,101 +90,133 @@ export default function PersonalEventDetails({
   const [heroFailed, setHeroFailed] = useState(false);
 
   return (
-    <Modal open={open} onClose={onClose} title={event.title}>
-      <div className="d-flex flex-column gap-3">
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
-            {t.trips.personal.badge}
-          </span>
-          <ItemVisibilityBadge visibility={event.visibility} />
-          {event.author && <span className="small text-secondary">{event.author}</span>}
+    <Modal open={open} onClose={onClose} title={event.title} wide titleHidden>
+      <div className="personal-event-modal d-flex flex-column gap-4">
+        {/* Шапка как на странице события: крупное название сверху,
+            постер слева, блок сведений справа. */}
+        <div>
+          <h2 className="display-1-tight mb-2" style={{ fontSize: "1.9rem" }}>
+            {event.title}
+          </h2>
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
+              {t.trips.personal.badge}
+            </span>
+            <ItemVisibilityBadge visibility={event.visibility} />
+            {event.author && <span className="small text-secondary">{event.author}</span>}
+          </div>
         </div>
 
-        {/* Картинка записи — широкой шапкой, как постер у события афиши.
-            Не ссылка (правка владельца 2026-09-19: «обложки не будем
-            открывать в новой вкладке»): полный файл — отдельной тихой
-            строкой ниже, для тех, кому правда нужен скан билета.
-            PDF обложкой не показать — у него только эта строка. */}
-        {event.imageUrl && !isPdf && !heroFailed && (
-          <span className="personal-event-hero">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={event.imageUrl}
-              alt=""
-              loading="lazy"
-              onError={() => setHeroFailed(true)}
-            />
-          </span>
-        )}
-
-        <div className="small">
-          <p className="mb-1">
-            {formatDayLongMonth(dayStartsAt, locale)}, {shortWeekdayName(noon, locale)}
-            {hasTime && ` · ${dayTime}`}
-            {event.days.length > 1 && (
-              <span className="text-secondary">
-                {" · "}
-                {t.trips.personal.dayOf(dayIndex + 1, event.days.length)}
+        <div className="d-flex flex-column flex-sm-row gap-4">
+          {/* Колонка постера — только когда картинка есть и открылась:
+              у записи без вложения пустой рамки не рисуем, как и у
+              каталожного события без постера. */}
+          {event.imageUrl && !isPdf && !heroFailed && (
+            <div className="flex-shrink-0 d-flex flex-column gap-2 personal-event-poster-col">
+              <span className="personal-event-poster">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={event.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  onError={() => setHeroFailed(true)}
+                />
               </span>
-            )}
-          </p>
-          {event.location && (
-            <p className="mb-1">
-              <AppLink href={`/locations/${event.location.id}`} className="agenda-performer-link">
-                📍 {event.location.name}
-              </AppLink>
-            </p>
-          )}
-          {event.note && <p className="mb-1 text-secondary">{event.note}</p>}
-          {event.imageUrl && (
-            <p className="mb-1">
               <a
                 href={event.imageUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="agenda-performer-link"
+                className="btn btn-ghost btn-sm"
                 aria-label={t.trips.personal.attachmentOf(event.title)}
               >
-                📄 {t.trips.personal.openFile}
+                {t.trips.personal.openFile}
               </a>
-            </p>
+            </div>
           )}
-          {event.url && (
-            <p className="mb-0 text-truncate">
-              <a
-                href={event.url}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="agenda-performer-link"
-              >
-                🔗 {t.trips.personal.urlOpen}
-              </a>
-            </p>
-          )}
-        </div>
 
-        {(canAttend || canEdit) && (
-          <div className="d-flex flex-wrap gap-2">
-            {canAttend && (
-              <AttendanceToggle
-                tripId={tripId}
-                personalEventId={event.id}
-                attending={event.attending}
-                isPast={event.startsAt < new Date()}
-                variant="button"
-              />
+          <div className="flex-fill" style={{ minWidth: 0 }}>
+            {/* Строки сведений — иконка, подпись, значение: тот же
+                порядок и то же оформление, что в блоке информации на
+                странице события. */}
+            <p className="mb-2">
+              <CalendarIcon className="icon-inline" />{" "}
+              <span className="text-secondary">{t.trips.personal.date}</span>{" "}
+              {formatDayLongMonth(dayStartsAt, locale)}, {shortWeekdayName(noon, locale)}
+              {hasTime && <span className="date-chip ms-2">{dayTime}</span>}
+              {event.days.length > 1 && (
+                <span className="small text-secondary">
+                  {" · "}
+                  {t.trips.personal.dayOf(dayIndex + 1, event.days.length)}
+                </span>
+              )}
+            </p>
+            {event.location && (
+              <p className="mb-2">
+                <PinIcon className="icon-inline" />{" "}
+                <span className="text-secondary">{t.trips.personal.place}</span>{" "}
+                <AppLink
+                  href={`/locations/${event.location.id}`}
+                  className="link-body-emphasis"
+                >
+                  {event.location.name}
+                </AppLink>
+              </p>
             )}
-            {canEdit && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
-                onClick={onEdit}
-              >
-                <PencilIcon /> {t.common.edit}
-              </button>
+            {event.url && (
+              <p className="mb-2 text-truncate">
+                <TicketIcon className="icon-inline" />{" "}
+                <a
+                  href={event.url}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="link-body-emphasis"
+                >
+                  {t.trips.personal.urlOpen}
+                </a>
+              </p>
+            )}
+            {/* PDF постером не показать — для него ссылка живёт здесь,
+                среди сведений, а не отдельной колонкой. */}
+            {event.imageUrl && (isPdf || heroFailed) && (
+              <p className="mb-2">
+                <FileIcon />{" "}
+                <a
+                  href={event.imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link-body-emphasis"
+                  aria-label={t.trips.personal.attachmentOf(event.title)}
+                >
+                  {t.trips.personal.openFile}
+                </a>
+              </p>
+            )}
+            {event.note && <p className="mb-2 text-secondary">{event.note}</p>}
+
+            {(canAttend || canEdit) && (
+              <div className="d-flex flex-wrap gap-2 mt-3">
+                {canAttend && (
+                  <AttendanceToggle
+                    tripId={tripId}
+                    personalEventId={event.id}
+                    attending={event.attending}
+                    isPast={event.startsAt < new Date()}
+                    variant="button"
+                  />
+                )}
+                {canEdit && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm d-inline-flex align-items-center gap-2"
+                    onClick={onEdit}
+                  >
+                    <PencilIcon /> {t.common.edit}
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* Состав дня — общий список «кто был», а глазик на углу фото —
             СВОЯ отметка «видела здесь» (в клубе были все, а видели
@@ -189,7 +230,7 @@ export default function PersonalEventDetails({
             <UsersIcon className="icon-inline" /> {t.trips.personal.performers}
           </p>
           {performers.length > 0 ? (
-            <CastGrid chips clampRows={3}>
+            <CastGrid chips>
               {performers.map((p) => (
                 <span key={p.id} className="cast-chip-seen">
                   <EntityMiniCard href={performerHref(p)} photoUrl={p.photoUrl} name={p.name} />
@@ -212,9 +253,9 @@ export default function PersonalEventDetails({
           )}
 
           {canAddPerformer && (
-            <div className="mt-2">
+            <div className="mt-3">
               {isAdding ? (
-                <>
+                <div style={{ maxWidth: "24rem" }}>
                   <EntityMultiSelect
                     options={[]}
                     placeholder={t.trips.personal.addPerformerPlaceholder}
@@ -248,7 +289,7 @@ export default function PersonalEventDetails({
                   >
                     {t.common.cancel}
                   </button>
-                </>
+                </div>
               ) : (
                 <button
                   type="button"

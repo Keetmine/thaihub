@@ -10,6 +10,7 @@ export default function Modal({
   title,
   children,
   wide,
+  titleHidden,
 }: {
   open: boolean;
   onClose: () => void;
@@ -18,6 +19,10 @@ export default function Modal({
   /** Широкая панель (52rem вместо 32rem) — для форм с колонками,
    *  например импорт события по ссылке на /admin/events. */
   wide?: boolean;
+  /** Заголовок только для чтения с экрана: панель рисует свою шапку
+   *  сама (личное событие поездки — попап собран как страница события,
+   *  с крупным названием и постером). Кнопка закрытия остаётся. */
+  titleHidden?: boolean;
 }) {
   const t = useT();
   useEffect(() => {
@@ -46,8 +51,14 @@ export default function Modal({
         aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <h2 className="h6 fw-semibold mb-0">{title}</h2>
+        <div
+          className={
+            titleHidden
+              ? "d-flex align-items-center justify-content-end modal-close-row"
+              : "d-flex align-items-center justify-content-between mb-3"
+          }
+        >
+          <h2 className={`h6 fw-semibold mb-0 ${titleHidden ? "visually-hidden" : ""}`}>{title}</h2>
           <button
             type="button"
             className="icon-btn"
