@@ -4,7 +4,7 @@
 #   DEPLOY_HOST — IP сервера
 #   DEPLOY_USER — пользователь SSH (обычно root или deploy)
 #   DEPLOY_SSH_KEY — приватный ключ (пара к ключу из authorized_keys)
-#   DEPLOY_PATH — путь к проекту на сервере (например /opt/myblhub)
+#   DEPLOY_PATH — путь к проекту на сервере
 #   GHCR_TOKEN — не обязателен: personal access token с read:packages,
 #     если сервер не может тянуть образ под GITHUB_TOKEN
 name: Deploy

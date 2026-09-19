@@ -27,19 +27,19 @@
    GitHub → репозиторий → Settings → Deploy keys → Add (read-only).
 4. **Код и env**:
    ```bash
-   git clone git@github.com:Keetmine/thaihub.git /opt/myblhub
-   cd /opt/myblhub
+   git clone git@github.com:Keetmine/thaihub.git "$DEPLOY_PATH"
+   cd "$DEPLOY_PATH"
    nano .env    # см. список ниже
    ```
 5. **Перенос данных с локали** (до первого запуска app):
    ```bash
    # локально:
    pg_dump thaitrack > dump.sql
-   scp dump.sql root@SERVER:/opt/myblhub/
-   rsync -az --info=progress2 public/uploads/ root@SERVER:/tmp/uploads/
+   scp dump.sql "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+   rsync -az --info=progress2 public/uploads/ "$DEPLOY_USER@$DEPLOY_HOST:/tmp/uploads/"
 
    # на сервере:
-   cd /opt/myblhub
+   cd "$DEPLOY_PATH"
    docker compose up -d db
    docker compose exec -T db psql -U thaitrack thaitrack < dump.sql
    docker compose run --rm -v /tmp/uploads:/src app sh -c "cp -r /src/. /app/public/uploads/"
@@ -151,6 +151,22 @@ next.config.ts). Там же — `Content-Security-Policy-Report-Only`:
 инлайн-скрипты Next). `/uploads/*` раздаёт Caddy мимо Next, поэтому
 nosniff для них продублирован в Caddyfile.
 
+## Хост, пользователь и путь — не в репозитории
+
+Репозиторий публичный, поэтому адрес сервера, пользователь SSH и путь к
+проекту в нём не записаны (правка владельца 2026-09-19). Настоящие
+значения живут в двух местах:
+
+- **секреты репозитория** `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_PATH`
+  — ими пользуется автодеплой;
+- **`~/.myblhub-deploy`** на машине владельца — две строки
+  `PROD_HOST=` и `PROD_PATH=`, их читает `scripts/pull-prod-db.sh`
+  (переменные окружения перебивают файл).
+
+В командах ниже они подставлены переменными `$DEPLOY_USER`,
+`$DEPLOY_HOST`, `$DEPLOY_PATH` — заполните их в своей оболочке или
+подставьте руками.
+
 ## Автодеплой (GitHub Actions)
 
 **Это единственный workflow в репозитории** (правка владельца
@@ -166,7 +182,7 @@ nosniff для них продублирован в Caddyfile.
 - `DEPLOY_SSH_KEY` — **приватный** ключ, чей публичный добавлен в
   `~/.ssh/authorized_keys` на сервере (заведи отдельную пару:
   `ssh-keygen -t ed25519 -f deploy_key -N ""`);
-- `DEPLOY_PATH` — `/opt/myblhub`.
+- `DEPLOY_PATH` — каталог проекта на сервере.
 
 После этого каждый пуш в main деплоится сам (вкладка Actions покажет
 ход). Ручной перезапуск — кнопка Run workflow (workflow_dispatch).
@@ -180,7 +196,7 @@ upsert), поэтому один и тот же прогон локально и
 результат и не трогает пользовательские таблицы.
 
 ```bash
-cd /opt/myblhub
+cd "$DEPLOY_PATH"
 docker compose exec app npx tsx scripts/mdl-sync-performers.ts
 ```
 
@@ -211,7 +227,7 @@ docker compose exec app sh -c \
 `scripts/pull-prod-db.sh` снимает `pg_dump` с прод-контейнера `db` по SSH
 и заливает его в локальную базу из `DATABASE_URL` (`.env`), **дропая её
 целиком** — направление только прод → локаль. Хост по умолчанию
-`root@<A-запись myblhub.com>`, путь `/opt/myblhub`; переопределяются
+пользователь и путь из секретов деплоя; переопределяются
 через `PROD_HOST` / `PROD_PATH`. `PULL_UPLOADS=1` дополнительно
 rsync-ает `public/uploads` (~850 МБ). После заливки скрипт гонит
 `prisma migrate deploy` — если локальный код обогнал прод, новые
@@ -228,7 +244,7 @@ PULL_UPLOADS=1 scripts/pull-prod-db.sh
 работать):
 
 ```bash
-npx tsx scripts/set-admin-password.ts keetmine@gmail.com <пароль>
+npx tsx scripts/set-admin-password.ts <e-mail владельца> <пароль>
 ```
 
 ## Место на диске
@@ -281,7 +297,7 @@ docker compose exec app npx tsx scripts/migrate-private-uploads.ts
 конце.
 
 ```bash
-cd /opt/myblhub
+cd "$DEPLOY_PATH"
 git fetch origin main && git reset --hard origin/main
 # Слепок базы до пересборки: энтрипоинт гонит migrate deploy на старте.
 mkdir -p backups

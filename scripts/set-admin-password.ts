@@ -6,7 +6,7 @@ import { hashPassword } from "../src/lib/userAuth";
 // Нужен на локали: после заливки прод-дампа пароли там — scrypt-хеши,
 // восстановить их нельзя, а войти в админку надо.
 //
-//   npx tsx scripts/set-admin-password.ts keetmine@gmail.com новый-пароль
+//   npx tsx scripts/set-admin-password.ts <e-mail> новый-пароль
 async function main() {
   const [email, password] = process.argv.slice(2);
   if (!email || !password) {

@@ -87,7 +87,7 @@ npx tsx scripts/asiapoisk-sync.ts --apply     # записать
 На проде:
 
 ```
-cd /opt/myblhub
+cd "$DEPLOY_PATH"
 docker compose exec app npx tsx scripts/asiapoisk-sync.ts --apply
 ```
 

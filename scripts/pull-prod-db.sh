@@ -5,16 +5,25 @@
 # Направление только прод → локаль: локальные дампы на прод не льются
 # никогда (см. docs/deploy.md).
 #
-#   scripts/pull-prod-db.sh                 # root@<IP myblhub.com>, /opt/myblhub
-#   PROD_HOST=root@1.2.3.4 scripts/pull-prod-db.sh
+#   scripts/pull-prod-db.sh                 # хост и путь — из ~/.myblhub-deploy
+#   PROD_HOST=user@1.2.3.4 PROD_PATH=/srv/app scripts/pull-prod-db.sh
 #   PULL_UPLOADS=1 scripts/pull-prod-db.sh  # + rsync public/uploads (~850 МБ)
 #
 # Локальная база берётся из DATABASE_URL в .env.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PROD_HOST="${PROD_HOST:-root@$(dig +short myblhub.com A | head -1)}"
-PROD_PATH="${PROD_PATH:-/opt/myblhub}"
+# Хост и путь НЕ зашиты в репозиторий (он публичный): берём их из
+# ~/.myblhub-deploy — файла вида
+#   PROD_HOST=user@1.2.3.4
+#   PROD_PATH=/путь/к/проекту
+# Переменные окружения перебивают файл.
+# shellcheck source=/dev/null
+[ -f "$HOME/.myblhub-deploy" ] && . "$HOME/.myblhub-deploy"
+if [ -z "${PROD_HOST:-}" ] || [ -z "${PROD_PATH:-}" ]; then
+  echo "Не задан PROD_HOST/PROD_PATH: заполните ~/.myblhub-deploy или передайте переменными" >&2
+  exit 1
+fi
 
 # --- локальная база из .env -------------------------------------------------
 [ -f .env ] || { echo "нет .env — скопируй .env.example"; exit 1; }

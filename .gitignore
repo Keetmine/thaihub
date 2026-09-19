@@ -55,3 +55,8 @@ next-env.d.ts
 
 # agent worktrees (transient)
 .claude/worktrees/
+# Локальные настройки Claude Code: разрешения на команды и запуск —
+# машинные, у каждого свои. В публичном репозитории им тем более не
+# место: там прописан вход на сервер (правка владельца 2026-09-19).
+.claude/settings.local.json
+.claude/launch.json

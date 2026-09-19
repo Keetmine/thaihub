@@ -3,7 +3,7 @@
 ## Admin
 
 Admin is a **user role**, not a separate login: `User.isAdmin` (set via
-DB/script; keetmine@gmail.com is admin). There is no `/admin/login`, no
+DB/script; the owner's account is admin). There is no `/admin/login`, no
 `ADMIN_PASSWORD`, no `AdminSession` — an admin signs in like any user
 and gets an админка icon button next to their profile in the public
 nav. `proxy.ts` only checks *presence* of the ordinary `user_session`
