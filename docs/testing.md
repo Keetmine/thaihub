@@ -105,60 +105,25 @@ switching the whole file over.
 
 ## CI
 
-`.github/workflows/e2e.yml` runs the whole suite on every push to `main`
-and on pull requests (separate from `ci.yml`'s typecheck/lint/build and
-`deploy.yml`'s auto-deploy). It needs no repository secrets. The job:
+**Проверок на GitHub больше нет** (правка владельца 2026-09-19):
+`ci.yml` (typecheck/lint/build) и `e2e.yml` (вся Playwright-сюита)
+удалены — бесплатные минуты Actions кончились, и тратить их на прогоны,
+которые дублируют локальную проверку, незачем. В репозитории остался
+только `deploy.yml`.
 
-1. starts a disposable `postgres:16` service container
-   (`e2e`/`e2e`/`myblhub_e2e`, health-checked with `pg_isready`);
-2. `npm ci`, `prisma generate`, `prisma migrate deploy`, `npm run
-   db:seed` — the seed's future events give `favorites.spec.ts` and
-   `premium-gates.spec.ts` something to open;
-3. creates the test admin via `tests/e2e/create-admin-user.ts` (creds
-   are hardcoded in `helpers.ts` — `admin-e2e@test.local` /
-   `admin-e2e-password` — so no secret is involved; the `setup` project
-   creates it on its own anyway, the explicit step just fails fast if the
-   tsx/Prisma scripts break, before `webServer` spends minutes building);
-4. `playwright install --with-deps chromium`, then `playwright test`
-   with `PW_WEB_SERVER=1` (the config also gives CI one retry per test —
-   `retries: process.env.CI ? 1 : 0` — to absorb slow-runner flakes;
-   local runs get none so real failures surface immediately) — the `setup` project signs in against the
-   server Playwright started and writes `playwright/.auth/admin.json` into
-   the workspace (gitignored, thrown away with the runner). Playwright
-   itself builds the app and runs
-   `next start -p 3001` (prod build, not dev; `output: "standalone"`
-   only makes `next start` print a warning). `DATABASE_URL`, `APP_URL`
-   and `BASE_URL` are set at the job level and inherited by the server;
-5. on failure uploads `playwright-report/` as an artifact (the config
-   adds an HTML reporter when `CI` is set), kept 3 days.
+Значит, **перед пушем всё проверяется руками** — ровно то же, что делал
+`ci.yml`:
 
-   **Only that folder, and deliberately so.** The HTML report already
-   embeds the traces of failed tests — `test-results/` was a second copy
-   of the same megabytes. A trace is a screenshot per step, so a couple
-   of failed runs filled the free 0.5 GB of Actions storage on their own
-   (GitHub notice, 2026-09-12). Three days rather than seven for the
-   same reason: a report is for debugging a fresh failure, and by day
-   three it is either fixed or the run has been repeated.
+```bash
+npx tsc --noEmit
+npx eslint --max-warnings=0 .
+npx next build
+npx playwright test            # при правках, которые видно на страницах
+```
 
-Expected skips in CI — these are not failures:
-
-- `duplicate-warning.spec.ts` — the seed creates no dramas, so there is
-  no existing title to collide with;
-- `shared-trips.spec.ts` (all 3 tests) — the Аня/Маша demo users and
-  their trip only exist in the dev database; `login()` skips when the
-  credentials don't match instead of timing out;
-- `telegram-webhook.spec.ts`, the two "with the real secret" cases —
-  `TELEGRAM_WEBHOOK_SECRET` isn't set in CI. The 403 cases still run:
-  with no secret configured the webhook rejects everything.
-- `episode-notifications.spec.ts`, the `tgNotifyEpisodes` toggle case —
-  the whole Telegram block in settings renders only when
-  `TELEGRAM_BOT_USERNAME` is set, and CI leaves it unset on purpose.
-  The notification case itself still runs: it's the site half, and it
-  needs no Telegram at all.
-
-Optional env (`TELEGRAM_*`, `SMTP_*`, `SENTRY_*`, `GOOGLE_*`) is left
-unset on purpose — the code guards all of it, and without tokens the
-tests can't accidentally reach real external services.
+E2E-сюита запускается локально как раньше (см. выше по файлу); о том,
+как она была устроена в CI, рассказывает история репозитория — если
+минуты вернутся, `e2e.yml` восстанавливается оттуда одним `git show`.
 
 ## What's covered
 

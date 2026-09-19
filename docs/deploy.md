@@ -153,6 +153,12 @@ nosniff для них продублирован в Caddyfile.
 
 ## Автодеплой (GitHub Actions)
 
+**Это единственный workflow в репозитории** (правка владельца
+2026-09-19): `ci.yml` и `e2e.yml` удалены, бесплатные минуты Actions
+кончились. Проверки перед пушем — руками, см.
+[testing.md](testing.md#ci). Если минуты кончатся и у деплоя, образ
+собирают прямо на сервере — см. «Обновление вручную» в конце файла.
+
 Секреты репозитория (Settings → Secrets and variables → Actions):
 
 - `DEPLOY_HOST` — IP сервера;
@@ -268,6 +274,24 @@ docker compose exec app npx tsx scripts/migrate-private-uploads.ts
 
 ## Обновление вручную (без Actions)
 
+Когда Actions недоступны (кончились минуты, упал биллинг — было
+2026-09-18), деплой делается с сервера теми же шагами, что и workflow.
+Сборка Next на боевой машине занимает ~25 минут и съедает почти всю
+память; сайт при этом работает на старом контейнере, подмена — в самом
+конце.
+
 ```bash
-cd /opt/myblhub && git pull && docker compose up -d --build
+cd /opt/myblhub
+git fetch origin main && git reset --hard origin/main
+# Слепок базы до пересборки: энтрипоинт гонит migrate deploy на старте.
+mkdir -p backups
+docker compose exec -T db pg_dump -U thaitrack thaitrack \
+  | gzip > "backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql.gz"
+# .env.image указывает на готовый образ из ghcr — без него собираем сами.
+rm -f .env.image
+docker compose up -d --build
+docker image prune -af && docker builder prune -af
 ```
+
+Сборку стоит запускать отцеплённой (`setsid nohup … &`) и смотреть в
+лог: SSH-сессия может оборваться, а сборка — идти дальше.
