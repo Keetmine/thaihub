@@ -180,6 +180,11 @@ export const trips = {
         addPerformerHint:
           "The artist joins the event line-up and is marked as seen only for you. Other members mark their own.",
         addPerformerPlaceholder: "Artist name",
+        openTitle: "Open the entry",
+        attended: "Attended",
+        markAttended: "Mark as attended",
+        noPerformers: "No artists yet",
+        openFile: "Open the attachment ↗",
     },
 
     /** Поле выбора места в форме личного события. */

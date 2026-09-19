@@ -1,23 +1,16 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useState } from "react";
 import Modal from "@/components/Modal";
 import TimeInput from "@/components/TimeInput";
 import DatePickerInput from "@/components/DatePickerInput";
 import FileDropzone from "@/components/FileDropzone";
 import ConfirmForm from "@/components/ConfirmForm";
-import { UserIcon, PencilIcon, TrashIcon, CheckIcon, PlusIcon } from "@/components/icons";
-import {
-  updateTripPersonalEvent,
-  deleteTripPersonalEvent,
-  togglePersonalEventAttendance,
-  togglePersonalEventSeen,
-  addPersonalEventDayPerformer,
-} from "./actions";
-import SeenToggle from "@/components/SeenToggle";
+import { UserIcon, PencilIcon, TrashIcon } from "@/components/icons";
+import { updateTripPersonalEvent, deleteTripPersonalEvent } from "./actions";
+import PersonalEventDetails, { AttendanceToggle } from "./PersonalEventDetails";
 import LocationPickerField from "./LocationPickerField";
 import PriceFields from "@/components/PriceFields";
-import { performerHref } from "@/lib/performerSlug";
 import EntityMultiSelect from "@/components/EntityMultiSelect";
 import { searchPerformersForList } from "@/app/(public)/artist-lists/actions";
 import AppLink from "@/components/AppLink";
@@ -342,13 +335,10 @@ export default function PersonalEventCard({
   const dayStartsAt = day?.startsAt ?? event.startsAt;
   const dayTime = day?.timeValue ?? event.timeValue;
   const dayPerformers = day?.performers ?? [];
-  const seenIds = new Set(day?.seenPerformerIds ?? []);
-  // Глазики — участнику поездки на ПРОШЕДШЕМ дне: до него отмечать
-  // нечего, как и на афише. У записи без дней в базе (id пустой)
-  // отметку положить некуда — сначала правка формой заведёт день.
-  const canMarkSeen = canAttend && !!day?.id && dayStartsAt < new Date();
-  const canAddPerformer = canAttend && !!day?.id;
-  const [isAdding, setIsAdding] = useState(false);
+  // Состав, глазики «видела здесь» и «+ Артист» живут в попапе
+  // (правка владельца 2026-09-19): в строке ленты они разрастались на
+  // пол-экрана. Здесь остаются только имена одной строкой.
+  const [isOpen, setIsOpen] = useState(false);
   // Файл мог не открыться (удалён, нет прав) — тогда вместо битой
   // картинки показываем ссылку.
   const [thumbFailed, setThumbFailed] = useState(false);
@@ -450,12 +440,12 @@ export default function PersonalEventCard({
           событиях»). Раньше лежала в конце текстового блока и
           получалась снизу. */}
       {event.imageUrl && (
-        <a
-          href={event.imageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           className="personal-event-thumb flex-shrink-0"
-          aria-label={t.trips.personal.attachmentOf(event.title)}
+          onClick={() => setIsOpen(true)}
+          aria-label={t.trips.personal.openTitle}
+          title={t.trips.personal.openTitle}
         >
           {event.imageUrl.endsWith(".pdf") || thumbFailed ? (
             // PDF миниатюрой не показать, а битая ссылка иначе
@@ -472,7 +462,7 @@ export default function PersonalEventCard({
               onError={() => setThumbFailed(true)}
             />
           )}
-        </a>
+        </button>
       )}
 
       <div className="event-card-body">
@@ -482,7 +472,16 @@ export default function PersonalEventCard({
             мобильного отступа под угловые кнопки: без него бейдж
             «личное» уезжал под галочку «я там буду». */}
         <h3 className="event-row-head h5 font-display mb-1 flex-wrap gap-2" style={{ minWidth: 0 }}>
-          {event.title}
+          {/* Название открывает попап — у личного события нет своей
+              страницы, но открыть его нужно так же, как событие афиши. */}
+          <button
+            type="button"
+            className="personal-event-open"
+            onClick={() => setIsOpen(true)}
+            title={t.trips.personal.openTitle}
+          >
+            {event.title}
+          </button>
           <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
             {t.trips.personal.badge}
           </span>
@@ -527,48 +526,31 @@ export default function PersonalEventCard({
             {t.trips.personal.dayOf(dayIndex + 1, event.days.length)}
           </p>
         )}
-        {/* Состав дня — общий список «кто был», а глазик у имени — СВОЯ
-            отметка «видела здесь» (правка владельца 2026-09-19: в клубе
-            были все, а видели разных). «+ Артист» — дописать того, кого
-            видели сами; у остальных участников он отметится, только
-            когда они сами нажмут глазик. */}
-        {(dayPerformers.length > 0 || canAddPerformer) && (
-          <div className="event-row-cast d-flex flex-wrap align-items-center gap-2 mb-0">
-            {dayPerformers.length > 0 && <UserIcon className="icon-inline" />}
-            {dayPerformers.map((p) => (
-              <span key={p.id} className="personal-cast-chip">
-                <AppLink href={performerHref(p)} className="agenda-performer-link">
-                  {p.name}
-                </AppLink>
-                {canMarkSeen && (
-                  <SeenToggle
-                    eventId={day.id}
-                    performerId={p.id}
-                    initialSeen={seenIds.has(p.id)}
-                    toggle={(dayId, performerId) => togglePersonalEventSeen(tripId, dayId, performerId)}
-                    size="chip"
-                  />
-                )}
-              </span>
-            ))}
-            {canAddPerformer && (
-              <button type="button" className="btn-link-accent small" onClick={() => setIsAdding(true)}>
-                {t.trips.personal.addPerformer}
-              </button>
-            )}
-          </div>
+        {/* Состав — одной строкой именами: кто был, видно сразу, а
+            отмечать и дописывать людей человек идёт в попап. Ссылками
+            имена тут больше не делаем: строка целиком открывает запись,
+            и ссылка внутри ссылки сбивала бы прицел. */}
+        {dayPerformers.length > 0 && (
+          <p className="event-row-cast mb-0 text-truncate">
+            <UserIcon className="icon-inline" />{" "}
+            {dayPerformers.map((p) => p.name).join(", ")}
+          </p>
         )}
       </div>
 
-      {canAddPerformer && (
-        <AddPerformerModal
-          open={isAdding}
-          onClose={() => setIsAdding(false)}
-          tripId={tripId}
-          dayId={day.id}
-          excludeIds={dayPerformers.map((p) => p.id)}
-        />
-      )}
+      <PersonalEventDetails
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        tripId={tripId}
+        event={event}
+        dayIndex={dayIndex}
+        canAttend={canAttend}
+        canEdit={canEdit}
+        onEdit={() => {
+          setIsOpen(false);
+          setIsEditing(true);
+        }}
+      />
 
       <Modal
         open={isEditing}
@@ -607,140 +589,5 @@ export default function PersonalEventCard({
         </form>
       </Modal>
     </div>
-  );
-}
-
-/** «Я там буду» в углу карточки — зеркало иконки GoingButton с афиши
- *  (те же классы и подписи), но отметка живёт на личном событии.
- *  Оптимистично, как и там: галочка меняется по клику, откат при
- *  ошибке; проп с сервера пересинхронизирует при навигации. */
-function AttendanceToggle({
-  tripId,
-  personalEventId,
-  attending,
-  isPast,
-}: {
-  tripId: string;
-  personalEventId: string;
-  attending: boolean;
-  isPast: boolean;
-}) {
-  const t = useT();
-  const [isPending, startTransition] = useTransition();
-  const [active, setActive] = useState(attending);
-  const [prevProp, setPrevProp] = useState(attending);
-  if (attending !== prevProp) {
-    setPrevProp(attending);
-    setActive(attending);
-  }
-  const label = isPast
-    ? active
-      ? t.widgets.going.unwent
-      : t.widgets.going.went
-    : active
-      ? t.widgets.going.notGoing
-      : t.widgets.going.going;
-  return (
-    <button
-      type="button"
-      className={`round-icon-btn ${active ? "is-going" : ""}`}
-      disabled={isPending}
-      aria-pressed={active}
-      aria-label={label}
-      data-tooltip={label}
-      onClick={() => {
-        const next = !active;
-        setActive(next);
-        startTransition(async () => {
-          const result = await togglePersonalEventAttendance(tripId, personalEventId).catch(
-            () => ({ ok: false as const, error: "" }),
-          );
-          if (!result.ok) setActive(!next);
-        });
-      }}
-    >
-      {active ? <CheckIcon /> : <PlusIcon />}
-    </button>
-  );
-}
-
-/** «+ Артист» на карточке: поиск по каталогу, выбранный сразу
- *  дописывается в состав дня и отмечается «видела» у добавившего.
- *  Модалка не закрывается сама — можно добавить нескольких подряд. */
-function AddPerformerModal({
-  open,
-  onClose,
-  tripId,
-  dayId,
-  excludeIds,
-}: {
-  open: boolean;
-  onClose: () => void;
-  tripId: string;
-  dayId: string;
-  excludeIds: string[];
-}) {
-  const t = useT();
-  const uid = useId();
-  const [added, setAdded] = useState<{ id: string; name: string }[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  return (
-    <Modal
-      open={open}
-      onClose={() => {
-        setAdded([]);
-        setError(null);
-        onClose();
-      }}
-      title={t.trips.personal.addPerformerTitle}
-    >
-      <div className="d-flex flex-column gap-2">
-        <label className="form-label small text-secondary mb-0" htmlFor={`${uid}-performer`}>
-          {t.trips.personal.performers}
-        </label>
-        <EntityMultiSelect
-          id={`${uid}-performer`}
-          options={[]}
-          placeholder={t.trips.personal.addPerformerPlaceholder}
-          searchOptions={searchPerformersForList}
-          excludeIds={[...excludeIds, ...added.map((a) => a.id)]}
-          onPick={(option) => {
-            setError(null);
-            startTransition(async () => {
-              const result = await addPersonalEventDayPerformer(tripId, dayId, option.id).catch(
-                () => ({ ok: false as const, error: t.trips.personal.addFailed }),
-              );
-              if (!result.ok) {
-                setError(result.error);
-                return;
-              }
-              setAdded((prev) => [...prev, { id: option.id, name: option.name }]);
-            });
-          }}
-        />
-        <p className="small text-secondary mb-0">{t.trips.personal.addPerformerHint}</p>
-        {added.length > 0 && (
-          <p className="small mb-0">
-            ✓ {added.map((a) => a.name).join(", ")}
-          </p>
-        )}
-        {error && <p className="small text-danger mb-0">{error}</p>}
-        <div>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            disabled={isPending}
-            onClick={() => {
-              setAdded([]);
-              setError(null);
-              onClose();
-            }}
-          >
-            {t.ui.close}
-          </button>
-        </div>
-      </div>
-    </Modal>
   );
 }

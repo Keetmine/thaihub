@@ -6109,25 +6109,34 @@ body::after {
   height: 0.95rem;
 }
 
-/* Артист дня ЛИЧНОГО события поездки: имя-ссылка и глазик «видела
-   здесь» рядом, в потоке (правка владельца 2026-09-19). Тот же
-   .seen-toggle, что на афише, но не поверх фото — фото в строке нет. */
-.personal-cast-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
+/* Название личного события в ленте поездки: открывает попап записи —
+   своей страницы у приватной записи нет (правка владельца 2026-09-19).
+   Выглядит как часть заголовка, а не как кнопка. */
+.personal-event-open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.personal-cast-chip .seen-toggle-chip {
-  position: static;
-  transform: none;
-  width: 1.5rem;
-  height: 1.5rem;
+.personal-event-open:hover {
+  color: var(--bs-link-hover-color);
 }
 
-.personal-cast-chip .seen-toggle-chip svg {
-  width: 0.85rem;
-  height: 0.85rem;
+/* Обложка записи в попапе: широкая шапка вместо миниатюры строки. */
+.personal-event-hero {
+  display: block;
+}
+
+.personal-event-hero img {
+  width: 100%;
+  max-height: 16rem;
+  object-fit: cover;
+  border-radius: 0.9rem;
+  border: 1px solid var(--bs-border-color);
 }
 
 /* Счётчик на глазике в шапке артиста: «сколько событий», а не «да/нет». */
@@ -6405,10 +6414,17 @@ body::after {
 /* Вложение личного события стоит в том же столбце, что постер у
    каталожного (.event-card-poster), — и ширина у него та же, иначе
    строки поездки не выстроились бы в колонку. */
+/* Обложка личного события — кнопка, а не ссылка (правка владельца
+   2026-09-19: «обложки не будем открывать в новой вкладке»): клик
+   открывает попап записи, как постер открывает событие афиши. */
 .personal-event-thumb {
   display: block;
   width: 3.9rem;
+  padding: 0;
+  border: 0;
+  background: none;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .personal-event-thumb img {
