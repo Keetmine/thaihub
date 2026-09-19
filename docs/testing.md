@@ -4,7 +4,8 @@ A small Playwright Test smoke suite (`tests/e2e/`) covering the critical
 paths, not comprehensive coverage. Plus a handful of plain-script unit
 tests in `tests/unit/` (`node:assert`, no runner — `npx tsx
 tests/unit/<name>.test.ts`; e.g. `premium.test.ts` covers
-`isPremiumActive` incl. the lifetime flag).
+`isPremiumActive` incl. the lifetime flag, `youtubeChannelId.test.ts`
+pins which id is the channel's own on a YouTube handle page).
 
 ## Running
 

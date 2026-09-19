@@ -16,6 +16,12 @@ import {
 
 export type YtmImportSummary = {
   performerName: string;
+  /** Как канал подписан на самом YouTube. Показывается в сводке, когда
+   *  расходится с именем в каталоге: импорт «по нулям» чаще всего
+   *  означает не пустую дискографию, а чужой канал (владелец,
+   *  2026-09-19: «@supergoods4448 — вроде есть песни, а всё по нулям»,
+   *  и это был канал лейбла). */
+  channelName: string;
   albumsCreated: number;
   albumsUpdated: number;
   songsCreated: number;
@@ -75,6 +81,7 @@ export async function importYtmForPerformer(
 
   const summary: YtmImportSummary = {
     performerName: performer.name,
+    channelName: artist.name,
     albumsCreated: 0,
     albumsUpdated: 0,
     songsCreated: 0,

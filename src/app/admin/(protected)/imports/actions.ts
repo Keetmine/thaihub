@@ -155,10 +155,25 @@ async function importYoutubeMusic(formData: FormData, schedule: boolean): Promis
   await logImportRun(
     "youtube-music",
     (runId) => importYtmForPerformer(performerId, channelId, undefined, runId),
-    (r) =>
-      `${r.performerName}: релизов +${r.albumsCreated} (обновлено ${r.albumsUpdated}), ` +
-      `песен +${r.songsCreated} (обновлено ${r.songsUpdated})` +
-      (r.linkAdded ? ", добавлена ссылка на канал" : ""),
+    (r) => {
+      // Имя канала в сводке — когда оно не совпадает с нашим: «всё по
+      // нулям» почти всегда значит, что разобрали чужой канал, и без
+      // этой подписи догадаться было невозможно.
+      const other =
+        r.channelName.trim().toLowerCase() !== r.performerName.trim().toLowerCase()
+          ? ` (канал «${r.channelName}»)`
+          : "";
+      const nothing =
+        r.albumsCreated + r.albumsUpdated + r.songsCreated + r.songsUpdated === 0
+          ? " — ничего не нашлось, проверьте, тот ли это канал"
+          : "";
+      return (
+        `${r.performerName}${other}: релизов +${r.albumsCreated} (обновлено ${r.albumsUpdated}), ` +
+        `песен +${r.songsCreated} (обновлено ${r.songsUpdated})` +
+        (r.linkAdded ? ", добавлена ссылка на канал" : "") +
+        nothing
+      );
+    },
   );
 
   revalidatePath("/admin/imports");

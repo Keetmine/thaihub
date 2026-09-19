@@ -57,11 +57,40 @@ export function parseChannelHandle(input: string): string | null {
 }
 
 /**
+ * Id канала из HTML его страницы. Порядок источников важен — на этом
+ * ловилась настоящая ошибка (владелец, 2026-09-19: «@supergoods4448,
+ * вроде есть песни, а при импорте всё по нулям»).
+ *
+ * Раньше брался ПЕРВЫЙ попавшийся «channelId» или «externalId», где бы
+ * он ни лежал. Но «channelId» в разметке — это чей угодно канал: автор
+ * ролика в ленте, рекомендация, лейбл. У @supergoods4448 первым шёл
+ * UCLJbs… (Sundae Records, канал лейбла), и импорт честно приносил
+ * пустую дискографию чужого канала.
+ *
+ * Свой канал страницы надёжно называют только канонический адрес,
+ * og:url и «externalId». Их и спрашиваем по очереди, а первый
+ * «channelId» остаётся последней надеждой, если разметка сменится.
+ */
+export function channelIdFromChannelHtml(html: string): string | null {
+  const patterns = [
+    /<link[^>]+rel="canonical"[^>]+href="https?:\/\/[^"]*\/channel\/(UC[\w-]{20,})"/i,
+    /<meta[^>]+property="og:url"[^>]+content="https?:\/\/[^"]*\/channel\/(UC[\w-]{20,})"/i,
+    /"externalId":"(UC[\w-]{20,})"/,
+    /"channelId":"(UC[\w-]{20,})"/,
+    /channel\/(UC[\w-]{20,})/,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/**
  * Хендл → id канала. У YouTube нет отдельного «дешёвого» эндпоинта, но
- * сама страница канала несёт id в разметке — забираем первый
- * «channelId»/«externalId» из неё. Запрашиваем youtube.com, а не
- * music.youtube.com: музыкальная версия отдаёт SPA-оболочку, в которой
- * идентификатора может не оказаться.
+ * сама страница канала несёт id в разметке. Запрашиваем youtube.com, а
+ * не music.youtube.com: музыкальная версия отдаёт SPA-оболочку, в
+ * которой идентификатора может не оказаться.
  */
 export async function resolveChannelHandle(handle: string): Promise<string | null> {
   const clean = handle.replace(/^@/, "");
@@ -77,11 +106,7 @@ export async function resolveChannelHandle(handle: string): Promise<string | nul
     );
   }
   if (!res.ok) return null;
-  const html = await res.text();
-  const m =
-    html.match(/"(?:channelId|externalId)":"(UC[\w-]{20,})"/) ??
-    html.match(/channel\/(UC[\w-]{20,})/);
-  return m ? m[1] : null;
+  return channelIdFromChannelHtml(await res.text());
 }
 
 /** Ссылка на канал в любом виде → id. Хендл требует сетевого запроса,
