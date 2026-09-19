@@ -309,7 +309,9 @@ export default async function AdminImportsPage({
     d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
   // Задачи расписания — для списков «Обходы по расписанию» на вкладках.
-  const jobs = await listJobs();
+  // Нерабочие (закрытый источник) не показываем: см.
+  // JobDefinition.unavailable.
+  const jobs = (await listJobs()).filter((j) => !j.unavailable);
 
   return (
     <div>
@@ -712,8 +714,8 @@ export default async function AdminImportsPage({
               <div className="surface p-4 h-100">
                 <h3 className="admin-card-title mb-2">Черновики событий ({pendingDraftCount})</h3>
                 <p className="small text-secondary mb-3">
-                  Найдены обходом ThaiTicketMajor, ThaiStarX, Ticketmelon и AllTicket: в
-                  составе (или в тексте события) есть кто-то из нашего каталога. «Одобрить» — событие создастся с постером и
+                  Найдены обходом ThaiTicketMajor, ThaiStarX и Ticketmelon: в составе
+                  (или в тексте события) есть кто-то из нашего каталога. «Одобрить» — событие создастся с постером и
                   совпавшими артистами (остальной состав добирается руками в
                   карточке события); «Отклонить» — событие больше не предложится.
                   Массовое одобрение выбранных идёт одним фоновым прогоном — ход
@@ -724,7 +726,7 @@ export default async function AdminImportsPage({
                 {eventDrafts.length === 0 ? (
                   <p className="small text-secondary mb-0">
                     Очередь пуста — новые черновики появятся после ближайшего обхода
-                    (задачи обхода афиш в расписании: ThaiTicketMajor, ThaiStarX, Ticketmelon, AllTicket).
+                    (задачи обхода афиш в расписании: ThaiTicketMajor, ThaiStarX, Ticketmelon).
                   </p>
                 ) : (
                   <BulkList

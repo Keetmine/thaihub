@@ -68,7 +68,9 @@ export default async function AdminSchedulePage({
 }) {
   await requireAdminPage();
   const sp = await searchParams;
-  const jobs = await listJobs();
+  // Нерабочие задачи (закрытый источник) в админке не показываем вовсе
+  // — см. JobDefinition.unavailable.
+  const jobs = (await listJobs()).filter((j) => !j.unavailable);
 
   // Вкладка — ключ задачи; прямые старые ссылки без ?tab открывают первую.
   const job = jobs.find((j) => j.key === sp.tab) ?? jobs[0];

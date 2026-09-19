@@ -51,6 +51,12 @@ export type JobDefinition = {
   key: string;
   /** Группа на страницах расписания и импортов (см. JOB_GROUPS). */
   group: JobGroup;
+  /** Задача временно нерабочая — почему. Планировщик её не запускает, в
+   *  админке её не видно вовсе (правка владельца 2026-09-19: «если
+   *  импорт закрыт, убери его с сайта, чтоб не было лишний раз причин
+   *  нажимать»). Код и настройки остаются: откроется источник — снимаем
+   *  строку, и задача возвращается. */
+  unavailable?: string;
   title: string;
   description: string;
   /** Задача умеет работать по списку артистов (иначе — только «все»). */
@@ -415,6 +421,12 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     key: "allticket-crawl",
     group: "events",
     title: "AllTicket: обход афиши",
+    // Список AllTicket закрыт для адреса нашего сервера: API отвечает
+    // 403 и curl, и браузеру (проверено 19.09.2026, см.
+    // docs/features/ticket-site-crawl.md). Пока так — задачи в админке
+    // нет и планировщик её не трогает; события AllTicket доезжают
+    // «событием по ссылке» и ссылками из постов ThaiStarX.
+    unavailable: "список закрыт для адреса сервера (403 от их WAF)",
     description:
       "Открывает концертный раздел allticket.com настоящим браузером (их список за " +
       "JS-проверкой AWS WAF) и ищет артистов каталога в названии и описании события. " +
@@ -770,6 +782,9 @@ async function runDueJobsInner(now: Date): Promise<string[]> {
   const started: string[] = [];
 
   for (const job of jobs) {
+    // Нерабочий источник не трогаем вовсе: прогон всё равно упрётся в
+    // закрытую дверь, а в журнале останется мусор.
+    if (job.unavailable) continue;
     if (
       !job.enabled ||
       !isDue(job.hour, job.lastRunAt, now, job.intervalDays ?? 1, job.weekday, job.resumeAt)
