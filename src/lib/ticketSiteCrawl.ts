@@ -25,12 +25,17 @@ import type { EventDraftMatch } from "@/lib/ttmCrawl";
 //    прошедшие вперемешку с будущими, lastmod бесполезен). Страница
 //    события отдаёт __NEXT_DATA__ — из него момент начала, по нему
 //    прошедшие отсеиваются и запоминаются навсегда.
-//  - AllTicket: их живой API за AWS WAF с JS-челленджем, curl получает
-//    «202 challenge», а headless-браузер проходит и получает
-//    aws-waf-token. Поэтому список — через playwright: открыть
-//    /concert, из страницы дёрнуть POST /api-content/get-events-menu-key
-//    {menuKey:"concert"}. Сами события — открытые master-файлы
-//    /master/event_info/<код>.json, без браузера.
+//  - AllTicket: их живой API за AWS WAF с JS-челленджем. С домашнего
+//    адреса headless-браузер челлендж проходит и получает aws-waf-token,
+//    но С НАШЕГО СЕРВЕРА API отвечает «403 Forbidden» — и curl, и
+//    браузеру (проверено 2026-09-19 после первого ночного прогона).
+//    Публичные страницы и master-файлы с того же адреса отдаются
+//    спокойно: режут именно вызовы API, судя по всему по репутации
+//    адреса дата-центра. Поэтому недоступность списка — НЕ падение
+//    задачи: прогон честно заканчивается с пометкой, а события
+//    AllTicket всё равно попадают к нам двумя другими путями —
+//    «событие по ссылке» (master-файл, работает) и ссылки на AllTicket
+//    в постах ThaiStarX и на фестивалях musicfestival.in.th.
 
 const PAGE_PAUSE_MS = 1700;
 const NO_MATCH_RECHECK_DAYS = 7;
@@ -149,6 +154,10 @@ export function allticketCardsToUrls(cards: AllticketCard[]): { url: string; tit
   return out;
 }
 
+/** Список AllTicket недоступен с этого адреса (WAF/репутация IP) — не
+ *  ошибка прогона, а его законный исход. */
+export class AllticketListingBlockedError extends Error {}
+
 /** Список концертов AllTicket — через headless-браузер (см. шапку). */
 export async function fetchAllticketConcertCards(): Promise<AllticketCard[]> {
   const { chromium } = await import("playwright");
@@ -173,7 +182,12 @@ export async function fetchAllticketConcertCards(): Promise<AllticketCard[]> {
       return `${res.status}\n${await res.text()}`;
     });
     const [status, body] = [text.slice(0, text.indexOf("\n")), text.slice(text.indexOf("\n") + 1)];
-    if (status !== "200") throw new Error(`allticket: список ответил ${status} (WAF-челлендж не пройден?)`);
+    if (status === "403" || status === "202") {
+      throw new AllticketListingBlockedError(
+        `список закрыт для этого адреса (ответ ${status}): события AllTicket берём по ссылкам — «событие по ссылке» и посты ThaiStarX`,
+      );
+    }
+    if (status !== "200") throw new Error(`allticket: список ответил ${status}`);
     const parsed = JSON.parse(body) as { data?: { item?: AllticketCard[] } };
     return parsed.data?.item ?? [];
   } finally {
@@ -369,7 +383,18 @@ export async function runAllticketCrawl(opts: { runId?: string | null; apply?: b
   const apply = opts.apply ?? true;
   const result = emptyResult("allticket");
 
-  const cards = opts.cards ?? (await fetchAllticketConcertCards());
+  let cards: AllticketCard[];
+  try {
+    cards = opts.cards ?? (await fetchAllticketConcertCards());
+  } catch (e) {
+    // Закрытый список — не падение: прогон заканчивается с пояснением в
+    // сводке, красной точки на вкладке задачи и письма админам нет.
+    if (e instanceof AllticketListingBlockedError) {
+      result.listingErrors.push(e.message);
+      return result;
+    }
+    throw e;
+  }
   const listed = allticketCardsToUrls(cards);
   result.listed = listed.length;
   const known = await loadKnown("allticket.com");
@@ -416,6 +441,6 @@ export function summarizeTicketSiteCrawl(r: TicketSiteCrawlResult): string {
   ];
   if (r.possibleDupes) parts.push(`возможных дублей ${r.possibleDupes}`);
   if (r.failed) parts.push(`не разобралось ${r.failed}`);
-  if (r.listingErrors.length) parts.push(`ошибки списка: ${r.listingErrors.join("; ")}`);
+  if (r.listingErrors.length) parts.push(`список: ${r.listingErrors.join("; ")}`);
   return parts.join(" · ");
 }

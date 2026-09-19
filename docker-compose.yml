@@ -130,7 +130,11 @@ services:
           tar czf "/backups/private-uploads-$$ts.tar.gz" -C /private-uploads . \
             && echo "backup: private-uploads-$$ts.tar.gz"
           ls -1t /backups/db-*.sql.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
-          ls -1t /backups/uploads-*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+          # Архивов загрузок держим ПЯТЬ, а не четырнадцать: это полная
+          # копия public/uploads целиком, 1,9 ГБ штука, и четырнадцать
+          # съедали 26 ГБ из 59 на диске (правка владельца 2026-09-19).
+          # База и приватные файлы мелкие — у них по-прежнему четырнадцать.
+          ls -1t /backups/uploads-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -f
           ls -1t /backups/private-uploads-*.tar.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
           sleep 86400
         done
