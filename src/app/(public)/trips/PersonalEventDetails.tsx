@@ -14,8 +14,6 @@ import {
   UsersIcon,
   CalendarIcon,
   PinIcon,
-  TicketIcon,
-  FileIcon,
 } from "@/components/icons";
 import { searchPerformersForList } from "@/app/(public)/artist-lists/actions";
 import { performerHref } from "@/lib/performerSlug";
@@ -84,117 +82,71 @@ export default function PersonalEventDetails({
   const noon = new Date(
     Date.UTC(dayStartsAt.getUTCFullYear(), dayStartsAt.getUTCMonth(), dayStartsAt.getUTCDate(), 12),
   );
-  const isPdf = !!event.imageUrl && event.imageUrl.endsWith(".pdf");
-  // Файл мог не открыться (удалён, нет прав) — тогда обложку убираем
-  // совсем, как миниатюру в строке: пустая рамка хуже её отсутствия.
+  // Обложка — только картинка, которая открылась: PDF постером не
+  // показать, а битый файл убираем совсем, как миниатюру в строке.
   const [heroFailed, setHeroFailed] = useState(false);
+  const hasCover = !!event.imageUrl && !event.imageUrl.endsWith(".pdf") && !heroFailed;
 
   return (
     <Modal open={open} onClose={onClose} title={event.title} wide titleHidden>
-      <div className="personal-event-modal d-flex flex-column gap-4">
-        {/* Шапка как на странице события: крупное название сверху,
-            постер слева, блок сведений справа. */}
-        <div>
-          <h2 className="display-1-tight mb-2" style={{ fontSize: "1.9rem" }}>
-            {event.title}
-          </h2>
-          <div className="d-flex flex-wrap align-items-center gap-2">
-            <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
-              {t.trips.personal.badge}
-            </span>
-            <ItemVisibilityBadge visibility={event.visibility} />
-            {event.author && <span className="small text-secondary">{event.author}</span>}
-          </div>
-        </div>
-
-        <div className="d-flex flex-column flex-sm-row gap-4">
-          {/* Колонка постера — только когда картинка есть и открылась:
-              у записи без вложения пустой рамки не рисуем, как и у
-              каталожного события без постера. */}
-          {event.imageUrl && !isPdf && !heroFailed && (
-            <div className="flex-shrink-0 d-flex flex-column gap-2 personal-event-poster-col">
-              <span className="personal-event-poster">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={event.imageUrl}
-                  alt=""
-                  loading="lazy"
-                  onError={() => setHeroFailed(true)}
-                />
-              </span>
-              <a
-                href={event.imageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-ghost btn-sm"
-                aria-label={t.trips.personal.attachmentOf(event.title)}
-              >
-                {t.trips.personal.openFile}
-              </a>
+      <div className="personal-event-modal">
+        {/* Шапка-обложка: вложение размыто подложкой на всю ширину
+            панели и чётким постером слева, как афиша концерта; без
+            вложения остаётся тихий градиент. Вложение отдельной ссылкой
+            не открывается (правка владельца 2026-09-19: «Открыть
+            вложение — убираем»). */}
+        <div className={`pe-hero ${hasCover ? "pe-hero--cover" : ""}`}>
+          {hasCover && (
+            <>
+              <div className="pe-hero-bg" style={{ backgroundImage: `url(${event.imageUrl})` }} />
+              <div className="pe-hero-shade" />
+            </>
+          )}
+          {hasCover && (
+            <div className="pe-poster">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={event.imageUrl!} alt="" onError={() => setHeroFailed(true)} />
             </div>
           )}
-
-          <div className="flex-fill" style={{ minWidth: 0 }}>
-            {/* Строки сведений — иконка, подпись, значение: тот же
-                порядок и то же оформление, что в блоке информации на
-                странице события. */}
-            <p className="mb-2">
-              <CalendarIcon className="icon-inline" />{" "}
-              <span className="text-secondary">{t.trips.personal.date}</span>{" "}
-              {formatDayLongMonth(dayStartsAt, locale)}, {shortWeekdayName(noon, locale)}
-              {hasTime && <span className="date-chip ms-2">{dayTime}</span>}
+          <div className="pe-hero-body">
+            <h2 className="pe-title display-1-tight mb-2">{event.title}</h2>
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+              <span className="badge rounded-pill text-bg-secondary" style={{ fontSize: "0.6rem" }}>
+                {t.trips.personal.badge}
+              </span>
+              <ItemVisibilityBadge visibility={event.visibility} />
+              {event.author && <span className="small text-secondary">{event.author}</span>}
+            </div>
+            <div className="pe-chips mb-3">
+              <span className="date-chip">
+                <CalendarIcon className="icon-inline" />{" "}
+                {formatDayLongMonth(dayStartsAt, locale)}, {shortWeekdayName(noon, locale)}
+                {hasTime && ` · ${dayTime}`}
+              </span>
               {event.days.length > 1 && (
-                <span className="small text-secondary">
-                  {" · "}
-                  {t.trips.personal.dayOf(dayIndex + 1, event.days.length)}
-                </span>
+                <span className="date-chip">{t.trips.personal.dayOf(dayIndex + 1, event.days.length)}</span>
               )}
-            </p>
-            {event.location && (
-              <p className="mb-2">
-                <PinIcon className="icon-inline" />{" "}
-                <span className="text-secondary">{t.trips.personal.place}</span>{" "}
+              {event.location && (
                 <AppLink
                   href={`/locations/${event.location.id}`}
-                  className="link-body-emphasis"
+                  className="date-chip text-decoration-none"
                 >
-                  {event.location.name}
+                  <PinIcon className="icon-inline" /> {event.location.name}
                 </AppLink>
-              </p>
-            )}
-            {event.url && (
-              <p className="mb-2 text-truncate">
-                <TicketIcon className="icon-inline" />{" "}
+              )}
+              {event.url && (
                 <a
                   href={event.url}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
-                  className="link-body-emphasis"
+                  className="date-chip text-decoration-none"
                 >
-                  {t.trips.personal.urlOpen}
+                  {t.trips.personal.urlOpen} ↗
                 </a>
-              </p>
-            )}
-            {/* PDF постером не показать — для него ссылка живёт здесь,
-                среди сведений, а не отдельной колонкой. */}
-            {event.imageUrl && (isPdf || heroFailed) && (
-              <p className="mb-2">
-                <FileIcon />{" "}
-                <a
-                  href={event.imageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="link-body-emphasis"
-                  aria-label={t.trips.personal.attachmentOf(event.title)}
-                >
-                  {t.trips.personal.openFile}
-                </a>
-              </p>
-            )}
-            {event.note && <p className="mb-2 text-secondary">{event.note}</p>}
-
+              )}
+            </div>
             {(canAttend || canEdit) && (
-              <div className="d-flex flex-wrap gap-2 mt-3">
+              <div className="d-flex flex-wrap gap-2">
                 {canAttend && (
                   <AttendanceToggle
                     tripId={tripId}
@@ -218,90 +170,81 @@ export default function PersonalEventDetails({
           </div>
         </div>
 
+        {event.note && <p className="pe-note text-secondary mb-0">{event.note}</p>}
+
         {/* Состав дня — общий список «кто был», а глазик на углу фото —
             СВОЯ отметка «видела здесь» (в клубе были все, а видели
             разных). Те же капсулы и тот же .cast-chip-seen, что на
             странице события афиши. */}
-        <div>
-          <p
-            className="small text-secondary text-uppercase mb-2"
-            style={{ letterSpacing: "0.08em" }}
-          >
-            <UsersIcon className="icon-inline" /> {t.trips.personal.performers}
-          </p>
-          {performers.length > 0 ? (
-            <CastGrid chips>
-              {performers.map((p) => (
-                <span key={p.id} className="cast-chip-seen">
-                  <EntityMiniCard href={performerHref(p)} photoUrl={p.photoUrl} name={p.name} />
-                  {canMarkSeen && (
-                    <SeenToggle
-                      eventId={day.id}
-                      performerId={p.id}
-                      initialSeen={seenIds.has(p.id)}
-                      toggle={(dayId, performerId) =>
-                        togglePersonalEventSeen(tripId, dayId, performerId)
-                      }
-                      size="chip"
-                    />
-                  )}
-                </span>
-              ))}
-            </CastGrid>
-          ) : (
-            <p className="small text-secondary mb-0">{t.trips.personal.noPerformers}</p>
-          )}
-
-          {canAddPerformer && (
-            <div className="mt-3">
-              {isAdding ? (
-                <div style={{ maxWidth: "24rem" }}>
-                  <EntityMultiSelect
-                    options={[]}
-                    placeholder={t.trips.personal.addPerformerPlaceholder}
-                    searchOptions={searchPerformersForList}
-                    excludeIds={performers.map((p) => p.id)}
-                    inputClassName="form-control-sm"
-                    onPick={(option) => {
-                      setAddError(null);
-                      startTransition(async () => {
-                        const result = await addPersonalEventDayPerformer(
-                          tripId,
-                          day.id,
-                          option.id,
-                        ).catch(() => ({ ok: false as const, error: t.trips.personal.addFailed }));
-                        if (!result.ok) setAddError(result.error);
-                      });
-                    }}
+        <h3 className="section-heading mb-3">
+          <UsersIcon className="icon-inline" /> {t.trips.personal.performers}
+        </h3>
+        {performers.length > 0 ? (
+          <CastGrid chips>
+            {performers.map((p) => (
+              <span key={p.id} className="cast-chip-seen">
+                <EntityMiniCard href={performerHref(p)} photoUrl={p.photoUrl} name={p.name} />
+                {canMarkSeen && (
+                  <SeenToggle
+                    eventId={day.id}
+                    performerId={p.id}
+                    initialSeen={seenIds.has(p.id)}
+                    toggle={(dayId, performerId) =>
+                      togglePersonalEventSeen(tripId, dayId, performerId)
+                    }
+                    size="chip"
                   />
-                  <p className="small text-secondary mb-0 mt-1">
-                    {t.trips.personal.addPerformerHint}
-                  </p>
-                  {addError && <p className="small text-danger mb-0 mt-1">{addError}</p>}
-                  <button
-                    type="button"
-                    className="btn-link-accent small mt-1"
-                    disabled={isPending}
-                    onClick={() => {
-                      setIsAdding(false);
-                      setAddError(null);
-                    }}
-                  >
-                    {t.common.cancel}
-                  </button>
-                </div>
-              ) : (
+                )}
+              </span>
+            ))}
+          </CastGrid>
+        ) : (
+          <p className="small text-secondary mb-0">{t.trips.personal.noPerformers}</p>
+        )}
+
+        {canAddPerformer && (
+          <div className="mt-3">
+            {isAdding ? (
+              <div style={{ maxWidth: "24rem" }}>
+                <EntityMultiSelect
+                  options={[]}
+                  placeholder={t.trips.personal.addPerformerPlaceholder}
+                  searchOptions={searchPerformersForList}
+                  excludeIds={performers.map((p) => p.id)}
+                  inputClassName="form-control-sm"
+                  onPick={(option) => {
+                    setAddError(null);
+                    startTransition(async () => {
+                      const result = await addPersonalEventDayPerformer(
+                        tripId,
+                        day.id,
+                        option.id,
+                      ).catch(() => ({ ok: false as const, error: t.trips.personal.addFailed }));
+                      if (!result.ok) setAddError(result.error);
+                    });
+                  }}
+                />
+                <p className="small text-secondary mb-0 mt-1">{t.trips.personal.addPerformerHint}</p>
+                {addError && <p className="small text-danger mb-0 mt-1">{addError}</p>}
                 <button
                   type="button"
-                  className="btn-link-accent small"
-                  onClick={() => setIsAdding(true)}
+                  className="btn-link-accent small mt-1"
+                  disabled={isPending}
+                  onClick={() => {
+                    setIsAdding(false);
+                    setAddError(null);
+                  }}
                 >
-                  {t.trips.personal.addPerformer}
+                  {t.common.cancel}
                 </button>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              <button type="button" className="btn-link-accent small" onClick={() => setIsAdding(true)}>
+                {t.trips.personal.addPerformer}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

@@ -1862,6 +1862,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 .modal-panel {
+  --modal-pad: 1.5rem;
   width: 100%;
   max-width: 32rem;
   max-height: calc(100vh - 3rem);
@@ -1883,9 +1884,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   position: sticky;
   top: 0;
   z-index: 3;
-  /* Своей строкой, без отрицательного отступа: наезжающий на заголовок
-     крестик — это ровно то, что ловится первым же скриншотом. */
-  margin-bottom: 0.4rem;
+  height: 2rem;
+  margin-bottom: 0;
 }
 
 /* ---------- Custom performer listbox (replaces native <select>) ---------- */
@@ -6139,27 +6139,95 @@ body::after {
   color: var(--bs-link-hover-color);
 }
 
-/* Обложка записи в попапе — колонкой слева, как постер на странице
-   события афиши (правка владельца 2026-09-19: «попап сильно больше и
-   похожий по структуре на страницу евента»). */
-.personal-event-poster {
-  display: block;
-  width: 100%;
+/* Попап личного события поездки (правка владельца 2026-09-19:
+   «переделай красивее»). Шапка-обложка растянута до краёв панели и
+   заходит под липкий крестик: вложение — размытой подложкой и чётким
+   постером слева, как афиша концерта; без вложения — тихий градиент. */
+.pe-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin: calc(-1 * var(--modal-pad) - 2rem) calc(-1 * var(--modal-pad)) 1.25rem;
+  padding: calc(var(--modal-pad) + 2rem) var(--modal-pad) var(--modal-pad);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.14), rgba(255, 255, 255, 0) 80%);
+  border-bottom: 1px solid var(--bs-border-color);
 }
 
-.personal-event-poster img {
+.pe-hero-bg {
+  position: absolute;
+  inset: -12%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.25);
+  opacity: 0.5;
+}
+
+.pe-hero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 12, 16, 0.35), rgba(12, 12, 16, 0.88));
+}
+
+.pe-hero > * {
+  position: relative;
+}
+
+.pe-hero-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pe-poster {
+  flex: 0 0 8.5rem;
+  width: 8.5rem;
+}
+
+.pe-poster img {
+  display: block;
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
   border-radius: 0.9rem;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.85);
 }
 
-/* Колонка постера — той же ширины, что на странице события афиши; на
-   узком экране она просто становится первой строкой. */
-.personal-event-poster-col {
-  width: 15rem;
-  max-width: 100%;
+.pe-title {
+  font-size: 1.75rem;
+  overflow-wrap: anywhere;
+}
+
+.pe-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pe-chips a.date-chip:hover {
+  color: var(--bs-body-color);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.pe-note {
+  white-space: pre-line;
+  margin-bottom: 1.25rem !important;
+}
+
+@media (max-width: 575.98px) {
+  .pe-hero {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .pe-poster {
+    width: 7rem;
+  }
+
+  .pe-title {
+    font-size: 1.4rem;
+  }
 }
 
 /* Счётчик на глазике в шапке артиста: «сколько событий», а не «да/нет». */

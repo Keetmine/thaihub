@@ -184,8 +184,6 @@ export const trips = {
         attended: "Attended",
         markAttended: "Mark as attended",
         noPerformers: "No artists yet",
-        openFile: "Open the attachment ↗",
-        place: "Place",
     },
 
     /** Поле выбора места в форме личного события. */
