@@ -90,7 +90,15 @@ export function resolveSeen(
   for (const row of rows) {
     if (row.occurrence.startsAt >= now) continue;
     const dayHasLineup = row.occurrence.lineup.length > 0;
-    const cast = dayHasLineup ? row.occurrence.lineup : row.event.performers;
+    // У дня со своим лайнапом кандидаты — сам лайнап ПЛЮС те из общего
+    // состава события, кого в расписание не поставили (жалоба владельца
+    // 2026-09-19: MICMAC заявлена на Monster Music Festival, а на
+    // странице её не найти). Умолчание у них то же, что у лайнапа, —
+    // «не видели»: подсчёты не меняются, но отметить их теперь можно.
+    const inLineup = new Set(row.occurrence.lineup.map((l) => l.performer.id));
+    const cast = dayHasLineup
+      ? [...row.occurrence.lineup, ...row.event.performers.filter((p) => !inLineup.has(p.performer.id))]
+      : row.event.performers;
     const def = !dayHasLineup;
 
     let byPerformer = drafts.get(row.eventId);

@@ -65,8 +65,22 @@ const seenIds = (map: ReturnType<typeof resolveSeen>, eventId: string) =>
 {
   const r = resolveSeen([festivalDay("f1", [solo("a"), solo("b"), solo("c")])], [], NOW);
   assert.deepEqual(seenIds(r, "f1"), []);
-  // Но все трое — кандидаты: страница события рисует глазик каждому.
-  assert.equal(r.get("f1")!.size, 3);
+  // Кандидаты — все трое из лайнапа И общий состав события: артист,
+  // заявленный на фестиваль, но не попавший ни в один день расписания,
+  // иначе остался бы без глазика вовсе (2026-09-19, MICMAC на Monster
+  // Music Festival). Умолчание у него такое же — «не видели».
+  assert.equal(r.get("f1")!.size, 4);
+  assert.equal(r.get("f1")!.get("someone-else")!.seen, false);
+  assert.equal(r.get("f1")!.get("someone-else")!.byDefault, true);
+}
+
+// Тот же артист и в лайнапе дня, и в общем составе — одна запись, а не
+// две: список кандидатов склеивается по id.
+{
+  const row = festivalDay("f4", [solo("a")]);
+  row.event.performers = [{ performer: solo("a") }, { performer: solo("b") }];
+  const r = resolveSeen([row], [], NOW);
+  assert.equal(r.get("f4")!.size, 2);
 }
 
 // Будущая дата не считается вовсе — даже с отметкой «иду».

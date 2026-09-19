@@ -103,6 +103,8 @@ export const events = {
     series: "Series:",
     lineup: "Who's performing",
     lineupByDay: "Line-up day by day",
+    castWithoutDay: "Also in the line-up",
+    castWithoutDayHint: "Announced for the event, but not placed in the day-by-day schedule yet.",
     /** How many performances that festival day has. */
     performances: (n: number) =>
       `${n} ${n === 1 ? "performance" : "performances"}`,

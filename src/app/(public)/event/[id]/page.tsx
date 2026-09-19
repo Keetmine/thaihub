@@ -477,6 +477,18 @@ export default async function EventDetailPage({
   const dayLineups = event.occurrences.filter((o) => o.lineup.length > 0);
   const hasDayLineups = dayLineups.length > 0;
   const castInCard = castCards.length > 0 && !hasDayLineups;
+  // …но «расписание и есть состав» верно, только пока расписание
+  // покрывает весь состав. На Monster Music Festival 2026 пятеро
+  // заявленных не попали ни в один день, и страница их не показывала
+  // вовсе — «она заявлена на этом евенте, но я её не могу найти»
+  // (жалоба владельца 2026-09-19). Таких показываем отдельным блоком
+  // под расписанием.
+  const lineupPerformerIds = new Set(
+    dayLineups.flatMap((o) => o.lineup.map((l) => l.performer.id)),
+  );
+  const castWithoutDay = hasDayLineups
+    ? castCards.filter((c) => !lineupPerformerIds.has(c.id))
+    : [];
 
   // Расписание к виду страницы: день → сцены → выступления по времени.
   // Свои отметки «иду» — из общей выборки, а НЕ из goingOccurrenceIds:
@@ -800,6 +812,33 @@ export default async function EventDetailPage({
             toggleSeen={toggleEventSeen}
             setDaySeen={setDaySeen}
           />
+          {castWithoutDay.length > 0 && (
+            <div className="mt-4">
+              <p
+                className="small text-secondary text-uppercase mb-1"
+                style={{ letterSpacing: "0.08em" }}
+              >
+                <UsersIcon className="icon-inline" /> {t.events.detail.castWithoutDay}
+              </p>
+              <p className="small text-secondary mb-2">{t.events.detail.castWithoutDayHint}</p>
+              <CastGrid chips>
+                {castWithoutDay.map((c) => (
+                  <span key={c.id} className="cast-chip-seen">
+                    <EntityMiniCard href={c.href} photoUrl={c.photoUrl} name={c.name} />
+                    {c.seen !== undefined && (
+                      <SeenToggle
+                        eventId={event.id}
+                        performerId={c.id}
+                        initialSeen={c.seen}
+                        toggle={toggleEventSeen}
+                        size="chip"
+                      />
+                    )}
+                  </span>
+                ))}
+              </CastGrid>
+            </div>
+          )}
         </div>
       )}
 

@@ -289,10 +289,15 @@ function groupByNormName<T>(rows: T[], getName: (row: T) => string): DuplicateGr
 }
 
 /**
- * Reassigns every row of a two-column join table (unique on both columns
- * together) from loserId to keeperId, deleting the loser's row instead
- * whenever the keeper already has an equivalent one (avoids a unique-
- * constraint violation, e.g. a user who favorited both duplicate dramas).
+ * Reassigns every row of a join table (unique on this column together with
+ * the other one(s)) from loserId to keeperId, deleting the loser's row
+ * instead whenever the keeper already has an equivalent one (avoids a
+ * unique-constraint violation, e.g. a user who favorited both duplicate
+ * dramas).
+ *
+ * `otherColumns` may name several columns — some keys are triples
+ * (`EventSeenPerformer` is user + event + performer). Whatever the keeper
+ * already has wins; the loser's copy is dropped.
  *
  * Typed loosely on purpose: Prisma's per-model delegate types are too
  * specific to genericize over cleanly, and this helper is only ever called
@@ -302,26 +307,33 @@ async function reassignJoinRows(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   model: any,
   ownColumn: string,
-  otherColumn: string,
+  otherColumns: string | string[],
   keeperId: string,
   loserId: string,
 ) {
-  const loserRows: Record<string, string>[] = await model.findMany({ where: { [ownColumn]: loserId } });
-  const keeperOtherIds = new Set(
-    (await model.findMany({ where: { [ownColumn]: keeperId } })).map(
-      (r: Record<string, string>) => r[otherColumn],
+  const columns = Array.isArray(otherColumns) ? otherColumns : [otherColumns];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const keyOf = (row: Record<string, any>) => columns.map((c) => String(row[c])).join("\u0000");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const whereOf = (row: Record<string, any>) =>
+    Object.fromEntries(columns.map((c) => [c, row[c]]));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loserRows: Record<string, any>[] = await model.findMany({ where: { [ownColumn]: loserId } });
+  const keeperKeys = new Set(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (await model.findMany({ where: { [ownColumn]: keeperId } })).map((r: Record<string, any>) =>
+      keyOf(r),
     ),
   );
 
   for (const row of loserRows) {
-    const otherId = row[otherColumn];
-    if (keeperOtherIds.has(otherId)) {
-      await model.deleteMany({ where: { [ownColumn]: loserId, [otherColumn]: otherId } });
+    const where = { [ownColumn]: loserId, ...whereOf(row) };
+    if (keeperKeys.has(keyOf(row))) {
+      await model.deleteMany({ where });
     } else {
-      await model.updateMany({
-        where: { [ownColumn]: loserId, [otherColumn]: otherId },
-        data: { [ownColumn]: keeperId },
-      });
+      await model.updateMany({ where, data: { [ownColumn]: keeperId } });
+      keeperKeys.add(keyOf(row));
     }
   }
 }
@@ -524,6 +536,52 @@ export async function mergePerformers(keeperId: string, loserIds: string[]) {
       await reassignJoinRows(tx.performerAgency, "performerId", "agencyId", keeperId, loserId);
 
       await mergePairingsForPerformer(tx, keeperId, loserId);
+
+      // Ниже — связи, которые до 2026-09-19 просто умирали каскадом
+      // вместе с проигравшим. Так на проде пропал слот SERIOUS BACON в
+      // расписании Monster Music Festival: группу слили с импортированным
+      // дублем, строка лайнапа ушла вместе с ним, и на странице события
+      // группы не стало вовсе (жалоба владельца). Заодно переезжают
+      // личные отметки людей: «видела здесь», «видела вне афиши» и
+      // состав личных событий поездок — терять их при слиянии дублей
+      // нельзя тем более, это чужая история, а не наши данные.
+      await reassignJoinRows(tx.occurrenceLineup, "performerId", "occurrenceId", keeperId, loserId);
+      await reassignJoinRows(tx.performerSeen, "performerId", "userId", keeperId, loserId);
+      await reassignJoinRows(
+        tx.eventSeenPerformer,
+        "performerId",
+        ["userId", "eventId"],
+        keeperId,
+        loserId,
+      );
+      await reassignJoinRows(
+        tx.tripPersonalEventDayPerformer,
+        "performerId",
+        "dayId",
+        keeperId,
+        loserId,
+      );
+      await reassignJoinRows(
+        tx.tripPersonalEventSeen,
+        "performerId",
+        ["userId", "dayId"],
+        keeperId,
+        loserId,
+      );
+      await reassignJoinRows(tx.scheduledJobTarget, "performerId", "jobKey", keeperId, loserId);
+      await reassignJoinRows(
+        tx.birthdayNotification,
+        "performerId",
+        ["userId", "year"],
+        keeperId,
+        loserId,
+      );
+      // Маскоты: без уникального ключа — просто пересаживаем обе стороны.
+      await tx.mascotOwner.updateMany({ where: { mascotId: loserId }, data: { mascotId: keeperId } });
+      await tx.mascotOwner.updateMany({
+        where: { performerId: loserId },
+        data: { performerId: keeperId },
+      });
 
       await tx.performer.delete({ where: { id: loserId } });
     }
