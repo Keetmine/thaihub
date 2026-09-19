@@ -1107,6 +1107,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     padding-right: 3.6rem;
   }
 
+  /* Ряд из двух-трёх иконок (личное событие в совместной поездке:
+     «я там буду» + правка + удаление) шире одной — отступ считаем по
+     числу кнопок: 1.85rem каждая, 0.3rem между, 0.6rem до края. */
+  .event-card:has(.corner-actions-row > :nth-child(2)) .event-row-head {
+    padding-right: 5rem;
+  }
+
+  .event-card:has(.corner-actions-row > :nth-child(3)) .event-row-head {
+    padding-right: 7.2rem;
+  }
+
   .event-card .corner-actions {
     top: 0.6rem;
     right: 0.6rem;
@@ -6096,6 +6107,27 @@ body::after {
 .seen-toggle-chip svg {
   width: 0.95rem;
   height: 0.95rem;
+}
+
+/* Артист дня ЛИЧНОГО события поездки: имя-ссылка и глазик «видела
+   здесь» рядом, в потоке (правка владельца 2026-09-19). Тот же
+   .seen-toggle, что на афише, но не поверх фото — фото в строке нет. */
+.personal-cast-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.personal-cast-chip .seen-toggle-chip {
+  position: static;
+  transform: none;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.personal-cast-chip .seen-toggle-chip svg {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 /* Счётчик на глазике в шапке артиста: «сколько событий», а не «да/нет». */

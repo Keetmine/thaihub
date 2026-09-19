@@ -606,7 +606,16 @@ async function createTripCopyFor(tripId: string, userId: string): Promise<string
       stays: { where: { userId }, select: { startDate: true, endDate: true } },
       personalEvents: {
         where: { createdById: userId },
-        include: { days: { include: { performers: { select: { performerId: true } } } } },
+        include: {
+          attendances: { where: { userId }, select: { userId: true } },
+          days: {
+            include: {
+              performers: { select: { performerId: true } },
+              // Свои глазики «видела» уезжают вместе с записью.
+              seen: { where: { userId }, select: { performerId: true } },
+            },
+          },
+        },
       },
       todos: { where: { createdById: userId } },
       bookings: { where: { createdById: userId } },
@@ -632,10 +641,12 @@ async function createTripCopyFor(tripId: string, userId: string): Promise<string
           locationId: e.locationId,
           createdById: userId,
           visibility: e.visibility,
+          ...(e.attendances.length > 0 ? { attendances: { create: { userId } } } : {}),
           days: {
             create: e.days.map((d) => ({
               startsAt: d.startsAt,
               performers: { create: d.performers.map((p) => ({ performerId: p.performerId })) },
+              seen: { create: d.seen.map((sn) => ({ userId, performerId: sn.performerId })) },
             })),
           },
         })),
@@ -798,6 +809,12 @@ export async function createTripPersonalEvent(
         create: days.map((d) => ({
           startsAt: d.startsAt,
           performers: { create: d.performerIds.map((performerId) => ({ performerId })) },
+          // Кто добавил артиста, у того он «видела» сразу (правило
+          // 2026-09-19); у остальных участников — нет, пока сами не
+          // отметят. Без «я там буду» отметок нет: план, не факт.
+          ...(attending
+            ? { seen: { create: d.performerIds.map((performerId) => ({ userId: access.user.id, performerId })) } }
+            : {}),
         })),
       },
       ...(attending ? { attendances: { create: { userId: access.user.id } } } : {}),
@@ -818,7 +835,7 @@ export async function updateTripPersonalEvent(
   // where включает tripId — id чужого события с чужой поездкой не пройдёт.
   const item = await prisma.tripPersonalEvent.findFirst({
     where: { id: personalEventId, tripId: trip.id },
-    include: { days: { select: { id: true } } },
+    include: { days: { select: { id: true, performers: { select: { performerId: true } } } } },
   });
   if (!item || !canTouchItem(item, user.id, trip.userId)) {
     return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
@@ -841,11 +858,16 @@ export async function updateTripPersonalEvent(
   // Дни синхронизируем по id, как даты встречи сообщества: известный
   // день правится на месте, новый заводится, пропавший удаляется.
   // Состав дня приходит целиком — старые связи заменяются новыми.
-  const known = new Set(item.days.map((d) => d.id));
+  const known = new Map(item.days.map((d) => [d.id, new Set(d.performers.map((p) => p.performerId))]));
   const kept = new Set<string>();
   for (const day of days) {
-    if (day.id && known.has(day.id)) {
+    const before = day.id ? known.get(day.id) : undefined;
+    if (day.id && before) {
       kept.add(day.id);
+      // Кого редактор ДОБАВИЛ — у него «видела» сразу; чужие отметки и
+      // свои снятые глазики по прежнему составу не трогаем. Убранный из
+      // состава артист теряет отметки у всех: его тут не было.
+      const added = day.performerIds.filter((id) => !before.has(id));
       await prisma.tripPersonalEventDay.update({
         where: { id: day.id },
         data: {
@@ -853,6 +875,12 @@ export async function updateTripPersonalEvent(
           performers: {
             deleteMany: {},
             create: day.performerIds.map((performerId) => ({ performerId })),
+          },
+          seen: {
+            deleteMany: { performerId: { notIn: day.performerIds } },
+            ...(attending && added.length > 0
+              ? { create: added.map((performerId) => ({ userId: user.id, performerId })) }
+              : {}),
           },
         },
       });
@@ -863,12 +891,15 @@ export async function updateTripPersonalEvent(
         personalEventId,
         startsAt: day.startsAt,
         performers: { create: day.performerIds.map((performerId) => ({ performerId })) },
+        ...(attending
+          ? { seen: { create: day.performerIds.map((performerId) => ({ userId: user.id, performerId })) } }
+          : {}),
       },
       select: { id: true },
     });
     kept.add(created.id);
   }
-  const removed = [...known].filter((id) => !kept.has(id));
+  const removed = [...known.keys()].filter((id) => !kept.has(id));
   if (removed.length > 0) {
     await prisma.tripPersonalEventDay.deleteMany({ where: { id: { in: removed } } });
   }
@@ -888,6 +919,13 @@ export async function updateTripPersonalEvent(
         : { deleteMany: { userId: user.id } },
     },
   });
+  // Сняла «я там буду» — не была, значит и не видела никого: свои
+  // отметки по всем дням записи уходят.
+  if (!attending) {
+    await prisma.tripPersonalEventSeen.deleteMany({
+      where: { userId: user.id, day: { personalEventId } },
+    });
+  }
   // Картинку заменили или убрали — старый файл больше никому не нужен,
   // без unlink он оставался бы в private-uploads/ навсегда.
   if (item.imageUrl && item.imageUrl !== data.imageUrl) await unlinkPrivateFile(item.imageUrl);
@@ -914,15 +952,103 @@ export async function togglePersonalEventAttendance(
     where: { userId_personalEventId: { userId: user.id, personalEventId } },
   });
   if (mine) {
-    await prisma.tripPersonalEventAttendance.delete({
-      where: { userId_personalEventId: { userId: user.id, personalEventId } },
-    });
+    // Не была — и не видела: свои глазики по этому событию снимаются.
+    await prisma.$transaction([
+      prisma.tripPersonalEventAttendance.delete({
+        where: { userId_personalEventId: { userId: user.id, personalEventId } },
+      }),
+      prisma.tripPersonalEventSeen.deleteMany({
+        where: { userId: user.id, day: { personalEventId } },
+      }),
+    ]);
   } else {
+    // «Я там буду» никого не отмечает автоматически (правило
+    // 2026-09-19): в клубе были все, а видели разных — кого видела,
+    // человек отмечает глазиком сам.
     await prisma.tripPersonalEventAttendance.create({
       data: { userId: user.id, personalEventId },
     });
   }
   revalidatePath(`/trips/${trip.id}`);
+  return { ok: true };
+}
+
+/** Глазик у артиста дня личного события: «видела здесь / не видела».
+ *  Отметка своя у каждого участника поездки, прав на правку записи не
+ *  нужно. Поставленный глазик заодно ставит «я там буду» — видела,
+ *  значит была. Снятый «я там буду» не трогает. */
+export async function togglePersonalEventSeen(
+  tripId: string,
+  dayId: string,
+  performerId: string,
+): Promise<{ seen: boolean }> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) throw new Error(access.error);
+  const { user, trip } = access;
+  const link = await prisma.tripPersonalEventDayPerformer.findFirst({
+    where: { dayId, performerId, day: { personalEvent: { tripId: trip.id } } },
+    select: { day: { select: { personalEventId: true } } },
+  });
+  if (!link) throw new Error((await getT()).t.trips.errors.cannotEditOthers);
+  const key = { userId_dayId_performerId: { userId: user.id, dayId, performerId } };
+  const existing = await prisma.tripPersonalEventSeen.findUnique({ where: key, select: { userId: true } });
+  if (existing) {
+    await prisma.tripPersonalEventSeen.delete({ where: key });
+  } else {
+    const personalEventId = link.day.personalEventId;
+    await prisma.$transaction([
+      prisma.tripPersonalEventSeen.create({ data: { userId: user.id, dayId, performerId } }),
+      prisma.tripPersonalEventAttendance.upsert({
+        where: { userId_personalEventId: { userId: user.id, personalEventId } },
+        create: { userId: user.id, personalEventId },
+        update: {},
+      }),
+    ]);
+  }
+  revalidatePath(`/trips/${trip.id}`);
+  revalidatePath("/account");
+  return { seen: !existing };
+}
+
+/** «+ артист» с карточки: любой участник поездки дописывает в состав
+ *  дня того, кого видел сам, — заводить второе такое же событие ради
+ *  другого актёра не нужно (правка владельца 2026-09-19). У добавившего
+ *  артист отмечен «видела» сразу (и стоит «я там буду»), у остальных
+ *  участников — нет. Уже бывший в составе артист просто отмечается. */
+export async function addPersonalEventDayPerformer(
+  tripId: string,
+  dayId: string,
+  performerId: string,
+): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const { user, trip } = access;
+  const day = await prisma.tripPersonalEventDay.findFirst({
+    where: { id: dayId, personalEvent: { tripId: trip.id } },
+    select: { personalEventId: true },
+  });
+  if (!day) return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
+  const performer = await prisma.performer.findUnique({ where: { id: performerId }, select: { id: true } });
+  if (!performer) return { ok: false, error: (await getT()).t.trips.errors.cannotEditOthers };
+  await prisma.$transaction([
+    prisma.tripPersonalEventDayPerformer.upsert({
+      where: { dayId_performerId: { dayId, performerId } },
+      create: { dayId, performerId },
+      update: {},
+    }),
+    prisma.tripPersonalEventSeen.upsert({
+      where: { userId_dayId_performerId: { userId: user.id, dayId, performerId } },
+      create: { userId: user.id, dayId, performerId },
+      update: {},
+    }),
+    prisma.tripPersonalEventAttendance.upsert({
+      where: { userId_personalEventId: { userId: user.id, personalEventId: day.personalEventId } },
+      create: { userId: user.id, personalEventId: day.personalEventId },
+      update: {},
+    }),
+  ]);
+  revalidatePath(`/trips/${trip.id}`);
+  revalidatePath("/account");
   return { ok: true };
 }
 

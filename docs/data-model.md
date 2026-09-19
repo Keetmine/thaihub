@@ -83,6 +83,12 @@ copy — read the schema file for exact field types/nullability.
   Один рейс на четверых — одна `TripBooking` (правка владельца
   2026-09-19). См. [features/trips.md](features/trips.md), «Кто летит».
 
+- **`TripPersonalEventSeen`** — кого участник видел на дне личного
+  события поездки: строка на человека, день и артиста (правка
+  владельца 2026-09-19). Состав дня (`TripPersonalEventDayPerformer`)
+  общий, отметка своя; «видела вживую» из поездок считается только по
+  ней. См. [features/trips.md](features/trips.md), «Кого видели».
+
 - **`EventDraft`** — черновик события из краулеров афиши ThaiTicketMajor,
   трекера thaistarx.com (у него в `payload` ещё `presaleUrl`,
   `timezone` и блок `thaiStarX` с тегами и билетными ссылками) и афиш

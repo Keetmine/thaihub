@@ -335,6 +335,9 @@ const getTrip = cache(async (rawParam: string) => {
                   performer: { select: { id: true, name: true, slug: true, photoUrl: true } },
                 },
               },
+              // Свои глазики «видела здесь» (2026-09-19) — как и «я там
+              // буду», только смотрящего.
+              seen: { where: { userId: viewerId ?? "" }, select: { performerId: true } },
             },
           },
           // Своя отметка «я там буду». У гостя её быть не может —
@@ -896,13 +899,14 @@ export default async function TripPage({
       // без состава; id дня пустой, форма заведёт день заново.
       days: (p.days.length > 0
         ? p.days
-        : [{ id: "", startsAt: p.startsAt, performers: [] as typeof p.days[number]["performers"] }]
+        : [{ id: "", startsAt: p.startsAt, performers: [] as typeof p.days[number]["performers"], seen: [] as typeof p.days[number]["seen"] }]
       ).map((d) => ({
         id: d.id,
         startsAt: d.startsAt,
         dateKey: dateKey(d.startsAt),
         timeValue: formatTime(d.startsAt),
         performers: d.performers.map((link) => link.performer),
+        seenPerformerIds: d.seen.map((sn) => sn.performerId),
       })),
       attending: p.attendances.length > 0,
       canEdit: canTouch(p),

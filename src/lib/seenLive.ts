@@ -226,11 +226,10 @@ export async function loadSeenPerformerIds(userId: string): Promise<Set<string>>
     loadSeenOverrides(userId),
     prisma.performerSeen.findMany({ where: { userId }, select: { performerId: true } }),
     // По дням события (2026-09-18): артист дня засчитан, когда прошёл
-    // именно его день.
-    prisma.tripPersonalEventDayPerformer.findMany({
-      where: {
-        day: { startsAt: { lt: now }, personalEvent: { attendances: { some: { userId } } } },
-      },
+    // именно его день. Своя отметка «видела» (2026-09-19), а не весь
+    // состав дня: кого добавили другие, у меня не отмечен.
+    prisma.tripPersonalEventSeen.findMany({
+      where: { userId, day: { startsAt: { lt: now } } },
       select: { performerId: true },
     }),
   ]);
@@ -396,12 +395,10 @@ export async function performerSeenEvents(
       select: { id: true },
     }),
     // Личные события поездок — списком, по ДНЯМ: артист дня засчитан,
-    // когда прошёл его день и человек отметился на событии.
-    prisma.tripPersonalEventDayPerformer.findMany({
-      where: {
-        performerId,
-        day: { startsAt: { lt: now }, personalEvent: { attendances: { some: { userId } } } },
-      },
+    // когда прошёл его день и человек сам отметил, что видел его там
+    // (TripPersonalEventSeen, 2026-09-19).
+    prisma.tripPersonalEventSeen.findMany({
+      where: { userId, performerId, day: { startsAt: { lt: now } } },
       select: {
         day: {
           select: {

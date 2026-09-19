@@ -197,6 +197,7 @@ model Performer {
   favoritedBy           FavoritePerformer[]
   birthdayNotifications BirthdayNotification[]
   personalEventDays     TripPersonalEventDayPerformer[]
+  personalEventSeen     TripPersonalEventSeen[]
   pairingsAsA           Pairing[]                       @relation("PairingA")
   pairingsAsB           Pairing[]                       @relation("PairingB")
 
@@ -1008,6 +1009,7 @@ model User {
   favoriteAgencies             FavoriteAgency[]
   eventAttendances             EventAttendance[]
   personalEventAttendances     TripPersonalEventAttendance[]
+  personalEventSeen            TripPersonalEventSeen[]
   dramaWatchStatuses           DramaWatchStatus[]
   visitedLocations             LocationVisit[]
   trips                        Trip[]
@@ -2264,6 +2266,7 @@ model TripPersonalEventDay {
   /// 00:00 (та же договорённость, что у самого события).
   startsAt        DateTime
   performers      TripPersonalEventDayPerformer[]
+  seen            TripPersonalEventSeen[]
 
   @@index([personalEventId])
 }
@@ -2285,6 +2288,25 @@ model TripPersonalEventDayPerformer {
 // умолчанию (создала = собираюсь; для планов-кандидатов снимается).
 // Артисты события попадают в «видел(а) вживую» только отметившимся —
 // и только после даты; см. lib/userStats.ts.
+/// Кого видел(а) на дне личного события — СВОЯ отметка каждого
+/// участника (правка владельца 2026-09-19). Состав дня
+/// (TripPersonalEventDayPerformer) — общий список «кто был», а «видела
+/// вживую» считается по этим строкам: кто добавил артиста, у того он
+/// отмечен сразу, у остальных — нет, пока не нажмут глазик.
+model TripPersonalEventSeen {
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayId       String
+  day         TripPersonalEventDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  performerId String
+  performer   Performer            @relation(fields: [performerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+
+  @@id([userId, dayId, performerId])
+  @@index([dayId])
+  @@index([performerId])
+}
+
 model TripPersonalEventAttendance {
   userId          String
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)

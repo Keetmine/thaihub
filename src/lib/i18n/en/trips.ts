@@ -175,6 +175,11 @@ export const trips = {
         attending: "I’ll be there",
         showOnHome: "Show on the home page",
         editableByOthers: "Trip members can edit and delete this",
+        addPerformer: "+ Artist",
+        addPerformerTitle: "Who else did you see here",
+        addPerformerHint:
+          "The artist joins the event line-up and is marked as seen only for you. Other members mark their own.",
+        addPerformerPlaceholder: "Artist name",
     },
 
     /** Поле выбора места в форме личного события. */
