@@ -10,6 +10,8 @@ import { useT } from "@/components/LocaleProvider";
 import BookingForm, { type TripBookingRow } from "./BookingForm";
 import { ItemVisibilityBadge } from "../TripItemVisibility";
 import type { TripItemVisibilityValue } from "../itemVisibility";
+import { JoinToggle, MyTicket, ParticipantsLine, type BookingParticipantView } from "./BookingParticipants";
+import type { ParticipantOption } from "./BookingForm";
 
 export type { TripBookingRow };
 
@@ -26,13 +28,24 @@ export default function TripBookings({
   tripId,
   bookings,
   visibilityOptions,
+  canJoin = false,
+  participantOptions = [],
+  viewerId = null,
 }: {
   tripId: string;
+  canJoin?: boolean;
+  participantOptions?: ParticipantOption[];
+  viewerId?: string | null;
   /** Только брони без дат — датированные показывает лента. canEdit у
    *  каждой строки свой: у брони нет editableByOthers, и правят её
    *  только автор и владелец поездки (как guardBookingTouch на
    *  сервере), а не любой участник. */
-  bookings: (TripBookingRow & { canEdit: boolean })[];
+  bookings: (TripBookingRow & {
+    canEdit: boolean;
+    participants: BookingParticipantView[];
+    viewerJoined: boolean;
+    myFileUrl: string | null;
+  })[];
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
   const t = useT();
@@ -77,8 +90,13 @@ export default function TripBookings({
                   <span className="text-white text-truncate">{b.name}</span>
                   <ItemVisibilityBadge visibility={b.visibility} />
                   <span className="small text-secondary text-truncate">{subline(b)}</span>
+                  <ParticipantsLine kind={b.kind} participants={b.participants} />
                 </span>
                 <span className="d-flex align-items-center gap-1 flex-shrink-0 ms-auto">
+                  {canJoin && b.viewerJoined && b.myFileUrl !== b.fileUrl && (
+                    <MyTicket tripId={tripId} bookingId={b.id} kind={b.kind} fileUrl={b.myFileUrl} />
+                  )}
+                  {canJoin && <JoinToggle tripId={tripId} bookingId={b.id} kind={b.kind} joined={b.viewerJoined} />}
                   {b.fileUrl && (
                     <a
                       href={b.fileUrl}
@@ -153,6 +171,8 @@ export default function TripBookings({
             kind={modalKind}
             booking={editingBooking ?? undefined}
             visibilityOptions={visibilityOptions}
+            participantOptions={participantOptions}
+            viewerId={viewerId}
             onSaved={close}
             onCancel={close}
           />

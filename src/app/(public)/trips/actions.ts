@@ -6,6 +6,7 @@ import { canAttachPrivateFile, unlinkPrivateFile } from "@/lib/privateFiles";
 import { revalidatePath } from "next/cache";
 import { parseAmount, parseCategory, parseCurrency } from "@/lib/tripMoney";
 import { prisma } from "@/lib/prisma";
+import { sameFlightKey } from "@/lib/tripBookingKey";
 import { getCurrentUser } from "@/lib/userAuth";
 import { getFriendIds } from "@/lib/friends";
 import { formatShortDate } from "@/lib/dates";
@@ -1199,6 +1200,15 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
   }
 
   const isFlight = kind === "FLIGHT";
+  // Кто летит / живёт: галочки формы, зажатые списком участников
+  // поездки (владелец + принятые). Пусто — сам автор: бронь без единого
+  // человека бессмысленна.
+  const tripPeople = await tripParticipantIds(access.trip.id, access.trip.userId);
+  const checked = formData
+    .getAll("participants")
+    .map((v) => String(v))
+    .filter((uid) => tripPeople.has(uid));
+  const participantIds = checked.length > 0 ? [...new Set(checked)] : [access.user.id];
   const data = {
     kind: kind as "HOTEL" | "FLIGHT",
     name,
@@ -1252,10 +1262,38 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
     if (existing.fileUrl && existing.fileUrl !== data.fileUrl) {
       await unlinkPrivateFile(existing.fileUrl);
     }
+    await syncBookingParticipants(id, participantIds);
   } else {
     if (data.fileUrl && !(await canAttachPrivateFile(data.fileUrl, "hotels", access.user.id))) {
       return { ok: false, error: (await getT()).t.trips.errors.badFile };
     }
+    // Тот же рейс уже есть в поездке (номер + день вылета, см.
+    // sameFlightKey) — не вторая бронь, а присоединение к первой:
+    // отмеченные люди становятся её участниками, а файл из формы —
+    // СВОИМ билетом того, кто заводил (правка владельца 2026-09-19:
+    // «подружка добавила свой самолёт, а если я свой добавлю — каша,
+    // хотя рейс один»).
+    const key = sameFlightKey(data.kind, name, data.startAt);
+    if (key) {
+      const candidates = await prisma.tripBooking.findMany({
+        where: { tripId, kind: "FLIGHT", startAt: { not: null } },
+        select: { id: true, name: true, startAt: true, createdById: true, visibility: true },
+      });
+      const same = candidates.find((c) => sameFlightKey("FLIGHT", c.name, c.startAt) === key);
+      if (same && canSeeItemServer(same, access.user.id, access.trip)) {
+        for (const uid of participantIds) {
+          await prisma.tripBookingParticipant.upsert({
+            where: { bookingId_userId: { bookingId: same.id, userId: uid } },
+            create: { bookingId: same.id, userId: uid, fileUrl: uid === access.user.id ? data.fileUrl : null },
+            update: uid === access.user.id && data.fileUrl ? { fileUrl: data.fileUrl } : {},
+          });
+        }
+        revalidatePath(`/trips/${tripId}`);
+        return { ok: true };
+      }
+    }
+  }
+  if (!id) {
     await prisma.tripBooking.create({
       data: {
         tripId,
@@ -1266,9 +1304,114 @@ export async function saveTripBooking(tripId: string, formData: FormData): Promi
         // По умолчанию бронь видят участники: адрес проживания и номер
         // брони — не то, что показывают всем подряд.
         visibility: parseItemVisibility(formData.get("visibility"), access.trip.visibility),
+        participants: { create: participantIds.map((userId) => ({ userId })) },
       },
     });
   }
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true };
+}
+
+/** Участники поездки, которых можно отметить в брони: владелец и
+ *  принятые. Приглашённый, но не принявший, ещё не едет. */
+async function tripParticipantIds(tripId: string, ownerId: string): Promise<Set<string>> {
+  const members = await prisma.tripMember.findMany({
+    where: { tripId, status: "ACCEPTED" },
+    select: { userId: true },
+  });
+  return new Set([ownerId, ...members.map((m) => m.userId)]);
+}
+
+/** Видна ли бронь этому участнику — та же логика, что `canSeeItem` на
+ *  странице, но на сервере: присоединяться к чужой ПРИВАТНОЙ брони
+ *  нельзя, её как бы нет. */
+function canSeeItemServer(
+  item: { createdById: string | null; visibility: TripItemVisibility },
+  userId: string,
+  trip: { userId: string; visibility: TripVisibility },
+): boolean {
+  const authorId = item.createdById ?? trip.userId;
+  if (authorId === userId) return true;
+  return clampItemVisibility(item.visibility, trip.visibility) !== "PRIVATE";
+}
+
+/** Состав участников брони — по галочкам формы. Убранный участник
+ *  теряет и свой билет (файл чистится с диска): форму правит автор или
+ *  владелец, и вычёркивают человека сознательно. */
+async function syncBookingParticipants(bookingId: string, participantIds: string[]): Promise<void> {
+  const current = await prisma.tripBookingParticipant.findMany({
+    where: { bookingId },
+    select: { userId: true, fileUrl: true },
+  });
+  const keep = new Set(participantIds);
+  const gone = current.filter((c) => !keep.has(c.userId));
+  if (gone.length > 0) {
+    await prisma.tripBookingParticipant.deleteMany({
+      where: { bookingId, userId: { in: gone.map((g) => g.userId) } },
+    });
+    for (const g of gone) await unlinkPrivateFile(g.fileUrl);
+  }
+  const have = new Set(current.map((c) => c.userId));
+  const add = participantIds.filter((uid) => !have.has(uid));
+  if (add.length > 0) {
+    await prisma.tripBookingParticipant.createMany({
+      data: add.map((userId) => ({ bookingId, userId })),
+      skipDuplicates: true,
+    });
+  }
+}
+
+/** «Я тоже лечу» / «Я не лечу» — со строки в плане, без формы. Любому
+ *  участнику поездки, которому бронь видна; своя отметка — как «я там
+ *  буду» на личном событии. Уходя, человек забирает и свой билет. */
+export async function toggleBookingParticipation(tripId: string, bookingId: string): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const booking = await prisma.tripBooking.findFirst({
+    where: { id: bookingId, tripId },
+    select: { id: true, createdById: true, visibility: true },
+  });
+  if (!booking || !canSeeItemServer(booking, access.user.id, access.trip)) {
+    return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
+  }
+  const mine = await prisma.tripBookingParticipant.findUnique({
+    where: { bookingId_userId: { bookingId, userId: access.user.id } },
+  });
+  if (mine) {
+    await prisma.tripBookingParticipant.delete({
+      where: { bookingId_userId: { bookingId, userId: access.user.id } },
+    });
+    await unlinkPrivateFile(mine.fileUrl);
+  } else {
+    await prisma.tripBookingParticipant.create({ data: { bookingId, userId: access.user.id } });
+  }
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true };
+}
+
+/** Свой билет (подтверждение) к общей брони — файл участника, а не
+ *  брони. Прикладывать может только тот, кто в этой брони летит/живёт;
+ *  пустой файл — убрать свой. */
+export async function setBookingParticipantFile(
+  tripId: string,
+  bookingId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const mine = await prisma.tripBookingParticipant.findFirst({
+    where: { bookingId, userId: access.user.id, booking: { tripId } },
+  });
+  if (!mine) return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
+  const fileUrl = String(formData.get("fileUrl") ?? "").trim() || null;
+  if (fileUrl && fileUrl !== mine.fileUrl && !(await canAttachPrivateFile(fileUrl, "hotels", access.user.id))) {
+    return { ok: false, error: (await getT()).t.trips.errors.badFile };
+  }
+  await prisma.tripBookingParticipant.update({
+    where: { bookingId_userId: { bookingId, userId: access.user.id } },
+    data: { fileUrl },
+  });
+  if (mine.fileUrl && mine.fileUrl !== fileUrl) await unlinkPrivateFile(mine.fileUrl);
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }
@@ -1280,7 +1423,12 @@ export async function deleteTripBooking(tripId: string, bookingId: string): Prom
   // удаления записи и чистим диск следом (по образцу ticketActions).
   const booking = await prisma.tripBooking.findFirst({
     where: { id: bookingId, tripId },
-    select: { fileUrl: true, createdById: true, visibility: true },
+    select: {
+      fileUrl: true,
+      createdById: true,
+      visibility: true,
+      participants: { select: { fileUrl: true } },
+    },
   });
   if (!booking) return { ok: false, error: (await getT()).t.trips.errors.bookingNotFound };
   // Те же права, что на правку: id приходит с клиента, и без проверки
@@ -1289,6 +1437,8 @@ export async function deleteTripBooking(tripId: string, bookingId: string): Prom
   if (guard) return guard;
   await prisma.tripBooking.deleteMany({ where: { id: bookingId, tripId } });
   await unlinkPrivateFile(booking.fileUrl);
+  // Билеты участников каскадом из базы уходят, а с диска — нет.
+  for (const p of booking.participants) await unlinkPrivateFile(p.fileUrl);
   revalidatePath(`/trips/${tripId}`);
   return { ok: true };
 }

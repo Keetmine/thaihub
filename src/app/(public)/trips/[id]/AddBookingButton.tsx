@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useT } from "@/components/LocaleProvider";
-import BookingForm from "./BookingForm";
+import BookingForm, { type ParticipantOption } from "./BookingForm";
 import type { TripItemVisibilityValue } from "../itemVisibility";
 
 /** Кнопка «+ Отель» / «+ Перелёт» с формой в модалке. Живёт в общем ряду
@@ -13,10 +13,14 @@ export default function AddBookingButton({
   tripId,
   kind,
   visibilityOptions,
+  participantOptions = [],
+  viewerId = null,
 }: {
   tripId: string;
   kind: "HOTEL" | "FLIGHT";
   visibilityOptions: readonly TripItemVisibilityValue[];
+  participantOptions?: ParticipantOption[];
+  viewerId?: string | null;
 }) {
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +44,8 @@ export default function AddBookingButton({
             tripId={tripId}
             kind={kind}
             visibilityOptions={visibilityOptions}
+            participantOptions={participantOptions}
+            viewerId={viewerId}
             onSaved={() => setIsOpen(false)}
             onCancel={() => setIsOpen(false)}
           />

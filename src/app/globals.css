@@ -2407,6 +2407,36 @@ svg[aria-hidden="true"] {
   }
 }
 
+/* Участники брони под названием: стопка аватарок внахлёст и подпись
+   «Летят: вы, Аня» (правка владельца 2026-09-19). */
+.booking-people-avatars {
+  flex-shrink: 0;
+}
+
+.booking-people-avatar {
+  display: inline-flex;
+  border-radius: 50%;
+  border: 2px solid var(--bs-body-bg);
+  margin-left: -0.4rem;
+}
+
+.booking-people-avatar:first-child {
+  margin-left: 0;
+}
+
+/* Галочки «кто летит» в форме брони — чипами с аватаркой. */
+.booking-who-option {
+  padding: 0.3rem 0.7rem 0.3rem 0.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.booking-who-option:has(input:checked) {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
 /* ---------- Underline content tabs (section navigation) ---------- */
 .tab-bar-row {
   display: flex;

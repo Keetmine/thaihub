@@ -104,15 +104,15 @@ model Event {
   comments                    Comment[]
   tickets                     EventTicket[]
 
-  @@index([createdById])
-  @@index([dramaId])
-  @@index([locationId])
-
   /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
   /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
   /// же берут список и форма админки, и читалка. Пусто — показывается
   /// оригинал.
-  translations   Json?
+  translations Json?
+
+  @@index([createdById])
+  @@index([dramaId])
+  @@index([locationId])
 }
 
 // Ж9: до трёх фото для покупающих билеты (схема зала, цены, бенефиты)
@@ -197,8 +197,8 @@ model Performer {
   favoritedBy           FavoritePerformer[]
   birthdayNotifications BirthdayNotification[]
   personalEventDays     TripPersonalEventDayPerformer[]
-  pairingsAsA           Pairing[]                    @relation("PairingA")
-  pairingsAsB           Pairing[]                    @relation("PairingB")
+  pairingsAsA           Pairing[]                       @relation("PairingA")
+  pairingsAsB           Pairing[]                       @relation("PairingB")
 
   // Band <-> member-actor relation. Only meaningful when type is BAND
   // (bandMembers) or SOLO (memberOfBands) respectively, but left
@@ -249,13 +249,13 @@ model Performer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([name])
-
   /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
   /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
   /// же берут список и форма админки, и читалка. Пусто — показывается
   /// оригинал.
-  translations   Json?
+  translations Json?
+
+  @@index([name])
 }
 
 enum PerformerType {
@@ -356,7 +356,7 @@ model Agency {
   /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
   /// же берут список и форма админки, и читалка. Пусто — показывается
   /// оригинал.
-  translations   Json?
+  translations Json?
 }
 
 // Ссылки агентства — соцсети и сайт (правка владельца 2026-09-05).
@@ -491,13 +491,13 @@ model Novel {
   reviews        Review[]
   comments       Comment[]
 
-  @@index([title])
-
   /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
   /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
   /// же берут список и форма админки, и читалка. Пусто — показывается
   /// оригинал.
-  translations   Json?
+  translations Json?
+
+  @@index([title])
 }
 
 model NovelLink {
@@ -579,7 +579,7 @@ model Drama {
   // миграция 20260916T01): запись без типа — сериал, фильмы и шоу
   // размечены импортом явно. Импорт MDL при пустом типе с карточки
   // тоже пишет "Drama" (см. mdlDramaImport.ts).
-  type          String?  @default("Drama")
+  type          String?   @default("Drama")
   mdlScore      Float?
   mdlSyncedAt   DateTime?
   // Страница-источник на MyDramaList. Хранится, чтобы сериал можно было
@@ -718,14 +718,14 @@ model Location {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([name])
-  @@index([createdByUserId])
-
   /// Переводы уникальных текстов: { "ru": { "<поле>": "…" } }. Какие
   /// поля переводимы — объявлено в src/lib/entityTranslations.ts, оттуда
   /// же берут список и форма админки, и читалка. Пусто — показывается
   /// оригинал.
-  translations   Json?
+  translations Json?
+
+  @@index([name])
+  @@index([createdByUserId])
 }
 
 model DramaLocation {
@@ -887,7 +887,7 @@ model EventPairing {
 // ---------- User accounts (separate from the single admin password) ----------
 
 model User {
-  id                       String          @id @default(cuid())
+  id                       String               @id @default(cuid())
   // Both nullable because a Telegram-auth account has neither — an
   // email+password account always has both (enforced in the signup
   // action, not the schema).
@@ -895,45 +895,45 @@ model User {
   // всем. Предзаполняется на шаге после регистрации из Telegram-username
   // или части почты — так человек не застревает на форме, — но его
   // можно изменить.
-  username                 String?         @unique
-  email                    String?         @unique
+  username                 String?              @unique
+  email                    String?              @unique
   passwordHash             String?
   // Роль админа: доступ к /admin без отдельного пароля — обычная
   // сессия пользователя + этот флаг (см. requireAdmin в lib/auth.ts).
-  isAdmin                  Boolean         @default(false)
+  isAdmin                  Boolean              @default(false)
   // Менеджер каталога: полный доступ к разделам «Каталог» админки
   // (события, исполнители, сериалы, новеллы, локации, импорты), но без
   // пользователей, финансов, рассылок и настроек — это только админ.
-  isManager                Boolean         @default(false)
+  isManager                Boolean              @default(false)
   auditLogs                AuditLog[]
-  notifications            Notification[]  @relation("UserNotifications")
+  notifications            Notification[]       @relation("UserNotifications")
   performersSeen           PerformerSeen[]
   eventSeenPerformers      EventSeenPerformer[]
   eventMaybes              EventMaybe[]
   // Что дублировать в Telegram (уведомления на сайте приходят всегда).
   // Раньше набор поводов был зашит в код и одинаков для всех.
-  tgNotifyInvites          Boolean         @default(true)
-  tgNotifyFriends          Boolean         @default(true)
-  tgNotifyReplies          Boolean         @default(true)
-  tgNotifyEvents           Boolean         @default(true)
+  tgNotifyInvites          Boolean              @default(true)
+  tgNotifyFriends          Boolean              @default(true)
+  tgNotifyReplies          Boolean              @default(true)
+  tgNotifyEvents           Boolean              @default(true)
   // Дни рождения избранных артистов (З3). Свой переключатель, а не
   // общий с событиями: повод ежедневный и нравится далеко не всем, а
   // «друзья идут на события» человек может хотеть оставить.
-  tgNotifyBirthdays        Boolean         @default(true)
+  tgNotifyBirthdays        Boolean              @default(true)
   // Новые серии отмеченных «Смотрю сейчас» сериалов (З1). Свой
   // переключатель по той же причине, что и у дней рождения: у
   // выходящего сериала повод еженедельный, а то и чаще.
-  tgNotifyEpisodes         Boolean         @default(true)
+  tgNotifyEpisodes         Boolean              @default(true)
   // Сообщества: приглашения и решения по заявкам. Темы обсуждений сюда
   // не идут — их слишком много.
-  tgNotifyCommunities      Boolean         @default(true)
+  tgNotifyCommunities      Boolean              @default(true)
   // Новости проекта из /admin/broadcast — раньше рассылка игнорировала
   // настройки и уходила всем с привязанным Telegram.
-  tgNotifyBroadcast        Boolean         @default(true)
+  tgNotifyBroadcast        Boolean              @default(true)
   // Недельный дайджест «Ваша неделя» по воскресеньям (премиум). Свой
   // переключатель: человек может хотеть напоминания о продажах, но не
   // хотеть воскресное письмо. Колонка заведена миграцией 20260910T00.
-  tgNotifyDigest           Boolean         @default(true)
+  tgNotifyDigest           Boolean              @default(true)
   // Тур по интерфейсу для новичков: показывается один раз после
   // регистрации, перезапускается кнопкой в настройках.
   tourCompletedAt          DateTime?
@@ -949,9 +949,9 @@ model User {
   // показывается и войти в него нельзя. Уникальные поля при удалении
   // освобождаются — иначе почта и Telegram остались бы занятыми навсегда.
   deletedAt                DateTime?
-  actedNotifications       Notification[]  @relation("NotificationActor")
+  actedNotifications       Notification[]       @relation("NotificationActor")
   // Google-аккаунт (OAuth): sub из id_token. Set = "может войти через Google".
-  googleId                 String?         @unique
+  googleId                 String?              @unique
   name                     String?
   photoUrl                 String?
   // Широкая картинка над левой колонкой профиля — косметика для
@@ -962,7 +962,7 @@ model User {
   coverUrl                 String?
   // Telegram user id from the Login Widget (doubles as the DM chat id
   // for bot notifications). Set = "can log in via Telegram".
-  telegramId               String?         @unique
+  telegramId               String?              @unique
   telegramUsername         String?
   // Подписка действует, пока premiumUntil в будущем (null — не было).
   // Продлевается из админки (+1 месяц) или оплатой; гейты проверяют
@@ -975,13 +975,13 @@ model User {
   // продлевать каждый месяц. Пока true — подписка активна независимо от
   // premiumUntil, напоминание об истечении не шлётся. Снятие флага
   // возвращает обычный срок: premiumUntil при выдаче не трогается.
-  premiumLifetime          Boolean         @default(false)
+  premiumLifetime          Boolean              @default(false)
   // Opaque token for the read-only "subscribe to my calendar" ICS feed —
   // generated on first request since calendar apps fetch it without a
   // session cookie, so it needs its own unguessable credential.
-  icsToken                 String?         @unique
+  icsToken                 String?              @unique
   // Таймзона для «времени в скобках» рядом с тайским (дефолт — МСК).
-  timezone                 String          @default("Europe/Moscow")
+  timezone                 String               @default("Europe/Moscow")
   // Когда человек последний раз что-то делал на сайте. Обновляется не
   // на каждый запрос, а раз в несколько минут (см. lib/lastSeen.ts):
   // запись на каждый чих утроила бы количество записей в базу ради
@@ -1000,7 +1000,7 @@ model User {
   gender                   String?
   birthDate                DateTime?
   bio                      String?
-  createdAt                DateTime        @default(now())
+  createdAt                DateTime             @default(now())
 
   sessions                     UserSession[]
   favoritePerformers           FavoritePerformer[]
@@ -1026,6 +1026,7 @@ model User {
   tripMemberships              TripMember[]
   // Свои даты в общих поездках (АА17).
   tripStays                    TripStay[]
+  bookingParticipations        TripBookingParticipant[]
   reviews                      Review[]
   comments                     Comment[]
   commentLikes                 CommentLike[]
@@ -1068,7 +1069,7 @@ model User {
   communityInvitesSent   CommunityInvite[] @relation("CommunityInviteBy")
   communityPosts         CommunityPost[]
   createdEvents          Event[]           @relation("EventAuthor")
-  tripExpenses         TripExpense[]
+  tripExpenses           TripExpense[]
 }
 
 // A user's planned trip (to Thailand) — a named date range; the trip page
@@ -1349,8 +1350,8 @@ model TripTodo {
   /// показываются только у ДЕЛ: у «взять переходник» описания не бывает.
   /// Ссылка сохраняется только http(s) — мусор молча отбрасывается, и
   /// запись из-за него не теряется.
-  note          String?
-  url           String?
+  note String?
+  url  String?
 
   @@index([tripId])
 }
@@ -1686,18 +1687,15 @@ model EventTicket {
 
 /**
  * «Возможно пойду» — кандидат на дату (правка владельца 2026-09-15).
- *
  * Между сердечком («интересно вообще», на событие целиком) и «иду»
  * («решено»). Смысл — увидеть свои варианты в расписании поездки: в один
  * вечер два концерта, оба интересны, пойду на один. В общей афише они
  * терялись среди чужого.
- *
  * ОТДЕЛЬНАЯ таблица, а не статус у EventAttendance: отметки «иду»
  * читаются в трёх десятках мест (статистика, ачивки, «видела вживую»,
  * уведомления друзьям, выгрузка в календарь), и любое пропущенное
  * превратило бы «может быть» в посещённое событие. Здесь же «возможно»
  * не считается НИГДЕ — это черновик планов.
- *
  * Взаимоисключимо с «иду»: экшены снимают встречную отметку.
  */
 model EventMaybe {
@@ -2153,33 +2151,33 @@ enum TripExpenseCategory {
 /// запись видна только своему автору по построению. Делёжки «кто кому
 /// должен» нет тоже, она отменена тем же решением.
 model TripExpense {
-  id     String @id @default(cuid())
-  tripId String
-  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  id           String              @id @default(cuid())
+  tripId       String
+  trip         Trip                @relation(fields: [tripId], references: [id], onDelete: Cascade)
   /// Чья трата. Выборка всегда идёт по паре (поездка, я).
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title  String
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
   /// ЦЕЛЫЕ минорные единицы (сатанги, копейки, центы): дробные деньги в
   /// double дают 0.1 + 0.2 = 0.30000000000000004, и итог по сотне строк
   /// уезжал бы в копейках без причины.
-  amountMinor Int
-  currency    TripCurrency
-  category    TripExpenseCategory @default(OTHER)
+  amountMinor  Int
+  currency     TripCurrency
+  category     TripExpenseCategory @default(OTHER)
   /// День траты, без времени.
-  spentOn     DateTime?
+  spentOn      DateTime?
   /// Необязательная привязка к брони: перелёты и отели сайт уже знает.
   /// SetNull — удалили бронь, трата осталась: деньги-то потрачены.
-  bookingId   String?
-  booking     TripBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId    String?
+  booking      TripBooking?        @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   /// Или к событию афиши: у фестиваля несколько дней, поэтому ссылка на
   /// конкретную дату (EventOccurrence), а не на событие вообще.
   /// Цены у самого события быть не может — оно общее для всех, а билет
   /// и сумма у каждого свои.
   occurrenceId String?
-  occurrence   EventOccurrence? @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
-  note        String?
-  createdAt   DateTime     @default(now())
+  occurrence   EventOccurrence?    @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+  note         String?
+  createdAt    DateTime            @default(now())
 
   @@index([tripId, userId])
   @@index([bookingId])
@@ -2219,7 +2217,7 @@ model TripBooking {
   visibility  TripItemVisibility @default(PARTICIPANTS)
   createdAt   DateTime           @default(now())
 
-  expenses    TripExpense[]
+  expenses TripExpense[]
 
   /// Цена записи — она же строка в расходах поездки (правка владельца
   /// 2026-09-16). Минорные единицы, как у TripExpense; валюта своя у
@@ -2229,7 +2227,27 @@ model TripBooking {
   priceMinor    Int?
   priceCurrency TripCurrency?
 
+  // Кто летит этим рейсом / живёт в этом отеле — по строке на участника
+  // поездки, у каждого свой билет (правка владельца 2026-09-19: один
+  // рейс на четверых — одна бронь, а не четыре).
+  participants TripBookingParticipant[]
+
   @@index([tripId])
+}
+
+// Участник брони: летит этим рейсом / живёт в этом отеле. fileUrl — его
+// СВОЙ билет или подтверждение (приватное хранилище, папка hotels, как у
+// общего файла брони); общий файл брони живёт в TripBooking.fileUrl.
+model TripBookingParticipant {
+  bookingId String
+  userId    String
+  booking   TripBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileUrl   String?
+  createdAt DateTime    @default(now())
+
+  @@id([bookingId, userId])
+  @@index([userId])
 }
 
 // «Видела вживую» вручную: концерты до регистрации на сайте, случайные

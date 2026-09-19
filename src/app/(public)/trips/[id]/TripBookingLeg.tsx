@@ -10,6 +10,8 @@ import { useT } from "@/components/LocaleProvider";
 import BookingForm, { type TripBookingRow } from "./BookingForm";
 import { ItemVisibilityBadge } from "../TripItemVisibility";
 import type { TripItemVisibilityValue } from "../itemVisibility";
+import { JoinToggle, MyTicket, ParticipantsLine, type BookingParticipantView } from "./BookingParticipants";
+import type { ParticipantOption } from "./BookingForm";
 
 /** Одна сторона брони в ленте плана: заселение ИЛИ выселение, вылет ИЛИ
  *  прилёт — либо обе сразу (`side: "both"`), когда между ними в ленте
@@ -56,6 +58,11 @@ export type BookingLegData = {
   canEdit: boolean;
   /** Значения для формы правки — она правит бронь целиком, обе даты. */
   booking: TripBookingRow;
+  /** Кто летит / живёт (правка владельца 2026-09-19), своя отметка и
+   *  свой билет смотрящего. */
+  participants: BookingParticipantView[];
+  viewerJoined: boolean;
+  myFileUrl: string | null;
 };
 
 /** Чип времени строки брони. У перелёта, севшего не в день вылета,
@@ -137,10 +144,18 @@ export default function TripBookingLeg({
   tripId,
   leg,
   visibilityOptions,
+  canJoin = false,
+  participantOptions = [],
+  viewerId = null,
 }: {
   tripId: string;
   leg: BookingLegData;
   visibilityOptions: readonly TripItemVisibilityValue[];
+  /** Участник поездки: может отметиться «я тоже» и приложить свой билет. */
+  canJoin?: boolean;
+  /** Участники поездки — для галочек «кто летит» в форме правки. */
+  participantOptions?: ParticipantOption[];
+  viewerId?: string | null;
 }) {
   const t = useT();
   const router = useRouter();
@@ -195,9 +210,18 @@ export default function TripBookingLeg({
           <ItemVisibilityBadge visibility={leg.booking.visibility} />
         </div>
         {subline && <div className="small text-secondary text-truncate">{subline}</div>}
+        <ParticipantsLine kind={leg.kind} participants={leg.participants} />
       </div>
 
       <span className="d-flex align-items-center gap-1 flex-shrink-0">
+        {/* Свой билет — только если он не тот же общий файл брони, что
+            уже стоит справа как «Билет ↗». */}
+        {canJoin && leg.viewerJoined && leg.myFileUrl !== leg.fileUrl && (
+          <MyTicket tripId={tripId} bookingId={leg.bookingId} kind={leg.kind} fileUrl={leg.myFileUrl} />
+        )}
+        {canJoin && (
+          <JoinToggle tripId={tripId} bookingId={leg.bookingId} kind={leg.kind} joined={leg.viewerJoined} />
+        )}
         {leg.fileUrl && (
           <a
             href={leg.fileUrl}
@@ -262,6 +286,8 @@ export default function TripBookingLeg({
           kind={leg.kind}
           booking={leg.booking}
           visibilityOptions={visibilityOptions}
+          participantOptions={participantOptions}
+          viewerId={viewerId}
           onSaved={() => setEditing(false)}
           onCancel={() => setEditing(false)}
         />

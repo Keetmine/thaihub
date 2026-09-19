@@ -50,6 +50,7 @@ import { pageMetadata } from "@/lib/seo";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
 import AddBookingButton from "./AddBookingButton";
+import type { BookingParticipantView } from "./BookingParticipants";
 import AddTripPlaceButton from "../AddTripPlaceButton";
 import TripBookingLeg, { type BookingLegData, type DateRangeLabels } from "./TripBookingLeg";
 import TripFlightChain, { type FlightChainData } from "./TripFlightChain";
@@ -176,6 +177,7 @@ function bookingLegs(
   t: Dict,
   canEdit: boolean,
   stayColor: number | null,
+  people: { participants: BookingParticipantView[]; viewerJoined: boolean; myFileUrl: string | null },
 ): {
   leg: BookingLegData;
   sortAt: Date;
@@ -200,6 +202,7 @@ function bookingLegs(
     startTime: b.startAt && hasTime(b.startAt) ? formatTime(b.startAt) : null,
     endTime: b.endAt && hasTime(b.endAt) ? formatTime(b.endAt) : null,
     visibility: b.visibility,
+    participantIds: people.participants.map((p) => p.id),
   };
   const place = isFlight
     ? [b.fromPlace, b.toPlace].filter(Boolean).join(" → ") || null
@@ -216,6 +219,7 @@ function bookingLegs(
     fileUrl: b.fileUrl,
     canEdit,
     booking: row,
+    ...people,
   };
   const dateLabels = (at: Date) => ({
     // Подписи даты считаем здесь: даты проекта живут в UTC, а
@@ -339,17 +343,26 @@ const getTrip = cache(async (rawParam: string) => {
           attendances: { where: { userId: viewerId ?? "" }, select: { userId: true } },
         },
       },
-      user: { select: { id: true, name: true, username: true, deletedAt: true } },
+      user: { select: { id: true, name: true, username: true, deletedAt: true, photoUrl: true } },
       // Свои даты участников (АА17): нет строки — едет на всю поездку.
       stays: { select: { userId: true, startDate: true, endDate: true } },
       // Брони жилья: показываются на вкладке плана рядом с событиями —
       // в день заселения не приходится искать письмо в почте.
-      bookings: { orderBy: [{ startAt: "asc" }, { createdAt: "asc" }] },
+      bookings: {
+        orderBy: [{ startAt: "asc" }, { createdAt: "asc" }],
+        // Кто летит / живёт (правка владельца 2026-09-19) — со своими
+        // билетами; фото — для стопки аватарок под названием.
+        include: {
+          participants: {
+            include: { user: { select: { id: true, name: true, username: true, deletedAt: true, photoUrl: true } } },
+          },
+        },
+      },
       members: {
         // username — не для ссылки, а для ПОДПИСИ: userDisplayName без
         // него не может откатиться на ник и зовёт человека безликим
         // «Пользователем» (поймано на проверке имён 2026-09-06).
-        include: { user: { select: { id: true, name: true, username: true, deletedAt: true } } },
+        include: { user: { select: { id: true, name: true, username: true, deletedAt: true, photoUrl: true } } },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -488,6 +501,10 @@ export default async function TripPage({
   }
 
   const participantIds = [trip.userId, ...acceptedMembers.map((m) => m.userId)];
+  const photoById = new Map<string, string | null>([
+    [trip.userId, trip.user.photoUrl],
+    ...acceptedMembers.map((m) => [m.userId, m.user.photoUrl] as [string, string | null]),
+  ]);
   const nameById = new Map<string, string>([
     [trip.userId, userDisplayName(trip.user, locale)],
     ...acceptedMembers.map((m) => [m.userId, userDisplayName(m.user, locale)] as [string, string]),
@@ -932,8 +949,34 @@ export default async function TripPage({
     // Автор брони, а не «владелец поездки по умолчанию»: приватная
     // бронь участницы принадлежит ЕЙ (см. TripBooking.createdById).
     .filter((b) => canSeeItem(b.visibility, b.createdById))
-    .filter((b) => !onlyMine || isMine(b.createdById))
+    // «Только моё» у брони — по участию, не по авторству: чужой рейс, к
+    // которому я присоединилась, — мой.
+    .filter((b) => !onlyMine || isMine(b.createdById) || b.participants.some((p) => p.userId === viewerId))
     .map(bookingForViewer);
+  // Кто летит / живёт — как это видит смотрящий. Постороннему (открытая
+  // бронь) — только имена, без чьих-либо билетов.
+  const peopleOf = (b: (typeof trip.bookings)[number]) => {
+    const participants: BookingParticipantView[] = b.participants.map((p) => ({
+      id: p.userId,
+      name: nameById.get(p.userId) ?? userDisplayName(p.user, locale),
+      photoUrl: p.user.photoUrl,
+      isViewer: p.userId === viewerId,
+    }));
+    const mine = isParticipant ? b.participants.find((p) => p.userId === viewerId) : undefined;
+    // Общий файл брони у её автора — это и есть его билет (так брони
+    // заводили до появления участников): второй раз прикладывать не
+    // предлагаем, а «Билет ↗» и так стоит в строке.
+    const authorId = b.createdById ?? trip.userId;
+    const myFileUrl = mine?.fileUrl ?? (mine && authorId === viewerId ? b.fileUrl : null);
+    return { participants, viewerJoined: !!mine, myFileUrl };
+  };
+  // Кому можно отметиться в брони и кого выбирать в форме «кто летит».
+  const canJoinBookings = isParticipant && !!viewerId;
+  const participantOptions = participantIds.map((id) => ({
+    id,
+    name: nameById.get(id) ?? "",
+    photoUrl: photoById.get(id) ?? null,
+  }));
   // Цвет линии — на бронь: палитра по кругу в порядке начала броней
   // (visibleBookings уже отсортированы по startAt). Так два отеля подряд
   // не читаются одним непрерывным отрезком, а первая стоянка получает
@@ -945,9 +988,14 @@ export default async function TripPage({
   const legs = showAll
     ? []
     : visibleBookings.flatMap((b) =>
-        bookingLegs(b, locale, t, canTouchBooking(b), stayColorByBooking.get(b.id) ?? null),
+        bookingLegs(b, locale, t, canTouchBooking(b), stayColorByBooking.get(b.id) ?? null, peopleOf(b)),
       );
-  const undatedBookings: (TripBookingRow & { canEdit: boolean })[] = visibleBookings
+  const undatedBookings: (TripBookingRow & {
+    canEdit: boolean;
+    participants: BookingParticipantView[];
+    viewerJoined: boolean;
+    myFileUrl: string | null;
+  })[] = visibleBookings
     .filter((b) => !b.startAt && !b.endAt)
     .map((b) => ({
       canEdit: canTouchBooking(b),
@@ -965,6 +1013,8 @@ export default async function TripPage({
       startTime: null,
       endTime: null,
       visibility: b.visibility,
+      participantIds: b.participants.map((p) => p.userId),
+      ...peopleOf(b),
     }));
 
   type BookingEntry = {
@@ -1354,9 +1404,9 @@ export default async function TripPage({
             <span className="text-secondary"> · {item.dateLabel}</span>
           </p>
         ) : item.kind === "booking" ? (
-          <TripBookingLeg tripId={trip.id} leg={item.leg} visibilityOptions={visibilityOptions} />
+          <TripBookingLeg canJoin={canJoinBookings} participantOptions={participantOptions} viewerId={viewerId} tripId={trip.id} leg={item.leg} visibilityOptions={visibilityOptions} />
         ) : item.kind === "flightChain" ? (
-          <TripFlightChain tripId={trip.id} chain={item.chain} visibilityOptions={visibilityOptions} />
+          <TripFlightChain canJoin={canJoinBookings} participantOptions={participantOptions} viewerId={viewerId} tripId={trip.id} chain={item.chain} visibilityOptions={visibilityOptions} />
         ) : (
           <TodoRow
             showKind
@@ -1540,15 +1590,15 @@ export default async function TripPage({
             label={t.trips.personal.addShort}
             accent
           />
-          <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} />
-          <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} />
+          <AddBookingButton tripId={trip.id} kind="FLIGHT" visibilityOptions={visibilityOptions} participantOptions={participantOptions} viewerId={viewerId} />
+          <AddBookingButton tripId={trip.id} kind="HOTEL" visibilityOptions={visibilityOptions} participantOptions={participantOptions} viewerId={viewerId} />
         </div>
       )}
 
       {/* Брони без дат: в ленте им негде встать, а видеть и дозаполнять
           их надо. Датированные стоят ниже, в ленте плана, в свои дни. */}
       {!showTodos && !showPlaces && !showMoney && (
-        <TripBookings
+        <TripBookings canJoin={canJoinBookings} participantOptions={participantOptions} viewerId={viewerId}
           tripId={trip.id}
           bookings={undatedBookings}
           visibilityOptions={visibilityOptions}

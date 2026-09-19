@@ -78,6 +78,11 @@ copy — read the schema file for exact field types/nullability.
   — обычное «раз в сутки в свой час». См.
   [features/admin-panel.md](features/admin-panel.md).
 
+- **`TripBookingParticipant`** — кто летит этим рейсом / живёт в этом
+  отеле: по строке на участника брони, со своим билетом (`fileUrl`).
+  Один рейс на четверых — одна `TripBooking` (правка владельца
+  2026-09-19). См. [features/trips.md](features/trips.md), «Кто летит».
+
 - **`EventDraft`** — черновик события из краулеров афиши ThaiTicketMajor,
   трекера thaistarx.com (у него в `payload` ещё `presaleUrl`,
   `timezone` и блок `thaiStarX` с тегами и билетными ссылками) и афиш

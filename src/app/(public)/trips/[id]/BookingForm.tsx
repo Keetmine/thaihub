@@ -8,7 +8,11 @@ import DatePickerInput from "@/components/DatePickerInput";
 import { saveTripBooking } from "../actions";
 import { useT } from "@/components/LocaleProvider";
 import PriceFields from "@/components/PriceFields";
+import LetterAvatar from "@/components/LetterAvatar";
 import { ItemVisibilityField, type TripItemVisibilityValue } from "../TripItemVisibility";
+
+/** Участник поездки для галочек «кто летит / живёт». */
+export type ParticipantOption = { id: string; name: string; photoUrl: string | null };
 
 export type TripBookingRow = {
   /** Цена записи — она же строка в расходах поездки, если заполнена. */
@@ -31,6 +35,9 @@ export type TripBookingRow = {
   endTime: string | null;
   /** Кто видит бронь. По умолчанию — участники поездки. */
   visibility: TripItemVisibilityValue;
+  /** Кто летит этим рейсом / живёт в этом отеле (правка владельца
+   *  2026-09-19). */
+  participantIds: string[];
 };
 
 /**
@@ -45,6 +52,8 @@ export default function BookingForm({
   kind,
   booking,
   visibilityOptions,
+  participantOptions = [],
+  viewerId = null,
   onSaved,
   onCancel,
 }: {
@@ -54,10 +63,17 @@ export default function BookingForm({
   /** Что можно выбрать в «кто это видит» — уже урезано видимостью
    *  поездки (см. `itemVisibilityChoices`). */
   visibilityOptions: readonly TripItemVisibilityValue[];
+  /** Участники поездки — галочки «кто летит / живёт». В соло-поездке
+   *  (один вариант) блока нет: летит, кто заводит. */
+  participantOptions?: ParticipantOption[];
+  viewerId?: string | null;
   onSaved: () => void;
   onCancel: () => void;
 }) {
   const uid = useId();
+  // Галочки: при правке — текущие участники брони, при создании —
+  // сам заводящий.
+  const checkedIds = new Set(booking ? booking.participantIds : viewerId ? [viewerId] : []);
   const t = useT();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +199,32 @@ export default function BookingForm({
             endpoint="/api/upload-hotel"
           />
         </div>
+        {/* Кто летит / живёт: один рейс на всех — одна запись, у каждого
+            свой билет (правка владельца 2026-09-19). Показываем только в
+            совместной поездке — в соло выбирать не из кого. */}
+        {participantOptions.length > 1 && (
+          <div className="col-12">
+            <span className="form-label small text-secondary d-block">
+              {isFlight ? t.trips.bookings.whoFlies : t.trips.bookings.whoStays}
+            </span>
+            <div className="d-flex flex-wrap gap-2">
+              {participantOptions.map((p) => (
+                <label key={p.id} className="booking-who-option d-inline-flex align-items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="participants"
+                    value={p.id}
+                    defaultChecked={checkedIds.has(p.id)}
+                    className="form-check-input m-0"
+                  />
+                  <LetterAvatar name={p.name} photoUrl={p.photoUrl} size={1.5} />
+                  <span className="small">{p.id === viewerId ? t.trips.bookings.you : p.name}</span>
+                </label>
+              ))}
+            </div>
+            <p className="small text-secondary mb-0 mt-1">{t.trips.bookings.whoHint}</p>
+          </div>
+        )}
         <div className="col-12">
           {/* Кто видит бронь. Значение по умолчанию — участники: адрес и
               номер брони не показывают всем подряд. */}

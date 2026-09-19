@@ -9,6 +9,8 @@ import TripBookingLeg, {
   type DateRangeLabels,
 } from "./TripBookingLeg";
 import type { TripItemVisibilityValue } from "../itemVisibility";
+import { ParticipantsLine, type BookingParticipantView } from "./BookingParticipants";
+import type { ParticipantOption } from "./BookingForm";
 
 /** Цепочка перелётов одной строкой — несколько схлопнутых сегментов
  *  подряд, между которыми в ленте ничего нет (см. docs/features/trips.md).
@@ -37,13 +39,23 @@ export default function TripFlightChain({
   tripId,
   chain,
   visibilityOptions,
+  canJoin = false,
+  participantOptions = [],
+  viewerId = null,
 }: {
   tripId: string;
   chain: FlightChainData;
   visibilityOptions: readonly TripItemVisibilityValue[];
+  canJoin?: boolean;
+  participantOptions?: ParticipantOption[];
+  viewerId?: string | null;
 }) {
   const t = useT();
   const subline = chain.route;
+  // В сводной строке — все, кто летит хоть одним сегментом; свои
+  // отметки и билеты — у сегментов внутри.
+  const people = new Map<string, BookingParticipantView>();
+  for (const leg of chain.legs) for (const p of leg.participants) people.set(p.id, p);
 
   // Билет, правка и удаление у каждого сегмента свои, и в одну строку
   // они не помещаются — сегменты раскрываются кликом по строке
@@ -70,6 +82,7 @@ export default function TripFlightChain({
             <span className="text-white text-truncate">{chain.names}</span>
           </div>
           {subline && <div className="small text-secondary text-truncate">{subline}</div>}
+          <ParticipantsLine kind="FLIGHT" participants={[...people.values()]} />
         </div>
 
         <span className="booking-chain-toggle flex-shrink-0">
@@ -80,7 +93,15 @@ export default function TripFlightChain({
 
       <div className="booking-chain-segments d-flex flex-column gap-2 px-3 pb-3">
         {chain.legs.map((leg) => (
-          <TripBookingLeg key={leg.key} tripId={tripId} leg={leg} visibilityOptions={visibilityOptions} />
+          <TripBookingLeg
+            key={leg.key}
+            tripId={tripId}
+            leg={leg}
+            visibilityOptions={visibilityOptions}
+            canJoin={canJoin}
+            participantOptions={participantOptions}
+            viewerId={viewerId}
+          />
         ))}
       </div>
     </details>
