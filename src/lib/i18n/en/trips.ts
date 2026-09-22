@@ -294,6 +294,18 @@ export const trips = {
             /** Сколько готово — строкой над списком чемодана/покупок. */
             progressPacking: (done: number, total: number) => `${done}/${total} packed`,
             progressShopping: (done: number, total: number) => `${done}/${total} bought`,
+            /** Заголовки и подписи правки: у покупки «дело» в заголовке
+             *  выглядит ошибкой (правка владельца 2026-09-22). */
+            addDetailed: "Add with a note and link",
+            editPackingTitle: "Packing item",
+            editShoppingTitle: "Purchase",
+            textPacking: "What to take",
+            textShopping: "What to buy",
+            deletePackingConfirm: "Remove this item?",
+            deleteShoppingConfirm: "Remove this purchase?",
+            /** Ссылка у покупки ведёт в магазин, а не «куда-нибудь». */
+            shopUrl: "Shop link",
+            noteLabel: "Note",
             addPackingTitle: "New item to pack",
             addShoppingTitle: "New purchase",
             packingPlaceholder: "Adapter, sunscreen, meds…",

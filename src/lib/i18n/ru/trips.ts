@@ -297,6 +297,18 @@ export const trips: Dict["trips"] = {
             addButton: "+ Добавить",
             progressPacking: (done: number, total: number) => `собрано ${done} из ${total}`,
             progressShopping: (done: number, total: number) => `куплено ${done} из ${total}`,
+            /** Заголовки и подписи правки: у покупки «дело» в заголовке
+             *  выглядит ошибкой (правка владельца 2026-09-22). */
+            addDetailed: "Добавить с заметкой и ссылкой",
+            editPackingTitle: "Что взять",
+            editShoppingTitle: "Покупка",
+            textPacking: "Что взять",
+            textShopping: "Что купить",
+            deletePackingConfirm: "Убрать из чемодана?",
+            deleteShoppingConfirm: "Убрать покупку?",
+            /** Ссылка у покупки ведёт в магазин, а не «куда-нибудь». */
+            shopUrl: "Ссылка на магазин",
+            noteLabel: "Заметка",
             addPackingTitle: "Что взять с собой",
             addShoppingTitle: "Что купить",
             packingPlaceholder: "Переходник, санскрин, лекарства…",

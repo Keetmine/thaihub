@@ -9,7 +9,7 @@ import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
 import PriceFields from "@/components/PriceFields";
-import { TRIP_CURRENCIES, type TripCurrencyValue } from "@/lib/tripMoney";
+import { TRIP_CURRENCIES, formatMoney, type TripCurrencyValue } from "@/lib/tripMoney";
 import { TrashIcon, PencilIcon } from "@/components/icons";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import {
@@ -51,6 +51,47 @@ export type TodoData = {
   url?: string | null;
 };
 
+/**
+ * Подписи по виду списка: у покупки в заголовке правки стояло «дело», а
+ * поле называлось «Что сделать» (жалоба владельца 2026-09-22). Дела
+ * остаются как были, у чемодана и покупок — свои слова.
+ */
+function kindLabels(t: ReturnType<typeof useT>, kind: TripTodoKind) {
+  const l = t.trips.todos.lists;
+  if (kind === "SHOPPING") {
+    return {
+      editTitle: l.editShoppingTitle,
+      text: l.textShopping,
+      deleteConfirm: l.deleteShoppingConfirm,
+      urlLabel: l.shopUrl,
+      noteLabel: l.noteLabel,
+    };
+  }
+  if (kind === "PACKING") {
+    return {
+      editTitle: l.editPackingTitle,
+      text: l.textPacking,
+      deleteConfirm: l.deletePackingConfirm,
+      urlLabel: t.trips.todos.url,
+      noteLabel: l.noteLabel,
+    };
+  }
+  return {
+    editTitle: t.trips.todos.editTitle,
+    text: t.trips.todos.text,
+    deleteConfirm: t.trips.todos.deleteConfirm,
+    urlLabel: t.trips.todos.url,
+    noteLabel: t.trips.todos.note,
+  };
+}
+
+/** Заметка и ссылка есть у дел и у ПОКУПОК (правка владельца
+ *  2026-09-22: «в покупках нужно поле с заметкой и ссылкой на шоп»). У
+ *  чемодана их нет: «взять переходник» описывать нечем. */
+function hasNoteAndUrl(kind: TripTodoKind): boolean {
+  return kind === "TODO" || kind === "SHOPPING";
+}
+
 /** Строка дела: чекбокс + текст + дата + правка/удаление. Используется
  *  и во вкладке «Дела», и в хронологии «Мой план» (датированные,
  *  showDate — та же дата-колонка, что у событий). */
@@ -75,6 +116,7 @@ export function TodoRow({
   const uid = useId();
   const t = useT();
   const locale = useLocale();
+  const labels = kindLabels(t, todo.kind);
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -175,6 +217,14 @@ export function TodoRow({
           </span>
         )}
       </span>
+      {/* Цена покупки — прямо в строке (правка владельца 2026-09-22):
+          без неё список хотелок ничего не говорит о бюджете, а открывать
+          правку ради одной цифры незачем. */}
+      {todo.priceMinor != null && todo.priceCurrency && (
+        <span className={`small flex-shrink-0 ${todo.done ? "text-secondary" : ""}`}>
+          {formatMoney(todo.priceMinor, todo.priceCurrency, locale)}
+        </span>
+      )}
       {rowError && <span className="small text-danger flex-shrink-0">{rowError}</span>}
       {timeLabel && <span className="small text-secondary flex-shrink-0">{timeLabel}</span>}
       {!showDate && d && (
@@ -200,7 +250,7 @@ export function TodoRow({
               if (!result.ok) return result;
               router.refresh();
             }}
-            confirmMessage={t.trips.todos.deleteConfirm}
+            confirmMessage={labels.deleteConfirm}
           >
             <button type="button" className="icon-btn icon-btn-danger" aria-label={t.trips.todos.deleteAria}>
               <TrashIcon />
@@ -215,7 +265,7 @@ export function TodoRow({
           setEditOpen(false);
           setEditError(null);
         }}
-        title={t.trips.todos.editTitle}
+        title={labels.editTitle}
       >
         <form
           action={async (fd) => {
@@ -231,7 +281,7 @@ export function TodoRow({
           className="d-flex flex-column gap-3"
         >
           <div>
-            <label className="form-label small text-secondary" htmlFor={`${uid}-text`}>{t.trips.todos.text}</label>
+            <label className="form-label small text-secondary" htmlFor={`${uid}-text`}>{labels.text}</label>
             <input id={`${uid}-text`} name="text" required defaultValue={todo.text} className="form-control" />
           </div>
           {/* Цена — только у ПОКУПОК (правка владельца 2026-09-16):
@@ -241,15 +291,16 @@ export function TodoRow({
           {todo.kind === "SHOPPING" && (
             <PriceFields priceMinor={todo.priceMinor} currency={todo.priceCurrency} />
           )}
-          {/* Описание и ссылка — только у ДЕЛ (правка владельца
-              2026-09-16): «записаться в визовый центр» без адреса и
-              ссылки на запись — половина дела. У чемодана и покупок
-              полей нет, и записать им туда нечего. */}
-          {todo.kind === "TODO" && (
+          {/* Описание и ссылка — у дел и покупок (правки владельца
+              2026-09-16 и 2026-09-22): «записаться в визовый центр» без
+              ссылки на запись — половина дела, а у покупки заметка про
+              размер и адрес магазина нужна не меньше. У чемодана полей
+              нет: «взять переходник» описывать нечем. */}
+          {hasNoteAndUrl(todo.kind) && (
             <>
               <div>
                 <label className="form-label small text-secondary" htmlFor={`${uid}-note`}>
-                  {t.trips.todos.note}
+                  {labels.noteLabel}
                 </label>
                 <textarea
                   id={`${uid}-note`}
@@ -261,7 +312,7 @@ export function TodoRow({
               </div>
               <div>
                 <label className="form-label small text-secondary" htmlFor={`${uid}-url`}>
-                  {t.trips.todos.url}
+                  {labels.urlLabel}
                 </label>
                 {/* type="url" — чтобы на телефоне открывалась подходящая
                     клавиатура; мусор без http(s) просто не сохраняется,
@@ -343,6 +394,8 @@ export function AddTripTodoButton({
   kind = "TODO",
   showShareToggle = false,
   visibilityOptions,
+  variant = "button",
+  label,
 }: {
   tripId: string;
   /** В какой список добавляем — от него зависят подпись кнопки,
@@ -350,21 +403,32 @@ export function AddTripTodoButton({
   kind?: TripTodoKind;
   showShareToggle?: boolean;
   visibilityOptions: readonly TripItemVisibilityValue[];
+  /** «link» — тихая ссылка под быстрым вводом: там рядом уже есть своя
+   *  кнопка «Добавить», и вторая такая же сбивала бы прицел. */
+  variant?: "button" | "link";
+  /** Подпись вместо стандартной — у ссылки она объясняет, чем этот
+   *  способ отличается от быстрого ввода. */
+  label?: string;
 }) {
   const uid = useId();
   const t = useT();
+  const addLabels = kindLabels(t, kind);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   return (
     <>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIsOpen(true)}>
+      <button
+        type="button"
+        className={variant === "link" ? "btn-link-accent small" : "btn btn-ghost btn-sm"}
+        onClick={() => setIsOpen(true)}
+      >
         {/* В общем ряду над вкладками эта кнопка — единственный способ
             завести ДЕЛО, и зовётся она по своему списку. Внутри
             чемодана и покупок рядом уже стоит быстрый ввод, и кнопка
-            там — про то, чего он не умеет: дату и остальные поля. */}
-        {kind === "TODO" ? t.trips.todos.addButton : t.trips.todos.lists.addButton}
+            там — про то, чего он не умеет: цену, заметку и ссылку. */}
+        {label ?? (kind === "TODO" ? t.trips.todos.addButton : t.trips.todos.lists.addButton)}
       </button>
 
       <Modal
@@ -399,7 +463,9 @@ export function AddTripTodoButton({
           className="d-flex flex-column gap-3"
         >
           <div>
-            <label className="form-label small text-secondary" htmlFor={`${uid}-text2`}>{t.trips.todos.newText}</label>
+            <label className="form-label small text-secondary" htmlFor={`${uid}-text2`}>
+              {kind === "TODO" ? t.trips.todos.newText : addLabels.text}
+            </label>
             {/* Список едет полем формы: серверное действие не знает,
                 какая вкладка была открыта. */}
             <input type="hidden" name="kind" value={kind} />
@@ -431,6 +497,32 @@ export function AddTripTodoButton({
                 <TimeInput id={`${uid}-time2`} name="time" />
               </div>
             </div>
+          )}
+          {/* У покупки — цена, заметка и ссылка на магазин (правка
+              владельца 2026-09-22). Раньше цену можно было поставить
+              только быстрым вводом или потом в правке. */}
+          {kind === "SHOPPING" && <PriceFields />}
+          {hasNoteAndUrl(kind) && (
+            <>
+              <div>
+                <label className="form-label small text-secondary" htmlFor={`${uid}-note2`}>
+                  {addLabels.noteLabel}
+                </label>
+                <textarea id={`${uid}-note2`} name="note" rows={2} className="form-control" />
+              </div>
+              <div>
+                <label className="form-label small text-secondary" htmlFor={`${uid}-url2`}>
+                  {addLabels.urlLabel}
+                </label>
+                <input
+                  id={`${uid}-url2`}
+                  name="url"
+                  type="url"
+                  placeholder={t.trips.todos.urlPlaceholder}
+                  className="form-control"
+                />
+              </div>
+            </>
           )}
           {/* Чемодан по умолчанию приватный: в совместной поездке он у
               каждого свой, и «мои лекарства» соседке по номеру не
@@ -671,6 +763,22 @@ export default function TripTodos({
           kind={activeList}
           visibilityOptions={visibilityOptions}
         />
+      )}
+      {/* У покупки, кроме названия и цены, бывает заметка (размер,
+          какой именно вкус) и ссылка на магазин — за ними полная форма
+          (правка владельца 2026-09-22). У чемодана таких полей нет, там
+          быстрого ввода достаточно. */}
+      {canAdd && activeList === "SHOPPING" && (
+        <div className="mb-3">
+          <AddTripTodoButton
+            tripId={tripId}
+            kind="SHOPPING"
+            showShareToggle={showShareToggle}
+            visibilityOptions={visibilityOptions}
+            variant="link"
+            label={l.addDetailed}
+          />
+        </div>
       )}
 
       {sorted.length === 0 ? (
