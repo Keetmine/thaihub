@@ -839,13 +839,14 @@ never visually changed (a real bug, not hypothetical).
   и резала ширину под текст (эта разметка осталась только у витринной
   строки лендинга, `.agenda-time` / `.agenda-dash`).
 
-## Импорт события по ссылке (TTM, Eventpop, Ticketmelon, AllTicket, Eventpass)
+## Импорт события по ссылке (TTM, Eventpop, Ticketmelon, AllTicket, Eventpass, tickets-easy)
 
-С 2026-09-18 у Ticketmelon и AllTicket есть и **обход списков** —
+С 2026-09-18 у Ticketmelon и AllTicket (а с 2026-09-22 и у
+tickets-easy) есть и **обход списков** —
 черновики в очередь, артисты ищутся в тексте события; см.
 [ticket-site-crawl.md](ticket-site-crawl.md). Парсеры страниц ниже — общие.
 
-Карточка «Событие по ссылке» на `/admin/imports` — ОДНО поле на пять
+Карточка «Событие по ссылке» на `/admin/imports` — ОДНО поле на шесть
 сайтов, сайт распознаётся по домену (`detectEventSite` /
 `scrapeEventByUrl` в `src/lib/eventTicketSites.ts`); дальше тот же
 экран проверки, что был у TTM: правишь всё найденное и подтверждаешь.

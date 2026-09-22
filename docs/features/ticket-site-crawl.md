@@ -1,8 +1,10 @@
-# Краулеры Ticketmelon и AllTicket (черновики без размеченного состава)
+# Краулеры билетных сайтов (черновики без размеченного состава)
 
-Суточные задачи `ticketmelon-crawl` и `allticket-crawl` обходят афиши
-[ticketmelon.com](https://www.ticketmelon.com) и
-[allticket.com](https://www.allticket.com/concert) и кладут события
+Суточные задачи `ticketmelon-crawl`, `allticket-crawl` и
+`ticketseasy-crawl` обходят афиши
+[ticketmelon.com](https://www.ticketmelon.com),
+[allticket.com](https://www.allticket.com/concert) и
+[tickets-easy.com](https://tickets-easy.com) и кладут события
 **черновиками** в общую очередь (`/admin/imports`, вкладка «События») —
 ту же, что у обходов ThaiTicketMajor ([ttm-crawl.md](ttm-crawl.md)) и
 ThaiStarX ([thaistarx-crawl.md](thaistarx-crawl.md)). Владелец одобряет
@@ -11,7 +13,9 @@ ThaiStarX ([thaistarx-crawl.md](thaistarx-crawl.md)). Владелец одоб�
 Просьба владельца 2026-09-18: «Ticketmelon и AllTicket давай напишем
 парсер… и на них тоже отслеживать». Парсеры СТРАНИЦ у обоих сайтов уже
 были — «событие по ссылке» ([events.md](events.md), «Импорт события по
-ссылке»); здесь добавлен обход списков.
+ссылке»); здесь добавлен обход списков. Третьим добавился tickets-easy
+(просьба владельца 2026-09-22: «есть сайт с афишами и билетами, можем
+тоже добавить в расписание, только тайландские будем брать»).
 
 ## Files
 
@@ -25,10 +29,16 @@ ThaiStarX ([thaistarx-crawl.md](thaistarx-crawl.md)). Владелец одоб�
   добавлены `parseTicketmelonEventMeta` (рубрики, статус публикации,
   момент начала, слаги — краулеру, экрану импорта не нужны) и
   `scrapeTicketmelonForCrawl`; `scrapeAllticket` экспортирован.
+- **`src/lib/ticketsEasy.ts`** — весь tickets-easy: чистые разборы
+  каталога и сессий (`parseTicketsEasyCatalog`,
+  `parseTicketsEasySessionDates`, `isPurchasingService`), загрузка
+  тайской афиши (`fetchTicketsEasyThailand`) и страница события
+  (`scrapeTicketsEasyEvent`).
 - **`src/lib/performerMatching.ts`** — `matchCatalogInText`: артисты
   каталога в свободном тексте (см. ниже).
-- **`src/lib/scheduledJobs.ts`** — задачи `ticketmelon-crawl` и
-  `allticket-crawl` (раз в сутки, `logsItems: true`).
+- **`src/lib/scheduledJobs.ts`** — задачи `ticketmelon-crawl`,
+  `allticket-crawl` и `ticketseasy-crawl` (раз в сутки,
+  `logsItems: true`).
 - **`src/app/admin/(protected)/imports/ticketSiteActions.ts`** —
   `startTicketmelonFullCrawl`: разовый обход всей карты сайта фоном.
 - **`src/app/admin/(protected)/imports/page.tsx`** — строки обеих задач в
@@ -87,6 +97,31 @@ curl, и браузеру, с любыми заголовками, с `www` и �
 ссылки на AllTicket в постах ThaiStarX и на фестивалях
 musicfestival.in.th — оттуда они приходят вместе со своими событиями.
 
+**tickets-easy** — перепродавец с афишей по странам. Каталог
+фильтруется параметром `city` (страна там тоже «город»), пагинации нет
+вовсе: тайская афиша умещается на одной странице, `page=2` отдаёт ту
+же (проверено 2026-09-22 — 21 карточка, все «Concerts», остальные
+рубрики пусты). Карточка каталога несёт всё сразу: адрес события,
+постер (`img.tixbay.com`), рубрику, страну, дату, название, площадку и
+«от какой цены»; страница события добавляет список сессий — по нему
+берутся остальные дни многодневника.
+
+Берём **только Таиланд**, и фильтр стоит ДВАЖДЫ: в адресе запроса и по
+самой карточке (`country === "Thailand"`). Поменяется фильтр на сайте —
+чужие страны всё равно не попадут в очередь. Карточки с приставкой
+`【Purchasing Service】` пропускаются: это услуга выкупа того же
+концерта, а не отдельное событие (на 2026-09-22 таких три из 21).
+
+**Время оттуда не берётся вовсе.** Сайт подписывает его как «HKT», но
+это просто подпись, а не перевод в гонконгскую зону: сверка с нашими
+записями дала разные сдвиги на четырёх событиях подряд — NAMTAN FILM
+0 ч, NuNew +1 ч, LINGORM и OH MY FOURTH +3 ч. Единого сдвига нет,
+значит и пересчитать нельзя. Черновик приходит с датой и
+`hasTime: false`, а заявленное сайтом время едет в описании строкой
+«начало заявлено как 16:00 … проверьте по официальной странице» —
+проверяющий проставит его руками. Неверное время в афише хуже, чем его
+отсутствие: по нему люди планируют день.
+
 ## Состав: артисты в тексте (`matchCatalogInText`)
 
 Состав на обоих сайтах не размечен — он в названии и описании
@@ -121,14 +156,15 @@ musicfestival.in.th — оттуда они приходят вместе со �
    перепроверка их обходит стороной: иначе 600 адресов Ticketmelon
    перечитывались бы по кругу.
 3. Страницы с паузой 1,7 с. Прошедшее — начало (Ticketmelon:
-   `show_starttime`; AllTicket: последняя дата из текста) раньше, чем
-   сутки назад.
+   `show_starttime`; AllTicket и tickets-easy: последний день из дат)
+   раньше, чем сутки назад.
 4. Дедуп по содержимому (`findCatalogDuplicate`): сильное совпадение —
    черновика нет, `sourceUrl` бэкфилится, адрес запоминается APPROVED;
    слабое — пометка `possibleDuplicateOf`.
 5. `matchCatalogInText(название + описание)` → PENDING (с `ImportedItem`
    типа `event-draft`) или NO_MATCH.
-6. Появились PENDING — одно `notifyAdmins("import", …)` на прогон.
+6. Появились PENDING — одно `notifyAdmins("import", …)` на прогон. У
+   сухого прогона (`apply: false`) письма нет: он ничего не записывает.
 
 Payload черновика — `TtmEvent` плюс `ticketSite: {site, categories,
 skipped}`. Одобрение — общий путь `createEventFromTtmImport`; времени у
@@ -142,4 +178,7 @@ AllTicket часто нет (тогда `hasTime: false`, см. thaistarx-crawl.
   (`ticketmelon-event.html`: `__NEXT_DATA__` без переводов и форм),
   карточки концертного раздела AllTicket (`allticket-concert.json`),
   прошедшее по датам. Без сети и БД.
+- `tests/unit/ticketsEasy.test.ts` — разбор каталога tickets-easy:
+  поля карточки, раскодирование мнемоник, страна у каждой карточки,
+  «Purchasing Service», дни сессий. Без сети.
 - `tests/unit/textMatching.test.ts` — правила поиска артистов в тексте.

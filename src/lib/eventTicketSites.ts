@@ -19,6 +19,9 @@ import { scrapeTtmEvent, type TtmEvent } from "./thaiticketmajor";
 //  - ticket.eventpass.co — Next.js flight-поток (self.__next_f);
 //    вход пускает только с кукой allowed-user=true, которую сайт сам
 //    ставит редиректом — шлём её сразу;
+//  - tickets-easy.com — перепродавец с афишей по странам: карточка
+//    каталога и страница события отдают обычный HTML; время сайта
+//    ненадёжно и не берётся (см. lib/ticketsEasy.ts);
 //  - theconcert.com — НЕ парсится: Cloudflare-челлендж не решается ни
 //    curl, ни playwright (headless и с окном — проверено циклом как у
 //    MdlClient), их защита распознаёт автоматизацию. Отбиваем понятным
@@ -33,10 +36,11 @@ export type EventTicketSite =
   | "ticketmelon"
   | "allticket"
   | "eventpass"
+  | "ticketseasy"
   | "theconcert";
 
 export const SUPPORTED_EVENT_SITES_LABEL =
-  "ThaiTicketMajor, Eventpop, Ticketmelon, AllTicket, Eventpass";
+  "ThaiTicketMajor, Eventpop, Ticketmelon, AllTicket, Eventpass, tickets-easy";
 
 /** Сайт по домену ссылки; null — домен не из известных. */
 /** Хост ссылки без www — null у мусора вместо адреса. */
@@ -56,6 +60,7 @@ export function detectEventSite(url: string): EventTicketSite | null {
   if (host.endsWith("ticketmelon.com")) return "ticketmelon";
   if (host.endsWith("allticket.com")) return "allticket";
   if (host.endsWith("eventpass.co")) return "eventpass";
+  if (host.endsWith("tickets-easy.com")) return "ticketseasy";
   if (host.endsWith("theconcert.com")) return "theconcert";
   return null;
 }
@@ -73,6 +78,12 @@ export async function scrapeEventByUrl(url: string): Promise<TtmEvent> {
       return scrapeAllticket(url);
     case "eventpass":
       return scrapeEventpass(url);
+    case "ticketseasy": {
+      // Перепродавец: дата и площадка есть, времени нет намеренно —
+      // см. шапку lib/ticketsEasy.ts.
+      const { scrapeTicketsEasyEvent } = await import("@/lib/ticketsEasy");
+      return scrapeTicketsEasyEvent(url);
+    }
     case "theconcert":
       throw new Error(
         "theconcert.com закрыт Cloudflare-проверкой, которую не проходит даже браузер-автомат — это событие придётся завести руками",

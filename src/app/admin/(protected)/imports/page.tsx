@@ -77,6 +77,7 @@ const KIND_LABELS: Record<string, string> = {
   "thaistarx-crawl": "ThaiStarX: фан-события по миру",
   "ticketmelon-crawl": "Ticketmelon: обход афиши",
   "allticket-crawl": "AllTicket: обход афиши",
+  "ticketseasy-crawl": "tickets-easy: обход афиши",
   "tpop-agency": "fandom.com: агентство",
   "tpop-artist": "fandom.com: артист",
 };
@@ -153,7 +154,16 @@ const TAB_RUN_KINDS: Record<Exclude<Tab, "log">, readonly string[]> = {
     "blscene",
   ],
   music: ["youtube-music", "tpop-artist", "tpop-agency"],
-  events: ["ttm-event", "ttm-crawl", "event-drafts", "musicfestival-crawl", "thaistarx-crawl", "ticketmelon-crawl", "allticket-crawl"],
+  events: [
+    "ttm-event",
+    "ttm-crawl",
+    "event-drafts",
+    "musicfestival-crawl",
+    "thaistarx-crawl",
+    "ticketmelon-crawl",
+    "allticket-crawl",
+    "ticketseasy-crawl",
+  ],
   mascots: ["gmmtv-mascots"],
   requests: ["mdl-requests"],
 };

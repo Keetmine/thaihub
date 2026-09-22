@@ -7,8 +7,9 @@ import { checkImportCancelled } from "@/lib/importRun";
 import { notifyAdmins } from "@/lib/adminNotify";
 import type { EventDraftMatch } from "@/lib/ttmCrawl";
 
-// Краулеры билетных сайтов без размеченного состава — Ticketmelon и
-// AllTicket (задачи «ticketmelon-crawl» и «allticket-crawl», см.
+// Краулеры билетных сайтов без размеченного состава — Ticketmelon,
+// AllTicket и tickets-easy (задачи «ticketmelon-crawl»,
+// «allticket-crawl» и «ticketseasy-crawl», см.
 // docs/features/ticket-site-crawl.md). Просьба владельца 2026-09-18:
 // «Ticketmelon и AllTicket давай напишем парсер… и на них тоже
 // отслеживать». Парсеры СТРАНИЦ у обоих уже были (eventTicketSites.ts,
@@ -36,6 +37,9 @@ import type { EventDraftMatch } from "@/lib/ttmCrawl";
 //    AllTicket всё равно попадают к нам двумя другими путями —
 //    «событие по ссылке» (master-файл, работает) и ссылки на AllTicket
 //    в постах ThaiStarX и на фестивалях musicfestival.in.th.
+//  - tickets-easy.com: каталог одной страницей с фильтром по стране —
+//    берём ТОЛЬКО Таиланд (просьба владельца 2026-09-22). Время оттуда
+//    не берём вовсе, см. шапку lib/ticketsEasy.ts.
 
 const PAGE_PAUSE_MS = 1700;
 const NO_MATCH_RECHECK_DAYS = 7;
@@ -43,7 +47,7 @@ const NO_MATCH_RECHECK_DAYS = 7;
 const PAST_GRACE_MS = 24 * 60 * 60 * 1000;
 
 export type TicketSiteCrawlResult = {
-  site: "ticketmelon" | "allticket";
+  site: "ticketmelon" | "allticket" | "ticketseasy";
   /** Адресов в источнике списка (после канонизации и дедупа). */
   listed: number;
   fetched: number;
@@ -63,7 +67,11 @@ export type TicketSiteCrawlResult = {
 
 /** Payload черновика — TtmEvent плюс пометка, почему событие пропущено. */
 export type TicketSiteDraftPayload = TtmEvent & {
-  ticketSite: { site: "ticketmelon" | "allticket"; categories: string[]; skipped: "past" | "unpublished" | null };
+  ticketSite: {
+    site: "ticketmelon" | "allticket" | "ticketseasy";
+    categories: string[];
+    skipped: "past" | "unpublished" | null;
+  };
   possibleDuplicateOf?: { eventId: string; eventTitle: string };
 };
 
@@ -316,8 +324,15 @@ async function fileDraft(
   }
 }
 
-async function notifyIfAny(result: TicketSiteCrawlResult, runId: string | null, label: string): Promise<void> {
-  if (result.newPending === 0) return;
+async function notifyIfAny(
+  result: TicketSiteCrawlResult,
+  runId: string | null,
+  label: string,
+  apply: boolean,
+): Promise<void> {
+  // Черновой прогон (apply: false) ничего не записывает — и письма о
+  // «новых черновиках» слать не должен.
+  if (!apply || result.newPending === 0) return;
   const appUrl = process.env.APP_URL || "";
   await notifyAdmins("import", `${label}: черновиков событий +${result.newPending}, ждут проверки` + (appUrl ? `\n${appUrl}/admin/imports?tab=events` : ""), { dedupKey: runId ?? label });
 }
@@ -372,7 +387,7 @@ export async function runTicketmelonCrawl(opts: { runId?: string | null; maxPage
       meta && (!meta.isActive || (meta.status && meta.status !== "publish")) ? "unpublished" : isPastStart(meta?.showStartMs ?? null) ? "past" : null;
     await fileDraft("ticketmelon", url, scraped.event, meta?.categories ?? [], skipped, catalog, runId, apply, result);
   }
-  await notifyIfAny(result, runId, "Ticketmelon");
+  await notifyIfAny(result, runId, "Ticketmelon", apply);
   return result;
 }
 
@@ -424,7 +439,67 @@ export async function runAllticketCrawl(opts: { runId?: string | null; apply?: b
     const skipped = last && new Date(`${last}T23:59:59Z`).getTime() < Date.now() - PAST_GRACE_MS ? "past" : null;
     await fileDraft("allticket", url, scraped, [], skipped, catalog, runId, apply, result);
   }
-  await notifyIfAny(result, runId, "AllTicket");
+  await notifyIfAny(result, runId, "AllTicket", apply);
+  return result;
+}
+
+/**
+ * tickets-easy: тайская афиша одной страницей → страницы событий →
+ * черновики (просьба владельца 2026-09-22: «есть сайт с афишами и
+ * билетами, можем тоже добавить в расписание, только тайландские»).
+ *
+ * Страна фильтруется дважды — параметром запроса и по самой карточке
+ * (см. `fetchTicketsEasyThailand`). Событий там пара десятков, потолка
+ * не нужно.
+ */
+export async function runTicketsEasyCrawl(
+  opts: { runId?: string | null; apply?: boolean } = {},
+): Promise<TicketSiteCrawlResult> {
+  const runId = opts.runId ?? null;
+  const apply = opts.apply ?? true;
+  const result = emptyResult("ticketseasy");
+
+  const { fetchTicketsEasyThailand, scrapeTicketsEasyEvent } = await import("@/lib/ticketsEasy");
+  const cards = await fetchTicketsEasyThailand();
+  result.listed = cards.length;
+
+  const known = await loadKnown("tickets-easy.com");
+  const { queue, isRecheck } = planQueue(cards, known, result, 100);
+  if (queue.length === 0) return result;
+  const catalog = await loadTagCatalog();
+
+  for (const card of queue) {
+    await checkImportCancelled(runId);
+    if (result.fetched > 0) await pause(PAGE_PAUSE_MS);
+    let scraped: TtmEvent;
+    try {
+      scraped = await scrapeTicketsEasyEvent(card.url, card);
+      result.fetched++;
+    } catch (e) {
+      result.fetched++;
+      result.failed++;
+      result.plan.push({ url: card.url, title: card.title, status: "FAILED", matched: [] });
+      console.warn(`ticketseasy-crawl: ${card.url} ->`, e instanceof Error ? e.message : e);
+      continue;
+    }
+    if (isRecheck(card.url)) result.rechecked++;
+    // Времени у нас нет, поэтому прошедшим считаем день целиком.
+    const days = [scraped.date, ...scraped.extraDates].filter((d): d is string => Boolean(d)).sort();
+    const last = days[days.length - 1];
+    const skipped = last && new Date(`${last}T23:59:59Z`).getTime() < Date.now() - PAST_GRACE_MS ? "past" : null;
+    await fileDraft(
+      "ticketseasy",
+      card.url,
+      scraped,
+      card.category ? [card.category] : [],
+      skipped,
+      catalog,
+      runId,
+      apply,
+      result,
+    );
+  }
+  await notifyIfAny(result, runId, "tickets-easy", apply);
   return result;
 }
 

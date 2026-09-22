@@ -418,6 +418,31 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "ticketseasy-crawl",
+    group: "events",
+    title: "tickets-easy: обход афиши",
+    description:
+      "Обходит тайскую афишу tickets-easy.com (каталог одной страницей, фильтр по стране — " +
+      "события других стран не берём) и ищет артистов каталога в названии: состав там не " +
+      "размечен. Нашёлся — черновик в очереди на проверку (вкладка «События» в импортах). " +
+      "Время оттуда НЕ берётся: сайт подписывает его как HKT, но сверка с официальными " +
+      "площадками даёт разные сдвиги — черновик приходит с датой без времени, заявленное " +
+      "время лежит в описании.",
+    supportsTargets: false,
+    logKind: "ticketseasy-crawl",
+    logsItems: true,
+    run: async () => {
+      const { runTicketsEasyCrawl, summarizeTicketSiteCrawl } = await import("@/lib/ticketSiteCrawl");
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "ticketseasy-crawl",
+        (runId) => runTicketsEasyCrawl({ runId }),
+        summarizeTicketSiteCrawl,
+      );
+      return result ? summarizeTicketSiteCrawl(result) : "остановлено вручную";
+    },
+  },
+  {
     key: "allticket-crawl",
     group: "events",
     title: "AllTicket: обход афиши",
