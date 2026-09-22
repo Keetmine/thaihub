@@ -61,6 +61,10 @@ export function ttmDraftSubmission(draft: {
     dramaId: "",
     ticketPrice: payload.ticketPrice ?? "",
     posterUrl: payload.posterUrl ?? "",
+    // Картинки со страницы билетного сайта (план зала, бонусы,
+    // трансляция) — в фотогалерею события; обход афиши кладёт их в
+    // payload вместе с остальным (правка владельца 2026-09-22).
+    photos: payload.photos ?? [],
     presaleDate: hasPresale ? payload.presaleDate! : "",
     presaleTime: hasPresale ? payload.presaleTime! : "",
     // Как в ручном импорте: покупают билеты на самой странице TTM. У

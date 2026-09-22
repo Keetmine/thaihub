@@ -51,9 +51,52 @@ export type TtmEvent = {
   // then general sale).
   presaleDate: string | null;
   presaleTime: string | null;
+  /** Картинки «для покупателей» со страницы: план зала, что входит в
+   *  билет, условия трансляции (просьба владельца 2026-09-22: «брать
+   *  три картинки и вставлять их в фото события»). TTM держит их в
+   *  /cmsimg/imgeditor/ и нумерует в имени файла — по номеру и
+   *  сортируем, порядок в разметке бывает любым. Необязательное: у
+   *  других источников этого блока нет, и форму TtmEvent они делят с
+   *  TTM (ThaiStarX, Ticketmelon, AllTicket). */
+  photos?: string[];
   artists: TtmArtist[];
   sourceUrl: string;
 };
+
+/** Сколько картинок берём со страницы: у TTM их ровно три (план зала,
+ *  бонусы, трансляция), больше — уже баннеры соседних событий. */
+export const TTM_MAX_PHOTOS = 3;
+
+/**
+ * Картинки «для покупателей»: только /cmsimg/imgeditor/ — это блок
+ * контента самого события. Соседние /img_poster/ (афиши других
+ * концертов) и /img_seat/ (мелкие превью зон) не берём: первые чужие,
+ * вторые нечитаемы.
+ *
+ * Адреса на сайте бывают с пробелами в имени файла («r 02_… .jpg») —
+ * их обязательно кодировать, иначе скачивание падает.
+ */
+export function parseTtmPhotos(html: string): string[] {
+  const found = [...html.matchAll(/<img[^>]+src="([^"]*\/cmsimg\/imgeditor\/[^"]+)"/gi)].map(
+    (m) => m[1],
+  );
+  const seen = new Set<string>();
+  const photos: { url: string; order: number }[] = [];
+  for (const raw of found) {
+    const abs = raw.startsWith("http") ? raw : `https://www.thaiticketmajor.com${raw}`;
+    const url = encodeURI(decodeURI(abs));
+    if (seen.has(url)) continue;
+    seen.add(url);
+    // «r 02_Name_SeatPlan.jpg» → 2. Без номера — в конец списка.
+    const file = decodeURI(url).split("/").pop() ?? "";
+    const num = file.match(/(\d{1,2})[_\s-]/);
+    photos.push({ url, order: num ? Number(num[1]) : 99 });
+  }
+  return photos
+    .sort((a, b) => a.order - b.order)
+    .slice(0, TTM_MAX_PHOTOS)
+    .map((p) => p.url);
+}
 
 const MONTH_NAMES_EN = [
   "january", "february", "march", "april", "may", "june",
@@ -330,6 +373,7 @@ export async function scrapeTtmEvent(url: string): Promise<TtmEvent> {
     description: null,
     presaleDate,
     presaleTime,
+    photos: parseTtmPhotos(html),
     artists,
     sourceUrl: url,
   };

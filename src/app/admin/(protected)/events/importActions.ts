@@ -14,6 +14,7 @@ import {
   importMusicFestivalByUrl,
   type MusicFestivalSingleImport,
 } from "@/lib/musicFestivalCrawl";
+import { TTM_MAX_PHOTOS } from "@/lib/thaiticketmajor";
 
 export type TtmImportArtist = MatchedArtist;
 
@@ -28,6 +29,10 @@ export type TtmImportPreview = {
   dateRangeText: string | null;
   ticketPrice: string;
   posterUrl: string;
+  /** Картинки «для покупателей» со страницы (план зала, бонусы,
+   *  трансляция) — экран проверки показывает их и даёт снять галочку,
+   *  дальше они едут в фотогалерею события. */
+  photos: string[];
   presaleDate: string;
   presaleTime: string;
   description: string;
@@ -69,6 +74,7 @@ export async function scrapeTtmEventPreview(url: string): Promise<TtmImportPrevi
     dateRangeText: scraped.dateRangeText,
     ticketPrice: scraped.ticketPrice ?? "",
     posterUrl: scraped.posterUrl ?? "",
+    photos: scraped.photos ?? [],
     presaleDate: scraped.presaleDate ?? "",
     presaleTime: scraped.presaleTime ?? "",
     description: scraped.description ?? "",
@@ -98,6 +104,10 @@ export type TtmImportSubmission = {
   /** IANA-зона площадки (черновики ThaiStarX: событие бывает в Тайбэе
    *  или Маниле). Пусто — зона по умолчанию (Бангкок). */
   timezone?: string | null;
+  /** Картинки «для покупателей» со страницы билетного сайта — план
+   *  зала, что входит в билет, трансляция (просьба владельца
+   *  2026-09-22). Едут в фотогалерею события. */
+  photos?: string[];
   /** Artists the admin kept checked in the review screen. `type` — кем
    *  заводить нового: сольным или группой (правка владельца
    *  2026-09-10). Раньше здесь всегда стоял SOLO, и концерт группы
@@ -162,6 +172,27 @@ export async function createEventFromTtmImport(
     localBase: posterLocalBase(data.sourceUrl),
   });
 
+  // Картинки со страницы билетного сайта — в фотогалерею события
+  // (просьба владельца 2026-09-22: «брать три картинки и вставлять их в
+  // фото»). Качаем к себе тем же помощником, что постер: ссылок на
+  // thaiticketmajor.com в базе оставаться не должно. Имя файла у них
+  // общее по всему сайту («r 02_…_SeatPlan.jpg»), поэтому у каждой —
+  // своя основа имени, иначе второе событие получило бы план зала
+  // первого. Не скачалась — просто пропускаем: галерея не повод ронять
+  // импорт.
+  const photoUrls: string[] = [];
+  const photoBase = posterLocalBase(data.sourceUrl);
+  for (const [i, raw] of (data.photos ?? []).slice(0, TTM_MAX_PHOTOS).entries()) {
+    const url = raw.trim();
+    if (!url) continue;
+    const local = await downloadRemoteImage(url, "events", {
+      localBase: photoBase ? `${photoBase}-${i + 1}` : undefined,
+    }).catch(() => null);
+    // Чужой хост не ответил — downloadRemoteImage вернёт исходную
+    // ссылку; такую в базу не кладём.
+    if (local && !/^https?:/i.test(local)) photoUrls.push(local);
+  }
+
   // Итоговый состав события — виден и после транзакции: по нему уходит
   // «у избранного артиста новое событие» (свежесозданные в этой же
   // транзакции артисты в чьём-то избранном оказаться ещё не могли).
@@ -207,6 +238,9 @@ export async function createEventFromTtmImport(
         },
         performers: {
           create: uniquePerformerIds.map((performerId) => ({ performerId })),
+        },
+        photos: {
+          create: photoUrls.map((url, sort) => ({ url, sort })),
         },
       },
     });

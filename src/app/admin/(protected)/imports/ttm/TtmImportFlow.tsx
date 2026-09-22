@@ -51,6 +51,9 @@ export default function TtmImportFlow({
   // pre-fill here — still editable/removable, same as EventForm's picker,
   // since this is still just one Event with several dates.
   const [extraDates, setExtraDates] = useState<string[]>([]);
+  // Картинки со страницы: по умолчанию берём все найденные, лишнюю
+  // снимают галочкой (правка владельца 2026-09-22).
+  const [photos, setPhotos] = useState<string[]>([]);
 
   async function handleScrape() {
     setIsScraping(true);
@@ -61,6 +64,7 @@ export default function TtmImportFlow({
       setArtistRows(result.artists.map((a) => ({ ...a, include: true, newType: "SOLO" as const })));
       setPresaleEnabled(Boolean(result.presaleDate));
       setExtraDates(result.extraDates);
+      setPhotos(result.photos);
     } catch (err) {
       setScrapeError(err instanceof Error ? err.message : "Не удалось спарсить страницу");
     } finally {
@@ -102,6 +106,8 @@ export default function TtmImportFlow({
         dramaId: String(formData.get("dramaId") ?? ""),
         ticketPrice: String(formData.get("ticketPrice") ?? ""),
         posterUrl: String(formData.get("posterUrl") ?? ""),
+        // Порядок — как на странице, а не как щёлкали галочки.
+        photos: preview.photos.filter((url) => photos.includes(url)),
         sourceUrl: preview.sourceUrl,
         extraDates: extraDates.filter(Boolean),
         presaleDate: presaleEnabled ? String(formData.get("presaleDate") ?? "") : "",
@@ -244,6 +250,41 @@ export default function TtmImportFlow({
       </div>
 
       <FileDropzone name="posterUrl" label="Постер" defaultValue={preview.posterUrl} />
+
+      {/* Картинки «для покупателей» со страницы билетного сайта: план
+          зала, что входит в билет, трансляция (просьба владельца
+          2026-09-22). Едут в фотогалерею события; ненужную снимают
+          галочкой прямо здесь. */}
+      {preview.photos.length > 0 && (
+        <div>
+          <span className="form-label d-block">Фото со страницы</span>
+          <div className="d-flex flex-wrap gap-3">
+            {preview.photos.map((url) => (
+              <label key={url} className="d-flex flex-column gap-2" style={{ width: "9rem" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt=""
+                  style={{ width: "100%", borderRadius: "0.6rem", border: "1px solid var(--bs-border-color)" }}
+                />
+                <span className="d-flex align-items-center gap-2 small">
+                  <input
+                    type="checkbox"
+                    className="form-check-input m-0"
+                    checked={photos.includes(url)}
+                    onChange={(e) =>
+                      setPhotos((prev) =>
+                        e.target.checked ? [...prev, url] : prev.filter((p) => p !== url),
+                      )
+                    }
+                  />
+                  Взять в событие
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="form-label" htmlFor="ttm-import-flow-description">Описание</label>

@@ -193,8 +193,9 @@ npx tsx --env-file=.env scripts/dedupe-event-drafts.ts --apply  # примени
 совпавших артистов (ссылки на их админ-карточки).
 
 - **«Одобрить»** — создаёт событие **существующим путём**
-  `createEventFromTtmImport` (одна транзакция, постер скачивается к нам
-  через `downloadRemoteImage`, мультидень из `extraDates`, пресейл;
+  `createEventFromTtmImport` (одна транзакция, постер и картинки «для
+  покупающих билеты» скачиваются к нам через `downloadRemoteImage` —
+  см. [events.md](events.md), мультидень из `extraDates`, пресейл;
   время начала не обязательно — без него `hasTime: false`, а
   `payload.timezone`/`presaleUrl` черновиков ThaiStarX уезжают в
   событие);
