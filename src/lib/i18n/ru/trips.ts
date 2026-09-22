@@ -291,7 +291,6 @@ export const trips: Dict["trips"] = {
         lists: {
             /** Быстрый ввод во вкладках чемодана и покупок. */
             quickAddPacking: "Что взять…",
-            quickAddShopping: "Что купить…",
             quickAddAria: "Добавить в список",
             /** Кнопка добавления внутри вкладки чемодана и покупок. */
             addButton: "+ Добавить",
@@ -299,7 +298,6 @@ export const trips: Dict["trips"] = {
             progressShopping: (done: number, total: number) => `куплено ${done} из ${total}`,
             /** Заголовки и подписи правки: у покупки «дело» в заголовке
              *  выглядит ошибкой (правка владельца 2026-09-22). */
-            addDetailed: "Добавить с заметкой и ссылкой",
             editPackingTitle: "Что взять",
             editShoppingTitle: "Покупка",
             textPacking: "Что взять",

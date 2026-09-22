@@ -287,7 +287,6 @@ export const trips = {
         lists: {
             /** Быстрый ввод во вкладках чемодана и покупок. */
             quickAddPacking: "Add a thing to pack…",
-            quickAddShopping: "Add a thing to buy…",
             quickAddAria: "Add to the list",
             /** Кнопка добавления внутри вкладки чемодана и покупок. */
             addButton: "+ Add",
@@ -296,7 +295,6 @@ export const trips = {
             progressShopping: (done: number, total: number) => `${done}/${total} bought`,
             /** Заголовки и подписи правки: у покупки «дело» в заголовке
              *  выглядит ошибкой (правка владельца 2026-09-22). */
-            addDetailed: "Add with a note and link",
             editPackingTitle: "Packing item",
             editShoppingTitle: "Purchase",
             textPacking: "What to take",

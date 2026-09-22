@@ -9,7 +9,7 @@ import Modal from "@/components/Modal";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
 import PriceFields from "@/components/PriceFields";
-import { TRIP_CURRENCIES, formatMoney, type TripCurrencyValue } from "@/lib/tripMoney";
+import { formatMoney } from "@/lib/tripMoney";
 import { TrashIcon, PencilIcon } from "@/components/icons";
 import { useLocale, useT } from "@/components/LocaleProvider";
 import {
@@ -552,9 +552,12 @@ export function AddTripTodoButton({
 /** Вкладка «Дела»: список (невыполненные сверху). Кнопка добавления
  *  живёт в общем ряду действий над вкладками — здесь её нет. */
 /**
- * Быстрый ввод для чемодана и покупок: название, «кто это видит»
- * селектом и «+». Enter добавляет и оставляет фокус на месте — такие
- * списки набивают десятком строк подряд (правки владельца 2026-09-06).
+ * Быстрый ввод для ЧЕМОДАНА: название, «кто это видит» селектом и «+».
+ * Enter добавляет и оставляет фокус на месте — такой список набивают
+ * десятком строк подряд (правки владельца 2026-09-06). У покупок
+ * быстрого ввода больше нет (правка владельца 2026-09-22): там к
+ * названию почти всегда прилагаются цена, заметка и ссылка на магазин,
+ * и строка всё равно отправляла за ними в форму.
  *
  * Даты здесь нет намеренно: «взять переходник» и «купить магниты» — это
  * не дела на число, и поле только мешало бы. У списка ДЕЛ дата
@@ -566,54 +569,42 @@ export function AddTripTodoButton({
  */
 function TripTodoQuickAdd({
   tripId,
-  kind,
   visibilityOptions,
 }: {
   tripId: string;
-  kind: TripTodoKind;
   visibilityOptions: readonly TripItemVisibilityValue[];
 }) {
+  const kind: TripTodoKind = "PACKING";
   const t = useT();
   const l = t.trips.todos.lists;
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
-  // Чемодан у каждого свой, покупками делятся — но выбранное человеком
-  // держится до конца сессии ввода: подряд заводят однотипные строки.
-  const preferred: TripItemVisibilityValue = kind === "PACKING" ? "PRIVATE" : "PARTICIPANTS";
+  // Чемодан у каждого свой — но выбранное человеком держится до конца
+  // сессии ввода: подряд заводят однотипные строки.
+  const preferred: TripItemVisibilityValue = "PRIVATE";
   const [visibility, setVisibility] = useState<TripItemVisibilityValue>(
     visibilityOptions.includes(preferred) ? preferred : (visibilityOptions[0] ?? "PARTICIPANTS"),
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  // Цена — только у покупок (правка владельца 2026-09-16). Необязательная:
-  // в список часто кладут хотелку, не зная, сколько она стоит.
-  const [price, setPrice] = useState("");
-  const [priceCurrency, setPriceCurrency] = useState<TripCurrencyValue>("THB");
 
   function add() {
     const value = text.trim();
     if (!value || pending) return;
     setError(null);
-    // Поля очищаем сразу: строка появится после refresh, а вводить
+    // Поле очищаем сразу: строка появится после refresh, а вводить
     // следующую вещь можно уже сейчас.
     setText("");
-    const priceValue = price.trim();
-    setPrice("");
     startTransition(async () => {
       const fd = new FormData();
       fd.set("text", value);
       fd.set("kind", kind);
       fd.set("visibility", visibility);
-      if (priceValue) {
-        fd.set("priceAmount", priceValue);
-        fd.set("priceCurrency", priceCurrency);
-      }
       const result = await createTripTodo(tripId, fd);
       if (!result.ok) {
         setError(result.error);
         setText(value);
-        setPrice(priceValue);
         return;
       }
       router.refresh();
@@ -636,43 +627,9 @@ function TripTodoQuickAdd({
           }}
           className="form-control flex-fill"
           style={{ minWidth: "12rem" }}
-          placeholder={kind === "PACKING" ? l.quickAddPacking : l.quickAddShopping}
+          placeholder={l.quickAddPacking}
           aria-label={l.quickAddAria}
         />
-        {/* Цена прямо в строке быстрого ввода — но только у покупок:
-            у чемодана суммы не бывает. Узкое поле и селект-значок,
-            чтобы строка не разрослась (правка владельца 2026-09-16). */}
-        {kind === "SHOPPING" && (
-          <>
-            <input
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  add();
-                }
-              }}
-              inputMode="decimal"
-              className="form-control flex-shrink-0"
-              style={{ width: "6.5rem" }}
-              placeholder={t.trips.expenses.fieldPrice}
-              aria-label={t.trips.expenses.fieldPrice}
-            />
-            <select
-              className="form-select flex-shrink-0 expense-currency-select"
-              value={priceCurrency}
-              onChange={(e) => setPriceCurrency(e.target.value as TripCurrencyValue)}
-              aria-label={t.trips.expenses.fieldCurrency}
-            >
-              {TRIP_CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {t.trips.expenses.currencySign[c]}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
         {visibilityOptions.length > 1 && (
           <select
             className="form-select flex-shrink-0"
@@ -754,20 +711,19 @@ export default function TripTodos({
           )}
         </p>
       )}
-      {/* Чемодан и покупки набиваются прямо здесь; у списка дел
-          добавление осталось общей кнопкой над вкладками — дело заводят
-          и с плана, и из «Что посетить» (правки владельца 2026-09-06). */}
-      {canAdd && activeList !== "TODO" && (
-        <TripTodoQuickAdd
-          tripId={tripId}
-          kind={activeList}
-          visibilityOptions={visibilityOptions}
-        />
+      {/* Чемодан набивается строкой быстрого ввода прямо здесь: там
+          пункты короткие и заводят их десятками подряд. У покупок
+          быстрого ввода больше НЕТ (правка владельца 2026-09-22: «все
+          покупки добавлять через кнопку и попап») — у покупки, кроме
+          названия, обычно есть цена, заметка и ссылка на магазин, и
+          строка ввода всё равно отправляла за ними в форму. Дела
+          заводятся общей кнопкой над вкладками: их создают и с плана, и
+          из «Что посетить» (правки владельца 2026-09-06). */}
+      {canAdd && activeList === "PACKING" && (
+        <TripTodoQuickAdd tripId={tripId} visibilityOptions={visibilityOptions} />
       )}
-      {/* У покупки, кроме названия и цены, бывает заметка (размер,
-          какой именно вкус) и ссылка на магазин — за ними полная форма
-          (правка владельца 2026-09-22). У чемодана таких полей нет, там
-          быстрого ввода достаточно. */}
+      {/* Единственный способ завести покупку — эта кнопка: в попапе
+          сразу цена, заметка и ссылка на магазин. */}
       {canAdd && activeList === "SHOPPING" && (
         <div className="mb-3">
           <AddTripTodoButton
@@ -775,8 +731,6 @@ export default function TripTodos({
             kind="SHOPPING"
             showShareToggle={showShareToggle}
             visibilityOptions={visibilityOptions}
-            variant="link"
-            label={l.addDetailed}
           />
         </div>
       )}
