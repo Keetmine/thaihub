@@ -30,7 +30,14 @@ export default function DateRangeFilterButton({
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+      const target = e.target as Element | null;
+      // Календарь из DatePickerInput живёт в ПОРТАЛЕ — в дереве body, а
+      // не внутри этого поповера. Поэтому клик по стрелке «следующий
+      // месяц» выглядел как клик мимо, и фильтр закрывался вместе с
+      // календарём (жалоба владельца 2026-09-22: «тыкаю на месяц или
+      // след/пред месяц — закрывается календарь»).
+      if (target?.closest?.(".date-picker-dropdown")) return;
+      if (ref.current && target && !ref.current.contains(target)) setIsOpen(false);
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
