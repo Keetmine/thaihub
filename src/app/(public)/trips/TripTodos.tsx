@@ -703,12 +703,13 @@ export default function TripTodos({
       {/* Сколько готово — только у чемодана и покупок: в списке дел
           «собрано 2 из 5» звучало бы про вещи. Слово тоже по списку:
           вещи собирают, покупки покупают. */}
-      {activeList !== "TODO" && sorted.length > 0 && (
+      {/* «Собрано N из M» у чемодана стоит над строкой быстрого ввода:
+          та занимает всю ширину, рядом с ней места нет. У покупок
+          счётчик уехал в один ряд с кнопкой, справа (правка владельца
+          2026-09-22). */}
+      {activeList === "PACKING" && sorted.length > 0 && (
         <p className="small text-secondary mb-3">
-          {(activeList === "PACKING" ? l.progressPacking : l.progressShopping)(
-            sorted.filter((item) => item.done).length,
-            sorted.length,
-          )}
+          {l.progressPacking(sorted.filter((item) => item.done).length, sorted.length)}
         </p>
       )}
       {/* Чемодан набивается строкой быстрого ввода прямо здесь: там
@@ -724,14 +725,23 @@ export default function TripTodos({
       )}
       {/* Единственный способ завести покупку — эта кнопка: в попапе
           сразу цена, заметка и ссылка на магазин. */}
-      {canAdd && activeList === "SHOPPING" && (
-        <div className="mb-3">
-          <AddTripTodoButton
-            tripId={tripId}
-            kind="SHOPPING"
-            showShareToggle={showShareToggle}
-            visibilityOptions={visibilityOptions}
-          />
+      {activeList === "SHOPPING" && (canAdd || sorted.length > 0) && (
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          {canAdd ? (
+            <AddTripTodoButton
+              tripId={tripId}
+              kind="SHOPPING"
+              showShareToggle={showShareToggle}
+              visibilityOptions={visibilityOptions}
+            />
+          ) : (
+            <span />
+          )}
+          {sorted.length > 0 && (
+            <span className="small text-secondary">
+              {l.progressShopping(sorted.filter((item) => item.done).length, sorted.length)}
+            </span>
+          )}
         </div>
       )}
 
