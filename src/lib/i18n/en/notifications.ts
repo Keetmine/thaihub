@@ -9,6 +9,19 @@
 export const notifications = {
   someone: "Someone",
 
+  /**
+   * Несколько избранных артистов в одном событии — одной фразой
+   * (правка владельца 2026-09-22: «создала событие для двух актёров, а
+   * в уведомлении только один, хотя оба в избранном»). Больше трёх имён
+   * в заголовок не влезает, поэтому хвост сворачивается в «и ещё N».
+   */
+  namesList: (names: string[]): string => {
+    if (names.length <= 1) return names[0] ?? "";
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`;
+    return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+  },
+
   title: {
     FRIEND_REQUEST: (who: string) => `${who} wants to add you as a friend`,
     FRIEND_ACCEPTED: (who: string) => `${who} accepted your friend request`,

@@ -351,30 +351,45 @@ export async function notifyFavoritersAboutEventPerformers(
       where: { performerId: { in: notifyAbout } },
       select: {
         userId: true,
+        performerId: true,
         performer: { select: { name: true } },
         user: { select: NOTIFY_RECIPIENT_SELECT },
       },
     });
 
-    // Несколько избранных в составе — в фразу идёт первый попавшийся:
-    // важен факт события, а не перечень имён.
-    const byUser = new Map<string, (typeof favorites)[number]>();
-    for (const f of favorites) if (!byUser.has(f.userId)) byUser.set(f.userId, f);
+    // Несколько избранных в составе — в фразу идут ВСЕ (правка
+    // владельца 2026-09-22: «создала событие для двух актёров, а в
+    // уведомлении только один, хотя оба в избранном»). Порядок — как в
+    // составе события: сначала привязанные к нему, потом участники
+    // групп; хвост длинного списка свернёт namesList.
+    const order = new Map(notifyAbout.map((id, i) => [id, i]));
+    const byUser = new Map<
+      string,
+      { user: (typeof favorites)[number]["user"]; names: { name: string; at: number }[] }
+    >();
+    for (const f of favorites) {
+      const entry = byUser.get(f.userId) ?? { user: f.user, names: [] };
+      if (!entry.names.some((n) => n.name === f.performer.name)) {
+        entry.names.push({ name: f.performer.name, at: order.get(f.performerId) ?? 0 });
+      }
+      byUser.set(f.userId, entry);
+    }
 
-    for (const fav of byUser.values()) {
+    for (const [userId, fav] of byUser) {
+      const names = [...fav.names].sort((a, b) => a.at - b.at).map((n) => n.name);
       try {
         await prisma.performerEventNotification.create({
-          data: { userId: fav.userId, eventId: event.id },
+          data: { userId, eventId: event.id },
         });
       } catch {
         continue; // уже уведомляли об этом событии (или выиграла гонка)
       }
 
       await notifyUser({
-        userId: fav.userId,
+        userId,
         user: fav.user,
         kind: "PERFORMER_EVENT",
-        actorName: fav.performer.name,
+        actorName: (t) => t.notifications.namesList(names),
         subject: event.title,
         body: (_t, locale) => formatHumanDate(firstUpcoming.startsAt, locale),
         href: eventHref(event),

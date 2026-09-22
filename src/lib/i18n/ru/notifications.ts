@@ -3,6 +3,14 @@ import type { Dict } from "../en";
 export const notifications: Dict["notifications"] = {
   someone: "Кто-то",
 
+    /** См. комментарий в en: несколько избранных артистов — одной фразой. */
+    namesList: (names: string[]): string => {
+        if (names.length <= 1) return names[0] ?? "";
+        if (names.length === 2) return `${names[0]} и ${names[1]}`;
+        if (names.length === 3) return `${names[0]}, ${names[1]} и ${names[2]}`;
+        return `${names.slice(0, 2).join(", ")} и ещё ${names.length - 2}`;
+    },
+
   title: {
     FRIEND_REQUEST: (who: string) => `${who} хочет добавить вас в друзья`,
     FRIEND_ACCEPTED: (who: string) => `${who} принял(а) заявку в друзья`,

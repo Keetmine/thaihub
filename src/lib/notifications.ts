@@ -96,7 +96,10 @@ export type NotifyUserRecipient = TelegramPrefs & {
 export async function notifyUser(input: {
   userId: string;
   kind: NotificationKind;
-  actorName?: string | null;
+  /** Как и `body`, можно передать функцией: её позовут, когда язык
+   *  получателя уже известен. Нужно там, где действующих лиц несколько
+   *  и их надо перечислить связкой «и» / «and» (см. namesList). */
+  actorName?: string | ((t: Dict, locale: Locale) => string) | null;
   subject?: string | null;
   body?: string | ((t: Dict, locale: Locale) => string) | null;
   href?: string | null;
@@ -137,7 +140,12 @@ export async function notifyUser(input: {
     // Повод без действующего лица (ачивка, выданная подписка) хранит
     // NULL, повод с ним — имя или пустую строку, если имени у человека
     // нет. Различие читает actorLabel в lib/notificationText.ts.
-    const actorName = "actorName" in input ? (input.actorName ?? "") : null;
+    const actorName =
+      "actorName" in input
+        ? typeof input.actorName === "function"
+          ? input.actorName(t, locale)
+          : (input.actorName ?? "")
+        : null;
     const subject = input.subject ?? null;
     const title = notificationTitle({ kind: input.kind, actorName, subject, title: "" }, t);
     const body = typeof input.body === "function" ? input.body(t, locale) : (input.body ?? null);
