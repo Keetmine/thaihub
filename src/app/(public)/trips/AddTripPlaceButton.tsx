@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useT } from "@/components/LocaleProvider";
-import { AddTripPlaceBox } from "./TripPlacesControls";
+import { AddTripPlaceBox, AttachListSelect } from "./TripPlacesControls";
 import CreateOwnPlaceButton from "../lists/[id]/CreateOwnPlaceButton";
 import { createTripOwnPlace } from "./actions";
 
@@ -13,7 +13,19 @@ import { createTripOwnPlace } from "./actions";
  *  способа добавить: поиск по каталогу и своим местам и «своё место» по
  *  ссылке Google Maps. Раньше и то и другое жило только на вкладке «Что
  *  посетить», то есть с плана до них было два клика. */
-export default function AddTripPlaceButton({ tripId }: { tripId: string }) {
+export default function AddTripPlaceButton({
+  tripId,
+  addedIds = [],
+  availableLists = [],
+}: {
+  tripId: string;
+  /** Уже добавленные места — их не показываем в выдаче поиска. */
+  addedIds?: string[];
+  /** Свои списки мест: прикрепление живёт в этом же попапе (правка
+   *  владельца 2026-09-22), а не отдельным селектом рядом с кнопкой —
+   *  для человека это одно действие «добавить, куда сходить». */
+  availableLists?: { id: string; title: string }[];
+}) {
   const t = useT();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -29,16 +41,21 @@ export default function AddTripPlaceButton({ tripId }: { tripId: string }) {
             <label className="form-label small text-secondary" htmlFor="add-trip-place-search">
               {t.trips.places.searchLabel}
             </label>
-            {/* Модалка не закрывается после добавления: мест обычно
-                добавляют несколько подряд, а список под ней обновляет
-                сам экшен (revalidatePath). */}
-            <AddTripPlaceBox id="add-trip-place-search" tripId={tripId} />
+            <AddTripPlaceBox id="add-trip-place-search" tripId={tripId} addedIds={addedIds} />
           </div>
           <CreateOwnPlaceButton
             action={createTripOwnPlace.bind(null, tripId)}
             label={t.trips.places.ownPlace}
             submitLabel={t.trips.places.ownPlaceSubmit}
           />
+          {availableLists.length > 0 && (
+            <div className="border-top pt-3">
+              <span className="form-label small text-secondary d-block">
+                {t.trips.places.attachTitle}
+              </span>
+              <AttachListSelect tripId={tripId} availableLists={availableLists} />
+            </div>
+          )}
         </div>
       </Modal>
     </>

@@ -38,9 +38,8 @@ import { VisibilitySelect } from "../TripVisibilityControls";
 import EditTripButton from "../EditTripButton";
 import LocationMapLoader from "@/components/LocationMapLoader";
 import {
-  AttachListSelect,
+  TripPlaceCard,
   DetachListButton,
-  RemoveTripPlaceButton,
 } from "../TripPlacesControls";
 import EventCardLocked from "@/components/EventCardLocked";
 import { isPremiumActive } from "@/lib/premium";
@@ -1662,13 +1661,18 @@ export default async function TripPage({
           />
         ) : (
           <>
-            {/* Оба способа добавить место — здесь, в своей вкладке:
-                «+ Что посетить» (поиск по каталогу и своим местам, «своё
-                место» по ссылке) и прикрепление готового списка. */}
+            {/* Одна кнопка на всё: поиск по каталогу и своим местам,
+                «своё место» по ссылке и прикрепление готового списка —
+                внутри попапа (правка владельца 2026-09-22). Раньше
+                рядом стояли кнопка и селект, хотя для человека это одно
+                действие. */}
             {canContribute && (
               <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                <AddTripPlaceButton tripId={trip.id} />
-                <AttachListSelect tripId={trip.id} availableLists={availableLists} />
+                <AddTripPlaceButton
+                  tripId={trip.id}
+                  addedIds={tripPlaces.map((tp) => tp.locationId)}
+                  availableLists={availableLists}
+                />
               </div>
             )}
             {tripLists.map((tl) => (
@@ -1702,18 +1706,19 @@ export default async function TripPage({
                 <h2 className="section-heading mb-2">{t.trips.places.standalone}</h2>
                 <div className="d-flex flex-column gap-2">
                   {tripPlaces.map((tp) => (
-                    <div
+                    <TripPlaceCard
                       key={tp.locationId}
-                      className="surface d-flex align-items-center justify-content-between gap-3 p-2 px-3"
-                    >
-                      <AppLink
-                        href={locationHref(tp.location)}
-                        className="text-decoration-none text-white"
-                      >
-                        {tp.location.name}
-                      </AppLink>
-                      {canContribute && <RemoveTripPlaceButton tripId={trip.id} locationId={tp.locationId} />}
-                    </div>
+                      tripId={trip.id}
+                      href={locationHref(tp.location)}
+                      canEdit={canContribute}
+                      place={{
+                        locationId: tp.locationId,
+                        name: tp.location.name,
+                        photoUrl: tp.location.photoUrl,
+                        category: tp.location.category,
+                        note: tp.note,
+                      }}
+                    />
                   ))}
                 </div>
               </div>

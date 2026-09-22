@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { rankedLocationSearch, type LocationOption } from "@/lib/locationSearch";
 import { getCurrentUser } from "@/lib/userAuth";
 import type { TripVisibility } from "@/generated/prisma/client";
 import { isLocationCategory } from "@/lib/locationCategories";
@@ -256,27 +257,13 @@ export async function setPlaceNote(
 
 /** Асинхронный поиск локаций для комбобоксов (каталог локаций растёт —
  *  тот же паттерн, что searchPerformerOptions). */
-export async function searchLocationOptions(
-  query: string,
-): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
-  const q = query.trim();
-  if (q.length < 2) return [];
+export async function searchLocationOptions(query: string): Promise<LocationOption[]> {
   const user = await getCurrentUser();
-  return prisma.location.findMany({
-    where: {
-      // Ищем и по названию места, и по названию сериала, который там
-      // снимали («кафе из Bad Buddy» находится по «bad buddy»).
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { dramas: { some: { drama: { title: { contains: q, mode: "insensitive" } } } } },
-      ],
-      // Каталог + собственные места искателя (чужие пользовательские не
-      // показываем).
-      AND: [{ OR: [{ createdByUserId: null }, ...(user ? [{ createdByUserId: user.id }] : [])] }],
-    },
-    select: { id: true, name: true, photoUrl: true },
-    orderBy: { name: "asc" },
-    take: 20,
+  // Каталог + собственные места искателя (чужие пользовательские не
+  // показываем). Порядок выдачи и поиск по сериалу — в общем модуле,
+  // см. lib/locationSearch.ts.
+  return rankedLocationSearch(query, {
+    OR: [{ createdByUserId: null }, ...(user ? [{ createdByUserId: user.id }] : [])],
   });
 }
 

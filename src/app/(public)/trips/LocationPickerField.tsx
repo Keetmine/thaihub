@@ -2,6 +2,8 @@
 
 import { useId, useRef, useState } from "react";
 import { searchLocationOptions, createOwnPlaceAndReturn } from "@/app/(public)/lists/actions";
+import PlaceOptions from "@/components/PlaceOption";
+import type { LocationOption } from "@/lib/locationSearch";
 import { useT } from "@/components/LocaleProvider";
 
 /** Поле «Место» для формы личного события: асинхронный поиск локаций,
@@ -19,8 +21,7 @@ export default function LocationPickerField({
   const t = useT();
   const [selected, setSelected] = useState(defaultLocation ?? null);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [results, setResults] = useState<LocationOption[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,36 +133,25 @@ export default function LocationPickerField({
         </div>
       ) : (
         <>
-          <div className="performer-combobox">
-            <input
-              type="text"
-              className="form-control"
-              placeholder={t.trips.placePicker.searchPlaceholder}
-              value={query}
-              onChange={(e) => handleChange(e.target.value)}
-              onFocus={() => setIsOpen(true)}
-              onBlur={() => window.setTimeout(() => setIsOpen(false), 150)}
-            />
-            {isOpen && results.length > 0 && (
-              <div className="performer-combobox-dropdown">
-                {results.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    className="performer-combobox-option"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setSelected({ id: l.id, name: l.name });
-                      setQuery("");
-                      setResults([]);
-                    }}
-                  >
-                    {l.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Результаты — карточками в потоке, не выпадашкой поверх
+              (правка владельца 2026-09-22): поле стоит в модалке
+              личного события, и абсолютная выпадашка внутри неё
+              обрезалась её же прокруткой. */}
+          <input
+            type="text"
+            className="form-control"
+            placeholder={t.trips.placePicker.searchPlaceholder}
+            value={query}
+            onChange={(e) => handleChange(e.target.value)}
+          />
+          <PlaceOptions
+            options={results}
+            onPick={(option) => {
+              setSelected({ id: option.id, name: option.name });
+              setQuery("");
+              setResults([]);
+            }}
+          />
           <button
             type="button"
             className="btn btn-link btn-sm p-0 mt-1"

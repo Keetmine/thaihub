@@ -6139,6 +6139,101 @@ body::after {
   color: var(--bs-link-hover-color);
 }
 
+/* Выбор места: результаты поиска в потоке (правка владельца
+   2026-09-22). Выпадашкой поверх они не годятся — в модалке со своей
+   прокруткой список обрезался на третьем результате. */
+.place-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 22rem;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+}
+
+.place-option {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--bs-border-radius);
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+}
+
+.place-option:hover:not(:disabled),
+.place-option:focus-visible {
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
+.place-option:disabled {
+  opacity: 0.6;
+}
+
+.place-option-photo {
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bs-secondary-bg);
+  font-size: 1.1rem;
+}
+
+.place-option-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.place-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.place-option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Заметка-кнопка в карточке места: выглядит текстом, а не кнопкой —
+   правка по клику прямо по ней. */
+.btn-link-secondary {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bs-secondary-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn-link-secondary:hover {
+  color: var(--bs-body-color);
+}
+
+/* Место в поездке: карточка с фото, категорией и заметкой вместо
+   голой строки с крестиком (правка владельца 2026-09-22). */
+.trip-place-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.trip-place-card .place-option-photo {
+  flex-basis: 3.25rem;
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
 /* Попап личного события поездки (правка владельца 2026-09-19:
    «переделай красивее»). Шапка-обложка растянута до краёв панели и
    заходит под липкий крестик: вложение — размытой подложкой и чётким

@@ -1141,6 +1141,27 @@ export async function createTripOwnPlace(
   return { ok: true };
 }
 
+/** Заметка к месту поездки: «зачем сюда» — кофе после съёмок, фото у
+ *  вывески (правка владельца 2026-09-22). Колонка `TripPlace.note` была
+ *  в базе с самого начала, но в интерфейс не выходила. Править может
+ *  любой участник: место в поездке общее, и заметка к нему тоже. */
+export async function setTripPlaceNote(
+  tripId: string,
+  locationId: string,
+  note: string,
+): Promise<ActionResult> {
+  const access = await requireTripAccess(tripId);
+  if (!access.ok) return { ok: false, error: access.error };
+  const value = note.trim().slice(0, 500);
+  const { count } = await prisma.tripPlace.updateMany({
+    where: { tripId: access.trip.id, locationId },
+    data: { note: value || null },
+  });
+  if (count === 0) return { ok: false, error: (await getT()).t.lists.errors.placeNotFound };
+  revalidatePath(`/trips/${access.trip.id}`);
+  return { ok: true };
+}
+
 export async function removePlaceFromTrip(
   tripId: string,
   locationId: string,

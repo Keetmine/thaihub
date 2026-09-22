@@ -5,6 +5,7 @@ import { logImportRun } from "@/lib/importRun";
 import { redirect } from "next/navigation";
 import { chromium } from "playwright";
 import { prisma } from "@/lib/prisma";
+import { rankedLocationSearch } from "@/lib/locationSearch";
 import { refreshBlsceneLocations, type BlsceneLocationRefreshResult } from "@/lib/blsceneImport";
 import { requireCatalogEditor } from "@/lib/auth";
 import { logAudit, diffRecords } from "@/lib/audit";
@@ -55,18 +56,11 @@ export async function searchLocationOptions(
   query: string,
 ): Promise<{ id: string; name: string; photoUrl: string | null }[]> {
   await requireCatalogEditor();
-  const q = query.trim();
-  if (q.length < 2) return [];
-
-  return prisma.location.findMany({
-    where: {
-      createdByUserId: null,
-      name: { contains: q, mode: "insensitive" },
-    },
-    select: { id: true, name: true, photoUrl: true },
-    orderBy: { name: "asc" },
-    take: 20,
-  });
+  // Только каталог: свои места людей в админские комбобоксы не ходят.
+  // Порядок — по совпадению (см. lib/locationSearch.ts); комбобоксу
+  // админки хватает названия и фото.
+  const found = await rankedLocationSearch(query, { createdByUserId: null });
+  return found.map((l) => ({ id: l.id, name: l.name, photoUrl: l.photoUrl }));
 }
 
 export async function createLocationAndReturn(

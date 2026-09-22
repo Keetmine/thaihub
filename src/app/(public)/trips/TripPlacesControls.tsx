@@ -6,8 +6,15 @@ import {
   attachListToTrip,
   detachListFromTrip,
   removePlaceFromTrip,
+  setTripPlaceNote,
 } from "./actions";
+import AppLink from "@/components/AppLink";
+import UploadImage from "@/components/UploadImage";
+import { categoryEmoji } from "@/lib/locationCategories";
+import type { LocationCategory } from "@/generated/prisma/client";
 import { searchLocationOptions } from "@/app/(public)/lists/actions";
+import PlaceOptions from "@/components/PlaceOption";
+import type { LocationOption } from "@/lib/locationSearch";
 import { useT } from "@/components/LocaleProvider";
 import { useRef } from "react";
 
@@ -104,23 +111,36 @@ export function RemoveTripPlaceButton({ tripId, locationId }: { tripId: string; 
   );
 }
 
-/** Комбобокс «добавить отдельное место в поездку». */
+/**
+ * Поиск места для поездки: поле и результаты КАРТОЧКАМИ В ПОТОКЕ
+ * (правка владельца 2026-09-22). Прежняя выпадашка поверх поля
+ * обрезалась прокруткой модалки, а в строке результата стояло одно
+ * название — из десятка «Siam …» выбрать было невозможно.
+ *
+ * Модалка после добавления не закрывается: мест обычно добавляют
+ * несколько подряд, добавленное убирается из выдачи, а список под
+ * модалкой обновляет сам экшен (revalidatePath).
+ */
 export function AddTripPlaceBox({
   id,
   tripId,
+  /** Уже добавленные — их из выдачи убираем, чтобы не тыкать дважды. */
+  addedIds = [],
 }: {
-  /** Чтобы подпись снаружи могла сослаться на поле поиска. */
   id?: string;
   tripId: string;
+  addedIds?: string[];
 }) {
   const t = useT();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ id: string; name: string; photoUrl: string | null }[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [results, setResults] = useState<LocationOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [added, setAdded] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seqRef = useRef(0);
+  const hidden = new Set([...addedIds, ...added]);
 
   function handleChange(next: string) {
     setQuery(next);
@@ -128,52 +148,161 @@ export function AddTripPlaceBox({
     const q = next.trim();
     if (q.length < 2) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
     const seq = ++seqRef.current;
+    setIsSearching(true);
     timeoutRef.current = setTimeout(async () => {
-      const found = await searchLocationOptions(q);
-      if (seq === seqRef.current) setResults(found);
+      const found = await searchLocationOptions(q).catch(() => []);
+      if (seq !== seqRef.current) return;
+      setResults(found);
+      setIsSearching(false);
     }, 300);
   }
 
+  const shown = results.filter((r) => !hidden.has(r.id));
+
   return (
-    <div className="performer-combobox" style={{ maxWidth: "22rem" }}>
+    <div>
       <input
         id={id}
         type="text"
-        className="form-control form-control-sm"
+        className="form-control"
         placeholder={t.trips.places.addPlaceholder}
         value={query}
-        disabled={isPending}
         onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => setIsOpen(true)}
-        onBlur={() => window.setTimeout(() => setIsOpen(false), 150)}
       />
-      {isOpen && results.length > 0 && (
-        <div className="performer-combobox-dropdown">
-          {results.map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              className="performer-combobox-option"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                setQuery("");
-                setResults([]);
-                setError(null);
-                startTransition(async () => {
-                  const result = await addPlaceToTrip(tripId, l.id);
-                  if (!result.ok) setError(result.error);
-                });
-              }}
-            >
-              {l.name}
-            </button>
-          ))}
-        </div>
+      <p className="small text-secondary mb-0 mt-1">{t.trips.places.searchHint}</p>
+      <PlaceOptions
+        options={shown}
+        disabled={isPending}
+        onPick={(option) => {
+          setError(null);
+          setAdded((prev) => [...prev, option.id]);
+          startTransition(async () => {
+            const result = await addPlaceToTrip(tripId, option.id);
+            if (!result.ok) {
+              setError(result.error);
+              setAdded((prev) => prev.filter((p) => p !== option.id));
+            }
+          });
+        }}
+      />
+      {/* «Ничего не нашлось» — только когда поиск отработал: иначе
+          подсказка мигала бы между вводом и ответом. */}
+      {query.trim().length >= 2 && !isSearching && shown.length === 0 && (
+        <p className="small text-secondary mb-0 mt-2">{t.trips.places.nothingFound}</p>
       )}
       {error && <p className="small text-danger mt-1 mb-0">{error}</p>}
+    </div>
+  );
+}
+
+/**
+ * Место в поездке карточкой: фото, название ссылкой, категория, заметка
+ * «зачем сюда» и кнопка убрать (правка владельца 2026-09-22 — раньше
+ * это была голая строка с крестиком, по которой не понять даже, кафе
+ * это или торговый центр).
+ */
+export function TripPlaceCard({
+  tripId,
+  place,
+  href,
+  canEdit,
+}: {
+  tripId: string;
+  place: {
+    locationId: string;
+    name: string;
+    photoUrl: string | null;
+    category: LocationCategory | null;
+    note: string | null;
+  };
+  href: string;
+  canEdit: boolean;
+}) {
+  const t = useT();
+  const [note, setNote] = useState(place.note ?? "");
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const emoji = categoryEmoji(place.category);
+  const category = place.category ? t.catalog.locationCategory[place.category] : null;
+
+  function save(next: string) {
+    setError(null);
+    setNote(next);
+    setIsEditing(false);
+    startTransition(async () => {
+      const result = await setTripPlaceNote(tripId, place.locationId, next);
+      if (!result.ok) {
+        setError(result.error);
+        setNote(place.note ?? "");
+      }
+    });
+  }
+
+  return (
+    <div className="surface trip-place-card">
+      <span className="place-option-photo">
+        {place.photoUrl ? (
+          <UploadImage src={place.photoUrl} alt="" sizes="3.25rem" />
+        ) : (
+          <span aria-hidden>{emoji ?? "📍"}</span>
+        )}
+      </span>
+      <div className="flex-fill" style={{ minWidth: 0 }}>
+        <AppLink href={href} className="text-decoration-none text-white d-block text-truncate">
+          {place.name}
+        </AppLink>
+        {category && <span className="small text-secondary">{category}</span>}
+        {isEditing ? (
+          <input
+            autoFocus
+            defaultValue={note}
+            maxLength={500}
+            className="form-control form-control-sm mt-1"
+            placeholder={t.trips.places.notePlaceholder}
+            aria-label={t.trips.places.noteLabel}
+            onBlur={(e) => save(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                save((e.target as HTMLInputElement).value);
+              }
+              if (e.key === "Escape") setIsEditing(false);
+            }}
+          />
+        ) : note ? (
+          // Заметку правит клик по ней самой: отдельный карандаш в
+          // карточке спорил бы с крестиком «убрать».
+          canEdit ? (
+            <button
+              type="button"
+              className="btn-link-secondary small d-block text-start"
+              onClick={() => setIsEditing(true)}
+            >
+              {note}
+            </button>
+          ) : (
+            <span className="small text-secondary d-block">{note}</span>
+          )
+        ) : (
+          canEdit && (
+            <button
+              type="button"
+              className="btn-link-accent small"
+              disabled={isPending}
+              onClick={() => setIsEditing(true)}
+            >
+              {t.trips.places.noteAdd}
+            </button>
+          )
+        )}
+        {error && <span className="small text-danger d-block">{error}</span>}
+      </div>
+      {canEdit && <RemoveTripPlaceButton tripId={tripId} locationId={place.locationId} />}
     </div>
   );
 }
