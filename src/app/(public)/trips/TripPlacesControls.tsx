@@ -256,7 +256,25 @@ export function TripPlaceCard({
         <AppLink href={href} className="text-decoration-none text-white d-block text-truncate">
           {place.name}
         </AppLink>
-        {category && <span className="small text-secondary">{category}</span>}
+        {/* Категория и «+ Заметка» — одной строкой через промежуток:
+            встык они слипались в «Кафе+ Заметка» (жалоба владельца
+            2026-09-22). Готовая заметка уезжает на свою строку: она
+            бывает длинной. */}
+        {(category || (!note && !isEditing && canEdit)) && (
+          <span className="d-flex flex-wrap align-items-center gap-2">
+            {category && <span className="small text-secondary">{category}</span>}
+            {!note && !isEditing && canEdit && (
+              <button
+                type="button"
+                className="btn-link-accent small"
+                disabled={isPending}
+                onClick={() => setIsEditing(true)}
+              >
+                {t.trips.places.noteAdd}
+              </button>
+            )}
+          </span>
+        )}
         {isEditing ? (
           <input
             autoFocus
@@ -288,18 +306,7 @@ export function TripPlaceCard({
           ) : (
             <span className="small text-secondary d-block">{note}</span>
           )
-        ) : (
-          canEdit && (
-            <button
-              type="button"
-              className="btn-link-accent small"
-              disabled={isPending}
-              onClick={() => setIsEditing(true)}
-            >
-              {t.trips.places.noteAdd}
-            </button>
-          )
-        )}
+        ) : null}
         {error && <span className="small text-danger d-block">{error}</span>}
       </div>
       {canEdit && <RemoveTripPlaceButton tripId={tripId} locationId={place.locationId} />}
