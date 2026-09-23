@@ -74,6 +74,18 @@ export function oneProfilePlatformOf(url: string): SocialPlatform | null {
   return platform && ONE_PROFILE_PLATFORMS.includes(platform) ? platform : null;
 }
 
+/**
+ * Подпись ссылки в списке ссылок артиста или агентства. Twitter
+ * подписываем «X», как уже лежит в базе после импортов с MyDramaList:
+ * менять подпись задним числом — плодить разнобой в одном списке.
+ * Неизвестная сеть — просто «Ссылка»: адрес и так виден.
+ */
+export function socialLinkLabel(url: string): string {
+  const platform = detectSocialPlatform(url);
+  if (platform === "twitter") return "X";
+  return platform ? SOCIAL_PLATFORM_LABELS[platform] : "Ссылка";
+}
+
 export function detectSocialPlatform(url: string): SocialPlatform | null {
   for (const platform of Object.keys(PLATFORM_PATTERNS) as SocialPlatform[]) {
     if (PLATFORM_PATTERNS[platform].test(url)) return platform;

@@ -11,6 +11,7 @@ import {
 import { fetchTpopBandPage, fetchTpopMemberPage } from "@/lib/tpopFandom";
 import { DEFAULT_FANDOM_HOST, fandomPageUrl, parseFandomTarget } from "@/lib/fandomWiki";
 import { importTpopBand } from "@/lib/tpopFandomImport";
+import { addMissingAgencyLinks } from "@/lib/socialLinkSync";
 import {
   fetchTpopDiscography,
   fetchTpopPageImage,
@@ -60,9 +61,14 @@ export async function enrichAgencyFromTpop(
   host: string = DEFAULT_FANDOM_HOST,
 ): Promise<boolean> {
   const agency = await prisma.agency.findUnique({ where: { id: agencyId } });
-  if (!agency || (agency.logoUrl && agency.description)) return false;
+  // Соцсети могут быть нужны и агентству с логотипом и описанием,
+  // поэтому «всё уже заполнено» больше не повод не ходить на вики
+  // (правка владельца 2026-09-23). Лишний поход дешёвый: страница
+  // берётся тем же запросом, а без неё функция сразу выходит.
+  if (!agency) return false;
   const page = await fetchTpopAgencyPage(agency.name, host).catch(() => null);
   if (!page) return false;
+  const links = await addMissingAgencyLinks(agencyId, page.socialLinks);
   const data: Record<string, unknown> = {};
   if (!agency.logoUrl && page.photoUrl) {
     data.logoUrl = await downloadRemoteImage(page.photoUrl, "agencies");
@@ -71,7 +77,7 @@ export async function enrichAgencyFromTpop(
   if (!agency.sourceUrl) {
     data.sourceUrl = fandomPageUrl(host, agency.name);
   }
-  if (Object.keys(data).length === 0) return false;
+  if (Object.keys(data).length === 0) return links.added > 0;
   await prisma.agency.update({ where: { id: agencyId }, data });
   return true;
 }
@@ -657,6 +663,7 @@ export async function importTpopAgency(
         data: { logoUrl: await downloadRemoteImage(pageData.photoUrl, "agencies") },
       });
     }
+    await addMissingAgencyLinks(agency.id, pageData.socialLinks);
     await recordItem(ctx, "agency", agency.id, "updated", agency.name);
   } else {
     agency = await prisma.agency.create({
@@ -668,6 +675,7 @@ export async function importTpopAgency(
           : null,
       },
     });
+    await addMissingAgencyLinks(agency.id, pageData.socialLinks);
     await recordItem(ctx, "agency", agency.id, "created", agency.name);
   }
   if (!agency.description && pageData.description) {

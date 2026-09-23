@@ -8,6 +8,7 @@ import {
   fandomApiBase,
   parseFandomTarget,
 } from "@/lib/fandomWiki";
+import { detectSocialPlatform, socialLinkKey } from "@/lib/socialLinks";
 
 // Scraper for Fandom band/member articles (e.g. tpop.fandom.com/wiki/BUS,
 // thiphop.fandom.com/wiki/1MILL) — вики берётся из самой ссылки, движок
@@ -100,6 +101,37 @@ function parseTpopDate(raw: string | null): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * Соцсети артиста — ТОЛЬКО из инфобокса (поле «sns»), а не из всей
+ * статьи (просьба владельца 2026-09-23: «с tpop.fandom и других таких
+ * сайтов нужно также тянуть ссылки на соцсети»).
+ *
+ * Разница принципиальная: в тексте статьи рядом лежат ссылки лейбла и
+ * соседних групп («risermusicth» на странице участника LYKN) и адреса
+ * КОНКРЕТНЫХ постов — брать их значило бы приписать артисту чужие
+ * аккаунты. В инфобоксе же стоят его собственные.
+ *
+ * Сама ссылка фильтруется по известным сетям (detectSocialPlatform):
+ * в инфобоксе попадаются и посторонние адреса — например статья
+ * Википедии про систему транскрипции в поле «Romanization».
+ */
+export function infoboxSocialLinks(
+  $: CheerioAPI,
+  infobox: Cheerio<AnyNode>,
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  infobox.find("a[href^='http']").each((_, el) => {
+    const href = ($(el).attr("href") ?? "").trim();
+    if (!href || !detectSocialPlatform(href)) return;
+    const key = socialLinkKey(href);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(href);
+  });
+  return out;
+}
+
 export type TpopBandMemberLink = { name: string; href: string };
 
 export type TpopBandData = {
@@ -110,6 +142,8 @@ export type TpopBandData = {
   debut: string | null;
   label: string | null;
   members: TpopBandMemberLink[];
+  /** Официальные соцсети из инфобокса — см. infoboxSocialLinks. */
+  socialLinks: string[];
 };
 
 export async function fetchTpopBandPage(
@@ -160,6 +194,7 @@ export async function fetchTpopBandPage(
     // агентство с датами в имени; выбираем текущий, как у участников.
     label: parseCurrentAgencyName(infoboxText($, infobox, "Label(s)")),
     members,
+    socialLinks: infoboxSocialLinks($, infobox),
   };
 }
 
@@ -170,6 +205,8 @@ export type TpopMemberData = {
   birthPlace: string | null;
   agency: string | null;
   photoUrl: string | null;
+  /** Официальные соцсети из инфобокса — см. infoboxSocialLinks. */
+  socialLinks: string[];
 };
 
 export async function fetchTpopMemberPage(
@@ -209,5 +246,6 @@ export async function fetchTpopMemberPage(
     birthPlace: infoboxText($, infobox, "Birth place"),
     agency: parseCurrentAgencyName(infoboxText($, infobox, "Agency")),
     photoUrl: infoboxImage($, infobox),
+    socialLinks: infoboxSocialLinks($, infobox),
   };
 }

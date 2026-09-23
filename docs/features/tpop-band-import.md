@@ -191,10 +191,44 @@ music label) instead. Because agency associations are additive
 up "SONRAY MUSIC" alongside whatever agency they already had — nothing
 lost, nothing needed to be chosen between.
 
+## Соцсети из инфобокса (2026-09-23)
+
+Просьба владельца: «с tpop.fandom и других таких сайтов нужно также
+тянуть ссылки на соцсети». Берутся **только из инфобокса** (поле `sns`;
+`infoboxSocialLinks` в `tpopFandom.ts`) — и у группы, и у каждого
+участника, и у агентства (`fetchTpopAgencyPage`, см.
+[tpop-agency-import.md](tpop-agency-import.md)).
+
+**Почему не из статьи целиком.** В тексте рядом лежат ссылки лейбла и
+соседних групп — на странице участника LYKN это `risermusicth` и
+аккаунты самой группы — и адреса КОНКРЕТНЫХ постов
+(`facebook.com/…/posts/…`, `x.com/…/status/…`). Взять их значило бы
+приписать человеку чужие аккаунты. В инфобоксе стоят его собственные.
+Ссылка ещё и фильтруется по известным сетям: в инфобоксе попадается,
+например, статья Википедии про систему транскрипции в поле
+«Romanization».
+
+**Как доливаются** (`socialLinkSync.ts`, общий модуль; правила те же,
+что у импорта с MyDramaList, юнит-тест
+`tests/unit/socialLinkSync.test.ts`):
+
+- сравнение по ключу, а не по строке (`socialLinkKey`): один профиль
+  приходит и как `instagram.com/x`, и как `www.instagram.com/x/`, и
+  `twitter.com` с `x.com` — это один аккаунт;
+- сеть «один профиль» (Instagram, TikTok, X) второй ссылкой не
+  занимают: это почти всегда переименованный аккаунт, и какая из двух
+  живая — решает человек. У YouTube и музыкальных площадок несколько
+  страниц законны;
+- существующие ссылки не трогаются вовсе — импорт только дополняет.
+
+Проверено на живых страницах: у LYKN доливаются пять ссылок, повторный
+прогон не добавляет ни одной; у RISER MUSIC — пять.
+
 ## New fields this added
 
 None — reuses the same `Performer`/`Agency`/`PerformerAgency`/
-`BandMember` fields every other importer writes to. No schema change.
+`BandMember` fields every other importer writes to. Ссылки ложатся в
+существующие `PerformerLink` и `AgencyLink`. No schema change.
 
 ## Discography import (albums + songs)
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { addMissingPerformerLinks } from "@/lib/socialLinkSync";
 import { fetchTpopBandPage, fetchTpopMemberPage, type TpopBandData } from "@/lib/tpopFandom";
 import { DEFAULT_FANDOM_HOST } from "@/lib/fandomWiki";
 import { addPerformerAgency } from "@/lib/performerAgency";
@@ -149,6 +150,9 @@ async function findOrCreateBandMemberPerformer(
       await prisma.performer.update({ where: { id: existing.id }, data });
     }
     if (agencyId) await addPerformerAgency(existing.id, agencyId);
+    // Соцсети доливаем и найденному: у карточки из другого источника
+    // их могло не быть вовсе.
+    await addMissingPerformerLinks(existing.id, member.socialLinks);
     return { kind: "matched", performerId: existing.id };
   }
 
@@ -163,12 +167,16 @@ async function findOrCreateBandMemberPerformer(
       ...(agencyId ? { agencies: { create: { agencyId } } } : {}),
     },
   });
+  await addMissingPerformerLinks(created.id, member.socialLinks);
   return { kind: "created", performerId: created.id };
 }
 
 export type TpopBandImportSummary = {
   bandName: string;
   bandCreated: boolean;
+  /** Соцсети группы, долитые из инфобокса вики (правка владельца
+   *  2026-09-23). У участников свои — они уходят в их карточки. */
+  bandLinksAdded: number;
   membersCreated: number;
   membersMatched: number;
   /** Участники, про которых на вики только имя: записей под них нет,
@@ -232,6 +240,9 @@ export async function importTpopBand(
     bandPerformerId = created.id;
     bandCreated = true;
   }
+  // Соцсети группы — из её инфобокса; у участников свои, они долиты
+  // в importMember выше.
+  const bandLinks = await addMissingPerformerLinks(bandPerformerId, band.socialLinks);
 
   let membersCreated = 0;
   let membersMatched = 0;
@@ -288,6 +299,7 @@ export async function importTpopBand(
   return {
     bandName: band.name,
     bandCreated,
+    bandLinksAdded: bandLinks.added,
     membersCreated,
     membersMatched,
     membersInBioOnly: bioOnlyNames.length,

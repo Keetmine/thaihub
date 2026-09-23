@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { fetchMdlPerson, absMdlUrl, type MdlPerson } from "@/lib/mydramalist";
-import { oneProfilePlatformOf, socialLinkKey } from "@/lib/socialLinks";
+import { oneProfilePlatformOf, socialLinkKey, socialLinkLabel } from "@/lib/socialLinks";
 import { isAlternateVersionError, upsertDramaFromMdl } from "@/lib/mdlDramaImport";
 import { downloadRemoteImage } from "@/lib/localImage";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
@@ -27,18 +27,6 @@ export type MdlPerformerSummary = {
   /** Страница сериала не открылась. */
   dramasFailed: number;
 };
-
-const SOCIAL_LABELS: [RegExp, string][] = [
-  [/instagram\.com/i, "Instagram"],
-  [/(twitter|x)\.com/i, "X"],
-  [/tiktok\.com/i, "TikTok"],
-  [/youtube\.com/i, "YouTube"],
-  [/facebook\.com/i, "Facebook"],
-];
-
-function labelFor(url: string): string {
-  return SOCIAL_LABELS.find(([re]) => re.test(url))?.[1] ?? "Ссылка";
-}
 
 /**
  * Импорт одного человека с MyDramaList в карточку исполнителя.
@@ -172,7 +160,7 @@ export async function importMdlPerformer(
     if (network) haveNetworks.add(network);
     haveUrls.add(key);
     await prisma.performerLink.create({
-      data: { performerId: performer.id, label: labelFor(link), url: link },
+      data: { performerId: performer.id, label: socialLinkLabel(link), url: link },
     });
     linksAdded += 1;
   }

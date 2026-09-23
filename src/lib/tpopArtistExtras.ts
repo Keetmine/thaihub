@@ -15,6 +15,7 @@ import {
   fandomPageUrl,
   parseFandomTarget,
 } from "@/lib/fandomWiki";
+import { infoboxSocialLinks } from "@/lib/tpopFandom";
 
 // Расширенный профиль артиста/группы со страницы tpop.fandom.com —
 // всё, чего не берёт базовый fetchTpopMemberPage/fetchTpopBandPage:
@@ -257,6 +258,9 @@ export type TpopAgencyPage = {
   soloists: { name: string; href: string }[];
   former: { name: string; href: string }[];
   references: TpopReference[];
+  /** Официальные соцсети агентства — из поля «sns» инфобокса, как у
+   *  артистов (правка владельца 2026-09-23). */
+  socialLinks: string[];
   sourceUrl: string;
 };
 
@@ -343,6 +347,7 @@ export async function fetchTpopAgencyPage(
     soloists,
     former: sectionArtistLinks($, "Former artists"),
     references: parseReferences($),
+    socialLinks: infoboxSocialLinks($, infobox),
     sourceUrl: fandomPageUrl(host, pageTitle),
   };
 }
