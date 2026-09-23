@@ -242,9 +242,20 @@ export default async function AdminPerformersPage({
         <h1 className="display-1-tight mb-0" style={{ fontSize: "2.25rem" }}>
           {isMascots ? "Маскоты" : isBands ? "Группы" : "Актёры"}
         </h1>
-        <Link href="/admin/performers/new" className="btn btn-primary btn-sm">
-          + Добавить исполнителя
-        </Link>
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          {/* Очередь досбора биографий с MDL — отдельной страницей: там
+              и список ожидающих, и запуск обхода (см.
+              docs/features/mydramalist-import.md). Только у актёров: у
+              групп и маскотов страниц на MDL нет. */}
+          {!isBands && !isMascots && (
+            <Link href="/admin/performers/bios" className="btn btn-outline-secondary btn-sm">
+              Биографии с MDL
+            </Link>
+          )}
+          <Link href="/admin/performers/new" className="btn btn-primary btn-sm">
+            + Добавить исполнителя
+          </Link>
+        </div>
       </div>
 
       {/* Список слева, фильтры колонкой справа — как на /search. */}

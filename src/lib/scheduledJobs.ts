@@ -47,6 +47,12 @@ async function countRunsSinceDayStart(kind: string): Promise<number> {
  *  две пачки по 300, шесть с запасом покрывают рост каталога. */
 const MDL_MAX_BATCHES_PER_DAY = 6;
 
+/** Потолок пачек досбора биографий за сутки: 150 человек в пачке ×
+ *  десять пачек — это полторы тысячи карточек в день, и очередь из
+ *  девяти тысяч расходится примерно за неделю. Больше не берём:
+ *  каждая пачка держит браузер, а сервер у нас на 4 ГБ. */
+const PERFORMER_BIO_MAX_BATCHES_PER_DAY = 10;
+
 export type JobDefinition = {
   key: string;
   /** Группа на страницах расписания и импортов (см. JOB_GROUPS). */
@@ -206,6 +212,57 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
           summarize(result) +
           (result.remaining > 0 && !keepGoing ? " · пачек за сутки хватит, остальное завтра" : ""),
         resumeInMinutes: keepGoing ? 1 : undefined,
+      };
+    },
+  },
+  {
+    key: "mdl-performer-bios",
+    group: "series",
+    title: "MyDramaList: биографии актёров",
+    description:
+      "Обходит актёров без биографии и дособирает их карточки с MDL: биографию, " +
+      "настоящее имя, дату рождения, фото, соцссылки и роли в сериалах, которые у нас " +
+      "уже есть. У кого сохранена ссылка на MDL — открывает её, остальных ищет по имени " +
+      "и берёт кандидата, только если тот подтверждён: его фильмография пересекается с " +
+      "нашим каталогом или настоящее имя совпадает целиком. Не подтвердился — карточка " +
+      "остаётся пустой: приписать человеку чужую биографию хуже, чем не заполнить поле. " +
+      "Заполняется только пустое, занесённое руками не переписывается; новых сериалов " +
+      "обход не заводит. Идёт ПАЧКАМИ по 150 человек: осталась очередь — планировщик " +
+      "берёт следующую пачку через десять минут, до десяти пачек за сутки, и так пока " +
+      "очередь не кончится. Список ожидающих и кнопка «Обойти сейчас» — на странице " +
+      "«Актёры → Биографии».",
+    // Отбор — «у кого пусто», выбирать тут некого.
+    supportsTargets: false,
+    logKind: "mdl-performer-bios",
+    // Каждая изменённая карточка — строка ImportedItem: на вкладке
+    // задачи видно, кому что дописали.
+    logsItems: true,
+    run: async () => {
+      const { refreshMissingPerformerBios, summarizePerformerBioRun } = await import(
+        "@/lib/mdlPerformerSync"
+      );
+      const { logImportRun } = await import("@/lib/importRun");
+      const result = await logImportRun(
+        "mdl-performer-bios",
+        (runId) => refreshMissingPerformerBios({ runId }),
+        summarizePerformerBioRun,
+      );
+      // null — прогон остановили кнопкой в /admin/imports.
+      if (!result) return "остановлено вручную";
+
+      // Осталась очередь — просим планировщик продолжить. Потолок пачек
+      // за сутки: обход в девять тысяч карточек не должен занимать
+      // сервер круглосуточно, да и MDL мы не единственные гости.
+      const batchesToday = await countRunsSinceDayStart("mdl-performer-bios");
+      const keepGoing =
+        result.remaining > 0 &&
+        !result.abortedAfter &&
+        batchesToday < PERFORMER_BIO_MAX_BATCHES_PER_DAY;
+      return {
+        summary:
+          summarizePerformerBioRun(result) +
+          (result.remaining > 0 && !keepGoing ? " · пачек за сутки хватит, остальное завтра" : ""),
+        resumeInMinutes: keepGoing ? 10 : undefined,
       };
     },
   },
