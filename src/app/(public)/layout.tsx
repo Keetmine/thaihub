@@ -141,7 +141,23 @@ export default async function PublicLayout({ children }: { children: React.React
           <div className="ambient-wash" />
           <div className="container pt-4 nav-sticky">
             <nav className="pill-nav d-flex flex-wrap align-items-center gap-2 px-3 px-sm-4 py-2">
-              <Link href="/" prefetch={false} className="navbar-brand mb-0 text-decoration-none">
+              {/* Лого стояло выше середины шапки (жалоба владельца
+                  2026-09-23: «на моб версии лого в хедере криво стоит,
+                  не по центру»). Две причины, обе тут:
+                  d-flex — без него знак внутри был строчным боксом,
+                  садился на базовую линию и оставлял под собой место
+                  под выносные элементы (в админке эта ссылка была
+                  флексом с самого начала);
+                  и НЕТ mb-0 — на телефоне мишень лого расширена
+                  паддингом с компенсацией отрицательным margin
+                  (.pill-nav .navbar-brand в globals.css), а `mb-0` с
+                  его !important гасил нижнюю половину компенсации, и
+                  знак уезжал вверх ровно на неё. */}
+              <Link
+                href="/"
+                prefetch={false}
+                className="navbar-brand d-flex align-items-center text-decoration-none"
+              >
                 <Logo />
               </Link>
 
