@@ -192,6 +192,7 @@ export const account = {
       "Unlink Telegram? Event reminders and news from friends will stop arriving. You can connect it again at any time.",
     telegramSendTitle: "Send to Telegram:",
     telegramNotifyInvites: "Trip invitations and subscription",
+    telegramNotifyTrips: "Trip countdown: a message every morning during the last month before a trip",
     telegramNotifyFriends: "Friend requests",
     telegramNotifyReplies: "Replies to my comments",
     telegramNotifyEvents: "Events: a favorite artist's new event, friends going, online booking opening",

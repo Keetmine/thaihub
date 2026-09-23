@@ -45,6 +45,7 @@ import EventCardLocked from "@/components/EventCardLocked";
 import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
 import { buildDayRoute } from "@/lib/dayRoute";
+import { countdownToday, daysUntilTrip, tripCountdownCaption } from "@/lib/tripCountdown";
 import { pageMetadata } from "@/lib/seo";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
@@ -479,6 +480,15 @@ export default async function TripPage({
   const canSeeEvents = isParticipant || isPremiumActive(user);
 
   const myStay = viewerId ? trip.stays.find((stay) => stay.userId === viewerId) ?? null : null;
+  // Обратный отсчёт (АА9): та же подпись дня, что уходит утром в
+  // Telegram, — под датами поездки, пока до неё месяц и меньше. Только
+  // участникам и до СВОИХ дат: гостю чужой отсчёт ни к чему.
+  const countdown = isParticipant
+    ? tripCountdownCaption(
+        daysUntilTrip(myStay?.startDate ?? trip.startDate, countdownToday(new Date())),
+        t,
+      )
+    : null;
   /** «22 окт – 6 нояб» для чужого окна присутствия; null — вся поездка. */
   const stayLabelOf = (userId: string): string | null => {
     const stay = trip.stays.find((row) => row.userId === userId);
@@ -1447,6 +1457,7 @@ export default async function TripPage({
             {formatShortDate(rangeStart, locale)} – {formatShortDate(rangeEnd, locale)}{" "}
             {rangeEnd.getFullYear()}
           </p>
+          {countdown && <p className="trip-countdown mb-0">{countdown}</p>}
         </div>
         {isParticipant ? (
           <div className="d-flex align-items-center gap-2 flex-wrap">

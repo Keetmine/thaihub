@@ -223,6 +223,7 @@ export async function updateNotificationPrefs(formData: FormData) {
     where: { id: user.id },
     data: {
       tgNotifyInvites: String(formData.get("tgNotifyInvites") ?? "") === "on",
+      tgNotifyTrips: String(formData.get("tgNotifyTrips") ?? "") === "on",
       tgNotifyFriends: String(formData.get("tgNotifyFriends") ?? "") === "on",
       tgNotifyReplies: String(formData.get("tgNotifyReplies") ?? "") === "on",
       tgNotifyEvents: String(formData.get("tgNotifyEvents") ?? "") === "on",

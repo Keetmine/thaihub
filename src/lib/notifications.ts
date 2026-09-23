@@ -48,6 +48,9 @@ const TELEGRAM_KINDS: Partial<Record<NotificationKind, keyof TelegramPrefs>> = {
   COMMUNITY_INVITE: "tgNotifyCommunities",
   COMMUNITY_JOIN_REQUEST: "tgNotifyCommunities",
   COMMUNITY_JOIN_ANSWER: "tgNotifyCommunities",
+  // Обратный отсчёт до поездки — своя ручка: месяц ежедневных сообщений
+  // человек должен уметь выключить, не теряя приглашений в поездки.
+  TRIP_COUNTDOWN: "tgNotifyTrips",
 };
 
 type TelegramPrefs = {
@@ -64,6 +67,9 @@ type TelegramPrefs = {
    *  они не шлют. Поводы сообществ идут поштучно, и там notifyUser
    *  перечитывает пользователя сам, вместе с этим полем. */
   tgNotifyCommunities?: boolean;
+  /** Обратный отсчёт до поездки. Необязательное по той же причине:
+   *  тумблер нужен одной рассылке, и только она его выбирает. */
+  tgNotifyTrips?: boolean;
 };
 
 /** Всё, что notifyUser нужно знать о получателе. Отдельным типом, чтобы
@@ -128,6 +134,7 @@ export async function notifyUser(input: {
           tgNotifyBirthdays: true,
           tgNotifyEpisodes: true,
           tgNotifyCommunities: true,
+          tgNotifyTrips: true,
         },
       }));
     if (!user) return;

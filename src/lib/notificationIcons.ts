@@ -23,6 +23,7 @@ export const NOTIFICATION_ICONS: Record<string, string> = {
   COMMUNITY_INVITE: "💌",
   COMMUNITY_POST: "📝",
   COMMUNITY_DIGEST: "📬",
+  TRIP_COUNTDOWN: "⏳",
 };
 
 export function notificationIcon(kind: string): string {

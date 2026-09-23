@@ -53,7 +53,52 @@ export const notifications = {
         `${who} is inviting you to the community "${community}"`,
     COMMUNITY_POST: (who: string, community: string) =>
         `${who} started a topic in "${community}"`,
+    // Ежедневный отсчёт до поездки (АА9): число дней — в подписи дня
+    // (tripCountdown ниже), заголовок только называет поездку.
+    TRIP_COUNTDOWN: (trip: string) => `Your trip “${trip}” is coming up`,
   },
+
+  /**
+   * Подписи обратного отсчёта до поездки, по числу оставшихся дней:
+   * индекс 0 — «сегодня», 30 — «ровно месяц», с которого отсчёт и
+   * начинается (просьба владельца 2026-09-23: «йоу йоу йоу, осталось 25
+   * дней», «жесть, поездка уже через неделю» — смешное, милое,
+   * современное). Ровно COUNTDOWN_START_DAYS + 1 строка, по одной на
+   * день; обращение нейтральное — пол человека мы не знаем.
+   */
+  tripCountdown: [
+    "Today! Sawasdee-ee-ee, Thailand 🇹🇭 Safe travels!",
+    "Tomorrow! Tomorrow! TOMORROW! Good night won't work anyway 🛫",
+    "The day after tomorrow! Charger, adapter, documents — all there? 🔌",
+    "3 days. Losing sleep from excitement is allowed now — we permit it 🌙",
+    "4 days. Something is definitely missing from the suitcase — time to remember what 🤔",
+    "5 days. You can count down to takeoff on one hand ✋",
+    "6 days. Stocking up on sunscreen isn't paranoia, it's experience 🧴",
+    "Whoa, the trip is a week away 😱",
+    "8 days. The suitcase holds nothing but hopes and one sock so far 🧦",
+    "9 days. We did the math: that's just nine more wake-ups 🛏️",
+    "10 days! Last double-digit number — it only goes down from here 🔟",
+    "11 days. Time to pick which series to download for the flight ✈️",
+    "12 days. “Sawasdee kha/khap” — that's half the Thai phrasebook done 🙏",
+    "13 days. Unlucky number? Not this time 🍀",
+    "Two weeks. Two. Weeks. Time to get the suitcase out 🧳",
+    "Halfway through the month! 15 days left ⏳",
+    "16 days. Googling Bangkok weather is allowed now — it's called planning 🌦️",
+    "17 days. Right between “still far away” and “oh wow, soon” 📍",
+    "18 days. Dreaming of tom yum? That's normal. It's about to come true 🍜",
+    "19 days. The suitcase is still in the closet, but it suspects something 🧳",
+    "20 days. A round number — and round eyes of anticipation 👀",
+    "Three weeks! Someone's already mentally at 7-Eleven buying toasties 🥪",
+    "22 days. Double twos — pretty. Like you on vacation 😎",
+    "23 days. The mangoes are ripening, the sticky rice is nearly on 🥭",
+    "24 days — exactly one season at an episode a day. You've got time 📺",
+    "Yo yo yo, 25 days left 🔥",
+    "26 days. The Thai heat is warming up just for you ☀️",
+    "27 days. Check your passport's expiry date. Seriously, right now 🛂",
+    "Four weeks. Time to build the airplane playlist 🎧",
+    "29 days. A month minus one — already sounds shorter, right?",
+    "Exactly one month to go. The countdown is officially on 🛫",
+  ],
 
   /** Body of the online-booking reminder: the time is Thai wall-clock,
    *  exactly as the ticket owner entered it. */

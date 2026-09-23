@@ -5925,6 +5925,16 @@ a.notif-row.is-unread:hover {
   box-shadow: none;
 }
 
+/* Обратный отсчёт под датами на странице поездки (АА9): та же подпись
+   дня, что уходит утром в Telegram. Акцентный цвет и чуть крупнее —
+   это единственная «живая» строка в шапке. */
+.trip-countdown {
+  margin-top: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--bs-primary);
+}
+
 /* Диапазон дат как на билете: «20 авг → 27 авг». */
 .trip-dates {
   font-family: var(--font-display), var(--font-geist-sans), sans-serif;

@@ -935,6 +935,11 @@ model User {
   // переключатель: человек может хотеть напоминания о продажах, но не
   // хотеть воскресное письмо. Колонка заведена миграцией 20260910T00.
   tgNotifyDigest           Boolean              @default(true)
+  // Обратный отсчёт до поездки (АА9, правка владельца 2026-09-23):
+  // последний месяц перед поездкой — по сообщению каждое утро. Свой
+  // переключатель: повод ежедневный и на целый месяц, а приглашения в
+  // поездки (tgNotifyInvites) человек может хотеть оставить.
+  tgNotifyTrips            Boolean              @default(true)
   // Тур по интерфейсу для новичков: показывается один раз после
   // регистрации, перезапускается кнопкой в настройках.
   tourCompletedAt          DateTime?
@@ -1016,6 +1021,7 @@ model User {
   telegramNotifications        TelegramNotification[]
   telegramPresaleNotifications TelegramPresaleNotification[]
   birthdayNotifications        BirthdayNotification[]
+  tripCountdowns               TripCountdownNotification[]
   mdlDramaRequests             MdlDramaRequestUser[]
   episodeNotifications         EpisodeNotification[]
   performerEventNotifications  PerformerEventNotification[]
@@ -1107,6 +1113,7 @@ model Trip {
   stays          TripStay[]
   bookings       TripBooking[]
   expenses       TripExpense[]
+  countdowns     TripCountdownNotification[]
 
   @@index([userId])
 }
@@ -1390,6 +1397,22 @@ model TripPlace {
  * следующий год та же пара сработает снова — потому и год, а не просто
  * пара (userId, performerId).
  */
+/// Дедуп ежедневного отсчёта до поездки: одно сообщение человеку на
+/// поездку в календарный день (`day` — YYYY-MM-DD по времени сервера).
+/// Ключ по дню, а не по «сколько осталось»: сдвинутая поездка проходит
+/// одни и те же числа заново, и по ним отметка молчала бы зря.
+model TripCountdownNotification {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  day       String
+  createdAt DateTime @default(now())
+
+  @@id([userId, tripId, day])
+  @@index([tripId])
+}
+
 model BirthdayNotification {
   id          String    @id @default(cuid())
   userId      String
@@ -2073,6 +2096,10 @@ enum NotificationKind {
   // и комментариев за месяц и когда ближайшая встреча. Свой вид, а не
   // чужой: фраза складывается из вида (см. lib/notificationText.ts).
   COMMUNITY_DIGEST
+  // «Осталось N дней до поездки» — по одному в день последний месяц
+  // перед поездкой, с шуткой на каждый день (АА9). Название поездки
+  // в subject, подпись дня — в body.
+  TRIP_COUNTDOWN
 }
 
 model Notification {

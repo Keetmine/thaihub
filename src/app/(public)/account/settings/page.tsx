@@ -53,6 +53,7 @@ const telegramNotifyToggles = (
   premium: boolean,
 ) => [
   { name: "tgNotifyInvites" as const, label: s.telegramNotifyInvites, hint: null },
+  { name: "tgNotifyTrips" as const, label: s.telegramNotifyTrips, hint: null },
   { name: "tgNotifyFriends" as const, label: s.telegramNotifyFriends, hint: null },
   { name: "tgNotifyReplies" as const, label: s.telegramNotifyReplies, hint: null },
   { name: "tgNotifyEvents" as const, label: s.telegramNotifyEvents, hint: null },

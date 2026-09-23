@@ -11,6 +11,9 @@ import { isPremiumActive, premiumAccessWhere, type PremiumFields } from "@/lib/p
 import { getFriendIds } from "@/lib/friends";
 import { notifyUser } from "@/lib/notifications";
 import { buildDigestMessage } from "@/lib/botDigest";
+import { tripHref } from "@/lib/slugHelpers";
+import { dateKey, addDays } from "@/lib/dates";
+import { COUNTDOWN_START_DAYS, countdownToday, daysUntilTrip, tripCountdownCaption } from "@/lib/tripCountdown";
 
 const LOOKAHEAD_HOURS = 24;
 
@@ -640,6 +643,92 @@ export async function sendBirthdayNotifications(): Promise<number> {
       // бы дичью.
       body: turns > 0 && turns < 120 ? (t) => t.notifications.birthdayBody(turns) : null,
       href: performer.slug ? `/artists/${performer.slug}` : null,
+    });
+    sent += 1;
+  }
+  return sent;
+}
+
+/**
+ * Обратный отсчёт до поездки (АА9, правка владельца 2026-09-23): в
+ * последний месяц перед поездкой — по сообщению каждое утро, от «ровно
+ * месяц» до «сегодня!», с шуткой на каждый день (подписи — в словаре,
+ * t.notifications.tripCountdown). Запускается задачей планировщика
+ * `trip-countdown` утром (defaultHour 10), не получасовым прогоном:
+ * сообщение «доброе утро, осталось N дней» должно приходить утром, а не
+ * в полночь, когда сменилась дата.
+ *
+ * Получатели — владелец и принявшие приглашение участники; у кого свои
+ * даты (TripStay), тому считается до его прилёта, а не до начала
+ * поездки. Через notifyUser: и колокольчик, и Telegram по переключателю
+ * tgNotifyTrips — свой, месяц ежедневных сообщений человек должен уметь
+ * выключить, не теряя приглашений в поездки.
+ *
+ * Дедуп — TripCountdownNotification по календарному дню: одно сообщение
+ * человеку на поездку в день, повторный запуск задачи ничего не
+ * дублирует. Отметка ставится ДО отправки, гонку двух тиков судит
+ * первичный ключ.
+ */
+export async function sendTripCountdowns(now = new Date()): Promise<number> {
+  const today = countdownToday(now);
+  const day = dateKey(today);
+  // Свои даты участника лежат внутри поездки, поэтому фильтра по началу
+  // поездки хватает и для них; «минус день» у нижней границы — старые
+  // записи лежат 21:00 UTC предыдущего дня. Идущие поездки тоже нужны:
+  // у участника со своими датами прилёт может быть ещё впереди.
+  const trips = await prisma.trip.findMany({
+    where: {
+      startDate: { lte: addDays(today, COUNTDOWN_START_DAYS) },
+      endDate: { gte: addDays(today, -1) },
+    },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      userId: true,
+      startDate: true,
+      members: { where: { status: "ACCEPTED" }, select: { userId: true } },
+      stays: { select: { userId: true, startDate: true } },
+    },
+  });
+  if (trips.length === 0) return 0;
+
+  // Кому и сколько осталось — заранее, чтобы получателей прочитать одним
+  // findMany (см. NOTIFY_RECIPIENT_SELECT).
+  const pending: { userId: string; trip: (typeof trips)[number]; daysLeft: number }[] = [];
+  for (const trip of trips) {
+    const stayOf = new Map(trip.stays.map((s) => [s.userId, s.startDate]));
+    const userIds = [trip.userId, ...trip.members.map((m) => m.userId)];
+    for (const userId of new Set(userIds)) {
+      const daysLeft = daysUntilTrip(stayOf.get(userId) ?? trip.startDate, today);
+      if (daysLeft < 0 || daysLeft > COUNTDOWN_START_DAYS) continue;
+      pending.push({ userId, trip, daysLeft });
+    }
+  }
+  if (pending.length === 0) return 0;
+
+  const recipients = await prisma.user.findMany({
+    where: { id: { in: [...new Set(pending.map((p) => p.userId))] }, deletedAt: null },
+    select: { id: true, ...NOTIFY_RECIPIENT_SELECT, tgNotifyTrips: true },
+  });
+  const recipientById = new Map(recipients.map((u) => [u.id, u]));
+
+  let sent = 0;
+  for (const { userId, trip, daysLeft } of pending) {
+    const recipient = recipientById.get(userId);
+    if (!recipient) continue;
+    try {
+      await prisma.tripCountdownNotification.create({ data: { userId, tripId: trip.id, day } });
+    } catch {
+      continue; // уже уходило сегодня — или отправил параллельный тик
+    }
+    await notifyUser({
+      userId,
+      user: recipient,
+      kind: "TRIP_COUNTDOWN",
+      subject: trip.title,
+      body: (t) => tripCountdownCaption(daysLeft, t) ?? "",
+      href: tripHref(trip),
     });
     sent += 1;
   }

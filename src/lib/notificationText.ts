@@ -75,6 +75,10 @@ export function notificationTitle(n: NotificationParts, t: Dict): string {
       // Новая тема в сообществе. Название сообщества, а не темы: у темы
       // заголовок необязателен, а отрывок текста и так лежит в body.
       return who && subject ? titles.COMMUNITY_POST(who, subject) : n.title;
+    case "TRIP_COUNTDOWN":
+      // Число дней — в body (подпись дня), заголовок только называет
+      // поездку: иначе пришлось бы морозить число в subject.
+      return subject ? titles.TRIP_COUNTDOWN(subject) : n.title;
     case "COMMUNITY_JOIN_ANSWER": {
       // Решение по заявке приезжает одним видом: «+название» — приняли,
       // «-название» — отказали. Отдельный вид уведомления ради одной

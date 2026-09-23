@@ -21,7 +21,7 @@ export type TripDayStats = {
  *  округление к ближайшим суткам даёт одинаковый индекс для обоих
  *  форматов, поэтому длина «с 4-го по 19-е» всегда 16, как и раньше
  *  считалось через round(diff)+1. */
-const dayIndex = (d: Date) => Math.round(d.getTime() / DAY);
+export const dayIndex = (d: Date) => Math.round(d.getTime() / DAY);
 
 /** Длина одной поездки в днях, обе границы включительно. */
 export function tripDays(t: TripRange): number {

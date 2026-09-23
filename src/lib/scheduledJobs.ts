@@ -563,6 +563,28 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
     },
   },
   {
+    key: "trip-countdown",
+    group: "digests",
+    title: "Обратный отсчёт до поездки",
+    description:
+      "Каждое утро пишет участникам поездок, до которых осталось не больше месяца: «осталось " +
+      "25 дней» — с шуткой на каждый день, от «ровно месяц» до «сегодня!». Считается до своих " +
+      "дат участника, если они указаны. Приходит в колокольчик, а в Telegram — с привязанным " +
+      "ботом и включённым переключателем «Обратный отсчёт до поездки» в настройках. Одно " +
+      "сообщение в день на поездку: повторный запуск в тот же день ничего не дублирует.",
+    supportsTargets: false,
+    logKind: "trip-countdown",
+    logsItems: false,
+    // Утро, как у дайджеста: «доброе утро, осталось N дней» в четыре
+    // ночи — не то.
+    defaultHour: 10,
+    run: async () => {
+      const { sendTripCountdowns } = await import("@/lib/telegramNotifications");
+      const sent = await sendTripCountdowns();
+      return `отправлено ${sent}`;
+    },
+  },
+  {
     key: "community-digest",
     group: "digests",
     title: "Месячная сводка владельцам сообществ",
@@ -639,7 +661,7 @@ async function runCleanupExpired(): Promise<string> {
   // Дедуп-отметки напоминаний: нужны, только пока повод может
   // повториться (событие в ближайшие сутки, серия в окне добора,
   // день рождения в этом году) — дальше строки лишь занимают место.
-  const [birthdays, episodes, eventReminders, presales, performerEvents] = await Promise.all([
+  const [birthdays, episodes, eventReminders, presales, performerEvents, tripCountdowns] = await Promise.all([
     prisma.birthdayNotification.deleteMany({
       where: { createdAt: { lt: daysAgo(BIRTHDAY_DEDUPE_RETENTION_DAYS) } },
     }),
@@ -658,10 +680,19 @@ async function runCleanupExpired(): Promise<string> {
     prisma.performerEventNotification.deleteMany({
       where: { createdAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
     }),
+    // Отсчёт до поездки: отметка по дню, повториться после него не может.
+    prisma.tripCountdownNotification.deleteMany({
+      where: { createdAt: { lt: daysAgo(TELEGRAM_DEDUPE_RETENTION_DAYS) } },
+    }),
   ]);
 
   const dedupe =
-    birthdays.count + episodes.count + eventReminders.count + presales.count + performerEvents.count;
+    birthdays.count +
+    episodes.count +
+    eventReminders.count +
+    presales.count +
+    performerEvents.count +
+    tripCountdowns.count;
   return (
     `сессий удалено ${sessions.count}, токенов сброса ${tokens.count}, ` +
     `аудита ${audit.count}, уведомлений ${notifications.count}, ` +

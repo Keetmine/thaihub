@@ -170,6 +170,7 @@ export const account: Dict["account"] = {
       "Отвязать Telegram? Напоминания о событиях и новости друзей приходить перестанут. Подключить обратно можно в любой момент.",
     telegramSendTitle: "Присылать в Telegram:",
     telegramNotifyInvites: "Приглашения в поездки и подписка",
+    telegramNotifyTrips: "Обратный отсчёт до поездки: каждое утро в последний месяц перед ней",
     telegramNotifyFriends: "Заявки в друзья",
     telegramNotifyReplies: "Ответы на мои комментарии",
     telegramNotifyEvents: "События: новое у избранного артиста, друзья идут, открытие онлайн-бронирования",
