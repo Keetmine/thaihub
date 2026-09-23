@@ -6,6 +6,7 @@ import { tripDayStats } from "@/lib/tripDays";
 import {
   resolveSeen,
   toSeenRows,
+  personalSeenDays,
   SEEN_PERFORMER_SELECT,
   type SeenCard,
   type SeenPerformerRaw,
@@ -385,12 +386,16 @@ export async function computeUserStats(
       // прежнему правилу «я там буду × состав дня».
       // По ДНЯМ события (2026-09-18): на трёхдневном фестивале артист
       // второго дня засчитывается, когда прошёл его день, а не первый.
-      prisma.tripPersonalEventSeen
-        .findMany({
-          where: { userId, day: { startsAt: { lt: now } } },
-          select: { performerId: true, day: { select: { personalEventId: true } } },
-        })
-        .then((rows) => rows.map((r) => ({ performerId: r.performerId, personalEventId: r.day.personalEventId }))),
+      // Отметка на ГРУППЕ доходит до её участников-актёров (2026-09-23),
+      // как на афише, — раскрытием занимается personalSeenDays.
+      personalSeenDays(userId, now).then((days) =>
+        days.flatMap((day) =>
+          day.performerIds.map((performerId) => ({
+            performerId,
+            personalEventId: day.personalEventId,
+          })),
+        ),
+      ),
     ]);
 
   const completedDramas =

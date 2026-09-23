@@ -221,6 +221,111 @@ export function toSeenRows(rows: SeenAttendanceRowRaw[]): SeenAttendanceRow[] {
   }));
 }
 
+
+/** День личного события с уже раскрытыми группами: кто на нём засчитан. */
+export type PersonalSeenDay = {
+  dayId: string;
+  startsAt: Date;
+  personalEventId: string;
+  personalEventTitle: string;
+  trip: { id: string; slug: string | null; title: string };
+  /** id артистов, которым этот день идёт в «видела вживую». */
+  performerIds: string[];
+};
+
+/**
+ * Личные события поездок для «видела вживую» — с РАСКРЫТИЕМ ГРУПП
+ * (жалоба владельца 2026-09-23: «есть личный евент, где я видела группу
+ * ATLAS, но на страницах участников группы этот евент не выводится»).
+ *
+ * На афише группа раскрывается до участников-актёров с самого начала
+ * (см. `resolveSeen`, правило 3 в gamification.md), а личные события
+ * считались буквально по отметке — и концерт группы не доходил до её
+ * участников. Теперь правило одно на оба источника:
+ *
+ *  - отмечена сама группа → её участники-АКТЁРЫ (у кого есть сериалы
+ *    или фильмы, `ACTOR_DRAMA_WHERE`) тоже засчитаны;
+ *  - но только если участника НЕТ в составе этого дня. Стоит он там
+ *    своей строкой — решает его собственный глазик: «видела группу, а
+ *    вот его не разглядела» это осознанный выбор, и затирать его
+ *    отметкой группы нельзя (то же «решение по участнику сильнее
+ *    решения по группе», что на афише).
+ */
+export async function personalSeenDays(
+  userId: string,
+  now: Date = new Date(),
+): Promise<PersonalSeenDay[]> {
+  const rows = await prisma.tripPersonalEventSeen.findMany({
+    where: { userId, day: { startsAt: { lt: now } } },
+    select: {
+      dayId: true,
+      performerId: true,
+      performer: {
+        select: {
+          id: true,
+          type: true,
+          bandMembers: {
+            select: {
+              performer: {
+                select: { id: true, _count: { select: { dramas: { where: ACTOR_DRAMA_WHERE } } } },
+              },
+            },
+          },
+        },
+      },
+      day: {
+        select: {
+          startsAt: true,
+          personalEvent: {
+            select: { id: true, title: true, trip: { select: { id: true, slug: true, title: true } } },
+          },
+        },
+      },
+    },
+  });
+  if (rows.length === 0) return [];
+
+  // Состав каждого дня — чтобы понять, есть ли участник в нём своей
+  // строкой (тогда решает его глазик, а не отметка группы).
+  const dayIds = [...new Set(rows.map((r) => r.dayId))];
+  const cast = await prisma.tripPersonalEventDayPerformer.findMany({
+    where: { dayId: { in: dayIds } },
+    select: { dayId: true, performerId: true },
+  });
+  const castByDay = new Map<string, Set<string>>();
+  for (const c of cast) {
+    const set = castByDay.get(c.dayId) ?? new Set<string>();
+    set.add(c.performerId);
+    castByDay.set(c.dayId, set);
+  }
+
+  const byDay = new Map<string, PersonalSeenDay & { ids: Set<string> }>();
+  for (const row of rows) {
+    let day = byDay.get(row.dayId);
+    if (!day) {
+      day = {
+        dayId: row.dayId,
+        startsAt: row.day.startsAt,
+        personalEventId: row.day.personalEvent.id,
+        personalEventTitle: row.day.personalEvent.title,
+        trip: row.day.personalEvent.trip,
+        performerIds: [],
+        ids: new Set<string>(),
+      };
+      byDay.set(row.dayId, day);
+    }
+    day.ids.add(row.performerId);
+    const inCast = castByDay.get(row.dayId) ?? new Set<string>();
+    for (const { performer: member } of row.performer.bandMembers) {
+      if (member._count.dramas === 0) continue;
+      if (inCast.has(member.id)) continue;
+      day.ids.add(member.id);
+    }
+  }
+
+  return [...byDay.values()].map(({ ids, ...day }) => ({ ...day, performerIds: [...ids] }));
+}
+
 /**
  * Все артисты, которых человек видел, — id'шниками. Три источника, как в
  * своде: события афиши по правилу, личные события поездок и отметки
@@ -235,18 +340,16 @@ export async function loadSeenPerformerIds(userId: string): Promise<Set<string>>
     prisma.performerSeen.findMany({ where: { userId }, select: { performerId: true } }),
     // По дням события (2026-09-18): артист дня засчитан, когда прошёл
     // именно его день. Своя отметка «видела» (2026-09-19), а не весь
-    // состав дня: кого добавили другие, у меня не отмечен.
-    prisma.tripPersonalEventSeen.findMany({
-      where: { userId, day: { startsAt: { lt: now } } },
-      select: { performerId: true },
-    }),
+    // состав дня: кого добавили другие, у меня не отмечен. Группы
+    // раскрываются до участников (2026-09-23) — см. personalSeenDays.
+    personalSeenDays(userId, now),
   ]);
   const ids = new Set<string>();
   for (const entries of resolveSeen(rows, overrides, now).values()) {
     for (const entry of entries.values()) if (entry.seen) ids.add(entry.card.id);
   }
   for (const r of outside) ids.add(r.performerId);
-  for (const r of personal) ids.add(r.performerId);
+  for (const day of personal) for (const id of day.performerIds) ids.add(id);
   return ids;
 }
 
@@ -404,20 +507,9 @@ export async function performerSeenEvents(
     }),
     // Личные события поездок — списком, по ДНЯМ: артист дня засчитан,
     // когда прошёл его день и человек сам отметил, что видел его там
-    // (TripPersonalEventSeen, 2026-09-19).
-    prisma.tripPersonalEventSeen.findMany({
-      where: { userId, performerId, day: { startsAt: { lt: now } } },
-      select: {
-        day: {
-          select: {
-            startsAt: true,
-            personalEvent: {
-              select: { id: true, title: true, trip: { select: { id: true, slug: true, title: true } } },
-            },
-          },
-        },
-      },
-    }),
+    // (TripPersonalEventSeen, 2026-09-19). Отметка на ГРУППЕ доходит до
+    // её участников (2026-09-23) — раскрытием занимается personalSeenDays.
+    personalSeenDays(userId, now),
   ]);
 
   const resolved = resolveSeen(toSeenRows(rows), overrides, now);
@@ -445,11 +537,18 @@ export async function performerSeenEvents(
   // Одно событие — одна строка, даже если артист был в составе трёх
   // его дней; дата — последнего прошедшего дня.
   const personalByEvent = new Map<string, PerformerSeenPersonal>();
-  for (const row of personal) {
-    const ev = row.day.personalEvent;
-    const date = row.day.startsAt.toISOString();
-    const cur = personalByEvent.get(ev.id);
-    if (!cur || date > cur.date) personalByEvent.set(ev.id, { id: ev.id, title: ev.title, date, trip: ev.trip });
+  for (const day of personal) {
+    if (!day.performerIds.includes(performerId)) continue;
+    const date = day.startsAt.toISOString();
+    const cur = personalByEvent.get(day.personalEventId);
+    if (!cur || date > cur.date) {
+      personalByEvent.set(day.personalEventId, {
+        id: day.personalEventId,
+        title: day.personalEventTitle,
+        date,
+        trip: day.trip,
+      });
+    }
   }
   const personalEvents = [...personalByEvent.values()].sort((a, b) => b.date.localeCompare(a.date));
   return { events, outside: !!outside, personalEvents };
