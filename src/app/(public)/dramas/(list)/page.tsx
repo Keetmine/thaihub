@@ -776,7 +776,15 @@ export default async function DramasPage({
           placeholder={t.catalog.searchByTitle}
           className="catalog-search"
         />
-        <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+        {/* Сортировка — в том же ряду, что поиск, но у ПРАВОГО края
+            (правка владельца 2026-09-23), рядом с кнопками подбора. Тот
+            же общий SortSelect, что на /search: шапка таблицы умеет
+            только колонки, а популярности и оценки MyDramaList среди
+            них нет; на телефоне шапки и вовсе не видно. Первый вариант —
+            умолчание каталога (популярность), в адрес он не пишется.
+            `ms-auto` у селекта: он и кнопки за ним уезжают вправо. */}
+        <SortSelect options={SORT_OPTIONS(t)} label={t.filters.sort} />
+        <div className="d-flex align-items-center gap-2 flex-shrink-0">
           {/* Рулетка «что посмотреть» (аудит, п. 6.3): 302 на случайный
               сериал (роут /dramas/random), у залогиненного — без уже
               отмеченных. Кнопка проносит поисковый запрос q — других
@@ -844,15 +852,6 @@ export default async function DramasPage({
                 2026-09-16): на витрине каталога число записей ничего не
                 решает, а строка над таблицей отодвигала её вниз. На
                 /search он остаётся — там это результат запроса. */}
-            {/* Сортировка — тем же селектом, что на /search (правка
-                владельца 2026-09-23). Шапка таблицы умеет только
-                колонки, а популярности и оценки MyDramaList среди них
-                нет; на телефоне шапки и вовсе не видно. Первый вариант —
-                умолчание каталога (популярность), и он не пишется в
-                адрес. */}
-            <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
-              <SortSelect options={SORT_OPTIONS(t)} label={t.filters.sort} />
-            </div>
             {table}
             <CatalogPagination
               page={page}

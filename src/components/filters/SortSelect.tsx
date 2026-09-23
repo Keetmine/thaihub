@@ -8,9 +8,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 export default function SortSelect({
   options,
   label,
+  /** По умолчанию прижимается вправо — так он стоит на /search. В
+   *  каталоге он идёт сразу за поиском, а кнопки подбора остаются у
+   *  правого края, поэтому там передаётся пустая строка. */
+  className = "ms-auto",
 }: {
   options: { value: string; label: string }[];
   label: string;
+  className?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -19,7 +24,7 @@ export default function SortSelect({
   const current = searchParams.get("sort") ?? options[0]?.value ?? "";
 
   return (
-    <span className="d-inline-flex align-items-center gap-2 ms-auto">
+    <span className={`d-inline-flex align-items-center gap-2 ${className}`}>
       <label className="small text-secondary" htmlFor={id}>
         {label}
       </label>
