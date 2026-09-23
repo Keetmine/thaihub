@@ -14,6 +14,7 @@ import { buildDigestMessage } from "@/lib/botDigest";
 import { tripHref } from "@/lib/slugHelpers";
 import { dateKey, addDays } from "@/lib/dates";
 import { COUNTDOWN_START_DAYS, countdownToday, daysUntilTrip, tripCountdownCaption } from "@/lib/tripCountdown";
+import { renderTemplate } from "@/lib/notificationTemplates";
 
 const LOOKAHEAD_HOURS = 24;
 
@@ -491,7 +492,16 @@ export async function sendEpisodeNotifications(): Promise<number> {
         user: watcher.user,
         kind: "EPISODE_AIRED",
         subject: dramaTitleForLocale(episode.drama, locale),
-        body: (t) => t.notifications.episodeBody(episode.number, episode.drama.episodes),
+        // Тексты правятся из админки — через реестр шаблонов; язык
+        // получателя известен только внутри notifyUser, поэтому правки
+        // читаются там же (см. lib/notificationTemplates.ts).
+        body: (t, _locale, overrides) =>
+          renderTemplate(
+            episode.drama.episodes ? "body.episode" : "body.episodeNoTotal",
+            { n: episode.number, total: episode.drama.episodes ?? "" },
+            t,
+            overrides,
+          ),
         href: dramaHref(episode.drama),
       });
       sent += 1;
@@ -548,7 +558,16 @@ export async function sendEpisodeNotifications(): Promise<number> {
         user: watcher.user,
         kind: "DRAMA_STARTED",
         subject: dramaTitleForLocale(episode.drama, locale),
-        body: (t) => t.notifications.episodeBody(episode.number, episode.drama.episodes),
+        // Тексты правятся из админки — через реестр шаблонов; язык
+        // получателя известен только внутри notifyUser, поэтому правки
+        // читаются там же (см. lib/notificationTemplates.ts).
+        body: (t, _locale, overrides) =>
+          renderTemplate(
+            episode.drama.episodes ? "body.episode" : "body.episodeNoTotal",
+            { n: episode.number, total: episode.drama.episodes ?? "" },
+            t,
+            overrides,
+          ),
         href: dramaHref(episode.drama),
       });
       sent += 1;
@@ -641,7 +660,10 @@ export async function sendBirthdayNotifications(): Promise<number> {
       // Возраст осмыслен, только если год рождения настоящий: у части
       // карточек в дате стоит условный год, и «исполняется 2026» было
       // бы дичью.
-      body: turns > 0 && turns < 120 ? (t) => t.notifications.birthdayBody(turns) : null,
+      body:
+        turns > 0 && turns < 120
+          ? (t, _locale, overrides) => renderTemplate("body.birthday", { turns }, t, overrides)
+          : null,
       href: performer.slug ? `/artists/${performer.slug}` : null,
     });
     sent += 1;
@@ -727,7 +749,9 @@ export async function sendTripCountdowns(now = new Date()): Promise<number> {
       user: recipient,
       kind: "TRIP_COUNTDOWN",
       subject: trip.title,
-      body: (t) => tripCountdownCaption(daysLeft, t) ?? "",
+      // Подпись дня — с правками админки: их читает notifyUser, он же
+      // знает язык получателя.
+      body: (t, _locale, overrides) => tripCountdownCaption(daysLeft, t, overrides) ?? "",
       href: tripHref(trip),
     });
     sent += 1;
@@ -792,7 +816,8 @@ export async function sendOnlineBookingReminders(): Promise<number> {
       // Ссылка на бронирование — в теле: href уведомления должен быть
       // внутренним (go-маршрут колокольчика во внешний редирект не
       // ходит), а в Telegram адрес в тексте и так кликабелен.
-      body: (t) => t.notifications.onlineBookingBody(timeStr) + (url ? `\n${url}` : ""),
+      body: (t, _locale, overrides) =>
+        renderTemplate("body.onlineBooking", { time: timeStr }, t, overrides) + (url ? `\n${url}` : ""),
       href: eventHref(ticket.event),
     });
     sent += 1;

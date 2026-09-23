@@ -23,6 +23,7 @@ import {
   ChatIcon,
   FlagIcon,
   MegaphoneIcon,
+  BellIcon,
   ChartIcon,
   StarIcon,
   TrophyIcon,
@@ -124,6 +125,9 @@ const NAV_SECTIONS: {
       },
       { href: "/admin/achievements", title: "Достижения", icon: TrophyIcon, matchPrefixes: ["/admin/achievements/"] },
       { href: "/admin/broadcast", title: "Рассылки", icon: MegaphoneIcon },
+      // Тексты уведомлений правятся без деплоя (просьба владельца
+      // 2026-09-23) — рядом с рассылками: это тоже «что мы пишем людям».
+      { href: "/admin/notifications", title: "Тексты уведомлений", icon: BellIcon },
       { href: "/admin/wiki", title: "Вики", icon: BookIcon, matchPrefixes: ["/admin/wiki/"] },
     ],
   },

@@ -1,5 +1,6 @@
 import AppLink from "@/components/AppLink";
 import { notificationTitle } from "@/lib/notificationText";
+import { templateOverridesFor } from "@/lib/notificationTemplateStore";
 import PageHeader from "@/components/PageHeader";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -42,6 +43,9 @@ export default async function NotificationsPage({
   const { locale, t } = await getT();
   const user = await getCurrentUser();
   if (!user) redirect(localeHref("/login", locale));
+  // Фраза собирается при чтении, поэтому правки текстов из админки
+  // (/admin/notifications) видны и на уже записанных строках.
+  const overrides = await templateOverridesFor(locale);
   const { page: rawPage } = await searchParams;
   const page = Math.max(1, Number(rawPage) || 1);
 
@@ -137,7 +141,7 @@ export default async function NotificationsPage({
                         <LetterAvatar name={n.actor.name} photoUrl={n.actor.photoUrl} size={1.6} />
                       )}
                       <span className="notif-row-body">
-                        <span className="notif-row-title">{notificationTitle(n, t)}</span>
+                        <span className="notif-row-title">{notificationTitle(n, t, overrides)}</span>
                         {n.body && <span className="notif-row-text">{n.body}</span>}
                       </span>
                       <span className="notif-row-date notif-row-date-side">{timeFmt.format(n.createdAt)}</span>

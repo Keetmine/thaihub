@@ -3,6 +3,8 @@ import { sendTelegramMessage } from "@/lib/telegram";
 import type { NotificationKind } from "@/generated/prisma/client";
 import { notificationTitle } from "@/lib/notificationText";
 import { getDict, isLocale, localeHref, DEFAULT_LOCALE, type Dict, type Locale } from "@/lib/i18n";
+import { templateOverridesFor } from "@/lib/notificationTemplateStore";
+import type { TemplateOverrides } from "@/lib/notificationTemplates";
 
 // Уведомления пользователю: строка в колокольчике на сайте и, если у
 // человека привязан Telegram, сообщение туда же. До этого приглашения в
@@ -107,7 +109,10 @@ export async function notifyUser(input: {
    *  и их надо перечислить связкой «и» / «and» (см. namesList). */
   actorName?: string | ((t: Dict, locale: Locale) => string) | null;
   subject?: string | null;
-  body?: string | ((t: Dict, locale: Locale) => string) | null;
+  /** Третьим аргументом приезжают правки текстов из админки: их
+   *  читает notifyUser (он же знает язык получателя), а собирает фразу
+   *  вызывающий — через renderTemplate. */
+  body?: string | ((t: Dict, locale: Locale, overrides: TemplateOverrides) => string) | null;
   href?: string | null;
   actorId?: string | null;
   /** Уже прочитанный получатель — для массовых рассылок, где данные всех
@@ -154,8 +159,14 @@ export async function notifyUser(input: {
           : (input.actorName ?? "")
         : null;
     const subject = input.subject ?? null;
-    const title = notificationTitle({ kind: input.kind, actorName, subject, title: "" }, t);
-    const body = typeof input.body === "function" ? input.body(t, locale) : (input.body ?? null);
+    // Тексты правятся из админки — накладкой поверх словаря
+    // (см. lib/notificationTemplates.ts). Заголовок собирается ЗДЕСЬ и
+    // навсегда: в Telegram его потом не переписать, а в колокольчике он
+    // пересобирается при каждом чтении, уже с текущими правками.
+    const overrides = await templateOverridesFor(locale);
+    const title = notificationTitle({ kind: input.kind, actorName, subject, title: "" }, t, overrides);
+    const body =
+      typeof input.body === "function" ? input.body(t, locale, overrides) : (input.body ?? null);
 
     await prisma.notification.create({
       data: {

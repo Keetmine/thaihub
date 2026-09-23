@@ -38,8 +38,17 @@ export function daysUntilTrip(startDate: Date, today: Date): number {
  * Подпись дня — или null, если отсчёт ещё не начался (дальше месяца)
  * или поездка уже идёт. Подписи лежат в словаре по числу оставшихся
  * дней: у каждого дня своя, от «ровно месяц» до «сегодня!».
+ *
+ * `overrides` — правки текстов из админки (`/admin/notifications`),
+ * ключ `countdown.<дней>`. Таблицей, а не через реестр шаблонов: тот
+ * ходит в базу, а этот модуль остаётся чистым — им пользуется и
+ * юнит-тест, и страница поездки.
  */
-export function tripCountdownCaption(daysLeft: number, t: Dict): string | null {
+export function tripCountdownCaption(
+  daysLeft: number,
+  t: Dict,
+  overrides?: Record<string, string>,
+): string | null {
   if (!Number.isInteger(daysLeft) || daysLeft < 0 || daysLeft > COUNTDOWN_START_DAYS) return null;
-  return t.notifications.tripCountdown[daysLeft] ?? null;
+  return overrides?.[`countdown.${daysLeft}`] || t.notifications.tripCountdown[daysLeft] || null;
 }

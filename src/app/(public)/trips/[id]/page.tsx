@@ -46,6 +46,7 @@ import { isPremiumActive } from "@/lib/premium";
 import { listHref, locationHref, slugOrIdWhere, tripHref } from "@/lib/slugHelpers";
 import { buildDayRoute } from "@/lib/dayRoute";
 import { countdownToday, daysUntilTrip, tripCountdownCaption } from "@/lib/tripCountdown";
+import { templateOverridesFor } from "@/lib/notificationTemplateStore";
 import { pageMetadata } from "@/lib/seo";
 import { userHref, userDisplayName } from "@/lib/userProfile";
 import TripBookings from "./TripBookings";
@@ -487,6 +488,9 @@ export default async function TripPage({
     ? tripCountdownCaption(
         daysUntilTrip(myStay?.startDate ?? trip.startDate, countdownToday(new Date())),
         t,
+        // Подписи правятся в админке (/admin/notifications) — страница
+        // обязана показывать ровно то, что уйдёт в уведомлении.
+        await templateOverridesFor(locale),
       )
     : null;
   /** «22 окт – 6 нояб» для чужого окна присутствия; null — вся поездка. */

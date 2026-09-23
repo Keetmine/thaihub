@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/userAuth";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_LOCALE, getDict, isLocale } from "@/lib/i18n";
 import { notificationTitle } from "@/lib/notificationText";
+import { templateOverridesFor } from "@/lib/notificationTemplateStore";
 import { notificationIcon } from "@/lib/notificationIcons";
 
 /** Сколько строк показывает выпадающий блок у колокольчика. */
@@ -38,7 +39,11 @@ export async function GET(request: NextRequest) {
   // заголовок локали от прокси здесь всегда английский. Колокольчик
   // знает язык страницы и передаёт его сам.
   const wanted = request.nextUrl.searchParams.get("locale");
-  const t = getDict(isLocale(wanted) ? wanted : DEFAULT_LOCALE);
+  const locale = isLocale(wanted) ? wanted : DEFAULT_LOCALE;
+  const t = getDict(locale);
+  // Заголовок пересобирается при каждом чтении — значит, правки из
+  // админки (/admin/notifications) видны и на старых уведомлениях.
+  const overrides = await templateOverridesFor(locale);
   const rows = await prisma.notification.findMany({
     where: { userId: user.id },
     include: { actor: { select: { name: true, photoUrl: true } } },
@@ -48,7 +53,7 @@ export async function GET(request: NextRequest) {
   const items: RecentNotification[] = rows.map((n) => ({
     id: n.id,
     icon: notificationIcon(n.kind),
-    title: notificationTitle(n, t),
+    title: notificationTitle(n, t, overrides),
     body: n.body,
     href: n.href,
     read: !!n.readAt,
