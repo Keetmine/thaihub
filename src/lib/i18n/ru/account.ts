@@ -97,7 +97,7 @@ export const account: Dict["account"] = {
     completedLabel: "досмотрено",
     libraryLead: (n: number) => `${pluralized(n, ["сериал", "сериала", "сериалов"])} в библиотеке`,
     episodesHours: (episodes: number, hours: number) =>
-      `${pluralized(episodes, ["серия", "серии", "серий"])} · около ${hours} ч у экрана`,
+      `${pluralized(episodes, ["серия", "серии", "серий"])} · ~${hours} ч`,
     genresLead: "Чаще всего досматривали",
     visitedMap: "Карта посещённого",
     // На чужом профиле — без обращения к владельцу.

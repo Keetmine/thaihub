@@ -119,7 +119,7 @@ export const account = {
     completedLabel: "finished",
     libraryLead: (n: number) => `${n} ${n === 1 ? "series" : "series"} in the library`,
     episodesHours: (episodes: number, hours: number) =>
-      `${episodes} ${episodes === 1 ? "episode" : "episodes"} · about ${hours} h of screen time`,
+      `${episodes} ${episodes === 1 ? "episode" : "episodes"} · ~${hours} h`,
     genresLead: "Genres finished most",
     visitedMap: "Map of where you've been",
     // На чужом профиле «вы» неуместно — своя подпись для зрителя.

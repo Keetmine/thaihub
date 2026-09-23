@@ -9,13 +9,10 @@ export const filters = {
         locations: "Locations",
         novels: "Novels",
     },
-
-    sortTitle: "Order",
   sortPopular: "Most watched first",
   sortScore: "By MyDramaList score",
   sortAired: "Newest first",
   sortTitleAz: "By title",
-  sortHint: "Popularity is how many people track the series.",
   panelTitle: "Filters",
     reset: "Reset",
     apply: "Show",

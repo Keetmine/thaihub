@@ -9,8 +9,10 @@ import PickDramaButton from "@/components/PickDramaButton";
 import { CalendarIcon } from "@/components/icons";
 import PageHeader, { WATERMARK_NAME_LIMIT } from "@/components/PageHeader";
 import type { Prisma } from "@/generated/prisma/client";
+import type { Dict } from "@/lib/i18n/en";
 import { prisma } from "@/lib/prisma";
 import NameSearchBox from "@/components/NameSearchBox";
+import SortSelect from "@/components/filters/SortSelect";
 // Собирает адрес от текущих параметров страницы (назван по месту
 // рождения — админским спискам, но логика общая): сортировка не должна
 // терять ни поиск, ни вкладку статуса.
@@ -40,7 +42,6 @@ import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import CatalogPagination from "@/components/filters/CatalogPagination";
 import {
   dramaFilterDefs,
-  dramaSortDef,
   dramaFilterWhere,
   loadDramaFilterOptions,
   type FilterParams,
@@ -169,6 +170,15 @@ const PANEL_SORTS = {
 } as const;
 type PanelSort = keyof typeof PANEL_SORTS;
 
+/** Варианты селекта сортировки. Первый — умолчание каталога
+ *  (популярность): SortSelect не пишет его в адрес. */
+const SORT_OPTIONS = (t: Dict) => [
+  { value: "", label: t.filters.sortPopular },
+  { value: "mdlScore", label: t.filters.sortScore },
+  { value: "aired", label: t.filters.sortAired },
+  { value: "title", label: t.filters.sortTitleAz },
+];
+
 export default async function DramasPage({
   searchParams,
 }: {
@@ -291,7 +301,7 @@ export default async function DramasPage({
   const filterOptions = paged ? await loadDramaFilterOptions() : null;
   const filterDefs =
     filterOptions && paged
-      ? [dramaSortDef(t), ...dramaFilterDefs(t, filterOptions, await getContentDict())]
+      ? dramaFilterDefs(t, filterOptions, await getContentDict())
       : [];
 
   // Порядок постраничной выдачи задают ЗАГОЛОВКИ КОЛОНОК — но только
@@ -834,6 +844,15 @@ export default async function DramasPage({
                 2026-09-16): на витрине каталога число записей ничего не
                 решает, а строка над таблицей отодвигала её вниз. На
                 /search он остаётся — там это результат запроса. */}
+            {/* Сортировка — тем же селектом, что на /search (правка
+                владельца 2026-09-23). Шапка таблицы умеет только
+                колонки, а популярности и оценки MyDramaList среди них
+                нет; на телефоне шапки и вовсе не видно. Первый вариант —
+                умолчание каталога (популярность), и он не пишется в
+                адрес. */}
+            <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+              <SortSelect options={SORT_OPTIONS(t)} label={t.filters.sort} />
+            </div>
             {table}
             <CatalogPagination
               page={page}
