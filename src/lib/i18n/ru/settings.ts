@@ -16,10 +16,6 @@ export const settings: typeof enSettings = {
   telegramNotifyDigest: "Недельный дайджест «Ваша неделя» (по воскресеньям)",
   telegramNotifyDigestPremium: "Входит в подписку",
 
-  coverSection: "Обложка профиля",
-  coverHint: "Широкая картинка над левой колонкой профиля. Её видят все.",
-  coverPremiumHint: "Обложка профиля — часть подписки.",
-  coverBadUrl: "Обложку сохранить не вышло — загрузите картинку заново",
 
   saving: "Сохраняем…",
   saved: "Сохранено",

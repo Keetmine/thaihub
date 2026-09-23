@@ -23,10 +23,6 @@ export const settings = {
 
   // Обложка профиля — косметика подписчика (там же). Показывается ВСЕМ,
   // включая гостей; ставить может только подписчик.
-  coverSection: "Profile cover",
-  coverHint: "A wide picture above the left column of your profile. Everyone sees it.",
-  coverPremiumHint: "Profile covers are part of the subscription.",
-  coverBadUrl: "That cover could not be saved — upload the picture again",
 
   // Подтверждение сохранения: server action ничего не возвращает,
   // поэтому «Сохранено» показывает клиентская обёртка формы.

@@ -1375,18 +1375,6 @@ export default async function UserProfilePage({
           своему она не нужна вовсе, а чужому «← Друзья» врала о том,
           откуда пришли, — назад ведут браузер и навигация. */}
       <aside className="profile-side">
-        {/* Обложка — косметика подписчика (аудит 2026-09, раздел 8), но
-            ВИДЯТ её все, включая гостей: пропадать в день окончания
-            подписки профиль не должен, иначе он выглядит сломанным.
-            Ставит её только подписчик — это проверяет updateProfile.
-            Без обложки блока нет вовсе, и колонка выглядит как
-            раньше. */}
-        {user.coverUrl && (
-          <div className="profile-side-cover">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={user.coverUrl} alt="" loading="eager" decoding="async" />
-          </div>
-        )}
         {/* Цветная обводка фото у подписчика (правка владельца п.6);
             тот же визуал у мини-аватарок — .premium-ring. */}
         <div className={`profile-side-photo${ownerPaid ? " profile-side-photo-premium" : ""}`}>

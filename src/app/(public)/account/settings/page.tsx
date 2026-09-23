@@ -27,7 +27,6 @@ import { dateKey } from "@/lib/dates";
 import DatePickerInput from "@/components/DatePickerInput";
 import ConfirmForm from "@/components/ConfirmForm";
 import { isPremiumActive } from "@/lib/premium";
-import { PROFILE_COVER_RATIO_H, PROFILE_COVER_RATIO_W } from "@/lib/userProfile";
 import { getT, localeHref, LOCALES, type Dict } from "@/lib/i18n";
 
 export async function generateMetadata() {
@@ -222,37 +221,6 @@ export default async function SettingsPage({
                     </div>
                   </div>
                 </div>
-
-                {/* Обложка профиля — косметика подписчика (аудит
-                    2026-09, раздел 8). Отдельной строкой под фото, а не
-                    рядом с ним: это широкая полоса, и рамка
-                    кадрирования у неё во всю ширину карточки.
-                    Кадрируем ровно теми пропорциями, какими обложка
-                    показывается на профиле.
-
-                    У бесплатного аккаунта поля НЕТ вовсе — только
-                    честная строка про подписку; на его отсутствие
-                    рассчитывает и экшен: раз поле не пришло, колонку он
-                    не трогает, и обложка, поставленная во время
-                    подписки, остаётся на месте (её видят все, включая
-                    гостей). */}
-                <hr className="my-4" />
-                <h3 className="small text-uppercase text-secondary mb-2" style={{ letterSpacing: "0.08em" }}>
-                  {ts.coverSection}
-                </h3>
-                <p className="small text-secondary mb-3">
-                  {premium ? ts.coverHint : ts.coverPremiumHint}
-                </p>
-                {premium && (
-                  <SettingsUploadField
-                    name="coverUrl"
-                    defaultValue={user.coverUrl ?? ""}
-                    wide
-                    crop
-                    ratioW={PROFILE_COVER_RATIO_W}
-                    ratioH={PROFILE_COVER_RATIO_H}
-                  />
-                )}
 
                 {/* Язык и часовой пояс — той же карточкой, но отбиты
                     линией: это уже не «о себе», а «как показывать». */}
