@@ -130,8 +130,11 @@ export function resolveSeen(
     for (const [bandId, band] of bands) {
       const draft = byPerformer.get(bandId)!;
       bandSeen.set(bandId, decided.get(`${eventId}#${bandId}`) ?? draft.def);
+      // Раньше сюда пускали только участников-актёров. Правка владельца
+      // 2026-09-23: «захожу на участника группы — я его очевидно
+      // видела, а глазик говорит другое». Видели группу — видели всех,
+      // кто в ней выступал, сериалы тут ни при чём.
       for (const { performer: member } of band.bandMembers ?? []) {
-        if (!member.isActor) continue;
         const cur = byPerformer.get(member.id);
         if (cur) cur.bands.push(bandId);
         else byPerformer.set(member.id, { card: member, def: false, bands: [bandId] });
@@ -264,13 +267,7 @@ export async function personalSeenDays(
         select: {
           id: true,
           type: true,
-          bandMembers: {
-            select: {
-              performer: {
-                select: { id: true, _count: { select: { dramas: { where: ACTOR_DRAMA_WHERE } } } },
-              },
-            },
-          },
+          bandMembers: { select: { performer: { select: { id: true } } } },
         },
       },
       day: {
@@ -317,7 +314,6 @@ export async function personalSeenDays(
     day.ids.add(row.performerId);
     const inCast = castByDay.get(row.dayId) ?? new Set<string>();
     for (const { performer: member } of row.performer.bandMembers) {
-      if (member._count.dramas === 0) continue;
       if (inCast.has(member.id)) continue;
       day.ids.add(member.id);
     }

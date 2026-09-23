@@ -158,21 +158,22 @@ const seenIds = (map: ReturnType<typeof resolveSeen>, eventId: string) =>
 
 // ---------- группы ----------
 
-// Группа на концерте: видели группу — видели участников-актёров, а
-// участники без сериалов в список не попадают (решение владельца:
-// «группа из 15 человек, не актёры — не нужны»).
+// Группа на концерте: видели группу — видели ВСЕХ её участников
+// (правка владельца 2026-09-23: «захожу на участника группы — я его
+// очевидно видела, а глазик говорит другое»). Раньше сюда пускали
+// только участников с сериалами, и певец из той же группы оставался
+// «невиденным».
 {
   const lykn = band("lykn", [
     { id: "actor1", isActor: true },
     { id: "singer", isActor: false },
   ]);
   const r = resolveSeen([concert("c1", [lykn])], [], NOW);
-  assert.deepEqual(seenIds(r, "c1"), ["actor1", "lykn"]);
-  assert.equal(r.get("c1")!.has("singer"), false);
+  assert.deepEqual(seenIds(r, "c1"), ["actor1", "lykn", "singer"]);
 }
 
 // На фестивале группа не отмечена — участник тоже; отметили группу —
-// участник-актёр следует за ней.
+// участник следует за ней.
 {
   const lykn = band("lykn", [{ id: "actor1", isActor: true }]);
   const none = resolveSeen([festivalDay("f1", [lykn])], [], NOW);

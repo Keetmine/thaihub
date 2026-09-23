@@ -467,6 +467,19 @@ export async function computeUserStats(
     if (cur) cur.count += extra;
   }
 
+  // Счётчик «артистов вживую» считает ЛЮДЕЙ (правка владельца
+  // 2026-09-23: «группа из 5 человек, 1 из них актёр — выводится и
+  // группа, и актёр, получается 2 человека вместо 1 или 5, математика
+  // странная»). Группа — не человек: раз её участники уже посчитаны
+  // раскрытием, сама она из счётчика и списка уходит. Группа, которой в
+  // каталоге не завели участников, остаётся за себя — иначе концерт
+  // такой группы не считался бы вовсе.
+  const seenBandsWithMembers = await prisma.performer.findMany({
+    where: { id: { in: [...performerCounts.keys()] }, type: "BAND", bandMembers: { some: {} } },
+    select: { id: true },
+  });
+  for (const band of seenBandsWithMembers) performerCounts.delete(band.id);
+
   const seenPerformerIds = new Set(performerCounts.keys());
   const countedPerformers = Array.from(performerCounts.values());
   // Топ-5 «кого видели чаще» — по числу событий.
