@@ -91,16 +91,6 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
       hint: `${stats.trips} ${s.tripsFigure(stats.trips)}`,
       expandKey: stats.tripsList.length > 0 ? "trips" : undefined,
     },
-    {
-      key: "series",
-      icon: "📺",
-      value: stats.completedDramas,
-      label: o.heroDramas(stats.completedDramas),
-      hint:
-        stats.episodesWatched > 0
-          ? o.heroDramasEpisodes(stats.episodesWatched, stats.hoursWatched)
-          : o.heroDramasHint,
-    },
   ];
 
   // Пересмотры — той же плиткой и только когда они есть: у большинства

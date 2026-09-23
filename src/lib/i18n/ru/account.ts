@@ -94,6 +94,7 @@ export const account: Dict["account"] = {
     tripsTitle: "Поездки",
     tripsFigure: (n: number) => plural(n, ["поездка", "поездки", "поездок"]),
     tripDays: (n: number) => pluralized(n, ["день", "дня", "дней"]),
+    completedLabel: "досмотрено",
     libraryLead: (n: number) => `${pluralized(n, ["сериал", "сериала", "сериалов"])} в библиотеке`,
     episodesHours: (episodes: number, hours: number) =>
       `${pluralized(episodes, ["серия", "серии", "серий"])} · около ${hours} ч у экрана`,

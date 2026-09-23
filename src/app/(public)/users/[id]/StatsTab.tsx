@@ -219,6 +219,22 @@ export default function StatsTab({
               <span className="stats-card-meta">{s.libraryLead(libraryTotal)}</span>
             </div>
 
+            {/* «Досмотрено» переехало сюда из плиток над статистикой
+                (правка владельца 2026-09-23: «блок „сериала досмотрено“
+                давай перенесём в раздел с сериалами»). В ряду плиток оно
+                стояло среди счётчиков «вживую», хотя рассказывает про
+                библиотеку — а здесь у него рядом и полоса статусов, и
+                жанры. */}
+            <p className="stats-figure">
+              <b>{stats.completedDramas}</b> {s.completedLabel}
+              {stats.episodesWatched > 0 && (
+                <span className="text-secondary">
+                  {" · "}
+                  {s.episodesHours(stats.episodesWatched, stats.hoursWatched)}
+                </span>
+              )}
+            </p>
+
             {/* Полоса библиотеки: пять сегментов по статусам, ширина —
                 доля от всех отметок. Нулевые статусы не рисуются ни на
                 полосе, ни в легенде. */}

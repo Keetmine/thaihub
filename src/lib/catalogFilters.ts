@@ -94,6 +94,9 @@ function dateOrNull(v: string | string[] | undefined): Date | null {
 export function countActiveFilters(defs: FilterDef[], params: FilterParams): number {
   let n = 0;
   for (const def of defs) {
+    // Порядок выдачи — не фильтр: он ничего не отсеивает, и считать его
+    // в «3 фильтра» над кнопкой значило бы врать.
+    if (def.key === "sort") continue;
     if (def.kind === "yearRange" || def.kind === "dateRange") {
       if (one(params[`${def.key}From`]) || one(params[`${def.key}To`])) n += 1;
     } else if (one(params[def.key])) {
@@ -164,6 +167,34 @@ export const loadDramaFilterOptions = unstable_cache(
 );
 
 export type DramaFilterOptions = Awaited<ReturnType<typeof loadDramaFilterOptions>>;
+
+/**
+ * Порядок выдачи каталога — отдельным «фильтром» в той же панели
+ * (правка владельца 2026-09-23: «в фильтры добавим возможность
+ * фильтровать по популярности, по оценке мдл, дате выхода и тп»).
+ *
+ * Стоит НЕ внутри dramaFilterDefs, а отдельной функцией: те же
+ * описания питают /search, а там порядок выдачи свой — релевантность
+ * запроса, и подменять её нечем.
+ *
+ * Пустое значение — умолчание каталога (популярность), поэтому в
+ * счётчик активных фильтров такой выбор не попадает.
+ */
+export function dramaSortDef(t: Dict): FilterDef {
+  return {
+    key: "sort",
+    title: t.filters.sortTitle,
+    kind: "select",
+    options: [
+      { value: "", label: t.filters.sortPopular },
+      { value: "mdlScore", label: t.filters.sortScore },
+      { value: "aired", label: t.filters.sortAired },
+      { value: "title", label: t.filters.sortTitleAz },
+    ],
+    hint: t.filters.sortHint,
+    alwaysShow: true,
+  };
+}
 
 export function dramaFilterDefs(
   t: Dict,

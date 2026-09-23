@@ -10,6 +10,12 @@ export const filters: Dict["filters"] = {
         novels: "Новеллы",
     },
 
+    sortTitle: "Порядок",
+    sortPopular: "Сначала популярные",
+    sortScore: "По оценке MyDramaList",
+    sortAired: "Сначала новые",
+    sortTitleAz: "По названию",
+    sortHint: "Популярность — сколько людей отметили сериал у себя.",
     panelTitle: "Фильтры",
     reset: "Сбросить",
     apply: "Показать",

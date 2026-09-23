@@ -40,6 +40,7 @@ import FilterDisclosure from "@/components/filters/FilterDisclosure";
 import CatalogPagination from "@/components/filters/CatalogPagination";
 import {
   dramaFilterDefs,
+  dramaSortDef,
   dramaFilterWhere,
   loadDramaFilterOptions,
   type FilterParams,
@@ -147,6 +148,27 @@ const getDramasByLetter = unstable_cache(
 const SORT_KEYS = ["title", "status", "type", "year", "country", "rating", "episodes"] as const;
 type SortKey = (typeof SORT_KEYS)[number];
 
+/** Порядок выдачи из ПАНЕЛИ фильтров (правка владельца 2026-09-23):
+ *  оценка MyDramaList и дата выхода. Это не колонки таблицы — своего
+ *  заголовка у них нет, и умолчание у обоих «по убыванию»: и оценку, и
+ *  дату смотрят сверху вниз. Популярность отдельным ключом не нужна —
+ *  это умолчание каталога, пустое значение. «По названию» пользуется
+ *  колоночным ключом `title`. */
+const PANEL_SORTS = {
+  mdlScore: (dir: "asc" | "desc"): Prisma.DramaOrderByWithRelationInput[] => [
+    { mdlScore: { sort: dir, nulls: "last" } },
+    { title: "asc" },
+  ],
+  // Дата выхода точнее года, но заполнена не у всех — год вторым
+  // ключом, иначе половина каталога лежала бы в хвосте вперемешку.
+  aired: (dir: "asc" | "desc"): Prisma.DramaOrderByWithRelationInput[] => [
+    { airedFrom: { sort: dir, nulls: "last" } },
+    { year: { sort: dir, nulls: "last" } },
+    { title: "asc" },
+  ],
+} as const;
+type PanelSort = keyof typeof PANEL_SORTS;
+
 export default async function DramasPage({
   searchParams,
 }: {
@@ -174,7 +196,11 @@ export default async function DramasPage({
   } = sp;
   const q = (rawQ ?? "").trim();
   const sortKey = SORT_KEYS.includes(rawSort as SortKey) ? (rawSort as SortKey) : null;
-  const sortDir: "asc" | "desc" = rawDir === "desc" ? "desc" : "asc";
+  const panelSort = rawSort && rawSort in PANEL_SORTS ? (rawSort as PanelSort) : null;
+  // Колонки по умолчанию идут по возрастанию, порядок из панели — по
+  // убыванию: «по оценке» значит «сначала высокие».
+  const sortDir: "asc" | "desc" =
+    rawDir === "desc" ? "desc" : rawDir === "asc" ? "asc" : panelSort ? "desc" : "asc";
 
   // С-5: серверная страница буквы — полный список сериалов на букву
   // обычными ссылками, для краулера (буквы рейки ведут сюда по href;
@@ -265,7 +291,7 @@ export default async function DramasPage({
   const filterOptions = paged ? await loadDramaFilterOptions() : null;
   const filterDefs =
     filterOptions && paged
-      ? dramaFilterDefs(t, filterOptions, await getContentDict())
+      ? [dramaSortDef(t), ...dramaFilterDefs(t, filterOptions, await getContentDict())]
       : [];
 
   // Порядок постраничной выдачи задают ЗАГОЛОВКИ КОЛОНОК — но только
@@ -275,8 +301,20 @@ export default async function DramasPage({
   // список целиком в памяти (см. sortedDramas ниже).
   const DB_SORTABLE: SortKey[] = ["title", "type", "year", "country"];
   const dbSortKey = paged && sortKey && DB_SORTABLE.includes(sortKey) ? sortKey : null;
-  const pagedOrderBy: Prisma.DramaOrderByWithRelationInput[] = dbSortKey
-    ? [{ [dbSortKey]: { sort: sortDir, nulls: "last" } }, { title: "asc" }]
+  // `nulls: "last"` можно просить только у КОЛОНКИ, которая бывает
+  // пустой: у Drama.title он не nullable, и Prisma 7 отвечает на такой
+  // orderBy ошибкой — страница ?sort=title падала целиком (сортировка
+  // по названию из панели наступила бы на это сразу же).
+  const nullableSort = dbSortKey !== "title";
+  const pagedOrderBy: Prisma.DramaOrderByWithRelationInput[] = panelSort
+    ? PANEL_SORTS[panelSort](sortDir)
+    : dbSortKey
+    ? [
+        nullableSort
+          ? { [dbSortKey]: { sort: sortDir, nulls: "last" } }
+          : { [dbSortKey]: sortDir },
+        { title: "asc" },
+      ]
     : // Умолчание — ПО ПОПУЛЯРНОСТИ (правка владельца 2026-09-16):
       // число отметок просмотра. Раньше сверху лежало самое свежее, и
       // первая страница каталога набивалась тайтлами, о которых ещё
@@ -341,6 +379,21 @@ export default async function DramasPage({
     dramas.map((d) => d.id),
     currentUser?.id,
   );
+
+  // Сколько сериалов в каждой вкладке «Моего списка» (правка владельца
+  // 2026-09-23: «в табах в скобках выводить количество сериалов»).
+  // Считаем ОДНИМ запросом по всем статусам сразу, а не выборкой на
+  // вкладку: цифра нужна у каждой, включая закрытые.
+  const mineCounts = new Map<string, number>();
+  if (mine && currentUser) {
+    const grouped = await prisma.dramaWatchStatus.groupBy({
+      by: ["status"],
+      where: { userId: currentUser.id },
+      _count: { _all: true },
+    });
+    for (const row of grouped) mineCounts.set(row.status, row._count._all);
+  }
+  const mineTotal = [...mineCounts.values()].reduce((sum, n) => sum + n, 0);
 
   // Оценок у названия в списке нет вовсе (правка владельца
   // 2026-09-09). Сначала убрали чужую цифру с MyDramaList, потом и нашу:
@@ -677,7 +730,11 @@ export default async function DramasPage({
               prefetch={false}
               className={`tab-bar-item ${status === s ? "active" : ""}`}
             >
+              {/* Число в скобках — как у вкладок поездки. Нулевую вкладку
+                  не прячем: она объясняет, что статус вообще есть, а
+                  пустые скобки только шумели бы. */}
               {t.catalog.watchStatus[s]}
+              {mineCounts.get(s) ? ` (${mineCounts.get(s)})` : ""}
             </AppLink>
           ))}
           {mine && (
@@ -687,6 +744,7 @@ export default async function DramasPage({
               className={`tab-bar-item ${!status ? "active" : ""}`}
             >
               {t.catalog.all}
+              {mineTotal ? ` (${mineTotal})` : ""}
             </AppLink>
           )}
         </ScrollableTabs>

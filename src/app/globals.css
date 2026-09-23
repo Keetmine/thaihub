@@ -9585,6 +9585,21 @@ a.profile-friend-more:hover {
   white-space: nowrap;
 }
 
+/* «104 досмотрено · 1137 серий» в карточке сериалов: число крупно, как
+   на прежней плитке, остальное тихой добавкой. */
+.stats-figure {
+  margin-bottom: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--bs-body-color);
+}
+
+.stats-figure b {
+  font-family: var(--font-display), var(--font-geist-sans), sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-right: 0.35rem;
+}
+
 /* Рейтинг артистов: строка = аватар, имя, число и полоска длиной
    пропорционально лидеру. Полоска идёт под именем, а не отдельной
    колонкой: колонка на 390px съедала бы имя. */
