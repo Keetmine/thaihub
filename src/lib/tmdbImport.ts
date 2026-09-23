@@ -163,6 +163,27 @@ export async function importShow(
     ? await prisma.drama.update({ where: { id: existing.id }, data: dramaData })
     : await prisma.drama.create({ data: dramaData });
 
+  const { castCreated, castPerformerIds } = await linkTmdbCast(drama.id, credits);
+  return { dramaId: drama.id, created: !existing, castCreated, castPerformerIds };
+}
+
+/**
+ * Привязка каста TMDB к сериалу. Вынесена из `importShow` отдельной
+ * функцией, потому что у той походы в сеть зашиты внутрь, а правило про
+ * роли ниже стоит проверять тестом.
+ *
+ * Роль (имя персонажа) ДОПИСЫВАЕМ, но НЕ перезаписываем. Раньше здесь
+ * стоял upsert с безусловным `role`, и импорт одного актёра с TMDB
+ * затирал персонажей всему касту каждого выбранного сериала: у TMDB
+ * поле character у тайских тайтлов сплошь пустое, а у нас там обычно
+ * имя с MyDramaList. Со стороны это выглядело так, что роли на странице
+ * сериала «сами исчезли» после импорта актёра (жалоба владельца
+ * 2026-09-23).
+ */
+export async function linkTmdbCast(
+  dramaId: string,
+  credits: { personId: number; name: string; photoUrl: string | null; character: string | null }[],
+): Promise<{ castCreated: number; castPerformerIds: string[] }> {
   let castCreated = 0;
   const castPerformerIds: string[] = [];
   for (const member of credits) {
@@ -170,14 +191,22 @@ export async function importShow(
     if (created) castCreated += 1;
     castPerformerIds.push(performerId);
 
-    await prisma.performerDrama.upsert({
-      where: { performerId_dramaId: { performerId, dramaId: drama.id } },
-      update: { role: member.character || null },
-      create: { performerId, dramaId: drama.id, role: member.character || null },
+    const existingLink = await prisma.performerDrama.findUnique({
+      where: { performerId_dramaId: { performerId, dramaId } },
+      select: { role: true },
     });
+    if (!existingLink) {
+      await prisma.performerDrama.create({
+        data: { performerId, dramaId, role: member.character || null },
+      });
+    } else if (!existingLink.role && member.character) {
+      await prisma.performerDrama.update({
+        where: { performerId_dramaId: { performerId, dramaId } },
+        data: { role: member.character },
+      });
+    }
   }
-
-  return { dramaId: drama.id, created: !existing, castCreated, castPerformerIds };
+  return { castCreated, castPerformerIds };
 }
 
 export type TmdbImportResult = {

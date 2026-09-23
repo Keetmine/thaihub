@@ -422,6 +422,22 @@ export async function updatePerformer(id: string, formData: FormData) {
   // она тут источник правды, а не форма.
   const effectiveType = saveGeneral ? type : (before?.type ?? type);
 
+  // Роли (имена персонажей) переживают сохранение вкладки «Сериалы».
+  // Связи тут удаляются и создаются заново, а в форме поля роли нет —
+  // и каждое сохранение стирало персонажей, проставленных импортом с
+  // MyDramaList (жалоба владельца 2026-09-23: «захожу на сериал, а кого
+  // играл — исчезло»). Роли правятся на странице сериала, где поле есть.
+  const keptRoles = new Map<string, string | null>(
+    saveDramas
+      ? (
+          await prisma.performerDrama.findMany({
+            where: { performerId: id },
+            select: { dramaId: true, role: true },
+          })
+        ).map((r) => [r.dramaId, r.role])
+      : [],
+  );
+
   await prisma.$transaction([
     // Удаляем ровно то, что тут же создадим заново: чужие вкладки не
     // трогаем.
@@ -474,7 +490,10 @@ export async function updatePerformer(id: string, formData: FormData) {
         ...(saveDramas
           ? {
               dramas: {
-                create: (effectiveType === "SOLO" ? dramaIds : []).map((dramaId) => ({ dramaId })),
+                create: (effectiveType === "SOLO" ? dramaIds : []).map((dramaId) => ({
+                  dramaId,
+                  role: keptRoles.get(dramaId) ?? null,
+                })),
               },
             }
           : {}),

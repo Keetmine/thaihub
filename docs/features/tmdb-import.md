@@ -167,9 +167,17 @@ review screen's text field, editable/clearable before confirming — not
 read-only). For each **selected** show (already-imported ones are
 unchecked by default, but still shown with a "уже в базе" badge so a
 deliberate re-sync is one click): `Drama.title/synopsis/posterUrl/year/
-status/tmdbId`, then every cast member's `PerformerDrama.role` (=
-character name) via `upsert`, so re-running an import is idempotent —
-matching character names just get overwritten, not duplicated.
+status/tmdbId`, then every cast member's `PerformerDrama` link
+(`linkTmdbCast`), so re-running an import is idempotent.
+
+**A character name that is already set is never overwritten** — TMDB
+only fills a blank one. It used to `upsert` the role unconditionally,
+which meant importing a single actor wiped the character names of the
+whole cast of every selected show: TMDB's `character` field is mostly
+empty for Thai titles, while ours usually comes from MyDramaList. From
+the outside it looked like roles vanished from the drama page by
+themselves (owner's report, 2026-09-23). Covered by
+`tests/unit/castRoleKeep.test.ts`.
 
 Cast import itself isn't reviewable row-by-row (unlike the show
 selection) — it runs automatically per selected show, same as the GMMTV
