@@ -276,7 +276,7 @@ function launchMdlDramaImport(url: string, autoUpdate: boolean): void {
         });
         // Каст целиком и с дозаполнением карточек: ссылку вставили
         // руками ради одного сериала, лишними эти страницы не будут.
-        const cast = await linkMdlCast(id, mdl.cast, { runId, scope: "all", enrich: true });
+        const cast = await linkMdlCast(id, mdl.cast, { runId, scope: "all", enrich: "full" });
         return {
           title,
           id,

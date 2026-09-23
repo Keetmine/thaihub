@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { checkImportCancelled, isImportCancelledError } from "@/lib/importRun";
 import { logAudit } from "@/lib/audit";
 import { importMdlPerformer } from "@/lib/mdlPerformerImport";
-import { absMdlUrl, type MdlCastMember } from "@/lib/mydramalist";
+import { sharedDramaResolver, syncPerformerById } from "@/lib/mdlPerformerSync";
+import { absMdlUrl, fetchMdlHtmlPlain, type MdlCastMember } from "@/lib/mydramalist";
 
 // Привязка каста со страницы сериала к карточкам исполнителей.
 //
@@ -42,9 +43,31 @@ export type MdlCastLinkOptions = {
    *   базе.
    */
   scope: "all" | "main-and-known-support";
-  /** Дозаполнять карточки актёров их страницами на MDL. Это отдельная
-   *  страница на каждого — в массовом прогоне выключено. */
-  enrich: boolean;
+  /**
+   * Дозаполнять ли карточки актёров их страницами на MDL — это отдельная
+   * страница на каждого, поэтому режима три:
+   *
+   * - `full` — полный импорт актёра (`importMdlPerformer`): карточка И
+   *   фильмография с заведением недостающих сериалов. Дорого: каждый
+   *   незнакомый тайтл из фильмографии — ещё одна страница. Для
+   *   одиночного импорта, куда ссылку вставили руками.
+   * - `card` — только карточка (`mdlPerformerSync`): одна страница,
+   *   ничего не заводится, проставляются роли у сериалов, которые у нас
+   *   уже есть. Для массовых прогонов — ими и заводятся заготовки.
+   * - `none` — не ходить вовсе.
+   *
+   * Массовые прогоны раньше стояли на `none`, и заготовки «имя + ссылка
+   * на MDL» копились: 1673 штуки за август-сентябрь 2026 (вопрос
+   * владельца: «откуда у нас записи со ссылкой, но без инфы?»). Теперь
+   * они на `card` — одна страница на КАЖДОГО ЗАВЕДЁННОГО актёра, не на
+   * каждого из состава.
+   */
+  enrich: "full" | "card" | "none";
+  /** Загрузчик страниц прогона (`MdlRunFetcher.fetchHtml`) — чтобы
+   *  дозаполнение шло тем же браузером и теми же cookies, что и сам
+   *  импорт. Без него страница актёра тянулась бы отдельным запросом и
+   *  ловила Cloudflare заново. */
+  fetchHtml?: (url: string) => Promise<string>;
 };
 
 /** Страховка от очень длинных кастов: каждая карточка — это отдельная
@@ -158,10 +181,13 @@ export async function linkMdlCast(
       });
     }
 
-    // Дозаполняем карточку со страницы актёра — и заведённую только что,
-    // и давнюю, если в ней чего-то не хватает. Полную и недавно
-    // синхронизированную не трогаем: импорт всё равно пишет только в
-    // пустые поля, а страница грузится долго.
+    // Дозаполняем карточку со страницы актёра. В полном режиме — и
+    // заведённую только что, и давнюю, если в ней чего-то не хватает
+    // (полную и свежую не трогаем: импорт всё равно пишет только в
+    // пустые поля, а страница грузится долго). В лёгком — ТОЛЬКО
+    // заведённых сейчас: чинить чужие старые пробелы на массовом
+    // прогоне значило бы по странице на каждого неполного актёра из
+    // каждого состава, а этим занята ночная задача «биографии актёров».
     const incomplete =
       !performer.photoUrl ||
       !performer.bio ||
@@ -169,13 +195,26 @@ export async function linkMdlCast(
       !performer.birthDate ||
       performer._count.links === 0;
     const stale = !performer.mdlSyncedAt || performer.mdlSyncedAt < staleBefore;
-    if (opts.enrich && (isNew || (incomplete && stale)) && enriched + enrichFailed < ENRICH_LIMIT) {
+    const wanted =
+      opts.enrich === "full"
+        ? isNew || (incomplete && stale)
+        : opts.enrich === "card" && isNew;
+    if (wanted && enriched + enrichFailed < ENRICH_LIMIT) {
       try {
-        await importMdlPerformer(mdlUrl, performer.id, opts.runId);
-        await prisma.performer.update({
-          where: { id: performer.id },
-          data: { mdlSyncedAt: new Date() },
-        });
+        if (opts.enrich === "full") {
+          await importMdlPerformer(mdlUrl, performer.id, opts.runId);
+          await prisma.performer.update({
+            where: { id: performer.id },
+            data: { mdlSyncedAt: new Date() },
+          });
+        } else {
+          // Лёгкий досбор сам ставит mdlSyncedAt — и найденному, и
+          // ненайденному (см. mdlPerformerSync.ts).
+          await syncPerformerById(performer.id, {
+            fetchHtml: opts.fetchHtml ?? ((url) => fetchMdlHtmlPlain(url)),
+            resolveDrama: await sharedDramaResolver(),
+          });
+        }
         enriched += 1;
       } catch (e) {
         // Отмену пробрасываем, всё остальное — не повод ронять импорт

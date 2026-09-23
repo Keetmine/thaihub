@@ -334,7 +334,8 @@ async function importMissingFromMdl(
     ? await linkMdlCast(result.id, result.mdl.cast, {
         runId: opts.runId,
         scope: "main-and-known-support",
-        enrich: false,
+        enrich: "card",
+        fetchHtml: fetcher.fetchHtml,
       })
     : null;
   const fresh = await prisma.drama.findUnique({ where: { id: result.id }, select: DRAMA_SELECT });

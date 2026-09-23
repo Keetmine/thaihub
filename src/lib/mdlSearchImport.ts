@@ -229,7 +229,9 @@ export async function importMdlSearch(
         const cast = await linkMdlCast(res.id, res.mdl.cast, {
           runId: opts.runId,
           scope: "main-and-known-support",
-          enrich: false,
+          // Заведённым сейчас актёрам — сразу карточку с их страницы.
+          enrich: "card",
+          fetchHtml: fetcher.fetchHtml,
         });
         castLinked += cast.linked;
         performersCreated += cast.createdPerformers;
@@ -441,7 +443,8 @@ export async function runMdlWatchSearches(opts: {
           const cast = await linkMdlCast(res.id, res.mdl.cast, {
             runId: opts.runId,
             scope: "main-and-known-support",
-            enrich: false,
+            enrich: "card",
+            fetchHtml: fetcher.fetchHtml,
           });
           result.castLinked += cast.linked;
           result.performersCreated += cast.createdPerformers;

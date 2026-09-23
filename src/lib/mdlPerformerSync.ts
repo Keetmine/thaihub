@@ -114,6 +114,23 @@ export async function buildDramaResolver(): Promise<DramaResolver> {
   };
 }
 
+/** Указатель живёт десять минут: его строят и массовый обход биографий,
+ *  и привязка каста (там он нужен на каждого заведённого актёра, а
+ *  тянуть ради этого весь каталог по разу на человека — безумие).
+ *  Протухание не страшно: пропущенная связь с сериалом, заведённым
+ *  минуту назад, всё равно проставится импортом каста этого сериала. */
+const RESOLVER_TTL_MS = 10 * 60 * 1000;
+let resolverCache: { at: number; resolver: DramaResolver } | null = null;
+
+export async function sharedDramaResolver(): Promise<DramaResolver> {
+  if (resolverCache && Date.now() - resolverCache.at < RESOLVER_TTL_MS) {
+    return resolverCache.resolver;
+  }
+  const resolver = await buildDramaResolver();
+  resolverCache = { at: Date.now(), resolver };
+  return resolver;
+}
+
 type PerformerForSync = {
   id: string;
   name: string;
@@ -304,6 +321,30 @@ export async function syncPerformerFromMdl(
   }
 
   return { matched: true, url, filled, linksAdded, rolesSet };
+}
+
+/**
+ * Тот же досбор, но по id — карточку читаем сами.
+ *
+ * Нужен привязке каста (`mdlCastLink.ts`): она только что завела
+ * карточку-заготовку по ссылке из состава сериала и тут же дозаполняет
+ * её одной страницей. Раньше заготовки оставались с одним именем и
+ * копились тысячами — 1673 таких набралось за август-сентябрь 2026.
+ */
+export async function syncPerformerById(
+  performerId: string,
+  opts: {
+    fetchHtml: (url: string) => Promise<string>;
+    resolveDrama: DramaResolver;
+    delayMs?: number;
+  },
+): Promise<PerformerSyncOutcome | null> {
+  const performer = await prisma.performer.findUnique({
+    where: { id: performerId },
+    select: PERFORMER_SELECT,
+  });
+  if (!performer) return null;
+  return syncPerformerFromMdl(performer, opts);
 }
 
 export type PerformerBioRunResult = {
