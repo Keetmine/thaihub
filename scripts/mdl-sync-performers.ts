@@ -26,6 +26,9 @@ import { detectSocialPlatform, SOCIAL_PLATFORM_LABELS } from "../src/lib/socialL
  * Раздел /people/ за Cloudflare-челленджем — работает через MdlClient
  * (headed chromium). Резюмится по mdlSyncedAt. Запуск:
  *   npx tsx scripts/mdl-sync-performers.ts [--limit N] [--force]
+ *   npx tsx scripts/mdl-sync-performers.ts --with-mdl-url --limit 50
+ *     — по артистам БЕЗ биографии, у которых есть ссылка на MDL
+ *       (добор фактуры под уникализацию текстов, 2026-09-23).
  */
 
 const DELAY_MS = 400;
@@ -51,6 +54,8 @@ async function main() {
   // mdlSyncedAt — синкает всегда).
   const performerArg = process.argv.indexOf("--performer");
   const onlyPerformer = performerArg >= 0 ? process.argv[performerArg + 1] : null;
+  /** Кому не хватает биографии, но есть ссылка на MDL, — см. ниже. */
+  const withMdlUrl = process.argv.includes("--with-mdl-url");
 
   const performers = await prisma.performer.findMany({
     where: onlyPerformer
@@ -60,11 +65,22 @@ async function main() {
             { name: { equals: onlyPerformer, mode: "insensitive" } },
           ],
         }
-      : {
-          type: "SOLO",
-          agencies: { some: {} },
-          ...(force ? {} : { mdlSyncedAt: null }),
-        },
+      : withMdlUrl
+        ? {
+            // Прогон под уникализацию текстов (2026-09-23): у 1675
+            // артистов без биографии есть ссылка на MyDramaList —
+            // настоящую биографию можно добрать оттуда, а не сочинять.
+            // Агентство тут не при чём, поэтому отбор свой.
+            type: "SOLO",
+            bio: null,
+            mydramalistUrl: { not: null },
+            ...(force ? {} : { mdlSyncedAt: null }),
+          }
+        : {
+            type: "SOLO",
+            agencies: { some: {} },
+            ...(force ? {} : { mdlSyncedAt: null }),
+          },
     orderBy: { name: "asc" },
     include: {
       links: true,

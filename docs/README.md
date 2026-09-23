@@ -34,6 +34,7 @@ something changes, edit the doc in place rather than appending a note.
   - [blscene-import.md](features/blscene-import.md) — the blscene.com drama/location scraper
   - [tmdb-import.md](features/tmdb-import.md) — TMDB actor/drama importer (official API, not scraping)
   - [mydramalist-import.md](features/mydramalist-import.md) — точечный импорт сериала и актёра со страницы MyDramaList
+  - [text-rewrite.md](features/text-rewrite.md) — уникализация текстов каталога: выгрузка фактов пачками, тексты подагентами, импорт с сохранением оригинала и откатом
   - [tmdb-company-import.md](features/tmdb-company-import.md) — TMDB production-company importer (official API, not scraping)
   - [drama-fandom-agency-import.md](features/drama-fandom-agency-import.md) — talent-agency importer from drama.fandom.com (official MediaWiki API, not scraping)
   - [memindy-import.md](features/memindy-import.md) — Me Mind Y artist roster importer
