@@ -32,6 +32,31 @@ dorama.land дословно. Поисковики читают их как чу
 4. **`scripts/text-import.ts`** — кладёт результат в базу.
    Без `--apply` это сухой прогон. `--force` — перегенерация уже
    переписанного, `--rollback drama|performer` — откат всей партии.
+5. **`scripts/text-dump.ts`** — выгружает готовые тексты файлом ДЛЯ
+   ПЕРЕНОСА НА ПРОД, в том же формате, что понимает импорт.
+
+`scripts/text-progress.ts` в любой момент отвечает на вопрос «где мы»:
+сколько текстов переписано и сколько осталось.
+
+## Как тексты попадают на прод
+
+Пишутся они на локальной копии прод-базы (`scripts/pull-prod-db.sh`), а
+на сервер едут **файлом**, не дампом:
+
+```bash
+npx tsx -r dotenv/config scripts/text-dump.ts --field synopsisRu --out tmp/to-prod.json
+scp tmp/to-prod.json "$PROD_HOST:$PROD_PATH/"
+# на сервере:
+docker compose cp to-prod.json app:/tmp/to-prod.json
+docker compose exec app npx tsx scripts/text-import.ts /tmp/to-prod.json --apply
+```
+
+Причина ровно та же, по которой локальные дампы вообще не льют на прод
+(см. [deploy.md](../deploy.md)): прогон идёт часами, и за это время на
+проде появляются новые отметки просмотра, поездки и заявки — заливка
+дампа стёрла бы их. Файл же применяется тем же `text-import.ts`, то
+есть с теми же проверками и с сохранением ПРОД-оригинала в
+`TextRewrite`: откат на проде возможен так же, как локально.
 
 ## Что защищает от плохого текста
 
