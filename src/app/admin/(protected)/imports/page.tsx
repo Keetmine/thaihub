@@ -538,7 +538,11 @@ export default async function AdminImportsPage({
           </div>
           <h2 className="section-heading mb-2">Обходы по расписанию</h2>
           <div className="mb-4">
-            <CrawlerRows jobs={jobs.filter((j) => j.group === "series")} />
+            {/* Вкладка импортов одна на сериалы и актёров, а групп
+                расписания с 2026-09-23 две — берём обе. */}
+            <CrawlerRows
+              jobs={jobs.filter((j) => j.group === "series" || j.group === "performers")}
+            />
           </div>
 
 

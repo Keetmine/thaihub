@@ -12,7 +12,11 @@ import { prisma } from "@/lib/prisma";
  *  «сгруппировать, где кто что — сейчас каша»). Порядок — порядок на
  *  странице. */
 export const JOB_GROUPS = [
-  { key: "series", label: "Сериалы и актёры" },
+  { key: "series", label: "Сериалы" },
+  // Актёры отделены от сериалов (правка владельца 2026-09-23):
+  // обход биографий работает по людям, а не по каталогу тайтлов, и
+  // в одном ряду с «обновлением сериалов» его искали глазами.
+  { key: "performers", label: "Актёры" },
   { key: "music", label: "Музыка" },
   { key: "events", label: "Афиша событий" },
   { key: "mascots", label: "Маскоты" },
@@ -217,7 +221,7 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
   },
   {
     key: "mdl-performer-bios",
-    group: "series",
+    group: "performers",
     title: "MyDramaList: биографии актёров",
     description:
       "Обходит актёров без биографии и дособирает их карточки с MDL: биографию, " +

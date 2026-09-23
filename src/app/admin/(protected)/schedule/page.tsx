@@ -31,12 +31,25 @@ const TAB_LABELS: Record<string, string> = {
   "youtube-music": "YouTube Music",
   "mdl-auto-update": "Обновление MDL",
   "mdl-new-searches": "Новинки MDL",
+  "mdl-performer-bios": "Биографии с MDL",
   "doramaland-sync": "dorama.land",
   "blscene-locations": "Локации blscene",
   "ttm-crawl": "Афиша TTM",
   "gmmtv-mascots": "Маскоты GMMTV",
   "musicfestival-crawl": "Фестивали",
   "cleanup-expired": "Чистка",
+};
+
+// У некоторых задач есть своя страница — очередь или список того, с
+// чем задача работает. Ссылка живёт здесь, рядом с «Запустить сейчас»
+// (правка владельца 2026-09-23: «перенеси кнопку на страницу с
+// расписанием»), а не в разделе каталога: искать её логично там, где
+// задача настраивается.
+const JOB_PAGES: Record<string, { href: string; label: string }> = {
+  "mdl-performer-bios": {
+    href: "/admin/performers/bios",
+    label: "Очередь: кто ждёт биографию",
+  },
 };
 
 // Статусы прогонов журнала (ImportRun) — как в /admin/imports.
@@ -294,7 +307,7 @@ export default async function AdminSchedulePage({
 
         {/* «Запустить сейчас» — вне формы сохранения: раньше жил внутри
             неё, и кнопки визуально сливались в один ряд действий. */}
-        <div className="mb-3">
+        <div className="mb-3 d-flex flex-wrap align-items-center gap-2">
           <ConfirmForm
             action={runJobNow.bind(null, job.key)}
             confirmMessage={`Запустить «${job.title}» сейчас? Прогон может занять несколько минут.`}
@@ -306,6 +319,11 @@ export default async function AdminSchedulePage({
               Запустить сейчас
             </button>
           </ConfirmForm>
+          {JOB_PAGES[job.key] && (
+            <Link href={JOB_PAGES[job.key].href} className="btn btn-outline-secondary btn-sm">
+              {JOB_PAGES[job.key].label}
+            </Link>
+          )}
         </div>
 
         {job.supportsTargets && (
