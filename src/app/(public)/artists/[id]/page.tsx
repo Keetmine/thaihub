@@ -11,8 +11,6 @@ import { catalogEventsWhere } from "@/lib/catalogEvents";
 import { getCurrentUser } from "@/lib/userAuth";
 import SynopsisFold from "@/components/SynopsisFold";
 import FavoriteButton from "@/components/FavoriteButton";
-import AddToListButton from "@/components/AddToListButton";
-import { addPerformerToList } from "@/app/(public)/artist-lists/actions";
 import DramaStatusButton from "@/components/DramaStatusButton";
 import EventAgendaRow from "@/components/EventAgendaRow";
 import EventCardLocked from "@/components/EventCardLocked";
@@ -265,7 +263,6 @@ export default async function PerformerPage({
   const occIds = performerEvents.map((ev) => ev.occurrenceId);
   const [
     seenLive,
-    myListsRaw,
     favorite,
     favoritedEventIds,
     goingEventIds,
@@ -276,18 +273,6 @@ export default async function PerformerPage({
     // отметка у каждого: снять с фестиваля больше не значит снять со
     // всех концертов (правка владельца 2026-09-15, см. lib/seenLive.ts).
     currentUser ? performerSeenEvents(currentUser.id, performer.id) : null,
-    // Списки пользователя для кнопки «+ в список» рядом с сердечком.
-    currentUser
-      ? prisma.performerList.findMany({
-          where: { userId: currentUser.id },
-          select: {
-            id: true,
-            title: true,
-            items: { where: { performerId: performer.id }, select: { performerId: true }, take: 1 },
-          },
-          orderBy: { title: "asc" },
-        })
-      : [],
     currentUser
       ? prisma.favoritePerformer.findUnique({
           where: {
@@ -303,11 +288,6 @@ export default async function PerformerPage({
       currentUser?.id,
     ),
   ]);
-  const myLists = myListsRaw.map((l) => ({
-    id: l.id,
-    title: l.title,
-    hasPerformer: l.items.length > 0,
-  }));
   const isFavorited = !!favorite;
 
   const now = new Date();
@@ -694,14 +674,20 @@ export default async function PerformerPage({
           realName, кнопки справа — без размытого hero. Ряд чипов не
           выводим: агентство и так в фактах («Студия»), а счётчики
           только путают (в них попадают и прошедшие события). */}
-      <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 mt-2 mb-4">
+      {/* Ряд НЕ переносится (правка владельца 2026-09-23: «кнопки видел и
+          лайк справа от имени, если имя длинное, то оно переходит вниз, а
+          должно быть зафиксировано»): имя сжимается и переносится внутри
+          себя, кнопки остаются справа. Размер имени — классом, а не
+          инлайном: инлайн нельзя перебить медиазапросом, а на телефоне
+          2,25rem съедали пол-экрана. */}
+      <div className="d-flex flex-nowrap align-items-start justify-content-between gap-3 mt-2 mb-4">
         <div style={{ minWidth: 0 }}>
-          <h1 className="display-1-tight mb-1" style={{ fontSize: "2.25rem" }}>
+          <h1 className="display-1-tight artist-title mb-1">
             {performer.name}
             {performer.realName && (
               <>
                 {" "}
-                <span className="fs-5 fw-normal text-secondary">
+                <span className="artist-title-real fw-normal text-secondary">
                   ({performer.realName})
                 </span>
               </>
@@ -732,16 +718,6 @@ export default async function PerformerPage({
               toggleOutside={toggleOutsideSeen}
             />
           )}
-          {/* Добавить в свой список прямо отсюда. */}
-          {currentUser && (
-            <AddToListButton
-              lists={myLists}
-              onAdd={async (listId: string) => {
-                "use server";
-                await addPerformerToList(listId, performer.id);
-              }}
-            />
-          )}
         </div>
       </div>
 
@@ -750,8 +726,13 @@ export default async function PerformerPage({
           ширину, а соцссылки живут внутри блока фактов. */}
       {(displayPhoto || hasFacts) && (
       <div className="d-flex flex-column flex-sm-row gap-4 mb-4 align-items-start">
+        {/* На телефоне колонка с фото центруется целиком (правка
+            владельца 2026-09-23: «фото по центру, соцсети по центру»).
+            Именно align-self: у внешнего ряда стоит align-items-start, и
+            он прижимал колонку к левому краю — внутреннего центрирования
+            не хватало, там центровать нечего. С sm и выше — как было. */}
         {displayPhoto && (
-          <div className="flex-shrink-0 d-flex flex-column gap-2">
+          <div className="flex-shrink-0 d-flex flex-column gap-2 align-self-center align-self-sm-start align-items-center align-items-sm-start">
             {/* В день рождения фото в праздничной рамке. Рамку рисует
                 псевдоэлемент обёртки ПОВЕРХ фото: отступ раздвигал бы
                 колонку, а размер портрета меняться не должен. Само фото
@@ -1193,7 +1174,7 @@ export default async function PerformerPage({
       {(!isBand && sortedDramas.length > 0) ||
       performer.albums.length > 0 ||
       performer.songs.length > 0 ? (
-        <div className="mb-4">
+        <div className="mb-4 artist-posters">
           <SubTabs
             ariaLabel={t.catalog.artist.series}
             variant="bar"
