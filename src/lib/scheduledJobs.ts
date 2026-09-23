@@ -163,13 +163,18 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
         episodesAdded: number;
         episodesChanged: number;
         remaining: number;
+        tookAll: boolean;
         abortedAfter: string | null;
       }) =>
         `проверено ${r.checked}, с изменениями ${r.updated}, ошибок ${r.failed}` +
         (r.scheduleChanged
           ? `, расписание уточнилось у ${r.scheduleChanged} (серий +${r.episodesAdded}, дат ${r.episodesChanged})`
           : "") +
-        (r.remaining ? `, осталось обойти ${r.remaining} — продолжим следующей пачкой` : ", круг пройден целиком") +
+        (r.remaining && !r.tookAll
+          ? `, осталось обойти ${r.remaining} — продолжим следующей пачкой`
+          : r.remaining
+            ? `, круг пройден, ${r.remaining} не открылись — попробуем завтра`
+            : ", круг пройден целиком") +
         (r.abortedAfter ? ` · ${r.abortedAfter}` : "");
 
       const result = await logImportRun(
@@ -188,8 +193,14 @@ export const JOB_DEFINITIONS: JobDefinition[] = [
       // гоняла задачу по кругу до утра; MDL закрылся проверкой
       // (abortedAfter) — тоже ждём завтрашнего дня.
       const batchesToday = await countRunsSinceDayStart("mdl-auto-update");
+      // tookAll: пачка была неполной, то есть забрала всё несвежее —
+      // оставшиеся это упавшие, и вторая пачка из них же только упала бы
+      // снова (см. AUTO_UPDATE_FRESH_HOURS в mdlDramaImport.ts).
       const keepGoing =
-        result.remaining > 0 && !result.abortedAfter && batchesToday < MDL_MAX_BATCHES_PER_DAY;
+        result.remaining > 0 &&
+        !result.tookAll &&
+        !result.abortedAfter &&
+        batchesToday < MDL_MAX_BATCHES_PER_DAY;
       return {
         summary:
           summarize(result) +

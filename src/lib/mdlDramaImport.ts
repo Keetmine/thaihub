@@ -574,6 +574,17 @@ export async function upsertDramaFromMdl(
  *  большой список на несколько ночей. */
 const AUTO_UPDATE_LIMIT = 300;
 
+/** Карточка, открытая позже этого срока, — свежая: в круг обхода не
+ *  берётся и в «осталось» не считается. Меньше суток с запасом: круг
+ *  идёт ночью пачками с интервалом в минуты, а назавтра в тот же час
+ *  все карточки снова просрочены. Раньше «осталось» считалось от начала
+ *  ТЕКУЩЕЙ пачки — и после второй пачки всегда равнялось «всего − 300»
+ *  (карточки первой пачки уже «старше начала второй»): планировщик
+ *  верил цифре и гонял до дневного потолка, перепроверяя свежие
+ *  (наблюдение владельца 2026-09-23: «шесть прогонов с одинаковым
+ *  текстом»). */
+const AUTO_UPDATE_FRESH_HOURS = 12;
+
 /** Пауза между страницами: MDL — чужой сайт, ходим по одной. */
 const AUTO_UPDATE_DELAY_MS = 1500;
 
@@ -593,11 +604,14 @@ export type MdlAutoUpdateResult = {
   /** Сколько серий за прогон добавилось и сколько уточнило дату. */
   episodesAdded: number;
   episodesChanged: number;
-  /** Сколько помеченных сериалов ещё НЕ обошли в этом круге: их
-   *  `mdlSyncedAt` старше начала прогона. Не «total − checked»: при
-   *  продолжении пачками следующая пачка берёт тех же самых, и
-   *  разность от общего числа никогда бы не дошла до нуля. */
+  /** Сколько помеченных сериалов ещё НЕ обошли в этом круге: не
+   *  открывали дольше AUTO_UPDATE_FRESH_HOURS. Считается ПОСЛЕ пачки, и
+   *  только что обойдённые сюда уже не попадают; упавшие — остаются. */
   remaining: number;
+  /** Пачка забрала всё, что было к обходу (их оказалось меньше
+   *  потолка): продолжать некуда, даже если remaining > 0 — это упавшие,
+   *  их ждём завтра, а не гоняем по кругу. */
+  tookAll: boolean;
   /** Прервались раньше времени: MDL перестал отдавать страницы. */
   abortedAfter: string | null;
 };
@@ -624,10 +638,14 @@ export async function refreshMdlAutoUpdateDramas(opts: {
   runId?: string | null;
   onProgress?: (message: string) => void;
 }): Promise<MdlAutoUpdateResult> {
-  const where = { mdlAutoUpdate: true, mdlUrl: { not: null } };
-  // Начало пачки — граница круга: всё, что после неё не переоткрыли,
-  // считается необойдённым (см. remaining в конце).
-  const startedAt = new Date();
+  // К обходу — только несвежие (см. AUTO_UPDATE_FRESH_HOURS): пачка их
+  // не повторяет, а «осталось» после неё честно доходит до нуля.
+  const freshSince = new Date(Date.now() - AUTO_UPDATE_FRESH_HOURS * 60 * 60 * 1000);
+  const where = {
+    mdlAutoUpdate: true,
+    mdlUrl: { not: null },
+    OR: [{ mdlSyncedAt: null }, { mdlSyncedAt: { lt: freshSince } }],
+  };
   const dramas = await prisma.drama.findMany({
     where,
     select: { id: true, title: true, mdlUrl: true },
@@ -636,6 +654,7 @@ export async function refreshMdlAutoUpdateDramas(opts: {
     orderBy: { mdlSyncedAt: { sort: "asc", nulls: "first" } },
     take: AUTO_UPDATE_LIMIT,
   });
+  const tookAll = dramas.length < AUTO_UPDATE_LIMIT;
 
   let checked = 0;
   let updated = 0;
@@ -681,11 +700,11 @@ export async function refreshMdlAutoUpdateDramas(opts: {
     await fetcher.close();
   }
 
-  // Кого ещё не обошли в этом круге. Считаем ПОСЛЕ пачки: по нему
-  // планировщик решает, брать ли следующую (см. scheduledJobs.ts).
-  const remaining = await prisma.drama.count({
-    where: { ...where, OR: [{ mdlSyncedAt: null }, { mdlSyncedAt: { lt: startedAt } }] },
-  });
+  // Кого ещё не обошли в этом круге. Считаем ПОСЛЕ пачки тем же
+  // условием: обойдённые только что стали свежими и выпали, упавшие
+  // остались. По нему планировщик решает, брать ли следующую пачку
+  // (см. scheduledJobs.ts).
+  const remaining = await prisma.drama.count({ where });
 
   return {
     checked,
@@ -695,6 +714,7 @@ export async function refreshMdlAutoUpdateDramas(opts: {
     episodesAdded,
     episodesChanged,
     remaining,
+    tookAll,
     abortedAfter,
   };
 }
