@@ -1,7 +1,12 @@
+import Link from "next/link";
 import { requireAdminPage } from "@/lib/auth";
 import SubmitButton from "@/components/admin/SubmitButton";
 import ConfirmForm from "@/components/ConfirmForm";
-import { NOTIFICATION_TEMPLATES, TEMPLATE_GROUPS } from "@/lib/notificationTemplates";
+import {
+  NOTIFICATION_TEMPLATES,
+  TEMPLATE_GROUPS,
+  type TemplateGroup,
+} from "@/lib/notificationTemplates";
 import { listTemplateRows } from "@/lib/notificationTemplateStore";
 import { LOCALES } from "@/lib/i18n";
 import { saveNotificationTemplates, resetNotificationTemplate } from "./actions";
@@ -12,6 +17,10 @@ export const dynamic = "force-dynamic";
 
 const LOCALE_LABELS: Record<string, string> = { ru: "Русский", en: "English" };
 
+/** Раздел, к которому относится ключ, — для списка переписанного. */
+const templateGroupOf = (key: string) =>
+  NOTIFICATION_TEMPLATES.find((d) => d.key === key)?.group;
+
 /**
  * Тексты уведомлений (просьба владельца 2026-09-23: «все подписи
  * выведем в админке, чтоб можно было там же и править»).
@@ -20,12 +29,31 @@ const LOCALE_LABELS: Record<string, string> = { ru: "Русский", en: "Engli
  * строки, остальное берётся из кода (см. lib/notificationTemplates.ts).
  * Поэтому у каждой строки видно, словарный ли это текст или правка, и
  * у правки есть кнопка «Вернуть исходный».
+ *
+ * Разделы — ВКЛАДКАМИ (правка владельца 2026-09-23: «давай разобьём по
+ * табам»): одним списком это полторы сотни полей в три экрана прокрутки.
+ * Форма на вкладке своя и шлёт только свои поля — экшен трогает ровно
+ * то, что пришло, поэтому несохранённые соседние вкладки не страдают.
  */
-export default async function AdminNotificationTemplatesPage() {
+export default async function AdminNotificationTemplatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   await requireAdminPage();
+  const { tab } = await searchParams;
+  const group =
+    TEMPLATE_GROUPS.find((g) => g.key === tab)?.key ?? (TEMPLATE_GROUPS[0].key as TemplateGroup);
   const rows = await listTemplateRows();
   const byKey = new Map(rows.map((r) => [r.key, r]));
   const changed = rows.filter((r) => LOCALES.some((l) => r.byLocale[l].overridden)).length;
+  /** Сколько переписано в разделе — цифрой на вкладке. */
+  const changedIn = (key: TemplateGroup) =>
+    NOTIFICATION_TEMPLATES.filter(
+      (d) =>
+        d.group === key &&
+        LOCALES.some((l) => byKey.get(d.key)?.byLocale[l].overridden),
+    ).length;
 
   return (
     <div>
@@ -43,15 +71,32 @@ export default async function AdminNotificationTemplatesPage() {
         {changed > 0 && <> Сейчас переписано строк: {changed}.</>}
       </p>
 
+      <div className="tab-bar mb-3">
+        {TEMPLATE_GROUPS.map((g) => {
+          const n = changedIn(g.key);
+          return (
+            <Link
+              key={g.key}
+              href={`/admin/notifications?tab=${g.key}`}
+              prefetch={false}
+              className={`tab-bar-item ${g.key === group ? "active" : ""}`}
+            >
+              {g.title}
+              {n > 0 && <span className="admin-nav-badge ms-2">{n}</span>}
+            </Link>
+          );
+        })}
+      </div>
+
       <form action={saveNotificationTemplates} className="d-flex flex-column gap-3">
-        {TEMPLATE_GROUPS.map((group) => {
-          const defs = NOTIFICATION_TEMPLATES.filter((d) => d.group === group.key);
+        {TEMPLATE_GROUPS.filter((g) => g.key === group).map((g) => {
+          const defs = NOTIFICATION_TEMPLATES.filter((d) => d.group === g.key);
           if (defs.length === 0) return null;
           return (
-            <section key={group.key} className="admin-section">
+            <section key={g.key} className="admin-section">
               <div className="admin-section-head">
-                <span className="admin-section-title">{group.title}</span>
-                <span className="admin-section-hint">{group.hint}</span>
+                <span className="admin-section-title">{g.title}</span>
+                <span className="admin-section-hint">{g.hint}</span>
               </div>
 
               <div className="d-flex flex-column gap-3">
@@ -117,7 +162,7 @@ export default async function AdminNotificationTemplatesPage() {
         <div className="d-flex align-items-center gap-3">
           <SubmitButton label="Сохранить тексты" busyLabel="Сохраняем…" />
           <span className="small text-secondary">
-            Сохранится всё сразу; строки, совпавшие с исходными, вернутся к коду.
+            Сохраняется текущая вкладка; строки, совпавшие с исходными, вернутся к коду.
           </span>
         </div>
       </form>
@@ -125,16 +170,16 @@ export default async function AdminNotificationTemplatesPage() {
       {/* Сброс — отдельными формами, а не внутри общей: вложенных форм в
           HTML не бывает, а один сброс не должен утащить с собой
           несохранённые правки соседей. */}
-      {changed > 0 && (
+      {changedIn(group) > 0 && (
         <section className="admin-section mt-3">
           <div className="admin-section-head">
-            <span className="admin-section-title">Переписанные строки</span>
+            <span className="admin-section-title">Переписанные строки этой вкладки</span>
             <span className="admin-section-hint">
               Вернуть текст из кода — по одной; остальные правки не тронутся.
             </span>
           </div>
           <div className="d-flex flex-column gap-2">
-            {rows.flatMap((row) =>
+            {rows.filter((r) => templateGroupOf(r.key) === group).flatMap((row) =>
               LOCALES.filter((l) => row.byLocale[l].overridden).map((locale) => {
                 const def = NOTIFICATION_TEMPLATES.find((d) => d.key === row.key);
                 return (

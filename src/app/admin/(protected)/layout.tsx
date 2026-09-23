@@ -132,15 +132,6 @@ const NAV_SECTIONS: {
     ],
   },
   {
-    label: "Бизнес",
-    items: [
-      { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
-      { href: "/admin/finance", title: "Финансы", icon: StarIcon },
-      { href: "/admin/translations", title: "Словарь каталога", icon: BookIcon },
-      { href: "/admin/settings", title: "Настройки", icon: SettingsIcon },
-    ],
-  },
-  {
     label: "Система",
     items: [
       { href: "/admin/imports", title: "Импорты", icon: ImportIcon, managerOk: true },
@@ -148,6 +139,15 @@ const NAV_SECTIONS: {
       { href: "/admin/errors", title: "Ошибки", icon: FlagIcon },
       { href: "/admin/duplicates", title: "Дубли", icon: CopyIcon, managerOk: true },
       { href: "/admin/history", title: "История правок", icon: HistoryIcon, managerOk: true },
+    ],
+  },
+  {
+    label: "Бизнес",
+    items: [
+      { href: "/admin/analytics", title: "Аналитика", icon: ChartIcon },
+      { href: "/admin/finance", title: "Финансы", icon: StarIcon },
+      { href: "/admin/translations", title: "Словарь каталога", icon: BookIcon },
+      { href: "/admin/settings", title: "Настройки", icon: SettingsIcon },
     ],
   },
 ];
