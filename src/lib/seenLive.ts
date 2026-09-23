@@ -64,6 +64,12 @@ export type SeenEntry = {
   /** true — так решило умолчание, false — человек. Страница события по
    *  этому показывает, где стоит своя отметка. */
   byDefault: boolean;
+  /** Артист стоял в составе события САМ, а не попал сюда раскрытием
+   *  своей группы. Свод по этому делит счётчики: в «артистов вживую»
+   *  идут те, ради кого вы шли, а участники увиденной группы считаются
+   *  в самой группе (правка владельца 2026-09-23). На страницу артиста
+   *  и в его глазик попадают и те и другие — видели-то обоих. */
+  inCast: boolean;
 };
 
 /**
@@ -83,7 +89,7 @@ export function resolveSeen(
   // на двух датах одного события — умолчания складываются через ИЛИ:
   // дата без лайнапа даёт «видели», и лайнап другого дня это не
   // отменяет.
-  type Draft = { card: SeenCard; def: boolean; bands: string[] };
+  type Draft = { card: SeenCard; def: boolean; bands: string[]; inCast: boolean };
   const drafts = new Map<string, Map<string, Draft>>();
   const bandsByEvent = new Map<string, Map<string, SeenPerformer>>();
 
@@ -114,8 +120,12 @@ export function resolveSeen(
 
     for (const { performer } of cast) {
       const cur = byPerformer.get(performer.id);
-      if (cur) cur.def = cur.def || def;
-      else byPerformer.set(performer.id, { card: toCard(performer), def, bands: [] });
+      if (cur) {
+        cur.def = cur.def || def;
+        cur.inCast = true;
+      } else {
+        byPerformer.set(performer.id, { card: toCard(performer), def, bands: [], inCast: true });
+      }
       if (performer.type === "BAND") bands.set(performer.id, performer);
     }
   }
@@ -137,7 +147,7 @@ export function resolveSeen(
       for (const { performer: member } of band.bandMembers ?? []) {
         const cur = byPerformer.get(member.id);
         if (cur) cur.bands.push(bandId);
-        else byPerformer.set(member.id, { card: member, def: false, bands: [bandId] });
+        else byPerformer.set(member.id, { card: member, def: false, bands: [bandId], inCast: false });
       }
     }
 
@@ -149,6 +159,7 @@ export function resolveSeen(
         card: draft.card,
         seen: own ?? (draft.def || viaBand),
         byDefault: own === undefined,
+        inCast: draft.inCast,
       });
     }
     result.set(eventId, entries);
@@ -232,8 +243,12 @@ export type PersonalSeenDay = {
   personalEventId: string;
   personalEventTitle: string;
   trip: { id: string; slug: string | null; title: string };
-  /** id артистов, которым этот день идёт в «видела вживую». */
+  /** id артистов, которым этот день идёт в «видела вживую» — вместе с
+   *  участниками увиденных групп. */
   performerIds: string[];
+  /** Только те, кого человек отметил САМ (без раскрытия групп) — по ним
+   *  свод считает «артистов вживую», см. SeenEntry.inCast. */
+  markedIds: string[];
 };
 
 /**
@@ -296,7 +311,7 @@ export async function personalSeenDays(
     castByDay.set(c.dayId, set);
   }
 
-  const byDay = new Map<string, PersonalSeenDay & { ids: Set<string> }>();
+  const byDay = new Map<string, PersonalSeenDay & { ids: Set<string>; marked: Set<string> }>();
   for (const row of rows) {
     let day = byDay.get(row.dayId);
     if (!day) {
@@ -307,11 +322,14 @@ export async function personalSeenDays(
         personalEventTitle: row.day.personalEvent.title,
         trip: row.day.personalEvent.trip,
         performerIds: [],
+        markedIds: [],
         ids: new Set<string>(),
+        marked: new Set<string>(),
       };
       byDay.set(row.dayId, day);
     }
     day.ids.add(row.performerId);
+    day.marked.add(row.performerId);
     const inCast = castByDay.get(row.dayId) ?? new Set<string>();
     for (const { performer: member } of row.performer.bandMembers) {
       if (inCast.has(member.id)) continue;
@@ -319,7 +337,11 @@ export async function personalSeenDays(
     }
   }
 
-  return [...byDay.values()].map(({ ids, ...day }) => ({ ...day, performerIds: [...ids] }));
+  return [...byDay.values()].map(({ ids, marked, ...day }) => ({
+    ...day,
+    performerIds: [...ids],
+    markedIds: [...marked],
+  }));
 }
 
 /**

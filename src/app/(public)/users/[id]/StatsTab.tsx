@@ -29,6 +29,12 @@ export type StatsForTab = {
     venue: string;
   }[];
   seenPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
+  /** Группы и маскоты — свои счётчики рядом с артистами (правка
+   *  владельца 2026-09-23). */
+  bandsSeenLive: number;
+  seenBands: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
+  mascotsSeenLive: number;
+  seenMascots: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
   topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];

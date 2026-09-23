@@ -45,6 +45,10 @@ export const account: Dict["account"] = {
     heroEventsHint: "посещено",
     heroArtists: (n: number) => `${plural(n, ["артист", "артиста", "артистов"])} вживую`,
     heroArtistsHint: "увидели лично",
+    heroBands: (n: number) => `${plural(n, ["группа", "группы", "групп"])} вживую`,
+    heroBandsHint: "видели на сцене",
+    heroMascots: (n: number) => `${plural(n, ["маскот", "маскота", "маскотов"])} вживую`,
+    heroMascotsHint: "встретили лично",
     // «В поездках», а не «в Таиланде» (правка владельца 2026-09-17):
     // поездку через сервис можно планировать в любую страну.
     heroDays: (n: number) => `${plural(n, ["день", "дня", "дней"])} в поездках`,

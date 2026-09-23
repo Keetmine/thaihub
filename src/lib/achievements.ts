@@ -41,6 +41,11 @@ export const METRICS = {
   attendedEvents: { label: "Посещённые события", kind: "counter", get: (s) => s.attendedEvents },
   uniqueVenues: { label: "Разные площадки", kind: "counter", get: (s) => s.uniqueVenues },
   performersSeenLive: { label: "Актёры, увиденные вживую", kind: "counter", get: (s) => s.performersSeenLive },
+  // Группы и маскоты считаются отдельно от людей (правка владельца
+  // 2026-09-23) — и метрики для ачивок тоже свои: концерт группы это не
+  // «плюс пять актёров».
+  bandsSeenLive: { label: "Группы, увиденные вживую", kind: "counter", get: (s) => s.bandsSeenLive },
+  mascotsSeenLive: { label: "Маскоты, увиденные вживую", kind: "counter", get: (s) => s.mascotsSeenLive },
   visitedLocations: { label: "Посещённые локации съёмок", kind: "counter", get: (s) => s.visitedLocations },
   completedDramas: { label: "Досмотренные сериалы", kind: "counter", get: (s) => s.completedDramas },
   // Пересмотры считаются СВЕРХ первого просмотра (DramaWatchStatus.rewatchCount):

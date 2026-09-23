@@ -37,6 +37,13 @@ export type UserStats = {
     venue: string;
   }[];
   seenPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
+  /** Музыкальные группы и маскоты считаются ОТДЕЛЬНО от людей (правка
+   *  владельца 2026-09-23): в «артистах вживую» иначе оказывались и
+   *  группа, и её участники разом. */
+  bandsSeenLive: number;
+  seenBands: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
+  mascotsSeenLive: number;
+  seenMascots: { id: string; name: string; slug: string | null; photoUrl: string | null }[];
   topPerformers: { id: string; name: string; slug: string | null; photoUrl: string | null; count: number }[];
   visitedLocations: number;
   visitedLocationPins: { id: string; name: string; latitude: number; longitude: number }[];
@@ -393,6 +400,9 @@ export async function computeUserStats(
           day.performerIds.map((performerId) => ({
             performerId,
             personalEventId: day.personalEventId,
+            // Отмечен сам или пришёл раскрытием группы — от этого
+            // зависит, в какой счётчик он попадёт (см. ниже).
+            inCast: day.markedIds.includes(performerId),
           })),
         ),
       ),
@@ -433,27 +443,37 @@ export async function computeUserStats(
   // К афише прибавляются два источника без правил: личные события
   // поездок (артист на встрече, которой в афише нет; каждое — +1) и
   // отметка «видели вне афиши» (+1 к артисту).
-  const performerCounts = new Map<string, SeenCard & { count: number }>();
-  const bump = (card: SeenCard) => {
+  const performerCounts = new Map<string, SeenCard & { count: number; inCast: boolean }>();
+  const bump = (card: SeenCard, inCast: boolean) => {
     const cur = performerCounts.get(card.id);
-    if (cur) cur.count += 1;
-    else performerCounts.set(card.id, { ...card, count: 1 });
+    if (cur) {
+      cur.count += 1;
+      cur.inCast = cur.inCast || inCast;
+    } else {
+      performerCounts.set(card.id, { ...card, count: 1, inCast });
+    }
   };
   for (const entries of resolveSeen(toSeenRows(attendances), seenOverrides, now).values()) {
-    for (const entry of entries.values()) if (entry.seen) bump(entry.card);
+    for (const entry of entries.values()) if (entry.seen) bump(entry.card, entry.inCast);
   }
 
   // Личные события и «вне афиши» знают только id — карточки
   // дозапрашиваем одним запросом ниже.
   const idOnly = new Map<string, number>();
+  const markedSelf = new Set<string>();
   const personalSeenPairs = new Set(
-    personalEventSeen.map((m) => `${m.performerId}#${m.personalEventId}`),
+    personalEventSeen.map((m) => `${m.performerId}#${m.personalEventId}#${m.inCast ? 1 : 0}`),
   );
   for (const pair of personalSeenPairs) {
-    const performerId = pair.slice(0, pair.indexOf("#"));
+    const [performerId, , inCast] = pair.split("#");
     idOnly.set(performerId, (idOnly.get(performerId) ?? 0) + 1);
+    if (inCast === "1") markedSelf.add(performerId);
   }
-  for (const m of outsideSeen) idOnly.set(m.performerId, (idOnly.get(m.performerId) ?? 0) + 1);
+  // «Вне афиши» — всегда сама отметка человека, не раскрытие.
+  for (const m of outsideSeen) {
+    idOnly.set(m.performerId, (idOnly.get(m.performerId) ?? 0) + 1);
+    markedSelf.add(m.performerId);
+  }
   const missingIds = [...idOnly.keys()].filter((id) => !performerCounts.has(id));
   const missingCards = missingIds.length
     ? await prisma.performer.findMany({
@@ -461,27 +481,51 @@ export async function computeUserStats(
         select: { id: true, name: true, slug: true, photoUrl: true },
       })
     : [];
-  for (const card of missingCards) performerCounts.set(card.id, { ...card, count: 0 });
+  for (const card of missingCards) {
+    performerCounts.set(card.id, { ...card, count: 0, inCast: markedSelf.has(card.id) });
+  }
   for (const [performerId, extra] of idOnly) {
     const cur = performerCounts.get(performerId);
-    if (cur) cur.count += extra;
+    if (cur) {
+      cur.count += extra;
+      cur.inCast = cur.inCast || markedSelf.has(performerId);
+    }
   }
 
-  // Счётчик «артистов вживую» считает ЛЮДЕЙ (правка владельца
-  // 2026-09-23: «группа из 5 человек, 1 из них актёр — выводится и
-  // группа, и актёр, получается 2 человека вместо 1 или 5, математика
-  // странная»). Группа — не человек: раз её участники уже посчитаны
-  // раскрытием, сама она из счётчика и списка уходит. Группа, которой в
-  // каталоге не завели участников, остаётся за себя — иначе концерт
-  // такой группы не считался бы вовсе.
-  const seenBandsWithMembers = await prisma.performer.findMany({
-    where: { id: { in: [...performerCounts.keys()] }, type: "BAND", bandMembers: { some: {} } },
-    select: { id: true },
-  });
-  for (const band of seenBandsWithMembers) performerCounts.delete(band.id);
+  // ТРИ СЧЁТЧИКА вместо одного (правка владельца 2026-09-23: «поделим
+  // на категории, вынесем отдельно муз. группы, маскотов тоже»). До
+  // этого всё складывалось в одно число, и группа из пяти человек с
+  // одним актёром давала двойку — «математика странная».
+  //
+  // Правило простое: считаем то, что СТОЯЛО В СОСТАВЕ события (или что
+  // человек отметил сам), а не то, что получилось раскрытием групп:
+  //  - человек в составе → «артисты вживую»;
+  //  - группа в составе → «группы вживую»;
+  //  - маскот в составе → «маскоты вживую».
+  // Участники увиденной группы в счётчик людей НЕ идут: иначе концерт
+  // пятерых давал бы шесть записей. На своей странице каждый из них
+  // по-прежнему видит это событие — глазик говорит про человека, а
+  // счётчик про то, ради чего вы шли.
+  const typeById = new Map(
+    (
+      await prisma.performer.findMany({
+        where: { id: { in: [...performerCounts.keys()] } },
+        select: { id: true, type: true },
+      })
+    ).map((p) => [p.id, p.type]),
+  );
+  /** Карточки одной категории: только те, кто стоял в составе сам. */
+  const ofKind = (kind: "SOLO" | "BAND" | "MASCOT") =>
+    Array.from(performerCounts.values()).filter(
+      (p) => p.inCast && (typeById.get(p.id) ?? "SOLO") === kind,
+    );
+  const bandCards = ofKind("BAND");
+  const mascotCards = ofKind("MASCOT");
 
-  const seenPerformerIds = new Set(performerCounts.keys());
-  const countedPerformers = Array.from(performerCounts.values());
+  const seenPerformerIds = new Set(
+    ofKind("SOLO").map((p) => p.id),
+  );
+  const countedPerformers = ofKind("SOLO");
   // Топ-5 «кого видели чаще» — по числу событий.
   const topPerformers = countedPerformers
     .slice()
@@ -511,6 +555,16 @@ export async function computeUserStats(
     (p) => p.id,
     seenPairings,
   ).map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl }));
+
+  // Группы и маскоты — своими списками, порядком «кого чаще». Пейринги
+  // им не нужны: пары бывают у людей.
+  const plainList = (cards: typeof countedPerformers) =>
+    cards
+      .slice()
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .map(({ id, name, slug, photoUrl }) => ({ id, name, slug, photoUrl }));
+  const seenBands = plainList(bandCards);
+  const seenMascots = plainList(mascotCards);
 
   // Посещённые события списком, свежие сверху; при нескольких отмеченных
   // датах события берётся последняя посещённая.
@@ -684,6 +738,10 @@ export async function computeUserStats(
     performersSeenLive: seenPerformerIds.size,
     attendedEventsList,
     seenPerformers,
+    bandsSeenLive: seenBands.length,
+    seenBands,
+    mascotsSeenLive: seenMascots.length,
+    seenMascots,
     topPerformers,
     visitedLocations: visits.length,
     visitedLocationPins: visits

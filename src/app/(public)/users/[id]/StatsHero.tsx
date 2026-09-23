@@ -8,7 +8,7 @@ import { formatDateWithYear } from "@/lib/dates";
 import { dramaTitleForLocale } from "@/lib/dramaLocale";
 import { eventHref, performerHref, tripHref } from "@/lib/slugHelpers";
 
-type Expanded = "events" | "artists" | "trips" | null;
+type Expanded = "events" | "artists" | "bands" | "mascots" | "trips" | null;
 
 /** Плитки статистики над карточками вкладки — ОДНО место для владельца
  *  и зрителя (правка владельца п.8 — обзор и чужая статистика показывали
@@ -58,6 +58,29 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
       hint: o.heroArtistsHint,
       expandKey: stats.seenPerformers.length > 0 ? "artists" : undefined,
     },
+    {
+      key: "bands",
+      icon: "🎸",
+      value: stats.bandsSeenLive,
+      label: o.heroBands(stats.bandsSeenLive),
+      hint: o.heroBandsHint,
+      expandKey: stats.seenBands.length > 0 ? "bands" : undefined,
+    },
+    // Маскоты — сразу за группами, чтобы все три счётчика «вживую»
+    // стояли рядом, и только когда они есть: у большинства их нет
+    // вовсе, а плитка с нулём ничего не сообщает.
+    ...(stats.mascotsSeenLive > 0
+      ? [
+          {
+            key: "mascots",
+            icon: "🧸",
+            value: stats.mascotsSeenLive,
+            label: o.heroMascots(stats.mascotsSeenLive),
+            hint: o.heroMascotsHint,
+            expandKey: "mascots" as const,
+          },
+        ]
+      : []),
     {
       key: "trips",
       icon: "🧳",
@@ -206,6 +229,42 @@ export default function StatsHero({ stats }: { stats: StatsForTab }) {
         </div>
         </div>
       </div>
+      {([
+        ["bands", stats.seenBands],
+        ["mascots", stats.seenMascots],
+      ] as const).map(([key, list]) => (
+        <div
+          key={key}
+          className={`kpi-tile-panel${expanded === key ? " is-open" : ""}`}
+          inert={expanded !== key}
+        >
+          <div className="kpi-tile-panel-inner">
+            <div className="surface p-3 kpi-tile-expand thin-scroll">
+              <div className="hero-artist-grid">
+                {list.map((p) => (
+                  <AppLink key={p.id} href={performerHref(p)} className="hero-artist">
+                    {p.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        loading="lazy"
+                        decoding="async"
+                        src={p.photoUrl}
+                        alt=""
+                        className="hero-artist-photo"
+                      />
+                    ) : (
+                      <span className="hero-artist-photo hero-artist-fallback">
+                        {p.name.slice(0, 1)}
+                      </span>
+                    )}
+                    <span className="hero-artist-name">{p.name}</span>
+                  </AppLink>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
       <div
         className={`kpi-tile-panel${expanded === "trips" ? " is-open" : ""}`}
         inert={expanded !== "trips"}

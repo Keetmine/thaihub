@@ -678,6 +678,10 @@ export default async function UserProfilePage({
         performersSeenLive: fullStats.performersSeenLive,
         attendedEventsList: fullStats.attendedEventsList,
         seenPerformers: fullStats.seenPerformers,
+        bandsSeenLive: fullStats.bandsSeenLive,
+        seenBands: fullStats.seenBands,
+        mascotsSeenLive: fullStats.mascotsSeenLive,
+        seenMascots: fullStats.seenMascots,
         topPerformers: fullStats.topPerformers,
         // Скрытые «посещённые места» не должны уехать зрителю даже в
         // пропсах — вычищаем из свода, а не прячем при отрисовке.

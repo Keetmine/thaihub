@@ -52,6 +52,10 @@ export const account = {
     heroEventsHint: "attended",
     heroArtists: (n: number) => `${n === 1 ? "artist" : "artists"} live`,
     heroArtistsHint: "seen in person",
+    heroBands: (n: number) => `${n === 1 ? "band" : "bands"} live`,
+    heroBandsHint: "seen on stage",
+    heroMascots: (n: number) => `${n === 1 ? "mascot" : "mascots"} live`,
+    heroMascotsHint: "met in person",
     heroDays: (n: number) => `${n === 1 ? "day" : "days"} on trips`,
     // «series» не меняется по числу, но параметр обязан остаться: тип
     // функции задаёт en-словарь, а русскому переводу число нужно.
