@@ -344,9 +344,16 @@ export async function notifyFavoritersAboutEventPerformers(
     // из них, и избравший участника должен узнать о концерте.
     const members = await prisma.bandMember.findMany({
       where: { bandId: { in: performerIds } },
-      select: { performerId: true },
+      select: { bandId: true, performerId: true },
     });
     const notifyAbout = [...new Set([...performerIds, ...members.map((m) => m.performerId)])];
+    // Кто чей участник — чтобы ниже не называть и группу, и её людей.
+    const membersByBand = new Map<string, Set<string>>();
+    for (const m of members) {
+      const set = membersByBand.get(m.bandId) ?? new Set<string>();
+      set.add(m.performerId);
+      membersByBand.set(m.bandId, set);
+    }
 
     // Получатели — избравшие любого артиста из привязанных; данные для
     // notifyUser забираем тем же findMany, чтобы не перечитывать User на
@@ -363,24 +370,46 @@ export async function notifyFavoritersAboutEventPerformers(
 
     // Несколько избранных в составе — в фразу идут ВСЕ (правка
     // владельца 2026-09-22: «создала событие для двух актёров, а в
-    // уведомлении только один, хотя оба в избранном»). Порядок — как в
+    // уведомлении только один, хотя оба в избранном»), кроме тех, кого
+    // покрывает названная рядом группа (см. ниже). Порядок — как в
     // составе события: сначала привязанные к нему, потом участники
     // групп; хвост длинного списка свернёт namesList.
     const order = new Map(notifyAbout.map((id, i) => [id, i]));
     const byUser = new Map<
       string,
-      { user: (typeof favorites)[number]["user"]; names: { name: string; at: number }[] }
+      {
+        user: (typeof favorites)[number]["user"];
+        names: { id: string; name: string; at: number }[];
+      }
     >();
     for (const f of favorites) {
       const entry = byUser.get(f.userId) ?? { user: f.user, names: [] };
       if (!entry.names.some((n) => n.name === f.performer.name)) {
-        entry.names.push({ name: f.performer.name, at: order.get(f.performerId) ?? 0 });
+        entry.names.push({
+          id: f.performerId,
+          name: f.performer.name,
+          at: order.get(f.performerId) ?? 0,
+        });
       }
       byUser.set(f.userId, entry);
     }
 
     for (const [userId, fav] of byUser) {
-      const names = [...fav.names].sort((a, b) => a.at - b.at).map((n) => n.name);
+      // Группа поглощает своих: если в избранном у человека и LYKN, и
+      // трое её участников, «у LYKN новое событие» говорит ровно то же,
+      // а «LYKN, Lego и ещё 2» выглядит так, будто выступают четверо
+      // разных артистов (правка владельца 2026-09-24). Схлопываем
+      // ТОЛЬКО под своей группой: участника, чьей группы в списке нет,
+      // по-прежнему называем по имени.
+      const listedIds = new Set(fav.names.map((n) => n.id));
+      const coveredByBand = new Set<string>();
+      for (const bandId of listedIds) {
+        for (const memberId of membersByBand.get(bandId) ?? []) coveredByBand.add(memberId);
+      }
+      const names = [...fav.names]
+        .filter((n) => !coveredByBand.has(n.id))
+        .sort((a, b) => a.at - b.at)
+        .map((n) => n.name);
       try {
         await prisma.performerEventNotification.create({
           data: { userId, eventId: event.id },
