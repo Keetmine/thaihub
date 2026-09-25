@@ -142,6 +142,21 @@ async function main() {
 
     // --- новая карточка ---
     if (!id) {
+      // Обрывок профиля без полного имени («Peck Palitchoke» рядом с
+      // «Peck», «PP Krit» рядом с «PP», «mindfreakkk» с одним фото) —
+      // вторая страница того же человека или вовсе не человек. Новую
+      // карточку по нему не заводим, если фактов нет или его ник уже
+      // занят кем-то из списка.
+      const firstWord = (s: string | null) => (s ?? "").toLowerCase().split(/\s+/)[0];
+      const fragment =
+        !p.birthName &&
+        (p.facts.length === 0 ||
+          people.some((o) => o !== p && firstWord(o.stageName) === firstWord(p.stageName)));
+      if (fragment) {
+        stat.skipped++;
+        report.push({ nick: p.stageName ?? "", realName: "", isNew: true, added: [], skipped: "обрывок профиля без полного имени — дубль или не человек" });
+        continue;
+      }
       if (p.candidates.length > 0 || !p.stageName) {
         stat.skipped++;
         report.push({ nick: p.stageName ?? "", realName: p.birthName ?? "", isNew: true, added: [], skipped: `похож на: ${p.candidates.join("; ")}` });
