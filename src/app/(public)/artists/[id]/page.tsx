@@ -704,7 +704,9 @@ export default async function PerformerPage({
               названия у сериала (правка владельца 2026-09-26): это часть
               имени, а не сведение в ряду с ростом и агентством. */}
           {performer.alsoKnownAs && (
-            <p className="small text-secondary mb-0">{performer.alsoKnownAs}</p>
+            <p className="small text-secondary mb-0">
+              {t.catalog.artist.alsoKnownAs} {performer.alsoKnownAs}
+            </p>
           )}
           {/* Без фото плашке некуда встать в колонке — тогда она живёт
               под именем. */}
