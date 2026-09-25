@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/components/LocaleProvider";
 import { useLocale } from "@/components/LocaleProvider";
 import { localeHref } from "@/lib/i18n/config";
+import LetterAvatar from "@/components/LetterAvatar";
 import { quickSearchAdmin, type QuickHit } from "@/app/admin/(protected)/quickSearchActions";
 
 const DEBOUNCE_MS = 400;
@@ -169,9 +170,18 @@ export default function NameSearchBox({
                   router.push(hit.href);
                 }}
               >
-                <span className="text-truncate">
-                  {hit.title}
-                  {hit.subtitle && <span className="text-secondary small"> · {hit.subtitle}</span>}
+                <span className="d-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+                  <LetterAvatar
+                    name={hit.title}
+                    photoUrl={hit.imageUrl}
+                    size={1.8}
+                    height={hit.tall ? 2.5 : undefined}
+                    rounded={!hit.tall && hit.kind === "performer"}
+                  />
+                  <span className="text-truncate">
+                    {hit.title}
+                    {hit.subtitle && <span className="text-secondary small"> · {hit.subtitle}</span>}
+                  </span>
                 </span>
               </button>
             ))}

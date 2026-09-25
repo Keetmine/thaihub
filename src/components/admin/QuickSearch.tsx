@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import LetterAvatar from "@/components/LetterAvatar";
 import { quickSearchAdmin, type QuickHit } from "@/app/admin/(protected)/quickSearchActions";
 import { QUICK_SEARCH_EVENT } from "./QuickSearchButton";
 
@@ -130,12 +131,21 @@ export default function QuickSearch() {
               <button
                 key={`${hit.kind}-${hit.id}`}
                 type="button"
-                className={`quick-search-hit ${i === active ? "is-active" : ""}`}
+                className={`quick-search-hit search-palette-hit ${i === active ? "is-active" : ""}`}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => go(hit)}
               >
-                <span className="text-white">{hit.title}</span>
-                {hit.subtitle && <span className="small text-secondary">{hit.subtitle}</span>}
+                <LetterAvatar
+                  name={hit.title}
+                  photoUrl={hit.imageUrl}
+                  size={2}
+                  height={hit.tall ? 2.8 : undefined}
+                  rounded={!hit.tall && hit.kind === "performer"}
+                />
+                <span className="d-flex flex-column" style={{ minWidth: 0 }}>
+                  <span className="text-white text-truncate">{hit.title}</span>
+                  {hit.subtitle && <span className="small text-secondary text-truncate">{hit.subtitle}</span>}
+                </span>
               </button>
             ))
           )}
