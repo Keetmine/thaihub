@@ -65,6 +65,7 @@ export default function PerformerForm({
   dramas,
   events,
   defaultValues,
+  initialType,
   defaultMemberIds,
   mascotOwnerOptions,
   defaultMascotPerformerIds,
@@ -80,6 +81,10 @@ export default function PerformerForm({
   agencies: EntityOption[];
   dramas: EntityOption[];
   events: EntityOption[];
+  /** Тип при СОЗДАНИИ — задаётся разделом, из которого пришли
+   *  (?type= у /admin/performers/new): селекта типа в форме создания
+   *  нет (правка владельца 2026-09-26). */
+  initialType?: string;
   defaultValues?: {
     performerId: string;
     name: string;
@@ -130,7 +135,7 @@ export default function PerformerForm({
   const isCreating = !v;
   const [nameValue, setNameValue] = useState(v?.name ?? "");
 
-  const [type, setType] = useState(v?.type ?? "SOLO");
+  const [type, setType] = useState(v?.type ?? initialType ?? "SOLO");
 
   const formRef = useRef<HTMLFormElement>(null);
   const { dirty } = useUnsavedGuard(formRef);
@@ -314,201 +319,203 @@ export default function PerformerForm({
           other classes — Bootstrap's .d-flex etc. carry !important and would
           otherwise beat an inline display:none on the same element. */}
       <div style={{ display: effectiveTab === "general" ? undefined : "none" }}>
-      <div className="d-flex flex-column gap-3">
-        <FormSection title="Основное" hint="как исполнитель называется и кто он">
+      {/* gap-2: между секциями хватает их рамок, широкие зазоры делали
+          форму «резаной» (правка владельца 2026-09-26). */}
+      <div className="d-flex flex-column gap-2">
+        {/* «Основное»: поля слева, фото справа (правка владельца
+            2026-09-26: раньше фото жило внизу, в секции «Биография и
+            фото», а профиль был нарезан на четыре секции с рамками —
+            «каша и бесполезные группировки»). Тип при создании задан
+            разделом, из которого пришли, и не показывается. */}
+        <FormSection title="Основное">
         <div className="row g-3">
-          <div className="col-12 col-lg-8">
-            <label className="form-label" htmlFor="performer-form-name">Имя / название группы *</label>
-            <input id="performer-form-name"
-              name="name"
-              required
-              defaultValue={v?.name}
-              onChange={(e) => setNameValue(e.target.value)}
-              className="form-control"
-            />
-            {isCreating && (
-              <DuplicateNameWarning
-                value={nameValue}
-                checkAction={findSimilarPerformers}
-                editHrefBase="/admin/performers"
-              />
-            )}
-          </div>
-          <div className="col-12 col-lg-4">
-            <label className="form-label" htmlFor="performer-form-type">Тип</label>
-            <select id="performer-form-type"
-              name="type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="form-select"
-            >
-              <option value="SOLO">Соло</option>
-              <option value="BAND">Группа</option>
-              <option value="MASCOT">Маскот</option>
-            </select>
-          </div>
-        </div>
+          <div className="col-12 col-md-8 col-lg-9">
+            <div className="row g-2">
+              <div className={isCreating ? "col-12" : "col-12 col-lg-8"}>
+                <label className="form-label" htmlFor="performer-form-name">
+                  {type === "BAND" ? "Название группы *" : type === "MASCOT" ? "Имя маскота *" : "Имя *"}
+                </label>
+                <input id="performer-form-name"
+                  name="name"
+                  required
+                  defaultValue={v?.name}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  className="form-control"
+                />
+                {isCreating && (
+                  <DuplicateNameWarning
+                    value={nameValue}
+                    checkAction={findSimilarPerformers}
+                    editHrefBase="/admin/performers"
+                  />
+                )}
+              </div>
+              {isCreating ? (
+                <input type="hidden" name="type" value={type} />
+              ) : (
+                <div className="col-12 col-lg-4">
+                  <label className="form-label" htmlFor="performer-form-type">Тип</label>
+                  <select id="performer-form-type"
+                    name="type"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="form-select"
+                  >
+                    <option value="SOLO">Соло</option>
+                    <option value="BAND">Группа</option>
+                    <option value="MASCOT">Маскот</option>
+                  </select>
+                </div>
+              )}
 
-        </FormSection>
+              {type === "SOLO" && (
+                <>
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label" htmlFor="performer-form-realName">Настоящее имя</label>
+                    <input id="performer-form-realName"
+                      name="realName"
+                      defaultValue={v?.realName}
+                      placeholder="Если сценическое имя отличается"
+                      className="form-control"
+                    />
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label" htmlFor="performer-form-alsoKnownAs">Также известен как</label>
+                    <input id="performer-form-alsoKnownAs"
+                      name="alsoKnownAs"
+                      defaultValue={v?.alsoKnownAs}
+                      placeholder="Другие написания имени, через запятую"
+                      className="form-control"
+                    />
+                  </div>
+                  <div className="col-12 col-sm-4">
+                    <label className="form-label" htmlFor="performer-form-musicAlias">Музыкальный псевдоним</label>
+                    <input id="performer-form-musicAlias"
+                      name="musicAlias"
+                      defaultValue={v?.musicAlias}
+                      placeholder="Если поёт под другим именем"
+                      className="form-control"
+                    />
+                  </div>
+                  <div className="col-6 col-sm-4">
+                    <label className="form-label" htmlFor="performer-form-nationality">Национальность</label>
+                    <input id="performer-form-nationality"
+                      name="nationality"
+                      defaultValue={v?.nationality}
+                      placeholder="Thai"
+                      className="form-control"
+                    />
+                  </div>
+                  <div className="col-6 col-sm-4">
+                    <label className="form-label" htmlFor="performer-form-gender">Пол</label>
+                    <select id="performer-form-gender" name="gender" defaultValue={v?.gender ?? ""} className="form-select">
+                      <option value="">Не указан</option>
+                      <option value="Male">Мужской</option>
+                      <option value="Female">Женский</option>
+                    </select>
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label" htmlFor="performer-form-birthDate">Дата рождения</label>
+                    <DatePickerInput id="performer-form-birthDate" name="birthDate" defaultValue={v?.birthDate} yearsBack={100} yearsForward={0} />
+                  </div>
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label" htmlFor="performer-form-placeOfBirth">Место рождения</label>
+                    <input id="performer-form-placeOfBirth"
+                      name="placeOfBirth"
+                      defaultValue={v?.placeOfBirth}
+                      placeholder="Bangkok, Thailand"
+                      className="form-control"
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label d-block" htmlFor="performer-form-agencyIds">Агентства</label>
+                    <EntityMultiSelect id="performer-form-agencyIds"
+                      name="agencyIds"
+                      options={agencies}
+                      defaultSelectedIds={v?.agencyIds}
+                      placeholder="Начните вводить название агентства…"
+                      createLabel="Создать агентство"
+                      hrefKind="Agency"
+                      onCreateNew={async (query) => {
+                        const created = await createAgencyAndReturn(query);
+                        return { id: created.id, name: created.name, photoUrl: created.logoUrl };
+                      }}
+                    />
+                  </div>
+                </>
+              )}
 
-        {type === "SOLO" && (
-          <FormSection title="Профиль" hint="имена, национальность, дата и место рождения, агентства">
-          <div className="row g-3">
-            <div className="col-12 col-sm-6">
-              <label className="form-label" htmlFor="performer-form-realName">Настоящее имя</label>
-              <input id="performer-form-realName"
-                name="realName"
-                defaultValue={v?.realName}
-                placeholder="Если сценическое имя отличается от настоящего"
-                className="form-control"
-              />
-            </div>
-            <div className="col-12 col-sm-6">
-              <label className="form-label" htmlFor="performer-form-musicAlias">Музыкальный псевдоним</label>
-              <input id="performer-form-musicAlias"
-                name="musicAlias"
-                defaultValue={v?.musicAlias}
-                placeholder="Если выступает сольно под другим именем"
-                className="form-control"
-              />
-            </div>
-            <div className="col-12 col-sm-6">
-              <label className="form-label" htmlFor="performer-form-alsoKnownAs">Также известен как</label>
-              <input id="performer-form-alsoKnownAs"
-                name="alsoKnownAs"
-                defaultValue={v?.alsoKnownAs}
-                placeholder="Другие написания имени, через запятую"
-                className="form-control"
-              />
-            </div>
-            <div className="col-6 col-sm-3">
-              <label className="form-label" htmlFor="performer-form-nationality">Национальность</label>
-              <input id="performer-form-nationality"
-                name="nationality"
-                defaultValue={v?.nationality}
-                placeholder="Thai"
-                className="form-control"
-              />
-            </div>
-            <div className="col-6 col-sm-3">
-              <label className="form-label" htmlFor="performer-form-gender">Пол</label>
-              <select id="performer-form-gender" name="gender" defaultValue={v?.gender ?? ""} className="form-select">
-                <option value="">Не указан</option>
-                <option value="Male">Мужской</option>
-                <option value="Female">Женский</option>
-              </select>
+              {type === "MASCOT" && (
+                <>
+                  <div className="col-12 col-sm-6">
+                    <label className="form-label" htmlFor="performer-form-mascot-birthDate">
+                      День рождения маскота
+                    </label>
+                    <DatePickerInput
+                      id="performer-form-mascot-birthDate"
+                      name="birthDate"
+                      defaultValue={v?.birthDate}
+                      yearsBack={100}
+                      yearsForward={0}
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label d-block" htmlFor="performer-form-mascotPerformerIds">Чей маскот — актёры и группы</label>
+                    <EntityMultiSelect id="performer-form-mascotPerformerIds"
+                      name="mascotPerformerIds"
+                      options={mascotOwnerOptions ?? []}
+                      defaultSelectedIds={defaultMascotPerformerIds}
+                      placeholder="Начните вводить имя актёра…"
+                      hrefKind="Performer"
+                      searchOptions={searchMascotOwnerOptions}
+                    />
+                  </div>
+                </>
+              )}
+
+              {type === "BAND" && (
+                <div className="col-12">
+                  <label className="form-label d-block" htmlFor={`${uid}-agencyIds`}>Агентства</label>
+                  <EntityMultiSelect id={`${uid}-agencyIds`}
+                    name="agencyIds"
+                    options={agencies}
+                    defaultSelectedIds={v?.agencyIds}
+                    placeholder="Начните вводить название агентства…"
+                    createLabel="Создать агентство"
+                    hrefKind="Agency"
+                    onCreateNew={async (query) => {
+                      const created = await createAgencyAndReturn(query);
+                      return { id: created.id, name: created.name, photoUrl: created.logoUrl };
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
-          </FormSection>
-        )}
 
-        {type === "SOLO" && (
-          <FormSection title="Рождение и агентства">
-          <div className="row g-3">
-            <div className="col-12 col-sm-6">
-              <label className="form-label" htmlFor="performer-form-birthDate">Дата рождения</label>
-              <DatePickerInput id="performer-form-birthDate" name="birthDate" defaultValue={v?.birthDate} yearsBack={100} yearsForward={0} />
-            </div>
-            <div className="col-12 col-sm-6">
-              <label className="form-label" htmlFor="performer-form-placeOfBirth">Место рождения</label>
-              <input id="performer-form-placeOfBirth"
-                name="placeOfBirth"
-                defaultValue={v?.placeOfBirth}
-                placeholder="Bangkok, Thailand"
-                className="form-control"
-              />
-            </div>
-            <div className="col-12 col-sm-6">
-              <label className="form-label d-block" htmlFor="performer-form-agencyIds">Агентства</label>
-              <EntityMultiSelect id="performer-form-agencyIds"
-                name="agencyIds"
-                options={agencies}
-                defaultSelectedIds={v?.agencyIds}
-                placeholder="Начните вводить название агентства…"
-                createLabel="Создать агентство"
-                hrefKind="Agency"
-                onCreateNew={async (query) => {
-                  const created = await createAgencyAndReturn(query);
-                  return { id: created.id, name: created.name, photoUrl: created.logoUrl };
-                }}
-              />
-            </div>
-          </div>
-          </FormSection>
-        )}
-
-        {type === "MASCOT" && (
-          <div className="row g-3">
-            <div className="col-12 col-sm-6">
-              <label className="form-label" htmlFor="performer-form-mascot-birthDate">
-                День рождения маскота
-              </label>
-              <DatePickerInput
-                id="performer-form-mascot-birthDate"
-                name="birthDate"
-                defaultValue={v?.birthDate}
-                yearsBack={100}
-                yearsForward={0}
-              />
-            </div>
-            <div className="col-12 col-sm-6">
-              <label className="form-label d-block" htmlFor="performer-form-mascotPerformerIds">Чей маскот — актёры и группы</label>
-              <EntityMultiSelect id="performer-form-mascotPerformerIds"
-                name="mascotPerformerIds"
-                options={mascotOwnerOptions ?? []}
-                defaultSelectedIds={defaultMascotPerformerIds}
-                placeholder="Начните вводить имя актёра…"
-                hrefKind="Performer"
-                searchOptions={searchMascotOwnerOptions}
-              />
-            </div>
-          </div>
-        )}
-
-        {type === "BAND" && (
-          <div>
-            <label className="form-label d-block" htmlFor={`${uid}-agencyIds`}>Агентства</label>
-            <EntityMultiSelect id={`${uid}-agencyIds`}
-              name="agencyIds"
-              options={agencies}
-              defaultSelectedIds={v?.agencyIds}
-              placeholder="Начните вводить название агентства…"
-              createLabel="Создать агентство"
-              hrefKind="Agency"
-              onCreateNew={async (query) => {
-                const created = await createAgencyAndReturn(query);
-                return { id: created.id, name: created.name, photoUrl: created.logoUrl };
-              }}
-            />
-          </div>
-        )}
-
-        <FormSection title="Биография и фото">
-        <div className="row g-3">
-          <div className="col-12 col-md-8">
-            <label className="form-label" htmlFor="performer-form-bio">{type === "BAND" ? "О группе" : "Биография"}</label>
-            <textarea id="performer-form-bio"
-              name="bio"
-              rows={5}
-              defaultValue={v?.bio}
-              className="form-control"
-            />
-          </div>
-          <div className="col-12 col-md-4">
+          <div className="col-12 col-md-4 col-lg-3">
             <FileDropzone name="photoUrl" label="Фото" defaultValue={v?.photoUrl} compact />
           </div>
         </div>
 
+        <div>
+          <label className="form-label" htmlFor="performer-form-bio">{type === "BAND" ? "О группе" : "Биография"}</label>
+          <textarea id="performer-form-bio"
+            name="bio"
+            rows={4}
+            defaultValue={v?.bio}
+            className="form-control"
+          />
+        </div>
         </FormSection>
 
-        <FormSection
-          title="Профиль музыканта"
-          hint="занятия, инструменты, рост/вес, клипы, факты — заполняется импортом с tpop.fandom, правится руками"
-          collapsible
-          defaultOpen={false}
-        >
-          <div className="row g-3">
-            <div className="col-12 col-md-6">
+        {/* Бывший «Профиль музыканта»: отдельная свёрнутая секция мешала
+            (правка владельца 2026-09-26: «убрать это разделение») — поля
+            заполняются импортами и правятся тут же, наравне с прочими. */}
+        {type === "SOLO" && (
+          <FormSection title="Профиль" hint="занятия, мерки, автограф — заполняется импортами (tpop.fandom, kprofiles), правится руками">
+          <div className="row g-2">
+            <div className="col-12 col-md-4">
               <label className="form-label" htmlFor="performer-form-occupation">Занятия</label>
               <input id="performer-form-occupation"
                 name="occupation"
@@ -517,7 +524,7 @@ export default function PerformerForm({
                 className="form-control"
               />
             </div>
-            <div className="col-12 col-md-6">
+            <div className="col-12 col-md-4">
               <label className="form-label" htmlFor="performer-form-instruments">Инструменты</label>
               <input id="performer-form-instruments"
                 name="instruments"
@@ -535,25 +542,23 @@ export default function PerformerForm({
                 className="form-control"
               />
             </div>
-            <div className="col-6 col-md-4">
+            <div className="col-6 col-md-3">
               <label className="form-label" htmlFor="performer-form-height">Рост</label>
               <input id="performer-form-height" name="height" defaultValue={v?.height} placeholder="175 cm" className="form-control" />
             </div>
-            <div className="col-6 col-md-4">
+            <div className="col-6 col-md-3">
               <label className="form-label" htmlFor="performer-form-weight">Вес</label>
               <input id="performer-form-weight" name="weight" defaultValue={v?.weight} placeholder="65 kg" className="form-control" />
             </div>
-            {/* Группа крови, MBTI и автограф — поля из профилей kprofiles
-                (2026-09-26). Автограф — адрес картинки, как фото. */}
-            <div className="col-6 col-md-4">
+            <div className="col-6 col-md-3">
               <label className="form-label" htmlFor="performer-form-bloodType">Группа крови</label>
               <input id="performer-form-bloodType" name="bloodType" defaultValue={v?.bloodType} placeholder="O, A, B, AB" className="form-control" />
             </div>
-            <div className="col-6 col-md-4">
+            <div className="col-6 col-md-3">
               <label className="form-label" htmlFor="performer-form-mbti">MBTI</label>
               <input id="performer-form-mbti" name="mbti" defaultValue={v?.mbti} placeholder="INFP" className="form-control" />
             </div>
-            <div className="col-12 col-md-8">
+            <div className="col-12 col-md-6">
               <label className="form-label" htmlFor="performer-form-signatureUrl">Автограф (адрес картинки)</label>
               <input id="performer-form-signatureUrl" name="signatureUrl" defaultValue={v?.signatureUrl} placeholder="/uploads/signatures/….webp" className="form-control" />
             </div>
@@ -561,17 +566,18 @@ export default function PerformerForm({
               <label className="form-label" htmlFor="performer-form-mvAppearances">Появления в клипах</label>
               <textarea id="performer-form-mvAppearances"
                 name="mvAppearances"
-                rows={3}
+                rows={2}
                 defaultValue={v?.mvAppearances}
                 placeholder="По одному пункту на строку"
                 className="form-control"
               />
             </div>
-            <div className="col-12">
-              <span className="form-label d-block">Факты</span>
-              <FactsRowsField initial={v?.triviaRows ?? []} />
-            </div>
           </div>
+          </FormSection>
+        )}
+
+        <FormSection title="Факты" hint="перевод — строка к строке, правится здесь, а не во вкладке «Перевод»">
+          <FactsRowsField initial={v?.triviaRows ?? []} />
         </FormSection>
 
         <FormSection title="Ссылки и соцсети" hint="MyDramaList, соцсети, музыкальные площадки">

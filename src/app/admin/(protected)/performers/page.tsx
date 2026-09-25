@@ -245,8 +245,13 @@ export default async function AdminPerformersPage({
         {/* Очередь досбора биографий с MDL живёт не здесь, а на вкладке
             задачи в /admin/schedule (правка владельца 2026-09-23): это
             настройка обхода, а не действие над списком актёров. */}
-        <Link href="/admin/performers/new" className="btn btn-primary btn-sm">
-          + Добавить исполнителя
+        {/* Тип новой записи — из раздела: селекта типа в форме создания
+            больше нет (правка владельца 2026-09-26). */}
+        <Link
+          href={`/admin/performers/new${isMascots ? "?type=MASCOT" : isBands ? "?type=BAND" : ""}`}
+          className="btn btn-primary btn-sm"
+        >
+          {isMascots ? "+ Добавить маскота" : isBands ? "+ Добавить группу" : "+ Добавить исполнителя"}
         </Link>
       </div>
 
